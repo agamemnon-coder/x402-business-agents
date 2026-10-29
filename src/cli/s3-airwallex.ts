@@ -44,8 +44,8 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
     return;
   }
   const t = out.terms;
-  const need = Number(t.amount) + Number(t.fee);
-  console.log(`PLAN             EUR needed ${need.toFixed(2)} (invoice ${t.amount} + SWIFT fee ${t.fee}); free EUR ${fromCents(Math.max(0, s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents))}`);
+  const need = Number(t.amount) + Number(t.fee_max);
+  console.log(`PLAN             EUR needed ${need.toFixed(2)} (invoice ${t.amount} + SWIFT fee at most ${t.fee_max}); free EUR ${fromCents(Math.max(0, s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents))}`);
   if (t.conversion) {
     console.log(`                 convert only the shortfall: buy EUR ${t.conversion.buy_amount} for USD ${t.conversion.sell_amount} at ${t.conversion.client_rate}, quote ${t.conversion.quote_id} valid to ${t.conversion.valid_to}`);
   }

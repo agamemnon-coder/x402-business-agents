@@ -31,6 +31,8 @@ interface AwxTransfer {
   failure?: { code?: string; message?: string; details?: { type?: string } } | null;
   failure_type?: string | null;
   failure_reason?: string | null;
+  fee_amount?: number | string | null;
+  fee_currency?: string | null;
 }
 
 function toTransfer(t: AwxTransfer): Transfer {
@@ -43,6 +45,7 @@ function toTransfer(t: AwxTransfer): Transfer {
     // The create/retrieve schema nests failure details; the simulation schema has them flat.
     failureType: t.failure_type ?? t.failure?.details?.type ?? t.failure?.code ?? null,
     failureReason: t.failure_reason ?? t.failure?.message ?? null,
+    fee: t.fee_amount != null && t.fee_currency ? { cents: cents(t.fee_amount), currency: t.fee_currency } : null,
   };
 }
 

@@ -39,18 +39,21 @@ describe("euro bill (S3) against the Airwallex port", () => {
     expect(s.usdFloorCents).toBe(2_000_000);
   });
 
-  it("converts only the 362.85 shortfall, then pays by SWIFT to PAID", async () => {
+  it("converts only the 370.00 shortfall (fee ceiling 20.00), then pays by SWIFT to PAID", async () => {
     const { db, awx } = await world();
     const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
     if (out.kind !== "proposed") throw new Error(out.reason);
-    expect(out.terms.conversion?.buy_amount).toBe("362.85");
+    expect(out.terms.conversion?.buy_amount).toBe("370.00");
     expect(out.terms.after.eur_free).toBe("0.00");
     expect(awx.calls).not.toContain("createConversion");
     approve(db, out.proposal.proposal_id, out.proposal.terms_sha256);
     const r = await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
     expect(r.transfer.status).toBe("PAID");
     expect(awx.transfers[0]!.metadata).toBe(out.proposal.terms_sha256);
-    expect(awx.bal.EUR.availableCents).toBe(50_000 + 800_000); // exactly the floor plus the committed obligations remain
+    // The floor and the committed obligations stay whole; what is left is the unused part of the fee ceiling.
+    expect(awx.bal.EUR.availableCents).toBe(50_000 + 800_000 + 2000 - 1347);
+    const { fee_actual } = db.prepare("SELECT fee_actual FROM transfers WHERE transfer_id = ?").get(r.transfer.id) as { fee_actual: string };
+    expect(fee_actual).toBe("EUR 13.47");
     expect(awx.bal.USD.availableCents).toBeGreaterThanOrEqual(2_000_000);
     expect(verifyAuditChain(db).ok).toBe(true);
   });

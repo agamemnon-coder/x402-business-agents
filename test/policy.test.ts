@@ -65,8 +65,8 @@ describe("euro bill (S3)", () => {
     usdFloorCents: 2_000_000,
   };
 
-  it("converts only the shortfall, fee included", () => {
-    expect(planInvoice(185_000, s)).toEqual({ kind: "convert_shortfall", needEurCents: 186_285, freeEurCents: 150_000, buyEurCents: 36_285 });
+  it("converts only the shortfall, fee ceiling included", () => {
+    expect(planInvoice(185_000, s)).toEqual({ kind: "convert_shortfall", needEurCents: 187_000, freeEurCents: 150_000, buyEurCents: 37_000 });
   });
 
   it("pays straight from EUR when free EUR covers it", () => {

@@ -3,6 +3,9 @@
 import { AirwallexAmbiguous } from "../../src/airwallex/client.js";
 import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer } from "../../src/airwallex/port.js";
 
+/** What the real sandbox charged for a EUR SWIFT payout on 2026-10-29. */
+export const SANDBOX_SWIFT_FEE_CENTS = 1347;
+
 export class FakeAirwallex implements AirwallexRail, SandboxSim {
   bal: Record<Currency, Balance> = { USD: { availableCents: 0, pendingCents: 0, reservedCents: 0 }, EUR: { availableCents: 1_000_000, pendingCents: 0, reservedCents: 0 } };
   deposits: (Deposit & { createdAt: string })[] = [];
@@ -57,11 +60,11 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
   async createTransfer(t: NewTransfer): Promise<Transfer> {
     this.calls.push("createTransfer");
     if (this.transfers.some((x) => x.requestId === t.requestId)) throw new Error("duplicate request_id");
-    const fee = 1285;
+    const fee = SANDBOX_SWIFT_FEE_CENTS;
     if (this.bal.EUR.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     this.bal.EUR.availableCents -= t.amountCents + fee;
     this.bal.EUR.reservedCents += t.amountCents + fee;
-    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256 };
+    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, fee: { cents: fee, currency: "EUR" } };
     this.transfers.push(tr);
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };
@@ -72,7 +75,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     this.calls.push(`transition:${to}`);
     const t = this.transfers.find((x) => x.id === id)!;
     t.status = to;
-    if (to === "PAID") this.bal.EUR.reservedCents -= t.amountCents + 1285;
+    if (to === "PAID") this.bal.EUR.reservedCents -= t.amountCents + SANDBOX_SWIFT_FEE_CENTS;
     if (to === "FAILED") { t.failureType = failureType ?? "BENEFICIARY_BANK_RETURNED"; t.status = "CANCELLED"; }
     return { ...t };
   }

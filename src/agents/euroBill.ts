@@ -5,7 +5,7 @@
 import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, Quote, SandboxSim } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
-import { EUR_FLOOR_CENTS, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_EUR_CENTS, TARGET_FREE_EUR_CENTS } from "../config/policy.js";
+import { EUR_FLOOR_CENTS, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_MAX_EUR_CENTS, TARGET_FREE_EUR_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
@@ -73,7 +73,8 @@ export interface InvoicePaymentTerms extends Terms {
   vendor: string;
   amount: string;
   currency: "EUR";
-  fee: string;
+  /** The most the SWIFT fee may be; the real fee is read from the transfer and recorded. */
+  fee_max: string;
   beneficiary_id: string;
   beneficiary_name: string;
   iban_last4: string;
@@ -137,7 +138,7 @@ export async function proposeInvoicePayment(db: DB, rail: AirwallexRail, inv: In
   const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
   const terms: InvoicePaymentTerms = {
     schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: id, expires_at: iso(expires),
-    invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: "EUR", fee: fromCents(SWIFT_FEE_EUR_CENTS),
+    invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: "EUR", fee_max: fromCents(SWIFT_FEE_MAX_EUR_CENTS),
     beneficiary_id: check.beneficiaryId, beneficiary_name: check.name, iban_last4: check.ibanLast4, bic: check.bic, method: "SWIFT",
     reference: inv.reference, reason: "professional_business_services", transfer_request_id: randomUUID(),
     conversion: quote && {

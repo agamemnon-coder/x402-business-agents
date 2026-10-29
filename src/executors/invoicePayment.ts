@@ -29,7 +29,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
       if (pre.usdAvailableCents - toCents(t.conversion.sell_amount) < pre.usdFloorCents) throw new Error("USD would now drop under its floor; a new proposal is needed");
     }
     const eurAfter = pre.eurAvailableCents + (t.conversion ? toCents(t.conversion.buy_amount) : 0);
-    if (eurAfter - toCents(t.amount) - toCents(t.fee) < pre.eurFloorCents + pre.eurObligationsCents) {
+    if (eurAfter - toCents(t.amount) - toCents(t.fee_max) < pre.eurFloorCents + pre.eurObligationsCents) {
       throw new Error("EUR would now drop under its floor and commitments; a new proposal is needed");
     }
   }, now());
@@ -57,6 +57,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
 
     const transfer = await submitTransfer(db, rail, terms, sha);
     const final = sim ? await settleInSandbox(db, rail, sim, transfer) : transfer;
+    recordFee(db, final, terms, sha);
     await snapshot(db, rail, `post-exec:${proposalId}`);
     finishExecution(db, proposalId, final.status === "PAID" ? "EXECUTED" : "FAILED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
     return { conversionId, transfer: final };
@@ -72,7 +73,7 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   if (!existing) {
     // Written before the call: the partial unique index allows one live payout per invoice.
     db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?)")
-      .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee, sha, new Date().toISOString());
+      .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString());
   }
   const req = { requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR" as const, sourceCurrency: "EUR" as const, reference: t.reference, reason: t.reason, approvalSha256: sha };
   let tr: Transfer;
@@ -87,6 +88,15 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ?").run(tr.id, tr.status, new Date().toISOString(), t.transfer_request_id);
   audit(db, "awx-executor", "transfer.created", tr.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha });
   return tr;
+}
+
+/** The fee is only known once Airwallex charges it: record it, and flag it if it broke the approved ceiling. */
+function recordFee(db: DB, tr: Transfer, t: InvoicePaymentTerms, sha: string): void {
+  if (!tr.fee) return;
+  const actual = `${tr.fee.currency} ${fromCents(tr.fee.cents)}`;
+  db.prepare("UPDATE transfers SET fee_actual = ? WHERE transfer_id = ?").run(actual, tr.id);
+  const withinMax = tr.fee.currency === "EUR" && tr.fee.cents <= toCents(t.fee_max);
+  audit(db, "awx-executor", withinMax ? "transfer.fee" : "transfer.fee_over_ceiling", tr.id, { fee: actual, fee_max: `EUR ${t.fee_max}`, approval_sha256: sha });
 }
 
 /** Sandbox only: the transfer goes SENT, then PAID. Status is read back, never assumed. */

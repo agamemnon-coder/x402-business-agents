@@ -204,6 +204,7 @@ CREATE TABLE IF NOT EXISTS transfers (
   currency TEXT NOT NULL,
   method TEXT NOT NULL,
   fee_estimate TEXT NOT NULL,
+  fee_actual TEXT,
   status TEXT NOT NULL,
   failure_type TEXT,
   failure_reason TEXT,

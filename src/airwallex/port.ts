@@ -60,6 +60,8 @@ export interface Transfer {
   currency: Currency;
   failureType?: string | null;
   failureReason?: string | null;
+  /** What Airwallex charged, once it says; null before. */
+  fee?: { cents: number; currency: string } | null;
 }
 
 export interface NewBeneficiary {

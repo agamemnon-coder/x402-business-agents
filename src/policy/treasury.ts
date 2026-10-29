@@ -1,7 +1,7 @@
 // Euro-bill planning (scenario S3). Pure functions over balances the caller has just read.
 // Only available amounts count: pending conversions, reserved payouts and unfinalised sweeps never do.
 
-import { SWIFT_FEE_EUR_CENTS } from "../config/policy.js";
+import { SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
 
 export interface TreasuryState {
   eurAvailableCents: number;
@@ -20,10 +20,10 @@ export type InvoicePlan =
   | { kind: "pay_from_eur"; needEurCents: number; freeEurCents: number }
   | { kind: "convert_shortfall"; needEurCents: number; freeEurCents: number; buyEurCents: number };
 
-/** EUR needed is the invoice plus the SWIFT fee; convert only what free EUR does not cover. */
+/** EUR needed is the invoice plus the SWIFT fee ceiling; convert only what free EUR does not cover. */
 export function planInvoice(invoiceEurCents: number, s: TreasuryState): InvoicePlan {
   if (!Number.isSafeInteger(invoiceEurCents) || invoiceEurCents <= 0) throw new Error(`bad invoice amount: ${invoiceEurCents}`);
-  const need = invoiceEurCents + SWIFT_FEE_EUR_CENTS;
+  const need = invoiceEurCents + SWIFT_FEE_MAX_EUR_CENTS;
   const free = Math.max(0, freeEurCents(s));
   if (free >= need) return { kind: "pay_from_eur", needEurCents: need, freeEurCents: free };
   return { kind: "convert_shortfall", needEurCents: need, freeEurCents: free, buyEurCents: need - free };
