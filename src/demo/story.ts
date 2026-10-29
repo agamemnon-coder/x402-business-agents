@@ -135,8 +135,12 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
   if (declined) {
     const synced = first("card.limits_synced", (_r, pl) => str(pl.agent) === str(p(declined).agent));
     const after = synced ? first("card.charge_approved", (r, pl) => r.seq > synced.seq && str(pl.agent) === str(p(declined).agent)) : undefined;
+    // The raise: the policy change on this agent's card limit, and who approved it.
+    const raised = synced ? [...rows].reverse().find((r) => r.seq < synced.seq && r.event === "policy.changed" && str(r.subject).startsWith(`card.${str(p(declined).agent)}.`)) : undefined;
+    const raisedBy = raised ? approvals.get(str(p(raised).proposal_id)) : undefined;
     steps.push({
-      id: "card", rail: "Airwallex", tone: "refusal", at: declined.ts, approval: null,
+      id: "card", rail: "Airwallex", tone: after ? "approval" : "refusal", at: declined.ts,
+      approval: raised && raisedBy ? { who: raisedBy, proposal: str(p(raised).proposal_id), what: `${str(p(raised).label)}: ${str(p(raised).from)} → ${str(p(raised).to)} EUR` } : null,
       title: "Every agent has its own company card, and the card holds the line",
       text: "Each agent has a virtual Visa card from Airwallex Issuing, with the limits the CFO policy sets. The sourcing agent tries a 45.00 plan on a card that allows 30.00 a purchase, and Airwallex itself declines it. A higher limit is a proposal the CFO approves with Face ID; then the card follows.",
       facts: facts(
@@ -189,6 +193,22 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
         findings[0] ? fact("Planted instruction ignored", `"${str(findings[0].excerpt).slice(0, 90)}"`) : null,
         refundAll ? fact("Refund all", `${refundAll} escalated${review(refundAll) ? `; ${review(refundAll)}` : ""}; never paid`) : null,
         refunds[0] ? txFact(`Refunds paid (${refunds.length}, each under its own payment id)`, p(refunds[0]).tx) : null,
+      ),
+    });
+  }
+
+  // Metal clearing (new on testnet): sales paid from a prepaid deposit, a receipt each, no transaction per query.
+  const clearingSales = rows.filter((r) => r.event === "sale.delivered" && str(p(r).scheme) === "bajillion");
+  const deposit = first("clearing.deposited");
+  if (clearingSales.length && deposit) {
+    steps.push({
+      id: "clearing", rail: "Metal", tone: "ok", at: clearingSales[0]!.ts, approval: null,
+      title: "Prepaid by Metal clearing: no transaction per query",
+      text: "Kestrel deposits *USDZ into Metal's new pay-per-call clearing once, then pays each 0.07 query with a signed receipt. Our seller offers clearing only when it can deliver (a clearing payment counts before the seller can refuse), and the mandate route stays the fallback. Each receipt is checked again with Metal's clearing service.",
+      facts: facts(
+        txFact(`Kestrel's deposit (${str(p(deposit).amount)} *USDZ)`, p(deposit).tx),
+        fact("Ticks sold by clearing", `${clearingSales.length}, a receipt each, no transaction per query`),
+        fact("Note", "Metal's pay-per-call clearing is new on testnet (October 2026)"),
       ),
     });
   }

@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-29T17:11:59.295Z",
+  "recorded_at": "2026-10-29T17:36:30.342Z",
   "run": "rehearsal 3",
   "steps": [
     {
@@ -13,7 +13,7 @@
       "facts": [
         {
           "label": "Sales in this run",
-          "value": "50 ticks at 0.05, then 0.07 *USDZ (testnet dollars)",
+          "value": "55 ticks at 0.05, then 0.07 *USDZ (testnet dollars)",
           "href": null
         },
         {
@@ -122,9 +122,13 @@
     {
       "id": "card",
       "rail": "Airwallex",
-      "tone": "refusal",
+      "tone": "approval",
       "at": "2026-10-29T16:00:37.451Z",
-      "approval": null,
+      "approval": {
+        "who": "Max · Face ID",
+        "proposal": "P-0010",
+        "what": "Sourcing agent's card: most per purchase: 30.00 → 50.00 EUR"
+      },
       "title": "Every agent has its own company card, and the card holds the line",
       "text": "Each agent has a virtual Visa card from Airwallex Issuing, with the limits the CFO policy sets. The sourcing agent tries a 45.00 plan on a card that allows 30.00 a purchase, and Airwallex itself declines it. A higher limit is a proposal the CFO approves with Face ID; then the card follows.",
       "facts": [
@@ -139,8 +143,13 @@
           "href": null
         },
         {
-          "label": "Raise",
-          "value": "a proposal for the CFO (Face ID)",
+          "label": "Limit raised after Face ID",
+          "value": "30.00 / 100.00 → 50.00 / 100.00 EUR",
+          "href": null
+        },
+        {
+          "label": "Same purchase after the raise",
+          "value": "45.00 EUR approved",
           "href": null
         },
         {
@@ -227,22 +236,48 @@
       ]
     },
     {
+      "id": "clearing",
+      "rail": "Metal",
+      "tone": "ok",
+      "at": "2026-10-29T17:32:26.407Z",
+      "approval": null,
+      "title": "Prepaid by Metal clearing: no transaction per query",
+      "text": "Kestrel deposits *USDZ into Metal's new pay-per-call clearing once, then pays each 0.07 query with a signed receipt. Our seller offers clearing only when it can deliver (a clearing payment counts before the seller can refuse), and the mandate route stays the fallback. Each receipt is checked again with Metal's clearing service.",
+      "facts": [
+        {
+          "label": "Kestrel's deposit (5.00 *USDZ)",
+          "value": "0x055ba899…6766",
+          "href": "https://testnet.metalntwx.com/tx/0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766"
+        },
+        {
+          "label": "Ticks sold by clearing",
+          "value": "5, a receipt each, no transaction per query",
+          "href": null
+        },
+        {
+          "label": "Note",
+          "value": "Metal's pay-per-call clearing is new on testnet (October 2026)",
+          "href": null
+        }
+      ]
+    },
+    {
       "id": "audit",
       "rail": "Audit",
       "tone": "info",
-      "at": "2026-10-29T17:05:27.093Z",
+      "at": "2026-10-29T17:33:06.268Z",
       "approval": null,
       "title": "Everything is in an audit log you can check yourself",
       "text": "Every step is a row in a hash-chained, append-only log. npm run verify checks it again from public sources: the chain, every credential and payment, every Face ID signature against the pinned passkey, and every Airwallex booking.",
       "facts": [
         {
           "label": "Audit rows",
-          "value": "216, chain intact, head b3ced5b510fc…",
+          "value": "237, chain intact, head 6ce29e42ddce…",
           "href": null
         },
         {
           "label": "Approvals with Face ID",
-          "value": "4",
+          "value": "6",
           "href": null
         },
         {
@@ -254,7 +289,7 @@
     }
   ],
   "audit": {
-    "rows": 216,
-    "head": "b3ced5b510fc6b286a979a8666f0f6e09f3a3f3536e43e16482eb1f57dca7e42"
+    "rows": 237,
+    "head": "6ce29e42ddce15e6b0612eeb6e8a57921c901f28d66d79c6e4f9bdc77b8818a0"
   }
 }
