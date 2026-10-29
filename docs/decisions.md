@@ -90,3 +90,13 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
     before the runs.
   - Counting declines would let anyone with a card number stop an agent (found in the independent review).
 - **If wrong:** the CFO cannot tune the limits from the phone yet. That is a small change after the freeze.
+
+### D8. The Friday worlds are bootstrapped the night before
+
+- **What:** `friday-1` (19:00 CET) and `friday-2` (21:00 CET) were bootstrapped on Thursday night: accounts, 20.00 test
+  USD and the four mandates on Metal testnet. Everything after that (sales, the price rise, every approval, the
+  cards, the invoices) happens live during the runs. Max enrols his passkey fresh in each world.
+- **Why:** the testnet faucet gives one grant a minute and asked us to wait in both bootstraps. Doing it on Friday
+  would cost minutes in front of the camera and add a step that can fail, for no gain: the bootstrap is the same
+  code and its transactions are on the explorer with their time.
+- **If wrong:** a world can be bootstrapped from zero in about four minutes; `rehearsal-6` shows it on the new code.
