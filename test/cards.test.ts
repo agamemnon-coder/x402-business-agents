@@ -25,6 +25,32 @@ describe("a company card per agent (K2)", () => {
     awx.clock = () => now.getTime();
   });
 
+  it("lets each card pay only its own kind of merchant, in euros, until an end date (governance: what, in which currency, until when)", async () => {
+    await setupCards(db, awx, now);
+    const end = new Date(now.getTime() + 90 * 86_400_000).toISOString();
+    expect(awx.cards.map((c) => c.controls)).toEqual([
+      { mccs: ["5734"], currencies: ["EUR"], activeTo: end },
+      { mccs: ["7311"], currencies: ["EUR"], activeTo: end },
+      { mccs: ["5734"], currencies: ["EUR"], activeTo: end },
+    ]);
+    expect(db.prepare("SELECT agent, allowed_mccs, allowed_currencies, active_to FROM cards ORDER BY agent").all()).toEqual([
+      { agent: "sourcing", allowed_mccs: "5734", allowed_currencies: "EUR", active_to: end },
+      { agent: "support", allowed_mccs: "7311", allowed_currencies: "EUR", active_to: end },
+      { agent: "treasury", allowed_mccs: "5734", allowed_currencies: "EUR", active_to: end },
+    ]);
+    // The marketing agent's card is for ads: warehouse software on it is declined by the card issuer itself.
+    const t = await buyPlan(db, awx, "packwise-on-marketing-card", now);
+    expect(t).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
+  });
+
+  it("brings an adopted card's merchant categories and currencies back to the policy", async () => {
+    const h = await awx.createCardholder({ email: "agents+support@northwind-outdoor.example", firstName: "Marketing", lastName: "Agent" });
+    await awx.createCard({ cardholderId: h.id, nickname: "marketing agent: ads", createdBy: "x", limits: { currency: "EUR", perTxCents: 6000, monthlyCents: 15000 } });
+    await setupCards(db, awx, now);
+    expect(awx.cards[0]!.controls).toMatchObject({ mccs: ["7311"], currencies: ["EUR"] });
+    expect(events(db, "card.controls_synced")[0]).toMatchObject({ agent: "support", from: "any merchant, any currency", to: "MCC 7311, EUR" });
+  });
+
   it("issues one virtual card per agent with the CFO policy's limits, and only once", async () => {
     await setupCards(db, awx, now);
     await setupCards(db, awx, now);

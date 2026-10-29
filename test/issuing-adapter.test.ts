@@ -30,6 +30,12 @@ describe("Airwallex Issuing shapes", () => {
   it("keeps only the last four digits of a card", () => {
     const c = toCard({ card_id: "c", cardholder_id: "h", card_number: "************8366", card_status: "ACTIVE", nick_name: "n",
       authorization_controls: { transaction_limits: { currency: "EUR", limits: [{ amount: 50, interval: "PER_TRANSACTION" }, { amount: 100, interval: "MONTHLY" }] } } });
-    expect(c).toEqual({ cardId: "c", cardholderId: "h", last4: "8366", status: "ACTIVE", nickname: "n", limits: { currency: "EUR", perTxCents: 5000, monthlyCents: 10000 } });
+    expect(c).toEqual({ cardId: "c", cardholderId: "h", last4: "8366", status: "ACTIVE", nickname: "n", limits: { currency: "EUR", perTxCents: 5000, monthlyCents: 10000 },
+      controls: { mccs: [], currencies: [], activeTo: null } });
+  });
+  it("reads the card's controls as the sandbox returned them on 2026-10-30", () => {
+    const c = toCard({ card_id: "c", cardholder_id: "h", card_status: "ACTIVE", authorization_controls: { active_to: "2026-11-28T21:04:03.902+00:00", allowed_currencies: ["EUR"], allowed_merchant_categories: ["7311"],
+      transaction_limits: { currency: "EUR", limits: [{ amount: 50, interval: "PER_TRANSACTION" }, { amount: 200, interval: "MONTHLY" }] } } } as never);
+    expect(c.controls).toEqual({ mccs: ["7311"], currencies: ["EUR"], activeTo: "2026-11-28T21:04:03.902Z" });
   });
 });

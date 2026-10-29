@@ -116,6 +116,8 @@ export interface CardView {
   in_sync: boolean;
   /** Frozen at Airwallex by the emergency stop. */
   frozen: boolean;
+  /** What the card may pay at all, in words ("Advertising (MCC 7311) · EUR only · until 28 Jan 2027"), or "". */
+  only: string;
   recent: CardTx[];
 }
 
@@ -338,8 +340,21 @@ function treasury(db: DB): Snapshot["treasury"] {
 
 const DECLINE_WORDS: Record<string, string> = {
   LIMIT_EXCEEDED: "over the card's limit",
+  MERCHANT_CATEGORY_NOT_ALLOWED: "this card may not pay this kind of merchant",
+  CURRENCY_NOT_ALLOWED: "this card may not pay in this currency",
+  CARD_INACTIVE: "the card is frozen",
   CARD_NOT_ACTIVE: "the card is not active",
   INSUFFICIENT_FUNDS: "not enough money on the account",
+};
+/** Merchant categories in words: the ones Purser's cards use. */
+const MCC_WORDS: Record<string, string> = { "5734": "Software", "7311": "Advertising", "5192": "Books and reports" };
+const onlyWords = (c: { allowed_mccs: string; allowed_currencies: string; active_to: string | null }) => {
+  const parts = [
+    c.allowed_mccs ? c.allowed_mccs.split(",").map((m) => `${MCC_WORDS[m] ?? "Category"} (MCC ${m})`).join(", ") : "",
+    c.allowed_currencies ? `${c.allowed_currencies.split(",").join(", ")} only` : "",
+    c.active_to ? `until ${new Date(c.active_to).toISOString().slice(0, 10)}` : "",
+  ].filter(Boolean);
+  return parts.join(" · ");
 };
 const declineWords = (code: string) => DECLINE_WORDS[code] ?? (code.toLowerCase().replace(/_/g, " ") || "no reason given");
 const limitWords = (s: string) => {
@@ -351,7 +366,8 @@ const limitWords = (s: string) => {
 function cards(db: DB, now: Date): CardView[] {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get()) return [];
   const month = now.toISOString().slice(0, 7);
-  const rows = db.prepare("SELECT agent, last4, per_tx_cents, monthly_cents, status FROM cards ORDER BY agent").all() as { agent: string; last4: string; per_tx_cents: number; monthly_cents: number; status: string }[];
+  const rows = db.prepare("SELECT agent, last4, per_tx_cents, monthly_cents, status, allowed_mccs, allowed_currencies, active_to FROM cards ORDER BY agent").all() as
+    { agent: string; last4: string; per_tx_cents: number; monthly_cents: number; status: string; allowed_mccs: string; allowed_currencies: string; active_to: string | null }[];
   // An outside agent (P1) shows under its own name, with what its card is for.
   const outside = new Map((db.prepare("SELECT agent_id, display_name, purpose FROM external_agents").all() as { agent_id: string; display_name: string; purpose: string }[]).map((x) => [x.agent_id, x]));
   return rows.map((c) => {
@@ -362,11 +378,11 @@ function cards(db: DB, now: Date): CardView[] {
       { occurred_at: string; merchant: string; purpose: string | null; amount_cents: number; approved: number; failure_reason: string | null; status: string }[])
       .map((t) => ({ ts: t.occurred_at, merchant: t.merchant, purpose: t.purpose, amount: fromCents(t.amount_cents), approved: t.approved === 1, reason: t.approved === 1 ? null : declineWords(t.failure_reason ?? t.status) }));
     return {
-      agent: c.agent, name: ext ? `${ext.display_name} (outside agent)` : `${c.agent} agent`, last4: c.last4,
+      agent: c.agent, name: ext ? `${ext.display_name} (outside agent)` : agentName(c.agent), last4: c.last4,
       buys: ext ? ext.purpose : (CARDS[c.agent as Agent]?.buys ?? ""), per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
       spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent),
       in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === wantCardStatus(db, c.agent),
-      frozen: c.status === "INACTIVE", recent,
+      frozen: c.status === "INACTIVE", only: onlyWords(c), recent,
     };
   });
 }

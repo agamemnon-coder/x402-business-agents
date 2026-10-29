@@ -72,6 +72,12 @@ export const CARDS: Record<Agent, { firstName: string; email: string; nickname: 
   treasury: { firstName: "Finance", email: "agents+treasury@northwind-outdoor.example", nickname: "finance agent: bookkeeping", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
 };
 
+/** A card works this many days from issue; Airwallex declines everything after (its end date, `active_to`). */
+export const CARD_ACTIVE_DAYS = 90;
+
+/** What an outside agent's card may pay (merchant category 5734); the CFO approves anything else as a policy change. */
+export const OUTSIDE_AGENT_MCCS = ["5734"];
+
 /** An agent's request for a higher card limit waits up to an hour for the CFO; it carries no quote that could expire. */
 export const CARD_RAISE_TTL_MS = 60 * 60 * 1000;
 
@@ -82,4 +88,6 @@ export const PLANS: Record<string, { agent: Agent; merchant: string; label: stri
   "adwave-starter": { agent: "support", merchant: "Adwave", label: "Ads credit, starter", amountCents: 3800, mcc: "7311" },
   "adwave-growth": { agent: "support", merchant: "Adwave", label: "Ads credit, growth", amountCents: 9500, mcc: "7311" },
   "ledgerly-starter": { agent: "treasury", merchant: "Ledgerly", label: "Bookkeeping, starter, monthly", amountCents: 1500, mcc: "5734" },
+  // Not a plan the agent should buy: warehouse software on the marketing card, which may pay only ads (a demo moment).
+  "packwise-on-marketing-card": { agent: "support", merchant: "Packwise", label: "Starter plan, monthly, on the marketing card", amountCents: 1999, mcc: "5734" },
 };

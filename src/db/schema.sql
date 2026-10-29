@@ -350,7 +350,12 @@ CREATE TABLE IF NOT EXISTS cards (
   monthly_cents INTEGER NOT NULL CHECK (monthly_cents > 0),
   status TEXT NOT NULL,
   synced_at TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  -- What the card may pay at all, as Airwallex has it: merchant category codes and currencies (comma-separated, empty
+  -- for any) and its end date.
+  allowed_mccs TEXT NOT NULL DEFAULT '',
+  allowed_currencies TEXT NOT NULL DEFAULT '',
+  active_to TEXT
 );
 
 -- Every authorisation on an agent's card, approved or declined by Airwallex. One row per Airwallex transaction,

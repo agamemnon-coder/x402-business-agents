@@ -10,13 +10,13 @@
 import { stopped } from "../policy/velocity.js";
 import { audit, type Actor } from "../audit/log.js";
 import type { CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
-import { CARD_RAISE_TTL_MS } from "../config/policy.js";
+import { CARD_RAISE_TTL_MS, OUTSIDE_AGENT_MCCS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { proposePolicyChange } from "../executors/policyChange.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { cardOf, cardSpendCents, ingestCardTransaction, storeCard } from "../policy/cards.js";
+import { cardControls, cardOf, cardSpendCents, ingestCardTransaction, storeCard } from "../policy/cards.js";
 import { cardLimits, frozen } from "../policy/rules.js";
 
 /** A card request waits an hour for the CFO, like a card raise. */
@@ -25,7 +25,8 @@ const ONBOARD_TTL_MS = 60 * 60 * 1000;
 const PER_TX = { min: 100, max: 100_000 };
 const MONTHLY = { min: 100, max: 500_000 };
 /** The merchant category the sandbox charge carries: computer software and services. */
-const MCC = "5734";
+/** The merchant category an outside agent buys under (its card may pay only these). */
+const MCC = OUTSIDE_AGENT_MCCS[0]!;
 const OWN = new Set(["sourcing", "support", "treasury", "customer", "system", "human", "claude"]);
 
 export type ExternalAgentId = `ext:${string}`;
@@ -104,7 +105,7 @@ export async function executeAgentOnboard(db: DB, rail: IssuingRail, proposalId:
     const holder = (await rail.findCardholderByEmail(email)) ?? (await rail.createCardholder({ email, firstName, lastName: "Agent" }));
     const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
     const nickname = `${t.display_name.slice(0, 40)}: outside agent${business ? ` (${business.address.slice(-6).toLowerCase()})` : ""}`;
-    const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits }));
+    const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits, controls: cardControls(t.agent_id, now) }));
     // Trust what Airwallex says the card has, not what we asked for.
     if (!card.limits || card.limits.perTxCents !== limits.perTxCents || card.limits.monthlyCents !== limits.monthlyCents) {
       throw new Error(`the card at Airwallex has other limits than the approved ${t.card.per_tx} / ${t.card.monthly} EUR`);

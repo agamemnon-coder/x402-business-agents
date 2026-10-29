@@ -21,6 +21,18 @@ export interface Card {
   status: string;
   nickname: string;
   limits: CardLimits | null;
+  /** What the card may pay at all (Airwallex declines the rest): merchant categories, currencies, an end date. */
+  controls?: CardControls | null;
+}
+
+/** A card's authorization controls besides its limits (governance: what, in which currency, until when). */
+export interface CardControls {
+  /** Merchant category codes (ISO 18245) the card may pay; Airwallex declines others (MERCHANT_CATEGORY_NOT_ALLOWED). */
+  mccs: string[];
+  /** Transaction currencies the card may pay in (CURRENCY_NOT_ALLOWED otherwise). */
+  currencies: string[];
+  /** After this moment Airwallex declines every authorisation; null for no end. */
+  activeTo: string | null;
 }
 
 export interface CardTransaction {
@@ -53,8 +65,10 @@ export interface IssuingRail {
   findCardholderByEmail(email: string): Promise<Cardholder | undefined>;
   createCardholder(a: { email: string; firstName: string; lastName: string }): Promise<Cardholder>;
   findCard(cardholderId: string, nickname: string): Promise<Card | undefined>;
-  createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits }): Promise<Card>;
+  createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls }): Promise<Card>;
   getCard(cardId: string): Promise<Card>;
+  /** Sets which merchant categories and currencies the card may pay (its end date stays). */
+  setCardControls(cardId: string, controls: Pick<CardControls, "mccs" | "currencies">): Promise<Card>;
   setCardLimits(cardId: string, limits: CardLimits): Promise<Card>;
   /** INACTIVE freezes the card (Airwallex declines with CARD_INACTIVE); ACTIVE thaws it. */
   setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE"): Promise<Card>;
@@ -70,7 +84,7 @@ export interface IssuingSim {
 type AwxLimits = { currency: string; limits: { amount: number; interval: string }[] };
 type AwxCard = {
   card_id: string; cardholder_id: string; card_number?: string; card_status: string; nick_name?: string;
-  authorization_controls?: { transaction_limits?: AwxLimits };
+  authorization_controls?: { transaction_limits?: AwxLimits; allowed_merchant_categories?: string[]; allowed_currencies?: string[]; active_to?: string | null };
 };
 /**
  * A transaction in either of the two shapes Airwallex uses: the transaction list (legacy, with `status`) and a card
@@ -100,6 +114,11 @@ export function toCard(c: AwxCard): Card {
   return {
     cardId: c.card_id, cardholderId: c.cardholder_id, last4: (c.card_number ?? "").replace(/\D/g, "").slice(-4),
     status: c.card_status, nickname: c.nick_name ?? "", limits: toLimits(c.authorization_controls?.transaction_limits),
+    controls: c.authorization_controls ? {
+      mccs: [...(c.authorization_controls.allowed_merchant_categories ?? [])].sort(),
+      currencies: [...(c.authorization_controls.allowed_currencies ?? [])].sort(),
+      activeTo: c.authorization_controls.active_to ? new Date(c.authorization_controls.active_to).toISOString() : null,
+    } : null,
   };
 }
 
@@ -163,12 +182,15 @@ export class IssuingRest implements IssuingRail, IssuingSim {
     }
   }
 
-  async createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits }): Promise<Card> {
+  async createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls }): Promise<Card> {
     try {
       const c = await this.api.call<AwxCard>("POST", "/issuing/cards/create", {
         request_id: randomUUID(), cardholder_id: a.cardholderId, created_by: a.createdBy, form_factor: "VIRTUAL", is_personalized: false,
         program: { purpose: "COMMERCIAL" }, nick_name: a.nickname,
-        authorization_controls: { allowed_transaction_count: "MULTIPLE", transaction_limits: limitsBody(a.limits) },
+        authorization_controls: {
+          allowed_transaction_count: "MULTIPLE", transaction_limits: limitsBody(a.limits),
+          ...(a.controls ? { allowed_merchant_categories: a.controls.mccs, allowed_currencies: a.controls.currencies, ...(a.controls.activeTo ? { active_to: a.controls.activeTo } : {}) } : {}),
+        },
       });
       return toCard(c);
     } catch (e) {
@@ -190,6 +212,18 @@ export class IssuingRest implements IssuingRail, IssuingSim {
     try {
       await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, {
         authorization_controls: { transaction_limits: { ...limitsBody(limits), cash_withdrawal_limits: [] } },
+      });
+    } catch (e) {
+      if (!(e instanceof AirwallexAmbiguous)) throw e;
+    }
+    return this.getCard(cardId);
+  }
+
+  async setCardControls(cardId: string, controls: Pick<CardControls, "mccs" | "currencies">): Promise<Card> {
+    // Setting the same controls twice is harmless, so an ambiguous answer is settled by reading the card back.
+    try {
+      await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, {
+        authorization_controls: { allowed_merchant_categories: controls.mccs, allowed_currencies: controls.currencies },
       });
     } catch (e) {
       if (!(e instanceof AirwallexAmbiguous)) throw e;

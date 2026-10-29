@@ -116,6 +116,8 @@ button { font: inherit; }
 .bar i.hi { background: var(--wait); }
 .limit .txt { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--muted); }
 .limit .txt b { color: var(--text); font-weight: 600; }
+.only { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.only svg.i { width: 14px; height: 14px; }
 .txs { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .txs li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .txs li svg { width: 15px; height: 15px; color: var(--ok); }
@@ -526,6 +528,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
           el("div", "row2", [txt("span", "pan", "•••• " + c.last4), txt("span", "brandmark", "VISA")]),
         ]),
         el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", eur(c.spent_month)), " of " + eur(c.monthly) + " this month"]), txt("span", "", eur(c.per_tx) + " a purchase")])]),
+        c.only ? el("div", "only", [icon("lock"), txt("span", "", "Only " + c.only)]) : null,
         c.in_sync ? null : txt("div", "pill wait", "Updating the card at Airwallex…"),
         txs.length ? el("ul", "txs", txs) : null,
       ]);

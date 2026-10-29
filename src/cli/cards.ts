@@ -106,6 +106,10 @@ if (cmd === "status") {
     const p = proposeCardRaise(db, "sourcing", { perTx: "50.00" }, "Packwise's Pro plan costs 45.00 EUR a month; my card allows 30.00 per purchase, so Airwallex declined it. The Pro plan gives the faster prices our customers pay for. Monthly limit stays 100.00.");
     console.log(`REVISED DECISION the agent asks the CFO for 50.00 per purchase: ${p.proposal_id}, hash ${p.terms_sha256.slice(0, 8)}; ${approvalHint(db, p.proposal_id, p.terms_sha256.slice(0, 8))}`);
   }
+  // Governance: a card may pay only its own kind of merchant. The marketing card is for ads; Airwallex itself declines
+  // warehouse software on it, whatever its limits.
+  const wrong = await buyPlan(db, awx.sim, "packwise-on-marketing-card");
+  console.log(`CONTROL          the marketing agent's card tries warehouse software (MCC 5734) on an ads-only card: ${wrong.approved ? "APPROVED (the control did not hold)" : `declined by Airwallex (${wrong.failureReason})`}`);
 } else if (cmd === "raise") {
   const [, agent, perTx, monthly] = args;
   const at = args.indexOf("--reason");

@@ -2,11 +2,11 @@
 // code makes the card at Airwallex match them, so Airwallex itself declines anything over the limit, whatever the
 // agent does. Every authorisation Airwallex makes on a card is recorded once, from whichever source sees it first.
 
-import { AGENTS, CARDS, type Agent } from "../config/policy.js";
+import { AGENTS, CARDS, type Agent, CARD_ACTIVE_DAYS, OUTSIDE_AGENT_MCCS, PLANS } from "../config/policy.js";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
-import type { Card, CardLimits, CardTransaction, IssuingRail } from "../airwallex/issuing.js";
+import type { Card, CardLimits, CardTransaction, IssuingRail, CardControls } from "../airwallex/issuing.js";
 import { cardLimits, frozen } from "./rules.js";
 import { stopped, velocityObserve } from "./velocity.js";
 
@@ -22,6 +22,10 @@ export interface CardRow {
   monthly_cents: number;
   status: string;
   synced_at: string;
+  /** What the card may pay at all, as Airwallex has it (comma-separated; empty for any) and its end date. */
+  allowed_mccs: string;
+  allowed_currencies: string;
+  active_to: string | null;
 }
 
 export function cardRows(db: DB): CardRow[] {
@@ -37,13 +41,31 @@ const same = (a: CardLimits | null, b: CardLimits) => !!a && a.currency === b.cu
 
 export function storeCard(db: DB, agent: string, card: Card, now: Date): void {
   if (!card.limits) throw new Error(`the ${agent} agent's card has no EUR limits at Airwallex`);
+  const c = card.controls ?? { mccs: [], currencies: [], activeTo: null };
   db.prepare(
-    `INSERT INTO cards (agent, cardholder_id, card_id, last4, nickname, currency, per_tx_cents, monthly_cents, status, synced_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO cards (agent, cardholder_id, card_id, last4, nickname, currency, per_tx_cents, monthly_cents, status, synced_at, created_at, allowed_mccs, allowed_currencies, active_to)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(agent) DO UPDATE SET last4 = excluded.last4, per_tx_cents = excluded.per_tx_cents,
-       monthly_cents = excluded.monthly_cents, status = excluded.status, synced_at = excluded.synced_at`,
-  ).run(agent, card.cardholderId, card.cardId, card.last4, card.nickname, card.limits.currency, card.limits.perTxCents, card.limits.monthlyCents, card.status, now.toISOString(), now.toISOString());
+       monthly_cents = excluded.monthly_cents, status = excluded.status, synced_at = excluded.synced_at,
+       allowed_mccs = excluded.allowed_mccs, allowed_currencies = excluded.allowed_currencies, active_to = excluded.active_to`,
+  ).run(agent, card.cardholderId, card.cardId, card.last4, card.nickname, card.limits.currency, card.limits.perTxCents, card.limits.monthlyCents, card.status, now.toISOString(), now.toISOString(),
+    c.mccs.join(","), c.currencies.join(","), c.activeTo);
 }
+
+/**
+ * What a card may pay at all, besides its limits: our agents' cards only the merchant categories of their own plans,
+ * an outside agent's card only OUTSIDE_AGENT_MCCS; euros only; for CARD_ACTIVE_DAYS from issue. Airwallex declines the
+ * rest (MERCHANT_CATEGORY_NOT_ALLOWED, CURRENCY_NOT_ALLOWED).
+ */
+export function cardControls(agent: string, now: Date): CardControls {
+  const mccs = agent.startsWith("ext:") ? OUTSIDE_AGENT_MCCS : Object.values(PLANS).filter((p) => p.agent === agent && !/on the .* card$/.test(p.label)).map((p) => p.mcc);
+  return { mccs: [...new Set(mccs)].sort(), currencies: ["EUR"], activeTo: new Date(now.getTime() + CARD_ACTIVE_DAYS * 86_400_000).toISOString() };
+}
+
+const controlWords = (c: Pick<CardControls, "mccs" | "currencies"> | null | undefined) =>
+  !c || (!c.mccs.length && !c.currencies.length) ? "any merchant, any currency" : `${c.mccs.length ? `MCC ${c.mccs.join(", ")}` : "any merchant"}, ${c.currencies.length ? c.currencies.join(", ") : "any currency"}`;
+const sameControls = (a: Pick<CardControls, "mccs" | "currencies"> | null | undefined, b: Pick<CardControls, "mccs" | "currencies">) =>
+  !!a && a.mccs.join(",") === b.mccs.join(",") && a.currencies.join(",") === b.currencies.join(",");
 
 /** The status the policy wants a card in: frozen by the emergency stop or by its agent's velocity stop, or active. */
 export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) ? "INACTIVE" : "ACTIVE");
@@ -61,6 +83,20 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
     }
     if (after.status !== status) throw new Error(`the ${agent} agent's card is ${after.status} at Airwallex, not ${status}`);
     audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4, ...(status === "INACTIVE" ? { why: frozen(db) ? "emergency stop" : "velocity limit" } : {}) }, now);
+    card = after;
+    changed = true;
+  }
+  // What the card may pay at all: a card whose merchant categories or currencies differ is brought back to the policy.
+  const wantControls = cardControls(agent, now);
+  if (!sameControls(card.controls, wantControls)) {
+    let after: Card;
+    try {
+      after = await rail.setCardControls(card.cardId, wantControls);
+    } catch (e) {
+      throw new Error(`the ${agent} agent's card controls were not updated at Airwallex: ${(e as Error).message}`);
+    }
+    if (!sameControls(after.controls, wantControls)) throw new Error(`the ${agent} agent's card allows ${controlWords(after.controls)} at Airwallex, not ${controlWords(wantControls)}`);
+    audit(db, "awx-executor", "card.controls_synced", agent, { agent, last4: after.last4, from: controlWords(card.controls), to: controlWords(wantControls) }, now);
     card = after;
     changed = true;
   }
@@ -103,7 +139,7 @@ export async function setupCards(db: DB, rail: IssuingRail, now = new Date()): P
     const holder = (await rail.findCardholderByEmail(c.email)) ?? (await rail.createCardholder({ email: c.email, firstName: c.firstName, lastName: "Agent" }));
     const nickname = cardNickname(db, agent);
     const found = await rail.findCard(holder.id, nickname);
-    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: cardLimits(db, agent) }));
+    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: cardLimits(db, agent), controls: cardControls(agent, now) }));
     // An adopted card is recorded with the limits it has; syncOne then logs any change it makes to them.
     storeCard(db, agent, card, now);
     audit(db, "awx-executor", found ? "card.adopted" : "card.issued", agent, { agent, last4: card.last4, nickname, limits: words(card.limits), currency: "EUR" }, now);

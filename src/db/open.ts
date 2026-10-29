@@ -32,6 +32,12 @@ function migrate(db: DB): void {
   db.exec("DROP INDEX IF EXISTS one_active_passkey");
   if (!has("passkey_enrolments", "label")) db.exec("ALTER TABLE passkey_enrolments ADD COLUMN label TEXT");
   if (!has("passkey_enrolments", "adds")) db.exec("ALTER TABLE passkey_enrolments ADD COLUMN adds INTEGER NOT NULL DEFAULT 0");
+  // Card controls (governance: what, in which currency, until when).
+  if (!has("cards", "allowed_mccs")) {
+    db.exec("ALTER TABLE cards ADD COLUMN allowed_mccs TEXT NOT NULL DEFAULT ''");
+    db.exec("ALTER TABLE cards ADD COLUMN allowed_currencies TEXT NOT NULL DEFAULT ''");
+    db.exec("ALTER TABLE cards ADD COLUMN active_to TEXT");
+  }
   // Velocity limits: a Metal payment's id, so a retry under it is counted once.
   if (!has("velocity_events", "payment_id")) {
     db.exec("ALTER TABLE velocity_events ADD COLUMN payment_id TEXT");
