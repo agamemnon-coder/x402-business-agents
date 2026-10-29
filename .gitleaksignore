@@ -1,0 +1,5 @@
+# Accepted gitleaks findings, by fingerprint. Each is a fake value in a test, not a secret.
+# test/adversarial.test.ts in 6a2e981 used literal fake values ("...-SECRET-n") to prove no key reaches a model;
+# the test now builds them at run time.
+6a2e98161544974dcf2c359d4bddfe52b2a20e2d:test/adversarial.test.ts:generic-api-key:114
+6a2e98161544974dcf2c359d4bddfe52b2a20e2d:test/adversarial.test.ts:generic-api-key:115

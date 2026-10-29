@@ -1,5 +1,6 @@
 # Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
-# test/adversarial.test.ts), the relay Worker's type check, a secret scan of the whole history, and npm audit.
+# test/adversarial.test.ts), the relay Worker's type check, npm audit, and gitleaks on every pushed commit and
+# every commit of a pull request (accepted false positives are listed by fingerprint in .gitleaksignore).
 # No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
 name: ci
 on:
@@ -20,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run relay:pages
       - name: Relay Worker type check
         working-directory: worker
         run: npm ci && npx tsc --noEmit
@@ -29,6 +31,10 @@ jobs:
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # The gitleaks action lists a pull request's commits to scan them.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

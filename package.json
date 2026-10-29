@@ -28,6 +28,7 @@
     "dashboard": "tsx src/cli/dashboard.ts",
     "relay": "tsx src/cli/relay.ts",
     "relay:deploy": "tsx src/cli/relay-deploy.ts",
+    "relay:pages": "tsx src/cli/relay-pages.ts",
     "devtest": "tsx src/cli/dev-test.ts",
     "policy": "tsx src/cli/policy.ts",
     "fail": "tsx src/cli/fail.ts",

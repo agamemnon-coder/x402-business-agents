@@ -47,7 +47,7 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 | 13 | Compromised Cloudflare account | Serve a page that signs other terms | The runner still executes only a waiting proposal's exact hash, verified against the pinned passkey; the worst outcome is a refused signature | README, passkey section |
 | 14 | Stolen phone | Approve as the CFO | The passkey needs Face ID (user verification is required and checked); revocation means re-enrolment | `src/passkey/webauthn.ts` |
 | 15 | Insider with database access | Edit or truncate the log | The database refuses updates and deletes; the hash chain detects edits; an anchor printed in the audit report detects truncation or a full rehash | `test/audit.test.ts`, `test/audit-report.test.ts`, `npm run verify-log` |
-| 16 | Leaked secret | A key in git or in a model's context | No key ever goes to a model (tested); every commit is scanned for the real values; gitleaks scans the whole history in CI | `test/adversarial.test.ts`, `.github/workflows/ci.yml` |
+| 16 | Leaked secret | A key in git or in a model's context | No key ever goes to a model (tested); every commit is scanned for the real values; gitleaks scans every pushed and pull-request commit in CI | `test/adversarial.test.ts`, `.github/workflows/ci.yml` |
 
 ## Limits on every external call
 
@@ -112,8 +112,8 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 
 ## Checks
 
-- `npm test`: the full suite, including `test/adversarial.test.ts`. CI runs it on every push, with type checks, a
-  gitleaks scan of the whole history and `npm audit`.
+- `npm test`: the full suite, including `test/adversarial.test.ts`. CI runs it on every push, with type checks,
+  gitleaks on every pushed and pull-request commit, and `npm audit`.
 - `npm run verify`: re-checks the chain, the mandates, the Airwallex records and every passkey signature, offline
   where it can.
 - `npm run verify-log -- --anchor <seq>:<hash>`: proves the log still contains a row printed earlier.
