@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+# Keys and credentials never go in this repo. They live in a separate private place.
+.metal/
+*.key.json
+*-key.json
+owner-key*.json
+data/
+*.sqlite
+*.sqlite-*
+audit.jsonl
+audit.head
