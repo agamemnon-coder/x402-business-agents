@@ -48,7 +48,8 @@ Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, 
 - **Audit log:** append-only (the database refuses updates and deletes), hash-chained; `npm run verify` recomputes
   it and re-checks every mandate, pull and disputed payment from the chain, and every deposit, conversion and
   transfer from Airwallex (amounts, request ids, the approval hash in metadata, status, fee within its ceiling).
-- **Failure tests:** `npm run fail -- f2` (refund over the mandate cap, refused on chain, nothing sent) and
+- **Failure tests:** `npm run fail -- f1` (an approval after the quote ran out approves nothing; the re-quote
+  needs a new approval), `npm run fail -- f2` (refund over the mandate cap, refused on chain, nothing sent) and
   `npm run fail -- f4` (an annual invoice whose conversion would break the USD floor escalates with options;
   no proposal, no money moved) run live; the rest run in `npm test`.
 
