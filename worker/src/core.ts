@@ -25,6 +25,8 @@ export interface Pages {
   css: string;
   /** Inter (woff2, base64), served as /assets/inter.woff2. */
   font: string;
+  /** The sponsors' logos (base64), served as /assets/<name>. */
+  images: Record<string, { type: string; data: string }>;
   csp: { dashboard: string; month: string; demo: string; approve: string; enrol: string; policy: string };
 }
 
@@ -83,6 +85,12 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/assets/inter.woff2") {
     return new Response(Uint8Array.from(atob(pages.font), (c) => c.charCodeAt(0)), {
       headers: { ...COMMON_HEADERS, "content-type": "font/woff2", "cache-control": "public, max-age=86400" },
+    });
+  }
+  if (path.startsWith("/assets/") && Object.hasOwn(pages.images, path.slice("/assets/".length))) {
+    const img = pages.images[path.slice("/assets/".length)]!;
+    return new Response(Uint8Array.from(atob(img.data), (c) => c.charCodeAt(0)), {
+      headers: { ...COMMON_HEADERS, "content-type": img.type, "cache-control": "public, max-age=86400" },
     });
   }
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });

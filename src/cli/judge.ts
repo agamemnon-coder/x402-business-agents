@@ -9,7 +9,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
-import { CSP, DEMO_CSP, FONT, MONTH_CSP, PAGE, demoPage, monthPage } from "../servers/dashboard.js";
+import { CSP, DEMO_CSP, FONT, LOGOS, MONTH_CSP, PAGE, demoPage, monthPage } from "../servers/dashboard.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
@@ -26,6 +26,7 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/demo", page(DEMO_CSP, () => demo));
   app.get("/month", page(MONTH_CSP, () => month));
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
+  for (const [name, logo] of Object.entries(LOGOS)) app.get(`/assets/${name}`, (_req, res) => { res.type(logo.type).send(logo.body); });
   // Nothing live here: the start page asks for no data without a viewer key, and nothing else answers.
   app.use((_req, res) => { res.status(404).type("text/plain").send("not found: this is the recorded demo; try /demo or /month"); });
   const server = await new Promise<Server>((resolve, reject) => {

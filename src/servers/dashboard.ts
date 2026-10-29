@@ -17,10 +17,26 @@ import { AGENT_DISPLAY } from "../config/brand.js";
 /** What each agent is called on the pages (docs/decisions.md D2), as a data block: no markup, not part of any hash. */
 const AGENTS_JSON = JSON.stringify(Object.fromEntries(Object.entries(AGENT_DISPLAY).map(([id, a]) => [id, a.name])));
 
+/** The red team's latest summary (npm run redteam writes docs/redteam/report.json); "null" before the first run. */
+const REDTEAM_FILE = new URL("../../docs/redteam/report.json", import.meta.url);
+const REDTEAM_JSON = (() => {
+  try {
+    const r = JSON.parse(readFileSync(REDTEAM_FILE, "utf8")) as { ran_at: string; attempts: number; blocked: number };
+    return JSON.stringify({ ran_at: r.ran_at, attempts: r.attempts, blocked: r.blocked }).replace(/</g, "\\u003c");
+  } catch {
+    return "null";
+  }
+})();
+
 const PAGE_TEMPLATE = readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
 /** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
 export const FONT = readFileSync(new URL("../ui/inter.woff2", import.meta.url));
+/** The sponsors' official logos (src/ui/logos/README.md), served as /assets/<name> for the landing's "Built on". */
+export const LOGOS: Record<string, { type: string; body: Buffer }> = {
+  "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex.png", import.meta.url)) },
+  "logo-metal.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/metal.svg", import.meta.url)) },
+};
 const MONTH_TEMPLATE = readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8");
 const DEMO_TEMPLATE = readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8");
 const STORY_FILE = new URL("../../docs/demo/story.json", import.meta.url);
@@ -33,7 +49,7 @@ const inlineHash = (page: string, tag: "script" | "style") => {
 };
 const cspFor = (page: string) => [
   "default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "connect-src 'self'",
-  "font-src 'self'", "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+  "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
 
 /**
@@ -44,7 +60,8 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
   return PAGE_TEMPLATE
     .replace("__ICONS_JSON__", () => JSON.stringify(ICONS))
     .replace("__RECORDED_JSON__", () => JSON.stringify(recorded).replace(/</g, "\\u003c"))
-    .replace("__AGENTS_JSON__", AGENTS_JSON);
+    .replace("__AGENTS_JSON__", AGENTS_JSON)
+    .replace("__REDTEAM_JSON__", () => REDTEAM_JSON);
 }
 export const PAGE = dashboardPage();
 // Only the page's own script and style may run; data arrives over fetch from this origin only.
@@ -99,6 +116,11 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
 
   app.get("/assets/inter.woff2", (_req, res) => {
     res.type("font/woff2").send(FONT);
+  });
+  app.get("/assets/:name", (req, res, next) => {
+    const logo = LOGOS[String(req.params.name)];
+    if (!logo) return next();
+    res.type(logo.type).send(logo.body);
   });
 
   app.get("/demo", (_req, res) => {

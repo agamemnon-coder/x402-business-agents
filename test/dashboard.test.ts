@@ -194,6 +194,24 @@ describe("dashboard snapshot", () => {
     expect(declines).toHaveLength(1);
   });
 
+  it("sums the money, not just the events: card spend, chain spend, what waits and what was stopped", async () => {
+    const db = ledger();
+    const awx = new FakeIssuing();
+    awx.clock = () => t0.getTime();
+    await setupCards(db, awx, t0);
+    await buyPlan(db, awx, "packwise-starter", t0);
+    await buyPlan(db, awx, "packwise-pro", t0);
+    audit(db, "treasury", "invoice.fraud_suspected", "BTX-2027-01", { vendor: "Bergtex Textil GmbH", amount: "1850.00", currency: "EUR" }, t0);
+    createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "refund_batch", proposal_id: "P-0907", expires_at: "2099-01-01T00:00:00Z", total: "0.15", refunds: [] } as unknown as Terms, createdBy: "support" }, t0);
+    const m = buildSnapshot(db, t0).money;
+    expect(m).toEqual({
+      card_spent_eur: "19.99", card_limit_eur: "300.00",
+      chain_spent_usdz: "2.70", chain_limit_usdz: "20.00", // purchases 1.20, refunds 0.15, sweep 1.35
+      waiting: 1, waiting_eur: "0.00", waiting_usdz: "0.15",
+      blocked_eur: "1895.00", blocked_usdz: "0.00",
+    });
+  });
+
   it("shows the CFO policy: the limit beside each mandate, every change in the feed, its refusals in plain words", () => {
     const db = ledger();
     setSetting(db, "human", "cap.sourcing", "0.03");

@@ -150,6 +150,13 @@ export interface Snapshot {
   stopped: { agent: string; since: string; reason: string }[];
   /** Top of the page: what the agents did alone, what waits for the CFO, what was blocked (J4). */
   counts: { alone: number; waiting: number; blocked: number };
+  /** The same in money: what the agents spent alone, what waits for the CFO, what was stopped before it moved. */
+  money: {
+    card_spent_eur: string; card_limit_eur: string;
+    chain_spent_usdz: string; chain_limit_usdz: string;
+    waiting: number; waiting_eur: string; waiting_usdz: string;
+    blocked_eur: string; blocked_usdz: string;
+  };
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
@@ -571,6 +578,36 @@ const BLOCKED_EVENTS = new Set([
   "invoice.fraud_suspected", "document.injection_flagged", "passkey.refused", "velocity.tripped",
 ]);
 
+/** The KPIs in money. Card amounts are EUR; Metal amounts *USDZ (test USD); they are never added together. */
+function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: string }[], now: Date): Snapshot["money"] {
+  const hasCards = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get();
+  const one = (sql: string, ...a: unknown[]) => (db.prepare(sql).get(...a) as { c: number | null }).c ?? 0;
+  const month = now.toISOString().slice(0, 7);
+  const cardSpent = hasCards ? one("SELECT SUM(amount_cents) AS c FROM card_transactions WHERE approved = 1 AND substr(occurred_at, 1, 7) = ?", month) : 0;
+  const cardLimit = hasCards ? one("SELECT SUM(monthly_cents) AS c FROM cards") : 0;
+  const b = budgets(db, rows, () => undefined);
+  const chainSpent = b.agents.reduce((s, a) => s + toCents(a.spent), 0);
+  let waitingEur = 0;
+  let waitingUsdz = 0;
+  for (const p of live) {
+    const t = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(p.proposal_id) as { terms_json: string }).terms_json) as P;
+    if (p.kind === "invoice_payment" && /^\d+\.\d{2}$/.test(str(t.amount))) waitingEur += toCents(str(t.amount));
+    if (p.kind === "refund_batch" && /^\d+\.\d{2}$/.test(str(t.total))) waitingUsdz += toCents(str(t.total));
+  }
+  const fraudEur = rows.filter((r) => r.event === "invoice.fraud_suspected").reduce((s, r) => {
+    const p = JSON.parse(r.payload_json) as P;
+    return s + (str(p.currency) === "EUR" && /^\d+\.\d{2}$/.test(str(p.amount)) ? toCents(str(p.amount)) : 0);
+  }, 0);
+  const declinedEur = hasCards ? one("SELECT SUM(amount_cents) AS c FROM card_transactions WHERE approved = 0") : 0;
+  const refusedUsdz = one("SELECT SUM(price_cents) AS c FROM upstream_purchases WHERE outcome = 'REFUSED'") + one("SELECT SUM(amount_cents) AS c FROM refunds WHERE outcome = 'REFUSED'");
+  return {
+    card_spent_eur: fromCents(cardSpent), card_limit_eur: fromCents(cardLimit),
+    chain_spent_usdz: fromCents(chainSpent), chain_limit_usdz: b.limit,
+    waiting: live.length, waiting_eur: fromCents(waitingEur), waiting_usdz: fromCents(waitingUsdz),
+    blocked_eur: fromCents(fraudEur + declinedEur), blocked_usdz: fromCents(refusedUsdz),
+  };
+}
+
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
 function counts(db: DB, rows: AuditRow[], waiting: number): Snapshot["counts"] {
   const hasCards = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get();
@@ -687,6 +724,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     stopped: (db.prepare("SELECT key FROM settings WHERE key LIKE 'stop.%' AND value = 'on' ORDER BY key").all() as { key: string }[])
       .map((r) => r.key.slice("stop.".length)).map((agent) => ({ agent, ...stopReason(db, agent)! })),
     counts: counts(db, rows, pending.filter((p) => !p.expired).length),
+    money: money(db, rows, pending.filter((p) => !p.expired), now),
     passkey: passkeyInfo(db, now),
   };
 }

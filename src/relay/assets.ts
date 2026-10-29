@@ -4,7 +4,7 @@
 
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { CSP as DASHBOARD_CSP, DEMO_CSP, FONT, MONTH_CSP, PAGE as DASHBOARD_PAGE, demoPage, monthPage } from "../servers/dashboard.js";
+import { CSP as DASHBOARD_CSP, DEMO_CSP, FONT, LOGOS, MONTH_CSP, PAGE as DASHBOARD_PAGE, demoPage, monthPage } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -30,6 +30,7 @@ export function buildPages(): Pages {
     client,
     css: read("../approve/style.css"),
     font: FONT.toString("base64"),
+    images: Object.fromEntries(Object.entries(LOGOS).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])),
     csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }
