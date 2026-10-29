@@ -103,6 +103,7 @@ section > h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0;
 .decisions h3 { font-size: 11.5px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 4px; }
 .decision { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; padding: 3px 0; font-size: 12.5px; align-items: baseline; }
 .decision .who { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.decision .by { display: block; color: var(--text); font-weight: 600; }
 
 /* Chips */
 .chip {
@@ -280,7 +281,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     if (d.decisions.length) {
       nodes.push(el("div", "decisions", [txt("h3", "", "Recently closed")].concat(d.decisions.slice(0, 4).map(function (x) {
         var tone = x.status === "EXECUTED" ? "ok" : x.status === "REJECTED" || x.status === "FAILED" ? "bad" : "";
-        return el("div", "decision", [txt("span", "mono", x.proposal_id), el("span", "who", [x.title + (x.by ? " · " + x.by : "")]), chip(x.status.toLowerCase().replace(/_/g, " "), tone)]);
+        return el("div", "decision", [txt("span", "mono", x.proposal_id), el("span", "who", [x.title, x.by ? txt("span", "by", x.by) : null]), chip(x.status.toLowerCase().replace(/_/g, " "), tone)]);
       }))));
     }
     set("pending-body", nodes);
@@ -385,7 +386,8 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     document.getElementById("audit").textContent = "Audit chain " + (d.audit.intact ? "intact" : "BROKEN") + " · " + d.audit.rows + " entries" + (d.audit.head ? " · head " + d.audit.head.slice(0, 8) : "");
     var pk = document.getElementById("passkey");
     if (d.passkey) {
-      pk.textContent = d.passkey.credential ? "Approvals need " + d.passkey.label + "'s passkey " + d.passkey.credential
+      var who = d.passkey.label ? d.passkey.label.charAt(0).toUpperCase() + d.passkey.label.slice(1) : "";
+      pk.textContent = d.passkey.credential ? "Approvals need " + who + "'s passkey (Face ID) " + d.passkey.credential
         : d.passkey.enrolment_open ? "Passkey enrolment open" : "No passkey enrolled";
       pk.className = d.passkey.credential ? "" : "warn-text";
     }
