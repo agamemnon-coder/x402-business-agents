@@ -13,6 +13,8 @@ export interface AirwallexConfig {
   minGapMs?: number;
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
+  /** How long one HTTP call may take before it is abandoned (a POST then counts as ambiguous). Default 30 s. */
+  timeoutMs?: number;
 }
 
 export class AirwallexError extends Error {
@@ -52,6 +54,7 @@ export class Airwallex {
   private readonly minGapMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly now: () => number;
+  private readonly timeoutMs: number;
 
   constructor(private readonly cfg: AirwallexConfig) {
     this.base = cfg.baseUrl ?? SANDBOX_BASE;
@@ -60,6 +63,7 @@ export class Airwallex {
     this.minGapMs = cfg.minGapMs ?? 200;
     this.sleep = cfg.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     this.now = cfg.now ?? Date.now;
+    this.timeoutMs = cfg.timeoutMs ?? 30_000;
   }
 
   /** Serialises every call through one queue and spaces them out. */
@@ -78,6 +82,7 @@ export class Airwallex {
     const res = await this.fetch(`${this.base}/authentication/login`, {
       method: "POST",
       headers: { "x-client-id": this.cfg.clientId, "x-api-key": this.cfg.apiKey, "content-type": "application/json" },
+      signal: AbortSignal.timeout(this.timeoutMs),
     });
     const body = (await res.json().catch(() => ({}))) as { token?: string; code?: string };
     if (!res.ok || !body.token) throw new AirwallexError(res.status, body.code, redact(body), "/authentication/login");
@@ -106,6 +111,7 @@ export class Airwallex {
             method,
             headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
             body: body === undefined ? undefined : JSON.stringify(body),
+            signal: AbortSignal.timeout(this.timeoutMs),
           });
         } catch (err) {
           if (method === "POST") throw new AirwallexAmbiguous(path, err);

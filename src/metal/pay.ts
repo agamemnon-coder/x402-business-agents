@@ -53,7 +53,8 @@ export async function payUnderMandate(
 
   let res: Response;
   try {
-    res = await paying.fetchWithPayment(url, init);
+    // A paid request that hangs is abandoned; once signed it is in doubt and looked up by its nonce, never resent.
+    res = await paying.fetchWithPayment(url, { ...init, signal: init.signal ?? AbortSignal.timeout(60_000) });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (blocked !== null) return { kind: "refused", reason: blocked, status: 0, body: "" };
@@ -98,7 +99,7 @@ export async function settlementsTo(payTo: Address, sinceMs: number): Promise<Se
   const out: Settlement[] = [];
   let since = sinceMs;
   for (;;) {
-    const res = await fetch(`${FACILITATOR_ROOT}/x402/facilitator/settlements?payTo=${payTo}&since=${since}`);
+    const res = await fetch(`${FACILITATOR_ROOT}/x402/facilitator/settlements?payTo=${payTo}&since=${since}`, { signal: AbortSignal.timeout(15_000) });
     if (!res.ok) throw new Error(`/settlements answered ${res.status}`);
     const page = ((await res.json()) as { settlements: Settlement[] }).settlements;
     out.push(...page.filter((s) => !out.some((o) => o.id === s.id)));

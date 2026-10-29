@@ -18,7 +18,7 @@ export class RpcError extends Error {}
 export async function rpc<T>(method: string, params: unknown[] = [], url = rpcUrl()): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+    res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: AbortSignal.timeout(15_000) });
   } catch {
     // The fetch error can quote the URL, so it is not passed on.
     throw new RpcError(`${method}: RPC unreachable`);

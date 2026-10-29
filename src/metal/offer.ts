@@ -4,7 +4,7 @@ import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { baseUnitsToCents } from "../lib/money.js";
 
 export async function liveOfferCents(url: string): Promise<{ cents: number; payTo: string }> {
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   const header = res.headers.get("payment-required");
   if (res.status !== 402 || !header) throw new Error(`${url} did not answer with an offer (status ${res.status})`);
   const offer = decodePaymentRequiredHeader(header).accepts[0];

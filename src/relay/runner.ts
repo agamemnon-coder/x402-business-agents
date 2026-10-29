@@ -52,6 +52,7 @@ export class RelayRunner {
         method: "POST",
         headers: { authorization: `Bearer ${cfg.token}`, "content-type": "application/json" },
         body: JSON.stringify({ state_hash: hash, ...(push ? { state } : {}), acks }),
+        signal: AbortSignal.timeout(20_000),
       });
       if (!res.ok) throw new Error(`the relay answered ${res.status}${res.status === 401 ? " (wrong relay token: redeploy with npm run relay:deploy)" : ""}`);
       body = (await res.json()) as typeof body;

@@ -43,6 +43,19 @@ describe("Airwallex client", () => {
     expect(calls.filter((c) => c.url.endsWith("/transfers/create"))).toHaveLength(1);
   });
 
+  it("gives up on a call that hangs, and treats a hung POST as ambiguous, never resent", async () => {
+    const calls: string[] = [];
+    // Answers the login at once; every other call hangs until its signal aborts.
+    const hang = (async (url: string | URL, init: RequestInit = {}) => {
+      calls.push(String(url));
+      if (String(url).endsWith("/authentication/login")) return new Response(JSON.stringify({ token: "t" }), { status: 201 });
+      return new Promise<Response>((_, reject) => init.signal?.addEventListener("abort", () => reject(init.signal!.reason)));
+    }) as typeof fetch;
+    const client = new Airwallex({ clientId: "id", apiKey: "key", fetchImpl: hang, timeoutMs: 20, sleep: async () => {} });
+    await expect(client.call("POST", "/transfers/create", {})).rejects.toBeInstanceOf(AirwallexAmbiguous);
+    expect(calls.filter((u) => u.endsWith("/transfers/create"))).toHaveLength(1);
+  });
+
   it("surfaces Airwallex error codes", async () => {
     const { client } = mk([login, { status: 400, body: { code: "expired_quote", message: "quote expired" } }]);
     await expect(client.call("POST", "/fx/conversions/create", {})).rejects.toMatchObject({ code: "expired_quote" } satisfies Partial<AirwallexError>);

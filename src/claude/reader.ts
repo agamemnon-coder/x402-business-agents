@@ -38,7 +38,8 @@ export interface Read<T> {
 export function claudeClient(env = process.env): Anthropic | null {
   // The cloud environment reserves ANTHROPIC_API_KEY for Claude Code itself; the demo has its own key.
   const apiKey = env.KIT11_ANTHROPIC_API_KEY;
-  return apiKey ? new Anthropic({ apiKey }) : null;
+  // Bounded: a call that takes longer falls back to the deterministic parser, like any other failure.
+  return apiKey ? new Anthropic({ apiKey, timeout: 180_000, maxRetries: 2 }) : null;
 }
 
 export class ClaudeReader {
