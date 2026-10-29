@@ -23,6 +23,7 @@
     "verify": "tsx src/cli/verify.ts",
     "audit:export": "tsx src/cli/auditExport.ts",
     "approvals": "tsx src/cli/approvals-page.ts",
+    "dashboard": "tsx src/cli/dashboard.ts",
     "fail": "tsx src/cli/fail.ts",
     "demo:all": "tsx src/cli/demo.ts"
   },

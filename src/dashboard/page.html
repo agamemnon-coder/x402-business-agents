@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Treasury Control</title>
+<style>
+:root {
+  --bg: #f4f5f7; --surface: #ffffff; --surface-2: #f8f9fb; --text: #0f172a; --muted: #5b6577; --faint: #8a93a3;
+  --border: #e3e6eb; --accent: #2b59d9; --accent-soft: #e8eefc;
+  --ok: #157f3c; --ok-soft: #e6f4ea; --warn: #a15c07; --warn-soft: #fdf3e2; --bad: #b42318; --bad-soft: #fdecea;
+  --bar: #2b59d9; --bar-track: #e9ecf1; --shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
+    --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440;
+    --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
+    --bar: #7d9bff; --bar-track: #232a38; --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
+  --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440;
+  --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
+  --bar: #7d9bff; --bar-track: #232a38; --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.num, .mono { font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+header {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand h1 { font-size: 16px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+.brand .sub { color: var(--muted); font-size: 13px; }
+.status { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 12.5px; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: var(--faint); vertical-align: 1px; }
+.live .dot { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.stale .dot { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+.live .state { color: var(--ok); font-weight: 600; }
+.stale .state { color: var(--warn); font-weight: 600; }
+main {
+  display: grid; gap: 14px; padding: 14px 20px 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-areas: "pending budgets feed" "refusals treasury feed";
+  grid-template-rows: auto 1fr;
+  height: calc(100vh - 53px); min-height: 640px;
+}
+section {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; min-height: 0;
+}
+section > h2 {
+  font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  margin: 0; padding: 12px 16px 10px; display: flex; align-items: center; gap: 8px;
+}
+section > h2 .count {
+  font-variant-numeric: tabular-nums; background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 999px; padding: 0 7px; font-size: 11.5px; letter-spacing: 0;
+}
+section > h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--faint); }
+.body { padding: 0 16px 14px; overflow: auto; min-height: 0; }
+#pending { grid-area: pending; }
+#budgets { grid-area: budgets; }
+#treasury { grid-area: treasury; }
+#refusals { grid-area: refusals; }
+#feed { grid-area: feed; }
+#pending.has-items { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+
+/* Pending approvals */
+.card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-2); }
+.card + .card { margin-top: 10px; }
+.card.closed { opacity: .6; }
+.card .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card .title { font-weight: 650; }
+.card .pid { color: var(--muted); }
+.card .summary { margin: 6px 0 8px; }
+.card .meta { display: flex; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; align-items: center; }
+.card .review { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.card .actions { margin-top: 10px; display: flex; align-items: center; gap: 10px; }
+.btn {
+  display: inline-block; text-decoration: none; background: var(--accent); color: #fff; font-weight: 600;
+  padding: 7px 12px; border-radius: 7px; font-size: 13px; white-space: nowrap;
+}
+:root[data-theme="dark"] .btn { color: #0b0e14; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn { color: #0b0e14; } }
+.countdown { font-weight: 600; color: var(--text); }
+.countdown.soon { color: var(--warn); }
+.empty { color: var(--muted); padding: 6px 0 4px; display: flex; align-items: center; gap: 8px; }
+.empty .tick { color: var(--ok); font-weight: 700; }
+.decisions { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+.decisions h3 { font-size: 11.5px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 4px; }
+.decision { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; padding: 3px 0; font-size: 12.5px; align-items: baseline; }
+.decision .who { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Chips */
+.chip {
+  display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; line-height: 18px;
+  background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); white-space: nowrap;
+}
+.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+.chip.model { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+
+/* Budgets */
+.agent { padding: 8px 0; border-top: 1px solid var(--border); }
+.agent:first-child { border-top: 0; padding-top: 2px; }
+.agent .line1 { display: flex; align-items: baseline; gap: 8px; }
+.agent .name { font-weight: 650; text-transform: capitalize; }
+.agent .payee { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent .amount { margin-left: auto; white-space: nowrap; }
+.agent .amount b { font-weight: 650; }
+.agent .amount span { color: var(--muted); }
+.bar { height: 7px; border-radius: 999px; background: var(--bar-track); overflow: hidden; margin: 6px 0 5px; }
+.bar > i { display: block; height: 100%; background: var(--bar); border-radius: 999px; }
+.bar.high > i { background: var(--warn); }
+.agent .line2 { display: flex; gap: 2px 12px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+.split { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.split .label { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+.stack { display: flex; height: 9px; border-radius: 999px; overflow: hidden; background: var(--bar-track); margin-top: 6px; gap: 2px; }
+.stack > i { display: block; height: 100%; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.cp { margin-top: 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 8px; font-size: 12.5px; color: var(--muted); }
+
+/* Treasury */
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kpi { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface-2); min-width: 0; }
+.kpi .k { color: var(--muted); font-size: 12px; }
+.kpi .v { font-size: 22px; font-weight: 650; letter-spacing: -.01em; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .v small { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+.kpi .v.neg { color: var(--bad); }
+.rows { margin-top: 10px; }
+.row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 13px; border-top: 1px solid var(--border); }
+.row:first-child { border-top: 0; }
+.row .l { color: var(--muted); }
+.row .r { white-space: nowrap; }
+.subhead { font-size: 11.5px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 2px; }
+
+/* Refusals */
+.refusal { border-left: 3px solid var(--bad); background: var(--bad-soft); border-radius: 0 7px 7px 0; padding: 7px 10px; }
+.refusal.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+.refusal + .refusal { margin-top: 7px; }
+.refusal .top { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.refusal .what { font-weight: 650; color: var(--text); font-size: 13px; }
+.refusal .time { margin-left: auto; }
+.refusal .reason { margin-top: 2px; font-size: 13px; }
+
+/* Feed */
+#feed .body { padding: 0; }
+.item { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px; padding: 7px 16px; border-top: 1px solid var(--border); }
+.item:first-child { border-top: 0; }
+.item .t { color: var(--faint); font-size: 12px; padding-top: 2px; }
+.item .text { overflow-wrap: anywhere; }
+.item .text .chip { margin-right: 6px; vertical-align: 1px; }
+.item.refusal-tone .text { color: var(--bad); }
+.item.approval-tone { background: linear-gradient(90deg, var(--accent-soft), transparent 60%); }
+.item .refs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.item a { color: var(--accent); text-decoration: none; }
+.item a:hover { text-decoration: underline; }
+footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display: none; }
+
+@media (max-width: 1100px) {
+  main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "pending budgets" "refusals treasury" "feed feed"; height: auto; }
+  #feed .body { max-height: 560px; }
+}
+@media (max-width: 720px) {
+  header { padding: 12px 16px; }
+  .status { margin-left: 0; width: 100%; }
+  main { display: flex; flex-direction: column; padding: 12px 16px 24px; height: auto; min-height: 0; }
+  .body { overflow: visible; }
+  #feed .body { max-height: none; }
+  .kpi .v { font-size: 19px; }
+  .item { grid-template-columns: 54px minmax(0, 1fr); padding: 8px 14px; }
+  .item:nth-child(n+26) { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Tidemark Data</h1><span class="sub">Treasury control</span></div>
+  <div class="status" id="status">
+    <span id="live" class="stale"><span class="dot"></span><span class="state">Connecting</span></span>
+    <span id="updated" class="num"></span>
+    <span id="audit" class="num"></span>
+  </div>
+</header>
+<main>
+  <section id="pending" aria-labelledby="h-pending"><h2 id="h-pending">Waiting for approval <span class="count" id="pending-count">0</span></h2><div class="body" id="pending-body"></div></section>
+  <section id="budgets" aria-labelledby="h-budgets"><h2 id="h-budgets">Agent budgets <span class="hint">Metal mandates, on chain</span></h2><div class="body" id="budgets-body"></div></section>
+  <section id="treasury" aria-labelledby="h-treasury"><h2 id="h-treasury">Treasury <span class="hint" id="treasury-asof"></span></h2><div class="body" id="treasury-body"></div></section>
+  <section id="refusals" aria-labelledby="h-refusals"><h2 id="h-refusals">Refusals and escalations <span class="count" id="refusals-count">0</span></h2><div class="body" id="refusals-body"></div></section>
+  <section id="feed" aria-labelledby="h-feed"><h2 id="h-feed">Agent activity <span class="hint">newest first</span></h2><div class="body" id="feed-body"></div></section>
+</main>
+<script>
+(function () {
+  "use strict";
+  // Everything from the ledger is rendered as text (textContent); no ledger string ever becomes HTML.
+  var EXPLORER = "https://testnet.metalntwx.com/tx/";
+  var TX = /^0x[0-9a-fA-F]{64}$/;
+  var POLL_MS = 2000, STALE_MS = 6000;
+  var lastOk = 0, lastData = null;
+
+  function el(tag, cls, kids) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    (kids || []).forEach(function (k) {
+      if (k === null || k === undefined || k === false) return;
+      n.appendChild(typeof k === "string" ? document.createTextNode(k) : k);
+    });
+    return n;
+  }
+  function txt(tag, cls, s) { return el(tag, cls, [s === null || s === undefined ? "" : String(s)]); }
+  function chip(s, tone) { return txt("span", "chip" + (tone ? " " + tone : ""), s); }
+  function set(id, nodes) { var n = document.getElementById(id); n.replaceChildren.apply(n, nodes); }
+
+  // Money arrives as decimal strings ("9995512.44", "-0.62"); group without going through floats.
+  function money(s) {
+    s = String(s);
+    var neg = s.charAt(0) === "-"; if (neg) s = s.slice(1);
+    var p = s.split("."), i = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return (neg ? "−" : "") + i + (p.length > 1 ? "." + p[1] : "");
+  }
+  function cents(s) { var m = /^(-?)(\d+)\.(\d{2})$/.exec(String(s)); return m ? (m[1] ? -1 : 1) * (Number(m[2]) * 100 + Number(m[3])) : 0; }
+  var timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  var dayFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  function hms(iso) { var d = new Date(iso); return isNaN(d) ? "" : timeFmt.format(d); }
+  function day(iso) { var d = new Date(iso + "T00:00:00Z"); return isNaN(d) ? "" : dayFmt.format(d); }
+  function shortId(s) { s = String(s || ""); return s.length > 14 ? s.slice(0, 8) + "…" : s; }
+  function countdown(iso) {
+    var ms = Date.parse(iso) - Date.now();
+    if (isNaN(ms)) return { text: "", soon: false };
+    if (ms <= 0) return { text: "expired", soon: true };
+    var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return { text: "expires in " + (h ? h + "h " : "") + m + "m " + String(s % 60).padStart(2, "0") + "s", soon: ms < 120000 };
+  }
+  var AGENT_TONE = { human: "warn", claude: "model" };
+  var REC_TONE = { approve: "ok", reject: "bad", needs_more_information: "warn" };
+  var COLORS = { sourcing: "var(--bar)", support: "var(--ok)", treasury: "var(--warn)" };
+
+  function renderPending(d) {
+    var live = d.pending.filter(function (p) { return !p.expired; });
+    var sec = document.getElementById("pending");
+    sec.classList.toggle("has-items", live.length > 0);
+    document.getElementById("pending-count").textContent = String(live.length);
+    var nodes = [];
+    if (!d.pending.length) nodes.push(el("div", "empty", [txt("span", "tick", "✓"), "Nothing waits for a person. Agents are inside their limits."]));
+    d.pending.forEach(function (p) {
+      var c = countdown(p.expires_at);
+      var cd = txt("span", "countdown num" + (c.soon ? " soon" : ""), c.text);
+      cd.setAttribute("data-expires", p.expires_at);
+      var rec = p.review ? chip((p.review.model ? "Opus: " : "Review: ") + p.review.recommendation.replace(/_/g, " "), REC_TONE[p.review.recommendation] || "") : null;
+      var card = el("article", "card" + (p.expired ? " closed" : ""), [
+        el("div", "top", [txt("span", "title", p.title), txt("span", "pid mono", p.proposal_id), rec]),
+        txt("p", "summary", p.summary),
+        el("div", "meta", [cd, el("span", "", ["hash ", txt("span", "mono", p.terms_sha256.slice(0, 8))]), txt("span", "", "from " + p.created_by)]),
+        p.review ? txt("p", "review", p.review.text) : null,
+      ]);
+      if (!p.expired) {
+        var a = txt("a", "btn", "Review and approve");
+        a.href = "approve/" + encodeURIComponent(p.proposal_id);
+        card.appendChild(el("div", "actions", [a, txt("span", "pid", "you confirm the exact terms by their hash")]));
+      }
+      nodes.push(card);
+    });
+    if (d.decisions.length) {
+      nodes.push(el("div", "decisions", [txt("h3", "", "Recently closed")].concat(d.decisions.slice(0, 4).map(function (x) {
+        var tone = x.status === "EXECUTED" ? "ok" : x.status === "REJECTED" || x.status === "FAILED" ? "bad" : "";
+        return el("div", "decision", [txt("span", "mono", x.proposal_id), el("span", "who", [x.title + (x.by ? " · " + x.by : "")]), chip(x.status.toLowerCase().replace(/_/g, " "), tone)]);
+      }))));
+    }
+    set("pending-body", nodes);
+  }
+
+  function renderBudgets(d) {
+    var b = d.budgets, nodes = [];
+    function agentRow(a) {
+      var pct = Math.max(0, Math.min(100, cents(a.budget) ? cents(a.spent) / cents(a.budget) * 100 : 0));
+      var bar = el("div", "bar" + (pct >= 80 ? " high" : ""), [el("i")]);
+      bar.firstChild.style.width = pct.toFixed(1) + "%";
+      return el("div", "agent", [
+        el("div", "line1", [txt("span", "name", a.agent), txt("span", "payee", "pays " + a.payee),
+          el("span", "amount num", [txt("b", "", money(a.spent)), txt("span", "", " / " + money(a.budget))])]),
+        bar,
+        el("div", "line2 num", [txt("span", "", money(a.remaining) + " left"), txt("span", "", "max " + money(a.cap) + " per payment"),
+          a.expires_on ? txt("span", "", "until " + day(a.expires_on)) : null, a.credentials > 1 ? txt("span", "", "replaced " + (a.credentials === 2 ? "once" : (a.credentials - 1) + " times") + ", spend carried over") : null]),
+      ]);
+    }
+    b.agents.forEach(function (a) { nodes.push(agentRow(a)); });
+    var total = cents(b.limit) || 1;
+    var stack = el("div", "stack", b.agents.map(function (a) {
+      var i = el("i"); i.style.width = (cents(a.budget) / total * 100).toFixed(2) + "%"; i.style.background = COLORS[a.agent] || "var(--faint)"; return i;
+    }));
+    nodes.push(el("div", "split", [
+      el("div", "label num", [txt("span", "", "Budgets allocated across agents"), txt("span", "", money(b.allocated) + " of " + money(b.limit) + " *USDZ")]),
+      stack,
+      el("div", "legend", b.agents.map(function (a) { var i = el("i"); i.style.background = COLORS[a.agent] || "var(--faint)"; return el("span", "", [i, a.agent + " " + money(a.budget)]); })),
+    ]));
+    if (b.counterparty) {
+      var c = b.counterparty;
+      nodes.push(el("div", "cp num", ["Customer side: Kestrel Quant's own mandate has paid us " + money(c.spent) + " of " + money(c.budget) + "; we now charge " + money(d.treasury.metal.sell_price) + " a query (its cap: " + money(c.cap) + ")."]));
+    }
+    set("budgets-body", nodes);
+  }
+
+  function renderTreasury(d) {
+    var t = d.treasury, nodes = [];
+    var a = t.airwallex;
+    document.getElementById("treasury-asof").textContent = a ? "Airwallex as of " + hms(a.as_of) : "";
+    if (a) {
+      var freeNeg = String(a.eur.free).charAt(0) === "-";
+      nodes.push(el("div", "kpis", [
+        el("div", "kpi", [txt("div", "k", "Free EUR for new bills"), el("div", "v num" + (freeNeg ? " neg" : ""), [money(a.eur.free), txt("small", "", "EUR")])]),
+        el("div", "kpi", [txt("div", "k", "USD above its floor"), el("div", "v num", [money(a.usd.headroom), txt("small", "", "USD")])]),
+      ]));
+      nodes.push(txt("div", "subhead", "Airwallex (sandbox)"));
+      nodes.push(el("div", "rows num", [
+        el("div", "row", [txt("span", "l", "EUR available"), txt("span", "r", money(a.eur.available))]),
+        el("div", "row", [txt("span", "l", "EUR reserve floor + committed bills"), txt("span", "r", money(a.eur.floor) + " + " + money(a.eur.committed))]),
+        el("div", "row", [txt("span", "l", "USD available / floor"), txt("span", "r", money(a.usd.available) + " / " + money(a.usd.floor))]),
+      ]));
+    } else {
+      nodes.push(txt("p", "empty", "No Airwallex balance read yet."));
+    }
+    var m = t.metal;
+    nodes.push(txt("div", "subhead", "Metal testnet earnings (*USDZ)"));
+    nodes.push(el("div", "rows num", [
+      el("div", "row", [txt("span", "l", "Sales − supplier − refunds"), txt("span", "r", money(m.sales) + " − " + money(m.upstream) + " − " + money(m.refunds) + " = " + money(m.net))]),
+      el("div", "row", [txt("span", "l", "Swept to Airwallex after finality"), txt("span", "r", money(m.swept))]),
+    ]));
+    set("treasury-body", nodes);
+  }
+
+  function renderRefusals(d) {
+    document.getElementById("refusals-count").textContent = String(d.refusals.length);
+    var nodes = d.refusals.slice(0, 12).map(function (r) {
+      var soft = /expired|unconfirmed|escalated/i.test(r.what);
+      return el("div", "refusal" + (soft ? " warn" : ""), [
+        el("div", "top", [txt("span", "what", r.what), chip(r.agent, AGENT_TONE[r.agent] || ""), txt("span", "time num", hms(r.ts))]),
+        txt("div", "reason", r.reason),
+      ]);
+    });
+    if (!nodes.length) nodes.push(el("div", "empty", ["No refusals yet."]));
+    set("refusals-body", nodes);
+  }
+
+  function renderFeed(d) {
+    var body = document.getElementById("feed-body"), keep = body.scrollTop;
+    var nodes = d.feed.map(function (f) {
+      var refs = [];
+      if (f.tx && TX.test(f.tx)) {
+        var a = txt("a", "mono", "tx " + f.tx.slice(0, 10) + "… ↗");
+        a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer";
+        refs.push(a);
+      }
+      if (f.awx_id) refs.push(txt("span", "mono", "Airwallex " + shortId(f.awx_id)));
+      return el("div", "item " + f.tone + "-tone", [
+        txt("span", "t num", hms(f.ts)),
+        el("div", "", [
+          el("div", "text", [chip(f.actor, AGENT_TONE[f.actor] || ""), f.model ? chip(f.model, "model") : null, f.text]),
+          refs.length ? el("div", "refs", refs) : null,
+        ]),
+      ]);
+    });
+    body.replaceChildren.apply(body, nodes);
+    body.scrollTop = keep;
+  }
+
+  function render(d) {
+    renderPending(d); renderBudgets(d); renderTreasury(d); renderRefusals(d); renderFeed(d);
+    document.getElementById("audit").textContent = "Audit chain " + (d.audit.intact ? "intact" : "BROKEN") + " · " + d.audit.rows + " entries" + (d.audit.head ? " · head " + d.audit.head.slice(0, 8) : "");
+  }
+
+  function status() {
+    var fresh = lastOk && Date.now() - lastOk < STALE_MS;
+    var live = document.getElementById("live");
+    live.className = fresh ? "live" : "stale";
+    live.querySelector(".state").textContent = fresh ? "Live" : lastOk ? "Stale" : "Connecting";
+    document.getElementById("updated").textContent = lastOk ? "updated " + hms(new Date(lastOk).toISOString()) : "";
+    document.querySelectorAll("[data-expires]").forEach(function (n) {
+      var c = countdown(n.getAttribute("data-expires"));
+      n.textContent = c.text; n.classList.toggle("soon", c.soon);
+    });
+  }
+
+  function poll() {
+    fetch("api/snapshot", { cache: "no-store", headers: { accept: "application/json" } })
+      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(function (d) { lastData = d; lastOk = Date.now(); render(d); })
+      .catch(function () {})
+      .then(function () { status(); setTimeout(poll, POLL_MS); });
+  }
+  setInterval(status, 1000);
+  poll();
+})();
+</script>
+</body>
+</html>
