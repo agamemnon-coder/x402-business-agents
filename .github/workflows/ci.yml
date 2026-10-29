@@ -25,9 +25,7 @@ jobs:
       - name: Relay Worker type check
         working-directory: worker
         run: npm ci && npx tsc --noEmit
-      # Known and accepted until the fixed x402 release is old enough to pin: a high zod advisory nested in
-      # @x402/* and @metalntwx/* (docs/security.md). Anything critical fails the build.
-      - run: npm audit --omit=dev --audit-level=critical
+      - run: npm audit --audit-level=low
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

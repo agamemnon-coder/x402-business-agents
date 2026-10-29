@@ -11,7 +11,7 @@ import type { Address } from "viem";
 import { salesBySeq, verifyOrders } from "../agents/disputes.js";
 import { fromEnv, Airwallex } from "../airwallex/client.js";
 import { getVia, verifyAirwallex } from "../airwallex/verify.js";
-import { verifyAuditChain } from "../audit/log.js";
+import { checkAnchor, verifyAuditChain, type AuditRowStored } from "../audit/log.js";
 import { approvalMethodChecks, reverifyPasskeyApprovals } from "../passkey/webauthn.js";
 import { openDb } from "../db/open.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
@@ -27,6 +27,13 @@ const line = (ok: boolean, what: string, detail = "") => {
 
 const chain = verifyAuditChain(db);
 line(chain.ok, "audit log hash chain", chain.ok ? `${chain.rows} rows, head ${chain.head}` : `row ${chain.seq}: ${chain.reason}`);
+// An anchor printed earlier (audit report, run log) also catches a cut-off tail or a full rehash (review L1).
+const anchorArg = process.argv.indexOf("--anchor") >= 0 ? process.argv[process.argv.indexOf("--anchor") + 1] : process.env.KIT11_AUDIT_ANCHOR;
+if (anchorArg) {
+  const m = /^(\d+):([0-9a-f]{64})$/.exec(anchorArg);
+  const a = m ? checkAnchor(db.prepare("SELECT * FROM audit_log ORDER BY seq").all() as AuditRowStored[], { seq: Number(m[1]), hash: m[2]! }) : { ok: false as const, reason: "an anchor is <seq>:<64 hex>" };
+  line(a.ok, "audit log anchor", a.ok ? `row ${m![1]} still has hash ${m![2]!.slice(0, 12)}…` : a.reason);
+}
 
 const issuer = (agent: MandateAgent) => keyPath(agent === "customer" ? "owner-customer.key.issuer.public.json" : "owner-business.key.issuer.public.json");
 function verifyCredential(agent: MandateAgent, path: string, tx?: string) {

@@ -98,10 +98,9 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 
 ## Accepted risks and what is out of scope
 
-- **zod advisory (high, memory exhaustion on oversized collections).** It sits in the zod 3 copy that the
-  `@x402/*` and `@metalntwx/*` packages bring along. The fixed `@x402/*` 2.29.0 was released on 2026-10-28; we pin
-  only releases at least two weeks old, so it is due on 2026-11-11. The inputs that reach that zod come from our own
-  supplier, seller and facilitator. CI fails on anything critical.
+- **zod advisory (fixed 2026-10-29).** `@x402/*` is at 2.29.0, which uses fixed zod 4, and an override gives
+  `@metalntwx/metal-agent` zod 4.6.7 as well. `npm audit` reports 0 vulnerabilities. A live `npm run verify` (21 checks,
+  through metal-agent) and an x402 sale refused by policy behaved as before.
 - **The relay serves the phone's script.** A relay that serves a *different script* could show one thing and ask
   Face ID to sign another waiting proposal's hash. The pinned runner key cannot stop that; only a native app could.
   What limits it: the runner executes only waiting proposals' exact terms, approvals stay per proposal, and every

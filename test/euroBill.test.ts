@@ -58,6 +58,18 @@ describe("euro bill (S3) against the Airwallex port", () => {
     expect(verifyAuditChain(db).ok).toBe(true);
   });
 
+  it("L2: a payee the CFO policy blocked after approval is not paid, and Airwallex is not called", async () => {
+    const { db, awx } = await world();
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    if (out.kind !== "proposed") throw new Error(out.reason);
+    approve(db, out.proposal.proposal_id, out.proposal.terms_sha256);
+    setSetting(db, "human", `counterparty:${LICENSOR.name}`, "blocked");
+    const before = awx.calls.length;
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow(/blocked by the CFO policy/);
+    expect(awx.calls.slice(before).filter((c) => c !== "balances")).toEqual([]);
+    expect(awx.transfers).toEqual([]);
+  });
+
   it("F1: an expired quote voids the approval before Airwallex is called", async () => {
     const { db, awx } = await world();
     const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
