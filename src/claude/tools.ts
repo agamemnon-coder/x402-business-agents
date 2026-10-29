@@ -104,6 +104,14 @@ export function fraudExplanationFallback(f: FraudFinding): FraudExplanation {
   };
 }
 
+/** Opus drafts CFO policy rules from the CFO's own words (P2). Code checks each one; the result is only a proposal. */
+export const PolicyDraftSchema = z.object({
+  changes: z.array(z.object({ key: z.string(), to: z.string(), quote: z.string(), why: z.string() })),
+  not_mapped: z.array(z.object({ quote: z.string(), why: z.string() })),
+  questions: z.array(z.string()),
+});
+export type PolicyDraft = z.infer<typeof PolicyDraftSchema>;
+
 export class Tools {
   constructor(private readonly db: DB, readonly reader = new ClaudeReader(db)) {}
 
@@ -193,6 +201,19 @@ export class Tools {
       () => fraudExplanationFallback(f),
     );
     return checked(this.db, "explain_invoice_fraud", r, (v) => (v.red_flags.length > 0 && v.verify_steps.length > 0 ? null : "no red flags or no steps"), () => fraudExplanationFallback(f));
+  }
+
+  /**
+   * Opus: the CFO's policy in plain words, mapped onto the existing settings. Advisory: every rule is checked by
+   * code (src/policy/fromText.ts) and becomes at most a proposal that the CFO approves with Face ID.
+   */
+  policyDraft(text: string, settings: string): Promise<Read<PolicyDraft>> {
+    return this.reader.ask(
+      { task: "draft_policy", role: "review", actor: "claude", schema: PolicyDraftSchema, effort: "medium",
+        document: `The policy settings that exist (key | what it limits | unit | current value):\n${settings}\n\nThe CFO's words:\n${text}`,
+        instruction: "The CFO wrote the company's spending policy for its AI agents in plain words (any language). Map each sentence onto the existing settings only. For each rule give the setting's key exactly as listed, the new value (an amount with two decimals and no thousands separator, or one of the listed choices), the exact words from the CFO's text it rests on (copied verbatim), and why. Use only amounts the CFO wrote; never split, add up or round them. A sentence that matches no single setting, or would need an amount the CFO did not write (a total across several agents, say), goes under not_mapped with the reason, and add a short question for the CFO when one would settle it. Nothing you return is applied: the CFO sees it and signs it." },
+      (): PolicyDraft => ({ changes: [], not_mapped: [{ quote: text, why: "no model available: set the limits in the policy editor instead" }], questions: [] }),
+    );
   }
 
   draftReply(facts: string, fallback: () => { subject: string; body: string }): Promise<Read<{ subject: string; body: string }>> {
