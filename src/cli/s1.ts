@@ -3,6 +3,7 @@
 //   npm run approve -- <id> <prefix>   a person approves one option; mandates are replaced
 //   npm run s1:resume  the old credential is refused as revoked; sales resume at the approved price
 
+import { approvalHint } from "./hint.js";
 import { resolve } from "node:path";
 import { crossCheckNotice } from "../agents/notices.js";
 import { attachReview } from "../claude/review.js";
@@ -64,7 +65,7 @@ try {
       const r = await attachReview(db, tools, pr, await priceRiseContext(rt.addr, toCents(sellPrice(db)), notice.old_price, live.cents, refusal.refusal_reason));
       console.log(`REVIEW           ${pr.proposal_id}: ${r.recommendation} (${r.source === "claude" ? "Opus, advisory" : "no model"}): ${r.summary}`);
     }
-    console.log(`\nNext: npm run proposals, then npm run approve -- <id> <first 8 hex>`);
+    console.log(`\nNext: npm run proposals, then ${approvalHint(db)}`);
   } else if (phase === "resume") {
     const done = db.prepare("SELECT terms_json, proposal_id FROM proposals WHERE kind = 'mandate_replace' AND status = 'EXECUTED' ORDER BY created_at DESC LIMIT 1").get() as { terms_json: string; proposal_id: string } | undefined;
     if (!done) throw new Error("no executed mandate change; approve one first");

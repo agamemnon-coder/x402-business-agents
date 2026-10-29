@@ -1,5 +1,6 @@
 // npm run proposals: what waits for a person, with the exact terms and their hash.
 
+import { approvalHint } from "./hint.js";
 import { openDb } from "../db/open.js";
 import { termsHash, type Terms } from "../lib/terms.js";
 import { expireDue, type ProposalRow } from "../policy/approvals.js";
@@ -31,5 +32,5 @@ for (const r of rows) {
   print(terms);
   if (r.explanation) console.log(`  explanation (advisory, from Claude): ${r.explanation}`);
   console.log(`  sha256 ${r.terms_sha256}${recomputed === r.terms_sha256 ? "" : "  (MISMATCH: terms changed)"}`);
-  if (r.status === "PENDING_APPROVAL") console.log(`  approve: npm run approve -- ${r.proposal_id} ${r.terms_sha256.slice(0, 8)}`);
+  if (r.status === "PENDING_APPROVAL") console.log(`  decide: ${approvalHint(db, r.proposal_id, r.terms_sha256.slice(0, 8))}`);
 }
