@@ -11,7 +11,7 @@ export type PolicyKey = `cap.${Agent}` | "eur_floor" | "usd_floor" | "approval.r
 export interface Rule {
   key: PolicyKey;
   label: string;
-  unit: "*USDZ" | "EUR" | "USD" | "";
+  unit: "USDZ" | "EUR" | "USD" | "";
   /** money: a decimal amount; optional_money: an amount or "" (no extra limit); choice: one of `choices`. */
   kind: "money" | "optional_money" | "choice";
   min?: number;
@@ -30,11 +30,11 @@ const MONEY = /^\d{1,9}\.\d{2}$/;
 const MAX_FLOOR = 10_000_000_000;
 
 const STATIC: Rule[] = [
-  { key: "cap.sourcing", label: "Sourcing agent: most per payment", unit: "*USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
-  { key: "cap.support", label: "Support agent: most per refund", unit: "*USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
-  { key: "cap.treasury", label: "Treasury agent: most per sweep", unit: "*USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
-  { key: "approval.refund_each", label: "A refund above this needs a person", unit: "*USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_EACH_CENTS) },
-  { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "*USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS) },
+  { key: "cap.sourcing", label: "Sourcing agent: most per payment", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
+  { key: "cap.support", label: "Support agent: most per refund", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
+  { key: "cap.treasury", label: "Treasury agent: most per sweep", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
+  { key: "approval.refund_each", label: "A refund above this needs a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_EACH_CENTS) },
+  { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS) },
   { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
   { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
 ];

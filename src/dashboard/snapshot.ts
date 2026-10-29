@@ -113,7 +113,10 @@ const REFUSAL_WORDS: Record<string, string> = {
   mandate_expired: "the mandate has expired",
   payee_not_allowed: "payee not allowed by the mandate",
 };
-const refusalWords = (code: string) => (REFUSAL_WORDS[code] ? `${REFUSAL_WORDS[code]} (${code})` : code || "no reason given");
+const CALIBRATION = new Map([["usd_floor", "USD floor"], ["eur_obligations", "EUR already committed to other bills"]]);
+
+/** Plain words for a refusal; the code itself goes with the feed item, for a tooltip, not into the sentence. */
+const refusalWords = (code: string) => REFUSAL_WORDS[code] ?? (code || "no reason given");
 
 const KIND_TITLES: Record<string, string> = {
   mandate_replace: "Mandate change",
@@ -140,7 +143,7 @@ export function summarize(kind: string, termsJson: string): string {
   if (kind === "refund_batch") {
     const refunds = Array.isArray(t.refunds) ? (t.refunds as P[]) : [];
     const total = refunds.reduce((a, r) => a + safeCents(str(r.amount)), 0);
-    return `Refund ${refunds.length} sale${refunds.length === 1 ? "" : "s"}, ${fromCents(total)} *USDZ in total, to the customer ${short(str(t.customer))}${t.dispute_id ? ` (dispute ${str(t.dispute_id)})` : ""}`;
+    return `Refund ${refunds.length} sale${refunds.length === 1 ? "" : "s"}, ${fromCents(total)} USDZ in total, to the customer ${short(str(t.customer))}${t.dispute_id ? ` (dispute ${str(t.dispute_id)})` : ""}`;
   }
   if (kind === "invoice_payment") {
     const c = t.conversion as P | null | undefined;
@@ -274,7 +277,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
   const base = { model: null as string | null, tx, awx_id: null as string | null };
   const out = (text: string, tone: FeedItem["tone"] = "info", extra: Partial<typeof base> = {}) => ({ ...base, ...extra, text, tone });
   switch (r.event) {
-    case "business.funded": return out(`Business account funded with ${str(p.amount)} *USDZ`, "ok");
+    case "business.funded": return out(`Business account funded with ${str(p.amount)} USDZ`, "ok");
     case "mandate.bound": return out(`${s} mandate bound on chain: up to ${str(p.cap)} per payment, ${str(p.budget)} in total`, "ok");
     case "mandate.replaced": return out(`${s} mandate replaced (${str(p.proposal_id)}, step ${str(p.step)}): up to ${str(p.cap)} per payment, ${str(p.budget)} in total`, "ok");
     case "upstream.paid":
@@ -295,7 +298,10 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       return out(sale ? `Sold tick #${sale.seq} to Kestrel Quant for ${fromCents(sale.price)}` : `Sale ${s} delivered`, "ok");
     }
     case "sale.settle_failed": return out(`A sale did not settle; the customer was not charged (${str(p.error)})`, "refusal");
-    case "setting.changed": return out(`${s.replace(/_/g, " ")} set to ${str(p.after)}${p.before ? ` (was ${str(p.before)})` : ""}`);
+    // The sandbox starts with millions; the floors calibrated against it are not this business's money, so no numbers.
+    case "setting.changed": return CALIBRATION.has(s)
+      ? out(`Treasury set the ${CALIBRATION.get(s)} against the Airwallex sandbox balance`)
+      : out(`${s.replace(/_/g, " ")} set to ${str(p.after)}${p.before ? ` (was ${str(p.before)})` : ""}`);
     case "claude.read": {
       const task = s;
       const o = (p.output ?? {}) as P;
@@ -307,17 +313,17 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     }
     case "claude.fallback": return out(`Claude was not used for ${s.replace(/_/g, " ")}; the deterministic parser decided (${str(p.note)})`, "info", { model: modelName(str(p.model)) });
     case "claude.rejected": return out(`Claude's answer for ${s.replace(/_/g, " ")} failed the code check and was not used`, "refusal", { model: modelName(str(p.model)) });
-    case "proposal.created": return out(`${r.actor} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()}), hash ${str(p.terms_sha256).slice(0, 8)}`, "approval");
+    case "proposal.created": return out(`${r.actor === "human" ? "Max" : `The ${r.actor} agent`} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()})`, "approval");
     case "price_rise.options": {
       const opts = Array.isArray(p.options) ? (p.options as P[]) : [];
       return out(`Priced the options: ${opts.map((o) => (o.sell === null ? `${str(o.id)} ${str(o.label)}` : `${str(o.id)} sell ${str(o.sell)} (margin ${str(o.margin)})`)).join(", ")}`, "approval");
     }
     case "proposal.approved": {
       const key = p.passkey && typeof p.passkey === "object" ? str((p.passkey as P).credential_id).slice(0, 8) : "";
-      return out(`${approverName(str(p.approver), str(p.method)) || "A person"} approved ${s}${key ? ` (passkey ${key})` : ""}, hash ${str(p.terms_sha256).slice(0, 8)}`, "approval");
+      return out(`${approverName(str(p.approver), str(p.method)) || "A person"} approved ${s}${key ? "" : " by typed hash"}`, "approval");
     }
     case "proposal.rejected": return out(`${approverName(str(p.approver), str(p.method)) || "A person"} rejected ${s}`, "refusal");
-    case "proposal.executing": return out(`Executing ${s}; the executor re-checked the approved hash`);
+    case "proposal.executing": return out(`Running ${s}, after checking its terms are exactly what was approved`);
     case "proposal.executed": return out(`${s} executed`, "ok");
     case "proposal.failed": return out(`${s} failed: ${str(p.error) || "see the ledger"}`, "refusal");
     case "proposal.needs_reapproval": return out(`${s} needs a new approval: ${str(p.error)}`, "refusal");
@@ -329,7 +335,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "refund.already_paid": return out(`Retry of ${str(p.payment_id)}: already paid, nothing sent`, "ok");
     case "refund.refused":
     case "refund.held": return out(`Refund ${str(p.payment_id)} ${r.event.split(".")[1]}: ${refusalWords(str(p.reason))}`, "refusal");
-    case "sweep.paid": return out(`Swept ${str(p.amount)} *USDZ of earnings to the sweep wallet (${s})`, "ok");
+    case "sweep.paid": return out(`Swept ${str(p.amount)} USDZ of earnings to the sweep wallet (${s})`, "ok");
     case "sweep.refused":
     case "sweep.held":
     case "sweep.pending": return out(`Sweep ${s} ${r.event.split(".")[1]}: ${refusalWords(str(p.reason))}`, "refusal");

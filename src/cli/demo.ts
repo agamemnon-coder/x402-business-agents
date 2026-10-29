@@ -5,6 +5,7 @@
 // For a fresh demo world, point KIT11_KEYS_DIR and KIT11_DB at new locations; bootstrap creates new
 // accounts and mandates there.
 
+import { approvalHint } from "./hint.js";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { openDb } from "../db/open.js";
@@ -26,8 +27,7 @@ async function waitForExecuted(kind: string, label: string): Promise<void> {
   const db = openDb();
   const done = () => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'EXECUTED'").get(kind) as { proposal_id: string } | undefined;
   if (done()) return;
-  console.log(`\n⏸  ${label}: waiting for a person to approve. On the phone with a passkey (npm run relay), on the`);
-  console.log(`   approval page (npm run approvals, http://127.0.0.1:4200), or with npm run approve -- <id> <first 8 hex>.`);
+  console.log(`\n⏸  ${label}: waiting for a person to decide: ${approvalHint(db)}.`);
   for (;;) {
     const d = done();
     if (d) { console.log(`▶  ${d.proposal_id} executed; continuing.`); return; }

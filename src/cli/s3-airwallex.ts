@@ -1,5 +1,6 @@
 // The Airwallex side of scenario S3, run by npm run s3 once the sandbox keys are set.
 
+import { approvalHint } from "./hint.js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { proposeInvoicePayment, seedTreasury } from "../agents/euroBill.js";
@@ -53,5 +54,5 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
   const review = await attachReview(db, tools, out.proposal, `Invoice ${inv.invoice_no} matches the allowlisted beneficiary. Free EUR before: ${fromCents(Math.max(0, s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents))}.`);
   console.log(`REVIEW           ${review.recommendation} (${review.source === "claude" ? "Opus, advisory" : "no model"}): ${review.summary}`);
   console.log(`APPROVAL         ${out.proposal.proposal_id} expires ${t.expires_at}, sha256 ${out.proposal.terms_sha256}`);
-  console.log(`                 npm run proposals, then npm run approve -- ${out.proposal.proposal_id} ${out.proposal.terms_sha256.slice(0, 8)}`);
+  console.log(`                 ${approvalHint(db, out.proposal.proposal_id, out.proposal.terms_sha256.slice(0, 8))}`);
 }
