@@ -49,6 +49,8 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 | 14 | Stolen phone | Approve as the CFO | The passkey needs Face ID (user verification is required and checked); revocation means re-enrolment | `src/passkey/webauthn.ts` |
 | 15 | Insider with database access | Edit or truncate the log | The database refuses updates and deletes; the hash chain detects edits; an anchor printed in the audit report detects truncation or a full rehash | `test/audit.test.ts`, `test/audit-report.test.ts`, `npm run verify-log` |
 | 16 | Leaked secret | A key in git or in a model's context | No key ever goes to a model (tested); every commit is scanned for the real values; gitleaks scans the pushed commits and the whole history in CI | `test/adversarial.test.ts`, `.github/workflows/ci.yml` |
+| 17 | An agent (or a model steering it) that overspends on its card | Buy past the CFO's limit | The limit is set on the card at Airwallex (synced from the policy and read back), so Airwallex itself declines; a raise is a policy change approved with Face ID; the phone can only lower a card limit; the agent never sees the card number or CVV | `src/policy/cards.ts`, `test/cards.test.ts` |
+| 18 | Anyone who can reach the webhook URL, or a relay that forges events | Fake a card transaction on the dashboard | The relay accepts an event only with Airwallex's HMAC-SHA256 over `x-timestamp` + raw body and a timestamp within 5 minutes; the runner checks the signature again with its own copy of the secret; an event only records what Airwallex decided and moves no money; each transaction is recorded once by its Airwallex id, and the poll reads the same transactions from Airwallex directly | `worker/src/core.ts`, `src/policy/cardHooks.ts`, `test/relay-hooks.test.ts` |
 
 ## Limits on every external call
 
@@ -90,7 +92,9 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
   | Beneficiaries | `GET /beneficiaries`, `POST /beneficiaries/validate`, `POST /beneficiaries/create` (setup only) | Write at setup, then Read |
   | FX quotes and conversions | `POST /fx/quotes/create`, `POST /fx/conversions/create`, `GET /fx/conversions` | Write |
   | Transfers | `POST /transfers/create`, `GET /transfers`, `GET /transfers/{id}` | Write |
-  | Simulation (sandbox only) | `POST /simulation/deposit/create`, `POST /simulation/transfers/{id}/transition` | Write |
+  | Simulation (sandbox only) | `POST /simulation/deposit/create`, `POST /simulation/transfers/{id}/transition`, `POST /simulation/issuing/create` | Write |
+  | Issuing (cards) | `GET /issuing/cardholders`, `GET /issuing/cards`, `GET /issuing/cards/{id}`, `GET /issuing/transactions`, `POST /issuing/cardholders/create` and `POST /issuing/cards/create` (setup only), `POST /issuing/cards/{id}/update` (limits) | Write |
+  | Webhooks | `GET /webhooks`, `POST /webhooks/create` (setup only) | Write at setup, then none |
 
   The client refuses any base URL other than the sandbox (`src/airwallex/client.ts`). In production, an IP
   allowlist would be added as well, as Airwallex recommends

@@ -1,14 +1,50 @@
 # x402 Business Agents
 
-Three AI agents run a pay-per-query data business from one [Metal](https://docs.metalntwx.com) testnet account,
-each held to its own on-chain mandate. When a supplier raises its price, a customer disputes charges or a euro bill
-falls due, they stop and propose a priced change, and a person approves a SHA-256 hash of the exact terms before
-money moves. Airwallex books the earnings and pays the euro invoice with fee-aware FX above a reserve floor.
+**Give every AI agent its own company card, with limits the CFO sets.**
+
+Tidemark Data's three AI agents each hold a virtual Visa card from [Airwallex Issuing](https://www.airwallex.com/docs/issuing)
+and a [Metal](https://docs.metalntwx.com) mandate for paying per request over x402. One CFO policy sets the limits
+for both rails, and each rail enforces them itself: Airwallex declines a card purchase over the card's limit, and the
+Metal account refuses a payment over the mandate, whatever the agent tries. When an agent needs more (a dearer
+software plan, a supplier's price rise, a refund, a euro bill), it stops and asks. The CFO approves a SHA-256 hash of
+the exact terms with Face ID, and only then do the card, the mandate or the payment change. Airwallex also books the
+earnings and pays the euro invoice with fee-aware FX above a reserve floor.
 
 Built for the Airwallex Agentic Banking Hackathon, Starter Kit 11 (x402 Business Agents), Metal Award.
 
 > Work in progress (build phase until 13 November 2026). Everything runs live today, on Metal testnet and in the
 > Airwallex sandbox; approvals can be given on a phone with a passkey (Face ID).
+
+## Company cards (Airwallex Issuing)
+
+| Agent | Card | Per purchase | Per month | Buys |
+|---|---|---|---|---|
+| sourcing | virtual Visa | 30.00 EUR | 100.00 EUR | market data (Northwind Market Data) |
+| support | virtual Visa | 60.00 EUR | 150.00 EUR | helpdesk seats (Tailspin Helpdesk) |
+| treasury | virtual Visa | 25.00 EUR | 50.00 EUR | bookkeeping software (Contoso Books) |
+
+The merchants are fictional (Microsoft's sample company names).
+
+- **Issued and synced.** `npm run cards -- setup` gives each agent a DELEGATE cardholder and a virtual Visa card.
+  It sets the card's per-purchase and monthly limits to the CFO policy's `card.<agent>.per_tx` and
+  `card.<agent>.monthly`. The runner checks every few seconds that each card at Airwallex still has the policy's
+  limits, and it trusts what Airwallex reads back, not what it asked for.
+- **The card is the guardrail.** The agent does not check its own limit before buying, on purpose: even an agent that
+  ignores its policy cannot spend past the card. `npm run cards -- buy market-data-pro` (45.00 EUR on a 30.00 card)
+  is declined by Airwallex with `LIMIT_EXCEEDED`. The decline is in the audit log and shown red on the dashboard.
+- **A raise needs Face ID.** `npm run cards -- raise sourcing 50.00 --reason "…"` is the agent asking. It is an
+  ordinary policy change, approved on the phone. Once it runs, the card at Airwallex gets the new limit, and the same
+  purchase goes through. On the phone the CFO can only lower a card limit; a raise always comes as a proposal.
+- **Every authorisation is recorded once**, by Airwallex's card transaction id, whichever source sees it first:
+  - our own (simulated) charge;
+  - the runner's poll;
+  - an Airwallex webhook to the relay. The webhook's HMAC signature is checked on the relay and again on the runner
+    (`npm run cards -- webhook` subscribes, and the secret never reaches the screen).
+- **Honest limits.** In the sandbox the merchant's charge is Airwallex's simulation endpoint, but the approve or
+  decline is Airwallex's own. The card number and CVV never leave Airwallex: no call asks for them, and the ledger
+  keeps the last four digits.
+
+Run log: [docs/runs/2026-10-29-cards.md](docs/runs/2026-10-29-cards.md).
 
 ## The story
 
@@ -178,7 +214,8 @@ another hash, but the runner still executes nothing that is not a waiting propos
 
 ## CFO policy
 
-The CFO sets limits the agents work within, inside their on-chain mandates: a limit per payment for each agent,
+The CFO sets limits the agents work within: each agent's company card limits (per purchase and per month, synced to
+the card at Airwallex), and inside their on-chain mandates a limit per payment for each agent,
 the refund amounts above which a person must approve, the EUR and USD reserve floors, and which Airwallex payees
 are allowed. Each is checked before anything is signed: the sourcing agent aborts the x402 payment when the
 supplier's offer is over its limit (`policy_cap_exceeded`, nothing signed, the customer not charged), refunds and
@@ -254,7 +291,8 @@ every pushed and pull-request commit.
 | Agents | `src/agents/` (sourcing, customer, treasury, disputes, sweep, invoice, euro bill) |
 | Executors (the only code that moves money) | `src/executors/` |
 | Metal | `src/metal/` (metal-agent CLI wrapper, mandate loading, x402 payments, chain reads) |
-| Airwallex | `src/airwallex/` (client, port, REST adapter); a fake for tests in `test/fakes/` |
+| Airwallex | `src/airwallex/` (client, port, REST adapter, Issuing, webhooks); fakes for tests in `test/fakes/` |
+| Company cards | `src/policy/cards.ts` (issue, sync, record), `src/agents/cardBuyer.ts`, `src/policy/cardHooks.ts`, `src/cli/cards.ts` |
 | Claude | `src/claude/` |
 | Approval page (laptop, typed hash prefix) | `src/servers/approvals.ts` |
 | Passkeys (enrolment, verification, offline re-check) | `src/passkey/` |
