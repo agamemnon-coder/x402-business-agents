@@ -16,7 +16,10 @@ export interface EnrolmentWindow {
   window_id: string;
   /** base64url of 32 random bytes: the WebAuthn challenge the new passkey must sign. */
   challenge: string;
-  /** base64url WebAuthn user handle; the same for every enrolment, so a phone keeps one passkey for this site. */
+  /**
+   * base64url WebAuthn user handle, new for every window: a phone that already holds the pinned passkey keeps it
+   * until the runner accepts the new one (the same handle would make the phone overwrite it at creation).
+   */
   user_id: string;
   code_sha256: string;
   rp_id: string;
@@ -67,12 +70,11 @@ export function openEnrolment(db: DB, args: { rpId: string; origin: string; repl
   return db.transaction(() => {
     if (activePasskey(db) && !args.replace) throw new Error("a passkey is already enrolled; open the window with replace to enrol a new one (the old one is revoked once the new one is enrolled)");
     db.prepare("UPDATE passkey_enrolments SET status = 'CLOSED' WHERE status = 'OPEN'").run();
-    const earlier = db.prepare("SELECT user_id FROM passkey_enrolments ORDER BY opened_at LIMIT 1").get() as { user_id: string } | undefined;
     const code = newCode();
     const window: EnrolmentWindow = {
       window_id: `E-${randomBytes(4).toString("hex")}`,
       challenge: randomBytes(32).toString("base64url"),
-      user_id: earlier?.user_id ?? randomBytes(16).toString("base64url"),
+      user_id: randomBytes(16).toString("base64url"),
       code_sha256: codeSha256(code)!,
       rp_id: args.rpId,
       origin: args.origin,

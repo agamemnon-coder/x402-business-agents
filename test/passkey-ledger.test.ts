@@ -97,6 +97,25 @@ describe("decide() with a passkey", () => {
   });
 });
 
+describe("price options", () => {
+  const option = (id: string, opt: string): Terms => ({
+    schema: TERMS_SCHEMA, kind: "mandate_replace", proposal_id: id, expires_at: "2026-10-30T15:00:00Z", option: opt,
+    steps: [{ order: "1", agent: "treasury", replaces_credential_hash: "0xaa", credential_hash: "0x01" }],
+  });
+
+  it("decide() approves only one option for the same mandates, whatever the method", () => {
+    const db = openDb(":memory:");
+    const [a, b] = [option("P-0001", "A"), option("P-0002", "B")];
+    createProposal(db, { terms: a, createdBy: "treasury" }, t0);
+    createProposal(db, { terms: b, createdBy: "treasury" }, t0);
+    decide(db, { proposalId: "P-0001", decision: "APPROVED", typedPrefix: termsHash(a).slice(0, 8), approver: "max", method: "cli" }, t0);
+    expect(() => decide(db, { proposalId: "P-0002", decision: "APPROVED", typedPrefix: termsHash(b).slice(0, 8), approver: "max", method: "web" }, t0))
+      .toThrow(/another option, P-0001, was already approved/);
+    // Rejecting the other option stays possible.
+    expect(decide(db, { proposalId: "P-0002", decision: "REJECTED", typedPrefix: termsHash(b).slice(0, 8), approver: "max", method: "cli" }, t0)).toBe("REJECTED");
+  });
+});
+
 describe("enrolment windows", () => {
   const origin = "https://kit11.example.workers.dev";
   const rpId = "kit11.example.workers.dev";
@@ -129,6 +148,8 @@ describe("enrolment windows", () => {
     const first = openEnrolment(db, { rpId, origin }, t0).window;
     const second = openEnrolment(db, { rpId, origin }, new Date("2026-10-30T14:01:00Z")).window;
     expect(db.prepare("SELECT status FROM passkey_enrolments WHERE window_id = ?").get(first.window_id)).toEqual({ status: "CLOSED" });
+    // A new user handle each time: a new passkey never overwrites the pinned one on the phone before it is accepted.
+    expect(second.user_id).not.toBe(first.user_id);
     expect(openWindow(db, new Date("2026-10-30T14:10:59Z"))?.window_id).toBe(second.window_id);
     expect(openWindow(db, new Date("2026-10-30T14:11:00Z"))).toBeNull();
     expect(db.prepare("SELECT status FROM passkey_enrolments WHERE window_id = ?").get(second.window_id)).toEqual({ status: "EXPIRED" });

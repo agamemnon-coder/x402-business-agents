@@ -131,6 +131,18 @@ describe("phone approval through the relay", () => {
     expect(await w.phone.get(`/api/tickets/${String(sent.body.ticket)}`)).toMatchObject({ status: "executed" });
   });
 
+  it("answers a submission it could not process instead of leaving the phone waiting", async () => {
+    const w = world();
+    const auth = new FakeAuthenticator();
+    await enrol(w, auth);
+    const sent = await approveOnPhone(w, auth, "P-0002", 1);
+    w.db.exec("DROP TABLE passkey_assertions");
+    await w.runner.syncOnce();
+    await w.runner.syncOnce();
+    expect(await w.phone.get(`/api/tickets/${String(sent.body.ticket)}`)).toMatchObject({ status: "refused", message: expect.stringMatching(/could not process/) });
+    expect(w.executed).toEqual([]);
+  });
+
   it("pushes the state only when the ledger changed, and again in full if the relay lost it", async () => {
     const w = world();
     expect(await w.runner.syncOnce()).toMatchObject({ pushed: true });

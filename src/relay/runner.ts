@@ -79,6 +79,15 @@ export class RelayRunner {
   private async handle(item: InboxItem): Promise<void> {
     if (this.handled.has(item.ticket)) return;
     this.handled.add(item.ticket);
+    try {
+      await this.process(item);
+    } catch (e) {
+      // Never leave the phone waiting: an unexpected error is a verdict too (a resend is checked from scratch).
+      this.ack(item.ticket, "refused", `the runner could not process this submission (${(e instanceof Error ? e.message : String(e)).slice(0, 200)}); nothing was approved`);
+    }
+  }
+
+  private async process(item: InboxItem): Promise<void> {
     const { db } = this.deps;
     if (item.kind === "registration") {
       const out = await processRegistration(db, item, { label: this.deps.label ?? "max" }, this.now());
@@ -86,7 +95,7 @@ export class RelayRunner {
       return;
     }
     const out = await processAssertion(db, item, this.now());
-    this.ack(item.ticket, out.status, out.message);
+    this.ack(item.ticket, out.ack ?? out.status, out.message);
     if (out.status !== "approved" || !out.proposalId) return;
     const id = out.proposalId;
     const run = this.deps.execute(db, id).then(

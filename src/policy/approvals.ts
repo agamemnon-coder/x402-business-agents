@@ -79,6 +79,22 @@ function expireIfDue(db: DB, p: ProposalRow, now: Date): boolean {
   return true;
 }
 
+/**
+ * Price options replace the same mandates; once one is approved, the others must never be (the executor would
+ * refuse them on chain anyway, and supersedes them after it runs). Returns the approved alternative, if any.
+ */
+export function approvedAlternative(db: DB, p: Pick<ProposalRow, "proposal_id" | "kind" | "terms_json">): string | null {
+  if (p.kind !== "mandate_replace") return null;
+  const replaced = (json: string) => {
+    const steps = (JSON.parse(json) as { steps?: { replaces_credential_hash?: string }[] }).steps ?? [];
+    return steps.map((s) => s.replaces_credential_hash).filter((h): h is string => typeof h === "string");
+  };
+  const mine = new Set(replaced(p.terms_json));
+  const others = db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE kind = 'mandate_replace' AND status IN ('APPROVED', 'EXECUTING', 'EXECUTED', 'FAILED') AND proposal_id != ?")
+    .all(p.proposal_id) as { proposal_id: string; terms_json: string }[];
+  return others.find((o) => replaced(o.terms_json).some((h) => mine.has(h)))?.proposal_id ?? null;
+}
+
 export type Decision = "APPROVED" | "REJECTED";
 export type ApprovalMethod = "web" | "cli" | "telegram" | "passkey";
 
@@ -117,6 +133,8 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
       return "EXPIRED";
     }
     if (!prefixMatches(p.terms_sha256, args.typedPrefix)) throw new Error("typed prefix does not match the terms hash");
+    const alternative = args.decision === "APPROVED" ? approvedAlternative(db, p) : null;
+    if (alternative) throw new Error(`another option, ${alternative}, was already approved`);
     db.prepare(
       `INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, note, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,

@@ -41,7 +41,8 @@ const stop = () => {
   if (stopping) return;
   stopping = true;
   console.log(`${stamp()} stopping; waiting for running executions`);
-  void runner.idle().then(() => process.exit(0));
+  // Deliver the last verdicts (an execution may just have finished) before leaving.
+  void runner.idle().then(() => runner.syncOnce()).catch(() => undefined).then(() => process.exit(0));
 };
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);

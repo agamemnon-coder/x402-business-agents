@@ -7,7 +7,7 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simp
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { termsHash, type Terms } from "../lib/terms.js";
-import { decide, type ProposalRow } from "../policy/approvals.js";
+import { approvedAlternative, decide, type ProposalRow } from "../policy/approvals.js";
 import { codeSha256, openWindow, passkeyById, recordPasskey } from "./ledger.js";
 import { assertionSha256, verifyApprovalSignature, verifyEnrolmentResponse } from "./webauthn.js";
 
@@ -61,31 +61,21 @@ export interface AssertionOutcome {
   status: "approved" | "too_late" | "already" | "refused";
   proposalId: string | null;
   message: string;
+  /** For "already": the verdict the phone should see, the first outcome of this very signature if it was handled. */
+  ack?: "approved" | "executed" | "failed" | "too_late" | "already";
 }
 
 const DECIDED = new Set(["APPROVED", "EXECUTING", "EXECUTED", "FAILED"]);
 
-/**
- * Price options replace the same mandates; once one is approved the others must never be (the executor would
- * refuse them on chain anyway, and supersedes them after it runs). Returns the approved alternative, if any.
- */
-function approvedAlternative(db: DB, p: ProposalRow): string | null {
-  if (p.kind !== "mandate_replace") return null;
-  const replaced = (json: string) => {
-    const steps = (JSON.parse(json) as { steps?: { replaces_credential_hash?: string }[] }).steps ?? [];
-    return steps.map((s) => s.replaces_credential_hash).filter((h): h is string => typeof h === "string");
-  };
-  const mine = new Set(replaced(p.terms_json));
-  const others = db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE kind = 'mandate_replace' AND status IN ('APPROVED', 'EXECUTING', 'EXECUTED', 'FAILED') AND proposal_id != ?")
-    .all(p.proposal_id) as { proposal_id: string; terms_json: string }[];
-  return others.find((o) => replaced(o.terms_json).some((h) => mine.has(h)))?.proposal_id ?? null;
-}
-
 /** A passkey approval: verified against the proposal's own hash, then decide() with method passkey. */
 export async function processAssertion(db: DB, item: InboxItem, now = new Date()): Promise<AssertionOutcome> {
-  const refuse = (proposalId: string | null, reason: string, credentialId?: string): AssertionOutcome => {
+  // Anyone can post to the relay, so a submission whose signature was not verified never reaches the hash-chained
+  // audit log (it would let strangers fill it, with their own text). The phone still gets the reason.
+  const refuse = (proposalId: string | null, reason: string): AssertionOutcome => ({ status: "refused", proposalId, message: reason });
+  // Refusals that say something about the ledger or about a verified signature are audited, in our own words.
+  const refuseAudited = (proposalId: string, reason: string, credentialId?: string): AssertionOutcome => {
     audit(db, "system", "passkey.refused", proposalId, { reason, ticket: item.ticket, credential: credentialId ? credentialId.slice(0, 8) : null }, now);
-    return { status: "refused", proposalId, message: reason };
+    return refuse(proposalId, reason);
   };
   const body = parse(AssertionBody, item.body);
   if (!body) return refuse(null, "malformed submission");
@@ -93,8 +83,13 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   const sha = assertionSha256(response);
   const getProposal = (id: string) => db.prepare("SELECT * FROM proposals WHERE proposal_id = ?").get(id) as ProposalRow | undefined;
 
-  const seen = db.prepare("SELECT proposal_id FROM passkey_assertions WHERE assertion_sha256 = ?").get(sha) as { proposal_id: string } | undefined;
-  if (seen) return { status: "already", proposalId: seen.proposal_id, message: `this signature was already used: ${seen.proposal_id} is ${getProposal(seen.proposal_id)?.status}` };
+  const seen = db.prepare("SELECT proposal_id, outcome FROM passkey_assertions WHERE assertion_sha256 = ?").get(sha) as { proposal_id: string; outcome: string } | undefined;
+  if (seen) {
+    // Handled before (a restart, a resend): report what came of it; nothing runs again.
+    const now_ = getProposal(seen.proposal_id)?.status;
+    const ack = seen.outcome === "TOO_LATE" ? "too_late" : now_ === "EXECUTED" ? "executed" : now_ === "FAILED" ? "failed" : "approved";
+    return { status: "already", ack, proposalId: seen.proposal_id, message: `this signature was already handled: ${seen.proposal_id} is ${now_}` };
+  }
 
   const p = getProposal(body.proposal_id);
   if (!p) return refuse(null, `no proposal ${body.proposal_id}`);
@@ -107,15 +102,15 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   } catch {
     intact = false;
   }
-  if (!intact) return refuse(p.proposal_id, `the stored terms of ${p.proposal_id} no longer match their hash`);
+  if (!intact) return refuseAudited(p.proposal_id, `the stored terms of ${p.proposal_id} no longer match their hash`);
   const alternative = approvedAlternative(db, p);
   if (alternative) return refuse(p.proposal_id, `another option, ${alternative}, was already approved`);
 
   const pk = passkeyById(db, response.id);
-  if (!pk) return refuse(p.proposal_id, "this passkey is not enrolled", response.id);
-  if (pk.status !== "ACTIVE") return refuse(p.proposal_id, "this passkey was revoked", response.id);
+  if (!pk) return refuse(p.proposal_id, "this passkey is not enrolled");
+  if (pk.status !== "ACTIVE") return refuse(p.proposal_id, "this passkey was revoked");
   const v = await verifyApprovalSignature(response, p.terms_sha256, pk);
-  if (!v.ok) return refuse(p.proposal_id, v.reason, response.id);
+  if (!v.ok) return refuse(p.proposal_id, v.reason);
 
   const approver = `${pk.label} (passkey ${pk.credential_id.slice(0, 8)})`;
   const passkey = { credentialId: pk.credential_id, assertionSha256: sha };
@@ -130,9 +125,6 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
           { terms_sha256: p.terms_sha256, approver, method: "passkey", expires_at: p.expires_at, passkey: { credential_id: pk.credential_id, assertion_sha256: sha } }, now);
         result = "EXPIRED";
       } else {
-        // Checked again inside the transaction: another process may have approved an alternative meanwhile.
-        const late = approvedAlternative(db, current);
-        if (late) throw new Error(`another option, ${late}, was already approved`);
         const r = decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver, method: "passkey", signedSha256: p.terms_sha256, passkey }, now);
         result = r === "APPROVED" ? "APPROVED" : "EXPIRED";
       }
@@ -145,7 +137,7 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
         : { status: "too_late", proposalId: p.proposal_id, message: `${p.proposal_id} expired at ${p.expires_at}; nothing was approved` };
     }).immediate();
   } catch (e) {
-    return refuse(p.proposal_id, (e as Error).message.slice(0, 240), response.id);
+    return refuseAudited(p.proposal_id, (e as Error).message.slice(0, 240), response.id);
   }
 }
 
@@ -157,27 +149,31 @@ export interface RegistrationOutcome {
 
 /** A new passkey: the window must be open, the code right, and the passkey created against the window. */
 export async function processRegistration(db: DB, item: InboxItem, opts: { label: string }, now = new Date()): Promise<RegistrationOutcome> {
-  const refuse = (reason: string): RegistrationOutcome => {
+  // Only a submission with the right code is audited (it came from whoever holds the code), in our own words.
+  const refuse = (reason: string): RegistrationOutcome => ({ status: "refused", message: reason, credentialId: null });
+  const refuseAudited = (reason: string, detail = reason): RegistrationOutcome => {
     audit(db, "system", "passkey.enrol_refused", null, { reason, ticket: item.ticket }, now);
-    return { status: "refused", message: reason, credentialId: null };
+    return refuse(detail);
   };
   const body = parse(RegistrationBody, item.body);
   if (!body) return refuse("malformed submission");
+  const response = body.credential as RegistrationResponseJSON;
+  const pinned = passkeyById(db, response.id);
+  if (pinned?.status === "ACTIVE") return { status: "enrolled", message: `passkey ${response.id.slice(0, 8)} is enrolled for ${pinned.label}`, credentialId: pinned.credential_id };
   const w = openWindow(db, now);
   if (!w) return refuse("no enrolment window is open; ask for a new code");
   // The relay checked the code too; the runner does not rely on that.
   if (codeSha256(body.code) !== w.code_sha256) return refuse("wrong enrolment code");
-  const response = body.credential as RegistrationResponseJSON;
   const v = await verifyEnrolmentResponse(response, w);
-  if (!v.ok) return refuse(v.reason);
-  if (v.credentialId !== response.id) return refuse("the credential id does not match the new passkey");
+  if (!v.ok) return refuseAudited("the new passkey did not verify against the enrolment window", v.reason);
+  if (v.credentialId !== response.id) return refuseAudited("the credential id does not match the new passkey");
   try {
     recordPasskey(db, {
       window: w, credentialId: v.credentialId, publicKey: v.publicKey, counter: v.counter, transports: v.transports,
       aaguid: v.aaguid, registrationJson: JSON.stringify(response), label: opts.label,
     }, now);
   } catch (e) {
-    return refuse((e as Error).message.slice(0, 240));
+    return refuseAudited((e as Error).message.slice(0, 240));
   }
   return { status: "enrolled", message: `passkey ${v.credentialId.slice(0, 8)} enrolled for ${opts.label}; approvals now need it`, credentialId: v.credentialId };
 }

@@ -42,7 +42,7 @@ function allowPasskeyApprovals(db: DB): void {
       db.exec("INSERT INTO approvals_v2 SELECT * FROM approvals");
       db.exec("DROP TABLE approvals");
       db.exec("ALTER TABLE approvals_v2 RENAME TO approvals");
-      const dangling = db.pragma("foreign_key_check") as unknown[];
+      const dangling = db.pragma("foreign_key_check(approvals)") as unknown[];
       if (dangling.length > 0) throw new Error(`foreign key check failed after migrating approvals: ${JSON.stringify(dangling)}`);
     }).immediate();
   } finally {

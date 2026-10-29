@@ -7,7 +7,7 @@ import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { activePasskey, openEnrolment, openWindow } from "../src/passkey/ledger.js";
 import { processAssertion, processRegistration, type InboxItem } from "../src/passkey/process.js";
-import { challengeFor, reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
+import { assertionSha256, challengeFor, reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { FakeAuthenticator } from "./fakes/authenticator.js";
 
@@ -68,7 +68,8 @@ describe("enrolment", () => {
     }
     expect(activePasskey(db)).toBeNull();
     expect(openWindow(db, t0)?.window_id).toBe(window.window_id);
-    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'passkey.enrol_refused'")).toBe(cases.length);
+    // Only submissions that carried the right code reach the audit log; a wrong code or junk is not the approver.
+    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'passkey.enrol_refused'")).toBe(4);
     const late = new Date("2026-10-30T14:10:00Z");
     const out = await processRegistration(db, item("registration", { code, credential: auth.register(good) }), { label: "max" }, late);
     expect(out).toMatchObject({ status: "refused", message: expect.stringMatching(/no enrolment window/) });
@@ -97,7 +98,8 @@ describe("approval by passkey", () => {
     expect(out).toMatchObject({ status: "refused", message: expect.stringMatching(/challenge/) });
     expect(count(db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
     expect([status(db, "P-0001"), status(db, "P-0002")]).toEqual(["PENDING_APPROVAL", "PENDING_APPROVAL"]);
-    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'passkey.refused'")).toBe(1);
+    // Anyone can post a signature that does not verify; it is refused without writing to the audit log.
+    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'passkey.refused'")).toBe(0);
   });
 
   it("refuses another origin, another rpId and a signature without Face ID", async () => {
@@ -184,6 +186,27 @@ describe("approval by passkey", () => {
   });
 });
 
+describe("after a restart", () => {
+  it("answers a signature it already handled with its first outcome, and runs nothing again", async () => {
+    const { db, auth } = await enrolled();
+    const hash = propose(db, "P-0001");
+    const signed = auth.sign({ challenge: challengeFor(hash), origin: ORIGIN, rpId: RP, counter: 1 });
+    expect((await processAssertion(db, approval("P-0001", hash, signed), t0)).status).toBe("approved");
+    db.prepare("UPDATE proposals SET status = 'EXECUTED' WHERE proposal_id = 'P-0001'").run();
+    expect(await processAssertion(db, approval("P-0001", hash, signed), t0)).toMatchObject({ status: "already", ack: "executed" });
+  });
+
+  it("answers an enrolment it already accepted as enrolled", async () => {
+    const db = openDb(":memory:");
+    const auth = new FakeAuthenticator();
+    const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN }, t0);
+    const body = { code, credential: auth.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) };
+    expect((await processRegistration(db, item("registration", body), { label: "max" }, t0)).status).toBe("enrolled");
+    expect(await processRegistration(db, item("registration", body), { label: "max" }, t0)).toMatchObject({ status: "enrolled", credentialId: auth.credentialId });
+    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event LIKE 'passkey.enrol%'")).toBe(2);
+  });
+});
+
 describe("price options", () => {
   const option = (id: string, opt: string, price: string): Terms => ({
     schema: TERMS_SCHEMA, kind: "mandate_replace", proposal_id: id, expires_at: "2026-10-30T15:00:00Z", option: opt, query_price: price,
@@ -218,6 +241,15 @@ describe("offline re-verification", () => {
     db.prepare("UPDATE passkey_assertions SET assertion_json = ?").run(JSON.stringify(tampered));
     const [check] = await reverifyPasskeyApprovals(db);
     expect(check).toMatchObject({ ok: false, what: "passkey approval P-0001" });
+  });
+
+  it("catches a stored signature that is consistent with its hash but does not verify", async () => {
+    const { db, auth } = await enrolled();
+    const hash = propose(db, "P-0001");
+    await processAssertion(db, approval("P-0001", hash, auth.sign({ challenge: challengeFor(hash), origin: ORIGIN, rpId: RP, counter: 1 })), t0);
+    const forged = auth.sign({ challenge: challengeFor("cd".repeat(32)), origin: ORIGIN, rpId: RP, counter: 1 });
+    db.prepare("UPDATE passkey_assertions SET assertion_json = ?, assertion_sha256 = ?").run(JSON.stringify(forged), assertionSha256(forged));
+    expect((await reverifyPasskeyApprovals(db))[0]).toMatchObject({ ok: false, detail: expect.stringMatching(/challenge/) });
   });
 
   it("flags a passkey approval that has no stored signature", async () => {
