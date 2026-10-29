@@ -23,6 +23,8 @@ export interface Pages {
   /** The approval and enrolment pages' script and stylesheet, served as /assets/approve.js and .css. */
   client: string;
   css: string;
+  /** Inter (woff2, base64), served as /assets/inter.woff2. */
+  font: string;
   csp: { dashboard: string; month: string; demo: string; approve: string; enrol: string; policy: string };
 }
 
@@ -78,6 +80,11 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
   if (path === "/policy") return page(pages.policy, pages.csp.policy);
   if (path === "/assets/approve.js") return new Response(pages.client, { headers: { ...COMMON_HEADERS, "content-type": "text/javascript; charset=utf-8" } });
+  if (path === "/assets/inter.woff2") {
+    return new Response(Uint8Array.from(atob(pages.font), (c) => c.charCodeAt(0)), {
+      headers: { ...COMMON_HEADERS, "content-type": "font/woff2", "cache-control": "public, max-age=86400" },
+    });
+  }
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });
   return null;
 }

@@ -316,7 +316,7 @@ describe("enrolment from the phone", () => {
 
 describe("pages", () => {
   const pages: Pages = {
-    dashboard: "<!doctype html><title>d</title>", month: "<!doctype html><title>m</title>", demo: "<!doctype html><title>x</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", policy: "<!doctype html><title>p</title>", client: "export {};", css: "body{}",
+    dashboard: "<!doctype html><title>d</title>", month: "<!doctype html><title>m</title>", demo: "<!doctype html><title>x</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", policy: "<!doctype html><title>p</title>", client: "export {};", css: "body{}", font: btoa("wOF2\u0000\u0001"),
     csp: { dashboard: "default-src 'none'; script-src 'sha256-x'", month: "default-src 'none'; script-src 'sha256-m'", demo: "default-src 'none'; script-src 'sha256-x'", approve: "default-src 'none'; script-src 'self'", enrol: "default-src 'none'; script-src 'self'", policy: "default-src 'none'; script-src 'self'" },
   };
   const page = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages);
@@ -333,6 +333,9 @@ describe("pages", () => {
     const js = page("/assets/approve.js")!;
     expect(js.headers.get("content-type")).toMatch(/^text\/javascript/);
     expect(page("/assets/approve.css")!.headers.get("content-type")).toMatch(/^text\/css/);
+    const font = page("/assets/inter.woff2")!;
+    expect(font.headers.get("content-type")).toBe("font/woff2");
+    expect([...new Uint8Array(await font.arrayBuffer())]).toEqual([0x77, 0x4f, 0x46, 0x32, 0, 1]);
     for (const res of [d, js]) {
       expect(res.headers.get("x-content-type-options")).toBe("nosniff");
       expect(res.headers.get("referrer-policy")).toBe("no-referrer");

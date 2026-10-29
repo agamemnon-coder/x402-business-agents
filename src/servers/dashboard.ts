@@ -10,8 +10,13 @@ import type { DB } from "../db/open.js";
 import { buildSnapshot } from "../dashboard/snapshot.js";
 import { simulateMonth, type MonthReport } from "../sim/month.js";
 import type { Story } from "../demo/story.js";
+import type { Recorded } from "../demo/recorded.js";
+import { ICONS } from "../ui/icons.js";
 
-export const PAGE = readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8");
+const PAGE_TEMPLATE = readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8");
+const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
+/** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
+export const FONT = readFileSync(new URL("../ui/inter.woff2", import.meta.url));
 const MONTH_TEMPLATE = readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8");
 const DEMO_TEMPLATE = readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8");
 const STORY_FILE = new URL("../../docs/demo/story.json", import.meta.url);
@@ -24,8 +29,19 @@ const inlineHash = (page: string, tag: "script" | "style") => {
 };
 const cspFor = (page: string) => [
   "default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "connect-src 'self'",
-  "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+  "font-src 'self'", "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
+
+/**
+ * The dashboard page: the icon set goes into its script (so before the CSP hash), and the recorded run a guest sees
+ * (docs/demo/snapshot.json unless one is given) into its data block, "<" escaped.
+ */
+export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
+  return PAGE_TEMPLATE
+    .replace("__ICONS_JSON__", () => JSON.stringify(ICONS))
+    .replace("__RECORDED_JSON__", () => JSON.stringify(recorded).replace(/</g, "\\u003c"));
+}
+export const PAGE = dashboardPage();
 // Only the page's own script and style may run; data arrives over fetch from this origin only.
 export const CSP = cspFor(PAGE);
 /** The month replay carries its data inside the page, so it needs no request at all once loaded. */
@@ -74,6 +90,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.setHeader("Content-Security-Policy", CSP);
     // Here the snapshot needs no viewer key (loopback only).
     res.type("html").send(PAGE.replace('<body data-mode="relay">', '<body data-mode="local">'));
+  });
+
+  app.get("/assets/inter.woff2", (_req, res) => {
+    res.type("font/woff2").send(FONT);
   });
 
   app.get("/demo", (_req, res) => {

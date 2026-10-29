@@ -1,10 +1,10 @@
-// The files the relay Worker serves, gathered from src/ at deploy time: the dashboard page (the same file the
-// local dashboard serves, under the same CSP), the phone's approval and enrolment pages, their stylesheet, and the
-// phone script with its TypeScript types stripped. npm run relay:deploy writes them to worker/src/pages.gen.ts.
+// The files the relay Worker serves, gathered from src/ at deploy time: the dashboard page (the same page the
+// local dashboard serves, under the same CSP), the phone's approval and enrolment pages, their stylesheet, the
+// phone script with its TypeScript types stripped, and the Inter font. npm run relay:deploy writes them to worker/src/pages.gen.ts.
 
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { CSP as DASHBOARD_CSP, DEMO_CSP, MONTH_CSP, demoPage, monthPage } from "../servers/dashboard.js";
+import { CSP as DASHBOARD_CSP, DEMO_CSP, FONT, MONTH_CSP, PAGE as DASHBOARD_PAGE, demoPage, monthPage } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -21,7 +21,7 @@ export function buildPages(): Pages {
     reportDiagnostics: false,
   }).outputText;
   return {
-    dashboard: read("../dashboard/page.html"),
+    dashboard: DASHBOARD_PAGE,
     month: monthPage(),
     demo: demoPage(),
     approve: read("../approve/page.html"),
@@ -29,6 +29,7 @@ export function buildPages(): Pages {
     policy: read("../approve/policy.html"),
     client,
     css: read("../approve/style.css"),
+    font: FONT.toString("base64"),
     csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }

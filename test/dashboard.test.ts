@@ -9,7 +9,8 @@ import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
 import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal } from "../src/policy/approvals.js";
-import { dashboardApp, monthPage, MONTH_CSP } from "../src/servers/dashboard.js";
+import { CSP, dashboardApp, dashboardPage, FONT, monthPage, MONTH_CSP, PAGE as BUILT_PAGE } from "../src/servers/dashboard.js";
+import type { Recorded } from "../src/demo/recorded.js";
 import { createHash } from "node:crypto";
 import { simulateMonth } from "../src/sim/month.js";
 import { setSetting } from "../src/world/settings.js";
@@ -243,6 +244,8 @@ describe("dashboard page", () => {
   it("never turns data into HTML", () => {
     expect(PAGE).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write|\beval\(|new Function/);
     expect(PAGE).toMatch(/textContent|createTextNode/);
+    // The CSP allows the one hashed <style> only: a style attribute would be blocked.
+    expect(PAGE).not.toMatch(/\sstyle=|setAttribute\("style"/);
     // Relative URLs only, so another host can serve the same file.
     expect(PAGE).toContain(`fetch("api/snapshot"`);
     expect(PAGE).toContain(`"approve/" + encodeURIComponent(`);
@@ -268,16 +271,34 @@ describe("dashboard server", () => {
 
   it("serves the snapshot as JSON and a page with no ledger data in it, under a strict CSP", async () => {
     const db = ledger();
-    createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "refund_batch", proposal_id: "P-0007", expires_at: "2099-01-01T00:00:00Z", refunds: [] } as Terms, createdBy: "support" }, t0);
+    createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "refund_batch", proposal_id: "P-0907", expires_at: "2099-01-01T00:00:00Z", refunds: [] } as Terms, createdBy: "support" }, t0);
     const base = await serve(db);
     const snap = await fetch(`${base}/api/snapshot`);
     expect(snap.headers.get("content-type")).toMatch(/application\/json/);
-    expect(((await snap.json()) as { pending: { proposal_id: string }[] }).pending[0]!.proposal_id).toBe("P-0007");
+    expect(((await snap.json()) as { pending: { proposal_id: string }[] }).pending[0]!.proposal_id).toBe("P-0907");
     const page = await fetch(`${base}/`);
     const html = await page.text();
-    expect(html).toBe(PAGE.replace('<body data-mode="relay">', '<body data-mode="local">'));
-    expect(html).not.toContain("P-0007");
+    expect(html).toBe(BUILT_PAGE.replace('<body data-mode="relay">', '<body data-mode="local">'));
+    // The page carries the recorded run for guests, never this ledger's data.
+    expect(html).not.toContain("P-0907");
     expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'sha256-[^']+'; style-src 'sha256-[^']+'; connect-src 'self'/);
+  });
+
+  it("builds the page with its icons in the hashed script and the recorded run in a data block", async () => {
+    expect(BUILT_PAGE).not.toMatch(/__ICONS_JSON__|__RECORDED_JSON__/);
+    const script = /<script>([\s\S]*?)<\/script>/.exec(BUILT_PAGE)![1]!;
+    expect(script).toContain('"credit-card":[["rect"');
+    expect(CSP).toContain(`'sha256-${createHash("sha256").update(script).digest("base64")}'`);
+    expect(CSP).toContain("font-src 'self'");
+    const recorded = JSON.parse(/<script type="application\/json" id="recorded-data">([\s\S]*?)<\/script>/.exec(BUILT_PAGE)![1]!) as Recorded;
+    expect(recorded.proof.over_limit_eur).toBe("0.00");
+    expect(recorded.snapshot.passkey.credential).toBeNull();
+    // A "</script>" in a recorded name cannot end the data block early.
+    const evil = { ...recorded, run: "</script><script>alert(1)</script>" };
+    expect(dashboardPage(evil)).not.toContain("</script><script>alert(1)");
+    const font = await fetch(`${await serve(ledger())}/assets/inter.woff2`);
+    expect(font.headers.get("content-type")).toBe("font/woff2");
+    expect(Buffer.from(await font.arrayBuffer()).equals(FONT)).toBe(true);
   });
 
   it("serves the month replay with its data inside the page, under a CSP that matches its one script", async () => {

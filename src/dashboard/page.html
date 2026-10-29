@@ -4,277 +4,432 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Treasury Control</title>
+<meta name="color-scheme" content="light dark">
+<title>Tidemark Data · Company cards for AI agents</title>
 <style>
+@font-face { font-family: "Inter"; src: url("/assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
-  --bg: #f4f5f7; --surface: #ffffff; --surface-2: #f8f9fb; --text: #0f172a; --muted: #5b6577; --faint: #8a93a3;
-  --border: #e3e6eb; --accent: #2b59d9; --accent-soft: #e8eefc;
-  --ok: #157f3c; --ok-soft: #e6f4ea; --warn: #a15c07; --warn-soft: #fdf3e2; --bad: #b42318; --bad-soft: #fdecea;
-  --bar: #2b59d9; --bar-track: #e9ecf1; --shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  /* One accent; green, amber and red only for status. */
+  --bg: #f6f7f9; --surface: #ffffff; --sunken: #f1f3f6; --text: #0b1220; --muted: #4b5563; --faint: #6b7280;
+  --border: #e5e8ec; --accent: #4f46e5; --accent-ink: #ffffff; --accent-soft: #eef0ff;
+  --ok: #0f8a4f; --ok-soft: #e7f6ee; --wait: #b45309; --wait-soft: #fdf1e3; --bad: #c8261b; --bad-soft: #fdecea;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, .06); --shadow: 0 1px 3px rgba(16, 24, 40, .08), 0 8px 24px rgba(16, 24, 40, .06);
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
-    --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440;
-    --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
-    --bar: #7d9bff; --bar-track: #232a38; --shadow: none; color-scheme: dark;
-  }
-}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0c11; --surface: #12151c; --sunken: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+  --border: #222734; --accent: #8b87ff; --accent-ink: #0a0c11; --accent-soft: #1b1d3a;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --wait: #f2a34a; --wait-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
+  --shadow-sm: none; --shadow: 0 0 0 1px #1b2030; color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
-  --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440;
-  --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
-  --bar: #7d9bff; --bar-track: #232a38; --shadow: none; color-scheme: dark;
-}
+  --bg: #0a0c11; --surface: #12151c; --sunken: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+  --border: #222734; --accent: #8b87ff; --accent-ink: #0a0c11; --accent-soft: #1b1d3a;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --wait: #f2a34a; --wait-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
+  --shadow-sm: none; --shadow: 0 0 0 1px #1b2030; color-scheme: dark; }
 * { box-sizing: border-box; }
-html, body { margin: 0; }
-body {
-  background: var(--bg); color: var(--text);
-  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-.num, .mono { font-variant-numeric: tabular-nums; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
-header {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface);
-}
-.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
-.brand h1 { font-size: 16px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
-.brand .sub { color: var(--muted); font-size: 13px; }
-.status { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 12.5px; flex-wrap: wrap; }
-.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: var(--faint); vertical-align: 1px; }
-.live .dot { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
-.stale .dot { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
-.live .state { color: var(--ok); font-weight: 600; }
-.stale .state { color: var(--warn); font-weight: 600; }
-.warn-text { color: var(--warn); font-weight: 600; }
-.agent .line2 .policy { color: var(--accent); font-weight: 600; }
-main {
-  display: grid; gap: 14px; padding: 14px 20px 20px;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
-  grid-template-areas: "pending cards feed" "refusals budgets feed" "refusals treasury feed";
-  grid-template-rows: auto auto 1fr;
-  height: calc(100vh - 53px); min-height: 640px;
-}
-section {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow);
-  display: flex; flex-direction: column; min-height: 0;
-}
-section > h2 {
-  font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
-  margin: 0; padding: 12px 16px 10px; display: flex; align-items: center; gap: 8px;
-}
-section > h2 .count {
-  font-variant-numeric: tabular-nums; background: var(--surface-2); border: 1px solid var(--border);
-  color: var(--text); border-radius: 999px; padding: 0 7px; font-size: 11.5px; letter-spacing: 0;
-}
-section > h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--faint); }
-.body { padding: 0 16px 14px; overflow: auto; min-height: 0; }
-#pending { grid-area: pending; }
-#cards { grid-area: cards; }
-#budgets { grid-area: budgets; }
-#treasury { grid-area: treasury; }
-.counts { display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
-.counts b { font-size: 18px; font-weight: 700; margin-right: 4px; }
-.counts .ok b { color: var(--ok); } .counts .wait b { color: var(--warn); } .counts .bad b { color: var(--bad); }
-.frozen { background: var(--bad); color: #fff; padding: 10px 20px; font-weight: 650; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.frozen[hidden] { display: none; }
-.frozen small { font-weight: 400; opacity: .9; }
-a.stop { color: var(--bad); border: 1px solid var(--bad); border-radius: 7px; padding: 3px 10px; text-decoration: none; font-weight: 650; }
-.pcard .frozenchip { color: var(--bad); font-weight: 650; }
-.monthlink { color: var(--accent); text-decoration: none; font-weight: 600; }
-.honest { flex-basis: 100%; margin: 2px 0 0; font-size: 12px; color: var(--muted); max-width: 70ch; }
-.honest summary { cursor: pointer; }
-.honest p { margin: 4px 0 0; }
 [hidden] { display: none !important; }
-section#guest { max-width: 760px; margin: 48px auto; padding: 0 20px; border: 0; background: none; box-shadow: none; display: block; }
-section#guest > h2 { font-size: 30px; line-height: 1.2; letter-spacing: -.01em; margin: 0 0 14px; padding: 0; border: 0; text-transform: none; color: var(--text); font-weight: 700; display: block; }
-section#guest p { color: var(--muted); font-size: 16px; margin: 0 0 22px; }
-section#guest .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 26px; }
-section#guest .ctas a { display: inline-block; padding: 12px 18px; border-radius: 10px; font-weight: 650; text-decoration: none; border: 1px solid var(--border); color: var(--text); background: var(--surface); }
-section#guest .ctas a.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-section#guest .cfo { font-size: 13.5px; }
-a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-details.sandbox { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
-details.sandbox summary { cursor: pointer; }
-.card.advise-reject { border-color: var(--bad); }
-a.btn.danger { background: var(--bad); color: #fff; }
-#refusals { grid-area: refusals; }
-#feed { grid-area: feed; }
-#pending.has-items { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 400 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+button { font: inherit; }
 
-/* Pending approvals */
-.card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-2); }
-.card + .card { margin-top: 10px; }
-.card.closed { opacity: .6; }
-.card .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.card .title { font-weight: 650; }
-.card .pid { color: var(--muted); }
-.card .summary { margin: 6px 0 8px; }
-.card .meta { display: flex; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; align-items: center; }
-.card .review { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.card .actions { margin-top: 10px; display: flex; align-items: center; gap: 10px; }
-.btn {
-  display: inline-block; text-decoration: none; background: var(--accent); color: #fff; font-weight: 600;
-  padding: 7px 12px; border-radius: 7px; font-size: 13px; white-space: nowrap;
+/* Top bar and navigation, shared by every screen. */
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 28px; height: 64px; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: -.01em; text-decoration: none; white-space: nowrap; }
+.brand .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.brand .mark svg { width: 16px; height: 16px; }
+.nav { display: flex; gap: 4px; }
+.nav a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: 14px; padding: 8px 12px; border-radius: 8px; white-space: nowrap; }
+.nav a.on { color: var(--text); background: var(--sunken); }
+.top .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.live.on .dot { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+.live.rec .dot { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 14px/1 var(--font); padding: 12px 16px; min-height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.stop { border-color: var(--bad); color: var(--bad); background: transparent; min-height: 40px; padding: 9px 14px; font-size: 13px; }
+.btn.sm { min-height: 36px; padding: 8px 12px; font-size: 13px; }
+.note { max-width: 1200px; margin: 0 auto; padding: 10px 32px 0; font-size: 12.5px; color: var(--faint); }
+.note summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 28px; }
+.note summary::-webkit-details-marker { display: none; }
+.note summary svg { width: 14px; height: 14px; }
+.note p { margin: 4px 0 0; max-width: 90ch; }
+
+/* Status pills. */
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--sunken); color: var(--muted); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.wait { background: var(--wait-soft); color: var(--wait); } .pill.bad { background: var(--bad-soft); color: var(--bad); } .pill.acc { background: var(--accent-soft); color: var(--accent); }
+
+/* The emergency stop band. */
+.frozen { background: var(--bad); color: #fff; padding: 12px 32px; display: flex; gap: 12px; align-items: center; font-weight: 600; flex-wrap: wrap; }
+.frozen small { font-weight: 400; opacity: .9; }
+
+/* Dashboard. */
+.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 32px 48px; }
+.head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.head h1 { margin: 0; font-size: 28px; letter-spacing: -.02em; font-weight: 700; }
+.head .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.recbanner { display: flex; gap: 10px; align-items: center; background: var(--accent-soft); color: var(--text); border-radius: 12px; padding: 12px 16px; font-size: 14px; margin-bottom: 24px; }
+.recbanner svg { color: var(--accent); }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 32px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+.kpi .lab { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; font-weight: 500; }
+.kpi .lab .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; }
+.kpi .lab .ic svg { width: 16px; height: 16px; }
+.kpi.ok .ic { background: var(--ok-soft); color: var(--ok); } .kpi.wait .ic { background: var(--wait-soft); color: var(--wait); } .kpi.bad .ic { background: var(--bad-soft); color: var(--bad); }
+.kpi .v { font-size: 44px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; margin-top: auto; padding-top: 12px; }
+.kpi .note2 { color: var(--faint); font-size: 13px; margin-top: 4px; }
+.kpi .short { display: none; }
+.sect { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
+.sect h2 { font-size: 18px; letter-spacing: -.01em; margin: 0; font-weight: 650; display: flex; align-items: center; gap: 10px; }
+.sect h2 .rail { font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
+.sect .hint { color: var(--faint); font-size: 13px; }
+.sect .more { margin-left: auto; font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600; min-height: 32px; display: inline-flex; align-items: center; }
+.sect.flush { margin: 0 0 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-bottom: 40px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; margin-bottom: 24px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); padding: 18px 20px 20px; min-width: 0; overflow-wrap: anywhere; }
+.empty { color: var(--muted); font-size: 14px; display: flex; gap: 10px; align-items: center; padding: 8px 0; }
+.empty svg { color: var(--ok); }
+
+/* A company card, drawn as a card. */
+.cc { position: relative; aspect-ratio: 1.586; border-radius: 16px; padding: 18px 20px; color: #fff; overflow: hidden; display: flex; flex-direction: column;
+  background: radial-gradient(120% 140% at 100% 0%, rgba(139,135,255,.38), transparent 55%), linear-gradient(135deg, #14161d 0%, #232633 70%, #2c3040 100%);
+  box-shadow: 0 10px 30px rgba(17, 19, 24, .22), inset 0 0 0 1px rgba(255,255,255,.06); }
+.cc .row1 { display: flex; justify-content: space-between; align-items: center; font-size: 12px; opacity: .85; font-weight: 500; }
+.cc .who { margin-top: auto; font-weight: 650; font-size: 16px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cc .buys { font-size: 13px; opacity: .8; margin-top: 2px; }
+.cc .row2 { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; }
+.cc .pan { font: 500 15px/1 var(--mono); letter-spacing: .12em; opacity: .92; }
+.cc .brandmark { font-weight: 700; font-size: 12px; letter-spacing: .14em; border: 1px solid rgba(255,255,255,.35); border-radius: 5px; padding: 3px 7px; opacity: .85; }
+.cc.frozen-card::after { content: "Frozen at Airwallex"; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10,12,17,.6); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 13px; }
+.limit { margin-top: 16px; }
+.bar { height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); width: 0; transition: width .8s ease; }
+.bar i.hi { background: var(--wait); }
+.limit .txt { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.limit .txt b { color: var(--text); font-weight: 600; }
+.txs { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.txs li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.txs li svg { width: 15px; height: 15px; color: var(--ok); }
+.txs li.no svg { color: var(--bad); }
+.txs li .m { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.txs li .a { margin-left: auto; color: var(--text); font-weight: 600; white-space: nowrap; }
+.txs li.no .a { color: var(--bad); }
+
+/* An on-chain mandate, drawn with the same weight as a card. */
+.mt { position: relative; border-radius: 16px; padding: 18px 20px; color: #fff; overflow: hidden; display: flex; flex-direction: column; min-height: 170px;
+  background: radial-gradient(120% 140% at 0% 0%, rgba(60,207,126,.22), transparent 55%), linear-gradient(135deg, #0f1712 0%, #17231c 65%, #1d2c24 100%);
+  box-shadow: 0 10px 30px rgba(15, 23, 18, .22), inset 0 0 0 1px rgba(255,255,255,.06); }
+.mt .row1 { display: flex; justify-content: space-between; align-items: center; font-size: 12px; opacity: .85; font-weight: 500; }
+.mt .row1 span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.mt .row1 svg { width: 14px; height: 14px; }
+.mt .who { margin-top: auto; font-weight: 650; font-size: 16px; }
+.mt .cap { font-size: 13px; opacity: .85; margin-top: 2px; }
+.mt .row2 { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; font-size: 12px; opacity: .85; }
+.facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; font-size: 13px; }
+.facts li { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
+.facts li b { color: var(--text); font-weight: 600; text-align: right; }
+.fine { margin: 10px 0 0; font-size: 12.5px; color: var(--faint); line-height: 1.45; }
+
+/* Waiting for the CFO. */
+.ask { border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-top: 12px; }
+.ask .what { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.ask .title { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin: 8px 0 4px; }
+.ask .summary { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
+.ask .review { font-size: 13.5px; background: var(--sunken); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; }
+.ask .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ask .exp { margin-left: auto; font-size: 13px; color: var(--wait); font-weight: 600; white-space: nowrap; }
+.ask.advise-reject { border-color: var(--bad); }
+.closed { margin-top: 16px; }
+.closed h3 { font-size: 13px; color: var(--faint); font-weight: 600; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .05em; }
+.closed .d { display: flex; gap: 10px; align-items: center; font-size: 13.5px; padding: 6px 0; border-top: 1px solid var(--border); }
+.closed .d .by { color: var(--faint); }
+.closed .d .pill { margin-left: auto; }
+
+/* Activity. */
+.feed { list-style: none; margin: 4px 0 0; padding: 0; max-height: 640px; overflow: auto; }
+.feed li { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 4px; border-top: 1px solid var(--border); }
+.feed li:first-child { border-top: 0; }
+.feed .ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--sunken); color: var(--muted); }
+.feed .ic svg { width: 17px; height: 17px; }
+.feed .kind { font-size: 12px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; }
+.feed .t { font-size: 14.5px; overflow-wrap: anywhere; }
+.feed .who { color: var(--faint); font-size: 12.5px; margin-top: 2px; }
+.feed .r { font-size: 12.5px; color: var(--faint); white-space: nowrap; padding-top: 2px; }
+.feed li.bad { box-shadow: inset 3px 0 0 var(--bad); padding-left: 12px; } .feed li.bad .ic { color: var(--bad); background: var(--bad-soft); }
+.feed li.ok .ic { color: var(--ok); background: var(--ok-soft); }
+.feed li.wait .ic { color: var(--wait); background: var(--wait-soft); }
+.feed li.bank .ic { color: var(--accent); background: var(--accent-soft); }
+.feed li.fresh { animation: arrive .5s ease; }
+.feed li.bad.fresh { animation: shake .45s 1; }
+@keyframes arrive { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+details.tech { margin-top: 4px; font-size: 12.5px; color: var(--faint); }
+details.tech summary { cursor: pointer; color: var(--muted); min-height: 28px; display: inline-flex; align-items: center; }
+details.tech .refs { display: flex; gap: 12px; flex-wrap: wrap; }
+details.tech a { color: var(--accent); text-decoration: none; }
+
+/* Treasury and refusals. */
+.money { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.money .m { background: var(--sunken); border-radius: 12px; padding: 14px; }
+.money .m .k { font-size: 13px; color: var(--muted); }
+.money .m .v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; }
+.money .m .v.neg { color: var(--bad); }
+.rows { margin-top: 12px; display: grid; gap: 6px; font-size: 13.5px; }
+.rows div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
+.rows b { color: var(--text); font-weight: 600; text-align: right; }
+.sub2 { font-size: 13px; font-weight: 650; color: var(--text); margin: 18px 0 0; display: flex; align-items: center; gap: 8px; }
+.refusal { padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px; }
+.refusal:first-of-type { border-top: 0; }
+.refusal .what { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.refusal .what svg { color: var(--bad); width: 16px; height: 16px; }
+.refusal .reason { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+.refusal .meta { color: var(--faint); font-size: 12.5px; }
+.foot { color: var(--faint); font-size: 12.5px; display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+
+/* The emergency stop confirmation. */
+.scrim { position: fixed; inset: 0; background: rgba(10,12,17,.5); display: grid; place-items: center; z-index: 20; padding: 16px; }
+.dialog { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); max-width: 440px; width: 100%; padding: 24px; }
+.dialog .ic { width: 44px; height: 44px; border-radius: 12px; background: var(--bad-soft); color: var(--bad); display: grid; place-items: center; margin-bottom: 14px; }
+.dialog h2 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
+.dialog p { margin: 0 0 10px; color: var(--muted); font-size: 14.5px; }
+.dialog .row { display: flex; gap: 10px; margin-top: 18px; }
+.dialog .row .btn { flex: 1; }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+/* The landing page, for guests. */
+.section { max-width: 1200px; margin: 0 auto; padding: 72px 32px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 64px; align-items: center; padding-top: 64px; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 6px 12px; border-radius: 999px; }
+.eyebrow svg { width: 15px; height: 15px; }
+.hero h1 { font-size: 56px; line-height: 1.05; letter-spacing: -.035em; margin: 20px 0; font-weight: 750; }
+h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px 0; font-weight: 750; }
+.lead { font-size: 19px; line-height: 1.55; color: var(--muted); margin: 0 0 32px; max-width: 34em; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+.ctas .btn { font-size: 15px; padding: 14px 20px; }
+.built { margin-top: 36px; display: flex; align-items: center; gap: 18px; color: var(--faint); font-size: 13px; flex-wrap: wrap; }
+.built .logo { font-weight: 700; color: var(--text); font-size: 16px; letter-spacing: -.01em; }
+.built .sep { width: 1px; height: 18px; background: var(--border); }
+.stage { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); padding: 28px; }
+.stage .cc { max-width: 380px; }
+.stage .limitrow { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin: 16px 0 8px; }
+.stage .limitrow b { color: var(--text); }
+.stage .bar i { width: 60%; animation: raise 12s infinite; }
+@keyframes raise { 0%, 38% { width: 60%; } 46%, 100% { width: 100%; } }
+.flow { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 8px; }
+.flow li { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); font-size: 14.5px; opacity: 0; transform: translateY(6px); animation: show 12s infinite; }
+.flow li > svg { color: var(--muted); }
+.flow li .amt { margin-left: auto; font-weight: 650; white-space: nowrap; padding-left: 8px; }
+.flow li.bad { box-shadow: inset 3px 0 0 var(--bad); } .flow li.bad > svg { color: var(--bad); }
+.flow li.ok > svg, .flow li.face > svg { color: var(--ok); }
+.flow li:nth-child(2) { animation-delay: 1.2s; } .flow li:nth-child(3) { animation-delay: 2.6s; } .flow li:nth-child(4) { animation-delay: 4s; } .flow li:nth-child(5) { animation-delay: 5.4s; }
+.flow li.bad { animation-name: show, shake; animation-duration: 12s, .45s; animation-delay: 1.2s, 1.6s; animation-iteration-count: infinite, 1; }
+@keyframes show { 0% { opacity: 0; transform: translateY(6px); } 4%, 88% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+.still .flow li, .still .stage .bar i { animation: none; opacity: 1; transform: none; } .still .stage .bar i { width: 100%; }
+@media (prefers-reduced-motion: reduce) { .flow li, .stage .bar i, .feed li.fresh { animation: none; opacity: 1; transform: none; } .stage .bar i { width: 100%; } }
+.proof { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
+.proof .section { padding: 36px 32px; }
+.proof .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
+.proof .v { font-size: 36px; font-weight: 750; letter-spacing: -.03em; line-height: 1.1; }
+.proof .l { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.proof .src { margin-top: 20px; font-size: 12.5px; color: var(--faint); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.proof .src svg { width: 14px; height: 14px; }
+.proof .src a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.metal { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 64px; align-items: center; }
+.mandate { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); padding: 24px; }
+.mandate .mh { display: flex; align-items: center; gap: 10px; font-weight: 650; }
+.mandate .mh .pill { margin-left: auto; }
+.mandate dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 16px 0 20px; font-size: 14px; }
+.mandate dt { color: var(--muted); } .mandate dd { margin: 0; font-weight: 600; }
+.pay { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 14.5px; margin-top: 8px; }
+.pay > svg { color: var(--ok); } .pay.bad { box-shadow: inset 3px 0 0 var(--bad); } .pay.bad > svg { color: var(--bad); }
+.pay .amt { margin-left: auto; font-weight: 650; white-space: nowrap; }
+.pay small { display: block; color: var(--faint); font-size: 12px; margin-top: 2px; }
+.clear { margin-top: 16px; font-size: 14px; color: var(--muted); display: flex; gap: 8px; align-items: flex-start; }
+.clear svg { color: var(--accent); margin-top: 2px; }
+.textlink { color: var(--accent); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.sec h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 8px; }
+.sec .subl { color: var(--muted); margin: 0 0 28px; }
+.sec .row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.sec .item { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+.sec .item .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 14px; }
+.sec .item h3 { font-size: 15.5px; margin: 0 0 6px; letter-spacing: -.01em; }
+.sec .item p { margin: 0; font-size: 14px; color: var(--muted); }
+.lfoot { max-width: 1200px; margin: 0 auto; padding: 24px 32px 48px; color: var(--faint); font-size: 13px; display: flex; gap: 16px; flex-wrap: wrap; }
+.lfoot a { color: var(--muted); }
+
+@media (max-width: 1000px) {
+  .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .proof .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sec .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-:root[data-theme="dark"] .btn { color: #0b0e14; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn { color: #0b0e14; } }
-.countdown { font-weight: 600; color: var(--text); }
-.countdown.soon { color: var(--warn); }
-.empty { color: var(--muted); padding: 6px 0 4px; display: flex; align-items: center; gap: 8px; }
-.empty .tick { color: var(--ok); font-weight: 700; }
-.decisions { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
-.decisions h3 { font-size: 11.5px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 4px; }
-.decision { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; padding: 3px 0; font-size: 12.5px; align-items: baseline; }
-.decision .who { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.decision .by { display: block; color: var(--text); font-weight: 600; }
-
-/* Chips */
-.chip {
-  display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; line-height: 18px;
-  background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); white-space: nowrap;
-}
-.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
-.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
-.chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
-.chip.model { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
-
-/* Budgets */
-.agent { padding: 8px 0; border-top: 1px solid var(--border); }
-.agent:first-child { border-top: 0; padding-top: 2px; }
-.agent .line1 { display: flex; align-items: baseline; gap: 8px; }
-.agent .name { font-weight: 650; text-transform: capitalize; }
-.agent .payee { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.agent .amount { margin-left: auto; white-space: nowrap; }
-.agent .amount b { font-weight: 650; }
-.agent .amount span { color: var(--muted); }
-.bar { height: 7px; border-radius: 999px; background: var(--bar-track); overflow: hidden; margin: 6px 0 5px; }
-.bar > i { display: block; height: 100%; background: var(--bar); border-radius: 999px; }
-.bar.high > i { background: var(--warn); }
-.agent .line2 { display: flex; gap: 2px 12px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
-.split { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-.split .label { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
-.stack { display: flex; height: 9px; border-radius: 999px; overflow: hidden; background: var(--bar-track); margin-top: 6px; gap: 2px; }
-.stack > i { display: block; height: 100%; }
-.legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--muted); }
-.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
-.cp { margin-top: 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 8px; font-size: 12.5px; color: var(--muted); }
-
-/* Company cards */
-.pcard { padding: 9px 0; border-top: 1px solid var(--border); }
-.pcard:first-child { border-top: 0; padding-top: 2px; }
-.pcard .line1 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.pcard .name { font-weight: 650; text-transform: capitalize; }
-.pcard .visa { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; background: var(--surface-2); white-space: nowrap; }
-.pcard .amount { margin-left: auto; white-space: nowrap; }
-.pcard .amount b { font-weight: 650; }
-.pcard .amount span { color: var(--muted); }
-.pcard .line2 { display: flex; gap: 2px 12px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
-.pcard .tx { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 6px; font-size: 12.5px; padding: 2px 0; align-items: baseline; }
-.pcard .tx .m { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pcard .tx.no { color: var(--bad); }
-.pcard .tx .s { font-weight: 700; }
-.pcard .txs { margin-top: 5px; }
-
-/* Treasury */
-.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.kpi { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface-2); min-width: 0; }
-.kpi .k { color: var(--muted); font-size: 12px; }
-.kpi .v { font-size: 22px; font-weight: 650; letter-spacing: -.01em; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kpi .v small { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 4px; }
-.kpi .v.neg { color: var(--bad); }
-.rows { margin-top: 10px; }
-.row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 13px; border-top: 1px solid var(--border); }
-.row:first-child { border-top: 0; }
-.row .l { color: var(--muted); }
-.row .r { white-space: nowrap; }
-.subhead { font-size: 11.5px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 2px; }
-
-/* Refusals */
-.refusal { border-left: 3px solid var(--bad); background: var(--bad-soft); border-radius: 0 7px 7px 0; padding: 7px 10px; }
-.refusal.warn { border-left-color: var(--warn); background: var(--warn-soft); }
-.refusal + .refusal { margin-top: 7px; }
-.refusal .top { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
-.refusal .what { font-weight: 650; color: var(--text); font-size: 13px; }
-.refusal .time { margin-left: auto; }
-.refusal .reason { margin-top: 2px; font-size: 13px; }
-
-/* Feed */
-#feed .body { padding: 0; }
-.item { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px; padding: 7px 16px; border-top: 1px solid var(--border); }
-.item:first-child { border-top: 0; }
-.item .t { color: var(--faint); font-size: 12px; padding-top: 2px; }
-.item .text { overflow-wrap: anywhere; }
-.item .text .chip { margin-right: 6px; vertical-align: 1px; }
-.item.refusal-tone .text { color: var(--bad); }
-.item.approval-tone { background: linear-gradient(90deg, var(--accent-soft), transparent 60%); }
-.item .refs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; font-size: 12px; color: var(--muted); }
-.item a { color: var(--accent); text-decoration: none; }
-.item a:hover { text-decoration: underline; }
-footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display: none; }
-
-@media (max-width: 1100px) {
-  main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "pending cards" "refusals budgets" "refusals treasury" "feed feed"; grid-template-rows: auto; height: auto; }
-  #feed .body { max-height: 560px; }
-}
-@media (max-width: 720px) {
-  header { padding: 12px 16px; }
-  .status { margin-left: 0; width: 100%; }
-  main { display: flex; flex-direction: column; padding: 12px 16px 24px; height: auto; min-height: 0; }
-  .body { overflow: visible; }
-  #feed .body { max-height: none; }
-  .kpi .v { font-size: 19px; }
-  .item { grid-template-columns: 54px minmax(0, 1fr); padding: 8px 14px; }
-  .item:nth-child(n+26) { display: none; }
+@media (max-width: 700px) {
+  .top { padding: 0 16px; gap: 12px; } .top .nav { display: none; } .live .lbl { display: none; }
+  .note { padding: 10px 16px 0; } .frozen { padding: 12px 16px; }
+  .wrap { padding: 16px 16px 40px; }
+  .kpis { gap: 8px; } .kpi { padding: 14px 12px; } .kpi .v { font-size: 32px; } .kpi .note2 { display: none; } .kpi .lab { font-size: 12.5px; } .kpi .lab .ic { display: none; }
+  .kpi .long { display: none; } .kpi .short { display: inline; }
+  .grid3 { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .cc { aspect-ratio: 2.1; padding: 16px 18px; } .mt { min-height: 150px; }
+  .feed li { grid-template-columns: 32px minmax(0, 1fr); } .feed li .r { grid-column: 2; padding-top: 0; }
+  .ask .row .btn.primary { flex: 1 1 100%; }
+  .section { padding: 40px 16px; } .hero { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-top: 32px; }
+  .hero h1 { font-size: 38px; } h2.big { font-size: 30px; } .lead { font-size: 17px; }
+  .ctas .btn { flex: 1 1 100%; }
+  .stage, .mandate { padding: 18px; }
+  .proof .section { padding: 28px 16px; } .proof .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; } .proof .v { font-size: 30px; }
+  .metal { grid-template-columns: minmax(0, 1fr); gap: 28px; } .metal .copy { order: -1; }
+  .sec .row { grid-template-columns: minmax(0, 1fr); }
+  .lfoot { padding: 16px 16px 40px; }
+  .money { grid-template-columns: minmax(0, 1fr); }
 }
 </style>
 </head>
 <body data-mode="relay">
-<header>
-  <div class="brand"><h1>Tidemark Data</h1><span class="sub">Every AI agent its own company card, with limits the CFO sets</span>
-    <details class="honest"><summary>Test money, real systems: Airwallex sandbox and Metal testnet · details</summary>
-      <p>One CFO policy for both rails: Airwallex cards and payouts, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, USDZ are test dollars. The step from USDZ to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate route.</p></details></div>
-  <div class="counts num" id="counts" aria-label="What the agents did">
-    <span class="c ok"><b id="c-alone">0</b> done by the agents alone</span>
-    <span class="c wait"><b id="c-waiting">0</b> waiting for the CFO</span>
-    <span class="c bad"><b id="c-blocked">0</b> blocked</span>
-  </div>
-  <div class="status" id="status">
-    <span id="live" class="stale"><span class="dot"></span><span class="state">Connecting</span></span>
-    <span id="updated" class="num"></span>
-    <span id="audit" class="num"></span>
-    <span id="passkey"></span>
-    <a class="monthlink" href="month">A month in 90 seconds (simulated) →</a>
-    <a class="stop" id="stop" href="policy?freeze=on" hidden>Emergency stop</a>
+<header class="top">
+  <a class="brand" href="./" id="brand"><span class="mark" data-icon="feather"></span><span id="brand-name">Tidemark Data</span></a>
+  <nav class="nav" id="nav" aria-label="Main"></nav>
+  <div class="right">
+    <span class="live" id="live" hidden><span class="dot"></span><span class="lbl">Connecting</span></span>
+    <button class="btn stop" id="stop" type="button" hidden><span data-icon="octagon-x"></span>Emergency stop</button>
   </div>
 </header>
+<details class="note" id="note"><summary><span data-icon="info"></span>Test money, real systems: Airwallex sandbox and Metal testnet · details</summary>
+  <p>One CFO policy for both rails: Airwallex cards and bank transfers, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, amounts are in USDZ, Metal's test dollars, shown here as "test USD". The step from test USD to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate.</p></details>
 <div class="frozen" id="frozen" hidden></div>
-<section id="guest" hidden aria-labelledby="h-guest">
-  <h2 id="h-guest">Give every AI agent its own company card, with limits the CFO sets.</h2>
-  <p>AI agents buy software, data and services on their own cards. The CFO sets the limits once; the bank enforces them; anything more needs the CFO's Face ID.</p>
-  <div class="ctas"><a class="primary" href="demo">Watch the demo →</a><a href="month">A month in 90 seconds →</a></div>
-  <p class="cfo" id="guest-cfo">This is the CFO's live dashboard. To see it, open the viewer link from the runner once on this device.</p>
-</section>
-<main>
-  <section id="pending" aria-labelledby="h-pending"><h2 id="h-pending">Waiting for approval <span class="count" id="pending-count">0</span></h2><div class="body" id="pending-body"></div></section>
-  <section id="cards" aria-labelledby="h-cards"><h2 id="h-cards">Company cards <span class="hint">Airwallex Issuing, virtual Visa</span></h2><div class="body" id="cards-body"></div></section>
-  <section id="budgets" aria-labelledby="h-budgets"><h2 id="h-budgets">Pay-per-request budgets <span class="hint">Metal mandates, on chain</span></h2><div class="body" id="budgets-body"></div></section>
-  <section id="treasury" aria-labelledby="h-treasury"><h2 id="h-treasury">Treasury <span class="hint" id="treasury-asof"></span></h2><div class="body" id="treasury-body"></div></section>
-  <section id="refusals" aria-labelledby="h-refusals"><h2 id="h-refusals">Refusals and escalations <span class="count" id="refusals-count">0</span></h2><div class="body" id="refusals-body"></div></section>
-  <section id="feed" aria-labelledby="h-feed"><h2 id="h-feed">Agent activity <span class="hint">newest first</span></h2><div class="body" id="feed-body"></div></section>
+
+<!-- For guests: what this is, and the way to the recorded run. -->
+<div id="landing" hidden>
+  <section class="section hero">
+    <div>
+      <span class="eyebrow"><span data-icon="shield-check"></span>For CFOs of companies that run AI agents</span>
+      <h1>Give every AI agent its own company card, with limits the CFO sets.</h1>
+      <p class="lead">Your agents buy software, data and services on their own cards. You set the limits once; the bank enforces them. Anything more waits for your Face ID.</p>
+      <div class="ctas"><a class="btn primary" href="demo"><span data-icon="play"></span>Watch the demo</a><a class="btn" href="month"><span data-icon="calendar-range"></span>A month in 90 seconds</a></div>
+      <div class="built">Built on <span class="logo">Airwallex</span><span class="sep"></span><span class="logo">Metal</span></div>
+    </div>
+    <div class="stage" aria-label="A card purchase from the recorded run">
+      <div class="cc"><div class="row1"><span>Sourcing agent</span><span>Virtual</span></div><div class="who">Market data</div><div class="buys">Airwallex Issuing</div><div class="row2"><span class="pan">•••• 1902</span><span class="brandmark">VISA</span></div></div>
+      <div class="limitrow num"><span>Limit per purchase</span><b>€30 → €50</b></div>
+      <div class="bar" aria-hidden="true"><i></i></div>
+      <ol class="flow">
+        <li class="ok"><span data-icon="circle-check"></span>Buys a market-data plan<span class="amt num">€19.99</span></li>
+        <li class="bad"><span data-icon="ban"></span>Over its €30 limit: declined by Airwallex<span class="amt num">€45.00</span></li>
+        <li class="face"><span data-icon="scan-face"></span>Asks for more; the CFO approves<span class="amt"><span class="pill ok">Face ID</span></span></li>
+        <li><span data-icon="sliders-horizontal"></span>The card's limit follows: €50</li>
+        <li class="ok"><span data-icon="circle-check"></span>Paid<span class="amt num">€45.00</span></li>
+      </ol>
+    </div>
+  </section>
+  <section class="proof" aria-label="From the recorded live run">
+    <div class="section">
+      <div class="grid num">
+        <div><div class="v" id="p-alone">–</div><div class="l">actions the agents completed on their own</div></div>
+        <div><div class="v" id="p-blocked">–</div><div class="l">attempts blocked before money moved</div></div>
+        <div><div class="v" id="p-over">–</div><div class="l">spent above a card's limit</div></div>
+        <div><div class="v" id="p-fakes">–</div><div class="l">fake invoices and AI tricks stopped</div></div>
+        <div><div class="v" id="p-faceid">–</div><div class="l">decisions signed with Face ID</div></div>
+      </div>
+      <div class="src"><span data-icon="database"></span><span id="p-src">From a recorded live run on Metal testnet and the Airwallex sandbox (test money).</span><a href="?recorded">Open the recorded CFO dashboard →</a></div>
+    </div>
+  </section>
+  <section class="section metal" id="metal">
+    <div class="mandate" aria-label="A mandate refusing a payment on chain, from the recorded run">
+      <div class="mh"><span data-icon="file-lock-2"></span>Mandate · sourcing agent<span class="pill acc">on Metal</span></div>
+      <dl class="num"><dt>Per payment</dt><dd>at most 0.03 test USD</dd><dt>In total</dt><dd>10.00 test USD</dd><dt>Pays only</dt><dd>Feedstock Labs (data supplier)</dd><dt>Enforced by</dt><dd>the account on chain</dd></dl>
+      <div class="pay"><span data-icon="circle-check"></span><div>A market-data tick, paid per request</div><span class="amt num">0.02 test USD</span></div>
+      <div class="pay bad"><span data-icon="ban"></span><div>Price rose: refused by the chain itself<small>over the mandate's cap · nothing moved</small></div><span class="amt num">0.04 test USD</span></div>
+      <div class="pay"><span data-icon="scan-face"></span><div>The CFO approved a new mandate with Face ID<small>0.04 a payment, 12.00 in total · the old mandate is revoked on chain</small></div></div>
+      <div class="clear"><span data-icon="receipt"></span>Or prepaid: one deposit, then a signed receipt per request, with no transaction each time.</div>
+    </div>
+    <div class="copy">
+      <span class="eyebrow"><span data-icon="zap"></span>Pay per request on Metal</span>
+      <h2 class="big">For thousands of tiny payments, a limit the chain enforces.</h2>
+      <p class="lead">Agents that buy data or API calls pay a few cents per request on Metal. Each pays under a mandate: a cap per payment, a total, one allowed payee and an end date. Ask for more than the mandate allows and the chain refuses; the CFO decides with the same Face ID.</p>
+      <a class="textlink" href="demo?step=2">See it in the recorded run <span data-icon="arrow-right"></span></a>
+    </div>
+  </section>
+  <section class="section sec" id="security">
+    <h2>Safe by design, not by prompt</h2>
+    <p class="subl">Nothing an AI says can move money. Limits sit in the bank and on the chain; exceptions need you.</p>
+    <div class="row">
+      <div class="item"><span class="ic" data-icon="scan-face"></span><h3>Face ID on the exact terms</h3><p>You sign the precise amount, payee and fee. Change one character and the signature no longer fits.</p></div>
+      <div class="item"><span class="ic" data-icon="users"></span><h3>Four eyes</h3><p>Above your threshold, two different people approve. Whoever proposed it never can.</p></div>
+      <div class="item"><span class="ic" data-icon="octagon-x"></span><h3>Emergency stop</h3><p>One Face ID freezes every agent and every card at the bank.</p></div>
+      <div class="item"><span class="ic" data-icon="shield-alert"></span><h3>Fakes and AI tricks blocked</h3><p>Changed bank details and hidden "pre-approved" lines are caught before any money moves.</p></div>
+      <div class="item"><span class="ic" data-icon="file-check"></span><h3>A log you can check</h3><p>Every payment, decline and approval in a tamper-evident log, re-checkable from public sources.</p></div>
+    </div>
+  </section>
+  <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
+</div>
+
+<!-- The CFO's dashboard: live (local, or on the relay with the viewer key) or the recorded run. -->
+<main class="wrap" id="dash" hidden>
+  <div class="recbanner" id="recbanner" hidden><span data-icon="database"></span><span id="rec-text">Recorded run.</span></div>
+  <div class="head"><div><h1>Overview</h1><div class="sub">Your agents' spending, within the limits you set.</div></div></div>
+  <section class="kpis" aria-label="What the agents did">
+    <div class="kpi ok"><div class="lab"><span class="ic" data-icon="circle-check"></span><span class="long">Done by the agents</span><span class="short">Done</span></div><div class="v num" id="k-alone">0</div><div class="note2">within their limits, no person needed</div></div>
+    <div class="kpi wait"><div class="lab"><span class="ic" data-icon="clock"></span><span class="long">Waiting for you</span><span class="short">Waiting</span></div><div class="v num" id="k-waiting">0</div><div class="note2">each needs your Face ID</div></div>
+    <div class="kpi bad"><div class="lab"><span class="ic" data-icon="ban"></span><span class="long">Blocked</span><span class="short">Blocked</span></div><div class="v num" id="k-blocked">0</div><div class="note2">refused before money moved</div></div>
+  </section>
+  <div class="sect"><h2>Company cards <span class="rail">Airwallex</span></h2><span class="hint">Virtual Visa per agent · limits set by your policy</span></div>
+  <section class="grid3" id="cards" aria-label="Company cards"></section>
+  <div class="sect"><h2>On-chain budgets <span class="rail">Metal</span></h2><span class="hint">A mandate per agent for paying per request · in test USD</span><a class="more" id="policy-link" href="policy" hidden>Edit CFO policy →</a></div>
+  <section class="grid3" id="budgets" aria-label="On-chain budgets"></section>
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-pending"><div class="sect flush"><h2 id="h-pending">Waiting for you</h2><span class="pill" id="pending-count">0</span></div><div id="pending"></div></section>
+    <section class="panel" aria-labelledby="h-feed"><div class="sect flush"><h2 id="h-feed">Activity</h2><span class="hint">newest first</span></div><ul class="feed" id="feed"></ul></section>
+  </div>
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-treasury"><div class="sect flush"><h2 id="h-treasury">Treasury</h2><span class="hint" id="treasury-asof"></span></div><div id="treasury"></div></section>
+    <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused and escalated</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
+  </div>
+  <div class="foot"><span id="auditline"></span><span id="passkey"></span></div>
 </main>
+
+<div class="scrim" id="stop-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="stop-title">
+  <div class="dialog">
+    <div class="ic" data-icon="octagon-x"></div>
+    <h2 id="stop-title">Freeze every agent and every card?</h2>
+    <p>Every agent payment is refused before anything is signed, and every company card is set to inactive at Airwallex.</p>
+    <p><b>You confirm with Face ID</b> on the next screen; nothing changes before that. Lifting the stop later needs a proposal and Face ID too.</p>
+    <div class="row"><button class="btn" type="button" id="stop-cancel">Cancel</button><a class="btn danger" id="stop-go" href="policy?freeze=on"><span data-icon="scan-face"></span>Continue to Face ID</a></div>
+  </div>
+</div>
+
+<script type="application/json" id="recorded-data">__RECORDED_JSON__</script>
 <script>
 (function () {
   "use strict";
-  // Everything from the ledger is rendered as text (textContent); no ledger string ever becomes HTML.
+  // Everything from the ledger is rendered as text (textContent); no ledger string ever becomes HTML. The only markup
+  // built here is the fixed icon set below.
+  var ICONS = __ICONS_JSON__;
   var EXPLORER = "https://testnet.metalntwx.com/tx/";
   var TX = /^0x[0-9a-fA-F]{64}$/;
-  // Served by the relay, the snapshot is the runner's last push: if the runner went quiet, the page is stale too.
   var POLL_MS = 2000, STALE_MS = 6000, RUNNER_STALE_MS = 15000;
-  var lastOk = 0, lastData = null;
+  var lastOk = 0, lastData = null, seen = {};
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function icon(name) {
+    var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "i"); s.setAttribute("aria-hidden", "true");
+    // The icon set is fixed in this page (Lucide), as shapes and attributes; nothing is parsed as markup.
+    (ICONS[name] || ICONS["circle-dot"]).forEach(function (shape) {
+      var n = document.createElementNS("http://www.w3.org/2000/svg", shape[0]);
+      Object.keys(shape[1]).forEach(function (a) { n.setAttribute(a, shape[1][a]); });
+      s.appendChild(n);
+    });
+    return s;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-icon]"), function (n) { n.insertBefore(icon(n.getAttribute("data-icon")), n.firstChild); });
 
   function el(tag, cls, kids) {
     var n = document.createElement(tag);
@@ -286,261 +441,247 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     return n;
   }
   function txt(tag, cls, s) { return el(tag, cls, [s === null || s === undefined ? "" : String(s)]); }
-  function chip(s, tone) { return txt("span", "chip" + (tone ? " " + tone : ""), s); }
-  function set(id, nodes) { var n = document.getElementById(id); n.replaceChildren.apply(n, nodes); }
+  function set(id, nodes) { var n = document.getElementById(id); n.replaceChildren.apply(n, nodes.filter(function (x) { return x != null; })); }
 
-  // Money arrives as decimal strings ("9995512.44", "-0.62"); group without going through floats.
-  function money(s) {
-    s = String(s);
-    var neg = s.charAt(0) === "-"; if (neg) s = s.slice(1);
+  // Money arrives as decimal strings; group without going through floats. Euros and dollars at Airwallex carry their
+  // sign; Metal's USDZ are test dollars and say so, never "$" beside "€".
+  function group(s) {
+    s = String(s); var neg = s.charAt(0) === "-"; if (neg) s = s.slice(1);
     var p = s.split("."), i = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return (neg ? "−" : "") + i + (p.length > 1 ? "." + p[1] : "");
   }
+  function eur(s) { var g = group(s); return g.charAt(0) === "−" ? "−€" + g.slice(1) : "€" + g; }
+  function usd(s) { return "USD " + group(s); }
+  function tusd(s) { return group(s) + " test USD"; }
   function cents(s) { var m = /^(-?)(\d+)\.(\d{2})$/.exec(String(s)); return m ? (m[1] ? -1 : 1) * (Number(m[2]) * 100 + Number(m[3])) : 0; }
-  var timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  var dayFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  function hms(iso) { var d = new Date(iso); return isNaN(d) ? "" : timeFmt.format(d); }
-  function day(iso) { var d = new Date(iso + "T00:00:00Z"); return isNaN(d) ? "" : dayFmt.format(d); }
-  function shortId(s) { s = String(s || ""); return s.length > 14 ? s.slice(0, 8) + "…" : s; }
+  // Ledger text in the words a CFO uses: euros as €, chain money as test USD, outside agents by their name.
+  function plain(t) {
+    return String(t)
+      .replace(/\b(?:the )?ext:([a-z0-9-]+) agent's/g, function (_m, id) { return agentName("ext:" + id) + "'s"; })
+      .replace(/\bext:([a-z0-9-]+)/g, function (_m, id) { return agentName("ext:" + id); })
+      .replace(/\bEUR (-?\d+\.\d{2})\b/g, function (_m, a) { return eur(a); })
+      .replace(/\b(-?\d+\.\d{2}) EUR\b/g, function (_m, a) { return eur(a); })
+      .replace(/\*?USDZ/g, "test USD")
+      .replace(/(^|[^\d,.])(\d{4,})(\.\d{2})\b/g, function (_m, pre, w, d) { return pre + w.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + d; });
+  }
+  var timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+  var dayFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
+  var whenFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" });
+  function hm(iso) { var d = new Date(iso); return isNaN(d) ? "" : timeFmt.format(d); }
+  function day(iso) { var d = new Date(String(iso).length === 10 ? iso + "T00:00:00Z" : iso); return isNaN(d) ? "" : dayFmt.format(d); }
   function countdown(iso) {
     var ms = Date.parse(iso) - Date.now();
-    if (isNaN(ms)) return { text: "", soon: false };
-    if (ms <= 0) return { text: "expired", soon: true };
-    var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-    return { text: "expires in " + (h ? h + "h " : "") + m + "m " + String(s % 60).padStart(2, "0") + "s", soon: ms < 120000 };
+    if (isNaN(ms)) return "";
+    if (ms <= 0) return "expired";
+    var m = Math.floor(ms / 60000), h = Math.floor(m / 60);
+    return "expires in " + (h ? h + " h " + (m % 60) + " min" : m + " min");
   }
-  var AGENT_TONE = { human: "warn", claude: "model" };
-  var REC_TONE = { approve: "ok", reject: "bad", needs_more_information: "warn" };
-  var COLORS = { sourcing: "var(--bar)", support: "var(--ok)", treasury: "var(--warn)" };
-
-  function renderPending(d) {
-    var live = d.pending.filter(function (p) { return !p.expired; });
-    var sec = document.getElementById("pending");
-    sec.classList.toggle("has-items", live.length > 0);
-    document.getElementById("pending-count").textContent = String(live.length);
-    var nodes = [];
-    if (!d.pending.length) nodes.push(el("div", "empty", [txt("span", "tick", "✓"), "Nothing waits for a person. Agents are inside their limits."]));
-    d.pending.forEach(function (p) {
-      var c = countdown(p.expires_at);
-      var cd = txt("span", "countdown num" + (c.soon ? " soon" : ""), c.text);
-      cd.setAttribute("data-expires", p.expires_at);
-      var rec = p.review ? chip((p.review.model ? "Opus: " : "Review: ") + p.review.recommendation.replace(/_/g, " "), REC_TONE[p.review.recommendation] || "") : null;
-      var advisedNo = !!(p.review && p.review.recommendation === "reject");
-      var card = el("article", "card" + (p.expired ? " closed" : "") + (advisedNo ? " advise-reject" : ""), [
-        el("div", "top", [txt("span", "title", (advisedNo ? "Escalated: " : "") + p.title), txt("span", "pid mono", p.proposal_id), rec]),
-        txt("p", "summary", p.summary + (advisedNo ? (/[.!?]$/.test(p.summary) ? "" : ".") + " The agent recommends rejecting it." : "")),
-        el("div", "meta", [cd, txt("span", "", "from the " + p.created_by + " agent")]),
-        p.review ? txt("p", "review", p.review.text) : null,
-      ]);
-      // The hash stays one tap away (tooltip), not in the sentence.
-      card.title = "Exact terms, SHA-256 " + p.terms_sha256;
-      if (!p.expired) {
-        var a = txt("a", "btn" + (advisedNo ? " danger" : ""), advisedNo ? "Review: reject recommended" : "Review: approve or reject");
-        a.href = "approve/" + encodeURIComponent(p.proposal_id);
-        card.appendChild(el("div", "actions", [a, txt("span", "pid", "Face ID signs these exact terms")]));
-      }
-      nodes.push(card);
-    });
-    if (d.decisions.length) {
-      nodes.push(el("div", "decisions", [txt("h3", "", "Recently closed")].concat(d.decisions.slice(0, 4).map(function (x) {
-        var tone = x.status === "EXECUTED" ? "ok" : x.status === "REJECTED" || x.status === "FAILED" ? "bad" : "";
-        return el("div", "decision", [txt("span", "mono", x.proposal_id), el("span", "who", [x.title, x.by ? txt("span", "by", x.by) : null]), chip(x.status.toLowerCase().replace(/_/g, " "), tone)]);
-      }))));
-    }
-    set("pending-body", nodes);
+  // Outside agents are named on their card; the executors and the system are not agents.
+  var NAMES = {}, SERVICES = { "awx-executor": "Airwallex executor", "metal-executor": "Metal executor", system: "System" };
+  function agentName(a) {
+    a = String(a);
+    if (a === "human") return "You";
+    if (NAMES[a]) return NAMES[a];
+    if (SERVICES[a]) return SERVICES[a];
+    return /^ext:/.test(a) ? "Outside agent " + a.slice(4) : a.charAt(0).toUpperCase() + a.slice(1) + " agent";
   }
-
-  function renderBudgets(d) {
-    var b = d.budgets, nodes = [];
-    function agentRow(a) {
-      var pct = Math.max(0, Math.min(100, cents(a.budget) ? cents(a.spent) / cents(a.budget) * 100 : 0));
-      var bar = el("div", "bar" + (pct >= 80 ? " high" : ""), [el("i")]);
-      bar.firstChild.style.width = pct.toFixed(1) + "%";
-      return el("div", "agent", [
-        el("div", "line1", [txt("span", "name", a.agent), txt("span", "payee", "pays " + a.payee),
-          el("span", "amount num", [txt("b", "", money(a.spent)), txt("span", "", " / " + money(a.budget))])]),
-        bar,
-        el("div", "line2 num", [txt("span", "", money(a.remaining) + " left"),
-          a.policy_cap ? txt("span", "policy", "policy max " + money(a.policy_cap) + " (mandate " + money(a.cap) + ")") : txt("span", "", "max " + money(a.cap) + " per payment"),
-          a.expires_on ? txt("span", "", "until " + day(a.expires_on)) : null, a.credentials > 1 ? txt("span", "", "limit changed " + (a.credentials === 2 ? "once" : (a.credentials - 1) + " times") + " by Max") : null]),
-      ]);
-    }
-    b.agents.forEach(function (a) { nodes.push(agentRow(a)); });
-    var total = cents(b.limit) || 1;
-    var stack = el("div", "stack", b.agents.map(function (a) {
-      var i = el("i"); i.style.width = (cents(a.budget) / total * 100).toFixed(2) + "%"; i.style.background = COLORS[a.agent] || "var(--faint)"; return i;
-    }));
-    nodes.push(el("div", "split", [
-      el("div", "label num", [txt("span", "", "Budgets given to the agents"), txt("span", "", money(b.allocated) + " of " + money(b.limit) + " USDZ")]),
-      stack,
-      el("div", "legend", b.agents.map(function (a) { var i = el("i"); i.style.background = COLORS[a.agent] || "var(--faint)"; return el("span", "", [i, a.agent + " " + money(a.budget)]); })),
-    ]));
-    // On the relay (served with the runner's freshness), the CFO can change the policy from here.
-    if (d.relay) {
-      var edit = txt("a", "btn", "Edit CFO policy");
-      edit.href = "policy";
-      nodes.push(el("div", "split", [edit]));
-    }
-    // Kestrel's prepaid budget in Metal clearing: its own deposit, not a mandate, so it is shown on its own.
-    var cl = d.clearing;
-    if (cl) {
-      nodes.push(el("div", "split", [
-        el("div", "label num", [txt("span", "", "Prepaid clearing budget (Metal clearing, new on testnet)"), txt("span", "", cl.customer_spendable !== null ? money(cl.customer_spendable) + " USDZ left" : "")]),
-        el("div", "legend num", [
-          txt("span", "", "Kestrel deposited " + money(cl.deposited)),
-          txt("span", "", cl.sales + " ticks sold by clearing, " + money(cl.earned) + " USDZ, no transaction per query"),
-          cl.seller_spendable !== null ? txt("span", "", "our clearing earnings " + money(cl.seller_spendable) + (cl.withdrawn !== "0.00" ? ", " + money(cl.withdrawn) + " withdrawn" : "")) : null,
-          cl.as_of ? txt("span", "", "as Metal reported at " + hms(cl.as_of)) : null,
-        ]),
-      ]));
-    }
-    if (b.counterparty) {
-      var c = b.counterparty;
-      nodes.push(el("div", "cp num", ["Customer side: Kestrel Quant's own mandate has paid us " + money(c.spent) + " of " + money(c.budget) + "; we now charge " + money(d.treasury.metal.sell_price) + " a query (its cap: " + money(c.cap) + ")."]));
-    }
-    set("budgets-body", nodes);
+  function countUp(id, to) {
+    var n = document.getElementById(id), from = Number(n.getAttribute("data-v") || "0");
+    n.setAttribute("data-v", String(to));
+    if (reduceMotion || from === to) { n.textContent = String(to); return; }
+    var t0 = performance.now();
+    (function frame(now) { var f = Math.min(1, (now - t0) / 700); n.textContent = String(Math.round(from + (to - from) * (1 - Math.pow(1 - f, 3)))); if (f < 1) requestAnimationFrame(frame); })(t0);
   }
 
   function renderCards(d) {
-    var cs = d.cards || [], nodes = [];
-    if (!cs.length) nodes.push(txt("p", "empty", "No company cards issued yet."));
-    cs.forEach(function (c) {
+    var cs = d.cards || [];
+    cs.forEach(function (c) { if (c.name) NAMES[c.agent] = c.name; });
+    if (!cs.length) { set("cards", [el("div", "panel empty", [icon("credit-card"), "No company cards issued yet."])]); return; }
+    set("cards", cs.map(function (c) {
       var pct = Math.max(0, Math.min(100, cents(c.monthly) ? cents(c.spent_month) / cents(c.monthly) * 100 : 0));
-      var bar = el("div", "bar" + (pct >= 80 ? " high" : ""), [el("i")]);
-      bar.firstChild.style.width = pct.toFixed(1) + "%";
-      var txs = c.recent.slice(0, 3).map(function (t) {
-        var row = el("div", "tx num" + (t.approved ? "" : " no"), [
-          txt("span", "s", t.approved ? "✓" : "✗"),
-          txt("span", "m", t.merchant + (t.approved ? "" : " · declined: " + t.reason)),
-          txt("span", "", money(t.amount) + " EUR"),
-        ]);
-        row.title = (t.purpose ? t.purpose + " · " : "") + hms(t.ts);
-        return row;
+      var fill = el("i", pct >= 80 ? "hi" : ""); fill.style.width = pct.toFixed(1) + "%";
+      var txs = (c.recent || []).slice(0, 3).map(function (t) {
+        return el("li", t.approved ? "" : "no", [icon(t.approved ? "circle-check" : "ban"),
+          txt("span", "m", t.merchant + (t.approved ? "" : ": declined, " + t.reason)), txt("span", "a num", eur(t.amount))]);
       });
-      nodes.push(el("div", "pcard", [
-        el("div", "line1", [txt("span", "name", c.name || (c.agent + " agent")), txt("span", "visa mono", "VISA •••• " + c.last4),
-          el("span", "amount num", [txt("b", "", money(c.spent_month)), txt("span", "", " / " + money(c.monthly) + " EUR this month")])]),
-        bar,
-        el("div", "line2 num", [txt("span", "", "max " + money(c.per_tx) + " per purchase"), txt("span", "", money(c.left_month) + " left this month"),
-          txt("span", "", "buys " + c.buys), c.frozen ? txt("span", "frozenchip", "FROZEN at Airwallex") : null,
-          c.in_sync ? null : txt("span", "warn-text", "updating the card at Airwallex…")]),
-        txs.length ? el("div", "txs", txs) : null,
+      return el("div", "", [
+        el("div", "cc" + (c.frozen ? " frozen-card" : ""), [
+          el("div", "row1", [txt("span", "", c.name || agentName(c.agent)), txt("span", "", "Virtual")]),
+          (function () { var w = txt("div", "who", c.buys ? c.buys.charAt(0).toUpperCase() + c.buys.slice(1) : "Company card"); w.title = w.textContent; return w; })(),
+          txt("div", "buys", "Airwallex Issuing"),
+          el("div", "row2", [txt("span", "pan", "•••• " + c.last4), txt("span", "brandmark", "VISA")]),
+        ]),
+        el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", eur(c.spent_month)), " of " + eur(c.monthly) + " this month"]), txt("span", "", eur(c.per_tx) + " a purchase")])]),
+        c.in_sync ? null : txt("div", "pill wait", "Updating the card at Airwallex…"),
+        txs.length ? el("ul", "txs", txs) : null,
+      ]);
+    }));
+  }
+
+  function renderBudgets(d) {
+    var b = d.budgets, nodes = b.agents.map(function (a) {
+      var pct = Math.max(0, Math.min(100, cents(a.budget) ? cents(a.spent) / cents(a.budget) * 100 : 0));
+      var fill = el("i", pct >= 80 ? "hi" : ""); fill.style.width = pct.toFixed(1) + "%";
+      var cap = a.policy_cap ? a.policy_cap : a.cap;
+      return el("div", "", [
+        el("div", "mt", [
+          el("div", "row1", [el("span", "", [icon("file-lock-2"), "Mandate"]), txt("span", "", "On Metal")]),
+          txt("div", "who", agentName(a.agent)),
+          txt("div", "cap", "At most " + tusd(cap) + " a payment" + (a.policy_cap ? " (your policy; the mandate allows " + group(a.cap) + ")" : "")),
+          el("div", "row2", [txt("span", "", "Pays only " + a.payee), a.expires_on ? txt("span", "", "until " + day(a.expires_on)) : null]),
+        ]),
+        el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", group(a.spent)), " of " + tusd(a.budget) + " used"]), txt("span", "", group(a.remaining) + " left")])]),
+        a.credentials > 1 ? el("ul", "facts", [el("li", "", ["Limits changed", txt("b", "", (a.credentials - 1) + "× with your Face ID")])]) : null,
+      ]);
+    });
+    var cl = d.clearing;
+    if (cl) {
+      nodes.push(el("div", "", [
+        el("div", "mt", [
+          el("div", "row1", [el("span", "", [icon("receipt"), "Prepaid clearing"]), txt("span", "", "On Metal")]),
+          txt("div", "who", "Kestrel Quant (customer)"),
+          txt("div", "cap", cl.customer_spendable !== null ? tusd(cl.customer_spendable) + " left of " + group(cl.deposited) + " deposited" : "Deposited " + tusd(cl.deposited)),
+          el("div", "row2", [txt("span", "", "A signed receipt per request, no transaction each time")]),
+        ]),
+        el("ul", "facts", [
+          el("li", "", ["Paid by receipt", txt("b", "", cl.sales + " requests, " + tusd(cl.earned))]),
+          cl.withdrawn !== "0.00" ? el("li", "", ["Withdrawn to our account", txt("b", "", tusd(cl.withdrawn))]) : null,
+        ]),
+        txt("p", "fine", "Prepaid clearing suits many small calls from one customer; a mandate suits open-ended spending with a cap per payment."),
+      ]));
+    }
+    set("budgets", nodes);
+    document.getElementById("policy-link").hidden = !d.relay;
+  }
+
+  function renderPending(d) {
+    var live = d.pending.filter(function (p) { return !p.expired; });
+    var cnt = document.getElementById("pending-count");
+    cnt.textContent = String(live.length); cnt.className = "pill" + (live.length ? " wait" : "");
+    var nodes = [];
+    if (!live.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing waits for you. The agents are inside their limits."]));
+    live.forEach(function (p) {
+      var advisedNo = !!(p.review && p.review.recommendation === "reject");
+      var exp = txt("span", "exp num", countdown(p.expires_at)); exp.setAttribute("data-expires", p.expires_at);
+      var review = d.recorded ? null : el("a", "btn primary", [icon("scan-face"), advisedNo ? "Review: reject recommended" : "Review and approve"]);
+      if (review) review.href = "approve/" + encodeURIComponent(p.proposal_id);
+      nodes.push(el("div", "ask" + (advisedNo ? " advise-reject" : ""), [
+        el("div", "what", [icon(/card|policy/.test(p.kind) ? "sliders-horizontal" : p.kind === "invoice_payment" ? "landmark" : "file-check"), p.title + " · from " + agentName(p.created_by).toLowerCase()]),
+        txt("div", "title", plain(p.summary)),
+        p.review ? txt("p", "review", (p.review.model ? "Opus, advisory: " : "Review: ") + p.review.text) : null,
+        el("div", "row", [review, exp]),
       ]));
     });
-    set("cards-body", nodes);
+    if (d.decisions.length) {
+      nodes.push(el("div", "closed", [txt("h3", "", "Recently decided")].concat(d.decisions.slice(0, 4).map(function (x) {
+        var tone = x.status === "EXECUTED" ? "ok" : x.status === "REJECTED" || x.status === "FAILED" ? "bad" : "";
+        return el("div", "d", [txt("span", "", x.title), x.by ? txt("span", "by", x.by) : null, txt("span", "pill " + tone, x.status.charAt(0) + x.status.slice(1).toLowerCase().replace(/_/g, " "))]);
+      }))));
+    }
+    set("pending", nodes);
+  }
+
+  // What kind of money movement a row is, so a bank transfer never looks like a card payment.
+  function kindOf(f) {
+    var e = f.event;
+    if (/^transfer\./.test(e)) return { icon: "landmark", label: "Bank transfer · SWIFT", cls: "bank" };
+    if (/^fx\.|^conversion\./.test(e)) return { icon: "arrow-left-right", label: "Currency exchange", cls: "bank" };
+    if (/^credit\.|^deposit\./.test(e)) return { icon: "wallet", label: "Airwallex deposit", cls: "bank" };
+    if (/^card\.charge_declined/.test(e)) return { icon: "credit-card", label: "Card · declined", cls: "bad" };
+    if (/^card\./.test(e)) return { icon: "credit-card", label: "Card", cls: f.tone === "ok" ? "ok" : "" };
+    if (/^clearing\./.test(e) || /bajillion|clearing/.test(f.text)) return { icon: "receipt", label: "Metal clearing", cls: f.tone === "refusal" ? "bad" : "" };
+    if (/^(sale|upstream|refund|sweep|mandate|pull)\./.test(e)) return { icon: "link-2", label: "On Metal", cls: f.tone === "refusal" ? "bad" : f.tone === "ok" ? "ok" : "" };
+    if (/^proposal\.(approved|cosigned)/.test(e)) return { icon: "scan-face", label: "Face ID", cls: "ok" };
+    if (/^proposal\./.test(e)) return { icon: "clock", label: "For you to decide", cls: f.tone === "refusal" ? "bad" : "wait" };
+    if (/^policy\./.test(e)) return { icon: "sliders-horizontal", label: "CFO policy", cls: "" };
+    if (/^claude\./.test(e)) return { icon: "sparkles", label: f.model ? f.model : "AI reading", cls: "" };
+    if (/^passkey\./.test(e)) return { icon: "shield-check", label: "Passkey", cls: "" };
+    if (/fraud|injection/.test(e)) return { icon: "shield-alert", label: "Blocked", cls: "bad" };
+    return { icon: "circle-dot", label: "", cls: f.tone === "refusal" ? "bad" : "" };
+  }
+
+  function renderFeed(d) {
+    var body = document.getElementById("feed"), keep = body.scrollTop, first = !Object.keys(seen).length;
+    set("feed", d.feed.map(function (f) {
+      var k = kindOf(f), refs = [];
+      if (f.tx && TX.test(f.tx)) { var a = txt("a", "mono", "Metal tx " + f.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; refs.push(a); }
+      if (f.awx_id) refs.push(txt("span", "mono", "Airwallex id " + String(f.awx_id).slice(0, 8) + "…"));
+      var li = el("li", k.cls + (!first && !seen[f.seq] ? " fresh" : ""), [
+        el("span", "ic", [icon(k.icon)]),
+        el("div", "", [
+          k.label ? txt("div", "kind", k.label) : null,
+          txt("div", "t", plain(f.text)),
+          txt("div", "who", agentName(f.actor)),
+          refs.length ? el("details", "tech", [txt("summary", "", "Details"), el("div", "refs", refs)]) : null,
+        ]),
+        txt("span", "r num", hm(f.ts)),
+      ]);
+      seen[f.seq] = true;
+      return li;
+    }));
+    body.scrollTop = keep;
   }
 
   function renderTreasury(d) {
-    var t = d.treasury, nodes = [];
-    var a = t.airwallex;
-    document.getElementById("treasury-asof").textContent = a ? "Airwallex as of " + hms(a.as_of) : "";
+    var t = d.treasury, a = t.airwallex, nodes = [];
+    document.getElementById("treasury-asof").textContent = a ? "Airwallex as of " + hm(a.as_of) : "";
     if (a) {
-      var freeNeg = String(a.eur.free).charAt(0) === "-";
-      nodes.push(el("div", "kpis", [
-        el("div", "kpi", [txt("div", "k", "Free EUR for bills"), el("div", "v num" + (freeNeg ? " neg" : ""), [money(a.eur.free), txt("small", "", "EUR")])]),
-        el("div", "kpi", [txt("div", "k", "EUR reserve kept"), el("div", "v num", [money(a.eur.floor), txt("small", "", "EUR")])]),
+      nodes.push(el("div", "money num", [
+        el("div", "m", [txt("div", "k", "Free euros for bills"), txt("div", "v" + (String(a.eur.free).charAt(0) === "-" ? " neg" : ""), eur(a.eur.free))]),
+        el("div", "m", [txt("div", "k", "Euro reserve kept"), txt("div", "v", eur(a.eur.floor))]),
       ]));
-      nodes.push(el("div", "rows num", [
-        el("div", "row", [txt("span", "l", "USD we may convert (above its floor)"), txt("span", "r", money(a.usd.headroom))]),
-      ]));
-      // The sandbox starts with millions; only the part above the calibrated floors is this business's.
-      nodes.push(el("details", "sandbox", [
-        txt("summary", "", "Airwallex sandbox totals"),
-        el("div", "rows num", [
-          el("div", "row", [txt("span", "l", "EUR available"), txt("span", "r", money(a.eur.available))]),
-          el("div", "row", [txt("span", "l", "EUR committed to other bills"), txt("span", "r", money(a.eur.committed))]),
-          el("div", "row", [txt("span", "l", "USD available / floor"), txt("span", "r", money(a.usd.available) + " / " + money(a.usd.floor))]),
-        ]),
-      ]));
-    } else {
-      nodes.push(txt("p", "empty", "No Airwallex balance read yet."));
-    }
+      nodes.push(el("div", "rows num", [el("div", "", ["US dollars we may convert", txt("b", "", usd(a.usd.headroom))])]));
+      nodes.push(el("details", "tech", [txt("summary", "", "Sandbox totals"), el("div", "rows num", [
+        el("div", "", ["Euros at Airwallex", txt("b", "", eur(a.eur.available))]),
+        el("div", "", ["Committed to other bills", txt("b", "", eur(a.eur.committed))]),
+        el("div", "", ["US dollars / floor", txt("b", "", usd(a.usd.available) + " / " + group(a.usd.floor))]),
+      ])]));
+    } else nodes.push(el("div", "empty", [icon("wallet"), "No Airwallex balance read yet."]));
     var m = t.metal;
-    nodes.push(txt("div", "subhead", "Earnings from selling data (USDZ)"));
+    nodes.push(el("div", "sub2", [icon("link-2"), "Earnings from data sales on Metal"]));
     nodes.push(el("div", "rows num", [
-      el("div", "row", [txt("span", "l", "Sales − supplier − refunds"), txt("span", "r", money(m.sales) + " − " + money(m.upstream) + " − " + money(m.refunds) + " = " + money(m.net))]),
-      el("div", "row", [txt("span", "l", "Moved to Airwallex (once final on chain)"), txt("span", "r", money(m.swept))]),
+      el("div", "", ["Sales, less supplier and refunds", txt("b", "", tusd(m.net))]),
+      el("div", "", ["Moved to Airwallex once final on chain", txt("b", "", tusd(m.swept))]),
     ]));
-    set("treasury-body", nodes);
+    set("treasury", nodes);
   }
 
   function renderRefusals(d) {
     document.getElementById("refusals-count").textContent = String(d.refusals.length);
-    var nodes = d.refusals.slice(0, 12).map(function (r) {
-      var soft = /expired|unconfirmed|escalated/i.test(r.what);
-      return el("div", "refusal" + (soft ? " warn" : ""), [
-        el("div", "top", [txt("span", "what", r.what), chip(r.agent, AGENT_TONE[r.agent] || ""), txt("span", "time num", hms(r.ts))]),
-        txt("div", "reason", r.reason),
-      ]);
+    var nodes = d.refusals.slice(0, 10).map(function (r) {
+      return el("div", "refusal", [el("div", "what", [icon("ban"), plain(r.what)]), txt("div", "reason", plain(r.reason)), txt("div", "meta num", agentName(r.agent) + " · " + hm(r.ts))]);
     });
-    if (!nodes.length) nodes.push(el("div", "empty", ["No refusals yet."]));
-    set("refusals-body", nodes);
-  }
-
-  function renderFeed(d) {
-    var body = document.getElementById("feed-body"), keep = body.scrollTop;
-    var nodes = d.feed.map(function (f) {
-      var refs = [];
-      if (f.tx && TX.test(f.tx)) {
-        var a = txt("a", "mono", "tx " + f.tx.slice(0, 10) + "… ↗");
-        a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer";
-        refs.push(a);
-      }
-      if (f.awx_id) refs.push(txt("span", "mono", "Airwallex " + shortId(f.awx_id)));
-      return el("div", "item " + f.tone + "-tone", [
-        txt("span", "t num", hms(f.ts)),
-        el("div", "", [
-          el("div", "text", [chip(f.actor === "human" ? "Max" : f.actor, AGENT_TONE[f.actor] || ""), f.model ? chip(f.model, "model") : null, f.text]),
-          refs.length ? el("div", "refs", refs) : null,
-        ]),
-      ]);
-    });
-    body.replaceChildren.apply(body, nodes);
-    body.scrollTop = keep;
+    if (!nodes.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing refused yet."]));
+    set("refusals", nodes);
   }
 
   function render(d) {
-    renderPending(d); renderCards(d); renderBudgets(d); renderTreasury(d); renderRefusals(d); renderFeed(d);
-    // The emergency stop: a red band while it is on; the button (relay only) leads to the phone's policy page with it set.
+    countUp("k-alone", d.counts.alone); countUp("k-waiting", d.counts.waiting); countUp("k-blocked", d.counts.blocked);
+    renderCards(d); renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
     var fz = document.getElementById("frozen");
     if (d.frozen) {
       fz.hidden = false;
-      fz.replaceChildren(txt("span", "", "EMERGENCY STOP: every agent payment is refused and every card is frozen at Airwallex"),
-        txt("small", "", "by " + d.frozen.by + (d.frozen.since ? " at " + hms(d.frozen.since) : "") + (d.frozen.reason ? ": " + d.frozen.reason : "") + ". Lifting it needs a proposal and Face ID."));
-    } else {
-      fz.hidden = true;
-    }
-    document.getElementById("stop").hidden = !d.relay || !!d.frozen;
-    if (d.counts) {
-      document.getElementById("c-alone").textContent = money(String(d.counts.alone));
-      document.getElementById("c-waiting").textContent = String(d.counts.waiting);
-      document.getElementById("c-blocked").textContent = money(String(d.counts.blocked));
-    }
-    document.getElementById("audit").textContent = "Audit chain " + (d.audit.intact ? "intact" : "BROKEN") + " · " + d.audit.rows + " entries" + (d.audit.head ? " · head " + d.audit.head.slice(0, 8) : "");
-    var pk = document.getElementById("passkey");
-    if (d.passkey) {
-      var who = d.passkey.label ? d.passkey.label.charAt(0).toUpperCase() + d.passkey.label.slice(1) : "";
-      pk.textContent = d.passkey.credential ? "Approvals need " + who + "'s passkey (Face ID) " + d.passkey.credential
-        : d.passkey.enrolment_open ? "Passkey enrolment open" : "No passkey enrolled";
-      pk.className = d.passkey.credential ? "" : "warn-text";
-    }
+      fz.replaceChildren(icon("snowflake"), txt("span", "", "Emergency stop: every agent payment is refused and every card is frozen at Airwallex."),
+        txt("small", "", "By " + d.frozen.by + (d.frozen.since ? " at " + hm(d.frozen.since) : "") + (d.frozen.reason ? ": " + d.frozen.reason : "") + ". Lifting it needs a proposal and Face ID."));
+    } else fz.hidden = true;
+    document.getElementById("stop").hidden = !d.relay || !!d.frozen || !!d.recorded;
+    document.getElementById("auditline").textContent = "Audit log: " + d.audit.rows + " rows, chain " + (d.audit.intact ? "intact" : "BROKEN");
+    document.getElementById("passkey").textContent = d.passkey.label
+      ? "Approvals need " + d.passkey.label.charAt(0).toUpperCase() + d.passkey.label.slice(1) + "'s passkey (Face ID)"
+      : "No passkey enrolled yet: approvals are signed on this computer";
   }
 
-  function status() {
-    var runnerQuiet = !!(lastData && lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS);
-    var fresh = lastOk && Date.now() - lastOk < STALE_MS && !runnerQuiet;
-    var live = document.getElementById("live");
-    live.className = fresh ? "live" : "stale";
-    live.querySelector(".state").textContent = needsLink ? "Needs the viewer link from the runner" : fresh ? "Live" : runnerQuiet ? "Stale · runner offline" : lastOk ? "Stale" : "Connecting";
-    document.getElementById("updated").textContent = lastOk ? "updated " + hms(new Date(lastOk).toISOString()) : "";
-    document.querySelectorAll("[data-expires]").forEach(function (n) {
-      var c = countdown(n.getAttribute("data-expires"));
-      n.textContent = c.text; n.classList.toggle("soon", c.soon);
-    });
+  // Navigation for each kind of visitor.
+  function nav(items) {
+    set("nav", items.map(function (x) { var a = txt("a", x[2] ? "on" : "", x[0]); a.href = x[1]; return a; }));
   }
 
-  // On the relay the data needs the viewer key: it arrives once as #view=<key> (never sent to a server) and is
-  // kept on this device. The local dashboard ignores it.
+  var MODE = document.body.getAttribute("data-mode");
+  var RECORDED = null;
+  try { RECORDED = JSON.parse(document.getElementById("recorded-data").textContent); } catch (e) { RECORDED = null; }
+
+  // On the relay the data needs the viewer key: it arrives once as #view=<key> (never sent to a server) and is kept on
+  // this device. The local dashboard needs none.
   var viewKey = "";
   try {
     var vm = /(?:^#|&)view=([0-9a-f]{32})(?:&|$)/.exec(location.hash);
@@ -553,15 +694,27 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     if (vm || rm) history.replaceState(null, "", location.pathname + location.search);
   } catch (e) {}
   var needsLink = false;
-  // The local dashboard (npm run dashboard) needs no key; on the relay, a guest without the viewer link sees the way
-  // to the recorded demo instead, and the page asks the relay for nothing.
-  var LOCAL = document.body.getAttribute("data-mode") === "local";
-  function guest(note) {
-    document.querySelector("main").hidden = true;
-    document.getElementById("counts").hidden = true;
-    document.getElementById("status").hidden = true;
-    if (note) document.getElementById("guest-cfo").textContent = note;
-    document.getElementById("guest").hidden = false;
+
+  function live(state, label) { var l = document.getElementById("live"); l.hidden = false; l.className = "live " + state; l.querySelector(".lbl").textContent = label; }
+  function status() {
+    if (!lastData) { live("", needsLink ? "Needs the viewer link" : "Connecting"); return; }
+    var fresh = Date.now() - lastOk < STALE_MS && !(lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS);
+    live(fresh ? "on" : "", fresh ? "Live" : lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS ? "Stale · runner offline" : "Stale");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-expires]"), function (n) { n.textContent = countdown(n.getAttribute("data-expires")); });
+  }
+  function showDash() { document.getElementById("dash").hidden = false; }
+  function showLanding(note) {
+    nav([["Overview", "./", true], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
+    var p = RECORDED && RECORDED.proof;
+    if (p) {
+      countUp("p-alone", p.alone); countUp("p-blocked", p.blocked);
+      document.getElementById("p-over").textContent = eur(p.over_limit_eur).replace(".00", "");
+      document.getElementById("p-fakes").textContent = p.fake_invoices + " + " + p.ai_tricks;
+      countUp("p-faceid", p.face_id);
+      document.getElementById("p-src").textContent = "From the recorded live run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + RECORDED.run + "), on Metal testnet and the Airwallex sandbox (test money). Every number comes from its audit log.";
+    }
+    if (note) document.getElementById("p-src").textContent += " " + note;
+    document.getElementById("landing").hidden = false;
   }
 
   function poll() {
@@ -570,13 +723,33 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
       .then(function (d) { lastData = d; lastOk = Date.now(); render(d); })
       .catch(function () {})
       .then(function () {
-        // A viewer link that no longer works: stop asking.
-        if (needsLink) { guest("This device's viewer link is no longer valid. Open the newest link from the runner once on this device."); return; }
+        // A viewer link that no longer works: stop asking, and show the way to the recording instead.
+        if (needsLink) { document.getElementById("dash").hidden = true; document.getElementById("live").hidden = true; showLanding("This device's viewer link is no longer valid; open the newest one from the runner."); return; }
         status(); setTimeout(poll, POLL_MS);
       });
   }
-  if (!LOCAL && !viewKey) guest("");
-  else { setInterval(status, 1000); poll(); }
+
+  var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
+  if (wantRecorded && RECORDED) {
+    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", true]]);
+    var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
+    document.getElementById("recbanner").hidden = false;
+    document.getElementById("rec-text").textContent = "Recorded run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + RECORDED.run + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
+    live("rec", "Recorded");
+    showDash(); render(snap);
+  } else if (MODE === "local" || viewKey) {
+    nav([["Dashboard", "./", true], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [] : [["Policy", "policy"]]));
+    showDash(); setInterval(status, 1000); poll();
+  } else {
+    showLanding("");
+  }
+
+  // The emergency stop: explain, then hand over to the phone's policy page, where Face ID signs it.
+  var sheet = document.getElementById("stop-sheet");
+  document.getElementById("stop").addEventListener("click", function () { sheet.hidden = false; document.getElementById("stop-cancel").focus(); });
+  document.getElementById("stop-cancel").addEventListener("click", function () { sheet.hidden = true; document.getElementById("stop").focus(); });
+  sheet.addEventListener("click", function (e) { if (e.target === sheet) sheet.hidden = true; });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") sheet.hidden = true; });
 })();
 </script>
 </body>
