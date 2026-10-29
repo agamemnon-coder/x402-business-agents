@@ -6,7 +6,8 @@ import { verifyAuditChain } from "../audit/log.js";
 import { MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
-import { policyValue } from "../policy/rules.js";
+import { cardLimits, policyValue } from "../policy/rules.js";
+import { CARDS, type Agent } from "../config/policy.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -68,6 +69,29 @@ export interface FeedItem {
   awx_id: string | null;
 }
 
+export interface CardTx {
+  ts: string;
+  merchant: string;
+  purpose: string | null;
+  amount: string;
+  approved: boolean;
+  /** Why Airwallex declined, in plain words; null when approved. */
+  reason: string | null;
+}
+
+/** An agent's company card (K2): the CFO policy's limits, and whether the card at Airwallex has them yet. */
+export interface CardView {
+  agent: Agent;
+  last4: string;
+  buys: string;
+  per_tx: string;
+  monthly: string;
+  spent_month: string;
+  left_month: string;
+  in_sync: boolean;
+  recent: CardTx[];
+}
+
 export interface Snapshot {
   generated_at: string;
   world: { business: string | null; customer: string | null };
@@ -86,6 +110,7 @@ export interface Snapshot {
   decisions: Decision[];
   refusals: Refusal[];
   feed: FeedItem[];
+  cards: CardView[];
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
@@ -254,6 +279,36 @@ function treasury(db: DB): Snapshot["treasury"] {
   };
 }
 
+const DECLINE_WORDS: Record<string, string> = {
+  LIMIT_EXCEEDED: "over the card's limit",
+  CARD_NOT_ACTIVE: "the card is not active",
+  INSUFFICIENT_FUNDS: "not enough money on the account",
+};
+const declineWords = (code: string) => DECLINE_WORDS[code] ?? (code.toLowerCase().replace(/_/g, " ") || "no reason given");
+const limitWords = (s: string) => {
+  const [per, month] = s.split(" / ");
+  return month ? `up to ${per} EUR per purchase, ${month} EUR a month` : s;
+};
+
+/** Ledgers from before the cards have no card tables; the read-only dashboard must not fail on them. */
+function cards(db: DB, now: Date): CardView[] {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get()) return [];
+  const month = now.toISOString().slice(0, 7);
+  const rows = db.prepare("SELECT agent, last4, per_tx_cents, monthly_cents FROM cards ORDER BY agent").all() as { agent: Agent; last4: string; per_tx_cents: number; monthly_cents: number }[];
+  return rows.map((c) => {
+    const want = cardLimits(db, c.agent);
+    const spent = sum(db, `SELECT SUM(amount_cents) AS n FROM card_transactions WHERE agent = '${c.agent}' AND approved = 1 AND substr(occurred_at, 1, 7) = '${month}'`);
+    const recent = (db.prepare("SELECT occurred_at, merchant, purpose, amount_cents, approved, failure_reason, status FROM card_transactions WHERE agent = ? ORDER BY occurred_at DESC, rowid DESC LIMIT 6").all(c.agent) as
+      { occurred_at: string; merchant: string; purpose: string | null; amount_cents: number; approved: number; failure_reason: string | null; status: string }[])
+      .map((t) => ({ ts: t.occurred_at, merchant: t.merchant, purpose: t.purpose, amount: fromCents(t.amount_cents), approved: t.approved === 1, reason: t.approved === 1 ? null : declineWords(t.failure_reason ?? t.status) }));
+    return {
+      agent: c.agent, last4: c.last4, buys: CARDS[c.agent]?.buys ?? "", per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
+      spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent),
+      in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents, recent,
+    };
+  });
+}
+
 const MODEL_NAMES: [RegExp, string][] = [[/haiku/i, "Haiku"], [/sonnet/i, "Sonnet"], [/opus/i, "Opus"]];
 export const modelName = (m: string | null | undefined): string | null => {
   if (!m) return null;
@@ -359,6 +414,13 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "transfer.fee": return out(`Airwallex fee ${str(p.fee)}, within the approved ceiling of ${str(p.fee_max)}`, "ok", { awx_id: s || null });
     case "transfer.fee_over_ceiling": return out(`Airwallex fee ${str(p.fee)} is above the approved ceiling of ${str(p.fee_max)}`, "refusal", { awx_id: s || null });
     case "transfer.ambiguous": return out(`Transfer answer lost; ${str(p.resolved)}`, "info");
+    case "card.issued": return out(`Airwallex issued the ${str(p.agent)} agent a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
+    case "card.adopted": return out(`The ${str(p.agent)} agent's Visa card •••• ${str(p.last4)} now follows the CFO policy`, "ok");
+    case "card.limits_synced": return out(`Airwallex now has the CFO policy on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${limitWords(str(p.to))} (was ${limitWords(str(p.from))})`, "approval");
+    case "card.purchase_started": return out(`Subscribing to ${str(p.merchant)} (${str(p.plan)}) for ${str(p.amount)} EUR on its card •••• ${str(p.last4)}`);
+    case "card.charge_approved": return out(`Airwallex approved ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "ok", { awx_id: s || null });
+    case "card.charge_declined": return out(`Airwallex declined ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${declineWords(str(p.reason))}`, "refusal", { awx_id: s || null });
+    case "card.charge_reversed": return out(`Airwallex reversed ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "refusal", { awx_id: s || null });
     case "passkey.enrolment_opened": return out("A one-time code to enrol a passkey was issued (valid 10 minutes)");
     case "passkey.enrolled": return out(`${str(p.label) || "A person"} enrolled passkey ${s.slice(0, 8)}; approvals now need it`, "ok");
     case "passkey.revoked": return out(`Passkey ${s.slice(0, 8)} revoked: replaced by ${str(p.replaced_by).slice(0, 8)}`);
@@ -372,6 +434,7 @@ export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
   "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
+  "card.charge_declined", "card.charge_reversed",
 ]);
 
 export const REFUSAL_WHAT: Record<string, string> = {
@@ -394,6 +457,8 @@ export const REFUSAL_WHAT: Record<string, string> = {
   "transfer.fee_over_ceiling": "Fee above ceiling",
   "passkey.refused": "Passkey approval refused",
   "passkey.enrol_refused": "Passkey enrolment refused",
+  "card.charge_declined": "Card purchase declined by Airwallex",
+  "card.charge_reversed": "Card purchase reversed",
 };
 
 const AGENT_OF: Record<string, string> = {
@@ -456,6 +521,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     decisions,
     refusals,
     feed,
+    cards: cards(db, now),
     passkey: passkeyInfo(db, now),
   };
 }

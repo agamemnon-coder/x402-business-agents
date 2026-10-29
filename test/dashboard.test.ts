@@ -11,6 +11,9 @@ import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { dashboardApp } from "../src/servers/dashboard.js";
 import { setSetting } from "../src/world/settings.js";
+import { buyPlan } from "../src/agents/cardBuyer.js";
+import { setupCards } from "../src/policy/cards.js";
+import { FakeIssuing } from "./fakes/issuing.js";
 
 const B = "0x00000000000000000000000000000000000000b1";
 const C = "0x00000000000000000000000000000000000000c1";
@@ -124,6 +127,38 @@ describe("dashboard snapshot", () => {
     const db = ledger();
     db.exec("DROP TABLE passkey_assertions; DROP TABLE passkeys; DROP TABLE passkey_enrolments;");
     expect(buildSnapshot(db, t0).passkey).toEqual({ credential: null, label: null, enrolled_at: null, enrolment_open: false });
+  });
+
+  it("shows each agent's company card: limits, spend this month, and Airwallex's approvals and declines", async () => {
+    const db = ledger();
+    const awx = new FakeIssuing();
+    awx.clock = () => t0.getTime();
+    await setupCards(db, awx, t0);
+    await buyPlan(db, awx, "market-data-starter", t0);
+    await buyPlan(db, awx, "market-data-pro", t0);
+    const s = buildSnapshot(db, t0);
+    expect(s.cards.map((c) => [c.agent, c.last4, c.per_tx, c.monthly, c.spent_month, c.left_month, c.in_sync])).toEqual([
+      ["sourcing", "4002", "30.00", "100.00", "19.99", "80.01", true],
+      ["support", "4004", "60.00", "150.00", "0.00", "150.00", true],
+      ["treasury", "4006", "25.00", "50.00", "0.00", "50.00", true],
+    ]);
+    expect(s.cards[0]!.recent.map((t) => [t.merchant, t.amount, t.approved, t.reason])).toEqual([
+      ["Northwind Market Data", "45.00", false, "over the card's limit"],
+      ["Northwind Market Data", "19.99", true, null],
+    ]);
+    expect(s.refusals[0]).toMatchObject({ what: "Card purchase declined by Airwallex", agent: "sourcing" });
+    expect(s.feed.slice(0, 4).map((f) => [f.actor, f.text, f.tone])).toEqual([
+      ["sourcing", "Airwallex declined 45.00 EUR at Northwind Market Data on the sourcing agent's card •••• 4002: over the card's limit", "refusal"],
+      ["sourcing", "Subscribing to Northwind Market Data (Pro plan, monthly (more symbols, faster prices)) for 45.00 EUR on its card •••• 4002", "info"],
+      ["sourcing", "Airwallex approved 19.99 EUR at Northwind Market Data on the sourcing agent's card •••• 4002", "ok"],
+      ["sourcing", "Subscribing to Northwind Market Data (Starter plan, monthly) for 19.99 EUR on its card •••• 4002", "info"],
+    ]);
+    expect(s.feed.find((f) => f.event === "card.issued")?.text).toBe("Airwallex issued the treasury agent a virtual Visa card •••• 4006: up to 25.00 EUR per purchase, 50.00 EUR a month");
+    // The CFO tightens a limit: until Airwallex has it, the card shows it is not in sync yet.
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('card.support.per_tx', '40.00', ?)").run(t0.toISOString());
+    expect(buildSnapshot(db, t0).cards[1]).toMatchObject({ per_tx: "40.00", in_sync: false });
+    db.exec("DROP TABLE card_transactions; DROP TABLE cards;");
+    expect(buildSnapshot(db, t0).cards).toEqual([]);
   });
 
   it("describes passkey events, and lists a refused passkey approval as a refusal", () => {

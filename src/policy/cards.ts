@@ -123,7 +123,7 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
       // Later news about the same authorisation (it cleared, or was reversed) updates the row.
       if (old.status !== t.status) db.prepare("UPDATE card_transactions SET status = ?, approved = ? WHERE transaction_id = ?").run(t.status, t.approved ? 1 : 0, t.transactionId);
       if (old.approved === 1 && !t.approved) {
-        audit(db, "system", "card.charge_reversed", t.transactionId, { agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, status: t.status, source }, now);
+        audit(db, card.agent, "card.charge_reversed", t.transactionId, { agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, status: t.status, source }, now);
       }
       return false;
     }
@@ -131,7 +131,8 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
       `INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, failure_reason, purpose, source, occurred_at, recorded_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(t.transactionId, t.cardId, card.agent, t.merchant, t.mcc, t.amountCents, t.currency, t.status, t.approved ? 1 : 0, t.failureReason, purpose ?? null, source, t.occurredAt, now.toISOString());
-    audit(db, "system", t.approved ? "card.charge_approved" : "card.charge_declined", t.transactionId, {
+    // Logged under the agent whose card it is; the decision itself is Airwallex's.
+    audit(db, card.agent, t.approved ? "card.charge_approved" : "card.charge_declined", t.transactionId, {
       agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency,
       ...(t.approved ? {} : { reason: t.failureReason ?? t.status }), ...(purpose ? { purpose } : {}), source,
     }, now);

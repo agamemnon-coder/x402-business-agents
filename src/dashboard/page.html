@@ -54,8 +54,8 @@ header {
 main {
   display: grid; gap: 14px; padding: 14px 20px 20px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
-  grid-template-areas: "pending budgets feed" "refusals treasury feed";
-  grid-template-rows: auto 1fr;
+  grid-template-areas: "pending cards feed" "refusals budgets feed" "refusals treasury feed";
+  grid-template-rows: auto auto 1fr;
   height: calc(100vh - 53px); min-height: 640px;
 }
 section {
@@ -73,6 +73,7 @@ section > h2 .count {
 section > h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--faint); }
 .body { padding: 0 16px 14px; overflow: auto; min-height: 0; }
 #pending { grid-area: pending; }
+#cards { grid-area: cards; }
 #budgets { grid-area: budgets; }
 #treasury { grid-area: treasury; }
 .honest { flex-basis: 100%; margin: 2px 0 0; font-size: 12px; color: var(--muted); max-width: 70ch; }
@@ -142,6 +143,22 @@ a.btn.danger { background: var(--bad); color: #fff; }
 .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
 .cp { margin-top: 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 8px; font-size: 12.5px; color: var(--muted); }
 
+/* Company cards */
+.pcard { padding: 9px 0; border-top: 1px solid var(--border); }
+.pcard:first-child { border-top: 0; padding-top: 2px; }
+.pcard .line1 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pcard .name { font-weight: 650; text-transform: capitalize; }
+.pcard .visa { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; background: var(--surface-2); white-space: nowrap; }
+.pcard .amount { margin-left: auto; white-space: nowrap; }
+.pcard .amount b { font-weight: 650; }
+.pcard .amount span { color: var(--muted); }
+.pcard .line2 { display: flex; gap: 2px 12px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+.pcard .tx { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 6px; font-size: 12.5px; padding: 2px 0; align-items: baseline; }
+.pcard .tx .m { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard .tx.no { color: var(--bad); }
+.pcard .tx .s { font-weight: 700; }
+.pcard .txs { margin-top: 5px; }
+
 /* Treasury */
 .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .kpi { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface-2); min-width: 0; }
@@ -180,7 +197,7 @@ a.btn.danger { background: var(--bad); color: #fff; }
 footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display: none; }
 
 @media (max-width: 1100px) {
-  main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "pending budgets" "refusals treasury" "feed feed"; height: auto; }
+  main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "pending cards" "refusals budgets" "refusals treasury" "feed feed"; grid-template-rows: auto; height: auto; }
   #feed .body { max-height: 560px; }
 }
 @media (max-width: 720px) {
@@ -197,8 +214,8 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
 </head>
 <body>
 <header>
-  <div class="brand"><h1>Tidemark Data</h1><span class="sub">Treasury control</span>
-    <p class="honest">Demo on test networks: Metal testnet (USDZ are test dollars) and the Airwallex sandbox. The step from USDZ to Airwallex is a simulated sandbox deposit that names the real testnet transaction.</p></div>
+  <div class="brand"><h1>Tidemark Data</h1><span class="sub">Every AI agent its own company card, with limits the CFO sets</span>
+    <p class="honest">One CFO policy for both rails: Airwallex cards and payouts, and Metal mandates for paying per request. Demo on test networks: the Airwallex sandbox (the merchant's charge on a card is simulated; the approve or decline is Airwallex's own) and Metal testnet (USDZ are test dollars). The step from USDZ to Airwallex is a simulated sandbox deposit that names the real testnet transaction.</p></div>
   <div class="status" id="status">
     <span id="live" class="stale"><span class="dot"></span><span class="state">Connecting</span></span>
     <span id="updated" class="num"></span>
@@ -208,7 +225,8 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
 </header>
 <main>
   <section id="pending" aria-labelledby="h-pending"><h2 id="h-pending">Waiting for approval <span class="count" id="pending-count">0</span></h2><div class="body" id="pending-body"></div></section>
-  <section id="budgets" aria-labelledby="h-budgets"><h2 id="h-budgets">Agent budgets <span class="hint">Metal mandates, on chain</span></h2><div class="body" id="budgets-body"></div></section>
+  <section id="cards" aria-labelledby="h-cards"><h2 id="h-cards">Company cards <span class="hint">Airwallex Issuing, virtual Visa</span></h2><div class="body" id="cards-body"></div></section>
+  <section id="budgets" aria-labelledby="h-budgets"><h2 id="h-budgets">Pay-per-request budgets <span class="hint">Metal mandates, on chain</span></h2><div class="body" id="budgets-body"></div></section>
   <section id="treasury" aria-labelledby="h-treasury"><h2 id="h-treasury">Treasury <span class="hint" id="treasury-asof"></span></h2><div class="body" id="treasury-body"></div></section>
   <section id="refusals" aria-labelledby="h-refusals"><h2 id="h-refusals">Refusals and escalations <span class="count" id="refusals-count">0</span></h2><div class="body" id="refusals-body"></div></section>
   <section id="feed" aria-labelledby="h-feed"><h2 id="h-feed">Agent activity <span class="hint">newest first</span></h2><div class="body" id="feed-body"></div></section>
@@ -335,6 +353,34 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     set("budgets-body", nodes);
   }
 
+  function renderCards(d) {
+    var cs = d.cards || [], nodes = [];
+    if (!cs.length) nodes.push(txt("p", "empty", "No company cards issued yet."));
+    cs.forEach(function (c) {
+      var pct = Math.max(0, Math.min(100, cents(c.monthly) ? cents(c.spent_month) / cents(c.monthly) * 100 : 0));
+      var bar = el("div", "bar" + (pct >= 80 ? " high" : ""), [el("i")]);
+      bar.firstChild.style.width = pct.toFixed(1) + "%";
+      var txs = c.recent.slice(0, 3).map(function (t) {
+        var row = el("div", "tx num" + (t.approved ? "" : " no"), [
+          txt("span", "s", t.approved ? "✓" : "✗"),
+          txt("span", "m", t.merchant + (t.approved ? "" : " · declined: " + t.reason)),
+          txt("span", "", money(t.amount) + " EUR"),
+        ]);
+        row.title = (t.purpose ? t.purpose + " · " : "") + hms(t.ts);
+        return row;
+      });
+      nodes.push(el("div", "pcard", [
+        el("div", "line1", [txt("span", "name", c.agent + " agent"), txt("span", "visa mono", "VISA •••• " + c.last4),
+          el("span", "amount num", [txt("b", "", money(c.spent_month)), txt("span", "", " / " + money(c.monthly) + " EUR this month")])]),
+        bar,
+        el("div", "line2 num", [txt("span", "", "max " + money(c.per_tx) + " per purchase"), txt("span", "", money(c.left_month) + " left this month"),
+          txt("span", "", "buys " + c.buys), c.in_sync ? null : txt("span", "warn-text", "updating the card at Airwallex…")]),
+        txs.length ? el("div", "txs", txs) : null,
+      ]));
+    });
+    set("cards-body", nodes);
+  }
+
   function renderTreasury(d) {
     var t = d.treasury, nodes = [];
     var a = t.airwallex;
@@ -405,7 +451,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
   }
 
   function render(d) {
-    renderPending(d); renderBudgets(d); renderTreasury(d); renderRefusals(d); renderFeed(d);
+    renderPending(d); renderCards(d); renderBudgets(d); renderTreasury(d); renderRefusals(d); renderFeed(d);
     document.getElementById("audit").textContent = "Audit chain " + (d.audit.intact ? "intact" : "BROKEN") + " · " + d.audit.rows + " entries" + (d.audit.head ? " · head " + d.audit.head.slice(0, 8) : "");
     var pk = document.getElementById("passkey");
     if (d.passkey) {
