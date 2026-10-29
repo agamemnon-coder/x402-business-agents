@@ -85,7 +85,7 @@ check((await page.textContent(".verdict-head")) === "Passkey enrolled", "enrolme
 // Dashboard on the phone.
 await page.goto(`${url}/`);
 await page.waitForSelector("#pending-body .card", { timeout: 10_000 });
-await page.waitForFunction(() => document.getElementById("passkey")?.textContent?.startsWith("Approvals need max's passkey"));
+await page.waitForFunction(() => document.getElementById("passkey")?.textContent?.startsWith("Approvals need Max's passkey (Face ID)"));
 check(true, "dashboard: names the enrolled passkey");
 await page.screenshot({ path: join(shots, "dashboard-phone-passkey.png"), fullPage: false });
 
