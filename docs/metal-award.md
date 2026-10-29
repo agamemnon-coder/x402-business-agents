@@ -25,8 +25,8 @@ every proposal with Face ID. Explorer: https://testnet.metalntwx.com. Packages: 
 - **Honest about what is simulated:** testnet *USDZ is shown as "test USD"; the step from *USDZ to Airwallex is a
   sandbox deposit that names the real testnet transaction.
 
-What we do not use: Metal mainnet, bridges, swaps and on-chain FX (FX happens at Airwallex), and Metal's own card
-or bank products. The packages are pinned to the versions above.
+What we do not use: Metal mainnet, bridges, swaps and on-chain FX (FX happens at Airwallex).
+The packages are pinned to the versions above.
 
 ## 1. Accounts, *USDZ and the faucet
 
