@@ -39,6 +39,17 @@ describe("a company card per agent (K2)", () => {
     expect(events(db, "card.issued").map((e) => e.agent)).toEqual(["sourcing", "support", "treasury"]);
   });
 
+  it("gives each world its own cards, named after its business account", async () => {
+    db.prepare("INSERT INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000AbC12', 'business')").run();
+    await setupCards(db, awx, now);
+    expect(awx.cards[0]!.nickname).toBe("sourcing agent: market data (0abc12)");
+    const other = openDb(":memory:");
+    other.prepare("INSERT INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000DeF34', 'business')").run();
+    await setupCards(other, awx, now);
+    expect(awx.cards).toHaveLength(6);
+    expect(awx.holders).toHaveLength(3);
+  });
+
   it("adopts a card that already exists at Airwallex and brings its limits back to the policy", async () => {
     const h = await awx.createCardholder({ email: "agents+sourcing@tidemark-data.example", firstName: "Sourcing", lastName: "Agent" });
     await awx.createCard({ cardholderId: h.id, nickname: "sourcing agent: market data", createdBy: "x", limits: { currency: "EUR", perTxCents: 5000, monthlyCents: 10000 } });

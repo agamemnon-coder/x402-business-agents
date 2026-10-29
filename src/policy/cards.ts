@@ -63,6 +63,15 @@ async function syncOne(db: DB, rail: IssuingRail, agent: Agent, card: Card, now:
   return true;
 }
 
+/**
+ * The card's name at Airwallex. A world with a business account gets its own cards (the name ends in that account's
+ * last six characters), so a fresh demo world never inherits another world's spend against the monthly limit.
+ */
+export function cardNickname(db: DB, agent: Agent): string {
+  const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
+  return business ? `${CARDS[agent].nickname} (${business.address.slice(-6).toLowerCase()})` : CARDS[agent].nickname;
+}
+
 /** Issues each agent's card, or adopts the one already there, and syncs its limits. Safe to run again. */
 export async function setupCards(db: DB, rail: IssuingRail, now = new Date()): Promise<CardRow[]> {
   for (const agent of AGENTS) {
@@ -73,11 +82,12 @@ export async function setupCards(db: DB, rail: IssuingRail, now = new Date()): P
     }
     const c = CARDS[agent];
     const holder = (await rail.findCardholderByEmail(c.email)) ?? (await rail.createCardholder({ email: c.email, firstName: c.firstName, lastName: "Agent" }));
-    const found = await rail.findCard(holder.id, c.nickname);
-    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname: c.nickname, createdBy: "Tidemark CFO policy", limits: cardLimits(db, agent) }));
+    const nickname = cardNickname(db, agent);
+    const found = await rail.findCard(holder.id, nickname);
+    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Tidemark CFO policy", limits: cardLimits(db, agent) }));
     // An adopted card is recorded with the limits it has; syncOne then logs any change it makes to them.
     store(db, agent, card, now);
-    audit(db, "awx-executor", found ? "card.adopted" : "card.issued", agent, { agent, last4: card.last4, nickname: c.nickname, limits: words(card.limits), currency: "EUR" }, now);
+    audit(db, "awx-executor", found ? "card.adopted" : "card.issued", agent, { agent, last4: card.last4, nickname, limits: words(card.limits), currency: "EUR" }, now);
     await syncOne(db, rail, agent, card, now);
   }
   return cardRows(db);

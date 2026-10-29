@@ -49,6 +49,16 @@ if ((db.prepare("SELECT COUNT(*) AS n FROM sales").get() as { n: number }).n < 5
 step("S2 Disputed batch", "s2.ts");
 step("S3 Euro licence bill", "s3.ts");
 if (fromEnv()) await waitForExecuted("invoice_payment", "S3 invoice payment");
+if (fromEnv()) {
+  // S4: the company cards. The agent's raise is a policy change the CFO approves with Face ID; then the same purchase again.
+  if (!db.prepare("SELECT 1 FROM card_transactions WHERE approved = 1 AND amount_cents = 4500").get()) {
+    step("S4 Company cards: inside the limit, over it, a raise", "cards.ts", "scenario");
+    await waitForExecuted("policy_change", "S4 card limit raise");
+    // The runner pushes the new limit right after the change; sync makes sure the card has it before we buy.
+    step("S4 The card follows the CFO policy", "cards.ts", "sync");
+    step("S4 The same purchase after the raise", "cards.ts", "buy", "market-data-pro");
+  }
+}
 step("Verify everything from the chain", "verify.ts");
 step("Export the audit log", "auditExport.ts");
 console.log("\nDemo complete.");
