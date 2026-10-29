@@ -292,7 +292,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "proposal.failed": return out(`${s} failed: ${str(p.error) || "see the ledger"}`, "refusal");
     case "proposal.needs_reapproval": return out(`${s} needs a new approval: ${str(p.error)}`, "refusal");
     case "proposal.superseded": return out(`${s} closed: another option (${str(p.by)}) was approved`);
-    case "proposal.expired": return out(`${s} expired without a decision`, "refusal");
+    case "proposal.expired": return out(`${s} expired: its terms can no longer be approved or run`, "refusal");
     case "approval.too_late": return out(`${str(p.approver) || "A person"} approved ${s} after it expired; nothing ran`, "refusal");
     case "refund.auto_approved": return out(`Refunds for sales ${(Array.isArray(p.sales) ? (p.sales as unknown[]) : []).map((x) => `#${str(x)}`).join(", ")} are within the automatic limits`, "ok");
     case "refund.paid": return out(`Refunded ${str(p.amount)} to Kestrel Quant for sale #${s} (${str(p.payment_id)})`, "ok");
