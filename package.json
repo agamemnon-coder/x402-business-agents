@@ -41,7 +41,8 @@
     "demo:all": "tsx src/cli/demo.ts",
     "demo:record": "tsx src/cli/demo-record.ts",
     "gl": "tsx src/cli/gl.ts",
-    "mcp": "tsx src/cli/mcp.ts"
+    "mcp": "tsx src/cli/mcp.ts",
+    "outside-agent": "tsx src/cli/outside-agent.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
