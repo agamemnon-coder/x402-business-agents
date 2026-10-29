@@ -89,6 +89,26 @@ Step by step: `npm run bootstrap`, `npm run trade -- 1 40`, `npm run s1:raise`, 
 Keys (owner keys, mandate keys, credentials) are written to `KIT11_KEYS_DIR`, which must lie outside this repo.
 For a fresh demo world, point `KIT11_KEYS_DIR` and `KIT11_DB` at new paths.
 
+## Dashboard
+
+`npm run dashboard` serves a live view of the ledger at http://127.0.0.1:4300 (set `KIT11_DB` to pick a world).
+It polls every 2 seconds, shows Live or Stale, and fits one screen on a laptop and one column on a phone.
+
+| Panel | What it shows |
+|---|---|
+| Waiting for approval | Every proposal that waits for a person: plain-language summary, countdown to expiry, hash prefix, Opus's advisory verdict, and a link to the approval page. Below it, the latest closed proposals. |
+| Agent budgets | Each agent's Metal mandate: spent of budget, what is left, the cap per payment, the payee, how often it was replaced (spend carries over), and the 20.00 split across agents. |
+| Treasury | Free EUR above the reserve floor and committed bills, USD above its floor (Airwallex, from the last balance read), and the Metal earnings swept to Airwallex. |
+| Refusals and escalations | Every refused purchase, escalated invoice, late approval, expired or rejected proposal, with its reason in plain words. |
+| Agent activity | The audit log as sentences, newest first, with the agent, the Claude model where one was used, explorer links for chain transactions and Airwallex ids. |
+
+The dashboard opens the ledger read-only and holds no key, so it cannot approve or move money; "Review and approve"
+opens the approval page (`npm run approvals`). Every ledger text is rendered as text (agents read hostile documents),
+and the page runs under a CSP that allows only its own script and style. The page uses relative URLs only, so the
+same file can be served from a phone-reachable host later.
+
+![Dashboard](docs/dashboard-desktop.png)
+
 ## Code map
 
 | Part | Where |
@@ -103,6 +123,7 @@ For a fresh demo world, point `KIT11_KEYS_DIR` and `KIT11_DB` at new paths.
 | Airwallex | `src/airwallex/` (client, port, REST adapter); a fake for tests in `test/fakes/` |
 | Claude | `src/claude/` |
 | Approval page | `src/servers/approvals.ts` |
+| Dashboard (read-only) | `src/dashboard/snapshot.ts`, `src/dashboard/page.html`, `src/servers/dashboard.ts` |
 
 ## Tooling used
 
