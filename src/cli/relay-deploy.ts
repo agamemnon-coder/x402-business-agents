@@ -35,3 +35,5 @@ run(wrangler, ["secret", "put", "RELAY_TOKEN"], token);
 const cfg = await relayConfig();
 const res = await fetch(`${cfg.url}/api/snapshot`).catch((e: Error) => ({ status: 0, statusText: e.message }));
 console.log(`\nrelay deployed: ${cfg.url}/  (snapshot: ${res.status === 503 ? "waiting for the runner, start npm run relay" : res.status})`);
+// Seen 2026-10-29: a Durable Object that keeps getting requests keeps running the old code after a deploy.
+console.log("note: the relay's Durable Object takes the new code once it is idle; stop npm run relay (and close the dashboard) for about a minute");
