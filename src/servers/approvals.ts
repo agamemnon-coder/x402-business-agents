@@ -41,6 +41,8 @@ function renderValue(v: unknown): string {
   if (v === null) return muted("null");
   if (Array.isArray(v)) {
     if (v.length === 0) return muted("(empty list)");
+    const grid = gridOf(v);
+    if (grid) return grid;
     return table(v.map((x, i) => [`[${i + 1}]`, x] as [string, unknown]));
   }
   if (typeof v === "object") {
@@ -49,6 +51,19 @@ function renderValue(v: unknown): string {
   }
   if (v === "") return muted('"" (empty text)');
   return linkify(String(v));
+}
+
+/** A list of flat records with the same keys (refunds, evidence, steps) reads best as one row per item. */
+function gridOf(items: unknown[]): string | null {
+  const flat = (x: unknown): x is Record<string, unknown> =>
+    x !== null && typeof x === "object" && !Array.isArray(x) && Object.values(x).every((y) => y === null || typeof y !== "object" || (Array.isArray(y) && y.every((z) => typeof z !== "object")));
+  if (!items.every(flat)) return null;
+  const keys = Object.keys(items[0] as object);
+  if (!items.every((x) => Object.keys(x as object).join("\u0000") === keys.join("\u0000"))) return null;
+  const cell = (y: unknown) => (Array.isArray(y) ? y.map((z) => linkify(String(z))).join("<br>") : renderValue(y));
+  const head = `<tr>${keys.map((k) => `<th scope="col">${esc(k)}</th>`).join("")}</tr>`;
+  const rows = (items as Record<string, unknown>[]).map((x) => `<tr>${keys.map((k) => `<td>${cell(x[k])}</td>`).join("")}</tr>`).join("");
+  return `<table class="terms grid"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
 }
 
 function table(entries: [string, unknown][]): string {
@@ -122,6 +137,7 @@ table.terms { border-collapse: collapse; width:100%; margin:.1rem 0; }
 table.terms th, table.terms td { border:1px solid var(--line); padding:.3rem .6rem; text-align:left; vertical-align:top; overflow-wrap:anywhere; }
 table.terms th { width: 14rem; font-weight:600; background: color-mix(in srgb, var(--line) 25%, transparent); }
 table.terms table.terms { margin: 0; }
+table.grid th { width: auto; } table.grid td { font-variant-numeric: tabular-nums; }
 .hash code { font-size: 1.05rem; } .hash strong { background: color-mix(in srgb, var(--accent) 25%, transparent); padding: 0 .15rem; }
 .advisory { border-left: 4px solid var(--muted); padding-left: .8rem; margin: .3rem 0; white-space: pre-wrap; }
 .alarm { background: var(--warn); color: #fff; font-weight: 700; padding: .6rem .8rem; border-radius: .4rem; }
