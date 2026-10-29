@@ -45,7 +45,8 @@
     "outside-agent": "tsx src/cli/outside-agent.ts",
     "judge": "tsx src/cli/judge.ts",
     "redteam": "tsx src/cli/redteam.ts",
-    "reconcile": "tsx src/cli/reconcile.ts"
+    "reconcile": "tsx src/cli/reconcile.ts",
+    "evals": "tsx src/cli/evals.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
