@@ -9,6 +9,8 @@ import { findSettlementByNonce, payUnderMandate } from "../metal/pay.js";
 import type { UpstreamResult } from "../servers/seller.js";
 import { SUPPLIER_ROUTE } from "../servers/supplier.js";
 import { capRefusal } from "../policy/rules.js";
+import { decodePaymentRequiredHeader } from "@x402/core/http";
+import { fromCents, toCents } from "../lib/money.js";
 
 export class SourcingAgent {
   private mandate: LoadedMandate | undefined;
@@ -18,6 +20,24 @@ export class SourcingAgent {
   /** Called after a replace: the next purchase signs under the new credential. */
   reload(): void {
     this.mandate = undefined;
+  }
+
+  /**
+   * Whether a purchase of tick `seq` would go through, without paying: the supplier's offer (its 402) against the
+   * mandate's cap on chain (as the ledger last saw it bound) and the CFO policy's limit. Null when it would.
+   */
+  async wouldRefuse(seq: number): Promise<string | null> {
+    const res = await fetch(`${this.supplierBase}${SUPPLIER_ROUTE}?seq=${seq}`, { signal: AbortSignal.timeout(15_000) });
+    const header = res.headers.get("payment-required");
+    if (res.status !== 402 || !header) return `the supplier answered ${res.status} without an offer`;
+    const offer = decodePaymentRequiredHeader(header).accepts.find((a) => a.scheme === "exact");
+    if (!offer) return "the supplier made no exact offer";
+    const cents = Number(BigInt(offer.amount) / 10n ** 16n);
+    // The cap of the credential last bound or replaced on chain, as the audit log recorded it.
+    const last = this.db.prepare("SELECT payload_json FROM audit_log WHERE event IN ('mandate.bound', 'mandate.replaced') AND subject = 'sourcing' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
+    const cap = last ? toCents(String((JSON.parse(last.payload_json) as { cap?: string }).cap)) : null;
+    if (cap !== null && cents > cap) return `mandate_cap_exceeded: the supplier asks ${fromCents(cents)}, over the sourcing mandate's ${fromCents(cap)}`;
+    return capRefusal(this.db, "sourcing", cents);
   }
 
   async buy(seq: number): Promise<UpstreamResult> {

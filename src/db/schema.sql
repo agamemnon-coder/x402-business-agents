@@ -59,7 +59,11 @@ CREATE TABLE IF NOT EXISTS sales (
   -- The exact x402 offer the payment answered, so a dispute can re-check the payment against it.
   requirements_json TEXT,
   status TEXT NOT NULL CHECK (status IN ('DELIVERED', 'ABORTED_NO_CHARGE', 'SETTLE_FAILED')),
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  -- How the buyer paid: 'exact' (a transfer per query under its mandate) or 'bajillion' (Metal clearing, a receipt).
+  scheme TEXT NOT NULL DEFAULT 'exact',
+  -- For clearing: the service's receipt as the facilitator returned it.
+  clearing_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS disputes (
@@ -344,4 +348,15 @@ CREATE TABLE IF NOT EXISTS card_transactions (
   source TEXT NOT NULL CHECK (source IN ('simulation', 'poll', 'webhook')),
   occurred_at TEXT NOT NULL,
   recorded_at TEXT NOT NULL
+);
+
+-- Money moved into or out of Metal clearing, and balances read from the clearing service (prepaid budget).
+CREATE TABLE IF NOT EXISTS clearing_ops (
+  id INTEGER PRIMARY KEY,
+  party TEXT NOT NULL CHECK (party IN ('customer', 'seller')),
+  kind TEXT NOT NULL CHECK (kind IN ('deposit', 'withdraw', 'balance')),
+  units TEXT NOT NULL,
+  tx TEXT,
+  detail TEXT,
+  created_at TEXT NOT NULL
 );

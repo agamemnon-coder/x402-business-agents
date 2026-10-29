@@ -12,6 +12,8 @@ import { keyPath } from "../metal/agentCli.js";
 import { sellerApp } from "../servers/seller.js";
 import { supplierApp } from "../servers/supplier.js";
 import { getSetting } from "./settings.js";
+import { existsSync } from "node:fs";
+import { WALLET_DIRS, clearingDeployment, openWallet } from "../metal/clearing.js";
 
 export interface Addresses {
   business: Address;
@@ -47,6 +49,18 @@ function listen(app: ReturnType<typeof supplierApp>, port: number): Promise<Serv
   });
 }
 
+/** Our clearing key when the seller has a clearing wallet and Metal offers clearing on testnet; otherwise null. */
+async function sellerClearingKey(): Promise<`0x${string}` | null> {
+  if (!existsSync(keyPath(WALLET_DIRS.seller))) return null;
+  if (!(await clearingDeployment().catch(() => null))) return null;
+  const w = await openWallet("seller");
+  try {
+    return w.signer.publicKey;
+  } finally {
+    await w.close();
+  }
+}
+
 export async function startRuntime(db: DB, ports = { supplier: 4101, seller: 4102 }): Promise<Runtime> {
   const addr = addresses(db);
   const supplierBase = `http://127.0.0.1:${ports.supplier}`;
@@ -54,7 +68,11 @@ export async function startRuntime(db: DB, ports = { supplier: 4101, seller: 410
   const sourcing = new SourcingAgent(db, supplierBase, addr.supplier);
   const servers = [
     await listen(supplierApp({ payTo: addr.supplier, price: () => upstreamPrice(db) }), ports.supplier),
-    await listen(sellerApp({ db, payTo: addr.business, price: () => sellPrice(db), buyUpstream: (seq) => sourcing.buy(seq) }), ports.seller),
+    await listen(sellerApp({
+      db, payTo: addr.business, price: () => sellPrice(db), buyUpstream: (seq) => sourcing.buy(seq),
+      // The prepaid route (Metal clearing) is offered only when we have a clearing key and Metal offers clearing.
+      clearing: await sellerClearingKey().then((payTo) => (payTo ? { payTo, preflight: (seq: number) => sourcing.wouldRefuse(seq) } : undefined)),
+    }), ports.seller),
   ];
   return {
     addr, sourcing, sellerBase,
