@@ -112,7 +112,8 @@ describe("the prepaid clearing budget on the dashboard", () => {
                 VALUES ('GET /v1/fx-tick/prepaid', 7, '0x03', 'u', '{"seq":"60"}', 'DELIVERED', 'now', 'bajillion')`).run();
     audit(db, "system", "sale.delivered", "1", { settlement_id: "id", scheme: "bajillion" });
     const s = buildSnapshot(db);
-    expect(s.clearing).toEqual({ deposited: "5.00", sales: 1, earned: "0.07", customer_spendable: "4.65", seller_spendable: "0.35", as_of: "2026-10-29T16:50:01Z", withdrawn: "0.00" });
-    expect(s.feed[0]!.text).toBe("Sold tick #60 to Kestrel Quant for 0.07 by Metal clearing (a receipt, no transaction)");
+    // What the customer paid comes from Metal's balance, so receipts made before this ledger count too.
+    expect(s.clearing).toEqual({ customer: "Kestrel Quant", deposited: "5.00", charged: "0.35", sales: 1, earned: "0.07", customer_spendable: "4.65", seller_spendable: "0.35", as_of: "2026-10-29T16:50:01Z", withdrawn: "0.00" });
+    expect(s.feed[0]!.text).toBe("Sold tick #60 to Kestrel Quant for 0.07 USDZ by Metal clearing (a receipt, no transaction)");
   });
 });

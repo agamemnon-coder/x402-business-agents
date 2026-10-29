@@ -7,26 +7,26 @@
 <meta name="color-scheme" content="light dark">
 <title>Tidemark Data · Company cards for AI agents</title>
 <style>
-@font-face { font-family: "Inter"; src: url("/assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
   --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   /* One accent; green, amber and red only for status. */
   --bg: #f6f7f9; --surface: #ffffff; --sunken: #f1f3f6; --text: #0b1220; --muted: #4b5563; --faint: #6b7280;
   --border: #e5e8ec; --accent: #4f46e5; --accent-ink: #ffffff; --accent-soft: #eef0ff;
-  --ok: #0f8a4f; --ok-soft: #e7f6ee; --wait: #b45309; --wait-soft: #fdf1e3; --bad: #c8261b; --bad-soft: #fdecea;
+  --ok: #0f8a4f; --ok-soft: #e7f6ee; --wait: #b45309; --wait-soft: #fdf1e3; --bad: #c8261b; --bad-soft: #fdecea; --bad-ink: #ffffff;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, .06); --shadow: 0 1px 3px rgba(16, 24, 40, .08), 0 8px 24px rgba(16, 24, 40, .06);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0a0c11; --surface: #12151c; --sunken: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
   --border: #222734; --accent: #8b87ff; --accent-ink: #0a0c11; --accent-soft: #1b1d3a;
-  --ok: #3ccf7e; --ok-soft: #0f2419; --wait: #f2a34a; --wait-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --wait: #f2a34a; --wait-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312; --bad-ink: #0a0c11;
   --shadow-sm: none; --shadow: 0 0 0 1px #1b2030; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0a0c11; --surface: #12151c; --sunken: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
   --border: #222734; --accent: #8b87ff; --accent-ink: #0a0c11; --accent-soft: #1b1d3a;
-  --ok: #3ccf7e; --ok-soft: #0f2419; --wait: #f2a34a; --wait-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --wait: #f2a34a; --wait-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312; --bad-ink: #0a0c11;
   --shadow-sm: none; --shadow: 0 0 0 1px #1b2030; color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -67,7 +67,7 @@ button { font: inherit; }
 .pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.wait { background: var(--wait-soft); color: var(--wait); } .pill.bad { background: var(--bad-soft); color: var(--bad); } .pill.acc { background: var(--accent-soft); color: var(--accent); }
 
 /* The emergency stop band. */
-.frozen { background: var(--bad); color: #fff; padding: 12px 32px; display: flex; gap: 12px; align-items: center; font-weight: 600; flex-wrap: wrap; }
+.frozen { background: var(--bad); color: var(--bad-ink); padding: 12px 32px; display: flex; gap: 12px; align-items: center; font-weight: 600; flex-wrap: wrap; }
 .frozen small { font-weight: 400; opacity: .9; }
 
 /* Dashboard. */
@@ -93,7 +93,7 @@ button { font: inherit; }
 .sect .more { margin-left: auto; font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600; min-height: 32px; display: inline-flex; align-items: center; }
 .sect.flush { margin: 0 0 12px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-bottom: 40px; }
-.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; margin-bottom: 24px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; margin-bottom: 24px; align-items: start; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); padding: 18px 20px 20px; min-width: 0; overflow-wrap: anywhere; }
 .empty { color: var(--muted); font-size: 14px; display: flex; gap: 10px; align-items: center; padding: 8px 0; }
 .empty svg { color: var(--ok); }
@@ -102,7 +102,8 @@ button { font: inherit; }
 .cc { position: relative; aspect-ratio: 1.586; border-radius: 16px; padding: 18px 20px; color: #fff; overflow: hidden; display: flex; flex-direction: column;
   background: radial-gradient(120% 140% at 100% 0%, rgba(139,135,255,.38), transparent 55%), linear-gradient(135deg, #14161d 0%, #232633 70%, #2c3040 100%);
   box-shadow: 0 10px 30px rgba(17, 19, 24, .22), inset 0 0 0 1px rgba(255,255,255,.06); }
-.cc .row1 { display: flex; justify-content: space-between; align-items: center; font-size: 12px; opacity: .85; font-weight: 500; }
+.cc .row1 { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; opacity: .85; font-weight: 500; }
+.cc .row1 .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cc .who { margin-top: auto; font-weight: 650; font-size: 16px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cc .buys { font-size: 13px; opacity: .8; margin-top: 2px; }
 .cc .row2 { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; }
@@ -195,14 +196,16 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .foot { color: var(--faint); font-size: 12.5px; display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
 
 /* The emergency stop confirmation. */
-.scrim { position: fixed; inset: 0; background: rgba(10,12,17,.5); display: grid; place-items: center; z-index: 20; padding: 16px; }
+dialog.scrim { border: 0; padding: 16px; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; margin: 0; }
+dialog.scrim[open] { display: grid; place-items: center; }
+dialog.scrim::backdrop { background: rgba(10,12,17,.5); }
 .dialog { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); max-width: 440px; width: 100%; padding: 24px; }
 .dialog .ic { width: 44px; height: 44px; border-radius: 12px; background: var(--bad-soft); color: var(--bad); display: grid; place-items: center; margin-bottom: 14px; }
 .dialog h2 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
 .dialog p { margin: 0 0 10px; color: var(--muted); font-size: 14.5px; }
 .dialog .row { display: flex; gap: 10px; margin-top: 18px; }
 .dialog .row .btn { flex: 1; }
-.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: var(--bad-ink); }
 
 /* The landing page, for guests. */
 .section { max-width: 1200px; margin: 0 auto; padding: 72px 32px; }
@@ -390,12 +393,12 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
   </div>
   <div class="cols">
     <section class="panel" aria-labelledby="h-treasury"><div class="sect flush"><h2 id="h-treasury">Treasury</h2><span class="hint" id="treasury-asof"></span></div><div id="treasury"></div></section>
-    <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused and escalated</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
+    <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused, blocked and expired</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
   </div>
   <div class="foot"><span id="auditline"></span><span id="passkey"></span></div>
 </main>
 
-<div class="scrim" id="stop-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="stop-title">
+<dialog class="scrim" id="stop-sheet" aria-labelledby="stop-title">
   <div class="dialog">
     <div class="ic" data-icon="octagon-x"></div>
     <h2 id="stop-title">Freeze every agent and every card?</h2>
@@ -403,7 +406,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
     <p><b>You confirm with Face ID</b> on the next screen; nothing changes before that. Lifting the stop later needs a proposal and Face ID too.</p>
     <div class="row"><button class="btn" type="button" id="stop-cancel">Cancel</button><a class="btn danger" id="stop-go" href="policy?freeze=on"><span data-icon="scan-face"></span>Continue to Face ID</a></div>
   </div>
-</div>
+</dialog>
 
 <script type="application/json" id="recorded-data">__RECORDED_JSON__</script>
 <script>
@@ -456,13 +459,19 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
   function cents(s) { var m = /^(-?)(\d+)\.(\d{2})$/.exec(String(s)); return m ? (m[1] ? -1 : 1) * (Number(m[2]) * 100 + Number(m[3])) : 0; }
   // Ledger text in the words a CFO uses: euros as €, chain money as test USD, outside agents by their name.
   function plain(t) {
+    var amt = "(-?\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})|-?\\d+\\.\\d{2})", bare = function (a) { return a.replace(/,/g, ""); };
     return String(t)
       .replace(/\b(?:the )?ext:([a-z0-9-]+) agent's/g, function (_m, id) { return agentName("ext:" + id) + "'s"; })
       .replace(/\bext:([a-z0-9-]+)/g, function (_m, id) { return agentName("ext:" + id); })
-      .replace(/\bEUR (-?\d+\.\d{2})\b/g, function (_m, a) { return eur(a); })
-      .replace(/\b(-?\d+\.\d{2}) EUR\b/g, function (_m, a) { return eur(a); })
-      .replace(/\*?USDZ/g, "test USD")
-      .replace(/(^|[^\d,.])(\d{4,})(\.\d{2})\b/g, function (_m, pre, w, d) { return pre + w.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + d; });
+      // Only amounts beside a currency are regrouped; ids, IBANs and dates stay as they are.
+      .replace(new RegExp(amt + " \\*?USDZ\\b", "g"), function (_m, a) { return tusd(bare(a)); })
+      .replace(/\*?USDZ\b/g, "test USD")
+      // "30.00 / 100.00 → 50.00 / 100.00 EUR": the currency written once after a range applies to every amount in it.
+      .replace(new RegExp("((?:" + amt + "(?: / | → ))+" + amt + ") EUR\\b", "g"), function (m) { return m.slice(0, -4).replace(new RegExp(amt, "g"), function (_m, a) { return eur(bare(a)); }); })
+      .replace(new RegExp("\\bEUR " + amt + "(?![\\d.])", "g"), function (_m, a) { return eur(bare(a)); })
+      .replace(new RegExp(amt + " EUR\\b", "g"), function (_m, a) { return eur(bare(a)); })
+      .replace(new RegExp("\\bUSD " + amt + "(?![\\d.])", "g"), function (_m, a) { return usd(bare(a)); })
+      .replace(new RegExp(amt + " USD\\b", "g"), function (_m, a) { return usd(bare(a)); });
   }
   var timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
   var dayFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -481,7 +490,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
   function agentName(a) {
     a = String(a);
     if (a === "human") return "You";
-    if (NAMES[a]) return NAMES[a];
+    if (NAMES[a]) return NAMES[a].charAt(0).toUpperCase() + NAMES[a].slice(1);
     if (SERVICES[a]) return SERVICES[a];
     return /^ext:/.test(a) ? "Outside agent " + a.slice(4) : a.charAt(0).toUpperCase() + a.slice(1) + " agent";
   }
@@ -506,7 +515,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
       });
       return el("div", "", [
         el("div", "cc" + (c.frozen ? " frozen-card" : ""), [
-          el("div", "row1", [txt("span", "", c.name || agentName(c.agent)), txt("span", "", "Virtual")]),
+          el("div", "row1", [txt("span", "nm", (function (n) { return n.charAt(0).toUpperCase() + n.slice(1); })(c.name || agentName(c.agent))), txt("span", "", "Virtual")]),
           (function () { var w = txt("div", "who", c.buys ? c.buys.charAt(0).toUpperCase() + c.buys.slice(1) : "Company card"); w.title = w.textContent; return w; })(),
           txt("div", "buys", "Airwallex Issuing"),
           el("div", "row2", [txt("span", "pan", "•••• " + c.last4), txt("span", "brandmark", "VISA")]),
@@ -527,7 +536,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
         el("div", "mt", [
           el("div", "row1", [el("span", "", [icon("file-lock-2"), "Mandate"]), txt("span", "", "On Metal")]),
           txt("div", "who", agentName(a.agent)),
-          txt("div", "cap", "At most " + tusd(cap) + " a payment" + (a.policy_cap ? " (your policy; the mandate allows " + group(a.cap) + ")" : "")),
+          txt("div", "cap", "At most " + tusd(cap) + " a payment" + (a.policy_cap && cents(a.policy_cap) < cents(a.cap) ? " (your policy; the mandate allows " + group(a.cap) + ")" : "")),
           el("div", "row2", [txt("span", "", "Pays only " + a.payee), a.expires_on ? txt("span", "", "until " + day(a.expires_on)) : null]),
         ]),
         el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", group(a.spent)), " of " + tusd(a.budget) + " used"]), txt("span", "", group(a.remaining) + " left")])]),
@@ -539,14 +548,18 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
       nodes.push(el("div", "", [
         el("div", "mt", [
           el("div", "row1", [el("span", "", [icon("receipt"), "Prepaid clearing"]), txt("span", "", "On Metal")]),
-          txt("div", "who", "Kestrel Quant (customer)"),
+          txt("div", "who", cl.customer + " (customer)"),
           txt("div", "cap", cl.customer_spendable !== null ? tusd(cl.customer_spendable) + " left of " + group(cl.deposited) + " deposited" : "Deposited " + tusd(cl.deposited)),
           el("div", "row2", [txt("span", "", "A signed receipt per request, no transaction each time")]),
         ]),
         el("ul", "facts", [
-          el("li", "", ["Paid by receipt", txt("b", "", cl.sales + " requests, " + tusd(cl.earned))]),
+          el("li", "", ["Paid by receipt", txt("b", "", tusd(cl.charged !== null ? cl.charged : cl.earned))]),
           cl.withdrawn !== "0.00" ? el("li", "", ["Withdrawn to our account", txt("b", "", tusd(cl.withdrawn))]) : null,
+          el("li", "", ["Requests in this ledger", txt("b", "", cl.sales + " (" + tusd(cl.earned) + ")")]),
         ]),
+        cl.charged !== null && cents(cl.charged) > cents(cl.earned)
+          ? txt("p", "fine", tusd(((cents(cl.charged) - cents(cl.earned)) / 100).toFixed(2)) + " of it came from receipts made before this ledger started.")
+          : null,
         txt("p", "fine", "Prepaid clearing suits many small calls from one customer; a mandate suits open-ended spending with a cap per payment."),
       ]));
     }
@@ -566,7 +579,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
       var review = d.recorded ? null : el("a", "btn primary", [icon("scan-face"), advisedNo ? "Review: reject recommended" : "Review and approve"]);
       if (review) review.href = "approve/" + encodeURIComponent(p.proposal_id);
       nodes.push(el("div", "ask" + (advisedNo ? " advise-reject" : ""), [
-        el("div", "what", [icon(/card|policy/.test(p.kind) ? "sliders-horizontal" : p.kind === "invoice_payment" ? "landmark" : "file-check"), p.title + " · from " + agentName(p.created_by).toLowerCase()]),
+        el("div", "what", [icon(/card|policy/.test(p.kind) ? "sliders-horizontal" : p.kind === "invoice_payment" ? "landmark" : "file-check"), (p.kind === "invoice_payment" ? "Bank transfer · SWIFT, not a card · " : "") + p.title + " · from " + agentName(p.created_by).toLowerCase()]),
         txt("div", "title", plain(p.summary)),
         p.review ? txt("p", "review", (p.review.model ? "Opus, advisory: " : "Review: ") + p.review.text) : null,
         el("div", "row", [review, exp]),
@@ -584,7 +597,8 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
   // What kind of money movement a row is, so a bank transfer never looks like a card payment.
   function kindOf(f) {
     var e = f.event;
-    if (/^transfer\./.test(e)) return { icon: "landmark", label: "Bank transfer · SWIFT", cls: "bank" };
+    if (/fraud|injection/.test(e)) return { icon: "shield-alert", label: "Blocked", cls: "bad" };
+    if (/^(transfer|invoice)\./.test(e)) return { icon: "landmark", label: "Bank transfer · SWIFT", cls: f.tone === "refusal" ? "bad" : "bank" };
     if (/^fx\.|^conversion\./.test(e)) return { icon: "arrow-left-right", label: "Currency exchange", cls: "bank" };
     if (/^credit\.|^deposit\./.test(e)) return { icon: "wallet", label: "Airwallex deposit", cls: "bank" };
     if (/^card\.charge_declined/.test(e)) return { icon: "credit-card", label: "Card · declined", cls: "bad" };
@@ -592,11 +606,13 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
     if (/^clearing\./.test(e) || /bajillion|clearing/.test(f.text)) return { icon: "receipt", label: "Metal clearing", cls: f.tone === "refusal" ? "bad" : "" };
     if (/^(sale|upstream|refund|sweep|mandate|pull)\./.test(e)) return { icon: "link-2", label: "On Metal", cls: f.tone === "refusal" ? "bad" : f.tone === "ok" ? "ok" : "" };
     if (/^proposal\.(approved|cosigned)/.test(e)) return { icon: "scan-face", label: "Face ID", cls: "ok" };
-    if (/^proposal\./.test(e)) return { icon: "clock", label: "For you to decide", cls: f.tone === "refusal" ? "bad" : "wait" };
+    if (/^proposal\.(executed|executing)/.test(e)) return { icon: "circle-check", label: "Done", cls: "ok" };
+    if (/^proposal\.(rejected|failed)/.test(e)) return { icon: "ban", label: e === "proposal.rejected" ? "Rejected" : "Failed", cls: "bad" };
+    if (/^proposal\.(expired|superseded)/.test(e)) return { icon: "clock", label: "Closed", cls: "" };
+    if (/^proposal\./.test(e)) return { icon: /SWIFT|invoice/i.test(f.text) ? "landmark" : "clock", label: /SWIFT|invoice/i.test(f.text) ? "For you to decide · bank transfer" : "For you to decide", cls: f.tone === "refusal" ? "bad" : "wait" };
     if (/^policy\./.test(e)) return { icon: "sliders-horizontal", label: "CFO policy", cls: "" };
     if (/^claude\./.test(e)) return { icon: "sparkles", label: f.model ? f.model : "AI reading", cls: "" };
     if (/^passkey\./.test(e)) return { icon: "shield-check", label: "Passkey", cls: "" };
-    if (/fraud|injection/.test(e)) return { icon: "shield-alert", label: "Blocked", cls: "bad" };
     return { icon: "circle-dot", label: "", cls: f.tone === "refusal" ? "bad" : "" };
   }
 
@@ -693,9 +709,9 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
     else { viewKey = localStorage.getItem("kit11.view") || ""; }
     if (vm || rm) history.replaceState(null, "", location.pathname + location.search);
   } catch (e) {}
-  var needsLink = false;
+  var needsLink = false, statusTimer = null;
 
-  function live(state, label) { var l = document.getElementById("live"); l.hidden = false; l.className = "live " + state; l.querySelector(".lbl").textContent = label; }
+  function live(state, label) { var l = document.getElementById("live"); l.hidden = false; l.className = "live " + state; l.querySelector(".lbl").textContent = label; l.title = label; l.setAttribute("aria-label", label); l.setAttribute("role", "status"); }
   function status() {
     if (!lastData) { live("", needsLink ? "Needs the viewer link" : "Connecting"); return; }
     var fresh = Date.now() - lastOk < STALE_MS && !(lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS);
@@ -724,7 +740,13 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
       .catch(function () {})
       .then(function () {
         // A viewer link that no longer works: stop asking, and show the way to the recording instead.
-        if (needsLink) { document.getElementById("dash").hidden = true; document.getElementById("live").hidden = true; showLanding("This device's viewer link is no longer valid; open the newest one from the runner."); return; }
+        if (needsLink) {
+          clearInterval(statusTimer);
+          try { localStorage.removeItem("kit11.view"); } catch (e) {}
+          ["dash", "live", "frozen", "stop"].forEach(function (id) { document.getElementById(id).hidden = true; });
+          showLanding("This device's viewer link is no longer valid; open the newest one from the runner.");
+          return;
+        }
         status(); setTimeout(poll, POLL_MS);
       });
   }
@@ -739,17 +761,18 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
     showDash(); render(snap);
   } else if (MODE === "local" || viewKey) {
     nav([["Dashboard", "./", true], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [] : [["Policy", "policy"]]));
-    showDash(); setInterval(status, 1000); poll();
+    showDash(); statusTimer = setInterval(status, 1000); poll();
   } else {
     showLanding("");
   }
 
   // The emergency stop: explain, then hand over to the phone's policy page, where Face ID signs it.
+  // A modal dialog: focus stays inside, the page behind is inert, Escape closes it, and focus returns to the button.
   var sheet = document.getElementById("stop-sheet");
-  document.getElementById("stop").addEventListener("click", function () { sheet.hidden = false; document.getElementById("stop-cancel").focus(); });
-  document.getElementById("stop-cancel").addEventListener("click", function () { sheet.hidden = true; document.getElementById("stop").focus(); });
-  sheet.addEventListener("click", function (e) { if (e.target === sheet) sheet.hidden = true; });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") sheet.hidden = true; });
+  document.getElementById("stop").addEventListener("click", function () { sheet.showModal(); document.getElementById("stop-cancel").focus(); });
+  document.getElementById("stop-cancel").addEventListener("click", function () { sheet.close(); });
+  sheet.addEventListener("click", function (e) { if (e.target === sheet) sheet.close(); });
+  sheet.addEventListener("close", function () { document.getElementById("stop").focus(); });
 })();
 </script>
 </body>

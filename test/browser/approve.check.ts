@@ -5,7 +5,8 @@
 // A copy of the rehearsal-2 ledger gets two fresh price options and a refund batch; the local relay serves the
 // pages; Chromium's virtual authenticator (WebAuthn over CDP, user verification on) plays the phone's passkey.
 // It enrols, opens the options, checks the confirm screen and its arming delay, backs out (nothing signed), then
-// approves option B, and checks the runner's verdict, the ledger and the offline re-verification. A fake executor
+// approves option B, and checks the runner's verdict, the ledger and the offline re-verification. Last, the
+// dashboard's emergency stop: a sheet, then the policy page, and only the passkey's signature turns it on. A fake executor
 // stands in for the real one, so nothing moves on chain or in Airwallex.
 
 import { displayKey } from "../../src/relay/sign.js";
@@ -120,7 +121,7 @@ check(activePasskey(db) !== null, "runner: the passkey counts only after its fin
 
 // Dashboard on the phone.
 await page.goto(`${url}/`);
-await page.waitForSelector("#pending-body .card", { timeout: 10_000 });
+await page.waitForSelector("#pending .ask", { timeout: 10_000 });
 await page.waitForFunction(() => document.getElementById("passkey")?.textContent?.startsWith("Approvals need Max's passkey (Face ID)"));
 check(true, "dashboard: names the enrolled passkey");
 await page.screenshot({ path: join(shots, "dashboard-phone-passkey.png"), fullPage: false });
@@ -230,6 +231,38 @@ check(!executed.includes(rejectId), "reject: the executor never ran for it");
 const re2 = await reverifyPasskeyApprovals(db);
 const rc = re2.find((c) => c.what === `passkey rejection ${rejectId}`);
 check(rc?.ok === true, `npm run verify check: ${rc?.what} ${rc?.detail}`);
+
+// The emergency stop on the dashboard: a sheet says Face ID comes next, then the policy page holds the switch, and
+// only the passkey's signature on the runner turns it on.
+await page.goto(`${url}/`);
+await page.waitForSelector("#stop:not([hidden])", { timeout: 10_000 });
+await page.click("#stop");
+await page.waitForSelector("#stop-sheet[open]");
+check(/You confirm with Face ID/.test((await page.textContent("#stop-sheet")) ?? "") && (await page.textContent("#stop-go"))?.trim() === "Continue to Face ID", "emergency stop: the dashboard says Face ID confirms it");
+await page.screenshot({ path: join(shots, "stop-sheet.png") });
+await page.keyboard.press("Escape");
+await page.waitForSelector("#stop-sheet:not([open])", { state: "attached" });
+check(await page.evaluate(() => document.activeElement?.id === "stop"), "emergency stop: Escape closes the sheet and focus returns to the button");
+await page.click("#stop");
+await page.waitForSelector("#stop-sheet[open]");
+check(policyValue(db, "freeze") !== "on", "emergency stop: nothing changes before Face ID");
+await page.click("#stop-go");
+await page.waitForSelector("main > button.confirm");
+check((await page.inputValue("#reason")) === "Emergency stop", "emergency stop: the policy page opens with the stop set");
+await page.click("main > button.confirm");
+await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
+check(/Emergency stop/.test((await page.textContent(".sentence")) ?? "") && (await page.textContent("#sheet button.confirm")) === "Confirm with Face ID", "emergency stop: the confirm screen asks for Face ID");
+await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 3000 });
+await page.screenshot({ path: join(shots, "stop-faceid.png") });
+check(policyValue(db, "freeze") !== "on", "emergency stop: still off until the passkey signs");
+await page.click("#sheet button.confirm");
+await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
+const stopped = db.prepare("SELECT a.method FROM proposals p JOIN approvals a USING (proposal_id) WHERE p.kind = 'policy_change' ORDER BY p.rowid DESC LIMIT 1").get() as { method: string } | undefined;
+check(policyValue(db, "freeze") === "on" && stopped?.method === "passkey", "emergency stop: on, signed with the passkey (Face ID)");
+await page.goto(`${url}/`);
+await page.waitForSelector("#frozen:not([hidden])", { timeout: 10_000 });
+check((await page.isHidden("#stop")), "emergency stop: the dashboard shows the stop and hides the button");
+await page.screenshot({ path: join(shots, "stop-frozen.png") });
 
 syncing = false;
 await loop;

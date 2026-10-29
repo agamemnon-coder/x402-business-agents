@@ -6,29 +6,30 @@
 <meta name="referrer" content="no-referrer">
 <title>Company Cards for AI Agents</title>
 <style>
+@font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
-  --bg: #f4f5f7; --surface: #ffffff; --surface-2: #f8f9fb; --text: #0f172a; --muted: #5b6577; --faint: #8a93a3;
-  --border: #e3e6eb; --accent: #2b59d9; --accent-soft: #e8eefc;
-  --ok: #157f3c; --ok-soft: #e6f4ea; --warn: #a15c07; --warn-soft: #fdf3e2; --bad: #b42318; --bad-soft: #fdecea;
+  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f1f3f6; --text: #0b1220; --muted: #4b5563; --faint: #6b7280;
+  --border: #e5e8ec; --accent: #4f46e5; --accent-soft: #eef0ff;
+  --ok: #0f8a4f; --ok-soft: #e7f6ee; --warn: #b45309; --warn-soft: #fdf1e3; --bad: #c8261b; --bad-soft: #fdecea;
   --shadow: 0 1px 2px rgba(15, 23, 42, .05); color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
-    --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440;
-    --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
+    --bg: #0a0c11; --surface: #12151c; --surface-2: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+    --border: #222734; --accent: #8b87ff; --accent-soft: #1b1d3a;
+    --ok: #3ccf7e; --ok-soft: #0f2419; --warn: #f2a34a; --warn-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
     --shadow: none; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
-  --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440;
-  --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
+  --bg: #0a0c11; --surface: #12151c; --surface-2: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+  --border: #222734; --accent: #8b87ff; --accent-soft: #1b1d3a;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --warn: #f2a34a; --warn-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
   --shadow: none; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
 .num { font-variant-numeric: tabular-nums; }
 header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 24px 14px; }
 header .row { display: flex; gap: 8px 16px; align-items: baseline; flex-wrap: wrap; max-width: 1080px; margin: 0 auto; }
@@ -42,8 +43,8 @@ main { max-width: 1080px; margin: 0 auto; padding: 18px 24px 40px; }
 .steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .steps button { font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
 .steps button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-:root[data-theme="dark"] .steps button.on { color: #0b0e14; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps button.on { color: #0b0e14; } }
+:root[data-theme="dark"] .steps button.on { color: #0a0c11; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps button.on { color: #0a0c11; } }
 .steps button.done { color: var(--text); }
 article { background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--accent); border-radius: 12px; box-shadow: var(--shadow); padding: 22px 26px; min-height: 360px; }
 article.ok { border-left-color: var(--ok); } article.refusal { border-left-color: var(--bad); } article.approval { border-left-color: var(--warn); }
@@ -70,8 +71,8 @@ td a:hover { text-decoration: underline; }
 .controls { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
 .controls button { font: inherit; font-weight: 600; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
 .controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-:root[data-theme="dark"] .controls button.primary { color: #0b0e14; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .controls button.primary { color: #0b0e14; } }
+:root[data-theme="dark"] .controls button.primary { color: #0a0c11; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .controls button.primary { color: #0a0c11; } }
 .controls .where { color: var(--faint); font-size: 13px; margin-left: auto; }
 .bar { height: 4px; background: var(--border); border-radius: 999px; margin-top: 10px; overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
@@ -111,13 +112,26 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
   var S = JSON.parse(document.getElementById("story-data").textContent);
   var steps = S.steps, i = 0, timer = null, SECONDS = 12;
   var EXPLORER = "https://testnet.metalntwx.com/tx/";
-  function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k != null) n.appendChild(typeof k === "string" ? document.createTextNode(k) : k); }); return n; }
+  // Money in the words a CFO uses: euros as €, Metal's USDZ as test USD; only amounts beside a currency change.
+  function words(t) {
+    var amt = "(-?\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})|-?\\d+\\.\\d{2})";
+    var grp = function (a) { a = a.replace(/,/g, ""); var neg = a.charAt(0) === "-"; if (neg) a = a.slice(1); var p = a.split("."); return (neg ? "−" : "") + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + p[1]; };
+    var e = function (_m, a) { var g = grp(a); return g.charAt(0) === "−" ? "−€" + g.slice(1) : "€" + g; };
+    return String(t)
+      .replace(new RegExp(amt + " \\*?USDZ\\b", "g"), function (_m, a) { return grp(a) + " test USD"; })
+      .replace(/\*?USDZ\b/g, "test USD")
+      // "30.00 / 100.00 → 50.00 / 100.00 EUR": the currency written once after a range applies to every amount in it.
+      .replace(new RegExp("((?:" + amt + "(?: / | → ))+" + amt + ") EUR\\b", "g"), function (m) { return m.slice(0, -4).replace(new RegExp(amt, "g"), e); })
+      .replace(new RegExp("\\bEUR " + amt + "(?![\\d.])", "g"), e)
+      .replace(new RegExp(amt + " EUR\\b", "g"), e);
+  }
+  function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k != null) n.appendChild(typeof k === "string" ? document.createTextNode(words(k)) : k); }); return n; }
   var when = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" });
 
   var rp = document.getElementById("replay");
   rp.appendChild(el("b", "", ["Recorded run of " + when.format(new Date(steps[0] ? steps[0].at : S.recorded_at))]));
   rp.appendChild(document.createTextNode(" · test money, real systems "));
-  rp.appendChild(el("details", "", [el("summary", "", ["details"]), el("p", "", ["Every step really happened, in " + S.run + ", on Metal testnet and in the Airwallex sandbox. This page only plays it back, so it cannot fail on stage. *USDZ are Metal's test dollars."])]));
+  rp.appendChild(el("details", "", [el("summary", "", ["details"]), el("p", "", ["Every step really happened, in " + S.run + ", on Metal testnet and in the Airwallex sandbox. This page only plays it back, so it cannot fail on stage. Amounts on Metal are Metal's test dollars, shown as test USD."])]));
   document.getElementById("foot").textContent = "Recorded " + when.format(new Date(S.recorded_at)) + " from the run's audit log (" + S.audit.rows + " rows, head " + S.audit.head.slice(0, 12) + "…). Built with Claude Code.";
 
   var nav = document.getElementById("steps");

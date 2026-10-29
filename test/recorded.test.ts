@@ -25,6 +25,32 @@ describe("recorded dashboard", () => {
     expect(buildRecorded(db, "test", t0).proof.over_limit_eur).toBe("15.50");
   });
 
+  it("also counts what a card spent above its monthly limit", () => {
+    const db = openDb(":memory:");
+    audit(db, "awx-executor", "card.issued", "support", { agent: "support", limits: "60.00 / 100.00", currency: "EUR" }, t0);
+    audit(db, "support", "card.charge_approved", "tx-1", { agent: "support", amount: "60.00", currency: "EUR" }, t0);
+    audit(db, "support", "card.charge_approved", "tx-2", { agent: "support", amount: "50.00", currency: "EUR" }, t0);
+    expect(buildRecorded(db, "test", t0).proof.over_limit_eur).toBe("10.00");
+    // A new month starts from zero.
+    audit(db, "support", "card.charge_approved", "tx-3", { agent: "support", amount: "60.00", currency: "EUR" }, new Date("2026-11-02T09:00:00Z"));
+    expect(buildRecorded(db, "test", t0).proof.over_limit_eur).toBe("10.00");
+  });
+
+  it("refuses to record a card charge it cannot check against a limit", () => {
+    const db = openDb(":memory:");
+    audit(db, "sourcing", "card.charge_approved", "tx-1", { agent: "sourcing", amount: "19.99", currency: "EUR" }, t0);
+    expect(() => buildRecorded(db, "test", t0)).toThrow(/no card limit/);
+  });
+
+  it("keeps every bank transfer and invoice in the recorded activity, however old", () => {
+    const db = openDb(":memory:");
+    audit(db, "awx-executor", "transfer.created", "tr-1", { amount: "EUR 1850.00" }, t0);
+    for (let i = 0; i < 70; i++) audit(db, "system", "something.new", `x${i}`, {}, t0);
+    const feed = buildRecorded(db, "test", t0).snapshot.feed;
+    expect(feed.find((f) => f.event === "transfer.created")).toMatchObject({ awx_id: "tr-1" });
+    expect(feed.map((f) => f.seq)).toEqual([...feed.map((f) => f.seq)].sort((a, b) => b - a));
+  });
+
   it("keeps the passkey's id and any enrolment out of the recording", () => {
     const db = openDb(":memory:");
     const r = buildRecorded(db, "rehearsal-x", t0);

@@ -1,8 +1,8 @@
 {
-  "recorded_at": "2026-10-29T19:51:05.381Z",
+  "recorded_at": "2026-10-29T20:15:23.275Z",
   "run": "rehearsal 3",
   "snapshot": {
-    "generated_at": "2026-10-29T19:51:05.381Z",
+    "generated_at": "2026-10-29T20:15:23.275Z",
     "world": {
       "business": "0x3a7a546cAb389A405FA1620370F4958f447de25e",
       "customer": "0x2C2E507aF27694A4CA8DD2fD14A683f0CcDFBDbe"
@@ -149,18 +149,11 @@
         "reason": "Airwallex declined 61.00 EUR at Tailspin Helpdesk on the support agent's card •••• 6949: over the card's limit"
       },
       {
-        "seq": 212,
-        "ts": "2026-10-29T17:02:56.110Z",
-        "agent": "support",
-        "what": "Card purchase declined by Airwallex",
-        "reason": "Airwallex declined 61.00 EUR at Tailspin Helpdesk on the support agent's card •••• 6949: over the card's limit"
-      },
-      {
         "seq": 206,
         "ts": "2026-10-29T16:49:03.963Z",
         "agent": "sourcing",
         "what": "Supplier purchase refused",
-        "reason": "Purchase of tick #53 refused by the CFO policy before signing: 0.04 is over the sourcing limit of 0.03"
+        "reason": "Purchase of tick #53 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ"
       },
       {
         "seq": 203,
@@ -174,7 +167,7 @@
         "ts": "2026-10-29T12:53:47.484Z",
         "agent": "sourcing",
         "what": "Supplier purchase refused",
-        "reason": "Purchase of tick #52 refused by the CFO policy before signing: 0.04 is over the sourcing limit of 0.03"
+        "reason": "Purchase of tick #52 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ"
       },
       {
         "seq": 197,
@@ -237,7 +230,7 @@
         "ts": "2026-10-29T11:41:05.522Z",
         "agent": "sourcing",
         "what": "Supplier purchase refused",
-        "reason": "Purchase of tick #51 refused by the CFO policy before signing: 0.04 is over the sourcing limit of 0.03"
+        "reason": "Purchase of tick #51 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ"
       },
       {
         "seq": 139,
@@ -346,7 +339,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "CFO policy: Acme Research purchasing agent (outside agent)'s card: most per purchase changed from 20.00 to 45.00 (P-0012)",
+        "text": "CFO policy: Acme Research purchasing agent (outside agent)'s card: most per purchase changed from 20.00 EUR to 45.00 EUR (P-0012)",
         "tone": "approval"
       },
       {
@@ -500,7 +493,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Sold tick #57 to Kestrel Quant for 0.07 by Metal clearing (a receipt, no transaction)",
+        "text": "Sold tick #57 to Kestrel Quant for 0.07 USDZ by Metal clearing (a receipt, no transaction)",
         "tone": "ok"
       },
       {
@@ -511,7 +504,7 @@
         "model": null,
         "tx": "0x2c4936b237fdf84d34d6ab1cf5a8c365ca1674d939d9cf82a1d2eee890af16c9",
         "awx_id": null,
-        "text": "Bought raw tick #57 from Feedstock Labs for 0.04",
+        "text": "Bought raw tick #57 from Feedstock Labs for 0.04 USDZ",
         "tone": "ok"
       },
       {
@@ -522,7 +515,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Sold tick #56 to Kestrel Quant for 0.07 by Metal clearing (a receipt, no transaction)",
+        "text": "Sold tick #56 to Kestrel Quant for 0.07 USDZ by Metal clearing (a receipt, no transaction)",
         "tone": "ok"
       },
       {
@@ -533,7 +526,7 @@
         "model": null,
         "tx": "0x8d7fe7a776a796e40b16037512af908f3248c91ebee75c376e75e2ef825cba02",
         "awx_id": null,
-        "text": "Bought raw tick #56 from Feedstock Labs for 0.04",
+        "text": "Bought raw tick #56 from Feedstock Labs for 0.04 USDZ",
         "tone": "ok"
       },
       {
@@ -544,7 +537,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Sold tick #55 to Kestrel Quant for 0.07 by Metal clearing (a receipt, no transaction)",
+        "text": "Sold tick #55 to Kestrel Quant for 0.07 USDZ by Metal clearing (a receipt, no transaction)",
         "tone": "ok"
       },
       {
@@ -555,7 +548,7 @@
         "model": null,
         "tx": "0x5cdbc2b68885797fa5fd2e32e7785cf87c6455b692a1080d4d7481fb7641d43e",
         "awx_id": null,
-        "text": "Bought raw tick #55 from Feedstock Labs for 0.04",
+        "text": "Bought raw tick #55 from Feedstock Labs for 0.04 USDZ",
         "tone": "ok"
       },
       {
@@ -566,7 +559,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Sold tick #54 to Kestrel Quant for 0.07 by Metal clearing (a receipt, no transaction)",
+        "text": "Sold tick #54 to Kestrel Quant for 0.07 USDZ by Metal clearing (a receipt, no transaction)",
         "tone": "ok"
       },
       {
@@ -577,7 +570,7 @@
         "model": null,
         "tx": "0x46f95a3afd30b92938309ebfac8083cebe42b42b46cce66574864586116000fb",
         "awx_id": null,
-        "text": "Bought raw tick #54 from Feedstock Labs for 0.04",
+        "text": "Bought raw tick #54 from Feedstock Labs for 0.04 USDZ",
         "tone": "ok"
       },
       {
@@ -588,7 +581,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Sold tick #53 to Kestrel Quant for 0.07 by Metal clearing (a receipt, no transaction)",
+        "text": "Sold tick #53 to Kestrel Quant for 0.07 USDZ by Metal clearing (a receipt, no transaction)",
         "tone": "ok"
       },
       {
@@ -599,7 +592,7 @@
         "model": null,
         "tx": "0x5e1ec44612bedf7ed3b2e1c0354181e82fe2cdd8a26eb81e02b41c1db8081f8d",
         "awx_id": null,
-        "text": "Bought raw tick #53 from Feedstock Labs for 0.04",
+        "text": "Bought raw tick #53 from Feedstock Labs for 0.04 USDZ",
         "tone": "ok"
       },
       {
@@ -654,7 +647,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "CFO policy: Sourcing agent's card: most per purchase changed from 30.00 to 50.00 (P-0010)",
+        "text": "CFO policy: Sourcing agent's card: most per purchase changed from 30.00 EUR to 50.00 EUR (P-0010)",
         "tone": "approval"
       },
       {
@@ -698,7 +691,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "CFO policy: Sourcing agent: most per payment changed from 0.03 to 0.04 (P-0009)",
+        "text": "CFO policy: Sourcing agent: most per payment changed from 0.03 USDZ to 0.04 USDZ (P-0009)",
         "tone": "approval"
       },
       {
@@ -841,7 +834,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Purchase of tick #53 refused by the CFO policy before signing: 0.04 is over the sourcing limit of 0.03",
+        "text": "Purchase of tick #53 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ",
         "tone": "refusal"
       },
       {
@@ -929,7 +922,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Purchase of tick #52 refused by the CFO policy before signing: 0.04 is over the sourcing limit of 0.03",
+        "text": "Purchase of tick #52 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ",
         "tone": "refusal"
       },
       {
@@ -942,6 +935,72 @@
         "awx_id": null,
         "text": "P-0004 expired: its terms can no longer be approved or run",
         "tone": "refusal"
+      },
+      {
+        "seq": 180,
+        "ts": "2026-10-29T12:04:43.561Z",
+        "actor": "treasury",
+        "event": "invoice.fraud_suspected",
+        "model": null,
+        "tx": null,
+        "awx_id": null,
+        "text": "Invoice LIC-2027-02 from Lizenzhaus Beispeil GmbH for EUR 1850.00 blocked: \"Lizenzhaus Beispeil GmbH\" is not the allowlisted \"Lizenzhaus Beispiel GmbH\" but looks like it (1 letter differs). Nothing was paid; a person must verify with the supplier by phone",
+        "tone": "refusal"
+      },
+      {
+        "seq": 176,
+        "ts": "2026-10-29T12:04:27.116Z",
+        "actor": "treasury",
+        "event": "invoice.fraud_suspected",
+        "model": null,
+        "tx": null,
+        "awx_id": null,
+        "text": "Invoice LIC-2027-01 from Lizenzhaus Beispiel GmbH for EUR 1850.00 blocked: the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX. Nothing was paid; a person must verify with the supplier by phone",
+        "tone": "refusal"
+      },
+      {
+        "seq": 166,
+        "ts": "2026-10-29T11:32:00.239Z",
+        "actor": "awx-executor",
+        "event": "transfer.fee",
+        "model": null,
+        "tx": null,
+        "awx_id": "260638bd-3400-4a6f-b170-268ecc1ffc5b",
+        "text": "Airwallex fee EUR 13.46, within the approved ceiling of EUR 20.00",
+        "tone": "ok"
+      },
+      {
+        "seq": 165,
+        "ts": "2026-10-29T11:32:00.238Z",
+        "actor": "awx-executor",
+        "event": "transfer.status",
+        "model": null,
+        "tx": null,
+        "awx_id": "260638bd-3400-4a6f-b170-268ecc1ffc5b",
+        "text": "Transfer PAID",
+        "tone": "ok"
+      },
+      {
+        "seq": 164,
+        "ts": "2026-10-29T11:31:59.353Z",
+        "actor": "awx-executor",
+        "event": "transfer.status",
+        "model": null,
+        "tx": null,
+        "awx_id": "260638bd-3400-4a6f-b170-268ecc1ffc5b",
+        "text": "Transfer SENT",
+        "tone": "info"
+      },
+      {
+        "seq": 163,
+        "ts": "2026-10-29T11:31:57.606Z",
+        "actor": "awx-executor",
+        "event": "transfer.created",
+        "model": null,
+        "tx": null,
+        "awx_id": "260638bd-3400-4a6f-b170-268ecc1ffc5b",
+        "text": "SWIFT transfer of EUR 1850.00 created, approval hash in its metadata",
+        "tone": "ok"
       }
     ],
     "cards": [
@@ -1067,7 +1126,9 @@
       }
     ],
     "clearing": {
+      "customer": "Kestrel Quant",
       "deposited": "5.00",
+      "charged": "0.70",
       "sales": 5,
       "earned": "0.35",
       "customer_spendable": "4.30",

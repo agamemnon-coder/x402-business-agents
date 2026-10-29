@@ -81,8 +81,13 @@ export interface CardTx {
 
 /** Kestrel's prepaid budget in Metal clearing, and what we earned there: kept apart from the mandates. */
 export interface ClearingView {
+  /** Who prepays (the customer's name). */
+  customer: string;
   /** Kestrel's deposits into clearing (USDZ). */
   deposited: string;
+  /** What the customer has paid by receipt, from Metal's balance (deposits less what it may still spend); includes
+   * receipts made before this ledger started. Null before Metal's first balance read. */
+  charged: string | null;
   /** Ticks sold by clearing, and what they brought. */
   sales: number;
   earned: string;
@@ -154,6 +159,14 @@ export const PAYEE_NAMES: Record<string, string> = {
   sweep: "Tidemark sweep wallet",
   business: "Tidemark Data",
 };
+
+/** The unit of a CFO policy value: mandate limits are Metal's test dollars, card limits and floors are euros. */
+function policyUnit(key: string): string {
+  if (key.startsWith("cap.") || key.startsWith("counterparty:")) return "USDZ";
+  if (key === "usd_floor") return "USD";
+  if (key.startsWith("card.") || key.startsWith("approval.") || key === "eur_floor") return "EUR";
+  return "";
+}
 
 const REFUSAL_WORDS: Record<string, string> = {
   mandate_cap_exceeded: "over the mandate's per-payment cap",
@@ -373,7 +386,9 @@ function clearingView(db: DB): ClearingView | null {
   const last = (party: string) => [...ops].reverse().find((o) => o.party === party && o.kind === "balance");
   const asOf = [last("customer")?.created_at, last("seller")?.created_at].filter(Boolean).sort().at(-1) ?? null;
   return {
-    deposited: fromCents(total("customer", "deposit")), sales: sold.n, earned: fromCents(sold.c),
+    customer: PAYEE_NAMES.customer!, deposited: fromCents(total("customer", "deposit")),
+    charged: last("customer") ? fromCents(total("customer", "deposit") - cents(last("customer")!.units)) : null,
+    sales: sold.n, earned: fromCents(sold.c),
     customer_spendable: last("customer") ? fromCents(cents(last("customer")!.units)) : null,
     seller_spendable: last("seller") ? fromCents(cents(last("seller")!.units)) : null,
     as_of: asOf, withdrawn: fromCents(total("seller", "withdraw")),
@@ -409,20 +424,24 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "upstream.paid":
     case "upstream.paid_after_lookup": {
       const price = p.amount_units ? fromCents(baseUnitsToCents(BigInt(str(p.amount_units)))) : "";
-      return out(`Bought raw tick #${str(p.seq)} from Feedstock Labs${price ? ` for ${price}` : ""}${r.event === "upstream.paid_after_lookup" ? " (found by lookup, not paid twice)" : ""}`, "ok");
+      return out(`Bought raw tick #${str(p.seq)} from Feedstock Labs${price ? ` for ${price} USDZ` : ""}${r.event === "upstream.paid_after_lookup" ? " (found by lookup, not paid twice)" : ""}`, "ok");
     }
     case "upstream.refused": {
       const reason = str(p.reason);
       return reason.startsWith("policy_cap_exceeded")
-        ? out(`Purchase of tick #${str(p.seq)} refused by the CFO policy before signing: ${reason.slice(reason.indexOf(":") + 1).trim()}`, "refusal")
+        ? out(`Purchase of tick #${str(p.seq)} refused by the CFO policy before signing: ${reason.slice(reason.indexOf(":") + 1).trim().replace(/\b(\d+\.\d{2})\b/g, "$1 USDZ")}`, "refusal")
         : out(`Purchase of tick #${str(p.seq)} refused on chain: ${refusalWords(reason)}`, "refusal");
     }
-    case "policy.changed": return out(`CFO policy: ${str(p.label)} changed from ${str(p.from) || "no extra limit"} to ${str(p.to) || "no extra limit"} (${str(p.proposal_id)})`, "approval");
+    case "policy.changed": {
+      const unit = policyUnit(str(p.key));
+      const v = (x: unknown) => (str(x) ? `${str(x)}${unit && /^\d+\.\d{2}$/.test(str(x)) ? ` ${unit}` : ""}` : "no extra limit");
+      return out(`CFO policy: ${str(p.label)} changed from ${v(p.from)} to ${v(p.to)} (${str(p.proposal_id)})`, "approval");
+    }
     case "upstream.in_doubt": return out(`Purchase of tick #${str(p.seq)} unconfirmed; it is looked up before any retry`, "refusal");
     case "sale.delivered": {
       const sale = saleOf(s);
       const how = str(p.scheme) === "bajillion" ? " by Metal clearing (a receipt, no transaction)" : "";
-      return out(sale ? `Sold tick #${sale.seq} to Kestrel Quant for ${fromCents(sale.price)}${how}` : `Sale ${s} delivered${how}`, "ok");
+      return out(sale ? `Sold tick #${sale.seq} to Kestrel Quant for ${fromCents(sale.price)} USDZ${how}` : `Sale ${s} delivered${how}`, "ok");
     }
     case "sale.settle_failed": return out(`A sale did not settle; the customer was not charged (${str(p.error)})`, "refusal");
     // The sandbox starts with millions; the floors calibrated against it are not this business's money, so no numbers.
@@ -607,7 +626,9 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   const decisions: Decision[] = (db.prepare("SELECT * FROM proposals WHERE status != 'PENDING_APPROVAL' ORDER BY created_at DESC, proposal_id DESC LIMIT 6").all() as PRow[])
     .map((p) => ({ proposal_id: p.proposal_id, title: kindTitle(p.kind), status: p.status, by: approvers.get(p.proposal_id) ?? null, at: lastChange.get(p.proposal_id) ?? p.created_at }));
 
-  const refusals: Refusal[] = rows.filter((r) => REFUSAL_EVENTS.has(r.event)).reverse().slice(0, 30).map((r) => {
+  // Airwallex can report one card authorisation under two ids; once merged, it is listed once.
+  const merged = new Set(rows.filter((r) => r.event === "card.duplicate_merged").map((r) => r.subject));
+  const refusals: Refusal[] = rows.filter((r) => REFUSAL_EVENTS.has(r.event) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).reverse().slice(0, 30).map((r) => {
     const d = describe(r, saleOf);
     const agent = Object.entries(AGENT_OF).find(([k]) => r.event.startsWith(k))?.[1] ?? r.actor;
     return { seq: r.seq, ts: r.ts, agent, what: REFUSAL_WHAT[r.event] ?? r.event, reason: d.text };

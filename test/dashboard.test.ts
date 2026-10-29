@@ -185,6 +185,15 @@ describe("dashboard snapshot", () => {
     ]);
   });
 
+  it("lists a card decline once when Airwallex reported it under two ids", () => {
+    const db = ledger();
+    audit(db, "support", "card.charge_declined", "legacy-1", { agent: "support", amount: "61.00", currency: "EUR", merchant: "Tailspin Helpdesk", reason: "LIMIT_EXCEEDED" });
+    audit(db, "support", "card.charge_declined", "card-tx-1", { agent: "support", amount: "61.00", currency: "EUR", merchant: "Tailspin Helpdesk", reason: "LIMIT_EXCEEDED" });
+    audit(db, "system", "card.duplicate_merged", "legacy-1", { agent: "support", amount: "61.00", currency: "EUR", kept: "card-tx-1" });
+    const declines = buildSnapshot(db, t0).refusals.filter((r) => /61\.00/.test(r.reason));
+    expect(declines).toHaveLength(1);
+  });
+
   it("shows the CFO policy: the limit beside each mandate, every change in the feed, its refusals in plain words", () => {
     const db = ledger();
     setSetting(db, "human", "cap.sourcing", "0.03");
@@ -192,8 +201,11 @@ describe("dashboard snapshot", () => {
     audit(db, "sourcing", "upstream.refused", "52", { seq: 42, reason: "policy_cap_exceeded: 0.04 is over the sourcing limit of 0.03" });
     const s = buildSnapshot(db, t0);
     expect(s.budgets.agents.map((a) => [a.agent, a.policy_cap])).toEqual([["sourcing", "0.03"], ["support", null], ["treasury", null]]);
-    expect(s.feed[1]).toMatchObject({ text: "CFO policy: Sourcing agent: most per payment changed from no extra limit to 0.03 (P-0004)", tone: "approval" });
-    expect(s.refusals[0]).toMatchObject({ what: "Supplier purchase refused", reason: "Purchase of tick #42 refused by the CFO policy before signing: 0.04 is over the sourcing limit of 0.03" });
+    expect(s.feed[1]).toMatchObject({ text: "CFO policy: Sourcing agent: most per payment changed from no extra limit to 0.03 USDZ (P-0004)", tone: "approval" });
+    expect(s.refusals[0]).toMatchObject({ what: "Supplier purchase refused", reason: "Purchase of tick #42 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ" });
+    // A card limit is in euros, a mandate limit in Metal's test dollars.
+    audit(db, "human", "policy.changed", "card.support.per_tx", { key: "card.support.per_tx", label: "Support agent's card: most per purchase", from: "60.00", to: "80.00", proposal_id: "P-0005" });
+    expect(buildSnapshot(db, t0).feed[0]!.text).toBe("CFO policy: Support agent's card: most per purchase changed from 60.00 EUR to 80.00 EUR (P-0005)");
     expect(summarize("policy_change", JSON.stringify({ changes: [{ label: "Sourcing agent: most per payment", from: "", to: "0.03" }, { label: "EUR reserve floor", from: "500.00", to: "800.00" }] })))
       .toBe("Sourcing agent: most per payment: no extra limit → 0.03; EUR reserve floor: 500.00 → 800.00");
   });

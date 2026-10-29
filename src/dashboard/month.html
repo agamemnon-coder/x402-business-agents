@@ -6,29 +6,30 @@
 <meta name="referrer" content="no-referrer">
 <title>A Month in 90 Seconds</title>
 <style>
+@font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
-  --bg: #f4f5f7; --surface: #ffffff; --surface-2: #f8f9fb; --text: #0f172a; --muted: #5b6577; --faint: #8a93a3;
-  --border: #e3e6eb; --accent: #2b59d9; --accent-soft: #e8eefc; --grid: #e9ecf1;
-  --ok: #157f3c; --ok-soft: #e6f4ea; --warn: #a15c07; --warn-soft: #fdf3e2; --bad: #b42318; --bad-soft: #fdecea;
+  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f1f3f6; --text: #0b1220; --muted: #4b5563; --faint: #6b7280;
+  --border: #e5e8ec; --accent: #4f46e5; --accent-soft: #eef0ff; --grid: #e9ecf1;
+  --ok: #0f8a4f; --ok-soft: #e7f6ee; --warn: #b45309; --warn-soft: #fdf1e3; --bad: #c8261b; --bad-soft: #fdecea;
   --shadow: 0 1px 2px rgba(15, 23, 42, .05); color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
-    --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440; --grid: #232a38;
-    --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
+    --bg: #0a0c11; --surface: #12151c; --surface-2: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+    --border: #222734; --accent: #8b87ff; --accent-soft: #1b1d3a; --grid: #222734;
+    --ok: #3ccf7e; --ok-soft: #0f2419; --warn: #f2a34a; --warn-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
     --shadow: none; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
-  --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440; --grid: #232a38;
-  --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
+  --bg: #0a0c11; --surface: #12151c; --surface-2: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+  --border: #222734; --accent: #8b87ff; --accent-soft: #1b1d3a; --grid: #222734;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --warn: #f2a34a; --warn-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
   --shadow: none; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
 .num { font-variant-numeric: tabular-nums; }
 header { padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: baseline; }
 header h1 { font-size: 18px; margin: 0; }
@@ -46,8 +47,8 @@ section > h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0;
 #events { grid-area: events; display: flex; flex-direction: column; max-height: 760px; }
 button { font: inherit; font-weight: 600; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 7px; padding: 6px 12px; cursor: pointer; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-:root[data-theme="dark"] button.primary { color: #0b0e14; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary { color: #0b0e14; } }
+:root[data-theme="dark"] button.primary { color: #0a0c11; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary { color: #0a0c11; } }
 .daylabel { font-weight: 650; min-width: 9ch; }
 .progress { flex: 1 1 200px; height: 8px; border-radius: 999px; background: var(--grid); overflow: hidden; }
 .progress > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; }
@@ -134,7 +135,20 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
   var N = M.days.length, perDay = SECONDS / N;
   var t = 0, playing = true, last = null;
 
-  function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k != null) n.appendChild(typeof k === "string" ? document.createTextNode(k) : k); }); return n; }
+  // Money in the words a CFO uses: euros as €, Metal's USDZ as test USD; only amounts beside a currency change.
+  function words(t) {
+    var amt = "(-?\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})|-?\\d+\\.\\d{2})";
+    var grp = function (a) { a = a.replace(/,/g, ""); var neg = a.charAt(0) === "-"; if (neg) a = a.slice(1); var p = a.split("."); return (neg ? "−" : "") + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + p[1]; };
+    var e = function (_m, a) { var g = grp(a); return g.charAt(0) === "−" ? "−€" + g.slice(1) : "€" + g; };
+    return String(t)
+      .replace(new RegExp(amt + " \\*?USDZ\\b", "g"), function (_m, a) { return grp(a) + " test USD"; })
+      .replace(/\*?USDZ\b/g, "test USD")
+      // "30.00 / 100.00 → 50.00 / 100.00 EUR": the currency written once after a range applies to every amount in it.
+      .replace(new RegExp("((?:" + amt + "(?: / | → ))+" + amt + ") EUR\\b", "g"), function (m) { return m.slice(0, -4).replace(new RegExp(amt, "g"), e); })
+      .replace(new RegExp("\\bEUR " + amt + "(?![\\d.])", "g"), e)
+      .replace(new RegExp(amt + " EUR\\b", "g"), e);
+  }
+  function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k != null) n.appendChild(typeof k === "string" ? document.createTextNode(words(k)) : k); }); return n; }
   function cents(s) { var m = /^(-?)(\d+)\.(\d{2})$/.exec(String(s)); return m ? (m[1] ? -1 : 1) * (Number(m[2]) * 100 + Number(m[3])) : 0; }
   function fmt(c) { var neg = c < 0; c = Math.abs(Math.round(c)); var s = String(Math.floor(c / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + String(c % 100).padStart(2, "0"); return (neg ? "−" : "") + s; }
   function int(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
