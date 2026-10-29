@@ -2,7 +2,7 @@
 // on the card at Airwallex, so even an agent that ignores the policy cannot spend past it. When Airwallex declines,
 // the agent may ask the CFO for a higher limit; that is a policy change, approved with Face ID like any other.
 
-import { PLANS, type Agent } from "../config/policy.js";
+import { CARD_RAISE_TTL_MS, PLANS, type Agent } from "../config/policy.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
@@ -33,5 +33,5 @@ export function proposeCardRaise(db: DB, agent: Agent, to: { perTx?: string; mon
     ...(to.perTx ? [{ key: `card.${agent}.per_tx`, to: to.perTx }] : []),
     ...(to.monthly ? [{ key: `card.${agent}.monthly`, to: to.monthly }] : []),
   ];
-  return proposePolicyChange(db, { changes, reason }, agent, now);
+  return proposePolicyChange(db, { changes, reason, ttlMs: CARD_RAISE_TTL_MS }, agent, now);
 }

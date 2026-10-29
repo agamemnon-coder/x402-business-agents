@@ -36,12 +36,12 @@ export function checkChanges(db: DB, changes: PolicyChange[]): void {
   }
 }
 
-export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string }, createdBy: Actor, now = new Date()): ProposalRow {
+export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string; ttlMs?: number }, createdBy: Actor, now = new Date()): ProposalRow {
   const changes = req.changes.map((c) => ({ key: c.key, label: rules(db).find((r) => r.key === c.key)?.label ?? c.key, from: policyValue(db, c.key), to: c.to }));
   checkChanges(db, changes);
   const terms: PolicyChangeTerms = {
     schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: nextProposalId(db),
-    expires_at: new Date(now.getTime() + PROPOSAL_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    expires_at: new Date(now.getTime() + (req.ttlMs ?? PROPOSAL_TTL_MS)).toISOString().replace(/\.\d{3}Z$/, "Z"),
     changes, reason: req.reason,
   };
   return createProposal(db, { terms, createdBy }, now);

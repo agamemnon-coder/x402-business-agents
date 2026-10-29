@@ -59,6 +59,9 @@ export const CARDS: Record<Agent, { firstName: string; email: string; nickname: 
   treasury: { firstName: "Treasury", email: "agents+treasury@tidemark-data.example", nickname: "treasury agent: finance tools", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
 };
 
+/** An agent's request for a higher card limit waits up to an hour for the CFO; it carries no quote that could expire. */
+export const CARD_RAISE_TTL_MS = 60 * 60 * 1000;
+
 /** What each agent may buy on its card: software plans (merchant category 5734, computer software stores). */
 export const PLANS: Record<string, { agent: Agent; merchant: string; label: string; amountCents: number; mcc: string }> = {
   "market-data-starter": { agent: "sourcing", merchant: "Northwind Market Data", label: "Starter plan, monthly", amountCents: 1999, mcc: "5734" },

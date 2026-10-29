@@ -8,6 +8,7 @@
 //   --once     one sync (and the executions it starts), then exit
 
 import { displayKey } from "../relay/sign.js";
+import { redactSecrets } from "../lib/redact.js";
 import { keyPath } from "../metal/agentCli.js";
 import { randomBytes } from "node:crypto";
 import { openDb } from "../db/open.js";
@@ -16,6 +17,8 @@ import { openEnrolment } from "../passkey/ledger.js";
 import { relayConfig, viewerLink, type RelayConfig } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
+import { issuingFromEnv } from "../airwallex/issuing.js";
+import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
 
 const args = process.argv.slice(2);
 const once = args.includes("--once");
@@ -51,8 +54,30 @@ const stop = () => {
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 
+// The agents' cards (K2): every few seconds, a limit the CFO changed goes to Airwallex, and new authorisations come
+// in (the webhook, once set up, brings them sooner). A failure here is logged and tried again; it never stops the relay.
+const issuing = issuingFromEnv();
+let cardsAt = 0;
+let cardsError = "";
+async function cardsTick(): Promise<void> {
+  if (!issuing || cardRows(db).length === 0 || Date.now() - cardsAt < 5000) return;
+  cardsAt = Date.now();
+  try {
+    const synced = await syncCardsIfChanged(db, issuing.rail);
+    if (synced.length) console.log(`${stamp()} cards    limits updated at Airwallex: ${synced.join(", ")}`);
+    const fresh = await pollCardTransactions(db, issuing.rail);
+    if (fresh) console.log(`${stamp()} cards    ${fresh} new card transaction(s) from Airwallex`);
+    cardsError = "";
+  } catch (e) {
+    const message = redactSecrets((e as Error).message);
+    if (message !== cardsError) console.error(`${stamp()} cards    ${message}`);
+    cardsError = message;
+  }
+}
+
 let lastError = "";
 while (!stopping) {
+  await cardsTick();
   try {
     await runner.syncOnce();
     if (lastError) console.log(`${stamp()} relay reachable again`);

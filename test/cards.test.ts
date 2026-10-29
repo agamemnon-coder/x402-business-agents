@@ -61,6 +61,7 @@ describe("a company card per agent (K2)", () => {
 
     const p = proposeCardRaise(db, "sourcing", { perTx: "50.00" }, "the Pro plan costs 45.00 EUR", now);
     expect(p.status).toBe("PENDING_APPROVAL");
+    expect(Date.parse(p.expires_at) - now.getTime()).toBe(60 * 60 * 1000);
     expect(JSON.parse(p.terms_json).changes).toEqual([{ key: "card.sourcing.per_tx", label: "Sourcing agent's card: most per purchase", from: "30.00", to: "50.00" }]);
     // Approving changes the policy; the card at Airwallex follows.
     approve(db, p.proposal_id);
