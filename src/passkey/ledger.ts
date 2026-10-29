@@ -6,11 +6,11 @@ import { randomBytes, randomInt } from "node:crypto";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
+import { CODE_ALPHABET, CODE_LENGTH, normalizeCode } from "./code.js";
+
+export { normalizeCode };
 
 export const ENROLMENT_TTL_MS = 10 * 60 * 1000;
-/** Crockford base32 (no I, L, O or U), so a code typed on a phone is hard to get wrong. */
-const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-const CODE_LENGTH = 8;
 
 export interface EnrolmentWindow {
   window_id: string;
@@ -41,19 +41,13 @@ export interface PasskeyRow {
   status: "ACTIVE" | "REVOKED";
 }
 
-/** Upper case, separators dropped, O read as 0 and I or L as 1. Null unless 8 characters of the alphabet remain. */
-export function normalizeCode(input: string): string | null {
-  const s = input.toUpperCase().replace(/[^0-9A-Z]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
-  return s.length === CODE_LENGTH && [...s].every((c) => ALPHABET.includes(c)) ? s : null;
-}
-
 export function codeSha256(input: string): string | null {
   const code = normalizeCode(input);
   return code === null ? null : sha256Hex(code);
 }
 
 function newCode(): string {
-  const c = Array.from({ length: CODE_LENGTH }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
+  const c = Array.from({ length: CODE_LENGTH }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join("");
   return `${c.slice(0, 4)}-${c.slice(4)}`;
 }
 

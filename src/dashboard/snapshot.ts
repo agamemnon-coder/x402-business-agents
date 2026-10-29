@@ -94,7 +94,7 @@ const signed = (cents: number) => (cents < 0 ? `-${fromCents(-cents)}` : fromCen
 const short = (a: string) => (a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
 const sum = (db: DB, sql: string) => (db.prepare(sql).get() as { n: number | null }).n ?? 0;
 
-const PAYEE_NAMES: Record<string, string> = {
+export const PAYEE_NAMES: Record<string, string> = {
   supplier: "Feedstock Labs",
   customer: "Kestrel Quant",
   sweep: "Tidemark sweep wallet",

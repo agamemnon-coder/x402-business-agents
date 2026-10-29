@@ -1,0 +1,14 @@
+// The relay Worker: one fixed https://kit11.<subdomain>.workers.dev address for the dashboard and passkey approvals.
+// Deploy from the repo root with `npm run relay:deploy` (it builds src/pages.gen.ts first and sets RELAY_TOKEN).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kit11",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "durable_objects": {
+    "bindings": [{ "name": "RELAY", "class_name": "RelayObject" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RelayObject"] }]
+}

@@ -12,3 +12,6 @@ owner-key*.json
 *.sqlite-*
 audit.jsonl
 audit.head
+# The relay Worker: generated pages module and wrangler's local state.
+worker/src/pages.gen.ts
+worker/.wrangler/
