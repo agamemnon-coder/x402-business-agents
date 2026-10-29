@@ -179,7 +179,7 @@ export type Line = { style: "title" | "h2" | "h3" | "text" | "mono" | "small"; t
 export function reportLines(r: AuditReport): Line[] {
   const L: Line[] = [];
   const at = (iso: string | null) => (iso ? iso.replace("T", " ").replace(/\.\d{3}Z$|Z$/, " UTC") : "");
-  L.push({ style: "title", text: "Tidemark Data: audit report" });
+  L.push({ style: "title", text: "Northwind Outdoor: audit report" });
   L.push({ style: "text", text: `Generated ${at(r.generated_at)} from ${r.label}.` });
   L.push({ style: "h2", text: "Audit chain" });
   L.push({ style: "text", text: r.chain.ok
@@ -228,7 +228,7 @@ export function winAnsi(s: string): string {
 export function renderAuditPdf(r: AuditReport, opts: { compress?: boolean } = {}): Promise<Buffer> {
   const doc = new PDFDocument({
     size: "A4", margin: 50, bufferPages: true, compress: opts.compress ?? true,
-    info: { Title: "Tidemark Data audit report", Author: "x402-business-agents", Subject: `Audit report of ${r.label}`, Keywords: `anchor ${r.anchor}` },
+    info: { Title: "Northwind Outdoor audit report", Author: "x402-business-agents", Subject: `Audit report of ${r.label}`, Keywords: `anchor ${r.anchor}` },
   });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));

@@ -1,4 +1,4 @@
-// npm run s3: scenario S3, the euro licence bill.
+// npm run s3: scenario S3, the manufacturer's euro invoice.
 //   Metal side (live now): sweep net earnings to the sweep wallet, wait for finality, lock the credit.
 //   Airwallex side: book the credit, plan the invoice, quote, approval, conversion, SWIFT, PAID.
 //   Without AIRWALLEX_CLIENT_ID / AIRWALLEX_API_KEY the Airwallex side stops and says so; nothing is faked.
@@ -15,7 +15,7 @@ import { runAirwallexSide } from "./s3-airwallex.js";
 const db = openDb();
 const addr = addresses(db);
 
-console.log("GOAL             move earnings into Airwallex and pay the EUR licence invoice, without breaking a floor");
+console.log("GOAL             move earnings into Airwallex and pay the manufacturer's EUR invoice, without breaking a floor");
 const pending = db.prepare("SELECT payment_id, amount_cents, outcome, tx_hash, event_key FROM sweeps WHERE outcome != 'REFUSED' ORDER BY created_at DESC LIMIT 1").get() as
   { payment_id: string; amount_cents: number; outcome: string; tx_hash: string | null; event_key: string | null } | undefined;
 

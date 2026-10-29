@@ -32,7 +32,7 @@ describe("runner-signed approvals (M3)", () => {
     const p0 = approvals.proposals[0]!;
     const changed = [
       { ...approvals, proposals: [{ ...p0, canonical: p0.canonical.replace("0.15", "9.15") }] },
-      { ...approvals, names: { "0x0000000000000000000000000000000000000001": "Lizenzhaus Beispiel GmbH" } },
+      { ...approvals, names: { "0x0000000000000000000000000000000000000001": "Bergtex Textil GmbH" } },
       { ...approvals, policy: approvals.policy.map((e) => ({ ...e, value: "20.00" })) },
       { ...approvals, passkey: { ...approvals.passkey, credentials: [{ id: "relay-key", label: "max", enrolled_at: "x" }] } },
       { ...approvals, signature: undefined },

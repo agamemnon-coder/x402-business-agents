@@ -19,7 +19,7 @@ function enrol(db: DB, label: string, id: string, add: boolean) {
 const setting = (db: DB, key: string, value: string) =>
   db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value, now.toISOString());
 function invoice(db: DB, amount: string, createdBy = "treasury") {
-  return createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: nextProposalId(db), expires_at: "2026-11-03T11:00:00Z", amount, vendor: "Lizenzhaus Beispiel GmbH" }, createdBy: createdBy as never }, now);
+  return createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: nextProposalId(db), expires_at: "2026-11-03T11:00:00Z", amount, vendor: "Bergtex Textil GmbH" }, createdBy: createdBy as never }, now);
 }
 const sign = (db: DB, id: string, who: string, cred: string) => {
   const p = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(id) as { terms_sha256: string };

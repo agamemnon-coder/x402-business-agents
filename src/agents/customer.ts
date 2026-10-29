@@ -1,4 +1,4 @@
-// Kestrel Quant's agent, simulated: another company buying our ticks.
+// Summit Outfitters' agent, simulated: another company buying our stock checks.
 // With a clearing deposit it buys on the prepaid route (Metal clearing: a signed receipt, no transaction per query);
 // whenever clearing cannot take the payment and nothing was paid, it falls back to the mandate route (exact, a
 // transfer per query under its mandate, with a signed order), so a sale never depends on the new scheme working.
@@ -34,13 +34,13 @@ export class CustomerAgent {
   /** Pays from the clearing deposit on the prepaid route; when clearing cannot take it and nothing was paid, on the mandate route. */
   async buyPrepaid(seq: number): Promise<PrepaidPurchase> {
     const c = await this.tryClearing(seq);
-    // A clearing payment whose answer was lost may have been counted: never pay the same tick a second way.
+    // A clearing payment whose answer was lost may have been counted: never pay the same stock check a second way.
     if (c.kind === "in_doubt") return { seq, via: "clearing", status: 0, body: c.reason, charged: true };
     if (c.kind !== "unused") return { seq, via: "clearing", status: c.status, body: c.body, charged: true };
     return { ...(await this.buy(seq)), fallbackFrom: c.reason };
   }
 
-  /** Pays on the mandate route: an exact transfer under Kestrel's mandate, with its signed order. */
+  /** Pays on the mandate route: an exact transfer under Summit's mandate, with its signed order. */
   async buy(seq: number): Promise<Purchase> {
     this.mandate ??= await activeMandate("customer");
     const since = Date.now() - 60_000;
@@ -82,7 +82,7 @@ export class CustomerAgent {
         }
         const body = await res.text();
         if (res.ok) return { kind: "paid", status: res.status, body };
-        // 503 before any offer: the seller does not offer clearing for this tick now (nothing was paid).
+        // 503 before any offer: the seller does not offer clearing for this stock check now (nothing was paid).
         if (res.status === 503 && !res.headers.get("payment-response") && /not offered/.test(body)) return { kind: "unused", reason: body.slice(0, 240) };
         if (res.status === 402) return { kind: "unused", reason: `the prepaid route asked for payment again: ${body.slice(0, 160)}` };
         // Paid, then the seller could not deliver: owed, and support refunds it.

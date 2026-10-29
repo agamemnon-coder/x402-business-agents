@@ -108,8 +108,8 @@ if (bBalance < target) {
 say(`business account holds ${fromCents(baseUnitsToCents(await usdzBalance(B)))} *USDZ`);
 
 const owner = "owner-business.key.json";
-mandate({ agent: "sourcing", ownerFile: owner, principal: B, ...INITIAL_MANDATES.sourcing, payee: S, payeeName: "Feedstock Labs" });
-mandate({ agent: "support", ownerFile: owner, principal: B, ...INITIAL_MANDATES.support, payee: C, payeeName: "Kestrel Quant" });
-mandate({ agent: "treasury", ownerFile: owner, principal: B, ...INITIAL_MANDATES.treasury, payee: W, payeeName: "Tidemark sweep" });
-mandate({ agent: "customer", ownerFile: "owner-customer.key.json", principal: C, ...CUSTOMER_MANDATE, payee: B, payeeName: "Tidemark Data" });
+mandate({ agent: "sourcing", ownerFile: owner, principal: B, ...INITIAL_MANDATES.sourcing, payee: S, payeeName: "Stockline" });
+mandate({ agent: "support", ownerFile: owner, principal: B, ...INITIAL_MANDATES.support, payee: C, payeeName: "Summit Outfitters" });
+mandate({ agent: "treasury", ownerFile: owner, principal: B, ...INITIAL_MANDATES.treasury, payee: W, payeeName: "Northwind sweep" });
+mandate({ agent: "customer", ownerFile: "owner-customer.key.json", principal: C, ...CUSTOMER_MANDATE, payee: B, payeeName: "Northwind Outdoor" });
 say("bootstrap done");

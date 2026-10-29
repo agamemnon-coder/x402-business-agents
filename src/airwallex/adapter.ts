@@ -73,7 +73,7 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
     const usd = list.items.find((g) => g.status === "ACTIVE" && [...(g.supported_features ?? []), ...(g.required_features ?? [])].some((f) => f.currency === "USD"));
     if (usd) return (this.usdAccount = usd.id);
     const created = await this.api.call<GA>("POST", "/global_accounts/create", {
-      request_id: randomUUID(), country_code: "US", nick_name: "Tidemark USD", required_features: [{ currency: "USD", transfer_method: "LOCAL" }],
+      request_id: randomUUID(), country_code: "US", nick_name: "Northwind USD", required_features: [{ currency: "USD", transfer_method: "LOCAL" }],
     });
     return (this.usdAccount = created.id);
   }

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { LICENSOR, proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
+import { MANUFACTURER, proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
 import { parseInvoiceFallback } from "../src/agents/invoice.js";
 import { bookCredit } from "../src/agents/sweep.js";
 import { verifyAuditChain } from "../src/audit/log.js";
@@ -10,7 +10,7 @@ import { decide } from "../src/policy/approvals.js";
 import { setSetting } from "../src/world/settings.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 
-const text = readFileSync(new URL("../fixtures/lizenzhaus-invoice-LIC-2026-11.txt", import.meta.url), "utf8");
+const text = readFileSync(new URL("../fixtures/bergtex-invoice-BTX-2026-11.txt", import.meta.url), "utf8");
 
 async function world() {
   const db = openDb(":memory:");
@@ -26,8 +26,8 @@ function approve(db: ReturnType<typeof openDb>, id: string, sha: string) {
 describe("euro bill (S3) against the Airwallex port", () => {
   it("reads the invoice", () => {
     expect(parseInvoiceFallback(text)).toEqual({
-      invoice_no: "LIC-2026-11", vendor: LICENSOR.name, amount: "1850.00", currency: "EUR", due_date: "2026-11-16",
-      iban: LICENSOR.iban, bic: LICENSOR.bic, reference: "LIC-2026-11",
+      invoice_no: "BTX-2026-11", vendor: MANUFACTURER.name, amount: "1850.00", currency: "EUR", due_date: "2026-11-16",
+      iban: MANUFACTURER.iban, bic: MANUFACTURER.bic, reference: "BTX-2026-11",
     });
   });
 
@@ -63,7 +63,7 @@ describe("euro bill (S3) against the Airwallex port", () => {
     const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
     if (out.kind !== "proposed") throw new Error(out.reason);
     approve(db, out.proposal.proposal_id, out.proposal.terms_sha256);
-    setSetting(db, "human", `counterparty:${LICENSOR.name}`, "blocked");
+    setSetting(db, "human", `counterparty:${MANUFACTURER.name}`, "blocked");
     const before = awx.calls.length;
     await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow(/blocked by the CFO policy/);
     expect(awx.calls.slice(before).filter((c) => c !== "balances")).toEqual([]);

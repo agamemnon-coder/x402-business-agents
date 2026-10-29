@@ -1,5 +1,5 @@
 // Metal clearing for data sales: the prepaid route offers itself only when it can deliver (a clearing payment is
-// counted before the seller can say no), Kestrel falls back to the mandate route only when nothing was paid, and the
+// counted before the seller can say no), Summit falls back to the mandate route only when nothing was paid, and the
 // dashboard shows the prepaid budget apart from the mandates.
 import type { AddressInfo } from "node:net";
 import { encodePaymentRequiredHeader } from "@x402/core/http";
@@ -14,7 +14,7 @@ import { PREPAID_ROUTE, sellerApp } from "../src/servers/seller.js";
 
 const SUPPLIER = "0x00000000000000000000000000000000000000f1";
 const offer = (cents: number) => encodePaymentRequiredHeader({
-  x402Version: 2, resource: { url: "http://supplier/v1/raw-tick" },
+  x402Version: 2, resource: { url: "http://supplier/v1/stock-check" },
   accepts: [{ scheme: "exact", network: "eip155:63825", amount: (BigInt(cents) * 10n ** 16n).toString(), asset: "0x000000000000000000000000000000000000B5d5", payTo: SUPPLIER, maxTimeoutSeconds: 60, extra: {} }],
 } as never);
 
@@ -69,7 +69,7 @@ describe("the prepaid route", () => {
   });
 });
 
-describe("Kestrel's fallback", () => {
+describe("Summit's fallback", () => {
   const paidOnMandate: Purchase = { seq: 1, via: "mandate", outcome: { kind: "refused", reason: "x", status: 503, body: "" }, charged: false };
   function agent(attempt: ClearingAttempt) {
     const a = new CustomerAgent("http://seller", SUPPLIER);
@@ -80,8 +80,8 @@ describe("Kestrel's fallback", () => {
   }
 
   it("uses the mandate route only when clearing took nothing", async () => {
-    const { a, mandateBuys } = agent({ kind: "unused", reason: "prepaid clearing is not offered for this tick now" });
-    expect(await a.buyPrepaid(5)).toMatchObject({ via: "mandate", seq: 5, fallbackFrom: "prepaid clearing is not offered for this tick now" });
+    const { a, mandateBuys } = agent({ kind: "unused", reason: "prepaid clearing is not offered for this stock check now" });
+    expect(await a.buyPrepaid(5)).toMatchObject({ via: "mandate", seq: 5, fallbackFrom: "prepaid clearing is not offered for this stock check now" });
     expect(mandateBuys).toEqual([5]);
   });
   it("never pays a second way when a clearing payment may have been counted", async () => {
@@ -109,11 +109,11 @@ describe("the prepaid clearing budget on the dashboard", () => {
     op.run("customer", "balance", (465n * 10n ** 16n).toString(), "2026-10-29T16:50:00Z");
     op.run("seller", "balance", (35n * 10n ** 16n).toString(), "2026-10-29T16:50:01Z");
     db.prepare(`INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at, scheme)
-                VALUES ('GET /v1/fx-tick/prepaid', 7, '0x03', 'u', '{"seq":"60"}', 'DELIVERED', 'now', 'bajillion')`).run();
+                VALUES ('GET /v1/stock/prepaid', 7, '0x03', 'u', '{"seq":"60"}', 'DELIVERED', 'now', 'bajillion')`).run();
     audit(db, "system", "sale.delivered", "1", { settlement_id: "id", scheme: "bajillion" });
     const s = buildSnapshot(db);
     // What the customer paid comes from Metal's balance, so receipts made before this ledger count too.
-    expect(s.clearing).toEqual({ customer: "Kestrel Quant", deposited: "5.00", charged: "0.35", sales: 1, earned: "0.07", customer_spendable: "4.65", seller_spendable: "0.35", as_of: "2026-10-29T16:50:01Z", withdrawn: "0.00" });
-    expect(s.feed[0]!.text).toBe("Sold tick #60 to Kestrel Quant for 0.07 USDZ by Metal clearing (a receipt, no transaction)");
+    expect(s.clearing).toEqual({ customer: "Summit Outfitters", deposited: "5.00", charged: "0.35", sales: 1, earned: "0.07", customer_spendable: "4.65", seller_spendable: "0.35", as_of: "2026-10-29T16:50:01Z", withdrawn: "0.00" });
+    expect(s.feed[0]!.text).toBe("Sold stock check #60 to Summit Outfitters for 0.07 USDZ by Metal clearing (a receipt, no transaction)");
   });
 });

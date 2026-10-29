@@ -30,9 +30,9 @@ export interface MonthEvent {
 
 export interface PnlLine {
   agent: Agent;
-  /** What the agent's work earned (the data product's sales are the sourcing agent's). */
+  /** What the agent's work earned (the data product's sales are the operations agent's). */
   earned: string;
-  /** Pay-per-request spend over x402 (supplier ticks, refunds). */
+  /** Pay-per-request spend over x402 (supplier stock checks, refunds). */
   x402: string;
   /** Company card spend at Airwallex, in USD at the month's rate. */
   card: string;
@@ -69,8 +69,8 @@ export interface MonthReport {
   bills: { day: number; label: string; eur: string; usd: string }[];
   company: { revenue: string; costs: string; bills: string; net: string };
   counts: { alone: number; waiting: number; blocked: number };
-  /** Kestrel's payments to us: one transaction each with exact, or a weekly deposit and our weekly withdrawal with
-   *  Metal clearing (the epoch certificates are Metal's, not ours). Supplier purchases stay one per tick, under the mandate. */
+  /** Summit's payments to us: one transaction each with exact, or a weekly deposit and our weekly withdrawal with
+   *  Metal clearing (the epoch certificates are Metal's, not ours). Supplier purchases stay one per stock check, under the mandate. */
   clearing: { payments: number; exact_tx: number; clearing_tx: number };
 }
 
@@ -105,8 +105,8 @@ const aiMicro = (k: keyof typeof AI) => Math.round(((AI[k].tokens[0] * AI[k].usd
 const eurToUsdCents = (eur: number) => Math.round(eur * EUR_USD);
 const money = (c: number) => (c < 0 ? `-${fromCents(-c)}` : fromCents(c));
 
-const LICENSOR = { name: "Lizenzhaus Beispiel GmbH", iban: "DE89370400440532013000", bic: "COBADEFFXXX" };
-const HOSTING = { name: "Contoso Cloud GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001" };
+const MANUFACTURER = { name: "Bergtex Textil GmbH", iban: "DE89370400440532013000", bic: "COBADEFFXXX" };
+const HOSTING = { name: "Nimbus Cloud GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001" };
 
 export function simulateMonth(opts: { seed?: number; month?: string } = {}): MonthReport {
   const seed = opts.seed ?? 11;
@@ -158,7 +158,7 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
   // The fraud check runs on a ledger that knows the real suppliers' bank details, as the live one does.
   const fraudDb = openDb(":memory:");
   const ben = fraudDb.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES (?, ?, ?, ?, ?, 'EUR', 'SWIFT')");
-  for (const [i, b] of [LICENSOR, HOSTING].entries()) ben.run(`ben_${i}`, b.name, b.iban.slice(-4), ibanSha(b.iban), b.bic);
+  for (const [i, b] of [MANUFACTURER, HOSTING].entries()) ben.run(`ben_${i}`, b.name, b.iban.slice(-4), ibanSha(b.iban), b.bic);
 
   for (let day = 1; day <= daysIn; day++) {
     const today: Day = { day, sales: 0, revenue_cents: 0, upstream_cents: 0, refunds_cents: 0, card_cents: { sourcing: 0, support: 0, treasury: 0 }, fees_cents: 0, ai_cents: { sourcing: 0, support: 0, treasury: 0 }, alone: 0, blocked: 0 };
@@ -168,16 +168,16 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
     let sales = Math.round(base * (0.85 + 0.3 * r()));
 
     if (day === 1) {
-      for (const [m, p] of [[540, "market-data-starter"], [545, "helpdesk-2-seats"], [550, "books-starter"]] as const) charge(day, m, p, today);
+      for (const [m, p] of [[540, "packwise-starter"], [545, "adwave-starter"], [550, "ledgerly-starter"]] as const) charge(day, m, p, today);
     }
-    // Day 9: Feedstock raises its price to 0.04. The chain refuses every purchase over the 0.03 cap from 14:00, so
+    // Day 9: Stockline raises its price to 0.04. The chain refuses every purchase over the 0.03 cap from 14:00, so
     // the afternoon's queries are answered "unavailable" and nobody is charged for them.
     if (day === 9) {
       const morning = Math.round(sales * 0.55);
       const refused = sales - morning;
       sales = morning;
       upstreamCents = 4;
-      ev(day, 840, "sourcing", "blocked", `Feedstock Labs now asks 0.04 a tick; the chain refused the purchase (over the mandate's 0.03 cap). ${refused.toLocaleString("en")} queries this afternoon were answered "unavailable", and no customer was charged`);
+      ev(day, 840, "sourcing", "blocked", `Stockline now asks 0.04 a stock check; the chain refused the purchase (over the mandate's 0.03 cap). ${refused.toLocaleString("en")} queries this afternoon were answered "unavailable", and no customer was charged`);
       counts.blocked += refused;
       ai("sourcing", "classify"); ai("sourcing", "extract");
       const [a, b] = priceRiseOptions(sellCents, 7, upstreamCents);
@@ -189,22 +189,22 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
       sellCents = 7;
     }
     if (day === 12) {
-      if (!charge(day, 600, "market-data-pro", today)) {
+      if (!charge(day, 600, "packwise-pro", today)) {
         ev(day, 602, "sourcing", "waiting", "Asked the CFO to raise its card to 50.00 EUR per purchase for the Pro plan (faster prices the customers pay for)");
         ev(day, 655, "cfo", "approved", "Approved the raise with Face ID; Airwallex has the new limit");
         cardLimit.sourcing.per = 5000;
-        charge(day, 656, "market-data-pro", today);
+        charge(day, 656, "packwise-pro", today);
       }
     }
     if (day === 20) {
-      if (!charge(day, 615, "helpdesk-5-seats", today)) {
+      if (!charge(day, 615, "adwave-growth", today)) {
         ev(day, 617, "support", "waiting", "Asked the CFO to raise its card to 100.00 EUR per purchase for 5 helpdesk seats");
         ev(day, 720, "cfo", "rejected", "Rejected: 2 seats cover the dispute volume; the card stays at 60.00");
         counts.blocked++;
       }
     }
 
-    // Sales: each one an x402 payment, each needing one upstream tick from Feedstock (under the cap from day 10).
+    // Sales: each one an x402 payment, each needing one upstream stock check from Stockline (under the cap from day 10).
     today.sales = sales;
     today.revenue_cents = sales * sellCents;
     today.upstream_cents = sales * upstreamCents;
@@ -217,15 +217,15 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
       ai("support", "classify"); ai("support", "extract", 2);
       if (day === 14) {
         ai("support", "review");
-        ev(day, 660, "support", "waiting", "Kestrel Quant asks for all 12 disputed sales back; 12 of 12 were ordered (signed on chain) and 3 ticks were wrong. Refund all 12 escalated to the CFO; Opus advises reject");
-        ev(day, 745, "cfo", "rejected", "Rejected refunding all 12; the 3 wrong ticks are refunded");
+        ev(day, 660, "support", "waiting", "Summit Outfitters asks for all 12 disputed sales back; 12 of 12 were ordered (signed on chain) and 3 stock checks were wrong. Refund all 12 escalated to the CFO; Opus advises reject");
+        ev(day, 745, "cfo", "rejected", "Rejected refunding all 12; the 3 wrong stock checks are refunded");
         counts.blocked++;
       }
       const amounts = Array<number>(wrong).fill(sellCents);
       const route = routeRefundBatch(amounts);
       if (route.route === "auto") {
         today.refunds_cents += amounts.reduce((s, a) => s + a, 0);
-        ev(day, 690, "support", "auto", `Refunded ${wrong} wrong tick${wrong === 1 ? "" : "s"} (${fromCents(wrong * sellCents)} USDZ) within the automatic limits`);
+        ev(day, 690, "support", "auto", `Refunded ${wrong} wrong stock check${wrong === 1 ? "" : "s"} (${fromCents(wrong * sellCents)} USDZ) within the automatic limits`);
         counts.alone++;
       } else {
         ev(day, 690, "support", "waiting", `A ${fromCents(wrong * sellCents)} refund batch waits for the CFO: ${route.reason}`);
@@ -247,8 +247,8 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
       unswept = 0;
     }
 
-    // Bills: hosting on the 15th; a fake licence invoice on the 22nd; the real licence on the 28th.
-    const pay = (label: string, eurCents: number, b: typeof LICENSOR) => {
+    // Bills: hosting on the 15th; a fake manufacturer's invoice on the 22nd; the real manufacturer's invoice on the 28th.
+    const pay = (label: string, eurCents: number, b: typeof MANUFACTURER) => {
       const usd = Math.round(eurCents * EUR_USD);
       const spread = Math.round(usd * FX_SPREAD);
       const fee = eurToUsdCents(SWIFT_FEE_EUR_CENTS);
@@ -261,7 +261,7 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
     };
     if (day === 15) pay("cloud hosting, November", 42000, HOSTING);
     if (day === 22) {
-      const fake: Invoice = { invoice_no: "LB-2026-11-B", vendor: LICENSOR.name, amount: "1850.00", currency: "EUR", due_date: `${month}-25`, iban: "LT601010012345678901", bic: "LIABLT2XXXX", reference: "LB-2026-11-B" };
+      const fake: Invoice = { invoice_no: "LB-2026-11-B", vendor: MANUFACTURER.name, amount: "1850.00", currency: "EUR", due_date: `${month}-25`, iban: "LT601010012345678901", bic: "LIABLT2XXXX", reference: "LB-2026-11-B" };
       const finding = assessInvoice(fraudDb, fake, "Please note our new bank details. Payment is urgent.");
       ai("treasury", "classify"); ai("treasury", "extract"); ai("treasury", "review");
       if (finding.blocked) {
@@ -269,10 +269,10 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
         counts.blocked++;
       }
     }
-    if (day === 28) pay("licence fee, November", 185000, LICENSOR);
+    if (day === 28) pay("manufacturer's invoice, November", 185000, MANUFACTURER);
     if (day === daysIn) {
       ai("treasury", "classify"); ai("treasury", "extract");
-      ev(day, 960, "treasury", "waiting", "Proposed paying Contoso Cloud GmbH 420.00 EUR (cloud hosting, December), due on the 15th; waits for the CFO");
+      ev(day, 960, "treasury", "waiting", "Proposed paying Nimbus Cloud GmbH 420.00 EUR (cloud hosting, December), due on the 15th; waits for the CFO");
       counts.waiting++;
     }
     today.alone = counts.alone - before.alone;
@@ -307,7 +307,7 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
       "Simulated month at small-business scale: no chain or Airwallex call; the live runs prove each step one at a time.",
       "Queries: about 5,000 on weekdays and 2,000 at weekends, at 0.05 then 0.07 USDZ (test dollars, shown as USD).",
       `Card spend and bills converted at ${EUR_USD} USD per EUR; Airwallex FX spread assumed ${(FX_SPREAD * 100).toFixed(1)}%; SWIFT fee ${fromCents(SWIFT_FEE_EUR_CENTS)} EUR as the sandbox charged.`,
-      "Kestrel pays by Metal clearing (new on testnet): a deposit each week and our withdrawal each week instead of a transaction per query; the mandate route stays the fallback.",
+      "Summit pays by Metal clearing (new on testnet): a deposit each week and our withdrawal each week instead of a transaction per query; the mandate route stays the fallback.",
       "AI cost: Haiku, Sonnet and Opus list prices times the tokens each kind of call used in rehearsal 3.",
       "The CFO's decisions are scripted (marked simulated); in the live build each one is a Face ID approval.",
     ],

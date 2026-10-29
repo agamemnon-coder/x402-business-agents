@@ -1,6 +1,6 @@
 // Scenario S2: a customer disputes a batch of charges. Code settles it from evidence:
 // - each disputed sale's payment is re-verified from the chain, with the customer's signed order;
-// - each delivered tick is compared with the supplier's correction notice, from the stored body;
+// - each delivered stock check is compared with the supplier's correction notice, from the stored body;
 // - only sales with wrong data are refunded, each under its own payment id.
 // The parsers here are the deterministic fallback; the Claude layer may replace the reading, never the checks.
 
@@ -31,19 +31,19 @@ export function parseDisputeFallback(text: string): DisputeClaims {
     sale_refs: refs,
     claims,
     requested_action: /refund all/i.test(flat) ? "refund_all" : "other",
-    excerpts: [range?.[0] ?? "", /three of the ticks[^.]*\./i.exec(flat)?.[0] ?? ""].filter(Boolean),
+    excerpts: [range?.[0] ?? "", /three of the stock checks[^.]*\./i.exec(flat)?.[0] ?? ""].filter(Boolean),
   };
 }
 
 export interface Correction {
   seq: number;
-  bid: string;
-  ask: string;
+  on_hand: number;
+  reserved: number;
   excerpt: string;
 }
 
 export function parseCorrectionsFallback(text: string): Correction[] {
-  return [...text.matchAll(/tick (\d+):\s+bid (\d\.\d{5})\s+ask (\d\.\d{5})/g)].map((m) => ({ seq: Number(m[1]), bid: m[2]!, ask: m[3]!, excerpt: m[0] }));
+  return [...text.matchAll(/check (\d+):\s+on hand (\d+), reserved (\d+)/g)].map((m) => ({ seq: Number(m[1]), on_hand: Number(m[2]), reserved: Number(m[3]), excerpt: m[0] }));
 }
 
 export interface SaleRow {
@@ -63,7 +63,7 @@ export function salesBySeq(db: DB, seqs: number[]): SaleRow[] {
   );
   return seqs.map((s) => {
     const rows = stmt.all(s) as SaleRow[];
-    if (rows.length !== 1) throw new Error(`tick #${s}: expected one delivered sale, found ${rows.length}`);
+    if (rows.length !== 1) throw new Error(`stock check #${s}: expected one delivered sale, found ${rows.length}`);
     return rows[0]!;
   });
 }
@@ -114,15 +114,13 @@ export async function verifyOrders(sales: SaleRow[], customer: Address): Promise
 export interface DataVerdict {
   sale_id: number;
   seq: number;
-  field: "bid" | "ask";
-  delivered: string;
-  corrected: string;
+  field: "on_hand" | "reserved";
+  delivered: number;
+  corrected: number;
   delta_units: number;
   refund: boolean;
   excerpt: string;
 }
-
-const units = (price: string) => Math.round(Number(price) * 100_000);
 
 /** Compares what we delivered (the stored body, not anyone's description of it) with the correction. */
 export function checkData(sales: SaleRow[], corrections: Correction[]): DataVerdict[] {
@@ -130,10 +128,11 @@ export function checkData(sales: SaleRow[], corrections: Correction[]): DataVerd
   for (const c of corrections) {
     const sale = sales.find((s) => s.seq === c.seq);
     if (!sale) continue;
-    const tick = (JSON.parse(sale.body_json) as { tick: { bid: string; ask: string } }).tick;
-    for (const field of ["bid", "ask"] as const) {
-      const delta = units(tick[field]) - units(c[field]);
-      out.push({ sale_id: sale.sale_id, seq: sale.seq, field, delivered: tick[field], corrected: c[field], delta_units: delta, refund: Math.abs(delta) > DATA_TOLERANCE_UNITS, excerpt: c.excerpt });
+    const stock = (JSON.parse(sale.body_json) as { stock: { on_hand: number; reserved: number } }).stock;
+    for (const field of ["on_hand", "reserved"] as const) {
+      if (!Number.isSafeInteger(stock[field]) || !Number.isSafeInteger(c[field])) throw new Error(`stock check #${sale.seq}: ${field} is not a whole number of units`);
+      const delta = stock[field] - c[field];
+      out.push({ sale_id: sale.sale_id, seq: sale.seq, field, delivered: stock[field], corrected: c[field], delta_units: delta, refund: Math.abs(delta) > DATA_TOLERANCE_UNITS, excerpt: c.excerpt });
     }
   }
   return out;

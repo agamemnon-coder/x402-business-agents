@@ -1,6 +1,6 @@
-// npm run clearing                          the prepaid clearing budget: Kestrel's deposit and our earnings, as Metal reports them
-// npm run clearing -- deposit <amount>      Kestrel puts *USDZ into Metal clearing (its prepaid budget; e.g. 5.00)
-// npm run clearing -- buy <from> <to>       Kestrel buys ticks on the prepaid route; the mandate route is the fallback
+// npm run clearing                          the prepaid clearing budget: Summit's deposit and our earnings, as Metal reports them
+// npm run clearing -- deposit <amount>      Summit puts *USDZ into Metal clearing (its prepaid budget; e.g. 5.00)
+// npm run clearing -- buy <from> <to>       Summit buys stock checks on the prepaid route; the mandate route is the fallback
 // npm run clearing -- withdraw              our finalized clearing earnings go to the business account (call again later)
 // Metal's Offer Pay-per-Call Clearing is new on testnet (October 2026). Keys stay in KIT11_KEYS_DIR; nothing secret is printed.
 
@@ -30,10 +30,10 @@ async function status(): Promise<void> {
   for (const party of ["customer", "seller"] as const) {
     const s = await spendable(party);
     recordBalance(db, party, s.units);
-    console.log(`${party === "customer" ? "Kestrel's prepaid budget" : "our clearing earnings  "}  ${units(s.units)} *USDZ spendable now (clearing key ${s.account.slice(0, 12)}…)`);
+    console.log(`${party === "customer" ? "Summit's prepaid budget" : "our clearing earnings  "}  ${units(s.units)} *USDZ spendable now (clearing key ${s.account.slice(0, 12)}…)`);
   }
   const sold = db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(price_cents), 0) AS c FROM sales WHERE scheme = 'bajillion' AND status = 'DELIVERED'").get() as { n: number; c: number };
-  console.log(`sold by clearing          ${sold.n} ticks, ${fromCents(sold.c)} *USDZ (no transaction per query)`);
+  console.log(`sold by clearing          ${sold.n} stock checks, ${fromCents(sold.c)} *USDZ (no transaction per query)`);
 }
 
 const cmd = args[0] ?? "status";
@@ -48,12 +48,12 @@ if (cmd === "status") {
   const r = await depositCustomer(centsToBaseUnits(toCents(amount)));
   db.prepare("INSERT INTO clearing_ops (party, kind, units, tx, detail, created_at) VALUES ('customer', 'deposit', ?, ?, NULL, ?)").run(centsToBaseUnits(toCents(amount)).toString(), r.depositTx, new Date().toISOString());
   audit(db, "customer", "clearing.deposited", r.account.slice(0, 18), { amount, tx: r.depositTx });
-  console.log(`Kestrel deposited ${amount} *USDZ into Metal clearing: ${EXPLORER_TX}${r.depositTx}`);
+  console.log(`Summit deposited ${amount} *USDZ into Metal clearing: ${EXPLORER_TX}${r.depositTx}`);
 } else if (cmd === "buy") {
   const from = Number(args[1] ?? 1);
   const to = Number(args[2] ?? from);
   const rt = await startRuntime(db);
-  console.log(`GOAL      sell ticks ${from}..${to} at ${sellPrice(db)} *USDZ from Kestrel's clearing deposit; the mandate route is the fallback`);
+  console.log(`GOAL      sell stock checks ${from}..${to} at ${sellPrice(db)} *USDZ from Summit's clearing deposit; the mandate route is the fallback`);
   let byClearing = 0, byMandate = 0;
   try {
     for (let seq = from; seq <= to; seq++) {
@@ -66,7 +66,7 @@ if (cmd === "status") {
       } else {
         const o = p.outcome;
         if (o.kind === "paid") byMandate++;
-        console.log(`sale  #${seq}  ${o.kind === "paid" ? `paid on the mandate route ${EXPLORER_TX}${o.tx}` : `${o.kind}: ${o.reason}; Kestrel charged: ${p.charged ? "YES" : "no"}`}  (clearing not used: ${(p.fallbackFrom ?? "").slice(0, 160)})  ${ms} ms`);
+        console.log(`sale  #${seq}  ${o.kind === "paid" ? `paid on the mandate route ${EXPLORER_TX}${o.tx}` : `${o.kind}: ${o.reason}; Summit charged: ${p.charged ? "YES" : "no"}`}  (clearing not used: ${(p.fallbackFrom ?? "").slice(0, 160)})  ${ms} ms`);
       }
     }
   } finally {

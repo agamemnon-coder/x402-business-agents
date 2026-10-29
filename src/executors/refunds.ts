@@ -1,4 +1,4 @@
-// Refunds are `mandate pull`s under the support agent's mandate (payee: the customer only, cap 0.10).
+// Refunds are `mandate pull`s under the marketing agent's mandate (payee: the customer only, cap 0.10).
 // Each carries the payment id refund-<sale_id>: the database allows one refund per sale, and metal-agent
 // pays a payment id at most once, so a retry after a crash reports the first outcome instead of paying again.
 

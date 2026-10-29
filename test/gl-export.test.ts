@@ -7,22 +7,22 @@ import { openDb, type DB } from "../src/db/open.js";
 const T = (m: number) => `2026-10-29T11:${String(m).padStart(2, "0")}:00.000Z`;
 
 function seed(db: DB) {
-  const sale = db.prepare("INSERT INTO sales (sale_id, route, price_cents, payer, settlement_id, tx_hash, request_url, request_params_json, status, created_at, scheme, clearing_json) VALUES (?, '/v1/fx-tick', ?, '0xKestrel', ?, ?, 'u', '{}', ?, ?, ?, ?)");
+  const sale = db.prepare("INSERT INTO sales (sale_id, route, price_cents, payer, settlement_id, tx_hash, request_url, request_params_json, status, created_at, scheme, clearing_json) VALUES (?, '/v1/stock', ?, '0xSummit', ?, ?, 'u', '{}', ?, ?, ?, ?)");
   sale.run(1, 5, "s1", "0xsale1", "DELIVERED", T(1), "exact", null);
   sale.run(2, 7, "s2", null, "DELIVERED", T(2), "bajillion", JSON.stringify({ paid: { invoice: { id: "0xinv:2" } } }));
   sale.run(3, 5, "s3", null, "ABORTED_NO_CHARGE", T(3), "exact", null);
   const up = db.prepare("INSERT INTO upstream_purchases (id, price_cents, tx_hash, outcome, created_at) VALUES (?, ?, ?, ?, ?)");
   up.run(1, 2, "0xup1", "PAID", T(1));
   up.run(2, 4, null, "REFUSED", T(4));
-  db.prepare("INSERT INTO refunds (refund_id, sale_id, payment_id, amount_cents, to_address, outcome, tx_hash) VALUES (1, 1, 'r1', 5, '0xKestrel', 'PAID', '0xref1')").run();
+  db.prepare("INSERT INTO refunds (refund_id, sale_id, payment_id, amount_cents, to_address, outcome, tx_hash) VALUES (1, 1, 'r1', 5, '0xSummit', 'PAID', '0xref1')").run();
   db.prepare("INSERT INTO cards (agent, cardholder_id, card_id, last4, nickname, currency, per_tx_cents, monthly_cents, status, synced_at, created_at) VALUES ('sourcing', 'ch', 'card_s', '1902', 'n', 'EUR', 3000, 10000, 'ACTIVE', ?, ?)").run(T(0), T(0));
   const card = db.prepare("INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, failure_reason, source, occurred_at, recorded_at) VALUES (?, 'card_s', 'sourcing', ?, '5734', ?, 'EUR', ?, ?, ?, 'poll', ?, ?)");
   card.run("ctx1", "=HYPERLINK(\"http://x\")", 1999, "APPROVED", 1, null, T(5), T(5));
-  card.run("ctx2", "Northwind Market Data", 4500, "DECLINED", 0, "LIMIT_EXCEEDED", T(6), T(6));
+  card.run("ctx2", "Packwise", 4500, "DECLINED", 0, "LIMIT_EXCEEDED", T(6), T(6));
   db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-0005', 'invoice_payment', '{}', 'hash5', 'treasury', 'EXECUTED', ?, ?)").run(T(30), T(7));
-  db.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES ('ben', 'Lizenzhaus Beispiel GmbH', '3000', 'x', 'COBADEFFXXX', 'EUR', 'SWIFT')").run();
-  db.prepare("INSERT INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, status) VALUES ('LIC-2026-11', 'Lizenzhaus Beispiel GmbH', '1850.00', 'EUR', '2026-11-15', 'x', 'COBADEFFXXX', 'ben', 'd', 'RECEIVED')").run();
-  db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, fee_actual, status, approval_sha256, updated_at) VALUES ('tr1', 'req1', 'LIC-2026-11', '1850.00', 'EUR', 'SWIFT', '20.00', 'EUR 13.46', 'PAID', 'hash5', ?)").run(T(9));
+  db.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES ('ben', 'Bergtex Textil GmbH', '3000', 'x', 'COBADEFFXXX', 'EUR', 'SWIFT')").run();
+  db.prepare("INSERT INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, status) VALUES ('BTX-2026-11', 'Bergtex Textil GmbH', '1850.00', 'EUR', '2026-11-15', 'x', 'COBADEFFXXX', 'ben', 'd', 'RECEIVED')").run();
+  db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, fee_actual, status, approval_sha256, updated_at) VALUES ('tr1', 'req1', 'BTX-2026-11', '1850.00', 'EUR', 'SWIFT', '20.00', 'EUR 13.46', 'PAID', 'hash5', ?)").run(T(9));
   db.prepare("INSERT INTO fx_quotes (quote_id, pair, buy_amount, sell_amount, client_rate, valid_from, valid_to, used_by_conversion) VALUES ('q1', 'USD/EUR', '370.00', '416.92', '1.126803', ?, ?, 'cv-req')").run(T(8), T(23));
   db.prepare("INSERT INTO fx_conversions (conversion_id, quote_id, request_id, buy_amount, sell_amount, status, approval_sha256) VALUES ('cv1', 'q1', 'cv-req', '370.00', '416.92', 'SETTLED', 'hash5')").run();
   db.prepare("INSERT INTO chain_credits (event_key, tx_hash, from_address, to_address, amount_base_units, block, finalized_block, awx_deposit_id, awx_reference, created_at) VALUES ('ek', '0xsweep', 'a', 'b', '1350000000000000000', 1, 1, 'dep1', '0xsweep', ?)").run(T(11));
@@ -61,7 +61,7 @@ describe("GL journal (E4)", () => {
     expect(by("refund", "1")[0]).toMatchObject({ gl_account: "4100", cost_centre: "CC200", amount: "-0.05" });
     expect(by("card", "ctx1")[0]).toMatchObject({ gl_account: "6100", cost_centre: "CC100", bank_account: "1200", amount: "-19.99", currency: "EUR" });
     const [pay, fee] = by("transfer", "req1");
-    expect(pay).toMatchObject({ gl_account: "6200", cost_centre: "CC300", amount: "-1850.00", currency: "EUR", counterparty: "Lizenzhaus Beispiel GmbH", approval: "P-0005" });
+    expect(pay).toMatchObject({ gl_account: "6200", cost_centre: "CC300", amount: "-1850.00", currency: "EUR", counterparty: "Bergtex Textil GmbH", approval: "P-0005" });
     expect(fee).toMatchObject({ gl_account: "6800", amount: "-13.46", currency: "EUR", approval: "P-0005" });
     const fx = by("fx", "cv1");
     expect(fx.map((l) => [l.bank_account, l.amount, l.currency, l.gl_account])).toEqual([["1201", "-416.92", "USD", "1590"], ["1200", "370.00", "EUR", "1590"]]);
@@ -84,7 +84,7 @@ describe("GL journal (E4)", () => {
   it("exports JSON with the chart of accounts and cost centres it used", () => {
     const j = JSON.parse(journalJson(journal(db)));
     expect(j.chart["4000"]).toMatch(/revenue/i);
-    expect(j.cost_centres.CC300).toMatch(/treasury/i);
+    expect(j.cost_centres.CC300).toMatch(/finance/i);
     expect(j.lines).toHaveLength(11);
   });
 });

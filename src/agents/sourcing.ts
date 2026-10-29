@@ -1,4 +1,4 @@
-// The sourcing agent: buys raw ticks from the supplier under its own mandate (payee: the supplier only,
+// The operations agent: buys stock checks from the supplier under its own mandate (payee: the supplier only,
 // a per-purchase cap, a budget). It holds its mandate key and nothing else.
 
 import type { Address } from "viem";
@@ -23,7 +23,7 @@ export class SourcingAgent {
   }
 
   /**
-   * Whether a purchase of tick `seq` would go through, without paying: the supplier's offer (its 402) against the
+   * Whether a purchase of stock check `seq` would go through, without paying: the supplier's offer (its 402) against the
    * mandate's cap on chain (as the ledger last saw it bound) and the CFO policy's limit. Null when it would.
    */
   async wouldRefuse(seq: number): Promise<string | null> {
@@ -64,6 +64,6 @@ export class SourcingAgent {
     const found = out.nonce ? await findSettlementByNonce(this.supplier, out.nonce, started) : undefined;
     const id = Number(insert.run(0, out.nonce, found?.transaction ?? null, found ? "PAID" : "IN_DOUBT", out.reason, now).lastInsertRowid);
     audit(this.db, "sourcing", found ? "upstream.paid_after_lookup" : "upstream.in_doubt", String(id), { seq, reason: out.reason, tx: found?.transaction ?? null });
-    return { ok: false, purchaseId: id, reason: found ? "paid but no tick delivered" : out.reason, inDoubt: !found };
+    return { ok: false, purchaseId: id, reason: found ? "paid but no stock check delivered" : out.reason, inDoubt: !found };
   }
 }

@@ -13,7 +13,7 @@ export const INITIAL_MANDATES: Record<Agent, { capCents: number; budgetCents: nu
   treasury: { capCents: 600, budgetCents: 600, payee: "sweep" },
 };
 
-/** The simulated customer's own mandate (Kestrel Quant pays us under it). */
+/** The simulated customer's own mandate (Summit Outfitters pays us under it). */
 export const CUSTOMER_MANDATE = { capCents: 10, budgetCents: 500 };
 
 export const SELL_PRICE_CENTS = 5;
@@ -44,29 +44,29 @@ export const TARGET_FREE_EUR_CENTS = 150_000;
 /** A mandate change waits up to an hour for its approver; it carries no quote that could expire sooner. */
 export const MANDATE_PROPOSAL_TTL_MS = 60 * 60 * 1000;
 
-/** A delivered price that differs from the supplier's correction by more than this (0.00005) is refunded. */
-export const DATA_TOLERANCE_UNITS = 5;
+/** A delivered stock level that differs from the supplier's correction by more than this many units is refunded. */
+export const DATA_TOLERANCE_UNITS = 0;
 
 /**
  * Each agent's company card (K2): a virtual Visa card from Airwallex Issuing, in EUR. The limits are the CFO
  * policy's starting values; the policy (card.<agent>.per_tx / .monthly) is what the card is synced to.
- * Merchants are fictional (Microsoft's sample company names), and so are their prices, chosen to look like
- * ordinary small-business software plans.
+ * Merchants are fictional, and so are their prices, chosen to look like an outdoor brand's ordinary tools: warehouse
+ * software, ads and bookkeeping.
  */
 export const CARDS: Record<Agent, { firstName: string; email: string; nickname: string; perTxCents: number; monthlyCents: number; buys: string }> = {
-  sourcing: { firstName: "Sourcing", email: "agents+sourcing@tidemark-data.example", nickname: "sourcing agent: market data", perTxCents: 3000, monthlyCents: 10000, buys: "market data" },
-  support: { firstName: "Support", email: "agents+support@tidemark-data.example", nickname: "support agent: helpdesk tools", perTxCents: 6000, monthlyCents: 15000, buys: "helpdesk seats" },
-  treasury: { firstName: "Treasury", email: "agents+treasury@tidemark-data.example", nickname: "treasury agent: finance tools", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
+  sourcing: { firstName: "Operations", email: "agents+sourcing@northwind-outdoor.example", nickname: "operations agent: warehouse software", perTxCents: 3000, monthlyCents: 10000, buys: "warehouse software" },
+  support: { firstName: "Marketing", email: "agents+support@northwind-outdoor.example", nickname: "marketing agent: ads", perTxCents: 6000, monthlyCents: 15000, buys: "ads" },
+  treasury: { firstName: "Finance", email: "agents+treasury@northwind-outdoor.example", nickname: "finance agent: bookkeeping", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
 };
 
 /** An agent's request for a higher card limit waits up to an hour for the CFO; it carries no quote that could expire. */
 export const CARD_RAISE_TTL_MS = 60 * 60 * 1000;
 
-/** What each agent may buy on its card: software plans (merchant category 5734, computer software stores). */
+/** What each agent may buy on its card: software plans (merchant category 5734, computer software stores) and ads (7311, advertising services). */
 export const PLANS: Record<string, { agent: Agent; merchant: string; label: string; amountCents: number; mcc: string }> = {
-  "market-data-starter": { agent: "sourcing", merchant: "Northwind Market Data", label: "Starter plan, monthly", amountCents: 1999, mcc: "5734" },
-  "market-data-pro": { agent: "sourcing", merchant: "Northwind Market Data", label: "Pro plan, monthly (more symbols, faster prices)", amountCents: 4500, mcc: "5734" },
-  "helpdesk-2-seats": { agent: "support", merchant: "Tailspin Helpdesk", label: "2 seats, monthly", amountCents: 3800, mcc: "5734" },
-  "helpdesk-5-seats": { agent: "support", merchant: "Tailspin Helpdesk", label: "5 seats, monthly", amountCents: 9500, mcc: "5734" },
-  "books-starter": { agent: "treasury", merchant: "Contoso Books", label: "Bookkeeping, starter, monthly", amountCents: 1500, mcc: "5734" },
+  "packwise-starter": { agent: "sourcing", merchant: "Packwise", label: "Starter plan, monthly", amountCents: 1999, mcc: "5734" },
+  "packwise-pro": { agent: "sourcing", merchant: "Packwise", label: "Pro plan, monthly (more warehouses, live sync)", amountCents: 4500, mcc: "5734" },
+  "adwave-starter": { agent: "support", merchant: "Adwave", label: "Ads credit, starter", amountCents: 3800, mcc: "7311" },
+  "adwave-growth": { agent: "support", merchant: "Adwave", label: "Ads credit, growth", amountCents: 9500, mcc: "7311" },
+  "ledgerly-starter": { agent: "treasury", merchant: "Ledgerly", label: "Bookkeeping, starter, monthly", amountCents: 1500, mcc: "5734" },
 };

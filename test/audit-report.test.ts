@@ -12,12 +12,12 @@ const rows = (db: DB) => db.prepare("SELECT * FROM audit_log ORDER BY seq").all(
 
 function world(): DB {
   const db = openDb(":memory:");
-  const doc = "INVOICE LIC-1 …";
+  const doc = "INVOICE BTX-1 …";
   audit(db, "treasury", "claude.read", "extract_invoice", { model: "claude-sonnet-5-5", input_sha256: sha256Hex(doc), output: {} }, t0);
-  const inv = { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: "P-0001", expires_at: "2026-10-30T15:00:00Z", invoice_no: "LIC-1", vendor: "Lizenzhaus Beispiel GmbH",
-    amount: "1850.00", currency: "EUR", fee_max: "20.00", iban_last4: "3000", evidence: [{ type: "invoice", ref: "LIC-1", sha256: sha256Hex(doc) }] } as unknown as Terms;
+  const inv = { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: "P-0001", expires_at: "2026-10-30T15:00:00Z", invoice_no: "BTX-1", vendor: "Bergtex Textil GmbH",
+    amount: "1850.00", currency: "EUR", fee_max: "20.00", iban_last4: "3000", evidence: [{ type: "invoice", ref: "BTX-1", sha256: sha256Hex(doc) }] } as unknown as Terms;
   const p1 = createProposal(db, { terms: inv, createdBy: "treasury", evidence: (inv as unknown as { evidence: never }).evidence }, t0);
-  db.prepare("UPDATE proposals SET explanation = ? WHERE proposal_id = 'P-0001'").run("[claude-opus-5-5] APPROVE: Pays the licence invoice. ok");
+  db.prepare("UPDATE proposals SET explanation = ? WHERE proposal_id = 'P-0001'").run("[claude-opus-5-5] APPROVE: Pays the manufacturer's invoice. ok");
   db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES ('P-0001', 'APPROVED', ?, 'max (passkey k_EWzUuv)', 'passkey', ?, ?)")
     .run(p1.terms_sha256, p1.terms_sha256.slice(0, 8), t0.toISOString());
   db.prepare("UPDATE proposals SET status = 'EXECUTED' WHERE proposal_id = 'P-0001'").run();

@@ -25,7 +25,7 @@ describe("the agent API over MCP (P1)", () => {
     expect(tools).toEqual(["company_card", "pay_with_card", "request_company_card", "request_limit_raise"]);
     expect(tools.some((t) => /approve|policy|freeze|decide/.test(t))).toBe(false);
 
-    const early = await client.callTool({ name: "pay_with_card", arguments: { merchant: "Contoso Reports", amount_eur: "19.00", description: "Q4 report" } });
+    const early = await client.callTool({ name: "pay_with_card", arguments: { merchant: "TrailData Reports", amount_eur: "19.00", description: "Q4 report" } });
     expect(early.isError).toBe(true);
     expect(text(early)).toMatch(/no company card yet/);
 
@@ -38,8 +38,8 @@ describe("the agent API over MCP (P1)", () => {
     decide(db, { proposalId: "P-0001", decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "max", method: "cli" });
     await executeAgentOnboard(db, awx, "P-0001");
 
-    expect(text(await client.callTool({ name: "pay_with_card", arguments: { merchant: "Contoso Reports", amount_eur: "19.00", description: "Q4 report" } }))).toMatch(/^Airwallex approved 19\.00 EUR/);
-    expect(text(await client.callTool({ name: "pay_with_card", arguments: { merchant: "Contoso Reports", amount_eur: "40.00", description: "bundle" } }))).toMatch(/^Airwallex declined 40\.00 EUR at Contoso Reports: LIMIT_EXCEEDED/);
+    expect(text(await client.callTool({ name: "pay_with_card", arguments: { merchant: "TrailData Reports", amount_eur: "19.00", description: "Q4 report" } }))).toMatch(/^Airwallex approved 19\.00 EUR/);
+    expect(text(await client.callTool({ name: "pay_with_card", arguments: { merchant: "TrailData Reports", amount_eur: "40.00", description: "bundle" } }))).toMatch(/^Airwallex declined 40\.00 EUR at TrailData Reports: LIMIT_EXCEEDED/);
     expect(text(await client.callTool({ name: "request_limit_raise", arguments: { per_purchase_eur: "40.00", reason: "the bundle" } }))).toMatch(/^Asked\. P-0002 waits/);
     // Malformed input is refused by the schema before any code runs.
     const bad = await client.callTool({ name: "pay_with_card", arguments: { merchant: "X", amount_eur: "1e9", description: "d" } });

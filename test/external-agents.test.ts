@@ -68,9 +68,9 @@ describe("outside agents (P1)", () => {
     const p = requestCompanyCard(db, ME, ASK, now);
     approve(db, p.proposal_id);
     await executeAgentOnboard(db, awx, p.proposal_id, now);
-    const ok = await payWithCard(db, awx, ME, { merchant: "Contoso Reports", amount: "19.00", description: "Q4 market report" }, now);
+    const ok = await payWithCard(db, awx, ME, { merchant: "TrailData Reports", amount: "19.00", description: "Q4 market report" }, now);
     expect(ok).toMatchObject({ approved: true });
-    const no = await payWithCard(db, awx, ME, { merchant: "Contoso Reports", amount: "40.00", description: "Annual bundle" }, now);
+    const no = await payWithCard(db, awx, ME, { merchant: "TrailData Reports", amount: "40.00", description: "Annual bundle" }, now);
     expect(no).toMatchObject({ approved: false });
     expect(cardStatus(db, ME, now).card).toMatchObject({ spent_this_month: "19.00" });
     expect(db.prepare("SELECT actor FROM audit_log WHERE event = 'card.charge_declined'").get()).toEqual({ actor: ME });

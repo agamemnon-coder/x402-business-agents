@@ -50,7 +50,7 @@ describe("a month in 90 seconds (simulated)", () => {
     expect(aiDays).toBe(toCents(m.pnl[1]!.ai));
   });
 
-  it("compares Kestrel's payments by clearing with a transaction per query", () => {
+  it("compares Summit's payments by clearing with a transaction per query", () => {
     expect(m.clearing.payments).toBe(m.days.reduce((s, d) => s + d.sales, 0));
     expect(m.clearing).toMatchObject({ exact_tx: m.clearing.payments, clearing_tx: 10 });
   });

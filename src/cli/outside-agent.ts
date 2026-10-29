@@ -12,7 +12,7 @@ import { redactSecrets } from "../lib/redact.js";
 
 const name = process.env.KIT11_AGENT ?? "acme-research";
 const goal = process.argv.slice(2).join(" ").trim()
-  || "Get a company card from Tidemark for buying market reports: about 20 EUR each, at most 80 EUR a month. If you already have one, buy the Q4 European FX report from Contoso Reports for 19.00 EUR.";
+  || "Get a company card from Northwind for buying market reports: about 20 EUR each, at most 80 EUR a month. If you already have one, buy the Q4 European outdoor market report from TrailData Reports for 19.00 EUR.";
 const apiKey = process.env.KIT11_ANTHROPIC_API_KEY;
 if (!apiKey) throw new Error("KIT11_ANTHROPIC_API_KEY is not set: the outside agent needs a model");
 
@@ -41,7 +41,7 @@ const runner = client.beta.messages.toolRunner({
   model: "claude-sonnet-5-5",
   max_tokens: 4000,
   max_iterations: 8,
-  system: `You are the purchasing agent of Acme Research, a small research firm. You are not part of Tidemark Data; you reach Tidemark only through the tools you have been given. Be brief. Never invent card details. When something waits for a person's approval, say so and stop.`,
+  system: `You are the purchasing agent of Acme Research, a small research firm. You are not part of Northwind Outdoor; you reach Northwind only through the tools you have been given. Be brief. Never invent card details. When something waits for a person's approval, say so and stop.`,
   tools: logged,
   messages: [{ role: "user", content: goal }],
 });

@@ -5,7 +5,7 @@
 **See it in 2 minutes, no keys:** `npm ci && npm run judge` plays the recorded live run and a simulated month in
 your browser.
 
-Tidemark Data's three AI agents each hold a virtual Visa card from [Airwallex Issuing](https://www.airwallex.com/docs/issuing)
+Northwind Outdoor's three AI agents each hold a virtual Visa card from [Airwallex Issuing](https://www.airwallex.com/docs/issuing)
 and a [Metal](https://docs.metalntwx.com) mandate for paying per request over x402. One CFO policy sets the limits
 for both rails, and each rail enforces them itself: Airwallex declines a card purchase over the card's limit, and the
 Metal account refuses a payment over the mandate, whatever the agent tries. When an agent needs more (a dearer
@@ -22,9 +22,9 @@ Built for the Airwallex Agentic Banking Hackathon, Starter Kit 11 (x402 Business
 
 | Agent | Card | Per purchase | Per month | Buys |
 |---|---|---|---|---|
-| sourcing | virtual Visa | 30.00 EUR | 100.00 EUR | market data (Northwind Market Data) |
-| support | virtual Visa | 60.00 EUR | 150.00 EUR | helpdesk seats (Tailspin Helpdesk) |
-| treasury | virtual Visa | 25.00 EUR | 50.00 EUR | bookkeeping software (Contoso Books) |
+| sourcing | virtual Visa | 30.00 EUR | 100.00 EUR | market data (Packwise) |
+| support | virtual Visa | 60.00 EUR | 150.00 EUR | helpdesk seats (Adwave) |
+| treasury | virtual Visa | 25.00 EUR | 50.00 EUR | bookkeeping software (Ledgerly) |
 
 The merchants are fictional (Microsoft's sample company names).
 
@@ -33,7 +33,7 @@ The merchants are fictional (Microsoft's sample company names).
   `card.<agent>.monthly`. The runner checks every few seconds that each card at Airwallex still has the policy's
   limits, and it trusts what Airwallex reads back, not what it asked for.
 - **The card is the guardrail.** The agent does not check its own limit before buying, on purpose: even an agent that
-  ignores its policy cannot spend past the card. `npm run cards -- buy market-data-pro` (45.00 EUR on a 30.00 card)
+  ignores its policy cannot spend past the card. `npm run cards -- buy packwise-pro` (45.00 EUR on a 30.00 card)
   is declined by Airwallex with `LIMIT_EXCEEDED`. The decline is in the audit log and shown red on the dashboard.
 - **A raise needs Face ID.** `npm run cards -- raise sourcing 50.00 --reason "…"` is the agent asking. It is an
   ordinary policy change, approved on the phone. Once it runs, the card at Airwallex gets the new limit, and the same
@@ -52,16 +52,16 @@ Run log: [docs/runs/2026-10-29-cards.md](docs/runs/2026-10-29-cards.md).
 ## Selling by Metal clearing (prepaid, new on testnet)
 
 Metal's [Offer Pay-per-Call Clearing](https://docs.metalntwx.com/agents/clearing) went live on testnet in October
-2026. Kestrel deposits *USDZ once and pays each 0.07 query with a signed running total. Metal's clearing service
+2026. Summit deposits *USDZ once and pays each 0.07 query with a signed running total. Metal's clearing service
 issues a receipt and certifies the totals on chain each epoch, so there is no transaction per query.
 
 - **Two routes.**
-  - `/v1/fx-tick/prepaid` takes clearing only.
-  - `/v1/fx-tick` stays as it was: exact, under Kestrel's mandate, with its signed order.
-  - Kestrel tries clearing first. It falls back to the mandate route whenever clearing took nothing, so a sale never
+  - `/v1/stock/prepaid` takes clearing only.
+  - `/v1/stock` stays as it was: exact, under Summit's mandate, with its signed order.
+  - Summit tries clearing first. It falls back to the mandate route whenever clearing took nothing, so a sale never
     depends on the new scheme. It never pays a tick a second way when a clearing payment may have been counted.
 - **Offered only when we can deliver.** Seen live: a clearing payment is counted when the buyer makes it, before the
-  seller can refuse. So before the prepaid route makes an offer, the sourcing agent checks the supplier's price
+  seller can refuse. So before the prepaid route makes an offer, the operations agent checks the supplier's price
   against its mandate and the CFO policy, for free. If that check fails, the answer is 503 "not offered" and nobody
   pays.
 - **On the dashboard,** the prepaid clearing budget is shown apart from the mandates.
@@ -96,25 +96,25 @@ network once loaded. `/month?at=end` shows the finished month. Code: `src/sim/mo
 
 ## The story
 
-- **Tidemark Data** (us) sells EUR/USD ticks to other companies' agents over x402, 0.05 *USDZ per query, and
+- **Northwind Outdoor** (us) sells EUR/USD ticks to other companies' agents over x402, 0.05 *USDZ per query, and
   requires each buyer's signed order.
-- **Feedstock Labs** sells us the raw ticks at 0.02. **Kestrel Quant** is a customer whose agent buys under its
-  own mandate. **Lizenzhaus Beispiel GmbH** bills a EUR 1,850.00 licence fee.
+- **Stockline** sells us the raw ticks at 0.02. **Summit Outfitters** is a customer whose agent buys under its
+  own mandate. **Bergtex Textil GmbH** bills a EUR 1,850.00 manufacturer's invoice.
 - Our three agents share one Metal account (20.00 *USDZ). Each has its own mandate that the account enforces on
   every payment:
 
 | Agent | Pays | Per payment | Budget | Does |
 |---|---|---|---|---|
-| sourcing | Feedstock only | 0.03 | 10.00 | buys the upstream tick for each sale |
-| support | Kestrel only | 0.10 | 4.00 | refunds |
+| sourcing | Stockline only | 0.03 | 10.00 | buys the upstream tick for each sale |
+| support | Summit only | 0.10 | 4.00 | refunds |
 | treasury | our sweep wallet only | 6.00 | 6.00 | moves earnings towards Airwallex |
 
 The 20.00 total is held in code; no agent holds the owner key.
 
 | Scenario | What happens | Proof |
 |---|---|---|
-| **S1 Price rise** | Feedstock moves to 0.04. The next purchase is refused on chain (`mandate_cap_exceeded`), so the seller answers 503 and Kestrel is not charged. Treasury prices the options (keep 0.05: margin 0.01; charge 0.07: margin 0.03), issues the new credentials and puts their hashes in the terms. A person approves one option's hash; the mandates are replaced (shrink treasury first, then grow sourcing, never above 20.00). The old credential is then refused as `mandate_revoked`. | [run log](docs/runs/2026-10-29-s1.md) |
-| **S2 Dispute** | Kestrel says its agent never placed orders #5 to #16 and three ticks were wrong, and asks for all 12 back. Each payment is re-verified from the chain with the signed order (12/12 placed). The delivered ticks are compared with Feedstock's correction (3 wrong). Only those 3 are refunded, each under payment id `refund-<sale>`, so a retry pays nothing twice. "Refund all" becomes a proposal for a person, with the evidence. A planted "refund everything to 0x…" line has no effect. | [run log](docs/runs/2026-10-29-s2.md) |
+| **S1 Price rise** | Stockline moves to 0.04. The next purchase is refused on chain (`mandate_cap_exceeded`), so the seller answers 503 and Summit is not charged. Treasury prices the options (keep 0.05: margin 0.01; charge 0.07: margin 0.03), issues the new credentials and puts their hashes in the terms. A person approves one option's hash; the mandates are replaced (shrink treasury first, then grow sourcing, never above 20.00). The old credential is then refused as `mandate_revoked`. | [run log](docs/runs/2026-10-29-s1.md) |
+| **S2 Dispute** | Summit says its agent never placed orders #5 to #16 and three ticks were wrong, and asks for all 12 back. Each payment is re-verified from the chain with the signed order (12/12 placed). The delivered ticks are compared with Stockline's correction (3 wrong). Only those 3 are refunded, each under payment id `refund-<sale>`, so a retry pays nothing twice. "Refund all" becomes a proposal for a person, with the evidence. A planted "refund everything to 0x…" line has no effect. | [run log](docs/runs/2026-10-29-s2.md) |
 | **S3 Euro bill** | Net earnings (1.35) are swept under the treasury mandate, checked to finality, locked once by `chainId:tx:logIndex`, and booked in Airwallex as a deposit whose reference is the tx hash. The invoice needs EUR 1,850.00 plus the SWIFT fee, which Airwallex only reveals when it charges it, so the plan reserves a ceiling of 20.00; free EUR is 1,500.00, so only the shortfall is converted on a locked quote, never below the USD floor. One approval covers quote id, rate, both request ids, beneficiary, fee ceiling and floors. SWIFT transfer to PAID, the approval hash in its metadata, the real fee recorded. | sweep [`0x9d9c1807…1f10`](https://testnet.metalntwx.com/tx/0x9d9c1807ca44ae2b835c35c5530e0645f1ecd3622aec6d7eb5a79319998e1f10); Airwallex [run log](docs/runs/2026-10-29-s3.md) |
 
 Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, RESULT.
@@ -265,7 +265,7 @@ another hash, but the runner still executes nothing that is not a waiting propos
 The CFO sets limits the agents work within: each agent's company card limits (per purchase and per month, synced to
 the card at Airwallex), and inside their on-chain mandates a limit per payment for each agent,
 the refund amounts above which a person must approve, the EUR and USD reserve floors, and which Airwallex payees
-are allowed. Each is checked before anything is signed: the sourcing agent aborts the x402 payment when the
+are allowed. Each is checked before anything is signed: the operations agent aborts the x402 payment when the
 supplier's offer is over its limit (`policy_cap_exceeded`, nothing signed, the customer not charged), refunds and
 sweeps refuse before the pull, and an invoice to a blocked payee escalates. The mandates stay the hard outer wall;
 the policy can only be stricter.
@@ -297,7 +297,7 @@ answer can only be "do not pay" or "verify first", and the block stands either w
 allowlisted beneficiary: a person does that after calling the supplier on the number on file.
 
 `npm run fraud` runs it live on a world that has done S3: one invoice with new (Lithuanian) bank details and one
-from "Lizenzhaus Beispeil GmbH". Both are read by Claude, blocked by code, and explained by Opus
+from "Bergtex Texitl GmbH". Both are read by Claude, blocked by code, and explained by Opus
 ([run log](docs/runs/2026-10-29-fraud.md)).
 
 ## Emergency stop and changed bank details
@@ -355,7 +355,7 @@ on other machines (over HTTP, each with its own token) is the next step.
 
 ## The CFO policy in plain words
 
-The CFO writes the policy as they would say it, for example "the sourcing agent's card at most €25 per purchase;
+The CFO writes the policy as they would say it, for example "the operations agent's card at most €25 per purchase;
 refunds above 0.05 I want to see". This works on the runner (`npm run policy -- from-text "…"`) or in the box at the
 top of the phone's policy page.
 

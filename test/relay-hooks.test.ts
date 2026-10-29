@@ -30,7 +30,7 @@ const sync = async (r: Relay, extra: Record<string, unknown> = {}) =>
 
 const event = (cardId: string, over: Record<string, unknown> = {}) => JSON.stringify({
   id: "evt-1", name: "issuing.card_transaction_event.failed", account_id: "acct", created_at: t0.toISOString(), version: "2025-11-11",
-  data: { object: { card_transaction_id: "ct-9", card_id: cardId, process_result: "DECLINED", failure_reason: "LIMIT_EXCEEDED", transaction_amount: 45, transaction_currency: "EUR", transacted_at: t0.toISOString(), merchant: { name: "Northwind Market Data___", category_code: "5734" }, ...over } },
+  data: { object: { card_transaction_id: "ct-9", card_id: cardId, process_result: "DECLINED", failure_reason: "LIMIT_EXCEEDED", transaction_amount: 45, transaction_currency: "EUR", transacted_at: t0.toISOString(), merchant: { name: "Packwise___", category_code: "5734" }, ...over } },
 });
 
 describe("Airwallex webhooks on the relay", () => {
@@ -100,7 +100,7 @@ describe("runner and relay together", () => {
     });
     expect((await hook(r, event(awx.cards[0]!.cardId))).status).toBe(200);
     await runner.syncOnce();
-    expect(log.filter((l) => l.startsWith("hook"))).toEqual(["hook     webhook issuing.card_transaction_event.failed: Airwallex declined 45.00 EUR at Northwind Market Data"]);
+    expect(log.filter((l) => l.startsWith("hook"))).toEqual(["hook     webhook issuing.card_transaction_event.failed: Airwallex declined 45.00 EUR at Packwise"]);
     expect(db.prepare("SELECT source FROM card_transactions").all()).toEqual([{ source: "webhook" }]);
     await runner.syncOnce();
     expect((await sync(r)).hooks).toEqual([]);

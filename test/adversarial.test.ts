@@ -97,14 +97,14 @@ describe("adversarial: documents, logs and keys", () => {
 
   it("an invoice with changed bank details is blocked as possible fraud", () => {
     const db = openDb(":memory:");
-    db.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES ('b-1', 'Lizenzhaus Beispiel GmbH', '3000', ?, 'COBADEFFXXX', 'EUR', 'SWIFT')").run(ibanSha("DE89370400440532013000"));
-    const text = f("lizenzhaus-invoice-LIC-2027-01-BANKCHANGE.txt");
+    db.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES ('b-1', 'Bergtex Textil GmbH', '3000', ?, 'COBADEFFXXX', 'EUR', 'SWIFT')").run(ibanSha("DE89370400440532013000"));
+    const text = f("bergtex-invoice-BTX-2027-01-BANKCHANGE.txt");
     expect(checkInvoice(db, parseInvoiceFallback(text), text)).toMatchObject({ ok: false, reason: expect.stringMatching(/^possible invoice fraud/) });
   });
 
   it("a planted instruction cannot change what the agent reads", async () => {
     const db = openDb(":memory:");
-    const text = f("lizenzhaus-invoice-LIC-2027-03-INJECTION.txt");
+    const text = f("bergtex-invoice-BTX-2027-03-INJECTION.txt");
     const obey = { beta: { messages: { parse: async (p: { model: string }) => ({ model: p.model, stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 }, parsed_output: { ...parseInvoiceFallback(text), iban: "GB29NWBK60161331926819", amount: "9850.00" } }) } } } as unknown as Anthropic;
     expect((await new Tools(db, new ClaudeReader(db, obey)).invoice(text)).value).toMatchObject({ amount: "1850.00", iban: "DE89370400440532013000" });
   });
@@ -120,11 +120,11 @@ describe("adversarial: documents, logs and keys", () => {
       const capture = { beta: { messages: { parse: async (p: unknown) => { sent.push(JSON.stringify(p)); return { model: "m", stop_reason: "refusal", stop_details: null, usage: { input_tokens: 0, output_tokens: 0 }, parsed_output: null }; } } } } as unknown as Anthropic;
       const db = openDb(":memory:");
       const tools = new Tools(db, new ClaudeReader(db, capture));
-      for (const n of ["lizenzhaus-invoice-LIC-2026-11.txt", "kestrel-dispute-email.txt", "feedstock-price-notice.txt", "feedstock-corrections.txt"]) {
+      for (const n of ["bergtex-invoice-BTX-2026-11.txt", "summit-dispute-email.txt", "stockline-price-notice.txt", "stockline-corrections.txt"]) {
         await tools.classify(f(n));
       }
-      await tools.invoice(f("lizenzhaus-invoice-LIC-2026-11.txt"));
-      await tools.dispute(f("kestrel-dispute-email.txt"));
+      await tools.invoice(f("bergtex-invoice-BTX-2026-11.txt"));
+      await tools.dispute(f("summit-dispute-email.txt"));
       const t = terms("P-0001");
       await tools.review("refund_batch", JSON.stringify({ ...t, terms_sha256: termsHash(t) }), "context from the agents' checks");
       expect(sent.length).toBe(7);

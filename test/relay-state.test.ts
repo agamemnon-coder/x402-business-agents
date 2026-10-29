@@ -61,7 +61,7 @@ describe("relay state", () => {
     db.prepare("UPDATE proposals SET status = 'SUPERSEDED' WHERE proposal_id = 'P-0001'").run();
     const s = buildRelayState(db, { rpId: RP, relayToken: TOKEN }, new Date("2026-10-30T14:05:00Z"));
     expect(s.approvals.proposals.map((p) => p.proposal_id)).toEqual(["P-0002"]);
-    expect(s.approvals.names).toEqual({ [S]: "Feedstock Labs", [W]: "Tidemark sweep wallet", [C]: "Kestrel Quant" });
+    expect(s.approvals.names).toEqual({ [S]: "Stockline", [W]: "Northwind sweep wallet", [C]: "Summit Outfitters" });
   });
 
   it("lists the active passkey for this relay and an open enrolment window, without its code", () => {
@@ -102,7 +102,7 @@ describe("relay state", () => {
 
   it("carries the CFO policy for the phone's editor", () => {
     const s = buildRelayState(ledger(), { rpId: RP, relayToken: TOKEN }, t0);
-    expect(s.approvals.policy.find((e) => e.key === "cap.sourcing")).toMatchObject({ label: "Sourcing agent: most per payment", value: "", kind: "optional_money", unit: "USDZ" });
+    expect(s.approvals.policy.find((e) => e.key === "cap.sourcing")).toMatchObject({ label: "Operations agent: most per payment", value: "", kind: "optional_money", unit: "USDZ" });
   });
 
   it("hashes the same ledger the same way at different times, and differently once it changes", () => {

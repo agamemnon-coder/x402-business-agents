@@ -18,12 +18,12 @@ const fail = (e: unknown): Text => ({ content: [{ type: "text", text: redactSecr
 
 export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | null): McpServer {
   const server = new McpServer({ name: "tidemark-agent-api", version: "1.0.0" }, {
-    instructions: `You are connected to Tidemark Data's agent API as the outside agent ${id}. You can ask for a company card, pay merchants on it, ask for a higher limit, and see your card. Every request is decided by Tidemark's CFO with Face ID; the card's limits are enforced by Airwallex. You cannot approve anything yourself.`,
+    instructions: `You are connected to Northwind Outdoor's agent API as the outside agent ${id}. You can ask for a company card, pay merchants on it, ask for a higher limit, and see your card. Every request is decided by Northwind's CFO with Face ID; the card's limits are enforced by Airwallex. You cannot approve anything yourself.`,
   });
 
   server.registerTool("request_company_card", {
     title: "Ask for a company card",
-    description: "Ask Tidemark's CFO for a virtual company card (Airwallex, EUR) with the limits you need. Nothing is issued until the CFO approves with Face ID; call company_card to see the outcome.",
+    description: "Ask Northwind's CFO for a virtual company card (Airwallex, EUR) with the limits you need. Nothing is issued until the CFO approves with Face ID; call company_card to see the outcome.",
     inputSchema: {
       display_name: z.string().min(1).max(60).describe("Your name as the CFO will see it, e.g. 'Acme Research agent'"),
       purpose: z.string().min(1).max(300).describe("What you will buy with the card"),

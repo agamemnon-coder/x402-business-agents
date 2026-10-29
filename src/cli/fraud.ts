@@ -1,7 +1,7 @@
-// npm run fraud: tier 3 item 7 live. Two invoices arrive that look like the licensor's: one announces new bank
+// npm run fraud: tier 3 item 7 live. Two invoices arrive that look like the manufacturer's: one announces new bank
 // details, one comes from a lookalike name. Claude reads each (Haiku classifies, Sonnet extracts); code compares
 // the payee with the allowlist and blocks both before Airwallex is touched; Opus explains each to the CFO.
-// Needs a ledger whose S3 already allowlisted the licensor (KIT11_DB). Nothing is paid, quoted or proposed.
+// Needs a ledger whose S3 already allowlisted the manufacturer (KIT11_DB). Nothing is paid, quoted or proposed.
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -11,8 +11,8 @@ import { Tools } from "../claude/tools.js";
 import { openDb } from "../db/open.js";
 
 const CASES = [
-  { file: "lizenzhaus-invoice-LIC-2027-01-BANKCHANGE.txt", what: "new bank details", expect: "bank_details_changed" },
-  { file: "lizenzhaus-invoice-LIC-2027-02-LOOKALIKE.txt", what: "lookalike vendor", expect: "lookalike_vendor" },
+  { file: "bergtex-invoice-BTX-2027-01-BANKCHANGE.txt", what: "new bank details", expect: "bank_details_changed" },
+  { file: "bergtex-invoice-BTX-2027-02-LOOKALIKE.txt", what: "lookalike vendor", expect: "lookalike_vendor" },
 ] as const;
 
 /** Any call on the rail throws: a blocked invoice must not read a balance, ask for a quote or pay. */

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>A Month in 90 Seconds</title>
+<title>Purser · A Month in 90 Seconds</title>
 <style>
 @font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
@@ -100,7 +100,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 </head>
 <body>
 <header>
-  <h1>Tidemark Data</h1><span class="sub">A month in 90 seconds</span><a href="./">Live dashboard</a>
+  <h1>Purser</h1><span class="sub">Northwind Outdoor · a month in 90 seconds</span><a href="./">Live dashboard</a>
   <p class="honest" id="honest"></p>
 </header>
 <main>
@@ -125,6 +125,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
   </section>
   <section id="events" aria-labelledby="h-events"><h2 id="h-events">What happened <span class="hint">newest first</span></h2><div class="list" id="event-list"></div></section>
 </main>
+<script type="application/json" id="agent-names">__AGENTS_JSON__</script>
 <script type="application/json" id="month-data">__MONTH_JSON__</script>
 <script>
 (function () {
@@ -132,6 +133,8 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
   // Every string from the data is rendered with textContent; nothing from it becomes HTML.
   var M = JSON.parse(document.getElementById("month-data").textContent);
   var SECONDS = 90, AGENTS = ["sourcing", "support", "treasury"];
+  var NAMES = JSON.parse(document.getElementById("agent-names").textContent);
+  function agentLabel(a) { return NAMES[a] || a; }
   var N = M.days.length, perDay = SECONDS / N;
   var t = 0, playing = true, last = null;
 
@@ -156,7 +159,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 
   document.getElementById("honest").textContent = M.assumptions[0] + " Month " + M.month + ", seed " + M.seed + ".";
   if (M.clearing) {
-    document.getElementById("clearing-note").textContent = "Kestrel's " + int(M.clearing.payments) + " payments by Metal clearing: " + M.clearing.clearing_tx + " transactions on chain (weekly deposits and withdrawals) instead of " + int(M.clearing.exact_tx) + " with a transfer per query.";
+    document.getElementById("clearing-note").textContent = "Summit's " + int(M.clearing.payments) + " payments by Metal clearing: " + M.clearing.clearing_tx + " transactions on chain (weekly deposits and withdrawals) instead of " + int(M.clearing.exact_tx) + " with a transfer per query.";
   }
   M.assumptions.slice(1).forEach(function (a) { document.getElementById("assumptions").appendChild(el("li", "", [a])); });
 
@@ -235,7 +238,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
     var net = rows.reduce(function (s, r) { return s + r[6]; }, 0) - bills;
     var body = document.getElementById("pnl-body");
     var trs = rows.map(function (r) {
-      return el("tr", "", [el("td", "", [el("span", "agent", [r[0]])])].concat(r.slice(1).map(function (c, i) { return el("td", i === 5 && c < 0 ? "neg" : "", [fmt(c)]); })));
+      return el("tr", "", [el("td", "", [el("span", "agent", [agentLabel(r[0])])])].concat(r.slice(1).map(function (c, i) { return el("td", i === 5 && c < 0 ? "neg" : "", [fmt(c)]); })));
     });
     trs.push(el("tr", "", [el("td", "", ["Bills paid through Airwallex"]), el("td"), el("td"), el("td"), el("td"), el("td"), el("td", bills ? "neg" : "", [fmt(-bills)])]));
     trs.push(el("tr", "total", [el("td", "", ["Company"]), el("td"), el("td"), el("td"), el("td"), el("td"), el("td", net < 0 ? "neg" : "", [fmt(net)])]));
@@ -251,7 +254,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
     shown = visible.length;
     var list = document.getElementById("event-list");
     list.replaceChildren.apply(list, visible.slice().reverse().map(function (e) {
-      var who = e.agent === "cfo" ? el("span", "chip cfo", ["CFO (simulated)"]) : el("span", "chip", [e.agent]);
+      var who = e.agent === "cfo" ? el("span", "chip cfo", ["CFO (simulated)"]) : el("span", "chip", [agentLabel(e.agent)]);
       var tag = e.outcome === "blocked" ? el("span", "chip blocked", ["blocked"]) : null;
       return el("div", "ev " + e.tone, [el("span", "t num", ["Day " + e.day]), el("div", "x", [who, tag, e.text + " (" + hhmm(e.minute) + ")"])]);
     }));

@@ -68,7 +68,7 @@ export interface PriceOption {
   marginPercent: number | null;
 }
 
-/** The options the treasury agent puts in front of the approver when the supplier raises its price. */
+/** The options the finance agent puts in front of the approver when the supplier raises its price. */
 export function priceRiseOptions(sellCents: number, altSellCents: number, newUpstreamCents: number): PriceOption[] {
   const opt = (id: "A" | "B", label: string, sell: number): PriceOption => {
     const margin = sell - newUpstreamCents;

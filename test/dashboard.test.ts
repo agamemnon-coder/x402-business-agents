@@ -26,7 +26,7 @@ const TX = "0x" + "ab".repeat(32);
 const XSS = `<img src=x onerror="alert(1)"><script>alert(2)</script>`;
 const t0 = new Date("2026-10-29T06:30:00Z");
 
-/** A ledger shaped like rehearsal 2: 40 ticks at 0.05 then 10 at 0.07, supplier 0.02 then 0.04, 3 refunds, one sweep. */
+/** A ledger shaped like rehearsal 2: 40 stock checks at 0.05 then 10 at 0.07, supplier 0.02 then 0.04, 3 refunds, one sweep. */
 function ledger(): DB {
   const db = openDb(":memory:");
   const acct = db.prepare("INSERT INTO metal_accounts (address, role) VALUES (?, ?)");
@@ -39,7 +39,7 @@ function ledger(): DB {
   audit(db, "owner-signer", "mandate.replaced", "treasury", { cap: "4.00", budget: "4.00", proposal_id: "P-0002", step: "1", credential_hash: "0x1", tx: TX });
   audit(db, "owner-signer", "mandate.replaced", "sourcing", { cap: "0.04", budget: "12.00", proposal_id: "P-0002", step: "2", credential_hash: "0x2", tx: TX });
   const up = db.prepare("INSERT INTO upstream_purchases (price_cents, outcome, refusal_reason, created_at) VALUES (?, ?, ?, ?)");
-  const sale = db.prepare("INSERT INTO sales (sale_id, route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES (?, 'GET /v1/fx-tick', ?, ?, 'u', ?, 'DELIVERED', ?)");
+  const sale = db.prepare("INSERT INTO sales (sale_id, route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES (?, 'GET /v1/stock', ?, ?, 'u', ?, 'DELIVERED', ?)");
   for (let seq = 1; seq <= 50; seq++) {
     up.run(seq <= 40 ? 2 : 4, "PAID", null, t0.toISOString());
     sale.run(seq, seq <= 40 ? 5 : 7, C, JSON.stringify({ seq: String(seq) }), t0.toISOString());
@@ -57,11 +57,11 @@ describe("dashboard snapshot", () => {
   it("derives each agent's budget and spend from the ledger, summed across replaced credentials", () => {
     const s = buildSnapshot(ledger(), t0);
     expect(s.budgets.agents.map((a) => [a.agent, a.cap, a.budget, a.spent, a.remaining, a.payee, a.credentials])).toEqual([
-      ["sourcing", "0.04", "12.00", "1.20", "10.80", "Feedstock Labs", 2],
-      ["support", "0.10", "4.00", "0.15", "3.85", "Kestrel Quant", 1],
-      ["treasury", "4.00", "4.00", "1.35", "2.65", "Tidemark sweep wallet", 2],
+      ["sourcing", "0.04", "12.00", "1.20", "10.80", "Stockline", 2],
+      ["support", "0.10", "4.00", "0.15", "3.85", "Summit Outfitters", 1],
+      ["treasury", "4.00", "4.00", "1.35", "2.65", "Northwind sweep wallet", 2],
     ]);
-    expect(s.budgets.counterparty).toMatchObject({ agent: "customer", spent: "2.70", budget: "5.00", payee: "Tidemark Data" });
+    expect(s.budgets.counterparty).toMatchObject({ agent: "customer", spent: "2.70", budget: "5.00", payee: "Northwind Outdoor" });
     expect([s.budgets.allocated, s.budgets.limit]).toEqual(["20.00", "20.00"]);
     expect(s.treasury.metal).toMatchObject({ sales: "2.70", upstream: "1.20", refunds: "0.15", net: "1.35", swept: "1.35" });
     expect(s.audit).toMatchObject({ rows: 7, intact: true });
@@ -98,8 +98,8 @@ describe("dashboard snapshot", () => {
   });
 
   it("summarizes each kind in plain words, including terms from before the fee ceiling", () => {
-    const inv = { vendor: "Lizenzhaus", amount: "1850.00", invoice_no: "LIC-1", iban_last4: "3000", method: "SWIFT", conversion: { sell_amount: "416.59", buy_amount: "370.00", client_rate: "1.1259" } };
-    expect(summarize("invoice_payment", JSON.stringify({ ...inv, fee_max: "20.00" }))).toBe("Pay Lizenzhaus EUR 1850.00 for invoice LIC-1 by SWIFT to IBAN …3000; first convert USD 416.59 to EUR 370.00 at 1.1259; fee at most EUR 20.00");
+    const inv = { vendor: "Bergtex", amount: "1850.00", invoice_no: "BTX-1", iban_last4: "3000", method: "SWIFT", conversion: { sell_amount: "416.59", buy_amount: "370.00", client_rate: "1.1259" } };
+    expect(summarize("invoice_payment", JSON.stringify({ ...inv, fee_max: "20.00" }))).toBe("Pay Bergtex EUR 1850.00 for invoice BTX-1 by SWIFT to IBAN …3000; first convert USD 416.59 to EUR 370.00 at 1.1259; fee at most EUR 20.00");
     expect(summarize("invoice_payment", JSON.stringify({ ...inv, conversion: null, fee: "12.85" }))).toMatch(/paid from free EUR; fee about EUR 12\.85$/);
     expect(summarize("mandate_replace", JSON.stringify({ option: "B", query_price: "0.07", margin: "0.03", upstream_price: "0.04", total_budget: "20.00", steps: [{ agent: "treasury", cap: "4.00", budget: "4.00" }] })))
       .toBe("Option B: sell at 0.07 (margin 0.03 on 0.04); treasury cap 4.00, budget 4.00; total 20.00");
@@ -109,12 +109,12 @@ describe("dashboard snapshot", () => {
 
   it("lists refusals newest first in plain words and keeps hostile text as text", () => {
     const db = ledger();
-    audit(db, "treasury", "invoice.escalated", "LIC-EVIL", { reason: XSS });
+    audit(db, "treasury", "invoice.escalated", "BTX-EVIL", { reason: XSS });
     audit(db, "human", "approval.too_late", "P-0005", { approver: "max", expires_at: "x", method: "cli", terms_sha256: "ab" });
     const s = buildSnapshot(db, t0);
     expect(s.refusals.map((r) => [r.what, r.agent])).toEqual([["Late approval refused", "human"], ["Invoice escalated", "treasury"], ["Supplier purchase refused", "sourcing"]]);
-    expect(s.refusals[1]!.reason).toBe(`Invoice LIC-EVIL escalated to a person: ${XSS}`);
-    expect(s.refusals[2]!.reason).toBe("Purchase of tick #41 refused on chain: over the mandate's per-payment cap");
+    expect(s.refusals[1]!.reason).toBe(`Invoice BTX-EVIL escalated to a person: ${XSS}`);
+    expect(s.refusals[2]!.reason).toBe("Purchase of stock check #41 refused on chain: over the mandate's per-payment cap");
   });
 
   it("names the passkey approvals need, and says when none is enrolled", () => {
@@ -137,8 +137,8 @@ describe("dashboard snapshot", () => {
     const awx = new FakeIssuing();
     awx.clock = () => t0.getTime();
     await setupCards(db, awx, t0);
-    await buyPlan(db, awx, "market-data-starter", t0);
-    await buyPlan(db, awx, "market-data-pro", t0);
+    await buyPlan(db, awx, "packwise-starter", t0);
+    await buyPlan(db, awx, "packwise-pro", t0);
     const s = buildSnapshot(db, t0);
     expect(s.cards.map((c) => [c.agent, c.last4, c.per_tx, c.monthly, c.spent_month, c.left_month, c.in_sync])).toEqual([
       ["sourcing", "4002", "30.00", "100.00", "19.99", "80.01", true],
@@ -146,19 +146,19 @@ describe("dashboard snapshot", () => {
       ["treasury", "4006", "25.00", "50.00", "0.00", "50.00", true],
     ]);
     expect(s.cards[0]!.recent.map((t) => [t.merchant, t.amount, t.approved, t.reason])).toEqual([
-      ["Northwind Market Data", "45.00", false, "over the card's limit"],
-      ["Northwind Market Data", "19.99", true, null],
+      ["Packwise", "45.00", false, "over the card's limit"],
+      ["Packwise", "19.99", true, null],
     ]);
     expect(s.refusals[0]).toMatchObject({ what: "Card purchase declined by Airwallex", agent: "sourcing" });
-    // 50 sales, 50 supplier purchases, 3 refunds, 1 sweep, the approved card charge; the refused tick and the declined charge.
+    // 50 sales, 50 supplier purchases, 3 refunds, 1 sweep, the approved card charge; the refused stock check and the declined charge.
     expect(s.counts).toEqual({ alone: 105, waiting: 0, blocked: 2 });
     expect(s.feed.slice(0, 4).map((f) => [f.actor, f.text, f.tone])).toEqual([
-      ["sourcing", "Airwallex declined 45.00 EUR at Northwind Market Data on the sourcing agent's card •••• 4002: over the card's limit", "refusal"],
-      ["sourcing", "Subscribing to Northwind Market Data (Pro plan, monthly (more symbols, faster prices)) for 45.00 EUR on its card •••• 4002", "info"],
-      ["sourcing", "Airwallex approved 19.99 EUR at Northwind Market Data on the sourcing agent's card •••• 4002", "ok"],
-      ["sourcing", "Subscribing to Northwind Market Data (Starter plan, monthly) for 19.99 EUR on its card •••• 4002", "info"],
+      ["sourcing", "Airwallex declined 45.00 EUR at Packwise on the Operations agent's card •••• 4002: over the card's limit", "refusal"],
+      ["sourcing", "Subscribing to Packwise (Pro plan, monthly (more warehouses, live sync)) for 45.00 EUR on its card •••• 4002", "info"],
+      ["sourcing", "Airwallex approved 19.99 EUR at Packwise on the Operations agent's card •••• 4002", "ok"],
+      ["sourcing", "Subscribing to Packwise (Starter plan, monthly) for 19.99 EUR on its card •••• 4002", "info"],
     ]);
-    expect(s.feed.find((f) => f.event === "card.issued")?.text).toBe("Airwallex issued the treasury agent a virtual Visa card •••• 4006: up to 25.00 EUR per purchase, 50.00 EUR a month");
+    expect(s.feed.find((f) => f.event === "card.issued")?.text).toBe("Airwallex issued the Finance agent a virtual Visa card •••• 4006: up to 25.00 EUR per purchase, 50.00 EUR a month");
     // The CFO tightens a limit: until Airwallex has it, the card shows it is not in sync yet.
     db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('card.support.per_tx', '40.00', ?)").run(t0.toISOString());
     expect(buildSnapshot(db, t0).cards[1]).toMatchObject({ per_tx: "40.00", in_sync: false });
@@ -187,8 +187,8 @@ describe("dashboard snapshot", () => {
 
   it("lists a card decline once when Airwallex reported it under two ids", () => {
     const db = ledger();
-    audit(db, "support", "card.charge_declined", "legacy-1", { agent: "support", amount: "61.00", currency: "EUR", merchant: "Tailspin Helpdesk", reason: "LIMIT_EXCEEDED" });
-    audit(db, "support", "card.charge_declined", "card-tx-1", { agent: "support", amount: "61.00", currency: "EUR", merchant: "Tailspin Helpdesk", reason: "LIMIT_EXCEEDED" });
+    audit(db, "support", "card.charge_declined", "legacy-1", { agent: "support", amount: "61.00", currency: "EUR", merchant: "Adwave", reason: "LIMIT_EXCEEDED" });
+    audit(db, "support", "card.charge_declined", "card-tx-1", { agent: "support", amount: "61.00", currency: "EUR", merchant: "Adwave", reason: "LIMIT_EXCEEDED" });
     audit(db, "system", "card.duplicate_merged", "legacy-1", { agent: "support", amount: "61.00", currency: "EUR", kept: "card-tx-1" });
     const declines = buildSnapshot(db, t0).refusals.filter((r) => /61\.00/.test(r.reason));
     expect(declines).toHaveLength(1);
@@ -197,23 +197,23 @@ describe("dashboard snapshot", () => {
   it("shows the CFO policy: the limit beside each mandate, every change in the feed, its refusals in plain words", () => {
     const db = ledger();
     setSetting(db, "human", "cap.sourcing", "0.03");
-    audit(db, "human", "policy.changed", "cap.sourcing", { key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03", proposal_id: "P-0004" });
+    audit(db, "human", "policy.changed", "cap.sourcing", { key: "cap.sourcing", label: "Operations agent: most per payment", from: "", to: "0.03", proposal_id: "P-0004" });
     audit(db, "sourcing", "upstream.refused", "52", { seq: 42, reason: "policy_cap_exceeded: 0.04 is over the sourcing limit of 0.03" });
     const s = buildSnapshot(db, t0);
     expect(s.budgets.agents.map((a) => [a.agent, a.policy_cap])).toEqual([["sourcing", "0.03"], ["support", null], ["treasury", null]]);
-    expect(s.feed[1]).toMatchObject({ text: "CFO policy: Sourcing agent: most per payment changed from no extra limit to 0.03 USDZ (P-0004)", tone: "approval" });
-    expect(s.refusals[0]).toMatchObject({ what: "Supplier purchase refused", reason: "Purchase of tick #42 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ" });
+    expect(s.feed[1]).toMatchObject({ text: "CFO policy: Operations agent: most per payment changed from no extra limit to 0.03 USDZ (P-0004)", tone: "approval" });
+    expect(s.refusals[0]).toMatchObject({ what: "Supplier purchase refused", reason: "Purchase of stock check #42 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ" });
     // A card limit is in euros, a mandate limit in Metal's test dollars.
-    audit(db, "human", "policy.changed", "card.support.per_tx", { key: "card.support.per_tx", label: "Support agent's card: most per purchase", from: "60.00", to: "80.00", proposal_id: "P-0005" });
-    expect(buildSnapshot(db, t0).feed[0]!.text).toBe("CFO policy: Support agent's card: most per purchase changed from 60.00 EUR to 80.00 EUR (P-0005)");
-    expect(summarize("policy_change", JSON.stringify({ changes: [{ label: "Sourcing agent: most per payment", from: "", to: "0.03" }, { label: "EUR reserve floor", from: "500.00", to: "800.00" }] })))
-      .toBe("Sourcing agent: most per payment: no extra limit → 0.03; EUR reserve floor: 500.00 → 800.00");
+    audit(db, "human", "policy.changed", "card.support.per_tx", { key: "card.support.per_tx", label: "Marketing agent's card: most per purchase", from: "60.00", to: "80.00", proposal_id: "P-0005" });
+    expect(buildSnapshot(db, t0).feed[0]!.text).toBe("CFO policy: Marketing agent's card: most per purchase changed from 60.00 EUR to 80.00 EUR (P-0005)");
+    expect(summarize("policy_change", JSON.stringify({ changes: [{ label: "Operations agent: most per payment", from: "", to: "0.03" }, { label: "EUR reserve floor", from: "500.00", to: "800.00" }] })))
+      .toBe("Operations agent: most per payment: no extra limit → 0.03; EUR reserve floor: 500.00 → 800.00");
   });
 
   it("shows a blocked invoice as possible fraud, the model's explanation, and a Face ID rejection by name", () => {
     const db = ledger();
-    audit(db, "treasury", "invoice.fraud_suspected", "LIC-2027-01", {
-      reason: "possible invoice fraud: …", vendor: "Lizenzhaus Beispiel GmbH", amount: "1850.00", currency: "EUR", iban_last4: "1000",
+    audit(db, "treasury", "invoice.fraud_suspected", "BTX-2027-01", {
+      reason: "possible invoice fraud: …", vendor: "Bergtex Textil GmbH", amount: "1850.00", currency: "EUR", iban_last4: "1000",
       signals: [{ code: "bank_details_changed", blocks: true, detail: "the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX" },
         { code: "pressure_language", blocks: false, detail: "the invoice pushes for speed" }],
     });
@@ -222,7 +222,7 @@ describe("dashboard snapshot", () => {
     const s = buildSnapshot(db, t0);
     expect(s.refusals[1]).toMatchObject({
       what: "Invoice blocked: possible fraud", agent: "treasury",
-      reason: "Invoice LIC-2027-01 from Lizenzhaus Beispiel GmbH for EUR 1850.00 blocked: the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX. Nothing was paid; a person must verify with the supplier by phone",
+      reason: "Invoice BTX-2027-01 from Bergtex Textil GmbH for EUR 1850.00 blocked: the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX. Nothing was paid; a person must verify with the supplier by phone",
     });
     expect(s.feed[1]).toMatchObject({ text: "Claude explained the blocked invoice to the CFO: do not pay (advisory)", model: "Opus" });
     expect(s.feed[0]).toMatchObject({ text: "Max · Face ID rejected P-0004", tone: "refusal" });

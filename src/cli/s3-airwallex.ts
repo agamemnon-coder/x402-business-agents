@@ -21,7 +21,7 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
   const credit = await bookCredit(db, rest, rest, eventKey);
   console.log(`CREDIT           ${eventKey} -> Airwallex deposit ${credit.depositId}${credit.adopted ? " (already booked)" : ""}; reference = tx hash; 1 *USDZ = 1 USD (SIMULATED deposit: the sandbox cannot receive stablecoins)`);
 
-  const path = resolve(import.meta.dirname, "../../fixtures/lizenzhaus-invoice-LIC-2026-11.txt");
+  const path = resolve(import.meta.dirname, "../../fixtures/bergtex-invoice-BTX-2026-11.txt");
   const text = readFileSync(path, "utf8");
   const tools = new Tools(db);
   const kind = await tools.classify(text);

@@ -102,7 +102,7 @@ export async function setupCards(db: DB, rail: IssuingRail, now = new Date()): P
     const holder = (await rail.findCardholderByEmail(c.email)) ?? (await rail.createCardholder({ email: c.email, firstName: c.firstName, lastName: "Agent" }));
     const nickname = cardNickname(db, agent);
     const found = await rail.findCard(holder.id, nickname);
-    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Tidemark CFO policy", limits: cardLimits(db, agent) }));
+    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: cardLimits(db, agent) }));
     // An adopted card is recorded with the limits it has; syncOne then logs any change it makes to them.
     storeCard(db, agent, card, now);
     audit(db, "awx-executor", found ? "card.adopted" : "card.issued", agent, { agent, last4: card.last4, nickname, limits: words(card.limits), currency: "EUR" }, now);

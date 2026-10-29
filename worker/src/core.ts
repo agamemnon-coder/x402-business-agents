@@ -465,7 +465,7 @@ export class Relay {
     if (!c.ok) return c.res;
     return json(200, {
       challenge: c.e.challenge,
-      rp: { id: c.e.rp_id, name: "Tidemark Data approvals" },
+      rp: { id: c.e.rp_id, name: "Purser for Northwind Outdoor" },
       user: { id: c.e.user_id, name: c.e.user_name, displayName: c.e.user_name },
       pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
       timeout: 120_000,

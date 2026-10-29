@@ -1,4 +1,4 @@
-// Reading the licence invoice (deterministic fallback for the Claude layer) and checking its payee against the
+// Reading the manufacturer's invoice (deterministic fallback for the Claude layer) and checking its payee against the
 // allowlisted beneficiary. Changed bank details, a lookalike vendor or another account holder never pay: they are
 // blocked as possible invoice fraud (src/policy/fraud.ts) and escalate to a person.
 

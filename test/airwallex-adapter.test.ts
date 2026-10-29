@@ -41,10 +41,10 @@ describe("Airwallex adapter", () => {
 
   it("creates a SWIFT transfer with a string amount, reason and metadata", async () => {
     const { rest, sent } = recorder({ "/transfers/create": { id: "t1", request_id: "r2", status: "PROCESSING", transfer_amount: 1850, transfer_currency: "EUR" } });
-    const t = await rest.createTransfer({ requestId: "r2", beneficiaryId: "b1", amountCents: 185000, currency: "EUR", sourceCurrency: "EUR", reference: "LIC-2026-11", reason: "professional_business_services", approvalSha256: "ab" });
+    const t = await rest.createTransfer({ requestId: "r2", beneficiaryId: "b1", amountCents: 185000, currency: "EUR", sourceCurrency: "EUR", reference: "BTX-2026-11", reason: "professional_business_services", approvalSha256: "ab" });
     expect(sent[0]!.body).toEqual({
       request_id: "r2", beneficiary_id: "b1", transfer_amount: "1850.00", transfer_currency: "EUR", source_currency: "EUR", transfer_method: "SWIFT",
-      reference: "LIC-2026-11", reason: "professional_business_services", metadata: { approval_sha256: "ab" },
+      reference: "BTX-2026-11", reason: "professional_business_services", metadata: { approval_sha256: "ab" },
     });
     expect(t).toMatchObject({ id: "t1", status: "PROCESSING", amountCents: 185000 });
   });

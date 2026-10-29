@@ -1,15 +1,15 @@
-// Tidemark Data's query route. Other companies' agents pay per tick with x402, under their own
-// mandate, and must sign the order (requireSignedOffer). The handler buys the upstream tick first,
-// through the sourcing agent's mandate. If that purchase is refused, the handler answers 503, so the
+// Northwind Outdoor's query route. Other companies' agents pay per stock check with x402, under their own
+// mandate, and must sign the order (requireSignedOffer). The handler buys the upstream stock check first,
+// through the operations agent's mandate. If that purchase is refused, the handler answers 503, so the
 // middleware never settles and the customer is not charged. A sale is recorded only on the settle
 // answer that claimed the payment first, with its signed order, tx and the exact body delivered.
 //
 // Beside it, the prepaid route takes Metal's Offer Pay-per-Call Clearing (scheme `bajillion`): the buyer pays from a
 // clearing deposit with a signed receipt, no transaction per query. A clearing payment is counted when the buyer makes
 // it, before this handler runs, so a refused upstream purchase would leave the buyer charged. The prepaid route
-// therefore offers itself only when the supplier's current price is within the sourcing agent's limits (a free look
+// therefore offers itself only when the supplier's current price is within the operations agent's limits (a free look
 // at the supplier's offer); otherwise it answers 503 and the buyer uses the mandate route, where nothing moves unless
-// the tick is delivered.
+// the stock check is delivered.
 
 import express from "express";
 import type { HTTPTransportContext } from "@x402/core/http";
@@ -25,9 +25,9 @@ import { sha256Hex } from "../lib/terms.js";
 import { FACILITATOR_URL, rpcUrl } from "../metal/network.js";
 import { toCents } from "../lib/money.js";
 
-export const SELLER_ROUTE = "/v1/fx-tick";
+export const SELLER_ROUTE = "/v1/stock";
 export const SELLER_RESOURCE = `GET ${SELLER_ROUTE}`;
-export const PREPAID_ROUTE = "/v1/fx-tick/prepaid";
+export const PREPAID_ROUTE = "/v1/stock/prepaid";
 export const PREPAID_RESOURCE = `GET ${PREPAID_ROUTE}`;
 const UPSTREAM_HEADER = "x-upstream-purchase";
 
@@ -39,7 +39,7 @@ export interface SellerOptions {
   db: DB;
   payTo: Address;
   price: () => string;
-  /** Buys the raw tick from the supplier under the sourcing mandate. */
+  /** Buys the stock check from the supplier under the sourcing mandate. */
   buyUpstream: (seq: number) => Promise<UpstreamResult>;
   /** The prepaid route (clearing): our clearing key, and the free check that the supplier's price is within limits. */
   clearing?: { payTo: `0x${string}`; preflight: (seq: number) => Promise<string | null> };
@@ -116,7 +116,7 @@ export function sellerApp(opts: SellerOptions) {
       const refusal = await clearing.preflight(seq).catch((e: Error) => `the supplier's price could not be checked (${e.message.slice(0, 120)})`);
       if (refusal) {
         audit(db, "system", "sale.prepaid_not_offered", String(seq), { seq, reason: refusal });
-        res.status(503).json({ error: "prepaid clearing is not offered for this tick now; buy it on the mandate route", reason: refusal, route: SELLER_ROUTE });
+        res.status(503).json({ error: "prepaid clearing is not offered for this stock check now; buy it on the mandate route", reason: refusal, route: SELLER_ROUTE });
         return;
       }
       next();
@@ -130,12 +130,12 @@ export function sellerApp(opts: SellerOptions) {
             scheme: "exact", network: "eip155:63825", payTo: opts.payTo, price: () => opts.price(),
             extra: { ...SIGNED_OFFER_REQUIRED, resource: SELLER_RESOURCE },
           },
-          description: "Tidemark Data EUR/USD tick, one per paid request",
+          description: "Northwind Outdoor live stock check (units on hand, reserved), one per paid request",
         },
         ...(opts.clearing ? {
           [PREPAID_RESOURCE]: {
             accepts: { scheme: "bajillion", network: "eip155:63825", payTo: opts.clearing.payTo, price: () => opts.price() },
-            description: "Tidemark Data EUR/USD tick, paid from a Metal clearing deposit",
+            description: "Northwind Outdoor live stock check, paid from a Metal clearing deposit",
           },
         } : {}),
       },
@@ -155,8 +155,8 @@ export function sellerApp(opts: SellerOptions) {
       res.status(503).json({ error: "upstream purchase refused", reason: up.reason });
       return;
     }
-    const { tick } = up.body as { tick: unknown };
-    res.json({ seller: "Tidemark Data", seq, tick });
+    const { stock } = up.body as { stock: unknown };
+    res.json({ seller: "Northwind Outdoor", seq, stock });
   });
   if (opts.clearing) {
     app.get(PREPAID_ROUTE, async (req, res) => {
@@ -179,8 +179,8 @@ export function sellerApp(opts: SellerOptions) {
         res.status(503).json({ error: "upstream purchase refused after payment; the payment will be refunded", reason: up.reason });
         return;
       }
-      const { tick } = up.body as { tick: unknown };
-      const bodyText = JSON.stringify({ seller: "Tidemark Data", seq, tick });
+      const { stock } = up.body as { stock: unknown };
+      const bodyText = JSON.stringify({ seller: "Northwind Outdoor", seq, stock });
       const url = `${req.protocol}://${req.get("host") ?? ""}${req.originalUrl}`;
       db.transaction(() => {
         const info = db.prepare(

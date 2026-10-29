@@ -47,7 +47,7 @@ async function f4(): Promise<never> {
   }
   const db = openDb();
   const rail = new AirwallexRest(new Airwallex(cfg));
-  const text = readFileSync(resolve(import.meta.dirname, "../../fixtures/lizenzhaus-invoice-LIC-2027-ANNUAL.txt"), "utf8");
+  const text = readFileSync(resolve(import.meta.dirname, "../../fixtures/bergtex-invoice-BTX-2027-ANNUAL.txt"), "utf8");
   const inv = parseInvoiceFallback(text);
   const before = await rail.balances();
   const s = treasuryState(db, before);
@@ -73,7 +73,7 @@ async function f1(): Promise<never> {
   const db = openDb();
   const api = new Airwallex(cfg);
   const rail = new AirwallexRest(api);
-  const text = readFileSync(resolve(import.meta.dirname, "../../fixtures/lizenzhaus-invoice-LIC-2026-12.txt"), "utf8");
+  const text = readFileSync(resolve(import.meta.dirname, "../../fixtures/bergtex-invoice-BTX-2026-12.txt"), "utf8");
   const inv = parseInvoiceFallback(text);
   type Row = { proposal_id: string; status: string; terms_sha256: string; terms_json: string; expires_at: string };
   const rows = db.prepare("SELECT proposal_id, status, terms_sha256, terms_json, expires_at FROM proposals WHERE kind = 'invoice_payment' AND json_extract(terms_json, '$.invoice_no') = ? ORDER BY created_at").all(inv.invoice_no) as Row[];

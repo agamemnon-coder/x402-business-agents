@@ -1,7 +1,7 @@
 {
   "name": "x402-business-agents",
   "version": "0.1.0",
-  "description": "Three budget-bound agents run a pay-per-query data business on Metal testnet; Airwallex pays the euro bills. Airwallex Agentic Banking Hackathon, Starter Kit 11.",
+  "description": "Purser: give every AI agent its own company card, with limits the CFO sets. Airwallex cards, FX and SWIFT; Metal mandates, x402 and clearing. Airwallex Agentic Banking Hackathon, Starter Kit 11.",
   "license": "MIT",
   "private": true,
   "type": "module",

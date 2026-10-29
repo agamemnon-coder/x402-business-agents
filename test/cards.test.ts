@@ -30,9 +30,9 @@ describe("a company card per agent (K2)", () => {
     await setupCards(db, awx, now);
     expect(awx.holders).toHaveLength(3);
     expect(awx.cards.map((c) => [c.nickname, c.limits?.perTxCents, c.limits?.monthlyCents])).toEqual([
-      ["sourcing agent: market data", 3000, 10000],
-      ["support agent: helpdesk tools", 6000, 15000],
-      ["treasury agent: finance tools", 2500, 5000],
+      ["operations agent: warehouse software", 3000, 10000],
+      ["marketing agent: ads", 6000, 15000],
+      ["finance agent: bookkeeping", 2500, 5000],
     ]);
     const rows = db.prepare("SELECT agent, last4, per_tx_cents FROM cards ORDER BY agent").all();
     expect(rows).toHaveLength(3);
@@ -42,7 +42,7 @@ describe("a company card per agent (K2)", () => {
   it("gives each world its own cards, named after its business account", async () => {
     db.prepare("INSERT INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000AbC12', 'business')").run();
     await setupCards(db, awx, now);
-    expect(awx.cards[0]!.nickname).toBe("sourcing agent: market data (0abc12)");
+    expect(awx.cards[0]!.nickname).toBe("operations agent: warehouse software (0abc12)");
     const other = openDb(":memory:");
     other.prepare("INSERT INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000DeF34', 'business')").run();
     await setupCards(other, awx, now);
@@ -51,19 +51,19 @@ describe("a company card per agent (K2)", () => {
   });
 
   it("adopts a card that already exists at Airwallex and brings its limits back to the policy", async () => {
-    const h = await awx.createCardholder({ email: "agents+sourcing@tidemark-data.example", firstName: "Sourcing", lastName: "Agent" });
-    await awx.createCard({ cardholderId: h.id, nickname: "sourcing agent: market data", createdBy: "x", limits: { currency: "EUR", perTxCents: 5000, monthlyCents: 10000 } });
+    const h = await awx.createCardholder({ email: "agents+sourcing@northwind-outdoor.example", firstName: "Sourcing", lastName: "Agent" });
+    await awx.createCard({ cardholderId: h.id, nickname: "operations agent: warehouse software", createdBy: "x", limits: { currency: "EUR", perTxCents: 5000, monthlyCents: 10000 } });
     await setupCards(db, awx, now);
-    expect(awx.cards.filter((c) => c.nickname.startsWith("sourcing"))).toHaveLength(1);
+    expect(awx.cards.filter((c) => c.nickname.startsWith("operations"))).toHaveLength(1);
     expect(awx.cards[0]!.limits).toEqual({ currency: "EUR", perTxCents: 3000, monthlyCents: 10000 });
     expect(events(db, "card.limits_synced")[0]).toMatchObject({ agent: "sourcing", from: "50.00 / 100.00", to: "30.00 / 100.00" });
   });
 
   it("declines over the limit at Airwallex, and the agent asks the CFO for a raise", async () => {
     await setupCards(db, awx, now);
-    const ok = await buyPlan(db, awx, "market-data-starter", now);
+    const ok = await buyPlan(db, awx, "packwise-starter", now);
     expect(ok).toMatchObject({ approved: true, amountCents: 1999 });
-    const no = await buyPlan(db, awx, "market-data-pro", now);
+    const no = await buyPlan(db, awx, "packwise-pro", now);
     expect(no).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
     expect(events(db, "card.charge").map((e) => [e.event, e.agent, e.amount, e.reason ?? null])).toEqual([
       ["card.charge_approved", "sourcing", "19.99", null],
@@ -73,17 +73,17 @@ describe("a company card per agent (K2)", () => {
     const p = proposeCardRaise(db, "sourcing", { perTx: "50.00" }, "the Pro plan costs 45.00 EUR", now);
     expect(p.status).toBe("PENDING_APPROVAL");
     expect(Date.parse(p.expires_at) - now.getTime()).toBe(60 * 60 * 1000);
-    expect(JSON.parse(p.terms_json).changes).toEqual([{ key: "card.sourcing.per_tx", label: "Sourcing agent's card: most per purchase", from: "30.00", to: "50.00" }]);
+    expect(JSON.parse(p.terms_json).changes).toEqual([{ key: "card.sourcing.per_tx", label: "Operations agent's card: most per purchase", from: "30.00", to: "50.00" }]);
     // Approving changes the policy; the card at Airwallex follows.
     approve(db, p.proposal_id);
     executePolicyChange(db, p.proposal_id, now);
     await syncCardsAfterPolicy(db, p.proposal_id, awx, now);
     expect(awx.cards[0]!.limits?.perTxCents).toBe(5000);
-    expect(await buyPlan(db, awx, "market-data-pro", now)).toMatchObject({ approved: true });
+    expect(await buyPlan(db, awx, "packwise-pro", now)).toMatchObject({ approved: true });
     expect(cardSpendCents(db, "sourcing", now)).toBe(1999 + 4500);
   });
 
-  it("stops a policy change it cannot sync with a clear error, and syncs it on the next tick", async () => {
+  it("stops a policy change it cannot sync with a clear error, and syncs it on the next stock check", async () => {
     await setupCards(db, awx, now);
     db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('card.support.monthly', '100.00', ?)").run(now.toISOString());
     const real = awx.setCardLimits.bind(awx);
@@ -93,7 +93,7 @@ describe("a company card per agent (K2)", () => {
     awx.calls = [];
     expect(await syncCardsIfChanged(db, awx, now)).toEqual(["support"]);
     expect(awx.cards[1]!.limits?.monthlyCents).toBe(10000);
-    // Nothing differs any more: the tick makes no call at all.
+    // Nothing differs any more: the stock check makes no call at all.
     awx.calls = [];
     expect(await syncCardsIfChanged(db, awx, now)).toEqual([]);
     expect(awx.calls).toEqual([]);
@@ -101,7 +101,7 @@ describe("a company card per agent (K2)", () => {
 
   it("records each Airwallex transaction once, however it arrives", async () => {
     await setupCards(db, awx, now);
-    const t = await buyPlan(db, awx, "helpdesk-2-seats", now);
+    const t = await buyPlan(db, awx, "adwave-starter", now);
     await pollCardTransactions(db, awx, now);
     ingestCardTransaction(db, t, "webhook", now);
     expect(db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get()).toEqual({ n: 1 });
@@ -119,7 +119,7 @@ describe("a company card per agent (K2)", () => {
   it("knows a decline is the same one when Airwallex names it by two different ids", async () => {
     await setupCards(db, awx, now);
     const card = awx.cards[1]!.cardId;
-    const base = { cardId: card, amountCents: 6100, currency: "EUR", status: "FAILED", approved: false, failureReason: "LIMIT_EXCEEDED", merchant: "Tailspin Helpdesk", mcc: "5734", type: "AUTHORIZATION", occurredAt: "2026-11-03T10:00:00.990Z" };
+    const base = { cardId: card, amountCents: 6100, currency: "EUR", status: "FAILED", approved: false, failureReason: "LIMIT_EXCEEDED", merchant: "Adwave", mcc: "5734", type: "AUTHORIZATION", occurredAt: "2026-11-03T10:00:00.990Z" };
     expect(ingestCardTransaction(db, { ...base, transactionId: "legacy-id" }, "poll", now)).toBe(true);
     expect(ingestCardTransaction(db, { ...base, transactionId: "card-transaction-id", status: "DECLINED" }, "webhook", now)).toBe(false);
     expect(db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get()).toEqual({ n: 1 });
@@ -129,7 +129,7 @@ describe("a company card per agent (K2)", () => {
 
   it("records an approval once when Airwallex lists it before its card transaction id is filled in", async () => {
     await setupCards(db, awx, now);
-    const base = { cardId: awx.cards[0]!.cardId, amountCents: 1900, currency: "EUR", status: "PENDING", approved: true, failureReason: null, merchant: "Contoso Reports", mcc: "5734", type: "AUTHORIZATION" };
+    const base = { cardId: awx.cards[0]!.cardId, amountCents: 1900, currency: "EUR", status: "PENDING", approved: true, failureReason: null, merchant: "TrailData Reports", mcc: "5734", type: "AUTHORIZATION" };
     const count = () => (db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get() as { n: number }).n;
     // A moment after the charge, the list has only the older id: the poll leaves it for the next round.
     awx.txs = [{ ...base, transactionId: "c84-legacy", legacyId: "c84-legacy", occurredAt: "2026-11-03T09:59:59.735Z" }];
@@ -148,7 +148,7 @@ describe("a company card per agent (K2)", () => {
 
   it("merges an approval recorded under both ids, and re-keys one recorded under its older id", async () => {
     await setupCards(db, awx, now);
-    const base = { cardId: awx.cards[0]!.cardId, amountCents: 1900, currency: "EUR", status: "PENDING", approved: true, failureReason: null, merchant: "Contoso Reports", mcc: "5734", type: "AUTHORIZATION" };
+    const base = { cardId: awx.cards[0]!.cardId, amountCents: 1900, currency: "EUR", status: "PENDING", approved: true, failureReason: null, merchant: "TrailData Reports", mcc: "5734", type: "AUTHORIZATION" };
     const ids = () => (db.prepare("SELECT transaction_id FROM card_transactions ORDER BY transaction_id").all() as { transaction_id: string }[]).map((r) => r.transaction_id);
     // As it happened live: once under the older id (an early poll), once under the card transaction id (the webhook).
     ingestCardTransaction(db, { ...base, transactionId: "c84", legacyId: "c84", occurredAt: "2026-11-03T09:50:00.735Z" }, "poll", now);

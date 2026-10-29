@@ -1,4 +1,4 @@
-// The earnings bridge, Metal side (scenario S3, steps 1-2). The treasury agent sweeps net earnings from
+// The earnings bridge, Metal side (scenario S3, steps 1-2). The finance agent sweeps net earnings from
 // the business account to the sweep wallet under its own mandate, then waits for finality before any
 // credit is booked anywhere. The sandbox cannot receive *USDZ, so the credit is a simulated deposit of the
 // same amount whose reference is the transaction hash, booked once per on-chain transfer.
@@ -152,7 +152,7 @@ export async function bookCredit(db: DB, rail: AirwallexRail, sim: SandboxSim, e
   const since = new Date(Date.parse(row.created_at) - 24 * 3600 * 1000).toISOString();
   const existing = (await rail.findDepositsByReference(row.awx_reference, since)).filter((d) => d.amountCents === cents);
   if (existing.length > 1) throw new Error(`${existing.length} deposits already reference ${row.awx_reference}; investigate before booking anything`);
-  const deposit = existing[0] ?? (await sim.simulateDeposit({ globalAccountId: await rail.usdGlobalAccountId(), amountCents: cents, reference: row.awx_reference, payerName: "Tidemark sweep (Metal)" }));
+  const deposit = existing[0] ?? (await sim.simulateDeposit({ globalAccountId: await rail.usdGlobalAccountId(), amountCents: cents, reference: row.awx_reference, payerName: "Northwind sweep (Metal)" }));
   db.prepare("UPDATE chain_credits SET awx_deposit_id = ? WHERE event_key = ? AND awx_deposit_id IS NULL").run(deposit.id, eventKey);
   audit(db, "awx-executor", existing[0] ? "credit.adopted" : "credit.deposited", eventKey, { deposit_id: deposit.id, amount: fromCents(cents), currency: "USD", reference: row.awx_reference });
   return { depositId: deposit.id, adopted: existing[0] !== undefined };

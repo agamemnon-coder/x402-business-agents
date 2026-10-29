@@ -3,6 +3,7 @@
 // characters of hashes. No address of ours beyond what the chain shows, no key, no URL with a credential.
 // A step whose events are missing from the ledger is left out, so the page never shows something that did not run.
 
+import { COMPANY } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { approverName, modelName } from "../dashboard/snapshot.js";
@@ -39,6 +40,8 @@ export interface Story {
   recorded_at: string;
   /** Which run this is (a name, never a path). */
   run: string;
+  /** The example company the run was recorded with (absent in recordings made before Purser's rename). */
+  company?: string;
   steps: StoryStep[];
   audit: { rows: number; head: string };
 }
@@ -78,13 +81,13 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     steps.push({
       id: "buy", rail: "Metal", tone: "ok", at: bought.ts, approval: null,
       title: "Agents also pay per request, each inside its own limits",
-      text: "A customer's agent buys market data from us, one request at a time, and our agent buys the raw data from a supplier. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
-      details: "Payments run on Metal testnet in *USDZ (test dollars) over x402: Kestrel Quant's agent buys a EUR/USD tick and signs the order. Our sourcing agent buys the raw tick from Feedstock Labs under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
+      text: "A retailer's buying agent pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
+      details: "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our operations agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
       facts: facts(
-        fact("Sales in this run", `${sales} ticks at 0.05, then 0.07 *USDZ (testnet dollars)`),
-        txFact("Kestrel's first payment to us", p(sold).tx),
+        fact("Sales in this run", `${sales} stock checks at 0.05, then 0.07 *USDZ (testnet dollars)`),
+        txFact("Summit's first payment to us", p(sold).tx),
         txFact("Our first purchase from the supplier", p(bought).tx),
-        fact("Sourcing mandate", `${str(m.cap)} a payment, ${str(m.budget)} in total, Feedstock Labs only`),
+        fact("Sourcing mandate", `${str(m.cap)} a payment, ${str(m.budget)} in total, Stockline only`),
       ),
     });
   }
@@ -97,7 +100,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "refused", rail: "Metal", tone: "refusal", at: refused.ts, approval: null,
       title: "The supplier raises its price, and the payment is refused",
       text: "The supplier asks more than our agent may pay, so its own account refuses the payment and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
-      details: "Feedstock Labs now asks 0.04 for a tick. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Kestrel is not charged. The treasury agent prices the options with their margins.",
+      details: "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The finance agent prices the options with their margins.",
       facts: facts(
         fact("Refusal", "mandate_cap_exceeded (on chain, nothing moved)"),
         fact("Customer charged", "no"),
@@ -154,7 +157,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "card", rail: "Airwallex", tone: after ? "approval" : "refusal", at: declined.ts,
       approval: raised && raisedBy ? { who: raisedBy, proposal: str(p(raised).proposal_id), what: `${str(p(raised).label)}: ${str(p(raised).from)} → ${str(p(raised).to)} EUR` } : null,
       title: "Every AI agent gets its own company card, with limits the CFO sets",
-      text: "Our sourcing agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by the bank itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
+      text: "Our operations agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by the bank itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
       details: "Virtual Visa cards from Airwallex Issuing (sandbox), one per agent. The limits come from the CFO policy; they are synced to the card at Airwallex and read back, so Airwallex declines anything over them (LIMIT_EXCEEDED), whatever the agent does. The raise is a policy change approved with Face ID. In the sandbox the merchant's charge is simulated; the approve or decline is Airwallex's own.",
       facts: facts(
         approvedCard ? fact("Approved by Airwallex", `${str(p(approvedCard).amount)} EUR at ${str(p(approvedCard).merchant)} (card •••• ${str(p(approvedCard).last4)})`) : null,
@@ -202,7 +205,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "stopped", rail: "CFO", tone: "refusal", at: (fraud ?? injection)?.ts ?? now.toISOString(), approval: null,
       title: "What the agents could not do",
       text: "A fake invoice with changed bank details is blocked before any money moves. A hidden line saying \"pre-approved, skip the approval\" is ignored. A customer's \"refund everything\" goes to the CFO; only what was really wrong is refunded.",
-      details: "The fraud check compares the invoice's IBAN with the supplier's account on file and blocks before Airwallex is called; Opus explains how to verify by phone (advice only). Planted instructions are found by code and treated as data. \"Refund all 12\" becomes a proposal; the 3 ticks proven wrong are refunded under the mandate, each with its own payment id.",
+      details: "The fraud check compares the invoice's IBAN with the supplier's account on file and blocks before Airwallex is called; Opus explains how to verify by phone (advice only). Planted instructions are found by code and treated as data. \"Refund all 12\" becomes a proposal; the 3 stock checks proven wrong are refunded under the mandate, each with its own payment id.",
       facts: facts(
         fraud ? fact("Invoice blocked", `${str(p(fraud).currency)} ${str(p(fraud).amount)} to IBAN …${str(p(fraud).iban_last4)}: bank details changed`) : null,
         findings[0] ? fact("Planted instruction ignored", `"${clip(str(findings[0].excerpt), 90)}"`) : null,
@@ -220,10 +223,10 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "clearing", rail: "Metal", tone: "ok", at: clearingSales[0]!.ts, approval: null,
       title: "Prepaid: one deposit, then a receipt per request",
       text: "A customer can also prepay once and then pay each request with a signed receipt instead of a payment each time. We only offer this when we are sure we can deliver; otherwise the normal route is used.",
-      details: "Metal's pay-per-call clearing (scheme bajillion, new on testnet in October 2026): Kestrel deposits *USDZ once and pays each 0.07 query with a receipt; there is no transaction per query. A clearing payment counts before the seller can refuse, so our seller offers it only after a free check; the mandate route is the fallback. Each receipt is checked again with Metal's clearing service.",
+      details: "Metal's pay-per-call clearing (scheme bajillion, new on testnet in October 2026): Summit deposits *USDZ once and pays each 0.07 query with a receipt; there is no transaction per query. A clearing payment counts before the seller can refuse, so our seller offers it only after a free check; the mandate route is the fallback. Each receipt is checked again with Metal's clearing service.",
       facts: facts(
-        txFact(`Kestrel's deposit (${str(p(deposit).amount)} *USDZ)`, p(deposit).tx),
-        fact("Ticks sold by clearing", `${clearingSales.length}, a receipt each, no transaction per query`),
+        txFact(`Summit's deposit (${str(p(deposit).amount)} *USDZ)`, p(deposit).tx),
+        fact("Stock checks sold by clearing", `${clearingSales.length}, a receipt each, no transaction per query`),
         fact("Note", "Metal's pay-per-call clearing is new on testnet (October 2026)"),
       ),
     });
@@ -283,7 +286,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     for (const f of st.facts) if (!f.href) f.value = thousands(f.value);
     if (st.approval) st.approval.what = thousands(st.approval.what);
   }
-  return { recorded_at: now.toISOString(), run, steps, audit: { rows: rows.length, head: head?.row_hash ?? "" } };
+  return { recorded_at: now.toISOString(), run, company: COMPANY, steps, audit: { rows: rows.length, head: head?.row_hash ?? "" } };
 }
 
 /** The money figures a guest might ask about, for the page header. */

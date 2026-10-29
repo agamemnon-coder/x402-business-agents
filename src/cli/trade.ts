@@ -1,4 +1,4 @@
-// npm run trade -- <from> <to>: the customer agent buys ticks <from>..<to>, live on Metal testnet.
+// npm run trade -- <from> <to>: the customer agent buys stock checks <from>..<to>, live on Metal testnet.
 
 import { openDb } from "../db/open.js";
 import { fromCents, baseUnitsToCents } from "../lib/money.js";
@@ -10,7 +10,7 @@ const from = Number(process.argv[2] ?? 1);
 const to = Number(process.argv[3] ?? from);
 const db = openDb();
 const rt = await startRuntime(db);
-console.log(`GOAL      sell EUR/USD ticks ${from}..${to} at ${sellPrice(db)} *USDZ; upstream costs ${upstreamPrice(db)}`);
+console.log(`GOAL      sell stock checks ${from}..${to} at ${sellPrice(db)} *USDZ; upstream costs ${upstreamPrice(db)}`);
 try {
   for (let seq = from; seq <= to; seq++) {
     const p = await rt.customer.buy(seq);

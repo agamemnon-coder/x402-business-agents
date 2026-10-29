@@ -3,6 +3,7 @@
 // Every text it returns is plain text; the page renders it with textContent only.
 
 import { verifyAuditChain } from "../audit/log.js";
+import { agentName } from "../config/brand.js";
 import { MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
@@ -79,16 +80,16 @@ export interface CardTx {
   reason: string | null;
 }
 
-/** Kestrel's prepaid budget in Metal clearing, and what we earned there: kept apart from the mandates. */
+/** Summit's prepaid budget in Metal clearing, and what we earned there: kept apart from the mandates. */
 export interface ClearingView {
   /** Who prepays (the customer's name). */
   customer: string;
-  /** Kestrel's deposits into clearing (USDZ). */
+  /** Summit's deposits into clearing (USDZ). */
   deposited: string;
   /** What the customer has paid by receipt, from Metal's balance (deposits less what it may still spend); includes
    * receipts made before this ledger started. Null before Metal's first balance read. */
   charged: string | null;
-  /** Ticks sold by clearing, and what they brought. */
+  /** Stock checks sold by clearing, and what they brought. */
   sales: number;
   earned: string;
   /** What Metal's clearing service last said each side may spend; null before the first read. */
@@ -154,10 +155,10 @@ const short = (a: string) => (a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}
 const sum = (db: DB, sql: string) => (db.prepare(sql).get() as { n: number | null }).n ?? 0;
 
 export const PAYEE_NAMES: Record<string, string> = {
-  supplier: "Feedstock Labs",
-  customer: "Kestrel Quant",
-  sweep: "Tidemark sweep wallet",
-  business: "Tidemark Data",
+  supplier: "Stockline",
+  customer: "Summit Outfitters",
+  sweep: "Northwind sweep wallet",
+  business: "Northwind Outdoor",
 };
 
 /** The unit of a CFO policy value: mandate limits are Metal's test dollars, card limits and floors are euros. */
@@ -167,6 +168,10 @@ function policyUnit(key: string): string {
   if (key.startsWith("card.") || key.startsWith("approval.") || key === "eur_floor") return "EUR";
   return "";
 }
+
+/** Whose card it is, in words: "the Operations agent" for ours; an outside agent keeps its id, which the page names. */
+const cardOwner = (agent: string) => (agentName(agent) !== agent ? `the ${agentName(agent)}` : `the ${agent} agent`);
+const capFirst = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 const REFUSAL_WORDS: Record<string, string> = {
   mandate_cap_exceeded: "over the mandate's per-payment cap",
@@ -424,24 +429,24 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "upstream.paid":
     case "upstream.paid_after_lookup": {
       const price = p.amount_units ? fromCents(baseUnitsToCents(BigInt(str(p.amount_units)))) : "";
-      return out(`Bought raw tick #${str(p.seq)} from Feedstock Labs${price ? ` for ${price} USDZ` : ""}${r.event === "upstream.paid_after_lookup" ? " (found by lookup, not paid twice)" : ""}`, "ok");
+      return out(`Bought stock check #${str(p.seq)} from Stockline${price ? ` for ${price} USDZ` : ""}${r.event === "upstream.paid_after_lookup" ? " (found by lookup, not paid twice)" : ""}`, "ok");
     }
     case "upstream.refused": {
       const reason = str(p.reason);
       return reason.startsWith("policy_cap_exceeded")
-        ? out(`Purchase of tick #${str(p.seq)} refused by the CFO policy before signing: ${reason.slice(reason.indexOf(":") + 1).trim().replace(/\b(\d+\.\d{2})\b/g, "$1 USDZ")}`, "refusal")
-        : out(`Purchase of tick #${str(p.seq)} refused on chain: ${refusalWords(reason)}`, "refusal");
+        ? out(`Purchase of stock check #${str(p.seq)} refused by the CFO policy before signing: ${reason.slice(reason.indexOf(":") + 1).trim().replace(/\b(\d+\.\d{2})\b/g, "$1 USDZ")}`, "refusal")
+        : out(`Purchase of stock check #${str(p.seq)} refused on chain: ${refusalWords(reason)}`, "refusal");
     }
     case "policy.changed": {
       const unit = policyUnit(str(p.key));
       const v = (x: unknown) => (str(x) ? `${str(x)}${unit && /^\d+\.\d{2}$/.test(str(x)) ? ` ${unit}` : ""}` : "no extra limit");
       return out(`CFO policy: ${str(p.label)} changed from ${v(p.from)} to ${v(p.to)} (${str(p.proposal_id)})`, "approval");
     }
-    case "upstream.in_doubt": return out(`Purchase of tick #${str(p.seq)} unconfirmed; it is looked up before any retry`, "refusal");
+    case "upstream.in_doubt": return out(`Purchase of stock check #${str(p.seq)} unconfirmed; it is looked up before any retry`, "refusal");
     case "sale.delivered": {
       const sale = saleOf(s);
       const how = str(p.scheme) === "bajillion" ? " by Metal clearing (a receipt, no transaction)" : "";
-      return out(sale ? `Sold tick #${sale.seq} to Kestrel Quant for ${fromCents(sale.price)} USDZ${how}` : `Sale ${s} delivered${how}`, "ok");
+      return out(sale ? `Sold stock check #${sale.seq} to Summit Outfitters for ${fromCents(sale.price)} USDZ${how}` : `Sale ${s} delivered${how}`, "ok");
     }
     case "sale.settle_failed": return out(`A sale did not settle; the customer was not charged (${str(p.error)})`, "refusal");
     // The sandbox starts with millions; the floors calibrated against it are not this business's money, so no numbers.
@@ -478,7 +483,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "proposal.expired": return out(`${s} expired: its terms can no longer be approved or run`, "refusal");
     case "approval.too_late": return out(`${str(p.approver) || "A person"} approved ${s} after it expired; nothing ran`, "refusal");
     case "refund.auto_approved": return out(`Refunds for sales ${(Array.isArray(p.sales) ? (p.sales as unknown[]) : []).map((x) => `#${str(x)}`).join(", ")} are within the automatic limits`, "ok");
-    case "refund.paid": return out(`Refunded ${str(p.amount)} to Kestrel Quant for sale #${s} (${str(p.payment_id)})`, "ok");
+    case "refund.paid": return out(`Refunded ${str(p.amount)} to Summit Outfitters for sale #${s} (${str(p.payment_id)})`, "ok");
     case "refund.already_paid": return out(`Retry of ${str(p.payment_id)}: already paid, nothing sent`, "ok");
     case "refund.refused":
     case "refund.held": return out(`Refund ${str(p.payment_id)} ${r.event.split(".")[1]}: ${refusalWords(str(p.reason))}`, "refusal");
@@ -506,24 +511,24 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "transfer.fee": return out(`Airwallex fee ${str(p.fee)}, within the approved ceiling of ${str(p.fee_max)}`, "ok", { awx_id: s || null });
     case "transfer.fee_over_ceiling": return out(`Airwallex fee ${str(p.fee)} is above the approved ceiling of ${str(p.fee_max)}`, "refusal", { awx_id: s || null });
     case "transfer.ambiguous": return out(`Transfer answer lost; ${str(p.resolved)}`, "info");
-    case "clearing.deposited": return out(`Kestrel put ${str(p.amount)} USDZ into Metal clearing: its prepaid budget for our ticks`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
+    case "clearing.deposited": return out(`Summit put ${str(p.amount)} USDZ into Metal clearing: its prepaid budget for our stock checks`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
     case "clearing.withdrawn": return out(`Our clearing earnings of ${str(p.amount)} USDZ went to the business account`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
-    case "sale.prepaid_not_offered": return out(`Prepaid clearing not offered for tick #${s}: ${str(p.reason).replace(/^[a-z_]+: /, "")}; the buyer uses the mandate route`, "info");
-    case "sale.prepaid_undelivered": return out(`Tick #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
-    case "card.frozen": return out(`Emergency stop: Airwallex froze the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "refusal");
-    case "card.thawed": return out(`The ${str(p.agent)} agent's card •••• ${str(p.last4)} is active again`, "approval");
+    case "sale.prepaid_not_offered": return out(`Prepaid clearing not offered for stock check #${s}: ${str(p.reason).replace(/^[a-z_]+: /, "")}; the buyer uses the mandate route`, "info");
+    case "sale.prepaid_undelivered": return out(`Stock check #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
+    case "card.frozen": return out(`Emergency stop: Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal");
+    case "card.thawed": return out(`${capFirst(cardOwner(str(p.agent)))}'s card •••• ${str(p.last4)} is active again`, "approval");
     case "payee.change_requested": return out(`${str(p.vendor)}'s bank details: a change to a ${str(p.to_country)} account ending ${str(p.to_last4)} was requested (${s}); nothing changes until a person verifies it with the supplier and the CFO approves`, "approval");
     case "payee.change_verified": return out(`${str(p.by)} verified ${s} with ${str(p.vendor)}: ${str(p.how)}`, "approval");
     case "payee.changed": return out(`${str(p.vendor)} is now paid to the account ending ${str(p.to_last4)} (was …${str(p.from_last4)}), after verification and approval (${str(p.proposal_id)})`, "ok");
-    case "card.issued": return out(`Airwallex issued the ${str(p.agent)} agent a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
-    case "card.adopted": return out(`The ${str(p.agent)} agent's Visa card •••• ${str(p.last4)} now follows the CFO policy`, "ok");
-    case "card.limits_synced": return out(`Airwallex now has the CFO policy on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${limitWords(str(p.to))} (was ${limitWords(str(p.from))})`, "approval");
+    case "card.issued": return out(`Airwallex issued ${cardOwner(str(p.agent))} a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
+    case "card.adopted": return out(`${capFirst(cardOwner(str(p.agent)))}'s Visa card •••• ${str(p.last4)} now follows the CFO policy`, "ok");
+    case "card.limits_synced": return out(`Airwallex now has the CFO policy on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}: ${limitWords(str(p.to))} (was ${limitWords(str(p.from))})`, "approval");
     case "agent.card_requested": return out(`${str(p.name)}, an outside agent connected through the agent API, asks for a company card (${str(p.per_tx)} EUR per purchase, ${str(p.monthly)} EUR per month) for ${str(p.purpose)}; nothing is issued until the CFO approves ${str(p.proposal_id)}`, "approval");
     case "card.purchase_started": return out(`Subscribing to ${str(p.merchant)} (${str(p.plan ?? p.description)}) for ${str(p.amount)} EUR on its card •••• ${str(p.last4)}`);
-    case "card.charge_approved": return out(`Airwallex approved ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "ok", { awx_id: s || null });
-    case "card.charge_declined": return out(`Airwallex declined ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${declineWords(str(p.reason))}`, "refusal", { awx_id: s || null });
+    case "card.charge_approved": return out(`Airwallex approved ${str(p.amount)} EUR at ${str(p.merchant)} on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "ok", { awx_id: s || null });
+    case "card.charge_declined": return out(`Airwallex declined ${str(p.amount)} EUR at ${str(p.merchant)} on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}: ${declineWords(str(p.reason))}`, "refusal", { awx_id: s || null });
     case "card.duplicate_merged": return out(`A card authorisation recorded twice (Airwallex names it by two ids) was merged into one: ${str(p.amount)} ${str(p.currency)}`);
-    case "card.charge_reversed": return out(`Airwallex reversed ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "refusal", { awx_id: s || null });
+    case "card.charge_reversed": return out(`Airwallex reversed ${str(p.amount)} EUR at ${str(p.merchant)} on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal", { awx_id: s || null });
     case "passkey.enrolment_opened": return out("A one-time code to enrol a passkey was issued (valid 10 minutes)");
     case "passkey.enrolled": return out(`${str(p.label) || "A person"} enrolled passkey ${s.slice(0, 8)}; approvals now need it`, "ok");
     case "passkey.revoked": return out(`Passkey ${s.slice(0, 8)} revoked: replaced by ${str(p.replaced_by).slice(0, 8)}`);

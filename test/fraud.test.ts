@@ -9,11 +9,11 @@ import { openDb, type DB } from "../src/db/open.js";
 import { assessInvoice, editDistance, skeleton } from "../src/policy/fraud.js";
 import { fraudExplanationFallback } from "../src/claude/tools.js";
 
-const LIZ = "Lizenzhaus Beispiel GmbH";
+const LIZ = "Bergtex Textil GmbH";
 const fixture = (name: string) => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8");
-const legitText = fixture("lizenzhaus-invoice-LIC-2026-11.txt");
-const bankText = fixture("lizenzhaus-invoice-LIC-2027-01-BANKCHANGE.txt");
-const lookText = fixture("lizenzhaus-invoice-LIC-2027-02-LOOKALIKE.txt");
+const legitText = fixture("bergtex-invoice-BTX-2026-11.txt");
+const bankText = fixture("bergtex-invoice-BTX-2027-01-BANKCHANGE.txt");
+const lookText = fixture("bergtex-invoice-BTX-2027-02-LOOKALIKE.txt");
 
 function ledger(): DB {
   const db = openDb(":memory:");
@@ -27,9 +27,9 @@ const untouchable = new Proxy({}, { get: (_t, prop) => () => { throw new Error(`
 
 describe("names", () => {
   it("reduces lookalike letters from other scripts to the same skeleton", () => {
-    expect(skeleton("Lizenzhaus Beispiel GmbH")).toBe(skeleton("Lizenzhaus Bеispiеl GmbH")); // Cyrillic е
-    expect(skeleton("Lizenzhaus Beispiel GmbH")).toBe(skeleton("LIZENZHAUS  Beispiel GmbH."));
-    expect(skeleton("Lizenzhaus Beispiel GmbH")).not.toBe(skeleton("Lizenzhaus Beispeil GmbH"));
+    expect(skeleton("Bergtex Textil GmbH")).toBe(skeleton("Bеrgtеx Tеxtil GmbH")); // Cyrillic е
+    expect(skeleton("Bergtex Textil GmbH")).toBe(skeleton("BERGTEX  Textil GmbH."));
+    expect(skeleton("Bergtex Textil GmbH")).not.toBe(skeleton("Bergtex Texitl GmbH"));
   });
 
   it("counts a swap of two letters as one edit", () => {
@@ -58,7 +58,7 @@ describe("invoice fraud check", () => {
     // The wording that usually comes with such a change is evidence, never the reason on its own.
     expect(f.signals.filter((s) => !s.blocks).map((s) => s.code).sort()).toEqual(["bank_change_language", "pressure_language"]);
     const c = checkInvoice(db, inv, bankText);
-    expect(c).toMatchObject({ ok: false, reason: expect.stringMatching(/^possible invoice fraud: .*a person verifies with Lizenzhaus Beispiel GmbH on the phone number on file$/) });
+    expect(c).toMatchObject({ ok: false, reason: expect.stringMatching(/^possible invoice fraud: .*a person verifies with Bergtex Textil GmbH on the phone number on file$/) });
   });
 
   it("blocks a vendor name that only looks like an allowlisted one", () => {
@@ -66,14 +66,14 @@ describe("invoice fraud check", () => {
     const inv = parseInvoiceFallback(lookText);
     const f = assessInvoice(db, inv, lookText);
     expect(f.blocked).toBe(true);
-    expect(f.signals.find((s) => s.code === "lookalike_vendor")).toMatchObject({ blocks: true, detail: `"Lizenzhaus Beispeil GmbH" is not the allowlisted "${LIZ}" but looks like it (1 letter differs)` });
+    expect(f.signals.find((s) => s.code === "lookalike_vendor")).toMatchObject({ blocks: true, detail: `"Bergtex Texitl GmbH" is not the allowlisted "${LIZ}" but looks like it (1 letter differs)` });
     // Its bank details are compared with the supplier it pretends to be.
     expect(f.signals.find((s) => s.code === "bank_details_changed")?.detail).toBe("the invoice asks for IBAN ...6789 (DE) and BIC PBNKDEFFXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX");
   });
 
   it("blocks letters from another script, even with the allowlisted IBAN", () => {
     const db = ledger();
-    const inv: Invoice = { ...parseInvoiceFallback(legitText), vendor: "Lizenzhaus Bеispiеl GmbH" };
+    const inv: Invoice = { ...parseInvoiceFallback(legitText), vendor: "Bеrgtеx Tеxtil GmbH" };
     const f = assessInvoice(db, inv, legitText);
     expect(f.signals.map((s) => s.code)).toEqual(expect.arrayContaining(["lookalike_vendor", "mixed_scripts"]));
     expect(f.signals.find((s) => s.code === "lookalike_vendor")!.detail).toMatch(/same letters, some from another alphabet/);
@@ -82,14 +82,14 @@ describe("invoice fraud check", () => {
 
   it("blocks when the account holder on the invoice is someone else", () => {
     const db = ledger();
-    const text = legitText.replace("Account name: Lizenzhaus Beispiel GmbH", "Account name: J. Smith Consulting");
+    const text = legitText.replace("Account name: Bergtex Textil GmbH", "Account name: J. Smith Consulting");
     const f = assessInvoice(db, parseInvoiceFallback(text), text);
     expect(f.signals.find((s) => s.code === "account_name_mismatch")).toMatchObject({ blocks: true });
   });
 
   it("keeps an unknown vendor an escalation, not a fraud claim", () => {
     const db = ledger();
-    const text = legitText.replace(/Lizenzhaus Beispiel GmbH/g, "Datenwerk Nord AG");
+    const text = legitText.replace(/Bergtex Textil GmbH/g, "Datenwerk Nord AG");
     const inv = parseInvoiceFallback(text);
     expect(checkInvoice(db, inv, text)).toEqual({ ok: false, reason: "Datenwerk Nord AG is not an allowlisted beneficiary", fraud: expect.objectContaining({ blocked: true, suspicious: false }) });
   });

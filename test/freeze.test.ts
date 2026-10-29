@@ -44,7 +44,7 @@ describe("the emergency stop", () => {
     for (const agent of ["sourcing", "support", "treasury"] as const) expect(capRefusal(db, agent, 1)).toMatch(/^frozen_by_cfo/);
     expect(await syncCardsAfterPolicy(db, p.proposal_id, awx, now)).toEqual(["sourcing", "support", "treasury"]);
     expect(awx.cards.map((c) => c.status)).toEqual(["INACTIVE", "INACTIVE", "INACTIVE"]);
-    const t = await buyPlan(db, awx, "market-data-starter", now);
+    const t = await buyPlan(db, awx, "packwise-starter", now);
     expect(t).toMatchObject({ approved: false, failureReason: "CARD_INACTIVE" });
     const s = buildSnapshot(db, now);
     expect(s.frozen).toMatchObject({ by: "Max", proposal_id: p.proposal_id, reason: "suspicious activity" });
@@ -61,10 +61,10 @@ describe("the emergency stop", () => {
     expect(awx.cards.map((c) => c.status)).toEqual(["ACTIVE", "ACTIVE", "ACTIVE"]);
     expect(capRefusal(db, "sourcing", 1)).toBeNull();
     expect(buildSnapshot(db, now).frozen).toBeNull();
-    expect((await buyPlan(db, awx, "market-data-starter", now)).approved).toBe(true);
+    expect((await buyPlan(db, awx, "packwise-starter", now)).approved).toBe(true);
   });
 
-  it("keeps the freeze on a card the runner could not reach yet: the next tick retries", async () => {
+  it("keeps the freeze on a card the runner could not reach yet: the next stock check retries", async () => {
     approveAndRun(db, proposePolicyChange(db, { changes: [{ key: "freeze", to: "on" }], reason: "stop" }, "human", now).proposal_id);
     const real = awx.setCardStatus.bind(awx);
     awx.setCardStatus = async () => { throw new Error("socket hang up"); };

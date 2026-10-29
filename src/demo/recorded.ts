@@ -5,6 +5,7 @@
 import type { DB } from "../db/open.js";
 import { buildSnapshot, describe, type Snapshot } from "../dashboard/snapshot.js";
 import { fromCents } from "../lib/money.js";
+import { COMPANY } from "../config/brand.js";
 
 export interface RecordedProof {
   /** What the agents did inside their limits, with no person involved. */
@@ -24,6 +25,8 @@ export interface RecordedProof {
 export interface Recorded {
   recorded_at: string;
   run: string;
+  /** The example company the run was recorded with (absent in recordings made before Purser's rename). */
+  company?: string;
   snapshot: Snapshot;
   proof: RecordedProof;
 }
@@ -77,6 +80,7 @@ export function buildRecorded(db: DB, run: string, now = new Date()): Recorded {
   return {
     recorded_at: now.toISOString(),
     run,
+    company: COMPANY,
     snapshot,
     proof: {
       alone: snap.counts.alone,

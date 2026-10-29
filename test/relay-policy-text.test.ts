@@ -54,7 +54,7 @@ describe("policy in plain words from the phone (P2)", () => {
     await runner.syncOnce();
     const t = (await (await relay.fetch(new Request(`${BASE}/api/tickets/${ticket}`, { headers: { "x-kit11-view": viewKey(TOKEN) } }))).json()) as { status: string; message: string };
     expect(t.status).toBe("drafted");
-    expect(t.message).toMatch(/^P-0001 waits for your Face ID: Sourcing agent's card: most per purchase: 30\.00 → 20\.00\./);
+    expect(t.message).toMatch(/^P-0001 waits for your Face ID: Operations agent's card: most per purchase: 30\.00 → 20\.00\./);
     expect(t.message).toMatch(/would loosen the policy/);
     const p = db.prepare("SELECT status, created_by, terms_json FROM proposals").all() as { status: string; created_by: string; terms_json: string }[];
     expect(p).toHaveLength(1);

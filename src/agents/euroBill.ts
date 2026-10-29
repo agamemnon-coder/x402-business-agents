@@ -1,4 +1,4 @@
-// The treasury agent's euro-bill work (scenario S3) against the Airwallex port.
+// The finance agent's euro-bill work (scenario S3) against the Airwallex port.
 // Seeding calibrates floors so the demo shows a shortfall whatever the sandbox starts with; planning
 // converts only the shortfall, fee included, on a locked quote, and never below either floor.
 
@@ -20,8 +20,8 @@ export const SEED_USD_CENTS = 2_500_000;
 /** The USD floor sits this far below the seeded balance. */
 export const USD_HEADROOM_CENTS = 500_000;
 
-export const LICENSOR = {
-  name: "Lizenzhaus Beispiel GmbH",
+export const MANUFACTURER = {
+  name: "Bergtex Textil GmbH",
   iban: "DE89370400440532013000",
   bic: "COBADEFFXXX",
   currency: "EUR" as const,
@@ -35,7 +35,7 @@ export async function snapshot(db: DB, rail: AirwallexRail, label: string) {
   return b;
 }
 
-/** Idempotent: seed USD once, calibrate floors and obligations, allowlist the licensor. */
+/** Idempotent: seed USD once, calibrate floors and obligations, allowlist the manufacturer. */
 export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim): Promise<TreasuryState> {
   const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
   if ((await rail.findDepositsByReference(SEED_REFERENCE, since)).length === 0) {
@@ -51,10 +51,10 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
     setSetting(db, "treasury", "eur_obligations", fromCents(Math.max(0, eur - EUR_FLOOR_CENTS - TARGET_FREE_EUR_CENTS)));
   }
 
-  let ben = await rail.findBeneficiaryByIban(LICENSOR.iban);
-  ben ??= await rail.createBeneficiary(LICENSOR);
+  let ben = await rail.findBeneficiaryByIban(MANUFACTURER.iban);
+  ben ??= await rail.createBeneficiary(MANUFACTURER);
   db.prepare("INSERT OR IGNORE INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES (?, ?, ?, ?, ?, 'EUR', 'SWIFT')")
-    .run(ben.id, LICENSOR.name, LICENSOR.iban.slice(-4), ibanSha(LICENSOR.iban), LICENSOR.bic);
+    .run(ben.id, MANUFACTURER.name, MANUFACTURER.iban.slice(-4), ibanSha(MANUFACTURER.iban), MANUFACTURER.bic);
   return treasuryState(db, b);
 }
 

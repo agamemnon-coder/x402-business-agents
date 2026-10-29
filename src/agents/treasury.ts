@@ -1,4 +1,4 @@
-// The treasury agent's planning for a supplier price rise (scenario S1). Everything here is code:
+// The finance agent's planning for a supplier price rise (scenario S1). Everything here is code:
 // it reads the chain, prices the options and writes proposals. It moves nothing.
 
 import { readFileSync } from "node:fs";
@@ -43,9 +43,9 @@ export interface MandateReplaceTerms extends Terms {
 }
 
 const PAYEE: Record<Agent, (a: Addresses) => { address: Address; name: string }> = {
-  sourcing: (a) => ({ address: a.supplier, name: "Feedstock Labs" }),
-  support: (a) => ({ address: a.customer, name: "Kestrel Quant" }),
-  treasury: (a) => ({ address: a.sweep, name: "Tidemark sweep" }),
+  sourcing: (a) => ({ address: a.supplier, name: "Stockline" }),
+  support: (a) => ({ address: a.customer, name: "Summit Outfitters" }),
+  treasury: (a) => ({ address: a.sweep, name: "Northwind sweep" }),
 };
 
 /** The limits after a price rise: sourcing's cap is exactly the new price, with no headroom. */
@@ -147,7 +147,7 @@ export async function priceRiseContext(addr: Addresses, sellCents: number, oldUp
     lines.push(`- ${agent}: cap ${fromCents(baseUnitsToCents(t.constraints.perPaymentCap))} per payment, budget ${fromCents(budget)}, spent ${fromCents(baseUnitsToCents(await mandateSpent(m)))}, payee ${PAYEE[agent](addr).name} (${PAYEE[agent](addr).address.toLowerCase()})`);
   }
   return [
-    `Supplier Feedstock Labs raised its price from ${oldUpstream} to ${fromCents(liveOfferCents)} per tick (its notice and the live 402 offer agree). The next purchase was refused on chain: ${refusalReason}; the customer was not charged.`,
+    `Supplier Stockline raised its price from ${oldUpstream} to ${fromCents(liveOfferCents)} per stock check (its notice and the live 402 offer agree). The next purchase was refused on chain: ${refusalReason}; the customer was not charged.`,
     `Current sell price: ${fromCents(sellCents)}. In the terms, query_price is the sell price this option would set, and margin = query_price - upstream_price. The approver chooses between options (another option keeps the current price; pausing sales means approving nothing).`,
     `Mandates bound now (read from the chain), ${fromCents(total)} of the ${fromCents(TOTAL_BUDGET_CENTS)} total:`,
     ...lines,

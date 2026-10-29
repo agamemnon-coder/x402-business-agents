@@ -21,7 +21,7 @@ import { FACILITATOR_URL, rpcUrl, USDZ } from "./network.js";
 
 export const NETWORK = "eip155:63825" as const;
 export const CHAIN_ID = 63825;
-/** Kestrel's EOA that pays the deposit and its gas; funded from the testnet faucet. */
+/** Summit's EOA that pays the deposit and its gas; funded from the testnet faucet. */
 export const CUSTOMER_CLEARING_KEY = "customer-clearing.key.json";
 export const WALLET_DIRS = { customer: "clearing-customer", seller: "clearing-seller" } as const;
 export type ClearingParty = keyof typeof WALLET_DIRS;
@@ -60,7 +60,7 @@ export function openWallet(party: ClearingParty) {
 
 const payerAccount = () => privateKeyToAccount((JSON.parse(readFileSync(keyPath(CUSTOMER_CLEARING_KEY), "utf8")) as { privateKey: Hex }).privateKey);
 
-/** Kestrel puts `units` of *USDZ into clearing under its clearing key. */
+/** Summit puts `units` of *USDZ into clearing under its clearing key. */
 export async function depositCustomer(units: bigint): Promise<{ approveTx: Hex | null; depositTx: Hex; account: Hex }> {
   const d = await need();
   const w = await openWallet("customer");
@@ -95,7 +95,7 @@ export async function withdrawSeller(destination: Hex, gasKeyFile: string): Prom
   }
 }
 
-/** A clearing payer for Kestrel, paying at most `maxUnits` a request. The caller closes the wallet. */
+/** A clearing payer for Summit, paying at most `maxUnits` a request. The caller closes the wallet. */
 export async function customerClearingClient(maxUnits: bigint) {
   const d = await need();
   const w = await openWallet("customer");

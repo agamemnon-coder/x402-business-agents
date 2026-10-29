@@ -186,7 +186,7 @@ describe("phone approval through the relay", () => {
     await enrol(w, anna, "anna");
     expect(w.db.prepare("SELECT label FROM passkeys WHERE status = 'ACTIVE' ORDER BY label").all()).toEqual([{ label: "anna" }, { label: "max" }]);
     w.db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('approval.four_eyes_eur', '500.00', ?)").run(t0.toISOString());
-    createProposal(w.db, { terms: { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: "P-0004", expires_at: "2026-10-30T15:00:00Z", amount: "1850.00", vendor: "Lizenzhaus Beispiel GmbH" }, createdBy: "treasury" }, t0);
+    createProposal(w.db, { terms: { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: "P-0004", expires_at: "2026-10-30T15:00:00Z", amount: "1850.00", vendor: "Bergtex Textil GmbH" }, createdBy: "treasury" }, t0);
     await w.runner.syncOnce();
     const shown = ((await w.phone.get("/api/approvals")) as { proposals: PhoneProposal[] }).proposals.find((p) => p.proposal_id === "P-0004")!;
     expect(shown.four_eyes).toEqual({ approved_by: [] });

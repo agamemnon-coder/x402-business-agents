@@ -22,8 +22,8 @@ describe("the demo story", () => {
   it("tells only the steps that ran, in order, with explorer links for transactions", () => {
     const s = buildStory(ledger(), "test run", new Date("2026-11-01T10:00:00Z"));
     expect(s.steps.map((x) => x.id)).toEqual(["buy", "refused", "audit"]);
-    expect(s.steps[0]!.facts.find((f) => f.label === "Kestrel's first payment to us")).toEqual({ label: "Kestrel's first payment to us", value: `${TX(2).slice(0, 10)}…${TX(2).slice(-4)}`, href: `https://testnet.metalntwx.com/tx/${TX(2)}` });
-    expect(s.steps[0]!.facts.find((f) => f.label === "Sourcing mandate")?.value).toBe("0.03 a payment, 10.00 in total, Feedstock Labs only");
+    expect(s.steps[0]!.facts.find((f) => f.label === "Summit's first payment to us")).toEqual({ label: "Summit's first payment to us", value: `${TX(2).slice(0, 10)}…${TX(2).slice(-4)}`, href: `https://testnet.metalntwx.com/tx/${TX(2)}` });
+    expect(s.steps[0]!.facts.find((f) => f.label === "Sourcing mandate")?.value).toBe("0.03 a payment, 10.00 in total, Stockline only");
     expect(s.steps.at(-1)!.facts[0]!.value).toMatch(/^4, chain intact, head /);
     // Every link is to the public explorer.
     expect(s.steps.flatMap((x) => x.facts).filter((f) => f.href).every((f) => f.href!.startsWith("https://testnet.metalntwx.com/tx/0x"))).toBe(true);
@@ -38,8 +38,8 @@ describe("the demo story", () => {
     }
     audit(db, "ext:acme-research", "agent.card_requested", "ext:acme-research", { agent_id: "ext:acme-research", name: "Acme Research purchasing agent", purpose: "market reports", per_tx: "20.00", monthly: "80.00", currency: "EUR", proposal_id: "P-0011" });
     audit(db, "awx-executor", "card.issued", "ext:acme-research", { agent: "ext:acme-research", last4: "3616", limits: "20.00 / 80.00", currency: "EUR", proposal_id: "P-0011" });
-    audit(db, "ext:acme-research", "card.charge_approved", "legacy-t1", { agent: "ext:acme-research", amount: "19.00", currency: "EUR", merchant: "Contoso Reports" });
-    audit(db, "ext:acme-research", "card.charge_approved", "t1", { agent: "ext:acme-research", amount: "19.00", currency: "EUR", merchant: "Contoso Reports" });
+    audit(db, "ext:acme-research", "card.charge_approved", "legacy-t1", { agent: "ext:acme-research", amount: "19.00", currency: "EUR", merchant: "TrailData Reports" });
+    audit(db, "ext:acme-research", "card.charge_approved", "t1", { agent: "ext:acme-research", amount: "19.00", currency: "EUR", merchant: "TrailData Reports" });
     audit(db, "system", "card.duplicate_merged", "legacy-t1", { kept: "t1", amount: "19.00" });
     audit(db, "human", "policy.changed", "card.ext:acme-research.per_tx", { key: "card.ext:acme-research.per_tx", from: "20.00", to: "45.00", proposal_id: "P-0012" });
     const step = buildStory(db, "test").steps.find((x) => x.id === "outside")!;
@@ -61,7 +61,7 @@ describe("the demo story", () => {
       for (const v of shown) expect(v, `${st.id}: ${v}`).not.toMatch(/\b(null|undefined|NaN)\b/);
       expect(st.tab, st.id).toBeTruthy();
       // The first sentences are plain words; the jargon sits under "How it works".
-      expect(st.text, st.id).not.toMatch(/x402|EUR\/USD tick|mandate_|SHA-256|\*USDZ/);
+      expect(st.text, st.id).not.toMatch(/x402|EUR\/USD stock check|mandate_|SHA-256|\*USDZ/);
     }
     expect(text).toContain("1,850.00");
     expect(text).not.toMatch(/[^\d,]1850\.00/);

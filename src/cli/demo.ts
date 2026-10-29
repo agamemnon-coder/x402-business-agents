@@ -42,12 +42,12 @@ const sales = (db.prepare("SELECT COUNT(*) AS n FROM sales").get() as { n: numbe
 
 step("Health", "health.ts");
 step("S0 Bootstrap: accounts, 20.00 *USDZ, four mandates", "bootstrap.ts");
-if (sales < 40) step("Sales at 0.05: ticks 1-40", "trade.ts", String(sales + 1), "40");
+if (sales < 40) step("Sales at 0.05: stock checks 1-40", "trade.ts", String(sales + 1), "40");
 if (!db.prepare("SELECT 1 FROM proposals WHERE kind = 'mandate_replace'").get()) step("S1 Supplier price rise", "s1.ts", "raise");
 await waitForExecuted("mandate_replace", "S1 mandate change");
 if ((db.prepare("SELECT COUNT(*) AS n FROM sales").get() as { n: number }).n < 50) step("S1 Sales resume", "s1.ts", "resume");
 step("S2 Disputed batch", "s2.ts");
-step("S3 Euro licence bill", "s3.ts");
+step("S3 Manufacturer's euro invoice", "s3.ts");
 if (fromEnv()) await waitForExecuted("invoice_payment", "S3 invoice payment");
 if (fromEnv()) {
   // S4: the company cards. The agent's raise is a policy change the CFO approves with Face ID; then the same purchase again.
@@ -56,7 +56,7 @@ if (fromEnv()) {
     await waitForExecuted("policy_change", "S4 card limit raise");
     // The runner pushes the new limit right after the change; sync makes sure the card has it before we buy.
     step("S4 The card follows the CFO policy", "cards.ts", "sync");
-    step("S4 The same purchase after the raise", "cards.ts", "buy", "market-data-pro");
+    step("S4 The same purchase after the raise", "cards.ts", "buy", "packwise-pro");
   }
 }
 step("Verify everything from the chain", "verify.ts");

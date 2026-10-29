@@ -25,15 +25,15 @@ const phase = process.argv[2];
 const db = openDb();
 const rt = await startRuntime(db);
 const supplierUrl = `http://127.0.0.1:4101${SUPPLIER_ROUTE}?seq=1`;
-/** The next tick to sell: one past the highest tick already delivered. */
+/** The next stock check to sell: one past the highest stock check already delivered. */
 const nextSeq = () =>
   ((db.prepare("SELECT MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)) AS s FROM sales").get() as { s: number | null }).s ?? 0) + 1;
 
 try {
   if (phase === "raise") {
-    console.log(`GOAL             keep selling ticks at a margin, inside the 20.00 the mandates may spend`);
+    console.log(`GOAL             keep selling stock checks at a margin, inside the 20.00 the mandates may spend`);
     setSetting(db, "system", "upstream_price", fromCents(RAISED_UPSTREAM_PRICE_CENTS));
-    const noticePath = resolve(import.meta.dirname, "../../fixtures/feedstock-price-notice.txt");
+    const noticePath = resolve(import.meta.dirname, "../../fixtures/stockline-price-notice.txt");
     const tools = new Tools(db);
     const noticeText = readFileSync(noticePath, "utf8");
     const kind = await tools.classify(noticeText);
@@ -49,7 +49,7 @@ try {
     const seq = nextSeq();
     const p = await rt.customer.buy(seq);
     const refusal = db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' ORDER BY id DESC LIMIT 1").get() as { id: number; refusal_reason: string } | undefined;
-    console.log(`                 tick #${seq}: sourcing purchase ${refusal ? `refused: ${refusal.refusal_reason}` : "NOT refused"}`);
+    console.log(`                 stock check #${seq}: sourcing purchase ${refusal ? `refused: ${refusal.refusal_reason}` : "NOT refused"}`);
     console.log(`                 customer: ${p.outcome.kind === "paid" ? "PAID (unexpected)" : `HTTP ${p.outcome.kind === "in_doubt" || p.outcome.kind === "refused" ? p.outcome.status : "?"}, charged: ${p.charged ? "YES" : "no (not in /settlements)"}`}`);
     if (!refusal || p.charged) throw new Error("expected a refusal and no charge");
 

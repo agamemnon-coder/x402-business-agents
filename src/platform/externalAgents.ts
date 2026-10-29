@@ -98,12 +98,12 @@ export async function executeAgentOnboard(db: DB, rail: IssuingRail, proposalId:
   try {
     const slug = t.agent_id.slice(4);
     const limits = { currency: "EUR" as const, perTxCents: toCents(t.card.per_tx), monthlyCents: toCents(t.card.monthly) };
-    const email = `agents+ext-${slug}@tidemark-data.example`;
+    const email = `agents+ext-${slug}@northwind-outdoor.example`;
     const firstName = t.display_name.replace(/[^A-Za-z ]/g, "").trim().slice(0, 40) || "Outside";
     const holder = (await rail.findCardholderByEmail(email)) ?? (await rail.createCardholder({ email, firstName, lastName: "Agent" }));
     const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
     const nickname = `${t.display_name.slice(0, 40)}: outside agent${business ? ` (${business.address.slice(-6).toLowerCase()})` : ""}`;
-    const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Tidemark CFO policy", limits }));
+    const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits }));
     // Trust what Airwallex says the card has, not what we asked for.
     if (!card.limits || card.limits.perTxCents !== limits.perTxCents || card.limits.monthlyCents !== limits.monthlyCents) {
       throw new Error(`the card at Airwallex has other limits than the approved ${t.card.per_tx} / ${t.card.monthly} EUR`);

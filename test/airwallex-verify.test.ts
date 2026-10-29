@@ -9,7 +9,7 @@ import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
 import { decide } from "../src/policy/approvals.js";
 import { FakeAirwallex, SANDBOX_SWIFT_FEE_CENTS } from "./fakes/airwallex.js";
 
-const text = readFileSync(new URL("../fixtures/lizenzhaus-invoice-LIC-2026-11.txt", import.meta.url), "utf8");
+const text = readFileSync(new URL("../fixtures/bergtex-invoice-BTX-2026-11.txt", import.meta.url), "utf8");
 
 /** A ledger with one executed invoice payment, and what an honest Airwallex would answer about it. */
 async function paid() {

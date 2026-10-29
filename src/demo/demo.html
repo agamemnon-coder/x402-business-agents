@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Company Cards for AI Agents</title>
+<title>Purser · Company Cards for AI Agents</title>
 <style>
 @font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
@@ -88,7 +88,7 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
 </head>
 <body>
 <header>
-  <div class="row"><h1>Tidemark Data</h1><span class="tag">Every AI agent its own company card, with limits the CFO sets</span>
+  <div class="row"><h1>Purser</h1><span class="tag">Every AI agent its own company card, with limits the CFO sets</span>
     <nav><a href="month">A month in 90 seconds</a><a href="./">Home</a></nav></div>
   <p class="replay" id="replay"></p>
 </header>
@@ -130,7 +130,8 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
 
   var rp = document.getElementById("replay");
   rp.appendChild(el("b", "", ["Recorded run of " + when.format(new Date(steps[0] ? steps[0].at : S.recorded_at))]));
-  rp.appendChild(document.createTextNode(" · test money, real systems "));
+  // Recordings made before the rename carry no company: they were made with the earlier example company.
+  rp.appendChild(document.createTextNode(" · " + (S.company || "Tidemark Data, the earlier example company") + " · test money, real systems "));
   rp.appendChild(el("details", "", [el("summary", "", ["details"]), el("p", "", ["Every step really happened, in " + S.run + ", on Metal testnet and in the Airwallex sandbox. This page only plays it back, so it cannot fail on stage. Amounts on Metal are Metal's test dollars, shown as test USD."])]));
   document.getElementById("foot").textContent = "Recorded " + when.format(new Date(S.recorded_at)) + " from the run's audit log (" + S.audit.rows + " rows, head " + S.audit.head.slice(0, 12) + "…). Built with Claude Code.";
 

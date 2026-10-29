@@ -1,0 +1,19 @@
+Bergtex Textil GmbH
+Textilweg 4, 72760 Reutlingen, Germany
+
+INVOICE BTX-2026-12
+Date: 1 December 2026
+Due date: 15 December 2026
+
+Bill to: Northwind Outdoor
+
+Description                                   Amount
+Down jackets, production lot December 2026    EUR 1,850.00
+
+Total due                                     EUR 1,850.00
+
+Pay by SWIFT to:
+Account name: Bergtex Textil GmbH
+IBAN: DE89 3704 0044 0532 0130 00
+BIC: COBADEFFXXX
+Payment reference: BTX-2026-12

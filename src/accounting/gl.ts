@@ -42,7 +42,7 @@ export function journal(db: DB): JournalLine[] {
     const clearing = s.scheme === "bajillion";
     const receipt = clearing && s.clearing_json ? (JSON.parse(s.clearing_json) as { paid?: { invoice?: { id?: string } } }).paid?.invoice?.id : undefined;
     add({
-      date: s.created_at, source: "sale", ref: String(s.sale_id), description: `Market data query ${s.sale_id}${clearing ? " (prepaid, Metal clearing)" : ""}`,
+      date: s.created_at, source: "sale", ref: String(s.sale_id), description: `Stock check sold to a retailer ${s.sale_id}${clearing ? " (prepaid, Metal clearing)" : ""}`,
       counterparty: s.payer, agent: "sourcing", gl_account: "4000", bank_account: clearing ? "1220" : "1210", cents: s.price_cents, currency: "USDZ",
       proof: (clearing ? receipt : s.tx_hash) ?? "", approval: "", rule: "data sale: revenue",
     });
@@ -50,7 +50,7 @@ export function journal(db: DB): JournalLine[] {
   for (const u of db.prepare("SELECT id, price_cents, tx_hash, created_at FROM upstream_purchases WHERE outcome = 'PAID' ORDER BY id").all() as
     { id: number; price_cents: number; tx_hash: string | null; created_at: string }[]) {
     add({
-      date: u.created_at, source: "upstream", ref: String(u.id), description: `Market data bought for resale (${u.id})`, counterparty: "market data supplier",
+      date: u.created_at, source: "upstream", ref: String(u.id), description: `Stock check bought from the warehouse API (${u.id})`, counterparty: "warehouse API",
       agent: "sourcing", gl_account: "5000", bank_account: "1210", cents: -u.price_cents, currency: "USDZ", proof: u.tx_hash ?? "", approval: "", rule: "upstream purchase: cost of data",
     });
   }

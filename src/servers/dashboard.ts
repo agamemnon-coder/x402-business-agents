@@ -12,6 +12,10 @@ import { simulateMonth, type MonthReport } from "../sim/month.js";
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
+import { AGENT_DISPLAY } from "../config/brand.js";
+
+/** What each agent is called on the pages (docs/decisions.md D2), as a data block: no markup, not part of any hash. */
+const AGENTS_JSON = JSON.stringify(Object.fromEntries(Object.entries(AGENT_DISPLAY).map(([id, a]) => [id, a.name])));
 
 const PAGE_TEMPLATE = readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
@@ -39,7 +43,8 @@ const cspFor = (page: string) => [
 export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
   return PAGE_TEMPLATE
     .replace("__ICONS_JSON__", () => JSON.stringify(ICONS))
-    .replace("__RECORDED_JSON__", () => JSON.stringify(recorded).replace(/</g, "\\u003c"));
+    .replace("__RECORDED_JSON__", () => JSON.stringify(recorded).replace(/</g, "\\u003c"))
+    .replace("__AGENTS_JSON__", AGENTS_JSON);
 }
 export const PAGE = dashboardPage();
 // Only the page's own script and style may run; data arrives over fetch from this origin only.
@@ -57,7 +62,7 @@ export function demoPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
 
 /** The month replay page with the simulated month in it (JSON, with "<" escaped so it cannot close the block). */
 export function monthPage(report: MonthReport = simulateMonth()): string {
-  return MONTH_TEMPLATE.replace("__MONTH_JSON__", () => JSON.stringify(report).replace(/</g, "\\u003c"));
+  return MONTH_TEMPLATE.replace("__MONTH_JSON__", () => JSON.stringify(report).replace(/</g, "\\u003c")).replace("__AGENTS_JSON__", AGENTS_JSON);
 }
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
