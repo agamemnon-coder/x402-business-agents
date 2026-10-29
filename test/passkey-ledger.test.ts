@@ -9,6 +9,7 @@ import { openDb } from "../src/db/open.js";
 import { rejectionSha256, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { activePasskey, codeSha256, normalizeCode, openEnrolment, openWindow, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal, decide } from "../src/policy/approvals.js";
+import { approvalMethodChecks } from "../src/passkey/webauthn.js";
 
 const t0 = new Date("2026-10-30T14:00:00Z");
 const terms: Terms = { schema: TERMS_SCHEMA, kind: "refund_batch", proposal_id: "P-0001", expires_at: "2026-10-30T14:10:00Z", total: "0.60" };
@@ -78,6 +79,43 @@ describe("approvals migration", () => {
     expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
     db.close();
     expect(() => openDb(path).close()).not.toThrow();
+  });
+});
+
+describe("once a passkey is enrolled (H1)", () => {
+  function enrolledLedger() {
+    const db = setup();
+    const { window } = openEnrolment(db, { rpId: "r.example", origin: "https://r.example" }, t0);
+    recordPasskey(db, { window, credentialId: "cred-1", publicKey: "pk", counter: 0, transports: null, aaguid: null, registrationJson: "{}", label: "max" }, t0);
+    return db;
+  }
+
+  it("refuses a typed-prefix approval from the CLI or the local page; only the passkey approves", () => {
+    const db = enrolledLedger();
+    for (const method of ["cli", "web"] as const) {
+      expect(() => decide(db, { proposalId: "P-0001", decision: "APPROVED", typedPrefix: hash.slice(0, 8), approver: "max", method }, t0)).toThrow(/passkey is enrolled/);
+    }
+    expect(db.prepare("SELECT COUNT(*) AS n FROM approvals").get()).toEqual({ n: 0 });
+    expect(decide(db, { proposalId: "P-0001", decision: "APPROVED", typedPrefix: hash.slice(0, 8), approver: "max (passkey cred-1)", method: "passkey", signedSha256: hash, passkey }, t0)).toBe("APPROVED");
+  });
+
+  it("still lets a person reject with a typed prefix (saying no is always safe)", () => {
+    const db = enrolledLedger();
+    expect(decide(db, { proposalId: "P-0001", decision: "REJECTED", typedPrefix: hash.slice(0, 8), approver: "max", method: "cli" }, t0)).toBe("REJECTED");
+  });
+
+  it("makes verify fail on any approval after enrolment that was not made with the passkey", () => {
+    const db = enrolledLedger();
+    expect(approvalMethodChecks(db)).toEqual([{ ok: true, what: "approval methods", detail: "every approval since the passkey was enrolled was signed with it" }]);
+    db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES ('P-0001', 'APPROVED', ?, 'max', 'cli', ?, ?)")
+      .run(hash, hash.slice(0, 8), new Date("2026-10-30T14:05:00Z").toISOString());
+    expect(approvalMethodChecks(db)).toEqual([{ ok: false, what: "approval P-0001", detail: "approved by cli after a passkey was enrolled; only the passkey may approve" }]);
+  });
+
+  it("does not flag typed-prefix approvals from before any passkey", () => {
+    const db = setup();
+    decide(db, { proposalId: "P-0001", decision: "APPROVED", typedPrefix: hash.slice(0, 8), approver: "max", method: "cli" }, t0);
+    expect(approvalMethodChecks(db)).toEqual([{ ok: true, what: "approval methods", detail: "no passkey enrolled; approvals by typed hash prefix" }]);
   });
 });
 

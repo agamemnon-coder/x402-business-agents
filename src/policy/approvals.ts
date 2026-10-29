@@ -122,6 +122,11 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     if (!args.signedSha256) throw new Error("a passkey decision needs the signed hash");
     if (!args.passkey) throw new Error("a passkey decision needs the signing credential");
   }
+  // Once a passkey is enrolled it is the only way to approve: a typed hash prefix is not a secret (the relay shows
+  // every pending hash), so the CLI and the local page may still reject, never approve (security review H1).
+  if (args.decision === "APPROVED" && args.method !== "passkey" && db.prepare("SELECT 1 FROM passkeys WHERE status = 'ACTIVE'").get()) {
+    throw new Error("a passkey is enrolled: approve with it (Face ID on the phone); a typed hash prefix can only reject");
+  }
   const passkey = args.passkey && { credential_id: args.passkey.credentialId, assertion_sha256: args.passkey.assertionSha256 };
   return db.transaction((): ProposalStatus => {
     const p = get(db, args.proposalId);

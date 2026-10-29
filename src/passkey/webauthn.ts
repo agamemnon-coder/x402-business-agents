@@ -112,3 +112,16 @@ export async function reverifyPasskeyApprovals(db: DB): Promise<Check[]> {
   }
   return checks;
 }
+
+/**
+ * `npm run verify`: once a passkey was enrolled, every approval must have been signed with a passkey. Anything else
+ * (a typed prefix from the CLI or the local page, or a row written straight into the ledger) fails the check.
+ */
+export function approvalMethodChecks(db: DB): Check[] {
+  const first = (db.prepare("SELECT MIN(enrolled_at) AS at FROM passkeys").get() as { at: string | null }).at;
+  if (!first) return [{ ok: true, what: "approval methods", detail: "no passkey enrolled; approvals by typed hash prefix" }];
+  const bad = (db.prepare("SELECT proposal_id, method, created_at FROM approvals WHERE decision = 'APPROVED' AND method != 'passkey' ORDER BY approval_id").all() as
+    { proposal_id: string; method: string; created_at: string }[]).filter((a) => Date.parse(a.created_at) >= Date.parse(first));
+  if (bad.length === 0) return [{ ok: true, what: "approval methods", detail: "every approval since the passkey was enrolled was signed with it" }];
+  return bad.map((a) => ({ ok: false, what: `approval ${a.proposal_id}`, detail: `approved by ${a.method} after a passkey was enrolled; only the passkey may approve` }));
+}

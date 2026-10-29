@@ -3,3 +3,5 @@
 # the test now builds them at run time.
 6a2e98161544974dcf2c359d4bddfe52b2a20e2d:test/adversarial.test.ts:generic-api-key:114
 6a2e98161544974dcf2c359d4bddfe52b2a20e2d:test/adversarial.test.ts:generic-api-key:115
+# src/claude/reader.ts in 3683803: `const apiKey = env.KIT11_ANTHROPIC_API_KEY;` reads a variable, it holds no key.
+368380353dcc8a301333a616f97c1394c4290e3b:src/claude/reader.ts:generic-api-key:40

@@ -2,6 +2,7 @@
 // reads what they approve. The page shows what is stored and never computes an amount. The decision goes
 // through decide() (typed 8-hex prefix of the hash) and then the executor, which re-checks the hash itself.
 
+import { randomBytes } from "node:crypto";
 import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import type { DB } from "../db/open.js";
@@ -71,7 +72,7 @@ function table(entries: [string, unknown][]): string {
   return `<table class="terms"><tbody>${rows}</tbody></table>`;
 }
 
-function renderProposal(p: Row): string {
+function renderProposal(p: Row, csrf: string): string {
   let termsHtml: string;
   let changed = false;
   try {
@@ -100,6 +101,7 @@ function renderProposal(p: Row): string {
   ${p.explanation ? `<h3>Advisory review by Claude (not used for any amount)</h3><p class="advisory">${esc(p.explanation)}</p>` : ""}
   ${pending ? `
   <form method="post" action="/proposals/${encodeURIComponent(p.proposal_id)}/decision" autocomplete="off">
+    <input type="hidden" name="csrf" value="${esc(csrf)}">
     <label>First ${PREFIX_LENGTH} hex characters of the sha256 above
       <input name="prefix" required minlength="${PREFIX_LENGTH}" maxlength="${PREFIX_LENGTH}" pattern="[0-9a-fA-F]{${PREFIX_LENGTH}}" inputmode="text" spellcheck="false" autocapitalize="off"></label>
     <label>Note (optional)
@@ -171,7 +173,7 @@ const COUNTDOWN_JS = `
 })();
 `;
 
-function renderPage(db: DB, flash?: { kind: "ok" | "err"; text: string }): string {
+function renderPage(db: DB, csrf: string, flash?: { kind: "ok" | "err"; text: string }): string {
   expireDue(db);
   const pending = db.prepare("SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' ORDER BY created_at, proposal_id").all() as Row[];
   const others = db.prepare("SELECT * FROM proposals WHERE status != 'PENDING_APPROVAL' ORDER BY created_at DESC, proposal_id DESC LIMIT 10").all() as Row[];
@@ -181,6 +183,7 @@ function renderPage(db: DB, flash?: { kind: "ok" | "err"; text: string }): strin
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Approvals</title>
+<meta name="csrf" content="${esc(csrf)}">
 <style>${CSS}</style>
 </head>
 <body>
@@ -188,9 +191,9 @@ function renderPage(db: DB, flash?: { kind: "ok" | "err"; text: string }): strin
   <h1>Approvals</h1>
   ${flash ? `<p class="flash ${flash.kind}" role="${flash.kind === "err" ? "alert" : "status"}">${esc(flash.text)}</p>` : ""}
   <h2>Waiting for approval (${pending.length})</h2>
-  ${pending.length ? pending.map(renderProposal).join("") : `<p class="muted">Nothing waits for approval.</p>`}
+  ${pending.length ? pending.map((p) => renderProposal(p, csrf)).join("") : `<p class="muted">Nothing waits for approval.</p>`}
   <h2>Recent decided or closed (latest 10)</h2>
-  ${others.length ? others.map(renderProposal).join("") : `<p class="muted">Nothing yet.</p>`}
+  ${others.length ? others.map((p) => renderProposal(p, csrf)).join("") : `<p class="muted">Nothing yet.</p>`}
 </main>
 <script>${COUNTDOWN_JS}</script>
 </body>
@@ -201,15 +204,35 @@ function renderPage(db: DB, flash?: { kind: "ok" | "err"; text: string }): strin
 function statusFor(message: string): number {
   if (/^no proposal /.test(message)) return 404;
   if (/typed prefix/.test(message)) return 400;
+  if (/passkey is enrolled/.test(message)) return 403;
   if (/not waiting for approval|no longer/.test(message)) return 409;
   return 500;
 }
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
+/** How long a rendered form stays usable. */
+const FORM_TTL_MS = 30 * 60 * 1000;
+
 export function approvalsApp(db: DB, opts: ApprovalsOptions) {
   const app = express();
   app.disable("x-powered-by");
+  // One random token per render, usable once: a page elsewhere cannot read it, so it cannot post a decision here
+  // even if a browser sends a form without an Origin we can check (security review H2).
+  const tokens = new Map<string, number>();
+  const issue = (): string => {
+    const now = Date.now();
+    for (const [t, exp] of tokens) if (exp <= now) tokens.delete(t);
+    const t = randomBytes(32).toString("hex");
+    tokens.set(t, now + FORM_TTL_MS);
+    return t;
+  };
+  const redeem = (t: unknown): boolean => {
+    if (typeof t !== "string" || !tokens.has(t)) return false;
+    const ok = tokens.get(t)! > Date.now();
+    tokens.delete(t);
+    return ok;
+  };
 
   // The page can approve money movements, so refuse requests whose Host is not loopback (DNS rebinding)
   // and cross-site form posts; the typed hash prefix is a second barrier.
@@ -219,8 +242,9 @@ export function approvalsApp(db: DB, opts: ApprovalsOptions) {
       res.status(403).type("text/plain").send("forbidden host");
       return;
     }
-    const origin = req.headers.origin;
-    if (req.method === "POST" && origin && origin !== "null" && URL.parse(origin)?.host !== req.headers.host) {
+    // A post must come from this page itself: its exact origin. A missing Origin or "null" (a sandboxed frame or a
+    // data: URL elsewhere) is refused, not let through.
+    if (req.method === "POST" && req.headers.origin !== `http://${req.headers.host}`) {
       res.status(403).type("text/plain").send("forbidden origin");
       return;
     }
@@ -232,13 +256,17 @@ export function approvalsApp(db: DB, opts: ApprovalsOptions) {
 
   app.get("/", (req, res) => {
     const msg = typeof req.query.msg === "string" ? req.query.msg.slice(0, 300) : "";
-    res.type("html").send(renderPage(db, msg ? { kind: "ok", text: msg } : undefined));
+    res.type("html").send(renderPage(db, issue(), msg ? { kind: "ok", text: msg } : undefined));
   });
 
   app.post("/proposals/:id/decision", express.urlencoded({ extended: false, limit: "10kb" }), async (req: Request, res: Response) => {
-    const fail = (code: number, text: string) => res.status(code).type("html").send(renderPage(db, { kind: "err", text }));
+    const fail = (code: number, text: string) => res.status(code).type("html").send(renderPage(db, issue(), { kind: "err", text }));
     const id = String(req.params.id);
     const body = (req.body ?? {}) as Record<string, unknown>;
+    if (!redeem(body.csrf)) {
+      fail(403, "This form expired or was not sent from this page. Nothing was decided; the page is fresh now.");
+      return;
+    }
     const { prefix, note, decision } = body;
     if (typeof prefix !== "string" || (note !== undefined && typeof note !== "string")) {
       fail(400, "malformed form: prefix and note must be single text fields");

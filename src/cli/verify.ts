@@ -12,7 +12,7 @@ import { salesBySeq, verifyOrders } from "../agents/disputes.js";
 import { fromEnv, Airwallex } from "../airwallex/client.js";
 import { getVia, verifyAirwallex } from "../airwallex/verify.js";
 import { verifyAuditChain } from "../audit/log.js";
-import { reverifyPasskeyApprovals } from "../passkey/webauthn.js";
+import { approvalMethodChecks, reverifyPasskeyApprovals } from "../passkey/webauthn.js";
 import { openDb } from "../db/open.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
 import { credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
@@ -65,6 +65,7 @@ for (const d of disputes) {
 }
 
 for (const c of await reverifyPasskeyApprovals(db)) line(c.ok, c.what, c.detail);
+for (const c of approvalMethodChecks(db)) line(c.ok, c.what, c.detail);
 
 const awx = fromEnv();
 if (awx) {

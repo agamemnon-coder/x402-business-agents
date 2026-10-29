@@ -4,6 +4,7 @@ import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { approvalsApp } from "../src/servers/approvals.js";
+import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
 
 const TX = "0x" + "ab".repeat(32);
 const farFuture = "2099-01-01T00:00:00Z";
@@ -23,14 +24,28 @@ async function setup(terms: Terms = mkTerms(), explanation?: string, execute: (d
   await new Promise<void>((r) => server.once("listening", () => r()));
   servers.push(server);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const post = (id: string, form: Record<string, string>) =>
-    fetch(`${base}/proposals/${id}/decision`, {
-      method: "POST", redirect: "manual",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(form),
+  /** The form token of a fresh render of the page, as a browser would submit it. */
+  const token = async () => /<meta name="csrf" content="([^"]+)">/.exec(await (await fetch(base + "/")).text())?.[1] ?? "";
+  /** A raw POST (fetch cannot set Origin freely): our own origin and a fresh token unless the test says otherwise. */
+  const raw = async (id: string, form: Record<string, string>, headers: Record<string, string | undefined> = { origin: base }) => {
+    const { request } = await import("node:http");
+    const body = new URLSearchParams(form).toString();
+    return new Promise<{ status: number; text: () => Promise<string>; headers: { get: (k: string) => string | null } }>((resolve, reject) => {
+      const h: Record<string, string> = { "content-type": "application/x-www-form-urlencoded", "content-length": String(Buffer.byteLength(body)) };
+      for (const [k, v] of Object.entries(headers)) if (v !== undefined) h[k] = v;
+      const req = request(`${base}/proposals/${id}/decision`, { method: "POST", headers: h }, (r) => {
+        let text = "";
+        r.setEncoding("utf8").on("data", (c: string) => (text += c)).on("end", () => resolve({
+          status: r.statusCode ?? 0, text: async () => text, headers: { get: (k: string) => (r.headers[k.toLowerCase()] as string | undefined) ?? null },
+        }));
+      });
+      req.on("error", reject);
+      req.end(body);
     });
+  };
+  const post = async (id: string, form: Record<string, string>) => raw(id, { csrf: await token(), ...form });
   const status = () => (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(terms.proposal_id) as { status: string }).status;
-  return { db, exec, base, post, status, hash: termsHash(terms) };
+  return { db, exec, base, post, raw, token, status, hash: termsHash(terms) };
 }
 
 describe("approvals page", () => {
@@ -116,6 +131,42 @@ describe("approvals page", () => {
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).toContain("&lt;b&gt;k&lt;/b&gt;");
     expect(html).not.toContain("<img src=x");
+  });
+
+  it("refuses a post without our own Origin: missing, null (sandboxed frame, data: URL) or another site (H2)", async () => {
+    const { raw, token, status, exec, hash } = await setup();
+    for (const origin of [undefined, "null", "https://evil.example", "http://127.0.0.1:1"]) {
+      const res = await raw("P-0001", { csrf: await token(), prefix: hash.slice(0, 8), decision: "approve" }, { origin });
+      expect(res.status).toBe(403);
+      expect(await res.text()).toContain("forbidden origin");
+    }
+    expect(status()).toBe("PENDING_APPROVAL");
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("refuses a post without a fresh form token from this page, and uses each token once (H2)", async () => {
+    const { base, raw, token, status, hash } = await setup();
+    for (const csrf of [undefined, "", "0".repeat(64)]) {
+      const res = await raw("P-0001", { ...(csrf === undefined ? {} : { csrf }), prefix: hash.slice(0, 8), decision: "reject" }, { origin: base });
+      expect(res.status).toBe(403);
+      expect(await res.text()).toContain("form expired");
+    }
+    const t = await token();
+    expect((await raw("P-0001", { csrf: t, prefix: "00000000", decision: "reject" }, { origin: base })).status).toBe(400);
+    expect((await raw("P-0001", { csrf: t, prefix: hash.slice(0, 8), decision: "reject" }, { origin: base })).status).toBe(403);
+    expect(status()).toBe("PENDING_APPROVAL");
+  });
+
+  it("cannot approve once a passkey is enrolled, only reject (H1)", async () => {
+    const { db, post, status, exec, hash } = await setup();
+    const { window } = openEnrolment(db, { rpId: "r.example", origin: "https://r.example" });
+    recordPasskey(db, { window, credentialId: "cred-1", publicKey: "pk", counter: 0, transports: null, aaguid: null, registrationJson: "{}", label: "max" });
+    const res = await post("P-0001", { prefix: hash.slice(0, 8), decision: "approve" });
+    expect(res.status).toBe(403);
+    expect(await res.text()).toContain("a passkey is enrolled");
+    expect(exec).not.toHaveBeenCalled();
+    expect((await post("P-0001", { prefix: hash.slice(0, 8), decision: "reject" })).status).toBe(303);
+    expect(status()).toBe("REJECTED");
   });
 
   it("refuses a non-loopback Host header", async () => {
