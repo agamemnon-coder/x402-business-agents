@@ -63,3 +63,30 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 - **What:** the live runs are Friday 30 October at 19:00 and 21:00 CET. They are the source for the screenshots,
   the figure strip, the Metal dossier and the video.
 - **Why:** the master prompt (it replaces the earlier choice of Saturday 10:00 and 15:00).
+
+## 30 October 2026 (night)
+
+### D6. The red team runs as code; the model declined to play the attacker
+
+- **What:** `npm run redteam` runs the 14 attacks of `src/redteam/attacks.ts`, each in a throwaway world. It was
+  meant to let Opus pick the attacks and write test documents of its own. Opus declined twice, the second time
+  with an honest framing as the tester of our own software in a test world. I did not try other wordings or another
+  model to get around that. The report says the model declined, and the attacks ran without it: 14 of 14 blocked.
+- **Why:** the controls are tested either way, by the same code. The red team still found one real weakness: the
+  Claude reader trusted the shape of a model's answer. It now checks every reading against its schema itself.
+- **If wrong:** the demo moment shows "14 attacks, 14 blocked" from code, not from a model choosing attacks. The
+  model hook stays in place, so Max can try again.
+
+### D7. Velocity limits are code constants; the stop is a policy switch
+
+- **What:**
+  - The limits per agent (payments in a minute, amount in an hour) live in `src/config/policy.ts`. They are set well
+    above the busiest live run.
+  - The stop itself is the policy rule `stop.<agent>`. Code turns it on; only an approved policy change with Face ID
+    turns it off.
+  - Declined card attempts do not count.
+- **Why:**
+  - The phone editor already handles on/off rules. A new "count" rule kind would mean new phone code the night
+    before the runs.
+  - Counting declines would let anyone with a card number stop an agent (found in the independent review).
+- **If wrong:** the CFO cannot tune the limits from the phone yet. That is a small change after the freeze.
