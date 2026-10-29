@@ -5,6 +5,29 @@ rehearsal 3 (29 October 2026, [run log](runs/2026-10-29-rehearsal-3.md)): a fres
 every proposal with Face ID. Explorer: https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4,
 `@metalntwx/metal-agent` 0.3.3, `@metalntwx/metal-ts` 0.3.2.
 
+## Why this wins
+
+- **Metal is the agents' spending rail, not a demo add-on.** Every agent that pays per request does it under its
+  own on-chain mandate: a cap per payment, a total budget, one payee and an end date. When the supplier raised its
+  price, the chain itself refused the next payment (`mandate_cap_exceeded`) and the customer was not charged.
+- **The CFO changes on-chain limits with Face ID, safely.** A price rise becomes options; the CFO signs the exact
+  terms on the phone; mandates are replaced in an order that never exceeds the 20.00 the business allows, and the old
+  credential is refused (`mandate_revoked`).
+- **All three ways to pay on Metal, each where it fits:** `exact` x402 with signed orders for per-request sales,
+  mandate pulls for refunds and the earnings sweep, and Offer Pay-per-Call Clearing (new in October 2026) for a
+  customer that prepays and pays each query with a receipt.
+- **Money on Metal reaches the bank only when it is final.** The sweep is credited in Airwallex once, after
+  finality, keyed by `chainId:tx:logIndex`.
+- **Code checks the chain before and after.** Before signing: the CFO policy and the velocity limits (an agent that
+  pays too often or too much is stopped). After: `npm run verify` re-checks every credential, pull and receipt, and
+  the daily reconciliation compares each payment in the ledger with its receipt on chain. The dashboard links each
+  mandate to its newest payment on the explorer.
+- **Honest about what is simulated:** testnet *USDZ is shown as "test USD"; the step from *USDZ to Airwallex is a
+  sandbox deposit that names the real testnet transaction.
+
+What we do not use: Metal mainnet, bridges, swaps and on-chain FX (FX happens at Airwallex), and Metal's own card
+or bank products. The packages are pinned to the versions above.
+
 ## 1. Accounts, *USDZ and the faucet
 
 | What | Where in the code | Proof | Metal docs |
