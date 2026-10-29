@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-29T17:36:30.342Z",
+  "recorded_at": "2026-10-29T19:08:03.628Z",
   "run": "rehearsal 3",
   "steps": [
     {
@@ -262,22 +262,57 @@
       ]
     },
     {
+      "id": "outside",
+      "rail": "CFO",
+      "tone": "approval",
+      "at": "2026-10-29T18:26:42.645Z",
+      "approval": {
+        "who": "Max · Face ID",
+        "proposal": "P-0011",
+        "what": "issue Acme Research purchasing agent a company card"
+      },
+      "title": "Any AI agent, under the same CFO policy",
+      "text": "A Claude agent that is not one of ours connects through the agent API (MCP). It can ask for a card, pay on it and ask for more, and nothing else: the card exists only after the CFO approves it with Face ID, Airwallex enforces its limits, and a raise is another Face ID.",
+      "facts": [
+        {
+          "label": "Agent",
+          "value": "Acme Research purchasing agent (ext:acme-research), connected over MCP",
+          "href": null
+        },
+        {
+          "label": "Card",
+          "value": "Visa •••• 3616: 20.00 per purchase, 80.00 a month",
+          "href": null
+        },
+        {
+          "label": "Paid on its card",
+          "value": "49.00 EUR (2 charges, approved by Airwallex)",
+          "href": null
+        },
+        {
+          "label": "Raise it asked for",
+          "value": "20.00 → 45.00 per purchase, P-0012, Max · Face ID",
+          "href": null
+        }
+      ]
+    },
+    {
       "id": "audit",
       "rail": "Audit",
       "tone": "info",
-      "at": "2026-10-29T17:33:06.268Z",
+      "at": "2026-10-29T18:48:55.616Z",
       "approval": null,
       "title": "Everything is in an audit log you can check yourself",
       "text": "Every step is a row in a hash-chained, append-only log. npm run verify checks it again from public sources: the chain, every credential and payment, every Face ID signature against the pinned passkey, and every Airwallex booking.",
       "facts": [
         {
           "label": "Audit rows",
-          "value": "237, chain intact, head 6ce29e42ddce…",
+          "value": "256, chain intact, head 806e656dd69f…",
           "href": null
         },
         {
           "label": "Approvals with Face ID",
-          "value": "6",
+          "value": "8",
           "href": null
         },
         {
@@ -289,7 +324,7 @@
     }
   ],
   "audit": {
-    "rows": 237,
-    "head": "6ce29e42ddce15e6b0612eeb6e8a57921c901f28d66d79c6e4f9bdc77b8818a0"
+    "rows": 256,
+    "head": "806e656dd69fd00f0d20a3e6689960882975f484b31528ae5c19bf7d5b9f443c"
   }
 }

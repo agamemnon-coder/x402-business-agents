@@ -213,6 +213,32 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     });
   }
 
+  // An outside agent (P1): it connects over MCP, asks for a card, pays within it, and asks for more.
+  const asked = first("agent.card_requested");
+  const issued = asked ? first("card.issued", (_r, pl) => str(pl.agent) === str(p(asked).agent_id)) : undefined;
+  if (asked && issued) {
+    const a = p(asked);
+    const id = str(a.agent_id);
+    // A charge recorded twice and merged (card.duplicate_merged) counts once.
+    const merged = new Set(all("card.duplicate_merged").map((r) => r.subject));
+    const charges = rows.filter((r) => r.event === "card.charge_approved" && r.actor === id && !merged.has(r.subject));
+    const spent = charges.reduce((c, r) => c + Math.round(Number(str(p(r).amount)) * 100), 0);
+    const raise = first("policy.changed", (_r, pl) => str(pl.key) === `card.${id}.per_tx`);
+    const cardApproval = approvals.get(str(a.proposal_id));
+    steps.push({
+      id: "outside", rail: "CFO", tone: "approval", at: asked.ts,
+      approval: cardApproval ? { who: cardApproval, proposal: str(a.proposal_id), what: `issue ${str(a.name)} a company card` } : null,
+      title: "Any AI agent, under the same CFO policy",
+      text: "A Claude agent that is not one of ours connects through the agent API (MCP). It can ask for a card, pay on it and ask for more, and nothing else: the card exists only after the CFO approves it with Face ID, Airwallex enforces its limits, and a raise is another Face ID.",
+      facts: facts(
+        fact("Agent", `${str(a.name)} (${id}), connected over MCP`),
+        fact("Card", `Visa •••• ${str(p(issued).last4)}: ${str(a.per_tx)} per purchase, ${str(a.monthly)} a month`),
+        charges.length ? fact("Paid on its card", `${fromCents(spent)} EUR (${charges.length} charge${charges.length === 1 ? "" : "s"}, approved by Airwallex)`) : null,
+        raise ? fact("Raise it asked for", `${str(p(raise).from)} → ${str(p(raise).to)} per purchase, ${str(p(raise).proposal_id)}${approvals.has(str(p(raise).proposal_id)) ? `, ${approvals.get(str(p(raise).proposal_id))}` : ""}`) : null,
+      ),
+    });
+  }
+
   // 8. The audit.
   const head = rows.at(-1);
   if (head) {

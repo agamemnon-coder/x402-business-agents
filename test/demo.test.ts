@@ -29,6 +29,29 @@ describe("the demo story", () => {
     expect(s.steps.flatMap((x) => x.facts).filter((f) => f.href).every((f) => f.href!.startsWith("https://testnet.metalntwx.com/tx/0x"))).toBe(true);
   });
 
+  it("tells how an outside agent got a card, paid within it and asked for more, each step approved with Face ID", () => {
+    const db = ledger();
+    const at = "2026-10-29T18:26:42.000Z";
+    for (const [id, kind] of [["P-0011", "agent_onboard"], ["P-0012", "policy_change"]] as const) {
+      db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES (?, ?, '{}', ?, 'ext:acme-research', 'EXECUTED', ?, ?)").run(id, kind, `h${id}`, at, at);
+      db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES (?, 'APPROVED', ?, 'max (passkey k_EWzUuv)', 'passkey', '', ?)").run(id, `h${id}`, at);
+    }
+    audit(db, "ext:acme-research", "agent.card_requested", "ext:acme-research", { agent_id: "ext:acme-research", name: "Acme Research purchasing agent", purpose: "market reports", per_tx: "20.00", monthly: "80.00", currency: "EUR", proposal_id: "P-0011" });
+    audit(db, "awx-executor", "card.issued", "ext:acme-research", { agent: "ext:acme-research", last4: "3616", limits: "20.00 / 80.00", currency: "EUR", proposal_id: "P-0011" });
+    audit(db, "ext:acme-research", "card.charge_approved", "legacy-t1", { agent: "ext:acme-research", amount: "19.00", currency: "EUR", merchant: "Contoso Reports" });
+    audit(db, "ext:acme-research", "card.charge_approved", "t1", { agent: "ext:acme-research", amount: "19.00", currency: "EUR", merchant: "Contoso Reports" });
+    audit(db, "system", "card.duplicate_merged", "legacy-t1", { kept: "t1", amount: "19.00" });
+    audit(db, "human", "policy.changed", "card.ext:acme-research.per_tx", { key: "card.ext:acme-research.per_tx", from: "20.00", to: "45.00", proposal_id: "P-0012" });
+    const step = buildStory(db, "test").steps.find((x) => x.id === "outside")!;
+    expect(step.approval).toEqual({ who: "Max · Face ID", proposal: "P-0011", what: "issue Acme Research purchasing agent a company card" });
+    expect(step.facts.map((f) => [f.label, f.value])).toEqual([
+      ["Agent", "Acme Research purchasing agent (ext:acme-research), connected over MCP"],
+      ["Card", "Visa •••• 3616: 20.00 per purchase, 80.00 a month"],
+      ["Paid on its card", "19.00 EUR (1 charge, approved by Airwallex)"],
+      ["Raise it asked for", "20.00 → 45.00 per purchase, P-0012, Max · Face ID"],
+    ]);
+  });
+
   it("holds no secret, key or private URL in the committed recording", () => {
     const text = readFileSync(new URL("../docs/demo/story.json", import.meta.url), "utf8");
     expect(text).not.toMatch(/privateKey|api[_-]?key|secret|Bearer|https?:\/\/(?!testnet\.metalntwx\.com\/tx\/)/i);
