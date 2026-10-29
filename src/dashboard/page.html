@@ -694,7 +694,8 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
     if (stops.length) st.replaceChildren(icon("octagon-x"), txt("span", "", stops.map(function (x) { return agentName(x.agent); }).join(", ") + " stopped automatically: velocity limit."),
       txt("small", "", stops.map(function (x) { return plain(x.reason) + (x.since ? " at " + hm(x.since) : ""); }).join("; ") + ". Every payment it tries is refused and its card is frozen; lifting it needs a proposal and Face ID."));
     document.getElementById("stop").hidden = !d.relay || !!d.frozen || !!d.recorded;
-    document.getElementById("auditline").textContent = "Audit log: " + d.audit.rows + " rows, chain " + (d.audit.intact ? "intact" : "BROKEN");
+    document.getElementById("auditline").textContent = "Audit log: " + d.audit.rows + " rows, chain " + (d.audit.intact ? "intact" : "BROKEN")
+      + (d.reconciliation ? " · Reconciled with Airwallex and Metal at " + hm(d.reconciliation.at) + ": " + d.reconciliation.checked + " flows, " + (d.reconciliation.differences ? d.reconciliation.differences + " difference(s)" : "no differences") : "");
     document.getElementById("passkey").textContent = d.passkey.label
       ? "Approvals need " + d.passkey.label.charAt(0).toUpperCase() + d.passkey.label.slice(1) + "'s passkey (Face ID)"
       : "No passkey enrolled yet: approvals are signed on this computer";

@@ -10,6 +10,7 @@ import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { cardLimits, frozen, policyValue } from "../policy/rules.js";
 import { wantCardStatus } from "../policy/cards.js";
 import { stopReason } from "../policy/velocity.js";
+import { lastReconciliation } from "../finance/reconcile.js";
 import { CARDS, type Agent } from "../config/policy.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
@@ -143,6 +144,8 @@ export interface Snapshot {
   clearing: ClearingView | null;
   /** The emergency stop, while it is on: who pulled it, when, and why. */
   frozen: { since: string; by: string; proposal_id: string; reason: string } | null;
+  /** The latest daily reconciliation against Airwallex and Metal (finance item 5), or null before the first. */
+  reconciliation: { at: string; checked: number; differences: number; skipped: string[] } | null;
   /** Agents stopped by code for breaking a velocity limit (security item 2); the CFO lifts each with Face ID. */
   stopped: { agent: string; since: string; reason: string }[];
   /** Top of the page: what the agents did alone, what waits for the CFO, what was blocked (J4). */
@@ -535,6 +538,8 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "clearing.withdrawn": return out(`Our clearing earnings of ${str(p.amount)} USDZ went to the business account`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
     case "sale.prepaid_not_offered": return out(`Prepaid clearing not offered for stock check #${s}: ${str(p.reason).replace(/^[a-z_]+: /, "")}; the buyer uses the mandate route`, "info");
     case "sale.prepaid_undelivered": return out(`Stock check #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
+    case "reconcile.difference": return out(`Reconciliation: ${str(p.area)} ${s}: the ledger says ${str(p.ledger)}; ${str(p.area) === "metal" ? "the chain" : "Airwallex"} says ${str(p.outside)}. A person looks; nothing was changed`, "refusal");
+    case "reconcile.done": return out(`Reconciled ${str(p.checked)} money flows against Airwallex and Metal: ${Number(p.differences) ? `${str(p.differences)} difference(s)` : "no differences"}`, Number(p.differences) ? "refusal" : "ok");
     case "fx.rate_checked": return out(`Before locking a quote for ${str(p.buy)}, checked the market's current rate: ${str(p.market_cost)} now, the quote ${str(p.quote_cost)} (${(Number(p.markup_bps) / 100).toFixed(2)}% apart; above ${(FX_QUOTE_MAX_MARKUP_BPS / 100).toFixed(2)}% it goes to the CFO)`);
     case "velocity.tripped": return out(`Stopped automatically: ${str(p.reason)}. Every payment it tries is refused until the CFO lifts the stop with Face ID`, "refusal");
     case "card.frozen": return out(`${str(p.why) === "velocity limit" ? "Velocity limit" : "Emergency stop"}: Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal");
@@ -583,11 +588,12 @@ export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
   "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
-  "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered", "velocity.tripped",
+  "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered", "velocity.tripped", "reconcile.difference",
 ]);
 
 export const REFUSAL_WHAT: Record<string, string> = {
   "velocity.tripped": "Agent stopped: velocity limit",
+  "reconcile.difference": "Reconciliation difference",
   "upstream.refused": "Supplier purchase refused",
   "upstream.in_doubt": "Supplier purchase unconfirmed",
   "sale.settle_failed": "Sale not settled",
@@ -677,6 +683,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     cards: cards(db, now),
     clearing: clearingView(db),
     frozen: frozenView(db, rows),
+    reconciliation: lastReconciliation(db),
     stopped: (db.prepare("SELECT key FROM settings WHERE key LIKE 'stop.%' AND value = 'on' ORDER BY key").all() as { key: string }[])
       .map((r) => r.key.slice("stop.".length)).map((agent) => ({ agent, ...stopReason(db, agent)! })),
     counts: counts(db, rows, pending.filter((p) => !p.expired).length),

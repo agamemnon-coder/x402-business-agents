@@ -8,6 +8,8 @@
 //   --once     one sync (and the executions it starts), then exit
 
 import { displayKey } from "../relay/sign.js";
+import { reconcile } from "../finance/reconcile.js";
+import { reconcileSourcesFromEnv } from "../finance/sources.js";
 import { redactSecrets } from "../lib/redact.js";
 import { keyPath } from "../metal/agentCli.js";
 import { randomBytes } from "node:crypto";
@@ -89,9 +91,25 @@ async function cardsTick(): Promise<void> {
   }
 }
 
+// The light daily reconciliation (finance item 5): a minute after start, then once a day. Read-only; a difference is
+// logged and shown on the dashboard.
+const DAY_MS = 24 * 60 * 60 * 1000;
+let reconcileAt = Date.now() - DAY_MS + 60_000;
+async function reconcileTick(): Promise<void> {
+  if (Date.now() - reconcileAt < DAY_MS) return;
+  reconcileAt = Date.now();
+  try {
+    const r = await reconcile(db, reconcileSourcesFromEnv());
+    console.log(`${stamp()} reconcile ${r.checked} flows checked, ${r.differences.length} difference(s)${r.skipped.length ? `; not checked: ${r.skipped.join(", ")}` : ""}`);
+  } catch (e) {
+    console.error(`${stamp()} reconcile ${redactSecrets((e as Error).message)}`);
+  }
+}
+
 let lastError = "";
 while (!stopping) {
   await cardsTick();
+  await reconcileTick();
   try {
     await runner.syncOnce();
     if (lastError) console.log(`${stamp()} relay reachable again`);

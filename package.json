@@ -44,7 +44,8 @@
     "mcp": "tsx src/cli/mcp.ts",
     "outside-agent": "tsx src/cli/outside-agent.ts",
     "judge": "tsx src/cli/judge.ts",
-    "redteam": "tsx src/cli/redteam.ts"
+    "redteam": "tsx src/cli/redteam.ts",
+    "reconcile": "tsx src/cli/reconcile.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
