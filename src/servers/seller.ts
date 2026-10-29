@@ -189,7 +189,9 @@ export function sellerApp(opts: SellerOptions) {
            VALUES (?, ?, ?, NULL, NULL, ?, NULL, ?, ?, ?, ?, ?, ?, 'DELIVERED', ?, 'bajillion', ?)`,
         ).run(
           PREPAID_RESOURCE, centsOfUnits(settled?.amountUnits), settled?.payer ?? "", id || null, url, JSON.stringify({ seq: String(seq) }),
-          sha256Hex(bodyText), bodyText, up.purchaseId, settled?.requirements ?? null, new Date().toISOString(), JSON.stringify(settled?.receipt ?? null),
+          sha256Hex(bodyText), bodyText, up.purchaseId, settled?.requirements ?? null, new Date().toISOString(),
+          // The buyer's signed payment (from its header) and the service's receipt, so verify can check it again.
+          JSON.stringify({ paid, settled: settled?.receipt ?? null }),
         );
         if (info.changes === 1) audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { settlement_id: id, scheme: "bajillion", body_sha256: sha256Hex(bodyText) });
       }).immediate();

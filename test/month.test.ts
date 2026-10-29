@@ -50,6 +50,11 @@ describe("a month in 90 seconds (simulated)", () => {
     expect(aiDays).toBe(toCents(m.pnl[1]!.ai));
   });
 
+  it("compares Kestrel's payments by clearing with a transaction per query", () => {
+    expect(m.clearing.payments).toBe(m.days.reduce((s, d) => s + d.sales, 0));
+    expect(m.clearing).toMatchObject({ exact_tx: m.clearing.payments, clearing_tx: 10 });
+  });
+
   it("prices the AI from measured tokens: cents, not dollars, for a month of documents", () => {
     const ai = m.pnl.reduce((s, l) => s + toCents(l.ai), 0);
     expect(ai).toBeGreaterThan(0);

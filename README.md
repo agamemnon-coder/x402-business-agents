@@ -46,6 +46,27 @@ The merchants are fictional (Microsoft's sample company names).
 
 Run log: [docs/runs/2026-10-29-cards.md](docs/runs/2026-10-29-cards.md).
 
+## Selling by Metal clearing (prepaid, new on testnet)
+
+Metal's [Offer Pay-per-Call Clearing](https://docs.metalntwx.com/agents/clearing) went live on testnet in October
+2026. Kestrel deposits *USDZ once and pays each 0.07 query with a signed running total. Metal's clearing service
+issues a receipt and certifies the totals on chain each epoch, so there is no transaction per query.
+
+- **Two routes.**
+  - `/v1/fx-tick/prepaid` takes clearing only.
+  - `/v1/fx-tick` stays as it was: exact, under Kestrel's mandate, with its signed order.
+  - Kestrel tries clearing first. It falls back to the mandate route whenever clearing took nothing, so a sale never
+    depends on the new scheme. It never pays a tick a second way when a clearing payment may have been counted.
+- **Offered only when we can deliver.** Seen live: a clearing payment is counted when the buyer makes it, before the
+  seller can refuse. So before the prepaid route makes an offer, the sourcing agent checks the supplier's price
+  against its mandate and the CFO policy, for free. If that check fails, the answer is 503 "not offered" and nobody
+  pays.
+- **On the dashboard,** the prepaid clearing budget is shown apart from the mandates.
+- **`npm run verify`** checks every clearing sale's signed payment again with Metal's service.
+- **Commands:** `npm run clearing -- deposit 5.00 | buy <from> <to> | withdraw`. Earnings leave clearing once their
+  epoch is final, about 20 minutes later.
+- Run log: [docs/runs/2026-10-29-clearing.md](docs/runs/2026-10-29-clearing.md).
+
 ## A month in 90 seconds (simulated)
 
 `npm run dashboard` and the relay serve `/month`. A seeded month at small-business scale replays in 90 seconds:
@@ -314,7 +335,7 @@ every pushed and pull-request commit.
 | x402 seller and supplier | `src/servers/seller.ts`, `src/servers/supplier.ts` |
 | Agents | `src/agents/` (sourcing, customer, treasury, disputes, sweep, invoice, euro bill) |
 | Executors (the only code that moves money) | `src/executors/` |
-| Metal | `src/metal/` (metal-agent CLI wrapper, mandate loading, x402 payments, chain reads) |
+| Metal | `src/metal/` (metal-agent CLI wrapper, mandate loading, x402 payments, chain reads, clearing) |
 | Airwallex | `src/airwallex/` (client, port, REST adapter, Issuing, webhooks); fakes for tests in `test/fakes/` |
 | Company cards | `src/policy/cards.ts` (issue, sync, record), `src/agents/cardBuyer.ts`, `src/policy/cardHooks.ts`, `src/cli/cards.ts` |
 | Claude | `src/claude/` |

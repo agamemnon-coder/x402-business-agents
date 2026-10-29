@@ -69,6 +69,9 @@ export interface MonthReport {
   bills: { day: number; label: string; eur: string; usd: string }[];
   company: { revenue: string; costs: string; bills: string; net: string };
   counts: { alone: number; waiting: number; blocked: number };
+  /** Kestrel's payments to us: one transaction each with exact, or a weekly deposit and our weekly withdrawal with
+   *  Metal clearing (the epoch certificates are Metal's, not ours). Supplier purchases stay one per tick, under the mandate. */
+  clearing: { payments: number; exact_tx: number; clearing_tx: number };
 }
 
 /** Mulberry32: small, seeded, good enough to shape a believable month. */
@@ -304,11 +307,13 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
       "Simulated month at small-business scale: no chain or Airwallex call; the live runs prove each step one at a time.",
       "Queries: about 5,000 on weekdays and 2,000 at weekends, at 0.05 then 0.07 USDZ (test dollars, shown as USD).",
       `Card spend and bills converted at ${EUR_USD} USD per EUR; Airwallex FX spread assumed ${(FX_SPREAD * 100).toFixed(1)}%; SWIFT fee ${fromCents(SWIFT_FEE_EUR_CENTS)} EUR as the sandbox charged.`,
+      "Kestrel pays by Metal clearing (new on testnet): a deposit each week and our withdrawal each week instead of a transaction per query; the mandate route stays the fallback.",
       "AI cost: Haiku, Sonnet and Opus list prices times the tokens each kind of call used in rehearsal 3.",
       "The CFO's decisions are scripted (marked simulated); in the live build each one is a Face ID approval.",
     ],
     days, events, pnl, bills,
     company: { revenue: fromCents(revenue), costs: fromCents(costs), bills: fromCents(billsUsd), net: money(revenue - costs - billsUsd) },
     counts,
+    clearing: { payments: sum((d) => d.sales), exact_tx: sum((d) => d.sales), clearing_tx: 2 * Math.ceil(days.length / 7) },
   };
 }

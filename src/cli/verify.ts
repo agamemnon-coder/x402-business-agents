@@ -4,6 +4,7 @@
 // - every refund and sweep pull against the credential that made it;
 // - every disputed sale's payment with its signed order (verifyMandatePayment);
 // - every approval made with a passkey, from the stored signature and the pinned public key (offline);
+// - every sale paid by Metal clearing, its signed payment checked again with Metal's clearing service;
 // - with Airwallex keys: every booked deposit, conversion and transfer against Airwallex (read-only).
 // Prints one line per check and exits 1 if any fails.
 
@@ -17,6 +18,11 @@ import { openDb } from "../db/open.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
 import { credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
 import { addresses } from "../world/runtime.js";
+import { verifyClearingPayment, type ClearingPaid } from "@metalntwx/metal-pay";
+import type { PaymentRequirements } from "@x402/core/types";
+import { clearingDeployment } from "../metal/clearing.js";
+import { rpcUrl } from "../metal/network.js";
+import { redactSecrets } from "../lib/redact.js";
 
 const db = openDb();
 let failed = 0;
@@ -69,6 +75,27 @@ for (const d of disputes) {
   const evidence = await verifyOrders(salesBySeq(db, refs), addr.customer as Address);
   const good = evidence.filter((e) => e.signed_order && e.within_mandate && e.payer_is_customer).length;
   line(good === evidence.length, `dispute ${d.dispute_id} orders`, `${good}/${evidence.length} signed by the customer's mandate key, inside its mandate`);
+}
+
+// Sales paid by Metal clearing: the buyer's signed payment, checked again with Metal's clearing service.
+const cleared = db.prepare("SELECT sale_id, payer, requirements_json, clearing_json FROM sales WHERE scheme = 'bajillion' AND status = 'DELIVERED'").all() as
+  { sale_id: number; payer: string; requirements_json: string | null; clearing_json: string | null }[];
+if (cleared.length) {
+  const d = await clearingDeployment();
+  let good = 0;
+  const bad: string[] = [];
+  for (const sale of cleared) {
+    try {
+      const { paid } = JSON.parse(sale.clearing_json ?? "{}") as { paid?: ClearingPaid | null };
+      if (!paid || !sale.requirements_json || !d) throw new Error("no stored payment");
+      const v = await verifyClearingPayment(paid, JSON.parse(sale.requirements_json) as PaymentRequirements, { rpcUrl: rpcUrl(), serviceUrl: d.serviceUrl, settlement: d.settlement });
+      if (v.payer.toLowerCase() !== sale.payer.toLowerCase()) throw new Error(`paid by ${v.payer.slice(0, 12)}…, recorded as ${sale.payer.slice(0, 12)}…`);
+      good++;
+    } catch (e) {
+      bad.push(`sale ${sale.sale_id}: ${redactSecrets((e as Error).message).slice(0, 120)}`);
+    }
+  }
+  line(bad.length === 0, "clearing sales", `${good}/${cleared.length} receipts confirmed by Metal's clearing service${bad.length ? `; ${bad.slice(0, 3).join("; ")}` : ""}`);
 }
 
 for (const c of await reverifyPasskeyApprovals(db)) line(c.ok, c.what, c.detail);
