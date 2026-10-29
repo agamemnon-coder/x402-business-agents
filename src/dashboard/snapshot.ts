@@ -29,6 +29,8 @@ export interface Budget {
   credentials: number;
   /** The CFO policy's limit per payment, inside the mandate's cap; null when only the mandate's cap applies. */
   policy_cap: string | null;
+  /** The newest payment made under this mandate, as proof on the explorer; null before the first one. */
+  last_tx: string | null;
 }
 
 export interface Pending {
@@ -156,6 +158,8 @@ export interface Snapshot {
     chain_spent_usdz: string; chain_limit_usdz: string;
     waiting: number; waiting_eur: string; waiting_usdz: string;
     blocked_eur: string; blocked_usdz: string;
+    /** What the blocked euros are: invoices stopped as possible fraud, and card attempts Airwallex declined. */
+    blocked_fraud_eur: string; blocked_fraud_n: number; blocked_declined_eur: string; blocked_declined_n: number;
   };
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
@@ -304,6 +308,7 @@ function budgets(db: DB, rows: AuditRow[], roleOf: (address: string) => string |
       remaining: signed(safeCents(m.budget) - spent), expires_on: isNaN(day.getTime()) ? null : day.toISOString().slice(0, 10),
       credentials: m.credentials,
       policy_cap: agent === "customer" ? null : policyValue(db, `cap.${agent}`) || null,
+      last_tx: lastTx(db, agent),
     };
   };
   const agents = (["sourcing", "support", "treasury"] as const).map(one).filter((b): b is Budget => b !== null);
@@ -313,6 +318,18 @@ function budgets(db: DB, rows: AuditRow[], roleOf: (address: string) => string |
     allocated: fromCents(agents.reduce((a, b) => a + safeCents(b.budget), 0)),
     limit: fromCents(TOTAL_BUDGET_CENTS),
   };
+}
+
+/** Where each mandate's payments are recorded: purchases from the supplier, refunds, sweeps and the customer's buys. */
+const LAST_TX_SQL: Record<DashAgent, string> = {
+  sourcing: "SELECT tx_hash AS tx FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY id DESC LIMIT 1",
+  support: "SELECT tx_hash AS tx FROM refunds WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY refund_id DESC LIMIT 1",
+  treasury: "SELECT tx_hash AS tx FROM sweeps WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+  customer: "SELECT tx_hash AS tx FROM sales WHERE tx_hash IS NOT NULL ORDER BY sale_id DESC LIMIT 1",
+};
+function lastTx(db: DB, agent: DashAgent): string | null {
+  const r = db.prepare(LAST_TX_SQL[agent]).get() as { tx: string } | undefined;
+  return r && /^0x[0-9a-fA-F]{64}$/.test(r.tx) ? r.tx : null;
 }
 
 function setting(db: DB, key: string): string | null {
@@ -605,8 +622,12 @@ function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: stri
     chain_spent_usdz: fromCents(chainSpent), chain_limit_usdz: b.limit,
     waiting: live.length, waiting_eur: fromCents(waitingEur), waiting_usdz: fromCents(waitingUsdz),
     blocked_eur: fromCents(fraudEur + declinedEur), blocked_usdz: fromCents(refusedUsdz),
+    blocked_fraud_eur: fromCents(fraudEur), blocked_fraud_n: rows.filter((r) => r.event === "invoice.fraud_suspected").length,
+    blocked_declined_eur: fromCents(declinedEur), blocked_declined_n: hasCards ? one("SELECT COUNT(*) AS c FROM card_transactions WHERE approved = 0") : 0,
   };
 }
+
+const FEED_QUIET = new Set(["card.duplicate_merged"]);
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
 function counts(db: DB, rows: AuditRow[], waiting: number): Snapshot["counts"] {
@@ -705,7 +726,8 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     return { seq: r.seq, ts: r.ts, agent, what: REFUSAL_WHAT[r.event] ?? r.event, reason: d.text };
   });
 
-  const feed: FeedItem[] = rows.slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf) }));
+  // Bookkeeping of our own (two ids for one card authorisation) stays in the audit log, not in the CFO's feed.
+  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event)).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf) }));
 
   return {
     generated_at: now.toISOString(),

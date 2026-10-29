@@ -177,6 +177,10 @@ table.agents td .sub { display: block; color: var(--faint); font-size: 12.5px; }
 .feed .t { font-size: 14.5px; overflow-wrap: anywhere; }
 .feed .who { color: var(--faint); font-size: 12.5px; margin-top: 2px; }
 .feed .proof { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.money .k.sub { font-size: 12px; margin-top: 4px; }
+.txlink { display: inline-block; margin-top: 10px; font-size: 12.5px; color: var(--accent); text-decoration: none; }
+.txlink:hover { text-decoration: underline; }
 .feed .proof a { color: var(--accent); text-decoration: none; }
 .feed .proof .mono { font-size: 12px; }
 .feed .r { font-size: 12.5px; color: var(--faint); white-space: nowrap; padding-top: 2px; }
@@ -601,6 +605,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
         ]),
         el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", group(a.spent)), " of " + tusd(a.budget) + " used"]), txt("span", "", group(a.remaining) + " left")])]),
         a.credentials > 1 ? el("ul", "facts", [el("li", "", ["Limits changed", txt("b", "", (a.credentials - 1) + "× with your Face ID")])]) : null,
+        a.last_tx && TX.test(a.last_tx) ? (function () { var l = txt("a", "txlink mono", "Latest payment on chain " + a.last_tx.slice(0, 10) + "… ↗"); l.href = EXPLORER + a.last_tx; l.target = "_blank"; l.rel = "noopener noreferrer"; return l; })() : null,
       ]);
     });
     var cl = d.clearing;
@@ -699,10 +704,10 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
 
   function renderTreasury(d) {
     var t = d.treasury, a = t.airwallex, nodes = [];
-    document.getElementById("treasury-asof").textContent = a ? "Airwallex as of " + hm(a.as_of) : "";
+    document.getElementById("treasury-asof").textContent = a ? "Airwallex balances checked at " + hm(a.as_of) : "";
     if (a) {
       nodes.push(el("div", "money num", [
-        el("div", "m", [txt("div", "k", "Free euros for bills"), txt("div", "v" + (String(a.eur.free).charAt(0) === "-" ? " neg" : ""), eur(a.eur.free))]),
+        el("div", "m", [txt("div", "k", "Free euros for new bills"), txt("div", "v" + (String(a.eur.free).charAt(0) === "-" ? " neg" : ""), eur(a.eur.free)), txt("div", "k sub", "after the reserve and the bills already planned")]),
         el("div", "m", [txt("div", "k", "Euro reserve kept"), txt("div", "v", eur(a.eur.floor))]),
       ]));
       nodes.push(el("div", "rows num", [el("div", "", ["US dollars we may convert", txt("b", "", usd(a.usd.headroom))])]));
@@ -722,7 +727,9 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
   }
 
   function renderRefusals(d) {
-    document.getElementById("refusals-count").textContent = String(d.refusals.length);
+    // The count matches "Stopped in time"; expired proposals are listed too, but nobody was stopped by them.
+    var expired = d.refusals.filter(function (r) { return /expired/i.test(r.what); }).length;
+    document.getElementById("refusals-count").textContent = String(d.counts ? d.counts.blocked : d.refusals.length - expired) + (expired ? " + " + expired + " expired" : "");
     var nodes = d.refusals.slice(0, 10).map(function (r) {
       return el("div", "refusal", [el("div", "what", [icon("ban"), plain(r.what)]), txt("div", "reason", plain(r.reason)), txt("div", "meta num", agentName(r.agent) + " · " + hm(r.ts))]);
     });
@@ -740,6 +747,14 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
     return el("div", "kpi " + cls, [el("div", "lab", [el("span", "ic", [icon(iconName)]), txt("span", "", label)]),
       txt("div", "v num", value), txt("div", "of num", unit || ""), extra || null, note ? txt("div", "note2", note) : null]);
   }
+  // What the stopped euros are made of, so the headline adds up.
+  function blockedNote(m, n) {
+    var parts = [];
+    if (m.blocked_fraud_n) parts.push(m.blocked_fraud_n + " fake invoice" + (m.blocked_fraud_n > 1 ? "s" : "") + " (" + eur(m.blocked_fraud_eur) + ")");
+    if (m.blocked_declined_n) parts.push(m.blocked_declined_n + " card decline" + (m.blocked_declined_n > 1 ? "s" : "") + " (" + eur(m.blocked_declined_eur) + ")");
+    if (cents(m.blocked_usdz)) parts.push("refusals on chain");
+    return n + " attempts stopped" + (parts.length ? ": " + parts.join(", ") : " before money moved");
+  }
   function renderKpis(d) {
     var m = d.money;
     if (!m) {
@@ -753,7 +768,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
       kpi("ok", "credit-card", "Card spend this month", eur(m.card_spent_eur), "of " + eur(m.card_limit_eur), "spent by the agents alone, inside the cards' limits", bar(m.card_spent_eur, m.card_limit_eur)),
       kpi("ok", "file-lock-2", "On-chain spend", group(m.chain_spent_usdz), "of " + tusd(m.chain_limit_usdz), "paid under the mandates, per request", bar(m.chain_spent_usdz, m.chain_limit_usdz)),
       kpi("wait", "scan-face", "Waiting for your Face ID", m.waiting ? String(m.waiting) : "Nothing", m.waiting ? (waitMoney || "proposals") : "", m.waiting ? "each one on the exact terms" : "the agents are inside their limits"),
-      kpi("bad", "shield-check", "Stopped in time", eur(m.blocked_eur), cents(m.blocked_usdz) ? "+ " + tusd(m.blocked_usdz) : "", d.counts.blocked + " attempts blocked before money moved"),
+      kpi("bad", "shield-check", "Stopped in time", eur(m.blocked_eur), cents(m.blocked_usdz) ? "+ " + tusd(m.blocked_usdz) : "", blockedNote(m, d.counts.blocked)),
     ]);
   }
   // One row per agent: both rails side by side.
@@ -794,7 +809,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
     st.hidden = !stops.length;
     if (stops.length) st.replaceChildren(icon("octagon-x"), txt("span", "", stops.map(function (x) { return agentName(x.agent); }).join(", ") + " stopped automatically: velocity limit."),
       txt("small", "", stops.map(function (x) { return plain(x.reason) + (x.since ? " at " + hm(x.since) : ""); }).join("; ") + ". Every payment it tries is refused and its card is frozen; lifting it needs a proposal and Face ID."));
-    document.getElementById("stop").hidden = !d.relay || !!d.frozen || !!d.recorded;
+    if (!d.recorded) document.getElementById("stop").hidden = !d.relay || !!d.frozen;
     document.getElementById("auditline").textContent = "Audit log: " + d.audit.rows + " rows, chain " + (d.audit.intact ? "intact" : "BROKEN")
       + (d.reconciliation ? " · Reconciled with Airwallex and Metal at " + hm(d.reconciliation.at) + ": " + d.reconciliation.checked + " flows, " + (d.reconciliation.differences ? d.reconciliation.differences + " difference(s)" : "no differences") : "");
     document.getElementById("passkey").textContent = d.passkey.label
@@ -842,7 +857,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
       document.getElementById("p-over").textContent = eur(p.over_limit_eur).replace(".00", "");
       document.getElementById("p-fakes").textContent = p.fake_invoices + " + " + p.ai_tricks;
       countUp("p-faceid", p.face_id);
-      document.getElementById("p-src").textContent = "From the recorded live run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + RECORDED.run + ", " + recCompany() + "), on Metal testnet and the Airwallex sandbox (test money). Every number comes from its audit log.";
+      document.getElementById("p-src").textContent = "From the recorded live run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "), on Metal testnet and the Airwallex sandbox (test money). Every number comes from its audit log.";
     }
     if (note) document.getElementById("p-src").textContent += " " + note;
     document.getElementById("landing").hidden = false;
@@ -883,8 +898,11 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
     nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", true]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
-    document.getElementById("rec-text").textContent = "Recorded run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + RECORDED.run + ", " + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
+    document.getElementById("rec-text").textContent = "Recorded run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
     live("rec", "Recorded");
+    // The emergency stop is the CFO's, live only; in a recording it shows where it is, but does nothing.
+    var st = document.getElementById("stop"); st.hidden = false; st.disabled = true; st.lastChild.textContent = "Emergency stop · live only";
+    st.title = "The CFO's emergency stop: one Face ID freezes every agent and every card. Live only, not in a recording.";
     showDash(); render(snap);
   } else if (MODE === "local" || viewKey) {
     nav([["Dashboard", "./", true], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [] : [["Policy", "policy"]]));

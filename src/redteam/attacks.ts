@@ -190,7 +190,7 @@ export const ATTACKS: Attack[] = [
       const outs = [];
       for (const c of tries) { w.advance(1000); outs.push(await processPolicyRequest(w.db, policyRequest(w, w.cfo, c), w.now())); }
       const after = n(w, "SELECT COUNT(*) AS n FROM proposals WHERE kind = 'policy_change'");
-      return { attempt: "made the CFO's own passkey sign three loosenings on a taken-over phone page: lift the marketing agent's stop, raise the refund threshold, lift the emergency stop",
+      return { attempt: "made the CFO's own passkey sign three loosenings on a taken-over phone page: lift the sales agent's stop, raise the refund threshold, lift the emergency stop",
         blocked: outs.every((o) => o.status === "refused") && after === before && stopped(w.db, "support"),
         defence: "the phone may only tighten; a loosening is proposed on the runner and then approved with Face ID", evidence: outs.map((o) => o.message).join(" / ") };
     },

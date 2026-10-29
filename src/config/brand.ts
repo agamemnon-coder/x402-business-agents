@@ -10,7 +10,7 @@ export const COMPANY = "Northwind Outdoor";
 /** What each agent is called where a person reads it, and its one job. */
 export const AGENT_DISPLAY: Record<"sourcing" | "support" | "treasury", { name: string; job: string }> = {
   sourcing: { name: "Operations agent", job: "buys live stock checks from the warehouse API and pays the warehouse software" },
-  support: { name: "Marketing agent", job: "pays for ads and settles retailers' claims" },
+  support: { name: "Sales agent", job: "pays for ads and settles retailers' claims" },
   treasury: { name: "Finance agent", job: "pays the manufacturer by SWIFT, sweeps earnings to Airwallex and pays the bookkeeping" },
 };
 

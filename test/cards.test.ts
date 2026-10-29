@@ -38,14 +38,14 @@ describe("a company card per agent (K2)", () => {
       { agent: "support", allowed_mccs: "7311", allowed_currencies: "EUR", active_to: end },
       { agent: "treasury", allowed_mccs: "5734", allowed_currencies: "EUR", active_to: end },
     ]);
-    // The marketing agent's card is for ads: warehouse software on it is declined by the card issuer itself.
-    const t = await buyPlan(db, awx, "packwise-on-marketing-card", now);
+    // The sales agent's card is for ads: warehouse software on it is declined by the card issuer itself.
+    const t = await buyPlan(db, awx, "packwise-on-sales-card", now);
     expect(t).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
   });
 
   it("brings an adopted card's merchant categories and currencies back to the policy", async () => {
-    const h = await awx.createCardholder({ email: "agents+support@northwind-outdoor.example", firstName: "Marketing", lastName: "Agent" });
-    await awx.createCard({ cardholderId: h.id, nickname: "marketing agent: ads", createdBy: "x", limits: { currency: "EUR", perTxCents: 6000, monthlyCents: 15000 } });
+    const h = await awx.createCardholder({ email: "agents+support@northwind-outdoor.example", firstName: "Sales", lastName: "Agent" });
+    await awx.createCard({ cardholderId: h.id, nickname: "sales agent: ads", createdBy: "x", limits: { currency: "EUR", perTxCents: 6000, monthlyCents: 15000 } });
     await setupCards(db, awx, now);
     expect(awx.cards[0]!.controls).toMatchObject({ mccs: ["7311"], currencies: ["EUR"] });
     expect(events(db, "card.controls_synced")[0]).toMatchObject({ agent: "support", from: "any merchant, any currency", to: "MCC 7311, EUR" });
@@ -57,7 +57,7 @@ describe("a company card per agent (K2)", () => {
     expect(awx.holders).toHaveLength(3);
     expect(awx.cards.map((c) => [c.nickname, c.limits?.perTxCents, c.limits?.monthlyCents])).toEqual([
       ["operations agent: warehouse software", 3000, 10000],
-      ["marketing agent: ads", 6000, 15000],
+      ["sales agent: ads", 6000, 15000],
       ["finance agent: bookkeeping", 2500, 5000],
     ]);
     const rows = db.prepare("SELECT agent, last4, per_tx_cents FROM cards ORDER BY agent").all();

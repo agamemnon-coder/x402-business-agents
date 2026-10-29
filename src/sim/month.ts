@@ -8,6 +8,7 @@
 // The people's decisions are scripted and marked "CFO (simulated)". Amounts are integer cents; the run is seeded,
 // so the same seed gives the same month.
 
+import { agentName } from "../config/brand.js";
 import { CARDS, PLANS, type Agent } from "../config/policy.js";
 import { openDb } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
@@ -144,7 +145,7 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
     const lim = cardLimit[p.agent];
     const over = p.amountCents > lim.per ? `over its ${fromCents(lim.per)} EUR per purchase` : cardSpent[p.agent] + p.amountCents > lim.month ? `over its ${fromCents(lim.month)} EUR a month` : null;
     if (over) {
-      ev(day, minute, p.agent, "blocked", `Airwallex declined ${fromCents(p.amountCents)} EUR at ${p.merchant} (${p.label}) on the ${p.agent} agent's card: ${over}`);
+      ev(day, minute, p.agent, "blocked", `Airwallex declined ${fromCents(p.amountCents)} EUR at ${p.merchant} (${p.label}) on the ${agentName(p.agent)}'s card: ${over}`);
       counts.blocked++;
       return false;
     }
@@ -265,7 +266,7 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
       const finding = assessInvoice(fraudDb, fake, "Please note our new bank details. Payment is urgent.");
       ai("treasury", "classify"); ai("treasury", "extract"); ai("treasury", "review");
       if (finding.blocked) {
-        ev(day, 560, "treasury", "blocked", `Invoice from "${fake.vendor}" for 1,850.00 EUR blocked before Airwallex: ${finding.signals.filter((s) => s.blocks).map((s) => s.code.replace(/_/g, " ")).join(", ")}. Opus explained how to verify; the supplier confirmed by phone it was not theirs`);
+        ev(day, 560, "treasury", "blocked", `Invoice from "${fake.vendor}" for 1,850.00 EUR blocked before Airwallex: ${finding.signals.filter((s) => s.blocks).map((s) => s.code.replace(/_/g, " ")).join(", ")}. Purser said how to verify; the supplier confirmed by phone it was not theirs`);
         counts.blocked++;
       }
     }

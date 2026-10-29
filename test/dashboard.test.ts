@@ -54,6 +54,12 @@ function ledger(): DB {
 }
 
 describe("dashboard snapshot", () => {
+  it("links each mandate to its newest payment on chain, and none before the first", () => {
+    const s = buildSnapshot(ledger(), t0);
+    expect(Object.fromEntries(s.budgets.agents.map((a) => [a.agent, a.last_tx]))).toEqual({ sourcing: null, support: TX, treasury: TX });
+    expect(s.budgets.counterparty!.last_tx).toBeNull();
+  });
+
   it("derives each agent's budget and spend from the ledger, summed across replaced credentials", () => {
     const s = buildSnapshot(ledger(), t0);
     expect(s.budgets.agents.map((a) => [a.agent, a.cap, a.budget, a.spent, a.remaining, a.payee, a.credentials])).toEqual([
@@ -192,6 +198,8 @@ describe("dashboard snapshot", () => {
     audit(db, "system", "card.duplicate_merged", "legacy-1", { agent: "support", amount: "61.00", currency: "EUR", kept: "card-tx-1" });
     const declines = buildSnapshot(db, t0).refusals.filter((r) => /61\.00/.test(r.reason));
     expect(declines).toHaveLength(1);
+    // The merge is our own bookkeeping: in the audit log, not in the CFO's activity feed.
+    expect(buildSnapshot(db, t0).feed.map((f) => f.event)).not.toContain("card.duplicate_merged");
   });
 
   it("sums the money, not just the events: card spend, chain spend, what waits and what was stopped", async () => {
@@ -209,6 +217,7 @@ describe("dashboard snapshot", () => {
       chain_spent_usdz: "2.70", chain_limit_usdz: "20.00", // purchases 1.20, refunds 0.15, sweep 1.35
       waiting: 1, waiting_eur: "0.00", waiting_usdz: "0.15",
       blocked_eur: "1895.00", blocked_usdz: "0.00",
+      blocked_fraud_eur: "1850.00", blocked_fraud_n: 1, blocked_declined_eur: "45.00", blocked_declined_n: 1,
     });
   });
 
@@ -222,8 +231,8 @@ describe("dashboard snapshot", () => {
     expect(s.feed[1]).toMatchObject({ text: "CFO policy: Operations agent: most per payment changed from no extra limit to 0.03 USDZ (P-0004)", tone: "approval" });
     expect(s.refusals[0]).toMatchObject({ what: "Supplier purchase refused", reason: "Purchase of stock check #42 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ" });
     // A card limit is in euros, a mandate limit in Metal's test dollars.
-    audit(db, "human", "policy.changed", "card.support.per_tx", { key: "card.support.per_tx", label: "Marketing agent's card: most per purchase", from: "60.00", to: "80.00", proposal_id: "P-0005" });
-    expect(buildSnapshot(db, t0).feed[0]!.text).toBe("CFO policy: Marketing agent's card: most per purchase changed from 60.00 EUR to 80.00 EUR (P-0005)");
+    audit(db, "human", "policy.changed", "card.support.per_tx", { key: "card.support.per_tx", label: "Sales agent's card: most per purchase", from: "60.00", to: "80.00", proposal_id: "P-0005" });
+    expect(buildSnapshot(db, t0).feed[0]!.text).toBe("CFO policy: Sales agent's card: most per purchase changed from 60.00 EUR to 80.00 EUR (P-0005)");
     expect(summarize("policy_change", JSON.stringify({ changes: [{ label: "Operations agent: most per payment", from: "", to: "0.03" }, { label: "EUR reserve floor", from: "500.00", to: "800.00" }] })))
       .toBe("Operations agent: most per payment: no extra limit → 0.03; EUR reserve floor: 500.00 → 800.00");
   });

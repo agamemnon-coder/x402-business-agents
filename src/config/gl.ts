@@ -27,7 +27,7 @@ export const COST_CENTRES: Record<Agent, string> & Record<string, string> = {
 
 export const COST_CENTRE_NAMES: Record<string, string> = {
   CC100: "Operations agent (operations)",
-  CC200: "Marketing agent (marketing and retail accounts)",
+  CC200: "Sales agent (ads and retail accounts)",
   CC300: "Finance agent (finance)",
   CC400: "Outside agents (agent API)",
 };

@@ -68,7 +68,7 @@ export const DATA_TOLERANCE_UNITS = 0;
  */
 export const CARDS: Record<Agent, { firstName: string; email: string; nickname: string; perTxCents: number; monthlyCents: number; buys: string }> = {
   sourcing: { firstName: "Operations", email: "agents+sourcing@northwind-outdoor.example", nickname: "operations agent: warehouse software", perTxCents: 3000, monthlyCents: 10000, buys: "warehouse software" },
-  support: { firstName: "Marketing", email: "agents+support@northwind-outdoor.example", nickname: "marketing agent: ads", perTxCents: 6000, monthlyCents: 15000, buys: "ads" },
+  support: { firstName: "Sales", email: "agents+support@northwind-outdoor.example", nickname: "sales agent: ads", perTxCents: 6000, monthlyCents: 15000, buys: "ads" },
   treasury: { firstName: "Finance", email: "agents+treasury@northwind-outdoor.example", nickname: "finance agent: bookkeeping", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
 };
 
@@ -91,6 +91,6 @@ export const PLANS: Record<string, { agent: Agent; merchant: string; label: stri
   "adwave-starter": { agent: "support", merchant: "Adwave", label: "Ads credit, starter", amountCents: 3800, mcc: "7311" },
   "adwave-growth": { agent: "support", merchant: "Adwave", label: "Ads credit, growth", amountCents: 9500, mcc: "7311" },
   "ledgerly-starter": { agent: "treasury", merchant: "Ledgerly", label: "Bookkeeping, starter, monthly", amountCents: 1500, mcc: "5734" },
-  // Not a plan the agent should buy: warehouse software on the marketing card, which may pay only ads (a demo moment).
-  "packwise-on-marketing-card": { agent: "support", merchant: "Packwise", label: "Starter plan, monthly, on the marketing card", amountCents: 1999, mcc: "5734" },
+  // Not a plan the agent should buy: warehouse software on the sales card, which may pay only ads (a demo moment).
+  "packwise-on-sales-card": { agent: "support", merchant: "Packwise", label: "Starter plan, monthly, on the sales card", amountCents: 1999, mcc: "5734" },
 };

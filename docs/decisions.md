@@ -20,7 +20,7 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
   | Id | Shown as | Its job |
   |---|---|---|
   | `sourcing` | Operations agent | Buys live stock checks from the warehouse API (Stockline) per request on Metal. Its card pays the warehouse software. |
-  | `support` | Marketing agent | Its card pays for ads. It also owns the retailers' accounts, so it settles a retailer's claim (refunds on Metal). |
+  | `support` | Sales agent | Its card pays for ads. It also owns the retailers' accounts, so it settles a retailer's claim (refunds on Metal). |
   | `treasury` | Finance agent | Pays the manufacturer's EUR invoice by SWIFT with FX, sweeps the earnings to Airwallex, and pays the bookkeeping on its card. |
 
 - **Why:** renaming ids would touch money, mandate and policy code, the key files and every ledger, the night before
@@ -38,7 +38,7 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 | Manufacturer paid by SWIFT invoice with FX | Lizenzhaus Beispiel GmbH | Bergtex Textil GmbH |
 | What is sold per request | an EUR/USD tick | a live stock check for one product (units on hand and wholesale price) |
 | Operations agent's card | Northwind Market Data | Packwise (warehouse software) |
-| Marketing agent's card | Tailspin Helpdesk | Adwave (ads) |
+| Sales agent's card | Tailspin Helpdesk | Adwave (ads) |
 | Finance agent's card | Contoso Books | Ledgerly (bookkeeping) |
 
 - **Why:** a juror from Airwallex should recognise the business at once: a brand that buys stock data, pays ads
@@ -100,3 +100,11 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
   would cost minutes in front of the camera and add a step that can fail, for no gain: the bootstrap is the same
   code and its transactions are on the explorer with their time.
 - **If wrong:** a world can be bootstrapped from zero in about four minutes; `rehearsal-6` shows it on the new code.
+
+### D9. The `support` agent is shown as the Sales agent
+
+- **What:** the agent with id `support` was shown as the Marketing agent. It is now the Sales agent: its card pays for
+  ads, and it settles the retailers' claims (refunds on Metal). The id stays (D2).
+- **Why:** a fresh juror read "the Marketing agent refunds wrong stock checks" as a leftover. A sales agent owns the
+  retailers' accounts, so both jobs fit one name.
+- **If wrong:** it is one line in `src/config/brand.ts` and the card's first name in `src/config/policy.ts`.
