@@ -4,7 +4,9 @@
 //   npm run s1:resume  the old credential is refused as revoked; sales resume at the approved price
 
 import { resolve } from "node:path";
-import { crossCheckNotice, parsePriceNoticeFallback } from "../agents/notices.js";
+import { crossCheckNotice } from "../agents/notices.js";
+import { attachReview } from "../claude/review.js";
+import { Tools } from "../claude/tools.js";
 import { proposePriceRise, type MandateReplaceTerms } from "../agents/treasury.js";
 import { RAISED_UPSTREAM_PRICE_CENTS } from "../config/policy.js";
 import { openDb } from "../db/open.js";
@@ -31,7 +33,13 @@ try {
     console.log(`GOAL             keep selling ticks at a margin, inside the 20.00 the mandates may spend`);
     setSetting(db, "system", "upstream_price", fromCents(RAISED_UPSTREAM_PRICE_CENTS));
     const noticePath = resolve(import.meta.dirname, "../../fixtures/feedstock-price-notice.txt");
-    const notice = parsePriceNoticeFallback(readFileSync(noticePath, "utf8"));
+    const tools = new Tools(db);
+    const noticeText = readFileSync(noticePath, "utf8");
+    const kind = await tools.classify(noticeText);
+    if (kind.value.kind !== "price_notice") throw new Error(`escalate: expected a price notice, ${kind.source} read ${kind.value.kind}`);
+    const read = await tools.priceNotice(noticeText);
+    const notice = read.value;
+    console.log(`                 read by ${read.source === "claude" ? `${kind.model} (classify) and ${read.model} (extract)` : `the deterministic parser (${read.note})`}`);
     const live = await liveOfferCents(supplierUrl);
     const check = crossCheckNotice(notice, live.cents);
     console.log(`NEW INFORMATION  ${notice.supplier} raises its price ${notice.old_price} -> ${notice.new_price}; live offer ${fromCents(live.cents)} (${check.ok ? "matches" : check.reason})`);
@@ -52,6 +60,10 @@ try {
       console.log(`                          sha256 ${pr.terms_sha256}`);
     }
     console.log(`                 option C: pause sales (approve nothing)`);
+    for (const pr of proposals) {
+      const r = await attachReview(db, tools, pr, `The supplier's live offer is ${fromCents(live.cents)}; the next purchase was refused on chain with ${refusal.refusal_reason}. Sell price now ${sellPrice(db)}.`);
+      console.log(`REVIEW           ${pr.proposal_id}: ${r.recommendation} (${r.source === "claude" ? "Opus, advisory" : "no model"}): ${r.summary}`);
+    }
     console.log(`\nNext: npm run proposals, then npm run approve -- <id> <first 8 hex>`);
   } else if (phase === "resume") {
     const done = db.prepare("SELECT terms_json, proposal_id FROM proposals WHERE kind = 'mandate_replace' AND status = 'EXECUTED' ORDER BY created_at DESC LIMIT 1").get() as { terms_json: string; proposal_id: string } | undefined;

@@ -3,7 +3,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { proposeInvoicePayment, seedTreasury } from "../agents/euroBill.js";
-import { parseInvoiceFallback } from "../agents/invoice.js";
+import { attachReview } from "../claude/review.js";
+import { Tools } from "../claude/tools.js";
 import { bookCredit } from "../agents/sweep.js";
 import { AirwallexRest } from "../airwallex/adapter.js";
 import { Airwallex, type AirwallexConfig } from "../airwallex/client.js";
@@ -20,7 +21,12 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
 
   const path = resolve(import.meta.dirname, "../../fixtures/lizenzhaus-invoice-LIC-2026-11.txt");
   const text = readFileSync(path, "utf8");
-  const inv = parseInvoiceFallback(text);
+  const tools = new Tools(db);
+  const kind = await tools.classify(text);
+  if (kind.value.kind !== "invoice") throw new Error(`escalate: expected an invoice, ${kind.source} read ${kind.value.kind}`);
+  const read = await tools.invoice(text);
+  const inv = read.value;
+  console.log(`                 read by ${read.source === "claude" ? `${kind.model} (classify) and ${read.model} (extract)` : `the deterministic parser (${read.note})`}`);
   console.log(`NEW INFORMATION  invoice ${inv.invoice_no} from ${inv.vendor}: EUR ${inv.amount}, due ${inv.due_date}`);
 
   const pending = db.prepare("SELECT proposal_id, status, terms_sha256 FROM proposals WHERE kind = 'invoice_payment' AND json_extract(terms_json, '$.invoice_no') = ? AND status IN ('PENDING_APPROVAL', 'APPROVED', 'EXECUTED')").get(inv.invoice_no) as
@@ -41,6 +47,8 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
     console.log(`                 convert only the shortfall: buy EUR ${t.conversion.buy_amount} for USD ${t.conversion.sell_amount} at ${t.conversion.client_rate}, quote ${t.conversion.quote_id} valid to ${t.conversion.valid_to}`);
   }
   console.log(`                 after: EUR free ${t.after.eur_free}, USD ${t.after.usd_available} (floor ${t.floors.usd_floor})`);
+  const review = await attachReview(db, tools, out.proposal, `Invoice ${inv.invoice_no} matches the allowlisted beneficiary. Free EUR before: ${fromCents(Math.max(0, s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents))}.`);
+  console.log(`REVIEW           ${review.recommendation} (${review.source === "claude" ? "Opus, advisory" : "no model"}): ${review.summary}`);
   console.log(`APPROVAL         ${out.proposal.proposal_id} expires ${t.expires_at}, sha256 ${out.proposal.terms_sha256}`);
   console.log(`                 npm run proposals, then npm run approve -- ${out.proposal.proposal_id} ${out.proposal.terms_sha256.slice(0, 8)}`);
 }
