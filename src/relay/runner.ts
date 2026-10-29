@@ -33,6 +33,9 @@ export interface RunnerDeps {
   /** Handles one Airwallex webhook the relay kept (src/policy/cardHooks.ts) and says what happened. Without it the
    *  runner leaves them on the relay. */
   onHook?: (hook: RelayedHook) => string;
+  /** Drafts rules from the CFO's words (P2, src/policy/fromText.ts) and says what became of them. Without it the
+   *  runner refuses such texts. */
+  draftPolicy?: (text: string) => Promise<{ proposalId: string | null; message: string }>;
 }
 
 export class RelayRunner {
@@ -111,11 +114,39 @@ export class RelayRunner {
     }
   }
 
+  /**
+   * The CFO's words go to Opus beside the syncs, so a slow model never holds up an approval. The ticket stays queued
+   * on the relay until the answer: a runner restarted meanwhile reads it again.
+   */
+  private draft(item: InboxItem): void {
+    const draftPolicy = this.deps.draftPolicy;
+    let text: unknown;
+    try {
+      text = (JSON.parse(item.body) as { text?: unknown }).text;
+    } catch {
+      text = undefined;
+    }
+    if (!draftPolicy || typeof text !== "string") {
+      this.ack(item.ticket, "refused", draftPolicy ? "malformed submission" : "this runner does not draft rules from text");
+      return;
+    }
+    const run = draftPolicy(text).then(
+      (r) => this.ack(item.ticket, r.proposalId ? "drafted" : "refused", r.message),
+      (e: unknown) => this.ack(item.ticket, "refused", `the runner could not draft rules from this text (${(e instanceof Error ? e.message : String(e)).slice(0, 200)}); nothing changed`),
+    );
+    this.running.add(run);
+    void run.finally(() => this.running.delete(run));
+  }
+
   private async process(item: InboxItem): Promise<void> {
     const { db } = this.deps;
     if (item.kind === "registration") {
       const out = await processRegistration(db, item, { label: this.deps.label ?? "max" }, this.now());
       this.ack(item.ticket, out.status, out.message);
+      return;
+    }
+    if (item.kind === "policy_text") {
+      this.draft(item);
       return;
     }
     const out = item.kind === "policy" ? await processPolicyRequest(db, item, this.now()) : await processAssertion(db, item, this.now());

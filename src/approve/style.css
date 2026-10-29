@@ -148,3 +148,7 @@ input.code {
   background: var(--surface-2); color: var(--text); width: 100%; min-height: 48px;
 }
 main > button.confirm { width: 100%; margin-top: 4px; }
+.policy-words { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin: 0 0 12px; }
+.policy-words textarea.words { resize: vertical; min-height: 6.5em; line-height: 1.4; }
+.policy-words .muted { margin: 0; font-size: 14px; }
+.policy-words a.confirm { display: block; text-align: center; text-decoration: none; margin-top: 8px; }

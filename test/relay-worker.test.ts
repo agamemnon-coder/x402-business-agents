@@ -246,6 +246,30 @@ describe("policy changes from the phone", () => {
     const inbox = ((await json(await push(r, state))) as { inbox: { kind: string; proposal_id: string }[] }).inbox;
     expect(inbox).toEqual([expect.objectContaining({ kind: "policy", proposal_id: "C-0a1b2c3d" })]);
   });
+
+  it("queues the CFO's policy in plain words, one at a time, from this site only (P2)", async () => {
+    const { r } = relay();
+    const { state } = runnerState({ enrolled: true });
+    const ip = (n: number) => ({ "cf-connecting-ip": `10.8.0.${n}` });
+    expect((await post(r, "/api/policy-text", { text: "refunds above 0.05 I want to see" })).status).toBe(503);
+    await push(r, state);
+    expect((await post(r, "/api/policy-text", { text: "  " }, ip(1))).status).toBe(400);
+    expect((await post(r, "/api/policy-text", { text: "x".repeat(2001) }, ip(2))).status).toBe(400);
+    expect((await post(r, "/api/policy-text", { text: 42 }, ip(3))).status).toBe(400);
+    expect((await post(r, "/api/policy-text", { text: "refunds" }, { ...ip(4), origin: "https://evil.example" })).status).toBe(403);
+    expect((await post(r, "/api/policy-text", { text: "refunds" }, { ...ip(5), "x-kit11-view": "" })).status).toBe(401);
+    const ok = await post(r, "/api/policy-text", { text: "refunds above 0.05 I want to see" }, ip(6));
+    expect(ok.status).toBe(202);
+    const ticket = String((await json(ok)).ticket);
+    expect((await post(r, "/api/policy-text", { text: "and another" }, ip(7))).status).toBe(429);
+    const inbox = ((await json(await push(r, state))) as { inbox: { kind: string; body: string; ticket: string }[] }).inbox;
+    expect(inbox).toEqual([expect.objectContaining({ kind: "policy_text", ticket })]);
+    expect(JSON.parse(inbox[0]!.body)).toEqual({ text: "refunds above 0.05 I want to see" });
+    // The runner's answer is shown on the ticket, and the next text may come.
+    await push(r, state, [{ ticket, status: "drafted", message: "P-0002 waits for your Face ID" }]);
+    expect(await json(await get(r, `/api/tickets/${ticket}`))).toMatchObject({ status: "drafted", message: "P-0002 waits for your Face ID" });
+    expect((await post(r, "/api/policy-text", { text: "and another" }, ip(8))).status).toBe(202);
+  });
 });
 
 describe("enrolment from the phone", () => {

@@ -117,3 +117,15 @@ export async function draftPolicyFromText(db: DB, tools: Tools, text: string, no
   }
   return { proposal, accepted, refused, not_mapped: draft.not_mapped, questions: draft.questions, source: read.source, model: read.model };
 }
+
+/** One line for the phone and the log: what became of the CFO's words. */
+export function draftSummary(r: PolicyDraftResult): string {
+  const rules = r.accepted.map((a) => `${a.label}: ${a.from || "not set"} → ${a.to || "none"}`).join("; ");
+  const left = [...r.not_mapped.map((n) => `"${n.quote}": ${n.why}`), ...r.refused.map((x) => `"${x.quote}": ${x.why}`)];
+  return [
+    r.proposal ? `${r.proposal.proposal_id} waits for your Face ID: ${rules}.` : "No rule came out of this text, so nothing waits for approval.",
+    left.length ? `Not a rule: ${left.join("; ")}.` : "",
+    r.questions.length ? `Questions: ${r.questions.join(" ")}` : "",
+    r.source === "fallback" ? "(No model was available.)" : "",
+  ].filter(Boolean).join(" ").slice(0, 490);
+}

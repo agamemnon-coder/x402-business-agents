@@ -17,6 +17,8 @@ import { openEnrolment } from "../passkey/ledger.js";
 import { relayConfig, viewerLink, type RelayConfig } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
+import { Tools } from "../claude/tools.js";
+import { draftPolicyFromText, draftSummary } from "../policy/fromText.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
 import { handleAirwallexHook } from "../policy/cardHooks.js";
@@ -49,7 +51,12 @@ if (args.includes("--enrol")) {
 const hookSecret = existsSync(keyPath(WEBHOOK_SECRET_FILE)) ? readFileSync(keyPath(WEBHOOK_SECRET_FILE), "utf8").trim() : "";
 console.log(`webhooks ${hookSecret ? "on: card transactions arrive from Airwallex as they happen" : "off (npm run cards -- webhook); card transactions come from the poll"}`);
 const onHook = hookSecret ? (h: Parameters<typeof handleAirwallexHook>[1]) => handleAirwallexHook(db, h, hookSecret) : undefined;
-const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, log: (line) => console.log(`${stamp()} ${line}`) });
+// The CFO's policy in plain words from the phone (P2): Opus drafts, code checks, and only tightening can come this way.
+const draftPolicy = async (text: string) => {
+  const r = await draftPolicyFromText(db, new Tools(db), text, new Date(), { tightenOnly: true });
+  return { proposalId: r.proposal?.proposal_id ?? null, message: draftSummary(r) };
+};
+const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, log: (line) => console.log(`${stamp()} ${line}`) });
 let stopping = false;
 const stop = () => {
   if (stopping) return;

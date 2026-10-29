@@ -22,6 +22,10 @@ import { relayConfig, viewerLink } from "../../src/relay/config.js";
 import { startLocalRelay } from "../../src/relay/local.js";
 import { RelayRunner } from "../../src/relay/runner.js";
 import { executePolicyChange } from "../../src/executors/policyChange.js";
+import { ClaudeReader } from "../../src/claude/reader.js";
+import { Tools } from "../../src/claude/tools.js";
+import { draftPolicyFromText, draftSummary } from "../../src/policy/fromText.js";
+import type Anthropic from "@anthropic-ai/sdk";
 import { policyValue } from "../../src/policy/rules.js";
 
 const live = process.argv.includes("--live");
@@ -57,10 +61,21 @@ const cfg = local ? { url: local.url, origin: local.url, rpId: "localhost", toke
 const url = cfg.url;
 const executed: string[] = [];
 const signer = displayKey(join(dir, "relay-display-key.pem"));
+// Opus's reading of the CFO's words (P2), fixed for the check: one rule, quoted from the words typed below.
+const opus = { beta: { messages: { parse: async (p: { model: string }) => ({ model: p.model, stop_reason: "end_turn", stop_details: null, usage: { input_tokens: 1, output_tokens: 1 },
+  parsed_output: { changes: [{ key: "cap.sourcing", to: "0.02", quote: "hooguit 0,02 per betaling", why: "the sourcing agent's limit per payment" }], not_mapped: [], questions: [] } }) } } } as unknown as Anthropic;
+const tools = new Tools(db, new ClaudeReader(db, opus));
 const runner = new RelayRunner({
   db, cfg, fetch, signer, log: (l) => console.log(`  runner: ${l}`),
   // Fake executor (nothing moves), except that a policy change is really applied to this throwaway ledger.
-  execute: async (d, id) => { executed.push(id); if (id.startsWith("C-")) executePolicyChange(d, id); },
+  execute: async (d, id) => {
+    executed.push(id);
+    if ((d.prepare("SELECT kind FROM proposals WHERE proposal_id = ?").get(id) as { kind: string }).kind === "policy_change") executePolicyChange(d, id);
+  },
+  draftPolicy: async (text) => {
+    const r = await draftPolicyFromText(db, tools, text, new Date(), { tightenOnly: true });
+    return { proposalId: r.proposal?.proposal_id ?? null, message: draftSummary(r) };
+  },
 });
 const { code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin }, now);
 let syncing = true;
@@ -176,6 +191,26 @@ await page.screenshot({ path: join(shots, "policy-confirm.png") });
 await page.click("#sheet button.confirm");
 await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
 check(policyValue(db, "cap.sourcing") === "0.03", "policy editor: signed with the passkey, applied by the runner (sourcing limit 0.03)");
+
+// The policy in plain words (P2): typed on the phone, drafted by "Opus" on the runner, approved with Face ID.
+await page.goto(`${url}/policy`);
+await page.waitForSelector("#words");
+await page.fill("#words", "De sourcing-agent mag hooguit 0,02 per betaling uitgeven.");
+await page.click(".policy-words button");
+await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
+check((await page.textContent(".verdict-head")) === "Rules drafted", "policy in words: the runner drafted rules");
+check(/waits for your Face ID: Sourcing agent: most per payment: 0\.03 → 0\.02/.test((await page.textContent(".verdict-detail")) ?? ""), "policy in words: it says which rule came from the words");
+check(policyValue(db, "cap.sourcing") === "0.03", "policy in words: nothing applied before Face ID");
+await page.screenshot({ path: join(shots, "policy-words.png") });
+await page.click(".policy-words a.confirm");
+await page.waitForSelector("button.option.suggested:not([disabled])", { timeout: 10_000 });
+await page.screenshot({ path: join(shots, "policy-words-approve.png") });
+await page.click("button.option.suggested");
+await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
+await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 3000 });
+await page.click("#sheet button.confirm");
+await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
+check(policyValue(db, "cap.sourcing") === "0.02", "policy in words: applied after Face ID (sourcing limit 0.02)");
 
 // Reject a proposal with the passkey: the same summary, saying it rejects; the passkey signs the rejection hash.
 await page.goto(`${url}/approve/${rejectId}`);

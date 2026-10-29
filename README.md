@@ -318,6 +318,27 @@ from "Lizenzhaus Beispeil GmbH". Both are read by Claude, blocked by code, and e
   Only then is the account added at Airwallex and made the supplier's active payee. The old account is kept as
   REPLACED.
 
+## The CFO policy in plain words
+
+The CFO writes the policy as they would say it, for example "the sourcing agent's card at most €25 per purchase;
+refunds above 0.05 I want to see". This works on the runner (`npm run policy -- from-text "…"`) or in the box at the
+top of the phone's policy page.
+
+1. Opus maps each sentence onto the existing settings. For each rule it gives the exact words the rule rests on. A
+   sentence that fits no single setting comes back with a question instead.
+2. Code keeps a rule only if:
+   - its setting exists;
+   - its quote is copied from the CFO's text;
+   - its amount is written in that quote (Opus may not split, add up or round);
+   - its value passes the setting's limits.
+
+   From the phone, a rule that would loosen the policy is refused, just as in the policy editor.
+3. The rules that are left become one policy-change proposal. The approval page shows which words gave which rule.
+   **Nothing changes until the CFO approves it with Face ID.**
+
+Tried live with Opus. It mapped two of four sentences and asked about the other two. One gave an amount in euros for
+a setting in *USDZ. The other asked for a total across all three cards, which no single setting holds.
+
 ## GL coding and export for the ERP
 
 `npm run gl -- csv|json [file]` writes the GL journal: one line for every movement of money. Each line has:

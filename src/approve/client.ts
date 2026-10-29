@@ -506,7 +506,7 @@ function passkeyError(e: unknown): string {
   return `The passkey did not answer: ${e instanceof Error ? e.message : String(e)}`;
 }
 
-const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
+const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted"]);
 const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   queued: { tone: "wait", head: "Signed", lead: "Waiting for the runner to check your signature." },
   approved: { tone: "wait", head: "Approved", lead: "The runner checked your signature. Executing now." },
@@ -517,6 +517,7 @@ const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   too_late: { tone: "warn", head: "Too late", lead: "Nothing was approved." },
   already: { tone: "info", head: "Already decided", lead: "" },
   enrolled: { tone: "ok", head: "Passkey enrolled", lead: "From now on, approvals need this passkey." },
+  drafted: { tone: "ok", head: "Rules drafted", lead: "Opus turned your words into rules and the runner checked each one. Nothing has changed yet: review them and approve with Face ID." },
   pending: { tone: "wait", head: "Confirm on the runner", lead: "Tell Claude the fingerprint above. The passkey counts once the runner confirms that same fingerprint." },
 };
 
@@ -531,7 +532,7 @@ export async function passkeyFingerprint(spki: ArrayBuffer): Promise<string> {
 }
 
 /** Polls a ticket and shows the runner's verdict until it is final; returns the last answer. */
-async function follow(ticket: string, into: HTMLElement, done: Node, what = ""): Promise<{ status: string; message: string }> {
+async function follow(ticket: string, into: HTMLElement, done: Node, what = "", queuedLead?: string): Promise<{ status: string; message: string }> {
   const icon = el("div", "verdict-icon");
   const head = el("h2", "verdict-head");
   const subject = txt("p", "verdict-what", what);
@@ -546,7 +547,7 @@ async function follow(ticket: string, into: HTMLElement, done: Node, what = ""):
     const v = VERDICT[s] ?? VERDICT.queued!;
     box.className = `verdict ${v.tone}`;
     head.textContent = v.head;
-    lead.textContent = v.lead;
+    lead.textContent = s === "queued" && queuedLead ? queuedLead : v.lead;
     detail.textContent = s === "queued" && Date.now() - started > 20_000
       ? "The runner has not picked it up yet. If it is offline, your signature waits for it (up to 30 minutes)."
       : str(data.message);
@@ -602,7 +603,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
       txt("dt", "", "Hash"), el("dd", "hash", [txt("strong", "mono", o.terms_sha256.slice(0, 8)), txt("span", "mono", o.terms_sha256.slice(8))]),
     ]),
     nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
-    o.review ? el("div", "review", [txt("p", "eyebrow", `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
+    o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
     el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
   ]);
   const status = el("div", "sheet-status");
@@ -731,7 +732,7 @@ async function approvePage(): Promise<void> {
       f?.big ? el("span", "option-amount", [f.big, txt("small", "", ` ${f.unit}`)]) : null,
       f?.margin ? txt("span", "option-margin", `margin ${f.margin}`) : null,
       f && group.length === 1 ? txt("span", "option-sentence", f.sentence) : null,
-      o.review ? txt("span", `chip ${o.review.recommendation}`, `Opus: ${o.review.recommendation.replace(/_/g, " ")} (advisory)`) : null,
+      o.review ? txt("span", `chip ${o.review.recommendation}`, o.review.recommendation === "drafted" ? "Drafted by Opus from your words" : `Opus: ${o.review.recommendation.replace(/_/g, " ")} (advisory)`) : null,
       el("span", "option-meta", [cd, " · ", el("span", "mono", [`hash ${o.terms_sha256.slice(0, 8)}`])]),
       check.ok ? null : txt("span", "alarm", `Do not approve: ${check.problem}.`),
       check.ok && f && !f.approvable ? txt("span", "alarm", f.sentence) : null,
@@ -933,11 +934,53 @@ async function policyPage(): Promise<void> {
   const review = el("button", "confirm", ["Review change"]) as HTMLButtonElement;
   review.type = "button";
   const note = el("p", "sheet-status");
+  // P2: the policy in the CFO's own words. Opus drafts rules on the runner; code checks them; from here they can only
+  // tighten the policy. What comes back is a proposal like any other, approved with Face ID on its own page.
+  const words = document.createElement("textarea");
+  words.id = "words";
+  words.className = "policy-input words";
+  words.maxLength = 2000;
+  words.rows = 4;
+  words.placeholder = "For example: the sourcing agent's card at most €25 per purchase. Refunds above 0.05 I want to see.";
+  const wordsLabel = el("label", "policy-label", ["In your own words"]);
+  wordsLabel.setAttribute("for", "words");
+  const draft = el("button", "secondary", ["Draft rules from my words"]) as HTMLButtonElement;
+  draft.type = "button";
+  const drafted = el("div", "drafted");
+  const wordsBox = el("section", "policy-words", [
+    wordsLabel, words,
+    txt("p", "muted", "Opus turns your words into rules, the runner checks each one, and you approve the result with Face ID. From the phone, words can only tighten the policy."),
+    draft, drafted,
+  ]);
+  draft.addEventListener("click", async () => {
+    const text = words.value.trim();
+    if (text === "") {
+      drafted.replaceChildren(txt("p", "sheet-status", "Write the policy first."));
+      return;
+    }
+    draft.disabled = true;
+    const { status, data } = await api("/api/policy-text", { text }).catch(() => ({ status: 0, data: {} as Obj }));
+    if (status !== 202) {
+      drafted.replaceChildren(txt("p", "alarm", str(data.error) || "The relay did not take the text."));
+      draft.disabled = false;
+      return;
+    }
+    const open = el("a", "confirm", ["Review and approve"]) as HTMLAnchorElement;
+    open.hidden = true;
+    const out = await follow(str(data.ticket), drafted, open, `"${text.length > 120 ? `${text.slice(0, 120)}…` : text}"`, "Opus is reading your words on the runner. This takes up to a minute.");
+    const id = /^(P-\d{4})\b/.exec(out.message)?.[1];
+    if (out.status === "drafted" && id) {
+      open.href = `/approve/${id}`;
+      open.hidden = false;
+    }
+    draft.disabled = false;
+  });
   app.replaceChildren(...[
     el("div", "toprow", [back]),
     txt("h1", "", "CFO policy"),
     txt("p", "lead", "Limits the agents work within, inside their mandates on chain. A change needs your passkey and takes effect at once."),
     enrolled ? null : txt("p", "warn-box", "No passkey is enrolled yet, so no change can be signed here."),
+    wordsBox,
     el("div", "policy", fields.map((f) => f.row)),
     el("div", "policy-row", [reasonLabel, reason]),
     review,

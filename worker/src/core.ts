@@ -44,7 +44,9 @@ const HOOKS_PER_SYNC = 50;
 const HOOK_KEEP_MS = 24 * 60 * 60 * 1000;
 /** How far Airwallex's x-timestamp may be from our clock (a replay of an old event is refused). */
 const HOOK_TOLERANCE_MS = 5 * 60 * 1000;
-const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
+const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted"]);
+/** The CFO's policy in plain words (P2): Opus drafts rules from it on the runner. */
+const MAX_POLICY_TEXT = 2000;
 
 const COMMON_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
@@ -235,7 +237,7 @@ export class Relay {
     const url = new URL(req.url);
     const path = url.pathname;
     const route = (method: string, p: string | RegExp) => (typeof p === "string" ? path === p : p.test(path)) && (req.method === method || (method === "GET" && req.method === "HEAD"));
-    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/enrol/options", "/api/enrol"];
+    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/enrol/options", "/api/enrol"];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
     // Airwallex's webhooks: no viewer key (Airwallex has none), its own signature instead.
@@ -249,11 +251,12 @@ export class Relay {
     if (route("GET", "/api/approvals")) return this.approvals();
     if (route("GET", /^\/api\/tickets\/[^/]+$/)) return this.ticket(path.slice("/api/tickets/".length));
     // Everything the phone posts must come from the relay's own pages.
-    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path.startsWith("/api/enrol"))) {
+    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path.startsWith("/api/enrol"))) {
       if (req.headers.get("origin") !== url.origin) return error(403, "requests must come from this site's own pages");
       if (!this.underRateLimit(req)) return error(429, "too many requests from this address; wait ten minutes");
       if (path === "/api/assertions") return this.assertion(req);
       if (path === "/api/policy") return this.policyChange(req);
+      if (path === "/api/policy-text") return this.policyText(req);
       if (path === "/api/enrol/options") return this.enrolOptions(req);
       if (path === "/api/enrol") return this.enrol(req);
     }
@@ -337,7 +340,7 @@ export class Relay {
     return rows[0] ? json(200, rows[0]) : error(404, "no such ticket");
   }
 
-  private queue(kind: "assertion" | "registration" | "policy", proposalId: string | null, windowId: string | null, text: string): string {
+  private queue(kind: "assertion" | "registration" | "policy" | "policy_text", proposalId: string | null, windowId: string | null, text: string): string {
     const ticket = ticketId();
     const at = this.now().toISOString();
     this.sql.exec("INSERT INTO inbox (ticket, kind, proposal_id, window_id, body, received_at, status, message, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', NULL, ?)",
@@ -407,6 +410,23 @@ export class Relay {
     }
     if (this.queued("kind = 'policy'") >= MAX_QUEUED_PER_PROPOSAL) return error(429, "too many policy changes are waiting for the runner");
     return json(202, { ticket: this.queue("policy", terms.proposal_id, null, body!.text) });
+  }
+
+  /**
+   * The CFO's policy in their own words, for Opus to draft rules from on the runner (P2). It signs nothing and changes
+   * nothing: the runner checks every drafted rule, refuses any that would loosen the policy (it came from the phone),
+   * and the rest becomes a proposal that still needs Face ID. One at a time.
+   */
+  private async policyText(req: Request): Promise<Response> {
+    const body = await readJson(req, MAX_SUBMISSION_BYTES);
+    if (body === null) return error(413, "submission too large");
+    const v = body?.value;
+    if (!isObject(v) || typeof v.text !== "string" || v.text.trim() === "" || v.text.length > MAX_POLICY_TEXT) {
+      return error(400, `write the policy in at most ${MAX_POLICY_TEXT} characters`);
+    }
+    if (!this.state()) return error(503, "the runner has not connected yet");
+    if (this.queued("kind = 'policy_text'") >= 1) return error(429, "the runner is still reading your last text; wait for it");
+    return json(202, { ticket: this.queue("policy_text", null, null, JSON.stringify({ text: v.text })) });
   }
 
   /** The open enrolment, after checking the code; counts wrong codes and closes the window after five. */
