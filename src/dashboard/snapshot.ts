@@ -122,7 +122,7 @@ const KIND_TITLES: Record<string, string> = {
   policy_change: "Policy change",
   dev_test: "Dev test (moves no money)",
 };
-const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
+export const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
 
 /** One line a person can read, built from the stored terms; the approval page shows every field. */
 export function summarize(kind: string, termsJson: string): string {
@@ -362,13 +362,13 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
   }
 }
 
-const REFUSAL_EVENTS = new Set([
+export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
   "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
 ]);
 
-const REFUSAL_WHAT: Record<string, string> = {
+export const REFUSAL_WHAT: Record<string, string> = {
   "upstream.refused": "Supplier purchase refused",
   "upstream.in_doubt": "Supplier purchase unconfirmed",
   "sale.settle_failed": "Sale not settled",

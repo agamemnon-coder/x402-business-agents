@@ -22,6 +22,8 @@
     "s3": "tsx src/cli/s3.ts",
     "verify": "tsx src/cli/verify.ts",
     "audit:export": "tsx src/cli/auditExport.ts",
+    "audit:report": "tsx src/cli/auditReport.ts",
+    "verify-log": "tsx src/cli/verifyLog.ts",
     "approvals": "tsx src/cli/approvals-page.ts",
     "dashboard": "tsx src/cli/dashboard.ts",
     "relay": "tsx src/cli/relay.ts",
@@ -45,6 +47,7 @@
     "@x402/fetch": "2.28.0",
     "better-sqlite3": "13.0.3",
     "express": "5.3.0",
+    "pdfkit": "0.20.2",
     "viem": "2.57.13",
     "zod": "4.6.7"
   },
@@ -52,6 +55,7 @@
     "@types/better-sqlite3": "9.6.0",
     "@types/express": "5.0.6",
     "@types/node": "24.19.2",
+    "@types/pdfkit": "0.17.6",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "5.0.5"

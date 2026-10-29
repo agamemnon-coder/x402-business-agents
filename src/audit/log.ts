@@ -11,6 +11,9 @@ export type Actor =
 
 export const GENESIS = "0".repeat(64);
 
+/** A stored row, as in the table and in audit.jsonl. */
+export type AuditRowStored = Row;
+
 interface Row {
   seq: number;
   ts: string;
@@ -53,7 +56,11 @@ export type ChainCheck = { ok: true; rows: number; head: string } | { ok: false;
 
 /** Recomputes the whole chain from the genesis hash. */
 export function verifyAuditChain(db: DB): ChainCheck {
-  const rows = db.prepare("SELECT * FROM audit_log ORDER BY seq").all() as Row[];
+  return verifyAuditRows(db.prepare("SELECT * FROM audit_log ORDER BY seq").all() as Row[]);
+}
+
+/** The same check over rows from anywhere, such as an exported audit.jsonl, with no database. */
+export function verifyAuditRows(rows: Row[]): ChainCheck {
   let prev = GENESIS;
   let expectSeq = 1;
   for (const r of rows) {
@@ -64,4 +71,16 @@ export function verifyAuditChain(db: DB): ChainCheck {
     expectSeq++;
   }
   return { ok: true, rows: rows.length, head: prev };
+}
+
+/**
+ * A chain that verifies on its own can still have lost its last rows, or been rehashed from an edit onwards by
+ * someone with write access. An anchor (a row's seq and hash, printed earlier in an audit report or a run log)
+ * catches both: that row must still be there, with that hash.
+ */
+export function checkAnchor(rows: Row[], anchor: { seq: number; hash: string }): { ok: true } | { ok: false; reason: string } {
+  const row = rows.find((r) => r.seq === anchor.seq);
+  if (!row) return { ok: false, reason: `the log has ${rows.length} rows; the anchor is row ${anchor.seq}` };
+  if (row.row_hash !== anchor.hash) return { ok: false, reason: `row ${anchor.seq} has hash ${row.row_hash.slice(0, 12)}…, the anchor says ${anchor.hash.slice(0, 12)}…` };
+  return { ok: true };
 }
