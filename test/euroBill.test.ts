@@ -80,6 +80,15 @@ describe("euro bill (S3) against the Airwallex port", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 0 });
   });
 
+  it("escalates, and quotes nothing, when committed EUR has already been spent", async () => {
+    const { db, awx } = await world();
+    awx.bal.EUR.availableCents -= 150_062; // free EUR 1,500.00 -> -0.62
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    expect(out).toMatchObject({ kind: "escalated", reason: expect.stringMatching(/^EUR is already 0\.62 below its floor plus commitments/) });
+    expect(awx.calls).not.toContain("createQuote");
+    expect(db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 0 });
+  });
+
   it("F5: changed bank details escalate and pay nothing", async () => {
     const { db, awx } = await world();
     const changed = text.replace("DE89 3704 0044 0532 0130 00", "DE44 5001 0517 5407 3249 31");

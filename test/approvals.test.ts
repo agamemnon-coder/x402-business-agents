@@ -59,6 +59,18 @@ describe("approvals", () => {
     expect(status).toBe("APPROVED");
   });
 
+  it("F1: a decision after expiry approves nothing and records who tried", () => {
+    const db = setup();
+    const late = new Date("2026-10-30T14:10:01Z");
+    expect(decide(db, { proposalId: "P-0001", decision: "APPROVED", typedPrefix: prefix, approver: "max", method: "cli" }, late)).toBe("EXPIRED");
+    expect(db.prepare("SELECT COUNT(*) AS n FROM approvals").get()).toEqual({ n: 0 });
+    const rows = db.prepare("SELECT event, payload_json FROM audit_log WHERE subject = 'P-0001' ORDER BY seq").all() as { event: string; payload_json: string }[];
+    expect(rows.map((r) => r.event)).toEqual(["proposal.created", "proposal.expired", "approval.too_late"]);
+    expect(JSON.parse(rows[2]!.payload_json)).toMatchObject({ approver: "max", terms_sha256: termsHash(terms) });
+    expect(() => beginExecution(db, "P-0001", undefined, late)).toThrow(/EXPIRED/);
+    expect(verifyAuditChain(db).ok).toBe(true);
+  });
+
   it("expires stale proposals in one sweep", () => {
     const db = setup();
     expect(expireDue(db, t0)).toEqual([]);

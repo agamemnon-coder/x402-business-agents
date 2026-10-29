@@ -107,7 +107,10 @@ export type InvoiceOutcome =
  * Plans the payment of an invoice and puts it up for approval. Any reason not to pay (unknown or changed
  * bank details, a floor that would break) becomes an escalation with no money moved.
  */
-export async function proposeInvoicePayment(db: DB, rail: AirwallexRail, inv: Invoice, invoiceText: string, now = new Date()): Promise<InvoiceOutcome> {
+export async function proposeInvoicePayment(
+  db: DB, rail: AirwallexRail, inv: Invoice, invoiceText: string, now = new Date(),
+  quoteValidity: "MIN_1" | "MIN_15" = "MIN_15",
+): Promise<InvoiceOutcome> {
   const check = checkInvoice(db, inv);
   if (!check.ok) {
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: check.reason }, now);
@@ -119,10 +122,15 @@ export async function proposeInvoicePayment(db: DB, rail: AirwallexRail, inv: In
   const b = await snapshot(db, rail, `plan:${inv.invoice_no}`);
   const s = treasuryState(db, b);
   const plan = planInvoice(check.amountCents, s);
+  if (plan.kind === "underfunded") {
+    const reason = `EUR is already ${fromCents(-plan.freeEurCents)} below its floor plus commitments (available ${fromCents(s.eurAvailableCents)}, floor ${fromCents(s.eurFloorCents)}, committed ${fromCents(s.eurObligationsCents)}); options: restore the EUR reserve first, review the commitments, or pay later`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+    return { kind: "escalated", reason };
+  }
   let quote: Quote | null = null;
   let usdAfter = s.usdAvailableCents;
   if (plan.kind === "convert_shortfall") {
-    quote = await rail.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents, validity: "MIN_15" });
+    quote = await rail.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents, validity: quoteValidity });
     const floor = checkQuoteAgainstFloor(quote.sellAmountCents, s);
     if (!floor.ok) {
       audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: floor.reason, quote_id: quote.quoteId }, now);

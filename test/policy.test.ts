@@ -69,6 +69,10 @@ describe("euro bill (S3)", () => {
     expect(planInvoice(185_000, s)).toEqual({ kind: "convert_shortfall", needEurCents: 187_000, freeEurCents: 150_000, buyEurCents: 37_000 });
   });
 
+  it("makes no plan when EUR is already below its floor plus commitments", () => {
+    expect(planInvoice(185_000, { ...s, eurAvailableCents: 849_938 })).toEqual({ kind: "underfunded", needEurCents: 187_000, freeEurCents: -62 });
+  });
+
   it("pays straight from EUR when free EUR covers it", () => {
     expect(planInvoice(100_000, s).kind).toBe("pay_from_eur");
   });

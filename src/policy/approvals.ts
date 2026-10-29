@@ -90,7 +90,11 @@ export function decide(
   return db.transaction((): ProposalStatus => {
     const p = get(db, args.proposalId);
     if (p.status !== "PENDING_APPROVAL") throw new Error(`${p.proposal_id} is ${p.status}, not waiting for approval`);
-    if (expireIfDue(db, p, now)) return "EXPIRED";
+    if (expireIfDue(db, p, now)) {
+      // A decision that arrives after the terms ran out records who tried, and approves nothing.
+      audit(db, "human", "approval.too_late", p.proposal_id, { terms_sha256: p.terms_sha256, approver: args.approver, method: args.method, expires_at: p.expires_at }, now);
+      return "EXPIRED";
+    }
     if (!prefixMatches(p.terms_sha256, args.typedPrefix)) throw new Error("typed prefix does not match the terms hash");
     db.prepare(
       `INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, note, created_at)

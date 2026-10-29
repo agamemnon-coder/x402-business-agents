@@ -18,14 +18,20 @@ export function freeEurCents(s: TreasuryState): number {
 }
 
 export type InvoicePlan =
+  | { kind: "underfunded"; needEurCents: number; freeEurCents: number }
   | { kind: "pay_from_eur"; needEurCents: number; freeEurCents: number }
   | { kind: "convert_shortfall"; needEurCents: number; freeEurCents: number; buyEurCents: number };
 
-/** EUR needed is the invoice plus the SWIFT fee ceiling; convert only what free EUR does not cover. */
+/**
+ * EUR needed is the invoice plus the SWIFT fee ceiling; convert only what free EUR does not cover.
+ * If EUR is already below its floor plus commitments, no plan is made: restoring the reserve is a decision of
+ * its own, and a plan that ignored the gap would be refused by the executor's check anyway.
+ */
 export function planInvoice(invoiceEurCents: number, s: TreasuryState): InvoicePlan {
   if (!Number.isSafeInteger(invoiceEurCents) || invoiceEurCents <= 0) throw new Error(`bad invoice amount: ${invoiceEurCents}`);
   const need = invoiceEurCents + SWIFT_FEE_MAX_EUR_CENTS;
-  const free = Math.max(0, freeEurCents(s));
+  const free = freeEurCents(s);
+  if (free < 0) return { kind: "underfunded", needEurCents: need, freeEurCents: free };
   if (free >= need) return { kind: "pay_from_eur", needEurCents: need, freeEurCents: free };
   return { kind: "convert_shortfall", needEurCents: need, freeEurCents: free, buyEurCents: need - free };
 }
