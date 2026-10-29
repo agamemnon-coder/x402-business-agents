@@ -46,6 +46,14 @@ describe("Claude layer", () => {
     expect(seen).toEqual(["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"]);
   });
 
+  it("replaces an answer of the wrong shape with the fallback, whatever the SDK let through (red team)", async () => {
+    const db = openDb(":memory:");
+    const tools = new Tools(db, new ClaudeReader(db, fakeClient(() => ({ parsed_output: { iban: "GB29NWBK60161331926819", amount: "9850.00" } }))));
+    const kind = await tools.classify(f("bergtex-invoice-BTX-2026-11.txt"));
+    expect(kind).toMatchObject({ source: "fallback", value: { kind: "invoice" } });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'claude.fallback'").get()).toEqual({ n: 1 });
+  });
+
   it("replaces a refused answer with the fallback", async () => {
     const db = openDb(":memory:");
     const tools = new Tools(db, new ClaudeReader(db, fakeClient(() => ({ stop_reason: "refusal", parsed_output: null, stop_details: { category: "cyber" } }))));

@@ -79,11 +79,14 @@ export class ClaudeReader {
       const requestId = (res as { _request_id?: string | null })._request_id ?? null;
       if (res.stop_reason === "refusal") return useFallback(`refused (${res.stop_details?.category ?? "no category"})`);
       if (res.parsed_output == null) return useFallback(`no parsed output (stop_reason ${res.stop_reason})`);
+      // Checked again here, not only by the SDK: a reading of the wrong shape is never used.
+      const fits = a.schema.safeParse(res.parsed_output);
+      if (!fits.success) return useFallback(`the reading does not fit its schema (${fits.error.issues[0]?.path.join(".") || "root"})`);
       audit(this.db, a.actor, "claude.read", a.task, {
-        model: res.model, request_id: requestId, input_sha256: inputSha, output: res.parsed_output as never,
+        model: res.model, request_id: requestId, input_sha256: inputSha, output: fits.data as never,
         usage: { input: res.usage.input_tokens, output: res.usage.output_tokens, cache_read: res.usage.cache_read_input_tokens ?? 0 },
       });
-      return { value: res.parsed_output as z.infer<S>, source: "claude", model: res.model };
+      return { value: fits.data as z.infer<S>, source: "claude", model: res.model };
     } catch (err) {
       const message = err instanceof Anthropic.APIError ? `API ${err.status ?? ""} ${err.name}` : (err as Error).message;
       return useFallback(`call failed: ${message.slice(0, 200)}`);
