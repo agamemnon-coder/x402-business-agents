@@ -108,3 +108,12 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 - **Why:** a fresh juror read "the Marketing agent refunds wrong stock checks" as a leftover. A sales agent owns the
   retailers' accounts, so both jobs fit one name.
 - **If wrong:** it is one line in `src/config/brand.ts` and the card's first name in `src/config/policy.ts`.
+
+### D10. Double-entry bookkeeping waits until after the freeze
+
+- **What:** no double-entry ledger before the Friday runs. The GL journal (`npm run gl`) keeps one signed line per
+  movement, with its account, cost centre, bank account, proof and approval.
+- **Why:** postings made from that journal would balance by construction, so they would prove little. The daily
+  reconciliation already checks each money flow against Airwallex and Metal, and that is the check that can fail.
+  A new money-adjacent module the night before the runs is a risk with no visible gain for the CFO or the jury.
+- **If wrong:** the GL export is the input for it; it is a day's work after 4 November.
