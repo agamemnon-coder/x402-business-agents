@@ -4,7 +4,7 @@
 
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { CSP as DASHBOARD_CSP } from "../servers/dashboard.js";
+import { CSP as DASHBOARD_CSP, MONTH_CSP, monthPage } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -22,12 +22,13 @@ export function buildPages(): Pages {
   }).outputText;
   return {
     dashboard: read("../dashboard/page.html"),
+    month: monthPage(),
     approve: read("../approve/page.html"),
     enrol: read("../approve/enrol.html"),
     policy: read("../approve/policy.html"),
     client,
     css: read("../approve/style.css"),
-    csp: { dashboard: DASHBOARD_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
+    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }
 

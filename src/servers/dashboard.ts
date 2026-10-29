@@ -8,19 +8,30 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import type { DB } from "../db/open.js";
 import { buildSnapshot } from "../dashboard/snapshot.js";
+import { simulateMonth, type MonthReport } from "../sim/month.js";
 
 export const PAGE = readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8");
+const MONTH_TEMPLATE = readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8");
 
-const inlineHash = (tag: "script" | "style") => {
-  const m = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(PAGE);
-  if (!m) throw new Error(`page.html has no inline ${tag}`);
+/** The hash of a page's one inline script or style (a data block, <script type=…>, is not a script and not hashed). */
+const inlineHash = (page: string, tag: "script" | "style") => {
+  const m = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(page);
+  if (!m) throw new Error(`the page has no inline ${tag}`);
   return `'sha256-${createHash("sha256").update(m[1]!, "utf8").digest("base64")}'`;
 };
-// Only the page's own script and style may run; data arrives over fetch from this origin only.
-export const CSP = [
-  "default-src 'none'", `script-src ${inlineHash("script")}`, `style-src ${inlineHash("style")}`, "connect-src 'self'",
+const cspFor = (page: string) => [
+  "default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "connect-src 'self'",
   "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
+// Only the page's own script and style may run; data arrives over fetch from this origin only.
+export const CSP = cspFor(PAGE);
+/** The month replay carries its data inside the page, so it needs no request at all once loaded. */
+export const MONTH_CSP = cspFor(MONTH_TEMPLATE);
+
+/** The month replay page with the simulated month in it (JSON, with "<" escaped so it cannot close the block). */
+export function monthPage(report: MonthReport = simulateMonth()): string {
+  return MONTH_TEMPLATE.replace("__MONTH_JSON__", () => JSON.stringify(report).replace(/</g, "\\u003c"));
+}
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
@@ -51,6 +62,11 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/", (_req, res) => {
     res.setHeader("Content-Security-Policy", CSP);
     res.type("html").send(PAGE);
+  });
+
+  app.get("/month", (_req, res) => {
+    res.setHeader("Content-Security-Policy", MONTH_CSP);
+    res.type("html").send(monthPage());
   });
 
   app.get("/api/snapshot", (_req, res) => {

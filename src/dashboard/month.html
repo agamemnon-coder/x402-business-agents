@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>A Month in 90 Seconds</title>
+<style>
+:root {
+  --bg: #f4f5f7; --surface: #ffffff; --surface-2: #f8f9fb; --text: #0f172a; --muted: #5b6577; --faint: #8a93a3;
+  --border: #e3e6eb; --accent: #2b59d9; --accent-soft: #e8eefc; --grid: #e9ecf1;
+  --ok: #157f3c; --ok-soft: #e6f4ea; --warn: #a15c07; --warn-soft: #fdf3e2; --bad: #b42318; --bad-soft: #fdecea;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .05); color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
+    --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440; --grid: #232a38;
+    --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
+    --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0e14; --surface: #121620; --surface-2: #171c28; --text: #e7eaf0; --muted: #9aa3b5; --faint: #6d778b;
+  --border: #232a38; --accent: #7d9bff; --accent-soft: #1b2440; --grid: #232a38;
+  --ok: #4cc276; --ok-soft: #12261b; --warn: #f0b048; --warn-soft: #2a2010; --bad: #f2776b; --bad-soft: #2c1513;
+  --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+header { padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: baseline; }
+header h1 { font-size: 18px; margin: 0; }
+header .sub { color: var(--muted); }
+header a { margin-left: auto; color: var(--accent); text-decoration: none; font-size: 13px; }
+.honest { flex-basis: 100%; margin: 2px 0 0; font-size: 12px; color: var(--muted); max-width: 90ch; }
+main { padding: 14px 20px 24px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-areas: "controls controls" "tiles tiles" "chart events" "pnl events"; max-width: 1400px; }
+section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 12px 16px 14px; min-width: 0; }
+section > h2 { font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; display: flex; gap: 8px; }
+section > h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--faint); }
+#controls { grid-area: controls; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+#tiles { grid-area: tiles; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; background: none; border: 0; box-shadow: none; padding: 0; }
+#chart { grid-area: chart; }
+#pnl { grid-area: pnl; }
+#events { grid-area: events; display: flex; flex-direction: column; max-height: 760px; }
+button { font: inherit; font-weight: 600; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.primary { color: #0b0e14; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary { color: #0b0e14; } }
+.daylabel { font-weight: 650; min-width: 9ch; }
+.progress { flex: 1 1 200px; height: 8px; border-radius: 999px; background: var(--grid); overflow: hidden; }
+.progress > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; box-shadow: var(--shadow); }
+.tile .k { color: var(--muted); font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+.tile .v { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin-top: 2px; }
+.tile .s { color: var(--faint); font-size: 12px; }
+.tile.ok .v { color: var(--ok); } .tile.wait .v { color: var(--warn); } .tile.bad .v { color: var(--bad); }
+.icon { font-weight: 700; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+.axis text { fill: var(--faint); font-size: 11px; }
+.grid line { stroke: var(--grid); stroke-width: 1; }
+.zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.cross { stroke: var(--muted); stroke-width: 1; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap; display: none; }
+.chartwrap { position: relative; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: right; padding: 5px 6px; border-top: 1px solid var(--border); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; border-top: 0; }
+td.neg { color: var(--bad); }
+tr.total td { font-weight: 700; border-top: 2px solid var(--border); }
+td .agent { text-transform: capitalize; font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+.list { overflow: auto; min-height: 0; }
+.ev { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.ev:first-child { border-top: 0; }
+.ev .t { color: var(--faint); font-size: 12px; }
+.ev.refusal .x { color: var(--bad); }
+.ev.approval { background: linear-gradient(90deg, var(--accent-soft), transparent 70%); }
+.chip { display: inline-block; border-radius: 999px; padding: 0 7px; font-size: 11.5px; font-weight: 600; line-height: 18px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); margin-right: 6px; text-transform: capitalize; }
+.chip.cfo { background: var(--warn-soft); color: var(--warn); border-color: transparent; text-transform: none; }
+.chip.blocked { background: var(--bad-soft); color: var(--bad); border-color: transparent; text-transform: none; }
+details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+@media (max-width: 900px) {
+  main { grid-template-columns: minmax(0, 1fr); grid-template-areas: "controls" "tiles" "chart" "events" "pnl"; padding: 12px 16px 24px; }
+  #events { max-height: 420px; }
+  header { padding: 12px 16px; }
+  #tiles { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .tile .v { font-size: 24px; }
+  /* On a phone: agent, earned, card and net; the full table is on a wider screen. */
+  th:nth-child(3), td:nth-child(3), th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { display: none; }
+  .axis text { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Tidemark Data</h1><span class="sub">A month in 90 seconds</span><a href="./">Live dashboard</a>
+  <p class="honest" id="honest"></p>
+</header>
+<main>
+  <section id="controls" aria-label="Replay">
+    <button class="primary" id="play">Pause</button>
+    <button id="restart">Restart</button>
+    <span class="daylabel num" id="day"></span>
+    <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+  </section>
+  <section id="tiles" aria-label="What happened">
+    <div class="tile ok"><div class="k"><span class="icon">✓</span>Done by the agents alone</div><div class="v num" id="alone">0</div><div class="s">payments, purchases, refunds and sweeps inside their limits</div></div>
+    <div class="tile wait"><div class="k"><span class="icon">⏳</span>Waiting for the CFO</div><div class="v num" id="waiting">0</div><div class="s">proposals the CFO has not decided yet</div></div>
+    <div class="tile bad"><div class="k"><span class="icon">✗</span>Blocked</div><div class="v num" id="blocked">0</div><div class="s">refused payments, declined card charges, a fake invoice, a planted instruction</div></div>
+  </section>
+  <section id="chart" aria-labelledby="h-chart"><h2 id="h-chart">Company net, month to date <span class="hint">USD, after costs and bills</span></h2>
+    <div class="chartwrap"><svg id="svg" viewBox="0 0 640 240" role="img" aria-label="Company net over the month"></svg><div class="tip num" id="tip"></div></div>
+  </section>
+  <section id="pnl" aria-labelledby="h-pnl"><h2 id="h-pnl">P&amp;L per agent <span class="hint">USD, month to date</span></h2>
+    <div class="tablewrap"><table class="num"><thead><tr><th>Agent</th><th>Earned</th><th>x402 spend</th><th>Card</th><th>FX and fees</th><th>AI</th><th>Net</th></tr></thead><tbody id="pnl-body"></tbody></table></div>
+    <details><summary>Assumptions</summary><ul id="assumptions"></ul></details>
+  </section>
+  <section id="events" aria-labelledby="h-events"><h2 id="h-events">What happened <span class="hint">newest first</span></h2><div class="list" id="event-list"></div></section>
+</main>
+<script type="application/json" id="month-data">__MONTH_JSON__</script>
+<script>
+(function () {
+  "use strict";
+  // Every string from the data is rendered with textContent; nothing from it becomes HTML.
+  var M = JSON.parse(document.getElementById("month-data").textContent);
+  var SECONDS = 90, AGENTS = ["sourcing", "support", "treasury"];
+  var N = M.days.length, perDay = SECONDS / N;
+  var t = 0, playing = true, last = null;
+
+  function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k != null) n.appendChild(typeof k === "string" ? document.createTextNode(k) : k); }); return n; }
+  function cents(s) { var m = /^(-?)(\d+)\.(\d{2})$/.exec(String(s)); return m ? (m[1] ? -1 : 1) * (Number(m[2]) * 100 + Number(m[3])) : 0; }
+  function fmt(c) { var neg = c < 0; c = Math.abs(Math.round(c)); var s = String(Math.floor(c / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + String(c % 100).padStart(2, "0"); return (neg ? "−" : "") + s; }
+  function int(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function hhmm(min) { return String(Math.floor(min / 60)).padStart(2, "0") + ":" + String(min % 60).padStart(2, "0"); }
+
+  document.getElementById("honest").textContent = M.assumptions[0] + " Month " + M.month + ", seed " + M.seed + ".";
+  M.assumptions.slice(1).forEach(function (a) { document.getElementById("assumptions").appendChild(el("li", "", [a])); });
+
+  // Each day's net, so the line, the table and the tiles move together. A day's bills land on that day.
+  var billByDay = {}; M.bills.forEach(function (b) { billByDay[b.day] = (billByDay[b.day] || 0) + cents(b.usd); });
+  function dayNet(d) {
+    var ai = AGENTS.reduce(function (s, a) { return s + d.ai_cents[a]; }, 0);
+    var card = AGENTS.reduce(function (s, a) { return s + d.card_cents[a]; }, 0);
+    return d.revenue_cents - d.upstream_cents - d.refunds_cents - card - d.fees_cents - ai - (billByDay[d.day] || 0);
+  }
+  var cum = []; M.days.reduce(function (s, d) { s += dayNet(d); cum.push(s); return s; }, 0);
+
+  /** Sum of f over the month up to time tt (in days), the current day counted in part. */
+  function upTo(tt, f) {
+    var whole = Math.floor(tt), part = tt - whole, s = 0;
+    for (var i = 0; i < whole && i < N; i++) s += f(M.days[i]);
+    if (whole < N && part > 0) s += f(M.days[whole]) * part;
+    return s;
+  }
+
+  // The chart: one series (no legend; the title names it), a zero line, recessive grid, crosshair tooltip.
+  var W = 640, H = 240, L = 56, R = 12, T = 10, B = 26;
+  var lo = Math.min(0, Math.min.apply(null, cum)), hi = Math.max(0, Math.max.apply(null, cum));
+  var pad = (hi - lo) * 0.08 || 100; lo -= pad; hi += pad;
+  var x = function (day) { return L + (W - L - R) * (day / N); };
+  var y = function (v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); };
+  var NS = "http://www.w3.org/2000/svg";
+  function s(tag, attrs, parent) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); (parent || svg).appendChild(n); return n; }
+  var svg = document.getElementById("svg");
+  var grid = s("g", { "class": "grid" }), axis = s("g", { "class": "axis" });
+  var step = Math.pow(10, Math.floor(Math.log10((hi - lo) / 4))); var nice = [1, 2, 5, 10].map(function (m) { return m * step; }).find(function (v) { return (hi - lo) / v <= 5; }) || step * 10;
+  for (var v = Math.ceil(lo / nice) * nice; v <= hi; v += nice) {
+    s("line", { x1: L, x2: W - R, y1: y(v), y2: y(v) }, grid);
+    var tx = s("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end" }, axis); tx.textContent = fmt(v).replace(/\.00$/, "");
+  }
+  [1, 8, 15, 22, N].forEach(function (d) { var tx = s("text", { x: x(d - 0.5), y: H - 6, "text-anchor": "middle" }, axis); tx.textContent = "Day " + d; });
+  s("line", { x1: L, x2: W - R, y1: y(0), y2: y(0), "class": "zero" });
+  var path = s("path", { "class": "line", d: "" });
+  var dot = s("circle", { "class": "dot", r: 4, cx: -10, cy: -10 });
+  var cross = s("line", { "class": "cross", y1: T, y2: H - B, x1: -10, x2: -10, visibility: "hidden" });
+  var tip = document.getElementById("tip"), hover = null;
+  function drawLine(tt) {
+    var pts = [[x(0), y(0)]];
+    for (var i = 0; i < N && i + 1 <= tt; i++) pts.push([x(i + 1), y(cum[i])]);
+    var whole = Math.floor(tt), part = tt - whole;
+    if (whole < N && part > 0) { var prev = whole ? cum[whole - 1] : 0; pts.push([x(whole + part), y(prev + dayNet(M.days[whole]) * part)]); }
+    path.setAttribute("d", "M" + pts.map(function (p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" L"));
+    var lastPt = pts[pts.length - 1];
+    if (hover === null) { dot.setAttribute("cx", lastPt[0]); dot.setAttribute("cy", lastPt[1]); }
+  }
+  svg.addEventListener("pointermove", function (e) {
+    var r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width);
+    var d = Math.max(1, Math.min(Math.floor(t), Math.round(((px - L) / (W - L - R)) * N)));
+    if (!(t >= 1)) return;
+    hover = d;
+    cross.setAttribute("x1", x(d)); cross.setAttribute("x2", x(d)); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x(d)); dot.setAttribute("cy", y(cum[d - 1]));
+    var day = M.days[d - 1];
+    tip.textContent = "Day " + d + ": net " + fmt(cum[d - 1]) + " USD · " + int(day.sales) + " sales" + (billByDay[d] ? " · bill paid" : "");
+    tip.style.display = "block";
+    tip.style.left = Math.min(r.width - tip.offsetWidth, Math.max(0, (x(d) / W) * r.width - tip.offsetWidth / 2)) + "px";
+    tip.style.top = ((y(cum[d - 1]) / H) * r.height - 40) + "px";
+  });
+  svg.addEventListener("pointerleave", function () { hover = null; tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
+
+  function renderPnl(tt) {
+    var rows = AGENTS.map(function (a) {
+      var earned = a === "sourcing" ? upTo(tt, function (d) { return d.revenue_cents; }) : 0;
+      var x402 = a === "sourcing" ? upTo(tt, function (d) { return d.upstream_cents; }) : a === "support" ? upTo(tt, function (d) { return d.refunds_cents; }) : 0;
+      var card = upTo(tt, function (d) { return d.card_cents[a]; });
+      var fees = a === "treasury" ? upTo(tt, function (d) { return d.fees_cents; }) : 0;
+      var ai = upTo(tt, function (d) { return d.ai_cents[a]; });
+      return [a, earned, x402, card, fees, ai, earned - x402 - card - fees - ai];
+    });
+    var bills = M.bills.filter(function (b) { return b.day <= tt; }).reduce(function (s, b) { return s + cents(b.usd); }, 0);
+    var net = rows.reduce(function (s, r) { return s + r[6]; }, 0) - bills;
+    var body = document.getElementById("pnl-body");
+    var trs = rows.map(function (r) {
+      return el("tr", "", [el("td", "", [el("span", "agent", [r[0]])])].concat(r.slice(1).map(function (c, i) { return el("td", i === 5 && c < 0 ? "neg" : "", [fmt(c)]); })));
+    });
+    trs.push(el("tr", "", [el("td", "", ["Bills paid through Airwallex"]), el("td"), el("td"), el("td"), el("td"), el("td"), el("td", bills ? "neg" : "", [fmt(-bills)])]));
+    trs.push(el("tr", "total", [el("td", "", ["Company"]), el("td"), el("td"), el("td"), el("td"), el("td"), el("td", net < 0 ? "neg" : "", [fmt(net)])]));
+    body.replaceChildren.apply(body, trs);
+  }
+
+  var shown = -1;
+  function renderEvents(tt) {
+    var visible = M.events.filter(function (e) { return e.day - 1 + e.minute / 1440 <= tt; });
+    var open = visible.filter(function (e) { return e.outcome === "waiting"; }).length - visible.filter(function (e) { return e.agent === "cfo"; }).length;
+    document.getElementById("waiting").textContent = int(Math.max(0, open));
+    if (visible.length === shown) return;
+    shown = visible.length;
+    var list = document.getElementById("event-list");
+    list.replaceChildren.apply(list, visible.slice().reverse().map(function (e) {
+      var who = e.agent === "cfo" ? el("span", "chip cfo", ["CFO (simulated)"]) : el("span", "chip", [e.agent]);
+      var tag = e.outcome === "blocked" ? el("span", "chip blocked", ["blocked"]) : null;
+      return el("div", "ev " + e.tone, [el("span", "t num", ["Day " + e.day]), el("div", "x", [who, tag, e.text + " (" + hhmm(e.minute) + ")"])]);
+    }));
+  }
+
+  function render() {
+    var day = Math.min(N, Math.floor(t) + 1);
+    document.getElementById("day").textContent = t >= N ? "Month done" : "Day " + day + " of " + N;
+    document.getElementById("bar").style.width = (t / N * 100).toFixed(2) + "%";
+    document.getElementById("alone").textContent = int(upTo(t, function (d) { return d.alone; }));
+    document.getElementById("blocked").textContent = int(upTo(t, function (d) { return d.blocked; }));
+    drawLine(t); renderPnl(t); renderEvents(t);
+  }
+
+  function frame(now) {
+    if (playing) {
+      if (last !== null) t = Math.min(N, t + (now - last) / 1000 / perDay);
+      last = now;
+      if (t >= N) { playing = false; document.getElementById("play").textContent = "Play"; }
+    }
+    render();
+    if (playing) requestAnimationFrame(frame);
+  }
+  document.getElementById("play").addEventListener("click", function () {
+    if (t >= N) t = 0;
+    playing = !playing; last = null;
+    this.textContent = playing ? "Pause" : "Play";
+    if (playing) requestAnimationFrame(frame);
+  });
+  document.getElementById("restart").addEventListener("click", function () {
+    t = 0; last = null; shown = -1;
+    if (!playing) { playing = true; document.getElementById("play").textContent = "Pause"; requestAnimationFrame(frame); }
+  });
+  // ?at=end shows the finished month at once (a still for the README, or a judge in a hurry).
+  if (/[?&]at=end(&|$)/.test(location.search)) { t = N; playing = false; document.getElementById("play").textContent = "Play"; render(); }
+  else requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

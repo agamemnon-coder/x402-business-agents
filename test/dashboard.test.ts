@@ -9,7 +9,9 @@ import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
 import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal } from "../src/policy/approvals.js";
-import { dashboardApp } from "../src/servers/dashboard.js";
+import { dashboardApp, monthPage, MONTH_CSP } from "../src/servers/dashboard.js";
+import { createHash } from "node:crypto";
+import { simulateMonth } from "../src/sim/month.js";
 import { setSetting } from "../src/world/settings.js";
 import { buyPlan } from "../src/agents/cardBuyer.js";
 import { setupCards } from "../src/policy/cards.js";
@@ -147,6 +149,8 @@ describe("dashboard snapshot", () => {
       ["Northwind Market Data", "19.99", true, null],
     ]);
     expect(s.refusals[0]).toMatchObject({ what: "Card purchase declined by Airwallex", agent: "sourcing" });
+    // 50 sales, 50 supplier purchases, 3 refunds, 1 sweep, the approved card charge; the refused tick and the declined charge.
+    expect(s.counts).toEqual({ alone: 105, waiting: 0, blocked: 2 });
     expect(s.feed.slice(0, 4).map((f) => [f.actor, f.text, f.tone])).toEqual([
       ["sourcing", "Airwallex declined 45.00 EUR at Northwind Market Data on the sourcing agent's card •••• 4002: over the card's limit", "refusal"],
       ["sourcing", "Subscribing to Northwind Market Data (Pro plan, monthly (more symbols, faster prices)) for 45.00 EUR on its card •••• 4002", "info"],
@@ -274,6 +278,20 @@ describe("dashboard server", () => {
     expect(html).toBe(PAGE);
     expect(html).not.toContain("P-0007");
     expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'sha256-[^']+'; style-src 'sha256-[^']+'; connect-src 'self'/);
+  });
+
+  it("serves the month replay with its data inside the page, under a CSP that matches its one script", async () => {
+    const res = await fetch(`${await serve(ledger())}/month`);
+    const html = await res.text();
+    expect(res.headers.get("content-security-policy")).toBe(MONTH_CSP);
+    const script = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    expect(MONTH_CSP).toContain(`'sha256-${createHash("sha256").update(script).digest("base64")}'`);
+    const data = /<script type="application\/json" id="month-data">([\s\S]*?)<\/script>/.exec(html)![1]!;
+    expect(JSON.parse(data)).toEqual(simulateMonth());
+    // A "</script>" in the data cannot end the data block early.
+    const m = simulateMonth();
+    m.events[0]!.text = "</script><script>alert(1)</script>";
+    expect(monthPage(m)).not.toContain("</script><script>alert(1)");
   });
 
   it("hands approvals to the approval page and refuses odd ids and foreign hosts", async () => {

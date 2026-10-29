@@ -111,6 +111,8 @@ export interface Snapshot {
   refusals: Refusal[];
   feed: FeedItem[];
   cards: CardView[];
+  /** Top of the page: what the agents did alone, what waits for the CFO, what was blocked (J4). */
+  counts: { alone: number; waiting: number; blocked: number };
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
@@ -430,6 +432,25 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
   }
 }
 
+/** Stopped by a check or a person (payments refused on chain or by the card are counted from their own tables). */
+const BLOCKED_EVENTS = new Set([
+  "sale.settle_failed", "claude.rejected", "proposal.rejected", "refund.refused", "sweep.refused",
+  "invoice.fraud_suspected", "document.injection_flagged", "passkey.refused",
+]);
+
+/** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
+function counts(db: DB, rows: AuditRow[], waiting: number): Snapshot["counts"] {
+  const hasCards = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get();
+  const n = (sql: string) => (db.prepare(sql).get() as { n: number }).n;
+  const card = (approved: 0 | 1) => (hasCards ? n(`SELECT COUNT(*) AS n FROM card_transactions WHERE approved = ${approved}`) : 0);
+  return {
+    alone: n("SELECT COUNT(*) AS n FROM sales WHERE status = 'DELIVERED'") + n("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'PAID'")
+      + n("SELECT COUNT(*) AS n FROM refunds WHERE outcome = 'PAID'") + n("SELECT COUNT(*) AS n FROM sweeps WHERE outcome = 'PAID'") + card(1),
+    waiting,
+    blocked: n("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'REFUSED'") + card(0) + rows.filter((r) => BLOCKED_EVENTS.has(r.event)).length,
+  };
+}
+
 export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
@@ -522,6 +543,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     refusals,
     feed,
     cards: cards(db, now),
+    counts: counts(db, rows, pending.filter((p) => !p.expired).length),
     passkey: passkeyInfo(db, now),
   };
 }
