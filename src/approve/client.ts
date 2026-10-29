@@ -255,6 +255,19 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   };
 }
 
+/** "0,03" (a decimal comma, as many phones type it) reads as 0.03; nothing else is guessed. */
+export function normalizeAmount(input: string): string {
+  const v = input.trim();
+  return /^\d+,\d+$/.test(v) ? v.replace(",", ".") : v;
+}
+
+/** Why an amount cannot be a policy value, checked before anything is signed; null when it can. */
+export function amountProblem(kind: "money" | "optional_money" | "choice", value: string): string | null {
+  if (kind === "choice" || (kind === "optional_money" && value === "")) return null;
+  if (value === "") return "write an amount";
+  return /^\d{1,9}\.\d{2}$/.test(value) ? null : `write it with two decimals, like 0.03 (not ${JSON.stringify(value)})`;
+}
+
 /** The terms of a policy change made on the phone: its own id (C-…), ten minutes, the exact changes. */
 export function buildPolicyTerms(changes: { key: string; label: string; from: string; to: string }[], reason: string, now: Date, randomHex: string): Obj {
   return {
@@ -729,7 +742,7 @@ async function policyPage(): Promise<void> {
     label.setAttribute("for", id);
     const row = el("div", "policy-row", [label, txt("span", "policy-now", `now: ${e.display}`), input]);
     const read = () => {
-      const v = input.value.trim();
+      const v = e.kind === "choice" ? input.value : normalizeAmount(input.value);
       return e.kind === "optional_money" && (v === "" || v.toLowerCase() === "none") ? "" : v;
     };
     return { e, row, read };
@@ -760,6 +773,13 @@ async function policyPage(): Promise<void> {
     if (changes.length === 0) {
       note.textContent = "Nothing changed.";
       return;
+    }
+    for (const f of fields) {
+      const problem = f.read() === f.e.value ? null : amountProblem(f.e.kind, f.read());
+      if (problem) {
+        note.textContent = `${f.e.label}: ${problem}.`;
+        return;
+      }
     }
     if (reason.value.trim() === "") {
       note.textContent = "Say why, in one line.";

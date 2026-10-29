@@ -144,7 +144,7 @@ check(/another option/.test((await page.textContent(".verdict-detail")) ?? ""), 
 // The CFO policy editor: lower the sourcing agent's limit, sign it with the passkey, see it applied.
 await page.goto(`${url}/policy`);
 await page.waitForSelector(".policy-row input");
-await page.fill("#p0", "0.03");
+await page.fill("#p0", "0,03"); // a phone types a decimal comma
 await page.fill("#reason", "supplier prices are rising");
 await page.screenshot({ path: join(shots, "policy-editor.png") });
 await page.click("main > button.confirm");

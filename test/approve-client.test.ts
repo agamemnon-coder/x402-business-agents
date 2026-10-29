@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { b64urlToBytes, buildPolicyTerms, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, type PhoneProposal } from "../src/approve/client.js";
+import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, type PhoneProposal } from "../src/approve/client.js";
 import { sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
@@ -112,6 +112,15 @@ describe("the words on the confirm screen", () => {
       schema: "kit11.approval-terms/v1", kind: "policy_change", proposal_id: "C-0a1b2c3d", expires_at: "2026-10-30T14:10:00Z",
       changes: [{ key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03" }], reason: "prices rising",
     });
+  });
+
+  it("reads an amount typed with a decimal comma, and says what is wrong before anything is signed", () => {
+    expect(["0,03", " 0.03 ", "12,50", "none", ""].map((v) => normalizeAmount(v))).toEqual(["0.03", "0.03", "12.50", "none", ""]);
+    expect(amountProblem("optional_money", "")).toBeNull();
+    expect(amountProblem("money", "0.03")).toBeNull();
+    expect(amountProblem("money", "0.3")).toMatch(/0\.03/);
+    expect(amountProblem("money", "1.850,00")).toMatch(/0\.03/);
+    expect(amountProblem("money", "")).toMatch(/amount/);
   });
 
   it("will not offer a kind it cannot describe", () => {
