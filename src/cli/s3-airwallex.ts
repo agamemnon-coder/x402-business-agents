@@ -10,6 +10,7 @@ import { AirwallexRest } from "../airwallex/adapter.js";
 import { Airwallex, type AirwallexConfig } from "../airwallex/client.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
+import { expireDue } from "../policy/approvals.js";
 
 export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: string): Promise<void> {
   const rest = new AirwallexRest(new Airwallex(cfg));
@@ -29,6 +30,8 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
   console.log(`                 read by ${read.source === "claude" ? `${kind.model} (classify) and ${read.model} (extract)` : `the deterministic parser (${read.note})`}`);
   console.log(`NEW INFORMATION  invoice ${inv.invoice_no} from ${inv.vendor}: EUR ${inv.amount}, due ${inv.due_date}`);
 
+  // A lapsed proposal must not block a new plan: expire it first, as the proposals list does.
+  expireDue(db);
   const pending = db.prepare("SELECT proposal_id, status, terms_sha256 FROM proposals WHERE kind = 'invoice_payment' AND json_extract(terms_json, '$.invoice_no') = ? AND status IN ('PENDING_APPROVAL', 'APPROVED', 'EXECUTED')").get(inv.invoice_no) as
     { proposal_id: string; status: string; terms_sha256: string } | undefined;
   if (pending) {
