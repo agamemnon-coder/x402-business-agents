@@ -18,10 +18,23 @@ export type Tick = { seq: number; pair: "EUR/USD"; bid: string; ask: string; ts:
 
 const price = (units: number) => (units / 100_000).toFixed(5);
 
+/** One session day of ticks, one a second. */
+export const SESSION_TICKS = 86_400;
+
+/**
+ * True bid for seq: the recorded 50 first, then the session goes on as a smooth deterministic drift around the last
+ * recorded bid (no faults after tick 50), so sales past 50 (a second run, clearing sales) still have data.
+ */
+function trueBid(seq: number): number {
+  if (seq <= BIDS.length) return BIDS[seq - 1]!;
+  const n = seq - BIDS.length;
+  return BIDS[BIDS.length - 1]! + Math.round(18 * Math.sin(n / 37) + 6 * Math.sin(n / 5.3));
+}
+
 /** The tick the supplier serves for seq, with the feed fault unless corrected; throws outside the session. */
 export function servedTick(seq: number, corrected: boolean): Tick {
-  if (!Number.isSafeInteger(seq) || seq < 1 || seq > BIDS.length) throw new RangeError(`no tick #${seq}`);
-  const bid = BIDS[seq - 1]! + (!corrected && FAULTY_SEQS.includes(seq) ? FAULT_UNITS : 0);
+  if (!Number.isSafeInteger(seq) || seq < 1 || seq > SESSION_TICKS) throw new RangeError(`no tick #${seq}`);
+  const bid = trueBid(seq) + (!corrected && FAULTY_SEQS.includes(seq) ? FAULT_UNITS : 0);
   const ts = new Date(Date.UTC(2026, 9, 30, 9, 0, seq)).toISOString();
   return { seq, pair: "EUR/USD", bid: price(bid), ask: price(bid + SPREAD_UNITS), ts };
 }
