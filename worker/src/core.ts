@@ -14,6 +14,8 @@ export interface Pages {
   dashboard: string;
   /** The month replay (simulated, its data inside the page). */
   month: string;
+  /** The public demo: a recorded live run played back (K5), its data inside the page. */
+  demo: string;
   approve: string;
   enrol: string;
   /** The CFO policy editor. */
@@ -21,7 +23,7 @@ export interface Pages {
   /** The approval and enrolment pages' script and stylesheet, served as /assets/approve.js and .css. */
   client: string;
   css: string;
-  csp: { dashboard: string; month: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -69,6 +71,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   });
   if (path === "/") return page(pages.dashboard, pages.csp.dashboard);
   if (path === "/month") return page(pages.month, pages.csp.month);
+  if (path === "/demo") return page(pages.demo, pages.csp.demo);
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
   if (path === "/policy") return page(pages.policy, pages.csp.policy);

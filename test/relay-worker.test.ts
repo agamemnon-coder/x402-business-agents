@@ -292,8 +292,8 @@ describe("enrolment from the phone", () => {
 
 describe("pages", () => {
   const pages: Pages = {
-    dashboard: "<!doctype html><title>d</title>", month: "<!doctype html><title>m</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", policy: "<!doctype html><title>p</title>", client: "export {};", css: "body{}",
-    csp: { dashboard: "default-src 'none'; script-src 'sha256-x'", month: "default-src 'none'; script-src 'sha256-m'", approve: "default-src 'none'; script-src 'self'", enrol: "default-src 'none'; script-src 'self'", policy: "default-src 'none'; script-src 'self'" },
+    dashboard: "<!doctype html><title>d</title>", month: "<!doctype html><title>m</title>", demo: "<!doctype html><title>x</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", policy: "<!doctype html><title>p</title>", client: "export {};", css: "body{}",
+    csp: { dashboard: "default-src 'none'; script-src 'sha256-x'", month: "default-src 'none'; script-src 'sha256-m'", demo: "default-src 'none'; script-src 'sha256-x'", approve: "default-src 'none'; script-src 'self'", enrol: "default-src 'none'; script-src 'self'", policy: "default-src 'none'; script-src 'self'" },
   };
   const page = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages);
 
@@ -305,6 +305,7 @@ describe("pages", () => {
     expect(page("/enrol")!.headers.get("content-security-policy")).toBe(pages.csp.enrol);
     expect(await page("/policy")!.text()).toBe(pages.policy);
     expect(page("/month")!.headers.get("content-security-policy")).toBe(pages.csp.month);
+    expect(page("/demo")!.headers.get("content-security-policy")).toBe(pages.csp.demo);
     const js = page("/assets/approve.js")!;
     expect(js.headers.get("content-type")).toMatch(/^text\/javascript/);
     expect(page("/assets/approve.css")!.headers.get("content-type")).toMatch(/^text\/css/);

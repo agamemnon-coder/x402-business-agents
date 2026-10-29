@@ -9,9 +9,12 @@ import type { NextFunction, Request, Response } from "express";
 import type { DB } from "../db/open.js";
 import { buildSnapshot } from "../dashboard/snapshot.js";
 import { simulateMonth, type MonthReport } from "../sim/month.js";
+import type { Story } from "../demo/story.js";
 
 export const PAGE = readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8");
 const MONTH_TEMPLATE = readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8");
+const DEMO_TEMPLATE = readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8");
+const STORY_FILE = new URL("../../docs/demo/story.json", import.meta.url);
 
 /** The hash of a page's one inline script or style (a data block, <script type=…>, is not a script and not hashed). */
 const inlineHash = (page: string, tag: "script" | "style") => {
@@ -27,6 +30,14 @@ const cspFor = (page: string) => [
 export const CSP = cspFor(PAGE);
 /** The month replay carries its data inside the page, so it needs no request at all once loaded. */
 export const MONTH_CSP = cspFor(MONTH_TEMPLATE);
+
+/** The public demo page (K5 replay) plays a recorded run; no request, no key, nothing live. */
+export const DEMO_CSP = cspFor(DEMO_TEMPLATE);
+
+/** The demo page with the recorded story in it (docs/demo/story.json unless one is given), "<" escaped. */
+export function demoPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story): string {
+  return DEMO_TEMPLATE.replace("__STORY_JSON__", () => JSON.stringify(story).replace(/</g, "\\u003c"));
+}
 
 /** The month replay page with the simulated month in it (JSON, with "<" escaped so it cannot close the block). */
 export function monthPage(report: MonthReport = simulateMonth()): string {
@@ -62,6 +73,11 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/", (_req, res) => {
     res.setHeader("Content-Security-Policy", CSP);
     res.type("html").send(PAGE);
+  });
+
+  app.get("/demo", (_req, res) => {
+    res.setHeader("Content-Security-Policy", DEMO_CSP);
+    res.type("html").send(demoPage());
   });
 
   app.get("/month", (_req, res) => {

@@ -37,7 +37,8 @@
     "fail": "tsx src/cli/fail.ts",
     "fraud": "tsx src/cli/fraud.ts",
     "inject": "tsx src/cli/inject.ts",
-    "demo:all": "tsx src/cli/demo.ts"
+    "demo:all": "tsx src/cli/demo.ts",
+    "demo:record": "tsx src/cli/demo-record.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
