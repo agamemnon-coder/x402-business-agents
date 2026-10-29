@@ -83,7 +83,7 @@ function lookalikeOf(vendor: string, all: Beneficiary[]): { b: Beneficiary; how:
 
 /** Everything the code can tell about an invoice's payee, from the ledger's allowlist and the document itself. */
 export function assessInvoice(db: DB, inv: Invoice, text: string): FraudFinding {
-  const all = db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic FROM beneficiaries WHERE currency = 'EUR' ORDER BY name").all() as Beneficiary[];
+  const all = db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic FROM beneficiaries WHERE currency = 'EUR' AND status = 'ACTIVE' ORDER BY name").all() as Beneficiary[];
   const signals: FraudSignal[] = [];
   // The same vendor written differently (case, spacing, punctuation) in Latin letters is that vendor.
   const matched = all.find((b) => b.name === inv.vendor) ?? (hasOtherScript(inv.vendor) ? undefined : all.find((b) => skeleton(b.name) === skeleton(inv.vendor)));

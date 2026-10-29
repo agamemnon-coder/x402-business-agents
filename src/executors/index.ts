@@ -7,6 +7,7 @@ import { executeDevTest } from "./devTest.js";
 import { executePolicyChange } from "./policyChange.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { syncCardsAfterPolicy } from "../policy/cards.js";
+import { executePayeeChange } from "../policy/payeeChange.js";
 
 /** Runs an approved proposal by its kind. Every executor re-checks the approved hash itself. */
 export async function execute(db: DB, proposalId: string): Promise<void> {
@@ -25,6 +26,10 @@ export async function execute(db: DB, proposalId: string): Promise<void> {
       return executeMandateReplace(db, proposalId);
     case "refund_batch":
       return executeRefundBatch(db, proposalId);
+    case "payee_change":
+      if (!awx) throw new Error("Airwallex sandbox keys are not set; the new account cannot be added");
+      await executePayeeChange(db, awx.rail, proposalId);
+      return;
     case "invoice_payment":
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");
       await executeInvoicePayment(db, awx.rail, awx.sim, proposalId);

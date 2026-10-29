@@ -169,6 +169,7 @@ const KIND_TITLES: Record<string, string> = {
   refund_batch: "Refund batch",
   invoice_payment: "Invoice payment",
   policy_change: "Policy change",
+  payee_change: "Supplier bank details",
   dev_test: "Dev test (moves no money)",
 };
 export const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
@@ -198,6 +199,10 @@ export function summarize(kind: string, termsJson: string): string {
     return `Pay ${str(t.vendor)} EUR ${str(t.amount)} for invoice ${str(t.invoice_no)} by ${str(t.method) || "SWIFT"} to IBAN …${str(t.iban_last4)}${fx}; ${fee}`;
   }
   if (kind === "dev_test") return `${str(t.label)}: ${str(t.purpose)}`;
+  if (kind === "payee_change") {
+    const v = (t.verification ?? {}) as P;
+    return `Pay ${str(t.vendor)} to the account ending ${str(t.new_iban).slice(-4)} instead of …${str(t.old_iban_last4)}; verified by ${str(v.by)}`;
+  }
   if (kind === "policy_change") {
     const changes = Array.isArray(t.changes) ? (t.changes as P[]) : [];
     return changes.map((c) => `${str(c.label)}: ${str(c.from) || "no extra limit"} → ${str(c.to) || "no extra limit"}`).join("; ");
@@ -474,6 +479,9 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "sale.prepaid_undelivered": return out(`Tick #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
     case "card.frozen": return out(`Emergency stop: Airwallex froze the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "refusal");
     case "card.thawed": return out(`The ${str(p.agent)} agent's card •••• ${str(p.last4)} is active again`, "approval");
+    case "payee.change_requested": return out(`${str(p.vendor)}'s bank details: a change to a ${str(p.to_country)} account ending ${str(p.to_last4)} was requested (${s}); nothing changes until a person verifies it with the supplier and the CFO approves`, "approval");
+    case "payee.change_verified": return out(`${str(p.by)} verified ${s} with ${str(p.vendor)}: ${str(p.how)}`, "approval");
+    case "payee.changed": return out(`${str(p.vendor)} is now paid to the account ending ${str(p.to_last4)} (was …${str(p.from_last4)}), after verification and approval (${str(p.proposal_id)})`, "ok");
     case "card.issued": return out(`Airwallex issued the ${str(p.agent)} agent a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
     case "card.adopted": return out(`The ${str(p.agent)} agent's Visa card •••• ${str(p.last4)} now follows the CFO policy`, "ok");
     case "card.limits_synced": return out(`Airwallex now has the CFO policy on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${limitWords(str(p.to))} (was ${limitWords(str(p.from))})`, "approval");

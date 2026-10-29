@@ -52,7 +52,7 @@ function cap(s: string): string {
 
 /** Every rule, the allowed counterparties (Airwallex beneficiaries) included. */
 export function rules(db: DB): Rule[] {
-  const payees = (db.prepare("SELECT name FROM beneficiaries ORDER BY name").all() as { name: string }[]).map((b): Rule => ({
+  const payees = (db.prepare("SELECT DISTINCT name FROM beneficiaries ORDER BY name").all() as { name: string }[]).map((b): Rule => ({
     key: `counterparty:${b.name}`, label: `${b.name} (Airwallex payee)`, unit: "", kind: "choice", choices: ["allowed", "blocked"], fallback: "allowed",
   }));
   return [...STATIC, ...payees];

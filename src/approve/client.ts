@@ -259,6 +259,20 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "payee_change") {
+    const v = (isObj(t.verification) ? t.verification : {}) as Obj;
+    const iban = str(t.new_iban);
+    return {
+      approvable: true, title: "Supplier bank details",
+      sentence: `Pay ${str(t.vendor)} from now on to IBAN ${iban.replace(/(.{4})/g, "$1 ").trim()} (BIC ${str(t.new_bic)}) instead of the account ending ${str(t.old_iban_last4)}. ${str(v.by)} recorded that the supplier confirmed it: ${str(v.how)}.`,
+      amount: "0.00 (nothing moves now)", margin: null, recipient: `${str(t.vendor)}, account ending ${iban.slice(-4)}`,
+      rows: [["Supplier", str(t.vendor)], ["Old account", `…${str(t.old_iban_last4)}`], ["New IBAN", iban], ["New BIC", str(t.new_bic)], ["Verified by", str(v.by)], ["How", str(v.how)]],
+      short: "this bank-detail change",
+      warnings: ["Changed bank details are how invoice fraud works. Approve only if the new IBAN matches what the supplier told you on a number you already had."],
+      amountLabel: "Moves now", label: "Bank details", big: `…${iban.slice(-4)}`, unit: "new account",
+    };
+  }
+
   if (kind === "dev_test") {
     return {
       approvable: true, title: str(t.label), sentence: `${str(t.purpose)}. Approving it records the approval and moves no money.`,

@@ -297,6 +297,27 @@ allowlisted beneficiary: a person does that after calling the supplier on the nu
 from "Lizenzhaus Beispeil GmbH". Both are read by Claude, blocked by code, and explained by Opus
 ([run log](docs/runs/2026-10-29-fraud.md)).
 
+## Emergency stop and changed bank details
+
+- **Emergency stop.**
+  - The dashboard's **Emergency stop** opens the CFO policy on the phone with `freeze` set. One Face ID then does two
+    things:
+    - every agent payment is refused before anything is signed (supplier purchases, refunds, sweeps, invoice
+      payments, prepaid clearing offers);
+    - every company card is set INACTIVE at Airwallex, which declines with `CARD_INACTIVE` (checked live).
+  - Pulling it tightens the policy, so the phone may do it. Lifting it loosens the policy, so it needs a proposal and
+    Face ID.
+  - While it is on, the dashboard shows a red band saying who pulled it, when and why.
+- **A supplier's new bank details** (`npm run payee`). Changed bank details are how invoice fraud works, so a new IBAN
+  is paid only after three separate steps:
+  1. a request, which changes nothing;
+  2. a person records that the supplier confirmed the account on a contact already in our own records (an agent
+     cannot do this);
+  3. a proposal with the full new IBAN and that verification, approved with Face ID.
+
+  Only then is the account added at Airwallex and made the supplier's active payee. The old account is kept as
+  REPLACED.
+
 ## Prompt injection
 
 Documents are data. Every incoming document is screened by code first (`src/policy/injection.ts`) for lines aimed

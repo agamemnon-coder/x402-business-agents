@@ -34,6 +34,7 @@
     "policy": "tsx src/cli/policy.ts",
     "cards": "tsx src/cli/cards.ts",
     "clearing": "tsx src/cli/clearing.ts",
+    "payee": "tsx src/cli/payee.ts",
     "fail": "tsx src/cli/fail.ts",
     "fraud": "tsx src/cli/fraud.ts",
     "inject": "tsx src/cli/inject.ts",

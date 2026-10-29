@@ -48,6 +48,7 @@ const RULES: Record<string, string> = {
   invoice_payment: "Every Airwallex payout needs a person; the fee ceiling and the reserve floors are part of the approved terms.",
   refund_batch: "Refunds outside the CFO policy's automatic limits need a person.",
   policy_change: "A change to the CFO policy needs the CFO's own approval.",
+  payee_change: "A supplier's new bank details count only after a person verified them with the supplier on a contact already on file, and the CFO approved.",
   dev_test: "Dev test of the approval path; it moves no money.",
 };
 

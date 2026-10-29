@@ -216,7 +216,25 @@ CREATE TABLE IF NOT EXISTS beneficiaries (
   iban_sha256 TEXT NOT NULL,
   bic TEXT NOT NULL,
   currency TEXT NOT NULL,
-  method TEXT NOT NULL
+  method TEXT NOT NULL,
+  -- ACTIVE: invoices may be paid here. REPLACED: the supplier's old account, kept for the history (E3).
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'REPLACED'))
+);
+
+-- A supplier's new bank details (E3): requested, verified by a person out of band, proposed, then applied once the
+-- CFO approves. Until then invoices to the new account stay blocked.
+CREATE TABLE IF NOT EXISTS payee_changes (
+  change_id TEXT PRIMARY KEY,
+  vendor TEXT NOT NULL,
+  old_beneficiary_id TEXT NOT NULL REFERENCES beneficiaries(beneficiary_id),
+  new_iban TEXT NOT NULL,
+  new_bic TEXT NOT NULL,
+  source TEXT,
+  requested_by TEXT NOT NULL,
+  verification_json TEXT,
+  proposal_id TEXT,
+  status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED')),
+  created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS invoices (
