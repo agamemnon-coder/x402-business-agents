@@ -46,3 +46,24 @@ export const MANDATE_PROPOSAL_TTL_MS = 60 * 60 * 1000;
 
 /** A delivered price that differs from the supplier's correction by more than this (0.00005) is refunded. */
 export const DATA_TOLERANCE_UNITS = 5;
+
+/**
+ * Each agent's company card (K2): a virtual Visa card from Airwallex Issuing, in EUR. The limits are the CFO
+ * policy's starting values; the policy (card.<agent>.per_tx / .monthly) is what the card is synced to.
+ * Merchants are fictional (Microsoft's sample company names), and so are their prices, chosen to look like
+ * ordinary small-business software plans.
+ */
+export const CARDS: Record<Agent, { firstName: string; email: string; nickname: string; perTxCents: number; monthlyCents: number; buys: string }> = {
+  sourcing: { firstName: "Sourcing", email: "agents+sourcing@tidemark-data.example", nickname: "sourcing agent: market data", perTxCents: 3000, monthlyCents: 10000, buys: "market data" },
+  support: { firstName: "Support", email: "agents+support@tidemark-data.example", nickname: "support agent: helpdesk tools", perTxCents: 6000, monthlyCents: 15000, buys: "helpdesk seats" },
+  treasury: { firstName: "Treasury", email: "agents+treasury@tidemark-data.example", nickname: "treasury agent: finance tools", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
+};
+
+/** What each agent may buy on its card: software plans (merchant category 5734, computer software stores). */
+export const PLANS: Record<string, { agent: Agent; merchant: string; label: string; amountCents: number; mcc: string }> = {
+  "market-data-starter": { agent: "sourcing", merchant: "Northwind Market Data", label: "Starter plan, monthly", amountCents: 1999, mcc: "5734" },
+  "market-data-pro": { agent: "sourcing", merchant: "Northwind Market Data", label: "Pro plan, monthly (more symbols, faster prices)", amountCents: 4500, mcc: "5734" },
+  "helpdesk-2-seats": { agent: "support", merchant: "Tailspin Helpdesk", label: "2 seats, monthly", amountCents: 3800, mcc: "5734" },
+  "helpdesk-5-seats": { agent: "support", merchant: "Tailspin Helpdesk", label: "5 seats, monthly", amountCents: 9500, mcc: "5734" },
+  "books-starter": { agent: "treasury", merchant: "Contoso Books", label: "Bookkeeping, starter, monthly", amountCents: 1500, mcc: "5734" },
+};

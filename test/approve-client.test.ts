@@ -196,8 +196,9 @@ describe("loosening the policy (N2)", () => {
       ["approval.refund_each", "0.10", "0.20"], ["approval.refund_each", "0.10", "0.00"],
       ["eur_floor", "500.00", "0.00"], ["eur_floor", "500.00", "800.00"], ["eur_floor", "", "500.00"], ["eur_floor", "500.00", ""],
       ["counterparty:X GmbH", "blocked", "allowed"], ["counterparty:X GmbH", "allowed", "blocked"], ["unknown", "a", "b"],
+      ["card.sourcing.per_tx", "30.00", "50.00"], ["card.sourcing.per_tx", "30.00", "20.00"], ["card.support.monthly", "150.00", "150.01"],
     ];
-    const expected = [false, true, true, false, true, false, true, false, false, true, true, false, true];
+    const expected = [false, true, true, false, true, false, true, false, false, true, true, false, true, true, false, true];
     expect(cases.map(([key, from, to]) => loosens({ key: key!, from: from!, to: to! }))).toEqual(expected);
     expect(cases.map(([key, from, to]) => policyLoosens({ key: key!, from: from!, to: to! }))).toEqual(expected);
   });

@@ -310,3 +310,38 @@ CREATE TABLE IF NOT EXISTS passkey_pending (
   fingerprint TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+-- Each agent's company card at Airwallex Issuing (K2). The card number stays at Airwallex; only the last four are
+-- kept. The limits are the ones Airwallex last confirmed; the CFO policy says what they should be.
+CREATE TABLE IF NOT EXISTS cards (
+  agent TEXT PRIMARY KEY,
+  cardholder_id TEXT NOT NULL,
+  card_id TEXT NOT NULL UNIQUE,
+  last4 TEXT NOT NULL,
+  nickname TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  per_tx_cents INTEGER NOT NULL CHECK (per_tx_cents > 0),
+  monthly_cents INTEGER NOT NULL CHECK (monthly_cents > 0),
+  status TEXT NOT NULL,
+  synced_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+-- Every authorisation on an agent's card, approved or declined by Airwallex. One row per Airwallex transaction,
+-- whichever way it arrived first (our own simulated charge, the poll, or the webhook).
+CREATE TABLE IF NOT EXISTS card_transactions (
+  transaction_id TEXT PRIMARY KEY,
+  card_id TEXT NOT NULL REFERENCES cards(card_id),
+  agent TEXT NOT NULL,
+  merchant TEXT NOT NULL,
+  mcc TEXT,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
+  currency TEXT NOT NULL,
+  status TEXT NOT NULL,
+  approved INTEGER NOT NULL CHECK (approved IN (0, 1)),
+  failure_reason TEXT,
+  purpose TEXT,
+  source TEXT NOT NULL CHECK (source IN ('simulation', 'poll', 'webhook')),
+  occurred_at TEXT NOT NULL,
+  recorded_at TEXT NOT NULL
+);

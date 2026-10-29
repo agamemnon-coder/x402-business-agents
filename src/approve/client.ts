@@ -129,6 +129,7 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   const cents = (v: string) => (/^\d+\.\d{2}$/.test(v) ? Number(v.replace(".", "")) : null);
   const [from, to] = [cents(c.from), cents(c.to)];
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
+  if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";

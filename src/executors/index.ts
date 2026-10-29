@@ -5,13 +5,20 @@ import { executeInvoicePayment } from "./invoicePayment.js";
 import { airwallexFromEnv } from "../airwallex/adapter.js";
 import { executeDevTest } from "./devTest.js";
 import { executePolicyChange } from "./policyChange.js";
+import { issuingFromEnv } from "../airwallex/issuing.js";
+import { syncCardsAfterPolicy } from "../policy/cards.js";
 
 /** Runs an approved proposal by its kind. Every executor re-checks the approved hash itself. */
 export async function execute(db: DB, proposalId: string): Promise<void> {
   const row = db.prepare("SELECT kind FROM proposals WHERE proposal_id = ?").get(proposalId) as { kind: string } | undefined;
   if (!row) throw new Error(`no proposal ${proposalId}`);
   if (row.kind === "dev_test") return executeDevTest(db, proposalId);
-  if (row.kind === "policy_change") return executePolicyChange(db, proposalId);
+  if (row.kind === "policy_change") {
+    executePolicyChange(db, proposalId);
+    // A card limit in the policy only counts once the card at Airwallex has it too.
+    await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);
+    return;
+  }
   const awx = await airwallexFromEnv();
   switch (row.kind) {
     case "mandate_replace":

@@ -2,11 +2,11 @@
 // anything is signed. The mandates stay the hard outer wall; the policy can only be stricter. Values live in the
 // settings table and change only through an approved policy_change proposal (src/executors/policyChange.ts).
 
-import { REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, type Agent } from "../config/policy.js";
+import { AGENTS, CARDS, REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, type Agent } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 
-export type PolicyKey = `cap.${Agent}` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
+export type PolicyKey = `cap.${Agent}` | `card.${Agent}.per_tx` | `card.${Agent}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
 
 export interface Rule {
   key: PolicyKey;
@@ -37,7 +37,16 @@ const STATIC: Rule[] = [
   { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS) },
   { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
   { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
+  // Each agent's company card at Airwallex (K2). The card itself is synced to these, so Airwallex declines the rest.
+  ...AGENTS.flatMap((a): Rule[] => [
+    { key: `card.${a}.per_tx`, label: `${cap(a)} agent's card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(CARDS[a].perTxCents) },
+    { key: `card.${a}.monthly`, label: `${cap(a)} agent's card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(CARDS[a].monthlyCents) },
+  ]),
 ];
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 /** Every rule, the allowed counterparties (Airwallex beneficiaries) included. */
 export function rules(db: DB): Rule[] {
@@ -94,6 +103,11 @@ export function capRefusal(db: DB, agent: Agent, cents: number): string | null {
   return cap !== null && cents > cap ? `policy_cap_exceeded: ${fromCents(cents)} is over the ${agent} limit of ${fromCents(cap)}` : null;
 }
 
+/** The limits the agent's card should have at Airwallex, from the policy. */
+export function cardLimits(db: DB, agent: Agent): { currency: "EUR"; perTxCents: number; monthlyCents: number } {
+  return { currency: "EUR", perTxCents: toCents(policyValue(db, `card.${agent}.per_tx`)), monthlyCents: toCents(policyValue(db, `card.${agent}.monthly`)) };
+}
+
 export function refundThresholds(db: DB): { eachCents: number; perDisputeCents: number } {
   return { eachCents: toCents(policyValue(db, "approval.refund_each")), perDisputeCents: toCents(policyValue(db, "approval.refund_per_dispute")) };
 }
@@ -111,6 +125,7 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   const cents = (v: string) => (/^\d+\.\d{2}$/.test(v) ? Number(v.replace(".", "")) : null);
   const [from, to] = [cents(c.from), cents(c.to)];
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
+  if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
