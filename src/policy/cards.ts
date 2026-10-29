@@ -3,14 +3,15 @@
 // agent does. Every authorisation Airwallex makes on a card is recorded once, from whichever source sees it first.
 
 import { AGENTS, CARDS, type Agent } from "../config/policy.js";
-import { audit } from "../audit/log.js";
+import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import type { Card, CardLimits, CardTransaction, IssuingRail } from "../airwallex/issuing.js";
 import { cardLimits, frozen } from "./rules.js";
 
 export interface CardRow {
-  agent: Agent;
+  /** An own agent (sourcing, support, treasury) or an outside one (ext:<name>, P1). */
+  agent: string;
   cardholder_id: string;
   card_id: string;
   last4: string;
@@ -26,14 +27,14 @@ export function cardRows(db: DB): CardRow[] {
   return db.prepare("SELECT * FROM cards ORDER BY agent").all() as CardRow[];
 }
 
-export function cardOf(db: DB, agent: Agent): CardRow | undefined {
+export function cardOf(db: DB, agent: string): CardRow | undefined {
   return db.prepare("SELECT * FROM cards WHERE agent = ?").get(agent) as CardRow | undefined;
 }
 
 const words = (l: { perTxCents: number; monthlyCents: number } | null) => (l ? `${fromCents(l.perTxCents)} / ${fromCents(l.monthlyCents)}` : "none");
 const same = (a: CardLimits | null, b: CardLimits) => !!a && a.currency === b.currency && a.perTxCents === b.perTxCents && a.monthlyCents === b.monthlyCents;
 
-function store(db: DB, agent: Agent, card: Card, now: Date): void {
+export function storeCard(db: DB, agent: string, card: Card, now: Date): void {
   if (!card.limits) throw new Error(`the ${agent} agent's card has no EUR limits at Airwallex`);
   db.prepare(
     `INSERT INTO cards (agent, cardholder_id, card_id, last4, nickname, currency, per_tx_cents, monthly_cents, status, synced_at, created_at)
@@ -47,7 +48,7 @@ function store(db: DB, agent: Agent, card: Card, now: Date): void {
 const wantStatus = (db: DB): "ACTIVE" | "INACTIVE" => (frozen(db) ? "INACTIVE" : "ACTIVE");
 
 /** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
-async function syncOne(db: DB, rail: IssuingRail, agent: Agent, card: Card, now: Date): Promise<boolean> {
+export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Card, now: Date): Promise<boolean> {
   let changed = false;
   const status = wantStatus(db);
   if (card.status !== status) {
@@ -64,7 +65,7 @@ async function syncOne(db: DB, rail: IssuingRail, agent: Agent, card: Card, now:
   }
   const want = cardLimits(db, agent);
   if (same(card.limits, want)) {
-    store(db, agent, card, now);
+    storeCard(db, agent, card, now);
     return changed;
   }
   let after: Card;
@@ -75,7 +76,7 @@ async function syncOne(db: DB, rail: IssuingRail, agent: Agent, card: Card, now:
   }
   // Trust what Airwallex says the card now has, not what we asked for.
   if (!same(after.limits, want)) throw new Error(`the ${agent} agent's card has ${words(after.limits)} at Airwallex, not ${words(want)}`);
-  store(db, agent, after, now);
+  storeCard(db, agent, after, now);
   audit(db, "awx-executor", "card.limits_synced", agent, { agent, last4: after.last4, from: words(card.limits), to: words(want), currency: want.currency }, now);
   return true;
 }
@@ -103,7 +104,7 @@ export async function setupCards(db: DB, rail: IssuingRail, now = new Date()): P
     const found = await rail.findCard(holder.id, nickname);
     const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Tidemark CFO policy", limits: cardLimits(db, agent) }));
     // An adopted card is recorded with the limits it has; syncOne then logs any change it makes to them.
-    store(db, agent, card, now);
+    storeCard(db, agent, card, now);
     audit(db, "awx-executor", found ? "card.adopted" : "card.issued", agent, { agent, last4: card.last4, nickname, limits: words(card.limits), currency: "EUR" }, now);
     await syncOne(db, rail, agent, card, now);
   }
@@ -111,15 +112,15 @@ export async function setupCards(db: DB, rail: IssuingRail, now = new Date()): P
 }
 
 /** Reads every card back from Airwallex and fixes any that differs from the policy. Returns the agents changed. */
-export async function syncCards(db: DB, rail: IssuingRail, now = new Date()): Promise<Agent[]> {
-  const changed: Agent[] = [];
+export async function syncCards(db: DB, rail: IssuingRail, now = new Date()): Promise<string[]> {
+  const changed: string[] = [];
   for (const row of cardRows(db)) if (await syncOne(db, rail, row.agent, await rail.getCard(row.card_id), now)) changed.push(row.agent);
   return changed;
 }
 
 /** The cheap check the runner makes every few seconds: only a card whose stored limits differ from the policy is touched. */
-export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Date()): Promise<Agent[]> {
-  const changed: Agent[] = [];
+export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Date()): Promise<string[]> {
+  const changed: string[] = [];
   for (const row of cardRows(db)) {
     const want = cardLimits(db, row.agent);
     if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantStatus(db)) continue;
@@ -130,7 +131,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
 }
 
 /** After an approved policy change: pushes any card limit it touched to Airwallex. */
-export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: IssuingRail | null, now = new Date()): Promise<Agent[]> {
+export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: IssuingRail | null, now = new Date()): Promise<string[]> {
   const p = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ? AND kind = 'policy_change'").get(proposalId) as { terms_json: string } | undefined;
   const keys = p ? (JSON.parse(p.terms_json) as { changes: { key: string }[] }).changes.map((c) => c.key) : [];
   if (!keys.some((k) => k.startsWith("card.") || k === "freeze")) return [];
@@ -142,7 +143,7 @@ export type CardTxSource = "simulation" | "poll" | "webhook";
 
 /** Records an Airwallex authorisation once. Returns true if it was new. */
 export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTxSource, now = new Date(), purpose?: string): boolean {
-  const card = db.prepare("SELECT agent, last4 FROM cards WHERE card_id = ?").get(t.cardId) as { agent: Agent; last4: string } | undefined;
+  const card = db.prepare("SELECT agent, last4 FROM cards WHERE card_id = ?").get(t.cardId) as { agent: string; last4: string } | undefined;
   if (!card) throw new Error(`transaction ${t.transactionId} is on ${t.cardId}, which is not an agent's card`);
   return db.transaction(() => {
     // Airwallex names some authorisations by two ids (a declined one in its list has only the older transaction id,
@@ -154,7 +155,7 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
       // Later news about the same authorisation (it cleared, or was reversed) updates the row.
       if (old.status !== t.status) db.prepare("UPDATE card_transactions SET status = ?, approved = ? WHERE transaction_id = ?").run(t.status, t.approved ? 1 : 0, t.transactionId);
       if (old.approved === 1 && !t.approved) {
-        audit(db, card.agent, "card.charge_reversed", t.transactionId, { agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, status: t.status, source }, now);
+        audit(db, card.agent as Actor, "card.charge_reversed", t.transactionId, { agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, status: t.status, source }, now);
       }
       return false;
     }
@@ -163,7 +164,7 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(t.transactionId, t.cardId, card.agent, t.merchant, t.mcc, t.amountCents, t.currency, t.status, t.approved ? 1 : 0, t.failureReason, purpose ?? null, source, t.occurredAt, now.toISOString());
     // Logged under the agent whose card it is; the decision itself is Airwallex's.
-    audit(db, card.agent, t.approved ? "card.charge_approved" : "card.charge_declined", t.transactionId, {
+    audit(db, card.agent as Actor, t.approved ? "card.charge_approved" : "card.charge_declined", t.transactionId, {
       agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency,
       ...(t.approved ? {} : { reason: t.failureReason ?? t.status }), ...(purpose ? { purpose } : {}), source,
     }, now);
@@ -183,7 +184,7 @@ export async function pollCardTransactions(db: DB, rail: IssuingRail, now = new 
 }
 
 /** What the agent's card spent (approved) in the calendar month of `now`, in cents. */
-export function cardSpendCents(db: DB, agent: Agent, now = new Date()): number {
+export function cardSpendCents(db: DB, agent: string, now = new Date()): number {
   const month = now.toISOString().slice(0, 7);
   const r = db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS s FROM card_transactions WHERE agent = ? AND approved = 1 AND substr(occurred_at, 1, 7) = ?").get(agent, month) as { s: number };
   return r.s;

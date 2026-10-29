@@ -95,7 +95,10 @@ export interface ClearingView {
 
 /** An agent's company card (K2): the CFO policy's limits, and whether the card at Airwallex has them yet. */
 export interface CardView {
-  agent: Agent;
+  /** An own agent, or an outside one (ext:<name>, P1). */
+  agent: string;
+  /** How the dashboard names the card's holder. */
+  name: string;
   last4: string;
   buys: string;
   per_tx: string;
@@ -170,6 +173,7 @@ const KIND_TITLES: Record<string, string> = {
   invoice_payment: "Invoice payment",
   policy_change: "Policy change",
   payee_change: "Supplier bank details",
+  agent_onboard: "Company card for an outside agent",
   dev_test: "Dev test (moves no money)",
 };
 export const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
@@ -202,6 +206,10 @@ export function summarize(kind: string, termsJson: string): string {
   if (kind === "payee_change") {
     const v = (t.verification ?? {}) as P;
     return `Pay ${str(t.vendor)} to the account ending ${str(t.new_iban).slice(-4)} instead of …${str(t.old_iban_last4)}; verified by ${str(v.by)}`;
+  }
+  if (kind === "agent_onboard") {
+    const c = (t.card ?? {}) as P;
+    return `Issue ${str(t.display_name)} (outside agent ${str(t.agent_id)}) a virtual company card: at most ${str(c.per_tx)} EUR per purchase and ${str(c.monthly)} EUR per month, for ${str(t.purpose)}`;
   }
   if (kind === "policy_change") {
     const changes = Array.isArray(t.changes) ? (t.changes as P[]) : [];
@@ -320,15 +328,19 @@ const limitWords = (s: string) => {
 function cards(db: DB, now: Date): CardView[] {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get()) return [];
   const month = now.toISOString().slice(0, 7);
-  const rows = db.prepare("SELECT agent, last4, per_tx_cents, monthly_cents, status FROM cards ORDER BY agent").all() as { agent: Agent; last4: string; per_tx_cents: number; monthly_cents: number; status: string }[];
+  const rows = db.prepare("SELECT agent, last4, per_tx_cents, monthly_cents, status FROM cards ORDER BY agent").all() as { agent: string; last4: string; per_tx_cents: number; monthly_cents: number; status: string }[];
+  // An outside agent (P1) shows under its own name, with what its card is for.
+  const outside = new Map((db.prepare("SELECT agent_id, display_name, purpose FROM external_agents").all() as { agent_id: string; display_name: string; purpose: string }[]).map((x) => [x.agent_id, x]));
   return rows.map((c) => {
     const want = cardLimits(db, c.agent);
-    const spent = sum(db, `SELECT SUM(amount_cents) AS n FROM card_transactions WHERE agent = '${c.agent}' AND approved = 1 AND substr(occurred_at, 1, 7) = '${month}'`);
+    const spent = (db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS n FROM card_transactions WHERE agent = ? AND approved = 1 AND substr(occurred_at, 1, 7) = ?").get(c.agent, month) as { n: number }).n;
+    const ext = outside.get(c.agent);
     const recent = (db.prepare("SELECT occurred_at, merchant, purpose, amount_cents, approved, failure_reason, status FROM card_transactions WHERE agent = ? ORDER BY occurred_at DESC, rowid DESC LIMIT 6").all(c.agent) as
       { occurred_at: string; merchant: string; purpose: string | null; amount_cents: number; approved: number; failure_reason: string | null; status: string }[])
       .map((t) => ({ ts: t.occurred_at, merchant: t.merchant, purpose: t.purpose, amount: fromCents(t.amount_cents), approved: t.approved === 1, reason: t.approved === 1 ? null : declineWords(t.failure_reason ?? t.status) }));
     return {
-      agent: c.agent, last4: c.last4, buys: CARDS[c.agent]?.buys ?? "", per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
+      agent: c.agent, name: ext ? `${ext.display_name} (outside agent)` : `${c.agent} agent`, last4: c.last4,
+      buys: ext ? ext.purpose : (CARDS[c.agent as Agent]?.buys ?? ""), per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
       spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent),
       in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === (frozen(db) ? "INACTIVE" : "ACTIVE"),
       frozen: c.status === "INACTIVE", recent,
@@ -485,7 +497,8 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "card.issued": return out(`Airwallex issued the ${str(p.agent)} agent a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
     case "card.adopted": return out(`The ${str(p.agent)} agent's Visa card •••• ${str(p.last4)} now follows the CFO policy`, "ok");
     case "card.limits_synced": return out(`Airwallex now has the CFO policy on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${limitWords(str(p.to))} (was ${limitWords(str(p.from))})`, "approval");
-    case "card.purchase_started": return out(`Subscribing to ${str(p.merchant)} (${str(p.plan)}) for ${str(p.amount)} EUR on its card •••• ${str(p.last4)}`);
+    case "agent.card_requested": return out(`${str(p.name)}, an outside agent connected through the agent API, asks for a company card (${str(p.per_tx)} EUR per purchase, ${str(p.monthly)} EUR per month) for ${str(p.purpose)}; nothing is issued until the CFO approves ${str(p.proposal_id)}`, "approval");
+    case "card.purchase_started": return out(`Subscribing to ${str(p.merchant)} (${str(p.plan ?? p.description)}) for ${str(p.amount)} EUR on its card •••• ${str(p.last4)}`);
     case "card.charge_approved": return out(`Airwallex approved ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "ok", { awx_id: s || null });
     case "card.charge_declined": return out(`Airwallex declined ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${declineWords(str(p.reason))}`, "refusal", { awx_id: s || null });
     case "card.duplicate_merged": return out(`A card decline recorded twice (two Airwallex ids for one decline) was merged into one`);

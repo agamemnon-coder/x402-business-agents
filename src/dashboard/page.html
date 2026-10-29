@@ -400,7 +400,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
         return row;
       });
       nodes.push(el("div", "pcard", [
-        el("div", "line1", [txt("span", "name", c.agent + " agent"), txt("span", "visa mono", "VISA •••• " + c.last4),
+        el("div", "line1", [txt("span", "name", c.name || (c.agent + " agent")), txt("span", "visa mono", "VISA •••• " + c.last4),
           el("span", "amount num", [txt("b", "", money(c.spent_month)), txt("span", "", " / " + money(c.monthly) + " EUR this month")])]),
         bar,
         el("div", "line2 num", [txt("span", "", "max " + money(c.per_tx) + " per purchase"), txt("span", "", money(c.left_month) + " left this month"),

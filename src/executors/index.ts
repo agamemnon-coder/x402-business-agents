@@ -8,6 +8,7 @@ import { executePolicyChange } from "./policyChange.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { syncCardsAfterPolicy } from "../policy/cards.js";
 import { executePayeeChange } from "../policy/payeeChange.js";
+import { executeAgentOnboard } from "../platform/externalAgents.js";
 
 /** Runs an approved proposal by its kind. Every executor re-checks the approved hash itself. */
 export async function execute(db: DB, proposalId: string): Promise<void> {
@@ -18,6 +19,12 @@ export async function execute(db: DB, proposalId: string): Promise<void> {
     executePolicyChange(db, proposalId);
     // A card limit in the policy only counts once the card at Airwallex has it too.
     await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);
+    return;
+  }
+  if (row.kind === "agent_onboard") {
+    const issuing = issuingFromEnv();
+    if (!issuing) throw new Error("Airwallex sandbox keys are not set; the card cannot be issued");
+    await executeAgentOnboard(db, issuing.rail, proposalId);
     return;
   }
   const awx = await airwallexFromEnv();

@@ -318,6 +318,38 @@ from "Lizenzhaus Beispeil GmbH". Both are read by Claude, blocked by code, and e
   Only then is the account added at Airwallex and made the supplier's active payee. The old account is kept as
   REPLACED.
 
+## Outside agents: the agent API (MCP)
+
+Any AI agent, ours or not, can work under the same CFO policy as our own three agents. `npm run -s mcp` serves the
+agent API as an MCP server on stdio. Whoever sets it up names the outside agent it serves (`KIT11_AGENT`). For
+example, for Claude Code (`.mcp.json`):
+
+```json
+{ "mcpServers": { "tidemark": { "command": "npm", "args": ["run", "-s", "mcp"],
+  "env": { "KIT11_AGENT": "acme-research", "KIT11_DB": "data/rehearsal-3.sqlite" } } } }
+```
+
+It also needs the Airwallex sandbox keys in its environment, like the runner.
+
+The outside agent gets four tools:
+
+| Tool | What it does |
+|---|---|
+| `request_company_card` | Asks for a virtual company card with the limits it needs. This is a proposal; the CFO approves it with Face ID, and only then does the runner issue the card at Airwallex. |
+| `pay_with_card` | Charges its card. Airwallex approves or declines the charge against the card's limits. |
+| `request_limit_raise` | Asks for a higher limit. This is a policy change, approved with Face ID. |
+| `company_card` | Reads its card, limits, spend this month and recent charges. |
+
+The agent cannot approve, set a limit, or reach another agent's card. Once its card is issued:
+
+- its limits are part of the CFO policy, and the phone may tighten them;
+- the emergency stop freezes its card with the rest;
+- the dashboard shows it under its own name;
+- the GL export books its spend to cost centre CC400.
+
+On stdio the server runs on the runner's machine, under the name the person who set it up gave it. Serving agents
+on other machines (over HTTP, each with its own token) is the next step.
+
 ## The CFO policy in plain words
 
 The CFO writes the policy as they would say it, for example "the sourcing agent's card at most €25 per purchase;

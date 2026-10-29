@@ -8,7 +8,9 @@ import { sha256Hex } from "../lib/terms.js";
 
 export type Actor =
   | "system" | "claude" | "sourcing" | "support" | "treasury" | "customer"
-  | "human" | "owner-signer" | "awx-executor";
+  | "human" | "owner-signer" | "awx-executor"
+  // An outside agent connected through the agent API (P1).
+  | `ext:${string}`;
 
 export const GENESIS = "0".repeat(64);
 

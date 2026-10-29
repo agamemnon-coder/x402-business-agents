@@ -273,6 +273,18 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "agent_onboard") {
+    const c = isObj(t.card) ? t.card : {};
+    return {
+      approvable: true, title: "Company card for an outside agent",
+      sentence: `Issue ${str(t.display_name)} (outside agent ${str(t.agent_id)}, connected through the agent API) a virtual company card at Airwallex: at most ${money(c.per_tx)} EUR per purchase and ${money(c.monthly)} EUR per month. For: ${str(t.purpose)}.`,
+      amount: `${money(c.monthly)} EUR a month at most`, margin: null, recipient: "merchants the agent pays, within the card's limits",
+      rows: [["Agent", `${str(t.display_name)} (${str(t.agent_id)})`], ["For", str(t.purpose)], ["Most per purchase", `${money(c.per_tx)} EUR`], ["Most per month", `${money(c.monthly)} EUR`]],
+      short: "this card", warnings: ["This agent is not one of ours. Approve only if you know who runs it and what it buys; its limits then follow your policy, and the emergency stop freezes its card too."],
+      amountLabel: "Spending limit", label: "Outside agent", big: money(c.per_tx), unit: "EUR per purchase",
+    };
+  }
+
   if (kind === "dev_test") {
     return {
       approvable: true, title: str(t.label), sentence: `${str(t.purpose)}. Approving it records the approval and moves no money.`,

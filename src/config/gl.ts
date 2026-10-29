@@ -28,6 +28,7 @@ export const COST_CENTRE_NAMES: Record<string, string> = {
   CC100: "Sourcing agent (data desk)",
   CC200: "Support agent (customers)",
   CC300: "Treasury agent (finance)",
+  CC400: "Outside agents (agent API)",
 };
 
 /** Supplier invoices by vendor; anything not listed goes to 6900. */

@@ -49,6 +49,7 @@ const RULES: Record<string, string> = {
   refund_batch: "Refunds outside the CFO policy's automatic limits need a person.",
   policy_change: "A change to the CFO policy needs the CFO's own approval.",
   payee_change: "A supplier's new bank details count only after a person verified them with the supplier on a contact already on file, and the CFO approved.",
+  agent_onboard: "An outside agent gets a company card only after the CFO approves its request; the card's limits are then held by the CFO policy and enforced by Airwallex.",
   dev_test: "Dev test of the approval path; it moves no money.",
 };
 

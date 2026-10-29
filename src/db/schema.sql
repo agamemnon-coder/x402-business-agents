@@ -378,3 +378,16 @@ CREATE TABLE IF NOT EXISTS clearing_ops (
   detail TEXT,
   created_at TEXT NOT NULL
 );
+
+-- An outside AI agent that connected through the agent API (P1, src/platform/externalAgents.ts). It gets a company
+-- card only after the CFO approves its request with Face ID; from then on the CFO policy holds its card's limits.
+CREATE TABLE IF NOT EXISTS external_agents (
+  agent_id TEXT PRIMARY KEY CHECK (agent_id LIKE 'ext:%'),
+  display_name TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  per_tx_cents INTEGER NOT NULL CHECK (per_tx_cents > 0),
+  monthly_cents INTEGER NOT NULL CHECK (monthly_cents >= per_tx_cents),
+  status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'ACTIVE')),
+  proposal_id TEXT,
+  created_at TEXT NOT NULL
+);
