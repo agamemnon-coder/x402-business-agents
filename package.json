@@ -19,7 +19,12 @@
     "s1:raise": "tsx src/cli/s1.ts raise",
     "s1:resume": "tsx src/cli/s1.ts resume",
     "s2": "tsx src/cli/s2.ts",
-    "s3": "tsx src/cli/s3.ts"
+    "s3": "tsx src/cli/s3.ts",
+    "verify": "tsx src/cli/verify.ts",
+    "audit:export": "tsx src/cli/auditExport.ts",
+    "approvals": "tsx src/cli/approvals-page.ts",
+    "fail": "tsx src/cli/fail.ts",
+    "demo:all": "tsx src/cli/demo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

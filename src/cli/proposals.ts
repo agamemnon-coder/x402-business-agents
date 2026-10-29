@@ -2,9 +2,10 @@
 
 import { openDb } from "../db/open.js";
 import { termsHash, type Terms } from "../lib/terms.js";
-import type { ProposalRow } from "../policy/approvals.js";
+import { expireDue, type ProposalRow } from "../policy/approvals.js";
 
 const db = openDb();
+expireDue(db);
 const all = process.argv.includes("--all");
 const rows = db.prepare(`SELECT * FROM proposals ${all ? "" : "WHERE status = 'PENDING_APPROVAL'"} ORDER BY created_at`).all() as (ProposalRow & { explanation: string | null })[];
 if (rows.length === 0) console.log(all ? "no proposals" : "nothing waits for approval");

@@ -15,7 +15,7 @@ import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA } from "../lib/terms.js";
 import { activeMandate, mandateSpent } from "../metal/mandate.js";
 import { EXPLORER_TX } from "../metal/network.js";
-import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
+import { createProposal, expireDue, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { routeRefundBatch } from "../policy/refunds.js";
 import { addresses } from "../world/runtime.js";
 import { PROPOSAL_TTL_MS } from "../config/policy.js";
@@ -92,6 +92,7 @@ if (route.route === "auto") {
 // The customer asked for more than the evidence supports. That request goes to a person, with the evidence.
 const refunded = new Set(refunds.map((r) => r.sale_id));
 const rest = sales.filter((s) => !refunded.has(s.sale_id)).map((s) => ({ sale_id: s.sale_id, seq: s.seq, amount_cents: s.price_cents }));
+expireDue(db);
 const already = db.prepare("SELECT * FROM proposals WHERE kind = 'refund_batch' AND json_extract(terms_json, '$.dispute_id') = ? AND json_extract(terms_json, '$.reason') LIKE 'customer request%'").get(disputeId) as ProposalRow | undefined;
 if (rest.length > 0 && claims.requested_action === "refund_all") {
   const p = already ?? refundProposal(rest, "customer request: refund all; evidence shows the orders were placed and the data correct");

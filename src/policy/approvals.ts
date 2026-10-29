@@ -137,3 +137,11 @@ export function finishExecution(db: DB, proposalId: string, outcome: "EXECUTED" 
     audit(db, "system", `proposal.${outcome.toLowerCase()}`, proposalId, detail, now);
   }).immediate();
 }
+
+/** Marks every proposal whose time ran out as EXPIRED, so no list shows it as still waiting. */
+export function expireDue(db: DB, now = new Date()): string[] {
+  // Timestamps are compared as instants, not strings: "…00Z" and "…00.000Z" are the same moment.
+  const due = (db.prepare("SELECT * FROM proposals WHERE status IN ('PENDING_APPROVAL', 'APPROVED')").all() as ProposalRow[])
+    .filter((p) => Date.parse(p.expires_at) <= now.getTime());
+  return db.transaction(() => due.filter((p) => expireIfDue(db, p, now)).map((p) => p.proposal_id)).immediate();
+}

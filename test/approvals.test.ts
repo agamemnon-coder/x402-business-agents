@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb } from "../src/db/open.js";
 import { TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
-import { beginExecution, createProposal, decide, finishExecution } from "../src/policy/approvals.js";
+import { beginExecution, createProposal, decide, expireDue, finishExecution } from "../src/policy/approvals.js";
 
 const t0 = new Date("2026-10-30T14:00:00Z");
 const terms: Terms = { schema: TERMS_SCHEMA, kind: "refund_batch", proposal_id: "P-0001", expires_at: "2026-10-30T14:10:00Z", total: "0.60" };
@@ -57,5 +57,12 @@ describe("approvals", () => {
     expect(() => beginExecution(db, "P-0001", () => { throw new Error("quote used"); }, t0)).toThrow(/quote used/);
     const { status } = db.prepare("SELECT status FROM proposals").get() as { status: string };
     expect(status).toBe("APPROVED");
+  });
+
+  it("expires stale proposals in one sweep", () => {
+    const db = setup();
+    expect(expireDue(db, t0)).toEqual([]);
+    expect(expireDue(db, new Date("2026-10-30T14:10:00Z"))).toEqual(["P-0001"]);
+    expect(() => decide(db, { proposalId: "P-0001", decision: "APPROVED", typedPrefix: prefix, approver: "max", method: "cli" }, t0)).toThrow(/EXPIRED/);
   });
 });
