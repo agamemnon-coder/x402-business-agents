@@ -93,3 +93,16 @@ describe("audit report", () => {
     expect(winAnsi("Bеispiеl")).toBe("B?ispi?l");
   });
 });
+
+describe("the rule behind each automatic refusal (E5)", () => {
+  it("names the mandate, the CFO policy, the card limit, the emergency stop and the fraud check", async () => {
+    const { refusalRule } = await import("../src/audit/report.js");
+    expect(refusalRule("upstream.refused", { reason: "mandate_cap_exceeded" })).toMatch(/mandate, enforced by the account on chain/);
+    expect(refusalRule("upstream.refused", { reason: "policy_cap_exceeded: 0.04 is over" })).toMatch(/CFO policy limit/);
+    expect(refusalRule("sweep.refused", { reason: "frozen_by_cfo: stop" })).toMatch(/^Emergency stop/);
+    expect(refusalRule("card.charge_declined", { reason: "LIMIT_EXCEEDED" })).toMatch(/card's limit at Airwallex/);
+    expect(refusalRule("card.charge_declined", { reason: "CARD_INACTIVE" })).toMatch(/frozen at Airwallex/);
+    expect(refusalRule("invoice.fraud_suspected", {})).toMatch(/allowlist/);
+    expect(refusalRule("nothing.known", {})).toBe("");
+  });
+});

@@ -33,9 +33,13 @@ export interface AuditReport {
   chain: ChainCheck;
   /** "<seq>:<row hash>" of the last row: what `verify-log --anchor` checks later. */
   anchor: string;
-  alone: { sales: number; purchases_paid: number; purchases_refused: number; refunds_paid: number; sweeps_paid: number; injections_flagged: number; invoices_blocked: number };
+  alone: {
+    sales: number; purchases_paid: number; purchases_refused: number; refunds_paid: number; sweeps_paid: number; injections_flagged: number; invoices_blocked: number;
+    card_charges: number; card_declines: number; clearing_sales: number;
+  };
   decisions: ReportDecision[];
-  refusals: { at: string; agent: string; what: string; reason: string }[];
+  /** Each automatic refusal with the rule that made it (E5). */
+  refusals: { at: string; agent: string; what: string; reason: string; rule: string }[];
 }
 
 /** Why a person had to decide, per kind (the CFO policy and the build plan's approval rules). */
@@ -49,6 +53,45 @@ const RULES: Record<string, string> = {
 
 type P = Record<string, unknown>;
 const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+
+/** The rule behind a policy change: a card limit or the emergency stop has its own words. */
+function ruleOf(kind: string, termsJson: string): string {
+  if (kind === "policy_change") {
+    let keys: string[] = [];
+    try {
+      keys = ((JSON.parse(termsJson) as P).changes as { key: string }[]).map((c) => c.key);
+    } catch { /* unreadable terms */ }
+    if (keys.includes("freeze")) return "The emergency stop: the CFO may pull it from the phone (it tightens); lifting it loosens the policy, so it needs a proposal and the CFO's Face ID.";
+    if (keys.some((k) => k.startsWith("card."))) return "A company card's limit is part of the CFO policy and is synced to the card at Airwallex; changing it needs the CFO's approval.";
+  }
+  return RULES[kind] ?? "Needs a person.";
+}
+
+/** The rule that made an automatic refusal, in words (E5). */
+export function refusalRule(event: string, p: P): string {
+  const reason = str(p.reason);
+  if (event === "upstream.refused" || event === "refund.refused" || event === "sweep.refused") {
+    if (reason.startsWith("frozen_by_cfo")) return "Emergency stop: every agent payment refused before signing";
+    if (reason.startsWith("policy_cap_exceeded")) return "CFO policy limit, checked before anything is signed";
+    if (reason.startsWith("mandate_")) return "The agent's mandate, enforced by the account on chain";
+    return "Payment refused before or on chain";
+  }
+  if (event === "card.charge_declined") {
+    if (reason === "CARD_INACTIVE") return "Emergency stop: the card is frozen at Airwallex";
+    if (reason === "LIMIT_EXCEEDED") return "The card's limit at Airwallex, synced from the CFO policy";
+    return "Declined by Airwallex";
+  }
+  const rules: Record<string, string> = {
+    "invoice.fraud_suspected": "Invoice fraud check: bank details and vendor name against the allowlist; a person verifies by phone",
+    "document.injection_flagged": "Documents are data: an instruction inside one changes nothing",
+    "proposal.rejected": "The CFO's own decision (rejected with a signature)",
+    "proposal.expired": "A proposal not approved in time can never run",
+    "claude.rejected": "A model's answer must pass the code's check before it is used",
+    "invoice.escalated": "An invoice outside what the agent may pay alone goes to a person",
+    "sale.prepaid_undelivered": "A prepaid (clearing) sale that could not be delivered is owed and refunded",
+  };
+  return rules[event] ?? "";
+}
 
 function outcomeOf(status: string, executed: P | undefined, error: string | undefined): string {
   switch (status) {
@@ -97,7 +140,7 @@ export function buildAuditReport(db: DB, now = new Date(), label = "ledger"): Au
     const failed = lastOf("proposal.failed", p.proposal_id) ?? lastOf("proposal.needs_reapproval", p.proposal_id);
     return {
       proposal_id: p.proposal_id, kind: p.kind, title: kindTitle(p.kind), proposed_by: p.created_by, proposed_at: p.created_at,
-      what: summarize(p.kind, p.terms_json), rule: RULES[p.kind] ?? "Needs a person.", models: [...new Set(models)], advice,
+      what: summarize(p.kind, p.terms_json), rule: ruleOf(p.kind, p.terms_json), models: [...new Set(models)], advice,
       status: p.status, decision: a?.decision ?? null, decided_by: a ? approverName(a.approver, a.method) : null, method: a?.method ?? null,
       decided_at: a?.created_at ?? null, terms_sha256: p.terms_sha256,
       outcome: outcomeOf(p.status, executed && payload(executed), failed && str(payload(failed).error)),
@@ -106,13 +149,15 @@ export function buildAuditReport(db: DB, now = new Date(), label = "ledger"): Au
 
   const count = (...events: string[]) => rows.filter((r) => events.includes(r.event)).length;
   const refusals = rows.filter((r) => REFUSAL_EVENTS.has(r.event))
-    .map((r) => ({ at: r.ts, agent: r.actor, what: REFUSAL_WHAT[r.event] ?? r.event, reason: describe(r as never, () => undefined).text }));
+    .map((r) => ({ at: r.ts, agent: r.actor, what: REFUSAL_WHAT[r.event] ?? r.event, reason: describe(r as never, () => undefined).text, rule: refusalRule(r.event, payload(r)) }));
   const last = rows.at(-1);
   return {
     generated_at: now.toISOString(), label, chain, anchor: last ? `${last.seq}:${last.row_hash}` : "0:",
     alone: {
       sales: count("sale.delivered"), purchases_paid: count("upstream.paid", "upstream.paid_after_lookup"), purchases_refused: count("upstream.refused"),
       refunds_paid: count("refund.paid"), sweeps_paid: count("sweep.paid"), injections_flagged: count("document.injection_flagged"), invoices_blocked: count("invoice.fraud_suspected"),
+      card_charges: count("card.charge_approved"), card_declines: count("card.charge_declined"),
+      clearing_sales: rows.filter((r) => r.event === "sale.delivered" && str(payload(r).scheme) === "bajillion").length,
     },
     decisions, refusals,
   };
@@ -142,7 +187,7 @@ export function reportLines(r: AuditReport): Line[] {
   L.push({ style: "small", text: `To prove later that nothing was changed or cut off: npm run verify-log -- --anchor ${r.anchor}` });
   L.push({ style: "h2", text: "What the agents did on their own, within their mandates and the policy" });
   const a = r.alone;
-  L.push({ style: "text", text: `${a.sales} sales; ${a.purchases_paid} supplier purchases paid and ${a.purchases_refused} refused; ${a.refunds_paid} refunds paid; ${a.sweeps_paid} sweeps; ${a.invoices_blocked} invoices blocked as possible fraud; ${a.injections_flagged} documents with planted instructions, ignored.` });
+  L.push({ style: "text", text: `${a.sales} sales${a.clearing_sales ? ` (${a.clearing_sales} paid by Metal clearing)` : ""}; ${a.purchases_paid} supplier purchases paid and ${a.purchases_refused} refused; ${a.refunds_paid} refunds paid; ${a.sweeps_paid} sweeps; ${a.card_charges} card purchases approved and ${a.card_declines} declined by Airwallex; ${a.invoices_blocked} invoices blocked as possible fraud; ${a.injections_flagged} documents with planted instructions, ignored.` });
   L.push({ style: "h2", text: `Decisions that needed a person (${r.decisions.length})` });
   for (const d of r.decisions) {
     L.push({ style: "h3", text: `${d.proposal_id} · ${d.title}` });
@@ -158,7 +203,10 @@ export function reportLines(r: AuditReport): Line[] {
     L.push({ style: "mono", text: `Terms SHA-256 ${d.terms_sha256}` });
   }
   L.push({ style: "h2", text: `Refusals and escalations (${r.refusals.length})` });
-  for (const x of r.refusals) L.push({ style: "text", text: `${at(x.at)} · ${x.agent} · ${x.what}: ${x.reason}` });
+  for (const x of r.refusals) {
+    L.push({ style: "text", text: `${at(x.at)} · ${x.agent} · ${x.what}: ${x.reason}` });
+    if (x.rule) L.push({ style: "small", text: `Rule: ${x.rule}` });
+  }
   return L;
 }
 
