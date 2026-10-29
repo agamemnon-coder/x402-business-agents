@@ -1,7 +1,9 @@
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 
-export type SettingKey = "sell_price" | "upstream_price" | "usd_floor" | "eur_floor" | "eur_obligations";
+import type { PolicyKey } from "../policy/rules.js";
+
+export type SettingKey = "sell_price" | "upstream_price" | "usd_floor" | "eur_floor" | "eur_obligations" | PolicyKey;
 
 export function getSetting(db: DB, key: SettingKey, fallback: string): string {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;

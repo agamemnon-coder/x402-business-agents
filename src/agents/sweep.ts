@@ -13,6 +13,7 @@ import { metalAgent } from "../metal/agentCli.js";
 import { publicClient, usdzBalance } from "../metal/chain.js";
 import { activeMandate, mandateSpent } from "../metal/mandate.js";
 import { extractTerms } from "@metalntwx/metal-pay/mandates";
+import { capRefusal } from "../policy/rules.js";
 
 const sum = (db: DB, sql: string) => (db.prepare(sql).get() as { s: number | null }).s ?? 0;
 
@@ -71,6 +72,13 @@ export async function executeSweep(db: DB, paymentId: string, amountCents: numbe
   db.prepare("INSERT OR IGNORE INTO sweeps (payment_id, amount_cents, outcome, created_at) VALUES (?, ?, 'PLANNED', ?)").run(paymentId, amountCents, new Date().toISOString());
   const row = db.prepare("SELECT amount_cents FROM sweeps WHERE payment_id = ?").get(paymentId) as { amount_cents: number };
   if (row.amount_cents !== amountCents) throw new Error(`${paymentId} was planned for ${fromCents(row.amount_cents)}; a retry must not change the amount`);
+  // The CFO policy's limit per sweep, checked before anything is signed.
+  const refusal = capRefusal(db, "treasury", amountCents);
+  if (refusal) {
+    db.prepare("UPDATE sweeps SET outcome = 'REFUSED' WHERE payment_id = ?").run(paymentId);
+    audit(db, "treasury", "sweep.refused", paymentId, { amount: fromCents(amountCents), to, tx: null, reason: refusal });
+    return { outcome: "REFUSED", tx: null, reason: refusal };
+  }
   const m = await activeMandate("treasury");
   const r = metalAgent(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(amountCents), "--payment-id", paymentId], [0, 1, 3, 4]);
   const outcome = ({ 0: "PAID", 1: "REFUSED", 3: "PENDING", 4: "HELD" } as Record<number, string>)[r.code]!;

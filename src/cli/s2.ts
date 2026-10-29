@@ -17,6 +17,7 @@ import { activeMandate, mandateSpent } from "../metal/mandate.js";
 import { EXPLORER_TX } from "../metal/network.js";
 import { createProposal, expireDue, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { routeRefundBatch } from "../policy/refunds.js";
+import { refundThresholds } from "../policy/rules.js";
 import { addresses } from "../world/runtime.js";
 import { PROPOSAL_TTL_MS } from "../config/policy.js";
 
@@ -55,7 +56,7 @@ console.log(`\nDATA CHECK       tick  field  delivered  corrected  delta`);
 for (const v of verdicts) console.log(`                 #${String(v.seq).padEnd(4)} ${v.field.padEnd(6)} ${v.delivered}    ${v.corrected}    ${v.delta_units > 0 ? "+" : ""}${(v.delta_units / 100_000).toFixed(5)}${v.refund ? "  -> refund" : ""}`);
 
 const refunds = refundsFor(sales, verdicts);
-const route = routeRefundBatch(refunds.map((r) => r.amount_cents));
+const route = routeRefundBatch(refunds.map((r) => r.amount_cents), refundThresholds(db));
 const evidence = [
   { type: "dispute_email", ref: "fixtures/kestrel-dispute-email.txt", sha256: sha256Hex(email) },
   { type: "supplier_corrections", ref: "fixtures/feedstock-corrections.txt", sha256: sha256Hex(correctionText) },

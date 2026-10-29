@@ -145,6 +145,19 @@ describe("dashboard snapshot", () => {
     ]);
   });
 
+  it("shows the CFO policy: the limit beside each mandate, every change in the feed, its refusals in plain words", () => {
+    const db = ledger();
+    setSetting(db, "human", "cap.sourcing", "0.03");
+    audit(db, "human", "policy.changed", "cap.sourcing", { key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03", proposal_id: "P-0004" });
+    audit(db, "sourcing", "upstream.refused", "52", { seq: 42, reason: "policy_cap_exceeded: 0.04 is over the sourcing limit of 0.03" });
+    const s = buildSnapshot(db, t0);
+    expect(s.budgets.agents.map((a) => [a.agent, a.policy_cap])).toEqual([["sourcing", "0.03"], ["support", null], ["treasury", null]]);
+    expect(s.feed[1]).toMatchObject({ text: "CFO policy: Sourcing agent: most per payment changed from no extra limit to 0.03 (P-0004)", tone: "approval" });
+    expect(s.refusals[0]).toMatchObject({ what: "Supplier purchase refused", reason: "Purchase of tick #42 refused by the CFO policy before signing: 0.04 is over the sourcing limit of 0.03" });
+    expect(summarize("policy_change", JSON.stringify({ changes: [{ label: "Sourcing agent: most per payment", from: "", to: "0.03" }, { label: "EUR reserve floor", from: "500.00", to: "800.00" }] })))
+      .toBe("Sourcing agent: most per payment: no extra limit → 0.03; EUR reserve floor: 500.00 → 800.00");
+  });
+
   it("shows who approved with a passkey as the person and Face ID", () => {
     const db = ledger();
     const terms = { schema: TERMS_SCHEMA, kind: "dev_test", proposal_id: "P-0001", expires_at: "2026-10-29T07:00:00Z", label: "DEV TEST" } as unknown as Terms;

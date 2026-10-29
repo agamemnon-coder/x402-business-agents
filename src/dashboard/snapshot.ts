@@ -6,6 +6,7 @@ import { verifyAuditChain } from "../audit/log.js";
 import { MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
+import { policyValue } from "../policy/rules.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -21,6 +22,8 @@ export interface Budget {
   expires_on: string | null;
   /** Credentials this agent has held; spend carries over on replacement. */
   credentials: number;
+  /** The CFO policy's limit per payment, inside the mandate's cap; null when only the mandate's cap applies. */
+  policy_cap: string | null;
 }
 
 export interface Pending {
@@ -116,6 +119,7 @@ const KIND_TITLES: Record<string, string> = {
   mandate_replace: "Mandate change",
   refund_batch: "Refund batch",
   invoice_payment: "Invoice payment",
+  policy_change: "Policy change",
   dev_test: "Dev test (moves no money)",
 };
 const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
@@ -145,6 +149,10 @@ export function summarize(kind: string, termsJson: string): string {
     return `Pay ${str(t.vendor)} EUR ${str(t.amount)} for invoice ${str(t.invoice_no)} by ${str(t.method) || "SWIFT"} to IBAN …${str(t.iban_last4)}${fx}; ${fee}`;
   }
   if (kind === "dev_test") return `${str(t.label)}: ${str(t.purpose)}`;
+  if (kind === "policy_change") {
+    const changes = Array.isArray(t.changes) ? (t.changes as P[]) : [];
+    return changes.map((c) => `${str(c.label)}: ${str(c.from) || "no extra limit"} → ${str(c.to) || "no extra limit"}`).join("; ");
+  }
   return kindTitle(kind);
 }
 
@@ -198,6 +206,7 @@ function budgets(db: DB, rows: AuditRow[], roleOf: (address: string) => string |
       agent, payee: m.payee, cap: m.cap, budget: m.budget, spent: fromCents(spent),
       remaining: signed(safeCents(m.budget) - spent), expires_on: isNaN(day.getTime()) ? null : day.toISOString().slice(0, 10),
       credentials: m.credentials,
+      policy_cap: agent === "customer" ? null : policyValue(db, `cap.${agent}`) || null,
     };
   };
   const agents = (["sourcing", "support", "treasury"] as const).map(one).filter((b): b is Budget => b !== null);
@@ -273,7 +282,13 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       const price = p.amount_units ? fromCents(baseUnitsToCents(BigInt(str(p.amount_units)))) : "";
       return out(`Bought raw tick #${str(p.seq)} from Feedstock Labs${price ? ` for ${price}` : ""}${r.event === "upstream.paid_after_lookup" ? " (found by lookup, not paid twice)" : ""}`, "ok");
     }
-    case "upstream.refused": return out(`Purchase of tick #${str(p.seq)} refused on chain: ${refusalWords(str(p.reason))}`, "refusal");
+    case "upstream.refused": {
+      const reason = str(p.reason);
+      return reason.startsWith("policy_cap_exceeded")
+        ? out(`Purchase of tick #${str(p.seq)} refused by the CFO policy before signing: ${reason.slice(reason.indexOf(":") + 1).trim()}`, "refusal")
+        : out(`Purchase of tick #${str(p.seq)} refused on chain: ${refusalWords(reason)}`, "refusal");
+    }
+    case "policy.changed": return out(`CFO policy: ${str(p.label)} changed from ${str(p.from) || "no extra limit"} to ${str(p.to) || "no extra limit"} (${str(p.proposal_id)})`, "approval");
     case "upstream.in_doubt": return out(`Purchase of tick #${str(p.seq)} unconfirmed; it is looked up before any retry`, "refusal");
     case "sale.delivered": {
       const sale = saleOf(s);

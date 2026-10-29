@@ -8,6 +8,7 @@ import { activeMandate, type LoadedMandate } from "../metal/mandate.js";
 import { findSettlementByNonce, payUnderMandate } from "../metal/pay.js";
 import type { UpstreamResult } from "../servers/seller.js";
 import { SUPPLIER_ROUTE } from "../servers/supplier.js";
+import { capRefusal } from "../policy/rules.js";
 
 export class SourcingAgent {
   private mandate: LoadedMandate | undefined;
@@ -22,7 +23,8 @@ export class SourcingAgent {
   async buy(seq: number): Promise<UpstreamResult> {
     this.mandate ??= await activeMandate("sourcing");
     const started = Date.now() - 60_000;
-    const out = await payUnderMandate(this.mandate, `${this.supplierBase}${SUPPLIER_ROUTE}?seq=${seq}`);
+    // The CFO policy's limit is checked on the offer before anything is signed; the mandate's cap stays the outer wall.
+    const out = await payUnderMandate(this.mandate, `${this.supplierBase}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents) => capRefusal(this.db, "sourcing", cents));
     const now = new Date().toISOString();
     const insert = this.db.prepare(
       "INSERT INTO upstream_purchases (price_cents, nonce, tx_hash, outcome, refusal_reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",

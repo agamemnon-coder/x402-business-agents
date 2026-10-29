@@ -27,8 +27,21 @@ export function nothingSettled(reason: string | undefined): boolean {
   return NOTHING_SETTLED.has(reason) || reason.startsWith("payment_mismatch:");
 }
 
-export async function payUnderMandate(m: LoadedMandate, url: string, init: RequestInit = {}): Promise<PayOutcome> {
+/**
+ * `guard` sees the offer before anything is signed (amount in cents, payee) and returns a reason to refuse it,
+ * or null: the CFO policy's limit is checked here, inside the mandate's own cap.
+ */
+export async function payUnderMandate(
+  m: LoadedMandate, url: string, init: RequestInit = {}, guard?: (cents: number, payTo: string) => string | null,
+): Promise<PayOutcome> {
   const paying = createMandatePaymentClient({ credential: m.credential, signDigest: m.signDigest, network: "testnet" });
+  let blocked: string | null = null;
+  if (guard) {
+    paying.client.onBeforePaymentCreation(async ({ selectedRequirements }) => {
+      blocked = guard(Number(BigInt(selectedRequirements.amount) / 10n ** 16n), selectedRequirements.payTo);
+      return blocked ? { abort: true as const, reason: blocked } : undefined;
+    });
+  }
   let nonce: string | undefined;
   let signedOffer = "";
   let offer: { amount: string; payTo: string } | undefined;
@@ -43,6 +56,7 @@ export async function payUnderMandate(m: LoadedMandate, url: string, init: Reque
     res = await paying.fetchWithPayment(url, init);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (blocked !== null) return { kind: "refused", reason: blocked, status: 0, body: "" };
     if (nonce !== undefined) return { kind: "in_doubt", reason: message, nonce };
     return { kind: "refused", reason: `nothing was signed: ${message}`, status: 0, body: "" };
   }

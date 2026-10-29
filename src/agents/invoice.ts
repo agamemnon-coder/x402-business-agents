@@ -4,6 +4,7 @@
 import { createHash } from "node:crypto";
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
+import { counterpartyAllowed } from "../policy/rules.js";
 
 export interface Invoice {
   invoice_no: string;
@@ -56,6 +57,7 @@ export function checkInvoice(db: DB, inv: Invoice): InvoiceCheck {
   const b = db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic FROM beneficiaries WHERE name = ? AND currency = 'EUR'").get(inv.vendor) as
     { beneficiary_id: string; name: string; iban_last4: string; iban_sha256: string; bic: string } | undefined;
   if (!b) return { ok: false, reason: `${inv.vendor} is not an allowlisted beneficiary` };
+  if (!counterpartyAllowed(db, b.name)) return { ok: false, reason: `${b.name} is blocked by the CFO policy` };
   if (b.iban_sha256 !== ibanSha(inv.iban) || b.bic !== inv.bic) {
     return { ok: false, reason: `bank details differ from the allowlisted ones (IBAN ...${b.iban_last4}, BIC ${b.bic}); possible invoice fraud` };
   }
