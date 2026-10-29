@@ -133,6 +133,7 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
+  if (c.key === "freeze") return c.from === "on" && c.to !== "on";
   return true;
 }
 
@@ -902,11 +903,17 @@ async function policyPage(): Promise<void> {
     };
     return { e, row, read };
   });
+  // The dashboard's emergency stop opens this page with ?freeze=on: the switch is set, the CFO reviews and signs.
+  if (/[?&]freeze=on(&|$)/.test(location.search)) {
+    const f = fields.find((x) => x.e.key === "freeze" && x.e.value !== "on");
+    if (f) (f.row.querySelector("select") as HTMLSelectElement).value = "on";
+  }
   const reason = document.createElement("input");
   reason.id = "reason";
   reason.className = "policy-input";
   reason.maxLength = 300;
   reason.placeholder = "Why, in one line";
+  if (/[?&]freeze=on(&|$)/.test(location.search)) reason.value = "Emergency stop";
   const reasonLabel = el("label", "policy-label", ["Reason"]);
   reasonLabel.setAttribute("for", "reason");
   const review = el("button", "confirm", ["Review change"]) as HTMLButtonElement;

@@ -7,7 +7,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import type { Card, CardLimits, CardTransaction, IssuingRail } from "../airwallex/issuing.js";
-import { cardLimits } from "./rules.js";
+import { cardLimits, frozen } from "./rules.js";
 
 export interface CardRow {
   agent: Agent;
@@ -43,12 +43,29 @@ function store(db: DB, agent: Agent, card: Card, now: Date): void {
   ).run(agent, card.cardholderId, card.cardId, card.last4, card.nickname, card.limits.currency, card.limits.perTxCents, card.limits.monthlyCents, card.status, now.toISOString(), now.toISOString());
 }
 
-/** Makes one card match the policy. Returns true if Airwallex had other limits. */
+/** The status the policy wants every card in: frozen by the emergency stop, or active. */
+const wantStatus = (db: DB): "ACTIVE" | "INACTIVE" => (frozen(db) ? "INACTIVE" : "ACTIVE");
+
+/** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
 async function syncOne(db: DB, rail: IssuingRail, agent: Agent, card: Card, now: Date): Promise<boolean> {
+  let changed = false;
+  const status = wantStatus(db);
+  if (card.status !== status) {
+    let after: Card;
+    try {
+      after = await rail.setCardStatus(card.cardId, status);
+    } catch (e) {
+      throw new Error(`the ${agent} agent's card was not ${status === "INACTIVE" ? "frozen" : "thawed"} at Airwallex: ${(e as Error).message}`);
+    }
+    if (after.status !== status) throw new Error(`the ${agent} agent's card is ${after.status} at Airwallex, not ${status}`);
+    audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4 }, now);
+    card = after;
+    changed = true;
+  }
   const want = cardLimits(db, agent);
   if (same(card.limits, want)) {
     store(db, agent, card, now);
-    return false;
+    return changed;
   }
   let after: Card;
   try {
@@ -105,7 +122,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
   const changed: Agent[] = [];
   for (const row of cardRows(db)) {
     const want = cardLimits(db, row.agent);
-    if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents) continue;
+    if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantStatus(db)) continue;
     await syncOne(db, rail, row.agent, await rail.getCard(row.card_id), now);
     changed.push(row.agent);
   }
@@ -116,7 +133,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
 export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: IssuingRail | null, now = new Date()): Promise<Agent[]> {
   const p = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ? AND kind = 'policy_change'").get(proposalId) as { terms_json: string } | undefined;
   const keys = p ? (JSON.parse(p.terms_json) as { changes: { key: string }[] }).changes.map((c) => c.key) : [];
-  if (!keys.some((k) => k.startsWith("card."))) return [];
+  if (!keys.some((k) => k.startsWith("card.") || k === "freeze")) return [];
   if (!rail) throw new Error("the policy changed, but the Airwallex sandbox keys are not set, so the card is not updated yet");
   return syncCardsIfChanged(db, rail, now);
 }

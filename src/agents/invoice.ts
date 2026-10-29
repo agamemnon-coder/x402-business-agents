@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
 import { assessInvoice, type FraudFinding } from "../policy/fraud.js";
-import { counterpartyAllowed } from "../policy/rules.js";
+import { counterpartyAllowed, frozen } from "../policy/rules.js";
 
 export interface Invoice {
   invoice_no: string;
@@ -68,5 +68,6 @@ export function checkInvoice(db: DB, inv: Invoice, text = ""): InvoiceCheck {
   }
   const b = fraud.allowlisted!;
   if (!counterpartyAllowed(db, b.name)) return { ok: false, reason: `${b.name} is blocked by the CFO policy` };
+  if (frozen(db)) return { ok: false, reason: "the CFO pulled the emergency stop" };
   return { ok: true, beneficiaryId: b.beneficiary_id, name: b.name, ibanLast4: b.iban_last4, bic: b.bic, amountCents: toCents(inv.amount) };
 }

@@ -79,6 +79,11 @@ section > h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0;
 .counts { display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
 .counts b { font-size: 18px; font-weight: 700; margin-right: 4px; }
 .counts .ok b { color: var(--ok); } .counts .wait b { color: var(--warn); } .counts .bad b { color: var(--bad); }
+.frozen { background: var(--bad); color: #fff; padding: 10px 20px; font-weight: 650; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.frozen[hidden] { display: none; }
+.frozen small { font-weight: 400; opacity: .9; }
+a.stop { color: var(--bad); border: 1px solid var(--bad); border-radius: 7px; padding: 3px 10px; text-decoration: none; font-weight: 650; }
+.pcard .frozenchip { color: var(--bad); font-weight: 650; }
 .monthlink { color: var(--accent); text-decoration: none; font-weight: 600; }
 .honest { flex-basis: 100%; margin: 2px 0 0; font-size: 12px; color: var(--muted); max-width: 70ch; }
 details.sandbox { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
@@ -231,8 +236,10 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     <span id="audit" class="num"></span>
     <span id="passkey"></span>
     <a class="monthlink" href="month">A month in 90 seconds (simulated) →</a>
+    <a class="stop" id="stop" href="policy?freeze=on" hidden>Emergency stop</a>
   </div>
 </header>
+<div class="frozen" id="frozen" hidden></div>
 <main>
   <section id="pending" aria-labelledby="h-pending"><h2 id="h-pending">Waiting for approval <span class="count" id="pending-count">0</span></h2><div class="body" id="pending-body"></div></section>
   <section id="cards" aria-labelledby="h-cards"><h2 id="h-cards">Company cards <span class="hint">Airwallex Issuing, virtual Visa</span></h2><div class="body" id="cards-body"></div></section>
@@ -397,7 +404,8 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
           el("span", "amount num", [txt("b", "", money(c.spent_month)), txt("span", "", " / " + money(c.monthly) + " EUR this month")])]),
         bar,
         el("div", "line2 num", [txt("span", "", "max " + money(c.per_tx) + " per purchase"), txt("span", "", money(c.left_month) + " left this month"),
-          txt("span", "", "buys " + c.buys), c.in_sync ? null : txt("span", "warn-text", "updating the card at Airwallex…")]),
+          txt("span", "", "buys " + c.buys), c.frozen ? txt("span", "frozenchip", "FROZEN at Airwallex") : null,
+          c.in_sync ? null : txt("span", "warn-text", "updating the card at Airwallex…")]),
         txs.length ? el("div", "txs", txs) : null,
       ]));
     });
@@ -475,6 +483,16 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
 
   function render(d) {
     renderPending(d); renderCards(d); renderBudgets(d); renderTreasury(d); renderRefusals(d); renderFeed(d);
+    // The emergency stop: a red band while it is on; the button (relay only) leads to the phone's policy page with it set.
+    var fz = document.getElementById("frozen");
+    if (d.frozen) {
+      fz.hidden = false;
+      fz.replaceChildren(txt("span", "", "EMERGENCY STOP: every agent payment is refused and every card is frozen at Airwallex"),
+        txt("small", "", "by " + d.frozen.by + (d.frozen.since ? " at " + hms(d.frozen.since) : "") + (d.frozen.reason ? ": " + d.frozen.reason : "") + ". Lifting it needs a proposal and Face ID."));
+    } else {
+      fz.hidden = true;
+    }
+    document.getElementById("stop").hidden = !d.relay || !!d.frozen;
     if (d.counts) {
       document.getElementById("c-alone").textContent = money(String(d.counts.alone));
       document.getElementById("c-waiting").textContent = String(d.counts.waiting);

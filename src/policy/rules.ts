@@ -6,7 +6,7 @@ import { AGENTS, CARDS, REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, t
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 
-export type PolicyKey = `cap.${Agent}` | `card.${Agent}.per_tx` | `card.${Agent}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
+export type PolicyKey = "freeze" | `cap.${Agent}` | `card.${Agent}.per_tx` | `card.${Agent}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
 
 export interface Rule {
   key: PolicyKey;
@@ -30,6 +30,8 @@ const MONEY = /^\d{1,9}\.\d{2}$/;
 const MAX_FLOOR = 10_000_000_000;
 
 const STATIC: Rule[] = [
+  // The emergency stop (E2): on, every agent payment is refused before signing and every company card is frozen.
+  { key: "freeze", label: "Emergency stop: all agent payments and cards", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
   { key: "cap.sourcing", label: "Sourcing agent: most per payment", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
   { key: "cap.support", label: "Support agent: most per refund", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
   { key: "cap.treasury", label: "Treasury agent: most per sweep", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
@@ -97,8 +99,14 @@ export function policyCapCents(db: DB, agent: Agent): number | null {
   return v === "" ? null : toCents(v);
 }
 
+/** Whether the CFO has pulled the emergency stop. */
+export function frozen(db: DB): boolean {
+  return policyValue(db, "freeze") === "on";
+}
+
 /** Why a payment of this size must not be signed, or null if the policy allows it. */
 export function capRefusal(db: DB, agent: Agent, cents: number): string | null {
+  if (frozen(db)) return `frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the ${agent} agent signs nothing`;
   const cap = policyCapCents(db, agent);
   return cap !== null && cents > cap ? `policy_cap_exceeded: ${fromCents(cents)} is over the ${agent} limit of ${fromCents(cap)}` : null;
 }
@@ -129,5 +137,6 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
+  if (c.key === "freeze") return c.from === "on" && c.to !== "on";
   return true;
 }

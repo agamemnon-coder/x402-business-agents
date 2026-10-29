@@ -6,7 +6,7 @@ import { verifyAuditChain } from "../audit/log.js";
 import { MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
-import { cardLimits, policyValue } from "../policy/rules.js";
+import { cardLimits, frozen, policyValue } from "../policy/rules.js";
 import { CARDS, type Agent } from "../config/policy.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
@@ -103,6 +103,8 @@ export interface CardView {
   spent_month: string;
   left_month: string;
   in_sync: boolean;
+  /** Frozen at Airwallex by the emergency stop. */
+  frozen: boolean;
   recent: CardTx[];
 }
 
@@ -126,6 +128,8 @@ export interface Snapshot {
   feed: FeedItem[];
   cards: CardView[];
   clearing: ClearingView | null;
+  /** The emergency stop, while it is on: who pulled it, when, and why. */
+  frozen: { since: string; by: string; proposal_id: string; reason: string } | null;
   /** Top of the page: what the agents did alone, what waits for the CFO, what was blocked (J4). */
   counts: { alone: number; waiting: number; blocked: number };
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
@@ -311,7 +315,7 @@ const limitWords = (s: string) => {
 function cards(db: DB, now: Date): CardView[] {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get()) return [];
   const month = now.toISOString().slice(0, 7);
-  const rows = db.prepare("SELECT agent, last4, per_tx_cents, monthly_cents FROM cards ORDER BY agent").all() as { agent: Agent; last4: string; per_tx_cents: number; monthly_cents: number }[];
+  const rows = db.prepare("SELECT agent, last4, per_tx_cents, monthly_cents, status FROM cards ORDER BY agent").all() as { agent: Agent; last4: string; per_tx_cents: number; monthly_cents: number; status: string }[];
   return rows.map((c) => {
     const want = cardLimits(db, c.agent);
     const spent = sum(db, `SELECT SUM(amount_cents) AS n FROM card_transactions WHERE agent = '${c.agent}' AND approved = 1 AND substr(occurred_at, 1, 7) = '${month}'`);
@@ -321,9 +325,23 @@ function cards(db: DB, now: Date): CardView[] {
     return {
       agent: c.agent, last4: c.last4, buys: CARDS[c.agent]?.buys ?? "", per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
       spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent),
-      in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents, recent,
+      in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === (frozen(db) ? "INACTIVE" : "ACTIVE"),
+      frozen: c.status === "INACTIVE", recent,
     };
   });
+}
+
+function frozenView(db: DB, rows: AuditRow[]): Snapshot["frozen"] {
+  if (!frozen(db)) return null;
+  const on = [...rows].reverse().find((r) => r.event === "policy.changed" && r.subject === "freeze");
+  const p = on ? (JSON.parse(on.payload_json) as P) : {};
+  const id = str(p.proposal_id);
+  const a = db.prepare("SELECT approver, method FROM approvals WHERE proposal_id = ?").get(id) as { approver: string; method: string } | undefined;
+  const terms = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(id) as { terms_json: string } | undefined;
+  const reason = terms ? str((JSON.parse(terms.terms_json) as P).reason) : "";
+  const who = a ? approverName(a.approver, a.method) : "";
+  const name = (who.split(" · ")[0] ?? who).split(" (")[0] ?? "";
+  return { since: on?.ts ?? "", by: name ? name.charAt(0).toUpperCase() + name.slice(1) : "the CFO", proposal_id: id, reason };
 }
 
 function clearingView(db: DB): ClearingView | null {
@@ -454,6 +472,8 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "clearing.withdrawn": return out(`Our clearing earnings of ${str(p.amount)} USDZ went to the business account`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
     case "sale.prepaid_not_offered": return out(`Prepaid clearing not offered for tick #${s}: ${str(p.reason).replace(/^[a-z_]+: /, "")}; the buyer uses the mandate route`, "info");
     case "sale.prepaid_undelivered": return out(`Tick #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
+    case "card.frozen": return out(`Emergency stop: Airwallex froze the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "refusal");
+    case "card.thawed": return out(`The ${str(p.agent)} agent's card •••• ${str(p.last4)} is active again`, "approval");
     case "card.issued": return out(`Airwallex issued the ${str(p.agent)} agent a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
     case "card.adopted": return out(`The ${str(p.agent)} agent's Visa card •••• ${str(p.last4)} now follows the CFO policy`, "ok");
     case "card.limits_synced": return out(`Airwallex now has the CFO policy on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${limitWords(str(p.to))} (was ${limitWords(str(p.from))})`, "approval");
@@ -584,6 +604,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     feed,
     cards: cards(db, now),
     clearing: clearingView(db),
+    frozen: frozenView(db, rows),
     counts: counts(db, rows, pending.filter((p) => !p.expired).length),
     passkey: passkeyInfo(db, now),
   };

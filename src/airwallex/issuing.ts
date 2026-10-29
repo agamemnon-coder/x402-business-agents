@@ -52,6 +52,8 @@ export interface IssuingRail {
   createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits }): Promise<Card>;
   getCard(cardId: string): Promise<Card>;
   setCardLimits(cardId: string, limits: CardLimits): Promise<Card>;
+  /** INACTIVE freezes the card (Airwallex declines with CARD_INACTIVE); ACTIVE thaws it. */
+  setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE"): Promise<Card>;
   /** The card's transactions, in whatever order Airwallex lists them. */
   listCardTransactions(cardId: string): Promise<CardTransaction[]>;
 }
@@ -185,6 +187,15 @@ export class IssuingRest implements IssuingRail, IssuingSim {
       await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, {
         authorization_controls: { transaction_limits: { ...limitsBody(limits), cash_withdrawal_limits: [] } },
       });
+    } catch (e) {
+      if (!(e instanceof AirwallexAmbiguous)) throw e;
+    }
+    return this.getCard(cardId);
+  }
+
+  async setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE"): Promise<Card> {
+    try {
+      await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, { card_status: status });
     } catch (e) {
       if (!(e instanceof AirwallexAmbiguous)) throw e;
     }

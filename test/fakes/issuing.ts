@@ -36,16 +36,22 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
     this.card(cardId).limits = { ...limits };
     return structuredClone(this.card(cardId));
   }
+  async setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE") {
+    this.calls.push("setCardStatus");
+    this.card(cardId).status = status;
+    return structuredClone(this.card(cardId));
+  }
   async listCardTransactions(cardId: string) { this.calls.push("listTx"); return this.txs.filter((t) => t.cardId === cardId).map((t) => ({ ...t })).reverse(); }
   async simulateCardCharge(a: { cardId: string; amountCents: number; currency: "EUR"; merchant: string; mcc: string }) {
     this.calls.push("charge");
     const card = this.card(a.cardId);
     const month = new Date(this.clock()).toISOString().slice(0, 7);
     const spent = this.txs.filter((t) => t.cardId === a.cardId && t.approved && t.occurredAt.startsWith(month)).reduce((s, t) => s + t.amountCents, 0);
-    const over = !card.limits || a.amountCents > card.limits.perTxCents || spent + a.amountCents > card.limits.monthlyCents;
+    const inactive = card.status !== "ACTIVE";
+    const over = inactive || !card.limits || a.amountCents > card.limits.perTxCents || spent + a.amountCents > card.limits.monthlyCents;
     const t: CardTransaction = {
       transactionId: `tx_${++this.n}`, cardId: a.cardId, amountCents: a.amountCents, currency: a.currency,
-      status: over ? "FAILED" : "PENDING", approved: !over, failureReason: over ? "LIMIT_EXCEEDED" : null,
+      status: over ? "FAILED" : "PENDING", approved: !over, failureReason: inactive ? "CARD_INACTIVE" : over ? "LIMIT_EXCEEDED" : null,
       merchant: a.merchant, mcc: a.mcc, type: "AUTHORIZATION", occurredAt: new Date(this.clock()).toISOString(),
     };
     this.txs.push(t);
