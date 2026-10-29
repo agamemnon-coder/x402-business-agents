@@ -3,6 +3,7 @@
 
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
 import type { DB } from "../db/open.js";
+import { redactJson, redactSecrets } from "../lib/redact.js";
 import { sha256Hex } from "../lib/terms.js";
 
 export type Actor =
@@ -38,9 +39,10 @@ export function audit(db: DB, actor: Actor, event: string, subject: string | nul
       ts: now.toISOString(),
       actor,
       event,
-      subject,
-      // Round-trip through jcs so the stored text is exactly what was hashed.
-      payload_json: jcs(payload),
+      subject: subject === null ? null : redactSecrets(subject),
+      // Round-trip through jcs so the stored text is exactly what was hashed. No credential is ever stored: the
+      // log feeds the dashboard and the public relay (an error from viem, for one, quotes the RPC URL).
+      payload_json: jcs(redactJson(payload)),
       prev_hash: last?.row_hash ?? GENESIS,
     };
     const full: Row = { ...row, row_hash: hashRow(row) };

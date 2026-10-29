@@ -3,6 +3,7 @@
 // (src/passkey/process.ts); an approval then runs its executor while the syncs go on, and its outcome is reported
 // on the same ticket.
 
+import { redactSecrets } from "../lib/redact.js";
 import type { DB } from "../db/open.js";
 import { processAssertion, processPolicyRequest, processRegistration, type InboxItem } from "../passkey/process.js";
 import { expireDue } from "../policy/approvals.js";
@@ -72,7 +73,9 @@ export class RelayRunner {
     while (this.running.size > 0) await Promise.allSettled([...this.running]);
   }
 
-  private ack(ticket: string, status: string, message: string): void {
+  private ack(ticket: string, status: string, raw: string): void {
+    // A verdict goes to the relay and the phone, and to the log: never with a credential in it.
+    const message = redactSecrets(raw);
     this.acks.push({ ticket, status, message });
     this.deps.log(`${status.padEnd(8)} ${message}`);
   }

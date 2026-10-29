@@ -1,6 +1,7 @@
 // Runs the pinned metal-agent CLI (0.3.3). Its output is "key value" lines, parsed into a map.
 // HOME points into the keys directory so pull keep-files survive the container (risk R14).
 
+import { redactSecrets } from "../lib/redact.js";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
@@ -34,7 +35,7 @@ export class CliError extends Error {
 
 /** Never let the RPC URL (a credential) into an error message or log. */
 export function scrub(text: string): string {
-  return text.replace(/https:\/\/rpc-testnet\.metalntwx\.com\/\S*/g, "[rpc-url]");
+  return redactSecrets(text);
 }
 
 function parse(out: string): Map<string, string[]> {
