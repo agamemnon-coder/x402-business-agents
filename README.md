@@ -7,8 +7,8 @@ money moves. Airwallex books the earnings and pays the euro invoice with fee-awa
 
 Built for the Airwallex Agentic Banking Hackathon, Starter Kit 11 (x402 Business Agents), Metal Award.
 
-> Work in progress (build phase until 13 November 2026). Everything on Metal runs live on testnet today; the
-> Airwallex sandbox part is built and tested against its documented API and runs as soon as sandbox keys are set.
+> Work in progress (build phase until 13 November 2026). Everything runs live today, on Metal testnet and in the
+> Airwallex sandbox; approvals can be given on a phone with a passkey (Face ID).
 
 ## The story
 
@@ -38,16 +38,18 @@ Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, 
 ## Controls
 
 - **Limits live in code and on chain.** `src/config/policy.ts` holds every number. The chain enforces each mandate.
-- **Approvals bind the exact terms.** Terms are canonical JSON (RFC 8785) with money as decimal strings; the
-  approver types the first 8 hex characters of their SHA-256. The executor recomputes the hash, runs once,
+- **Approvals bind the exact terms.** Terms are canonical JSON (RFC 8785) with money as decimal strings. On the
+  phone, the approver's passkey signs their SHA-256 (Face ID); on a laptop, the approver types its first 8 hex
+  characters. The executor recomputes the hash, runs once,
   re-checks the chain or balances first, and builds every payload from the approved terms only. Mandate changes
   anchor the approval on chain (the new credential's hash is bound); Airwallex conversions and transfers carry it
   in `metadata.approval_sha256`.
 - **Idempotency everywhere:** settlement ids, payment ids, request ids, a single-use quote, one live payout per
   invoice, one credit per on-chain transfer. A lost answer is looked up, never blindly resent.
 - **Audit log:** append-only (the database refuses updates and deletes), hash-chained; `npm run verify` recomputes
-  it and re-checks every mandate, pull and disputed payment from the chain, and every deposit, conversion and
-  transfer from Airwallex (amounts, request ids, the approval hash in metadata, status, fee within its ceiling).
+  it and re-checks every mandate, pull and disputed payment from the chain, every passkey approval from its stored
+  signature, and every deposit, conversion and transfer from Airwallex (amounts, request ids, the approval hash in
+  metadata, status, fee within its ceiling).
 - **Failure tests:** `npm run fail -- f1` (an approval after the quote ran out approves nothing; the re-quote
   needs a new approval), `npm run fail -- f2` (refund over the mandate cap, refused on chain, nothing sent) and
   `npm run fail -- f4` (an annual invoice whose conversion would break the USD floor escalates with options;
@@ -109,6 +111,54 @@ same file can be served from a phone-reachable host later.
 
 ![Dashboard](docs/dashboard-desktop.png)
 
+## Approving on a phone with a passkey
+
+The dashboard and the approvals also run on one fixed address, `https://kit11.<subdomain>.workers.dev`, so the CFO
+can approve from a phone with Face ID. The passkey signs the SHA-256 of the exact terms: the challenge is the hash's
+32 bytes, so a signature is worth something for those terms only, and any change after signing makes it worthless.
+
+```text
+phone (pages, WebCrypto, passkey)  ⇄  relay Worker on Cloudflare  ⇄  runner (this repo, holds the ledger)
+ checks the hash itself,             stores the last state,          verifies every signature itself,
+ signs it with Face ID               queues what the phone sends     then decides and executes
+```
+
+- **The relay cannot approve anything.** It is a Cloudflare Worker with one SQLite Durable Object (`worker/`): it
+  serves the pages, keeps the state the runner last pushed and queues what the phone submits. It holds no key. The
+  runner (`npm run relay`) pulls each submission and verifies it with `@simplewebauthn/server` against the pinned
+  public key: the challenge must be the proposal's terms hash, the origin and rpId the relay's host, user
+  verification on, the counter not going back. Only then does it record the approval (method `passkey`, approver
+  `max (passkey <id>)`) and run the executor. The relay's own checks (same-origin posts, the exact hash, expiry,
+  queue and per-address limits) only refuse early.
+- **The phone checks the hash too.** The page canonicalises the terms and hashes them itself (WebCrypto), and will
+  not offer anything that does not hash to the hash it would sign. Every line of the confirm screen is built from
+  those hashed terms, never from text the relay sends.
+- **Mis-tap prevention.** Price options sit side by side. A tap opens a full-screen summary of that one option: what
+  it does in one sentence, amount, margin, recipient, the options it is *not*, the countdown and the hash prefix.
+  Only "Confirm with Face ID" there starts the passkey (it arms after 0.8 s, so a double tap cannot reach it); Back
+  signs nothing. Once one option is approved, the runner refuses the others.
+- **Enrolment:** `npm run relay -- --enrol` prints a one-time code (ten minutes, five tries); the approver opens
+  `/enrol` on the phone, types it and creates the passkey with Face ID. The runner checks the code and the new
+  passkey itself and pins it in the ledger; the dashboard shows which passkey approvals need.
+- **Verifiable later:** every signature is stored, and `npm run verify` checks each passkey approval again offline.
+- **Late or offline:** a signature that arrives after the proposal expired approves nothing and is recorded as too
+  late; one sent while the runner is offline waits on the relay (up to 30 minutes) and the phone says so.
+
+| Command | What it does |
+|---|---|
+| `npm run relay:deploy` | Bundles the pages and deploys the Worker with the pinned wrangler (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) |
+| `npm run relay` | Connects this ledger (`KIT11_DB`) to the relay and keeps it in sync; add `-- --enrol` for a one-time enrolment code |
+| `npm run relay -- --local` | The same relay on http://localhost:4400 without Cloudflare (passkeys work on localhost) |
+
+The runner's token for the relay is `KIT11_RELAY_TOKEN`, or else derived from the Cloudflare token (whoever holds
+that can redeploy the Worker anyway). Limits: the dashboard on the relay is readable by anyone with the address
+(testnet and sandbox data only); a page served by a compromised Cloudflare account could show one thing and sign
+another hash, but the runner still executes nothing that is not a waiting proposal's exact terms.
+
+| Choose an option | Confirm what it does | Done |
+|---|---|---|
+| ![Options](docs/approve-options.png) | ![Confirm](docs/approve-confirm.png) | ![Done](docs/approve-done.png) |
+
 ## Code map
 
 | Part | Where |
@@ -122,7 +172,10 @@ same file can be served from a phone-reachable host later.
 | Metal | `src/metal/` (metal-agent CLI wrapper, mandate loading, x402 payments, chain reads) |
 | Airwallex | `src/airwallex/` (client, port, REST adapter); a fake for tests in `test/fakes/` |
 | Claude | `src/claude/` |
-| Approval page | `src/servers/approvals.ts` |
+| Approval page (laptop, typed hash prefix) | `src/servers/approvals.ts` |
+| Passkeys (enrolment, verification, offline re-check) | `src/passkey/` |
+| Phone pages (approve, enrol) | `src/approve/` |
+| Relay: runner side, Worker | `src/relay/`, `worker/` |
 | Dashboard (read-only) | `src/dashboard/snapshot.ts`, `src/dashboard/page.html`, `src/servers/dashboard.ts` |
 
 ## Tooling used
@@ -135,6 +188,8 @@ same file can be served from a phone-reachable host later.
   conversions, beneficiaries (validate, create), transfers (create, list by request_id, retrieve), transfer
   simulation.
 - **Anthropic:** `@anthropic-ai/sdk` 1.3.0, structured outputs, server-side fallbacks.
+- **Passkeys and hosting:** `@simplewebauthn/server` 14.0.3 (runner side), WebAuthn in the browser, Cloudflare
+  Workers with a SQLite Durable Object, `wrangler` 4.151.0 (in `worker/`).
 
 ## Built with Claude
 

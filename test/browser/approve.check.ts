@@ -1,5 +1,7 @@
 // Browser check of the phone pages (not part of npm test; needs Playwright with Chromium):
-//   npx tsx test/browser/approve.check.ts [screenshot dir]
+//   npx tsx test/browser/approve.check.ts [screenshot dir] [--live]
+// --live runs against the deployed relay Worker (relay config from the environment) instead of a local relay.
+// Either way the world is a throwaway copy and the executor a fake: a dev test, never an approval of anything real.
 // A copy of the rehearsal-2 ledger gets two fresh price options and a refund batch; the local relay serves the
 // pages; Chromium's virtual authenticator (WebAuthn over CDP, user verification on) plays the phone's passkey.
 // It enrols, opens the options, checks the confirm screen and its arming delay, backs out (nothing signed), then
@@ -15,10 +17,12 @@ import { TERMS_SCHEMA, type Terms } from "../../src/lib/terms.js";
 import { openEnrolment } from "../../src/passkey/ledger.js";
 import { reverifyPasskeyApprovals } from "../../src/passkey/webauthn.js";
 import { createProposal, nextProposalId } from "../../src/policy/approvals.js";
+import { relayConfig } from "../../src/relay/config.js";
 import { startLocalRelay } from "../../src/relay/local.js";
 import { RelayRunner } from "../../src/relay/runner.js";
 
-const shots = resolve(process.argv[2] ?? "docs");
+const live = process.argv.includes("--live");
+const shots = resolve(process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "docs");
 const ledger = process.env.KIT11_CHECK_LEDGER ?? resolve(import.meta.dirname, "../../../rewardssystem/entries/airwallex/rehearsal-2-ledger.sqlite");
 const dir = mkdtempSync(join(tmpdir(), "kit11-browser-"));
 copyFileSync(ledger, join(dir, "world.sqlite"));
@@ -41,13 +45,15 @@ const refundId = nextProposalId(db);
 createProposal(db, { terms: { ...refund, proposal_id: refundId, expires_at: iso(now.getTime() + 30 * 60_000) }, createdBy: "support" }, now);
 const [optA, optB] = ids as [string, string];
 
-const { server, url, relay } = await startLocalRelay({ port: 0, token: "browser-check" });
+const local = live ? null : await startLocalRelay({ port: 0, token: "browser-check" });
+const cfg = local ? { url: local.url, origin: local.url, rpId: "localhost", token: "browser-check" } : await relayConfig();
+const url = cfg.url;
 const executed: string[] = [];
 const runner = new RelayRunner({
-  db, cfg: { url, origin: url, rpId: "localhost", token: "browser-check" }, fetch, log: (l) => console.log(`  runner: ${l}`),
+  db, cfg, fetch, log: (l) => console.log(`  runner: ${l}`),
   execute: async (_db, id) => { executed.push(id); },
 });
-const { code } = openEnrolment(db, { rpId: "localhost", origin: url }, now);
+const { code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin }, now);
 let syncing = true;
 const loop = (async () => { while (syncing) { await runner.syncOnce().catch((e: Error) => console.error(e.message)); await new Promise((r) => setTimeout(r, 300)); } })();
 
@@ -132,10 +138,11 @@ await page.click("button.confirm");
 await page.waitForSelector(".verdict.bad", { timeout: 20_000 });
 check(/another option/.test((await page.textContent(".verdict-detail")) ?? ""), "the other option after B: refused by the runner");
 
-// Terms changed on the way: the page refuses to offer them.
 syncing = false;
 await loop;
-const sql = relay["sql"];
+if (local) {
+// Terms changed on the way: the page refuses to offer them.
+const sql = local.relay["sql"];
 const state = JSON.parse((sql.exec("SELECT v FROM kv WHERE k = 'state'").toArray()[0] as { v: string }).v) as { approvals: { proposals: { proposal_id: string; canonical: string }[] } };
 const r = state.approvals.proposals.find((p) => p.proposal_id === refundId)!;
 r.canonical = r.canonical.replace('"total":"', '"total":"9');
@@ -144,9 +151,10 @@ await page.goto(`${url}/approve/${refundId}`);
 await page.waitForSelector("button.option");
 check(await page.isDisabled("button.option"), "tampered terms: the option cannot be tapped");
 check(/do not hash to the hash shown/.test((await page.textContent("button.option .alarm")) ?? ""), "tampered terms: the page says why");
+}
 
 check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
 await browser.close();
-server.close();
+local?.server.close();
 console.log(failures === 0 ? `\nbrowser check passes (screenshots in ${shots})` : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);
