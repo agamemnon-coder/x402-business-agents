@@ -28,6 +28,7 @@
     "approvals": "tsx src/cli/approvals-page.ts",
     "dashboard": "tsx src/cli/dashboard.ts",
     "relay": "tsx src/cli/relay.ts",
+    "up": "tsx src/cli/up.ts",
     "relay:deploy": "tsx src/cli/relay-deploy.ts",
     "relay:pages": "tsx src/cli/relay-pages.ts",
     "devtest": "tsx src/cli/dev-test.ts",

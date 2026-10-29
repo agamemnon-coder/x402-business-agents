@@ -69,6 +69,8 @@ button { font: inherit; }
 /* The emergency stop band. */
 .frozen { background: var(--bad); color: var(--bad-ink); padding: 12px 32px; display: flex; gap: 12px; align-items: center; font-weight: 600; flex-wrap: wrap; }
 .frozen small { font-weight: 400; opacity: .9; }
+.frozen.offline { background: var(--wait-soft); color: var(--text); font-weight: 500; }
+.frozen.offline a { color: var(--accent); font-weight: 600; margin-left: auto; }
 
 /* Dashboard. */
 .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 32px 48px; }
@@ -354,6 +356,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
   <p>One CFO policy for both rails: Airwallex cards and bank transfers, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, amounts are in USDZ, Metal's test dollars, shown here as "test USD". The step from test USD to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate.</p></details>
 <div class="frozen" id="frozen" hidden></div>
 <div class="frozen" id="stopped" hidden></div>
+<div class="frozen offline" id="offline" role="status" hidden><span data-icon="info"></span><span>The runner is offline, so this page is not live. Nothing can be paid or approved until it is back.</span><a href="demo">Watch the recorded run →</a></div>
 
 <!-- How the CFO gets in: no password, a private link to view and a passkey to approve. -->
 <section class="section signin" id="signin" hidden>
@@ -845,6 +848,8 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
   function status() {
     if (!lastData) { live("", needsLink ? "Needs the viewer link" : "Connecting"); return; }
     var fresh = Date.now() - lastOk < STALE_MS && !(lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS);
+    // A visible way out when the runner is down: the recorded run, which cannot fail.
+    document.getElementById("offline").hidden = !(lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS);
     live(fresh ? "on" : "", fresh ? "Live" : lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS ? "Stale · runner offline" : "Stale");
     Array.prototype.forEach.call(document.querySelectorAll("[data-expires]"), function (n) { n.textContent = countdown(n.getAttribute("data-expires")); });
   }
