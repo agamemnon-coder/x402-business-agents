@@ -242,3 +242,13 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+-- Earnings swept from the business account to the sweep wallet (treasury mandate pulls).
+CREATE TABLE IF NOT EXISTS sweeps (
+  payment_id TEXT PRIMARY KEY,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  tx_hash TEXT,
+  outcome TEXT NOT NULL CHECK (outcome IN ('PLANNED', 'PAID', 'REFUSED', 'PENDING', 'HELD')),
+  event_key TEXT REFERENCES chain_credits(event_key),
+  created_at TEXT NOT NULL
+);
