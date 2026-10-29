@@ -103,6 +103,10 @@ export interface Facts {
   /** How another option names this one: "option A: sell at 0.05 per query (margin 0.01)". */
   short: string;
   warnings: string[];
+  /** For the option card: a short name, and the one number that matters, big, with its unit. */
+  label: string;
+  big: string;
+  unit: string;
 }
 
 export function describeTerms(t: Obj, names: Record<string, string>): Facts {
@@ -132,6 +136,9 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       rows,
       short: `option ${str(t.option)}: sell at ${q} per query (margin ${m})`,
       warnings: [],
+      label: `Option ${str(t.option)}`,
+      big: q,
+      unit: "*USDZ per query",
     };
   }
 
@@ -158,6 +165,9 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       ],
       short: `refund ${sales}, ${str(t.total)} *USDZ`,
       warnings: elsewhere.length ? [`Pays addresses other than the customer: ${elsewhere.join(", ")}`] : [],
+      label: `Refund ${sales}`,
+      big: money(t.total),
+      unit: "*USDZ",
     };
   }
 
@@ -187,12 +197,15 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       rows,
       short: `pay ${cur} ${money(t.amount)} to ${str(t.beneficiary_name)}`,
       warnings: str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : [],
+      label: `Invoice ${str(t.invoice_no)}`,
+      big: money(t.amount),
+      unit: cur,
     };
   }
 
   return {
     approvable: false, title: `Proposal of kind ${kind || "unknown"}`, sentence: "This kind of proposal cannot be approved on the phone.",
-    amount: "", margin: null, recipient: "", rows: [], short: kind, warnings: [],
+    amount: "", margin: null, recipient: "", rows: [], short: kind, warnings: [], label: kind || "unknown", big: "", unit: "",
   };
 }
 
@@ -336,12 +349,13 @@ const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
 };
 
 /** Polls a ticket and shows the runner's verdict until it is final. */
-async function follow(ticket: string, into: HTMLElement, done: Node): Promise<void> {
+async function follow(ticket: string, into: HTMLElement, done: Node, what = ""): Promise<void> {
   const icon = el("div", "verdict-icon");
   const head = el("h2", "verdict-head");
+  const subject = txt("p", "verdict-what", what);
   const lead = el("p", "verdict-lead");
   const detail = el("p", "verdict-detail");
-  const box = el("div", "verdict", [icon, head, lead, detail]);
+  const box = el("div", "verdict", [icon, head, what ? subject : null, lead, detail]);
   into.replaceChildren(box, done);
   const started = Date.now();
   for (;;) {
@@ -386,10 +400,10 @@ async function approvePage(): Promise<void> {
     const cd = el("span", "countdown");
     cd.dataset.expires = o.expires_at;
     const card = el("button", `option${o.proposal_id === id ? " suggested" : ""}`, [
-      txt("span", "option-title", f ? f.title : o.proposal_id),
-      f ? txt("span", "option-amount", f.amount) : null,
+      txt("span", "option-title", f ? f.label : o.proposal_id),
+      f?.big ? el("span", "option-amount", [f.big, txt("small", "", ` ${f.unit}`)]) : null,
       f?.margin ? txt("span", "option-margin", `margin ${f.margin}`) : null,
-      f ? txt("span", "option-sentence", f.sentence) : null,
+      f && group.length === 1 ? txt("span", "option-sentence", f.sentence) : null,
       o.review ? txt("span", `chip ${o.review.recommendation}`, `Opus: ${o.review.recommendation.replace(/_/g, " ")} (advisory)`) : null,
       el("span", "option-meta", [cd, " · ", el("span", "mono", [`hash ${o.terms_sha256.slice(0, 8)}`])]),
       check.ok ? null : txt("span", "alarm", `Do not approve: ${check.problem}.`),
@@ -511,7 +525,7 @@ async function approvePage(): Promise<void> {
       const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
       home.href = "/";
       actions.remove();
-      await follow(str(sent.data.ticket), body, home);
+      await follow(str(sent.data.ticket), body, home, f.title);
       status.textContent = "";
     });
   }

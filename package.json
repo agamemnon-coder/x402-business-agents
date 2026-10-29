@@ -24,6 +24,8 @@
     "audit:export": "tsx src/cli/auditExport.ts",
     "approvals": "tsx src/cli/approvals-page.ts",
     "dashboard": "tsx src/cli/dashboard.ts",
+    "relay": "tsx src/cli/relay.ts",
+    "relay:deploy": "tsx src/cli/relay-deploy.ts",
     "fail": "tsx src/cli/fail.ts",
     "demo:all": "tsx src/cli/demo.ts"
   },

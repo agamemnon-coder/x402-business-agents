@@ -26,8 +26,8 @@ async function waitForExecuted(kind: string, label: string): Promise<void> {
   const db = openDb();
   const done = () => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'EXECUTED'").get(kind) as { proposal_id: string } | undefined;
   if (done()) return;
-  console.log(`\n⏸  ${label}: waiting for a person to approve. Open the approval page (npm run approvals, http://127.0.0.1:4200)`);
-  console.log(`   or run npm run proposals and npm run approve -- <id> <first 8 hex> in another terminal.`);
+  console.log(`\n⏸  ${label}: waiting for a person to approve. On the phone with a passkey (npm run relay), on the`);
+  console.log(`   approval page (npm run approvals, http://127.0.0.1:4200), or with npm run approve -- <id> <first 8 hex>.`);
   for (;;) {
     const d = done();
     if (d) { console.log(`▶  ${d.proposal_id} executed; continuing.`); return; }

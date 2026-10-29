@@ -184,6 +184,25 @@ describe("approval by passkey", () => {
   });
 });
 
+describe("price options", () => {
+  const option = (id: string, opt: string, price: string): Terms => ({
+    schema: TERMS_SCHEMA, kind: "mandate_replace", proposal_id: id, expires_at: "2026-10-30T15:00:00Z", option: opt, query_price: price,
+    steps: [{ order: "1", agent: "treasury", replaces_credential_hash: "0xaa", credential_hash: "0x01" }],
+  });
+
+  it("refuses a second option once another option for the same mandates is approved", async () => {
+    const { db, auth } = await enrolled();
+    const [a, b] = [option("P-0001", "A", "0.05"), option("P-0002", "B", "0.07")];
+    createProposal(db, { terms: a, createdBy: "treasury" }, t0);
+    createProposal(db, { terms: b, createdBy: "treasury" }, t0);
+    const sign = (h: string, counter: number) => auth.sign({ challenge: challengeFor(h), origin: ORIGIN, rpId: RP, counter });
+    expect((await processAssertion(db, approval("P-0002", termsHash(b), sign(termsHash(b), 1)), t0)).status).toBe("approved");
+    const out = await processAssertion(db, approval("P-0001", termsHash(a), sign(termsHash(a), 2)), t0);
+    expect(out).toMatchObject({ status: "refused", message: expect.stringMatching(/another option, P-0002, was already approved/) });
+    expect(status(db, "P-0001")).toBe("PENDING_APPROVAL");
+  });
+});
+
 describe("offline re-verification", () => {
   it("re-verifies every stored passkey approval, and catches a changed signature", async () => {
     const { db, auth } = await enrolled();

@@ -65,6 +65,22 @@ export interface AssertionOutcome {
 
 const DECIDED = new Set(["APPROVED", "EXECUTING", "EXECUTED", "FAILED"]);
 
+/**
+ * Price options replace the same mandates; once one is approved the others must never be (the executor would
+ * refuse them on chain anyway, and supersedes them after it runs). Returns the approved alternative, if any.
+ */
+function approvedAlternative(db: DB, p: ProposalRow): string | null {
+  if (p.kind !== "mandate_replace") return null;
+  const replaced = (json: string) => {
+    const steps = (JSON.parse(json) as { steps?: { replaces_credential_hash?: string }[] }).steps ?? [];
+    return steps.map((s) => s.replaces_credential_hash).filter((h): h is string => typeof h === "string");
+  };
+  const mine = new Set(replaced(p.terms_json));
+  const others = db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE kind = 'mandate_replace' AND status IN ('APPROVED', 'EXECUTING', 'EXECUTED', 'FAILED') AND proposal_id != ?")
+    .all(p.proposal_id) as { proposal_id: string; terms_json: string }[];
+  return others.find((o) => replaced(o.terms_json).some((h) => mine.has(h)))?.proposal_id ?? null;
+}
+
 /** A passkey approval: verified against the proposal's own hash, then decide() with method passkey. */
 export async function processAssertion(db: DB, item: InboxItem, now = new Date()): Promise<AssertionOutcome> {
   const refuse = (proposalId: string | null, reason: string, credentialId?: string): AssertionOutcome => {
@@ -92,6 +108,8 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
     intact = false;
   }
   if (!intact) return refuse(p.proposal_id, `the stored terms of ${p.proposal_id} no longer match their hash`);
+  const alternative = approvedAlternative(db, p);
+  if (alternative) return refuse(p.proposal_id, `another option, ${alternative}, was already approved`);
 
   const pk = passkeyById(db, response.id);
   if (!pk) return refuse(p.proposal_id, "this passkey is not enrolled", response.id);
@@ -112,6 +130,9 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
           { terms_sha256: p.terms_sha256, approver, method: "passkey", expires_at: p.expires_at, passkey: { credential_id: pk.credential_id, assertion_sha256: sha } }, now);
         result = "EXPIRED";
       } else {
+        // Checked again inside the transaction: another process may have approved an alternative meanwhile.
+        const late = approvedAlternative(db, current);
+        if (late) throw new Error(`another option, ${late}, was already approved`);
         const r = decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver, method: "passkey", signedSha256: p.terms_sha256, passkey }, now);
         result = r === "APPROVED" ? "APPROVED" : "EXPIRED";
       }

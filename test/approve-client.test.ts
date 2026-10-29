@@ -48,7 +48,7 @@ describe("the hash check before anything is shown or signed", () => {
 describe("the words on the confirm screen", () => {
   it("states a price option's effect, margin and the mandates it changes, with names beside addresses", () => {
     const d = describeTerms(byId("P-0002").terms, F.names);
-    expect(d).toMatchObject({ approvable: true, title: "Option B: sell at 0.07", amount: "0.07 *USDZ per query", margin: "0.03 per sale" });
+    expect(d).toMatchObject({ approvable: true, title: "Option B: sell at 0.07", amount: "0.07 *USDZ per query", margin: "0.03 per sale", label: "Option B", big: "0.07", unit: "*USDZ per query" });
     expect(d.sentence).toBe("Sell each query at 0.07 *USDZ. The supplier now charges 0.04, so each sale earns 0.03.");
     expect(d.recipient).toBe("Tidemark sweep wallet 0xce06…a6ed (treasury); Feedstock Labs 0x3295…713b (sourcing)");
     expect(d.rows).toContainEqual(["Step 2: sourcing mandate", "up to 0.04 per payment, 12.00 in total (0.80 already spent)"]);
@@ -57,7 +57,7 @@ describe("the words on the confirm screen", () => {
 
   it("states an invoice payment's amount, fee ceiling, conversion and bank details", () => {
     const d = describeTerms(byId("P-0004").terms, F.names);
-    expect(d).toMatchObject({ approvable: true, title: "Pay invoice LIC-2026-11", amount: "EUR 1,850.00", margin: null });
+    expect(d).toMatchObject({ approvable: true, title: "Pay invoice LIC-2026-11", amount: "EUR 1,850.00", margin: null, label: "Invoice LIC-2026-11", big: "1,850.00", unit: "EUR" });
     expect(d.sentence).toBe("Pay Lizenzhaus Beispiel GmbH EUR 1,850.00 for invoice LIC-2026-11 by SWIFT, after converting USD 416.59 into EUR 370.00.");
     expect(d.recipient).toBe("Lizenzhaus Beispiel GmbH, IBAN …3000, BIC COBADEFFXXX");
     expect(d.rows).toContainEqual(["Bank fee", "at most EUR 20.00 (the real fee is recorded)"]);
@@ -66,7 +66,7 @@ describe("the words on the confirm screen", () => {
 
   it("states a refund batch's count, total and the customer it pays", () => {
     const d = describeTerms(byId("P-0003").terms, F.names);
-    expect(d).toMatchObject({ approvable: true, title: "Refund 9 sales", amount: "0.45 *USDZ" });
+    expect(d).toMatchObject({ approvable: true, title: "Refund 9 sales", amount: "0.45 *USDZ", label: "Refund 9 sales", big: "0.45", unit: "*USDZ" });
     expect(d.sentence).toBe("Refund 9 sales to Kestrel Quant, 0.45 *USDZ in total.");
     expect(d.recipient).toBe("Kestrel Quant 0x5ab2…dbb7");
     expect(d.rows).toContainEqual(["Pays", "Kestrel Quant 0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7"]);

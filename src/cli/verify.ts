@@ -3,6 +3,7 @@
 // - every credential ever issued (replaced ones included) with `metal-agent mandate verify`;
 // - every refund and sweep pull against the credential that made it;
 // - every disputed sale's payment with its signed order (verifyMandatePayment);
+// - every approval made with a passkey, from the stored signature and the pinned public key (offline);
 // - with Airwallex keys: every booked deposit, conversion and transfer against Airwallex (read-only).
 // Prints one line per check and exits 1 if any fails.
 
@@ -11,6 +12,7 @@ import { salesBySeq, verifyOrders } from "../agents/disputes.js";
 import { fromEnv, Airwallex } from "../airwallex/client.js";
 import { getVia, verifyAirwallex } from "../airwallex/verify.js";
 import { verifyAuditChain } from "../audit/log.js";
+import { reverifyPasskeyApprovals } from "../passkey/webauthn.js";
 import { openDb } from "../db/open.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
 import { credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
@@ -61,6 +63,8 @@ for (const d of disputes) {
   const good = evidence.filter((e) => e.signed_order && e.within_mandate && e.payer_is_customer).length;
   line(good === evidence.length, `dispute ${d.dispute_id} orders`, `${good}/${evidence.length} signed by the customer's mandate key, inside its mandate`);
 }
+
+for (const c of await reverifyPasskeyApprovals(db)) line(c.ok, c.what, c.detail);
 
 const awx = fromEnv();
 if (awx) {
