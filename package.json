@@ -30,6 +30,7 @@
     "policy": "tsx src/cli/policy.ts",
     "fail": "tsx src/cli/fail.ts",
     "fraud": "tsx src/cli/fraud.ts",
+    "inject": "tsx src/cli/inject.ts",
     "demo:all": "tsx src/cli/demo.ts"
   },
   "dependencies": {

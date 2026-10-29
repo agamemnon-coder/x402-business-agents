@@ -8,6 +8,8 @@ import { parsePriceNoticeFallback, type PriceNotice } from "../agents/notices.js
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import type { FraudFinding } from "../policy/fraud.js";
+import { findInjections } from "../policy/injection.js";
+import { sha256Hex } from "../lib/terms.js";
 import { ClaudeReader, type Read } from "./reader.js";
 
 const MONEY = /^\d+\.\d{2}$/;
@@ -105,13 +107,21 @@ export function fraudExplanationFallback(f: FraudFinding): FraudExplanation {
 export class Tools {
   constructor(private readonly db: DB, readonly reader = new ClaudeReader(db)) {}
 
-  /** Haiku: what kind of document is this? A wrong kind stops the scenario before anything is read. */
-  classify(document: string): Promise<Read<DocumentKind>> {
-    return this.reader.ask(
+  /**
+   * Haiku: what kind of document is this? A wrong kind stops the scenario before anything is read. Every document
+   * comes in here first, so code also screens it for planted instructions and logs what it finds (item 8).
+   */
+  async classify(document: string): Promise<Read<DocumentKind>> {
+    const r = await this.reader.ask(
       { task: "classify_document", role: "classify", actor: "system", schema: DocumentKind, document,
         instruction: "Classify this document for a data business's finance desk: a supplier price notice, a customer dispute, a supplier data correction notice, an invoice to pay, or other." },
       () => classifyFallback(document),
     );
+    const found = findInjections(document);
+    if (found.length > 0) {
+      audit(this.db, "system", "document.injection_flagged", r.value.kind, { document_sha256: sha256Hex(document), findings: found.map((x) => ({ kind: x.kind, excerpt: x.excerpt })) });
+    }
+    return r;
   }
 
   async priceNotice(document: string): Promise<Read<PriceNotice>> {
@@ -148,7 +158,20 @@ export class Tools {
         instruction: "Extract the invoice: number, vendor (the issuing company's legal name), total due as a plain decimal with two decimals and no thousands separators, currency code, due date as YYYY-MM-DD, IBAN without spaces, BIC, and the payment reference." },
       () => parseInvoiceFallback(document),
     );
-    return checked(this.db, "extract_invoice", r, (v) => (MONEY.test(v.amount) && /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v.iban) && /^\d{4}-\d{2}-\d{2}$/.test(v.due_date) ? null : "amount, IBAN or due date malformed"), () => parseInvoiceFallback(document));
+    return checked(this.db, "extract_invoice", r, (v) => {
+      if (!(MONEY.test(v.amount) && /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v.iban) && /^\d{4}-\d{2}-\d{2}$/.test(v.due_date))) return "amount, IBAN or due date malformed";
+      // Where the document's own lines can be read without a model, the model's reading must agree with them: a
+      // model that followed a planted line (another IBAN, another amount, the real supplier's name) is not used.
+      let lines: Invoice;
+      try {
+        lines = parseInvoiceFallback(document);
+      } catch {
+        return null;
+      }
+      const norm = (k: keyof Invoice, s: string) => (k === "iban" || k === "bic" ? s.replace(/\s+/g, "").toUpperCase() : s.trim());
+      const differ = (["invoice_no", "vendor", "amount", "currency", "iban", "bic"] as const).filter((k) => norm(k, v[k]) !== norm(k, lines[k]));
+      return differ.length ? `the reading differs from the document's own lines: ${differ.join(", ")}` : null;
+    }, () => parseInvoiceFallback(document));
   }
 
   /** Opus: an advisory risk review of exact terms, shown under the code-computed numbers. Never parsed for amounts. */

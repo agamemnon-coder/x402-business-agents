@@ -338,6 +338,11 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "credit.adopted": return out(`Booked in Airwallex: ${str(p.currency)} ${str(p.amount)} deposit, reference = the chain tx`, "ok", { awx_id: str(p.deposit_id) || null, tx: TX.test(str(p.reference)) ? str(p.reference) : tx });
     case "treasury.seeded": return out(`Airwallex sandbox seeded with ${str(p.currency)} ${str(p.amount)}`);
     case "invoice.escalated": return out(`Invoice ${s} escalated to a person: ${str(p.reason)}`, "refusal");
+    case "document.injection_flagged": {
+      const found = Array.isArray(p.findings) ? (p.findings as P[]) : [];
+      const n = found.length;
+      return out(`An incoming document (${s.replace(/_/g, " ")}) contains ${n} ${n === 1 ? "line" : "lines"} aimed at the AI; they were treated as data and changed nothing${found[0] ? `: "${str(found[0].excerpt)}"` : ""}`, "refusal");
+    }
     case "invoice.fraud_suspected": {
       const blocking = (Array.isArray(p.signals) ? (p.signals as P[]) : []).filter((x) => x.blocks === true).map((x) => str(x.detail));
       return out(`Invoice ${s} from ${str(p.vendor)} for ${str(p.currency)} ${str(p.amount)} blocked: ${blocking.join("; ") || str(p.reason)}. Nothing was paid; a person must verify with the supplier by phone`, "refusal");
@@ -360,7 +365,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
 const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
-  "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
+  "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
 ]);
 
 const REFUSAL_WHAT: Record<string, string> = {
@@ -379,6 +384,7 @@ const REFUSAL_WHAT: Record<string, string> = {
   "sweep.held": "Sweep held",
   "invoice.escalated": "Invoice escalated",
   "invoice.fraud_suspected": "Invoice blocked: possible fraud",
+  "document.injection_flagged": "Planted instruction ignored",
   "transfer.fee_over_ceiling": "Fee above ceiling",
   "passkey.refused": "Passkey approval refused",
   "passkey.enrol_refused": "Passkey enrolment refused",
