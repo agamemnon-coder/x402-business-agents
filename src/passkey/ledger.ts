@@ -13,6 +13,9 @@ export { normalizeCode };
 
 export const ENROLMENT_TTL_MS = 10 * 60 * 1000;
 
+/** Names the ledger uses for agents and system parts (audit actors, proposers); never a person's passkey label. */
+const AGENT_NAMES = new Set(["system", "claude", "sourcing", "support", "treasury", "customer", "human", "owner-signer", "awx-executor"]);
+
 export interface EnrolmentWindow {
   window_id: string;
   /** base64url of 32 random bytes: the WebAuthn challenge the new passkey must sign. */
@@ -28,6 +31,9 @@ export interface EnrolmentWindow {
   opened_at: string;
   expires_at: string;
   status: "OPEN" | "USED" | "EXPIRED" | "CLOSED";
+  /** E1: the person this window adds beside those already enrolled; null for the runner's own (first or replacement). */
+  label?: string | null;
+  adds?: number;
 }
 
 export interface PasskeyRow {
@@ -67,9 +73,17 @@ export function passkeyById(db: DB, credentialId: string): PasskeyRow | null {
  * Opens a window in which one passkey can be enrolled, closing any earlier open window. Refuses while a passkey
  * is active unless `replace` is set; the old passkey stays active until the new one is enrolled.
  */
-export function openEnrolment(db: DB, args: { rpId: string; origin: string; replace?: boolean }, now = new Date()): { window: EnrolmentWindow; code: string } {
+export function openEnrolment(db: DB, args: { rpId: string; origin: string; replace?: boolean; addPerson?: string }, now = new Date()): { window: EnrolmentWindow; code: string } {
   return db.transaction(() => {
-    if (activePasskey(db) && !args.replace) throw new Error("a passkey is already enrolled; open the window with replace to enrol a new one (the old one is revoked once the new one is enrolled)");
+    const person = args.addPerson;
+    if (person !== undefined) {
+      // E1: another person beside those enrolled, each with a passkey of their own.
+      if (!/^[a-z][a-z0-9-]{1,30}$/.test(person)) throw new Error(`not a person's name: ${JSON.stringify(person)} (lower-case letters, digits and dashes)`);
+      // A person is never named like an agent or a part of the system, so "the proposer cannot approve" stays exact.
+      if (AGENT_NAMES.has(person) || person.startsWith("ext")) throw new Error(`${person} is the name of an agent or a part of the system, not a person's name`);
+      if (!activePasskey(db)) throw new Error("enrol the first passkey before adding another person");
+      if (db.prepare("SELECT 1 FROM passkeys WHERE status = 'ACTIVE' AND label = ?").get(person)) throw new Error(`${person} already has a passkey; to replace it, open the window with replace`);
+    } else if (activePasskey(db) && !args.replace) throw new Error("a passkey is already enrolled; open the window with replace to enrol a new one (the old one is revoked once the new one is enrolled)");
     db.prepare("UPDATE passkey_enrolments SET status = 'CLOSED' WHERE status = 'OPEN'").run();
     const code = newCode();
     const window: EnrolmentWindow = {
@@ -82,12 +96,14 @@ export function openEnrolment(db: DB, args: { rpId: string; origin: string; repl
       opened_at: now.toISOString(),
       expires_at: new Date(now.getTime() + ENROLMENT_TTL_MS).toISOString(),
       status: "OPEN",
+      label: person ?? null,
+      adds: person ? 1 : 0,
     };
     db.prepare(
-      `INSERT INTO passkey_enrolments (window_id, challenge, user_id, code_sha256, rp_id, origin, opened_at, expires_at, status)
-       VALUES (@window_id, @challenge, @user_id, @code_sha256, @rp_id, @origin, @opened_at, @expires_at, @status)`,
+      `INSERT INTO passkey_enrolments (window_id, challenge, user_id, code_sha256, rp_id, origin, opened_at, expires_at, status, label, adds)
+       VALUES (@window_id, @challenge, @user_id, @code_sha256, @rp_id, @origin, @opened_at, @expires_at, @status, @label, @adds)`,
     ).run(window);
-    audit(db, "system", "passkey.enrolment_opened", window.window_id, { rp_id: args.rpId, origin: args.origin, expires_at: window.expires_at, replace: Boolean(args.replace) }, now);
+    audit(db, "system", "passkey.enrolment_opened", window.window_id, { rp_id: args.rpId, origin: args.origin, expires_at: window.expires_at, replace: Boolean(args.replace), ...(person ? { adds: person } : {}) }, now);
     return { window, code };
   }).immediate();
 }
@@ -207,7 +223,11 @@ export function recordPasskey(db: DB, p: NewPasskey, now = new Date(), confirmat
   db.transaction(() => {
     const w = db.prepare("SELECT * FROM passkey_enrolments WHERE window_id = ?").get(p.window.window_id) as EnrolmentWindow | undefined;
     if (!w || w.status !== "OPEN" || Date.parse(w.expires_at) <= now.getTime()) throw new Error(`enrolment window ${p.window.window_id} is not open`);
-    const old = activePasskey(db);
+    // A window that adds a person revokes nothing; otherwise the new passkey replaces this person's old one.
+    // (Before E1 there was only ever one person, so this is the same passkey as before.)
+    const label = w.label ?? p.label;
+    if (w.adds && db.prepare("SELECT 1 FROM passkeys WHERE status = 'ACTIVE' AND label = ?").get(label)) throw new Error(`${label} already has a passkey`);
+    const old = w.adds ? undefined : (db.prepare("SELECT * FROM passkeys WHERE status = 'ACTIVE' AND label = ?").get(label) as PasskeyRow | undefined);
     if (old) {
       db.prepare("UPDATE passkeys SET status = 'REVOKED' WHERE credential_id = ?").run(old.credential_id);
       audit(db, "system", "passkey.revoked", old.credential_id, { replaced_by: p.credentialId }, now);
@@ -215,9 +235,9 @@ export function recordPasskey(db: DB, p: NewPasskey, now = new Date(), confirmat
     db.prepare(
       `INSERT INTO passkeys (credential_id, public_key, counter, transports, rp_id, origin, label, aaguid, registration_json, enrolled_at, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
-    ).run(p.credentialId, p.publicKey, p.counter, p.transports ? JSON.stringify(p.transports) : null, w.rp_id, w.origin, p.label, p.aaguid, p.registrationJson, now.toISOString());
+    ).run(p.credentialId, p.publicKey, p.counter, p.transports ? JSON.stringify(p.transports) : null, w.rp_id, w.origin, label, p.aaguid, p.registrationJson, now.toISOString());
     db.prepare("UPDATE passkey_enrolments SET status = 'USED' WHERE window_id = ?").run(w.window_id);
     audit(db, "human", "passkey.enrolled", p.credentialId,
-      { window_id: w.window_id, label: p.label, rp_id: w.rp_id, origin: w.origin, aaguid: p.aaguid, public_key_sha256: sha256Hex(p.publicKey), ...(confirmation ?? {}) }, now);
+      { window_id: w.window_id, label, rp_id: w.rp_id, origin: w.origin, aaguid: p.aaguid, public_key_sha256: sha256Hex(p.publicKey), ...(confirmation ?? {}) }, now);
   }).immediate();
 }

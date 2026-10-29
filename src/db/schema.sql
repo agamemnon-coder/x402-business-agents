@@ -116,7 +116,8 @@ CREATE TABLE IF NOT EXISTS passkeys (
   enrolled_at TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'REVOKED'))
 );
-CREATE UNIQUE INDEX IF NOT EXISTS one_active_passkey ON passkeys(status) WHERE status = 'ACTIVE';
+-- One active passkey per person (label); more than one person may approve (E1, four eyes).
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_passkey_per_person ON passkeys(label) WHERE status = 'ACTIVE';
 
 -- A short window in which one passkey may be enrolled with a one-time code. Only the code's hash is kept.
 CREATE TABLE IF NOT EXISTS passkey_enrolments (
@@ -128,7 +129,10 @@ CREATE TABLE IF NOT EXISTS passkey_enrolments (
   origin TEXT NOT NULL,
   opened_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('OPEN', 'USED', 'EXPIRED', 'CLOSED'))
+  status TEXT NOT NULL CHECK (status IN ('OPEN', 'USED', 'EXPIRED', 'CLOSED')),
+  -- E1: a window opened to add another person, by name, beside the passkeys already enrolled (none: the runner's own).
+  label TEXT,
+  adds INTEGER NOT NULL DEFAULT 0
 );
 
 -- Every verified passkey signature over a proposal's terms, kept so `npm run verify` can check it again offline.
@@ -390,4 +394,18 @@ CREATE TABLE IF NOT EXISTS external_agents (
   status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'ACTIVE')),
   proposal_id TEXT,
   created_at TEXT NOT NULL
+);
+
+-- E1, four eyes: each person's verified passkey approval of a proposal that needs two people. The proposal is approved
+-- (one row in approvals) only once two different people have signed its exact terms.
+CREATE TABLE IF NOT EXISTS cosignatures (
+  proposal_id TEXT NOT NULL REFERENCES proposals(proposal_id),
+  credential_id TEXT NOT NULL,
+  person TEXT NOT NULL,
+  approver TEXT NOT NULL,
+  terms_sha256 TEXT NOT NULL,
+  assertion_sha256 TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (proposal_id, credential_id),
+  UNIQUE (proposal_id, person)
 );

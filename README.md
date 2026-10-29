@@ -371,6 +371,32 @@ top of the phone's policy page.
 Tried live with Opus. It mapped two of four sentences and asked about the other two. One gave an amount in euros for
 a setting in *USDZ. The other asked for a total across all three cards, which no single setting holds.
 
+## Four eyes: two people above a threshold
+
+The CFO policy setting **"Payments above this need two people"** (`approval.four_eyes_eur`) is off by default. Once
+it is set, these proposals need the Face ID of **two different people**, each with their own passkey:
+
+- an invoice payment above the threshold;
+- an outside agent's card with a monthly limit above it;
+- a supplier's new bank details, at any amount.
+
+The rules:
+
+- The first approval is kept, and the proposal waits. The phone shows "1 of 2" and who has signed so far.
+- The same person approving twice does not count.
+- Whoever proposed it can never approve it.
+- One person's rejection stops it.
+- A typed hash prefix can never meet the rule.
+- `npm run verify` checks both signatures again, from two different people.
+
+To add a second person, run `npm run passkey -- add anna` on the runner. Anna opens `/enrol` on her own phone and
+types the code. Then confirm the fingerprint her phone shows with `npm run passkey -- confirm <fingerprint>`.
+
+Each person has one active passkey. Replacing yours leaves the others alone.
+
+Turning four eyes on, or lowering its threshold, tightens the policy. Turning it off, or raising the threshold, needs a
+proposal and Face ID.
+
 ## GL coding and export for the ERP
 
 `npm run gl -- csv|json [file]` writes the GL journal: one line for every movement of money. Each line has:

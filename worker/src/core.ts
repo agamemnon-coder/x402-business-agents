@@ -44,7 +44,7 @@ const HOOKS_PER_SYNC = 50;
 const HOOK_KEEP_MS = 24 * 60 * 60 * 1000;
 /** How far Airwallex's x-timestamp may be from our clock (a replay of an old event is refused). */
 const HOOK_TOLERANCE_MS = 5 * 60 * 1000;
-const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted"]);
+const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned"]);
 /** The CFO's policy in plain words (P2): Opus drafts rules from it on the runner. */
 const MAX_POLICY_TEXT = 2000;
 

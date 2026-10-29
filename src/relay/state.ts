@@ -2,6 +2,7 @@
 // and for the phone each waiting proposal's exact canonical terms (the phone hashes them itself), the pinned
 // passkey, and an open enrolment window. Nothing in it can approve or move money: no key, no code, no token.
 
+import { fourEyes } from "../policy/fourEyes.js";
 import { createHash, createHmac } from "node:crypto";
 import { buildSnapshot, parseReview, PAYEE_NAMES, type Pending, type Snapshot } from "../dashboard/snapshot.js";
 import type { DB } from "../db/open.js";
@@ -23,6 +24,8 @@ export interface RelayProposal {
   review: Pending["review"];
   /** Planted instructions code found in this proposal's documents (review N5): shown on the phone as a warning. */
   warnings: string[];
+  /** E1: present when this proposal needs two different people; who has approved it so far. */
+  four_eyes?: { approved_by: string[] };
 }
 
 export interface RelayEnrolment {
@@ -94,9 +97,11 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
     } catch {
       // Unreadable terms go out as stored: the phone's own hash check fails and it refuses to sign them.
     }
+    const twoPeople = fourEyes(db, p);
     return {
       proposal_id: p.proposal_id, kind: p.kind, group, canonical, terms_sha256: p.terms_sha256, expires_at: p.expires_at,
       created_by: p.created_by, created_at: p.created_at, review: parseReview(p.explanation), warnings,
+      ...(twoPeople ? { four_eyes: { approved_by: (db.prepare("SELECT person FROM cosignatures WHERE proposal_id = ? ORDER BY created_at").all(p.proposal_id) as { person: string }[]).map((x) => x.person) } } : {}),
     };
   });
 

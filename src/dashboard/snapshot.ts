@@ -221,8 +221,9 @@ export function summarize(kind: string, termsJson: string): string {
 /** "max (passkey k_EWzUuv)" approving by passkey reads as "Max · Face ID"; other approvers as recorded. */
 export function approverName(approver: string, method: string | null | undefined): string {
   if (method !== "passkey") return approver;
-  const name = approver.split(" (")[0] ?? approver;
-  return `${name.charAt(0).toUpperCase()}${name.slice(1)} · Face ID`;
+  // E1: two people ("max (passkey …) + anna (passkey …)") read as "Max & Anna · Face ID".
+  const names = approver.split(" + ").map((a) => a.split(" (")[0] ?? a).map((n) => `${n.charAt(0).toUpperCase()}${n.slice(1)}`);
+  return `${names.join(" & ")} · Face ID`;
 }
 
 function safeCents(s: string): number {
@@ -448,6 +449,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       const key = p.passkey && typeof p.passkey === "object" ? str((p.passkey as P).credential_id).slice(0, 8) : "";
       return out(`${approverName(str(p.approver), str(p.method)) || "A person"} approved ${s}${key ? "" : " by typed hash"}`, "approval");
     }
+    case "proposal.cosigned": return out(`${approverName(str(p.approver), str(p.method))} approved ${s}: 1 of 2 (four eyes); it waits for a second person`, "approval");
     case "proposal.rejected": return out(`${approverName(str(p.approver), str(p.method)) || "A person"} rejected ${s}`, "refusal");
     case "proposal.executing": return out(`Running ${s}, after checking its terms are exactly what was approved`);
     case "proposal.executed": return out(`${s} executed`, "ok");

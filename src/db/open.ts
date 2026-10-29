@@ -28,6 +28,10 @@ function migrate(db: DB): void {
   if (!has("beneficiaries", "status")) db.exec("ALTER TABLE beneficiaries ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'");
   if (!has("sales", "scheme")) db.exec("ALTER TABLE sales ADD COLUMN scheme TEXT NOT NULL DEFAULT 'exact'");
   if (!has("sales", "clearing_json")) db.exec("ALTER TABLE sales ADD COLUMN clearing_json TEXT");
+  // E1: more than one person may hold an active passkey (one each), and an enrolment window may add a named person.
+  db.exec("DROP INDEX IF EXISTS one_active_passkey");
+  if (!has("passkey_enrolments", "label")) db.exec("ALTER TABLE passkey_enrolments ADD COLUMN label TEXT");
+  if (!has("passkey_enrolments", "adds")) db.exec("ALTER TABLE passkey_enrolments ADD COLUMN adds INTEGER NOT NULL DEFAULT 0");
   allowPasskeyApprovals(db);
   allowPasskeyRejections(db);
 }

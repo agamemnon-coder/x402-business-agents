@@ -62,11 +62,12 @@ function parse<T>(schema: z.ZodType<T>, body: string): T | null {
 }
 
 export interface AssertionOutcome {
-  status: "approved" | "rejected" | "too_late" | "already" | "refused";
+  /** cosigned: the first of two people's approvals (E1, four eyes); the proposal waits for a second person. */
+  status: "approved" | "cosigned" | "rejected" | "too_late" | "already" | "refused";
   proposalId: string | null;
   message: string;
   /** For "already": the verdict the phone should see, the first outcome of this very signature if it was handled. */
-  ack?: "approved" | "rejected" | "executed" | "failed" | "too_late" | "already";
+  ack?: "approved" | "cosigned" | "rejected" | "executed" | "failed" | "too_late" | "already";
 }
 
 const DECIDED = new Set(["APPROVED", "EXECUTING", "EXECUTED", "FAILED"]);
@@ -92,7 +93,7 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
     // Handled before (a restart, a resend): report what came of it; nothing runs again.
     const now_ = getProposal(seen.proposal_id)?.status;
     const ack = seen.outcome === "TOO_LATE" ? "too_late" : seen.outcome === "REJECTED" ? "rejected"
-      : now_ === "EXECUTED" ? "executed" : now_ === "FAILED" ? "failed" : "approved";
+      : now_ === "EXECUTED" ? "executed" : now_ === "FAILED" ? "failed" : now_ === "PENDING_APPROVAL" ? "cosigned" : "approved";
     return { status: "already", ack, proposalId: seen.proposal_id, message: `this signature was already handled: ${seen.proposal_id} is ${now_}` };
   }
 
@@ -125,19 +126,20 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
       // Counters only move forward (passkeys that always report 0 stay at 0).
       db.prepare("UPDATE passkeys SET counter = ? WHERE credential_id = ? AND counter <= ?").run(v.newCounter, pk.credential_id, v.newCounter);
       const current = getProposal(p.proposal_id)!;
-      let result: "APPROVED" | "EXPIRED";
+      let result: "APPROVED" | "COSIGNED" | "EXPIRED";
       if (current.status === "EXPIRED") {
         audit(db, "human", "approval.too_late", p.proposal_id,
           { terms_sha256: p.terms_sha256, approver, method: "passkey", expires_at: p.expires_at, passkey: { credential_id: pk.credential_id, assertion_sha256: sha } }, now);
         result = "EXPIRED";
       } else {
         const r = decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver, method: "passkey", signedSha256: p.terms_sha256, passkey }, now);
-        result = r === "APPROVED" ? "APPROVED" : "EXPIRED";
+        result = r === "APPROVED" ? "APPROVED" : r === "PENDING_APPROVAL" ? "COSIGNED" : "EXPIRED";
       }
       db.prepare(
         `INSERT INTO passkey_assertions (assertion_sha256, proposal_id, credential_id, terms_sha256, assertion_json, counter, outcome, verified_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(sha, p.proposal_id, pk.credential_id, p.terms_sha256, JSON.stringify(response), v.newCounter, result === "APPROVED" ? "APPROVED" : "TOO_LATE", now.toISOString());
+      ).run(sha, p.proposal_id, pk.credential_id, p.terms_sha256, JSON.stringify(response), v.newCounter, result === "EXPIRED" ? "TOO_LATE" : "APPROVED", now.toISOString());
+      if (result === "COSIGNED") return { status: "cosigned", proposalId: p.proposal_id, message: `${p.proposal_id}: 1 of 2 approvals (${pk.label}); a second person must approve it with their own passkey` };
       return result === "APPROVED"
         ? { status: "approved", proposalId: p.proposal_id, message: `${p.proposal_id} approved with ${approver}` }
         : { status: "too_late", proposalId: p.proposal_id, message: `${p.proposal_id} expired at ${p.expires_at}; nothing was approved` };
@@ -264,7 +266,7 @@ export async function processRegistration(db: DB, item: InboxItem, opts: { label
   try {
     fingerprint = pendPasskey(db, {
       window: w, credentialId: v.credentialId, publicKey: v.publicKey, counter: v.counter, transports: v.transports,
-      aaguid: v.aaguid, registrationJson: JSON.stringify(response), label: opts.label,
+      aaguid: v.aaguid, registrationJson: JSON.stringify(response), label: w.label ?? opts.label,
     }, now);
   } catch (e) {
     return refuseAudited((e as Error).message.slice(0, 240));

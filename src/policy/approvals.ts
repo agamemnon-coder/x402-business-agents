@@ -5,6 +5,7 @@ import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
+import { fourEyes } from "./fourEyes.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -146,13 +147,30 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     if (!prefixMatches(p.terms_sha256, args.typedPrefix)) throw new Error("typed prefix does not match the terms hash");
     const alternative = args.decision === "APPROVED" ? approvedAlternative(db, p) : null;
     if (alternative) throw new Error(`another option, ${alternative}, was already approved`);
+    let approver = args.approver;
+    if (args.decision === "APPROVED" && fourEyes(db, p)) {
+      // E1, four eyes: two different people, each with their own passkey, and never the one who proposed it. The
+      // first signature is kept and the proposal waits; the second approves. One person's rejection stops it.
+      if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (four eyes)`);
+      const person = args.approver.split(" (")[0]!;
+      if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (four eyes)`);
+      const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? ORDER BY created_at, rowid").all(p.proposal_id) as { person: string; approver: string }[];
+      if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey`);
+      db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run(p.proposal_id, passkey.credential_id, person, args.approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
+      if (signed.length === 0) {
+        audit(db, "human", "proposal.cosigned", p.proposal_id, { terms_sha256: p.terms_sha256, approver: args.approver, person, of: "1 of 2", method: args.method, passkey }, now);
+        return "PENDING_APPROVAL";
+      }
+      approver = [...signed.map((x) => x.approver), args.approver].join(" + ");
+    }
     db.prepare(
       `INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, note, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(p.proposal_id, args.decision, p.terms_sha256, args.approver, args.method, args.typedPrefix.trim().toLowerCase(), args.note ?? null, now.toISOString());
+    ).run(p.proposal_id, args.decision, p.terms_sha256, approver, args.method, args.typedPrefix.trim().toLowerCase(), args.note ?? null, now.toISOString());
     transition(db, p.proposal_id, "PENDING_APPROVAL", args.decision);
     audit(db, "human", args.decision === "APPROVED" ? "proposal.approved" : "proposal.rejected", p.proposal_id,
-      { terms_sha256: p.terms_sha256, approver: args.approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}) }, now);
+      { terms_sha256: p.terms_sha256, approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}) }, now);
     return args.decision;
   }).immediate();
 }

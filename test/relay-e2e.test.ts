@@ -8,6 +8,7 @@ import { buildPolicyTerms, bytesToB64url, canonicalize, checkOption, hexToBytes,
 import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
 import { confirmPasskey, fingerprintOf, openEnrolment } from "../src/passkey/ledger.js";
+import { reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { RelayRunner } from "../src/relay/runner.js";
 import { Relay } from "../worker/src/core.js";
@@ -54,8 +55,8 @@ function world() {
   return { db, relay, runner, phone, executed, at: (iso: string) => { clock = new Date(iso); } };
 }
 
-async function enrol(w: ReturnType<typeof world>, auth: FakeAuthenticator) {
-  const { code } = openEnrolment(w.db, { rpId: RP, origin: BASE }, t0);
+async function enrol(w: ReturnType<typeof world>, auth: FakeAuthenticator, addPerson?: string) {
+  const { code } = openEnrolment(w.db, { rpId: RP, origin: BASE, ...(addPerson ? { addPerson } : {}) }, t0);
   await w.runner.syncOnce();
   const opts = await w.phone.post("/api/enrol/options", { code });
   expect(opts.status).toBe(200);
@@ -175,5 +176,40 @@ describe("phone approval through the relay", () => {
     expect(await w.runner.syncOnce()).toMatchObject({ pushed: false });
     expect(await w.runner.syncOnce()).toMatchObject({ pushed: true });
     expect(await w.phone.get("/api/approvals")).toMatchObject({ proposals: [{ proposal_id: "P-0001" }, { proposal_id: "P-0002" }, { proposal_id: "P-0003" }] });
+  });
+
+  it("needs two different people above the four-eyes threshold, each with their own passkey (E1)", async () => {
+    const w = world();
+    const max = new FakeAuthenticator();
+    const anna = new FakeAuthenticator();
+    await enrol(w, max);
+    await enrol(w, anna, "anna");
+    expect(w.db.prepare("SELECT label FROM passkeys WHERE status = 'ACTIVE' ORDER BY label").all()).toEqual([{ label: "anna" }, { label: "max" }]);
+    w.db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('approval.four_eyes_eur', '500.00', ?)").run(t0.toISOString());
+    createProposal(w.db, { terms: { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: "P-0004", expires_at: "2026-10-30T15:00:00Z", amount: "1850.00", vendor: "Lizenzhaus Beispiel GmbH" }, createdBy: "treasury" }, t0);
+    await w.runner.syncOnce();
+    const shown = ((await w.phone.get("/api/approvals")) as { proposals: PhoneProposal[] }).proposals.find((p) => p.proposal_id === "P-0004")!;
+    expect(shown.four_eyes).toEqual({ approved_by: [] });
+
+    const first = await approveOnPhone(w, max, "P-0004", 1);
+    await w.runner.syncOnce();
+    await w.runner.syncOnce();
+    expect(await w.phone.get(`/api/tickets/${String(first.body.ticket)}`)).toMatchObject({ status: "cosigned", message: expect.stringContaining("1 of 2 approvals (max)") });
+    expect(((await w.phone.get("/api/approvals")) as { proposals: PhoneProposal[] }).proposals.find((p) => p.proposal_id === "P-0004")!.four_eyes).toEqual({ approved_by: ["max"] });
+    // The same person again does not count.
+    const again = await approveOnPhone(w, max, "P-0004", 2);
+    await w.runner.syncOnce();
+    await w.runner.syncOnce();
+    expect(await w.phone.get(`/api/tickets/${String(again.body.ticket)}`)).toMatchObject({ status: "refused", message: expect.stringContaining("a second person must approve") });
+    expect(w.executed).toEqual([]);
+
+    const second = await approveOnPhone(w, anna, "P-0004", 1);
+    await w.runner.syncOnce();
+    await w.runner.idle();
+    await w.runner.syncOnce();
+    expect(await w.phone.get(`/api/tickets/${String(second.body.ticket)}`)).toMatchObject({ status: "executed" });
+    expect(w.executed).toEqual(["P-0004"]);
+    const checks = await reverifyPasskeyApprovals(w.db);
+    expect(checks.find((c) => c.what === "passkey approval P-0004")).toMatchObject({ ok: true, detail: expect.stringMatching(/^signed by max's passkey .* and anna's passkey /) });
   });
 });

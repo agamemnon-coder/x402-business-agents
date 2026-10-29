@@ -6,7 +6,7 @@ import { AGENTS, CARDS, REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, t
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 
-export type PolicyKey = "freeze" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
+export type PolicyKey = "freeze" | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
 
 export interface Rule {
   key: PolicyKey;
@@ -37,6 +37,8 @@ const STATIC: Rule[] = [
   { key: "cap.treasury", label: "Treasury agent: most per sweep", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
   { key: "approval.refund_each", label: "A refund above this needs a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_EACH_CENTS) },
   { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS) },
+  // E1, four eyes: above this a payment needs the Face ID of two different people (src/policy/fourEyes.ts). Off when empty.
+  { key: "approval.four_eyes_eur", label: "Payments above this need two people (four eyes)", unit: "EUR", kind: "optional_money", min: 0, max: MAX_FLOOR, fallback: "" },
   { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
   { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
   // Each agent's company card at Airwallex (K2). The card itself is synced to these, so Airwallex declines the rest.
@@ -71,6 +73,7 @@ export function policyValue(db: DB, key: string): string {
 }
 
 function display(r: Rule, value: string): string {
+  if (r.key === "approval.four_eyes_eur" && value === "") return "off (one person approves)";
   if (r.kind === "optional_money" && value === "") return "no extra limit (the mandate's cap applies)";
   if (r.kind === "money" && value === "") return "not set yet";
   return r.unit ? `${value} ${r.unit}` : value;
@@ -140,6 +143,8 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   const [from, to] = [cents(c.from), cents(c.to)];
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
+  // Four eyes: turning it off or raising the threshold loosens; turning it on or lowering it tightens.
+  if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";

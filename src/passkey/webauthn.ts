@@ -89,26 +89,36 @@ export interface Check {
  * Needs no network and trusts no relay.
  */
 export async function reverifyPasskeyApprovals(db: DB): Promise<Check[]> {
-  const approvals = db.prepare("SELECT proposal_id, decision, approved_sha256 FROM approvals WHERE method = 'passkey' ORDER BY approval_id").all() as
-    { proposal_id: string; decision: "APPROVED" | "REJECTED"; approved_sha256: string }[];
+  const approvals = db.prepare("SELECT proposal_id, decision, approved_sha256, approver FROM approvals WHERE method = 'passkey' ORDER BY approval_id").all() as
+    { proposal_id: string; decision: "APPROVED" | "REJECTED"; approved_sha256: string; approver: string }[];
   const checks: Check[] = [];
   for (const a of approvals) {
     const what = `passkey ${a.decision === "APPROVED" ? "approval" : "rejection"} ${a.proposal_id}`;
-    const fail = (detail: string) => checks.push({ ok: false, what, detail });
-    const s = db.prepare("SELECT * FROM passkey_assertions WHERE proposal_id = ? AND outcome = ?").get(a.proposal_id, a.decision) as
-      { assertion_sha256: string; credential_id: string; terms_sha256: string; assertion_json: string; verified_at: string } | undefined;
-    if (!s) { fail("no stored signature"); continue; }
-    const pk = passkeyById(db, s.credential_id);
-    if (!pk) { fail(`signed by an unknown passkey ${s.credential_id.slice(0, 8)}`); continue; }
-    if (s.terms_sha256 !== a.approved_sha256) { fail("the signed hash is not the approved hash"); continue; }
-    if (Date.parse(pk.enrolled_at) > Date.parse(s.verified_at)) { fail("signed before the passkey was enrolled"); continue; }
-    const response = JSON.parse(s.assertion_json) as AuthenticationResponseJSON;
-    if (assertionSha256(response) !== s.assertion_sha256) { fail("the stored signature was changed"); continue; }
-    const signed = a.decision === "APPROVED" ? a.approved_sha256 : rejectionSha256(a.approved_sha256);
-    const v = await verifyApprovalSignature(response, signed, pk, 0);
-    if (!v.ok) { fail(v.reason); continue; }
+    // E1: an approval by two people ("max (passkey …) + anna (passkey …)") needs both signatures, from two people.
+    const needs = a.decision === "APPROVED" ? a.approver.split(" + ").length : 1;
+    const stored = db.prepare("SELECT * FROM passkey_assertions WHERE proposal_id = ? AND outcome = ? ORDER BY verified_at").all(a.proposal_id, a.decision) as
+      { assertion_sha256: string; credential_id: string; terms_sha256: string; assertion_json: string; verified_at: string }[];
+    const problem = async (s: (typeof stored)[number]): Promise<string | { label: string; id: string }> => {
+      const pk = passkeyById(db, s.credential_id);
+      if (!pk) return `signed by an unknown passkey ${s.credential_id.slice(0, 8)}`;
+      if (s.terms_sha256 !== a.approved_sha256) return "the signed hash is not the approved hash";
+      if (Date.parse(pk.enrolled_at) > Date.parse(s.verified_at)) return "signed before the passkey was enrolled";
+      const response = JSON.parse(s.assertion_json) as AuthenticationResponseJSON;
+      if (assertionSha256(response) !== s.assertion_sha256) return "the stored signature was changed";
+      const v = await verifyApprovalSignature(response, a.decision === "APPROVED" ? a.approved_sha256 : rejectionSha256(a.approved_sha256), pk, 0);
+      return v.ok ? { label: pk.label, id: pk.credential_id } : v.reason;
+    };
+    const signers: { label: string; id: string }[] = [];
+    let failed: string | null = stored.length === 0 ? "no stored signature" : null;
+    for (const s of stored.slice(0, Math.max(needs, 1))) {
+      const r = await problem(s);
+      if (typeof r === "string") { failed = r; break; }
+      signers.push(r);
+    }
+    if (!failed && new Set(signers.map((x) => x.label)).size < needs) failed = `needs ${needs} different people's signatures, has ${new Set(signers.map((x) => x.label)).size}`;
+    if (failed) { checks.push({ ok: false, what, detail: failed }); continue; }
     const over = a.decision === "APPROVED" ? `over ${a.approved_sha256.slice(0, 8)}…` : `rejecting ${a.approved_sha256.slice(0, 8)}…`;
-    checks.push({ ok: true, what, detail: `signed by ${pk.label}'s passkey ${pk.credential_id.slice(0, 8)} ${over}` });
+    checks.push({ ok: true, what, detail: `signed by ${signers.map((x) => `${x.label}'s passkey ${x.id.slice(0, 8)}`).join(" and ")} ${over}` });
   }
   return checks;
 }

@@ -18,6 +18,8 @@ export interface PhoneProposal {
   review: { model: string | null; recommendation: string; text: string } | null;
   /** Planted instructions code found in the proposal's documents (signed by the runner). */
   warnings?: string[];
+  /** E1: this one needs two different people; who has approved it so far (signed by the runner). */
+  four_eyes?: { approved_by: string[] };
 }
 
 interface Approvals {
@@ -130,6 +132,7 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   const [from, to] = [cents(c.from), cents(c.to)];
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
+  if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
@@ -518,7 +521,7 @@ function passkeyError(e: unknown): string {
   return `The passkey did not answer: ${e instanceof Error ? e.message : String(e)}`;
 }
 
-const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted"]);
+const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned"]);
 const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   queued: { tone: "wait", head: "Signed", lead: "Waiting for the runner to check your signature." },
   approved: { tone: "wait", head: "Approved", lead: "The runner checked your signature. Executing now." },
@@ -529,6 +532,7 @@ const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   too_late: { tone: "warn", head: "Too late", lead: "Nothing was approved." },
   already: { tone: "info", head: "Already decided", lead: "" },
   enrolled: { tone: "ok", head: "Passkey enrolled", lead: "From now on, approvals need this passkey." },
+  cosigned: { tone: "wait", head: "1 of 2 approvals", lead: "Your Face ID counts. This one needs a second person (four eyes): it runs only once someone else approves it with their own passkey." },
   drafted: { tone: "ok", head: "Rules drafted", lead: "Opus turned your words into rules and the runner checked each one. Nothing has changed yet: review them and approve with Face ID." },
   pending: { tone: "wait", head: "Confirm on the runner", lead: "Tell Claude the fingerprint above. The passkey counts once the runner confirms that same fingerprint." },
 };
@@ -749,6 +753,7 @@ async function approvePage(): Promise<void> {
       check.ok ? null : txt("span", "alarm", `Do not approve: ${check.problem}.`),
       check.ok && f && !f.approvable ? txt("span", "alarm", f.sentence) : null,
       ...(o.warnings ?? []).map((w) => txt("span", "alarm", w)),
+      o.four_eyes ? txt("span", "chip", `Needs two people (four eyes)${o.four_eyes.approved_by.length ? ` · approved so far: ${o.four_eyes.approved_by.join(", ")}` : ""}`) : null,
     ]) as HTMLButtonElement;
     card.type = "button";
     card.disabled = !check.ok || !f || !f.approvable;
