@@ -86,7 +86,7 @@ describe("relay state", () => {
 
   it("carries the CFO policy for the phone's editor", () => {
     const s = buildRelayState(ledger(), { rpId: RP, relayToken: TOKEN }, t0);
-    expect(s.approvals.policy.find((e) => e.key === "cap.sourcing")).toMatchObject({ label: "Sourcing agent: most per payment", value: "", kind: "optional_money", unit: "*USDZ" });
+    expect(s.approvals.policy.find((e) => e.key === "cap.sourcing")).toMatchObject({ label: "Sourcing agent: most per payment", value: "", kind: "optional_money", unit: "USDZ" });
   });
 
   it("hashes the same ledger the same way at different times, and differently once it changes", () => {

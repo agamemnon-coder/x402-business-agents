@@ -135,18 +135,18 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       if (payees.length > 1) warnings.push(`The ${str(s.agent)} mandate may pay ${payees.length} addresses`);
       for (const p of payees) if (!nameOf(p)) warnings.push(`The ${str(s.agent)} mandate may pay an address the ledger has no name for: ${p}`);
     }
-    const rows: [string, string][] = [["Price per query", `${q} *USDZ`], ["Supplier price", `${u} *USDZ`], ["Margin per sale", m]];
+    const rows: [string, string][] = [["Price per query", `${q} USDZ`], ["Supplier price", `${u} USDZ`], ["Margin per sale", m]];
     for (const s of steps) {
       const spent = s.spent_at_proposal === undefined ? "" : ` (${str(s.spent_at_proposal)} already spent)`;
       rows.push([`Step ${str(s.order)}: ${str(s.agent)} mandate`, `up to ${str(s.cap)} per payment, ${str(s.budget)} in total${spent}`]);
       rows.push([`Step ${str(s.order)}: may pay`, arr(s.payees).map((p) => whoFull(str(p))).join(", ")]);
     }
-    rows.push(["All agents' budgets", `${str(t.total_budget)} *USDZ in total`]);
+    rows.push(["All agents' budgets", `${str(t.total_budget)} USDZ in total`]);
     return {
       approvable: true,
       title: `Option ${str(t.option)}: sell at ${q}`,
-      sentence: `Sell each query at ${q} *USDZ. The supplier now charges ${u}, so each sale earns ${m}.`,
-      amount: `${q} *USDZ per query`,
+      sentence: `Sell each query at ${q} USDZ. The supplier now charges ${u}, so each sale earns ${m}.`,
+      amount: `${q} USDZ per query`,
       margin: `${m} per sale`,
       recipient: steps.map((s) => `${payeesOf(s).map(who).join(", ")} (${str(s.agent)})`).join("; "),
       rows,
@@ -154,7 +154,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       warnings,
       label: `Option ${str(t.option)}`,
       big: q,
-      unit: "*USDZ per query",
+      unit: "USDZ per query",
     };
   }
 
@@ -168,22 +168,22 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     return {
       approvable: true,
       title: `Refund ${sales}`,
-      sentence: `Refund ${sales} to ${nameOf(customer) ?? shortAddr(customer)}, ${str(t.total)} *USDZ in total.`,
-      amount: `${str(t.total)} *USDZ`,
+      sentence: `Refund ${sales} to ${nameOf(customer) ?? shortAddr(customer)}, ${str(t.total)} USDZ in total.`,
+      amount: `${str(t.total)} USDZ`,
       margin: null,
       recipient: [customer, ...elsewhere].map(who).join("; "),
       rows: [
-        ["Total", `${str(t.total)} *USDZ`],
+        ["Total", `${str(t.total)} USDZ`],
         ["Pays", whoFull(customer)],
         ["Sales", refunds.map((r) => `#${str(r.sale_id)} ${str(r.amount)}`).join(", ")],
         ["Reason", str(t.reason)],
         ...(t.dispute_id ? [["Dispute", str(t.dispute_id)] as [string, string]] : []),
       ],
-      short: `refund ${sales}, ${str(t.total)} *USDZ`,
+      short: `refund ${sales}, ${str(t.total)} USDZ`,
       warnings: elsewhere.length ? [`Pays addresses other than the customer: ${elsewhere.join(", ")}`] : [],
       label: `Refund ${sales}`,
       big: money(t.total),
-      unit: "*USDZ",
+      unit: "USDZ",
     };
   }
 
@@ -692,7 +692,8 @@ async function approvePage(): Promise<void> {
     no.disabled = !enrolled;
     no.setAttribute("aria-label", `Reject ${f ? f.title : o.proposal_id}. Opens a summary to confirm.`);
     no.addEventListener("click", () => openSummary(o, check.terms ?? parsedOrEmpty(o.canonical), no, "REJECTED"));
-    return el("div", "option-wrap", [card, no]);
+    // When Opus advises against it, saying no comes first.
+    return el("div", advisedNo ? "option-wrap advised-no" : "option-wrap", advisedNo ? [no, card] : [card, no]);
   });
 
   app.replaceChildren(...[

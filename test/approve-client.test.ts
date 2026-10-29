@@ -51,8 +51,8 @@ describe("the hash check before anything is shown or signed", () => {
 describe("the words on the confirm screen", () => {
   it("states a price option's effect, margin and the mandates it changes, with names beside addresses", () => {
     const d = describeTerms(byId("P-0002").terms, F.names);
-    expect(d).toMatchObject({ approvable: true, title: "Option B: sell at 0.07", amount: "0.07 *USDZ per query", margin: "0.03 per sale", label: "Option B", big: "0.07", unit: "*USDZ per query" });
-    expect(d.sentence).toBe("Sell each query at 0.07 *USDZ. The supplier now charges 0.04, so each sale earns 0.03.");
+    expect(d).toMatchObject({ approvable: true, title: "Option B: sell at 0.07", amount: "0.07 USDZ per query", margin: "0.03 per sale", label: "Option B", big: "0.07", unit: "USDZ per query" });
+    expect(d.sentence).toBe("Sell each query at 0.07 USDZ. The supplier now charges 0.04, so each sale earns 0.03.");
     expect(d.recipient).toBe("Tidemark sweep wallet 0xce06…a6ed (treasury); Feedstock Labs 0x3295…713b (sourcing)");
     expect(d.rows).toContainEqual(["Step 2: sourcing mandate", "up to 0.04 per payment, 12.00 in total (0.80 already spent)"]);
     expect(d.short).toBe("option B: sell at 0.07 per query (margin 0.03)");
@@ -82,8 +82,8 @@ describe("the words on the confirm screen", () => {
 
   it("states a refund batch's count, total and the customer it pays", () => {
     const d = describeTerms(byId("P-0003").terms, F.names);
-    expect(d).toMatchObject({ approvable: true, title: "Refund 9 sales", amount: "0.45 *USDZ", label: "Refund 9 sales", big: "0.45", unit: "*USDZ" });
-    expect(d.sentence).toBe("Refund 9 sales to Kestrel Quant, 0.45 *USDZ in total.");
+    expect(d).toMatchObject({ approvable: true, title: "Refund 9 sales", amount: "0.45 USDZ", label: "Refund 9 sales", big: "0.45", unit: "USDZ" });
+    expect(d.sentence).toBe("Refund 9 sales to Kestrel Quant, 0.45 USDZ in total.");
     expect(d.recipient).toBe("Kestrel Quant 0x5ab2…dbb7");
     expect(d.rows).toContainEqual(["Pays", "Kestrel Quant 0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7"]);
   });

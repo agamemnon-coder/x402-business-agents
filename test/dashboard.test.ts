@@ -86,7 +86,7 @@ describe("dashboard snapshot", () => {
     createProposal(db, { terms: terms("P-0002", "2026-10-29T07:20:00Z"), createdBy: "support", explanation: "[claude-opus-5-5] REJECT: No evidence for it." }, t0);
     const s = buildSnapshot(db, t0);
     expect(s.pending.map((p) => [p.proposal_id, p.expired])).toEqual([["P-0002", false], ["P-0001", true]]);
-    expect(s.pending[0]).toMatchObject({ title: "Refund batch", summary: expect.stringMatching(/^Refund 2 sales, 0\.10 \*USDZ in total/), review: { model: "claude-opus-5-5", recommendation: "reject", text: "No evidence for it." } });
+    expect(s.pending[0]).toMatchObject({ title: "Refund batch", summary: expect.stringMatching(/^Refund 2 sales, 0\.10 USDZ in total/), review: { model: "claude-opus-5-5", recommendation: "reject", text: "No evidence for it." } });
     // Read-only: the stale one is still PENDING_APPROVAL in the ledger.
     expect(db.prepare("SELECT status FROM proposals WHERE proposal_id = 'P-0001'").get()).toEqual({ status: "PENDING_APPROVAL" });
   });
@@ -108,7 +108,7 @@ describe("dashboard snapshot", () => {
     const s = buildSnapshot(db, t0);
     expect(s.refusals.map((r) => [r.what, r.agent])).toEqual([["Late approval refused", "human"], ["Invoice escalated", "treasury"], ["Supplier purchase refused", "sourcing"]]);
     expect(s.refusals[1]!.reason).toBe(`Invoice LIC-EVIL escalated to a person: ${XSS}`);
-    expect(s.refusals[2]!.reason).toBe("Purchase of tick #41 refused on chain: over the mandate's per-payment cap (mandate_cap_exceeded)");
+    expect(s.refusals[2]!.reason).toBe("Purchase of tick #41 refused on chain: over the mandate's per-payment cap");
   });
 
   it("names the passkey approvals need, and says when none is enrolled", () => {
@@ -138,7 +138,7 @@ describe("dashboard snapshot", () => {
       ["Passkey approval refused", "Passkey approval of P-0002 refused: Unexpected authentication response challenge"],
     ]);
     expect(s.feed.slice(0, 4).map((f) => [f.text, f.tone])).toEqual([
-      ["Max · Face ID approved P-0002 (passkey AbCdEf12), hash cadd01e7", "approval"],
+      ["Max · Face ID approved P-0002", "approval"],
       ["Passkey enrolment refused: wrong enrolment code", "refusal"],
       ["Passkey approval of P-0002 refused: Unexpected authentication response challenge", "refusal"],
       ["max enrolled passkey AbCdEf12; approvals now need it", "ok"],

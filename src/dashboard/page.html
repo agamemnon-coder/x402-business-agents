@@ -40,7 +40,7 @@ header {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface);
 }
-.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
 .brand h1 { font-size: 16px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
 .brand .sub { color: var(--muted); font-size: 13px; }
 .status { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 12.5px; flex-wrap: wrap; }
@@ -75,6 +75,11 @@ section > h2 .hint { margin-left: auto; text-transform: none; letter-spacing: 0;
 #pending { grid-area: pending; }
 #budgets { grid-area: budgets; }
 #treasury { grid-area: treasury; }
+.honest { flex-basis: 100%; margin: 2px 0 0; font-size: 12px; color: var(--muted); max-width: 70ch; }
+details.sandbox { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+details.sandbox summary { cursor: pointer; }
+.card.advise-reject { border-color: var(--bad); }
+a.btn.danger { background: var(--bad); color: #fff; }
 #refusals { grid-area: refusals; }
 #feed { grid-area: feed; }
 #pending.has-items { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
@@ -192,7 +197,8 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
 </head>
 <body>
 <header>
-  <div class="brand"><h1>Tidemark Data</h1><span class="sub">Treasury control</span></div>
+  <div class="brand"><h1>Tidemark Data</h1><span class="sub">Treasury control</span>
+    <p class="honest">Demo on test networks: Metal testnet (USDZ are test dollars) and the Airwallex sandbox. The step from USDZ to Airwallex is a simulated sandbox deposit that names the real testnet transaction.</p></div>
   <div class="status" id="status">
     <span id="live" class="stale"><span class="dot"></span><span class="state">Connecting</span></span>
     <span id="updated" class="num"></span>
@@ -266,16 +272,19 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
       var cd = txt("span", "countdown num" + (c.soon ? " soon" : ""), c.text);
       cd.setAttribute("data-expires", p.expires_at);
       var rec = p.review ? chip((p.review.model ? "Opus: " : "Review: ") + p.review.recommendation.replace(/_/g, " "), REC_TONE[p.review.recommendation] || "") : null;
-      var card = el("article", "card" + (p.expired ? " closed" : ""), [
-        el("div", "top", [txt("span", "title", p.title), txt("span", "pid mono", p.proposal_id), rec]),
-        txt("p", "summary", p.summary),
-        el("div", "meta", [cd, el("span", "", ["hash ", txt("span", "mono", p.terms_sha256.slice(0, 8))]), txt("span", "", "from " + p.created_by)]),
+      var advisedNo = !!(p.review && p.review.recommendation === "reject");
+      var card = el("article", "card" + (p.expired ? " closed" : "") + (advisedNo ? " advise-reject" : ""), [
+        el("div", "top", [txt("span", "title", (advisedNo ? "Escalated: " : "") + p.title), txt("span", "pid mono", p.proposal_id), rec]),
+        txt("p", "summary", p.summary + (advisedNo ? (/[.!?]$/.test(p.summary) ? "" : ".") + " The agent recommends rejecting it." : "")),
+        el("div", "meta", [cd, txt("span", "", "from the " + p.created_by + " agent")]),
         p.review ? txt("p", "review", p.review.text) : null,
       ]);
+      // The hash stays one tap away (tooltip), not in the sentence.
+      card.title = "Exact terms, SHA-256 " + p.terms_sha256;
       if (!p.expired) {
-        var a = txt("a", "btn", "Review: approve or reject");
+        var a = txt("a", "btn" + (advisedNo ? " danger" : ""), advisedNo ? "Review: reject recommended" : "Review: approve or reject");
         a.href = "approve/" + encodeURIComponent(p.proposal_id);
-        card.appendChild(el("div", "actions", [a, txt("span", "pid", "you confirm the exact terms by their hash")]));
+        card.appendChild(el("div", "actions", [a, txt("span", "pid", "Face ID signs these exact terms")]));
       }
       nodes.push(card);
     });
@@ -300,7 +309,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
         bar,
         el("div", "line2 num", [txt("span", "", money(a.remaining) + " left"),
           a.policy_cap ? txt("span", "policy", "policy max " + money(a.policy_cap) + " (mandate " + money(a.cap) + ")") : txt("span", "", "max " + money(a.cap) + " per payment"),
-          a.expires_on ? txt("span", "", "until " + day(a.expires_on)) : null, a.credentials > 1 ? txt("span", "", "replaced " + (a.credentials === 2 ? "once" : (a.credentials - 1) + " times") + ", spend carried over") : null]),
+          a.expires_on ? txt("span", "", "until " + day(a.expires_on)) : null, a.credentials > 1 ? txt("span", "", "limit changed " + (a.credentials === 2 ? "once" : (a.credentials - 1) + " times") + " by Max") : null]),
       ]);
     }
     b.agents.forEach(function (a) { nodes.push(agentRow(a)); });
@@ -309,7 +318,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
       var i = el("i"); i.style.width = (cents(a.budget) / total * 100).toFixed(2) + "%"; i.style.background = COLORS[a.agent] || "var(--faint)"; return i;
     }));
     nodes.push(el("div", "split", [
-      el("div", "label num", [txt("span", "", "Budgets allocated across agents"), txt("span", "", money(b.allocated) + " of " + money(b.limit) + " *USDZ")]),
+      el("div", "label num", [txt("span", "", "Budgets given to the agents"), txt("span", "", money(b.allocated) + " of " + money(b.limit) + " USDZ")]),
       stack,
       el("div", "legend", b.agents.map(function (a) { var i = el("i"); i.style.background = COLORS[a.agent] || "var(--faint)"; return el("span", "", [i, a.agent + " " + money(a.budget)]); })),
     ]));
@@ -333,23 +342,29 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     if (a) {
       var freeNeg = String(a.eur.free).charAt(0) === "-";
       nodes.push(el("div", "kpis", [
-        el("div", "kpi", [txt("div", "k", "Free EUR for new bills"), el("div", "v num" + (freeNeg ? " neg" : ""), [money(a.eur.free), txt("small", "", "EUR")])]),
-        el("div", "kpi", [txt("div", "k", "USD above its floor"), el("div", "v num", [money(a.usd.headroom), txt("small", "", "USD")])]),
+        el("div", "kpi", [txt("div", "k", "Free EUR for bills"), el("div", "v num" + (freeNeg ? " neg" : ""), [money(a.eur.free), txt("small", "", "EUR")])]),
+        el("div", "kpi", [txt("div", "k", "EUR reserve kept"), el("div", "v num", [money(a.eur.floor), txt("small", "", "EUR")])]),
       ]));
-      nodes.push(txt("div", "subhead", "Airwallex (sandbox)"));
       nodes.push(el("div", "rows num", [
-        el("div", "row", [txt("span", "l", "EUR available"), txt("span", "r", money(a.eur.available))]),
-        el("div", "row", [txt("span", "l", "EUR reserve floor + committed bills"), txt("span", "r", money(a.eur.floor) + " + " + money(a.eur.committed))]),
-        el("div", "row", [txt("span", "l", "USD available / floor"), txt("span", "r", money(a.usd.available) + " / " + money(a.usd.floor))]),
+        el("div", "row", [txt("span", "l", "USD we may convert (above its floor)"), txt("span", "r", money(a.usd.headroom))]),
+      ]));
+      // The sandbox starts with millions; only the part above the calibrated floors is this business's.
+      nodes.push(el("details", "sandbox", [
+        txt("summary", "", "Airwallex sandbox totals"),
+        el("div", "rows num", [
+          el("div", "row", [txt("span", "l", "EUR available"), txt("span", "r", money(a.eur.available))]),
+          el("div", "row", [txt("span", "l", "EUR committed to other bills"), txt("span", "r", money(a.eur.committed))]),
+          el("div", "row", [txt("span", "l", "USD available / floor"), txt("span", "r", money(a.usd.available) + " / " + money(a.usd.floor))]),
+        ]),
       ]));
     } else {
       nodes.push(txt("p", "empty", "No Airwallex balance read yet."));
     }
     var m = t.metal;
-    nodes.push(txt("div", "subhead", "Metal testnet earnings (*USDZ)"));
+    nodes.push(txt("div", "subhead", "Earnings from selling data (USDZ)"));
     nodes.push(el("div", "rows num", [
       el("div", "row", [txt("span", "l", "Sales − supplier − refunds"), txt("span", "r", money(m.sales) + " − " + money(m.upstream) + " − " + money(m.refunds) + " = " + money(m.net))]),
-      el("div", "row", [txt("span", "l", "Swept to Airwallex after finality"), txt("span", "r", money(m.swept))]),
+      el("div", "row", [txt("span", "l", "Moved to Airwallex (once final on chain)"), txt("span", "r", money(m.swept))]),
     ]));
     set("treasury-body", nodes);
   }
@@ -380,7 +395,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
       return el("div", "item " + f.tone + "-tone", [
         txt("span", "t num", hms(f.ts)),
         el("div", "", [
-          el("div", "text", [chip(f.actor, AGENT_TONE[f.actor] || ""), f.model ? chip(f.model, "model") : null, f.text]),
+          el("div", "text", [chip(f.actor === "human" ? "Max" : f.actor, AGENT_TONE[f.actor] || ""), f.model ? chip(f.model, "model") : null, f.text]),
           refs.length ? el("div", "refs", refs) : null,
         ]),
       ]);
