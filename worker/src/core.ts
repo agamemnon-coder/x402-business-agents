@@ -34,6 +34,12 @@ const QUEUED_KEEP_MS = 30 * 60 * 1000;
 const PROPOSAL_ID = /^P-\d{4,}$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 const TICKET = /^[A-Za-z0-9_-]{22}$/;
+const MAX_HOOK_BYTES = 65_536;
+const MAX_HOOKS = 500;
+const HOOKS_PER_SYNC = 50;
+const HOOK_KEEP_MS = 24 * 60 * 60 * 1000;
+/** How far Airwallex's x-timestamp may be from our clock (a replay of an old event is refused). */
+const HOOK_TOLERANCE_MS = 5 * 60 * 1000;
 const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
 
 const COMMON_HEADERS: Record<string, string> = {
@@ -179,13 +185,14 @@ interface TicketRow {
 export class Relay {
   private readonly now: () => Date;
 
-  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; now?: () => Date }) {
+  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date }) {
     this.now = opts.now ?? (() => new Date());
     this.sql.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     this.sql.exec(`CREATE TABLE IF NOT EXISTS inbox (
       ticket TEXT PRIMARY KEY, kind TEXT NOT NULL, proposal_id TEXT, window_id TEXT, body TEXT NOT NULL,
       received_at TEXT NOT NULL, status TEXT NOT NULL, message TEXT, updated_at TEXT NOT NULL)`);
     this.sql.exec("CREATE TABLE IF NOT EXISTS hits (ip TEXT NOT NULL, at INTEGER NOT NULL)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS hooks (id TEXT PRIMARY KEY, ts TEXT NOT NULL, signature TEXT NOT NULL, body TEXT NOT NULL, received_at TEXT NOT NULL)");
   }
 
   private get(k: string): string | null {
@@ -225,6 +232,8 @@ export class Relay {
     const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/enrol/options", "/api/enrol"];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
+    // Airwallex's webhooks: no viewer key (Airwallex has none), its own signature instead.
+    if (path === "/hooks/airwallex") return req.method === "POST" ? this.hook(req) : error(405, "method not allowed");
     // Everything else under /api/ is the CFO's: the dashboard data, the pending terms, the phone's submissions.
     // Without the viewer key (from the link the runner prints) it answers nothing (security review M2).
     if (path.startsWith("/api/") && !(await sameSecret(req.headers.get("x-kit11-view") ?? "", await viewKeyOf(this.opts.relayToken)))) {
@@ -252,7 +261,7 @@ export class Relay {
     const body = await readJson(req, MAX_STATE_BYTES);
     if (body === null) return error(413, "state too large");
     if (body === undefined || !isObject(body.value) || typeof body.value.state_hash !== "string") return error(400, "malformed sync");
-    const { state_hash, state, acks } = body.value;
+    const { state_hash, state, acks, hook_acks } = body.value;
     const now = this.now();
     if (state !== undefined) {
       if (!isObject(state) || !isObject(state.snapshot) || !isObject(state.approvals)) return error(400, "malformed state");
@@ -271,7 +280,36 @@ export class Relay {
     this.sql.exec("DELETE FROM inbox WHERE status != 'queued' AND updated_at <= ?", new Date(now.getTime() - ANSWERED_KEEP_MS).toISOString());
     this.sql.exec("DELETE FROM inbox WHERE status = 'queued' AND received_at <= ?", new Date(now.getTime() - QUEUED_KEEP_MS).toISOString());
     const inbox = (this.sql.exec("SELECT ticket, kind, proposal_id, body, received_at FROM inbox WHERE status = 'queued' ORDER BY received_at, ticket LIMIT ?", MAX_QUEUED).toArray());
-    return json(200, { need_state: this.get("state_hash") !== state_hash, inbox });
+    // Webhook events the runner has recorded are dropped; the rest go out again (at most a day).
+    if (Array.isArray(hook_acks)) for (const id of hook_acks.slice(0, 200)) if (typeof id === "string") this.sql.exec("DELETE FROM hooks WHERE id = ?", id);
+    this.sql.exec("DELETE FROM hooks WHERE received_at <= ?", new Date(now.getTime() - HOOK_KEEP_MS).toISOString());
+    const hooks = this.sql.exec("SELECT id, ts, signature, body FROM hooks ORDER BY received_at, id LIMIT ?", HOOKS_PER_SYNC).toArray();
+    return json(200, { need_state: this.get("state_hash") !== state_hash, inbox, hooks });
+  }
+
+  /**
+   * An Airwallex webhook: x-signature must be HMAC-SHA256(secret, x-timestamp + raw body) and the timestamp recent.
+   * The event is kept for the runner, which checks the signature again; the answer to Airwallex does not wait for it.
+   */
+  private async hook(req: Request): Promise<Response> {
+    const secret = this.opts.webhookSecret;
+    if (!secret) return error(503, "webhooks are not set up on this relay");
+    const body = await readJson(req, MAX_HOOK_BYTES);
+    if (body === null) return error(413, "event too large");
+    const ts = req.headers.get("x-timestamp") ?? "";
+    const signature = (req.headers.get("x-signature") ?? "").toLowerCase();
+    const age = Math.abs(this.now().getTime() - Number(ts));
+    // The body is checked exactly as received, before anything parses it.
+    const text = body === undefined ? "" : body.text;
+    if (!/^\d{10,16}$/.test(ts) || !(age <= HOOK_TOLERANCE_MS) || !/^[0-9a-f]{64}$/.test(signature) || !(await sameSecret(signature, await hmacHex(secret, ts + text)))) {
+      return error(401, "bad or missing webhook signature");
+    }
+    const v = body?.value;
+    if (!isObject(v) || typeof v.id !== "string" || v.id.length > 128) return error(400, "malformed event");
+    this.sql.exec("INSERT INTO hooks (id, ts, signature, body, received_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING", v.id, ts, signature, text, this.now().toISOString());
+    // A flood cannot grow the store: the oldest events go first (the runner's poll still finds their transactions).
+    this.sql.exec("DELETE FROM hooks WHERE id IN (SELECT id FROM hooks ORDER BY received_at DESC, id DESC LIMIT -1 OFFSET ?)", MAX_HOOKS);
+    return json(200, { received: true });
   }
 
   private snapshot(): Response {

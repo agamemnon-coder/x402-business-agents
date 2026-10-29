@@ -9,6 +9,8 @@ export interface Env {
   RELAY: DurableObjectNamespace<RelayObject>;
   /** The runner's bearer token, set with `wrangler secret put RELAY_TOKEN` by npm run relay:deploy. */
   RELAY_TOKEN: string;
+  /** Airwallex's webhook signing secret, set by npm run cards -- webhook. Without it the webhook route answers 503. */
+  AIRWALLEX_WEBHOOK_SECRET?: string;
 }
 
 export class RelayObject extends DurableObject<Env> {
@@ -16,7 +18,7 @@ export class RelayObject extends DurableObject<Env> {
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    this.relay = new Relay(ctx.storage.sql, { relayToken: env.RELAY_TOKEN });
+    this.relay = new Relay(ctx.storage.sql, { relayToken: env.RELAY_TOKEN, webhookSecret: env.AIRWALLEX_WEBHOOK_SECRET });
   }
 
   override fetch(req: Request): Promise<Response> {
@@ -28,7 +30,8 @@ export default {
   async fetch(req, env): Promise<Response> {
     const page = pageResponse(req, PAGES);
     if (page) return page;
-    if (new URL(req.url).pathname.startsWith("/api/")) return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
+    const path = new URL(req.url).pathname;
+    if (path.startsWith("/api/") || path === "/hooks/airwallex") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
     return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" } });
   },
 } satisfies ExportedHandler<Env>;

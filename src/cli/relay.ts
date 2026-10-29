@@ -19,6 +19,9 @@ import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
+import { handleAirwallexHook } from "../policy/cardHooks.js";
+import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
+import { existsSync, readFileSync } from "node:fs";
 
 const args = process.argv.slice(2);
 const once = args.includes("--once");
@@ -42,7 +45,11 @@ if (args.includes("--enrol")) {
   console.log(`ENROL    on the phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);
 }
 
-const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, log: (line) => console.log(`${stamp()} ${line}`) });
+// Airwallex's webhooks reach the relay; with the secret here too, the runner checks each one again and records it.
+const hookSecret = existsSync(keyPath(WEBHOOK_SECRET_FILE)) ? readFileSync(keyPath(WEBHOOK_SECRET_FILE), "utf8").trim() : "";
+console.log(`webhooks ${hookSecret ? "on: card transactions arrive from Airwallex as they happen" : "off (npm run cards -- webhook); card transactions come from the poll"}`);
+const onHook = hookSecret ? (h: Parameters<typeof handleAirwallexHook>[1]) => handleAirwallexHook(db, h, hookSecret) : undefined;
+const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, log: (line) => console.log(`${stamp()} ${line}`) });
 let stopping = false;
 const stop = () => {
   if (stopping) return;

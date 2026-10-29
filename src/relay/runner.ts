@@ -10,6 +10,7 @@ import { processAssertion, processPolicyRequest, processRegistration, type Inbox
 import { expireDue } from "../policy/approvals.js";
 import type { RelayConfig } from "./config.js";
 import { buildRelayState, stateHash } from "./state.js";
+import type { RelayedHook } from "../policy/cardHooks.js";
 
 export interface Ack {
   ticket: string;
@@ -29,11 +30,15 @@ export interface RunnerDeps {
   label?: string;
   /** Signs the approvals the phone decides on (M3). Without it the phone refuses to sign anything. */
   signer?: DisplayKey;
+  /** Handles one Airwallex webhook the relay kept (src/policy/cardHooks.ts) and says what happened. Without it the
+   *  runner leaves them on the relay. */
+  onHook?: (hook: RelayedHook) => string;
 }
 
 export class RelayRunner {
   private lastPushed: string | null = null;
   private acks: Ack[] = [];
+  private hookAcks: string[] = [];
   /** Tickets this process already handled, so a slow answer is never handled twice. */
   private readonly handled = new Set<string>();
   private readonly running = new Set<Promise<void>>();
@@ -50,14 +55,15 @@ export class RelayRunner {
     const hash = stateHash(state);
     const push = hash !== this.lastPushed;
     const acks = this.acks.splice(0);
-    let body: { need_state: boolean; inbox: InboxItem[] };
+    const hookAcks = this.hookAcks.splice(0);
+    let body: { need_state: boolean; inbox: InboxItem[]; hooks?: RelayedHook[] };
     try {
       // The signature is randomised, so the state hash above leaves it out: an idle runner still pushes nothing.
       const sent = push && this.deps.signer ? { ...state, approvals: signApprovals(state.approvals, this.deps.signer) } : state;
       const res = await this.deps.fetch(`${cfg.url}/api/runner/sync`, {
         method: "POST",
         headers: { authorization: `Bearer ${cfg.token}`, "content-type": "application/json" },
-        body: JSON.stringify({ state_hash: hash, ...(push ? { state: sent } : {}), acks }),
+        body: JSON.stringify({ state_hash: hash, ...(push ? { state: sent } : {}), acks, hook_acks: hookAcks }),
         signal: AbortSignal.timeout(20_000),
       });
       if (!res.ok) throw new Error(`the relay answered ${res.status}${res.status === 401 ? " (wrong relay token: redeploy with npm run relay:deploy)" : ""}`);
@@ -65,11 +71,20 @@ export class RelayRunner {
     } catch (e) {
       // Nothing was delivered: keep the verdicts for the next sync.
       this.acks.unshift(...acks);
+      this.hookAcks.unshift(...hookAcks);
       throw e;
     }
     // A relay that lost its copy (or never had it) gets the whole state on the next sync.
     this.lastPushed = body.need_state ? null : hash;
     for (const item of body.inbox) await this.handle(item);
+    if (this.deps.onHook) {
+      for (const h of body.hooks ?? []) {
+        if (this.hookAcks.includes(h.id)) continue;
+        this.deps.log(`hook     ${redactSecrets(this.deps.onHook(h))}`);
+        // Handled (recorded, or refused for a reason a resend cannot change): the relay may drop it.
+        this.hookAcks.push(h.id);
+      }
+    }
     return { pushed: push, inbox: body.inbox.length };
   }
 

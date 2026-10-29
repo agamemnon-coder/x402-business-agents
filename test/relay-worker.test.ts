@@ -93,7 +93,7 @@ describe("runner sync", () => {
     const { r, at } = relay();
     const { state } = runnerState({ enrolled: false });
     expect((await get(r, "/api/snapshot")).status).toBe(503);
-    expect(await json(await push(r, state))).toEqual({ need_state: false, inbox: [] });
+    expect(await json(await push(r, state))).toEqual({ need_state: false, inbox: [], hooks: [] });
     const snap = await json(await get(r, "/api/snapshot"));
     expect(snap).toMatchObject({ audit: { intact: true }, relay: { synced_at: t0.toISOString(), age_ms: 0 } });
     expect(snap).not.toHaveProperty("approvals");

@@ -5,6 +5,8 @@
 // npm run cards -- raise <agent> <per purchase> [<per month>] [--reason text]
 //                                                     the agent asks the CFO for a higher limit (a Face ID proposal)
 // npm run cards -- poll                               record transactions Airwallex made that we have not seen yet
+// npm run cards -- webhook                            subscribe the relay to Airwallex's card transaction webhooks; the
+//                                                     signing secret goes to the keys dir and the Worker, never the screen
 // Sandbox only. The card number stays at Airwallex; this prints the last four digits.
 
 import { issuingFromEnv } from "../airwallex/issuing.js";
@@ -14,6 +16,13 @@ import { openDb } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { cardRows, cardSpendCents, pollCardTransactions, setupCards, syncCards } from "../policy/cards.js";
 import { approvalHint } from "./hint.js";
+import { spawnSync } from "node:child_process";
+import { existsSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { Airwallex, fromEnv } from "../airwallex/client.js";
+import { CARD_EVENTS, createWebhook, listWebhooks, WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
+import { keyPath } from "../metal/agentCli.js";
+import { relayConfig } from "../relay/config.js";
 
 const args = process.argv.slice(2);
 const db = openDb();
@@ -60,6 +69,27 @@ if (cmd === "status") {
   const t = await buyPlan(db, need().sim, args[1]!);
   console.log(`${plan.agent} agent: ${plan.merchant}, ${plan.label}, ${fromCents(t.amountCents)} EUR -> ${t.approved ? "approved by Airwallex" : `DECLINED by Airwallex (${t.failureReason ?? t.status})`}`);
   if (!t.approved && t.failureReason === "LIMIT_EXCEEDED") console.log(`the card's limit held. To allow it, the agent asks the CFO: npm run cards -- raise ${plan.agent} <new limit> --reason "…"`);
+} else if (cmd === "webhook") {
+  const cfg = fromEnv();
+  if (!cfg) { console.error("the Airwallex sandbox keys are not set; nothing was done"); process.exit(2); }
+  const api = new Airwallex(cfg);
+  const url = `${(await relayConfig()).url}/hooks/airwallex`;
+  const file = keyPath(WEBHOOK_SECRET_FILE);
+  const existing = (await listWebhooks(api)).find((w) => w.url === url);
+  if (existing && existsSync(file)) {
+    console.log(`already subscribed: ${existing.id} (${existing.events.join(", ")}); the secret is in the keys dir`);
+    process.exit(0);
+  }
+  if (existing) { console.error(`a webhook for ${url} exists (${existing.id}) but its secret is not in the keys dir; delete it in the Airwallex web app and run this again`); process.exit(1); }
+  const w = await createWebhook(api, { url, events: (process.env.AIRWALLEX_WEBHOOK_EVENTS ?? CARD_EVENTS.join(",")).split(","), version: process.env.AIRWALLEX_WEBHOOK_VERSION ?? "2025-11-11" });
+  writeFileSync(file, w.secret + "\n", { mode: 0o600 });
+  // The Worker's copy, through stdin like the relay token: never on a command line, never printed.
+  const worker = resolve(import.meta.dirname, "../../worker");
+  const r = spawnSync(resolve(worker, "node_modules/.bin/wrangler"), ["secret", "put", "AIRWALLEX_WEBHOOK_SECRET"], {
+    cwd: worker, input: w.secret, env: { ...process.env, WRANGLER_SEND_METRICS: "false" }, stdio: ["pipe", "inherit", "inherit"],
+  });
+  if (r.status !== 0) { console.error("the webhook exists and its secret is in the keys dir, but the Worker secret was not set; run this again"); process.exit(1); }
+  console.log(`subscribed ${w.id} to ${w.events.join(", ")} (version ${w.version}); restart npm run relay so the runner checks them too`);
 } else if (cmd === "raise") {
   const [, agent, perTx, monthly] = args;
   const at = args.indexOf("--reason");
