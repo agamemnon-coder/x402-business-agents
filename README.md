@@ -46,7 +46,11 @@ Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, 
 - **Idempotency everywhere:** settlement ids, payment ids, request ids, a single-use quote, one live payout per
   invoice, one credit per on-chain transfer. A lost answer is looked up, never blindly resent.
 - **Audit log:** append-only (the database refuses updates and deletes), hash-chained; `npm run verify` recomputes
-  it and re-checks every mandate, pull and disputed payment from the chain.
+  it and re-checks every mandate, pull and disputed payment from the chain, and every deposit, conversion and
+  transfer from Airwallex (amounts, request ids, the approval hash in metadata, status, fee within its ceiling).
+- **Failure tests:** `npm run fail -- f2` (refund over the mandate cap, refused on chain, nothing sent) and
+  `npm run fail -- f4` (an annual invoice whose conversion would break the USD floor escalates with options;
+  no proposal, no money moved) run live; the rest run in `npm test`.
 
 ## Where Claude is used
 

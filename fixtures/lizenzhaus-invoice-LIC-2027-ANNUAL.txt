@@ -1,0 +1,20 @@
+Lizenzhaus Beispiel GmbH
+Musterstrasse 12, 10115 Berlin, Germany
+
+INVOICE LIC-2027-ANNUAL
+Date: 4 November 2026
+Due date: 30 November 2026
+
+Bill to: Tidemark Data
+
+Description                                              Amount
+Data redistribution licence, January to December 2027    EUR 7,500.00
+(annual prepayment, replaces the monthly invoices)
+
+Total due                                                EUR 7,500.00
+
+Pay by SWIFT to:
+Account name: Lizenzhaus Beispiel GmbH
+IBAN: DE89 3704 0044 0532 0130 00
+BIC: COBADEFFXXX
+Payment reference: LIC-2027-ANNUAL

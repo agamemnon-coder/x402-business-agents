@@ -76,6 +76,8 @@ describe("euro bill (S3)", () => {
   it("escalates when the USD side would break its floor", () => {
     expect(checkQuoteAgainstFloor(42_000, s).ok).toBe(true);
     expect(checkQuoteAgainstFloor(500_001, s).ok).toBe(false);
+    expect(checkQuoteAgainstFloor(500_001, s)).toMatchObject({ reason: "USD would drop to 19999.99, under its floor of 20000.00" });
+    expect(checkQuoteAgainstFloor(2_500_050, s)).toMatchObject({ ok: false, reason: "USD would drop to -0.50, under its floor of 20000.00" });
   });
 
   it("expires a proposal 30 s before its quote", () => {

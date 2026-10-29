@@ -2,11 +2,14 @@
 // - the audit log's hash chain, recomputed from the genesis hash;
 // - every credential ever issued (replaced ones included) with `metal-agent mandate verify`;
 // - every refund and sweep pull against the credential that made it;
-// - every disputed sale's payment with its signed order (verifyMandatePayment).
+// - every disputed sale's payment with its signed order (verifyMandatePayment);
+// - with Airwallex keys: every booked deposit, conversion and transfer against Airwallex (read-only).
 // Prints one line per check and exits 1 if any fails.
 
 import type { Address } from "viem";
 import { salesBySeq, verifyOrders } from "../agents/disputes.js";
+import { fromEnv, Airwallex } from "../airwallex/client.js";
+import { getVia, verifyAirwallex } from "../airwallex/verify.js";
 import { verifyAuditChain } from "../audit/log.js";
 import { openDb } from "../db/open.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
@@ -57,6 +60,16 @@ for (const d of disputes) {
   const evidence = await verifyOrders(salesBySeq(db, refs), addr.customer as Address);
   const good = evidence.filter((e) => e.signed_order && e.within_mandate && e.payer_is_customer).length;
   line(good === evidence.length, `dispute ${d.dispute_id} orders`, `${good}/${evidence.length} signed by the customer's mandate key, inside its mandate`);
+}
+
+const awx = fromEnv();
+if (awx) {
+  for (const c of await verifyAirwallex(db, getVia(new Airwallex(awx)))) {
+    if (c.level === "note") console.log(`note  ${c.what}  ${c.detail}`);
+    else line(c.level === "ok", c.what, c.detail);
+  }
+} else {
+  console.log("skip  airwallex  AIRWALLEX_CLIENT_ID / AIRWALLEX_API_KEY not set");
 }
 
 console.log(failed === 0 ? "\nall checks pass" : `\n${failed} check(s) failed`);

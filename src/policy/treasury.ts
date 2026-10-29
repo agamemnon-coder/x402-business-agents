@@ -2,6 +2,7 @@
 // Only available amounts count: pending conversions, reserved payouts and unfinalised sweeps never do.
 
 import { SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
+import { fromCents } from "../lib/money.js";
 
 export interface TreasuryState {
   eurAvailableCents: number;
@@ -29,13 +30,15 @@ export function planInvoice(invoiceEurCents: number, s: TreasuryState): InvoiceP
   return { kind: "convert_shortfall", needEurCents: need, freeEurCents: free, buyEurCents: need - free };
 }
 
+const signed = (cents: number) => (cents < 0 ? `-${fromCents(-cents)}` : fromCents(cents));
+
 export type QuoteCheck = { ok: true; usdAfterCents: number } | { ok: false; reason: string; usdAfterCents: number };
 
 /** A locked quote is usable only if selling its USD keeps the USD balance at or above its floor. */
 export function checkQuoteAgainstFloor(sellUsdCents: number, s: TreasuryState): QuoteCheck {
   const after = s.usdAvailableCents - sellUsdCents;
   if (after < s.usdFloorCents) {
-    return { ok: false, usdAfterCents: after, reason: `USD would drop to ${after} cents, under the ${s.usdFloorCents} cent floor` };
+    return { ok: false, usdAfterCents: after, reason: `USD would drop to ${signed(after)}, under its floor of ${fromCents(s.usdFloorCents)}` };
   }
   return { ok: true, usdAfterCents: after };
 }
