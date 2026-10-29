@@ -203,6 +203,14 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "dev_test") {
+    return {
+      approvable: true, title: str(t.label), sentence: `${str(t.purpose)}. Approving it records the approval and moves no money.`,
+      amount: "0.00 (nothing moves)", margin: null, recipient: "nobody", rows: [["Purpose", str(t.purpose)], ["Moves", "nothing"]],
+      short: "the dev test", warnings: [], label: "Dev test", big: "0.00", unit: "nothing moves",
+    };
+  }
+
   return {
     approvable: false, title: `Proposal of kind ${kind || "unknown"}`, sentence: "This kind of proposal cannot be approved on the phone.",
     amount: "", margin: null, recipient: "", rows: [], short: kind, warnings: [], label: kind || "unknown", big: "", unit: "",

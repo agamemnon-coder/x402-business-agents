@@ -116,6 +116,7 @@ const KIND_TITLES: Record<string, string> = {
   mandate_replace: "Mandate change",
   refund_batch: "Refund batch",
   invoice_payment: "Invoice payment",
+  dev_test: "Dev test (moves no money)",
 };
 const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
 
@@ -143,7 +144,15 @@ export function summarize(kind: string, termsJson: string): string {
     const fx = c ? `; first convert USD ${str(c.sell_amount)} to EUR ${str(c.buy_amount)} at ${str(c.client_rate)}` : "; paid from free EUR";
     return `Pay ${str(t.vendor)} EUR ${str(t.amount)} for invoice ${str(t.invoice_no)} by ${str(t.method) || "SWIFT"} to IBAN …${str(t.iban_last4)}${fx}; ${fee}`;
   }
+  if (kind === "dev_test") return `${str(t.label)}: ${str(t.purpose)}`;
   return kindTitle(kind);
+}
+
+/** "max (passkey k_EWzUuv)" approving by passkey reads as "Max · Face ID"; other approvers as recorded. */
+export function approverName(approver: string, method: string | null | undefined): string {
+  if (method !== "passkey") return approver;
+  const name = approver.split(" (")[0] ?? approver;
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} · Face ID`;
 }
 
 function safeCents(s: string): number {
@@ -287,7 +296,10 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       const opts = Array.isArray(p.options) ? (p.options as P[]) : [];
       return out(`Priced the options: ${opts.map((o) => (o.sell === null ? `${str(o.id)} ${str(o.label)}` : `${str(o.id)} sell ${str(o.sell)} (margin ${str(o.margin)})`)).join(", ")}`, "approval");
     }
-    case "proposal.approved": return out(`${str(p.approver) || "A person"} approved ${s}, hash ${str(p.terms_sha256).slice(0, 8)}`, "approval");
+    case "proposal.approved": {
+      const key = p.passkey && typeof p.passkey === "object" ? str((p.passkey as P).credential_id).slice(0, 8) : "";
+      return out(`${approverName(str(p.approver), str(p.method)) || "A person"} approved ${s}${key ? ` (passkey ${key})` : ""}, hash ${str(p.terms_sha256).slice(0, 8)}`, "approval");
+    }
     case "proposal.rejected": return out(`${str(p.approver) || "A person"} rejected ${s}`, "refusal");
     case "proposal.executing": return out(`Executing ${s}; the executor re-checked the approved hash`);
     case "proposal.executed": return out(`${s} executed`, "ok");
@@ -386,7 +398,8 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     }))
     .sort((a, b) => Number(a.expired) - Number(b.expired));
 
-  const approvers = new Map((db.prepare("SELECT proposal_id, approver FROM approvals").all() as { proposal_id: string; approver: string }[]).map((a) => [a.proposal_id, a.approver]));
+  const approvers = new Map((db.prepare("SELECT proposal_id, approver, method FROM approvals").all() as { proposal_id: string; approver: string; method: string }[])
+    .map((a) => [a.proposal_id, approverName(a.approver, a.method)]));
   const lastChange = new Map<string, string>();
   for (const r of rows) if (r.event.startsWith("proposal.") || r.event === "approval.too_late") if (r.subject) lastChange.set(r.subject, r.ts);
   const decisions: Decision[] = (db.prepare("SELECT * FROM proposals WHERE status != 'PENDING_APPROVAL' ORDER BY created_at DESC, proposal_id DESC LIMIT 6").all() as PRow[])

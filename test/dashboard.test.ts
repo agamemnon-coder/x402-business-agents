@@ -131,18 +131,27 @@ describe("dashboard snapshot", () => {
     audit(db, "human", "passkey.enrolled", "AbCdEf123456", { label: "max", window_id: "E-1" });
     audit(db, "system", "passkey.refused", "P-0002", { reason: "Unexpected authentication response challenge", credential: "AbCdEf12" });
     audit(db, "system", "passkey.enrol_refused", null, { reason: "wrong enrolment code" });
-    audit(db, "human", "proposal.approved", "P-0002", { approver: "max (passkey AbCdEf12)", method: "passkey", terms_sha256: "cadd01e7ff" });
+    audit(db, "human", "proposal.approved", "P-0002", { approver: "max (passkey AbCdEf12)", method: "passkey", terms_sha256: "cadd01e7ff", passkey: { credential_id: "AbCdEf123456", assertion_sha256: "ab" } });
     const s = buildSnapshot(db, t0);
     expect(s.refusals.slice(0, 2).map((r) => [r.what, r.reason])).toEqual([
       ["Passkey enrolment refused", "Passkey enrolment refused: wrong enrolment code"],
       ["Passkey approval refused", "Passkey approval of P-0002 refused: Unexpected authentication response challenge"],
     ]);
     expect(s.feed.slice(0, 4).map((f) => [f.text, f.tone])).toEqual([
-      ["max (passkey AbCdEf12) approved P-0002, hash cadd01e7", "approval"],
+      ["Max · Face ID approved P-0002 (passkey AbCdEf12), hash cadd01e7", "approval"],
       ["Passkey enrolment refused: wrong enrolment code", "refusal"],
       ["Passkey approval of P-0002 refused: Unexpected authentication response challenge", "refusal"],
       ["max enrolled passkey AbCdEf12; approvals now need it", "ok"],
     ]);
+  });
+
+  it("shows who approved with a passkey as the person and Face ID", () => {
+    const db = ledger();
+    const terms = { schema: TERMS_SCHEMA, kind: "dev_test", proposal_id: "P-0001", expires_at: "2026-10-29T07:00:00Z", label: "DEV TEST" } as unknown as Terms;
+    createProposal(db, { terms, createdBy: "system" }, t0);
+    db.prepare("UPDATE proposals SET status = 'EXECUTED' WHERE proposal_id = 'P-0001'").run();
+    db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES ('P-0001', 'APPROVED', 'x', 'max (passkey k_EWzUuv)', 'passkey', 'x', ?)").run(t0.toISOString());
+    expect(buildSnapshot(db, t0).decisions[0]).toMatchObject({ proposal_id: "P-0001", title: "Dev test (moves no money)", by: "Max · Face ID" });
   });
 
   it("turns audit rows into feed lines with model chips, checked tx links and Airwallex ids", () => {

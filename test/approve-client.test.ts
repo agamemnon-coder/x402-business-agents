@@ -72,6 +72,12 @@ describe("the words on the confirm screen", () => {
     expect(d.rows).toContainEqual(["Pays", "Kestrel Quant 0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7"]);
   });
 
+  it("labels a dev test as one that moves no money", () => {
+    const d = describeTerms({ kind: "dev_test", proposal_id: "P-0001", label: "DEV TEST: moves no money", purpose: "Max checks Face ID approval on his iPhone" }, {});
+    expect(d).toMatchObject({ approvable: true, title: "DEV TEST: moves no money", label: "Dev test", big: "0.00", unit: "nothing moves", recipient: "nobody" });
+    expect(d.sentence).toBe("Max checks Face ID approval on his iPhone. Approving it records the approval and moves no money.");
+  });
+
   it("will not offer a kind it cannot describe", () => {
     expect(describeTerms({ kind: "wire_everything", proposal_id: "P-0009" }, {})).toMatchObject({ approvable: false });
   });
