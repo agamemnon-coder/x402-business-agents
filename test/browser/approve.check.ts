@@ -8,6 +8,7 @@
 // approves option B, and checks the runner's verdict, the ledger and the offline re-verification. A fake executor
 // stands in for the real one, so nothing moves on chain or in Airwallex.
 
+import { displayKey } from "../../src/relay/sign.js";
 import { copyFileSync, mkdirSync, mkdtempSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -55,8 +56,9 @@ const local = live ? null : await startLocalRelay({ port: 0, token: "browser-che
 const cfg = local ? { url: local.url, origin: local.url, rpId: "localhost", token: "browser-check" } : await relayConfig();
 const url = cfg.url;
 const executed: string[] = [];
+const signer = displayKey(join(dir, "relay-display-key.pem"));
 const runner = new RelayRunner({
-  db, cfg, fetch, log: (l) => console.log(`  runner: ${l}`),
+  db, cfg, fetch, signer, log: (l) => console.log(`  runner: ${l}`),
   // Fake executor (nothing moves), except that a policy change is really applied to this throwaway ledger.
   execute: async (d, id) => { executed.push(id); if (id.startsWith("C-")) executePolicyChange(d, id); },
 });
@@ -87,7 +89,7 @@ mkdirSync(shots, { recursive: true });
 await page.goto(`${url}/approve/P-0001`);
 await page.waitForSelector("#app .alarm");
 check(/viewer link/.test((await page.textContent("#app .alarm")) ?? ""), "without the viewer link: the page asks for it and shows nothing");
-await page.goto(viewerLink(cfg));
+await page.goto(viewerLink(cfg, signer.publicSpki));
 check(!page.url().includes("view="), "viewer link: the key leaves the address bar at once");
 errors.length = 0; // the 401 above was on purpose
 await page.goto(`${url}/enrol`);
@@ -195,16 +197,17 @@ check(rc?.ok === true, `npm run verify check: ${rc?.what} ${rc?.detail}`);
 syncing = false;
 await loop;
 if (local) {
-// Terms changed on the way: the page refuses to offer them.
+// Terms changed on the way (a compromised relay): the runner's signature no longer matches, so the page shows
+// nothing to sign (M3).
 const sql = local.relay["sql"];
 const state = JSON.parse((sql.exec("SELECT v FROM kv WHERE k = 'state'").toArray()[0] as { v: string }).v) as { approvals: { proposals: { proposal_id: string; canonical: string }[] } };
 const r = state.approvals.proposals.find((p) => p.proposal_id === refundId)!;
 r.canonical = r.canonical.replace('"total":"', '"total":"9');
 sql.exec("UPDATE kv SET v = ? WHERE k = 'state'", JSON.stringify(state));
 await page.goto(`${url}/approve/${refundId}`);
-await page.waitForSelector("button.option");
-check(await page.isDisabled("button.option"), "tampered terms: the option cannot be tapped");
-check(/do not hash to the hash shown/.test((await page.textContent("button.option .alarm")) ?? ""), "tampered terms: the page says why");
+await page.waitForSelector("#app .alarm");
+check((await page.$("button.option")) === null && (await page.$("button.reject-btn")) === null, "tampered terms: nothing is offered to sign");
+check(/not signed by the runner/.test((await page.textContent("#app .alarm")) ?? ""), "tampered terms: the page says the runner did not sign this");
 }
 
 check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);

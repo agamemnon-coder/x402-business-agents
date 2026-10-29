@@ -419,8 +419,12 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
   var viewKey = "";
   try {
     var vm = /(?:^#|&)view=([0-9a-f]{32})(?:&|$)/.exec(location.hash);
-    if (vm) { viewKey = vm[1]; try { localStorage.setItem("kit11.view", viewKey); } catch (e) {} history.replaceState(null, "", location.pathname + location.search); }
+    // The same link pins the runner's key, which the approval pages check signatures with (M3).
+    var rm = /(?:^#|&)runner=([A-Za-z0-9_-]{80,200})(?:&|$)/.exec(location.hash);
+    if (rm) { try { localStorage.setItem("kit11.runner", rm[1]); } catch (e) {} }
+    if (vm) { viewKey = vm[1]; try { localStorage.setItem("kit11.view", viewKey); } catch (e) {} }
     else { viewKey = localStorage.getItem("kit11.view") || ""; }
+    if (vm || rm) history.replaceState(null, "", location.pathname + location.search);
   } catch (e) {}
   var needsLink = false;
 

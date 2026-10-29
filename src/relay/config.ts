@@ -32,8 +32,9 @@ export function viewKey(token: string): string {
   return createHmac("sha256", token).update("kit11 view v1").digest("hex").slice(0, 32);
 }
 
-/** The link that hands the phone its viewer key. */
-export const viewerLink = (cfg: RelayConfig): string => `${cfg.url}/#view=${viewKey(cfg.token)}`;
+/** The link that hands the phone its viewer key and pins the runner's display key (src/relay/sign.ts). */
+export const viewerLink = (cfg: RelayConfig, runnerSpki?: string): string =>
+  `${cfg.url}/#view=${viewKey(cfg.token)}${runnerSpki ? `&runner=${runnerSpki}` : ""}`;
 
 async function workersDevUrl(env: Env, fetchImpl: typeof fetch): Promise<string> {
   const account = env.CLOUDFLARE_ACCOUNT_ID;

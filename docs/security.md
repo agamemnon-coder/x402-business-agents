@@ -44,7 +44,8 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 | 10 | Anyone | Double payment | Idempotency keys everywhere (below); an executed proposal cannot run again; a lost answer is looked up, never resent | `test/euroBill.test.ts`, `test/adversarial.test.ts` |
 | 11 | Old credential | Pull under a replaced mandate | The chain refuses (`mandate_revoked`) | S1 run log |
 | 12 | Internet visitor | Abuse of the relay | Same-origin POSTs, size caps, per-address (IPv6 /64) and per-queue limits, five tries per enrolment code; the relay cannot approve | `test/relay-worker.test.ts` |
-| 13 | Compromised Cloudflare account | Serve a page that signs other terms | The runner still executes only a waiting proposal's exact hash, verified against the pinned passkey; the worst outcome is a refused signature | README, passkey section |
+| 13 | Compromised relay or Cloudflare account | Change what the phone shows (terms, names, policy) | The runner signs those (ES256) and the phone checks the signature against the runner key it pinned from the viewer link, which travels out of band; it shows nothing to sign otherwise. The runner executes only a waiting proposal's exact hash, signed by the pinned passkey | `test/relay-sign.test.ts`, browser check |
+| 13b | Compromised relay | Enrol its own passkey with a code it saw | A new passkey only counts after the person on the runner confirms the fingerprint the phone shows (SPKI SHA-256), and a replaced passkey stays active until then. The relay gets only an HMAC of the code, keyed by the relay token | `test/passkey.test.ts` |
 | 14 | Stolen phone | Approve as the CFO | The passkey needs Face ID (user verification is required and checked); revocation means re-enrolment | `src/passkey/webauthn.ts` |
 | 15 | Insider with database access | Edit or truncate the log | The database refuses updates and deletes; the hash chain detects edits; an anchor printed in the audit report detects truncation or a full rehash | `test/audit.test.ts`, `test/audit-report.test.ts`, `npm run verify-log` |
 | 16 | Leaked secret | A key in git or in a model's context | No key ever goes to a model (tested); every commit is scanned for the real values; gitleaks scans every pushed and pull-request commit in CI | `test/adversarial.test.ts`, `.github/workflows/ci.yml` |
@@ -101,6 +102,10 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
   `@x402/*` and `@metalntwx/*` packages bring along. The fixed `@x402/*` 2.29.0 was released on 2026-10-28; we pin
   only releases at least two weeks old, so it is due on 2026-11-11. The inputs that reach that zod come from our own
   supplier, seller and facilitator. CI fails on anything critical.
+- **The relay serves the phone's script.** A relay that serves a *different script* could show one thing and ask
+  Face ID to sign another waiting proposal's hash. The pinned runner key cannot stop that; only a native app could.
+  What limits it: the runner executes only waiting proposals' exact terms, approvals stay per proposal, and every
+  approval is in the audit report.
 - **The viewer key is a bearer key.** Whoever has the viewer link sees the dashboard and can send signatures,
   which still need Max's passkey to count. It is derived from the relay token; rotating that rotates the key.
 - **The *USDZ to Airwallex bridge is simulated:** a sandbox deposit references the sweep's transaction hash. The

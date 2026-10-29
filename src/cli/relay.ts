@@ -7,6 +7,8 @@
 //   --local    no Cloudflare: serves the same relay on http://localhost:4400 (KIT11_RELAY_PORT) for a laptop
 //   --once     one sync (and the executions it starts), then exit
 
+import { displayKey } from "../relay/sign.js";
+import { keyPath } from "../metal/agentCli.js";
 import { randomBytes } from "node:crypto";
 import { openDb } from "../db/open.js";
 import { execute } from "../executors/index.js";
@@ -30,13 +32,14 @@ const db = openDb();
 const label = process.env.KIT11_APPROVER ?? "max";
 const stamp = () => new Date().toISOString().slice(11, 19);
 console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${process.env.KIT11_DB ?? "data/kit11.sqlite"})`);
-console.log(`viewer   ${viewerLink(cfg)}  (open once on each device; it unlocks the dashboard and the approval pages there, and approves nothing)`);
+const signer = displayKey(keyPath("relay-display-key.pem"));
+console.log(`viewer   ${viewerLink(cfg, signer.publicSpki)}  (open once on each device: it unlocks the dashboard and pins this runner's key; it approves nothing)`);
 if (args.includes("--enrol")) {
   const { window, code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin, replace: args.includes("--replace") });
   console.log(`ENROL    on the phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);
 }
 
-const runner = new RelayRunner({ db, cfg, fetch, execute, label, log: (line) => console.log(`${stamp()} ${line}`) });
+const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, log: (line) => console.log(`${stamp()} ${line}`) });
 let stopping = false;
 const stop = () => {
   if (stopping) return;

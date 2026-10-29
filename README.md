@@ -166,7 +166,10 @@ that can redeploy the Worker anyway). **The relay's data is not public.** Every 
 derived from the relay token, so the Worker needs no new secret. `npm run relay` prints a viewer link with the key in
 the `#fragment`, which browsers never send to a server. Open it once on each device: the page keeps the key there,
 removes it from the address bar and sends it with each request. Without it the pages load but show no data, and the
-relay takes no submission. The key unlocks viewing and sending signatures; it approves nothing. Limits: a page served by a compromised Cloudflare account could show one thing and sign
+relay takes no submission. The key unlocks viewing and sending signatures; it approves nothing. The same link pins
+the runner's public key. The runner signs the terms, names and policy it sends, and the phone shows nothing to sign
+unless that signature checks out. A new passkey counts only after `npm run passkey -- confirm <fingerprint>` on the
+runner, with the fingerprint the phone shows. Limits: a page served by a compromised Cloudflare account could show one thing and sign
 another hash, but the runner still executes nothing that is not a waiting proposal's exact terms.
 
 | Choose an option | Confirm what it does | Done | Or reject |

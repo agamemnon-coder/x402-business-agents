@@ -348,6 +348,23 @@ function tickCountdowns(): void {
   });
 }
 
+/**
+ * The approvals the relay hands over were signed by the runner (security review M3). The phone checks that signature
+ * against the runner's key, pinned from the viewer link, over exactly the part it decides on; anything the relay
+ * changed or left unsigned fails.
+ */
+export async function verifyRunnerSignature(a: Obj, runnerSpki: string): Promise<boolean> {
+  try {
+    const sig = isObj(a.signature) ? str(a.signature.sig) : "";
+    if (!sig || !runnerSpki) return false;
+    const key = await crypto.subtle.importKey("spki", b64urlToBytes(runnerSpki), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+    const text = canonicalize({ proposals: a.proposals, names: a.names, passkey: a.passkey, policy: a.policy });
+    return await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, b64urlToBytes(sig), new TextEncoder().encode(text));
+  } catch {
+    return false;
+  }
+}
+
 const VIEW_STORE = "kit11.view";
 let viewKey = "";
 
@@ -356,13 +373,26 @@ let viewKey = "";
  * (a fragment never reaches a server), is kept on this device, and is removed from the address bar at once.
  */
 export function takeViewKey(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null): string {
-  const m = /(?:^#|&)view=([0-9a-f]{32})(?:&|$)/.exec(hash);
-  if (m) {
-    try { store?.setItem(VIEW_STORE, m[1]!); } catch { /* private mode: keep it for this page only */ }
-    return m[1]!;
-  }
-  try { return store?.getItem(VIEW_STORE) ?? ""; } catch { return ""; }
+  return takeFromLink(hash, store, "view", /^[0-9a-f]{32}$/, VIEW_STORE);
 }
+
+const RUNNER_STORE = "kit11.runner";
+/** The runner's public key from the same link (base64url SPKI), pinned on this device. */
+export function takeRunnerKey(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null): string {
+  return takeFromLink(hash, store, "runner", /^[A-Za-z0-9_-]{80,200}$/, RUNNER_STORE);
+}
+
+function takeFromLink(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null, name: string, ok: RegExp, storeKey: string): string {
+  const v = new RegExp(`(?:^#|&)${name}=([^&]*)(?:&|$)`).exec(hash)?.[1];
+  if (v !== undefined && ok.test(v)) {
+    try { store?.setItem(storeKey, v); } catch { /* private mode: keep it for this page only */ }
+    return v;
+  }
+  try { return store?.getItem(storeKey) ?? ""; } catch { return ""; }
+}
+
+let runnerKey = "";
+const UNSIGNED = "What the relay sent is not signed by the runner this phone knows. Nothing can be signed here. Open the viewer link from Claude again, and tell Claude if this stays.";
 
 const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave you once on this phone, then come back.";
 
@@ -620,6 +650,10 @@ async function approvePage(): Promise<void> {
     app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the approval relay."));
     return;
   }
+  if (!(await verifyRunnerSignature(data, runnerKey))) {
+    app.replaceChildren(txt("p", "alarm", UNSIGNED));
+    return;
+  }
   const a = data as unknown as Approvals;
   const p = a.proposals.find((x) => x.proposal_id === id);
   const back = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
@@ -778,6 +812,10 @@ async function policyPage(): Promise<void> {
     app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the relay."));
     return;
   }
+  if (!(await verifyRunnerSignature(data, runnerKey))) {
+    app.replaceChildren(txt("p", "alarm", UNSIGNED));
+    return;
+  }
   const a = data as unknown as Approvals & { policy: PolicyRow[] };
   const enrolled = a.passkey.credentials.length > 0;
   const back = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
@@ -873,7 +911,8 @@ export function boot(): void {
   let store: Storage | null = null;
   try { store = localStorage; } catch { store = null; }
   viewKey = takeViewKey(location.hash, store);
-  if (location.hash.includes("view=")) history.replaceState(null, "", location.pathname + location.search);
+  runnerKey = takeRunnerKey(location.hash, store);
+  if (location.hash.includes("view=") || location.hash.includes("runner=")) history.replaceState(null, "", location.pathname + location.search);
   setInterval(tickCountdowns, 1000);
   if (document.body.dataset.page === "approve") void approvePage();
   if (document.body.dataset.page === "enrol") enrolPage();

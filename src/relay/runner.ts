@@ -3,6 +3,7 @@
 // (src/passkey/process.ts); an approval then runs its executor while the syncs go on, and its outcome is reported
 // on the same ticket.
 
+import { signApprovals, type DisplayKey } from "./sign.js";
 import { redactSecrets } from "../lib/redact.js";
 import type { DB } from "../db/open.js";
 import { processAssertion, processPolicyRequest, processRegistration, type InboxItem } from "../passkey/process.js";
@@ -26,6 +27,8 @@ export interface RunnerDeps {
   now?: () => Date;
   /** The approver's name on passkeys enrolled here. */
   label?: string;
+  /** Signs the approvals the phone decides on (M3). Without it the phone refuses to sign anything. */
+  signer?: DisplayKey;
 }
 
 export class RelayRunner {
@@ -49,10 +52,12 @@ export class RelayRunner {
     const acks = this.acks.splice(0);
     let body: { need_state: boolean; inbox: InboxItem[] };
     try {
+      // The signature is randomised, so the state hash above leaves it out: an idle runner still pushes nothing.
+      const sent = push && this.deps.signer ? { ...state, approvals: signApprovals(state.approvals, this.deps.signer) } : state;
       const res = await this.deps.fetch(`${cfg.url}/api/runner/sync`, {
         method: "POST",
         headers: { authorization: `Bearer ${cfg.token}`, "content-type": "application/json" },
-        body: JSON.stringify({ state_hash: hash, ...(push ? { state } : {}), acks }),
+        body: JSON.stringify({ state_hash: hash, ...(push ? { state: sent } : {}), acks }),
         signal: AbortSignal.timeout(20_000),
       });
       if (!res.ok) throw new Error(`the relay answered ${res.status}${res.status === 401 ? " (wrong relay token: redeploy with npm run relay:deploy)" : ""}`);
