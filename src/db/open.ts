@@ -11,6 +11,8 @@ export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
+  // The runner, the agent API and the CLIs share one ledger: a writer waits for another instead of failing at once.
+  db.pragma("busy_timeout = 5000");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
   migrate(db);
