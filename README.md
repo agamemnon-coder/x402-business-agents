@@ -46,6 +46,30 @@ The merchants are fictional (Microsoft's sample company names).
 
 Run log: [docs/runs/2026-10-29-cards.md](docs/runs/2026-10-29-cards.md).
 
+## A month in 90 seconds (simulated)
+
+`npm run dashboard` and the relay serve `/month`. A seeded month at small-business scale replays in 90 seconds:
+about 5,000 queries on weekdays, the supplier's price rise on day 9, the card declines, a fake invoice, a planted
+instruction and the bills.
+
+- **At the top:** what the agents did alone, what waits for the CFO, and what was blocked.
+- **Below that:** the company's net day by day, and a P&L per agent:
+  - what the agent earned;
+  - what it spent over x402;
+  - its company card spend;
+  - FX and fees;
+  - AI cost, priced from the tokens each call used in rehearsal 3.
+- **The bills Airwallex paid** are listed under the agents.
+
+The decisions in the simulation come from the live build's code:
+- refund routing;
+- the price-rise options;
+- the invoice fraud check on the real allowlist;
+- the card limits as Airwallex applied them.
+
+The CFO's decisions are scripted and marked "CFO (simulated)". The data sits inside the page, so the replay needs no
+network once loaded. `/month?at=end` shows the finished month. Code: `src/sim/month.ts`, `src/dashboard/month.html`.
+
 ## The story
 
 - **Tidemark Data** (us) sells EUR/USD ticks to other companies' agents over x402, 0.05 *USDZ per query, and
@@ -299,6 +323,7 @@ every pushed and pull-request commit.
 | Phone pages (approve, enrol) | `src/approve/` |
 | Relay: runner side, Worker | `src/relay/`, `worker/` |
 | Dashboard (read-only) | `src/dashboard/snapshot.ts`, `src/dashboard/page.html`, `src/servers/dashboard.ts` |
+| Month simulation and replay | `src/sim/month.ts`, `src/dashboard/month.html` |
 
 ## Tooling used
 
