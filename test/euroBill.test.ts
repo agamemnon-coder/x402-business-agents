@@ -76,6 +76,42 @@ describe("euro bill (S3) against the Airwallex port", () => {
     expect(verifyAuditChain(db).ok).toBe(true);
   });
 
+  it("a second copy of an invoice already paid is escalated, and nothing is quoted", async () => {
+    const { db, awx } = await world();
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    if (out.kind !== "proposed") throw new Error(out.reason);
+    approve(db, out.proposal.proposal_id, out.proposal.terms_sha256);
+    await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
+    const quotes = awx.calls.filter((c) => c === "createQuote").length;
+    const again = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    expect(again.kind).toBe("escalated");
+    if (again.kind === "escalated") expect(again.reason).toMatch(/BTX-2026-11 is already paid/);
+    expect(awx.calls.filter((c) => c === "createQuote").length).toBe(quotes);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM proposals").get() as { n: number }).n).toBe(1);
+  });
+
+  it("an invoice that already waits for approval is not proposed a second time", async () => {
+    const { db, awx } = await world();
+    const first = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    if (first.kind !== "proposed") throw new Error(first.reason);
+    const again = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    expect(again.kind).toBe("escalated");
+    if (again.kind === "escalated") expect(again.reason).toContain(`already waits for approval as ${first.proposal.proposal_id}`);
+    expect(awx.calls.filter((c) => c === "createQuote").length).toBe(1);
+  });
+
+  it("an approved proposal for an invoice that another payout already pays converts nothing and pays nothing", async () => {
+    const { db, awx } = await world();
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    if (out.kind !== "proposed") throw new Error(out.reason);
+    approve(db, out.proposal.proposal_id, out.proposal.terms_sha256);
+    // Another payout for the same invoice, e.g. from an older proposal approved on another device.
+    db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES ('other', 'BTX-2026-11', '1850.00', 'EUR', 'SWIFT', '20.00', 'PAID', 'x', '2026-10-30T00:00:00Z')").run();
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow(/already paid/);
+    expect(awx.calls).not.toContain("createConversion");
+    expect(awx.calls).not.toContain("createTransfer");
+  });
+
   it("L2: a payee the CFO policy blocked after approval is not paid, and Airwallex is not called", async () => {
     const { db, awx } = await world();
     const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);

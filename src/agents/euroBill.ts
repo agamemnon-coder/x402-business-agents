@@ -101,6 +101,19 @@ export interface InvoicePaymentTerms extends Terms {
   evidence: { type: string; ref: string; sha256: string }[];
 }
 
+/**
+ * Why this invoice may not get another payment proposal, or null. A payout counts unless it was cancelled (the same
+ * rule as the one_live_transfer_per_invoice index); a proposal counts while it can still be approved or is running.
+ */
+export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date()): string | null {
+  const t = db.prepare("SELECT status FROM transfers WHERE invoice_no = ? AND status <> 'CANCELLED' ORDER BY updated_at DESC LIMIT 1").get(invoiceNo) as { status: string } | undefined;
+  if (t) return t.status === "PAID" ? `invoice ${invoiceNo} is already paid` : `invoice ${invoiceNo} already has a payout (${t.status})`;
+  const p = db.prepare(`SELECT proposal_id FROM proposals WHERE kind = 'invoice_payment' AND json_extract(terms_json, '$.invoice_no') = ?
+    AND (status IN ('APPROVED', 'EXECUTING') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC LIMIT 1`)
+    .get(invoiceNo, now.toISOString()) as { proposal_id: string } | undefined;
+  return p ? `invoice ${invoiceNo} already waits for approval as ${p.proposal_id}` : null;
+}
+
 export type InvoiceOutcome =
   | { kind: "proposed"; proposal: ProposalRow; terms: InvoicePaymentTerms }
   | { kind: "escalated"; reason: string; fraud?: FraudFinding };
@@ -125,6 +138,13 @@ export async function proposeInvoicePayment(
       audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: check.reason }, now);
     }
     return { kind: "escalated", reason: check.reason, ...(check.fraud ? { fraud: check.fraud } : {}) };
+  }
+  // A second copy of an invoice (a reminder, a resend) is never paid twice: not after a payout, not while one waits.
+  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now);
+  if (dup) {
+    const reason = `${dup}; a second copy is not paid again. Options: check with ${check.name} whether this is a reminder, or reject the open proposal first if this copy replaces it`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+    return { kind: "escalated", reason };
   }
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ibanSha(inv.iban), inv.bic, check.beneficiaryId, sha256Hex(invoiceText), JSON.stringify(inv));
