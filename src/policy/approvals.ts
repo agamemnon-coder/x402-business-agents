@@ -80,19 +80,40 @@ function expireIfDue(db: DB, p: ProposalRow, now: Date): boolean {
 }
 
 export type Decision = "APPROVED" | "REJECTED";
+export type ApprovalMethod = "web" | "cli" | "telegram" | "passkey";
 
-/** The approver types the first 8 hex characters of the hash they saw. A wrong prefix records nothing. */
-export function decide(
-  db: DB,
-  args: { proposalId: string; decision: Decision; typedPrefix: string; approver: string; method: "web" | "cli" | "telegram"; note?: string },
-  now = new Date(),
-): ProposalStatus {
+export interface DecideArgs {
+  proposalId: string;
+  decision: Decision;
+  typedPrefix: string;
+  approver: string;
+  method: ApprovalMethod;
+  note?: string;
+  /** Method passkey: the full hash the passkey signed (its WebAuthn challenge), already verified by the caller. */
+  signedSha256?: string;
+  /** Method passkey: which credential signed, and the hash of the stored assertion. */
+  passkey?: { credentialId: string; assertionSha256: string };
+}
+
+/**
+ * The approver types the first 8 hex characters of the hash they saw, or (method passkey) their passkey signed
+ * the full hash. A wrong prefix or a signature over other terms records nothing.
+ */
+export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStatus {
+  if (args.method === "passkey") {
+    if (!args.signedSha256) throw new Error("a passkey decision needs the signed hash");
+    if (!args.passkey) throw new Error("a passkey decision needs the signing credential");
+    if (args.decision !== "APPROVED") throw new Error("a passkey only approves; reject on the local page or the CLI");
+  }
+  const passkey = args.passkey && { credential_id: args.passkey.credentialId, assertion_sha256: args.passkey.assertionSha256 };
   return db.transaction((): ProposalStatus => {
     const p = get(db, args.proposalId);
     if (p.status !== "PENDING_APPROVAL") throw new Error(`${p.proposal_id} is ${p.status}, not waiting for approval`);
+    if (args.method === "passkey" && args.signedSha256 !== p.terms_sha256) throw new Error(`the passkey signed other terms than ${p.proposal_id}'s`);
     if (expireIfDue(db, p, now)) {
       // A decision that arrives after the terms ran out records who tried, and approves nothing.
-      audit(db, "human", "approval.too_late", p.proposal_id, { terms_sha256: p.terms_sha256, approver: args.approver, method: args.method, expires_at: p.expires_at }, now);
+      audit(db, "human", "approval.too_late", p.proposal_id,
+        { terms_sha256: p.terms_sha256, approver: args.approver, method: args.method, expires_at: p.expires_at, ...(passkey ? { passkey } : {}) }, now);
       return "EXPIRED";
     }
     if (!prefixMatches(p.terms_sha256, args.typedPrefix)) throw new Error("typed prefix does not match the terms hash");
@@ -102,7 +123,7 @@ export function decide(
     ).run(p.proposal_id, args.decision, p.terms_sha256, args.approver, args.method, args.typedPrefix.trim().toLowerCase(), args.note ?? null, now.toISOString());
     transition(db, p.proposal_id, "PENDING_APPROVAL", args.decision);
     audit(db, "human", args.decision === "APPROVED" ? "proposal.approved" : "proposal.rejected", p.proposal_id,
-      { terms_sha256: p.terms_sha256, approver: args.approver, method: args.method, note: args.note ?? null }, now);
+      { terms_sha256: p.terms_sha256, approver: args.approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}) }, now);
     return args.decision;
   }).immediate();
 }

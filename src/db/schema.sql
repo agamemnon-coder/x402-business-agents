@@ -92,10 +92,51 @@ CREATE TABLE IF NOT EXISTS approvals (
   decision TEXT NOT NULL CHECK (decision IN ('APPROVED', 'REJECTED')),
   approved_sha256 TEXT NOT NULL,
   approver TEXT NOT NULL,
-  method TEXT NOT NULL CHECK (method IN ('web', 'cli', 'telegram')),
+  method TEXT NOT NULL CHECK (method IN ('web', 'cli', 'telegram', 'passkey')),
   typed_prefix TEXT NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL
+);
+
+-- The approver's passkey (WebAuthn). The runner verifies every signature against this public key itself.
+CREATE TABLE IF NOT EXISTS passkeys (
+  credential_id TEXT PRIMARY KEY,
+  public_key TEXT NOT NULL,
+  counter INTEGER NOT NULL CHECK (counter >= 0),
+  transports TEXT,
+  rp_id TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  label TEXT NOT NULL,
+  aaguid TEXT,
+  registration_json TEXT NOT NULL,
+  enrolled_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'REVOKED'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_passkey ON passkeys(status) WHERE status = 'ACTIVE';
+
+-- A short window in which one passkey may be enrolled with a one-time code. Only the code's hash is kept.
+CREATE TABLE IF NOT EXISTS passkey_enrolments (
+  window_id TEXT PRIMARY KEY,
+  challenge TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  code_sha256 TEXT NOT NULL,
+  rp_id TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  opened_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('OPEN', 'USED', 'EXPIRED', 'CLOSED'))
+);
+
+-- Every verified passkey signature over a proposal's terms, kept so `npm run verify` can check it again offline.
+CREATE TABLE IF NOT EXISTS passkey_assertions (
+  assertion_sha256 TEXT PRIMARY KEY,
+  proposal_id TEXT NOT NULL REFERENCES proposals(proposal_id),
+  credential_id TEXT NOT NULL REFERENCES passkeys(credential_id),
+  terms_sha256 TEXT NOT NULL,
+  assertion_json TEXT NOT NULL,
+  counter INTEGER NOT NULL,
+  outcome TEXT NOT NULL CHECK (outcome IN ('APPROVED', 'TOO_LATE')),
+  verified_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS refunds (
