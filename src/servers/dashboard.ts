@@ -17,7 +17,7 @@ const inlineHash = (tag: "script" | "style") => {
   return `'sha256-${createHash("sha256").update(m[1]!, "utf8").digest("base64")}'`;
 };
 // Only the page's own script and style may run; data arrives over fetch from this origin only.
-const CSP = [
+export const CSP = [
   "default-src 'none'", `script-src ${inlineHash("script")}`, `style-src ${inlineHash("style")}`, "connect-src 'self'",
   "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");

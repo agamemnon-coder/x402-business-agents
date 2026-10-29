@@ -83,6 +83,8 @@ export interface Snapshot {
   decisions: Decision[];
   refusals: Refusal[];
   feed: FeedItem[];
+  /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
+  passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
 
 type AuditRow = { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string; row_hash: string };
@@ -314,6 +316,11 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "transfer.fee": return out(`Airwallex fee ${str(p.fee)}, within the approved ceiling of ${str(p.fee_max)}`, "ok", { awx_id: s || null });
     case "transfer.fee_over_ceiling": return out(`Airwallex fee ${str(p.fee)} is above the approved ceiling of ${str(p.fee_max)}`, "refusal", { awx_id: s || null });
     case "transfer.ambiguous": return out(`Transfer answer lost; ${str(p.resolved)}`, "info");
+    case "passkey.enrolment_opened": return out("A one-time code to enrol a passkey was issued (valid 10 minutes)");
+    case "passkey.enrolled": return out(`${str(p.label) || "A person"} enrolled passkey ${s.slice(0, 8)}; approvals now need it`, "ok");
+    case "passkey.revoked": return out(`Passkey ${s.slice(0, 8)} revoked: replaced by ${str(p.replaced_by).slice(0, 8)}`);
+    case "passkey.refused": return out(`Passkey approval${s ? ` of ${s}` : ""} refused: ${str(p.reason)}`, "refusal");
+    case "passkey.enrol_refused": return out(`Passkey enrolment refused: ${str(p.reason)}`, "refusal");
     default: return out(`${r.event}${s ? ` ${s}` : ""}`);
   }
 }
@@ -321,7 +328,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
 const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
-  "sweep.held", "invoice.escalated", "transfer.fee_over_ceiling",
+  "sweep.held", "invoice.escalated", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
 ]);
 
 const REFUSAL_WHAT: Record<string, string> = {
@@ -340,11 +347,23 @@ const REFUSAL_WHAT: Record<string, string> = {
   "sweep.held": "Sweep held",
   "invoice.escalated": "Invoice escalated",
   "transfer.fee_over_ceiling": "Fee above ceiling",
+  "passkey.refused": "Passkey approval refused",
+  "passkey.enrol_refused": "Passkey enrolment refused",
 };
 
 const AGENT_OF: Record<string, string> = {
   "upstream.": "sourcing", "refund.": "support", "sweep.": "treasury", "invoice.": "treasury", "transfer.": "treasury", "sale.": "seller",
 };
+
+/** Ledgers from before passkeys have no passkey tables; the read-only dashboard must not fail on them. */
+function passkeyInfo(db: DB, now: Date): Snapshot["passkey"] {
+  const none = { credential: null, label: null, enrolled_at: null, enrolment_open: false };
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'passkeys'").get()) return none;
+  const pk = db.prepare("SELECT credential_id, label, enrolled_at FROM passkeys WHERE status = 'ACTIVE'").get() as { credential_id: string; label: string; enrolled_at: string } | undefined;
+  const open = (db.prepare("SELECT expires_at FROM passkey_enrolments WHERE status = 'OPEN'").all() as { expires_at: string }[])
+    .some((w) => Date.parse(w.expires_at) > now.getTime());
+  return pk ? { credential: pk.credential_id.slice(0, 8), label: pk.label, enrolled_at: pk.enrolled_at, enrolment_open: open } : { ...none, enrolment_open: open };
+}
 
 export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   const rows = db.prepare("SELECT seq, ts, actor, event, subject, payload_json, row_hash FROM audit_log ORDER BY seq").all() as AuditRow[];
@@ -391,5 +410,6 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     decisions,
     refusals,
     feed,
+    passkey: passkeyInfo(db, now),
   };
 }

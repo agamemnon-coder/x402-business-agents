@@ -190,7 +190,7 @@ describe("enrolment from the phone", () => {
 
 describe("pages", () => {
   const pages: Pages = {
-    dashboard: "<!doctype html><title>d</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", client: "export {};",
+    dashboard: "<!doctype html><title>d</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", client: "export {};", css: "body{}",
     csp: { dashboard: "default-src 'none'; script-src 'sha256-x'", approve: "default-src 'none'; script-src 'self'", enrol: "default-src 'none'; script-src 'self'" },
   };
   const page = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages);
@@ -203,6 +203,7 @@ describe("pages", () => {
     expect(page("/enrol")!.headers.get("content-security-policy")).toBe(pages.csp.enrol);
     const js = page("/assets/approve.js")!;
     expect(js.headers.get("content-type")).toMatch(/^text\/javascript/);
+    expect(page("/assets/approve.css")!.headers.get("content-type")).toMatch(/^text\/css/);
     for (const res of [d, js]) {
       expect(res.headers.get("x-content-type-options")).toBe("nosniff");
       expect(res.headers.get("referrer-policy")).toBe("no-referrer");

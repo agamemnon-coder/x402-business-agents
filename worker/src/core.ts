@@ -14,8 +14,9 @@ export interface Pages {
   dashboard: string;
   approve: string;
   enrol: string;
-  /** The approval and enrolment pages' script, served as /assets/approve.js. */
+  /** The approval and enrolment pages' script and stylesheet, served as /assets/approve.js and .css. */
   client: string;
+  css: string;
   csp: { dashboard: string; approve: string; enrol: string };
 }
 
@@ -60,6 +61,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
   if (path === "/assets/approve.js") return new Response(pages.client, { headers: { ...COMMON_HEADERS, "content-type": "text/javascript; charset=utf-8" } });
+  if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });
   return null;
 }
 
@@ -291,7 +293,8 @@ export class Relay {
       timeout: 120_000,
       attestation: "none",
       authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
-      excludeCredentials: c.s.approvals.passkey.credentials.map((x) => ({ type: "public-key", id: x.id })),
+      // Empty on purpose: a replacement passkey may be made on the same phone, which then overwrites the old one.
+      excludeCredentials: [],
       expires_at: c.e.expires_at,
     });
   }

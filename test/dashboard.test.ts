@@ -7,6 +7,7 @@ import { audit } from "../src/audit/log.js";
 import { buildSnapshot, parseReview, summarize } from "../src/dashboard/snapshot.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
+import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { dashboardApp } from "../src/servers/dashboard.js";
 import { setSetting } from "../src/world/settings.js";
@@ -110,6 +111,40 @@ describe("dashboard snapshot", () => {
     expect(s.refusals[2]!.reason).toBe("Purchase of tick #41 refused on chain: over the mandate's per-payment cap (mandate_cap_exceeded)");
   });
 
+  it("names the passkey approvals need, and says when none is enrolled", () => {
+    const db = ledger();
+    expect(buildSnapshot(db, t0).passkey).toEqual({ credential: null, label: null, enrolled_at: null, enrolment_open: false });
+    const { window } = openEnrolment(db, { rpId: "kit11.example.workers.dev", origin: "https://kit11.example.workers.dev" }, t0);
+    expect(buildSnapshot(db, t0).passkey).toMatchObject({ credential: null, enrolment_open: true });
+    recordPasskey(db, { window, credentialId: "AbCdEf123456", publicKey: "pk", counter: 0, transports: null, aaguid: null, registrationJson: "{}", label: "max" }, t0);
+    expect(buildSnapshot(db, t0).passkey).toEqual({ credential: "AbCdEf12", label: "max", enrolled_at: t0.toISOString(), enrolment_open: false });
+  });
+
+  it("reads a ledger from before passkeys without failing", () => {
+    const db = ledger();
+    db.exec("DROP TABLE passkey_assertions; DROP TABLE passkeys; DROP TABLE passkey_enrolments;");
+    expect(buildSnapshot(db, t0).passkey).toEqual({ credential: null, label: null, enrolled_at: null, enrolment_open: false });
+  });
+
+  it("describes passkey events, and lists a refused passkey approval as a refusal", () => {
+    const db = ledger();
+    audit(db, "human", "passkey.enrolled", "AbCdEf123456", { label: "max", window_id: "E-1" });
+    audit(db, "system", "passkey.refused", "P-0002", { reason: "Unexpected authentication response challenge", credential: "AbCdEf12" });
+    audit(db, "system", "passkey.enrol_refused", null, { reason: "wrong enrolment code" });
+    audit(db, "human", "proposal.approved", "P-0002", { approver: "max (passkey AbCdEf12)", method: "passkey", terms_sha256: "cadd01e7ff" });
+    const s = buildSnapshot(db, t0);
+    expect(s.refusals.slice(0, 2).map((r) => [r.what, r.reason])).toEqual([
+      ["Passkey enrolment refused", "Passkey enrolment refused: wrong enrolment code"],
+      ["Passkey approval refused", "Passkey approval of P-0002 refused: Unexpected authentication response challenge"],
+    ]);
+    expect(s.feed.slice(0, 4).map((f) => [f.text, f.tone])).toEqual([
+      ["max (passkey AbCdEf12) approved P-0002, hash cadd01e7", "approval"],
+      ["Passkey enrolment refused: wrong enrolment code", "refusal"],
+      ["Passkey approval of P-0002 refused: Unexpected authentication response challenge", "refusal"],
+      ["max enrolled passkey AbCdEf12; approvals now need it", "ok"],
+    ]);
+  });
+
   it("turns audit rows into feed lines with model chips, checked tx links and Airwallex ids", () => {
     const db = ledger();
     audit(db, "system", "claude.read", "classify_document", { model: "claude-haiku-5-5", output: { kind: "price_notice" } });
@@ -132,6 +167,12 @@ describe("dashboard page", () => {
     // Relative URLs only, so another host can serve the same file.
     expect(PAGE).toContain(`fetch("api/snapshot"`);
     expect(PAGE).toContain(`"approve/" + encodeURIComponent(`);
+  });
+
+  it("shows which passkey approvals need, and calls a relay whose runner went quiet stale", () => {
+    expect(PAGE).toContain('id="passkey"');
+    expect(PAGE).toMatch(/d\.passkey/);
+    expect(PAGE).toMatch(/relay\.age_ms > RUNNER_STALE_MS/);
   });
 });
 
