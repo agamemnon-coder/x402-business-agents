@@ -3,7 +3,7 @@
 // signature recorded as too late; a signature that waits while the runner is offline.
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
-import { bytesToB64url, checkOption, hexToBytes, type PhoneProposal } from "../src/approve/client.js";
+import { buildPolicyTerms, bytesToB64url, canonicalize, checkOption, hexToBytes, sha256Hex, type PhoneProposal } from "../src/approve/client.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
 import { openEnrolment } from "../src/passkey/ledger.js";
@@ -141,6 +141,25 @@ describe("phone approval through the relay", () => {
     await w.runner.syncOnce();
     expect(await w.phone.get(`/api/tickets/${String(sent.body.ticket)}`)).toMatchObject({ status: "refused", message: expect.stringMatching(/could not process/) });
     expect(w.executed).toEqual([]);
+  });
+
+  it("changes the CFO policy from the phone with one Face ID, and runs the change once", async () => {
+    const w = world();
+    const auth = new FakeAuthenticator();
+    await enrol(w, auth);
+    const a = (await w.phone.get("/api/approvals")) as { policy: { key: string; label: string; value: string }[] };
+    const cap = a.policy.find((e) => e.key === "cap.sourcing")!;
+    const terms = buildPolicyTerms([{ key: cap.key, label: cap.label, from: cap.value, to: "0.03" }], "supplier prices rising", new Date("2026-10-30T14:00:00Z"), "0a1b2c3d");
+    const canonical = canonicalize(terms);
+    const hash = await sha256Hex(canonical);
+    const sent = await w.phone.post("/api/policy", { canonical, terms_sha256: hash, credential: auth.sign({ challenge: bytesToB64url(hexToBytes(hash)), origin: BASE, rpId: RP, counter: 1 }) });
+    expect(sent.status).toBe(202);
+    await w.runner.syncOnce();
+    await w.runner.idle();
+    await w.runner.syncOnce();
+    expect(await w.phone.get(`/api/tickets/${String(sent.body.ticket)}`)).toMatchObject({ status: "executed", message: "C-0a1b2c3d executed" });
+    expect(w.executed).toEqual(["C-0a1b2c3d"]);
+    expect(w.db.prepare("SELECT kind, status FROM proposals WHERE proposal_id = 'C-0a1b2c3d'").get()).toEqual({ kind: "policy_change", status: "APPROVED" });
   });
 
   it("pushes the state only when the ledger changed, and again in full if the relay lost it", async () => {

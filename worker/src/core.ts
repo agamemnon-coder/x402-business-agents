@@ -14,10 +14,12 @@ export interface Pages {
   dashboard: string;
   approve: string;
   enrol: string;
+  /** The CFO policy editor. */
+  policy: string;
   /** The approval and enrolment pages' script and stylesheet, served as /assets/approve.js and .css. */
   client: string;
   css: string;
-  csp: { dashboard: string; approve: string; enrol: string };
+  csp: { dashboard: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -60,6 +62,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/") return page(pages.dashboard, pages.csp.dashboard);
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
+  if (path === "/policy") return page(pages.policy, pages.csp.policy);
   if (path === "/assets/approve.js") return new Response(pages.client, { headers: { ...COMMON_HEADERS, "content-type": "text/javascript; charset=utf-8" } });
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });
   return null;
@@ -208,17 +211,18 @@ export class Relay {
     const url = new URL(req.url);
     const path = url.pathname;
     const route = (method: string, p: string | RegExp) => (typeof p === "string" ? path === p : p.test(path)) && (req.method === method || (method === "GET" && req.method === "HEAD"));
-    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/enrol/options", "/api/enrol"];
+    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/enrol/options", "/api/enrol"];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
     if (route("GET", "/api/snapshot")) return this.snapshot();
     if (route("GET", "/api/approvals")) return this.approvals();
     if (route("GET", /^\/api\/tickets\/[^/]+$/)) return this.ticket(path.slice("/api/tickets/".length));
     // Everything the phone posts must come from the relay's own pages.
-    if (req.method === "POST" && (path === "/api/assertions" || path.startsWith("/api/enrol"))) {
+    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path.startsWith("/api/enrol"))) {
       if (req.headers.get("origin") !== url.origin) return error(403, "requests must come from this site's own pages");
       if (!this.underRateLimit(req)) return error(429, "too many requests from this address; wait ten minutes");
       if (path === "/api/assertions") return this.assertion(req);
+      if (path === "/api/policy") return this.policyChange(req);
       if (path === "/api/enrol/options") return this.enrolOptions(req);
       if (path === "/api/enrol") return this.enrol(req);
     }
@@ -273,7 +277,7 @@ export class Relay {
     return rows[0] ? json(200, rows[0]) : error(404, "no such ticket");
   }
 
-  private queue(kind: "assertion" | "registration", proposalId: string | null, windowId: string | null, text: string): string {
+  private queue(kind: "assertion" | "registration" | "policy", proposalId: string | null, windowId: string | null, text: string): string {
     const ticket = ticketId();
     const at = this.now().toISOString();
     this.sql.exec("INSERT INTO inbox (ticket, kind, proposal_id, window_id, body, received_at, status, message, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', NULL, ?)",
@@ -307,6 +311,38 @@ export class Relay {
       return error(429, "too many approvals are waiting for the runner; wait a moment");
     }
     return json(202, { ticket: this.queue("assertion", p.proposal_id, null, body!.text) });
+  }
+
+  /**
+   * A policy change the phone wrote and signed itself. The relay checks that the canonical terms hash to the signed
+   * hash, that they are a policy change with a phone id, the enrolled passkey and the browser's own statement; the
+   * runner checks the change and the signature again before it becomes a proposal.
+   */
+  private async policyChange(req: Request): Promise<Response> {
+    const body = await readJson(req, MAX_SUBMISSION_BYTES);
+    if (body === null) return error(413, "submission too large");
+    const v = body?.value;
+    if (!isObject(v) || typeof v.canonical !== "string" || v.canonical.length > 8192 || typeof v.terms_sha256 !== "string" || !HEX64.test(v.terms_sha256)
+      || !isObject(v.credential) || typeof v.credential.id !== "string" || !isObject(v.credential.response)) return error(400, "malformed submission");
+    const s = this.state();
+    if (!s) return error(503, "the runner has not connected yet");
+    const credentialId = v.credential.id;
+    if (!s.approvals.passkey.credentials.some((c) => c.id === credentialId)) return error(403, "this passkey is not the enrolled one");
+    if ((await sha256Hex(v.canonical)) !== v.terms_sha256) return error(400, "the terms do not hash to the signed hash");
+    let terms: unknown;
+    try {
+      terms = JSON.parse(v.canonical);
+    } catch {
+      return error(400, "malformed terms");
+    }
+    if (!isObject(terms) || terms.kind !== "policy_change" || typeof terms.proposal_id !== "string" || !/^C-[0-9a-f]{8}$/.test(terms.proposal_id)) {
+      return error(400, "not a policy change made on the phone");
+    }
+    if (!signedFor((v.credential.response as Record<string, unknown>).clientDataJSON, v.terms_sha256, new URL(req.url).origin)) {
+      return error(400, "this signature is not for these terms on this site");
+    }
+    if (this.queued("kind = 'policy'") >= MAX_QUEUED_PER_PROPOSAL) return error(429, "too many policy changes are waiting for the runner");
+    return json(202, { ticket: this.queue("policy", terms.proposal_id, null, body!.text) });
   }
 
   /** The open enrolment, after checking the code; counts wrong codes and closes the window after five. */

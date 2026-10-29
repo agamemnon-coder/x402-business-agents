@@ -4,7 +4,7 @@
 // on the same ticket.
 
 import type { DB } from "../db/open.js";
-import { processAssertion, processRegistration, type InboxItem } from "../passkey/process.js";
+import { processAssertion, processPolicyRequest, processRegistration, type InboxItem } from "../passkey/process.js";
 import { expireDue } from "../policy/approvals.js";
 import type { RelayConfig } from "./config.js";
 import { buildRelayState, stateHash } from "./state.js";
@@ -94,7 +94,7 @@ export class RelayRunner {
       this.ack(item.ticket, out.status, out.message);
       return;
     }
-    const out = await processAssertion(db, item, this.now());
+    const out = item.kind === "policy" ? await processPolicyRequest(db, item, this.now()) : await processAssertion(db, item, this.now());
     this.ack(item.ticket, out.ack ?? out.status, out.message);
     if (out.status !== "approved" || !out.proposalId) return;
     const id = out.proposalId;

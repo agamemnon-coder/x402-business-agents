@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { b64urlToBytes, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, type PhoneProposal } from "../src/approve/client.js";
+import { b64urlToBytes, buildPolicyTerms, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, type PhoneProposal } from "../src/approve/client.js";
 import { sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
@@ -89,6 +89,29 @@ describe("the words on the confirm screen", () => {
     const d = describeTerms({ kind: "dev_test", proposal_id: "P-0001", label: "DEV TEST: moves no money", purpose: "Max checks Face ID approval on his iPhone" }, {});
     expect(d).toMatchObject({ approvable: true, title: "DEV TEST: moves no money", label: "Dev test", big: "0.00", unit: "nothing moves", recipient: "nobody" });
     expect(d.sentence).toBe("Max checks Face ID approval on his iPhone. Approving it records the approval and moves no money.");
+  });
+
+  it("states a policy change and warns when it loosens a limit", () => {
+    const tighter = describeTerms({ kind: "policy_change", changes: [{ key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03" }], reason: "prices rising" }, {});
+    expect(tighter).toMatchObject({ approvable: true, title: "Policy change", amountLabel: "New value", label: "Policy change", big: "0.03", unit: "Sourcing agent: most per payment", recipient: "nobody: no money moves", warnings: [] });
+    expect(tighter.sentence).toBe("Change Sourcing agent: most per payment from no extra limit to 0.03. Reason: prices rising.");
+    const looser = describeTerms({ kind: "policy_change", changes: [
+      { key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "0.03", to: "" },
+      { key: "eur_floor", label: "EUR reserve floor", from: "500.00", to: "100.00" },
+      { key: "counterparty:X GmbH", label: "X GmbH (Airwallex payee)", from: "blocked", to: "allowed" },
+    ], reason: "r" }, {});
+    expect(looser.sentence).toBe("Change 3 policy settings. Reason: r.");
+    expect(looser.warnings).toEqual([
+      "This loosens Sourcing agent: most per payment", "This loosens EUR reserve floor", "This loosens X GmbH (Airwallex payee)",
+    ]);
+  });
+
+  it("builds a policy change the runner can check: its own id, ten minutes, the exact changes", () => {
+    const t = buildPolicyTerms([{ key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03" }], "prices rising", new Date("2026-10-30T14:00:00.456Z"), "0a1b2c3d");
+    expect(t).toEqual({
+      schema: "kit11.approval-terms/v1", kind: "policy_change", proposal_id: "C-0a1b2c3d", expires_at: "2026-10-30T14:10:00Z",
+      changes: [{ key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03" }], reason: "prices rising",
+    });
   });
 
   it("will not offer a kind it cannot describe", () => {

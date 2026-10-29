@@ -24,9 +24,10 @@ export function buildPages(): Pages {
     dashboard: read("../dashboard/page.html"),
     approve: read("../approve/page.html"),
     enrol: read("../approve/enrol.html"),
+    policy: read("../approve/policy.html"),
     client,
     css: read("../approve/style.css"),
-    csp: { dashboard: DASHBOARD_CSP, approve: PHONE_CSP, enrol: PHONE_CSP },
+    csp: { dashboard: DASHBOARD_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }
 

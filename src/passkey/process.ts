@@ -6,15 +6,16 @@ import { z } from "zod";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
-import { termsHash, type Terms } from "../lib/terms.js";
-import { approvedAlternative, decide, type ProposalRow } from "../policy/approvals.js";
+import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
+import { checkChanges, type PolicyChangeTerms } from "../executors/policyChange.js";
+import { approvedAlternative, createProposal, decide, type ProposalRow } from "../policy/approvals.js";
 import { codeSha256, openWindow, passkeyById, recordPasskey } from "./ledger.js";
 import { assertionSha256, verifyApprovalSignature, verifyEnrolmentResponse } from "./webauthn.js";
 
 /** One submission as the relay queued it. Only `ticket` and `body` are used; the body is checked from scratch. */
 export interface InboxItem {
   ticket: string;
-  kind: "assertion" | "registration";
+  kind: "assertion" | "registration" | "policy";
   proposal_id: string | null;
   body: string;
   received_at: string;
@@ -29,7 +30,7 @@ const CREDENTIAL = {
   authenticatorAttachment: z.enum(["platform", "cross-platform"]).optional(),
 };
 const AssertionBody = z.object({
-  proposal_id: z.string().regex(/^P-\d{4,}$/),
+  proposal_id: z.string().regex(/^(P-\d{4,}|C-[0-9a-f]{8})$/),
   terms_sha256: z.string().regex(/^[0-9a-f]{64}$/),
   credential: z.object({
     ...CREDENTIAL,
@@ -139,6 +140,48 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   } catch (e) {
     return refuseAudited(p.proposal_id, (e as Error).message.slice(0, 240), response.id);
   }
+}
+
+const PolicyBody = z.object({ canonical: z.string().max(8192), terms_sha256: z.string().regex(/^[0-9a-f]{64}$/), credential: AssertionBody.shape.credential });
+const POLICY_ID = /^C-[0-9a-f]{8}$/;
+const POLICY_MAX_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * A CFO policy change made on the phone: the page wrote the terms and the passkey signed their hash. The runner
+ * checks the terms against the current policy and verifies the signature first; only then does the change become a
+ * proposal, approved by that same signature (method passkey). Nothing unsigned ever becomes a proposal.
+ */
+export async function processPolicyRequest(db: DB, item: InboxItem, now = new Date()): Promise<AssertionOutcome> {
+  const refuse = (reason: string): AssertionOutcome => ({ status: "refused", proposalId: null, message: reason });
+  const body = parse(PolicyBody, item.body);
+  if (!body) return refuse("malformed submission");
+  let terms: PolicyChangeTerms;
+  try {
+    terms = JSON.parse(body.canonical) as PolicyChangeTerms;
+    if (canonicalTerms(terms) !== body.canonical || termsHash(terms) !== body.terms_sha256) return refuse("the terms do not hash to the signed hash");
+  } catch {
+    return refuse("malformed submission");
+  }
+  if (terms.kind !== "policy_change" || !Array.isArray(terms.changes) || typeof terms.reason !== "string" || terms.reason.length > 500) return refuse("malformed submission");
+  if (!POLICY_ID.test(terms.proposal_id)) return refuse("a policy change made on the phone has an id like C-0a1b2c3d");
+  const left = Date.parse(terms.expires_at) - now.getTime();
+  if (!(left > 0) || left > POLICY_MAX_TTL_MS) return refuse("a policy change must expire within 15 minutes");
+  const response = body.credential as AuthenticationResponseJSON;
+  const asAssertion: InboxItem = { ...item, kind: "assertion", proposal_id: terms.proposal_id, body: JSON.stringify({ proposal_id: terms.proposal_id, terms_sha256: body.terms_sha256, credential: response }) };
+  const existing = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(terms.proposal_id) as { terms_sha256: string } | undefined;
+  // A resend of the same signed change is answered like any repeated approval; another change may not reuse the id.
+  if (existing) return existing.terms_sha256 === body.terms_sha256 ? processAssertion(db, asAssertion, now) : refuse(`${terms.proposal_id} already exists`);
+  try {
+    checkChanges(db, terms.changes);
+  } catch (e) {
+    return refuse((e as Error).message);
+  }
+  const pk = passkeyById(db, response.id);
+  if (!pk || pk.status !== "ACTIVE") return refuse("this passkey is not the enrolled one");
+  const v = await verifyApprovalSignature(response, body.terms_sha256, pk);
+  if (!v.ok) return refuse(v.reason);
+  createProposal(db, { terms, createdBy: "human" }, now);
+  return processAssertion(db, asAssertion, now);
 }
 
 export interface RegistrationOutcome {

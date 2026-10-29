@@ -22,14 +22,14 @@ describe("relay assets", () => {
 
   it("serves the dashboard under the same CSP as the local server, and the phone pages with no inline code", () => {
     expect(pages.csp.dashboard).toBe(LOCAL_DASHBOARD_CSP);
-    for (const csp of [pages.csp.approve, pages.csp.enrol]) {
+    for (const csp of [pages.csp.approve, pages.csp.enrol, pages.csp.policy]) {
       expect(csp).toContain("script-src 'self'");
       expect(csp).toContain("style-src 'self'");
       expect(csp).toContain("connect-src 'self'");
       expect(csp).toContain("frame-ancestors 'none'");
       expect(csp).not.toContain("unsafe");
     }
-    for (const html of [pages.approve, pages.enrol]) {
+    for (const html of [pages.approve, pages.enrol, pages.policy]) {
       expect(html).not.toMatch(/<script>|<style>|\son\w+=/i);
       expect(html).not.toMatch(/https?:\/\//);
       expect(html).toContain('src="/assets/approve.js"');

@@ -80,6 +80,11 @@ describe("relay state", () => {
     expect(buildRelayState(db, { rpId: "other.example" }, t0).approvals.passkey.credentials).toEqual([]);
   });
 
+  it("carries the CFO policy for the phone's editor", () => {
+    const s = buildRelayState(ledger(), { rpId: RP }, t0);
+    expect(s.approvals.policy.find((e) => e.key === "cap.sourcing")).toMatchObject({ label: "Sourcing agent: most per payment", value: "", kind: "optional_money", unit: "*USDZ" });
+  });
+
   it("hashes the same ledger the same way at different times, and differently once it changes", () => {
     const db = ledger();
     const h1 = stateHash(buildRelayState(db, { rpId: RP }, t0));

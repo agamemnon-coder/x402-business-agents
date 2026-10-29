@@ -313,6 +313,12 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
       stack,
       el("div", "legend", b.agents.map(function (a) { var i = el("i"); i.style.background = COLORS[a.agent] || "var(--faint)"; return el("span", "", [i, a.agent + " " + money(a.budget)]); })),
     ]));
+    // On the relay (served with the runner's freshness), the CFO can change the policy from here.
+    if (d.relay) {
+      var edit = txt("a", "btn", "Edit CFO policy");
+      edit.href = "policy";
+      nodes.push(el("div", "split", [edit]));
+    }
     if (b.counterparty) {
       var c = b.counterparty;
       nodes.push(el("div", "cp num", ["Customer side: Kestrel Quant's own mandate has paid us " + money(c.spent) + " of " + money(c.budget) + "; we now charge " + money(d.treasury.metal.sell_price) + " a query (its cap: " + money(c.cap) + ")."]));

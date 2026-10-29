@@ -3,7 +3,7 @@
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
-import { TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
+import { canonicalTerms, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { buildRelayState, stateHash, type RelayState } from "../src/relay/state.js";
@@ -181,6 +181,32 @@ describe("passkey approvals from the phone", () => {
   });
 });
 
+describe("policy changes from the phone", () => {
+  const policyTerms = (over: Record<string, unknown> = {}) => canonicalTerms({
+    schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: "C-0a1b2c3d", expires_at: "2026-10-30T14:10:00Z",
+    changes: [{ key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03" }], reason: "r", ...over,
+  } as Terms);
+  const submission = (canonical: string, hash = sha256Hex(canonical), id = "cred-1") => ({
+    canonical, terms_sha256: hash,
+    credential: { id, rawId: id, type: "public-key", response: { clientDataJSON: Buffer.from(JSON.stringify({ type: "webauthn.get", challenge: Buffer.from(hash, "hex").toString("base64url"), origin: BASE })).toString("base64url"), authenticatorData: "AA", signature: "AA" }, clientExtensionResults: {} },
+  });
+
+  it("queues a signed policy change for the runner, and refuses what cannot be one", async () => {
+    const { r } = relay();
+    const { state } = runnerState({ enrolled: true });
+    await push(r, state);
+    const ok = await post(r, "/api/policy", submission(policyTerms()));
+    expect(ok.status).toBe(202);
+    const ip = (n: number) => ({ "cf-connecting-ip": `10.7.0.${n}` });
+    expect((await post(r, "/api/policy", submission(policyTerms(), "0".repeat(64)), ip(1))).status).toBe(400);
+    expect((await post(r, "/api/policy", submission(policyTerms({ proposal_id: "P-0009" })), ip(2))).status).toBe(400);
+    expect((await post(r, "/api/policy", submission(policyTerms({ kind: "invoice_payment" })), ip(3))).status).toBe(400);
+    expect((await post(r, "/api/policy", submission(policyTerms(), undefined, "stranger"), ip(4))).status).toBe(403);
+    const inbox = ((await json(await push(r, state))) as { inbox: { kind: string; proposal_id: string }[] }).inbox;
+    expect(inbox).toEqual([expect.objectContaining({ kind: "policy", proposal_id: "C-0a1b2c3d" })]);
+  });
+});
+
 describe("enrolment from the phone", () => {
   it("gives the creation options only for the right code, and closes after five wrong ones", async () => {
     const { r } = relay();
@@ -225,8 +251,8 @@ describe("enrolment from the phone", () => {
 
 describe("pages", () => {
   const pages: Pages = {
-    dashboard: "<!doctype html><title>d</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", client: "export {};", css: "body{}",
-    csp: { dashboard: "default-src 'none'; script-src 'sha256-x'", approve: "default-src 'none'; script-src 'self'", enrol: "default-src 'none'; script-src 'self'" },
+    dashboard: "<!doctype html><title>d</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", policy: "<!doctype html><title>p</title>", client: "export {};", css: "body{}",
+    csp: { dashboard: "default-src 'none'; script-src 'sha256-x'", approve: "default-src 'none'; script-src 'self'", enrol: "default-src 'none'; script-src 'self'", policy: "default-src 'none'; script-src 'self'" },
   };
   const page = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages);
 
@@ -236,6 +262,7 @@ describe("pages", () => {
     expect(await d.text()).toBe(pages.dashboard);
     expect(page("/approve/P-0001")!.headers.get("content-security-policy")).toBe(pages.csp.approve);
     expect(page("/enrol")!.headers.get("content-security-policy")).toBe(pages.csp.enrol);
+    expect(await page("/policy")!.text()).toBe(pages.policy);
     const js = page("/assets/approve.js")!;
     expect(js.headers.get("content-type")).toMatch(/^text\/javascript/);
     expect(page("/assets/approve.css")!.headers.get("content-type")).toMatch(/^text\/css/);

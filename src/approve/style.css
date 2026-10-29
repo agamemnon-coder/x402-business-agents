@@ -129,3 +129,14 @@ input.code {
   text-transform: uppercase; padding: 12px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface-2); color: var(--text); width: 100%;
 }
 .enrol .sheet-status { padding: 0; }
+
+/* The CFO policy editor */
+.policy { display: grid; gap: 10px; margin: 0 0 12px; }
+.policy-row { display: grid; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.policy-label { font-weight: 650; }
+.policy-now { color: var(--muted); font-size: 14px; }
+.policy-input {
+  font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--border);
+  background: var(--surface-2); color: var(--text); width: 100%; min-height: 48px;
+}
+main > button.confirm { width: 100%; margin-top: 4px; }

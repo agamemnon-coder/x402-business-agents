@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
-import { TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
+import { canonicalTerms, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { activePasskey, openEnrolment, openWindow } from "../src/passkey/ledger.js";
-import { processAssertion, processRegistration, type InboxItem } from "../src/passkey/process.js";
+import { processAssertion, processPolicyRequest, processRegistration, type InboxItem } from "../src/passkey/process.js";
 import { assertionSha256, challengeFor, reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { FakeAuthenticator } from "./fakes/authenticator.js";
@@ -183,6 +183,42 @@ describe("approval by passkey", () => {
     }
     expect(await processAssertion(db, approval("P-0404", hash, signed), t0)).toMatchObject({ status: "refused", message: expect.stringMatching(/no proposal P-0404/) });
     expect(count(db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
+  });
+});
+
+describe("policy change from the phone", () => {
+  const change = { key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03" };
+  const termsOf = (over: Record<string, unknown> = {}) => ({
+    schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: "C-0a1b2c3d", expires_at: "2026-10-30T14:10:00Z", changes: [change], reason: "prices rising", ...over,
+  });
+  const request = (auth: FakeAuthenticator, terms: Record<string, unknown>, signedHash?: string) => {
+    const canonical = canonicalTerms(terms as Terms);
+    const hash = sha256Hex(canonical);
+    return item("policy", { canonical, terms_sha256: hash, credential: auth.sign({ challenge: challengeFor(signedHash ?? hash), origin: ORIGIN, rpId: RP, counter: 1 }) });
+  };
+
+  it("creates and approves the change the passkey signed, in one step", async () => {
+    const { db, auth } = await enrolled();
+    const out = await processPolicyRequest(db, request(auth, termsOf()), t0);
+    expect(out).toMatchObject({ status: "approved", proposalId: "C-0a1b2c3d" });
+    expect(db.prepare("SELECT kind, status, created_by FROM proposals").get()).toEqual({ kind: "policy_change", status: "APPROVED", created_by: "human" });
+    expect(db.prepare("SELECT method FROM approvals").get()).toEqual({ method: "passkey" });
+  });
+
+  it("creates nothing for an unsigned, stale, reused, far-off or malformed request", async () => {
+    const { db, auth } = await enrolled();
+    const cases: [InboxItem, RegExp][] = [
+      [request(auth, termsOf(), "ab".repeat(32)), /challenge/],
+      [request(auth, termsOf({ changes: [{ ...change, from: "0.05" }] })), /is now/],
+      [request(auth, termsOf({ expires_at: "2026-10-30T15:00:00Z" })), /expire/],
+      [request(auth, termsOf({ proposal_id: "P-0009" })), /C-/],
+      [request(auth, termsOf({ changes: [{ ...change, label: "Something else" }] })), /labelled/],
+      [item("policy", { canonical: "{}", terms_sha256: "0".repeat(64), credential: {} }), /malformed/],
+    ];
+    for (const [it_, reason] of cases) expect((await processPolicyRequest(db, it_, t0)).message).toMatch(reason);
+    expect(count(db, "SELECT COUNT(*) AS n FROM proposals")).toBe(0);
+    expect((await processPolicyRequest(db, request(auth, termsOf()), t0)).status).toBe("approved");
+    expect(await processPolicyRequest(db, request(auth, termsOf({ reason: "again" })), t0)).toMatchObject({ status: "refused", message: expect.stringMatching(/already exists|is now/) });
   });
 });
 

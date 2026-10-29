@@ -20,6 +20,8 @@ import { createProposal, nextProposalId } from "../../src/policy/approvals.js";
 import { relayConfig } from "../../src/relay/config.js";
 import { startLocalRelay } from "../../src/relay/local.js";
 import { RelayRunner } from "../../src/relay/runner.js";
+import { executePolicyChange } from "../../src/executors/policyChange.js";
+import { policyValue } from "../../src/policy/rules.js";
 
 const live = process.argv.includes("--live");
 const shots = resolve(process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "docs");
@@ -51,7 +53,8 @@ const url = cfg.url;
 const executed: string[] = [];
 const runner = new RelayRunner({
   db, cfg, fetch, log: (l) => console.log(`  runner: ${l}`),
-  execute: async (_db, id) => { executed.push(id); },
+  // Fake executor (nothing moves), except that a policy change is really applied to this throwaway ledger.
+  execute: async (d, id) => { executed.push(id); if (id.startsWith("C-")) executePolicyChange(d, id); },
 });
 const { code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin }, now);
 let syncing = true;
@@ -137,6 +140,22 @@ await page.waitForFunction(() => !(document.querySelector("button.confirm") as H
 await page.click("button.confirm");
 await page.waitForSelector(".verdict.bad", { timeout: 20_000 });
 check(/another option/.test((await page.textContent(".verdict-detail")) ?? ""), "the other option after B: refused by the runner");
+
+// The CFO policy editor: lower the sourcing agent's limit, sign it with the passkey, see it applied.
+await page.goto(`${url}/policy`);
+await page.waitForSelector(".policy-row input");
+await page.fill("#p0", "0.03");
+await page.fill("#reason", "supplier prices are rising");
+await page.screenshot({ path: join(shots, "policy-editor.png") });
+await page.click("main > button.confirm");
+await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
+check((await page.textContent(".sheet-title")) === "Policy change", "policy editor: the change opens the same confirm screen");
+check((await page.textContent(".sentence")) === "Change Sourcing agent: most per payment from no extra limit to 0.03. Reason: supplier prices are rising.", "policy editor: it says exactly what changes");
+await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 3000 });
+await page.screenshot({ path: join(shots, "policy-confirm.png") });
+await page.click("#sheet button.confirm");
+await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
+check(policyValue(db, "cap.sourcing") === "0.03", "policy editor: signed with the passkey, applied by the runner (sourcing limit 0.03)");
 
 syncing = false;
 await loop;

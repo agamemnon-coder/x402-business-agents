@@ -7,6 +7,7 @@ import { buildSnapshot, parseReview, PAYEE_NAMES, type Pending, type Snapshot } 
 import type { DB } from "../db/open.js";
 import { canonicalTerms, type Terms } from "../lib/terms.js";
 import { openWindow } from "../passkey/ledger.js";
+import { currentPolicy, type PolicyEntry } from "../policy/rules.js";
 
 export interface RelayProposal {
   proposal_id: string;
@@ -42,6 +43,8 @@ export interface RelayState {
     /** Lower-case address to the name the ledger knows it by; shown beside the address, never instead of it. */
     names: Record<string, string>;
     passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string }[] };
+    /** The CFO policy as it is now, for the phone's editor (it builds changes from these values). */
+    policy: PolicyEntry[];
   };
   enrolment: RelayEnrolment | null;
 }
@@ -81,7 +84,7 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string }, n
     version: 1,
     generated_at: now.toISOString(),
     snapshot: buildSnapshot(db, now),
-    approvals: { proposals, names, passkey: { rp_id: cfg.rpId, credentials } },
+    approvals: { proposals, names, passkey: { rp_id: cfg.rpId, credentials }, policy: currentPolicy(db) },
     enrolment: w && w.rp_id === cfg.rpId
       ? { window_id: w.window_id, challenge: w.challenge, user_id: w.user_id, user_name: cfg.label ?? "max", code_sha256: w.code_sha256, rp_id: w.rp_id, expires_at: w.expires_at }
       : null,

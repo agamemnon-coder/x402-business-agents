@@ -103,6 +103,8 @@ export interface Facts {
   /** How another option names this one: "option A: sell at 0.05 per query (margin 0.01)". */
   short: string;
   warnings: string[];
+  /** What the amount row is called on the confirm screen (an amount of money, or a policy's new value). */
+  amountLabel?: string;
   /** For the option card: a short name, and the one number that matters, big, with its unit. */
   label: string;
   big: string;
@@ -209,6 +211,36 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "policy_change") {
+    const changes = arr(t.changes).filter(isObj);
+    const shown = (v: unknown) => str(v) || "no extra limit";
+    const cents = (v: unknown) => (/^\d+\.\d{2}$/.test(str(v)) ? Number(str(v).replace(".", "")) : null);
+    const loosens = (c: Obj): boolean => {
+      const key = str(c.key);
+      const [from, to] = [cents(c.from), cents(c.to)];
+      if (key.startsWith("cap.") || key.startsWith("approval.")) return from !== null && (to === null || to > from);
+      if (key.endsWith("_floor")) return from !== null && to !== null && to < from;
+      if (key.startsWith("counterparty:")) return str(c.from) === "blocked" && str(c.to) === "allowed";
+      return false;
+    };
+    const one = changes.length === 1 ? changes[0]! : null;
+    return {
+      approvable: true,
+      title: "Policy change",
+      sentence: `${one ? `Change ${str(one.label)} from ${shown(one.from)} to ${shown(one.to)}` : `Change ${changes.length} policy settings`}. Reason: ${str(t.reason)}.`,
+      amount: one ? shown(one.to) : `${changes.length} settings`,
+      margin: null,
+      recipient: "nobody: no money moves",
+      rows: [...changes.map((c) => [str(c.label), `${shown(c.from)} → ${shown(c.to)}`] as [string, string]), ["Reason", str(t.reason)]],
+      short: "this policy change",
+      warnings: changes.filter(loosens).map((c) => `This loosens ${str(c.label)}`),
+      amountLabel: "New value",
+      label: "Policy change",
+      big: one ? shown(one.to) : String(changes.length),
+      unit: one ? str(one.label) : "settings",
+    };
+  }
+
   if (kind === "dev_test") {
     return {
       approvable: true, title: str(t.label), sentence: `${str(t.purpose)}. Approving it records the approval and moves no money.`,
@@ -220,6 +252,14 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   return {
     approvable: false, title: `Proposal of kind ${kind || "unknown"}`, sentence: "This kind of proposal cannot be approved on the phone.",
     amount: "", margin: null, recipient: "", rows: [], short: kind, warnings: [], label: kind || "unknown", big: "", unit: "",
+  };
+}
+
+/** The terms of a policy change made on the phone: its own id (C-…), ten minutes, the exact changes. */
+export function buildPolicyTerms(changes: { key: string; label: string; from: string; to: string }[], reason: string, now: Date, randomHex: string): Obj {
+  return {
+    schema: "kit11.approval-terms/v1", kind: "policy_change", proposal_id: `C-${randomHex}`,
+    expires_at: new Date(now.getTime() + 10 * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z"), changes, reason,
   };
 }
 
@@ -387,9 +427,127 @@ async function follow(ticket: string, into: HTMLElement, done: Node, what = ""):
   }
 }
 
+/** What the confirm screen needs besides the proposal: names, alternatives, the passkey, and where to send. */
+interface SheetContext {
+  names: Record<string, string>;
+  nots: string[];
+  enrolled: boolean;
+  credentials: { id: string }[];
+  /** The element to return focus to on Back. */
+  from: HTMLElement;
+  /** Sends the signed assertion; 202 means queued for the runner. */
+  send: (credential: Obj) => Promise<{ status: number; data: Obj }>;
+}
+
+/**
+ * The full-screen summary of one proposal (mis-tap prevention): built only from its hashed terms; Confirm arms
+ * after 0.8 s and only it starts the passkey, whose challenge is this proposal's hash; Back signs nothing.
+ */
+function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
+  const sheet = document.getElementById("sheet")!;
+  const f = describeTerms(terms, x.names);
+  const nots = x.nots;
+  const from = x.from;
+  const cd = el("span", "countdown big");
+  cd.dataset.expires = o.expires_at;
+  const confirm = el("button", "confirm", ["Confirm with Face ID"]) as HTMLButtonElement;
+  const backBtn = el("button", "secondary", ["Back"]) as HTMLButtonElement;
+  confirm.type = "button";
+  backBtn.type = "button";
+  // A double tap on the option must not land on Confirm: it arms after a moment.
+  confirm.disabled = true;
+  const arm = setTimeout(() => { confirm.disabled = !x.enrolled || countdown(o.expires_at).over; }, 800);
+  const body = el("div", "sheet-body", [
+    txt("p", "eyebrow", "You are approving"),
+    el("h2", "sheet-title", [f.title]),
+    txt("p", "sentence", f.sentence),
+    ...f.warnings.map((w) => txt("p", "alarm", w)),
+    el("dl", "facts", [
+      txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount),
+      ...(f.margin ? [txt("dt", "", "Margin"), txt("dd", "num", f.margin)] : []),
+      txt("dt", "", "Recipient"), txt("dd", "", f.recipient),
+      txt("dt", "", "Expires"), el("dd", "", [cd]),
+      txt("dt", "", "Hash"), el("dd", "hash", [txt("strong", "mono", o.terms_sha256.slice(0, 8)), txt("span", "mono", o.terms_sha256.slice(8))]),
+    ]),
+    nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
+    o.review ? el("div", "review", [txt("p", "eyebrow", `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
+    el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
+  ]);
+  const status = el("div", "sheet-status");
+  const actions = el("div", "sheet-actions", [backBtn, confirm]);
+  sheet.replaceChildren(el("div", "sheet-card", [body, status, actions]));
+  sheet.hidden = false;
+  sheet.setAttribute("role", "dialog");
+  sheet.setAttribute("aria-modal", "true");
+  sheet.setAttribute("aria-label", `Confirm ${f.title}`);
+  document.body.classList.add("locked");
+  tickCountdowns();
+  backBtn.focus();
+
+  const close = () => {
+    clearTimeout(arm);
+    sheet.hidden = true;
+    sheet.replaceChildren();
+    document.body.classList.remove("locked");
+    from.focus();
+  };
+  backBtn.addEventListener("click", close);
+  confirm.addEventListener("click", async () => {
+    confirm.disabled = true;
+    backBtn.disabled = true;
+    status.textContent = "Waiting for Face ID…";
+    const again = await checkOption(o);
+    if (!again.ok) {
+      status.textContent = `Not signed: ${again.problem}.`;
+      backBtn.disabled = false;
+      return;
+    }
+    if (Date.parse(o.expires_at) - Date.now() < 3000) {
+      status.textContent = "This proposal has expired. Nothing was signed.";
+      backBtn.disabled = false;
+      return;
+    }
+    let cred: PublicKeyCredential | null;
+    try {
+      cred = (await navigator.credentials.get({
+        publicKey: {
+          challenge: hexToBytes(o.terms_sha256),
+          rpId: location.hostname,
+          allowCredentials: x.credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })),
+          userVerification: "required",
+          timeout: 60_000,
+        },
+      })) as PublicKeyCredential | null;
+    } catch (e) {
+      status.textContent = passkeyError(e);
+      backBtn.disabled = false;
+      confirm.disabled = false;
+      return;
+    }
+    if (!cred) {
+      status.textContent = "Cancelled. Nothing was signed.";
+      backBtn.disabled = false;
+      confirm.disabled = false;
+      return;
+    }
+    status.textContent = "Sending the signature…";
+    const sent = await x.send(serializeAssertion(cred))
+      .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
+    if (sent.status !== 202) {
+      status.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}. Nothing was approved.`;
+      backBtn.disabled = false;
+      return;
+    }
+    const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
+    home.href = "/";
+    actions.remove();
+    await follow(str(sent.data.ticket), body, home, f.title);
+    status.textContent = "";
+  });
+}
+
 async function approvePage(): Promise<void> {
   const app = document.getElementById("app")!;
-  const sheet = document.getElementById("sheet")!;
   const id = decodeURIComponent(location.pathname.split("/").pop() ?? "");
   const { status, data } = await api("/api/approvals").catch(() => ({ status: 0, data: {} as Obj }));
   if (status !== 200) {
@@ -444,103 +602,10 @@ async function approvePage(): Promise<void> {
   tickCountdowns();
 
   function openSummary(o: PhoneProposal, terms: Obj, from: HTMLButtonElement): void {
-    const f = describeTerms(terms, a.names);
-    const nots = notList(o, checked.filter((c) => c.check.ok).map((c) => c.p), a.names);
-    const cd = el("span", "countdown big");
-    cd.dataset.expires = o.expires_at;
-    const confirm = el("button", "confirm", ["Confirm with Face ID"]) as HTMLButtonElement;
-    const backBtn = el("button", "secondary", ["Back"]) as HTMLButtonElement;
-    confirm.type = "button";
-    backBtn.type = "button";
-    // A double tap on the option must not land on Confirm: it arms after a moment.
-    confirm.disabled = true;
-    const arm = setTimeout(() => { confirm.disabled = !enrolled || countdown(o.expires_at).over; }, 800);
-    const body = el("div", "sheet-body", [
-      txt("p", "eyebrow", "You are approving"),
-      el("h2", "sheet-title", [f.title]),
-      txt("p", "sentence", f.sentence),
-      ...f.warnings.map((w) => txt("p", "alarm", w)),
-      el("dl", "facts", [
-        txt("dt", "", "Amount"), txt("dd", "num", f.amount),
-        ...(f.margin ? [txt("dt", "", "Margin"), txt("dd", "num", f.margin)] : []),
-        txt("dt", "", "Recipient"), txt("dd", "", f.recipient),
-        txt("dt", "", "Expires"), el("dd", "", [cd]),
-        txt("dt", "", "Hash"), el("dd", "hash", [txt("strong", "mono", o.terms_sha256.slice(0, 8)), txt("span", "mono", o.terms_sha256.slice(8))]),
-      ]),
-      nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
-      o.review ? el("div", "review", [txt("p", "eyebrow", `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
-      el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
-    ]);
-    const status = el("div", "sheet-status");
-    const actions = el("div", "sheet-actions", [backBtn, confirm]);
-    sheet.replaceChildren(el("div", "sheet-card", [body, status, actions]));
-    sheet.hidden = false;
-    sheet.setAttribute("role", "dialog");
-    sheet.setAttribute("aria-modal", "true");
-    sheet.setAttribute("aria-label", `Confirm ${f.title}`);
-    document.body.classList.add("locked");
-    tickCountdowns();
-    backBtn.focus();
-
-    const close = () => {
-      clearTimeout(arm);
-      sheet.hidden = true;
-      sheet.replaceChildren();
-      document.body.classList.remove("locked");
-      from.focus();
-    };
-    backBtn.addEventListener("click", close);
-    confirm.addEventListener("click", async () => {
-      confirm.disabled = true;
-      backBtn.disabled = true;
-      status.textContent = "Waiting for Face ID…";
-      const again = await checkOption(o);
-      if (!again.ok) {
-        status.textContent = `Not signed: ${again.problem}.`;
-        backBtn.disabled = false;
-        return;
-      }
-      if (Date.parse(o.expires_at) - Date.now() < 3000) {
-        status.textContent = "This proposal has expired. Nothing was signed.";
-        backBtn.disabled = false;
-        return;
-      }
-      let cred: PublicKeyCredential | null;
-      try {
-        cred = (await navigator.credentials.get({
-          publicKey: {
-            challenge: hexToBytes(o.terms_sha256),
-            rpId: location.hostname,
-            allowCredentials: a.passkey.credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })),
-            userVerification: "required",
-            timeout: 60_000,
-          },
-        })) as PublicKeyCredential | null;
-      } catch (e) {
-        status.textContent = passkeyError(e);
-        backBtn.disabled = false;
-        confirm.disabled = false;
-        return;
-      }
-      if (!cred) {
-        status.textContent = "Cancelled. Nothing was signed.";
-        backBtn.disabled = false;
-        confirm.disabled = false;
-        return;
-      }
-      status.textContent = "Sending the signature…";
-      const sent = await api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, credential: serializeAssertion(cred) })
-        .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
-      if (sent.status !== 202) {
-        status.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}. Nothing was approved.`;
-        backBtn.disabled = false;
-        return;
-      }
-      const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
-      home.href = "/";
-      actions.remove();
-      await follow(str(sent.data.ticket), body, home, f.title);
-      status.textContent = "";
+    openSheet(o, terms, {
+      names: a.names, nots: notList(o, checked.filter((c) => c.check.ok).map((c) => c.p), a.names), enrolled,
+      credentials: a.passkey.credentials, from,
+      send: (credential) => api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, credential }),
     });
   }
 }
@@ -612,10 +677,116 @@ function enrolPage(): void {
   });
 }
 
+interface PolicyRow {
+  key: string;
+  label: string;
+  unit: string;
+  kind: "money" | "optional_money" | "choice";
+  choices?: string[];
+  value: string;
+  display: string;
+}
+
+/**
+ * The CFO policy editor: every setting with its value now; a change is written here, shown on the same full-screen
+ * summary and signed with Face ID. The runner checks it again and applies it; nothing changes without the passkey.
+ */
+async function policyPage(): Promise<void> {
+  const app = document.getElementById("app")!;
+  const { status, data } = await api("/api/approvals").catch(() => ({ status: 0, data: {} as Obj }));
+  if (status !== 200) {
+    app.replaceChildren(txt("p", "alarm", status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the relay."));
+    return;
+  }
+  const a = data as unknown as Approvals & { policy: PolicyRow[] };
+  const enrolled = a.passkey.credentials.length > 0;
+  const back = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
+  back.href = "/";
+  const fields = a.policy.map((e, i) => {
+    const id = `p${i}`;
+    let input: HTMLInputElement | HTMLSelectElement;
+    if (e.kind === "choice") {
+      const sel = document.createElement("select");
+      for (const c of e.choices ?? []) {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        sel.appendChild(opt);
+      }
+      sel.value = e.value;
+      input = sel;
+    } else {
+      const inp = document.createElement("input");
+      inp.inputMode = "decimal";
+      inp.value = e.value;
+      inp.placeholder = e.kind === "optional_money" ? "none" : "0.00";
+      inp.autocomplete = "off";
+      input = inp;
+    }
+    input.id = id;
+    input.className = "policy-input";
+    const label = el("label", "policy-label", [e.label, e.unit ? txt("span", "muted", ` (${e.unit})`) : null]);
+    label.setAttribute("for", id);
+    const row = el("div", "policy-row", [label, txt("span", "policy-now", `now: ${e.display}`), input]);
+    const read = () => {
+      const v = input.value.trim();
+      return e.kind === "optional_money" && (v === "" || v.toLowerCase() === "none") ? "" : v;
+    };
+    return { e, row, read };
+  });
+  const reason = document.createElement("input");
+  reason.id = "reason";
+  reason.className = "policy-input";
+  reason.maxLength = 300;
+  reason.placeholder = "Why, in one line";
+  const reasonLabel = el("label", "policy-label", ["Reason"]);
+  reasonLabel.setAttribute("for", "reason");
+  const review = el("button", "confirm", ["Review change"]) as HTMLButtonElement;
+  review.type = "button";
+  const note = el("p", "sheet-status");
+  app.replaceChildren(...[
+    el("div", "toprow", [back]),
+    txt("h1", "", "CFO policy"),
+    txt("p", "lead", "Limits the agents work within, inside their mandates on chain. A change needs your passkey and takes effect at once."),
+    enrolled ? null : txt("p", "warn-box", "No passkey is enrolled yet, so no change can be signed here."),
+    el("div", "policy", fields.map((f) => f.row)),
+    el("div", "policy-row", [reasonLabel, reason]),
+    review,
+    note,
+  ].filter((n): n is HTMLElement => n !== null));
+
+  review.addEventListener("click", async () => {
+    const changes = fields.filter((f) => f.read() !== f.e.value).map((f) => ({ key: f.e.key, label: f.e.label, from: f.e.value, to: f.read() }));
+    if (changes.length === 0) {
+      note.textContent = "Nothing changed.";
+      return;
+    }
+    if (reason.value.trim() === "") {
+      note.textContent = "Say why, in one line.";
+      return;
+    }
+    note.textContent = "";
+    const hex = Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, "0")).join("");
+    const now = new Date();
+    const terms = buildPolicyTerms(changes, reason.value.trim(), now, hex);
+    const canonical = canonicalize(terms);
+    const hash = await sha256Hex(canonical);
+    const o: PhoneProposal = {
+      proposal_id: str(terms.proposal_id), kind: "policy_change", group: str(terms.proposal_id), canonical, terms_sha256: hash,
+      expires_at: str(terms.expires_at), created_by: "human", created_at: now.toISOString(), review: null,
+    };
+    openSheet(o, terms, {
+      names: a.names, nots: [], enrolled, credentials: a.passkey.credentials, from: review,
+      send: (credential) => api("/api/policy", { canonical, terms_sha256: hash, credential }),
+    });
+  });
+}
+
 export function boot(): void {
   setInterval(tickCountdowns, 1000);
   if (document.body.dataset.page === "approve") void approvePage();
   if (document.body.dataset.page === "enrol") enrolPage();
+  if (document.body.dataset.page === "policy") void policyPage();
 }
 
 if (typeof document !== "undefined") boot();
