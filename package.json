@@ -11,7 +11,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "health": "tsx src/cli/health.ts"
+    "health": "tsx src/cli/health.ts",
+    "bootstrap": "tsx src/cli/bootstrap.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

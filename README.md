@@ -19,6 +19,7 @@ Built for the Airwallex Agentic Banking Hackathon, Starter Kit 11 (x402 Business
 | Approvals | `src/policy/approvals.ts` | Proposal → approval (typed 8-hex prefix) → single-use execution guard |
 | Ledger | `src/db/schema.sql` | SQLite with unique keys for every idempotent operation |
 | Audit log | `src/audit/log.ts` | Append-only, hash-chained; the database refuses updates and deletes |
+| Bootstrap | `src/cli/bootstrap.ts` | Idempotent: accounts, 20.00 *USDZ into B, four mandates bound live ([run log](docs/runs/2026-10-29-bootstrap.md)) |
 | Airwallex | `src/airwallex/client.ts` | Sandbox-only client: token cache, one queue at ≤ 5/s, 429 backoff, lost answers reported as ambiguous |
 
 ```sh
