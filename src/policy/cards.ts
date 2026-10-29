@@ -8,6 +8,7 @@ import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import type { Card, CardLimits, CardTransaction, IssuingRail } from "../airwallex/issuing.js";
 import { cardLimits, frozen } from "./rules.js";
+import { stopped, velocityObserve } from "./velocity.js";
 
 export interface CardRow {
   /** An own agent (sourcing, support, treasury) or an outside one (ext:<name>, P1). */
@@ -44,13 +45,13 @@ export function storeCard(db: DB, agent: string, card: Card, now: Date): void {
   ).run(agent, card.cardholderId, card.cardId, card.last4, card.nickname, card.limits.currency, card.limits.perTxCents, card.limits.monthlyCents, card.status, now.toISOString(), now.toISOString());
 }
 
-/** The status the policy wants every card in: frozen by the emergency stop, or active. */
-const wantStatus = (db: DB): "ACTIVE" | "INACTIVE" => (frozen(db) ? "INACTIVE" : "ACTIVE");
+/** The status the policy wants a card in: frozen by the emergency stop or by its agent's velocity stop, or active. */
+export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) ? "INACTIVE" : "ACTIVE");
 
 /** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
 export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Card, now: Date): Promise<boolean> {
   let changed = false;
-  const status = wantStatus(db);
+  const status = wantCardStatus(db, agent);
   if (card.status !== status) {
     let after: Card;
     try {
@@ -59,7 +60,7 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
       throw new Error(`the ${agent} agent's card was not ${status === "INACTIVE" ? "frozen" : "thawed"} at Airwallex: ${(e as Error).message}`);
     }
     if (after.status !== status) throw new Error(`the ${agent} agent's card is ${after.status} at Airwallex, not ${status}`);
-    audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4 }, now);
+    audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4, ...(status === "INACTIVE" ? { why: frozen(db) ? "emergency stop" : "velocity limit" } : {}) }, now);
     card = after;
     changed = true;
   }
@@ -123,7 +124,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
   const changed: string[] = [];
   for (const row of cardRows(db)) {
     const want = cardLimits(db, row.agent);
-    if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantStatus(db)) continue;
+    if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent)) continue;
     await syncOne(db, rail, row.agent, await rail.getCard(row.card_id), now);
     changed.push(row.agent);
   }
@@ -185,6 +186,10 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
       agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency,
       ...(t.approved ? {} : { reason: t.failureReason ?? t.status }), ...(purpose ? { purpose } : {}), source,
     }, now);
+    // Counted against the agent's velocity limits at the moment it happened; a breach stops the agent, and the next
+    // card sync (every few seconds on the runner) freezes its card at Airwallex.
+    const at = Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now;
+    velocityObserve(db, card.agent, t.amountCents, t.approved, at);
     return true;
   }).immediate();
 }

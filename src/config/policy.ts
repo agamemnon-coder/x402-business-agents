@@ -44,6 +44,19 @@ export const TARGET_FREE_EUR_CENTS = 150_000;
 /** A mandate change waits up to an hour for its approver; it carries no quote that could expire sooner. */
 export const MANDATE_PROPOSAL_TTL_MS = 60 * 60 * 1000;
 
+/**
+ * Velocity limits (security item 2): an agent that pays more often or more in total than this, in a sliding minute or
+ * hour, is stopped by code at once; only the CFO's Face ID lifts the stop. Set well above the busiest live run so far
+ * (rehearsal 3: the operations agent peaked at 18 payments in a minute and 52 in an hour). Metal amounts are *USDZ
+ * cents, card amounts EUR cents; a declined card attempt counts towards the minute, not towards the amount.
+ */
+export const VELOCITY: Record<Agent | "outside", { perMinute: number; usdzPerHourCents: number; eurPerHourCents: number }> = {
+  sourcing: { perMinute: 30, usdzPerHourCents: 400, eurPerHourCents: 10_000 },
+  support: { perMinute: 10, usdzPerHourCents: 150, eurPerHourCents: 15_000 },
+  treasury: { perMinute: 5, usdzPerHourCents: 800, eurPerHourCents: 5_000 },
+  outside: { perMinute: 10, usdzPerHourCents: 0, eurPerHourCents: 10_000 },
+};
+
 /** A delivered stock level that differs from the supplier's correction by more than this many units is refunded. */
 export const DATA_TOLERANCE_UNITS = 0;
 

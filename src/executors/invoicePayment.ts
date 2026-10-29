@@ -4,6 +4,7 @@
 // A lost answer is resolved by looking the request_id up, never by a blind resend with a new id.
 
 import { counterpartyAllowed, frozen } from "../policy/rules.js";
+import { stopped } from "../policy/velocity.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import type { AirwallexRail, SandboxSim, Transfer } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
@@ -25,6 +26,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     // The CFO may block a payee after the approval: checked again here, before Airwallex is called (review L2).
     if (!counterpartyAllowed(db, t.beneficiary_name)) throw new Error(`${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`);
     if (frozen(db)) throw new Error("the CFO pulled the emergency stop; nothing is paid until it is lifted");
+    if (stopped(db, "treasury")) throw new Error("the finance agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop");
     if (t.conversion) {
       if (Date.parse(t.conversion.valid_to) - 30_000 <= now().getTime()) throw new Error(`quote ${t.conversion.quote_id} expired at ${t.conversion.valid_to}; approval void`);
       const q = db.prepare("SELECT used_by_conversion FROM fx_quotes WHERE quote_id = ?").get(t.conversion.quote_id) as { used_by_conversion: string | null } | undefined;

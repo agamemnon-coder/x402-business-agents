@@ -9,6 +9,7 @@ import { fromCents } from "../lib/money.js";
 import { metalAgent } from "../metal/agentCli.js";
 import { activeMandate } from "../metal/mandate.js";
 import { capRefusal } from "../policy/rules.js";
+import { velocityGate } from "../policy/velocity.js";
 
 export type RefundOutcome = "PAID" | "REFUSED" | "PENDING" | "HELD";
 
@@ -43,8 +44,8 @@ export async function refundSale(
       .run(r.sale_id, paymentId, r.amount_cents, r.to, r.proposal_id ?? null, r.dispute_id);
   }
 
-  // The CFO policy's limit per refund, checked before anything is signed.
-  const refusal = capRefusal(db, "support", r.amount_cents);
+  // The CFO policy's limit per refund and the velocity limits, checked before anything is signed.
+  const refusal = capRefusal(db, "support", r.amount_cents) ?? velocityGate(db, "support", "metal", r.amount_cents);
   if (refusal) {
     db.prepare("UPDATE refunds SET outcome = 'REFUSED', refusal_reason = ? WHERE sale_id = ?").run(refusal, r.sale_id);
     audit(db, "support", "refund.refused", String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx: null, reason: refusal });

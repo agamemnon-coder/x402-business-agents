@@ -308,6 +308,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
 <details class="note" id="note"><summary><span data-icon="info"></span>Test money, real systems: Airwallex sandbox and Metal testnet · details</summary>
   <p>One CFO policy for both rails: Airwallex cards and bank transfers, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, amounts are in USDZ, Metal's test dollars, shown here as "test USD". The step from test USD to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate.</p></details>
 <div class="frozen" id="frozen" hidden></div>
+<div class="frozen" id="stopped" hidden></div>
 
 <!-- For guests: what this is, and the way to the recorded run. -->
 <div id="landing" hidden>
@@ -684,6 +685,11 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
       fz.replaceChildren(icon("snowflake"), txt("span", "", "Emergency stop: every agent payment is refused and every card is frozen at Airwallex."),
         txt("small", "", "By " + d.frozen.by + (d.frozen.since ? " at " + hm(d.frozen.since) : "") + (d.frozen.reason ? ": " + d.frozen.reason : "") + ". Lifting it needs a proposal and Face ID."));
     } else fz.hidden = true;
+    // Agents stopped by code for breaking a velocity limit: the rest keep working; Face ID lifts each stop.
+    var st = document.getElementById("stopped"), stops = d.stopped || [];
+    st.hidden = !stops.length;
+    if (stops.length) st.replaceChildren(icon("octagon-x"), txt("span", "", stops.map(function (x) { return agentName(x.agent); }).join(", ") + " stopped automatically: velocity limit."),
+      txt("small", "", stops.map(function (x) { return plain(x.reason) + (x.since ? " at " + hm(x.since) : ""); }).join("; ") + ". Every payment it tries is refused and its card is frozen; lifting it needs a proposal and Face ID."));
     document.getElementById("stop").hidden = !d.relay || !!d.frozen || !!d.recorded;
     document.getElementById("auditline").textContent = "Audit log: " + d.audit.rows + " rows, chain " + (d.audit.intact ? "intact" : "BROKEN");
     document.getElementById("passkey").textContent = d.passkey.label

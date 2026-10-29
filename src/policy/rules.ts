@@ -6,8 +6,9 @@ import { AGENTS, CARDS, REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, t
 import { agentName } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
+import { stopped } from "./velocity.js";
 
-export type PolicyKey = "freeze" | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
+export type PolicyKey = "freeze" | `stop.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
 
 export interface Rule {
   key: PolicyKey;
@@ -44,6 +45,8 @@ const STATIC: Rule[] = [
   { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
   // Each agent's company card at Airwallex (K2). The card itself is synced to these, so Airwallex declines the rest.
   ...AGENTS.flatMap((a): Rule[] => [
+    // Set to on by code when the agent breaks a velocity limit (src/policy/velocity.ts); off again only with Face ID.
+    { key: `stop.${a}`, label: `${agentName(a)}: stopped (velocity limit)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
     { key: `card.${a}.per_tx`, label: `${agentName(a)}'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(CARDS[a].perTxCents) },
     { key: `card.${a}.monthly`, label: `${agentName(a)}'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(CARDS[a].monthlyCents) },
   ]),
@@ -54,6 +57,7 @@ export function rules(db: DB): Rule[] {
   // An outside agent's card, once the CFO approved it: the same limits as our own agents', starting from what was approved.
   const outside = (db.prepare("SELECT agent_id, display_name, per_tx_cents, monthly_cents FROM external_agents WHERE status = 'ACTIVE' ORDER BY agent_id").all() as
     { agent_id: string; display_name: string; per_tx_cents: number; monthly_cents: number }[]).flatMap((x): Rule[] => [
+    { key: `stop.${x.agent_id}`, label: `${x.display_name} (outside agent): stopped (velocity limit)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
     { key: `card.${x.agent_id}.per_tx`, label: `${x.display_name} (outside agent)'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(x.per_tx_cents) },
     { key: `card.${x.agent_id}.monthly`, label: `${x.display_name} (outside agent)'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(x.monthly_cents) },
   ]);
@@ -113,6 +117,7 @@ export function frozen(db: DB): boolean {
 /** Why a payment of this size must not be signed, or null if the policy allows it. */
 export function capRefusal(db: DB, agent: Agent, cents: number): string | null {
   if (frozen(db)) return `frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the ${agent} agent signs nothing`;
+  if (stopped(db, agent)) return `stopped_by_velocity: the ${agent} agent was stopped automatically (velocity limit); the CFO lifts it with Face ID`;
   const cap = policyCapCents(db, agent);
   return cap !== null && cents > cap ? `policy_cap_exceeded: ${fromCents(cents)} is over the ${agent} limit of ${fromCents(cap)}` : null;
 }
@@ -145,6 +150,6 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
-  if (c.key === "freeze") return c.from === "on" && c.to !== "on";
+  if (c.key === "freeze" || c.key.startsWith("stop.")) return c.from === "on" && c.to !== "on";
   return true;
 }

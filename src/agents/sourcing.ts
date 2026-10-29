@@ -9,6 +9,7 @@ import { findSettlementByNonce, payUnderMandate } from "../metal/pay.js";
 import type { UpstreamResult } from "../servers/seller.js";
 import { SUPPLIER_ROUTE } from "../servers/supplier.js";
 import { capRefusal } from "../policy/rules.js";
+import { velocityGate } from "../policy/velocity.js";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { fromCents, toCents } from "../lib/money.js";
 
@@ -43,8 +44,9 @@ export class SourcingAgent {
   async buy(seq: number): Promise<UpstreamResult> {
     this.mandate ??= await activeMandate("sourcing");
     const started = Date.now() - 60_000;
-    // The CFO policy's limit is checked on the offer before anything is signed; the mandate's cap stays the outer wall.
-    const out = await payUnderMandate(this.mandate, `${this.supplierBase}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents) => capRefusal(this.db, "sourcing", cents));
+    // The CFO policy's limit and the velocity limits are checked on the offer before anything is signed; the mandate's
+    // cap stays the outer wall.
+    const out = await payUnderMandate(this.mandate, `${this.supplierBase}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents) => capRefusal(this.db, "sourcing", cents) ?? velocityGate(this.db, "sourcing", "metal", cents));
     const now = new Date().toISOString();
     const insert = this.db.prepare(
       "INSERT INTO upstream_purchases (price_cents, nonce, tx_hash, outcome, refusal_reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",

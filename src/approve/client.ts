@@ -136,7 +136,7 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
-  if (c.key === "freeze") return c.from === "on" && c.to !== "on";
+  if (c.key === "freeze" || c.key.startsWith("stop.")) return c.from === "on" && c.to !== "on";
   return true;
 }
 

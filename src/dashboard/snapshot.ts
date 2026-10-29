@@ -8,6 +8,8 @@ import { MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { cardLimits, frozen, policyValue } from "../policy/rules.js";
+import { wantCardStatus } from "../policy/cards.js";
+import { stopReason } from "../policy/velocity.js";
 import { CARDS, type Agent } from "../config/policy.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
@@ -139,6 +141,8 @@ export interface Snapshot {
   clearing: ClearingView | null;
   /** The emergency stop, while it is on: who pulled it, when, and why. */
   frozen: { since: string; by: string; proposal_id: string; reason: string } | null;
+  /** Agents stopped by code for breaking a velocity limit (security item 2); the CFO lifts each with Face ID. */
+  stopped: { agent: string; since: string; reason: string }[];
   /** Top of the page: what the agents did alone, what waits for the CFO, what was blocked (J4). */
   counts: { alone: number; waiting: number; blocked: number };
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
@@ -361,7 +365,7 @@ function cards(db: DB, now: Date): CardView[] {
       agent: c.agent, name: ext ? `${ext.display_name} (outside agent)` : `${c.agent} agent`, last4: c.last4,
       buys: ext ? ext.purpose : (CARDS[c.agent as Agent]?.buys ?? ""), per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
       spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent),
-      in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === (frozen(db) ? "INACTIVE" : "ACTIVE"),
+      in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === wantCardStatus(db, c.agent),
       frozen: c.status === "INACTIVE", recent,
     };
   });
@@ -515,7 +519,8 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "clearing.withdrawn": return out(`Our clearing earnings of ${str(p.amount)} USDZ went to the business account`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
     case "sale.prepaid_not_offered": return out(`Prepaid clearing not offered for stock check #${s}: ${str(p.reason).replace(/^[a-z_]+: /, "")}; the buyer uses the mandate route`, "info");
     case "sale.prepaid_undelivered": return out(`Stock check #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
-    case "card.frozen": return out(`Emergency stop: Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal");
+    case "velocity.tripped": return out(`Stopped automatically: ${str(p.reason)}. Every payment it tries is refused until the CFO lifts the stop with Face ID`, "refusal");
+    case "card.frozen": return out(`${str(p.why) === "velocity limit" ? "Velocity limit" : "Emergency stop"}: Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal");
     case "card.thawed": return out(`${capFirst(cardOwner(str(p.agent)))}'s card •••• ${str(p.last4)} is active again`, "approval");
     case "payee.change_requested": return out(`${str(p.vendor)}'s bank details: a change to a ${str(p.to_country)} account ending ${str(p.to_last4)} was requested (${s}); nothing changes until a person verifies it with the supplier and the CFO approves`, "approval");
     case "payee.change_verified": return out(`${str(p.by)} verified ${s} with ${str(p.vendor)}: ${str(p.how)}`, "approval");
@@ -541,7 +546,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
 /** Stopped by a check or a person (payments refused on chain or by the card are counted from their own tables). */
 const BLOCKED_EVENTS = new Set([
   "sale.settle_failed", "claude.rejected", "proposal.rejected", "refund.refused", "sweep.refused",
-  "invoice.fraud_suspected", "document.injection_flagged", "passkey.refused",
+  "invoice.fraud_suspected", "document.injection_flagged", "passkey.refused", "velocity.tripped",
 ]);
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
@@ -561,10 +566,11 @@ export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
   "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
-  "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered",
+  "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered", "velocity.tripped",
 ]);
 
 export const REFUSAL_WHAT: Record<string, string> = {
+  "velocity.tripped": "Agent stopped: velocity limit",
   "upstream.refused": "Supplier purchase refused",
   "upstream.in_doubt": "Supplier purchase unconfirmed",
   "sale.settle_failed": "Sale not settled",
@@ -635,7 +641,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   const merged = new Set(rows.filter((r) => r.event === "card.duplicate_merged").map((r) => r.subject));
   const refusals: Refusal[] = rows.filter((r) => REFUSAL_EVENTS.has(r.event) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).reverse().slice(0, 30).map((r) => {
     const d = describe(r, saleOf);
-    const agent = Object.entries(AGENT_OF).find(([k]) => r.event.startsWith(k))?.[1] ?? r.actor;
+    const agent = r.event === "velocity.tripped" && r.subject ? r.subject : Object.entries(AGENT_OF).find(([k]) => r.event.startsWith(k))?.[1] ?? r.actor;
     return { seq: r.seq, ts: r.ts, agent, what: REFUSAL_WHAT[r.event] ?? r.event, reason: d.text };
   });
 
@@ -654,6 +660,8 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     cards: cards(db, now),
     clearing: clearingView(db),
     frozen: frozenView(db, rows),
+    stopped: (db.prepare("SELECT key FROM settings WHERE key LIKE 'stop.%' AND value = 'on' ORDER BY key").all() as { key: string }[])
+      .map((r) => r.key.slice("stop.".length)).map((agent) => ({ agent, ...stopReason(db, agent)! })),
     counts: counts(db, rows, pending.filter((p) => !p.expired).length),
     passkey: passkeyInfo(db, now),
   };

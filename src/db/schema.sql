@@ -409,3 +409,15 @@ CREATE TABLE IF NOT EXISTS cosignatures (
   PRIMARY KEY (proposal_id, credential_id),
   UNIQUE (proposal_id, person)
 );
+
+-- Velocity limits (security item 2): each payment an agent makes, as counted against its limits per minute and hour.
+-- Metal payments are counted before they are signed; card charges as Airwallex reports them (declines included).
+CREATE TABLE IF NOT EXISTS velocity_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent TEXT NOT NULL,
+  rail TEXT NOT NULL CHECK (rail IN ('metal', 'card')),
+  cents INTEGER NOT NULL CHECK (cents >= 0),
+  approved INTEGER NOT NULL CHECK (approved IN (0, 1)),
+  at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS velocity_by_agent ON velocity_events (agent, at);
