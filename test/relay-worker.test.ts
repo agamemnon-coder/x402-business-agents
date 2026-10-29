@@ -3,7 +3,7 @@
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
-import { canonicalTerms, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
+import { canonicalTerms, rejectionSha256, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { buildRelayState, stateHash, type RelayState } from "../src/relay/state.js";
@@ -146,6 +146,22 @@ describe("passkey approvals from the phone", () => {
     expect((await post(r, "/api/assertions", assertion(), ip)).status).toBe(429);
     at("2026-10-30T14:10:01Z");
     expect((await post(r, "/api/assertions", assertion({ terms_sha256: "1".repeat(64) }), ip)).status).toBe(409);
+  });
+
+  it("queues a rejection only when it signs the rejection hash, and shows the verdict 'rejected'", async () => {
+    const { r } = relay();
+    const { state } = runnerState({ enrolled: true });
+    await push(r, state);
+    const rejectCd = clientData({ challenge: Buffer.from(rejectionSha256(HASH), "hex").toString("base64url") });
+    // An approval signature labelled as a rejection, and a rejection signature sent as an approval, are refused here.
+    expect((await post(r, "/api/assertions", assertion({ decision: "REJECTED" }))).status).toBe(400);
+    expect((await post(r, "/api/assertions", assertion({}, rejectCd), { "cf-connecting-ip": "10.2.0.1" })).status).toBe(400);
+    expect((await post(r, "/api/assertions", assertion({ decision: "MAYBE" }, rejectCd), { "cf-connecting-ip": "10.2.0.2" })).status).toBe(400);
+    const sent = await post(r, "/api/assertions", assertion({ decision: "REJECTED" }, rejectCd), { "cf-connecting-ip": "10.2.0.3" });
+    expect(sent.status).toBe(202);
+    const { ticket } = (await json(sent)) as { ticket: string };
+    await push(r, state, [{ ticket, status: "rejected", message: "P-0001 rejected" }]);
+    expect(await json(await get(r, `/api/tickets/${ticket}`))).toMatchObject({ status: "rejected", message: "P-0001 rejected" });
   });
 
   it("hands the queue to the runner and shows the runner's verdict on the ticket", async () => {

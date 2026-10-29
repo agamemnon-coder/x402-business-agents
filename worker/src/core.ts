@@ -34,7 +34,7 @@ const QUEUED_KEEP_MS = 30 * 60 * 1000;
 const PROPOSAL_ID = /^P-\d{4,}$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 const TICKET = /^[A-Za-z0-9_-]{22}$/;
-const ACK_STATUSES = new Set(["approved", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
+const ACK_STATUSES = new Set(["approved", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
 
 const COMMON_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
@@ -295,7 +295,9 @@ export class Relay {
     if (body === null) return error(413, "submission too large");
     const v = body?.value;
     if (!isObject(v) || typeof v.proposal_id !== "string" || !PROPOSAL_ID.test(v.proposal_id) || typeof v.terms_sha256 !== "string" || !HEX64.test(v.terms_sha256)
-      || !isObject(v.credential) || typeof v.credential.id !== "string" || !isObject(v.credential.response)) return error(400, "malformed submission");
+      || !isObject(v.credential) || typeof v.credential.id !== "string" || !isObject(v.credential.response)
+      || (v.decision !== undefined && v.decision !== "APPROVED" && v.decision !== "REJECTED")) return error(400, "malformed submission");
+    const rejecting = v.decision === "REJECTED";
     const s = this.state();
     if (!s) return error(503, "the runner has not connected yet");
     const p = s.approvals.proposals.find((x) => x.proposal_id === v.proposal_id);
@@ -304,8 +306,10 @@ export class Relay {
     }
     const credentialId = v.credential.id;
     if (!s.approvals.passkey.credentials.some((c) => c.id === credentialId)) return error(403, "this passkey is not the enrolled one");
-    if (!signedFor((v.credential.response as Record<string, unknown>).clientDataJSON, p.terms_sha256, new URL(req.url).origin)) {
-      return error(400, "this signature is not for these terms on this site");
+    // To reject, the passkey signs the hash derived from the terms hash (src/lib/terms.ts rejectionSha256).
+    const challenge = rejecting ? await sha256Hex(`kit11 reject v1 ${p.terms_sha256}`) : p.terms_sha256;
+    if (!signedFor((v.credential.response as Record<string, unknown>).clientDataJSON, challenge, new URL(req.url).origin)) {
+      return error(400, `this signature is not ${rejecting ? "a rejection of" : "for"} these terms on this site`);
     }
     if (this.queued("proposal_id = ?", p.proposal_id) >= MAX_QUEUED_PER_PROPOSAL || this.queued("1 = 1") >= MAX_QUEUED) {
       return error(429, "too many approvals are waiting for the runner; wait a moment");

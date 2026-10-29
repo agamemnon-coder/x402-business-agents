@@ -8,6 +8,7 @@ import {
   type AuthenticationResponseJSON, type AuthenticatorTransport, type RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import type { DB } from "../db/open.js";
+import { rejectionSha256 } from "../lib/terms.js";
 import { passkeyById, type EnrolmentWindow, type PasskeyRow } from "./ledger.js";
 
 const HEX64 = /^[0-9a-f]{64}$/;
@@ -83,16 +84,18 @@ export interface Check {
 }
 
 /**
- * `npm run verify`: every approval made with a passkey is checked again from the stored signature and the
- * pinned public key, against the hash the approval records. Needs no network and trusts no relay.
+ * `npm run verify`: every approval or rejection made with a passkey is checked again from the stored signature and
+ * the pinned public key, against the hash the decision records (a rejection: the rejection hash derived from it).
+ * Needs no network and trusts no relay.
  */
 export async function reverifyPasskeyApprovals(db: DB): Promise<Check[]> {
-  const approvals = db.prepare("SELECT proposal_id, approved_sha256 FROM approvals WHERE method = 'passkey' ORDER BY approval_id").all() as { proposal_id: string; approved_sha256: string }[];
+  const approvals = db.prepare("SELECT proposal_id, decision, approved_sha256 FROM approvals WHERE method = 'passkey' ORDER BY approval_id").all() as
+    { proposal_id: string; decision: "APPROVED" | "REJECTED"; approved_sha256: string }[];
   const checks: Check[] = [];
   for (const a of approvals) {
-    const what = `passkey approval ${a.proposal_id}`;
+    const what = `passkey ${a.decision === "APPROVED" ? "approval" : "rejection"} ${a.proposal_id}`;
     const fail = (detail: string) => checks.push({ ok: false, what, detail });
-    const s = db.prepare("SELECT * FROM passkey_assertions WHERE proposal_id = ? AND outcome = 'APPROVED'").get(a.proposal_id) as
+    const s = db.prepare("SELECT * FROM passkey_assertions WHERE proposal_id = ? AND outcome = ?").get(a.proposal_id, a.decision) as
       { assertion_sha256: string; credential_id: string; terms_sha256: string; assertion_json: string; verified_at: string } | undefined;
     if (!s) { fail("no stored signature"); continue; }
     const pk = passkeyById(db, s.credential_id);
@@ -101,9 +104,11 @@ export async function reverifyPasskeyApprovals(db: DB): Promise<Check[]> {
     if (Date.parse(pk.enrolled_at) > Date.parse(s.verified_at)) { fail("signed before the passkey was enrolled"); continue; }
     const response = JSON.parse(s.assertion_json) as AuthenticationResponseJSON;
     if (assertionSha256(response) !== s.assertion_sha256) { fail("the stored signature was changed"); continue; }
-    const v = await verifyApprovalSignature(response, a.approved_sha256, pk, 0);
+    const signed = a.decision === "APPROVED" ? a.approved_sha256 : rejectionSha256(a.approved_sha256);
+    const v = await verifyApprovalSignature(response, signed, pk, 0);
     if (!v.ok) { fail(v.reason); continue; }
-    checks.push({ ok: true, what, detail: `signed by ${pk.label}'s passkey ${pk.credential_id.slice(0, 8)} over ${a.approved_sha256.slice(0, 8)}…` });
+    const over = a.decision === "APPROVED" ? `over ${a.approved_sha256.slice(0, 8)}…` : `rejecting ${a.approved_sha256.slice(0, 8)}…`;
+    checks.push({ ok: true, what, detail: `signed by ${pk.label}'s passkey ${pk.credential_id.slice(0, 8)} ${over}` });
   }
   return checks;
 }

@@ -3,8 +3,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, type PhoneProposal } from "../src/approve/client.js";
-import { sha256Hex } from "../src/lib/terms.js";
+import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, rejectionHash, type PhoneProposal } from "../src/approve/client.js";
+import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
 type Fixture = { proposal_id: string; kind: string; terms: Record<string, Json>; terms_sha256: string };
@@ -146,5 +146,11 @@ describe("the challenge", () => {
     expect(hexToBytes(h)).toHaveLength(32);
     expect(bytesToB64url(hexToBytes(h))).toBe(challengeFor(h));
     expect(bytesToB64url(b64urlToBytes(challengeFor(h)))).toBe(challengeFor(h));
+  });
+
+  it("to reject, is the rejection hash the runner derives, never the terms hash", async () => {
+    const h = byId("P-0004").terms_sha256;
+    expect(await rejectionHash(h)).toBe(rejectionSha256(h));
+    expect(await rejectionHash(h)).not.toBe(h);
   });
 });

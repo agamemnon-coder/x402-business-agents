@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS passkey_assertions (
   terms_sha256 TEXT NOT NULL,
   assertion_json TEXT NOT NULL,
   counter INTEGER NOT NULL,
-  outcome TEXT NOT NULL CHECK (outcome IN ('APPROVED', 'TOO_LATE')),
+  outcome TEXT NOT NULL CHECK (outcome IN ('APPROVED', 'TOO_LATE', 'REJECTED')),
   verified_at TEXT NOT NULL
 );
 

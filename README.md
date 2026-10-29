@@ -137,10 +137,15 @@ phone (pages, WebCrypto, passkey)  ⇄  relay Worker on Cloudflare  ⇄  runner 
   it does in one sentence, amount, margin, recipient, the options it is *not*, the countdown and the hash prefix.
   Only "Confirm with Face ID" there starts the passkey (it arms after 0.8 s, so a double tap cannot reach it); Back
   signs nothing. Once one option is approved, the runner refuses the others.
+- **Rejecting with Face ID.** Every proposal has a Reject button beside it (marked when Opus advises it). The same
+  summary opens, saying "You are rejecting", and the passkey signs a rejection hash derived from the terms hash
+  (`sha256("kit11 reject v1 " + terms hash)`), so a rejection signature can never be replayed as an approval, nor an
+  approval as a rejection. The runner verifies it the same way and records the rejection; nothing runs.
 - **Enrolment:** `npm run relay -- --enrol` prints a one-time code (ten minutes, five tries); the approver opens
   `/enrol` on the phone, types it and creates the passkey with Face ID. The runner checks the code and the new
   passkey itself and pins it in the ledger; the dashboard shows which passkey approvals need.
-- **Verifiable later:** every signature is stored, and `npm run verify` checks each passkey approval again offline.
+- **Verifiable later:** every signature is stored, and `npm run verify` checks each passkey approval and rejection
+  again offline.
 - **Late or offline:** a signature that arrives after the proposal expired approves nothing and is recorded as too
   late; one sent while the runner is offline waits on the relay (up to 30 minutes) and the phone says so.
 
@@ -155,9 +160,9 @@ that can redeploy the Worker anyway). Limits: the dashboard on the relay is read
 (testnet and sandbox data only); a page served by a compromised Cloudflare account could show one thing and sign
 another hash, but the runner still executes nothing that is not a waiting proposal's exact terms.
 
-| Choose an option | Confirm what it does | Done |
-|---|---|---|
-| ![Options](docs/approve-options.png) | ![Confirm](docs/approve-confirm.png) | ![Done](docs/approve-done.png) |
+| Choose an option | Confirm what it does | Done | Or reject |
+|---|---|---|---|
+| ![Options](docs/approve-options.png) | ![Confirm](docs/approve-confirm.png) | ![Done](docs/approve-done.png) | ![Reject](docs/approve-reject.png) |
 
 ## CFO policy
 

@@ -6,9 +6,9 @@ import { z } from "zod";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
-import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
+import { canonicalTerms, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { checkChanges, type PolicyChangeTerms } from "../executors/policyChange.js";
-import { approvedAlternative, createProposal, decide, type ProposalRow } from "../policy/approvals.js";
+import { approvedAlternative, createProposal, decide, expireDue, type ProposalRow } from "../policy/approvals.js";
 import { codeSha256, openWindow, passkeyById, recordPasskey } from "./ledger.js";
 import { assertionSha256, verifyApprovalSignature, verifyEnrolmentResponse } from "./webauthn.js";
 
@@ -32,6 +32,8 @@ const CREDENTIAL = {
 const AssertionBody = z.object({
   proposal_id: z.string().regex(/^(P-\d{4,}|C-[0-9a-f]{8})$/),
   terms_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  /** Absent means approve (the phone pages before rejections never sent it). */
+  decision: z.enum(["APPROVED", "REJECTED"]).default("APPROVED"),
   credential: z.object({
     ...CREDENTIAL,
     response: z.object({
@@ -59,11 +61,11 @@ function parse<T>(schema: z.ZodType<T>, body: string): T | null {
 }
 
 export interface AssertionOutcome {
-  status: "approved" | "too_late" | "already" | "refused";
+  status: "approved" | "rejected" | "too_late" | "already" | "refused";
   proposalId: string | null;
   message: string;
   /** For "already": the verdict the phone should see, the first outcome of this very signature if it was handled. */
-  ack?: "approved" | "executed" | "failed" | "too_late" | "already";
+  ack?: "approved" | "rejected" | "executed" | "failed" | "too_late" | "already";
 }
 
 const DECIDED = new Set(["APPROVED", "EXECUTING", "EXECUTED", "FAILED"]);
@@ -88,12 +90,14 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   if (seen) {
     // Handled before (a restart, a resend): report what came of it; nothing runs again.
     const now_ = getProposal(seen.proposal_id)?.status;
-    const ack = seen.outcome === "TOO_LATE" ? "too_late" : now_ === "EXECUTED" ? "executed" : now_ === "FAILED" ? "failed" : "approved";
+    const ack = seen.outcome === "TOO_LATE" ? "too_late" : seen.outcome === "REJECTED" ? "rejected"
+      : now_ === "EXECUTED" ? "executed" : now_ === "FAILED" ? "failed" : "approved";
     return { status: "already", ack, proposalId: seen.proposal_id, message: `this signature was already handled: ${seen.proposal_id} is ${now_}` };
   }
 
   const p = getProposal(body.proposal_id);
   if (!p) return refuse(null, `no proposal ${body.proposal_id}`);
+  if (body.decision === "REJECTED") return processRejection(db, item, p, response, sha, now);
   if (DECIDED.has(p.status)) return { status: "already", proposalId: p.proposal_id, message: `${p.proposal_id} is already ${p.status}` };
   // An EXPIRED proposal still gets its signature checked, so a late approval is recorded as too late (F1).
   if (p.status !== "PENDING_APPROVAL" && p.status !== "EXPIRED") return refuse(p.proposal_id, `${p.proposal_id} is ${p.status}, not waiting for approval`);
@@ -139,6 +143,43 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
     }).immediate();
   } catch (e) {
     return refuseAudited(p.proposal_id, (e as Error).message.slice(0, 240), response.id);
+  }
+}
+
+/**
+ * A passkey rejection. Rejecting is always safe, so the stored terms need not still match their hash and another
+ * option may already be approved; only the signature matters, over rejectionSha256(terms hash), which no approval
+ * signature can ever match. A late or repeated rejection changes nothing.
+ */
+async function processRejection(db: DB, item: InboxItem, p: ProposalRow, response: AuthenticationResponseJSON, sha: string, now: Date): Promise<AssertionOutcome> {
+  const refuse = (reason: string): AssertionOutcome => ({ status: "refused", proposalId: p.proposal_id, message: reason });
+  expireDue(db, now);
+  const current = (db.prepare("SELECT status, expires_at FROM proposals WHERE proposal_id = ?").get(p.proposal_id) as { status: string; expires_at: string });
+  if (current.status === "EXPIRED") return { status: "already", proposalId: p.proposal_id, message: `${p.proposal_id} expired at ${current.expires_at}; nothing to reject` };
+  if (current.status !== "PENDING_APPROVAL") return { status: "already", proposalId: p.proposal_id, message: `${p.proposal_id} is already ${current.status}; nothing to reject` };
+
+  const pk = passkeyById(db, response.id);
+  if (!pk) return refuse("this passkey is not enrolled");
+  if (pk.status !== "ACTIVE") return refuse("this passkey was revoked");
+  const signed = rejectionSha256(p.terms_sha256);
+  const v = await verifyApprovalSignature(response, signed, pk);
+  if (!v.ok) return refuse(v.reason);
+
+  const approver = `${pk.label} (passkey ${pk.credential_id.slice(0, 8)})`;
+  try {
+    return db.transaction((): AssertionOutcome => {
+      db.prepare("UPDATE passkeys SET counter = ? WHERE credential_id = ? AND counter <= ?").run(v.newCounter, pk.credential_id, v.newCounter);
+      decide(db, { proposalId: p.proposal_id, decision: "REJECTED", typedPrefix: p.terms_sha256.slice(0, 8), approver, method: "passkey", signedSha256: signed,
+        passkey: { credentialId: pk.credential_id, assertionSha256: sha } }, now);
+      db.prepare(
+        `INSERT INTO passkey_assertions (assertion_sha256, proposal_id, credential_id, terms_sha256, assertion_json, counter, outcome, verified_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'REJECTED', ?)`,
+      ).run(sha, p.proposal_id, pk.credential_id, p.terms_sha256, JSON.stringify(response), v.newCounter, now.toISOString());
+      return { status: "rejected", proposalId: p.proposal_id, message: `${p.proposal_id} rejected with ${approver}; nothing will be paid` };
+    }).immediate();
+  } catch (e) {
+    audit(db, "system", "passkey.refused", p.proposal_id, { reason: (e as Error).message.slice(0, 240), ticket: item.ticket, credential: pk.credential_id.slice(0, 8) }, now);
+    return refuse((e as Error).message.slice(0, 240));
   }
 }
 

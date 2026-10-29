@@ -45,6 +45,10 @@ for (const r of s1) {
 const refund = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE kind = 'refund_batch' ORDER BY proposal_id LIMIT 1").get() as { terms_json: string }).terms_json) as Terms;
 const refundId = nextProposalId(db);
 createProposal(db, { terms: { ...refund, proposal_id: refundId, expires_at: iso(now.getTime() + 30 * 60_000) }, createdBy: "support" }, now);
+// A second refund batch, the one Max rejects (Opus advises it).
+const rejectId = nextProposalId(db);
+createProposal(db, { terms: { ...refund, proposal_id: rejectId, expires_at: iso(now.getTime() + 30 * 60_000) }, createdBy: "support",
+  explanation: "[claude-opus-5-5] REJECT: The customer asks to refund everything without evidence." }, now);
 const [optA, optB] = ids as [string, string];
 
 const local = live ? null : await startLocalRelay({ port: 0, token: "browser-check" });
@@ -156,6 +160,25 @@ await page.screenshot({ path: join(shots, "policy-confirm.png") });
 await page.click("#sheet button.confirm");
 await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
 check(policyValue(db, "cap.sourcing") === "0.03", "policy editor: signed with the passkey, applied by the runner (sourcing limit 0.03)");
+
+// Reject a proposal with the passkey: the same summary, saying it rejects; the passkey signs the rejection hash.
+await page.goto(`${url}/approve/${rejectId}`);
+await page.waitForSelector("button.reject-btn");
+check((await page.textContent("button.reject-btn")) === "Reject (Opus advises this)", "reject: offered beside the proposal, marked when Opus advises it");
+await page.click("button.reject-btn");
+await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
+check((await page.textContent("#sheet .eyebrow")) === "You are rejecting" && (await page.textContent("#sheet button.confirm")) === "Reject with Face ID", "reject: the summary says it rejects");
+await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 3000 });
+await page.screenshot({ path: join(shots, "approve-reject.png") });
+await page.click("#sheet button.confirm");
+await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
+check((await page.textContent(".verdict-head")) === "Rejected", "reject: the runner verified the signature and rejected it");
+const rejected = db.prepare("SELECT p.status, a.decision, a.method FROM proposals p JOIN approvals a USING (proposal_id) WHERE proposal_id = ?").get(rejectId) as { status: string; decision: string; method: string } | undefined;
+check(rejected?.status === "REJECTED" && rejected.decision === "REJECTED" && rejected.method === "passkey", `ledger: ${rejectId} rejected with the passkey`);
+check(!executed.includes(rejectId), "reject: the executor never ran for it");
+const re2 = await reverifyPasskeyApprovals(db);
+const rc = re2.find((c) => c.what === `passkey rejection ${rejectId}`);
+check(rc?.ok === true, `npm run verify check: ${rc?.what} ${rc?.detail}`);
 
 syncing = false;
 await loop;

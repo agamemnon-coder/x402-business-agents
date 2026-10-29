@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb } from "../src/db/open.js";
-import { sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
+import { rejectionSha256, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { activePasskey, codeSha256, normalizeCode, openEnrolment, openWindow, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal, decide } from "../src/policy/approvals.js";
 
@@ -56,6 +56,29 @@ describe("approvals migration", () => {
     // A second open finds nothing left to migrate.
     expect(() => openDb(path).close()).not.toThrow();
   });
+
+  it("lets an old passkey_assertions table record rejections, keeping every row", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "kit11-")), "old.sqlite");
+    const first = openDb(path);
+    first.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-0009', 'refund_batch', '{}', ?, 'support', 'APPROVED', '2026-10-29T06:00:00Z', '2026-10-29T05:50:00Z')").run("9".repeat(64));
+    first.prepare("INSERT INTO passkeys (credential_id, public_key, counter, rp_id, origin, label, registration_json, status, enrolled_at) VALUES ('cred-9', 'pk', 0, 'r', 'o', 'max', '{}', 'ACTIVE', '2026-10-29T05:00:00Z')").run();
+    // Put the table back the way ledgers from before rejections have it.
+    first.pragma("foreign_keys = OFF");
+    first.exec(`DROP TABLE passkey_assertions;
+      CREATE TABLE passkey_assertions (assertion_sha256 TEXT PRIMARY KEY, proposal_id TEXT NOT NULL REFERENCES proposals(proposal_id),
+        credential_id TEXT NOT NULL REFERENCES passkeys(credential_id), terms_sha256 TEXT NOT NULL, assertion_json TEXT NOT NULL,
+        counter INTEGER NOT NULL, outcome TEXT NOT NULL CHECK (outcome IN ('APPROVED', 'TOO_LATE')), verified_at TEXT NOT NULL);
+      INSERT INTO passkey_assertions VALUES ('${"a".repeat(64)}', 'P-0009', 'cred-9', '${"9".repeat(64)}', '{}', 1, 'APPROVED', '2026-10-29T05:55:00Z');`);
+    first.close();
+
+    const db = openDb(path);
+    expect(db.prepare("SELECT proposal_id, outcome FROM passkey_assertions").all()).toEqual([{ proposal_id: "P-0009", outcome: "APPROVED" }]);
+    expect((db.prepare("SELECT sql FROM sqlite_master WHERE name = 'passkey_assertions'").get() as { sql: string }).sql).toContain("'REJECTED'");
+    expect(db.pragma("foreign_key_check")).toEqual([]);
+    expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
+    db.close();
+    expect(() => openDb(path).close()).not.toThrow();
+  });
 });
 
 describe("decide() with a passkey", () => {
@@ -78,13 +101,23 @@ describe("decide() with a passkey", () => {
     expect(db.prepare("SELECT status FROM proposals").get()).toEqual({ status: "PENDING_APPROVAL" });
   });
 
-  it("needs the signed hash and the credential, and only approves", () => {
+  it("needs the signed hash and the credential; a rejection needs the rejection hash, never the terms hash", () => {
     const db = setup();
     const base = { proposalId: "P-0001", typedPrefix: hash.slice(0, 8), approver: "max", method: "passkey" as const };
     expect(() => decide(db, { ...base, decision: "APPROVED", passkey }, t0)).toThrow(/signed hash/);
     expect(() => decide(db, { ...base, decision: "APPROVED", signedSha256: hash }, t0)).toThrow(/credential/);
-    expect(() => decide(db, { ...base, decision: "REJECTED", signedSha256: hash, passkey }, t0)).toThrow(/only approves/);
+    expect(() => decide(db, { ...base, decision: "REJECTED", signedSha256: hash, passkey }, t0)).toThrow(/rejection/);
+    expect(() => decide(db, { ...base, decision: "APPROVED", signedSha256: rejectionSha256(hash), passkey }, t0)).toThrow(/other terms/);
     expect(db.prepare("SELECT COUNT(*) AS n FROM approvals").get()).toEqual({ n: 0 });
+    expect(decide(db, { ...base, decision: "REJECTED", signedSha256: rejectionSha256(hash), passkey }, t0)).toBe("REJECTED");
+    expect(db.prepare("SELECT decision, approved_sha256 FROM approvals").get()).toEqual({ decision: "REJECTED", approved_sha256: hash });
+  });
+
+  it("derives a rejection hash that differs from the terms hash and from every other proposal's", () => {
+    expect(rejectionSha256(hash)).toMatch(/^[0-9a-f]{64}$/);
+    expect(rejectionSha256(hash)).not.toBe(hash);
+    expect(rejectionSha256(hash)).toBe(sha256Hex(`kit11 reject v1 ${hash}`));
+    expect(() => rejectionSha256("ABC")).toThrow(/64/);
   });
 
   it("records a passkey approval after expiry as too late, with the credential", () => {

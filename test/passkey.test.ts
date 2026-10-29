@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
-import { canonicalTerms, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
+import { canonicalTerms, rejectionSha256, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { activePasskey, openEnrolment, openWindow } from "../src/passkey/ledger.js";
 import { processAssertion, processPolicyRequest, processRegistration, type InboxItem } from "../src/passkey/process.js";
 import { assertionSha256, challengeFor, reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
@@ -35,6 +35,8 @@ async function enrolled(auth = new FakeAuthenticator()) {
 }
 
 const approval = (id: string, hash: string, credential: AuthenticationResponseJSON) => item("assertion", { proposal_id: id, terms_sha256: hash, credential }, id);
+const rejection = (id: string, hash: string, credential: AuthenticationResponseJSON) =>
+  item("assertion", { proposal_id: id, terms_sha256: hash, decision: "REJECTED", credential }, id);
 const count = (db: DB, sql: string) => (db.prepare(sql).get() as { n: number }).n;
 const status = (db: DB, id: string) => (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id) as { status: string }).status;
 
@@ -183,6 +185,74 @@ describe("approval by passkey", () => {
     }
     expect(await processAssertion(db, approval("P-0404", hash, signed), t0)).toMatchObject({ status: "refused", message: expect.stringMatching(/no proposal P-0404/) });
     expect(count(db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
+  });
+});
+
+describe("rejection by passkey", () => {
+  it("rejects the proposal whose rejection hash the passkey signed, keeps the signature, and runs nothing", async () => {
+    const { db, auth } = await enrolled();
+    const hash = propose(db, "P-0001");
+    const out = await processAssertion(db, rejection("P-0001", hash, auth.sign({ challenge: challengeFor(rejectionSha256(hash)), origin: ORIGIN, rpId: RP, counter: 1 })), t0);
+    expect(out).toMatchObject({ status: "rejected", proposalId: "P-0001" });
+    expect(status(db, "P-0001")).toBe("REJECTED");
+    expect(db.prepare("SELECT decision, method, approved_sha256 FROM approvals").get()).toEqual({ decision: "REJECTED", method: "passkey", approved_sha256: hash });
+    expect(db.prepare("SELECT outcome, terms_sha256 FROM passkey_assertions").get()).toEqual({ outcome: "REJECTED", terms_sha256: hash });
+    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'proposal.rejected'")).toBe(1);
+    expect(verifyAuditChain(db).ok).toBe(true);
+  });
+
+  it("never turns an approval signature into a rejection, or a rejection signature into an approval", async () => {
+    const { db, auth } = await enrolled();
+    const hash = propose(db, "P-0001");
+    const approveSig = auth.sign({ challenge: challengeFor(hash), origin: ORIGIN, rpId: RP, counter: 1 });
+    expect(await processAssertion(db, rejection("P-0001", hash, approveSig), t0)).toMatchObject({ status: "refused", message: expect.stringMatching(/challenge/) });
+    const rejectSig = auth.sign({ challenge: challengeFor(rejectionSha256(hash)), origin: ORIGIN, rpId: RP, counter: 2 });
+    expect(await processAssertion(db, approval("P-0001", hash, rejectSig), t0)).toMatchObject({ status: "refused", message: expect.stringMatching(/challenge/) });
+    expect(status(db, "P-0001")).toBe("PENDING_APPROVAL");
+    expect(count(db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
+  });
+
+  it("rejects even when the stored terms no longer match their hash (rejecting is always safe)", async () => {
+    const { db, auth } = await enrolled();
+    const hash = propose(db, "P-0001");
+    db.prepare("UPDATE proposals SET terms_json = replace(terms_json, '0.60', '9.60')").run();
+    const out = await processAssertion(db, rejection("P-0001", hash, auth.sign({ challenge: challengeFor(rejectionSha256(hash)), origin: ORIGIN, rpId: RP, counter: 1 })), t0);
+    expect(out).toMatchObject({ status: "rejected" });
+    expect(status(db, "P-0001")).toBe("REJECTED");
+  });
+
+  it("answers a rejection after expiry or after a decision without changing anything", async () => {
+    const { db, auth } = await enrolled();
+    const hash = propose(db, "P-0001", "0.60", "2026-10-30T14:01:00Z");
+    const late = new Date("2026-10-30T14:02:00Z");
+    const out = await processAssertion(db, rejection("P-0001", hash, auth.sign({ challenge: challengeFor(rejectionSha256(hash)), origin: ORIGIN, rpId: RP, counter: 1 })), late);
+    expect(out).toMatchObject({ status: "already", message: expect.stringMatching(/expired/) });
+    expect(status(db, "P-0001")).toBe("EXPIRED");
+    expect(count(db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
+
+    const h2 = propose(db, "P-0002");
+    await processAssertion(db, approval("P-0002", h2, auth.sign({ challenge: challengeFor(h2), origin: ORIGIN, rpId: RP, counter: 2 })), t0);
+    expect(await processAssertion(db, rejection("P-0002", h2, auth.sign({ challenge: challengeFor(rejectionSha256(h2)), origin: ORIGIN, rpId: RP, counter: 3 })), t0))
+      .toMatchObject({ status: "already", message: expect.stringMatching(/APPROVED/) });
+    expect(status(db, "P-0002")).toBe("APPROVED");
+  });
+
+  it("answers the same rejection signature again as rejected, after a restart", async () => {
+    const { db, auth } = await enrolled();
+    const hash = propose(db, "P-0001");
+    const signed = auth.sign({ challenge: challengeFor(rejectionSha256(hash)), origin: ORIGIN, rpId: RP, counter: 1 });
+    await processAssertion(db, rejection("P-0001", hash, signed), t0);
+    expect(await processAssertion(db, rejection("P-0001", hash, signed), t0)).toMatchObject({ status: "already", ack: "rejected" });
+  });
+
+  it("is re-verified offline like an approval", async () => {
+    const { db, auth } = await enrolled();
+    const hash = propose(db, "P-0001");
+    await processAssertion(db, rejection("P-0001", hash, auth.sign({ challenge: challengeFor(rejectionSha256(hash)), origin: ORIGIN, rpId: RP, counter: 1 })), t0);
+    expect(await reverifyPasskeyApprovals(db)).toEqual([{ ok: true, what: "passkey rejection P-0001", detail: expect.stringContaining(auth.credentialId.slice(0, 8)) }]);
+    const forged = auth.sign({ challenge: challengeFor(hash), origin: ORIGIN, rpId: RP, counter: 1 });
+    db.prepare("UPDATE passkey_assertions SET assertion_json = ?, assertion_sha256 = ?").run(JSON.stringify(forged), assertionSha256(forged));
+    expect((await reverifyPasskeyApprovals(db))[0]).toMatchObject({ ok: false, what: "passkey rejection P-0001" });
   });
 });
 

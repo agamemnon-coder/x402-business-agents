@@ -1,5 +1,5 @@
 // The live dashboard: one static page that polls GET api/snapshot. It reads the ledger and nothing else,
-// so it holds no key and cannot approve or move money. "Review and approve" hands over to the approval page.
+// so it holds no key and cannot approve or move money. "Review: approve or reject" hands over to the approval page.
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
 import { createHash } from "node:crypto";
@@ -25,7 +25,7 @@ export const CSP = [
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 export interface DashboardOptions {
-  /** Where "Review and approve" goes: the approval page that records decisions. */
+  /** Where "Review: approve or reject" goes: the approval page that records decisions. */
   approvalsUrl: string;
   now?: () => Date;
 }

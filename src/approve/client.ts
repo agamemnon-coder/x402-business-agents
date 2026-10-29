@@ -50,6 +50,14 @@ export async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * What the passkey signs to reject: a hash derived from the terms hash (the runner's rejectionSha256), so a
+ * rejection can never be replayed as an approval, whose challenge is the terms hash itself.
+ */
+export async function rejectionHash(termsSha256: string): Promise<string> {
+  return sha256Hex(`kit11 reject v1 ${termsSha256}`);
+}
+
 export interface OptionCheck {
   ok: boolean;
   terms: Obj | null;
@@ -403,10 +411,11 @@ function passkeyError(e: unknown): string {
   return `The passkey did not answer: ${e instanceof Error ? e.message : String(e)}`;
 }
 
-const FINAL = new Set(["executed", "failed", "refused", "too_late", "already", "enrolled"]);
+const FINAL = new Set(["rejected", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
 const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   queued: { tone: "wait", head: "Signed", lead: "Waiting for the runner to check your signature." },
   approved: { tone: "wait", head: "Approved", lead: "The runner checked your signature. Executing now." },
+  rejected: { tone: "ok", head: "Rejected", lead: "Rejected with your passkey. Nothing will be paid." },
   executed: { tone: "ok", head: "Done", lead: "Approved with your passkey and executed." },
   failed: { tone: "bad", head: "Approved, but execution stopped", lead: "" },
   refused: { tone: "bad", head: "Refused", lead: "Nothing was approved." },
@@ -448,6 +457,8 @@ interface SheetContext {
   credentials: { id: string }[];
   /** The element to return focus to on Back. */
   from: HTMLElement;
+  /** REJECTED: the sheet says so, and the passkey signs the rejection hash instead of the terms hash. */
+  decision?: "APPROVED" | "REJECTED";
   /** Sends the signed assertion; 202 means queued for the runner. */
   send: (credential: Obj) => Promise<{ status: number; data: Obj }>;
 }
@@ -459,11 +470,12 @@ interface SheetContext {
 function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   const sheet = document.getElementById("sheet")!;
   const f = describeTerms(terms, x.names);
-  const nots = x.nots;
+  const rejecting = x.decision === "REJECTED";
+  const nots = rejecting ? [] : x.nots;
   const from = x.from;
   const cd = el("span", "countdown big");
   cd.dataset.expires = o.expires_at;
-  const confirm = el("button", "confirm", ["Confirm with Face ID"]) as HTMLButtonElement;
+  const confirm = el("button", rejecting ? "confirm reject" : "confirm", [rejecting ? "Reject with Face ID" : "Confirm with Face ID"]) as HTMLButtonElement;
   const backBtn = el("button", "secondary", ["Back"]) as HTMLButtonElement;
   confirm.type = "button";
   backBtn.type = "button";
@@ -471,9 +483,9 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   confirm.disabled = true;
   const arm = setTimeout(() => { confirm.disabled = !x.enrolled || countdown(o.expires_at).over; }, 800);
   const body = el("div", "sheet-body", [
-    txt("p", "eyebrow", "You are approving"),
+    txt("p", "eyebrow", rejecting ? "You are rejecting" : "You are approving"),
     el("h2", "sheet-title", [f.title]),
-    txt("p", "sentence", f.sentence),
+    txt("p", "sentence", rejecting ? `Nothing of this will happen: ${f.sentence}` : f.sentence),
     ...f.warnings.map((w) => txt("p", "alarm", w)),
     el("dl", "facts", [
       txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount),
@@ -492,7 +504,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   sheet.hidden = false;
   sheet.setAttribute("role", "dialog");
   sheet.setAttribute("aria-modal", "true");
-  sheet.setAttribute("aria-label", `Confirm ${f.title}`);
+  sheet.setAttribute("aria-label", `${rejecting ? "Reject" : "Confirm"} ${f.title}`);
   document.body.classList.add("locked");
   tickCountdowns();
   backBtn.focus();
@@ -509,7 +521,8 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     confirm.disabled = true;
     backBtn.disabled = true;
     status.textContent = "Waiting for Face ID…";
-    const again = await checkOption(o);
+    // Rejecting is always safe, so it does not need the terms to check out; approving does.
+    const again = rejecting ? { ok: true, problem: "" } : await checkOption(o);
     if (!again.ok) {
       status.textContent = `Not signed: ${again.problem}.`;
       backBtn.disabled = false;
@@ -524,7 +537,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     try {
       cred = (await navigator.credentials.get({
         publicKey: {
-          challenge: hexToBytes(o.terms_sha256),
+          challenge: hexToBytes(rejecting ? await rejectionHash(o.terms_sha256) : o.terms_sha256),
           rpId: location.hostname,
           allowCredentials: x.credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })),
           userVerification: "required",
@@ -547,7 +560,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     const sent = await x.send(serializeAssertion(cred))
       .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
     if (sent.status !== 202) {
-      status.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}. Nothing was approved.`;
+      status.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}. ${rejecting ? "Nothing was rejected." : "Nothing was approved."}`;
       backBtn.disabled = false;
       return;
     }
@@ -557,6 +570,16 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     await follow(str(sent.data.ticket), body, home, f.title);
     status.textContent = "";
   });
+}
+
+/** The terms as sent, for the reject screen of a proposal whose terms did not check out (it still names what it is). */
+function parsedOrEmpty(canonical: string): Obj {
+  try {
+    const v: unknown = JSON.parse(canonical);
+    return isObj(v) ? v : {};
+  } catch {
+    return {};
+  }
 }
 
 async function approvePage(): Promise<void> {
@@ -598,15 +621,22 @@ async function approvePage(): Promise<void> {
     card.disabled = !check.ok || !f || !f.approvable;
     card.setAttribute("aria-label", `${f ? f.title : o.proposal_id}. Opens a summary to confirm.`);
     card.addEventListener("click", () => openSummary(o, check.terms!, card));
-    return card;
+    // Rejecting needs no working terms: whatever this proposal is, a person may say no to it.
+    const advisedNo = o.review?.recommendation === "reject";
+    const no = el("button", advisedNo ? "reject-btn advised" : "reject-btn", [advisedNo ? "Reject (Opus advises this)" : "Reject"]) as HTMLButtonElement;
+    no.type = "button";
+    no.disabled = !enrolled;
+    no.setAttribute("aria-label", `Reject ${f ? f.title : o.proposal_id}. Opens a summary to confirm.`);
+    no.addEventListener("click", () => openSummary(o, check.terms ?? parsedOrEmpty(o.canonical), no, "REJECTED"));
+    return el("div", "option-wrap", [card, no]);
   });
 
   app.replaceChildren(...[
     el("div", "toprow", [back, txt("span", "pid mono", group.map((g) => g.proposal_id).join(" · "))]),
     txt("h1", "", group.length > 1 ? "Choose one option" : "Review this proposal"),
     txt("p", "lead", group.length > 1
-      ? "Tap the option you want. You will see exactly what it does before Face ID signs it."
-      : "Tap the proposal to see exactly what it does before Face ID signs it."),
+      ? "Tap the option you want, or reject one. You will see exactly what it does before Face ID signs."
+      : "Tap the proposal, or Reject, to see exactly what it does before Face ID signs."),
     stale ? txt("p", "warn-box", `The runner last synced ${Math.round(a.relay.age_ms / 1000)} s ago. Your approval waits until it is back.`) : null,
     enrolled ? null : txt("p", "warn-box", "No passkey is enrolled yet, so nothing can be signed here."),
     el("div", `options n${cards.length}`, cards),
@@ -614,11 +644,11 @@ async function approvePage(): Promise<void> {
   ].filter((n): n is HTMLElement => n !== null));
   tickCountdowns();
 
-  function openSummary(o: PhoneProposal, terms: Obj, from: HTMLButtonElement): void {
+  function openSummary(o: PhoneProposal, terms: Obj, from: HTMLButtonElement, decision: "APPROVED" | "REJECTED" = "APPROVED"): void {
     openSheet(o, terms, {
       names: a.names, nots: notList(o, checked.filter((c) => c.check.ok).map((c) => c.p), a.names), enrolled,
-      credentials: a.passkey.credentials, from,
-      send: (credential) => api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, credential }),
+      credentials: a.passkey.credentials, from, decision,
+      send: (credential) => api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential }),
     });
   }
 }

@@ -42,6 +42,16 @@ export function termsHash(terms: Terms): string {
   return sha256Hex(canonicalTerms(terms));
 }
 
+/**
+ * What a passkey signs to reject a proposal: a hash derived from the terms hash, so a rejection is bound to those
+ * exact terms but its signature can never pass as an approval (whose challenge is the terms hash itself). The phone
+ * (src/approve/client.ts) and the relay (worker/src/core.ts) derive it the same way.
+ */
+export function rejectionSha256(termsSha256: string): string {
+  if (!/^[0-9a-f]{64}$/.test(termsSha256)) throw new Error("a terms hash is 64 lowercase hex characters");
+  return sha256Hex(`kit11 reject v1 ${termsSha256}`);
+}
+
 /** The approver types the first 8 hex characters; the record keeps the full hash. */
 export const PREFIX_LENGTH = 8;
 

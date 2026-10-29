@@ -4,7 +4,7 @@
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
-import { prefixMatches, termsHash, type Terms } from "../lib/terms.js";
+import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -105,7 +105,8 @@ export interface DecideArgs {
   approver: string;
   method: ApprovalMethod;
   note?: string;
-  /** Method passkey: the full hash the passkey signed (its WebAuthn challenge), already verified by the caller. */
+  /** Method passkey: the full hash the passkey signed (its WebAuthn challenge), already verified by the caller: the
+   *  terms hash to approve, rejectionSha256(terms hash) to reject. */
   signedSha256?: string;
   /** Method passkey: which credential signed, and the hash of the stored assertion. */
   passkey?: { credentialId: string; assertionSha256: string };
@@ -113,19 +114,24 @@ export interface DecideArgs {
 
 /**
  * The approver types the first 8 hex characters of the hash they saw, or (method passkey) their passkey signed
- * the full hash. A wrong prefix or a signature over other terms records nothing.
+ * the full hash (or, to reject, the rejection hash derived from it). A wrong prefix or a signature over other
+ * terms records nothing.
  */
 export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStatus {
   if (args.method === "passkey") {
     if (!args.signedSha256) throw new Error("a passkey decision needs the signed hash");
     if (!args.passkey) throw new Error("a passkey decision needs the signing credential");
-    if (args.decision !== "APPROVED") throw new Error("a passkey only approves; reject on the local page or the CLI");
   }
   const passkey = args.passkey && { credential_id: args.passkey.credentialId, assertion_sha256: args.passkey.assertionSha256 };
   return db.transaction((): ProposalStatus => {
     const p = get(db, args.proposalId);
     if (p.status !== "PENDING_APPROVAL") throw new Error(`${p.proposal_id} is ${p.status}, not waiting for approval`);
-    if (args.method === "passkey" && args.signedSha256 !== p.terms_sha256) throw new Error(`the passkey signed other terms than ${p.proposal_id}'s`);
+    if (args.method === "passkey") {
+      // An approval signs the terms hash; a rejection signs the hash derived from it, so neither passes as the other.
+      if (args.decision === "REJECTED" && args.signedSha256 === p.terms_sha256) throw new Error("a passkey rejection signs the rejection hash, not the terms hash");
+      const expected = args.decision === "APPROVED" ? p.terms_sha256 : rejectionSha256(p.terms_sha256);
+      if (args.signedSha256 !== expected) throw new Error(`the passkey signed other terms than ${p.proposal_id}'s`);
+    }
     if (expireIfDue(db, p, now)) {
       // A decision that arrives after the terms ran out records who tried, and approves nothing.
       audit(db, "human", "approval.too_late", p.proposal_id,

@@ -273,7 +273,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
         p.review ? txt("p", "review", p.review.text) : null,
       ]);
       if (!p.expired) {
-        var a = txt("a", "btn", "Review and approve");
+        var a = txt("a", "btn", "Review: approve or reject");
         a.href = "approve/" + encodeURIComponent(p.proposal_id);
         card.appendChild(el("div", "actions", [a, txt("span", "pid", "you confirm the exact terms by their hash")]));
       }

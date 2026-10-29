@@ -24,6 +24,7 @@ function migrate(db: DB): void {
   if (!has("sales", "requirements_json")) db.exec("ALTER TABLE sales ADD COLUMN requirements_json TEXT");
   if (!has("transfers", "fee_actual")) db.exec("ALTER TABLE transfers ADD COLUMN fee_actual TEXT");
   allowPasskeyApprovals(db);
+  allowPasskeyRejections(db);
 }
 
 /** Ledgers from before passkey approvals: SQLite cannot change a CHECK, so the approvals table is rebuilt once. */
@@ -44,6 +45,29 @@ function allowPasskeyApprovals(db: DB): void {
       db.exec("ALTER TABLE approvals_v2 RENAME TO approvals");
       const dangling = db.pragma("foreign_key_check(approvals)") as unknown[];
       if (dangling.length > 0) throw new Error(`foreign key check failed after migrating approvals: ${JSON.stringify(dangling)}`);
+    }).immediate();
+  } finally {
+    db.pragma("foreign_keys = ON");
+  }
+}
+
+/** Ledgers from before passkey rejections: the stored-signature table's outcome CHECK gains 'REJECTED' (rebuilt once). */
+function allowPasskeyRejections(db: DB): void {
+  const { sql } = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'passkey_assertions'").get() as { sql: string };
+  if (sql.includes("'REJECTED'")) return;
+  const ddl = sql
+    .replace(/^CREATE TABLE "?passkey_assertions"?/, "CREATE TABLE passkey_assertions_v2")
+    .replace("CHECK (outcome IN ('APPROVED', 'TOO_LATE'))", "CHECK (outcome IN ('APPROVED', 'TOO_LATE', 'REJECTED'))");
+  if (!ddl.startsWith("CREATE TABLE passkey_assertions_v2") || !ddl.includes("'REJECTED'")) throw new Error("the passkey_assertions table has an unexpected shape; not migrating it");
+  db.pragma("foreign_keys = OFF");
+  try {
+    db.transaction(() => {
+      db.exec(ddl);
+      db.exec("INSERT INTO passkey_assertions_v2 SELECT * FROM passkey_assertions");
+      db.exec("DROP TABLE passkey_assertions");
+      db.exec("ALTER TABLE passkey_assertions_v2 RENAME TO passkey_assertions");
+      const dangling = db.pragma("foreign_key_check(passkey_assertions)") as unknown[];
+      if (dangling.length > 0) throw new Error(`foreign key check failed after migrating passkey_assertions: ${JSON.stringify(dangling)}`);
     }).immediate();
   } finally {
     db.pragma("foreign_keys = ON");
