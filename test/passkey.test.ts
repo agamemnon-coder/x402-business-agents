@@ -5,7 +5,7 @@ import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { canonicalTerms, rejectionSha256, sha256Hex, TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
-import { activePasskey, openEnrolment, openWindow } from "../src/passkey/ledger.js";
+import { activePasskey, confirmPasskey, fingerprintOf, openEnrolment, openWindow, pendingPasskeys } from "../src/passkey/ledger.js";
 import { processAssertion, processPolicyRequest, processRegistration, type InboxItem } from "../src/passkey/process.js";
 import { assertionSha256, challengeFor, reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
@@ -30,7 +30,8 @@ async function enrolled(auth = new FakeAuthenticator()) {
   const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN }, t0);
   const credential = auth.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP });
   const out = await processRegistration(db, item("registration", { code, credential }), { label: "max" }, t0);
-  expect(out).toMatchObject({ status: "enrolled", credentialId: auth.credentialId });
+  expect(out).toMatchObject({ status: "pending", credentialId: auth.credentialId });
+  confirmPasskey(db, fingerprintOf(auth.spkiSha256), t0);
   return { db, auth };
 }
 
@@ -47,6 +48,40 @@ describe("enrolment", () => {
     expect(pk).toMatchObject({ credential_id: auth.credentialId, counter: 0, rp_id: RP, origin: ORIGIN, label: "max", status: "ACTIVE" });
     expect(JSON.parse(pk.transports!)).toEqual(["internal", "hybrid"]);
     expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'passkey.enrolled'")).toBe(1);
+  });
+
+  it("waits for confirmation on the runner, by the fingerprint the phone shows, before the passkey counts (M3)", async () => {
+    const db = openDb(":memory:");
+    const max = new FakeAuthenticator();
+    const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN }, t0);
+    const out = await processRegistration(db, item("registration", { code, credential: max.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) }), { label: "max" }, t0);
+    const fp = fingerprintOf(max.spkiSha256);
+    expect(fp).toMatch(/^[0-9A-F]{4}-[0-9A-F]{4}$/);
+    expect(out).toMatchObject({ status: "pending", message: expect.stringContaining(fp) });
+    expect(activePasskey(db)).toBeNull();
+    expect(pendingPasskeys(db, t0)).toEqual([expect.objectContaining({ credential_id: max.credentialId, fingerprint: fp })]);
+    // Not yet a passkey that approves anything.
+    const hash = propose(db, "P-0001");
+    expect(await processAssertion(db, approval("P-0001", hash, max.sign({ challenge: challengeFor(hash), origin: ORIGIN, rpId: RP, counter: 1 })), t0))
+      .toMatchObject({ status: "refused", message: /not enrolled/ });
+    expect(() => confirmPasskey(db, "0000-0000", t0)).toThrow(/no pending passkey/);
+    expect(() => confirmPasskey(db, fp, new Date("2026-10-30T14:10:01Z"))).toThrow(/not open/);
+    confirmPasskey(db, fp.toLowerCase(), t0);
+    expect(activePasskey(db)).toMatchObject({ credential_id: max.credentialId });
+    expect(pendingPasskeys(db, t0)).toEqual([]);
+    const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'passkey.enrolled'").get() as { payload_json: string };
+    expect(JSON.parse(row.payload_json)).toMatchObject({ fingerprint: fp, confirmed_on: "runner" });
+  });
+
+  it("keeps the old passkey while a replacement waits, and a relay's own passkey shows another fingerprint (M3)", async () => {
+    const { db, auth } = await enrolled();
+    const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN, replace: true }, t0);
+    const intruder = new FakeAuthenticator();
+    await processRegistration(db, item("registration", { code, credential: intruder.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) }), { label: "max" }, t0);
+    expect(activePasskey(db)!.credential_id).toBe(auth.credentialId);
+    expect(pendingPasskeys(db, t0).map((p) => p.fingerprint)).toEqual([fingerprintOf(intruder.spkiSha256)]);
+    // Max's phone shows his own fingerprint; the one waiting is not it, so nothing is confirmed.
+    expect(() => confirmPasskey(db, fingerprintOf(new FakeAuthenticator().spkiSha256), t0)).toThrow(/no pending passkey/);
   });
 
   it("refuses the wrong code, another challenge, another origin and a missing Face ID; the window stays open", async () => {
@@ -127,6 +162,7 @@ describe("approval by passkey", () => {
     const second = new FakeAuthenticator();
     const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN, replace: true }, t0);
     await processRegistration(db, item("registration", { code, credential: second.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) }), { label: "max" }, t0);
+    confirmPasskey(db, fingerprintOf(second.spkiSha256), t0);
     const r = await processAssertion(db, approval("P-0001", hash, first.sign({ challenge: challengeFor(hash), origin: ORIGIN, rpId: RP, counter: 1 })), t0);
     expect(r).toMatchObject({ status: "refused", message: expect.stringMatching(/revoked/) });
     expect(count(db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
@@ -302,14 +338,16 @@ describe("after a restart", () => {
     expect(await processAssertion(db, approval("P-0001", hash, signed), t0)).toMatchObject({ status: "already", ack: "executed" });
   });
 
-  it("answers an enrolment it already accepted as enrolled", async () => {
+  it("answers an enrolment it already accepted as pending, then as enrolled once confirmed", async () => {
     const db = openDb(":memory:");
     const auth = new FakeAuthenticator();
     const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN }, t0);
     const body = { code, credential: auth.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) };
-    expect((await processRegistration(db, item("registration", body), { label: "max" }, t0)).status).toBe("enrolled");
+    expect((await processRegistration(db, item("registration", body), { label: "max" }, t0)).status).toBe("pending");
+    expect(await processRegistration(db, item("registration", body), { label: "max" }, t0)).toMatchObject({ status: "pending", credentialId: auth.credentialId });
+    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'passkey.pending'")).toBe(1);
+    confirmPasskey(db, fingerprintOf(auth.spkiSha256), t0);
     expect(await processRegistration(db, item("registration", body), { label: "max" }, t0)).toMatchObject({ status: "enrolled", credentialId: auth.credentialId });
-    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event LIKE 'passkey.enrol%'")).toBe(2);
   });
 });
 

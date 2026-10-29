@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { openDb } from "../../src/db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../../src/lib/terms.js";
-import { openEnrolment } from "../../src/passkey/ledger.js";
+import { activePasskey, confirmPasskey, openEnrolment, pendingPasskeys } from "../../src/passkey/ledger.js";
 import { reverifyPasskeyApprovals } from "../../src/passkey/webauthn.js";
 import { createProposal, nextProposalId } from "../../src/policy/approvals.js";
 import { relayConfig, viewerLink } from "../../src/relay/config.js";
@@ -93,8 +93,13 @@ errors.length = 0; // the 401 above was on purpose
 await page.goto(`${url}/enrol`);
 await page.fill("#code", code.toLowerCase());
 await page.click("button.confirm");
-await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
-check((await page.textContent(".verdict-head")) === "Passkey enrolled", "enrolment page: passkey enrolled through the runner");
+await page.waitForSelector(".verdict.wait .verdict-what", { timeout: 20_000 });
+await page.waitForFunction(() => document.querySelector(".verdict-head")?.textContent === "Confirm on the runner", null, { timeout: 20_000 });
+const shown = /Fingerprint ([0-9A-F]{4}-[0-9A-F]{4})/.exec((await page.textContent(".verdict-what")) ?? "")?.[1] ?? "";
+check(pendingPasskeys(db).map((p) => p.fingerprint).join() === shown && shown !== "", `enrolment page: the phone's own fingerprint (${shown}) is the one waiting on the runner`);
+check((await page.$(".alarm")) === null, "enrolment page: no mismatch warning");
+confirmPasskey(db, shown);
+check(activePasskey(db) !== null, "runner: the passkey counts only after its fingerprint is confirmed");
 
 // Dashboard on the phone.
 await page.goto(`${url}/`);

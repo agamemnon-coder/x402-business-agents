@@ -43,7 +43,7 @@ export class RelayRunner {
   async syncOnce(): Promise<{ pushed: boolean; inbox: number }> {
     const { db, cfg } = this.deps;
     expireDue(db, this.now());
-    const state = buildRelayState(db, { rpId: cfg.rpId, label: this.deps.label }, this.now());
+    const state = buildRelayState(db, { rpId: cfg.rpId, label: this.deps.label, relayToken: cfg.token }, this.now());
     const hash = stateHash(state);
     const push = hash !== this.lastPushed;
     const acks = this.acks.splice(0);

@@ -1,5 +1,6 @@
 // What the runner pushes to the relay: the dashboard snapshot plus, for the phone, each waiting proposal's exact
 // canonical terms, the pinned passkey and an open enrolment window. Never a code, a key or an expired proposal.
+import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
@@ -9,6 +10,7 @@ import { createProposal } from "../src/policy/approvals.js";
 import { buildRelayState, stateHash } from "../src/relay/state.js";
 
 const RP = "kit11.example.workers.dev";
+const TOKEN = "relay-token-for-tests";
 const t0 = new Date("2026-10-30T14:00:00Z");
 const S = "0x00000000000000000000000000000000000000f1";
 const W = "0x00000000000000000000000000000000000000e1";
@@ -39,7 +41,7 @@ function ledger(): DB {
 
 describe("relay state", () => {
   it("carries each waiting proposal's exact canonical terms, which hash to its recorded hash", () => {
-    const s = buildRelayState(ledger(), { rpId: RP }, t0);
+    const s = buildRelayState(ledger(), { rpId: RP, relayToken: TOKEN }, t0);
     expect(s.approvals.proposals.map((p) => p.proposal_id)).toEqual(["P-0001", "P-0002", "P-0003"]);
     for (const p of s.approvals.proposals) {
       expect(sha256Hex(p.canonical)).toBe(p.terms_sha256);
@@ -49,7 +51,7 @@ describe("relay state", () => {
   });
 
   it("groups price options that change the same mandates, and nothing else", () => {
-    const [a, b, r] = buildRelayState(ledger(), { rpId: RP }, t0).approvals.proposals;
+    const [a, b, r] = buildRelayState(ledger(), { rpId: RP, relayToken: TOKEN }, t0).approvals.proposals;
     expect(a!.group).toBe(b!.group);
     expect(r!.group).not.toBe(a!.group);
   });
@@ -57,39 +59,41 @@ describe("relay state", () => {
   it("leaves out proposals that expired or were decided, and names known addresses", () => {
     const db = ledger();
     db.prepare("UPDATE proposals SET status = 'SUPERSEDED' WHERE proposal_id = 'P-0001'").run();
-    const s = buildRelayState(db, { rpId: RP }, new Date("2026-10-30T14:05:00Z"));
+    const s = buildRelayState(db, { rpId: RP, relayToken: TOKEN }, new Date("2026-10-30T14:05:00Z"));
     expect(s.approvals.proposals.map((p) => p.proposal_id)).toEqual(["P-0002"]);
     expect(s.approvals.names).toEqual({ [S]: "Feedstock Labs", [W]: "Tidemark sweep wallet", [C]: "Kestrel Quant" });
   });
 
   it("lists the active passkey for this relay and an open enrolment window, without its code", () => {
     const db = ledger();
-    expect(buildRelayState(db, { rpId: RP }, t0)).toMatchObject({ approvals: { passkey: { rp_id: RP, credentials: [] } }, enrolment: null });
+    expect(buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0)).toMatchObject({ approvals: { passkey: { rp_id: RP, credentials: [] } }, enrolment: null });
     const { window, code } = openEnrolment(db, { rpId: RP, origin: `https://${RP}` }, t0);
-    const open = buildRelayState(db, { rpId: RP }, t0);
+    const open = buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0);
     expect(open.enrolment).toEqual({
       window_id: window.window_id, challenge: window.challenge, user_id: window.user_id, user_name: "max",
-      code_sha256: window.code_sha256, rp_id: RP, expires_at: window.expires_at,
+      code_mac: createHmac("sha256", TOKEN).update(window.code_sha256).digest("hex"), rp_id: RP, expires_at: window.expires_at,
     });
     expect(JSON.stringify(open)).not.toContain(code.replace("-", ""));
-    expect(buildRelayState(db, { rpId: "other.example" }, t0).enrolment).toBeNull();
+    // Not the code's plain SHA-256 either: 40 bits brute-force offline in seconds (M3). The MAC needs the relay token.
+    expect(JSON.stringify(open)).not.toContain(window.code_sha256);
+    expect(buildRelayState(db, { rpId: "other.example", relayToken: TOKEN }, t0).enrolment).toBeNull();
     recordPasskey(db, { window, credentialId: "cred-1", publicKey: "pk", counter: 0, transports: null, aaguid: null, registrationJson: "{}", label: "max" }, t0);
-    const after = buildRelayState(db, { rpId: RP }, t0);
+    const after = buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0);
     expect(after.enrolment).toBeNull();
     expect(after.approvals.passkey.credentials).toEqual([{ id: "cred-1", label: "max", enrolled_at: t0.toISOString() }]);
-    expect(buildRelayState(db, { rpId: "other.example" }, t0).approvals.passkey.credentials).toEqual([]);
+    expect(buildRelayState(db, { rpId: "other.example", relayToken: TOKEN }, t0).approvals.passkey.credentials).toEqual([]);
   });
 
   it("carries the CFO policy for the phone's editor", () => {
-    const s = buildRelayState(ledger(), { rpId: RP }, t0);
+    const s = buildRelayState(ledger(), { rpId: RP, relayToken: TOKEN }, t0);
     expect(s.approvals.policy.find((e) => e.key === "cap.sourcing")).toMatchObject({ label: "Sourcing agent: most per payment", value: "", kind: "optional_money", unit: "*USDZ" });
   });
 
   it("hashes the same ledger the same way at different times, and differently once it changes", () => {
     const db = ledger();
-    const h1 = stateHash(buildRelayState(db, { rpId: RP }, t0));
-    expect(stateHash(buildRelayState(db, { rpId: RP }, new Date("2026-10-30T14:00:03Z")))).toBe(h1);
+    const h1 = stateHash(buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0));
+    expect(stateHash(buildRelayState(db, { rpId: RP, relayToken: TOKEN }, new Date("2026-10-30T14:00:03Z")))).toBe(h1);
     audit(db, "system", "setting.changed", "sell_price", { before: "0.05", after: "0.07" }, t0);
-    expect(stateHash(buildRelayState(db, { rpId: RP }, t0))).not.toBe(h1);
+    expect(stateHash(buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0))).not.toBe(h1);
   });
 });

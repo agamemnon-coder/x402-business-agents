@@ -29,10 +29,13 @@ export class FakeAuthenticator {
   readonly credentialId: string;
   private readonly privateKey: KeyObject;
   private readonly cosePublicKey: Uint8Array;
+  /** sha256 of the public key as SPKI DER: what the phone shows as the new passkey's fingerprint. */
+  readonly spkiSha256: string;
 
   constructor() {
     const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
     this.privateKey = privateKey;
+    this.spkiSha256 = createHash("sha256").update(publicKey.export({ type: "spki", format: "der" })).digest("hex");
     const jwk = publicKey.export({ format: "jwk" });
     // COSE_Key for ES256: kty EC2 (2), alg ES256 (-7), crv P-256 (1), x, y.
     this.cosePublicKey = isoCBOR.encode(new Map<number, number | Uint8Array>([

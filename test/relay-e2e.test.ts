@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { buildPolicyTerms, bytesToB64url, canonicalize, checkOption, hexToBytes, sha256Hex, type PhoneProposal } from "../src/approve/client.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
-import { openEnrolment } from "../src/passkey/ledger.js";
+import { confirmPasskey, fingerprintOf, openEnrolment } from "../src/passkey/ledger.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { RelayRunner } from "../src/relay/runner.js";
 import { Relay } from "../worker/src/core.js";
@@ -64,7 +64,10 @@ async function enrol(w: ReturnType<typeof world>, auth: FakeAuthenticator) {
   expect(sent.status).toBe(202);
   await w.runner.syncOnce();
   await w.runner.syncOnce();
-  expect(await w.phone.get(`/api/tickets/${String(sent.body.ticket)}`)).toMatchObject({ status: "enrolled" });
+  // The runner keeps it pending; the person confirms the fingerprint the phone shows (M3).
+  expect(await w.phone.get(`/api/tickets/${String(sent.body.ticket)}`)).toMatchObject({ status: "pending", message: expect.stringContaining(fingerprintOf(auth.spkiSha256)) });
+  confirmPasskey(w.db, fingerprintOf(auth.spkiSha256), t0);
+  await w.runner.syncOnce();
 }
 
 /** What the page does on "Confirm with Face ID": check the hash itself, sign it, post it. */

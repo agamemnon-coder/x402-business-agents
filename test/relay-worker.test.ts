@@ -39,7 +39,7 @@ function runnerState(opts: { enrolled: boolean }): { state: RelayState; code: st
   createProposal(db, { terms, createdBy: "support" }, t0);
   const { window, code } = openEnrolment(db, { rpId: RP, origin: BASE }, t0);
   if (opts.enrolled) recordPasskey(db, { window, credentialId: "cred-1", publicKey: "pk", counter: 0, transports: null, aaguid: null, registrationJson: "{}", label: "max" }, t0);
-  return { state: buildRelayState(db, { rpId: RP }, t0), code };
+  return { state: buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0), code };
 }
 
 const json = async (res: Response) => (await res.json()) as Record<string, unknown>;
@@ -100,7 +100,7 @@ describe("runner sync", () => {
     const approvalsRes = await get(r, "/api/approvals");
     const text = await approvalsRes.text();
     expect(JSON.parse(text)).toMatchObject({ proposals: [{ proposal_id: "P-0001", terms_sha256: HASH }], passkey: { rp_id: RP, credentials: [] }, enrolment_open: true });
-    expect(text).not.toContain(state.enrolment!.code_sha256);
+    expect(text).not.toContain(state.enrolment!.code_mac);
     at("2026-10-30T14:00:20Z");
     expect(await json(await get(r, "/api/snapshot"))).toMatchObject({ relay: { age_ms: 20000 } });
   });

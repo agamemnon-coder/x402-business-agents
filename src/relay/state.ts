@@ -2,7 +2,7 @@
 // and for the phone each waiting proposal's exact canonical terms (the phone hashes them itself), the pinned
 // passkey, and an open enrolment window. Nothing in it can approve or move money: no key, no code, no token.
 
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { buildSnapshot, parseReview, PAYEE_NAMES, type Pending, type Snapshot } from "../dashboard/snapshot.js";
 import type { DB } from "../db/open.js";
 import { canonicalTerms, type Terms } from "../lib/terms.js";
@@ -28,8 +28,11 @@ export interface RelayEnrolment {
   challenge: string;
   user_id: string;
   user_name: string;
-  /** Lets the relay refuse a wrong code early; the runner checks the code again itself. */
-  code_sha256: string;
+  /**
+   * Lets the relay refuse a wrong code early; the runner checks the code again itself. HMAC-SHA256 keyed by the relay
+   * token over the code's SHA-256: without the token, the 40-bit code cannot be brute-forced from this (M3).
+   */
+  code_mac: string;
   rp_id: string;
   expires_at: string;
 }
@@ -53,7 +56,7 @@ const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex
 
 type PRow = { proposal_id: string; kind: string; terms_json: string; terms_sha256: string; created_by: string; explanation: string | null; expires_at: string; created_at: string };
 
-export function buildRelayState(db: DB, cfg: { rpId: string; label?: string }, now = new Date()): RelayState {
+export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; relayToken: string }, now = new Date()): RelayState {
   const rows = db.prepare("SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' ORDER BY created_at, proposal_id").all() as PRow[];
   const proposals: RelayProposal[] = rows.filter((p) => Date.parse(p.expires_at) > now.getTime()).map((p) => {
     let canonical = p.terms_json;
@@ -86,7 +89,7 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string }, n
     snapshot: buildSnapshot(db, now),
     approvals: { proposals, names, passkey: { rp_id: cfg.rpId, credentials }, policy: currentPolicy(db) },
     enrolment: w && w.rp_id === cfg.rpId
-      ? { window_id: w.window_id, challenge: w.challenge, user_id: w.user_id, user_name: cfg.label ?? "max", code_sha256: w.code_sha256, rp_id: w.rp_id, expires_at: w.expires_at }
+      ? { window_id: w.window_id, challenge: w.challenge, user_id: w.user_id, user_name: cfg.label ?? "max", code_mac: createHmac("sha256", cfg.relayToken).update(w.code_sha256).digest("hex"), rp_id: w.rp_id, expires_at: w.expires_at }
       : null,
   };
 }

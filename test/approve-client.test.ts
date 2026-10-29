@@ -1,9 +1,12 @@
 // The phone's own checks and words: it canonicalises and hashes the terms itself, refuses anything that does not
 // hash to the hash it will sign, and builds every line of the confirm screen from those hashed terms.
+import { generateKeyPairSync } from "node:crypto";
+import { isoCBOR } from "@simplewebauthn/server/helpers";
+import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, rejectionHash, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, passkeyFingerprint, rejectionHash, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
@@ -170,5 +173,17 @@ describe("the viewer key (M2)", () => {
     expect(takeViewKey(`#view=${"cd".repeat(16)}`, null)).toBe("cd".repeat(16));
     const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
     expect(takeViewKey("", broken)).toBe("");
+  });
+});
+
+describe("the new passkey's fingerprint (M3)", () => {
+  it("is the same on the phone (from SPKI) and on the runner (from the stored COSE key)", async () => {
+    const { publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+    const jwk = publicKey.export({ format: "jwk" });
+    const cose = isoCBOR.encode(new Map<number, number | Uint8Array>([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x!, "base64url")], [-3, Buffer.from(jwk.y!, "base64url")]]));
+    const spki = publicKey.export({ type: "spki", format: "der" });
+    const onPhone = await passkeyFingerprint(spki.buffer.slice(spki.byteOffset, spki.byteOffset + spki.byteLength) as ArrayBuffer);
+    expect(onPhone).toMatch(/^[0-9A-F]{4}-[0-9A-F]{4}$/);
+    expect(onPhone).toBe(fingerprintOf(spkiSha256OfCose(Buffer.from(cose).toString("base64url"))));
   });
 });

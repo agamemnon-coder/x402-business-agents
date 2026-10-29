@@ -2,7 +2,8 @@
 // code, the phone creates a passkey against the window's challenge, and the runner pins the verified public key
 // here. Only the code's hash is stored, and one passkey is active at a time.
 
-import { randomBytes, randomInt } from "node:crypto";
+import { createHash, createPublicKey, randomBytes, randomInt, type JsonWebKey } from "node:crypto";
+import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
@@ -113,8 +114,79 @@ export interface NewPasskey {
   label: string;
 }
 
+/** What a person compares: the first 8 hex of the public key's SPKI SHA-256, as the phone computes it, e.g. 3FA0-91C2. */
+export function fingerprintOf(spkiSha256: string): string {
+  const h = spkiSha256.slice(0, 8).toUpperCase();
+  return `${h.slice(0, 4)}-${h.slice(4)}`;
+}
+
+const b64u = (b: Uint8Array) => Buffer.from(b).toString("base64url");
+
+/** SHA-256 of the passkey's public key as SPKI DER, from the COSE key the runner stores (ES256 or RS256). */
+export function spkiSha256OfCose(publicKey: string): string {
+  const cose = isoCBOR.decodeFirst<Map<number, number | Uint8Array>>(Buffer.from(publicKey, "base64url"));
+  const kty = cose.get(1);
+  let jwk: JsonWebKey;
+  if (kty === 2) jwk = { kty: "EC", crv: "P-256", x: b64u(cose.get(-2) as Uint8Array), y: b64u(cose.get(-3) as Uint8Array) };
+  else if (kty === 3) jwk = { kty: "RSA", n: b64u(cose.get(-1) as Uint8Array), e: b64u(cose.get(-2) as Uint8Array) };
+  else throw new Error(`unsupported passkey key type ${String(kty)}`);
+  return createHash("sha256").update(createPublicKey({ key: jwk, format: "jwk" }).export({ type: "spki", format: "der" })).digest("hex");
+}
+
+export interface PendingPasskey {
+  credential_id: string;
+  window_id: string;
+  aaguid: string | null;
+  label: string;
+  fingerprint: string;
+  created_at: string;
+}
+
+/** Keeps a verified new passkey until the runner confirms its fingerprint. One per window: a later one replaces it. */
+export function pendPasskey(db: DB, p: NewPasskey, now = new Date()): string {
+  const fingerprint = fingerprintOf(spkiSha256OfCose(p.publicKey));
+  db.transaction(() => {
+    db.prepare("DELETE FROM passkey_pending WHERE window_id = ? OR credential_id = ?").run(p.window.window_id, p.credentialId);
+    db.prepare(
+      `INSERT INTO passkey_pending (credential_id, window_id, public_key, counter, transports, aaguid, registration_json, label, spki_sha256, fingerprint, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(p.credentialId, p.window.window_id, p.publicKey, p.counter, p.transports ? JSON.stringify(p.transports) : null, p.aaguid, p.registrationJson, p.label,
+      spkiSha256OfCose(p.publicKey), fingerprint, now.toISOString());
+    audit(db, "system", "passkey.pending", p.credentialId, { window_id: p.window.window_id, fingerprint, aaguid: p.aaguid }, now);
+  }).immediate();
+  return fingerprint;
+}
+
+/** New passkeys waiting for confirmation, in windows that are still open. */
+export function pendingPasskeys(db: DB, now = new Date()): PendingPasskey[] {
+  return (db.prepare(`SELECT p.credential_id, p.window_id, p.aaguid, p.label, p.fingerprint, p.created_at FROM passkey_pending p
+    JOIN passkey_enrolments w USING (window_id) WHERE w.status = 'OPEN' ORDER BY p.created_at`).all() as (PendingPasskey & { expires_at?: string })[])
+    .filter((p) => {
+      const w = db.prepare("SELECT expires_at FROM passkey_enrolments WHERE window_id = ?").get(p.window_id) as { expires_at: string };
+      return Date.parse(w.expires_at) > now.getTime();
+    });
+}
+
+/**
+ * The person on the runner confirms the fingerprint the phone shows; only then is the passkey pinned (and a passkey
+ * it replaces revoked). The window must still be open.
+ */
+export function confirmPasskey(db: DB, fingerprint: string, now = new Date()): string {
+  const fp = fingerprint.trim().toUpperCase();
+  const row = db.prepare("SELECT * FROM passkey_pending WHERE fingerprint = ?").get(fp) as
+    { credential_id: string; window_id: string; public_key: string; counter: number; transports: string | null; aaguid: string | null; registration_json: string; label: string } | undefined;
+  if (!row) throw new Error(`no pending passkey with fingerprint ${fp}`);
+  const window = db.prepare("SELECT * FROM passkey_enrolments WHERE window_id = ?").get(row.window_id) as EnrolmentWindow;
+  recordPasskey(db, {
+    window, credentialId: row.credential_id, publicKey: row.public_key, counter: row.counter, transports: row.transports ? (JSON.parse(row.transports) as string[]) : null,
+    aaguid: row.aaguid, registrationJson: row.registration_json, label: row.label,
+  }, now, { fingerprint: fp, confirmed_on: "runner" });
+  db.prepare("DELETE FROM passkey_pending WHERE window_id = ?").run(row.window_id);
+  return row.credential_id;
+}
+
 /** Pins a verified passkey: revokes the previous one, uses up the window, all in one transaction. */
-export function recordPasskey(db: DB, p: NewPasskey, now = new Date()): void {
+export function recordPasskey(db: DB, p: NewPasskey, now = new Date(), confirmation: { fingerprint: string; confirmed_on: "runner" } | null = null): void {
   db.transaction(() => {
     const w = db.prepare("SELECT * FROM passkey_enrolments WHERE window_id = ?").get(p.window.window_id) as EnrolmentWindow | undefined;
     if (!w || w.status !== "OPEN" || Date.parse(w.expires_at) <= now.getTime()) throw new Error(`enrolment window ${p.window.window_id} is not open`);
@@ -129,6 +201,6 @@ export function recordPasskey(db: DB, p: NewPasskey, now = new Date()): void {
     ).run(p.credentialId, p.publicKey, p.counter, p.transports ? JSON.stringify(p.transports) : null, w.rp_id, w.origin, p.label, p.aaguid, p.registrationJson, now.toISOString());
     db.prepare("UPDATE passkey_enrolments SET status = 'USED' WHERE window_id = ?").run(w.window_id);
     audit(db, "human", "passkey.enrolled", p.credentialId,
-      { window_id: w.window_id, label: p.label, rp_id: w.rp_id, origin: w.origin, aaguid: p.aaguid, public_key_sha256: sha256Hex(p.publicKey) }, now);
+      { window_id: w.window_id, label: p.label, rp_id: w.rp_id, origin: w.origin, aaguid: p.aaguid, public_key_sha256: sha256Hex(p.publicKey), ...(confirmation ?? {}) }, now);
   }).immediate();
 }

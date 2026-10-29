@@ -430,7 +430,7 @@ function passkeyError(e: unknown): string {
   return `The passkey did not answer: ${e instanceof Error ? e.message : String(e)}`;
 }
 
-const FINAL = new Set(["rejected", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
+const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
 const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   queued: { tone: "wait", head: "Signed", lead: "Waiting for the runner to check your signature." },
   approved: { tone: "wait", head: "Approved", lead: "The runner checked your signature. Executing now." },
@@ -441,10 +441,21 @@ const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   too_late: { tone: "warn", head: "Too late", lead: "Nothing was approved." },
   already: { tone: "info", head: "Already decided", lead: "" },
   enrolled: { tone: "ok", head: "Passkey enrolled", lead: "From now on, approvals need this passkey." },
+  pending: { tone: "wait", head: "Confirm on the runner", lead: "Tell Claude the fingerprint above. The passkey counts once the runner confirms that same fingerprint." },
 };
 
-/** Polls a ticket and shows the runner's verdict until it is final. */
-async function follow(ticket: string, into: HTMLElement, done: Node, what = ""): Promise<void> {
+/**
+ * The new passkey's fingerprint, computed on the phone from its own public key (SPKI SHA-256, first 8 hex): the
+ * person on the runner confirms only this one, so a passkey slipped in by someone else does not count (M3).
+ */
+export async function passkeyFingerprint(spki: ArrayBuffer): Promise<string> {
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", spki));
+  const h = [...d.slice(0, 4)].map((b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+  return `${h.slice(0, 4)}-${h.slice(4)}`;
+}
+
+/** Polls a ticket and shows the runner's verdict until it is final; returns the last answer. */
+async function follow(ticket: string, into: HTMLElement, done: Node, what = ""): Promise<{ status: string; message: string }> {
   const icon = el("div", "verdict-icon");
   const head = el("h2", "verdict-head");
   const subject = txt("p", "verdict-what", what);
@@ -463,7 +474,7 @@ async function follow(ticket: string, into: HTMLElement, done: Node, what = ""):
     detail.textContent = s === "queued" && Date.now() - started > 20_000
       ? "The runner has not picked it up yet. If it is offline, your signature waits for it (up to 30 minutes)."
       : str(data.message);
-    if (FINAL.has(s) || Date.now() - started > 5 * 60_000) return;
+    if (FINAL.has(s) || Date.now() - started > 5 * 60_000) return { status: s, message: str(data.message) };
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
@@ -726,6 +737,9 @@ function enrolPage(): void {
       go.disabled = false;
       return;
     }
+    const att = cred.response as AuthenticatorAttestationResponse;
+    const spki = typeof att.getPublicKey === "function" ? att.getPublicKey() : null;
+    const fp = spki ? await passkeyFingerprint(spki) : "";
     const sent = await api("/api/enrol", { code: input.value, credential: serializeRegistration(cred) })
       .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
     if (sent.status !== 202) {
@@ -735,7 +749,11 @@ function enrolPage(): void {
     }
     const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
     home.href = "/";
-    await follow(str(sent.data.ticket), box, home);
+    const end = await follow(str(sent.data.ticket), box, home, fp ? `Fingerprint ${fp}` : "This browser cannot show the fingerprint; do not confirm it on the runner.");
+    // The runner names the fingerprint of the passkey it received: it must be the one this phone made.
+    if (end.status === "pending" && fp && !end.message.includes(fp)) {
+      box.prepend(txt("p", "alarm", `The runner received another passkey than this phone made (${fp}). Do not confirm it; tell Claude.`));
+    }
   });
 }
 

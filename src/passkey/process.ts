@@ -9,7 +9,7 @@ import type { DB } from "../db/open.js";
 import { canonicalTerms, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { checkChanges, type PolicyChangeTerms } from "../executors/policyChange.js";
 import { approvedAlternative, createProposal, decide, expireDue, type ProposalRow } from "../policy/approvals.js";
-import { codeSha256, openWindow, passkeyById, recordPasskey } from "./ledger.js";
+import { codeSha256, openWindow, passkeyById, pendPasskey } from "./ledger.js";
 import { assertionSha256, verifyApprovalSignature, verifyEnrolmentResponse } from "./webauthn.js";
 
 /** One submission as the relay queued it. Only `ticket` and `body` are used; the body is checked from scratch. */
@@ -226,7 +226,7 @@ export async function processPolicyRequest(db: DB, item: InboxItem, now = new Da
 }
 
 export interface RegistrationOutcome {
-  status: "enrolled" | "refused";
+  status: "enrolled" | "pending" | "refused";
   message: string;
   credentialId: string | null;
 }
@@ -244,6 +244,8 @@ export async function processRegistration(db: DB, item: InboxItem, opts: { label
   const response = body.credential as RegistrationResponseJSON;
   const pinned = passkeyById(db, response.id);
   if (pinned?.status === "ACTIVE") return { status: "enrolled", message: `passkey ${response.id.slice(0, 8)} is enrolled for ${pinned.label}`, credentialId: pinned.credential_id };
+  const waiting = db.prepare("SELECT fingerprint FROM passkey_pending WHERE credential_id = ?").get(response.id) as { fingerprint: string } | undefined;
+  if (waiting) return { status: "pending", message: `passkey created, fingerprint ${waiting.fingerprint}; it counts once the runner confirms that fingerprint`, credentialId: response.id };
   const w = openWindow(db, now);
   if (!w) return refuse("no enrolment window is open; ask for a new code");
   // The relay checked the code too; the runner does not rely on that.
@@ -251,13 +253,15 @@ export async function processRegistration(db: DB, item: InboxItem, opts: { label
   const v = await verifyEnrolmentResponse(response, w);
   if (!v.ok) return refuseAudited("the new passkey did not verify against the enrolment window", v.reason);
   if (v.credentialId !== response.id) return refuseAudited("the credential id does not match the new passkey");
+  let fingerprint: string;
   try {
-    recordPasskey(db, {
+    fingerprint = pendPasskey(db, {
       window: w, credentialId: v.credentialId, publicKey: v.publicKey, counter: v.counter, transports: v.transports,
       aaguid: v.aaguid, registrationJson: JSON.stringify(response), label: opts.label,
     }, now);
   } catch (e) {
     return refuseAudited((e as Error).message.slice(0, 240));
   }
-  return { status: "enrolled", message: `passkey ${v.credentialId.slice(0, 8)} enrolled for ${opts.label}; approvals now need it`, credentialId: v.credentialId };
+  // Not pinned yet: the person on the runner confirms the fingerprint the phone shows (security review M3).
+  return { status: "pending", message: `passkey created, fingerprint ${fingerprint}; it counts once the runner confirms that fingerprint`, credentialId: v.credentialId };
 }

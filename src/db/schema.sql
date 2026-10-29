@@ -294,3 +294,19 @@ CREATE TABLE IF NOT EXISTS sweeps (
   event_key TEXT REFERENCES chain_credits(event_key),
   created_at TEXT NOT NULL
 );
+
+-- A verified new passkey waiting for confirmation on the runner (security review M3): it counts only once the
+-- person on the runner confirms the fingerprint the phone shows. A relay that slips in its own passkey shows another.
+CREATE TABLE IF NOT EXISTS passkey_pending (
+  credential_id TEXT PRIMARY KEY,
+  window_id TEXT NOT NULL REFERENCES passkey_enrolments(window_id),
+  public_key TEXT NOT NULL,
+  counter INTEGER NOT NULL,
+  transports TEXT,
+  aaguid TEXT,
+  registration_json TEXT NOT NULL,
+  label TEXT NOT NULL,
+  spki_sha256 TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);

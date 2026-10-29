@@ -34,7 +34,7 @@ const QUEUED_KEEP_MS = 30 * 60 * 1000;
 const PROPOSAL_ID = /^P-\d{4,}$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 const TICKET = /^[A-Za-z0-9_-]{22}$/;
-const ACK_STATUSES = new Set(["approved", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
+const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled"]);
 
 const COMMON_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
@@ -73,11 +73,15 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function hmacHex(key: string, message: string): Promise<string> {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(message));
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /** The viewer key the runner derives in src/relay/config.ts viewKey(): HMAC-SHA256(relay token, "kit11 view v1"), 32 hex. */
 async function viewKeyOf(token: string): Promise<string> {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(token), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("kit11 view v1"));
-  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+  return (await hmacHex(token, "kit11 view v1")).slice(0, 32);
 }
 
 /** Compares secrets through their digests, in constant time. */
@@ -158,7 +162,7 @@ interface StoredState {
     names: Record<string, string>;
     passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string }[] };
   };
-  enrolment: null | { window_id: string; challenge: string; user_id: string; user_name: string; code_sha256: string; rp_id: string; expires_at: string };
+  enrolment: null | { window_id: string; challenge: string; user_id: string; user_name: string; code_mac: string; rp_id: string; expires_at: string };
 }
 
 interface TicketRow {
@@ -374,7 +378,7 @@ export class Relay {
     if (wrongSoFar >= ENROL_ATTEMPTS) return { ok: false, res: error(403, "too many wrong codes; ask for a new code") };
     this.put(tries, String(tried + 1));
     const normal = typeof code === "string" ? normalizeCode(code) : null;
-    if (normal === null || (await sha256Hex(normal)) !== e.code_sha256) {
+    if (normal === null || !(await sameSecret(await hmacHex(this.opts.relayToken, await sha256Hex(normal)), e.code_mac))) {
       const wrong = Number(this.get(tries) ?? "0") - Number(this.get(rights) ?? "0");
       return { ok: false, res: error(403, "wrong code", { attempts_left: Math.max(0, ENROL_ATTEMPTS - wrong) }) };
     }

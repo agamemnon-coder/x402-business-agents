@@ -24,6 +24,7 @@
     "audit:export": "tsx src/cli/auditExport.ts",
     "audit:report": "tsx src/cli/auditReport.ts",
     "verify-log": "tsx src/cli/verifyLog.ts",
+    "passkey": "tsx src/cli/passkey.ts",
     "approvals": "tsx src/cli/approvals-page.ts",
     "dashboard": "tsx src/cli/dashboard.ts",
     "relay": "tsx src/cli/relay.ts",
