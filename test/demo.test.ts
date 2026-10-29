@@ -52,6 +52,28 @@ describe("the demo story", () => {
     ]);
   });
 
+  it("never shows null, undefined or NaN, opens with the company card, and writes amounts as money", () => {
+    const text = readFileSync(new URL("../docs/demo/story.json", import.meta.url), "utf8");
+    const story = JSON.parse(text) as { steps: { id: string; title: string; text: string; details?: string; tab?: string; facts: { label: string; value: string }[]; approval: { who: string; what: string } | null }[] };
+    expect(story.steps[0]!.id).toBe("card");
+    for (const st of story.steps) {
+      const shown = [st.title, st.text, st.details ?? "", st.tab ?? "", ...st.facts.flatMap((f) => [f.label, f.value]), st.approval?.who ?? "", st.approval?.what ?? ""];
+      for (const v of shown) expect(v, `${st.id}: ${v}`).not.toMatch(/\b(null|undefined|NaN)\b/);
+      expect(st.tab, st.id).toBeTruthy();
+      // The first sentences are plain words; the jargon sits under "How it works".
+      expect(st.text, st.id).not.toMatch(/x402|EUR\/USD tick|mandate_|SHA-256|\*USDZ/);
+    }
+    expect(text).toContain("1,850.00");
+    expect(text).not.toMatch(/[^\d,]1850\.00/);
+  });
+
+  it("puts a null fact nowhere: the page filters it before rendering", () => {
+    const html = readFileSync(new URL("../src/demo/demo.html", import.meta.url), "utf8");
+    expect(html).toContain(".filter(function (n) { return n != null; })");
+    // The approval banner is not the article's tone class (a shared name broke the layout).
+    expect(html).not.toMatch(/^\.approval \{/m);
+  });
+
   it("holds no secret, key or private URL in the committed recording", () => {
     const text = readFileSync(new URL("../docs/demo/story.json", import.meta.url), "utf8");
     expect(text).not.toMatch(/privateKey|api[_-]?key|secret|Bearer|https?:\/\/(?!testnet\.metalntwx\.com\/tx\/)/i);

@@ -86,6 +86,17 @@ a.stop { color: var(--bad); border: 1px solid var(--bad); border-radius: 7px; pa
 .pcard .frozenchip { color: var(--bad); font-weight: 650; }
 .monthlink { color: var(--accent); text-decoration: none; font-weight: 600; }
 .honest { flex-basis: 100%; margin: 2px 0 0; font-size: 12px; color: var(--muted); max-width: 70ch; }
+.honest summary { cursor: pointer; }
+.honest p { margin: 4px 0 0; }
+[hidden] { display: none !important; }
+section#guest { max-width: 760px; margin: 48px auto; padding: 0 20px; border: 0; background: none; box-shadow: none; display: block; }
+section#guest > h2 { font-size: 30px; line-height: 1.2; letter-spacing: -.01em; margin: 0 0 14px; padding: 0; border: 0; text-transform: none; color: var(--text); font-weight: 700; display: block; }
+section#guest p { color: var(--muted); font-size: 16px; margin: 0 0 22px; }
+section#guest .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 26px; }
+section#guest .ctas a { display: inline-block; padding: 12px 18px; border-radius: 10px; font-weight: 650; text-decoration: none; border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+section#guest .ctas a.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+section#guest .cfo { font-size: 13.5px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 details.sandbox { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 details.sandbox summary { cursor: pointer; }
 .card.advise-reject { border-color: var(--bad); }
@@ -221,10 +232,11 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
 }
 </style>
 </head>
-<body>
+<body data-mode="relay">
 <header>
   <div class="brand"><h1>Tidemark Data</h1><span class="sub">Every AI agent its own company card, with limits the CFO sets</span>
-    <p class="honest">One CFO policy for both rails: Airwallex cards and payouts, and Metal mandates for paying per request. Demo on test networks: the Airwallex sandbox (the merchant's charge on a card is simulated; the approve or decline is Airwallex's own) and Metal testnet (USDZ are test dollars). The step from USDZ to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate route.</p></div>
+    <details class="honest"><summary>Test money, real systems: Airwallex sandbox and Metal testnet · details</summary>
+      <p>One CFO policy for both rails: Airwallex cards and payouts, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, USDZ are test dollars. The step from USDZ to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate route.</p></details></div>
   <div class="counts num" id="counts" aria-label="What the agents did">
     <span class="c ok"><b id="c-alone">0</b> done by the agents alone</span>
     <span class="c wait"><b id="c-waiting">0</b> waiting for the CFO</span>
@@ -240,6 +252,12 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
   </div>
 </header>
 <div class="frozen" id="frozen" hidden></div>
+<section id="guest" hidden aria-labelledby="h-guest">
+  <h2 id="h-guest">Give every AI agent its own company card, with limits the CFO sets.</h2>
+  <p>AI agents buy software, data and services on their own cards. The CFO sets the limits once; the bank enforces them; anything more needs the CFO's Face ID.</p>
+  <div class="ctas"><a class="primary" href="demo">Watch the demo →</a><a href="month">A month in 90 seconds →</a></div>
+  <p class="cfo" id="guest-cfo">This is the CFO's live dashboard. To see it, open the viewer link from the runner once on this device.</p>
+</section>
 <main>
   <section id="pending" aria-labelledby="h-pending"><h2 id="h-pending">Waiting for approval <span class="count" id="pending-count">0</span></h2><div class="body" id="pending-body"></div></section>
   <section id="cards" aria-labelledby="h-cards"><h2 id="h-cards">Company cards <span class="hint">Airwallex Issuing, virtual Visa</span></h2><div class="body" id="cards-body"></div></section>
@@ -535,16 +553,30 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     if (vm || rm) history.replaceState(null, "", location.pathname + location.search);
   } catch (e) {}
   var needsLink = false;
+  // The local dashboard (npm run dashboard) needs no key; on the relay, a guest without the viewer link sees the way
+  // to the recorded demo instead, and the page asks the relay for nothing.
+  var LOCAL = document.body.getAttribute("data-mode") === "local";
+  function guest(note) {
+    document.querySelector("main").hidden = true;
+    document.getElementById("counts").hidden = true;
+    document.getElementById("status").hidden = true;
+    if (note) document.getElementById("guest-cfo").textContent = note;
+    document.getElementById("guest").hidden = false;
+  }
 
   function poll() {
     fetch("api/snapshot", { cache: "no-store", headers: { accept: "application/json", "x-kit11-view": viewKey } })
       .then(function (r) { needsLink = r.status === 401; if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(function (d) { lastData = d; lastOk = Date.now(); render(d); })
       .catch(function () {})
-      .then(function () { status(); setTimeout(poll, POLL_MS); });
+      .then(function () {
+        // A viewer link that no longer works: stop asking.
+        if (needsLink) { guest("This device's viewer link is no longer valid. Open the newest link from the runner once on this device."); return; }
+        status(); setTimeout(poll, POLL_MS);
+      });
   }
-  setInterval(status, 1000);
-  poll();
+  if (!LOCAL && !viewKey) guest("");
+  else { setInterval(status, 1000); poll(); }
 })();
 </script>
 </body>

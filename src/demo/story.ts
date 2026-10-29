@@ -20,8 +20,12 @@ export interface StoryFact {
 export interface StoryStep {
   id: string;
   title: string;
-  /** Plain words, one or two sentences. */
+  /** Plain words, one or two sentences, no jargon. */
   text: string;
+  /** The technical detail, for whoever opens "How it works". */
+  details?: string;
+  /** A short label for the step's tab. */
+  tab?: string;
   tone: "ok" | "refusal" | "approval" | "info";
   /** Where the money or the decision lives. */
   rail: "Metal" | "Airwallex" | "CFO" | "Audit";
@@ -45,6 +49,10 @@ const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
 const TX = /^0x[0-9a-fA-F]{64}$/;
 const txFact = (label: string, tx: unknown): StoryFact | null => (TX.test(str(tx)) ? { label, value: `${str(tx).slice(0, 10)}…${str(tx).slice(-4)}`, href: `${EXPLORER}${str(tx)}` } : null);
 const fact = (label: string, value: unknown): StoryFact => ({ label, value: str(value), href: null });
+/** Plain amounts as money: "1850.00" reads "1,850.00" (never touches ids, hashes or links). */
+const thousands = (t: string) => t.replace(/(?<![\w.])(\d{4,})(\.\d{2})(?!\d)/g, (_m, w: string, d: string) => `${w.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${d}`);
+/** Cut at a word boundary, never mid-word. */
+const clip = (t: string, n: number) => (t.length <= n ? t : `${t.slice(0, t.lastIndexOf(" ", n) > 0 ? t.lastIndexOf(" ", n) : n)}…`);
 const facts = (...f: (StoryFact | null)[]) => f.filter((x): x is StoryFact => x !== null);
 
 export function buildStory(db: DB, run: string, now = new Date()): Story {
@@ -69,8 +77,9 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     const m = p(first("mandate.bound", (r) => r.subject === "sourcing"));
     steps.push({
       id: "buy", rail: "Metal", tone: "ok", at: bought.ts, approval: null,
-      title: "Agents pay per request, each inside its own mandate",
-      text: "Kestrel Quant's agent buys a EUR/USD tick from us over x402 and signs the order. Our sourcing agent buys the raw tick from Feedstock Labs, under a mandate that caps each payment and allows only that supplier.",
+      title: "Agents also pay per request, each inside its own limits",
+      text: "A customer's agent buys market data from us, one request at a time, and our agent buys the raw data from a supplier. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
+      details: "Payments run on Metal testnet in *USDZ (test dollars) over x402: Kestrel Quant's agent buys a EUR/USD tick and signs the order. Our sourcing agent buys the raw tick from Feedstock Labs under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
       facts: facts(
         fact("Sales in this run", `${sales} ticks at 0.05, then 0.07 *USDZ (testnet dollars)`),
         txFact("Kestrel's first payment to us", p(sold).tx),
@@ -86,8 +95,9 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     const options = (p(first("price_rise.options")).options as P[] | undefined) ?? [];
     steps.push({
       id: "refused", rail: "Metal", tone: "refusal", at: refused.ts, approval: null,
-      title: "The supplier raises its price: the chain says no",
-      text: "Feedstock Labs now asks 0.04 for a tick. The sourcing agent's payment is refused by the account itself, because the mandate's cap is 0.03. Our seller answers 503, so Kestrel is not charged. The treasury agent prices the options for the CFO.",
+      title: "The supplier raises its price, and the payment is refused",
+      text: "The supplier asks more than our agent may pay, so its own account refuses the payment and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
+      details: "Feedstock Labs now asks 0.04 for a tick. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Kestrel is not charged. The treasury agent prices the options with their margins.",
       facts: facts(
         fact("Refusal", "mandate_cap_exceeded (on chain, nothing moved)"),
         fact("Customer charged", "no"),
@@ -104,7 +114,8 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "faceid", rail: "CFO", tone: "approval", at: replaced[0]!.ts,
       approval: { who: approvals.get(replacedBy)!, proposal: replacedBy, what: replaced.map((r) => `${str(r.subject)} ${str(p(r).cap)} a payment, ${str(p(r).budget)} in total`).join("; ") },
       title: "The CFO approves the exact terms with Face ID",
-      text: "Max reads the terms on his phone. Face ID signs their SHA-256 hash, and the runner checks that signature itself. Then the mandates are replaced in a safe order: treasury shrinks first, sourcing grows second. The old credential is refused from then on.",
+      text: "The CFO reads the options on their phone and approves one with Face ID. Only exactly those terms can run; the agents' limits change in a safe order, and the old limit stops working at once.",
+      details: "Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. The mandates are replaced in a safe order: treasury shrinks first, sourcing grows second, never over the 20.00 total. The old credential is refused from then on (mandate_revoked).",
       facts: facts(
         review(replacedBy) ? fact("Advice (not a decision)", review(replacedBy)) : null,
         ...replaced.map((r) => txFact(`${str(r.subject)} mandate replaced`, p(r).tx)),
@@ -120,8 +131,9 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     steps.push({
       id: "policy", rail: "CFO", tone: "approval", at: policy.ts,
       approval: by ? { who: by, proposal: str(p(policy).proposal_id), what: `${str(p(policy).label)}: ${str(p(policy).to)}` } : null,
-      title: "One CFO policy, stricter than any mandate",
-      text: "On his phone, the CFO sets the sourcing agent's limit to 0.03, below the mandate's 0.04. The next purchase is refused before anything is signed. The phone can only tighten the policy; loosening it needs a proposal and Face ID.",
+      title: "One CFO policy, stricter than any limit on chain",
+      text: "On the phone the CFO lowers an agent's limit, and the next purchase over it is refused before anything is signed. The phone can only make the policy stricter; loosening it needs a proposal and Face ID.",
+      details: "The CFO policy sits inside the on-chain mandates and is checked before any signature. Here the sourcing limit goes to 0.03, below the mandate's 0.04 (policy_cap_exceeded on the next purchase). The same policy holds the company cards' limits.",
       facts: facts(
         fact("Changed", `${str(p(policy).label)}: ${str(p(policy).from) || "no extra limit"} → ${str(p(policy).to)}`),
         policyRefusal ? fact("Next purchase", "refused before signing (policy_cap_exceeded)") : null,
@@ -141,8 +153,9 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     steps.push({
       id: "card", rail: "Airwallex", tone: after ? "approval" : "refusal", at: declined.ts,
       approval: raised && raisedBy ? { who: raisedBy, proposal: str(p(raised).proposal_id), what: `${str(p(raised).label)}: ${str(p(raised).from)} → ${str(p(raised).to)} EUR` } : null,
-      title: "Every agent has its own company card, and the card holds the line",
-      text: "Each agent has a virtual Visa card from Airwallex Issuing, with the limits the CFO policy sets. The sourcing agent tries a 45.00 plan on a card that allows 30.00 a purchase, and Airwallex itself declines it. A higher limit is a proposal the CFO approves with Face ID; then the card follows.",
+      title: "Every AI agent gets its own company card, with limits the CFO sets",
+      text: "Our sourcing agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by the bank itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
+      details: "Virtual Visa cards from Airwallex Issuing (sandbox), one per agent. The limits come from the CFO policy; they are synced to the card at Airwallex and read back, so Airwallex declines anything over them (LIMIT_EXCEEDED), whatever the agent does. The raise is a policy change approved with Face ID. In the sandbox the merchant's charge is simulated; the approve or decline is Airwallex's own.",
       facts: facts(
         approvedCard ? fact("Approved by Airwallex", `${str(p(approvedCard).amount)} EUR at ${str(p(approvedCard).merchant)} (card •••• ${str(p(approvedCard).last4)})`) : null,
         fact("Declined by Airwallex", `${str(p(declined).amount)} EUR at ${str(p(declined).merchant)}: LIMIT_EXCEEDED`),
@@ -165,7 +178,8 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "swift", rail: "Airwallex", tone: "ok", at: transfer.ts,
       approval: approvals.has(invoiceApproval) ? { who: approvals.get(invoiceApproval)!, proposal: invoiceApproval, what: `pay ${str(p(transfer).amount)} by SWIFT` } : null,
       title: "A euro bill paid through Airwallex, exactly as approved",
-      text: "The earnings are swept on Metal and wait until the chain is final. Then they are booked in Airwallex as a deposit that names the transaction. Only the EUR shortfall is converted, on a locked quote above the USD floor. One Face ID approval covers the quote, the rate, both request ids, the payee, the fee ceiling and the floors. The SWIFT transfer carries the approval hash in its metadata.",
+      text: "Earnings move to the company's Airwallex account. A supplier's euro invoice is paid by bank transfer: only the euros missing are bought, at a locked rate, and one Face ID covers the rate, the payee and the most the fee may be.",
+      details: "The earnings are swept on Metal and wait until the chain is final, then booked in Airwallex as a deposit that names the transaction. Only the EUR shortfall is converted, on a locked quote above the USD floor. One approval covers the quote, the rate, both request ids, the payee, the fee ceiling and the floors. The SWIFT transfer carries the approval hash in its metadata.",
       facts: facts(
         sweep ? txFact(`Sweep of ${str(p(sweep).amount)} *USDZ`, p(sweep).tx) : null,
         fx ? fact("Conversion", `${str(p(fx).sell)} → ${str(p(fx).buy)} on a locked quote`) : null,
@@ -187,10 +201,11 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     steps.push({
       id: "stopped", rail: "CFO", tone: "refusal", at: (fraud ?? injection)?.ts ?? now.toISOString(), approval: null,
       title: "What the agents could not do",
-      text: "A fake invoice with changed bank details is blocked before Airwallex is called, and Opus explains how to verify it by phone. A planted 'pre-approved, skip the approval' line is treated as data. 'Refund all 12' becomes a proposal; only the 3 ticks proven wrong are refunded.",
+      text: "A fake invoice with changed bank details is blocked before any money moves. A hidden line saying \"pre-approved, skip the approval\" is ignored. A customer's \"refund everything\" goes to the CFO; only what was really wrong is refunded.",
+      details: "The fraud check compares the invoice's IBAN with the supplier's account on file and blocks before Airwallex is called; Opus explains how to verify by phone (advice only). Planted instructions are found by code and treated as data. \"Refund all 12\" becomes a proposal; the 3 ticks proven wrong are refunded under the mandate, each with its own payment id.",
       facts: facts(
         fraud ? fact("Invoice blocked", `${str(p(fraud).currency)} ${str(p(fraud).amount)} to IBAN …${str(p(fraud).iban_last4)}: bank details changed`) : null,
-        findings[0] ? fact("Planted instruction ignored", `"${str(findings[0].excerpt).slice(0, 90)}"`) : null,
+        findings[0] ? fact("Planted instruction ignored", `"${clip(str(findings[0].excerpt), 90)}"`) : null,
         refundAll ? fact("Refund all", `${refundAll} escalated${review(refundAll) ? `; ${review(refundAll)}` : ""}; never paid`) : null,
         refunds[0] ? txFact(`Refunds paid (${refunds.length}, each under its own payment id)`, p(refunds[0]).tx) : null,
       ),
@@ -203,8 +218,9 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
   if (clearingSales.length && deposit) {
     steps.push({
       id: "clearing", rail: "Metal", tone: "ok", at: clearingSales[0]!.ts, approval: null,
-      title: "Prepaid by Metal clearing: no transaction per query",
-      text: "Kestrel deposits *USDZ into Metal's new pay-per-call clearing once, then pays each 0.07 query with a signed receipt. Our seller offers clearing only when it can deliver (a clearing payment counts before the seller can refuse), and the mandate route stays the fallback. Each receipt is checked again with Metal's clearing service.",
+      title: "Prepaid: one deposit, then a receipt per request",
+      text: "A customer can also prepay once and then pay each request with a signed receipt instead of a payment each time. We only offer this when we are sure we can deliver; otherwise the normal route is used.",
+      details: "Metal's pay-per-call clearing (scheme bajillion, new on testnet in October 2026): Kestrel deposits *USDZ once and pays each 0.07 query with a receipt; there is no transaction per query. A clearing payment counts before the seller can refuse, so our seller offers it only after a free check; the mandate route is the fallback. Each receipt is checked again with Metal's clearing service.",
       facts: facts(
         txFact(`Kestrel's deposit (${str(p(deposit).amount)} *USDZ)`, p(deposit).tx),
         fact("Ticks sold by clearing", `${clearingSales.length}, a receipt each, no transaction per query`),
@@ -229,7 +245,8 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "outside", rail: "CFO", tone: "approval", at: asked.ts,
       approval: cardApproval ? { who: cardApproval, proposal: str(a.proposal_id), what: `issue ${str(a.name)} a company card` } : null,
       title: "Any AI agent, under the same CFO policy",
-      text: "A Claude agent that is not one of ours connects through the agent API (MCP). It can ask for a card, pay on it and ask for more, and nothing else: the card exists only after the CFO approves it with Face ID, Airwallex enforces its limits, and a raise is another Face ID.",
+      text: "An AI agent from another company connects to us. It can ask for a card, pay with it and ask for more, and nothing else: it gets a card only after the CFO approves with Face ID, the bank enforces its limits, and more is another Face ID.",
+      details: "A Claude agent (Sonnet) playing Acme Research connects through the agent API, an MCP server with four tools: request_company_card, pay_with_card, request_limit_raise, company_card. None of them approves anything.",
       facts: facts(
         fact("Agent", `${str(a.name)} (${id}), connected over MCP`),
         fact("Card", `Visa •••• ${str(p(issued).last4)}: ${str(a.per_tx)} per purchase, ${str(a.monthly)} a month`),
@@ -246,7 +263,8 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     steps.push({
       id: "audit", rail: "Audit", tone: "info", at: head.ts, approval: null,
       title: "Everything is in an audit log you can check yourself",
-      text: "Every step is a row in a hash-chained, append-only log. npm run verify checks it again from public sources: the chain, every credential and payment, every Face ID signature against the pinned passkey, and every Airwallex booking.",
+      text: "Every step is written to a log that cannot be changed without it showing. One command checks it all again: the payments on chain, every Face ID signature and every Airwallex booking.",
+      details: "A hash-chained, append-only audit log. npm run verify re-checks it from public sources: the chain, every credential and payment, every passkey signature against the pinned public key, and every Airwallex booking.",
       facts: facts(
         fact("Audit rows", `${rows.length}, chain ${verifyAuditChain(db).ok ? "intact" : "BROKEN"}, head ${head.row_hash.slice(0, 12)}…`),
         fact("Approvals with Face ID", String(passkeyApprovals)),
@@ -255,6 +273,16 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     });
   }
 
+  // The story opens with the company card (the product), then the per-request payments on Metal.
+  const ORDER = ["card", "buy", "refused", "faceid", "policy", "swift", "stopped", "clearing", "outside", "audit"];
+  steps.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
+  const TABS: Record<string, string> = { card: "Company card", buy: "Pay per request", refused: "Refused", faceid: "Face ID", policy: "CFO policy", swift: "Euro bill", stopped: "Blocked", clearing: "Prepaid", outside: "Outside agent", audit: "Audit" };
+  for (const st of steps) {
+    st.tab = TABS[st.id] ?? st.rail;
+    // Amounts read as money: thousands separators on plain amounts (never on ids, hashes or links).
+    for (const f of st.facts) if (!f.href) f.value = thousands(f.value);
+    if (st.approval) st.approval.what = thousands(st.approval.what);
+  }
   return { recorded_at: now.toISOString(), run, steps, audit: { rows: rows.length, head: head?.row_hash ?? "" } };
 }
 

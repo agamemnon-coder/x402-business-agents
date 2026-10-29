@@ -1,6 +1,6 @@
 # Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
-# test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), and gitleaks on the pushed
-# commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
+# test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), a juror's first run
+# (npm run judge on a fresh clone, then the guest pages in Chromium), and gitleaks on the pushed commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
 # No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
 name: ci
 on:
@@ -26,6 +26,23 @@ jobs:
         working-directory: worker
         run: npm ci && npx tsc --noEmit && npm audit --audit-level=low
       - run: npm audit --audit-level=low
+  # A juror's first run: a fresh clone, no keys, no network beyond npm. `npm run judge` must serve the recorded demo
+  # and the month, and the guest pages must render cleanly in Chromium at phone and laptop width, light and dark.
+  judge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm ci
+      - name: npm run judge (no keys, no ledger)
+        run: npm run judge -- --check
+      - run: npx playwright install --with-deps chromium
+      - name: Guest pages in Chromium (/, /demo, /month at 390 and 1440 px)
+        run: npx tsx test/browser/pages.check.ts test-results/pages
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

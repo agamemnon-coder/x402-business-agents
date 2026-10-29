@@ -2,6 +2,9 @@
 
 **Give every AI agent its own company card, with limits the CFO sets.**
 
+**See it in 2 minutes, no keys:** `npm ci && npm run judge` plays the recorded live run and a simulated month in
+your browser.
+
 Tidemark Data's three AI agents each hold a virtual Visa card from [Airwallex Issuing](https://www.airwallex.com/docs/issuing)
 and a [Metal](https://docs.metalntwx.com) mandate for paying per request over x402. One CFO policy sets the limits
 for both rails, and each rail enforces them itself: Airwallex declines a card purchase over the card's limit, and the

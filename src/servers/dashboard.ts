@@ -72,7 +72,8 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
 
   app.get("/", (_req, res) => {
     res.setHeader("Content-Security-Policy", CSP);
-    res.type("html").send(PAGE);
+    // Here the snapshot needs no viewer key (loopback only).
+    res.type("html").send(PAGE.replace('<body data-mode="relay">', '<body data-mode="local">'));
   });
 
   app.get("/demo", (_req, res) => {

@@ -275,7 +275,7 @@ describe("dashboard server", () => {
     expect(((await snap.json()) as { pending: { proposal_id: string }[] }).pending[0]!.proposal_id).toBe("P-0007");
     const page = await fetch(`${base}/`);
     const html = await page.text();
-    expect(html).toBe(PAGE);
+    expect(html).toBe(PAGE.replace('<body data-mode="relay">', '<body data-mode="local">'));
     expect(html).not.toContain("P-0007");
     expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'sha256-[^']+'; style-src 'sha256-[^']+'; connect-src 'self'/);
   });

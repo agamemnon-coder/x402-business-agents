@@ -51,10 +51,17 @@ article.ok { border-left-color: var(--ok); } article.refusal { border-left-color
 .rail { font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 1px 7px; background: var(--surface-2); }
 article h2 { font-size: 24px; line-height: 1.25; margin: 10px 0 8px; letter-spacing: -.01em; }
 article p.text { font-size: 16px; margin: 0 0 16px; max-width: 75ch; }
-.approval { display: flex; gap: 12px; align-items: flex-start; background: var(--warn-soft); border-radius: 10px; padding: 12px 14px; margin: 0 0 16px; }
-.approval .icon { font-size: 22px; line-height: 1; }
-.approval b { display: block; }
-.approval span { color: var(--muted); font-size: 14px; }
+.signoff { display: flex; gap: 12px; align-items: flex-start; background: var(--warn-soft); border-radius: 10px; padding: 12px 14px; margin: 0 0 16px; }
+.signoff .icon { font-size: 22px; line-height: 1; }
+.signoff b { display: block; }
+.signoff span { color: var(--muted); font-size: 14px; }
+details.how { margin: 0 0 14px; font-size: 14px; color: var(--muted); max-width: 75ch; }
+details.how summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.how p { margin: 6px 0 0; }
+.replay details { display: inline; }
+.replay summary { display: inline; cursor: pointer; color: var(--accent); }
+.replay details p { margin: 6px 0 0; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 td { padding: 7px 8px; border-top: 1px solid var(--border); vertical-align: top; }
 td:first-child { color: var(--muted); width: 38%; }
@@ -81,7 +88,7 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
 <body>
 <header>
   <div class="row"><h1>Tidemark Data</h1><span class="tag">Every AI agent its own company card, with limits the CFO sets</span>
-    <nav><a href="month">A month in 90 seconds</a><a href="./">Live dashboard</a></nav></div>
+    <nav><a href="month">A month in 90 seconds</a><a href="./">Home</a></nav></div>
   <p class="replay" id="replay"></p>
 </header>
 <main>
@@ -108,14 +115,16 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
   var when = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" });
 
   var rp = document.getElementById("replay");
-  rp.appendChild(el("b", "", ["Replay of a recorded live run"]));
-  rp.appendChild(document.createTextNode(" (" + S.run + ", " + when.format(new Date(steps[0] ? steps[0].at : S.recorded_at)) + "): every step really happened on Metal testnet and in the Airwallex sandbox; this page only plays it back, so it cannot fail on stage. *USDZ are test dollars."));
+  rp.appendChild(el("b", "", ["Recorded run of " + when.format(new Date(steps[0] ? steps[0].at : S.recorded_at))]));
+  rp.appendChild(document.createTextNode(" · test money, real systems "));
+  rp.appendChild(el("details", "", [el("summary", "", ["details"]), el("p", "", ["Every step really happened, in " + S.run + ", on Metal testnet and in the Airwallex sandbox. This page only plays it back, so it cannot fail on stage. *USDZ are Metal's test dollars."])]));
   document.getElementById("foot").textContent = "Recorded " + when.format(new Date(S.recorded_at)) + " from the run's audit log (" + S.audit.rows + " rows, head " + S.audit.head.slice(0, 12) + "…). Built with Claude Code.";
 
   var nav = document.getElementById("steps");
   steps.forEach(function (s, k) {
-    var b = el("button", "", [(k + 1) + ". " + s.rail]);
+    var b = el("button", "", [(k + 1) + ". " + (s.tab || s.rail)]);
     b.setAttribute("role", "tab");
+    b.setAttribute("aria-label", "Step " + (k + 1) + ": " + s.title);
     b.addEventListener("click", function () { stop(); show(k); });
     nav.appendChild(b);
   });
@@ -129,14 +138,16 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
     });
     var art = document.getElementById("step");
     art.className = s.tone;
-    art.replaceChildren(
+    // replaceChildren would print a null as the text "null": only real nodes go in.
+    art.replaceChildren.apply(art, [
       el("div", "meta", [el("span", "rail", [s.rail]), "Step " + (i + 1) + " of " + steps.length]),
       el("h2", "", [s.title]),
       el("p", "text", [s.text]),
-      s.approval ? el("div", "approval", [el("span", "icon", ["✓"]), el("div", "", [el("b", "", [s.approval.who + " approved " + s.approval.proposal]), el("span", "", [s.approval.what])])]) : null,
-      el("table", "", [el("tbody", "", rows)])
-    );
-    Array.prototype.forEach.call(nav.children, function (b, k2) { b.className = k2 === i ? "on" : k2 < i ? "done" : ""; });
+      s.approval ? el("div", "signoff", [el("span", "icon", ["✓"]), el("div", "", [el("b", "", [s.approval.who + " approved " + s.approval.proposal]), el("span", "", [s.approval.what])])]) : null,
+      s.details ? el("details", "how", [el("summary", "", ["How it works"]), el("p", "", [s.details])]) : null,
+      rows.length ? el("table", "", [el("tbody", "", rows)]) : null
+    ].filter(function (n) { return n != null; }));
+    Array.prototype.forEach.call(nav.children, function (b, k2) { b.className = k2 === i ? "on" : k2 < i ? "done" : ""; b.setAttribute("aria-selected", k2 === i ? "true" : "false"); });
     document.getElementById("where").textContent = (i + 1) + " / " + steps.length;
     document.getElementById("prev").disabled = i === 0;
     document.getElementById("next").disabled = i === steps.length - 1;
