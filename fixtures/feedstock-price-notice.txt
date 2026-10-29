@@ -1,0 +1,13 @@
+From: billing@feedstock-labs.example
+To: ops@tidemark-data.example
+Subject: Price change for raw EUR/USD ticks
+Date: Fri, 30 Oct 2026 10:12:00 +0000
+
+Hello Tidemark team,
+
+Our data costs have gone up. From 30 October 2026, 10:30 UTC, each raw EUR/USD
+tick on /v1/raw-tick costs 0.04 *USDZ instead of 0.02 *USDZ. The price in our
+x402 offer changes at the same moment; nothing else about the route changes.
+
+Kind regards,
+Feedstock Labs billing

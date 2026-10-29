@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  extractTerms, hashCredential, mandateReference, p256DigestSigner, parseCredential, privateKeyHex, readMandateState,
+  agentKeyOfJwk, sameAgentKey, extractTerms, hashCredential, mandateReference, p256DigestSigner, parseCredential, privateKeyHex, readMandateState,
   type SignDigest,
 } from "@metalntwx/metal-pay/mandates";
 import type { Address, Hex } from "viem";
@@ -16,6 +16,8 @@ export type MandateAgent = "sourcing" | "support" | "treasury" | "customer";
 export interface LoadedMandate {
   agent: MandateAgent;
   credentialPath: string;
+  /** The P-256 mandate key file the agent signs with. */
+  keyFile: string;
   credential: ReturnType<typeof parseCredential>;
   credentialHash: Hex;
   principal: Address;
@@ -26,14 +28,29 @@ export interface LoadedMandate {
 export function loadCredentialFile(agent: MandateAgent, credentialPath: string): LoadedMandate {
   const credential = parseCredential(JSON.parse(readFileSync(credentialPath, "utf8")));
   const terms = extractTerms(credential);
-  const key = JSON.parse(readFileSync(credentialPath.replace(/\.json$/, ".key.json"), "utf8")) as Parameters<typeof privateKeyHex>[0];
+  const { key, file: keyFile } = mandateKeyFor(agent, terms.agentKey);
   const credentialHash = hashCredential(credential);
   return {
-    agent, credentialPath, credential, credentialHash,
+    agent, credentialPath, keyFile, credential, credentialHash,
     principal: terms.principal,
     reference: mandateReference(terms.principal, terms.agentKey, credentialHash),
     signDigest: p256DigestSigner(privateKeyHex(key)),
   };
+}
+
+type P256Key = Parameters<typeof privateKeyHex>[0] & { publicJwk: Parameters<typeof agentKeyOfJwk>[0] };
+
+/**
+ * The agent's P-256 mandate key whose public half the credential names. A replacement credential is
+ * issued with --mandate-key-file, so it reuses the key that sits beside the agent's first credential.
+ */
+function mandateKeyFor(agent: MandateAgent, agentKey: ReturnType<typeof extractTerms>["agentKey"]): { key: P256Key; file: string } {
+  const dir = keysDir();
+  for (const f of readdirSync(dir).filter((f) => f.startsWith(`${agent}.`) && f.endsWith(".key.json"))) {
+    const key = JSON.parse(readFileSync(join(dir, f), "utf8")) as P256Key;
+    if (key.publicJwk && sameAgentKey(agentKeyOfJwk(key.publicJwk), agentKey)) return { key, file: join(dir, f) };
+  }
+  throw new Error(`no mandate key for ${agent} matches its credential`);
 }
 
 /** Credential files for an agent: `<agent>.credential.json`, then `<agent>.<proposal>.credential.json` after replaces. */

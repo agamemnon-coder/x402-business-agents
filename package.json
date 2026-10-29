@@ -13,7 +13,11 @@
     "typecheck": "tsc --noEmit",
     "health": "tsx src/cli/health.ts",
     "bootstrap": "tsx src/cli/bootstrap.ts",
-    "trade": "tsx src/cli/trade.ts"
+    "trade": "tsx src/cli/trade.ts",
+    "proposals": "tsx src/cli/proposals.ts",
+    "approve": "tsx src/cli/approve.ts",
+    "s1:raise": "tsx src/cli/s1.ts raise",
+    "s1:resume": "tsx src/cli/s1.ts resume"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

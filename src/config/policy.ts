@@ -37,3 +37,6 @@ export const SWIFT_FEE_EUR_CENTS = 1285;
 export const EUR_FLOOR_CENTS = 50_000;
 /** The seed step sets committed EUR obligations so free EUR is exactly this, whatever the sandbox starts with. */
 export const TARGET_FREE_EUR_CENTS = 150_000;
+
+/** A mandate change waits up to an hour for its approver; it carries no quote that could expire sooner. */
+export const MANDATE_PROPOSAL_TTL_MS = 60 * 60 * 1000;
