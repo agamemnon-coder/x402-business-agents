@@ -79,6 +79,20 @@ export interface CardTx {
   reason: string | null;
 }
 
+/** Kestrel's prepaid budget in Metal clearing, and what we earned there: kept apart from the mandates. */
+export interface ClearingView {
+  /** Kestrel's deposits into clearing (USDZ). */
+  deposited: string;
+  /** Ticks sold by clearing, and what they brought. */
+  sales: number;
+  earned: string;
+  /** What Metal's clearing service last said each side may spend; null before the first read. */
+  customer_spendable: string | null;
+  seller_spendable: string | null;
+  as_of: string | null;
+  withdrawn: string;
+}
+
 /** An agent's company card (K2): the CFO policy's limits, and whether the card at Airwallex has them yet. */
 export interface CardView {
   agent: Agent;
@@ -111,6 +125,7 @@ export interface Snapshot {
   refusals: Refusal[];
   feed: FeedItem[];
   cards: CardView[];
+  clearing: ClearingView | null;
   /** Top of the page: what the agents did alone, what waits for the CFO, what was blocked (J4). */
   counts: { alone: number; waiting: number; blocked: number };
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
@@ -311,6 +326,24 @@ function cards(db: DB, now: Date): CardView[] {
   });
 }
 
+function clearingView(db: DB): ClearingView | null {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'clearing_ops'").get()) return null;
+  const hasScheme = (db.prepare("PRAGMA table_info(sales)").all() as { name: string }[]).some((c) => c.name === "scheme");
+  const ops = db.prepare("SELECT party, kind, units, created_at FROM clearing_ops ORDER BY id").all() as { party: string; kind: string; units: string; created_at: string }[];
+  const sold = hasScheme ? (db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(price_cents), 0) AS c FROM sales WHERE scheme = 'bajillion' AND status = 'DELIVERED'").get() as { n: number; c: number }) : { n: 0, c: 0 };
+  if (ops.length === 0 && sold.n === 0) return null;
+  const cents = (u: string) => Number(BigInt(u) / 10n ** 16n);
+  const total = (party: string, kind: string) => ops.filter((o) => o.party === party && o.kind === kind).reduce((s, o) => s + cents(o.units), 0);
+  const last = (party: string) => [...ops].reverse().find((o) => o.party === party && o.kind === "balance");
+  const asOf = [last("customer")?.created_at, last("seller")?.created_at].filter(Boolean).sort().at(-1) ?? null;
+  return {
+    deposited: fromCents(total("customer", "deposit")), sales: sold.n, earned: fromCents(sold.c),
+    customer_spendable: last("customer") ? fromCents(cents(last("customer")!.units)) : null,
+    seller_spendable: last("seller") ? fromCents(cents(last("seller")!.units)) : null,
+    as_of: asOf, withdrawn: fromCents(total("seller", "withdraw")),
+  };
+}
+
 const MODEL_NAMES: [RegExp, string][] = [[/haiku/i, "Haiku"], [/sonnet/i, "Sonnet"], [/opus/i, "Opus"]];
 export const modelName = (m: string | null | undefined): string | null => {
   if (!m) return null;
@@ -352,7 +385,8 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "upstream.in_doubt": return out(`Purchase of tick #${str(p.seq)} unconfirmed; it is looked up before any retry`, "refusal");
     case "sale.delivered": {
       const sale = saleOf(s);
-      return out(sale ? `Sold tick #${sale.seq} to Kestrel Quant for ${fromCents(sale.price)}` : `Sale ${s} delivered`, "ok");
+      const how = str(p.scheme) === "bajillion" ? " by Metal clearing (a receipt, no transaction)" : "";
+      return out(sale ? `Sold tick #${sale.seq} to Kestrel Quant for ${fromCents(sale.price)}${how}` : `Sale ${s} delivered${how}`, "ok");
     }
     case "sale.settle_failed": return out(`A sale did not settle; the customer was not charged (${str(p.error)})`, "refusal");
     // The sandbox starts with millions; the floors calibrated against it are not this business's money, so no numbers.
@@ -416,6 +450,10 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "transfer.fee": return out(`Airwallex fee ${str(p.fee)}, within the approved ceiling of ${str(p.fee_max)}`, "ok", { awx_id: s || null });
     case "transfer.fee_over_ceiling": return out(`Airwallex fee ${str(p.fee)} is above the approved ceiling of ${str(p.fee_max)}`, "refusal", { awx_id: s || null });
     case "transfer.ambiguous": return out(`Transfer answer lost; ${str(p.resolved)}`, "info");
+    case "clearing.deposited": return out(`Kestrel put ${str(p.amount)} USDZ into Metal clearing: its prepaid budget for our ticks`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
+    case "clearing.withdrawn": return out(`Our clearing earnings of ${str(p.amount)} USDZ went to the business account`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
+    case "sale.prepaid_not_offered": return out(`Prepaid clearing not offered for tick #${s}: ${str(p.reason).replace(/^[a-z_]+: /, "")}; the buyer uses the mandate route`, "info");
+    case "sale.prepaid_undelivered": return out(`Tick #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
     case "card.issued": return out(`Airwallex issued the ${str(p.agent)} agent a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
     case "card.adopted": return out(`The ${str(p.agent)} agent's Visa card •••• ${str(p.last4)} now follows the CFO policy`, "ok");
     case "card.limits_synced": return out(`Airwallex now has the CFO policy on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${limitWords(str(p.to))} (was ${limitWords(str(p.from))})`, "approval");
@@ -455,7 +493,7 @@ export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
   "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
-  "card.charge_declined", "card.charge_reversed",
+  "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered",
 ]);
 
 export const REFUSAL_WHAT: Record<string, string> = {
@@ -480,6 +518,7 @@ export const REFUSAL_WHAT: Record<string, string> = {
   "passkey.enrol_refused": "Passkey enrolment refused",
   "card.charge_declined": "Card purchase declined by Airwallex",
   "card.charge_reversed": "Card purchase reversed",
+  "sale.prepaid_undelivered": "Prepaid sale owed",
 };
 
 const AGENT_OF: Record<string, string> = {
@@ -543,6 +582,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     refusals,
     feed,
     cards: cards(db, now),
+    clearing: clearingView(db),
     counts: counts(db, rows, pending.filter((p) => !p.expired).length),
     passkey: passkeyInfo(db, now),
   };

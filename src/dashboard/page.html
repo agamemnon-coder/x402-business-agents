@@ -219,7 +219,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
 <body>
 <header>
   <div class="brand"><h1>Tidemark Data</h1><span class="sub">Every AI agent its own company card, with limits the CFO sets</span>
-    <p class="honest">One CFO policy for both rails: Airwallex cards and payouts, and Metal mandates for paying per request. Demo on test networks: the Airwallex sandbox (the merchant's charge on a card is simulated; the approve or decline is Airwallex's own) and Metal testnet (USDZ are test dollars). The step from USDZ to Airwallex is a simulated sandbox deposit that names the real testnet transaction.</p></div>
+    <p class="honest">One CFO policy for both rails: Airwallex cards and payouts, and Metal mandates for paying per request. Demo on test networks: the Airwallex sandbox (the merchant's charge on a card is simulated; the approve or decline is Airwallex's own) and Metal testnet (USDZ are test dollars). The step from USDZ to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate route.</p></div>
   <div class="counts num" id="counts" aria-label="What the agents did">
     <span class="c ok"><b id="c-alone">0</b> done by the agents alone</span>
     <span class="c wait"><b id="c-waiting">0</b> waiting for the CFO</span>
@@ -355,6 +355,19 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
       var edit = txt("a", "btn", "Edit CFO policy");
       edit.href = "policy";
       nodes.push(el("div", "split", [edit]));
+    }
+    // Kestrel's prepaid budget in Metal clearing: its own deposit, not a mandate, so it is shown on its own.
+    var cl = d.clearing;
+    if (cl) {
+      nodes.push(el("div", "split", [
+        el("div", "label num", [txt("span", "", "Prepaid clearing budget (Metal clearing, new on testnet)"), txt("span", "", cl.customer_spendable !== null ? money(cl.customer_spendable) + " USDZ left" : "")]),
+        el("div", "legend num", [
+          txt("span", "", "Kestrel deposited " + money(cl.deposited)),
+          txt("span", "", cl.sales + " ticks sold by clearing, " + money(cl.earned) + " USDZ, no transaction per query"),
+          cl.seller_spendable !== null ? txt("span", "", "our clearing earnings " + money(cl.seller_spendable) + (cl.withdrawn !== "0.00" ? ", " + money(cl.withdrawn) + " withdrawn" : "")) : null,
+          cl.as_of ? txt("span", "", "as Metal reported at " + hms(cl.as_of)) : null,
+        ]),
+      ]));
     }
     if (b.counterparty) {
       var c = b.counterparty;
