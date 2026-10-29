@@ -101,7 +101,8 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
   `@x402/*` and `@metalntwx/*` packages bring along. The fixed `@x402/*` 2.29.0 was released on 2026-10-28; we pin
   only releases at least two weeks old, so it is due on 2026-11-11. The inputs that reach that zod come from our own
   supplier, seller and facilitator. CI fails on anything critical.
-- **The relay's dashboard is readable by anyone with the address.** It shows only testnet and sandbox data.
+- **The viewer key is a bearer key.** Whoever has the viewer link sees the dashboard and can send signatures,
+  which still need Max's passkey to count. It is derived from the relay token; rotating that rotates the key.
 - **The *USDZ to Airwallex bridge is simulated:** a sandbox deposit references the sweep's transaction hash. The
   sandbox cannot receive stablecoins.
 - **Out of scope:**

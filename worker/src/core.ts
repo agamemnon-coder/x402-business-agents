@@ -73,6 +73,13 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** The viewer key the runner derives in src/relay/config.ts viewKey(): HMAC-SHA256(relay token, "kit11 view v1"), 32 hex. */
+async function viewKeyOf(token: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(token), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("kit11 view v1"));
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+
 /** Compares secrets through their digests, in constant time. */
 async function sameSecret(given: string, expected: string): Promise<boolean> {
   if (!expected) return false;
@@ -214,6 +221,11 @@ export class Relay {
     const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/enrol/options", "/api/enrol"];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
+    // Everything else under /api/ is the CFO's: the dashboard data, the pending terms, the phone's submissions.
+    // Without the viewer key (from the link the runner prints) it answers nothing (security review M2).
+    if (path.startsWith("/api/") && !(await sameSecret(req.headers.get("x-kit11-view") ?? "", await viewKeyOf(this.opts.relayToken)))) {
+      return error(401, "this relay needs its viewer link: open the link from the runner once on this device");
+    }
     if (route("GET", "/api/snapshot")) return this.snapshot();
     if (route("GET", "/api/approvals")) return this.approvals();
     if (route("GET", /^\/api\/tickets\/[^/]+$/)) return this.ticket(path.slice("/api/tickets/".length));

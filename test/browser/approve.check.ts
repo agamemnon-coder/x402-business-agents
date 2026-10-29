@@ -17,7 +17,7 @@ import { TERMS_SCHEMA, type Terms } from "../../src/lib/terms.js";
 import { openEnrolment } from "../../src/passkey/ledger.js";
 import { reverifyPasskeyApprovals } from "../../src/passkey/webauthn.js";
 import { createProposal, nextProposalId } from "../../src/policy/approvals.js";
-import { relayConfig } from "../../src/relay/config.js";
+import { relayConfig, viewerLink } from "../../src/relay/config.js";
 import { startLocalRelay } from "../../src/relay/local.js";
 import { RelayRunner } from "../../src/relay/runner.js";
 import { executePolicyChange } from "../../src/executors/policyChange.js";
@@ -83,6 +83,13 @@ const check = (ok: boolean, what: string) => { console.log(`${ok ? "ok  " : "FAI
 mkdirSync(shots, { recursive: true });
 
 // Enrol.
+// Without the viewer link the pages show no data (M2); with it, the key is kept on the device and leaves the address bar.
+await page.goto(`${url}/approve/P-0001`);
+await page.waitForSelector("#app .alarm");
+check(/viewer link/.test((await page.textContent("#app .alarm")) ?? ""), "without the viewer link: the page asks for it and shows nothing");
+await page.goto(viewerLink(cfg));
+check(!page.url().includes("view="), "viewer link: the key leaves the address bar at once");
+errors.length = 0; // the 401 above was on purpose
 await page.goto(`${url}/enrol`);
 await page.fill("#code", code.toLowerCase());
 await page.click("button.confirm");

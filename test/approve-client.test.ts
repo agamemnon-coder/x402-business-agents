@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, rejectionHash, type PhoneProposal } from "../src/approve/client.js";
+import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, rejectionHash, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
@@ -152,5 +152,23 @@ describe("the challenge", () => {
     const h = byId("P-0004").terms_sha256;
     expect(await rejectionHash(h)).toBe(rejectionSha256(h));
     expect(await rejectionHash(h)).not.toBe(h);
+  });
+});
+
+describe("the viewer key (M2)", () => {
+  const mem = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v); } }; };
+  it("takes the key from the link's fragment once and keeps it on the device", () => {
+    const store = mem();
+    const key = "ab".repeat(16);
+    expect(takeViewKey(`#view=${key}`, store)).toBe(key);
+    expect(takeViewKey("", store)).toBe(key);
+  });
+
+  it("ignores anything that is not a 32-hex key, and works without storage", () => {
+    expect(takeViewKey("#view=<script>", mem())).toBe("");
+    expect(takeViewKey(`#view=${"ab".repeat(16)}x`, mem())).toBe("");
+    expect(takeViewKey(`#view=${"cd".repeat(16)}`, null)).toBe("cd".repeat(16));
+    const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
+    expect(takeViewKey("", broken)).toBe("");
   });
 });

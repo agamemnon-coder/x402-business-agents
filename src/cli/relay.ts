@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import { openDb } from "../db/open.js";
 import { execute } from "../executors/index.js";
 import { openEnrolment } from "../passkey/ledger.js";
-import { relayConfig, type RelayConfig } from "../relay/config.js";
+import { relayConfig, viewerLink, type RelayConfig } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
 
@@ -30,6 +30,7 @@ const db = openDb();
 const label = process.env.KIT11_APPROVER ?? "max";
 const stamp = () => new Date().toISOString().slice(11, 19);
 console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${process.env.KIT11_DB ?? "data/kit11.sqlite"})`);
+console.log(`viewer   ${viewerLink(cfg)}  (open once on each device; it unlocks the dashboard and the approval pages there, and approves nothing)`);
 if (args.includes("--enrol")) {
   const { window, code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin, replace: args.includes("--replace") });
   console.log(`ENROL    on the phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);

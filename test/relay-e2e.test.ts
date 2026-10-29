@@ -1,6 +1,7 @@
 // End to end in one process: the runner syncs with the relay Worker's logic, and a software authenticator plays the
 // phone (it posts exactly what the page posts). Enrol, approve, execute once; a second option refused; a late
 // signature recorded as too late; a signature that waits while the runner is offline.
+import { viewKey } from "../src/relay/config.js";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { buildPolicyTerms, bytesToB64url, canonicalize, checkOption, hexToBytes, sha256Hex, type PhoneProposal } from "../src/approve/client.js";
@@ -15,6 +16,7 @@ import { FakeAuthenticator } from "./fakes/authenticator.js";
 const RP = "kit11.example.workers.dev";
 const BASE = `https://${RP}`;
 const TOKEN = "e2e-token";
+const VIEW = { "x-kit11-view": viewKey(TOKEN) };
 const t0 = new Date("2026-10-30T14:00:00Z");
 
 const steps = [{ order: "1", agent: "treasury", cap: "4.00", budget: "4.00", payees: ["0x00000000000000000000000000000000000000e1"], replaces_credential_hash: "0xaa", credential_hash: "0x01", spent_at_proposal: "0.00" }];
@@ -43,9 +45,9 @@ function world() {
     execute: async (_db, id) => { executed.push(id); },
   });
   const phone = {
-    get: async (path: string) => (await relay.fetch(new Request(`${BASE}${path}`))).json() as Promise<Record<string, unknown>>,
+    get: async (path: string) => (await relay.fetch(new Request(`${BASE}${path}`, { headers: VIEW }))).json() as Promise<Record<string, unknown>>,
     post: async (path: string, body: unknown) => {
-      const res = await relay.fetch(new Request(`${BASE}${path}`, { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: JSON.stringify(body) }));
+      const res = await relay.fetch(new Request(`${BASE}${path}`, { method: "POST", headers: { origin: BASE, "content-type": "application/json", ...VIEW }, body: JSON.stringify(body) }));
       return { status: res.status, body: (await res.json()) as Record<string, unknown> };
     },
   };

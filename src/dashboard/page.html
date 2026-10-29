@@ -406,7 +406,7 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     var fresh = lastOk && Date.now() - lastOk < STALE_MS && !runnerQuiet;
     var live = document.getElementById("live");
     live.className = fresh ? "live" : "stale";
-    live.querySelector(".state").textContent = fresh ? "Live" : runnerQuiet ? "Stale · runner offline" : lastOk ? "Stale" : "Connecting";
+    live.querySelector(".state").textContent = needsLink ? "Needs the viewer link from the runner" : fresh ? "Live" : runnerQuiet ? "Stale · runner offline" : lastOk ? "Stale" : "Connecting";
     document.getElementById("updated").textContent = lastOk ? "updated " + hms(new Date(lastOk).toISOString()) : "";
     document.querySelectorAll("[data-expires]").forEach(function (n) {
       var c = countdown(n.getAttribute("data-expires"));
@@ -414,9 +414,19 @@ footer.note { grid-column: 1 / -1; color: var(--faint); font-size: 12px; display
     });
   }
 
+  // On the relay the data needs the viewer key: it arrives once as #view=<key> (never sent to a server) and is
+  // kept on this device. The local dashboard ignores it.
+  var viewKey = "";
+  try {
+    var vm = /(?:^#|&)view=([0-9a-f]{32})(?:&|$)/.exec(location.hash);
+    if (vm) { viewKey = vm[1]; try { localStorage.setItem("kit11.view", viewKey); } catch (e) {} history.replaceState(null, "", location.pathname + location.search); }
+    else { viewKey = localStorage.getItem("kit11.view") || ""; }
+  } catch (e) {}
+  var needsLink = false;
+
   function poll() {
-    fetch("api/snapshot", { cache: "no-store", headers: { accept: "application/json" } })
-      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+    fetch("api/snapshot", { cache: "no-store", headers: { accept: "application/json", "x-kit11-view": viewKey } })
+      .then(function (r) { needsLink = r.status === 401; if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(function (d) { lastData = d; lastOk = Date.now(); render(d); })
       .catch(function () {})
       .then(function () { status(); setTimeout(poll, POLL_MS); });

@@ -162,8 +162,11 @@ phone (pages, WebCrypto, passkey)  ⇄  relay Worker on Cloudflare  ⇄  runner 
 | `npm run relay -- --local` | The same relay on http://localhost:4400 without Cloudflare (passkeys work on localhost) |
 
 The runner's token for the relay is `KIT11_RELAY_TOKEN`, or else derived from the Cloudflare token (whoever holds
-that can redeploy the Worker anyway). Limits: the dashboard on the relay is readable by anyone with the address
-(testnet and sandbox data only); a page served by a compromised Cloudflare account could show one thing and sign
+that can redeploy the Worker anyway). **The relay's data is not public.** Every `/api/` route needs a viewer key,
+derived from the relay token, so the Worker needs no new secret. `npm run relay` prints a viewer link with the key in
+the `#fragment`, which browsers never send to a server. Open it once on each device: the page keeps the key there,
+removes it from the address bar and sends it with each request. Without it the pages load but show no data, and the
+relay takes no submission. The key unlocks viewing and sending signatures; it approves nothing. Limits: a page served by a compromised Cloudflare account could show one thing and sign
 another hash, but the runner still executes nothing that is not a waiting proposal's exact terms.
 
 | Choose an option | Confirm what it does | Done | Or reject |

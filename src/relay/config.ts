@@ -23,6 +23,18 @@ export function relayToken(env: Env = process.env): string | null {
   return null;
 }
 
+/**
+ * The viewer key (security review M2): the relay serves its data and takes the phone's submissions only with it.
+ * Derived from the relay token, so the Worker computes it from the secret it already has (worker/src/core.ts).
+ * The CFO gets it once as a link with the key in the #fragment, which browsers never send to a server.
+ */
+export function viewKey(token: string): string {
+  return createHmac("sha256", token).update("kit11 view v1").digest("hex").slice(0, 32);
+}
+
+/** The link that hands the phone its viewer key. */
+export const viewerLink = (cfg: RelayConfig): string => `${cfg.url}/#view=${viewKey(cfg.token)}`;
+
 async function workersDevUrl(env: Env, fetchImpl: typeof fetch): Promise<string> {
   const account = env.CLOUDFLARE_ACCOUNT_ID;
   const token = env.CLOUDFLARE_API_TOKEN;

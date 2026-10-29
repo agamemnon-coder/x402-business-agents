@@ -7,6 +7,7 @@ import { canonicalTerms, rejectionSha256, sha256Hex, TERMS_SCHEMA, termsHash, ty
 import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { buildRelayState, stateHash, type RelayState } from "../src/relay/state.js";
+import { viewKey } from "../src/relay/config.js";
 import { pageResponse, Relay, type Pages, type Sql } from "../worker/src/core.js";
 
 const RP = "kit11.example.workers.dev";
@@ -45,13 +46,37 @@ const json = async (res: Response) => (await res.json()) as Record<string, unkno
 const sync = (r: Relay, body: unknown, token = TOKEN) =>
   r.fetch(new Request(`${BASE}/api/runner/sync`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) }));
 const push = (r: Relay, state: RelayState, acks: unknown[] = []) => sync(r, { state_hash: stateHash(state), state, acks });
+const VIEW = { "x-kit11-view": viewKey(TOKEN) };
 const post = (r: Relay, path: string, body: unknown, headers: Record<string, string> = {}) =>
-  r.fetch(new Request(`${BASE}${path}`, { method: "POST", headers: { origin: BASE, "content-type": "application/json", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) }));
-const get = (r: Relay, path: string) => r.fetch(new Request(`${BASE}${path}`));
+  r.fetch(new Request(`${BASE}${path}`, { method: "POST", headers: { origin: BASE, "content-type": "application/json", ...VIEW, ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) }));
+const get = (r: Relay, path: string, headers: Record<string, string> = VIEW) => r.fetch(new Request(`${BASE}${path}`, { headers }));
 const clientData = (over: Record<string, unknown> = {}) =>
   Buffer.from(JSON.stringify({ type: "webauthn.get", challenge: Buffer.from(HASH, "hex").toString("base64url"), origin: BASE, crossOrigin: false, ...over })).toString("base64url");
 const assertion = (over: Record<string, unknown> = {}, cd = clientData()) =>
   ({ proposal_id: "P-0001", terms_sha256: HASH, credential: { id: "cred-1", rawId: "cred-1", type: "public-key", response: { clientDataJSON: cd, authenticatorData: "AA", signature: "AA" }, clientExtensionResults: {} }, ...over });
+
+describe("viewer key (M2)", () => {
+  it("serves no data and takes no submission without the viewer key; the runner's own route keeps its token", async () => {
+    const { r } = relay();
+    const { state } = runnerState({ enrolled: true });
+    expect((await push(r, state)).status).toBe(200);
+    for (const path of ["/api/snapshot", "/api/approvals", "/api/tickets/t-1"]) {
+      for (const headers of [{}, { "x-kit11-view": "0".repeat(32) }, { "x-kit11-view": TOKEN }] as Record<string, string>[]) {
+        const res = await get(r, path, headers);
+        expect(res.status).toBe(401);
+        expect(JSON.stringify(await json(res))).not.toContain("P-0001");
+      }
+    }
+    expect((await post(r, "/api/assertions", assertion(), { "x-kit11-view": "" })).status).toBe(401);
+    expect((await get(r, "/api/snapshot")).status).toBe(200);
+  });
+
+  it("is derived from the relay token, so the Worker needs no new secret, and differs from it", () => {
+    expect(viewKey(TOKEN)).toMatch(/^[0-9a-f]{32}$/);
+    expect(TOKEN).not.toContain(viewKey(TOKEN));
+    expect(viewKey("other")).not.toBe(viewKey(TOKEN));
+  });
+});
 
 describe("runner sync", () => {
   it("needs the relay token", async () => {
@@ -132,7 +157,7 @@ describe("passkey approvals from the phone", () => {
     const { r } = relay();
     await push(r, runnerState({ enrolled: true }).state);
     expect((await post(r, "/api/assertions", assertion(), { origin: "https://evil.example" })).status).toBe(403);
-    expect((await r.fetch(new Request(`${BASE}/api/assertions`, { method: "POST", body: JSON.stringify(assertion()) }))).status).toBe(403);
+    expect((await r.fetch(new Request(`${BASE}/api/assertions`, { method: "POST", headers: VIEW, body: JSON.stringify(assertion()) }))).status).toBe(403);
     expect((await post(r, "/api/assertions", { ...assertion(), pad: "x".repeat(20_000) })).status).toBe(413);
     for (let i = 0; i < 3; i++) expect((await post(r, "/api/assertions", assertion(), { "cf-connecting-ip": `10.0.0.${i}` })).status).toBe(202);
     expect((await post(r, "/api/assertions", assertion(), { "cf-connecting-ip": "10.0.0.9" })).status).toBe(429);

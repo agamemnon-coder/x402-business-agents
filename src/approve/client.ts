@@ -348,10 +348,29 @@ function tickCountdowns(): void {
   });
 }
 
+const VIEW_STORE = "kit11.view";
+let viewKey = "";
+
+/**
+ * The relay answers only with its viewer key (security review M2). It arrives once as a link with #view=<key>
+ * (a fragment never reaches a server), is kept on this device, and is removed from the address bar at once.
+ */
+export function takeViewKey(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null): string {
+  const m = /(?:^#|&)view=([0-9a-f]{32})(?:&|$)/.exec(hash);
+  if (m) {
+    try { store?.setItem(VIEW_STORE, m[1]!); } catch { /* private mode: keep it for this page only */ }
+    return m[1]!;
+  }
+  try { return store?.getItem(VIEW_STORE) ?? ""; } catch { return ""; }
+}
+
+const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave you once on this phone, then come back.";
+
 async function api(path: string, body?: unknown): Promise<{ status: number; data: Obj }> {
+  const view = { "x-kit11-view": viewKey };
   const res = await fetch(path, body === undefined
-    ? { cache: "no-store", headers: { accept: "application/json" } }
-    : { method: "POST", cache: "no-store", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(body) });
+    ? { cache: "no-store", headers: { accept: "application/json", ...view } }
+    : { method: "POST", cache: "no-store", headers: { "content-type": "application/json", accept: "application/json", ...view }, body: JSON.stringify(body) });
   let data: unknown = {};
   try {
     data = await res.json();
@@ -587,7 +606,7 @@ async function approvePage(): Promise<void> {
   const id = decodeURIComponent(location.pathname.split("/").pop() ?? "");
   const { status, data } = await api("/api/approvals").catch(() => ({ status: 0, data: {} as Obj }));
   if (status !== 200) {
-    app.replaceChildren(txt("p", "alarm", status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the approval relay."));
+    app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the approval relay."));
     return;
   }
   const a = data as unknown as Approvals;
@@ -738,7 +757,7 @@ async function policyPage(): Promise<void> {
   const app = document.getElementById("app")!;
   const { status, data } = await api("/api/approvals").catch(() => ({ status: 0, data: {} as Obj }));
   if (status !== 200) {
-    app.replaceChildren(txt("p", "alarm", status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the relay."));
+    app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the relay."));
     return;
   }
   const a = data as unknown as Approvals & { policy: PolicyRow[] };
@@ -833,6 +852,10 @@ async function policyPage(): Promise<void> {
 }
 
 export function boot(): void {
+  let store: Storage | null = null;
+  try { store = localStorage; } catch { store = null; }
+  viewKey = takeViewKey(location.hash, store);
+  if (location.hash.includes("view=")) history.replaceState(null, "", location.pathname + location.search);
   setInterval(tickCountdowns, 1000);
   if (document.body.dataset.page === "approve") void approvePage();
   if (document.body.dataset.page === "enrol") enrolPage();
