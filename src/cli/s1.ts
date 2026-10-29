@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { crossCheckNotice } from "../agents/notices.js";
 import { attachReview } from "../claude/review.js";
 import { Tools } from "../claude/tools.js";
-import { proposePriceRise, type MandateReplaceTerms } from "../agents/treasury.js";
+import { priceRiseContext, proposePriceRise, type MandateReplaceTerms } from "../agents/treasury.js";
 import { RAISED_UPSTREAM_PRICE_CENTS } from "../config/policy.js";
 import { openDb } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
@@ -61,7 +61,7 @@ try {
     }
     console.log(`                 option C: pause sales (approve nothing)`);
     for (const pr of proposals) {
-      const r = await attachReview(db, tools, pr, `The supplier's live offer is ${fromCents(live.cents)}; the next purchase was refused on chain with ${refusal.refusal_reason}. Sell price now ${sellPrice(db)}.`);
+      const r = await attachReview(db, tools, pr, await priceRiseContext(rt.addr, toCents(sellPrice(db)), live.cents, refusal.refusal_reason));
       console.log(`REVIEW           ${pr.proposal_id}: ${r.recommendation} (${r.source === "claude" ? "Opus, advisory" : "no model"}): ${r.summary}`);
     }
     console.log(`\nNext: npm run proposals, then npm run approve -- <id> <first 8 hex>`);

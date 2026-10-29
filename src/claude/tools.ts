@@ -131,7 +131,7 @@ export class Tools {
     return this.reader.ask(
       { task: `review_${kind}`, role: "review", actor: "claude", schema: ReviewSchema, effort: "medium",
         document: `Proposal kind: ${kind}\n\nContext from the agents' checks:\n${context}\n\nExact terms (JSON):\n${termsJson}`,
-        instruction: "You are the risk reviewer before a person approves this proposal. Explain in plain language what it does and why, list concrete risks (wrong payee, amounts that do not add up, limits, expiry, anything unusual), and recommend approve, reject or needs_more_information. Be brief." },
+        instruction: "You are the risk reviewer before a person approves this proposal. Explain in plain language what it does and why, list concrete risks (wrong payee, amounts that do not add up, limits, expiry, anything unusual), and recommend approve, reject or needs_more_information. The context lists facts the code has already checked against the chain, Airwallex or the ledger: rely on them and do not ask for them again. Recommend needs_more_information only when a fact the decision depends on is missing from both the context and the terms. Be brief." },
       (): Review => ({ summary: `${kind} proposal; see the exact terms.`, why: "Computed by code from the ledger and the chain.", risks: [], recommendation: "needs_more_information" }),
     );
   }

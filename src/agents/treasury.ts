@@ -131,3 +131,30 @@ function extractTermsFrom(path: string) {
   const credential = parseCredential(JSON.parse(readFileSync(path, "utf8")));
   return { ...extractTerms(credential), hash: hashCredential(credential) };
 }
+
+/**
+ * The facts code has already checked, for the advisory Opus review of a price-rise proposal. Without them
+ * the reviewer sees only the terms and asks about things that are settled (the third mandate, spend carry-over).
+ */
+export async function priceRiseContext(addr: Addresses, sellCents: number, liveOfferCents: number, refusalReason: string): Promise<string> {
+  const lines: string[] = [];
+  let total = 0;
+  for (const agent of ["sourcing", "support", "treasury"] as const) {
+    const m = await activeMandate(agent);
+    const t = extractTerms(m.credential);
+    const budget = baseUnitsToCents(t.constraints.budget);
+    total += budget;
+    lines.push(`- ${agent}: cap ${fromCents(baseUnitsToCents(t.constraints.perPaymentCap))} per payment, budget ${fromCents(budget)}, spent ${fromCents(baseUnitsToCents(await mandateSpent(m)))}, payee ${PAYEE[agent](addr).name} (${PAYEE[agent](addr).address.toLowerCase()})`);
+  }
+  return [
+    `Supplier Feedstock Labs now offers ${fromCents(liveOfferCents)} per tick (its notice and the live 402 offer agree). The next purchase was refused on chain: ${refusalReason}; the customer was not charged.`,
+    `Current sell price: ${fromCents(sellCents)}. In the terms, query_price is the sell price this option would set, and margin = query_price - upstream_price. The approver chooses between options (another option keeps the current price; pausing sales means approving nothing).`,
+    `Mandates bound now (read from the chain), ${fromCents(total)} of the ${fromCents(TOTAL_BUDGET_CENTS)} total:`,
+    ...lines,
+    `The proposal replaces sourcing and treasury only; support stays as it is, so total_budget counts all three mandates and never exceeds ${fromCents(TOTAL_BUDGET_CENTS)}.`,
+    "Checked by code: each replaces_credential_hash is the credential bound now; each new credential was issued by the business owner key with exactly these caps, budgets, payees and expiry; the payees are the known supplier and our own sweep wallet.",
+    "Metal semantics: a replacement mandate carries what the agent has already spent, so spent_at_proposal counts against the new budget. Steps run in order, shrinking first, so the total never exceeds the limit at any moment.",
+    "By design: sourcing's cap equals the supplier price with no headroom, so any further rise is refused on chain and comes back to a person; treasury's cap equals its budget because it makes one sweep at a time to our own wallet.",
+  ].join("\n");
+}
+
