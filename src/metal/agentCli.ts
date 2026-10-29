@@ -9,9 +9,10 @@ const BIN = resolve(import.meta.dirname, "../../node_modules/.bin/metal-agent");
 
 /** Where owner keys, mandate keys and credentials live: never inside this repo. */
 export function keysDir(env = process.env): string {
-  const dir = env.KIT11_KEYS_DIR ?? resolve(import.meta.dirname, "../../../x402-business-agents-keys/testnet");
+  // Absolute, always: metal-agent refuses a relative HOME (and a relative path would move with the working directory).
+  const dir = resolve(env.KIT11_KEYS_DIR ?? resolve(import.meta.dirname, "../../../x402-business-agents-keys/testnet"));
   const repo = resolve(import.meta.dirname, "../..");
-  if (resolve(dir) === repo || resolve(dir).startsWith(repo + sep)) throw new Error("KIT11_KEYS_DIR must be outside the code repo");
+  if (dir === repo || dir.startsWith(repo + sep)) throw new Error("KIT11_KEYS_DIR must be outside the code repo");
   mkdirSync(join(dir, "home"), { recursive: true, mode: 0o700 });
   return dir;
 }
@@ -56,7 +57,8 @@ export function metalAgent(args: string[], okCodes: number[] = [0]): CliResult {
   });
   const out = scrub(`${r.stdout ?? ""}${r.stderr ?? ""}`);
   const result: CliResult = { code: r.status ?? -1, fields: parse(out), out };
-  if (!okCodes.includes(result.code)) throw new CliError(args, result);
+  // An "error:" line means the command did not run (bad input, bad setup); exit 1 must not read as "refused".
+  if (!okCodes.includes(result.code) || /^error: /m.test(out)) throw new CliError(args, result);
   return result;
 }
 
