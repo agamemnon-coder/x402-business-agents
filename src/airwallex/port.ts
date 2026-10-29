@@ -70,7 +70,18 @@ export interface NewBeneficiary {
   bic: string;
   currency: "EUR";
   countryCode: "DE";
+  /** Airwallex's beneficiary schema for DE, EUR, SWIFT requires the bank's name. */
+  bankName: string;
   address: { street: string; city: string; postcode: string; countryCode: "DE" };
+}
+
+/** The market's current rate for a conversion: what Airwallex would charge now, before any quote is locked. */
+export interface MarketRate {
+  /** The client rate as Airwallex states it. */
+  rate: string;
+  /** What the buy amount would cost now, in cents of the sell currency. */
+  sellAmountCents: number;
+  at: string;
 }
 
 export interface NewTransfer {
@@ -89,6 +100,8 @@ export interface AirwallexRail {
   usdGlobalAccountId(): Promise<string>;
   /** Deposits whose reference equals `reference`, created at or after `since`. */
   findDepositsByReference(reference: string, since: string): Promise<Deposit[]>;
+  /** The current rate (GET /fx/rates/current): context for the decision, not a price anyone can trade at. */
+  currentRate(a: { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number }): Promise<MarketRate>;
   createQuote(a: { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number; validity: "MIN_1" | "MIN_15" | "MIN_30" | "HR_1" }): Promise<Quote>;
   createConversion(a: { requestId: string; quote: Quote; approvalSha256: string }): Promise<Conversion>;
   findBeneficiaryByIban(iban: string): Promise<Beneficiary | undefined>;

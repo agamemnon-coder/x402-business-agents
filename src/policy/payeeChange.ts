@@ -118,7 +118,9 @@ export async function executePayeeChange(db: DB, rail: AirwallexRail, proposalId
   const existing = await rail.findBeneficiaryByIban(t.new_iban);
   const ben = existing ?? (await rail.createBeneficiary({
     name: t.vendor, iban: t.new_iban, bic: t.new_bic, currency: "EUR", countryCode: "DE",
-    address: { street: "Musterstrasse 12", city: "Berlin", postcode: "10115", countryCode: "DE" },
+    // The verified request names the account, not the bank; the BIC identifies the bank for Airwallex's schema.
+    bankName: `Bank ${t.new_bic.slice(0, 4)} (BIC ${t.new_bic})`,
+    address: { street: "Textilweg 4", city: "Reutlingen", postcode: "72760", countryCode: "DE" },
   }));
   db.transaction(() => {
     db.prepare("UPDATE beneficiaries SET status = 'REPLACED' WHERE beneficiary_id = ?").run(t.old_beneficiary_id);

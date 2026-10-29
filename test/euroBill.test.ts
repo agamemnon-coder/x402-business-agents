@@ -39,6 +39,24 @@ describe("euro bill (S3) against the Airwallex port", () => {
     expect(s.usdFloorCents).toBe(2_000_000);
   });
 
+  it("checks the market's current rate before it locks a quote, and records both", async () => {
+    const { db, awx } = await world();
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    expect(out.kind).toBe("proposed");
+    expect(awx.calls.indexOf("currentRate")).toBeLessThan(awx.calls.indexOf("createQuote"));
+    const checked = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'fx.rate_checked'").get() as { payload_json: string }).payload_json);
+    expect(checked).toMatchObject({ pair: "USD/EUR", buy: "EUR 370.00", market_rate: awx.rate, quote_rate: awx.rate });
+  });
+
+  it("escalates when the locked quote costs clearly more than the market's current rate", async () => {
+    const { db, awx } = await world();
+    awx.marketRate = String((Number(awx.rate) * 0.99).toFixed(6)); // the quote is 1% dearer than the market
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    expect(out).toMatchObject({ kind: "escalated", reason: expect.stringMatching(/above the market's current rate.*options/) });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 0 });
+    expect(awx.calls).not.toContain("createConversion");
+  });
+
   it("converts only the 370.00 shortfall (fee ceiling 20.00), then pays by SWIFT to PAID", async () => {
     const { db, awx } = await world();
     const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);

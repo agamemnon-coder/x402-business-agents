@@ -5,7 +5,7 @@
 import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, Quote, SandboxSim } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
-import { EUR_FLOOR_CENTS, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_MAX_EUR_CENTS, TARGET_FREE_EUR_CENTS } from "../config/policy.js";
+import { EUR_FLOOR_CENTS, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_MAX_EUR_CENTS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
@@ -26,7 +26,8 @@ export const MANUFACTURER = {
   bic: "COBADEFFXXX",
   currency: "EUR" as const,
   countryCode: "DE" as const,
-  address: { street: "Musterstrasse 12", city: "Berlin", postcode: "10115", countryCode: "DE" as const },
+  bankName: "Commerzbank",
+  address: { street: "Textilweg 4", city: "Reutlingen", postcode: "72760", countryCode: "DE" as const },
 };
 
 export async function snapshot(db: DB, rail: AirwallexRail, label: string) {
@@ -139,7 +140,19 @@ export async function proposeInvoicePayment(
   let quote: Quote | null = null;
   let usdAfter = s.usdAvailableCents;
   if (plan.kind === "convert_shortfall") {
+    // The market's current rate first: context for judging the binding quote, which is what the CFO approves.
+    const market = await rail.currentRate({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents });
     quote = await rail.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents, validity: quoteValidity });
+    const markupBps = Math.round(((quote.sellAmountCents - market.sellAmountCents) / market.sellAmountCents) * 10_000);
+    audit(db, "treasury", "fx.rate_checked", inv.invoice_no, {
+      pair: "USD/EUR", buy: `EUR ${fromCents(plan.buyEurCents)}`, market_rate: market.rate, market_cost: `USD ${fromCents(market.sellAmountCents)}`,
+      quote_id: quote.quoteId, quote_rate: quote.clientRate, quote_cost: `USD ${fromCents(quote.sellAmountCents)}`, markup_bps: markupBps,
+    }, now);
+    if (markupBps > FX_QUOTE_MAX_MARKUP_BPS) {
+      const reason = `the locked quote costs USD ${fromCents(quote.sellAmountCents)}, ${(markupBps / 100).toFixed(2)}% above the market's current rate (USD ${fromCents(market.sellAmountCents)}); options: ask for a new quote later, pay in EUR on the due date, or approve the dearer quote as an exception`;
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, quote_id: quote.quoteId }, now);
+      return { kind: "escalated", reason };
+    }
     const floor = checkQuoteAgainstFloor(quote.sellAmountCents, s);
     if (!floor.ok) {
       audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: floor.reason, quote_id: quote.quoteId }, now);

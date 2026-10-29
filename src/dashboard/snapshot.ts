@@ -4,7 +4,7 @@
 
 import { verifyAuditChain } from "../audit/log.js";
 import { agentName } from "../config/brand.js";
-import { MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
+import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { cardLimits, frozen, policyValue } from "../policy/rules.js";
@@ -535,6 +535,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "clearing.withdrawn": return out(`Our clearing earnings of ${str(p.amount)} USDZ went to the business account`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
     case "sale.prepaid_not_offered": return out(`Prepaid clearing not offered for stock check #${s}: ${str(p.reason).replace(/^[a-z_]+: /, "")}; the buyer uses the mandate route`, "info");
     case "sale.prepaid_undelivered": return out(`Stock check #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
+    case "fx.rate_checked": return out(`Before locking a quote for ${str(p.buy)}, checked the market's current rate: ${str(p.market_cost)} now, the quote ${str(p.quote_cost)} (${(Number(p.markup_bps) / 100).toFixed(2)}% apart; above ${(FX_QUOTE_MAX_MARKUP_BPS / 100).toFixed(2)}% it goes to the CFO)`);
     case "velocity.tripped": return out(`Stopped automatically: ${str(p.reason)}. Every payment it tries is refused until the CFO lifts the stop with Face ID`, "refusal");
     case "card.frozen": return out(`${str(p.why) === "velocity limit" ? "Velocity limit" : "Emergency stop"}: Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal");
     case "card.thawed": return out(`${capFirst(cardOwner(str(p.agent)))}'s card •••• ${str(p.last4)} is active again`, "approval");

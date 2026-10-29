@@ -26,6 +26,27 @@ describe("Airwallex adapter", () => {
     expect(() => cents(-1)).toThrow();
   });
 
+  it("reads the market's current rate at the client level, as the sandbox answered on 2026-10-30", async () => {
+    const { rest, sent } = recorder({ "/fx/rates/current": { buy_currency: "EUR", sell_currency: "USD", rate: 1.129539, created_at: "2026-10-29T21:11:17+0000",
+      rate_details: [{ buy_amount: 1850, level: "AWX", rate: 1.118355, sell_amount: 2068.96 }, { buy_amount: 1850, level: "CLIENT", rate: 1.129539, sell_amount: 2089.65 }] } });
+    expect(await rest.currentRate({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: 185000 })).toEqual({ rate: "1.129539", sellAmountCents: 208965, at: "2026-10-29T21:11:17.000Z" });
+    expect(sent[0]).toMatchObject({ method: "GET", path: "/fx/rates/current", query: "?buy_currency=EUR&sell_currency=USD&buy_amount=1850.00" });
+  });
+
+  it("checks Airwallex's beneficiary schema before it creates a beneficiary, and stops on a missing field", async () => {
+    const schema = (extra: Record<string, unknown> = {}) => ({ "/beneficiaries/schema": { schema: {
+      "create_beneficiary_request.beneficiary.bank_details.bank_name": { required: true, relevant: true, type: "string" },
+      "create_beneficiary_request.payment_methods": { required: true, relevant: true, type: "array" }, ...extra } }, "/beneficiaries/create": { id: "b1" } });
+    const ben = { name: "Bergtex Textil GmbH", iban: "DE89370400440532013000", bic: "COBADEFFXXX", currency: "EUR" as const, countryCode: "DE" as const, bankName: "Commerzbank",
+      address: { street: "Textilweg 4", city: "Reutlingen", postcode: "72760", countryCode: "DE" as const } };
+    const ok = recorder(schema());
+    expect(await ok.rest.createBeneficiary(ben)).toMatchObject({ id: "b1" });
+    expect(ok.sent.map((x) => x.path)).toEqual(["/beneficiaries/schema", "/beneficiaries/validate", "/beneficiaries/create"]);
+    const strict = recorder(schema({ "create_beneficiary_request.beneficiary.additional_info.tax_id": { required: true, relevant: true, type: "string" } }));
+    await expect(strict.rest.createBeneficiary(ben)).rejects.toThrow(/needs beneficiary\.additional_info\.tax_id/);
+    expect(strict.sent.map((x) => x.path)).toEqual(["/beneficiaries/schema"]);
+  });
+
   it("quotes with a number amount and a validity", async () => {
     const { rest, sent } = recorder({ "/fx/quotes/create": { quote_id: "q1", buy_amount: 362.85, sell_amount: 393.69, client_rate: 1.085, valid_from_at: "2026-11-05T10:00:00+0000", valid_to_at: "2026-11-05T10:15:00+0000" } });
     const q = await rest.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: 36285, validity: "MIN_15" });

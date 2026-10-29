@@ -5,9 +5,7 @@
 
 import { randomUUID } from "node:crypto";
 import { Airwallex, fromEnv } from "./client.js";
-import type {
-  AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer,
-} from "./port.js";
+import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
 import { fromCents } from "../lib/money.js";
 
 /** Major units (number or numeric string) -> integer cents. Refuses negatives and anything finer than a cent. */
@@ -98,6 +96,16 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
     return { id: d.id, amountCents: cents(d.amount), currency: d.currency, reference: d.reference ?? a.reference, status: d.status };
   }
 
+  async currentRate(a: { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number }): Promise<MarketRate> {
+    const r = await this.api.call<{ rate: number | string; created_at?: string; rate_details?: { level: string; rate: number; sell_amount: number }[] }>(
+      "GET", "/fx/rates/current", undefined, { buy_currency: a.buyCurrency, sell_currency: a.sellCurrency, buy_amount: fromCents(a.buyAmountCents) },
+    );
+    // The CLIENT level is what this account would pay; the AWX level is Airwallex's own.
+    const client = r.rate_details?.find((d) => d.level === "CLIENT");
+    if (!client) throw new Error("Airwallex's current rate came without the client level");
+    return { rate: String(client.rate), sellAmountCents: Math.round(client.sell_amount * 100), at: r.created_at ? new Date(r.created_at.replace(/\+0000$/, "Z")).toISOString() : new Date().toISOString() };
+  }
+
   async createQuote(a: { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number; validity: "MIN_1" | "MIN_15" | "MIN_30" | "HR_1" }): Promise<Quote> {
     const q = await this.api.call<{ quote_id: string; buy_amount: number; sell_amount: number; client_rate: number | string; valid_from_at: string; valid_to_at: string }>(
       "POST", "/fx/quotes/create", { buy_currency: a.buyCurrency, sell_currency: a.sellCurrency, buy_amount: asNumber(a.buyAmountCents), validity: a.validity },
@@ -137,11 +145,20 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
       beneficiary: {
         entity_type: "COMPANY", company_name: b.name, type: "BANK_ACCOUNT",
         address: { country_code: b.address.countryCode, street_address: b.address.street, city: b.address.city, postcode: b.address.postcode },
-        bank_details: { account_currency: b.currency, account_name: b.name, bank_country_code: b.countryCode, iban: b.iban, swift_code: b.bic },
+        bank_details: { account_currency: b.currency, account_name: b.name, bank_country_code: b.countryCode, bank_name: b.bankName, iban: b.iban, swift_code: b.bic },
       },
       nickname: `${b.name} ${b.currency} SWIFT`,
       transfer_methods: ["SWIFT"],
+      payment_methods: ["SWIFT"],
     };
+    // Airwallex's own schema for this country, currency and method names the fields it requires: check them first.
+    const schema = await this.api.call<{ schema: Record<string, { required?: boolean; relevant?: boolean; type?: string }> }>("POST", "/beneficiaries/schema",
+      { bank_country_code: b.countryCode, account_currency: b.currency, payment_method: "SWIFT", entity_type: "COMPANY" });
+    const missing = Object.entries(schema.schema)
+      .filter(([k, v]) => v.required && v.relevant && v.type !== "object" && k.startsWith("create_beneficiary_request."))
+      .map(([k]) => k.slice("create_beneficiary_request.".length))
+      .filter((path) => path.split(".").reduce<unknown>((o, key) => (o && typeof o === "object" ? (o as Record<string, unknown>)[key] : undefined), body) === undefined);
+    if (missing.length) throw new Error(`Airwallex's beneficiary schema for ${b.countryCode}, ${b.currency}, SWIFT needs ${missing.join(", ")}`);
     await this.api.call("POST", "/beneficiaries/validate", body);
     const r = await this.api.call<{ id: string }>("POST", "/beneficiaries/create", body);
     return { id: r.id, name: b.name, iban: b.iban, bic: b.bic, currency: b.currency };

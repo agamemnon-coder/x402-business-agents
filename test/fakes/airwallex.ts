@@ -1,7 +1,7 @@
 // In-memory stand-in for the Airwallex sandbox, for unit tests only. It never reaches the demo.
 
 import { AirwallexAmbiguous } from "../../src/airwallex/client.js";
-import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer } from "../../src/airwallex/port.js";
+import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer, MarketRate } from "../../src/airwallex/port.js";
 
 /** What the real sandbox charged for a EUR SWIFT payout on 2026-10-29. */
 export const SANDBOX_SWIFT_FEE_CENTS = 1347;
@@ -29,6 +29,13 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     this.deposits.push(d);
     this.bal.USD.availableCents += a.amountCents;
     return d;
+  }
+  /** The market's rate, when a test wants the locked quote to differ from it. */
+  marketRate: string | null = null;
+  async currentRate(a: { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number }): Promise<MarketRate> {
+    this.calls.push("currentRate");
+    const rate = this.marketRate ?? this.rate;
+    return { rate, sellAmountCents: Math.ceil(a.buyAmountCents * Number(rate)), at: new Date(this.clock()).toISOString() };
   }
   async createQuote(a: { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number; validity: string }): Promise<Quote> {
     this.calls.push("createQuote");

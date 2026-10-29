@@ -72,6 +72,9 @@ export const CARDS: Record<Agent, { firstName: string; email: string; nickname: 
   treasury: { firstName: "Finance", email: "agents+treasury@northwind-outdoor.example", nickname: "finance agent: bookkeeping", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
 };
 
+/** A locked FX quote may cost at most this much (basis points) above the market's current rate; dearer, it escalates. */
+export const FX_QUOTE_MAX_MARKUP_BPS = 50;
+
 /** A card works this many days from issue; Airwallex declines everything after (its end date, `active_to`). */
 export const CARD_ACTIVE_DAYS = 90;
 
