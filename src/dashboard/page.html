@@ -243,7 +243,7 @@ dialog.scrim::backdrop { background: rgba(10,12,17,.5); }
 .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 6px 12px; border-radius: 999px; }
 .eyebrow svg { width: 15px; height: 15px; }
 .hero h1 { font-size: 56px; line-height: 1.05; letter-spacing: -.035em; margin: 20px 0; font-weight: 750; }
-h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px 0; font-weight: 750; }
+h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px 0; font-weight: 750; }
 .lead { font-size: 19px; line-height: 1.55; color: var(--muted); margin: 0 0 32px; max-width: 34em; }
 .ctas { display: flex; gap: 12px; flex-wrap: wrap; }
 .ctas .btn { font-size: 15px; padding: 14px 20px; }
@@ -331,7 +331,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
   .feed li { grid-template-columns: 32px minmax(0, 1fr); } .feed li .r { grid-column: 2; padding-top: 0; }
   .ask .row .btn.primary { flex: 1 1 100%; }
   .section { padding: 40px 16px; } .hero { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-top: 32px; }
-  .hero h1 { font-size: 38px; } h2.big { font-size: 30px; } .lead { font-size: 17px; }
+  .hero h1 { font-size: 38px; } h2.big, h1.big { font-size: 30px; } .lead { font-size: 17px; }
   .ctas .btn { flex: 1 1 100%; }
   .stage, .mandate { padding: 18px; }
   .proof .section { padding: 28px 16px; } .proof .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; } .proof .v { font-size: 30px; }
@@ -360,7 +360,7 @@ h2.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px
 
 <!-- How the CFO gets in: no password, a private link to view and a passkey to approve. -->
 <section class="section signin" id="signin" hidden>
-  <h2 class="big">How the CFO signs in</h2>
+  <h1 class="big">How the CFO signs in</h1>
   <p class="lead">There is no password and no account to break into. Two things open Purser, and both stay on the CFO's own devices.</p>
   <div class="steps">
     <div class="item"><span class="ic" data-icon="link-2"></span><h3>1. A private link to look</h3><p>The runner on the company's own machine prints a viewer link. Its key sits after the <code>#</code>, so the browser keeps it and never sends it to a server. Open it once on the laptop or the phone. A new relay secret gives a new link and locks out every old one.</p></div>

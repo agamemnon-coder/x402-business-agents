@@ -1,6 +1,7 @@
 // The guest pages as a juror opens them, with no key: /, /?recorded, /demo (every step) and /month (start and end), at phone
 // (390 px) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
-// "undefined" or "NaN" anywhere on screen, and on a page wider than the screen.
+// "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
+// language, not exactly one h1, a link or button with no name, an image with no alt text).
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { mkdirSync } from "node:fs";
@@ -23,6 +24,22 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   const bad = /\b(null|undefined|NaN)\b/.exec(text);
   if (bad) fail(`${name}: shows "${bad[0]}" (…${text.slice(Math.max(0, bad.index - 60), bad.index + 20).replace(/\s+/g, " ")}…)`);
   // Against the device width, not innerWidth: a phone browser widens its layout viewport to fit an overflowing page.
+  // Basic accessibility: a page language, one main heading, a name for every visible control, text for every image.
+  // As a string: tsx would wrap named functions in a helper the page does not have.
+  const a11y = await page.evaluate(`(() => {
+    const visible = (e) => !!e.offsetParent || getComputedStyle(e).position === "fixed";
+    const named = (e) => !!(e.getAttribute("aria-label") || e.getAttribute("title") || (e.textContent || "").trim());
+    return {
+      lang: document.documentElement.lang,
+      h1: [...document.querySelectorAll("h1")].filter(visible).length,
+      unnamed: [...document.querySelectorAll("a, button")].filter((e) => visible(e) && !named(e)).map((e) => e.outerHTML.slice(0, 80)),
+      noAlt: [...document.querySelectorAll("img")].filter((e) => !e.hasAttribute("alt")).map((e) => e.outerHTML.slice(0, 80)),
+    };
+  })()`) as { lang: string; h1: number; unnamed: string[]; noAlt: string[] };
+  if (!a11y.lang) fail(`${name}: no page language`);
+  if (a11y.h1 !== 1) fail(`${name}: ${a11y.h1} visible main headings (h1), expected 1`);
+  for (const u of a11y.unnamed) fail(`${name}: a control with no name: ${u}`);
+  for (const u of a11y.noAlt) fail(`${name}: an image with no alt text: ${u}`);
   const over = await page.evaluate(() => document.documentElement.scrollWidth) - width;
   if (over > 1) fail(`${name}: ${over}px wider than the screen`);
 }
