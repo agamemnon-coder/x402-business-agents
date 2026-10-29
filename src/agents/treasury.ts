@@ -136,7 +136,7 @@ function extractTermsFrom(path: string) {
  * The facts code has already checked, for the advisory Opus review of a price-rise proposal. Without them
  * the reviewer sees only the terms and asks about things that are settled (the third mandate, spend carry-over).
  */
-export async function priceRiseContext(addr: Addresses, sellCents: number, liveOfferCents: number, refusalReason: string): Promise<string> {
+export async function priceRiseContext(addr: Addresses, sellCents: number, oldUpstream: string, liveOfferCents: number, refusalReason: string): Promise<string> {
   const lines: string[] = [];
   let total = 0;
   for (const agent of ["sourcing", "support", "treasury"] as const) {
@@ -147,7 +147,7 @@ export async function priceRiseContext(addr: Addresses, sellCents: number, liveO
     lines.push(`- ${agent}: cap ${fromCents(baseUnitsToCents(t.constraints.perPaymentCap))} per payment, budget ${fromCents(budget)}, spent ${fromCents(baseUnitsToCents(await mandateSpent(m)))}, payee ${PAYEE[agent](addr).name} (${PAYEE[agent](addr).address.toLowerCase()})`);
   }
   return [
-    `Supplier Feedstock Labs now offers ${fromCents(liveOfferCents)} per tick (its notice and the live 402 offer agree). The next purchase was refused on chain: ${refusalReason}; the customer was not charged.`,
+    `Supplier Feedstock Labs raised its price from ${oldUpstream} to ${fromCents(liveOfferCents)} per tick (its notice and the live 402 offer agree). The next purchase was refused on chain: ${refusalReason}; the customer was not charged.`,
     `Current sell price: ${fromCents(sellCents)}. In the terms, query_price is the sell price this option would set, and margin = query_price - upstream_price. The approver chooses between options (another option keeps the current price; pausing sales means approving nothing).`,
     `Mandates bound now (read from the chain), ${fromCents(total)} of the ${fromCents(TOTAL_BUDGET_CENTS)} total:`,
     ...lines,
