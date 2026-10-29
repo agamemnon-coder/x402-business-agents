@@ -7,7 +7,7 @@ node_modules/
 *.key.json
 *-key.json
 owner-key*.json
-data/
+/data/
 *.sqlite
 *.sqlite-*
 audit.jsonl
