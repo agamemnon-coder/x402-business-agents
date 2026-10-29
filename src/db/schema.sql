@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS sales (
   body_sha256 TEXT,
   body_json TEXT,
   upstream_purchase_id INTEGER REFERENCES upstream_purchases(id),
+  -- The exact x402 offer the payment answered, so a dispute can re-check the payment against it.
+  requirements_json TEXT,
   status TEXT NOT NULL CHECK (status IN ('DELIVERED', 'ABORTED_NO_CHARGE', 'SETTLE_FAILED')),
   created_at TEXT NOT NULL
 );

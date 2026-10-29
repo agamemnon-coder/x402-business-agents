@@ -40,3 +40,6 @@ export const TARGET_FREE_EUR_CENTS = 150_000;
 
 /** A mandate change waits up to an hour for its approver; it carries no quote that could expire sooner. */
 export const MANDATE_PROPOSAL_TTL_MS = 60 * 60 * 1000;
+
+/** A delivered price that differs from the supplier's correction by more than this (0.00005) is refunded. */
+export const DATA_TOLERANCE_UNITS = 5;

@@ -38,7 +38,7 @@ export function sellerApp(opts: SellerOptions) {
   const facilitator = new HTTPFacilitatorClient({ url: FACILITATOR_URL });
   const server = requireSignedOffer(registerMetalScheme(new x402ResourceServer(facilitator), { networks: ["testnet"] }), { rpcUrl: rpcUrl() });
 
-  server.onAfterSettle(async ({ paymentPayload, result, transportContext }) => {
+  server.onAfterSettle(async ({ paymentPayload, requirements, result, transportContext }) => {
     const settlement = (result.extra as { settlement?: { id: string; first: boolean } } | undefined)?.settlement;
     if (!result.success || !settlement?.first) return;
     const ctx = transportContext as HTTPTransportContext | undefined;
@@ -49,12 +49,12 @@ export function sellerApp(opts: SellerOptions) {
     db.transaction(() => {
       const info = db.prepare(
         `INSERT OR IGNORE INTO sales (route, price_cents, payer, customer_mandate_ref, signed_offer, settlement_id, tx_hash, request_url,
-           request_params_json, body_sha256, body_json, upstream_purchase_id, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DELIVERED', ?)`,
+           request_params_json, body_sha256, body_json, upstream_purchase_id, requirements_json, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DELIVERED', ?)`,
       ).run(
         SELLER_RESOURCE, centsOfUnits(auth?.value), auth?.from ?? result.payer ?? "", mandateRefOf(paymentPayload), signedOfferOf(paymentPayload),
         settlement.id, result.transaction, url, JSON.stringify(Object.fromEntries(new URL(url || "http://x/").searchParams)),
-        sha256Hex(bodyText), bodyText, Number.isFinite(upstream) ? upstream : null, new Date().toISOString(),
+        sha256Hex(bodyText), bodyText, Number.isFinite(upstream) ? upstream : null, JSON.stringify(requirements), new Date().toISOString(),
       );
       if (info.changes === 1) {
         audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });

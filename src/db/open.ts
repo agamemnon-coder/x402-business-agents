@@ -13,5 +13,13 @@ export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
+  migrate(db);
   return db;
+}
+
+/** Columns added after a ledger was first created. Each runs once; CREATE TABLE covers new ledgers. */
+function migrate(db: DB): void {
+  const has = (table: string, column: string) =>
+    (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === column);
+  if (!has("sales", "requirements_json")) db.exec("ALTER TABLE sales ADD COLUMN requirements_json TEXT");
 }

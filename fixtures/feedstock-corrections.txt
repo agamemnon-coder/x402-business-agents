@@ -1,0 +1,15 @@
+From: data@feedstock-labs.example
+To: ops@tidemark-data.example
+Subject: Correction notice, raw EUR/USD ticks of 30 October
+Date: Fri, 30 Oct 2026 14:05:00 +0000
+
+A feed fault on our side published three raw ticks with a wrong bid and ask.
+The corrected values are:
+
+tick 7:  bid 1.08493  ask 1.08495
+tick 10: bid 1.08497  ask 1.08499
+tick 13: bid 1.08499  ask 1.08501
+
+All other ticks of that session were correct.
+
+Feedstock Labs data team
