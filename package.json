@@ -29,6 +29,7 @@
     "devtest": "tsx src/cli/dev-test.ts",
     "policy": "tsx src/cli/policy.ts",
     "fail": "tsx src/cli/fail.ts",
+    "fraud": "tsx src/cli/fraud.ts",
     "demo:all": "tsx src/cli/demo.ts"
   },
   "dependencies": {

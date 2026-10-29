@@ -180,6 +180,29 @@ at once. `npm run policy` shows the policy and proposes changes from a terminal 
 0.03 --reason "…"`), to approve on the phone or the laptop page. Every change is a `policy.changed` row in the audit
 log; the dashboard shows the policy limit beside each mandate's cap.
 
+## Invoice fraud
+
+Business email compromise is the classic way to steal a B2B payment: an invoice that looks like the supplier's
+announces new bank details, or comes from a name one letter off. Here the code decides, from the ledger, before
+Airwallex is called (`src/policy/fraud.ts`):
+
+- **Changed bank details:** the invoice's IBAN or BIC differs from the allowlisted beneficiary's.
+- **Lookalike vendor:** the name is not the allowlisted one but close to it (one or two letters, a swap, or the same
+  letters from another alphabet, such as a Cyrillic "е"). Its bank details are compared with the supplier it
+  pretends to be.
+- **Another account holder:** the "Account name" on the invoice is not the supplier.
+- **Evidence, never the reason on its own:** wording that announces a bank change or pushes for speed.
+
+A blocked invoice reads no balance, asks for no quote and creates no proposal; it is audited as
+`invoice.fraud_suspected` with every signal, and shows on the dashboard as "Invoice blocked: possible fraud".
+Opus then explains it to the CFO and lists how to verify it through a channel the invoice did not supply; its
+answer can only be "do not pay" or "verify first", and the block stands either way. No agent can change an
+allowlisted beneficiary: a person does that after calling the supplier on the number on file.
+
+`npm run fraud` runs it live on a world that has done S3: one invoice with new (Lithuanian) bank details and one
+from "Lizenzhaus Beispeil GmbH". Both are read by Claude, blocked by code, and explained by Opus
+([run log](docs/runs/2026-10-29-fraud.md)).
+
 ## Code map
 
 | Part | Where |

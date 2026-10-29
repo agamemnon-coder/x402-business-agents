@@ -158,6 +158,24 @@ describe("dashboard snapshot", () => {
       .toBe("Sourcing agent: most per payment: no extra limit → 0.03; EUR reserve floor: 500.00 → 800.00");
   });
 
+  it("shows a blocked invoice as possible fraud, the model's explanation, and a Face ID rejection by name", () => {
+    const db = ledger();
+    audit(db, "treasury", "invoice.fraud_suspected", "LIC-2027-01", {
+      reason: "possible invoice fraud: …", vendor: "Lizenzhaus Beispiel GmbH", amount: "1850.00", currency: "EUR", iban_last4: "1000",
+      signals: [{ code: "bank_details_changed", blocks: true, detail: "the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX" },
+        { code: "pressure_language", blocks: false, detail: "the invoice pushes for speed" }],
+    });
+    audit(db, "claude", "claude.read", "explain_invoice_fraud", { model: "claude-opus-5-5", output: { recommendation: "do_not_pay" } });
+    audit(db, "human", "proposal.rejected", "P-0004", { approver: "max (passkey k_EWzUuv)", method: "passkey", terms_sha256: "30d24528" });
+    const s = buildSnapshot(db, t0);
+    expect(s.refusals[1]).toMatchObject({
+      what: "Invoice blocked: possible fraud", agent: "treasury",
+      reason: "Invoice LIC-2027-01 from Lizenzhaus Beispiel GmbH for EUR 1850.00 blocked: the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX. Nothing was paid; a person must verify with the supplier by phone",
+    });
+    expect(s.feed[1]).toMatchObject({ text: "Claude explained the blocked invoice to the CFO: do not pay (advisory)", model: "Opus" });
+    expect(s.feed[0]).toMatchObject({ text: "Max · Face ID rejected P-0004", tone: "refusal" });
+  });
+
   it("shows who approved with a passkey as the person and Face ID", () => {
     const db = ledger();
     const terms = { schema: TERMS_SCHEMA, kind: "dev_test", proposal_id: "P-0001", expires_at: "2026-10-29T07:00:00Z", label: "DEV TEST" } as unknown as Terms;

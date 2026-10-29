@@ -1,9 +1,11 @@
-// Reading the licence invoice (deterministic fallback for the Claude layer) and checking its bank details
-// against the allowlisted beneficiary. Changed bank details never pay: they escalate (invoice fraud guard).
+// Reading the licence invoice (deterministic fallback for the Claude layer) and checking its payee against the
+// allowlisted beneficiary. Changed bank details, a lookalike vendor or another account holder never pay: they are
+// blocked as possible invoice fraud (src/policy/fraud.ts) and escalate to a person.
 
 import { createHash } from "node:crypto";
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
+import { assessInvoice, type FraudFinding } from "../policy/fraud.js";
 import { counterpartyAllowed } from "../policy/rules.js";
 
 export interface Invoice {
@@ -49,17 +51,22 @@ export const ibanSha = (iban: string) => createHash("sha256").update(iban.replac
 
 export type InvoiceCheck =
   | { ok: true; beneficiaryId: string; name: string; ibanLast4: string; bic: string; amountCents: number }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; fraud?: FraudFinding };
 
-/** The invoice may only be paid to a beneficiary already on the allowlist, with the same IBAN and BIC. */
-export function checkInvoice(db: DB, inv: Invoice): InvoiceCheck {
+/**
+ * The invoice may only be paid to a beneficiary already on the allowlist, by name, with the same IBAN, BIC and
+ * account holder. `text` is the document itself, for the account holder line and the wording around a change.
+ */
+export function checkInvoice(db: DB, inv: Invoice, text = ""): InvoiceCheck {
   if (inv.currency !== "EUR") return { ok: false, reason: `currency ${inv.currency}, expected EUR` };
-  const b = db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic FROM beneficiaries WHERE name = ? AND currency = 'EUR'").get(inv.vendor) as
-    { beneficiary_id: string; name: string; iban_last4: string; iban_sha256: string; bic: string } | undefined;
-  if (!b) return { ok: false, reason: `${inv.vendor} is not an allowlisted beneficiary` };
-  if (!counterpartyAllowed(db, b.name)) return { ok: false, reason: `${b.name} is blocked by the CFO policy` };
-  if (b.iban_sha256 !== ibanSha(inv.iban) || b.bic !== inv.bic) {
-    return { ok: false, reason: `bank details differ from the allowlisted ones (IBAN ...${b.iban_last4}, BIC ${b.bic}); possible invoice fraud` };
+  const fraud = assessInvoice(db, inv, text);
+  if (fraud.blocked) {
+    const blocking = fraud.signals.filter((s) => s.blocks);
+    if (!fraud.suspicious) return { ok: false, reason: blocking.map((s) => s.detail).join("; "), fraud };
+    const who = fraud.allowlisted?.name ?? inv.vendor;
+    return { ok: false, reason: `possible invoice fraud: ${blocking.map((s) => s.detail).join("; ")}; nothing is paid until a person verifies with ${who} on the phone number on file`, fraud };
   }
+  const b = fraud.allowlisted!;
+  if (!counterpartyAllowed(db, b.name)) return { ok: false, reason: `${b.name} is blocked by the CFO policy` };
   return { ok: true, beneficiaryId: b.beneficiary_id, name: b.name, ibanLast4: b.iban_last4, bic: b.bic, amountCents: toCents(inv.amount) };
 }

@@ -301,7 +301,8 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       const o = (p.output ?? {}) as P;
       let what = TASK_WORDS[task] ?? task.replace(/_/g, " ");
       if (task === "classify_document" && o.kind) what = `classified an incoming document as ${str(o.kind).replace(/_/g, " ")}`;
-      if (task.startsWith("review_")) what = `reviewed a ${task.slice(7).replace(/_/g, " ")} proposal: ${str(o.recommendation).replace(/_/g, " ") || "see the approval page"} (advisory)`;
+      if (task === "explain_invoice_fraud") what = `explained the blocked invoice to the CFO: ${str(o.recommendation).replace(/_/g, " ") || "see the ledger"} (advisory)`;
+      else if (task.startsWith("review_")) what = `reviewed a ${task.slice(7).replace(/_/g, " ")} proposal: ${str(o.recommendation).replace(/_/g, " ") || "see the approval page"} (advisory)`;
       return out(`Claude ${what}`, "info", { model: modelName(str(p.model)) });
     }
     case "claude.fallback": return out(`Claude was not used for ${s.replace(/_/g, " ")}; the deterministic parser decided (${str(p.note)})`, "info", { model: modelName(str(p.model)) });
@@ -315,7 +316,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       const key = p.passkey && typeof p.passkey === "object" ? str((p.passkey as P).credential_id).slice(0, 8) : "";
       return out(`${approverName(str(p.approver), str(p.method)) || "A person"} approved ${s}${key ? ` (passkey ${key})` : ""}, hash ${str(p.terms_sha256).slice(0, 8)}`, "approval");
     }
-    case "proposal.rejected": return out(`${str(p.approver) || "A person"} rejected ${s}`, "refusal");
+    case "proposal.rejected": return out(`${approverName(str(p.approver), str(p.method)) || "A person"} rejected ${s}`, "refusal");
     case "proposal.executing": return out(`Executing ${s}; the executor re-checked the approved hash`);
     case "proposal.executed": return out(`${s} executed`, "ok");
     case "proposal.failed": return out(`${s} failed: ${str(p.error) || "see the ledger"}`, "refusal");
@@ -337,6 +338,10 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "credit.adopted": return out(`Booked in Airwallex: ${str(p.currency)} ${str(p.amount)} deposit, reference = the chain tx`, "ok", { awx_id: str(p.deposit_id) || null, tx: TX.test(str(p.reference)) ? str(p.reference) : tx });
     case "treasury.seeded": return out(`Airwallex sandbox seeded with ${str(p.currency)} ${str(p.amount)}`);
     case "invoice.escalated": return out(`Invoice ${s} escalated to a person: ${str(p.reason)}`, "refusal");
+    case "invoice.fraud_suspected": {
+      const blocking = (Array.isArray(p.signals) ? (p.signals as P[]) : []).filter((x) => x.blocks === true).map((x) => str(x.detail));
+      return out(`Invoice ${s} from ${str(p.vendor)} for ${str(p.currency)} ${str(p.amount)} blocked: ${blocking.join("; ") || str(p.reason)}. Nothing was paid; a person must verify with the supplier by phone`, "refusal");
+    }
     case "fx.converted": return out(`Converted ${str(p.sell)} into ${str(p.buy)} on the approved quote`, "ok", { awx_id: s || null });
     case "transfer.created": return out(`SWIFT transfer of ${str(p.amount)} created, approval hash in its metadata`, "ok", { awx_id: s || null });
     case "transfer.status": return out(`Transfer ${str(p.status)}`, str(p.status) === "PAID" ? "ok" : "info", { awx_id: s || null });
@@ -355,7 +360,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
 const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
-  "sweep.held", "invoice.escalated", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
+  "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
 ]);
 
 const REFUSAL_WHAT: Record<string, string> = {
@@ -373,6 +378,7 @@ const REFUSAL_WHAT: Record<string, string> = {
   "sweep.refused": "Sweep refused",
   "sweep.held": "Sweep held",
   "invoice.escalated": "Invoice escalated",
+  "invoice.fraud_suspected": "Invoice blocked: possible fraud",
   "transfer.fee_over_ceiling": "Fee above ceiling",
   "passkey.refused": "Passkey approval refused",
   "passkey.enrol_refused": "Passkey enrolment refused",

@@ -12,6 +12,7 @@ import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { checkQuoteAgainstFloor, planInvoice, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
 import { getSetting, setSetting } from "../world/settings.js";
+import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
@@ -101,7 +102,7 @@ export interface InvoicePaymentTerms extends Terms {
 
 export type InvoiceOutcome =
   | { kind: "proposed"; proposal: ProposalRow; terms: InvoicePaymentTerms }
-  | { kind: "escalated"; reason: string };
+  | { kind: "escalated"; reason: string; fraud?: FraudFinding };
 
 /**
  * Plans the payment of an invoice and puts it up for approval. Any reason not to pay (unknown or changed
@@ -111,10 +112,18 @@ export async function proposeInvoicePayment(
   db: DB, rail: AirwallexRail, inv: Invoice, invoiceText: string, now = new Date(),
   quoteValidity: "MIN_1" | "MIN_15" = "MIN_15",
 ): Promise<InvoiceOutcome> {
-  const check = checkInvoice(db, inv);
+  const check = checkInvoice(db, inv, invoiceText);
   if (!check.ok) {
-    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: check.reason }, now);
-    return { kind: "escalated", reason: check.reason };
+    // Blocked before any Airwallex call: no balance read, no quote, no proposal.
+    if (check.fraud?.suspicious) {
+      audit(db, "treasury", "invoice.fraud_suspected", inv.invoice_no, {
+        reason: check.reason, vendor: inv.vendor, amount: inv.amount, currency: inv.currency, iban_last4: inv.iban.replace(/\s+/g, "").slice(-4), bic: inv.bic,
+        doc_sha256: sha256Hex(invoiceText), signals: check.fraud.signals.map((s) => ({ code: s.code, blocks: s.blocks, detail: s.detail })),
+      }, now);
+    } else {
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: check.reason }, now);
+    }
+    return { kind: "escalated", reason: check.reason, ...(check.fraud ? { fraud: check.fraud } : {}) };
   }
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ibanSha(inv.iban), inv.bic, check.beneficiaryId, sha256Hex(invoiceText), JSON.stringify(inv));
