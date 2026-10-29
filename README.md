@@ -159,12 +159,28 @@ another hash, but the runner still executes nothing that is not a waiting propos
 |---|---|---|
 | ![Options](docs/approve-options.png) | ![Confirm](docs/approve-confirm.png) | ![Done](docs/approve-done.png) |
 
+## CFO policy
+
+The CFO sets limits the agents work within, inside their on-chain mandates: a limit per payment for each agent,
+the refund amounts above which a person must approve, the EUR and USD reserve floors, and which Airwallex payees
+are allowed. Each is checked before anything is signed: the sourcing agent aborts the x402 payment when the
+supplier's offer is over its limit (`policy_cap_exceeded`, nothing signed, the customer not charged), refunds and
+sweeps refuse before the pull, and an invoice to a blocked payee escalates. The mandates stay the hard outer wall;
+the policy can only be stricter.
+
+A change is a `policy_change` proposal that names the value it replaces. On the phone (`/policy` on the relay) the
+CFO writes the change, sees it on the same confirm screen and signs it with Face ID; the runner checks it against the
+current policy and verifies the signature before it becomes a proposal, approved by that signature, and applies it
+at once. `npm run policy` shows the policy and proposes changes from a terminal (`npm run policy -- set cap.sourcing
+0.03 --reason "…"`), to approve on the phone or the laptop page. Every change is a `policy.changed` row in the audit
+log; the dashboard shows the policy limit beside each mandate's cap.
+
 ## Code map
 
 | Part | Where |
 |---|---|
 | Money and approval hash | `src/lib/money.ts`, `src/lib/terms.ts` |
-| Policy and approvals | `src/config/policy.ts`, `src/policy/` |
+| Policy and approvals (CFO policy: `src/policy/rules.ts`, `src/executors/policyChange.ts`) | `src/config/policy.ts`, `src/policy/` |
 | Ledger and audit log | `src/db/schema.sql`, `src/audit/log.ts` |
 | x402 seller and supplier | `src/servers/seller.ts`, `src/servers/supplier.ts` |
 | Agents | `src/agents/` (sourcing, customer, treasury, disputes, sweep, invoice, euro bill) |
