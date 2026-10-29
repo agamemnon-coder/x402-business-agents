@@ -38,7 +38,8 @@ export async function payUnderMandate(
   let blocked: string | null = null;
   if (guard) {
     paying.client.onBeforePaymentCreation(async ({ selectedRequirements }) => {
-      blocked = guard(Number(BigInt(selectedRequirements.amount) / 10n ** 16n), selectedRequirements.payTo);
+      // Rounded up to whole cents, so an offer of 0.0301 is not taken for 0.03 by a limit.
+      blocked = guard(Number((BigInt(selectedRequirements.amount) + 10n ** 16n - 1n) / 10n ** 16n), selectedRequirements.payTo);
       return blocked ? { abort: true as const, reason: blocked } : undefined;
     });
   }

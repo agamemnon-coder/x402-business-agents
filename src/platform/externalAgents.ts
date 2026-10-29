@@ -7,6 +7,7 @@
 // What it cannot do: approve anything, set a limit, or reach any other agent's card or money. The emergency stop
 // freezes its card with the rest. Each outside agent is named ext:<name>; that name is its identity in the ledger.
 
+import { stopped } from "../policy/velocity.js";
 import { audit, type Actor } from "../audit/log.js";
 import type { CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
 import { CARD_RAISE_TTL_MS } from "../config/policy.js";
@@ -153,6 +154,7 @@ export function cardStatus(db: DB, id: ExternalAgentId, now = new Date()): CardS
 export async function payWithCard(db: DB, sim: IssuingSim, id: ExternalAgentId, a: { merchant: string; amount: string; description: string }, now = new Date()): Promise<CardTransaction> {
   const card = cardOf(db, id);
   if (!card || row(db, id)?.status !== "ACTIVE") throw new Error(`${id} has no company card yet; ask for one and wait for the CFO's approval`);
+  if (stopped(db, id)) throw new Error(`${id} was stopped automatically (velocity limit); it pays nothing until the CFO lifts the stop with Face ID`);
   const merchant = a.merchant.trim();
   if (merchant === "" || merchant.length > 60) throw new Error("name the merchant, in at most 60 characters");
   let amountCents: number;

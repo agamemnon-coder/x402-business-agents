@@ -2,6 +2,7 @@
 // on the card at Airwallex, so even an agent that ignores the policy cannot spend past it. When Airwallex declines,
 // the agent may ask the CFO for a higher limit; that is a policy change, approved with Face ID like any other.
 
+import { stopped } from "../policy/velocity.js";
 import { CARD_RAISE_TTL_MS, PLANS, type Agent } from "../config/policy.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -20,6 +21,8 @@ export async function buyPlan(db: DB, sim: IssuingSim, planId: string, now = new
   if (!plan) throw new Error(`no plan ${planId}; known: ${Object.keys(PLANS).join(", ")}`);
   const card = cardOf(db, plan.agent);
   if (!card) throw new Error(`the ${plan.agent} agent has no card yet; run npm run cards -- setup`);
+  // A stopped agent buys nothing, also in the seconds before the runner's sync freezes its card at Airwallex.
+  if (stopped(db, plan.agent)) throw new Error(`the ${plan.agent} agent was stopped automatically (velocity limit); it buys nothing until the CFO lifts the stop with Face ID`);
   const purpose = `${plan.merchant}, ${plan.label}`;
   audit(db, plan.agent, "card.purchase_started", planId, { agent: plan.agent, last4: card.last4, merchant: plan.merchant, plan: plan.label, amount: fromCents(plan.amountCents), currency: "EUR" }, now);
   const t = await sim.simulateCardCharge({ cardId: card.card_id, amountCents: plan.amountCents, currency: "EUR", merchant: plan.merchant, mcc: plan.mcc });

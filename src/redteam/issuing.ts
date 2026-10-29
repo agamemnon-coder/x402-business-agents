@@ -1,7 +1,8 @@
-// In-memory stand-in for Airwallex Issuing, for unit tests only. It declines like the sandbox did on 2026-10-29:
-// over the per-transaction or the monthly limit gives FAILED with LIMIT_EXCEEDED.
+// In-memory stand-in for Airwallex Issuing, for the unit tests and the red team's throwaway world (never a live run).
+// It declines like the sandbox did on 2026-10-29: over the per-transaction or the monthly limit gives FAILED with
+// LIMIT_EXCEEDED, and an inactive card gives CARD_INACTIVE. Live, Airwallex itself enforces these.
 
-import type { Card, CardLimits, Cardholder, CardTransaction, IssuingRail, IssuingSim } from "../../src/airwallex/issuing.js";
+import type { Card, CardLimits, Cardholder, CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
 
 export class FakeIssuing implements IssuingRail, IssuingSim {
   holders: Cardholder[] = [];

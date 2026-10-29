@@ -1,6 +1,6 @@
-// TEST ONLY. A software WebAuthn authenticator (P-256, ES256, attestation "none") that produces the same JSON a
-// phone's passkey hands the page, so the runner's verification can be tested without a phone. Every field it
-// signs can be set wrong on purpose: origin, rpId, challenge, counter, user verification.
+// A software WebAuthn authenticator (P-256, ES256, attestation "none") that produces the same JSON a phone's passkey
+// hands the page. The tests use it to play the CFO's phone; the red team (src/redteam) uses it as the attacker's own
+// key. Every field it signs can be set wrong on purpose: origin, rpId, challenge, counter, user verification.
 
 import { createHash, generateKeyPairSync, randomBytes, sign, type KeyObject } from "node:crypto";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";

@@ -45,8 +45,13 @@ export async function refundSale(
   }
 
   // The CFO policy's limit per refund and the velocity limits, checked before anything is signed.
-  const refusal = capRefusal(db, "support", r.amount_cents) ?? velocityGate(db, "support", "metal", r.amount_cents);
+  const refusal = capRefusal(db, "support", r.amount_cents) ?? velocityGate(db, "support", "metal", r.amount_cents, new Date(), paymentId);
   if (refusal) {
+    // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its state.
+    if (existing && (existing.outcome === "PENDING" || existing.outcome === "HELD")) {
+      audit(db, "support", "refund.deferred", String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx: null, reason: refusal, kept: existing.outcome });
+      return { sale_id: r.sale_id, payment_id: paymentId, outcome: existing.outcome, tx: existing.tx_hash, reason: refusal, already: false };
+    }
     db.prepare("UPDATE refunds SET outcome = 'REFUSED', refusal_reason = ? WHERE sale_id = ?").run(refusal, r.sale_id);
     audit(db, "support", "refund.refused", String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx: null, reason: refusal });
     return { sale_id: r.sale_id, payment_id: paymentId, outcome: "REFUSED", tx: null, reason: refusal, already: false };

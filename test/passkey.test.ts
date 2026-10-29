@@ -9,7 +9,7 @@ import { activePasskey, confirmPasskey, fingerprintOf, openEnrolment, openWindow
 import { processAssertion, processPolicyRequest, processRegistration, type InboxItem } from "../src/passkey/process.js";
 import { assertionSha256, challengeFor, reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
-import { FakeAuthenticator } from "./fakes/authenticator.js";
+import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 
 const RP = "kit11.example.workers.dev";
 const ORIGIN = `https://${RP}`;

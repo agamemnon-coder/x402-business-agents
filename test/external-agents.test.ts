@@ -8,7 +8,7 @@ import { decide } from "../src/policy/approvals.js";
 import { cardRows, syncCardsAfterPolicy } from "../src/policy/cards.js";
 import { policyValue } from "../src/policy/rules.js";
 import { agentId, cardStatus, executeAgentOnboard, payWithCard, requestCardRaise, requestCompanyCard } from "../src/platform/externalAgents.js";
-import { FakeIssuing } from "./fakes/issuing.js";
+import { FakeIssuing } from "../src/redteam/issuing.js";
 
 const now = new Date("2026-11-03T10:00:00Z");
 const approve = (db: DB, id: string) => {

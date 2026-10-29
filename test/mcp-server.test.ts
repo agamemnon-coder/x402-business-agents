@@ -7,7 +7,7 @@ import { openDb } from "../src/db/open.js";
 import { decide } from "../src/policy/approvals.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
 import { agentId, executeAgentOnboard } from "../src/platform/externalAgents.js";
-import { FakeIssuing } from "./fakes/issuing.js";
+import { FakeIssuing } from "../src/redteam/issuing.js";
 
 const text = (r: unknown) => ((r as { content: { text: string }[] }).content[0]!.text);
 

@@ -9,7 +9,7 @@ import { handleAirwallexHook } from "../src/policy/cardHooks.js";
 import { setupCards } from "../src/policy/cards.js";
 import { Relay, type Sql } from "../worker/src/core.js";
 import { RelayRunner } from "../src/relay/runner.js";
-import { FakeIssuing } from "./fakes/issuing.js";
+import { FakeIssuing } from "../src/redteam/issuing.js";
 
 const BASE = "https://kit11.example.workers.dev";
 const TOKEN = "t".repeat(64);

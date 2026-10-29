@@ -10,8 +10,9 @@ import { capRefusal, loosens } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { stopped, velocityGate, velocityObserve } from "../src/policy/velocity.js";
 import { VELOCITY } from "../src/config/policy.js";
-import { FakeIssuing } from "./fakes/issuing.js";
+import { FakeIssuing } from "../src/redteam/issuing.js";
 import { executeSweep } from "../src/agents/sweep.js";
+import { buyPlan } from "../src/agents/cardBuyer.js";
 
 const t0 = new Date("2026-11-03T10:00:00Z");
 const at = (ms: number) => new Date(t0.getTime() + ms);
@@ -72,7 +73,7 @@ describe("velocity limits", () => {
     await setupCards(db, awx, t0);
     const limit = VELOCITY.support.eurPerHourCents;
     expect(velocityObserve(db, "support", limit, true, at(0))).toBeNull();
-    // A declined attempt still counts towards the minute, but not towards the amount spent.
+    // A declined attempt moves no money and is not counted (else anyone with the card number could stop the agent).
     expect(velocityObserve(db, "support", 9999, false, at(1000))).toBeNull();
     expect(velocityObserve(db, "support", 1, true, at(2000))).toMatch(/^velocity_exceeded: .* in an hour/);
     expect(stopped(db, "support")).toBe(true);
@@ -100,6 +101,41 @@ describe("velocity limits", () => {
     // No chain is reachable in this test: a refusal must come before any call to it.
     const r = await executeSweep(db, "sweep-1", 100, "0x00000000000000000000000000000000000000aa");
     expect(r).toMatchObject({ outcome: "REFUSED", tx: null, reason: expect.stringMatching(/^stopped_by_velocity/) });
+  });
+
+  it("catches a burst that is reported out of order", () => {
+    const max = VELOCITY.treasury.perMinute;
+    // Later charges reported first (a poll holds back fresh approvals; webhooks come in any order).
+    for (let i = 1; i <= max; i++) expect(velocityObserve(db, "treasury", 100, true, at(i * 10_000))).toBeNull();
+    expect(velocityObserve(db, "treasury", 100, true, at(5_000))).toMatch(/payments in a minute/);
+    expect(stopped(db, "treasury")).toBe(true);
+  });
+
+  it("never stops an agent on declined card attempts alone", () => {
+    for (let i = 0; i < 50; i++) expect(velocityObserve(db, "treasury", 100, false, at(i * 100))).toBeNull();
+    expect(stopped(db, "treasury")).toBe(false);
+  });
+
+  it("counts a retry under the same payment id once", () => {
+    for (let i = 0; i < 20; i++) expect(velocityGate(db, "support", "metal", 7, at(i * 100), "refund-42")).toBeNull();
+    expect((db.prepare("SELECT COUNT(*) AS n FROM velocity_events").get() as { n: number }).n).toBe(1);
+  });
+
+  it("keeps a sweep that was already sent as it is when the agent is stopped, so it is never swept twice", async () => {
+    db.prepare("INSERT INTO sweeps (payment_id, amount_cents, outcome, created_at) VALUES ('sweep-1', 100, 'PENDING', ?)").run(t0.toISOString());
+    for (let i = 0; i <= VELOCITY.treasury.perMinute; i++) velocityGate(db, "treasury", "metal", 1, at(i * 100));
+    const r = await executeSweep(db, "sweep-1", 100, "0x00000000000000000000000000000000000000aa");
+    expect(r).toMatchObject({ outcome: "PENDING", reason: expect.stringMatching(/^stopped_by_velocity/) });
+    expect(db.prepare("SELECT outcome FROM sweeps WHERE payment_id = 'sweep-1'").get()).toEqual({ outcome: "PENDING" });
+  });
+
+  it("refuses a stopped agent's card purchase in code, before the card is frozen at Airwallex", async () => {
+    const awx = new FakeIssuing();
+    awx.clock = () => t0.getTime();
+    await setupCards(db, awx, t0);
+    for (let i = 0; i <= VELOCITY.sourcing.perMinute; i++) velocityGate(db, "sourcing", "metal", 1, at(i * 100));
+    await expect(buyPlan(db, awx, "packwise-starter", at(5000))).rejects.toThrow(/stopped automatically/);
+    expect(awx.txs).toHaveLength(0);
   });
 
   it("is lifted only by an approved policy change: a loosening, which the phone never sends", () => {

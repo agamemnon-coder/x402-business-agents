@@ -10,7 +10,7 @@ import { setupCards, syncCardsAfterPolicy, syncCardsIfChanged } from "../src/pol
 import { capRefusal, frozen, loosens } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { buyPlan } from "../src/agents/cardBuyer.js";
-import { FakeIssuing } from "./fakes/issuing.js";
+import { FakeIssuing } from "../src/redteam/issuing.js";
 
 const now = new Date("2026-11-03T10:00:00Z");
 function approveAndRun(db: DB, id: string) {

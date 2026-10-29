@@ -16,7 +16,7 @@ import { simulateMonth } from "../src/sim/month.js";
 import { setSetting } from "../src/world/settings.js";
 import { buyPlan } from "../src/agents/cardBuyer.js";
 import { setupCards } from "../src/policy/cards.js";
-import { FakeIssuing } from "./fakes/issuing.js";
+import { FakeIssuing } from "../src/redteam/issuing.js";
 
 const B = "0x00000000000000000000000000000000000000b1";
 const C = "0x00000000000000000000000000000000000000c1";

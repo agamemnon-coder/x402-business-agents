@@ -4,7 +4,7 @@ import { openDb, type DB } from "../src/db/open.js";
 import { executePolicyChange } from "../src/executors/policyChange.js";
 import { decide } from "../src/policy/approvals.js";
 import { cardSpendCents, ingestCardTransaction, pollCardTransactions, setupCards, syncCardsAfterPolicy, syncCards, syncCardsIfChanged } from "../src/policy/cards.js";
-import { FakeIssuing } from "./fakes/issuing.js";
+import { FakeIssuing } from "../src/redteam/issuing.js";
 
 const now = new Date("2026-11-03T10:00:00Z");
 const events = (db: DB, prefix: string) =>

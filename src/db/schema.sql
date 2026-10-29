@@ -418,6 +418,8 @@ CREATE TABLE IF NOT EXISTS velocity_events (
   rail TEXT NOT NULL CHECK (rail IN ('metal', 'card')),
   cents INTEGER NOT NULL CHECK (cents >= 0),
   approved INTEGER NOT NULL CHECK (approved IN (0, 1)),
-  at TEXT NOT NULL
+  at TEXT NOT NULL,
+  -- A Metal payment's own id (a sweep or refund retried under it is counted once); null for card charges.
+  payment_id TEXT UNIQUE
 );
 CREATE INDEX IF NOT EXISTS velocity_by_agent ON velocity_events (agent, at);

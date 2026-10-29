@@ -32,6 +32,11 @@ function migrate(db: DB): void {
   db.exec("DROP INDEX IF EXISTS one_active_passkey");
   if (!has("passkey_enrolments", "label")) db.exec("ALTER TABLE passkey_enrolments ADD COLUMN label TEXT");
   if (!has("passkey_enrolments", "adds")) db.exec("ALTER TABLE passkey_enrolments ADD COLUMN adds INTEGER NOT NULL DEFAULT 0");
+  // Velocity limits: a Metal payment's id, so a retry under it is counted once.
+  if (!has("velocity_events", "payment_id")) {
+    db.exec("ALTER TABLE velocity_events ADD COLUMN payment_id TEXT");
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS velocity_payment_id ON velocity_events (payment_id)");
+  }
   allowPasskeyApprovals(db);
   allowPasskeyRejections(db);
 }

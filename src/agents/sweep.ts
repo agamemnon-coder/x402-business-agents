@@ -71,11 +71,17 @@ export function nextSweepId(db: DB, now = new Date()): string {
 /** Pull under the treasury mandate. A pending or failed run is retried with the same payment id, never a new one. */
 export async function executeSweep(db: DB, paymentId: string, amountCents: number, to: Address): Promise<{ outcome: string; tx: string | null; reason: string | null }> {
   db.prepare("INSERT OR IGNORE INTO sweeps (payment_id, amount_cents, outcome, created_at) VALUES (?, ?, 'PLANNED', ?)").run(paymentId, amountCents, new Date().toISOString());
-  const row = db.prepare("SELECT amount_cents FROM sweeps WHERE payment_id = ?").get(paymentId) as { amount_cents: number };
+  const row = db.prepare("SELECT amount_cents, outcome FROM sweeps WHERE payment_id = ?").get(paymentId) as { amount_cents: number; outcome: string };
   if (row.amount_cents !== amountCents) throw new Error(`${paymentId} was planned for ${fromCents(row.amount_cents)}; a retry must not change the amount`);
   // The CFO policy's limit per sweep and the velocity limits, checked before anything is signed.
-  const refusal = capRefusal(db, "treasury", amountCents) ?? velocityGate(db, "treasury", "metal", amountCents);
+  const refusal = capRefusal(db, "treasury", amountCents) ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId);
   if (refusal) {
+    // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its
+    // state, so it is never mistaken for a sweep that did not happen and swept again under a new id.
+    if (row.outcome === "PENDING" || row.outcome === "HELD") {
+      audit(db, "treasury", "sweep.deferred", paymentId, { amount: fromCents(amountCents), to, tx: null, reason: refusal, kept: row.outcome });
+      return { outcome: row.outcome, tx: null, reason: refusal };
+    }
     db.prepare("UPDATE sweeps SET outcome = 'REFUSED' WHERE payment_id = ?").run(paymentId);
     audit(db, "treasury", "sweep.refused", paymentId, { amount: fromCents(amountCents), to, tx: null, reason: refusal });
     return { outcome: "REFUSED", tx: null, reason: refusal };

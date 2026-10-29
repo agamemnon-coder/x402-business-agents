@@ -12,7 +12,7 @@ import { reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { RelayRunner } from "../src/relay/runner.js";
 import { Relay } from "../worker/src/core.js";
-import { FakeAuthenticator } from "./fakes/authenticator.js";
+import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 
 const RP = "kit11.example.workers.dev";
 const BASE = `https://${RP}`;

@@ -1,5 +1,5 @@
-// Velocity limits (security item 2). Each payment an agent makes is counted in a sliding minute (how many) and a
-// sliding hour (how much, per rail). One payment over a limit stops that agent at once: code sets stop.<agent> to on,
+// Velocity limits (security item 2). Each approved payment an agent makes is counted in a sliding minute (how many)
+// and a sliding hour (how much, per rail). One payment over a limit stops that agent at once: code sets stop.<agent> to on,
 // every payment it tries after that is refused before signing, and the runner freezes its card at Airwallex. Only an
 // approved policy change (Face ID) lifts the stop; the phone may never send it (a loosening). Other agents go on.
 //
@@ -32,26 +32,40 @@ export function stopReason(db: DB, agent: string): { since: string; reason: stri
   return r ? { since: r.ts, reason: String((JSON.parse(r.payload_json) as { reason?: unknown }).reason ?? "") } : { since: "", reason: "stopped by the CFO" };
 }
 
-/** The start of the counting window: never before the stop was last lifted, so a lifted agent starts clean. */
-function windowStart(db: DB, agent: string, now: Date, span: number): string {
-  const lifted = db.prepare("SELECT updated_at FROM settings WHERE key = ? AND value != 'on'").get(stopKey(agent)) as { updated_at: string } | undefined;
-  const from = now.getTime() - span;
-  const liftedAt = lifted ? Date.parse(lifted.updated_at) : NaN;
-  return new Date(Number.isFinite(liftedAt) && liftedAt > from ? liftedAt : from).toISOString();
+/** When this agent's stop was last lifted (ms), or 0: a lifted agent starts with a clean window. */
+function liftedAt(db: DB, agent: string): number {
+  const row = db.prepare("SELECT updated_at FROM settings WHERE key = ? AND value != 'on'").get(stopKey(agent)) as { updated_at: string } | undefined;
+  const t = row ? Date.parse(row.updated_at) : NaN;
+  return Number.isFinite(t) ? t : 0;
 }
 
-/** The breach this payment would cause, in words, or null. Counts what is on record plus this payment. */
-function breach(db: DB, agent: string, rail: Rail, cents: number, approved: boolean, now: Date): string | null {
+/**
+ * The breach this payment would cause, in words, or null. Payments are reported out of order (a card poll holds back
+ * fresh approvals, webhooks are not ordered), so every window that would contain this payment is checked: the one
+ * ending at it, and each one ending at a payment on record up to a minute (an hour) after it. Only approved payments
+ * count; a declined card attempt moves no money (and counting it would let anyone with the card number stop an agent).
+ */
+function breach(db: DB, agent: string, rail: Rail, cents: number, at: Date): string | null {
   const lim = limitsOf(agent);
-  const end = now.toISOString();
-  const count = (db.prepare("SELECT COUNT(*) AS n FROM velocity_events WHERE agent = ? AND at > ? AND at <= ?").get(agent, windowStart(db, agent, now, MINUTE), end) as { n: number }).n + 1;
-  if (count > lim.perMinute) return `${count} payments in a minute, the limit is ${lim.perMinute}`;
-  if (!approved) return null;
-  const spent = (db.prepare("SELECT COALESCE(SUM(cents), 0) AS c FROM velocity_events WHERE agent = ? AND rail = ? AND approved = 1 AND at > ? AND at <= ?")
-    .get(agent, rail, windowStart(db, agent, now, HOUR), end) as { c: number }).c + cents;
+  const lifted = liftedAt(db, agent);
+  const t = at.getTime();
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const ends = (span: number, railOnly: boolean) => [t, ...(db.prepare(`SELECT at FROM velocity_events WHERE agent = ? AND approved = 1 ${railOnly ? "AND rail = ?" : ""} AND at > ? AND at <= ?`)
+    .all(...[agent, ...(railOnly ? [rail] : []), iso(t), iso(t + span)]) as { at: string }[]).map((r) => Date.parse(r.at))];
+  for (const end of ends(MINUTE, false)) {
+    const from = Math.max(end - MINUTE, lifted);
+    const count = (db.prepare("SELECT COUNT(*) AS n FROM velocity_events WHERE agent = ? AND approved = 1 AND at > ? AND at <= ?").get(agent, iso(from), iso(end)) as { n: number }).n + 1;
+    if (count > lim.perMinute) return `${count} payments in a minute, the limit is ${lim.perMinute}`;
+  }
   const max = rail === "metal" ? lim.usdzPerHourCents : lim.eurPerHourCents;
   const unit = rail === "metal" ? "USDZ" : "EUR";
-  return spent > max ? `${fromCents(spent)} ${unit} in an hour, the limit is ${fromCents(max)} ${unit}` : null;
+  for (const end of ends(HOUR, true)) {
+    const from = Math.max(end - HOUR, lifted);
+    const spent = (db.prepare("SELECT COALESCE(SUM(cents), 0) AS c FROM velocity_events WHERE agent = ? AND rail = ? AND approved = 1 AND at > ? AND at <= ?")
+      .get(agent, rail, iso(from), iso(end)) as { c: number }).c + cents;
+    if (spent > max) return `${fromCents(spent)} ${unit} in an hour, the limit is ${fromCents(max)} ${unit}`;
+  }
+  return null;
 }
 
 function trip(db: DB, agent: string, rail: Rail, reason: string, now: Date): void {
@@ -64,26 +78,29 @@ function trip(db: DB, agent: string, rail: Rail, reason: string, now: Date): voi
  * Called just before an agent signs a payment on Metal: null lets it through (and counts it); otherwise the reason it
  * must not be signed. A payment over a limit stops the agent and is not made.
  */
-export function velocityGate(db: DB, agent: string, rail: Rail, cents: number, now = new Date()): string | null {
+export function velocityGate(db: DB, agent: string, rail: Rail, cents: number, now = new Date(), paymentId?: string): string | null {
   return db.transaction((): string | null => {
     if (stopped(db, agent)) return `stopped_by_velocity: the ${agent} agent was stopped automatically; the CFO lifts it with Face ID`;
-    const why = breach(db, agent, rail, cents, true, now);
+    // A retry under the same payment id is the same payment: counted once.
+    if (paymentId && db.prepare("SELECT 1 FROM velocity_events WHERE payment_id = ?").get(paymentId)) return null;
+    const why = breach(db, agent, rail, cents, now);
     if (why) {
       trip(db, agent, rail, why, now);
       return `velocity_exceeded: ${why}; the ${agent} agent is stopped until the CFO lifts it with Face ID`;
     }
-    db.prepare("INSERT INTO velocity_events (agent, rail, cents, approved, at) VALUES (?, ?, ?, 1, ?)").run(agent, rail, cents, now.toISOString());
+    db.prepare("INSERT INTO velocity_events (agent, rail, cents, approved, at, payment_id) VALUES (?, ?, ?, 1, ?, ?)").run(agent, rail, cents, now.toISOString(), paymentId ?? null);
     return null;
   }).immediate();
 }
 
 /**
- * Called once for each card charge Airwallex reports. The charge has happened already, so it is always counted; one
- * over a limit stops the agent, and the next card sync freezes the card. Returns the breach, or null.
+ * Called once for each card charge Airwallex reports. The charge has happened already, so it is always recorded; an
+ * approved one over a limit stops the agent: its purchases are refused in code at once, and the next card sync
+ * freezes the card at Airwallex. Returns the breach, or null.
  */
 export function velocityObserve(db: DB, agent: string, cents: number, approved: boolean, now = new Date()): string | null {
   return db.transaction((): string | null => {
-    const why = stopped(db, agent) ? null : breach(db, agent, "card", cents, approved, now);
+    const why = stopped(db, agent) || !approved ? null : breach(db, agent, "card", cents, now);
     db.prepare("INSERT INTO velocity_events (agent, rail, cents, approved, at) VALUES (?, 'card', ?, ?, ?)").run(agent, cents, approved ? 1 : 0, now.toISOString());
     if (!why) return null;
     trip(db, agent, "card", why, now);

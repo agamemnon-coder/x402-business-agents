@@ -135,7 +135,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
 export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: IssuingRail | null, now = new Date()): Promise<string[]> {
   const p = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ? AND kind = 'policy_change'").get(proposalId) as { terms_json: string } | undefined;
   const keys = p ? (JSON.parse(p.terms_json) as { changes: { key: string }[] }).changes.map((c) => c.key) : [];
-  if (!keys.some((k) => k.startsWith("card.") || k === "freeze")) return [];
+  if (!keys.some((k) => k.startsWith("card.") || k.startsWith("stop.") || k === "freeze")) return [];
   if (!rail) throw new Error("the policy changed, but the Airwallex sandbox keys are not set, so the card is not updated yet");
   return syncCardsIfChanged(db, rail, now);
 }
@@ -188,8 +188,9 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
     }, now);
     // Counted against the agent's velocity limits at the moment it happened; a breach stops the agent, and the next
     // card sync (every few seconds on the runner) freezes its card at Airwallex.
+    // A refund or reversal from the merchant is money coming back, not spending.
     const at = Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now;
-    velocityObserve(db, card.agent, t.amountCents, t.approved, at);
+    if (!/REFUND|REVERSAL|CREDIT/i.test(t.type)) velocityObserve(db, card.agent, t.amountCents, t.approved, at);
     return true;
   }).immediate();
 }
