@@ -79,6 +79,9 @@ describe("the runner's side of a webhook", () => {
     expect(handleAirwallexHook(db, { id: "evt-3", ts, signature: sign(ts, event("not-ours")), body: event("not-ours") }, SECRET, t0)).toMatch(/not an agent's card/);
     expect(handleAirwallexHook(db, { id: "evt-4", ts, signature: sign(ts, '{"id":"x","name":"account.active","data":{}}'), body: '{"id":"x","name":"account.active","data":{}}' }, SECRET, t0)).toMatch(/not a card transaction/);
     expect(db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get()).toEqual({ n: 1 });
+    // The sandbox sends the transaction as data itself, not under data.object.
+    const flat = JSON.stringify({ id: "evt-5", name: "issuing.card_transaction_event.success", data: { ...JSON.parse(event(card)).data.object, card_transaction_id: "ct-10", process_result: "APPROVED", failure_reason: null, transaction_amount: 15 } });
+    expect(handleAirwallexHook(db, { id: "evt-5", ts, signature: sign(ts, flat), body: flat }, SECRET, t0)).toMatch(/approved 15.00 EUR/);
   });
 });
 

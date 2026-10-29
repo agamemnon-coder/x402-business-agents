@@ -118,7 +118,11 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
   const card = db.prepare("SELECT agent, last4 FROM cards WHERE card_id = ?").get(t.cardId) as { agent: Agent; last4: string } | undefined;
   if (!card) throw new Error(`transaction ${t.transactionId} is on ${t.cardId}, which is not an agent's card`);
   return db.transaction(() => {
-    const old = db.prepare("SELECT status, approved FROM card_transactions WHERE transaction_id = ?").get(t.transactionId) as { status: string; approved: number } | undefined;
+    // Airwallex names some authorisations by two ids (a declined one in its list has only the older transaction id,
+    // its webhook the card transaction id): the same card, amount, outcome and moment is the same authorisation.
+    const old = (db.prepare("SELECT status, approved FROM card_transactions WHERE transaction_id = ?").get(t.transactionId)
+      ?? db.prepare("SELECT status, approved FROM card_transactions WHERE card_id = ? AND amount_cents = ? AND approved = ? AND occurred_at = ?")
+        .get(t.cardId, t.amountCents, t.approved ? 1 : 0, t.occurredAt)) as { status: string; approved: number } | undefined;
     if (old) {
       // Later news about the same authorisation (it cleared, or was reversed) updates the row.
       if (old.status !== t.status) db.prepare("UPDATE card_transactions SET status = ?, approved = ? WHERE transaction_id = ?").run(t.status, t.approved ? 1 : 0, t.transactionId);

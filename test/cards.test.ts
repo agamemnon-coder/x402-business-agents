@@ -105,6 +105,17 @@ describe("a company card per agent (K2)", () => {
     ]);
   });
 
+  it("knows a decline is the same one when Airwallex names it by two different ids", async () => {
+    await setupCards(db, awx, now);
+    const card = awx.cards[1]!.cardId;
+    const base = { cardId: card, amountCents: 6100, currency: "EUR", status: "FAILED", approved: false, failureReason: "LIMIT_EXCEEDED", merchant: "Tailspin Helpdesk", mcc: "5734", type: "AUTHORIZATION", occurredAt: "2026-11-03T10:00:00.990Z" };
+    expect(ingestCardTransaction(db, { ...base, transactionId: "legacy-id" }, "poll", now)).toBe(true);
+    expect(ingestCardTransaction(db, { ...base, transactionId: "card-transaction-id", status: "DECLINED" }, "webhook", now)).toBe(false);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get()).toEqual({ n: 1 });
+    // Two real charges of the same amount at different moments stay two.
+    expect(ingestCardTransaction(db, { ...base, transactionId: "another", occurredAt: "2026-11-03T10:05:00.000Z" }, "poll", now)).toBe(true);
+  });
+
   it("refuses a transaction for a card that is not one of ours", async () => {
     await setupCards(db, awx, now);
     expect(() => ingestCardTransaction(db, { transactionId: "t", cardId: "someone-else", amountCents: 1, currency: "EUR", status: "PENDING", approved: true, failureReason: null, merchant: "m", mcc: null, type: "AUTHORIZATION", occurredAt: now.toISOString() }, "webhook", now))

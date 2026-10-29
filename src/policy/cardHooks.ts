@@ -26,16 +26,18 @@ export function hookSignatureOk(h: RelayedHook, secret: string): boolean {
 /** Handles one relayed event and says what happened, in a line for the runner's log. Never throws. */
 export function handleAirwallexHook(db: DB, h: RelayedHook, secret: string, now = new Date()): string {
   if (!hookSignatureOk(h, secret)) return `webhook ${h.id.slice(0, 40)}: bad signature, ignored`;
-  let event: { id?: unknown; name?: unknown; data?: { object?: unknown } };
+  let event: { id?: unknown; name?: unknown; data?: unknown };
   try {
     event = JSON.parse(h.body) as typeof event;
   } catch {
     return `webhook ${h.id.slice(0, 40)}: not JSON, ignored`;
   }
   const name = String(event.name ?? "");
-  const object = event.data?.object as Record<string, unknown> | undefined;
+  // The docs put the resource under data.object; the sandbox (version 2025-11-11) sends it as data itself.
+  const data = event.data as Record<string, unknown> | undefined;
+  const object = (data?.object ?? data) as Record<string, unknown> | undefined;
   if (!name.startsWith("issuing.") || !object || typeof object.card_id !== "string" || object.transaction_amount === undefined) {
-    return `webhook ${name || "?"}: not a card transaction, ignored`;
+    return `webhook ${name || "?"}: not a card transaction, ignored (fields: ${Object.keys(object ?? {}).slice(0, 12).join(", ")})`;
   }
   try {
     const t = toCardTransaction(object as never);
@@ -44,6 +46,6 @@ export function handleAirwallexHook(db: DB, h: RelayedHook, secret: string, now 
       ? `webhook ${name}: Airwallex ${t.approved ? "approved" : "declined"} ${fromCents(t.amountCents)} ${t.currency} at ${t.merchant}`
       : `webhook ${name}: ${t.transactionId.slice(0, 8)} already recorded`;
   } catch (e) {
-    return `webhook ${name}: ${(e as Error).message}`;
+    return `webhook ${name}: ${(e as Error).message} (fields: ${Object.keys(object).slice(0, 16).join(", ")})`;
   }
 }

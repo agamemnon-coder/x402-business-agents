@@ -74,7 +74,7 @@ type AwxCard = {
 type AwxTx = {
   card_id: string; transaction_amount: number; transaction_currency: string;
   transaction_id?: string; card_transaction_id?: string; card_transaction_data?: { card_transaction_id?: string };
-  status?: string; process_result?: string; failure_reason?: string | null;
+  status?: string; process_result?: string; failure_reason?: string | null; created_at?: string;
   merchant?: { name?: string; category_code?: string };
   transaction_type?: string; type?: string; transaction_date?: string; transacted_at?: string;
 };
@@ -99,8 +99,9 @@ export function toCard(c: AwxCard): Card {
 
 export function toCardTransaction(t: AwxTx): CardTransaction {
   const id = t.card_transaction_data?.card_transaction_id ?? t.card_transaction_id ?? t.transaction_id;
-  const status = t.status ?? t.process_result;
-  const when = t.transaction_date ?? t.transacted_at;
+  // A card transaction event webhook carries neither status nor process_result: a failure reason means declined.
+  const status = t.status ?? t.process_result ?? (t.failure_reason ? "DECLINED" : t.card_transaction_id ? "APPROVED" : undefined);
+  const when = t.transaction_date ?? t.transacted_at ?? t.created_at;
   if (!id || !status || !when) throw new Error("an Airwallex card transaction without an id, a result or a date");
   return {
     transactionId: id, cardId: t.card_id,

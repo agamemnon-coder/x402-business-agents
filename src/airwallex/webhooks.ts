@@ -14,8 +14,14 @@ export interface Webhook {
 /** Where the runner keeps Airwallex's webhook signing secret, in the keys dir (the relay has its own copy). */
 export const WEBHOOK_SECRET_FILE = "airwallex-webhook-secret";
 
-/** Card transaction events, in the naming of the current docs (Issuing > transaction lifecycle). */
-export const CARD_EVENTS = ["issuing.card_transaction_event.success", "issuing.card_transaction_event.failed"];
+/**
+ * Card transaction events in both of Airwallex's shapes (a card transaction event, and the older transaction); each
+ * is recorded once by its card transaction id. Accepted under API version 2025-11-11 (checked against the sandbox
+ * on 2026-10-29: it names the events it does not support).
+ */
+export const CARD_EVENTS = [
+  "issuing.card_transaction_event.success", "issuing.card_transaction_event.failed", "issuing.transaction.succeeded", "issuing.transaction.failed",
+];
 
 export async function listWebhooks(api: Airwallex): Promise<Webhook[]> {
   const out: Webhook[] = [];
