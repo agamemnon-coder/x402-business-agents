@@ -318,6 +318,24 @@ from "Lizenzhaus Beispeil GmbH". Both are read by Claude, blocked by code, and e
   Only then is the account added at Airwallex and made the supplier's active payee. The old account is kept as
   REPLACED.
 
+## GL coding and export for the ERP
+
+`npm run gl -- csv|json [file]` writes the GL journal: one line for every movement of money. Each line has:
+
+- a GL account and a cost centre (one per agent);
+- the bank account the money moved through;
+- the signed amount and currency;
+- its proof: a transaction hash, a clearing receipt or an Airwallex id;
+- the approval behind it (the proposal id);
+- the rule that chose the account.
+
+Lines come from data sales, data purchases, refunds, card charges, invoice payments and their fees, currency
+conversions, sweeps and clearing withdrawals. Only money that moved is booked; a refused purchase or a declined card
+charge is not.
+
+The chart in `src/config/gl.ts` is an example: map the numbers to your own chart there. Text cells that a spreadsheet
+would read as a formula (a merchant name from outside, say) get a leading apostrophe.
+
 ## Prompt injection
 
 Documents are data. Every incoming document is screened by code first (`src/policy/injection.ts`) for lines aimed
