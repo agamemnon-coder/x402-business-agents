@@ -56,7 +56,7 @@ describe("enrolment", () => {
     const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN }, t0);
     const out = await processRegistration(db, item("registration", { code, credential: max.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) }), { label: "max" }, t0);
     const fp = fingerprintOf(max.spkiSha256);
-    expect(fp).toMatch(/^[0-9A-F]{4}-[0-9A-F]{4}$/);
+    expect(fp).toMatch(/^[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/);
     expect(out).toMatchObject({ status: "pending", message: expect.stringContaining(fp) });
     expect(activePasskey(db)).toBeNull();
     expect(pendingPasskeys(db, t0)).toEqual([expect.objectContaining({ credential_id: max.credentialId, fingerprint: fp })]);
@@ -82,6 +82,21 @@ describe("enrolment", () => {
     expect(pendingPasskeys(db, t0).map((p) => p.fingerprint)).toEqual([fingerprintOf(intruder.spkiSha256)]);
     // Max's phone shows his own fingerprint; the one waiting is not it, so nothing is confirmed.
     expect(() => confirmPasskey(db, fingerprintOf(new FakeAuthenticator().spkiSha256), t0)).toThrow(/no pending passkey/);
+  });
+
+  it("lets the first new passkey in a window win; a second one closes the window and raises the alarm (review N1)", async () => {
+    const db = openDb(":memory:");
+    const max = new FakeAuthenticator();
+    const other = new FakeAuthenticator();
+    const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN }, t0);
+    const reg = (a: FakeAuthenticator) => processRegistration(db, item("registration", { code, credential: a.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) }), { label: "max" }, t0);
+    expect((await reg(max)).status).toBe("pending");
+    expect(await reg(other)).toMatchObject({ status: "refused", message: expect.stringMatching(/second passkey.*closed/) });
+    // Nothing from that window can be confirmed any more, not even the first one: Max opens a new window.
+    expect(pendingPasskeys(db, t0)).toEqual([]);
+    expect(() => confirmPasskey(db, fingerprintOf(max.spkiSha256), t0)).toThrow(/no pending passkey/);
+    expect(openWindow(db, t0)).toBeNull();
+    expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'passkey.enrol_conflict'")).toBe(1);
   });
 
   it("refuses the wrong code, another challenge, another origin and a missing Face ID; the window stays open", async () => {
@@ -309,6 +324,22 @@ describe("policy change from the phone", () => {
     expect(out).toMatchObject({ status: "approved", proposalId: "C-0a1b2c3d" });
     expect(db.prepare("SELECT kind, status, created_by FROM proposals").get()).toEqual({ kind: "policy_change", status: "APPROVED", created_by: "human" });
     expect(db.prepare("SELECT method FROM approvals").get()).toEqual({ method: "passkey" });
+  });
+
+  it("refuses a phone change that loosens the policy; that goes through the runner (review N2)", async () => {
+    const { db, auth } = await enrolled();
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('eur_floor', '500.00', ?)").run(t0.toISOString());
+    const loosen = [
+      { key: "eur_floor", label: "EUR reserve floor", from: "500.00", to: "0.00" },
+      { key: "approval.refund_each", label: "A refund above this needs a person", from: "0.10", to: "20.00" },
+    ];
+    for (const c of loosen) {
+      const out = await processPolicyRequest(db, request(auth, termsOf({ changes: [c] })), t0);
+      expect(out).toMatchObject({ status: "refused", message: expect.stringMatching(/only tighten/) });
+    }
+    expect(db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 0 });
+    // Tightening still works from the phone.
+    expect((await processPolicyRequest(db, request(auth, termsOf({ changes: [{ key: "eur_floor", label: "EUR reserve floor", from: "500.00", to: "800.00" }] })), t0)).status).toBe("approved");
   });
 
   it("creates nothing for an unsigned, stale, reused, far-off or malformed request", async () => {

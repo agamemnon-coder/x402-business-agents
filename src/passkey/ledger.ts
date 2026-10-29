@@ -114,10 +114,13 @@ export interface NewPasskey {
   label: string;
 }
 
-/** What a person compares: the first 8 hex of the public key's SPKI SHA-256, as the phone computes it, e.g. 3FA0-91C2. */
+/**
+ * What a person compares: the first 64 bits of the public key's SPKI SHA-256, as the phone computes it, e.g.
+ * 3FA0-91C2-7B44-0E1D. 64 bits, so nobody can grind a key to match a fingerprint someone else saw (review N1).
+ */
 export function fingerprintOf(spkiSha256: string): string {
-  const h = spkiSha256.slice(0, 8).toUpperCase();
-  return `${h.slice(0, 4)}-${h.slice(4)}`;
+  const h = spkiSha256.slice(0, 16).toUpperCase();
+  return h.match(/.{4}/g)!.join("-");
 }
 
 const b64u = (b: Uint8Array) => Buffer.from(b).toString("base64url");
@@ -142,11 +145,25 @@ export interface PendingPasskey {
   created_at: string;
 }
 
-/** Keeps a verified new passkey until the runner confirms its fingerprint. One per window: a later one replaces it. */
+/**
+ * Keeps a verified new passkey until the runner confirms its fingerprint. The first one in a window wins: a second,
+ * different one means someone else had the code (or the relay made its own), so the window closes, nothing from it
+ * can be confirmed, and the alarm goes into the audit log (review N1).
+ */
 export function pendPasskey(db: DB, p: NewPasskey, now = new Date()): string {
   const fingerprint = fingerprintOf(spkiSha256OfCose(p.publicKey));
+  const earlier = db.prepare("SELECT credential_id, fingerprint FROM passkey_pending WHERE window_id = ? AND credential_id != ?").get(p.window.window_id, p.credentialId) as
+    { credential_id: string; fingerprint: string } | undefined;
+  if (earlier) {
+    db.transaction(() => {
+      db.prepare("DELETE FROM passkey_pending WHERE window_id = ?").run(p.window.window_id);
+      db.prepare("UPDATE passkey_enrolments SET status = 'CLOSED' WHERE window_id = ?").run(p.window.window_id);
+      audit(db, "system", "passkey.enrol_conflict", p.window.window_id, { first: earlier.fingerprint, second: fingerprint }, now);
+    }).immediate();
+    throw new Error("a second passkey came in for this enrolment window; the window is closed and nothing from it counts. Open a new one");
+  }
   db.transaction(() => {
-    db.prepare("DELETE FROM passkey_pending WHERE window_id = ? OR credential_id = ?").run(p.window.window_id, p.credentialId);
+    db.prepare("DELETE FROM passkey_pending WHERE credential_id = ?").run(p.credentialId);
     db.prepare(
       `INSERT INTO passkey_pending (credential_id, window_id, public_key, counter, transports, aaguid, registration_json, label, spki_sha256, fingerprint, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

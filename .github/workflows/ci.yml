@@ -1,6 +1,6 @@
 # Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
-# test/adversarial.test.ts), the relay Worker's type check, npm audit, and gitleaks on every pushed commit and
-# every commit of a pull request (accepted false positives are listed by fingerprint in .gitleaksignore).
+# test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), and gitleaks on the pushed
+# commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
 # No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
 name: ci
 on:
@@ -24,7 +24,7 @@ jobs:
       - run: npm run relay:pages
       - name: Relay Worker type check
         working-directory: worker
-        run: npm ci && npx tsc --noEmit
+        run: npm ci && npx tsc --noEmit && npm audit --audit-level=low
       - run: npm audit --audit-level=low
   secrets:
     runs-on: ubuntu-24.04
@@ -40,3 +40,8 @@ jobs:
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The action scans the pushed commits; this scans the whole history on every run.
+      - name: gitleaks, whole history
+        run: >
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3
+          git /repo --redact --no-banner --gitleaks-ignore-path /repo/.gitleaksignore

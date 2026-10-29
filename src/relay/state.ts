@@ -21,6 +21,8 @@ export interface RelayProposal {
   created_by: string;
   created_at: string;
   review: Pending["review"];
+  /** Planted instructions code found in this proposal's documents (review N5): shown on the phone as a warning. */
+  warnings: string[];
 }
 
 export interface RelayEnrolment {
@@ -48,17 +50,40 @@ export interface RelayState {
     passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string }[] };
     /** The CFO policy as it is now, for the phone's editor (it builds changes from these values). */
     policy: PolicyEntry[];
+    /** The ledger's last audit row: signed with the rest, so the phone refuses an older set replayed (review N4). */
+    ledger_seq: number;
   };
   enrolment: RelayEnrolment | null;
 }
 
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
 
-type PRow = { proposal_id: string; kind: string; terms_json: string; terms_sha256: string; created_by: string; explanation: string | null; expires_at: string; created_at: string };
+type PRow = { proposal_id: string; kind: string; terms_json: string; terms_sha256: string; created_by: string; explanation: string | null; evidence_json: string | null; expires_at: string; created_at: string };
+
+/** Planted lines code found, by the SHA-256 of the document they were in. */
+function plantedByDocument(db: DB): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const r of db.prepare("SELECT payload_json FROM audit_log WHERE event = 'document.injection_flagged' ORDER BY seq").all() as { payload_json: string }[]) {
+    try {
+      const p = JSON.parse(r.payload_json) as { document_sha256?: string; findings?: { excerpt?: string }[] };
+      const first = p.findings?.[0]?.excerpt;
+      if (p.document_sha256 && first && !out.has(p.document_sha256)) out.set(p.document_sha256, first);
+    } catch { /* not ours to fix here */ }
+  }
+  return out;
+}
 
 export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; relayToken: string }, now = new Date()): RelayState {
   const rows = db.prepare("SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' ORDER BY created_at, proposal_id").all() as PRow[];
+  const planted = plantedByDocument(db);
   const proposals: RelayProposal[] = rows.filter((p) => Date.parse(p.expires_at) > now.getTime()).map((p) => {
+    let evidence: { sha256?: string }[] = [];
+    try {
+      const e: unknown = JSON.parse(p.evidence_json ?? "null") ?? (JSON.parse(p.terms_json) as { evidence?: unknown }).evidence;
+      if (Array.isArray(e)) evidence = e as { sha256?: string }[];
+    } catch { /* no evidence */ }
+    const warnings = evidence.flatMap((e) => (e.sha256 && planted.has(e.sha256)
+      ? [`Code found a line aimed at the AI in the document behind this proposal, and ignored it: "${planted.get(e.sha256)}"`] : []));
     let canonical = p.terms_json;
     let group = p.proposal_id;
     try {
@@ -71,7 +96,7 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
     }
     return {
       proposal_id: p.proposal_id, kind: p.kind, group, canonical, terms_sha256: p.terms_sha256, expires_at: p.expires_at,
-      created_by: p.created_by, created_at: p.created_at, review: parseReview(p.explanation),
+      created_by: p.created_by, created_at: p.created_at, review: parseReview(p.explanation), warnings,
     };
   });
 
@@ -87,7 +112,10 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
     version: 1,
     generated_at: now.toISOString(),
     snapshot: buildSnapshot(db, now),
-    approvals: { proposals, names, passkey: { rp_id: cfg.rpId, credentials }, policy: currentPolicy(db) },
+    approvals: {
+      proposals, names, passkey: { rp_id: cfg.rpId, credentials }, policy: currentPolicy(db),
+      ledger_seq: (db.prepare("SELECT MAX(seq) AS n FROM audit_log").get() as { n: number | null }).n ?? 0,
+    },
     enrolment: w && w.rp_id === cfg.rpId
       ? { window_id: w.window_id, challenge: w.challenge, user_id: w.user_id, user_name: cfg.label ?? "max", code_mac: createHmac("sha256", cfg.relayToken).update(w.code_sha256).digest("hex"), rp_id: w.rp_id, expires_at: w.expires_at }
       : null,

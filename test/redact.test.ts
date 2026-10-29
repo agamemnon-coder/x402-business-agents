@@ -1,5 +1,6 @@
 // Security review M1: the Metal RPC URL is a credential. viem puts it in its error messages; none of it may reach the
 // audit log (and so the dashboard and the relay), the runner's verdicts to the phone, or its log lines.
+import { relayToken, viewKey } from "../src/relay/config.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createPublicClient, http } from "viem";
 import { audit } from "../src/audit/log.js";
@@ -36,6 +37,13 @@ describe("redacting the RPC URL (M1)", () => {
     expect(redactSecrets(`at https://other.example/v1/${"f".repeat(40)} with Bearer abc.def-ghi`)).toBe("at https://other.example/v1/[redacted] with Bearer [redacted]");
     process.env.AIRWALLEX_API_KEY = "k".repeat(24);
     expect(redactSecrets(`key ${"k".repeat(24)}`)).toBe("key [redacted]");
+  });
+
+  it("also removes the relay token derived from the Cloudflare token, and the viewer key (review N7)", () => {
+    const env = { CLOUDFLARE_API_TOKEN: "cf-".padEnd(40, "x") };
+    const token = relayToken(env)!;
+    const text = `token ${token} view ${viewKey(token)}`;
+    expect(redactSecrets(text, env)).toBe("token [redacted] view [redacted]");
   });
 
   it("keeps it out of the audit log, so out of the dashboard and the relay", async () => {

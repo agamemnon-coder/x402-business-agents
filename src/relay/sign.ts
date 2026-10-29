@@ -29,8 +29,8 @@ export function displayKey(path: string): DisplayKey {
 }
 
 /** Exactly the part of the approvals the phone verifies, as canonical JSON (RFC 8785). */
-export function signedPart(a: { proposals: unknown; names: unknown; passkey: unknown; policy: unknown }): string {
-  return jcs({ proposals: a.proposals, names: a.names, passkey: a.passkey, policy: a.policy } as unknown as Json);
+export function signedPart(a: { proposals: unknown; names: unknown; passkey: unknown; policy: unknown; ledger_seq: unknown }): string {
+  return jcs({ proposals: a.proposals, names: a.names, passkey: a.passkey, policy: a.policy, ledger_seq: a.ledger_seq } as unknown as Json);
 }
 
 export type SignedApprovals = RelayState["approvals"] & { signature: { alg: "ES256"; sig: string } };

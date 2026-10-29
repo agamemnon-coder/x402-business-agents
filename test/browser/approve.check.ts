@@ -97,7 +97,7 @@ await page.fill("#code", code.toLowerCase());
 await page.click("button.confirm");
 await page.waitForSelector(".verdict.wait .verdict-what", { timeout: 20_000 });
 await page.waitForFunction(() => document.querySelector(".verdict-head")?.textContent === "Confirm on the runner", null, { timeout: 20_000 });
-const shown = /Fingerprint ([0-9A-F]{4}-[0-9A-F]{4})/.exec((await page.textContent(".verdict-what")) ?? "")?.[1] ?? "";
+const shown = /Fingerprint ([0-9A-F]{4}(?:-[0-9A-F]{4}){3})/.exec((await page.textContent(".verdict-what")) ?? "")?.[1] ?? "";
 check(pendingPasskeys(db).map((p) => p.fingerprint).join() === shown && shown !== "", `enrolment page: the phone's own fingerprint (${shown}) is the one waiting on the runner`);
 check((await page.$(".alarm")) === null, "enrolment page: no mismatch warning");
 confirmPasskey(db, shown);

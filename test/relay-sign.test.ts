@@ -36,6 +36,7 @@ describe("runner-signed approvals (M3)", () => {
       { ...approvals, policy: approvals.policy.map((e) => ({ ...e, value: "20.00" })) },
       { ...approvals, passkey: { ...approvals.passkey, credentials: [{ id: "relay-key", label: "max", enrolled_at: "x" }] } },
       { ...approvals, signature: undefined },
+      { ...approvals, ledger_seq: approvals.ledger_seq - 1 },
     ];
     for (const a of changed) expect(await verifyRunnerSignature(a, key.publicSpki)).toBe(false);
   });

@@ -16,6 +16,8 @@ export interface PhoneProposal {
   created_by: string;
   created_at: string;
   review: { model: string | null; recommendation: string; text: string } | null;
+  /** Planted instructions code found in the proposal's documents (signed by the runner). */
+  warnings?: string[];
 }
 
 interface Approvals {
@@ -117,6 +119,20 @@ export interface Facts {
   label: string;
   big: string;
   unit: string;
+}
+
+/**
+ * Whether a policy change makes it less strict; the same rule the runner enforces (src/policy/rules.ts loosens):
+ * the phone may only tighten (review N2), so the page says so before Face ID instead of after.
+ */
+export function policyLoosens(c: { key: string; from: string; to: string }): boolean {
+  const cents = (v: string) => (/^\d+\.\d{2}$/.test(v) ? Number(v.replace(".", "")) : null);
+  const [from, to] = [cents(c.from), cents(c.to)];
+  if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
+  if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
+  if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
+  if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
+  return true;
 }
 
 export function describeTerms(t: Obj, names: Record<string, string>): Facts {
@@ -223,14 +239,6 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     const changes = arr(t.changes).filter(isObj);
     const shown = (v: unknown) => str(v) || "no extra limit";
     const cents = (v: unknown) => (/^\d+\.\d{2}$/.test(str(v)) ? Number(str(v).replace(".", "")) : null);
-    const loosens = (c: Obj): boolean => {
-      const key = str(c.key);
-      const [from, to] = [cents(c.from), cents(c.to)];
-      if (key.startsWith("cap.") || key.startsWith("approval.")) return from !== null && (to === null || to > from);
-      if (key.endsWith("_floor")) return from !== null && to !== null && to < from;
-      if (key.startsWith("counterparty:")) return str(c.from) === "blocked" && str(c.to) === "allowed";
-      return false;
-    };
     const one = changes.length === 1 ? changes[0]! : null;
     return {
       approvable: true,
@@ -241,7 +249,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       recipient: "nobody: no money moves",
       rows: [...changes.map((c) => [str(c.label), `${shown(c.from)} → ${shown(c.to)}`] as [string, string]), ["Reason", str(t.reason)]],
       short: "this policy change",
-      warnings: changes.filter(loosens).map((c) => `This loosens ${str(c.label)}`),
+      warnings: changes.filter((c) => policyLoosens({ key: str(c.key), from: str(c.from), to: str(c.to) })).map((c) => `This loosens ${str(c.label)}`),
       amountLabel: "New value",
       label: "Policy change",
       big: one ? shown(one.to) : String(changes.length),
@@ -358,7 +366,7 @@ export async function verifyRunnerSignature(a: Obj, runnerSpki: string): Promise
     const sig = isObj(a.signature) ? str(a.signature.sig) : "";
     if (!sig || !runnerSpki) return false;
     const key = await crypto.subtle.importKey("spki", b64urlToBytes(runnerSpki), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
-    const text = canonicalize({ proposals: a.proposals, names: a.names, passkey: a.passkey, policy: a.policy });
+    const text = canonicalize({ proposals: a.proposals, names: a.names, passkey: a.passkey, policy: a.policy, ledger_seq: a.ledger_seq });
     return await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, b64urlToBytes(sig), new TextEncoder().encode(text));
   } catch {
     return false;
@@ -377,9 +385,27 @@ export function takeViewKey(hash: string, store: Pick<Storage, "getItem" | "setI
 }
 
 const RUNNER_STORE = "kit11.runner";
-/** The runner's public key from the same link (base64url SPKI), pinned on this device. */
-export function takeRunnerKey(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null): string {
-  return takeFromLink(hash, store, "runner", /^[A-Za-z0-9_-]{80,200}$/, RUNNER_STORE);
+/**
+ * The runner's public key from the same link (base64url SPKI), pinned on this device. The first one stays: a later
+ * link with another key does not replace it (review N3); to re-pin, clear this site's data on the phone.
+ */
+export function takeRunnerKey(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null): { key: string; conflict: boolean } {
+  let pinned = "";
+  try { pinned = store?.getItem(RUNNER_STORE) ?? ""; } catch { pinned = ""; }
+  const fromLink = /(?:^#|&)runner=([A-Za-z0-9_-]{80,200})(?:&|$)/.exec(hash)?.[1];
+  if (pinned) return { key: pinned, conflict: fromLink !== undefined && fromLink !== pinned };
+  return { key: takeFromLink(hash, store, "runner", /^[A-Za-z0-9_-]{80,200}$/, RUNNER_STORE), conflict: false };
+}
+
+const SEQ_STORE = "kit11.seq";
+/** The newest ledger counter this phone has seen signed; an older signed set is a replay (review N4). */
+export function freshEnough(seq: number, store: Pick<Storage, "getItem" | "setItem"> | null): boolean {
+  if (!Number.isInteger(seq) || seq < 0) return false;
+  let seen = 0;
+  try { seen = Number(store?.getItem(SEQ_STORE) ?? "0") || 0; } catch { seen = 0; }
+  if (seq < seen) return false;
+  try { store?.setItem(SEQ_STORE, String(seq)); } catch { /* keep going without memory */ }
+  return true;
 }
 
 function takeFromLink(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null, name: string, ok: RegExp, storeKey: string): string {
@@ -392,6 +418,10 @@ function takeFromLink(hash: string, store: Pick<Storage, "getItem" | "setItem"> 
 }
 
 let runnerKey = "";
+let runnerConflict = false;
+let deviceStore: Pick<Storage, "getItem" | "setItem"> | null = null;
+const KEY_CONFLICT = "This link carries another runner key than the one this phone pinned, so it was not accepted. If the runner really changed, clear this site's data on the phone and open the new link.";
+const REPLAYED = "The relay sent an older signed state than this phone already saw. Nothing can be signed here; tell Claude.";
 const UNSIGNED = "What the relay sent is not signed by the runner this phone knows. Nothing can be signed here. Open the viewer link from Claude again, and tell Claude if this stays.";
 
 const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave you once on this phone, then come back.";
@@ -475,13 +505,13 @@ const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
 };
 
 /**
- * The new passkey's fingerprint, computed on the phone from its own public key (SPKI SHA-256, first 8 hex): the
+ * The new passkey's fingerprint, computed on the phone from its own public key (SPKI SHA-256, first 16 hex): the
  * person on the runner confirms only this one, so a passkey slipped in by someone else does not count (M3).
  */
 export async function passkeyFingerprint(spki: ArrayBuffer): Promise<string> {
   const d = new Uint8Array(await crypto.subtle.digest("SHA-256", spki));
-  const h = [...d.slice(0, 4)].map((b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
-  return `${h.slice(0, 4)}-${h.slice(4)}`;
+  const h = [...d.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+  return h.match(/.{4}/g)!.join("-");
 }
 
 /** Polls a ticket and shows the runner's verdict until it is final; returns the last answer. */
@@ -547,6 +577,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     el("h2", "sheet-title", [f.title]),
     txt("p", "sentence", rejecting ? `Nothing of this will happen: ${f.sentence}` : f.sentence),
     ...f.warnings.map((w) => txt("p", "alarm", w)),
+    ...(o.warnings ?? []).map((w) => txt("p", "alarm", w)),
     el("dl", "facts", [
       txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount),
       ...(f.margin ? [txt("dt", "", "Margin"), txt("dd", "num", f.margin)] : []),
@@ -650,8 +681,16 @@ async function approvePage(): Promise<void> {
     app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the approval relay."));
     return;
   }
+  if (runnerConflict) {
+    app.replaceChildren(txt("p", "alarm", KEY_CONFLICT));
+    return;
+  }
   if (!(await verifyRunnerSignature(data, runnerKey))) {
     app.replaceChildren(txt("p", "alarm", UNSIGNED));
+    return;
+  }
+  if (!freshEnough(Number(data.ledger_seq), deviceStore)) {
+    app.replaceChildren(txt("p", "alarm", REPLAYED));
     return;
   }
   const a = data as unknown as Approvals;
@@ -680,6 +719,7 @@ async function approvePage(): Promise<void> {
       el("span", "option-meta", [cd, " · ", el("span", "mono", [`hash ${o.terms_sha256.slice(0, 8)}`])]),
       check.ok ? null : txt("span", "alarm", `Do not approve: ${check.problem}.`),
       check.ok && f && !f.approvable ? txt("span", "alarm", f.sentence) : null,
+      ...(o.warnings ?? []).map((w) => txt("span", "alarm", w)),
     ]) as HTMLButtonElement;
     card.type = "button";
     card.disabled = !check.ok || !f || !f.approvable;
@@ -812,8 +852,16 @@ async function policyPage(): Promise<void> {
     app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the relay."));
     return;
   }
+  if (runnerConflict) {
+    app.replaceChildren(txt("p", "alarm", KEY_CONFLICT));
+    return;
+  }
   if (!(await verifyRunnerSignature(data, runnerKey))) {
     app.replaceChildren(txt("p", "alarm", UNSIGNED));
+    return;
+  }
+  if (!freshEnough(Number(data.ledger_seq), deviceStore)) {
+    app.replaceChildren(txt("p", "alarm", REPLAYED));
     return;
   }
   const a = data as unknown as Approvals & { policy: PolicyRow[] };
@@ -890,6 +938,11 @@ async function policyPage(): Promise<void> {
       note.textContent = "Say why, in one line.";
       return;
     }
+    const looser = changes.filter((c) => policyLoosens(c));
+    if (looser.length) {
+      note.textContent = `${looser.map((c) => c.label).join(", ")}: this would loosen the policy. On the phone you can only tighten it; ask Claude to propose it on the runner, then approve it here with Face ID.`;
+      return;
+    }
     note.textContent = "";
     const hex = Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, "0")).join("");
     const now = new Date();
@@ -911,7 +964,8 @@ export function boot(): void {
   let store: Storage | null = null;
   try { store = localStorage; } catch { store = null; }
   viewKey = takeViewKey(location.hash, store);
-  runnerKey = takeRunnerKey(location.hash, store);
+  deviceStore = store;
+  ({ key: runnerKey, conflict: runnerConflict } = takeRunnerKey(location.hash, store));
   if (location.hash.includes("view=") || location.hash.includes("runner=")) history.replaceState(null, "", location.pathname + location.search);
   setInterval(tickCountdowns, 1000);
   if (document.body.dataset.page === "approve") void approvePage();

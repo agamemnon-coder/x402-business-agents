@@ -1,12 +1,13 @@
 // The phone's own checks and words: it canonicalises and hashes the terms itself, refuses anything that does not
 // hash to the hash it will sign, and builds every line of the confirm screen from those hashed terms.
+import { loosens } from "../src/policy/rules.js";
 import { generateKeyPairSync } from "node:crypto";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, passkeyFingerprint, rejectionHash, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
@@ -183,7 +184,43 @@ describe("the new passkey's fingerprint (M3)", () => {
     const cose = isoCBOR.encode(new Map<number, number | Uint8Array>([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x!, "base64url")], [-3, Buffer.from(jwk.y!, "base64url")]]));
     const spki = publicKey.export({ type: "spki", format: "der" });
     const onPhone = await passkeyFingerprint(spki.buffer.slice(spki.byteOffset, spki.byteOffset + spki.byteLength) as ArrayBuffer);
-    expect(onPhone).toMatch(/^[0-9A-F]{4}-[0-9A-F]{4}$/);
+    expect(onPhone).toMatch(/^[0-9A-F]{4}(-[0-9A-F]{4}){3}$/);
     expect(onPhone).toBe(fingerprintOf(spkiSha256OfCose(Buffer.from(cose).toString("base64url"))));
+  });
+});
+
+describe("loosening the policy (N2)", () => {
+  it("is judged the same on the phone and on the runner", () => {
+    const cases = [
+      ["cap.sourcing", "", "0.03"], ["cap.sourcing", "0.03", "0.05"], ["cap.sourcing", "0.03", ""], ["cap.sourcing", "0.05", "0.03"],
+      ["approval.refund_each", "0.10", "0.20"], ["approval.refund_each", "0.10", "0.00"],
+      ["eur_floor", "500.00", "0.00"], ["eur_floor", "500.00", "800.00"], ["eur_floor", "", "500.00"], ["eur_floor", "500.00", ""],
+      ["counterparty:X GmbH", "blocked", "allowed"], ["counterparty:X GmbH", "allowed", "blocked"], ["unknown", "a", "b"],
+    ];
+    const expected = [false, true, true, false, true, false, true, false, false, true, true, false, true];
+    expect(cases.map(([key, from, to]) => loosens({ key: key!, from: from!, to: to! }))).toEqual(expected);
+    expect(cases.map(([key, from, to]) => policyLoosens({ key: key!, from: from!, to: to! }))).toEqual(expected);
+  });
+});
+
+describe("the runner's pinned key and its ledger counter (N3, N4)", () => {
+  const mem = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v); } }; };
+  const A = "A".repeat(122);
+  const B = "B".repeat(122);
+
+  it("keeps the first runner key; a later link with another key does not replace it", () => {
+    const store = mem();
+    expect(takeRunnerKey(`#runner=${A}`, store)).toEqual({ key: A, conflict: false });
+    expect(takeRunnerKey(`#runner=${B}`, store)).toEqual({ key: A, conflict: true });
+    expect(takeRunnerKey("", store)).toEqual({ key: A, conflict: false });
+  });
+
+  it("refuses signed approvals older than the newest this phone has seen", () => {
+    const store = mem();
+    expect(freshEnough(170, store)).toBe(true);
+    expect(freshEnough(175, store)).toBe(true);
+    expect(freshEnough(175, store)).toBe(true);
+    expect(freshEnough(174, store)).toBe(false);
+    expect(freshEnough(Number.NaN, store)).toBe(false);
   });
 });

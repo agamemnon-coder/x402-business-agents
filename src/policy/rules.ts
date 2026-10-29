@@ -101,3 +101,18 @@ export function refundThresholds(db: DB): { eachCents: number; perDisputeCents: 
 export function counterpartyAllowed(db: DB, name: string): boolean {
   return policyValue(db, `counterparty:${name}`) !== "blocked";
 }
+
+/**
+ * Whether a change makes the policy less strict: a higher or removed agent limit, a higher approval threshold, a
+ * lower reserve floor, or a payee unblocked. The phone may only tighten (review N2); loosening is proposed on the
+ * runner (npm run policy -- set) and then approved with Face ID like any proposal.
+ */
+export function loosens(c: { key: string; from: string; to: string }): boolean {
+  const cents = (v: string) => (/^\d+\.\d{2}$/.test(v) ? Number(v.replace(".", "")) : null);
+  const [from, to] = [cents(c.from), cents(c.to)];
+  if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
+  if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
+  if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
+  if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
+  return true;
+}

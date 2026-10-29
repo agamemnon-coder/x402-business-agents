@@ -2,6 +2,7 @@
 // a body is hostile input until parsed, every signature is verified against the pinned public key, and only then
 // does decide() run, in one transaction with the counter update and the stored signature.
 
+import { loosens } from "../policy/rules.js";
 import { z } from "zod";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { audit } from "../audit/log.js";
@@ -216,6 +217,12 @@ export async function processPolicyRequest(db: DB, item: InboxItem, now = new Da
     checkChanges(db, terms.changes);
   } catch (e) {
     return refuse((e as Error).message);
+  }
+  // The phone's page comes from the relay; a compromised one could slip a loosening into any Face ID prompt. So the
+  // phone may only tighten; loosening is proposed on the runner and approved like any proposal (review N2).
+  const looser = (terms.changes as { key: string; label?: string; from: string; to: string }[]).filter(loosens);
+  if (looser.length) {
+    return refuse(`the phone can only tighten the CFO policy; ${looser.map((c) => c.label ?? c.key).join(", ")} would loosen it. Propose that on the runner (npm run policy -- set …) and approve it with Face ID`);
   }
   const pk = passkeyById(db, response.id);
   if (!pk || pk.status !== "ACTIVE") return refuse("this passkey is not the enrolled one");

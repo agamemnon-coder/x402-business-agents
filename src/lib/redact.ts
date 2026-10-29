@@ -2,6 +2,8 @@
 // the verdicts sent to the phone, and log lines (security review M1). viem, for one, quotes the RPC URL in its
 // errors, and the Metal RPC URL is a credential.
 
+import { relayToken, viewKey } from "../relay/config.js";
+
 /** Environment values that are credentials. Only values of 8 characters or more are matched. */
 const SECRET_ENV = [
   "METAL_RPC_URL", "METAL_ENDPOINT_SECRET", "AIRWALLEX_CLIENT_ID", "AIRWALLEX_API_KEY", "KIT11_ANTHROPIC_API_KEY",
@@ -21,6 +23,9 @@ export function redactSecrets(text: string, env: NodeJS.ProcessEnv = process.env
     const v = env[name];
     if (v && v.length >= 8) out = out.split(v).join("[redacted]");
   }
+  // Derived secrets: the relay token (from the Cloudflare token unless set) and the viewer key (review N7).
+  const token = relayToken(env);
+  if (token) for (const v of [token, viewKey(token)]) out = out.split(v).join("[redacted]");
   return out
     .replace(/https:\/\/rpc-testnet\.metalntwx\.com\/\S*/g, "[rpc-url]")
     .replace(/\/v1\/[A-Za-z0-9_-]{16,}/g, "/v1/[redacted]")

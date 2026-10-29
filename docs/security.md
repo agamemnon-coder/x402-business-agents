@@ -44,11 +44,11 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 | 10 | Anyone | Double payment | Idempotency keys everywhere (below); an executed proposal cannot run again; a lost answer is looked up, never resent | `test/euroBill.test.ts`, `test/adversarial.test.ts` |
 | 11 | Old credential | Pull under a replaced mandate | The chain refuses (`mandate_revoked`) | S1 run log |
 | 12 | Internet visitor | Abuse of the relay | Same-origin POSTs, size caps, per-address (IPv6 /64) and per-queue limits, five tries per enrolment code; the relay cannot approve | `test/relay-worker.test.ts` |
-| 13 | Compromised relay or Cloudflare account | Change what the phone shows (terms, names, policy) | The runner signs those (ES256) and the phone checks the signature against the runner key it pinned from the viewer link, which travels out of band; it shows nothing to sign otherwise. The runner executes only a waiting proposal's exact hash, signed by the pinned passkey | `test/relay-sign.test.ts`, browser check |
-| 13b | Compromised relay | Enrol its own passkey with a code it saw | A new passkey only counts after the person on the runner confirms the fingerprint the phone shows (SPKI SHA-256), and a replaced passkey stays active until then. The relay gets only an HMAC of the code, keyed by the relay token | `test/passkey.test.ts` |
+| 13 | Relay or Cloudflare account that changes *data* | Change what the phone shows (terms, names, policy) or replay an older state | The runner signs those plus the ledger counter (ES256); the phone checks them against the runner key it pinned from the viewer link (out of band; a later link cannot replace it) and refuses an older counter. **This does not hold against a relay that serves a different *script*: see below** | `test/relay-sign.test.ts`, `test/approve-client.test.ts`, browser check |
+| 13b | Someone who saw the enrolment code, or a relay at enrolment time | Enrol their own passkey | A new passkey counts only after the person on the runner confirms its 64-bit fingerprint; the first passkey in a window wins and a second closes the window with an alarm; a replaced passkey stays active until then; the relay gets only an HMAC of the code. **Enrolment trusts the page at that moment**: a relay serving a malicious script could show its own key's fingerprint. What limits it: enrol right after a deploy from this repo, with two-factor login on the Cloudflare account; a passkey is bound to the relay's address, so it cannot be enrolled anywhere safer for this address | `test/passkey.test.ts` |
 | 14 | Stolen phone | Approve as the CFO | The passkey needs Face ID (user verification is required and checked); revocation means re-enrolment | `src/passkey/webauthn.ts` |
 | 15 | Insider with database access | Edit or truncate the log | The database refuses updates and deletes; the hash chain detects edits; an anchor printed in the audit report detects truncation or a full rehash | `test/audit.test.ts`, `test/audit-report.test.ts`, `npm run verify-log` |
-| 16 | Leaked secret | A key in git or in a model's context | No key ever goes to a model (tested); every commit is scanned for the real values; gitleaks scans every pushed and pull-request commit in CI | `test/adversarial.test.ts`, `.github/workflows/ci.yml` |
+| 16 | Leaked secret | A key in git or in a model's context | No key ever goes to a model (tested); every commit is scanned for the real values; gitleaks scans the pushed commits and the whole history in CI | `test/adversarial.test.ts`, `.github/workflows/ci.yml` |
 
 ## Limits on every external call
 
@@ -101,10 +101,22 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 - **zod advisory (fixed 2026-10-29).** `@x402/*` is at 2.29.0, which uses fixed zod 4, and an override gives
   `@metalntwx/metal-agent` zod 4.6.7 as well. `npm audit` reports 0 vulnerabilities. A live `npm run verify` (21 checks,
   through metal-agent) and an x402 sale refused by policy behaved as before.
-- **The relay serves the phone's script.** A relay that serves a *different script* could show one thing and ask
-  Face ID to sign another waiting proposal's hash. The pinned runner key cannot stop that; only a native app could.
-  What limits it: the runner executes only waiting proposals' exact terms, approvals stay per proposal, and every
-  approval is in the audit report.
+- **The relay serves the phone's script.** A compromised Worker or Cloudflare account can serve a script that
+  shows one thing and asks Face ID to sign another waiting proposal's hash. The runner key and its signatures cannot
+  stop a lying script; only a page not served by the relay could (a native app).
+  What still holds:
+  - the runner executes only waiting proposals' exact terms, so payees come from the allowlist and amounts are
+    built by code;
+  - the phone can only tighten the CFO policy, and the runner enforces that (any loosening is proposed on the
+    runner);
+  - every approval is in the audit report.
+- **Audit anchors are not signed.** Someone who can write the SQLite file can append forged rows after the last
+  anchor, including a passkey row, and `verify` still passes. Anchors in committed run records and audit reports
+  limit this to rows after the last published anchor.
+- **No limit per invoice beyond the reserve floors.** An invoice to the allowlisted payee with a larger amount is
+  stopped only by the person who reads the amount on the confirm screen before Face ID.
+- **metal-agent runs with zod 4 by override** (it asks for zod 3). The unit tests use fakes. A live `npm run verify`,
+  which goes through the metal-agent mandate commands, passed after the change, and each rehearsal runs it again.
 - **The viewer key is a bearer key.** Whoever has the viewer link sees the dashboard and can send signatures,
   which still need Max's passkey to count. It is derived from the relay token; rotating that rotates the key.
 - **The *USDZ to Airwallex bridge is simulated:** a sandbox deposit references the sweep's transaction hash. The
@@ -118,7 +130,7 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 ## Checks
 
 - `npm test`: the full suite, including `test/adversarial.test.ts`. CI runs it on every push, with type checks,
-  gitleaks on every pushed and pull-request commit, and `npm audit`.
+  gitleaks on the pushed commits and the whole history, and `npm audit` for the root and `worker/`.
 - `npm run verify`: re-checks the chain, the mandates, the Airwallex records and every passkey signature, offline
   where it can.
 - `npm run verify-log -- --anchor <seq>:<hash>`: proves the log still contains a row printed earlier.
