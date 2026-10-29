@@ -44,4 +44,4 @@ jobs:
       - name: gitleaks, whole history
         run: >
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3
-          git /repo --redact --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
+          git /repo --redact --verbose --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
