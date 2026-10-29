@@ -118,7 +118,13 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   if (kind === "mandate_replace") {
     const steps = arr(t.steps).filter(isObj);
     const [q, u, m] = [str(t.query_price), str(t.upstream_price), str(t.margin)];
-    const payeeOf = (s: Obj) => str(arr(s.payees)[0]);
+    const payeesOf = (s: Obj) => arr(s.payees).map(str);
+    const warnings: string[] = [];
+    for (const s of steps) {
+      const payees = payeesOf(s);
+      if (payees.length > 1) warnings.push(`The ${str(s.agent)} mandate may pay ${payees.length} addresses`);
+      for (const p of payees) if (!nameOf(p)) warnings.push(`The ${str(s.agent)} mandate may pay an address the ledger has no name for: ${p}`);
+    }
     const rows: [string, string][] = [["Price per query", `${q} *USDZ`], ["Supplier price", `${u} *USDZ`], ["Margin per sale", m]];
     for (const s of steps) {
       const spent = s.spent_at_proposal === undefined ? "" : ` (${str(s.spent_at_proposal)} already spent)`;
@@ -132,10 +138,10 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       sentence: `Sell each query at ${q} *USDZ. The supplier now charges ${u}, so each sale earns ${m}.`,
       amount: `${q} *USDZ per query`,
       margin: `${m} per sale`,
-      recipient: steps.map((s) => `${who(payeeOf(s))} (${str(s.agent)})`).join("; "),
+      recipient: steps.map((s) => `${payeesOf(s).map(who).join(", ")} (${str(s.agent)})`).join("; "),
       rows,
       short: `option ${str(t.option)}: sell at ${q} per query (margin ${m})`,
-      warnings: [],
+      warnings,
       label: `Option ${str(t.option)}`,
       big: q,
       unit: "*USDZ per query",

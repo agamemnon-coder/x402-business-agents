@@ -86,6 +86,8 @@ function ticketId(): string {
 
 /** Reads a body up to a limit. Null means too large; undefined means not JSON. */
 async function readJson(req: Request, limit: number): Promise<{ text: string; value: unknown } | null | undefined> {
+  // A declared size over the limit is refused before a byte is read.
+  if (Number(req.headers.get("content-length") ?? "0") > limit) return null;
   const text = await req.text();
   if (new TextEncoder().encode(text).length > limit) return null;
   try {
@@ -96,6 +98,47 @@ async function readJson(req: Request, limit: number): Promise<{ text: string; va
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+function b64urlToText(s: string): string | null {
+  if (!/^[A-Za-z0-9_-]*$/.test(s)) return null;
+  try {
+    const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4));
+    return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+  } catch {
+    return null;
+  }
+}
+
+function hexToB64url(hex: string): string {
+  const bytes = hex.match(/../g)!.map((h) => parseInt(h, 16));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * Whether the browser said it signed exactly this hash on this site (WebAuthn clientDataJSON). Not a signature
+ * check (the runner does that); it keeps junk made from public data out of the queue.
+ */
+function signedFor(clientDataJSON: unknown, termsSha256: string, origin: string): boolean {
+  if (typeof clientDataJSON !== "string") return false;
+  const text = b64urlToText(clientDataJSON);
+  if (text === null) return false;
+  try {
+    const c = JSON.parse(text) as Record<string, unknown>;
+    return c.type === "webauthn.get" && c.challenge === hexToB64url(termsSha256) && c.origin === origin && c.crossOrigin !== true;
+  } catch {
+    return false;
+  }
+}
+
+/** The rate-limit key: an IPv4 address as is, an IPv6 address by its /64 (one subscriber gets a whole /64). */
+export function rateKey(ip: string): string {
+  if (!ip.includes(":")) return ip;
+  const [head = "", tail = ""] = ip.toLowerCase().split("::");
+  const h = head ? head.split(":") : [];
+  const t = tail ? tail.split(":") : [];
+  const groups = ip.includes("::") ? [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill("0"), ...t] : h;
+  return `${groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":")}::/64`;
+}
 
 interface StoredState {
   generated_at: string;
@@ -152,7 +195,7 @@ export class Relay {
 
   /** Counts this request against its address; true while under the limit. */
   private underRateLimit(req: Request): boolean {
-    const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+    const ip = rateKey(req.headers.get("cf-connecting-ip") ?? "unknown");
     const now = this.now().getTime();
     this.sql.exec("DELETE FROM hits WHERE at <= ?", now - RATE_WINDOW_MS);
     const [{ n }] = this.sql.exec("SELECT COUNT(*) AS n FROM hits WHERE ip = ?", ip).toArray() as [{ n: number }];
@@ -248,7 +291,7 @@ export class Relay {
     if (body === null) return error(413, "submission too large");
     const v = body?.value;
     if (!isObject(v) || typeof v.proposal_id !== "string" || !PROPOSAL_ID.test(v.proposal_id) || typeof v.terms_sha256 !== "string" || !HEX64.test(v.terms_sha256)
-      || !isObject(v.credential) || typeof v.credential.id !== "string") return error(400, "malformed submission");
+      || !isObject(v.credential) || typeof v.credential.id !== "string" || !isObject(v.credential.response)) return error(400, "malformed submission");
     const s = this.state();
     if (!s) return error(503, "the runner has not connected yet");
     const p = s.approvals.proposals.find((x) => x.proposal_id === v.proposal_id);
@@ -257,6 +300,9 @@ export class Relay {
     }
     const credentialId = v.credential.id;
     if (!s.approvals.passkey.credentials.some((c) => c.id === credentialId)) return error(403, "this passkey is not the enrolled one");
+    if (!signedFor((v.credential.response as Record<string, unknown>).clientDataJSON, p.terms_sha256, new URL(req.url).origin)) {
+      return error(400, "this signature is not for these terms on this site");
+    }
     if (this.queued("proposal_id = ?", p.proposal_id) >= MAX_QUEUED_PER_PROPOSAL || this.queued("1 = 1") >= MAX_QUEUED) {
       return error(429, "too many approvals are waiting for the runner; wait a moment");
     }
@@ -268,14 +314,19 @@ export class Relay {
     const s = this.state();
     const e = s?.enrolment;
     if (!s || !e || Date.parse(e.expires_at) <= this.now().getTime()) return { ok: false, res: error(409, "no enrolment is open; ask for a new code") };
-    const key = `enrol_attempts:${e.window_id}`;
-    const used = Number(this.get(key) ?? "0");
-    if (used >= ENROL_ATTEMPTS) return { ok: false, res: error(403, "too many wrong codes; ask for a new code") };
+    // Every try is counted before the first await, so tries that arrive together cannot share one count.
+    const tries = `enrol_tries:${e.window_id}`;
+    const rights = `enrol_rights:${e.window_id}`;
+    const tried = Number(this.get(tries) ?? "0");
+    const wrongSoFar = tried - Number(this.get(rights) ?? "0");
+    if (wrongSoFar >= ENROL_ATTEMPTS) return { ok: false, res: error(403, "too many wrong codes; ask for a new code") };
+    this.put(tries, String(tried + 1));
     const normal = typeof code === "string" ? normalizeCode(code) : null;
     if (normal === null || (await sha256Hex(normal)) !== e.code_sha256) {
-      this.put(key, String(used + 1));
-      return { ok: false, res: error(403, "wrong code", { attempts_left: ENROL_ATTEMPTS - used - 1 }) };
+      const wrong = Number(this.get(tries) ?? "0") - Number(this.get(rights) ?? "0");
+      return { ok: false, res: error(403, "wrong code", { attempts_left: Math.max(0, ENROL_ATTEMPTS - wrong) }) };
     }
+    this.put(rights, String(Number(this.get(rights) ?? "0") + 1));
     return { ok: true, e, s };
   }
 

@@ -55,6 +55,19 @@ describe("the words on the confirm screen", () => {
     expect(d.short).toBe("option B: sell at 0.07 per query (margin 0.03)");
   });
 
+  it("lists every payee a mandate may pay, and warns about a second payee or one the ledger does not know", () => {
+    const t = structuredClone(byId("P-0002").terms) as Record<string, unknown>;
+    const stranger = "0x000000000000000000000000000000000000dead";
+    const steps = t.steps as Record<string, unknown>[];
+    steps[1]!.payees = [...(steps[1]!.payees as string[]), stranger];
+    const d = describeTerms(t, F.names);
+    expect(d.recipient).toBe("Tidemark sweep wallet 0xce06…a6ed (treasury); Feedstock Labs 0x3295…713b, 0x0000…dead (sourcing)");
+    expect(d.warnings).toEqual([
+      "The sourcing mandate may pay 2 addresses",
+      `The sourcing mandate may pay an address the ledger has no name for: ${stranger}`,
+    ]);
+  });
+
   it("states an invoice payment's amount, fee ceiling, conversion and bank details", () => {
     const d = describeTerms(byId("P-0004").terms, F.names);
     expect(d).toMatchObject({ approvable: true, title: "Pay invoice LIC-2026-11", amount: "EUR 1,850.00", margin: null, label: "Invoice LIC-2026-11", big: "1,850.00", unit: "EUR" });

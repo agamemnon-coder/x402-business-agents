@@ -48,8 +48,10 @@ const push = (r: Relay, state: RelayState, acks: unknown[] = []) => sync(r, { st
 const post = (r: Relay, path: string, body: unknown, headers: Record<string, string> = {}) =>
   r.fetch(new Request(`${BASE}${path}`, { method: "POST", headers: { origin: BASE, "content-type": "application/json", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) }));
 const get = (r: Relay, path: string) => r.fetch(new Request(`${BASE}${path}`));
-const assertion = (over: Record<string, unknown> = {}) =>
-  ({ proposal_id: "P-0001", terms_sha256: HASH, credential: { id: "cred-1", rawId: "cred-1", type: "public-key", response: { clientDataJSON: "e30", authenticatorData: "AA", signature: "AA" }, clientExtensionResults: {} }, ...over });
+const clientData = (over: Record<string, unknown> = {}) =>
+  Buffer.from(JSON.stringify({ type: "webauthn.get", challenge: Buffer.from(HASH, "hex").toString("base64url"), origin: BASE, crossOrigin: false, ...over })).toString("base64url");
+const assertion = (over: Record<string, unknown> = {}, cd = clientData()) =>
+  ({ proposal_id: "P-0001", terms_sha256: HASH, credential: { id: "cred-1", rawId: "cred-1", type: "public-key", response: { clientDataJSON: cd, authenticatorData: "AA", signature: "AA" }, clientExtensionResults: {} }, ...over });
 
 describe("runner sync", () => {
   it("needs the relay token", async () => {
@@ -101,6 +103,29 @@ describe("passkey approvals from the phone", () => {
     expect((await post(r, "/api/assertions", assertion({ credential: "nope" }))).status).toBe(400);
     at("2026-10-30T14:10:00Z");
     expect((await post(r, "/api/assertions", assertion())).status).toBe(409);
+  });
+
+  it("refuses a signature made for other terms, another site or another ceremony before queueing it", async () => {
+    const { r } = relay();
+    await push(r, runnerState({ enrolled: true }).state);
+    for (const cd of [clientData({ challenge: Buffer.alloc(32).toString("base64url") }), clientData({ origin: "https://evil.example" }), clientData({ type: "webauthn.create" }), "bm90IGpzb24"]) {
+      expect((await post(r, "/api/assertions", assertion({}, cd), { "cf-connecting-ip": `10.9.${cd.length}.1` })).status).toBe(400);
+    }
+    expect((await post(r, "/api/assertions", assertion())).status).toBe(202);
+  });
+
+  it("refuses a body by its declared size before reading it", async () => {
+    const { r } = relay();
+    await push(r, runnerState({ enrolled: true }).state);
+    expect((await post(r, "/api/assertions", assertion(), { "content-length": "5000000" })).status).toBe(413);
+  });
+
+  it("counts an IPv6 /64 as one address", async () => {
+    const { r } = relay();
+    await push(r, runnerState({ enrolled: true }).state);
+    for (let i = 0; i < 10; i++) await post(r, "/api/assertions", assertion({ terms_sha256: "1".repeat(64) }), { "cf-connecting-ip": `2001:db8:0:0::${i + 1}` });
+    expect((await post(r, "/api/assertions", assertion(), { "cf-connecting-ip": "2001:db8::ffff" })).status).toBe(429);
+    expect((await post(r, "/api/assertions", assertion(), { "cf-connecting-ip": "2001:db8:0:1::1" })).status).toBe(202);
   });
 
   it("refuses other sites, oversized bodies and floods", async () => {
@@ -179,6 +204,16 @@ describe("enrolment from the phone", () => {
     const locked = await post(r, "/api/enrol/options", { code }, { "cf-connecting-ip": "10.2.0.9" });
     expect(locked.status).toBe(403);
     expect(await json(locked)).toMatchObject({ error: expect.stringMatching(/too many/) });
+  });
+
+  it("keeps the five-try limit when wrong codes arrive at the same moment", async () => {
+    const { r } = relay();
+    const { state, code } = runnerState({ enrolled: false });
+    await push(r, state);
+    const answers = await Promise.all(Array.from({ length: 30 }, (_, i) => post(r, "/api/enrol/options", { code: "AAAA-AAAA" }, { "cf-connecting-ip": `10.3.${i}.1` })));
+    const wrong = await Promise.all(answers.map(async (a) => (await a.json()) as { error: string }));
+    expect(wrong.filter((w) => w.error === "wrong code").length).toBeLessThanOrEqual(5);
+    expect((await post(r, "/api/enrol/options", { code }, { "cf-connecting-ip": "10.4.0.1" })).status).toBe(403);
   });
 
   it("says so when no enrolment is open", async () => {
