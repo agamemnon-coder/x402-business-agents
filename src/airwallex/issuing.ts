@@ -24,7 +24,11 @@ export interface Card {
 }
 
 export interface CardTransaction {
+  /** Airwallex's card transaction id when it has one, otherwise its older transaction id. */
   transactionId: string;
+  /** The older transaction id, where Airwallex gives it (its transaction list does). The list may show a fresh
+   *  authorisation under this id alone before its card transaction id is filled in. */
+  legacyId?: string;
   cardId: string;
   /** Always positive: what the merchant asked for. */
   amountCents: number;
@@ -106,7 +110,7 @@ export function toCardTransaction(t: AwxTx): CardTransaction {
   const when = t.transaction_date ?? t.transacted_at ?? t.created_at;
   if (!id || !status || !when) throw new Error("an Airwallex card transaction without an id, a result or a date");
   return {
-    transactionId: id, cardId: t.card_id,
+    transactionId: id, ...(t.transaction_id ? { legacyId: t.transaction_id } : {}), cardId: t.card_id,
     // Airwallex signs amounts from the card's side (a purchase is negative).
     amountCents: cents(Math.abs(Number(t.transaction_amount))), currency: t.transaction_currency,
     status, approved: !DECLINED.has(status), failureReason: t.failure_reason ?? null,

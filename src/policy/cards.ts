@@ -146,8 +146,25 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
   const card = db.prepare("SELECT agent, last4 FROM cards WHERE card_id = ?").get(t.cardId) as { agent: string; last4: string } | undefined;
   if (!card) throw new Error(`transaction ${t.transactionId} is on ${t.cardId}, which is not an agent's card`);
   return db.transaction(() => {
-    // Airwallex names some authorisations by two ids (a declined one in its list has only the older transaction id,
-    // its webhook the card transaction id): the same card, amount, outcome and moment is the same authorisation.
+    // Airwallex names an authorisation by two ids: its card transaction id (webhooks, the simulation) and an older
+    // transaction id (its list, which may show a fresh one under that id alone). Where both are known, one row is
+    // kept under the card transaction id: a row under the older id is re-keyed, or merged if both were recorded.
+    if (t.legacyId && t.legacyId !== t.transactionId) {
+      const legacy = db.prepare("SELECT amount_cents FROM card_transactions WHERE transaction_id = ?").get(t.legacyId) as { amount_cents: number } | undefined;
+      if (legacy) {
+        if (db.prepare("SELECT 1 FROM card_transactions WHERE transaction_id = ?").get(t.transactionId)) {
+          db.prepare("DELETE FROM card_transactions WHERE transaction_id = ?").run(t.legacyId);
+          audit(db, "system", "card.duplicate_merged", t.legacyId, {
+            agent: card.agent, amount: fromCents(legacy.amount_cents), currency: t.currency, kept: t.transactionId,
+            reason: "the same authorisation, recorded under its older transaction id and under its card transaction id; recorded once from now on",
+          }, now);
+        } else {
+          db.prepare("UPDATE card_transactions SET transaction_id = ? WHERE transaction_id = ?").run(t.transactionId, t.legacyId);
+        }
+      }
+    }
+    // A declined one in the list has only the older id, its webhook the card transaction id: the same card, amount,
+    // outcome and moment is the same authorisation.
     const old = (db.prepare("SELECT status, approved FROM card_transactions WHERE transaction_id = ?").get(t.transactionId)
       ?? db.prepare("SELECT status, approved FROM card_transactions WHERE card_id = ? AND amount_cents = ? AND approved = ? AND occurred_at = ?")
         .get(t.cardId, t.amountCents, t.approved ? 1 : 0, t.occurredAt)) as { status: string; approved: number } | undefined;
@@ -172,13 +189,20 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
   }).immediate();
 }
 
+const FRESH_LISTING_MS = 2 * 60 * 1000;
+
 /** Asks Airwallex for every card's transactions and records the new ones. Returns how many were new. */
 export async function pollCardTransactions(db: DB, rail: IssuingRail, now = new Date()): Promise<number> {
   let fresh = 0;
   for (const row of cardRows(db)) {
     // Oldest first, so the audit log reads in the order things happened (Airwallex's list order is not promised).
     const txs = (await rail.listCardTransactions(row.card_id)).sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
-    for (const t of txs) if (ingestCardTransaction(db, t, "poll", now)) fresh++;
+    for (const t of txs) {
+      // A fresh approval listed under its older id alone gets its card transaction id within moments (seen live):
+      // wait for it rather than record it under an id the webhook will not use.
+      if (t.approved && t.legacyId === t.transactionId && now.getTime() - Date.parse(t.occurredAt) < FRESH_LISTING_MS) continue;
+      if (ingestCardTransaction(db, t, "poll", now)) fresh++;
+    }
   }
   return fresh;
 }

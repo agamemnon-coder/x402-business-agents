@@ -501,7 +501,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "card.purchase_started": return out(`Subscribing to ${str(p.merchant)} (${str(p.plan ?? p.description)}) for ${str(p.amount)} EUR on its card •••• ${str(p.last4)}`);
     case "card.charge_approved": return out(`Airwallex approved ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "ok", { awx_id: s || null });
     case "card.charge_declined": return out(`Airwallex declined ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}: ${declineWords(str(p.reason))}`, "refusal", { awx_id: s || null });
-    case "card.duplicate_merged": return out(`A card decline recorded twice (two Airwallex ids for one decline) was merged into one`);
+    case "card.duplicate_merged": return out(`A card authorisation recorded twice (Airwallex names it by two ids) was merged into one: ${str(p.amount)} ${str(p.currency)}`);
     case "card.charge_reversed": return out(`Airwallex reversed ${str(p.amount)} EUR at ${str(p.merchant)} on the ${str(p.agent)} agent's card •••• ${str(p.last4)}`, "refusal", { awx_id: s || null });
     case "passkey.enrolment_opened": return out("A one-time code to enrol a passkey was issued (valid 10 minutes)");
     case "passkey.enrolled": return out(`${str(p.label) || "A person"} enrolled passkey ${s.slice(0, 8)}; approvals now need it`, "ok");

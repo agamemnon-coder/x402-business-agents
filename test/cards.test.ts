@@ -127,6 +127,44 @@ describe("a company card per agent (K2)", () => {
     expect(ingestCardTransaction(db, { ...base, transactionId: "another", occurredAt: "2026-11-03T10:05:00.000Z" }, "poll", now)).toBe(true);
   });
 
+  it("records an approval once when Airwallex lists it before its card transaction id is filled in", async () => {
+    await setupCards(db, awx, now);
+    const base = { cardId: awx.cards[0]!.cardId, amountCents: 1900, currency: "EUR", status: "PENDING", approved: true, failureReason: null, merchant: "Contoso Reports", mcc: "5734", type: "AUTHORIZATION" };
+    const count = () => (db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get() as { n: number }).n;
+    // A moment after the charge, the list has only the older id: the poll leaves it for the next round.
+    awx.txs = [{ ...base, transactionId: "c84-legacy", legacyId: "c84-legacy", occurredAt: "2026-11-03T09:59:59.735Z" }];
+    expect(await pollCardTransactions(db, awx, now)).toBe(0);
+    // The webhook names it by its card transaction id, at a slightly different moment.
+    expect(ingestCardTransaction(db, { ...base, transactionId: "01a1-cti", occurredAt: "2026-11-03T10:00:00.396Z" }, "webhook", now)).toBe(true);
+    // Then the list carries both ids: still one.
+    awx.txs = [{ ...base, transactionId: "01a1-cti", legacyId: "c84-legacy", occurredAt: "2026-11-03T09:59:59.735Z" }];
+    expect(await pollCardTransactions(db, awx, now)).toBe(0);
+    expect(count()).toBe(1);
+    expect(cardSpendCents(db, "sourcing", now)).toBe(1900);
+    // An old entry with only the older id (Airwallex never filled it in) is recorded all the same.
+    awx.txs = [{ ...base, amountCents: 500, transactionId: "old-legacy", legacyId: "old-legacy", occurredAt: "2026-11-03T09:50:00.000Z" }];
+    expect(await pollCardTransactions(db, awx, now)).toBe(1);
+  });
+
+  it("merges an approval recorded under both ids, and re-keys one recorded under its older id", async () => {
+    await setupCards(db, awx, now);
+    const base = { cardId: awx.cards[0]!.cardId, amountCents: 1900, currency: "EUR", status: "PENDING", approved: true, failureReason: null, merchant: "Contoso Reports", mcc: "5734", type: "AUTHORIZATION" };
+    const ids = () => (db.prepare("SELECT transaction_id FROM card_transactions ORDER BY transaction_id").all() as { transaction_id: string }[]).map((r) => r.transaction_id);
+    // As it happened live: once under the older id (an early poll), once under the card transaction id (the webhook).
+    ingestCardTransaction(db, { ...base, transactionId: "c84", legacyId: "c84", occurredAt: "2026-11-03T09:50:00.735Z" }, "poll", now);
+    ingestCardTransaction(db, { ...base, transactionId: "01a1", occurredAt: "2026-11-03T09:50:01.396Z" }, "webhook", now);
+    expect(ids()).toEqual(["01a1", "c84"]);
+    expect(ingestCardTransaction(db, { ...base, transactionId: "01a1", legacyId: "c84", occurredAt: "2026-11-03T09:50:00.735Z" }, "poll", now)).toBe(false);
+    expect(ids()).toEqual(["01a1"]);
+    expect(events(db, "card.duplicate_merged")).toEqual([expect.objectContaining({ kept: "01a1", amount: "19.00" })]);
+    expect(cardSpendCents(db, "sourcing", now)).toBe(1900);
+    // Recorded only under the older id: it takes the card transaction id, so the webhook finds it.
+    ingestCardTransaction(db, { ...base, amountCents: 700, transactionId: "x-legacy", legacyId: "x-legacy", occurredAt: "2026-11-03T09:55:00.000Z" }, "poll", now);
+    ingestCardTransaction(db, { ...base, amountCents: 700, transactionId: "x-cti", legacyId: "x-legacy", occurredAt: "2026-11-03T09:55:00.000Z" }, "poll", now);
+    expect(ingestCardTransaction(db, { ...base, amountCents: 700, transactionId: "x-cti", occurredAt: "2026-11-03T09:55:00.500Z" }, "webhook", now)).toBe(false);
+    expect(ids()).toEqual(["01a1", "x-cti"]);
+  });
+
   it("refuses a transaction for a card that is not one of ours", async () => {
     await setupCards(db, awx, now);
     expect(() => ingestCardTransaction(db, { transactionId: "t", cardId: "someone-else", amountCents: 1, currency: "EUR", status: "PENDING", approved: true, failureReason: null, merchant: "m", mcc: null, type: "AUTHORIZATION", occurredAt: now.toISOString() }, "webhook", now))

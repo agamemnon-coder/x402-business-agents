@@ -19,7 +19,7 @@ const simulatedApproval = { ...simulatedDecline, card_transaction_id: "ct-3", pr
 describe("Airwallex Issuing shapes", () => {
   it("reads a listed transaction by its card transaction id, as a positive amount", () => {
     expect(toCardTransaction(listed as never)).toEqual({
-      transactionId: "ct-1", cardId: "card-1", amountCents: 1999, currency: "EUR", status: "PENDING", approved: true,
+      transactionId: "ct-1", legacyId: "legacy-1", cardId: "card-1", amountCents: 1999, currency: "EUR", status: "PENDING", approved: true,
       failureReason: null, merchant: "Datafeed SaaS Ltd", mcc: "5734", type: "AUTHORIZATION", occurredAt: "2026-10-29T14:45:24.042Z",
     });
   });
