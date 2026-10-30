@@ -117,3 +117,16 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
   reconciliation already checks each money flow against Airwallex and Metal, and that is the check that can fail.
   A new money-adjacent module the night before the runs is a risk with no visible gain for the CFO or the jury.
 - **If wrong:** the GL export is the input for it; it is a day's work after 4 November.
+
+### D11. A company-sized euro reserve, and guests see only Northwind
+
+- **What:**
+  - The EUR reserve floor is EUR 25,000 (was EUR 500). Free euros before the manufacturer's bill stay EUR 1,500, so
+    the finance agent still buys only the EUR 370 missing. The treasury shows euros on hand, the reserve and what
+    is free for new bills.
+  - After the Friday runs, every recording, the landing figures, the recorded dashboard and the Metal dossier come
+    from the Northwind runs only. `demo:record` refuses a ledger that still shows the earlier example company or
+    the old agent names, and `test/guest-names.test.ts` checks what guests can open once the recording is Northwind.
+- **Why:** an external QA pass read "€6.54 free" next to a EUR 500 reserve as not credible for a real company, and
+  found the earlier example company's names still visible to guests.
+- **If wrong:** the reserve is one constant (`EUR_FLOOR_CENTS`) and a CFO policy value (`eur_floor`).
