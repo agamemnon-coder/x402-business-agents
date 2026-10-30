@@ -2,14 +2,15 @@
 // below) reads the message into typed fields; planTask decides. The amount must be written in the message itself, the
 // kind must be one Purser makes cards for, and a message with words aimed at the AI is refused whole.
 
-import type { Card, IssuingRail } from "../airwallex/issuing.js";
+import type { Card, CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
+import type { Tools } from "../claude/tools.js";
 import { audit } from "../audit/log.js";
 import { TASK_DEFAULT_DAYS, TASK_KINDS, TASK_MAX_DAYS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { storeCard } from "../policy/cards.js";
+import { cardOf, ingestCardTransaction, storeCard } from "../policy/cards.js";
 import { amountsIn } from "../policy/fromText.js";
 import { findInjections } from "../policy/injection.js";
 
@@ -186,4 +187,44 @@ export async function executeTaskCard(db: DB, rail: IssuingRail, proposalId: str
     finishExecution(db, proposalId, "FAILED", { error: (e as Error).message.slice(0, 300) }, now);
     throw e;
   }
+}
+
+/** A chat message is at most this long; longer ones are not read. */
+export const ASK_MAX_CHARS = 500;
+
+/**
+ * One chat message to Purser: screened first (planted words never reach a model), read by Sonnet (or the plain
+ * parser), checked by planTask, and turned into a task card proposal for the CFO. Returns Purser's reply.
+ */
+export async function askPurser(db: DB, tools: Tools, message: string, now = new Date()): Promise<{ reply: string; proposalId: string | null }> {
+  const answer = (reply: string, proposalId: string | null = null) => {
+    audit(db, "treasury", "ask.replied", proposalId ?? "ask", { reply, proposal_id: proposalId }, now);
+    return { reply, proposalId };
+  };
+  const text = message.trim();
+  audit(db, "human", "ask.received", "ask", { message: text.slice(0, ASK_MAX_CHARS), chars: String(message.length) }, now);
+  if (text === "") return answer("Tell me what you need, for example: \"Book a flight to Berlin on 12 November, at most €250\".");
+  if (message.length > ASK_MAX_CHARS) return answer(`Please keep it to ${ASK_MAX_CHARS} characters.`);
+  // Words aimed at the AI are refused before any model reads them.
+  const screened = planTask(text, { kind: "other", amount_eur: null, purpose: "", date: null }, now);
+  if (!screened.ok && /instructions aimed at the AI|hidden characters/.test(screened.reply)) return answer(screened.reply);
+  const reading = await tools.task(text, now);
+  const plan = planTask(text, reading.value, now);
+  if (!plan.ok) return answer(plan.reply);
+  const p = proposeTaskCard(db, plan.task, text, now);
+  const t = plan.task;
+  return answer(`I proposed ${p.proposal_id}: a single-use ${t.label.toLowerCase()} card, at most ${fromCents(t.amountCents)} EUR, until ${t.validUntil.slice(0, 10)}. Approve it with Face ID and I book it.`, p.proposal_id);
+}
+
+/** An agent pays on a task card (a sandbox simulation of the merchant's charge); Airwallex approves or declines. */
+export async function bookOnTaskCard(db: DB, sim: IssuingSim, taskId: string, a: { merchant: string; amount: string; mcc?: string }, now = new Date()): Promise<CardTransaction> {
+  const task = db.prepare("SELECT kind, purpose, mccs FROM task_cards WHERE task_id = ?").get(taskId) as { kind: TaskKind; purpose: string; mccs: string } | undefined;
+  const card = cardOf(db, taskId);
+  if (!task || !card) throw new Error(`no task card ${taskId}`);
+  const purpose = `${TASK_KINDS[task.kind].label}: ${task.purpose}`;
+  const mcc = a.mcc ?? task.mccs.split(",")[0]!;
+  audit(db, "treasury", "card.purchase_started", taskId, { agent: taskId, last4: card.last4, merchant: a.merchant, amount: fromCents(toCents(a.amount)), currency: "EUR", mcc }, now);
+  const t = await sim.simulateCardCharge({ cardId: card.card_id, amountCents: toCents(a.amount), currency: "EUR", merchant: a.merchant, mcc });
+  ingestCardTransaction(db, t, "simulation", now, purpose);
+  return t;
 }

@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { parseCorrectionsFallback, parseDisputeFallback, type Correction, type DisputeClaims } from "../agents/disputes.js";
 import { parseInvoiceFallback, type Invoice } from "../agents/invoice.js";
+import { readTaskFallback, type TaskReading } from "../agents/askPurser.js";
 import { parsePriceNoticeFallback, type PriceNotice } from "../agents/notices.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -111,6 +112,13 @@ export const PolicyDraftSchema = z.object({
 });
 export type PolicyDraft = z.infer<typeof PolicyDraftSchema>;
 
+export const TaskSchema = z.object({
+  kind: z.enum(["flight", "hotel", "train", "other"]),
+  amount_eur: z.string().nullable(),
+  purpose: z.string(),
+  date: z.string().nullable(),
+});
+
 export class Tools {
   constructor(private readonly db: DB, readonly reader = new ClaudeReader(db)) {}
 
@@ -157,6 +165,17 @@ export class Tools {
     );
     const out = checked(this.db, "map_corrections", r, (v) => (v.corrections.every((c) => c.on_hand >= 0 && c.reserved >= 0 && c.reserved <= c.on_hand) ? null : "units are not whole, non-negative stock levels"), () => ({ corrections: parseCorrectionsFallback(document) }));
     return { ...out, value: out.value.corrections };
+  }
+
+  /** Ask Purser: the CFO's chat message, read into a task. Code (planTask) decides what happens with it. */
+  async task(message: string, now: Date): Promise<Read<TaskReading>> {
+    const today = now.toISOString().slice(0, 10);
+    const r = await this.reader.ask(
+      { task: "read_task", role: "act", actor: "treasury", schema: TaskSchema, document: message,
+        instruction: `Today is ${today}. Read this request from the CFO: the kind of purchase (flight, hotel, train, or other), the most it may cost in euros as written, as a plain decimal with two decimals (null if no amount is written), a short purpose in the CFO's words, and the date it is for as YYYY-MM-DD (null if none).` },
+      () => readTaskFallback(message, now),
+    );
+    return checked(this.db, "read_task", r, (v) => (v.amount_eur === null || MONEY.test(v.amount_eur) ? null : "amount malformed"), () => readTaskFallback(message, now));
   }
 
   async invoice(document: string): Promise<Read<Invoice>> {

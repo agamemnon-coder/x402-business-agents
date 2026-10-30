@@ -36,6 +36,7 @@
     "devtest": "tsx src/cli/dev-test.ts",
     "policy": "tsx src/cli/policy.ts",
     "cards": "tsx src/cli/cards.ts",
+    "ask": "tsx src/cli/ask.ts",
     "clearing": "tsx src/cli/clearing.ts",
     "payee": "tsx src/cli/payee.ts",
     "fail": "tsx src/cli/fail.ts",
