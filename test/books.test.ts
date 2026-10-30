@@ -54,3 +54,20 @@ describe("the books of a world", () => {
     expect(csv).toHaveLength(1 + b.postings.length + 1);
   });
 });
+
+describe("the Books screen", () => {
+  // Breaks if the dashboard's books differ from npm run books, or a long journal bloats the snapshot.
+  it("puts the same trial balance on the dashboard, with the latest postings only", async () => {
+    const { buildSnapshot } = await import("../src/dashboard/snapshot.js");
+    const w = await redTeamWorld();
+    for (let i = 0; i < 3; i++) await buyPlan(w.db, w.issuing, "packwise-starter", w.now());
+    const s = buildSnapshot(w.db, w.now()).books!;
+    const b = books(w.db);
+    expect(s.balanced).toBe(true);
+    expect(s.trial.map((t) => [t.account, t.currency, t.debit, t.credit, t.balance])).toEqual(
+      b.trial.map((t) => [t.account, t.currency, (t.debit_cents / 100).toFixed(2), (t.credit_cents / 100).toFixed(2), (t.balance_cents < 0 ? "-" : "") + (Math.abs(t.balance_cents) / 100).toFixed(2)]));
+    expect(s.postings.length).toBeLessThanOrEqual(20);
+    expect(s.postings[0]!.entry).toBe(b.postings[b.postings.length - 1]!.entry);
+    expect(s.total_postings).toBe(b.postings.length);
+  });
+});

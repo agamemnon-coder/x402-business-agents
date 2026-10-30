@@ -55,6 +55,9 @@ would read as a formula (a merchant name from outside, say) get a leading apostr
 
 ## The books (double entry)
 
+On the dashboard, the **Books** tab (`?books`, and `?recorded&books` for a recording) shows the same: a "Balanced"
+check, the trial balance, cash moved per bank account, spend per cost centre and the latest 20 postings.
+
 `npm run books` turns the GL journal into double entry: every line is a debit and a credit of the same integer cents
 in its own currency (money in: debit the bank account, credit the GL account; money out: the other way round), so
 debits equal credits in every currency, checked for any journal by a property test (`test/books.test.ts`). It prints

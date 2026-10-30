@@ -213,6 +213,20 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .chat li.you { align-self: flex-end; background: var(--accent-soft); }
 .chat li .who { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 .panel.claude .money { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* The finance view: the Books tab. */
+.books-ok { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.panel.bk { margin-top: 16px; }
+.panel.bk table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+.panel.bk th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; padding: 6px 4px; }
+.panel.bk td { border-top: 1px solid var(--border); padding: 7px 4px; vertical-align: top; }
+.panel.bk td.num, .panel.bk th.num { text-align: right; white-space: nowrap; }
+@media (max-width: 560px) {
+  .panel.bk table.wide thead { display: none; }
+  .panel.bk table.wide tr { display: block; border-top: 1px solid var(--border); padding: 6px 0; }
+  .panel.bk table.wide td { display: flex; justify-content: space-between; gap: 12px; border-top: 0; padding: 2px 0; }
+  .panel.bk table.wide td::before { content: attr(data-label); color: var(--muted); }
+  .panel.bk table.wide td.num { text-align: right; }
+}
 /* F, the Agents page. */
 .agents-how { margin: 0 0 16px; }
 .agent { margin-top: 16px; }
@@ -484,6 +498,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <div class="head"><div><h1>Agents</h1><div class="sub">What each agent does, with which model, within your limits. Every number comes from your CFO policy.</div></div></div>
     <p class="hint agents-how" id="agents-how"></p>
     <div id="agents"></div>
+  </div>
+  <div id="books-view" hidden>
+    <div class="head"><div><h1>Books</h1><div class="sub">Double entry from the agents' journal: every payment a debit and a credit of the same amount. Only what Purser booked; opening balances are not here.</div></div></div>
+    <div id="books"></div>
   </div>
   <div id="overview">
   <div class="head"><div><h1>Overview</h1><div class="sub">Your agents' spending, within the limits you set.</div></div></div>
@@ -960,11 +978,38 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       ]);
     }));
   }
+  // The finance view: trial balance, cash moved per bank account, spend per cost centre, latest postings.
+  function renderBooks(d) {
+    var b = d.books;
+    if (!b) { set("books", [el("div", "panel empty", [icon("database"), "This recording was made before the Books tab."])]); return; }
+    var cur = function (c) { return c === "USDZ" ? "test USD" : c; };
+    var words = function (t) { return String(t).replace(/\*?USDZ/g, "test USD"); };
+    var amt = function (v, c) { return v === "" ? "" : (c === "EUR" ? eur(v) : group(v) + " " + cur(c)); };
+    var table = function (cls, heads, rows) {
+      var head = el("tr", "", heads.map(function (h) { return txt("th", h[1] ? "num" : "", h[0]); }));
+      var body = rows.map(function (r) { return el("tr", "", r.map(function (v, i) { var td = txt("td", heads[i][1] ? "num" : "", v); td.setAttribute("data-label", heads[i][0]); return td; })); });
+      return el("table", cls, [el("thead", "", [head]), el("tbody", "", body)]);
+    };
+    var panel = function (title, hint, node) { return el("section", "panel bk", [el("div", "sect flush", [txt("h2", "", title), hint ? txt("span", "hint", hint) : null]), node]); };
+    set("books", [
+      el("p", "books-ok", [txt("span", "pill " + (b.balanced ? "ok" : "bad"), b.balanced ? "Balanced" : "Not balanced"),
+        txt("span", "hint", b.balanced ? "Debits equal credits in every currency." : "Debits and credits differ: check the journal.")]),
+      panel("Trial balance", "per account and currency", table("wide", [["Account", 0], ["Currency", 0], ["Debit", 1], ["Credit", 1], ["Balance", 1]],
+        b.trial.map(function (t) { return [t.account + " " + words(t.name), cur(t.currency), amt(t.debit, t.currency), amt(t.credit, t.currency), amt(t.balance, t.currency)]; }))),
+      panel("Cash moved", "what went through each bank account, not its balance", table("wide", [["Account", 0], ["Moved", 1]],
+        b.cash.map(function (c) { return [c.account + " " + words(c.name), amt(c.moved, c.currency)]; }))),
+      panel("Spend per cost centre", null, table("wide", [["Cost centre", 0], ["Spent", 1]],
+        b.spend.map(function (x) { return [x.cost_centre + " " + x.name, amt(x.amount, x.currency)]; }))),
+      panel("Latest postings", b.postings.length + " of " + b.total_postings + " · all of them: npm run books -- --csv", table("wide", [["Date", 0], ["Account", 0], ["What", 0], ["Debit", 1], ["Credit", 1]],
+        b.postings.map(function (p) { return [day(p.date), p.account + " " + words(p.account_name), words(p.description), amt(p.debit, p.currency), amt(p.credit, p.currency)]; }))),
+    ]);
+  }
   var wantAgents = /[?&]agents(=|&|$)/.test(location.search);
-  if (wantAgents) { document.getElementById("overview").hidden = true; document.getElementById("agents-view").hidden = false; }
+  var wantBooks = !wantAgents && /[?&]books(=|&|$)/.test(location.search);
+  if (wantAgents || wantBooks) { document.getElementById("overview").hidden = true; document.getElementById(wantAgents ? "agents-view" : "books-view").hidden = false; }
 
   function render(d) {
-    renderAgents(d);
+    renderAgents(d); renderBooks(d);
     renderKpis(d); renderClaude(d); renderAsk(d); renderCards(d); renderAgentsTable(d);
     renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
     var fz = document.getElementById("frozen");
@@ -1066,7 +1111,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
     document.getElementById("signin").hidden = false;
   } else if (wantRecorded && RECORDED) {
-    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", !wantAgents], ["Agents", "?recorded&agents", wantAgents]]);
+    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
     document.getElementById("rec-text").textContent = "Recorded run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
@@ -1076,7 +1121,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     st.title = "The CFO's emergency stop: one Face ID freezes every agent and every card. Live only, not in a recording.";
     showDash(); render(snap);
   } else if (MODE === "local" || viewKey) {
-    nav([["Dashboard", "./", !wantAgents], ["Agents", "?agents", wantAgents], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
+    nav([["Dashboard", "./", !wantAgents && !wantBooks], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
     showDash(); statusTimer = setInterval(status, 1000); poll();
   } else {
     showLanding("");

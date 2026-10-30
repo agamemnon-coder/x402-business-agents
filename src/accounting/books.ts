@@ -99,3 +99,33 @@ export function booksCsv(postings: Posting[]): string {
 export function booksJson(b: Books): string {
   return JSON.stringify(b, null, 2) + "\n";
 }
+
+const signed = (c: number) => (c < 0 ? `-${fromCents(-c)}` : fromCents(c));
+
+/** The Books screen on the dashboard: the trial balance, cash and spend as text amounts, and the latest postings. */
+export interface BooksView {
+  balanced: boolean;
+  trial: { account: string; name: string; currency: string; debit: string; credit: string; balance: string }[];
+  cash: { account: string; name: string; currency: string; moved: string }[];
+  spend: { cost_centre: string; name: string; currency: string; amount: string }[];
+  /** The latest postings, newest first; the full set is in npm run books -- --csv. */
+  postings: { entry: string; date: string; account: string; account_name: string; debit: string; credit: string; currency: string; cost_centre: string; description: string }[];
+  total_postings: number;
+}
+
+const SCREEN_POSTINGS = 20;
+
+export function booksView(db: DB): BooksView {
+  const b = books(db);
+  return {
+    balanced: b.balanced,
+    trial: b.trial.map((t) => ({ account: t.account, name: t.name, currency: t.currency, debit: fromCents(t.debit_cents), credit: fromCents(t.credit_cents), balance: signed(t.balance_cents) })),
+    cash: b.cash.map((c) => ({ account: c.account, name: c.name, currency: c.currency, moved: signed(c.moved_cents) })),
+    spend: b.spend.map((s) => ({ cost_centre: s.cost_centre, name: s.name, currency: s.currency, amount: signed(s.cents) })),
+    postings: b.postings.slice(-SCREEN_POSTINGS).reverse().map((p) => ({
+      entry: p.entry, date: p.date, account: p.account, account_name: p.account_name, debit: p.debit_cents ? fromCents(p.debit_cents) : "",
+      credit: p.credit_cents ? fromCents(p.credit_cents) : "", currency: p.currency, cost_centre: p.cost_centre, description: p.description,
+    })),
+    total_postings: b.postings.length,
+  };
+}

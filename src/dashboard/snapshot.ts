@@ -16,6 +16,7 @@ import { stopReason } from "../policy/velocity.js";
 import { lastReconciliation } from "../finance/reconcile.js";
 import { CARDS, MCC_WORDS, type Agent } from "../config/policy.js";
 import { agentProfiles, type AgentProfile } from "../agents/profiles.js";
+import { booksView, type BooksView } from "../accounting/books.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -186,6 +187,8 @@ export interface Snapshot {
   ask: { ts: string; from: string; text: string; proposal_id: string | null }[];
   /** F, the Agents page: each agent's job, models, limits and what waits for the CFO, from the CFO policy. */
   agents: AgentProfile[];
+  /** The finance view: double-entry books from the GL journal (the same as npm run books); null for a ledger too old for it. */
+  books: BooksView | null;
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
@@ -729,6 +732,16 @@ function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: stri
 }
 
 // The chat with Purser has its own panel (snapshot.ask).
+/** A view that needs tables an older ledger (an early recording) does not have: absent there, not an error. */
+function oldLedgerSafe<T>(f: () => T): T | null {
+  try {
+    return f();
+  } catch (e) {
+    if (/no such table/.test((e as Error).message)) return null;
+    throw e;
+  }
+}
+
 /** Who sent a chat line. Lines from before asked_by was recorded came from the runner or the relay, as the CFO. */
 const askFrom = (actor: string, by: string) => (actor.startsWith("ext:") ? `agent ${actor}` : by === "dashboard-link" ? "dashboard link" : "you");
 
@@ -861,5 +874,6 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     }),
     passkey: passkeyInfo(db, now),
     agents: agentProfiles(db, now),
+    books: oldLedgerSafe(() => booksView(db)),
   };
 }
