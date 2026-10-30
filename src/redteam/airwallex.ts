@@ -50,6 +50,8 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
   }
   async createConversion(a: { requestId: string; quote: Quote; approvalSha256: string }): Promise<Conversion> {
     this.calls.push("createConversion");
+    // Airwallex keys a conversion by its request_id: the same one twice is refused, never converted twice.
+    if (this.conversions.some((c) => c.requestId === a.requestId)) throw Object.assign(new Error("duplicate request_id"), { code: "duplicate_request" });
     const q = this.quotes.get(a.quote.quoteId)!;
     if (Date.parse(q.validTo) <= this.clock()) throw Object.assign(new Error("expired"), { code: "expired_quote" });
     this.bal.USD.availableCents -= q.sellAmountCents;
@@ -58,6 +60,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     this.conversions.push(c);
     return c;
   }
+  async findConversionByRequestId(requestId: string) { const c = this.conversions.find((x) => x.requestId === requestId); return c && { ...c }; }
   async findBeneficiaryByIban(iban: string) { return this.beneficiaries.find((b) => b.iban === iban); }
   async createBeneficiary(b: NewBeneficiary): Promise<Beneficiary> {
     const ben = { id: `ben_${++this.n}`, name: b.name, iban: b.iban, bic: b.bic, currency: b.currency };

@@ -15,6 +15,8 @@ import { keyPath } from "../metal/agentCli.js";
 import { randomBytes } from "node:crypto";
 import { openDb } from "../db/open.js";
 import { execute } from "../executors/index.js";
+import { recoverHolds } from "../policy/holds.js";
+import { resumeInterrupted } from "../policy/saga.js";
 import { openEnrolment } from "../passkey/ledger.js";
 import { relayConfig, viewerLink, type RelayConfig } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
@@ -129,6 +131,14 @@ async function quarantineTick(): Promise<void> {
     if (message !== quarantineError) console.error(`${stamp()} metal    ${message}`);
     quarantineError = message;
   }
+}
+
+// After a crash (backend review B2): first settle or release the holds the ledger can explain, then finish every
+// money action left executing, from its last finished step. Nothing is sent twice: each step is keyed.
+{
+  const holds = recoverHolds(db);
+  if (holds.settled + holds.released + holds.open) console.log(`${stamp()} recover  holds: ${holds.settled} settled, ${holds.released} released, ${holds.open} still open`);
+  for (const r of await resumeInterrupted(db, execute)) console.log(`${stamp()} recover  ${r.id} resumed after a restart: ${redactSecrets(r.outcome)}`);
 }
 
 let lastError = "";

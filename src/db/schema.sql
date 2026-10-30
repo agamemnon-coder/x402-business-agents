@@ -479,3 +479,17 @@ CREATE TABLE IF NOT EXISTS holds (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS holds_open ON holds (status, agent);
+
+-- The step log of every money action (backend review B2), an outbox: a step is written STARTED with its idempotency
+-- key before the outside call, and DONE with what came back after it. After a crash the action resumes from here:
+-- a DONE step is never repeated, a STARTED one is looked up at the outside service by its key, never resent blind.
+CREATE TABLE IF NOT EXISTS money_steps (
+  action_id TEXT NOT NULL,
+  n INTEGER NOT NULL,
+  step TEXT NOT NULL,
+  key TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('STARTED', 'DONE')),
+  detail_json TEXT,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (action_id, step)
+);

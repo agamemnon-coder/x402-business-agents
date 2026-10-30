@@ -6,6 +6,8 @@ import { toCents } from "../lib/money.js";
 import type { Terms } from "../lib/terms.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { refundSale } from "./refunds.js";
+import type { Puller } from "../metal/pull.js";
+import { step } from "../policy/saga.js";
 
 export interface RefundBatchTerms extends Terms {
   kind: "refund_batch";
@@ -17,7 +19,7 @@ export interface RefundBatchTerms extends Terms {
   evidence: { type: string; ref: string; sha256: string }[];
 }
 
-export async function executeRefundBatch(db: DB, proposalId: string): Promise<void> {
+export async function executeRefundBatch(db: DB, proposalId: string, pull?: Puller): Promise<void> {
   const terms = beginExecution<RefundBatchTerms>(db, proposalId, (t) => {
     const sum = t.refunds.reduce((s, r) => s + toCents(r.amount), 0);
     if (sum !== toCents(t.total)) throw new Error(`refunds add up to ${sum} cents, not ${t.total}`);
@@ -25,8 +27,11 @@ export async function executeRefundBatch(db: DB, proposalId: string): Promise<vo
   });
   const results = [];
   try {
-    for (const r of terms.refunds) {
-      results.push(await refundSale(db, { sale_id: Number(r.sale_id), amount_cents: toCents(r.amount), to: r.to as Address, dispute_id: terms.dispute_id, proposal_id: proposalId }));
+    // One step per refund in the step log; a refund a crash interrupted is pulled again under its own payment id,
+    // which metal-agent pays at most once.
+    for (const [i, r] of terms.refunds.entries()) {
+      results.push(await step(db, proposalId, i + 1, `refund ${r.sale_id}`, r.payment_id, () =>
+        refundSale(db, { sale_id: Number(r.sale_id), amount_cents: toCents(r.amount), to: r.to as Address, dispute_id: terms.dispute_id, proposal_id: proposalId }, { pull }), undefined, (x) => x.outcome === "PAID" || x.outcome === "HELD"));
     }
   } catch (err) {
     finishExecution(db, proposalId, "FAILED", { error: (err as Error).message });

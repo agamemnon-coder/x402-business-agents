@@ -180,6 +180,9 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
  * approval is unused, the proposal has not expired, and the caller's precondition check still holds.
  * Returns the terms; the executor must build every payload from these and nothing else.
  */
+/** Actions a restart is resuming (src/policy/saga.ts): only these may be begun again while EXECUTING. */
+export const resuming = new Set<string>();
+
 export function beginExecution<T extends Terms>(db: DB, proposalId: string, preconditions: (terms: T) => void = () => {}, now = new Date()): T {
   // Expiry is committed on its own, so the EXPIRED status survives the error thrown below.
   const expired = db.transaction(() => {
@@ -189,7 +192,9 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
   if (expired) throw new Error(`${proposalId} expired at ${expired}; approval void`);
   return db.transaction((): T => {
     const p = get(db, proposalId);
-    if (p.status !== "APPROVED" && p.status !== "FAILED") throw new Error(`${proposalId} is ${p.status}, not approved`);
+    // A restart resumes an action a crash left EXECUTING: same hash checks and preconditions, no new transition.
+    const resume = p.status === "EXECUTING" && resuming.has(proposalId);
+    if (p.status !== "APPROVED" && p.status !== "FAILED" && !resume) throw new Error(`${proposalId} is ${p.status}, not approved`);
     const terms = JSON.parse(p.terms_json) as T;
     const approval = db.prepare("SELECT approved_sha256, decision FROM approvals WHERE proposal_id = ?").get(proposalId) as
       { approved_sha256: string; decision: string } | undefined;
@@ -197,6 +202,7 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     if (!approval || approval.decision !== "APPROVED") throw new Error(`${proposalId} has no approval`);
     if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) throw new Error(`${proposalId}: terms do not match the approved hash`);
     preconditions(terms);
+    if (resume) return terms;
     transition(db, proposalId, p.status, "EXECUTING");
     audit(db, "system", "proposal.executing", proposalId, { terms_sha256: recomputed }, now);
     return terms;

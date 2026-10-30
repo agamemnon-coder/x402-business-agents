@@ -9,9 +9,10 @@ import { audit } from "../audit/log.js";
 import { CHAIN_ID, USDZ, rpc, type ConsensusStatus } from "../metal/network.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, centsToBaseUnits, fromCents } from "../lib/money.js";
-import { metalAgent } from "../metal/agentCli.js";
 import { publicClient, usdzBalance } from "../metal/chain.js";
 import { activeMandate, mandateSpent } from "../metal/mandate.js";
+import { livePull, type Puller } from "../metal/pull.js";
+import { checkpoint } from "../policy/saga.js";
 import { heldCents, releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import { extractTerms } from "@metalntwx/metal-pay/mandates";
 import { capRefusal } from "../policy/rules.js";
@@ -79,7 +80,7 @@ export function nextSweepId(db: DB, now = new Date()): string {
 }
 
 /** Pull under the treasury mandate. A pending or failed run is retried with the same payment id, never a new one. */
-export async function executeSweep(db: DB, paymentId: string, amountCents: number, to: Address): Promise<{ outcome: string; tx: string | null; reason: string | null }> {
+export async function executeSweep(db: DB, paymentId: string, amountCents: number, to: Address, pull: Puller = livePull): Promise<{ outcome: string; tx: string | null; reason: string | null }> {
   db.prepare("INSERT OR IGNORE INTO sweeps (payment_id, amount_cents, outcome, created_at) VALUES (?, ?, 'PLANNED', ?)").run(paymentId, amountCents, new Date().toISOString());
   const row = db.prepare("SELECT amount_cents, outcome FROM sweeps WHERE payment_id = ?").get(paymentId) as { amount_cents: number; outcome: string };
   if (row.amount_cents !== amountCents) throw new Error(`${paymentId} was planned for ${fromCents(row.amount_cents)}; a retry must not change the amount`);
@@ -100,11 +101,10 @@ export async function executeSweep(db: DB, paymentId: string, amountCents: numbe
     audit(db, "treasury", "sweep.refused", paymentId, { amount: fromCents(amountCents), to, tx: null, reason: refusal });
     return { outcome: "REFUSED", tx: null, reason: refusal };
   }
-  const m = await activeMandate("treasury");
-  const r = metalAgent(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(amountCents), "--payment-id", paymentId], [0, 1, 3, 4]);
-  const outcome = ({ 0: "PAID", 1: "REFUSED", 3: "PENDING", 4: "HELD" } as Record<number, string>)[r.code]!;
-  const tx = r.fields.get("transaction")?.[0] ?? null;
-  const reason = r.fields.get("reason")?.[0] ?? null;
+  await checkpoint("sweep:before-pull");
+  const { outcome, tx, reason } = await pull({ agent: "treasury", to, amountCents, paymentId });
+  // A crash here is retried under the same payment id, which metal-agent pays at most once.
+  await checkpoint("sweep:after-pull");
   db.prepare("UPDATE sweeps SET outcome = ?, tx_hash = COALESCE(?, tx_hash) WHERE payment_id = ?").run(outcome, tx, paymentId);
   if (outcome === "REFUSED") releaseHold(db, paymentId, reason ?? "refused on chain");
   else settleHold(db, paymentId);
@@ -176,7 +176,43 @@ export async function bookCredit(db: DB, rail: AirwallexRail, sim: SandboxSim, e
   const existing = (await rail.findDepositsByReference(row.awx_reference, since)).filter((d) => d.amountCents === cents);
   if (existing.length > 1) throw new Error(`${existing.length} deposits already reference ${row.awx_reference}; investigate before booking anything`);
   const deposit = existing[0] ?? (await sim.simulateDeposit({ globalAccountId: await rail.usdGlobalAccountId(), amountCents: cents, reference: row.awx_reference, payerName: "Northwind sweep (Metal)" }));
+  // A crash here: the deposit exists, the ledger does not know it. The retry finds it by its reference and adopts it.
+  await checkpoint("deposit:after-call");
   db.prepare("UPDATE chain_credits SET awx_deposit_id = ? WHERE event_key = ? AND awx_deposit_id IS NULL").run(deposit.id, eventKey);
   audit(db, "awx-executor", existing[0] ? "credit.adopted" : "credit.deposited", eventKey, { deposit_id: deposit.id, amount: fromCents(cents), currency: "USD", reference: row.awx_reference });
   return { depositId: deposit.id, adopted: existing[0] !== undefined };
+}
+
+/**
+ * On start, after a crash: finishes the last sweep a crash interrupted, by the same steps `npm run s3` takes, each
+ * keyed so nothing happens twice: (1) the pull, under the same payment id and amount; (2) finality, then the credit
+ * lock (one per on-chain transfer); (3) the Airwallex deposit, found by its reference before one is made. Returns
+ * what it finished, or null when nothing was interrupted.
+ */
+export async function resumeSweep(
+  db: DB,
+  rail: AirwallexRail | null,
+  sim: SandboxSim | null,
+  addr: { business: Address; sweep: Address },
+  deps: { pull?: Puller; finalize?: typeof awaitFinalTransfer } = {},
+): Promise<{ paymentId: string; eventKey: string | null; depositId: string | null } | null> {
+  const last = db.prepare("SELECT payment_id, amount_cents, outcome, tx_hash, event_key FROM sweeps WHERE outcome != 'REFUSED' ORDER BY created_at DESC, rowid DESC LIMIT 1").get() as
+    { payment_id: string; amount_cents: number; outcome: string; tx_hash: string | null; event_key: string | null } | undefined;
+  if (!last) return null;
+  const booked = last.event_key ? !!(db.prepare("SELECT awx_deposit_id FROM chain_credits WHERE event_key = ?").get(last.event_key) as { awx_deposit_id: string | null } | undefined)?.awx_deposit_id : false;
+  if (booked) return null;
+  let { tx_hash: tx, event_key: eventKey } = last;
+  if (last.outcome !== "PAID") {
+    const r = await executeSweep(db, last.payment_id, last.amount_cents, addr.sweep, deps.pull);
+    if (r.outcome !== "PAID") return { paymentId: last.payment_id, eventKey: null, depositId: null };
+    tx = r.tx;
+  }
+  if (!eventKey) {
+    const final = await (deps.finalize ?? awaitFinalTransfer)(tx as Hash, addr.business, addr.sweep, last.amount_cents);
+    lockCredit(db, final, addr.business, addr.sweep, last.payment_id);
+    eventKey = final.eventKey;
+  }
+  if (!rail || !sim) return { paymentId: last.payment_id, eventKey, depositId: null };
+  const d = await bookCredit(db, rail, sim, eventKey);
+  return { paymentId: last.payment_id, eventKey, depositId: d.depositId };
 }

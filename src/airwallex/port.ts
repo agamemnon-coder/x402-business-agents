@@ -104,6 +104,8 @@ export interface AirwallexRail {
   currentRate(a: { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number }): Promise<MarketRate>;
   createQuote(a: { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number; validity: "MIN_1" | "MIN_15" | "MIN_30" | "HR_1" }): Promise<Quote>;
   createConversion(a: { requestId: string; quote: Quote; approvalSha256: string }): Promise<Conversion>;
+  /** The conversion made under this request_id, if any: after a crash, it is adopted instead of converting again. */
+  findConversionByRequestId(requestId: string): Promise<Conversion | undefined>;
   findBeneficiaryByIban(iban: string): Promise<Beneficiary | undefined>;
   createBeneficiary(b: NewBeneficiary): Promise<Beneficiary>;
   createTransfer(t: NewTransfer): Promise<Transfer>;

@@ -15,6 +15,7 @@ import { getSetting, setSetting } from "../world/settings.js";
 import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
 import { eurInFlightCents } from "../policy/available.js";
+import { checkpoint } from "../policy/saga.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
 export const SEED_USD_CENTS = 2_500_000;
@@ -165,6 +166,7 @@ export async function proposeInvoicePayment(
     // The market's current rate first: context for judging the binding quote, which is what the CFO approves.
     const market = await rail.currentRate({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents });
     quote = await rail.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents, validity: quoteValidity });
+    await checkpoint("quote:after");
     const markupBps = Math.round(((quote.sellAmountCents - market.sellAmountCents) / market.sellAmountCents) * 10_000);
     audit(db, "treasury", "fx.rate_checked", inv.invoice_no, {
       pair: "USD/EUR", buy: `EUR ${fromCents(plan.buyEurCents)}`, market_rate: market.rate, market_cost: `USD ${fromCents(market.sellAmountCents)}`,

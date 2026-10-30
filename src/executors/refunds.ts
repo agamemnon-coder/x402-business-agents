@@ -7,8 +7,8 @@ import type { Address } from "viem";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
-import { metalAgent } from "../metal/agentCli.js";
-import { activeMandate } from "../metal/mandate.js";
+import { livePull, type Puller } from "../metal/pull.js";
+import { checkpoint } from "../policy/saga.js";
 import { capRefusal } from "../policy/rules.js";
 import { velocityGate } from "../policy/velocity.js";
 
@@ -23,12 +23,10 @@ export interface RefundResult {
   already: boolean;
 }
 
-const EXIT: Record<number, RefundOutcome> = { 0: "PAID", 1: "REFUSED", 3: "PENDING", 4: "HELD" };
-
 export async function refundSale(
   db: DB,
   r: { sale_id: number; amount_cents: number; to: Address; dispute_id: string; proposal_id?: string },
-  opts: { retry?: boolean } = {},
+  opts: { retry?: boolean; pull?: Puller } = {},
 ): Promise<RefundResult> {
   const paymentId = `refund-${r.sale_id}`;
   const sale = db.prepare("SELECT payer, price_cents FROM sales WHERE sale_id = ? AND status = 'DELIVERED'").get(r.sale_id) as { payer: string; price_cents: number } | undefined;
@@ -61,15 +59,11 @@ export async function refundSale(
     audit(db, "support", "refund.refused", String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx: null, reason: refusal });
     return { sale_id: r.sale_id, payment_id: paymentId, outcome: "REFUSED", tx: null, reason: refusal, already: false };
   }
-  const m = await activeMandate("support");
-  const res = metalAgent(
-    ["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", r.to, "--amount", fromCents(r.amount_cents), "--payment-id", paymentId],
-    [0, 1, 3, 4],
-  );
-  const outcome = EXIT[res.code]!;
-  const already = /^already (paid|held), nothing sent/m.test(res.out);
-  const tx = res.fields.get("transaction")?.[0] ?? null;
-  const reason = res.fields.get("reason")?.[0] ?? null;
+  await checkpoint("refund:before-pull");
+  const { outcome, tx, reason, already } = await (opts.pull ?? livePull)({ agent: "support", to: r.to, amountCents: r.amount_cents, paymentId });
+  // A crash here: the pull may be on chain, the ledger does not know. The retry pulls the same payment id again,
+  // and metal-agent answers "already paid, nothing sent".
+  await checkpoint("refund:after-pull");
   db.prepare("UPDATE refunds SET outcome = ?, tx_hash = COALESCE(?, tx_hash), refusal_reason = ? WHERE sale_id = ?").run(outcome, tx, reason, r.sale_id);
   if (outcome === "REFUSED") releaseHold(db, paymentId, reason ?? "refused on chain");
   else settleHold(db, paymentId);

@@ -127,6 +127,18 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
     return { conversionId: c.conversion_id, requestId: c.request_id, quoteId: c.quote_id ?? a.quote.quoteId, status: c.status, buyAmountCents: cents(c.buy_amount), sellAmountCents: cents(c.sell_amount) };
   }
 
+  async findConversionByRequestId(requestId: string): Promise<Conversion | undefined> {
+    type C = { conversion_id: string; request_id: string; status: string; buy_amount: number | string; sell_amount: number | string; quote_id?: string };
+    // Newest first; the request_id is checked here too, in case the list ignores the filter.
+    for (let page = 0; page < 5; page++) {
+      const r = await this.api.call<{ has_more?: boolean; items: C[] }>("GET", "/fx/conversions", undefined, { request_id: requestId, page_num: String(page), page_size: "100" });
+      const c = r.items.find((x) => x.request_id === requestId);
+      if (c) return { conversionId: c.conversion_id, requestId: c.request_id, quoteId: c.quote_id ?? "", status: c.status, buyAmountCents: cents(c.buy_amount), sellAmountCents: cents(c.sell_amount) };
+      if (!r.has_more) return undefined;
+    }
+    return undefined;
+  }
+
   async findBeneficiaryByIban(iban: string): Promise<Beneficiary | undefined> {
     type B = { id: string; beneficiary: { company_name?: string; bank_details?: { iban?: string; swift_code?: string; account_currency?: string; account_name?: string } } };
     for (let page = 0; ; page++) {
