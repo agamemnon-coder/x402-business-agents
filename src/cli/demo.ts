@@ -23,7 +23,13 @@ function step(title: string, script: string, ...args: string[]): void {
   }
 }
 
-async function waitForExecuted(kind: string, label: string): Promise<void> {
+/**
+ * Waits until a proposal of this kind has run. When the open one expires before anyone decides (a locked FX quote
+ * lasts minutes, and a person may be busy with another decision), `again` asks for a fresh one, at most three times;
+ * a rejection stops the demo.
+ */
+async function waitForExecuted(kind: string, label: string, again?: () => void): Promise<void> {
+  let renewals = 0;
   const db = openDb();
   const done = () => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'EXECUTED'").get(kind) as { proposal_id: string } | undefined;
   if (done()) return;
@@ -32,7 +38,18 @@ async function waitForExecuted(kind: string, label: string): Promise<void> {
     const d = done();
     if (d) { console.log(`▶  ${d.proposal_id} executed; continuing.`); return; }
     const open = db.prepare("SELECT COUNT(*) AS n FROM proposals WHERE kind = ? AND status IN ('PENDING_APPROVAL', 'APPROVED', 'EXECUTING')").get(kind) as { n: number };
-    if (open.n === 0) { console.error(`no ${kind} proposal is open any more (rejected or expired); the demo stops.`); process.exit(1); }
+    if (open.n === 0) {
+      const last = db.prepare("SELECT proposal_id, status FROM proposals WHERE kind = ? ORDER BY created_at DESC, proposal_id DESC LIMIT 1").get(kind) as { proposal_id: string; status: string } | undefined;
+      if (again && last?.status === "EXPIRED" && renewals < 3) {
+        renewals++;
+        console.log(`\n↻  ${last.proposal_id} expired before anyone decided; asking for a fresh quote and a new proposal (${renewals} of 3).`);
+        again();
+        console.log(`\n⏸  ${label}: waiting for a person to decide: ${approvalHint(db)}.`);
+        continue;
+      }
+      console.error(`no ${kind} proposal is open any more (${last?.status === "REJECTED" ? "rejected" : "expired"}); the demo stops.`);
+      process.exit(1);
+    }
     await new Promise((r) => setTimeout(r, 3000));
   }
 }
@@ -48,7 +65,7 @@ await waitForExecuted("mandate_replace", "S1 mandate change");
 if ((db.prepare("SELECT COUNT(*) AS n FROM sales").get() as { n: number }).n < 50) step("S1 Sales resume", "s1.ts", "resume");
 step("S2 Disputed batch", "s2.ts");
 step("S3 Manufacturer's euro invoice", "s3.ts");
-if (fromEnv()) await waitForExecuted("invoice_payment", "S3 invoice payment");
+if (fromEnv()) await waitForExecuted("invoice_payment", "S3 invoice payment", () => step("S3 A fresh quote for the euro invoice", "s3.ts"));
 if (fromEnv()) {
   // S4: the company cards. The agent's raise is a policy change the CFO approves with Face ID; then the same purchase again.
   if (!db.prepare("SELECT 1 FROM card_transactions WHERE approved = 1 AND amount_cents = 4500").get()) {
