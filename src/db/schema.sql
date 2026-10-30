@@ -428,3 +428,17 @@ CREATE TABLE IF NOT EXISTS velocity_events (
   payment_id TEXT UNIQUE
 );
 CREATE INDEX IF NOT EXISTS velocity_by_agent ON velocity_events (agent, at);
+
+-- Ask Purser (G): a single-use card for one task (a flight, a hotel, a train), approved by the CFO with Face ID. The
+-- card itself is in cards under task_id; its limits and controls come from here.
+CREATE TABLE IF NOT EXISTS task_cards (
+  task_id TEXT PRIMARY KEY CHECK (task_id LIKE 'task:%'),
+  proposal_id TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  mccs TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  valid_until TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ACTIVE')),
+  created_at TEXT NOT NULL
+);

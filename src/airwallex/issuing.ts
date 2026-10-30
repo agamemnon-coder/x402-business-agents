@@ -33,6 +33,8 @@ export interface CardControls {
   currencies: string[];
   /** After this moment Airwallex declines every authorisation; null for no end. */
   activeTo: string | null;
+  /** A single-use card (Ask Purser's task cards): Airwallex allows one successful debit. Absent for multi-use. */
+  singleUse?: boolean;
 }
 
 export interface CardTransaction {
@@ -84,7 +86,7 @@ export interface IssuingSim {
 type AwxLimits = { currency: string; limits: { amount: number; interval: string }[] };
 type AwxCard = {
   card_id: string; cardholder_id: string; card_number?: string; card_status: string; nick_name?: string;
-  authorization_controls?: { transaction_limits?: AwxLimits; allowed_merchant_categories?: string[]; allowed_currencies?: string[]; active_to?: string | null };
+  authorization_controls?: { transaction_limits?: AwxLimits; allowed_merchant_categories?: string[]; allowed_currencies?: string[]; active_to?: string | null; allowed_transaction_count?: string };
 };
 /**
  * A transaction in either of the two shapes Airwallex uses: the transaction list (legacy, with `status`) and a card
@@ -130,6 +132,7 @@ export function toCard(c: AwxCard): Card {
       mccs: [...(c.authorization_controls.allowed_merchant_categories ?? [])].sort(),
       currencies: [...(c.authorization_controls.allowed_currencies ?? [])].sort(),
       activeTo: c.authorization_controls.active_to ? new Date(c.authorization_controls.active_to).toISOString() : null,
+      ...(c.authorization_controls.allowed_transaction_count === "SINGLE" ? { singleUse: true } : {}),
     } : null,
   };
 }
@@ -205,7 +208,7 @@ export class IssuingRest implements IssuingRail, IssuingSim {
         request_id: randomUUID(), cardholder_id: a.cardholderId, created_by: a.createdBy, form_factor: "VIRTUAL", is_personalized: false,
         program: { purpose: "COMMERCIAL" }, nick_name: a.nickname,
         authorization_controls: {
-          allowed_transaction_count: "MULTIPLE", transaction_limits: limitsBody(a.limits),
+          allowed_transaction_count: a.controls?.singleUse ? "SINGLE" : "MULTIPLE", transaction_limits: limitsBody(a.limits),
           ...(a.controls ? { allowed_merchant_categories: a.controls.mccs, allowed_currencies: a.controls.currencies, ...(a.controls.activeTo ? { active_to: a.controls.activeTo } : {}) } : {}),
         },
       });

@@ -61,10 +61,17 @@ export function rules(db: DB): Rule[] {
     { key: `card.${x.agent_id}.per_tx`, label: `${x.display_name} (outside agent)'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(x.per_tx_cents) },
     { key: `card.${x.agent_id}.monthly`, label: `${x.display_name} (outside agent)'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(x.monthly_cents) },
   ]);
+  // A task card (Ask Purser): its limit is the approved amount, per purchase and in all; like any card it can be stopped.
+  const tasks = (db.prepare("SELECT task_id, kind, amount_cents FROM task_cards ORDER BY task_id").all() as
+    { task_id: string; kind: string; amount_cents: number }[]).flatMap((x): Rule[] => [
+    { key: `stop.${x.task_id}`, label: `${x.kind} task card (${x.task_id.slice(5)}): stopped`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
+    { key: `card.${x.task_id}.per_tx`, label: `${x.kind} task card (${x.task_id.slice(5)}): most per purchase`, unit: "EUR", kind: "money", min: 1, max: x.amount_cents, fallback: fromCents(x.amount_cents) },
+    { key: `card.${x.task_id}.monthly`, label: `${x.kind} task card (${x.task_id.slice(5)}): most in all`, unit: "EUR", kind: "money", min: 1, max: x.amount_cents, fallback: fromCents(x.amount_cents) },
+  ]);
   const payees = (db.prepare("SELECT DISTINCT name FROM beneficiaries ORDER BY name").all() as { name: string }[]).map((b): Rule => ({
     key: `counterparty:${b.name}`, label: `${b.name} (Airwallex payee)`, unit: "", kind: "choice", choices: ["allowed", "blocked"], fallback: "allowed",
   }));
-  return [...STATIC, ...outside, ...payees];
+  return [...STATIC, ...outside, ...tasks, ...payees];
 }
 
 export function policyValue(db: DB, key: string): string {

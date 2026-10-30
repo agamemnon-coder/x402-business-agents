@@ -57,7 +57,13 @@ export function storeCard(db: DB, agent: string, card: Card, now: Date): void {
  * an outside agent's card only OUTSIDE_AGENT_MCCS; euros only; for CARD_ACTIVE_DAYS from issue. Airwallex declines the
  * rest (MERCHANT_CATEGORY_NOT_ALLOWED, CURRENCY_NOT_ALLOWED).
  */
-export function cardControls(agent: string, now: Date): CardControls {
+export function cardControls(agent: string, now: Date, db?: DB): CardControls {
+  if (agent.startsWith("task:")) {
+    // A task card (Ask Purser): only its task's merchant categories, in euros, once, until the task's end.
+    const t = db?.prepare("SELECT mccs, valid_until FROM task_cards WHERE task_id = ?").get(agent) as { mccs: string; valid_until: string } | undefined;
+    if (!t) throw new Error(`no task card ${agent}`);
+    return { mccs: t.mccs.split(",").sort(), currencies: ["EUR"], activeTo: t.valid_until, singleUse: true };
+  }
   const mccs = agent.startsWith("ext:") ? OUTSIDE_AGENT_MCCS : Object.values(PLANS).filter((p) => p.agent === agent && !/on the .* card$/.test(p.label)).map((p) => p.mcc);
   return { mccs: [...new Set(mccs)].sort(), currencies: ["EUR"], activeTo: new Date(now.getTime() + CARD_ACTIVE_DAYS * 86_400_000).toISOString() };
 }
@@ -87,7 +93,7 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
     changed = true;
   }
   // What the card may pay at all: a card whose merchant categories or currencies differ is brought back to the policy.
-  const wantControls = cardControls(agent, now);
+  const wantControls = cardControls(agent, now, db);
   if (!sameControls(card.controls, wantControls)) {
     let after: Card;
     try {

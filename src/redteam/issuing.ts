@@ -27,7 +27,7 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
   async createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls }) {
     this.calls.push("createCard");
     const n = ++this.n;
-    const controls = a.controls ? { mccs: [...a.controls.mccs].sort(), currencies: [...a.controls.currencies].sort(), activeTo: a.controls.activeTo } : { mccs: [], currencies: [], activeTo: null };
+    const controls: CardControls = a.controls ? { mccs: [...a.controls.mccs].sort(), currencies: [...a.controls.currencies].sort(), activeTo: a.controls.activeTo, ...(a.controls.singleUse ? { singleUse: true } : {}) } : { mccs: [], currencies: [], activeTo: null };
     const c: Card = { cardId: `card_${n}`, cardholderId: a.cardholderId, last4: String(4000 + n), status: "ACTIVE", nickname: a.nickname, limits: { ...a.limits }, controls };
     this.cards.push(c);
     return structuredClone(c);
@@ -41,7 +41,7 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
   async setCardControls(cardId: string, controls: Pick<CardControls, "mccs" | "currencies">) {
     this.calls.push("setCardControls");
     const c = this.card(cardId);
-    c.controls = { mccs: [...controls.mccs].sort(), currencies: [...controls.currencies].sort(), activeTo: c.controls?.activeTo ?? null };
+    c.controls = { mccs: [...controls.mccs].sort(), currencies: [...controls.currencies].sort(), activeTo: c.controls?.activeTo ?? null, ...(c.controls?.singleUse ? { singleUse: true } : {}) };
     return structuredClone(c);
   }
   async setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE") {
@@ -60,7 +60,10 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
     const category = !!card.controls?.mccs.length && !card.controls.mccs.includes(a.mcc);
     const currency = !!card.controls?.currencies.length && !card.controls.currencies.includes(a.currency);
     const limit = !card.limits || a.amountCents > card.limits.perTxCents || spent + a.amountCents > card.limits.monthlyCents;
-    const reason = inactive ? "CARD_INACTIVE" : category ? "MERCHANT_CATEGORY_NOT_ALLOWED" : currency ? "CURRENCY_NOT_ALLOWED" : limit ? "LIMIT_EXCEEDED" : null;
+    // Airwallex allows one successful debit on a single-use card. SINGLE_USE_SPENT is this fake's own word until the
+    // sandbox shows the reason it gives.
+    const spentOnce = !!card.controls?.singleUse && this.txs.some((t) => t.cardId === a.cardId && t.approved);
+    const reason = inactive ? "CARD_INACTIVE" : spentOnce ? "SINGLE_USE_SPENT" : category ? "MERCHANT_CATEGORY_NOT_ALLOWED" : currency ? "CURRENCY_NOT_ALLOWED" : limit ? "LIMIT_EXCEEDED" : null;
     const over = reason !== null;
     const t: CardTransaction = {
       transactionId: `tx_${++this.n}`, cardId: a.cardId, amountCents: a.amountCents, currency: a.currency,
