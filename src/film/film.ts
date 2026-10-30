@@ -56,7 +56,11 @@ export function buildFilm(story: Story, recorded: Recorded, reports: { redteam: 
   const ops = need(snap.cards.find((c) => c.agent === "sourcing"), "the operations agent's card");
   const cards = snap.cards.map((c) => ({ name: c.name, last4: c.last4, perTx: c.agent === "sourcing" && raise ? raise[1]! : c.per_tx, only: c.only.split(" · ")[0]!.replace(/^Software/, "Software").replace(/ \(MCC \d+\)/, "") }));
   const names: Record<string, string> = { sourcing: "Operations agent", support: "Sales agent", treasury: "Finance agent" };
-  const mandates = snap.budgets.agents.filter((m) => names[m.agent]).map((m) => ({ name: names[m.agent]!, cap: m.cap, payee: m.payee }));
+  // The mandates as the day starts: the operations agent's from the story (the price rise replaces it later); the
+  // sales agent's never changes. The finance agent's is left out: it too is replaced during the day.
+  const opsStart = need(fact("buy", /Operations agent's mandate/).match(/^([\d.]+) a payment/)?.[1], "the operations agent's first mandate");
+  const sales = need(snap.budgets.agents.find((m) => m.agent === "support"), "the sales agent's mandate");
+  const mandates = [{ name: names.sourcing!, cap: opsStart, payee: "Stockline" }, { name: names.support!, cap: sales.cap, payee: sales.payee }];
 
   const faceid = step("faceid");
   const swift = step("swift");

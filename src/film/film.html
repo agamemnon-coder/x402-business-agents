@@ -62,14 +62,14 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 .doc .hd { font-size: 30px; font-weight: 800; margin-bottom: 18px; } .doc .ln { display: flex; justify-content: space-between; border-top: 1px solid #dfe2ea; padding: 12px 0; }
 .stamp { font-size: 120px; font-weight: 900; letter-spacing: .04em; color: var(--ok); border: 12px solid var(--ok); border-radius: 26px; padding: 4px 40px; transform: rotate(-8deg); }
 .stamp.bad { color: var(--bad); border-color: var(--bad); font-size: 84px; }
-.rowv { display: grid; grid-template-columns: 90px 120px 1fr 1fr 1fr; gap: 14px; align-items: center; font-size: 23px; padding: 9px 18px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); width: 1100px; font-variant-numeric: tabular-nums; }
+.rowv { display: grid; grid-template-columns: 80px 90px 220px 360px 200px; gap: 14px; align-items: center; font-size: 23px; padding: 9px 18px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); width: 1040px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rowv .k { color: var(--ok); font-weight: 700; opacity: 0; }
 .big { font-size: 190px; font-weight: 900; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
 .chat { max-width: 900px; padding: 26px 34px; border-radius: 30px 30px 30px 8px; background: var(--panel2); border: 1px solid var(--line); font-size: 36px; font-weight: 600; }
 .chat.me { border-radius: 30px 30px 8px 30px; background: var(--accent); border-color: var(--accent); }
 .stop { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ff8a80, #d42a1f); display: grid; place-items: center; font-size: 34px; font-weight: 900; color: #fff; box-shadow: 0 0 0 14px rgba(255,93,82,.18), 0 30px 60px rgba(0,0,0,.5); text-align: center; line-height: 1.05; }
 .logos { display: flex; align-items: center; gap: 34px; padding: 26px 44px; border-radius: 26px; background: #f5f6fa; }
-.logos img { display: block; } .logos .sep { width: 2px; height: 44px; background: #d8dbe5; } .logos .w { font-size: 22px; color: #5b6172; font-weight: 600; }
+.logos img { display: block; } .logos .cl { background: #141413; border-radius: 999px; padding: 10px 22px; } .logos .sep { width: 2px; height: 44px; background: #d8dbe5; } .logos .w { font-size: 22px; color: #5b6172; font-weight: 600; }
 .foot { position: absolute; left: 60px; right: 60px; bottom: 26px; font-size: 18px; color: #6b7286; display: flex; justify-content: space-between; }
 .ticker { font-family: ui-monospace, Menlo, monospace; font-size: 22px; color: var(--metal); }
 .feat { display: flex; gap: 16px; flex-wrap: wrap; width: 1500px; }
@@ -130,7 +130,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var chips = flying.map(function (f, i) { return put(L, E("div", "pill", f[0] + "  " + f[1]), 0, 150 + i * 140); });
       var k = put(L, E("div", "kicker", "Agentic spending"), 140, 330), h = put(L, E("div", "h1", "AI agents are starting to spend company money."), 140, 390);
       h.style.width = "1300px";
-      var q2 = put(L, E("div", "h1", "Who is holding the pen?"), 140, 560); q2.style.color = "var(--accent2)";
+      var q2 = put(L, E("div", "h1", "Who is holding the pen?"), 140, 650); q2.style.color = "var(--accent2)";
       return function (t) {
         chips.forEach(function (c, i) { var p = (t * .16 + i * .17) % 1; c.style.opacity = .55 * Math.sin(p * Math.PI); c.style.transform = "translateX(" + mix(1950, -700, p) + "px)"; });
         rise(k, t, .3); rise(h, t, .6); rise(q2, t, 6.2, null, 60);
@@ -167,7 +167,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var lim = put(L, E("div", "h3", ""), 140, 520), bar = put(L, E("div", "bar"), 140, 580), bi = E("i"); bar.appendChild(bi);
       var t1 = put(L, toast("ok", d.card.merchant + " Starter", "approved by Airwallex", "€" + d.card.small), 760, 170);
       var t2 = put(L, toast("bad", d.card.merchant + " Pro", "declined by Airwallex: over the €" + d.card.from + " limit", "€" + d.card.big), 760, 300);
-      var ask = put(L, E("div", "chat", "Can I have €" + d.card.to + " a purchase for the Pro plan?"), 760, 450); ask.style.fontSize = "30px";
+      var ask = put(L, E("div", "chat", "Can I have €" + d.card.to + " a purchase for the Pro plan?"), 760, 450); ask.style.fontSize = "30px"; ask.style.maxWidth = "620px";
       var ph = phone(d.card.proposal, "Operations agent's card: most per purchase", [["now", "€" + d.card.from], ["after", "€" + d.card.to]], 8.6); put(L, ph.n, 1440, 130);
       var t3 = put(L, toast("ok", d.card.merchant + " Pro, again", "approved by Airwallex, after Face ID", "€" + d.card.big), 140, 680);
       var log = put(L, E("div", "pill", "Every step in the audit log"), 140, 840);
@@ -182,12 +182,12 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       };
     },
     bill: function (L) {
-      var doc = put(L, E("div", "doc", null, [E("div", "hd", "Invoice · manufacturer"), E("div", "ln", null, [E("span", null, "Fabric, winter line"), E("b", null, "EUR " + d.bill.invoice)]), E("div", "ln", null, [E("span", null, "Pay to"), E("b", null, "allowlisted payee")]), E("div", "ln", null, [E("span", null, "Due"), E("b", null, "by SWIFT")])]), 140, 170);
+      var doc = put(L, E("div", "doc", null, [E("div", "hd", "Invoice · manufacturer"), E("div", "ln", null, [E("span", null, "Amount"), E("b", null, "EUR " + d.bill.invoice)]), E("div", "ln", null, [E("span", null, "Pay to"), E("b", null, "allowlisted payee")]), E("div", "ln", null, [E("span", null, "Pay by"), E("b", null, "SWIFT")])]), 140, 170);
       var ai = put(L, E("div", "pill ai", "read by Haiku · Sonnet · code checks the fields"), 140, 560);
       var usd = put(L, E("div", "panel", null, [E("div", "kicker", "Convert only what is missing"), E("div", "h2", "")]), 760, 170); usd.style.width = "620px";
       var conv = usd.querySelector(".h2");
       var floor = put(L, E("div", "pill", "Reserve floors checked · live quote, locked"), 760, 420);
-      var ph = phone(d.bill.proposal, "Pay EUR " + d.bill.invoice + " by SWIFT", [["convert", "USD " + d.bill.usd + " → EUR " + d.bill.eur], ["fee at most", "EUR " + d.bill.ceiling]], 9.4); put(L, ph.n, 1440, 130);
+      var ph = phone(d.bill.proposal, "Pay EUR " + d.bill.invoice + " by SWIFT", [["buy", "EUR " + d.bill.eur], ["for", "USD " + d.bill.usd], ["fee at most", "EUR " + d.bill.ceiling]], 9.4); put(L, ph.n, 1440, 130);
       var stamp = put(L, E("div", "stamp", "PAID"), 820, 600);
       var fee = put(L, E("div", "pill ok", "Fee EUR " + d.bill.fee + " ≤ EUR " + d.bill.ceiling), 140, 700);
       var hash = put(L, E("div", "pill", "Approval hash " + d.bill.hash + " in the payment"), 140, 800);
@@ -242,15 +242,15 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     dispute: function (L) {
       var k = put(L, E("div", "kicker", "Dispute desk · Northwind as seller"), 140, 70);
       var claim = put(L, E("div", "chat", "“" + d.dispute.text + "”"), 140, 120); claim.style.fontSize = "32px";
-      var head = put(L, E("div", "rowv", null, [E("b", null, "Order"), E("b", null, "Paid"), E("b", null, "Signed by their agent"), E("b", null, "Inside their mandate"), E("b", null, "Delivery matches")]), 140, 270);
+      var head = put(L, E("div", "rowv", null, [E("b", null, "Order"), E("b", null, "Paid"), E("b", null, "Signed order"), E("b", null, "Paid inside their mandate"), E("b", null, "Delivered")]), 140, 270);
       head.style.background = "transparent"; head.style.border = "0"; head.style.color = "var(--muted)";
       var rows = d.dispute.rows.map(function (r, i) {
-        var n = E("div", "rowv", null, [E("b", null, r.seq), E("span", null, r.amount), E("span", "k", "✓ signed"), E("span", "k", "✓ on chain " + r.tx), E("span", "k", "✓ hash")]);
+        var n = E("div", "rowv", null, [E("b", null, r.seq), E("span", null, r.amount), E("span", "k", "✓ signed"), E("span", "k", "✓ " + r.tx), E("span", "k", "✓ hash")]);
         return put(L, n, 140, 320 + i * 54);
       });
-      var cnt = put(L, E("div", "big", "0"), 1330, 300), of = put(L, E("div", "h3 muted", "of " + d.dispute.rows.length + " proven"), 1350, 500);
-      var st = put(L, E("div", "stamp bad", "NOT REFUNDED"), 1280, 640);
-      var rep = put(L, E("div", "pill", "A report the customer can check: " + d.dispute.caseId), 1280, 900);
+      var cnt = put(L, E("div", "big", "0"), 1300, 300), of = put(L, E("div", "h3 muted", "of " + d.dispute.rows.length + " proven"), 1320, 500);
+      var st = put(L, E("div", "stamp bad", "NOT REFUNDED"), 1230, 650); st.style.fontSize = "64px";
+      var rep = put(L, E("div", "pill", "A report the customer can check: " + d.dispute.caseId), 1230, 880);
       return function (t) {
         rise(k, t, .1); rise(claim, t, .3); rise(head, t, 3.5);
         var proven = 0;
@@ -264,7 +264,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var k = put(L, E("div", "kicker", "Ask Purser"), 140, 110);
       var me = put(L, E("div", "chat me", ""), 140, 180);
       var c = put(L, E("div", "card v", null, [E("div", "t", null, [E("span", null, "Flight · single use"), E("span", null, "airlines only")]), E("div", "n", d.ask.card.match(/•+ \d+/)[0]), E("div", "b", null, [E("span", null, d.ask.card.replace(/^.*?, /, "")), E("span", "visa", "VISA")])]), 140, 380);
-      var ok = put(L, toast("ok", d.ask.booked.split(":")[0], "approved by Airwallex", ""), 780, 420);
+      var booked = d.ask.booked.match(/^(.*?) ([\d.]+) EUR/); var ok = put(L, toast("ok", booked[1], "approved by Airwallex", "€" + booked[2]), 780, 420);
       var no = put(L, toast("bad", "A second charge", "declined: the card had closed itself", "€20.00"), 780, 560);
       return function (t) {
         rise(k, t, .1); me.textContent = typed("“" + d.ask.ask + "”", t, .5, 22) || " "; me.style.opacity = prog(t, .4, .6);
@@ -293,7 +293,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     end: function (L) {
       var p = put(L, E("div", "h1", "Purser"), 140, 220); p.style.fontSize = "150px";
       var s = put(L, E("div", "h2 muted", "Agents move at machine speed. The CFO keeps the pen."), 140, 420); s.style.width = "1500px";
-      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep"), E("span", "w", "Powered by"), logo("logo-claude.png", 44)]), 140, 640);
+      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep"), E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])]), 140, 640);
       var e = put(L, E("div", "h2", "Every euro has a proof."), 140, 820); e.style.color = "var(--accent2)";
       var note = put(L, E("div", "muted", "“Built on” and “Powered by” name the services Purser uses; they are not an endorsement."), 140, 950); note.style.fontSize = "20px";
       return function (t) { rise(p, t, .2); rise(s, t, .8); rise(lg, t, 2); rise(e, t, 3.5); rise(note, t, 4); };

@@ -4,9 +4,10 @@ import { BEATS, beatSeconds, scriptMarkdown, subtitlesSrt, totalSeconds } from "
 const toSeconds = (t: string) => { const [h, m, s] = t.split(":"); return Number(h) * 3600 + Number(m) * 60 + Number(s!.replace(",", ".")); };
 
 describe("the video plan", () => {
-  it("runs 4:30, in the order of the script Max agreed", () => {
-    expect(totalSeconds()).toBe(270);
-    expect(BEATS.map((b) => b.id)).toEqual(["b1-hook", "b2-problem", "b3-purser", "b4-card", "b5-fx", "b6-metal", "b7-ask", "b8-trust", "b9-vision"]);
+  it("is the film, scene by scene, under three minutes", () => {
+    expect(totalSeconds()).toBe(173);
+    expect(BEATS.map((b) => b.id)).toEqual(["01-open", "02-problem", "03-reveal", "04-card", "05-bill", "06-metal", "07-dispute", "08-ask", "09-trust", "10-end"]);
+    expect(BEATS.map((b) => b.shots[0]!.path)).toEqual(["/film?from=0", "/film?from=12", "/film?from=24", "/film?from=38", "/film?from=60", "/film?from=82", "/film?from=112", "/film?from=132", "/film?from=146", "/film?from=163"]);
   });
 
   it("gives each beat time to say its words (at most 150 words a minute)", () => {
@@ -28,7 +29,8 @@ describe("the video plan", () => {
   });
 
   it("writes the script with the time each beat starts", () => {
-    expect(scriptMarkdown()).toContain("## 0:00 Hook (15 s, clip `b1-hook.mp4`)");
-    expect(scriptMarkdown()).toContain("## 4:10 Vision (20 s, clip `b9-vision.mp4`)");
+    expect(scriptMarkdown()).toContain("# Purser: the video script (2:53)");
+    expect(scriptMarkdown()).toContain("## 0:00 Hook (12 s, clip `01-open.mp4`)");
+    expect(scriptMarkdown()).toContain("## 2:43 Purser (10 s, clip `10-end.mp4`)");
   });
 });

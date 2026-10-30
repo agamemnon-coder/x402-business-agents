@@ -2,6 +2,8 @@
 // so it holds no key and cannot approve or move money. "Review: approve or reject" hands over to the approval page.
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
+import { buildFilm } from "../film/film.js";
+import { filmTimeline } from "../film/script.js";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import express from "express";
@@ -89,6 +91,16 @@ export function livePage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
   return LIVE_TEMPLATE.replace("__LIVE_JSON__", () => JSON.stringify(buildLiveTimeline(story, recorded)).replace(/</g, "\\u003c"));
 }
 
+const FILM_TEMPLATE = readFileSync(new URL("../film/film.html", import.meta.url), "utf8");
+export const FILM_CSP = cspFor(FILM_TEMPLATE);
+/** The film (src/film/): its facts from the recordings and the latest red team and Lab reports, its scenes timed. */
+export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
+  const redteam = JSON.parse(readFileSync(REDTEAM_FILE, "utf8")) as { attempts: number; blocked: number };
+  const lab = JSON.parse(readFileSync(LAB_FILE, "utf8")) as { results: { passed: boolean }[] };
+  const data = buildFilm(story, recorded, { redteam, lab: { total: lab.results.length, passed: lab.results.filter((r) => r.passed).length } });
+  return FILM_TEMPLATE.replace("__FILM_JSON__", () => JSON.stringify({ data, scenes: filmTimeline() }).replace(/</g, "\\u003c"));
+}
+
 /** The public demo page (K5 replay) plays a recorded run; no request, no key, nothing live. */
 export const DEMO_CSP = cspFor(DEMO_TEMPLATE);
 
@@ -146,6 +158,11 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/demo", (_req, res) => {
     res.setHeader("Content-Security-Policy", DEMO_CSP);
     res.type("html").send(demoPage());
+  });
+
+  app.get("/film", (_req, res) => {
+    res.setHeader("Content-Security-Policy", FILM_CSP);
+    res.type("html").send(filmPage());
   });
 
   app.get("/live", (_req, res) => {

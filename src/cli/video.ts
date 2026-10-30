@@ -10,7 +10,7 @@ import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
 import express from "express";
 import { chromium } from "playwright";
-import { CSP, DEMO_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { BEATS, scriptMarkdown, subtitlesSrt, totalSeconds, type Action, type Beat } from "../video/plan.js";
 
 const FPS = 60;
@@ -25,6 +25,7 @@ function server(): Promise<{ url: string; close: () => void }> {
   const send = (csp: string, html: string) => (_req: express.Request, res: express.Response) => { res.setHeader("Content-Security-Policy", csp); res.type("html").send(html); };
   app.get("/", send(CSP, PAGE));
   app.get("/live", send(LIVE_CSP, livePage()));
+  app.get("/film", send(FILM_CSP, filmPage()));
   app.get("/demo", send(DEMO_CSP, demoPage()));
   app.get("/month", send(MONTH_CSP, monthPage()));
   app.get("/lab", send(LAB_CSP, labPage()));
