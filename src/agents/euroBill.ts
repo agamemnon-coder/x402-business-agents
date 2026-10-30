@@ -14,6 +14,7 @@ import { checkQuoteAgainstFloor, planInvoice, proposalExpiry, type TreasuryState
 import { getSetting, setSetting } from "../world/settings.js";
 import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
+import { eurInFlightCents } from "../policy/available.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
 export const SEED_USD_CENTS = 2_500_000;
@@ -66,6 +67,7 @@ export function treasuryState(db: DB, b: Awaited<ReturnType<AirwallexRail["balan
     eurObligationsCents: toCents(getSetting(db, "eur_obligations", "0.00")),
     usdAvailableCents: b.USD?.availableCents ?? 0,
     usdFloorCents: toCents(getSetting(db, "usd_floor", "0.00")),
+    eurInFlightCents: eurInFlightCents(db),
   };
 }
 

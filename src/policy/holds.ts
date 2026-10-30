@@ -2,7 +2,7 @@
 // reserved here in one exclusive (IMMEDIATE) SQLite transaction that checks, together: the emergency stop and the
 // agent's stop, the CFO policy's cap per payment, the mandate's cap per payment, the agent's mandate budget, the
 // agents' shared total, the card's month and the velocity limits. Two payments racing for the last cents therefore
-// cannot both pass: the second sees the first one's hold. The runner, the agent API and the CLIs are separate
+// cannot both pass: the second sees the first one's hold. (A card's limits are the issuer's to enforce: see below.) The runner, the agent API and the CLIs are separate
 // processes on one ledger, so the lock is the database's, not a JavaScript one.
 //
 // Counting: what the ledger records as spent (paid, or sent and not yet final) plus every HELD hold. A hold becomes
@@ -13,8 +13,10 @@ import { audit } from "../audit/log.js";
 import { TOTAL_BUDGET_CENTS, type Agent } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
-import { capRefusal, cardLimits } from "./rules.js";
-import { velocityGate } from "./velocity.js";
+import { randomUUID } from "node:crypto";
+import type { CardTransaction } from "../airwallex/issuing.js";
+import { capRefusal } from "./rules.js";
+import { stopped, velocityGate } from "./velocity.js";
 
 export type HoldRail = "metal" | "card";
 export interface SpendRequest { agent: Agent | `ext:${string}`; rail: HoldRail; cents: number; ref: string; now?: Date }
@@ -40,16 +42,12 @@ export function ledgerSpent(db: DB, agent: string): number {
 
 /** The open holds' total, for one agent or all, on one rail (Metal by default). */
 export function heldCents(db: DB, agent?: string, rail: HoldRail = "metal"): number {
+  // A ledger from before the holds, opened read-only by the dashboard, has none.
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'holds'").get()) return 0;
   const row = (agent
     ? db.prepare("SELECT SUM(cents) AS n FROM holds WHERE status = 'HELD' AND rail = ? AND agent = ?").get(rail, agent)
     : db.prepare("SELECT SUM(cents) AS n FROM holds WHERE status = 'HELD' AND rail = ?").get(rail)) as { n: number | null };
   return row.n ?? 0;
-}
-
-/** Card spend this calendar month (UTC), approved by Airwallex, for one agent. */
-function cardMonthCents(db: DB, agent: string, now: Date): number {
-  const month = now.toISOString().slice(0, 7);
-  return (db.prepare("SELECT SUM(amount_cents) AS n FROM card_transactions WHERE agent = ? AND approved = 1 AND substr(occurred_at, 1, 7) = ?").get(agent, month) as { n: number | null }).n ?? 0;
 }
 
 /**
@@ -67,11 +65,11 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
     }
     const agent = r.agent;
     const ours = (AGENTS as string[]).includes(agent);
-    if (ours) {
-      const refused = capRefusal(db, agent as Agent, r.cents);
-      if (refused) return refused;
-    }
     if (r.rail === "metal") {
+      if (ours) {
+        const refused = capRefusal(db, agent as Agent, r.cents);
+        if (refused) return refused;
+      }
       const l = spendLimits(db, agent);
       if (l.capCents !== null && r.cents > l.capCents) return `mandate_cap_exceeded: ${fromCents(r.cents)} is over the ${agent} mandate's ${fromCents(l.capCents)} a payment`;
       const used = l.spentCents + heldCents(db, agent);
@@ -87,13 +85,11 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
         const fast = velocityGate(db, agent, "metal", r.cents, now, r.ref);
         if (fast) return fast;
       }
-    } else if (ours) {
-      const card = cardLimits(db, agent);
-      if (card.perTxCents > 0 && r.cents > card.perTxCents) return `card_limit_exceeded: ${fromCents(r.cents)} is over the card's ${fromCents(card.perTxCents)} a purchase`;
-      const month = cardMonthCents(db, agent, now) + heldCents(db, agent, "card");
-      if (card.monthlyCents > 0 && month + r.cents > card.monthlyCents) {
-        return `card_month_exceeded: the card has ${fromCents(Math.max(0, card.monthlyCents - month))} of ${fromCents(card.monthlyCents)} left this month (spent and held), not ${fromCents(r.cents)}`;
-      }
+    } else if (stopped(db, agent)) {
+      // A card's limits sit on the card at Airwallex, which authorises each charge against them atomically: the
+      // issuer, not this ledger, refuses a purchase over them (and the demo shows its decline). Here a card hold only
+      // records the authorisation under way, so what is available counts it; a stopped agent charges nothing.
+      return `stopped_by_velocity: the ${agent} agent was stopped automatically (velocity limit); it buys nothing until the CFO lifts the stop with Face ID`;
     }
     const ts = now.toISOString();
     if (existing) db.prepare("UPDATE holds SET agent = ?, rail = ?, cents = ?, status = 'HELD', reason = NULL, updated_at = ? WHERE ref = ?").run(agent, r.rail, r.cents, ts, r.ref);
@@ -113,16 +109,40 @@ export function releaseHold(db: DB, ref: string, reason: string, now = new Date(
 }
 
 /**
+ * Charges an agent's card under a hold: reserved before the charge (refused while the agent is stopped), settled when
+ * Airwallex approves, released when it declines. When the charge throws, the authorisation may exist or not, so the
+ * hold stays and counts until the card's transactions show which (recoverHolds).
+ */
+export async function chargeUnderHold(db: DB, agent: string, cents: number, now: Date, charge: () => Promise<CardTransaction>): Promise<CardTransaction> {
+  const ref = `card:${agent}:${now.toISOString()}:${randomUUID().slice(0, 8)}`;
+  const refused = reserveSpend(db, { agent: agent as SpendRequest["agent"], rail: "card", cents, ref, now });
+  if (refused) throw new Error(refused.replace(/^[a-z_]+: /, ""));
+  const t = await charge();
+  if (t.approved) settleHold(db, ref, now);
+  else releaseHold(db, ref, `declined by Airwallex${t.failureReason ? `: ${t.failureReason}` : ""}`, now);
+  return t;
+}
+
+/**
  * On start, after a crash: a hold whose payment the ledger records is settled; one whose payment the ledger records
  * as refused is released; the rest stay held (and keep counting) until the reconciliation or a person resolves them.
  */
 export function recoverHolds(db: DB, now = new Date()): { settled: number; released: number; open: number } {
   let settled = 0, released = 0, open = 0;
-  const holds = db.prepare("SELECT ref FROM holds WHERE status = 'HELD'").all() as { ref: string }[];
-  for (const { ref } of holds) {
-    const row = (db.prepare("SELECT outcome FROM refunds WHERE payment_id = ?").get(ref) ?? db.prepare("SELECT outcome FROM sweeps WHERE payment_id = ?").get(ref)) as { outcome: string } | undefined;
-    if (row && ["PAID", "PENDING", "HELD"].includes(row.outcome)) { settleHold(db, ref, now); settled++; }
-    else if (row && row.outcome === "REFUSED") { releaseHold(db, ref, "refused (found on restart)", now); released++; }
+  const holds = db.prepare("SELECT ref, agent, rail, cents, created_at FROM holds WHERE status = 'HELD'").all() as { ref: string; agent: string; rail: HoldRail; cents: number; created_at: string }[];
+  for (const h of holds) {
+    if (h.rail === "card") {
+      // A card authorisation is found by agent, amount and time: the charge's own id was never returned to us.
+      const since = new Date(Date.parse(h.created_at) - 300_000).toISOString();
+      const t = db.prepare("SELECT approved FROM card_transactions WHERE agent = ? AND amount_cents = ? AND occurred_at >= ? ORDER BY approved DESC LIMIT 1").get(h.agent, h.cents, since) as { approved: number } | undefined;
+      if (t?.approved) { settleHold(db, h.ref, now); settled++; }
+      else if (t) { releaseHold(db, h.ref, "declined (found on restart)", now); released++; }
+      else open++;
+      continue;
+    }
+    const row = (db.prepare("SELECT outcome FROM refunds WHERE payment_id = ?").get(h.ref) ?? db.prepare("SELECT outcome FROM sweeps WHERE payment_id = ?").get(h.ref)) as { outcome: string } | undefined;
+    if (row && ["PAID", "PENDING", "HELD"].includes(row.outcome)) { settleHold(db, h.ref, now); settled++; }
+    else if (row && row.outcome === "REFUSED") { releaseHold(db, h.ref, "refused (found on restart)", now); released++; }
     else open++;
   }
   if (holds.length) audit(db, "treasury", "holds.recovered", "holds", { settled, released, open }, now);

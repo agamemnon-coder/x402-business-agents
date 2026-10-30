@@ -19,6 +19,8 @@ import { agentProfiles, type AgentProfile } from "../agents/profiles.js";
 import { booksView, type BooksView } from "../accounting/books.js";
 import { disputeCases } from "../seller/desk.js";
 import { CLAIM_WORDS, type DisputeClaim } from "../seller/disputeDesk.js";
+import { eurInFlightCents, mandateAvailability } from "../policy/available.js";
+import { heldCents } from "../policy/holds.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -29,6 +31,11 @@ export interface Budget {
   cap: string;
   budget: string;
   spent: string;
+  /** Sent and not final (a pull pending or held on chain). */
+  pending: string;
+  /** Reserved for a payment being made right now. */
+  held: string;
+  /** budget − spent − pending − held. */
   remaining: string;
   /** Day the bound credential expires (bind time + the mandate term; exact to the day). */
   expires_on: string | null;
@@ -142,7 +149,7 @@ export interface Snapshot {
     airwallex: null | {
       as_of: string;
       label: string;
-      eur: { available: string; floor: string; committed: string; free: string };
+      eur: { available: string; floor: string; committed: string; free: string; in_flight: string };
       usd: { available: string; floor: string; headroom: string };
     };
     metal: {
@@ -346,10 +353,13 @@ function budgets(db: DB, rows: AuditRow[], roleOf: (address: string) => string |
     const m = current.get(agent);
     if (!m) return null;
     const spent = spentCents[agent];
+    const av = mandateAvailability(db, agent);
     const day = new Date(Date.parse(m.at) + MANDATE_EXPIRES_IN_SECONDS * 1000);
     return {
       agent, payee: m.payee, cap: m.cap, budget: m.budget, spent: fromCents(spent),
-      remaining: signed(safeCents(m.budget) - spent), expires_on: isNaN(day.getTime()) ? null : day.toISOString().slice(0, 10),
+      // Available the same way everywhere: budget less paid, less sent-but-not-final, less held right now.
+      pending: fromCents(av.pendingCents), held: fromCents(av.heldCents),
+      remaining: signed(safeCents(m.budget) - spent - av.pendingCents - av.heldCents), expires_on: isNaN(day.getTime()) ? null : day.toISOString().slice(0, 10),
       credentials: m.credentials,
       policy_cap: agent === "customer" ? null : policyValue(db, `cap.${agent}`) || null,
       last_tx: lastTx(db, agent),
@@ -390,9 +400,10 @@ function treasury(db: DB): Snapshot["treasury"] {
     const eurFloor = safeCents(setting(db, "eur_floor") ?? "0.00");
     const committed = safeCents(setting(db, "eur_obligations") ?? "0.00");
     const usdFloor = safeCents(setting(db, "usd_floor") ?? "0.00");
+    const inFlight = eurInFlightCents(db);
     airwallex = {
       as_of: snap.taken_at, label: snap.label,
-      eur: { available: fromCents(eur), floor: fromCents(eurFloor), committed: fromCents(committed), free: signed(eur - eurFloor - committed) },
+      eur: { available: fromCents(eur), floor: fromCents(eurFloor), committed: fromCents(committed), free: signed(eur - eurFloor - committed - inFlight), in_flight: fromCents(inFlight) },
       usd: { available: fromCents(usd), floor: fromCents(usdFloor), headroom: signed(usd - usdFloor) },
     };
   }
@@ -459,7 +470,7 @@ function cards(db: DB, now: Date): CardView[] {
     return {
       agent: c.agent, name: ext ? `${ext.display_name} (outside agent)` : task ? `${capFirst(task.kind)} task card (${c.agent.slice(5)})` : agentName(c.agent), last4: c.last4,
       buys: ext ? ext.purpose : task ? `${task.purpose} · single use` : (CARDS[c.agent as Agent]?.buys ?? ""), per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
-      spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent),
+      spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent - heldCents(db, c.agent, "card")),
       in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === wantCardStatus(db, c.agent),
       frozen: c.status === "INACTIVE", only: onlyWords(c), single_use: !!task, recent,
     };

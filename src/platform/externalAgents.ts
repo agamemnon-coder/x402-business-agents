@@ -18,6 +18,8 @@ import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { cardControls, cardOf, cardSpendCents, ingestCardTransaction, storeCard } from "../policy/cards.js";
 import { cardLimits, frozen } from "../policy/rules.js";
+import { chargeUnderHold } from "../policy/holds.js";
+import { cardAvailability } from "../policy/available.js";
 
 /** A card request waits an hour for the CFO, like a card raise. */
 const ONBOARD_TTL_MS = 60 * 60 * 1000;
@@ -127,7 +129,7 @@ export interface CardStatus {
   status: "NONE" | "REQUESTED" | "ACTIVE";
   proposal_id: string | null;
   proposal_status: string | null;
-  card: { last4: string; per_tx: string; monthly: string; spent_this_month: string; frozen: boolean; currency: "EUR" } | null;
+  card: { last4: string; per_tx: string; monthly: string; spent_this_month: string; left_this_month: string; frozen: boolean; currency: "EUR" } | null;
   recent: { merchant: string; amount: string; approved: boolean; reason: string | null; at: string }[];
 }
 
@@ -140,7 +142,7 @@ export function cardStatus(db: DB, id: ExternalAgentId, now = new Date()): CardS
     agent_id: id, status: r?.status ?? "NONE", proposal_id: r?.proposal_id ?? null, proposal_status: proposalStatus,
     card: card && limits ? {
       last4: card.last4, per_tx: fromCents(limits.perTxCents), monthly: fromCents(limits.monthlyCents),
-      spent_this_month: fromCents(cardSpendCents(db, id, now)), frozen: frozen(db) || card.status === "INACTIVE", currency: "EUR",
+      spent_this_month: fromCents(cardSpendCents(db, id, now)), left_this_month: fromCents(Math.max(0, cardAvailability(db, id, now).availableCents)), frozen: frozen(db) || card.status === "INACTIVE", currency: "EUR",
     } : null,
     recent: (db.prepare("SELECT merchant, amount_cents, approved, failure_reason, occurred_at FROM card_transactions WHERE agent = ? ORDER BY occurred_at DESC, rowid DESC LIMIT 10").all(id) as
       { merchant: string; amount_cents: number; approved: number; failure_reason: string | null; occurred_at: string }[])
@@ -167,7 +169,7 @@ export async function payWithCard(db: DB, sim: IssuingSim, id: ExternalAgentId, 
   if (amountCents <= 0) throw new Error("the amount must be more than 0.00");
   const purpose = `${merchant}, ${a.description.trim().slice(0, 120)}`;
   audit(db, id as Actor, "card.purchase_started", id, { agent: id, last4: card.last4, merchant, amount: fromCents(amountCents), currency: "EUR", description: a.description.trim().slice(0, 120) }, now);
-  const t = await sim.simulateCardCharge({ cardId: card.card_id, amountCents, currency: "EUR", merchant, mcc: MCC });
+  const t = await chargeUnderHold(db, id, amountCents, now, () => sim.simulateCardCharge({ cardId: card.card_id, amountCents, currency: "EUR", merchant, mcc: MCC }));
   ingestCardTransaction(db, t, "simulation", now, purpose);
   return t;
 }

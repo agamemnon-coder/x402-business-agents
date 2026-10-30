@@ -3,7 +3,6 @@
 // credit is booked anywhere. The sandbox cannot receive *USDZ, so the credit is a simulated deposit of the
 // same amount whose reference is the transaction hash, booked once per on-chain transfer.
 
-import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import { erc20Abi, parseEventLogs, type Address, type Hash } from "viem";
 import type { AirwallexRail, SandboxSim } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
@@ -13,6 +12,7 @@ import { baseUnitsToCents, centsToBaseUnits, fromCents } from "../lib/money.js";
 import { metalAgent } from "../metal/agentCli.js";
 import { publicClient, usdzBalance } from "../metal/chain.js";
 import { activeMandate, mandateSpent } from "../metal/mandate.js";
+import { heldCents, releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import { extractTerms } from "@metalntwx/metal-pay/mandates";
 import { capRefusal } from "../policy/rules.js";
 import { velocityGate } from "../policy/velocity.js";
@@ -52,14 +52,20 @@ async function remaining(agent: "sourcing" | "support" | "treasury"): Promise<nu
   const m = await activeMandate(agent);
   return baseUnitsToCents(extractTerms(m.credential).constraints.budget) - baseUnitsToCents(await mandateSpent(m));
 }
+/** What a mandate may still spend: its budget less what the chain counts spent, less holds for payments under way. */
+async function available(db: DB, agent: "sourcing" | "support" | "treasury"): Promise<number> {
+  return (await remaining(agent)) - heldCents(db, agent);
+}
 
 /** Sweep the net earnings, but never below what the other mandates may still spend, nor past treasury's own budget. */
 export async function planSweep(db: DB, business: Address): Promise<SweepPlan | { refuse: string }> {
   const e = netEarnings(db);
   if (e.netCents <= 0) return { refuse: `nothing to sweep: net earnings ${fromCents(Math.max(0, e.netCents))}` };
   const before = baseUnitsToCents(await usdzBalance(business));
+  // The other agents' held payments are still in the business account until paid, so their whole remaining budget
+  // stays committed; treasury's own holds (another sweep under way) come off what it may still move.
   const committed = (await remaining("sourcing")) + (await remaining("support"));
-  const treasuryRemaining = await remaining("treasury");
+  const treasuryRemaining = await available(db, "treasury");
   const amount = e.netCents;
   if (amount > treasuryRemaining) return { refuse: `sweep ${fromCents(amount)} exceeds treasury's remaining budget ${fromCents(treasuryRemaining)}` };
   if (before - amount < committed) return { refuse: `sweep would leave ${fromCents(before - amount)}, under the ${fromCents(committed)} the other mandates may still spend` };

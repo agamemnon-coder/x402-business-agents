@@ -11,10 +11,12 @@ export interface TreasuryState {
   eurObligationsCents: number;
   usdAvailableCents: number;
   usdFloorCents: number;
+  /** EUR payouts written but not yet at Airwallex: not yet out of its available balance, but spoken for. */
+  eurInFlightCents?: number;
 }
 
 export function freeEurCents(s: TreasuryState): number {
-  return s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents;
+  return s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents - (s.eurInFlightCents ?? 0);
 }
 
 export type InvoicePlan =

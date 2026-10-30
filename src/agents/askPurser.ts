@@ -16,6 +16,7 @@ import { attachReview } from "../claude/review.js";
 import type { Actor } from "../audit/log.js";
 import { amountsIn } from "../policy/fromText.js";
 import { findInjections } from "../policy/injection.js";
+import { chargeUnderHold } from "../policy/holds.js";
 
 export type TaskKind = keyof typeof TASK_KINDS;
 
@@ -374,7 +375,7 @@ export async function bookOnTaskCard(db: DB, sim: IssuingSim, taskId: string, a:
   const purpose = `${TASK_KINDS[task.kind].label}: ${task.purpose}`;
   const mcc = a.mcc ?? task.mccs.split(",")[0]!;
   audit(db, "treasury", "card.purchase_started", taskId, { agent: taskId, last4: card.last4, merchant: a.merchant, amount: fromCents(toCents(a.amount)), currency: "EUR", mcc }, now);
-  const t = await sim.simulateCardCharge({ cardId: card.card_id, amountCents: toCents(a.amount), currency: "EUR", merchant: a.merchant, mcc });
+  const t = await chargeUnderHold(db, taskId, toCents(a.amount), now, () => sim.simulateCardCharge({ cardId: card.card_id, amountCents: toCents(a.amount), currency: "EUR", merchant: a.merchant, mcc }));
   ingestCardTransaction(db, t, "simulation", now, purpose);
   if (t.approved) {
     db.prepare("UPDATE task_cards SET status = 'USED' WHERE task_id = ?").run(taskId);

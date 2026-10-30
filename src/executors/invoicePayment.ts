@@ -12,6 +12,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
+import { eurInFlightCents } from "../policy/available.js";
 
 export interface InvoicePaymentResult {
   conversionId: string | null;
@@ -38,8 +39,9 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
       if (pre.usdAvailableCents - toCents(t.conversion.sell_amount) < pre.usdFloorCents) throw new Error("USD would now drop under its floor; a new proposal is needed");
     }
     const eurAfter = pre.eurAvailableCents + (t.conversion ? toCents(t.conversion.buy_amount) : 0);
-    if (eurAfter - toCents(t.amount) - toCents(t.fee_max) < pre.eurFloorCents + pre.eurObligationsCents) {
-      throw new Error("EUR would now drop under its floor and commitments; a new proposal is needed");
+    // Other payouts written but not yet at Airwallex are spoken for too (this one's own row, on a retry, is not).
+    if (eurAfter - toCents(t.amount) - toCents(t.fee_max) < pre.eurFloorCents + pre.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id)) {
+      throw new Error("EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed");
     }
   }, now());
 

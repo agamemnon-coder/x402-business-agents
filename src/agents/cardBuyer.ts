@@ -11,6 +11,7 @@ import type { CardTransaction, IssuingSim } from "../airwallex/issuing.js";
 import { proposePolicyChange } from "../executors/policyChange.js";
 import type { ProposalRow } from "../policy/approvals.js";
 import { cardOf, ingestCardTransaction } from "../policy/cards.js";
+import { chargeUnderHold } from "../policy/holds.js";
 
 /**
  * The agent subscribes to a plan; the merchant charges the card. In the sandbox that charge is Airwallex's
@@ -25,7 +26,7 @@ export async function buyPlan(db: DB, sim: IssuingSim, planId: string, now = new
   if (stopped(db, plan.agent)) throw new Error(`the ${plan.agent} agent was stopped automatically (velocity limit); it buys nothing until the CFO lifts the stop with Face ID`);
   const purpose = `${plan.merchant}, ${plan.label}`;
   audit(db, plan.agent, "card.purchase_started", planId, { agent: plan.agent, last4: card.last4, merchant: plan.merchant, plan: plan.label, amount: fromCents(plan.amountCents), currency: "EUR" }, now);
-  const t = await sim.simulateCardCharge({ cardId: card.card_id, amountCents: plan.amountCents, currency: "EUR", merchant: plan.merchant, mcc: plan.mcc });
+  const t = await chargeUnderHold(db, plan.agent, plan.amountCents, now, () => sim.simulateCardCharge({ cardId: card.card_id, amountCents: plan.amountCents, currency: "EUR", merchant: plan.merchant, mcc: plan.mcc }));
   ingestCardTransaction(db, t, "simulation", now, purpose);
   return t;
 }
