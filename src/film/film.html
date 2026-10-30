@@ -10,7 +10,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
-#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: radial-gradient(1200px 700px at 70% 20%, #1a1640 0%, rgba(7,8,13,0) 60%), radial-gradient(900px 600px at 10% 90%, #0b2a33 0%, rgba(7,8,13,0) 60%), var(--bg); overflow: hidden; }
+#stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: radial-gradient(1200px 700px at 70% 20%, #1a1640 0%, rgba(7,8,13,0) 60%), radial-gradient(900px 600px at 10% 90%, #0b2a33 0%, rgba(7,8,13,0) 60%), var(--bg); overflow: hidden; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
 .layer { position: absolute; inset: 0; opacity: 0; will-change: opacity, transform; }
 .a { position: absolute; will-change: opacity, transform; }
 .kicker { font-size: 26px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent2); }
@@ -78,6 +79,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 </head>
 <body>
 <script type="application/json" id="film-data">__FILM_JSON__</script>
+<h1 class="sr">Purser: the film</h1>
 <div id="stage"><div class="foot"><span id="foot-l"></span><span id="foot-r"></span></div></div>
 <script>
 (function () {
