@@ -1,4 +1,4 @@
-# Purser: the hybrid video (3:55, and a 60-second cut)
+# Purser: the hybrid video (4:10, and a 60-second cut)
 
 The jury asks for a video walkthrough of a working demo, so this cut mixes four kinds of footage:
 - **Max**: his own voice and face;
@@ -26,12 +26,13 @@ Footage legend: **[MAX]** Max on camera or voice only; **[LIVE]** `/live?present
 | 2:22 | [PROOF] Airwallex sandbox web app (Max's recording) | In Airwallex's own app you see the same: the agents' cards, the decline, the conversion and the SWIFT transfer. *(Keep this line only if the recording shows the Friday run's cards •••• 8120, 6882, 7786 and transfer 4d508b0b.)* |
 | 2:37 | [PHONE] Face ID (Max's recording) | And this is the one thing an agent can never do: approve. The phone shows the exact terms. Face ID signs them. |
 | 2:52 | [PAGE] `/?recorded&books` | Every payment lands in the books, debit and credit, ready for the bookkeeper. |
-| 3:02 | [PAGE] `/lab`, then the landing's trust figures | Code decides; Claude only reads and advises. Our red team ran thirty-nine attacks in a test world, thirty-five scripted and four written by Claude Opus as the attacker: all failed; two of them were found afterwards rather than stopped. Optional four eyes above a threshold, one Face ID to freeze every card and stop every agent (tested on stand-ins), and Claude costs about nine cents per thousand euros paid. |
-| 3:28 | [MAX] | Agents will move money at machine speed. Purser lets them, on Airwallex and Metal, and keeps the CFO in control. |
-| 3:42 | [PAGE] `/try` | Try it yourself. *(On screen: the link to /try.)* |
-| 3:55 | end | |
+| 3:02 | [PAGE] `/metal`, the four-eyes, compliance, certificate and clearing cards | For a bigger company, more control moves on chain. In a test run, one signature was not enough: the CFO and the controller both had to sign. A compliance contract paid only screened payees; eleven attacks failed. Each payment keeps the finality certificate Metal reported. And in a load test, two thousand clearing payments all went through. |
+| 3:26 | [PAGE] `/lab`, then the landing's trust figures | Code decides; Claude only reads and advises. Our red team ran thirty-nine attacks in a test world, thirty-five scripted and four written by Claude Opus as the attacker: all failed; two of them were found afterwards rather than stopped. One Face ID to freeze every card and stop every agent (tested on stand-ins), and Claude costs about nine cents per thousand euros paid. |
+| 3:52 | [MAX] | Agents will move money at machine speed. Purser lets them, on Airwallex and Metal, and keeps the CFO in control. |
+| 4:04 | [PAGE] `/try` | Try it yourself. *(On screen: the link to /try.)* |
+| 4:10 | end | |
 
-About 440 words in 3:55, so about 115 words a minute: calm, with room to breathe.
+About 500 words in 4:10, so about 120 words a minute: calm, with room to breathe. The two busiest lines (3:02 and 3:26) run near 145 a minute.
 
 Where each figure comes from:
 - **$3,046,598,558:** FBI IC3, 2025 Internet Crime Report, published April 2026 (https://www.ic3.gov/AnnualReport/Reports/2025_ic3report.pdf), business email compromise losses.

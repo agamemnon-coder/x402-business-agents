@@ -52,6 +52,8 @@ Start here:
 - [docs/metal-award.md](docs/metal-award.md): what the build uses from Metal, with proof on testnet
 - [docs/airwallex.md](docs/airwallex.md): every Airwallex API Purser calls, and why
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
+- [docs/controls-matrix.md](docs/controls-matrix.md): every risk, the control against it, its test and the live evidence
+- [docs/runbook.md](docs/runbook.md): incidents, the emergency stop, key rotation and recovery
 - [docs/ask-purser.md](docs/ask-purser.md): Ask Purser: a single-use card for one task (a flight, a hotel, a train) from one sentence: at once within the CFO's policy (up to €300, 3 a day, asked at the runner), otherwise after Face ID
 - [docs/claude.md](docs/claude.md): Powered by Claude: which model does what, why, and what it costs per decision
 - [docs/compliance.md](docs/compliance.md): who does what (Airwallex, Metal, Purser) for the EU AI Act, PSD2, GDPR, AML and audit

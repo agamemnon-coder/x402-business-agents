@@ -1,6 +1,7 @@
 // "How Purser uses Metal" (awards item 2): each Metal feature Purser uses, in plain words, with the proof from a live
 // run and the Metal docs page. The mandates and the Dispute desk case come from the recorded run's ledger, as the
-// chain enforced them. Two features did not run in that run (clearing and the receive policy); their proofs are the
+// chain enforced them. Some features did not run in that run (clearing, the receive policy, four eyes on chain, the
+// compliance send policy, finality certificates); their proofs are the
 // transactions of the separate live testnet runs that docs/metal-award.md records, and the page says so.
 // Nothing here is a stand-in: an item the ledger has no record of is left out.
 
@@ -66,6 +67,9 @@ export const METAL_DOCS = {
   finality: "https://docs.metalntwx.com/reference/network-fundamentals/settlement",
   payouts: "https://docs.metalntwx.com/agents/payouts",
   agent: "https://docs.metalntwx.com/agents/metal-agent",
+  account: "https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account",
+  compliance: "https://docs.metalntwx.com/learn/compliance/programmable-compliance",
+  certificates: "https://docs.metalntwx.com/reference/interop/finality-certificates",
 } as const;
 
 /**
@@ -74,7 +78,7 @@ export const METAL_DOCS = {
  */
 export const OTHER_RUNS = {
   clearing: {
-    source: "A separate live run on Metal testnet, 29 October (the clearing run log): a buyer deposits once and pays each query by signed receipt",
+    source: "A separate live run on Metal testnet, 29 October (the clearing run log): a buyer deposits once and pays each query by signed receipt. A load test on 30 October (the clearing load run log) paid 2,000 of 2,000 at 4.24 a second",
     proofs: [
       { what: "deposit of 5.00", tx: "0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766" },
       { what: "withdrawal queued", tx: "0x902badf6f82f4e453c99ff9e5fd870d3e96ab40293bff64e3a611014930cc3d4" },
@@ -87,6 +91,24 @@ export const OTHER_RUNS = {
       { what: "allowlist-only policy set on the sweep wallet", tx: "0xf1a7fe9664053c9d2fdf1b2d11122bde5be0668da8afc8d4f17b08088e220c37" },
       { what: "a stranger's 0.02, held by Metal", tx: "0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3" },
       { what: "returned after the CFO's Face ID", tx: "0x786686b6dd5112b80bbf84902c8b51f407459c3e3112a6a3d8a0e23bac60fc3c" },
+    ],
+  },
+  fourEyes: {
+    source: "A separate live run on Metal testnet, 30 October (the four-eyes run log): a test account with two owners, the CFO and the controller, threshold 2",
+    proofs: [
+      { what: "CFO alone: reverted", tx: "0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3" },
+      { what: "CFO and a stranger: reverted", tx: "0x728a9c270614d5bbeb11540f897a3b29fab00e2275c84cbb4022c74d7149c43b" },
+      { what: "CFO and controller: paid", tx: "0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d" },
+      { what: "revoke by CFO alone: reverted", tx: "0x3bf9f70e0b7c4e3c9cef05eddc755d3a4218227251b3699ddaa77756ba303ab5" },
+    ],
+  },
+  compliance: {
+    source: "A separate live run on Metal testnet, 30 October (the compliance run log): our send-policy contract, with test lists and a stand-in sanctioned address",
+    proofs: [
+      { what: "screened payment: paid", tx: "0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237" },
+      { what: "replayed decision: reverted", tx: "0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737" },
+      { what: "redirected to the attacker: reverted", tx: "0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a" },
+      { what: "sanctioned payee: reverted", tx: "0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e" },
     ],
   },
 } as const;
@@ -257,6 +279,27 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
     why: "Unknown money is a compliance problem, not a windfall. It never reaches the books or the bank until a person decides.",
     figure: "held, then returned", proofs: OTHER_RUNS.receive.proofs.map((p) => tx(p.tx, p.what)!),
     source: OTHER_RUNS.receive.source, docs: [{ label: "Receive policy", href: METAL_DOCS.receive }],
+  });
+  f.push({
+    id: "four-eyes", title: "Four eyes on chain",
+    plain: "A Metal account with two owners, the CFO and the controller, and a threshold of two. Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
+    why: "No single person, and no single stolen owner key, can change an agent's limits or move the account's money beyond what the agents' mandates allow. Agents still pay alone inside their mandates.",
+    figure: "1 signature: reverted", proofs: OTHER_RUNS.fourEyes.proofs.map((p) => tx(p.tx, p.what)!),
+    source: OTHER_RUNS.fourEyes.source, docs: [{ label: "Smart account", href: METAL_DOCS.account }],
+  });
+  f.push({
+    id: "compliance", title: "Compliance before every payout",
+    plain: "Outgoing funds sit in a send-policy contract. They leave only with a decision Purser signed for exactly that payee, amount and moment, after screening the payee; without it the chain reverts.",
+    why: "A sanctioned or unapproved payee cannot be paid from the contract, even by someone holding the payer key; only Purser's compliance key can clear a payment. Eleven attacks on it reverted on chain.",
+    figure: "11 attacks reverted", proofs: OTHER_RUNS.compliance.proofs.map((p) => tx(p.tx, p.what)!),
+    source: OTHER_RUNS.compliance.source, docs: [{ label: "Programmable compliance", href: METAL_DOCS.compliance }],
+  });
+  f.push({
+    id: "certificates", title: "Finality certificates as evidence",
+    plain: "For each payment, Purser stores the finality certificate Metal's RPC reports for its block: the header, and which validators signed. It checks the header and the quorum, and keeps it in the dispute pack, the audit report and verify.",
+    why: "Proof of finality kept with the payment, not looked up later. Honest limit: the validators' signature is not verified (their keys are not published for testnet), and nodes keep certificates about 2 hours.",
+    figure: "3 of 4 validators", proofs: OTHER_RUNS.fourEyes.proofs.slice(2, 3).map((p) => tx(p.tx, "a certified payment")!),
+    source: "The same live runs: all 26 of their transactions have a reported certificate", docs: [{ label: "Finality certificates", href: METAL_DOCS.certificates }],
   });
   if (dispute) {
     f.push({

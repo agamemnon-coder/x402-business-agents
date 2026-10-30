@@ -202,7 +202,7 @@
           "href": "https://testnet.metalntwx.com/tx/0x522470d292f78b390fe153cb40905cdc6102afef1345d62e1dc975f900145092"
         }
       ],
-      "source": "A separate live run on Metal testnet, 29 October (the clearing run log): a buyer deposits once and pays each query by signed receipt",
+      "source": "A separate live run on Metal testnet, 29 October (the clearing run log): a buyer deposits once and pays each query by signed receipt. A load test on 30 October (the clearing load run log) paid 2,000 of 2,000 at 4.24 a second",
       "docs": [
         {
           "label": "Clearing",
@@ -235,6 +235,90 @@
         {
           "label": "Receive policy",
           "href": "https://docs.metalntwx.com/reference/compliance/receive-policy"
+        }
+      ]
+    },
+    {
+      "id": "four-eyes",
+      "title": "Four eyes on chain",
+      "plain": "A Metal account with two owners, the CFO and the controller, and a threshold of two. Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
+      "why": "No single person, and no single stolen owner key, can change an agent's limits or move the account's money beyond what the agents' mandates allow. Agents still pay alone inside their mandates.",
+      "figure": "1 signature: reverted",
+      "proofs": [
+        {
+          "label": "CFO alone: reverted · 0xe0976c5a…69c3",
+          "href": "https://testnet.metalntwx.com/tx/0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3"
+        },
+        {
+          "label": "CFO and a stranger: reverted · 0x728a9c27…c43b",
+          "href": "https://testnet.metalntwx.com/tx/0x728a9c270614d5bbeb11540f897a3b29fab00e2275c84cbb4022c74d7149c43b"
+        },
+        {
+          "label": "CFO and controller: paid · 0xd98e94ff…d30d",
+          "href": "https://testnet.metalntwx.com/tx/0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d"
+        },
+        {
+          "label": "revoke by CFO alone: reverted · 0x3bf9f70e…3ab5",
+          "href": "https://testnet.metalntwx.com/tx/0x3bf9f70e0b7c4e3c9cef05eddc755d3a4218227251b3699ddaa77756ba303ab5"
+        }
+      ],
+      "source": "A separate live run on Metal testnet, 30 October (the four-eyes run log): a test account with two owners, the CFO and the controller, threshold 2",
+      "docs": [
+        {
+          "label": "Smart account",
+          "href": "https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account"
+        }
+      ]
+    },
+    {
+      "id": "compliance",
+      "title": "Compliance before every payout",
+      "plain": "Outgoing funds sit in a send-policy contract. They leave only with a decision Purser signed for exactly that payee, amount and moment, after screening the payee; without it the chain reverts.",
+      "why": "A sanctioned or unapproved payee cannot be paid from the contract, even by someone holding the payer key; only Purser's compliance key can clear a payment. Eleven attacks on it reverted on chain.",
+      "figure": "11 attacks reverted",
+      "proofs": [
+        {
+          "label": "screened payment: paid · 0xc2eb6814…f237",
+          "href": "https://testnet.metalntwx.com/tx/0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237"
+        },
+        {
+          "label": "replayed decision: reverted · 0x222385b5…2737",
+          "href": "https://testnet.metalntwx.com/tx/0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737"
+        },
+        {
+          "label": "redirected to the attacker: reverted · 0x03811931…e23a",
+          "href": "https://testnet.metalntwx.com/tx/0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a"
+        },
+        {
+          "label": "sanctioned payee: reverted · 0x91ed35a5…442e",
+          "href": "https://testnet.metalntwx.com/tx/0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e"
+        }
+      ],
+      "source": "A separate live run on Metal testnet, 30 October (the compliance run log): our send-policy contract, with test lists and a stand-in sanctioned address",
+      "docs": [
+        {
+          "label": "Programmable compliance",
+          "href": "https://docs.metalntwx.com/learn/compliance/programmable-compliance"
+        }
+      ]
+    },
+    {
+      "id": "certificates",
+      "title": "Finality certificates as evidence",
+      "plain": "For each payment, Purser stores the finality certificate Metal's RPC reports for its block: the header, and which validators signed. It checks the header and the quorum, and keeps it in the dispute pack, the audit report and verify.",
+      "why": "Proof of finality kept with the payment, not looked up later. Honest limit: the validators' signature is not verified (their keys are not published for testnet), and nodes keep certificates about 2 hours.",
+      "figure": "3 of 4 validators",
+      "proofs": [
+        {
+          "label": "a certified payment · 0xd98e94ff…d30d",
+          "href": "https://testnet.metalntwx.com/tx/0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d"
+        }
+      ],
+      "source": "The same live runs: all 26 of their transactions have a reported certificate",
+      "docs": [
+        {
+          "label": "Finality certificates",
+          "href": "https://docs.metalntwx.com/reference/interop/finality-certificates"
         }
       ]
     },

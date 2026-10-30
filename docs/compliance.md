@@ -49,7 +49,7 @@ Who is who:
 
 | What the rule asks | Who | How Purser supports it | Proof |
 |---|---|---|---|
-| Screen payments against sanctions lists | Airwallex | Euro payments go to beneficiaries Airwallex validates (and, in production, screens). In production a Metal send policy could also require a signed screening decision before an on-chain payment; not built (`docs/metal-award.md`, section 7). | `docs/airwallex.md` |
+| Screen payments against sanctions lists | Airwallex; on chain, Purser's send policy | Euro payments go to beneficiaries Airwallex validates (and, in production, screens). On Metal, funds held in Purser's send-policy contract leave only with a decision Purser signed after screening the payee; without it the chain reverts. Live on testnet in a test world with a test list and a stand-in sanctioned address (30 October); not used in the recorded run, and agents' mandate payments do not pass through it. | `docs/airwallex.md`, `docs/runs/2026-10-30-compliance-policy.md` |
 | Pay only known payees | Purser, on chain by Metal | A Metal mandate names its one payee. A supplier's changed bank details count only after a request, a person's check outside the system and the CFO's approval, which shows the full new IBAN. | `src/policy/payeeChange.ts`, `test/payee-change.test.ts` |
 | Stop invoice fraud | Purser | The fraud check blocks changed bank details; a model's reading of an invoice must agree with the invoice's own lines on amount, vendor and bank details; planted "pre-approved" lines and hidden characters are flagged and change nothing. | `docs/fraud-and-injection.md` |
 | Refuse money from unknown senders | Metal enforces; Purser sets it | Purser can set the sweep wallet to accept test USD only from the business account; Metal then holds anything else in quarantine, and the CFO returns or accepts it with Face ID (live on testnet in a separate world, 30 October; not set in the recorded run). | `src/policy/quarantine.ts`, `docs/metal-award.md`, section 5 |
@@ -60,6 +60,7 @@ Who is who:
 |---|---|---|---|
 | The person who proposes cannot approve | Purser | Agents propose; only the CFO's passkey approves; an agent has no way to sign. With four eyes, two different people sign and the proposer never counts. | `src/policy/approvals.ts`, `test/approvals.test.ts` |
 | Changes to the rules are controlled too | Purser | A change to the CFO policy is itself a proposal approved with Face ID; from the phone, limits can only be tightened. | `src/executors/policyChange.ts`, `docs/cfo-policy.md` |
+| Two people for the account's own money, on chain | Metal enforces | A Metal account with two owners, the CFO and the controller, and a threshold of two: binding or revoking a mandate, or paying from the account itself, needs both signatures (live on testnet in a test world, 30 October; Northwind's recorded account has one owner). | `docs/runs/2026-10-30-four-eyes.md` |
 
 ## 7. Record keeping and audit
 
@@ -68,6 +69,8 @@ Who is who:
 | Complete, tamper-evident records | Purser | Every payment, decline, refusal and approval is in an append-only, hash-chained audit log; the database refuses edits and deletes through the application, and a change made around it (for example by removing the guard) is found afterwards by `npm run verify`. | `src/db/schema.sql` (`audit_log` triggers), `npm run verify-log` |
 | Records an auditor can check | Purser | `npm run audit:report` writes a PDF; `npm run verify` re-checks every credential, pull, disputed payment, clearing receipt, Face ID approval and Airwallex booking; each payment carries a GL account and cost centre and exports to CSV or JSON. | `docs/audit-report-rehearsal-3.pdf`, `docs/metal-award.md` (section 6, evidence model) |
 | Reconciliation | Purser | The runner reconciles the ledger with Airwallex and the chain every hour (and `npm run reconcile` on demand). | `src/finance/reconcile.ts` |
+| Finality kept with the record | Purser, from Metal | The runner stores Metal's finality certificate for each chain transaction (what Metal's RPC reported; the validators' signature is not verified) and checks it again in `npm run verify`. | `src/metal/finality.ts` |
+| Records a bank's tools can read | Purser | A paid invoice exports as ISO 20022 pacs.008, linking the Airwallex SWIFT transfer and the Metal transaction, valid against the official schema. | `docs/iso20022/pacs008-BTX-2026-11.xml` |
 
 ## 8. Operational resilience (in the spirit of DORA)
 
@@ -76,6 +79,7 @@ Who is who:
 | Contain an incident fast | The business, with Purser's controls | The emergency stop: one Face ID makes Purser refuse to sign any agent payment and freezes every card at Airwallex (tested against stand-ins; not yet run live). The Metal mandates stay bound until revoked. | `test/freeze.test.ts` |
 | Survive an outside service failing | Purser | Timeouts and retries per service; a payment without an answer is looked up, never resent; without a model the plain parsers take over; without keys the demo replays the recorded run. | `docs/security.md` (timeouts table), `docs/run-it.md` |
 | Know what happened | Purser | The hardening log lists each finding and its fix. | `docs/hardening.md` |
+| Know what to do | The business | A runbook for incidents, the emergency stop, key rotation and recovery, saying which steps were exercised live. | `docs/runbook.md`, `docs/controls-matrix.md` |
 
 ## 9. Card rules
 

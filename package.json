@@ -59,6 +59,7 @@
     "four-eyes": "tsx src/cli/fourEyes.ts",
     "contracts": "tsx src/compliance/compile.ts",
     "iso20022": "tsx src/cli/iso20022.ts",
+    "clearing-load": "tsx src/cli/clearingLoad.ts",
     "compliance-policy": "tsx src/cli/compliancePolicy.ts",
     "redteam": "tsx src/cli/redteam.ts",
     "reconcile": "tsx src/cli/reconcile.ts",

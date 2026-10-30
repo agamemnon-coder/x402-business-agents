@@ -1,0 +1,79 @@
+{
+  "ran_at": "2026-10-30T22:19:10.973Z",
+  "network": "Metal testnet",
+  "scheme": "bajillion (Offer Pay-per-Call Clearing)",
+  "payers": 16,
+  "payments_each": 125,
+  "price": "0.001",
+  "attempted": 2000,
+  "paid": 1879,
+  "failed": 121,
+  "delivered": 1879,
+  "failures_by_reason": {
+    "Failed to create payment payload: no receipt this wallet could check came back for this payment, 100": 1,
+    "Failed to create payment payload: the wallet holds an earlier payment whose outcome is unknown, 1000": 120
+  },
+  "seconds": 473.9,
+  "throughput_per_second": 3.97,
+  "latency_ms": {
+    "p50": 1670,
+    "p95": 8636,
+    "p99": 13382,
+    "max": 21228
+  },
+  "between_epochs_retries": 1092,
+  "seller_spendable_delta": "1.879",
+  "expected_earnings": "1.879",
+  "deposits": {
+    "transactions": 32,
+    "gas_used": "7229040",
+    "gas_cost_test_usd": "0.00000000000722904",
+    "txs": [
+      "0x803a2c0f4e26a8d3bb243c4350733293cc1bb5e0b20e42c3c116d9ecb12f966d",
+      "0xec652e0e812de736fcf4888faa8fa74da09e8492ba8ba59e8cd924c4c2252201",
+      "0x1cb38871f0a1bd99b924cacd6422b530e4a09f4ad038ef0714c1f8f87e3f1ebe",
+      "0x36135f5f6f08f8e9778ff90d356ceef2ce3fcd4b0bd1cee109d62ef0b694facc",
+      "0x5063dde1c1d0318df975a5e7eb173344d4dd96ae3f812e96a0f84241de3a53f1",
+      "0xb365f2b85d9c6f4b35a5a55c30c70f64ac604921324878fa8d6ad04caed7cb6d",
+      "0x21852488b651883d275eeccfb5970874de7f2551c2f03222c3dc103314615872",
+      "0x5e66684962f1a283eab024458c0a22f9492f03934156d1e44bcbaad01b653ee9",
+      "0x9a1dbcf6b27201e77debdcea4ed77bf53e150601cae3ce4b00ceece8870dc822",
+      "0xd22e667ddbbec54f4b48a76758aa6ae4adeb66e30721fa55916708d55298af07",
+      "0x00d40eafb811dbb84022e18eb9b7b36262dbf73c184978b75934d729594e607e",
+      "0x9c59c2ab0b21004d9d6817716d69022e716459aa7fb09d6041465ddcf370715a",
+      "0xd8a3394ca840bc369bc43374a99281855149727b3b648a0b00df07632504a85e",
+      "0x1231823d4815a0b0f1c7f2726d2905c4266d07b4631ac38e52b57afec63f296a",
+      "0xc75adb4dd11b690e057862ef8df316cbd993ab7287d52b233ecaa1624799e62f",
+      "0x0b8379fa9d22bc0ad147dd8499b688b6b1db53903b5239112b418fc3f5ebb628",
+      "0x4f90a2aeec26c7ff24ec00cc099b06f7bf2f01b3841f6981f924338b1c52995b",
+      "0x8601abebb2ac585e264573e5d33aff2be3fd10f7a67f9d50a721120b8f7ebf07",
+      "0xca6fa147988da2892c4751939c23c671dcf8b155f66f4d376842a271318c9404",
+      "0xb156f1c3047bea87063325582bb851a0e9615d5ec8458c61db77297afac75300",
+      "0x30ef2d2ba97867bbb1a52a8836dc5bdcfbc5688d4f51412a4760145984cfb3d8",
+      "0xf9cd861168714d7e71e795dfd3476ea240aa900d5e0332cbd1b8a8fedfb90805",
+      "0x0073e2fbc3f2e22e7953437340c6e18cc4cb55ec51e95ccf330e862664f0d728",
+      "0xaa25f0a6365c84bc1a0dbc1184778301a3c3d4b4bb8fad8bde13559e5f6cca1b",
+      "0x410ff9eb41f7b7b53aa62aba281eb5628429a1717fe89c03cda64e572ec86bcd",
+      "0x5a1aaf053f930f6ae945f022f3ec269294f39b31a2f1c6247f9ca77761f0928f",
+      "0x60d76c1c8684f906ec72f338e4f0a212ec886d5d445114b18036cab6c53d7878",
+      "0x2171ebe9c4c377b17b3f33e437b6e4b2846c0fed0311ae5a1d87534a665b92f0",
+      "0x32c8e51f20c6e07e2fbd3a4b580fd3a36024866ac7cc5f584cf70b4bcdabe631",
+      "0xad5d257ecc36ccbc9fed1f41c619e1a87266a7c7fe590d1f565096fb0d4a083a",
+      "0x24a6fb111bb278a0edea7a9ea8dca3d673c2d38e7a5becf5bd16f56b62a7d383",
+      "0xb4107e55c22abbf396f28f5031cb41429a7b45a0f776ae1832297ca061a37d48"
+    ]
+  },
+  "rpc_calls_this_process": {
+    "total": 19705,
+    "per_paid_payment": 10.49,
+    "by_method": {
+      "eth_call": 12127,
+      "eth_getBlockByNumber": 2185,
+      "eth_getTransactionCount": 32,
+      "eth_chainId": 5233,
+      "eth_sendRawTransaction": 32,
+      "eth_getTransactionReceipt": 96
+    }
+  },
+  "facilitator_calls_this_process": 1881
+}

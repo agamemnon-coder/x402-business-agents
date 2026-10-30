@@ -47,7 +47,7 @@ describe("How Purser uses Metal (/metal)", () => {
     expect(s.dispute).toBeNull();
     const empty = metalShowcase(openDb(":memory:"));
     expect(empty.mandates).toEqual([]);
-    expect(empty.features.map((f) => f.id)).toEqual(["clearing", "receive"]);
+    expect(empty.features.map((f) => f.id)).toEqual(["clearing", "receive", "four-eyes", "compliance", "certificates"]);
   });
 
   it("every proof from a separate run is a transaction docs/metal-award.md records, and the page says which run", () => {

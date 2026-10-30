@@ -53,10 +53,11 @@ displays was not checked.
 | Red team | 39 of 39 failed, 0 inconclusive: 37 stopped before anything moved, 2 found afterwards (a hidden card charge by the reconciliation, a rewritten log row by `npm run verify`); 35 scripted attacks and 4 documents written by Claude Opus as the attacker, in a throwaway test world | `docs/redteam/report.json` (30 Oct; `caught` per attempt) | The harness now gives every attempt an outcome, and inconclusive never counts as blocked. The task card is tested at a hotel while still fresh (`MERCHANT_CATEGORY_NOT_ALLOWED`). The revoked agent is named correctly. The film's "thirty-four" is now thirty-nine. |
 | Duplicate invoices | A paid invoice sent again as "btx-dup" or with an en dash is refused | `test/invoice-duplicate-key.test.ts`; red team document 4 | Found by the red team and fixed. |
 | Scenario Lab | 18 of 18 as expected | `docs/lab/results.json` | hardening.md said 12. |
-| Tests | 812 in 103 files | `npx vitest run` | |
+| Tests | 840 in 108 files | `npx vitest run` | |
 | Speed limit (Operations agent) | 30 payments a minute, 4.00 test USD an hour | `src/config/policy.ts` `VELOCITY` | Kept on purpose, above the busiest minute of the recorded run (18). |
 | Hidden card payment | Found by the reconciliation within the hour, not prevented | `src/ops/health.ts` `RECONCILE_EVERY_MS`; red team `hidden-payment` | Was daily. The runner now reconciles every hour, and an alarm fires after three missed rounds. |
 | Four eyes | Optional, off in the recorded run | `src/policy/fourEyes.ts` | Was "Above your threshold, two different people approve". |
+| Four eyes on chain | A 2-of-2 Metal account (CFO + controller): one signature reverted on chain three times (a payment, a payment with a stranger's key, a mandate revoke); two signatures passed. In a separate test world; Northwind's recorded account is one-owner | `docs/runs/2026-10-30-four-eyes.md`; `test/four-eyes-onchain.test.ts` | New (30 Oct). |
 | Emergency stop | Stops every agent payment and freezes every card at Airwallex | `test/freeze.test.ts`; Lab scenario | Now says it is tested against stand-ins and not yet run live. |
 | Airwallex webhooks | Subscribed to 23 events since 30 October (Max's go): card transactions, cards, payouts, conversions (not `conversion.overdue`: no permission) and deposits. Shown live: two deposits matched or escalated by the webhook alone, and a card transaction. Payout, conversion and card status events: subscribed, not yet caused live; covered by tests | `docs/runs/2026-10-30-webhooks.md`; `test/airwallex-events.test.ts` | Was "card transactions only". The pages show the webhook panel only when events exist; the recording has none. |
 | Task cards (Ask Purser) | Issued at once within the CFO's policy (up to €300, 3 a day, asked at the runner); otherwise after Face ID | `src/agents/askPurser.ts`, `src/policy/rules.ts` | The README and the film said "after Face ID" or "anything new waits for Face ID". /live no longer shows Face ID for it. |
@@ -69,13 +70,19 @@ displays was not checked.
 | Receive policy and quarantine | Separate world, 30 October (`docs/metal-award.md` section 5) | /metal card, /live scene source, compliance.md |
 | Ask Purser single-use card | On a backup of Friday run 2 (`docs/runs/2026-10-30-single-use.md`) | /live scene source, film footer |
 | Receivables on Global Accounts | Live in the sandbox, on a copy of the recorded ledger after the run (`docs/runs/2026-10-30-receivables.md`): 2 matched, 1 short by 10.00 EUR, 1 with no invoice. Kept out of the recording so its balances, reconciliation and waiting items stay one consistent moment. | Run log, docs/airwallex.md |
+| Four eyes on chain (2-of-2 account) | Separate test world, 30 October (`docs/runs/2026-10-30-four-eyes.md`) | /metal card, controls-matrix.md, metal-award.md, film |
+| Compliance send policy | Separate test world, 30 October (`docs/runs/2026-10-30-compliance-policy.md`): 11 attacks reverted on chain, the sanctioned stand-in got no decision | /metal card, controls-matrix.md, compliance.md, metal-award.md, film |
+| Finality certificates | 26 transactions of the two runs above, with certificates as Metal's RPC reported them (header, number and pinned quorum checked; BLS signature not verified). The recorded run's certificates had expired (nodes keep about 2 hours) | /metal card, controls-matrix.md, requirements-matrix.md X3 (🟠) |
+| ISO 20022 pacs.008 export | Made from the recorded run's ledger (`docs/iso20022/pacs008-BTX-2026-11.xml`), valid against the official XSD; not sent to any bank | controls-matrix.md, metal-award.md |
+| Clearing load test | Separate test world, 30 October (`docs/runs/2026-10-30-clearing-load.md`): 2,000 of 2,000 paid in 471.8 s (4.24 a second), p50 1.4 s, p95 8.1 s; about $0.0007 RPC per payment (estimate from Metal's published rates, not a bill). A first run paid 1,879: one wallet held by a lost answer, fixed by resending | /metal card, controls-matrix.md, metal-award.md |
+| Runbook | Procedures say which were exercised live, tested, or not yet exercised; the full emergency stop has not been pulled live | `docs/runbook.md` |
 
 ## The video
 
 | Claim | Proof | Changed |
 |---|---|---|
 | $3,046,598,558 in business email compromise losses | FBI IC3, 2025 Internet Crime Report (April 2026) | Now "reported by victims to the FBI". |
-| Pace | `docs/video/script.md` computes words per minute from the words; the hybrid script is about 440 words in 3:55 | Was "about 115" and "about 120". |
+| Pace | `docs/video/script.md` computes words per minute from the words; the hybrid script is about 500 words in 4:10 (counted, stage directions left out) | Was "about 115" and "about 120"; 4:10 since the enterprise beat (30 Oct), which also names the clearing load test. |
 
 ## The submission pack (`docs/submission/`)
 

@@ -173,10 +173,64 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 | Metal feature | Why not |
 |---|---|
 | MIP410 shielded payments | Purser's point is that the CFO and an auditor can see every agent payment on the explorer. Private amounts and parties would hide exactly that. A business paying suppliers privately could use it later, with viewing keys for its auditor. |
-| Payment messaging (pacs.008-style instructions, Travel Rule exchange) | It is for payments between institutions (VASPs). Purser's agents pay one supplier and refund one customer inside a testnet demo; there is no counterparty institution to exchange messages with. |
-| A send policy with a signed screening decision | It needs a deployed contract holding the funds and a screening service to sign. Mandates already limit each agent's spending on chain; screening belongs at Airwallex for the euro payments. Possible after the freeze (estimate 8 to 16 hours). |
+| Payment messaging between institutions (Travel Rule exchange) | It is for payments between institutions (VASPs). Purser's agents pay one supplier and refund one customer inside a testnet demo; there is no counterparty institution to exchange messages with. Purser does export a paid invoice as ISO 20022 pacs.008 for a bank's or an ERP's tooling (section 9). |
 | Bridges, swaps and on-chain FX | The kit says the Airwallex sandbox cannot receive stablecoins, so the step to Airwallex is a simulated deposit that names the testnet transaction. FX happens at Airwallex. |
 | Metal mainnet | Test money only, as the hackathon asks. |
+
+## 9. Enterprise controls on Metal (30 October, evening)
+
+Each was first checked against Metal's docs, then run live on testnet in a separate test world (test keys, test
+money), not in Northwind's recorded run. Risks, controls and tests: [controls-matrix.md](controls-matrix.md).
+
+**Four eyes on chain** ([run log](runs/2026-10-30-four-eyes.md)).
+- **The account.** A MetalAccount with two owners, the CFO's key and the controller's key, threshold 2 (account
+  `0x15Eb7c1322952E0C549b7Da0b57d35171518A41A`).
+- **Binding.** Binding the agent's mandate with the CFO alone was refused by the account; with both, it was bound:
+  `0x47f83737060e34446c20a07de30026bd153618b5694b42bc4141e0f055770a3a`.
+- **Payments from the account itself.** Each refusal below is a reverted transaction on chain:
+  - signed by the CFO alone, reverted: `0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3`;
+  - signed by the CFO and a stranger, reverted: `0x728a9c270614d5bbeb11540f897a3b29fab00e2275c84cbb4022c74d7149c43b`;
+  - signed by the CFO and the controller, paid: `0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d`.
+- **Revoking the mandate:**
+  - with the CFO alone, reverted: `0x3bf9f70e0b7c4e3c9cef05eddc755d3a4218227251b3699ddaa77756ba303ab5`;
+  - with both, revoked: `0xb1723632242a7951136860c69baa46561c0d7d637b73196d98b6a051037e6d4b`.
+- **The agent still pays alone inside its mandate.** "Large" means above the mandate's cap: Metal documents no
+  per-amount threshold.
+
+**Programmable compliance: a send policy** ([run log](runs/2026-10-30-compliance-policy.md)).
+- **The contract.** `contracts/ComplianceSendPolicy.sol`, Metal's documented pattern; Metal ships no such contract.
+  Funds held at it leave only with a decision Purser's compliance key signed for exactly that payment, after
+  screening the payee.
+- **The good payment** paid 0.50: `0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237`.
+- **A decision Purser cancelled** before use was refused afterwards:
+  - the cancellation: `0x217da656e278a1264dad7c0ae9ed50f41b6d34c52356229e44d691a3fcf8f898`;
+  - the refusal: `0x9f58cab1cc1e5466184da28e22d49193d7a428bb25cb73822c597bb54bba206d`.
+- **Eleven attacks reverted on chain**, among them:
+  - the replay: `0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737`;
+  - a decision redirected to the attacker: `0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a`;
+  - the sanctioned stand-in with a self-made decision: `0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e`.
+- **Limit:** agents' mandate payments do not pass through it (Metal's design).
+
+**Finality certificates** (`metal_getFinalityCertificate`).
+- **Stored per transaction.** The runner stores, every minute, the certificate Metal's RPC reports for each ledger
+  transaction's block. Each of the 26 transactions above has one: 3 of the 4 validators named, the header hashing
+  to the block.
+- **Not a proof.** The BLS signature is not verified, because Metal has not published testnet's validator keys. So
+  these are what the RPC reported.
+- **About 2 hours.** Nodes keep certificates for about 2 hours on testnet (100,000 blocks at 13.4 a second,
+  measured). The recorded run's had expired before this was built.
+- **Where they appear:** the dispute evidence pack, the audit PDF and `npm run verify`.
+
+**Clearing under load** ([run log](runs/2026-10-30-clearing-load.md)).
+- **The test.** 16 payer wallets paid 125 requests each at 0.001, all at once, through Metal's clearing and
+  facilitator.
+- **Result.** 2,000 of 2,000 paid in 471.8 s: 4.24 a second, latency p50 1.4 s and p95 8.1 s (most of the tail is
+  waiting out epoch boundaries). The seller's balance rose by exactly 2.000. 32 chain transactions in all (the
+  deposits).
+- **Cost.** About $0.0007 of RPC calls per payment, estimated from Metal's published rates; not a bill.
+- **Found.** In a first run, one wallet was held after a lost answer (1,879 of 2,000 paid, nothing paid twice).
+  Resending the same request, as Metal's docs say, fixed it.
+- **Not shown.** Metal's ceiling: 16 wallets, one machine, testnet.
 
 ## Friday runs (30 October): the chain's answers, twice
 

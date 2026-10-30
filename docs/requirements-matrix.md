@@ -146,9 +146,23 @@ honest line between now and production are in [docs/architecture.md](architectur
 | B6 | `docs/architecture.md`: hackathon architecture versus the production path (KMS/HSM, Postgres, queue/outbox, HA, multi-tenant, monitoring and alerting, delegation and escalation of approvals), honest about what is and is not done. | `docs/architecture.md`, section "Agentic banking backend". | The document. | ✅ |
 | B7 | Basic monitoring: a health and metrics endpoint, and alarms for runner outage, reconciliation difference, speed limit or emergency stop. | `src/ops/health.ts`; relay `/health` (503 on any alarm or when the runner stops syncing, codes only); local `/health` and Prometheus `/metrics`; alarms in the runner log. No pager is connected yet. | `test/health.test.ts`. | ✅ |
 
+## 8. Enterprise-grade and Metal Award (Max, 30 October, evening)
+
+Source: Max's request of 30 October, "Enterprise-grade + Metal Award", items 1 to 6, each first checked against
+Metal's docs and a live test on testnet. Risks, controls and tests: [docs/controls-matrix.md](controls-matrix.md).
+
+| Id | Requirement | Where Purser does it | Evidence | Status |
+|---|---|---|---|---|
+| X1 | Four eyes on chain: a Metal account with several owners and a threshold (CFO + controller) for mandate replace and revoke and large payments; show one signature is not enough. | `src/metal/fourEyes.ts` (the account's Execute digest and quorum signature, byte-equal to Metal's own `authorizeMandateCall`); `npm run four-eyes`. | `docs/runs/2026-10-30-four-eyes.md`: one signature refused for a bind and reverted on chain for a payment and a revoke; two passed. `test/four-eyes-onchain.test.ts`. Northwind's own recorded account stays one-owner. | ✅ |
+| X2 | Programmable compliance: a send policy that requires Purser's signed compliance decision before an outgoing payment; without it the chain reverts; live demo and red-team attacks. | `contracts/ComplianceSendPolicy.sol` (Metal's documented pattern; Metal ships no such contract); `src/compliance/screening.ts`; `npm run compliance-policy`. | `docs/runs/2026-10-30-compliance-policy.md`: the screened payment paid; 11 attacks reverted on chain with the intended reason. `test/compliance-*.test.ts`. Mandate payments bypass it (Metal's design). | ✅ |
+| X3 | Finality certificates per important payment, in the dispute evidence pack, the audit PDF and verify. | `src/metal/finality.ts` (fetched every minute by the runner; header, number and pinned-quorum checks); dispute pack and customer report; audit PDF "Finality on Metal"; `npm run verify`. | `test/finality.test.ts` (a real testnet certificate); 26 transactions in the two runs above with reported certificates. The BLS signature is not verified (Metal has not published testnet's validator keys), so they are what the RPC reported; certificates for the recorded run had already expired (nodes keep about 2 hours). | 🟠 |
+| X4 | ISO 20022: a pacs.008-like export linking the Airwallex SWIFT transfer and the Metal transaction (UETR, end-to-end id, remittance info). | `src/finance/iso20022.ts`; `npm run iso20022`. | `docs/iso20022/pacs008-BTX-2026-11.xml` (the recorded run), valid against the official pacs.008.001.08 XSD (`test/iso20022.test.ts`). UETR is Airwallex's transfer id: the sandbox does not expose SWIFT's own. | ✅ |
+| X5 | Scale: a load test through clearing (thousands of payments), with throughput, latency and cost, reported honestly. | `npm run clearing-load` (`src/cli/clearingLoad.ts`). | `docs/runs/2026-10-30-clearing-load.md`. | ✅ |
+| X6 | `docs/runbook.md` (incidents, emergency stop, key rotation, recovery) and `docs/controls-matrix.md` (risk, control, test, evidence). | The two documents; each procedure says whether it was exercised live, tested or not yet exercised. | The documents. | ✅ |
+
 ## Count
 
-✅ 70 · 🟠 9 · ❌ 2
+✅ 75 · 🟠 10 · ❌ 2
 
 ## Open items
 
