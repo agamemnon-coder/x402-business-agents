@@ -18,6 +18,8 @@ import { processAssertion, processPolicyRequest } from "../passkey/process.js";
 import { challengeFor } from "../passkey/webauthn.js";
 import { payWithCard, requestCardRaise } from "../platform/externalAgents.js";
 import { askPurser, bookOnTaskCard, executeTaskCard } from "../agents/askPurser.js";
+import { executeQuarantineRelease, pollQuarantine, setupReceivePolicy } from "../policy/quarantine.js";
+import { FakeReceivePolicy } from "./receivePolicy.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { capRefusal, policyValue, rules } from "../policy/rules.js";
 import { stopped, velocityGate } from "../policy/velocity.js";
@@ -268,6 +270,28 @@ export const ATTACKS: Attack[] = [
     },
   },
 ];
+
+// B1: money from an unknown sender into the sweep wallet is held by Metal; only the CFO releases it.
+ATTACKS.push({
+  id: "stranger-into-sweep",
+  title: "Slip outside money into the sweep wallet and on to the bank",
+  category: "money",
+  run: async (w) => {
+    const sweep = "0x00000000000000000000000000000000000000e1" as const;
+    const stranger = "0x00000000000000000000000000000000000000f9" as const;
+    w.db.prepare("INSERT OR IGNORE INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000000b1', 'business'), (?, 'sweep')").run(sweep);
+    const rp = new FakeReceivePolicy();
+    await setupReceivePolicy(w.db, rp, "sweep.key.json", w.now());
+    const credited = rp.receive(stranger, sweep, 5n * 10n ** 18n);
+    await pollQuarantine(w.db, rp, w.now());
+    const id = (w.db.prepare("SELECT proposal_id FROM proposals WHERE kind = 'quarantine_release' AND json_extract(terms_json, '$.action') = 'accept'").get() as { proposal_id: string }).proposal_id;
+    const early = await executeQuarantineRelease(w.db, rp, "sweep.key.json", id, w.now()).then(() => "it went through", (e: Error) => e.message);
+    return { attempt: "an unknown address paid 5.00 into the sweep wallet, then the release was run without the CFO's approval",
+      blocked: !credited && n(w, "SELECT COUNT(*) AS n FROM chain_credits") === 0 && rp.claims.length === 0 && early !== "it went through",
+      defence: "Metal's receive policy holds it in quarantine; the bridge only credits transfers that reached the wallet; a release needs Face ID",
+      evidence: `credited: ${credited ? "yes" : "no, held"}; bridged: ${n(w, "SELECT COUNT(*) AS n FROM chain_credits")}; release without approval: ${early}` };
+  },
+});
 
 // Ask Purser (G): a chat message can at most propose a task card, and the card pays once.
 ATTACKS.push(
