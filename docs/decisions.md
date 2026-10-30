@@ -47,6 +47,8 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 
 ### D4. The recorded demo stays rehearsal 3 until Friday's runs
 
+**Done 30 October:** the recording is now Friday run 1 with Northwind Outdoor (`docs/runs/2026-10-30-friday-1.md`).
+
 - **What:** `/demo`, `/?recorded` and the landing figures keep showing rehearsal 3 (Tidemark Data, EUR/USD ticks)
   until the runs of Friday 30 October replace them. The pages say "recorded with the earlier example company".
 - **Why:** re-recording an old run under new names would claim that stock checks were sold when FX ticks were.

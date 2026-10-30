@@ -2,8 +2,8 @@
 
 **Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
 
-Each agent gets an Airwallex company card and a Metal on-chain mandate. One CFO policy sets the limits for both. When
-an agent needs more, it stops and asks, and the CFO approves on a phone with Face ID.
+Each agent gets an Airwallex company card and a Metal on-chain mandate. The CFO sets the limits for both: card limits come from the CFO policy, and an agent's mandate changes only when
+the CFO signs the new terms with Face ID. When an agent needs more, it stops and asks, and the CFO approves on a phone with Face ID.
 
 **Who it is for:** the CFO (or controller) of a small company that runs AI agents and wants them to spend company
 money only within limits the CFO sets.

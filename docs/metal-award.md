@@ -33,6 +33,9 @@ receive policy did not run in the recorded run, so their cards name the separate
   pays too often or too much is stopped). After: `npm run verify` re-checks every credential, pull and receipt, and
   the hourly reconciliation compares each payment in the ledger with its receipt on chain. The dashboard links each
   mandate to its newest payment on the explorer.
+- **For a bigger company, more control on chain:** a 2-of-2 account (CFO + controller), a compliance send policy
+  that reverted eleven attacks, finality certificates kept as evidence, and 2,000 clearing payments under load. Each
+  ran live on testnet in a separate test world (section 8).
 - **Honest about what is simulated:** testnet *USDZ is shown as "test USD"; the step from *USDZ to Airwallex is a
   sandbox deposit that names the real testnet transaction.
 
@@ -51,7 +54,7 @@ The packages are pinned to the versions above.
 
 | What | Where in the code | Proof | Metal docs |
 |---|---|---|---|
-| Four mandates bound on chain, each with a per-payment cap, a total budget, one payee and an expiry (`metal-agent mandate bind`) | `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts` | sourcing [`0xd525573c…19bf`](https://testnet.metalntwx.com/tx/0xd525573c5ef06c01e4a92c39f0ab087c06ef21ec5281a3a490dfe410615919bf), support [`0x12a319f3…76ee`](https://testnet.metalntwx.com/tx/0x12a319f3baf957dbbb6a6cadfc4f1dda0a28ccda6fe4c4f766de1853fad576ee), treasury [`0x6ea66684…8e0e`](https://testnet.metalntwx.com/tx/0x6ea6668492b625f7812cbae5be1178dc2adc13f83342136b074a547283378e0e), Summit [`0xe78b3197…c729`](https://testnet.metalntwx.com/tx/0xe78b3197e617179a3a78fd0f59c4a8f05715984caca0594e82e0d293edd9c729) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Four mandates bound on chain (Northwind's three agents and the customer Summit's), each with a per-payment cap, a total budget, one payee and an expiry (`metal-agent mandate bind`) | `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts` | sourcing [`0xd525573c…19bf`](https://testnet.metalntwx.com/tx/0xd525573c5ef06c01e4a92c39f0ab087c06ef21ec5281a3a490dfe410615919bf), support [`0x12a319f3…76ee`](https://testnet.metalntwx.com/tx/0x12a319f3baf957dbbb6a6cadfc4f1dda0a28ccda6fe4c4f766de1853fad576ee), treasury [`0x6ea66684…8e0e`](https://testnet.metalntwx.com/tx/0x6ea6668492b625f7812cbae5be1178dc2adc13f83342136b074a547283378e0e), Summit [`0xe78b3197…c729`](https://testnet.metalntwx.com/tx/0xe78b3197e617179a3a78fd0f59c4a8f05715984caca0594e82e0d293edd9c729) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | The chain refuses a payment over the cap: `mandate_cap_exceeded`, so the customer is not charged (S1) | `src/agents/sourcing.ts`, `src/servers/seller.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | Mandates replaced after Face ID, in a safe order (shrink treasury, then grow sourcing; never over 20.00) (`metal-agent mandate replace`) | `src/executors/mandateReplace.ts`, `src/policy/mandates.ts` | treasury [`0x6b77d994…6f7e`](https://testnet.metalntwx.com/tx/0x6b77d9942f5e7ff9669c0a2fd11d4cea166f7db4eaf3f9728c89bc45ac846f7e), sourcing [`0x4c995a76…ccdc`](https://testnet.metalntwx.com/tx/0x4c995a768da10d611bee3d82d0d54812b3018bbdc12969bc4c20e46f3a5dccdc) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | The replaced credential is refused: `mandate_revoked` | `src/cli/s1.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
@@ -164,7 +167,7 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 | Payment instruction, payment reference and each attempt | Refunds by `payment_id` (`refund-<sale>`), sweeps by `payment_id`, each proposal step by `executions.idempotency_key`; a signed purchase in doubt by its nonce; refusals are recorded, not only successes | — |
 | Quarantine receipts and claims | `quarantines`: the full receipt with chain id, transaction hash and log index; the release transaction and the approved proposal | — |
 | Policy version, checks and decision history | the limits in code (`src/config/policy.ts`) and every CFO policy change as a `policy.changed` event with its from and to values and the approved proposal, `proposals` (terms, evidence, explanation), `approvals` (the hash the CFO signed, method `passkey`), the hash-chained `audit_log` | — |
-| Signed decisions | The customer's signed order per sale (`sales.signed_offer`) and the CFO's passkey signature over the terms hash (`passkey_assertions`) | No signed screening decision (that is a send policy, not built) |
+| Signed decisions | The customer's signed order per sale (`sales.signed_offer`) and the CFO's passkey signature over the terms hash (`passkey_assertions`) | A signed screening decision per payout from the policy contract (`contracts/ComplianceSendPolicy.sol`, section 8); in a separate test world, not in the recorded run |
 | Original records and linked corrections | The audit log cannot be updated or deleted (triggers) and is hash-chained; a changed payee is a new record that needs a request, verification and approval (`payee_changes`) | — |
 | Customer and Travel Rule records | None: the customer is simulated and Purser holds no personal data on chain | Out of scope for a testnet demo |
 
@@ -177,23 +180,23 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 | Bridges, swaps and on-chain FX | The kit says the Airwallex sandbox cannot receive stablecoins, so the step to Airwallex is a simulated deposit that names the testnet transaction. FX happens at Airwallex. |
 | Metal mainnet | Test money only, as the hackathon asks. |
 
-## 9. Enterprise controls on Metal (30 October, evening)
+## 8. Enterprise controls on Metal (30 October, evening)
 
 Each was first checked against Metal's docs, then run live on testnet in a separate test world (test keys, test
 money), not in Northwind's recorded run. Risks, controls and tests: [controls-matrix.md](controls-matrix.md).
 
 **Four eyes on chain** ([run log](runs/2026-10-30-four-eyes.md)).
 - **The account.** A MetalAccount with two owners, the CFO's key and the controller's key, threshold 2 (account
-  `0x15Eb7c1322952E0C549b7Da0b57d35171518A41A`).
+  [`0x15Eb7c1322952E0C549b7Da0b57d35171518A41A`](https://testnet.metalntwx.com/address/0x15Eb7c1322952E0C549b7Da0b57d35171518A41A)).
 - **Binding.** Binding the agent's mandate with the CFO alone was refused by the account; with both, it was bound:
-  `0x47f83737060e34446c20a07de30026bd153618b5694b42bc4141e0f055770a3a`.
+  [`0x47f83737…0a3a`](https://testnet.metalntwx.com/tx/0x47f83737060e34446c20a07de30026bd153618b5694b42bc4141e0f055770a3a).
 - **Payments from the account itself.** Each refusal below is a reverted transaction on chain:
-  - signed by the CFO alone, reverted: `0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3`;
-  - signed by the CFO and a stranger, reverted: `0x728a9c270614d5bbeb11540f897a3b29fab00e2275c84cbb4022c74d7149c43b`;
-  - signed by the CFO and the controller, paid: `0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d`.
+  - signed by the CFO alone, reverted: [`0xe0976c5a…69c3`](https://testnet.metalntwx.com/tx/0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3);
+  - signed by the CFO and a stranger, reverted: [`0x728a9c27…c43b`](https://testnet.metalntwx.com/tx/0x728a9c270614d5bbeb11540f897a3b29fab00e2275c84cbb4022c74d7149c43b);
+  - signed by the CFO and the controller, paid: [`0xd98e94ff…d30d`](https://testnet.metalntwx.com/tx/0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d).
 - **Revoking the mandate:**
-  - with the CFO alone, reverted: `0x3bf9f70e0b7c4e3c9cef05eddc755d3a4218227251b3699ddaa77756ba303ab5`;
-  - with both, revoked: `0xb1723632242a7951136860c69baa46561c0d7d637b73196d98b6a051037e6d4b`.
+  - with the CFO alone, reverted: [`0x3bf9f70e…3ab5`](https://testnet.metalntwx.com/tx/0x3bf9f70e0b7c4e3c9cef05eddc755d3a4218227251b3699ddaa77756ba303ab5);
+  - with both, revoked: [`0xb1723632…6d4b`](https://testnet.metalntwx.com/tx/0xb1723632242a7951136860c69baa46561c0d7d637b73196d98b6a051037e6d4b).
 - **The agent still pays alone inside its mandate.** "Large" means above the mandate's cap: Metal documents no
   per-amount threshold.
 
@@ -201,14 +204,14 @@ money), not in Northwind's recorded run. Risks, controls and tests: [controls-ma
 - **The contract.** `contracts/ComplianceSendPolicy.sol`, Metal's documented pattern; Metal ships no such contract.
   Funds held at it leave only with a decision Purser's compliance key signed for exactly that payment, after
   screening the payee.
-- **The good payment** paid 0.50: `0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237`.
+- **The good payment** paid 0.50: [`0xc2eb6814…f237`](https://testnet.metalntwx.com/tx/0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237).
 - **A decision Purser cancelled** before use was refused afterwards:
-  - the cancellation: `0x217da656e278a1264dad7c0ae9ed50f41b6d34c52356229e44d691a3fcf8f898`;
-  - the refusal: `0x9f58cab1cc1e5466184da28e22d49193d7a428bb25cb73822c597bb54bba206d`.
+  - the cancellation: [`0x217da656…f898`](https://testnet.metalntwx.com/tx/0x217da656e278a1264dad7c0ae9ed50f41b6d34c52356229e44d691a3fcf8f898);
+  - the refusal: [`0x9f58cab1…206d`](https://testnet.metalntwx.com/tx/0x9f58cab1cc1e5466184da28e22d49193d7a428bb25cb73822c597bb54bba206d).
 - **Eleven attacks reverted on chain**, among them:
-  - the replay: `0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737`;
-  - a decision redirected to the attacker: `0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a`;
-  - the sanctioned stand-in with a self-made decision: `0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e`.
+  - the replay: [`0x222385b5…2737`](https://testnet.metalntwx.com/tx/0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737);
+  - a decision redirected to the attacker: [`0x03811931…e23a`](https://testnet.metalntwx.com/tx/0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a);
+  - the sanctioned stand-in with a self-made decision: [`0x91ed35a5…442e`](https://testnet.metalntwx.com/tx/0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e).
 - **Limit:** agents' mandate payments do not pass through it (Metal's design).
 
 **Finality certificates** (`metal_getFinalityCertificate`).
@@ -225,12 +228,27 @@ money), not in Northwind's recorded run. Risks, controls and tests: [controls-ma
 - **The test.** 16 payer wallets paid 125 requests each at 0.001, all at once, through Metal's clearing and
   facilitator.
 - **Result.** 2,000 of 2,000 paid in 471.8 s: 4.24 a second, latency p50 1.4 s and p95 8.1 s (most of the tail is
-  waiting out epoch boundaries). The seller's balance rose by exactly 2.000. 32 chain transactions in all (the
+  waiting out epoch boundaries). The seller's balance rose by exactly 2.000. 32 chain transactions in all (16 approvals and 16
   deposits).
 - **Cost.** About $0.0007 of RPC calls per payment, estimated from Metal's published rates; not a bill.
 - **Found.** In a first run, one wallet was held after a lost answer (1,879 of 2,000 paid, nothing paid twice).
   Resending the same request, as Metal's docs say, fixed it.
 - **Not shown.** Metal's ceiling: 16 wallets, one machine, testnet.
+
+## 9. ISO 20022: one message linking the SWIFT transfer and the Metal transaction
+
+`npm run iso20022 -- BTX-2026-11` (`src/finance/iso20022.ts`) exports the recorded run's paid invoice as a
+pacs.008.001.08 message: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs008-BTX-2026-11.xml).
+- **Two transactions in one message:**
+  - the Airwallex SWIFT transfer that paid Bergtex's invoice: EUR 1,850.00, EndToEndId `BTX-2026-11`, UETR
+    `4d508b0b-ef38-41d3-b96e-f6cc3f5cfeb4` (Airwallex's transfer id), the invoice as structured remittance;
+  - the Metal transaction that swept 1.35 test USD of earnings to the bank, booked at Airwallex as deposit
+    `56366c9d…c838`. Test USD is written as the ISO test currency XTS; chain addresses are proxies.
+- **The link.** Both carry one Purser reference, and a supplementary block names the Metal transaction and its
+  block, the Airwallex deposit, the conversion, the transfer and the hash of the terms the CFO approved.
+- **Checked.** It is valid against the official XSD (`test/iso20022.test.ts`, with xmllint, also in CI).
+- **What it is not.** It is not a message a bank sent. The sandbox assigns no SWIFT UETR, and the IBAN is masked
+  because Purser never stores it.
 
 ## Friday runs (30 October): the chain's answers, twice
 
@@ -242,7 +260,7 @@ money), not in Northwind's recorded run. Risks, controls and tests: [controls-ma
 | Refunds pulled under the support mandate, to the customer only | 3 ([`0xcf11b76d…`](https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1)) | 3 + 9 (P-0003 approved by mistake; still paid only to Summit's own account) ([`0x3fd87766…`](https://testnet.metalntwx.com/tx/0x3fd87766d4392f93ed20a88c47d6d5e7a1c7fee2a8d534990371694aed9321a5)) |
 | Earnings swept under the treasury mandate, credited to Airwallex after finality | 1.35 ([`0x808f9133…`](https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f)) | 1.15 ([`0x1844bff9…`](https://testnet.metalntwx.com/tx/0x1844bff9d11282add2b74a3cc639e61cc6b3258bff87d44b00eb98b90e82fea8)) |
 
-## 8. How a judge checks it
+## 10. How a judge checks it
 
 ```bash
 npm run verify

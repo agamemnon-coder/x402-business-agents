@@ -91,6 +91,8 @@ Who is who:
 ## What a real launch would add
 
 - A retention policy and a data processing agreement with each provider.
-- A written incident procedure and named people for it.
-- Sanctions screening on on-chain payments (a Metal send policy) if Purser pays outside parties on chain.
+- Named people for the incident procedure ([runbook.md](runbook.md) has the procedure).
+- Sanctions screening on every on-chain payout from the business account: the send policy ran in a test world
+  (`contracts/ComplianceSendPolicy.sol`), but agents' mandate payments do not pass through it, and it is not in the
+  recorded run.
 - An outside audit of the controls above.

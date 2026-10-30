@@ -33,7 +33,7 @@ synced for two minutes. An uptime monitor pointed at it pages a person; none is 
 | `hold_stale` | A spend hold older than an hour | Usually a crashed payment: restart the runner; it settles or releases the hold | The hold is settled or released |
 | `airwallex_disagrees` | An Airwallex webhook the ledger cannot explain (a payout or conversion Purser did not make, a card live while frozen), in the last day | Treat as a possible compromise of the Airwallex account: check it in the Airwallex web app; pull the emergency stop if a payout is unknown | A day passes with no new disagreement |
 
-Exercised live: `velocity_stop` (red team). Tested: all codes (`test/health.test.ts`, `test/airwallex-events.test.ts`).
+Tested in the red team against stand-ins: `velocity_stop`; not yet triggered live. Tested: all codes (`test/health.test.ts`, `test/airwallex-events.test.ts`).
 
 ## The emergency stop
 
@@ -84,7 +84,8 @@ Exercised live: the recorded run blocked two fake invoices.
    - The other agents carry on.
    - Revoking is a restriction; only the CFO undoes it.
 
-Tested: `test/principals.test.ts`. Exercised live in the red team (a revoked agent's key refused).
+Tested: `test/principals.test.ts`, and in the red team against stand-ins (a revoked agent's key refused). Not yet
+exercised live.
 
 ### A key leaked or lost
 

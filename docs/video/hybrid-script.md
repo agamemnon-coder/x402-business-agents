@@ -17,7 +17,7 @@ Footage legend: **[MAX]** Max on camera or voice only; **[LIVE]** `/live?present
 | 0:22 | [LIVE] title | Purser. Your AI agents spend through Airwallex and Metal. The CFO stays in control. |
 | 0:30 | [LIVE] card | On Airwallex, each agent has its own company card. Over its limit, Airwallex itself declines it. The CFO raises the limit with Face ID, and the same purchase goes through. |
 | 0:45 | [LIVE] refuse | On Metal, agents pay per request under mandates that live on chain. The supplier doubles its price: the payment bounces off the mandate. Nothing moves. |
-| 0:58 | [LIVE] fx | A euro bill: only the missing euros are converted, one Face ID covers the rate, the payee and the most the fee may be, and Airwallex sends it by SWIFT; in the sandbox it is marked paid. |
+| 0:58 | [LIVE] fx | A euro bill: only the euro shortfall is converted, one Face ID covers the rate, the payee and the most the fee may be, and Airwallex sends it by SWIFT; in the sandbox it is marked paid. |
 | 1:10 | [PAGE] `/try` | You can try it yourself. Type a task: "Book a flight to Berlin, max 250 euros". Claude reads it, code checks it against the CFO's policy, and you see which rail it takes and why. |
 | 1:30 | [PAGE] `/?recorded` rails section | This is the CFO dashboard from our recorded live run. Each payment line has its proof: an Airwallex id, or a Metal transaction. |
 | 1:42 | [PAGE] `/metal` inspector | This is how Purser uses Metal. Each agent's mandate, as the chain enforces it: the cap, the budget, the one payee, and what the chain refused. |
@@ -26,7 +26,7 @@ Footage legend: **[MAX]** Max on camera or voice only; **[LIVE]** `/live?present
 | 2:22 | [PROOF] Airwallex sandbox web app (Max's recording) | In Airwallex's own app you see the same: the agents' cards, the decline, the conversion and the SWIFT transfer. *(Keep this line only if the recording shows the Friday run's cards •••• 8120, 6882, 7786 and transfer 4d508b0b.)* |
 | 2:37 | [PHONE] Face ID (Max's recording) | And this is the one thing an agent can never do: approve. The phone shows the exact terms. Face ID signs them. |
 | 2:52 | [PAGE] `/?recorded&books` | Every payment lands in the books, debit and credit, ready for the bookkeeper. |
-| 3:02 | [PAGE] `/metal`, the four-eyes, compliance, certificate and clearing cards | For a bigger company, more control moves on chain. In a test run, one signature was not enough: the CFO and the controller both had to sign. A compliance contract paid only screened payees; eleven attacks failed. Each payment keeps the finality certificate Metal reported. And in a load test, two thousand clearing payments all went through. |
+| 3:02 | [PAGE] `/metal`, the four-eyes, compliance, certificate and clearing cards | For a bigger company, more control moves on chain. In a test run, one signature was not enough: the CFO and the controller both had to sign. A compliance contract paid only screened payees; eleven attacks failed. Each new payment keeps the finality certificate Metal reported. And in a second load test, after one fix, two thousand clearing payments all went through. |
 | 3:26 | [PAGE] `/lab`, then the landing's trust figures | Code decides; Claude only reads and advises. Our red team ran thirty-nine attacks in a test world, thirty-five scripted and four written by Claude Opus as the attacker: all failed; two of them were found afterwards rather than stopped. One Face ID to freeze every card and stop every agent (tested on stand-ins), and Claude costs about nine cents per thousand euros paid. |
 | 3:52 | [MAX] | Agents will move money at machine speed. Purser lets them, on Airwallex and Metal, and keeps the CFO in control. |
 | 4:04 | [PAGE] `/try` | Try it yourself. *(On screen: the link to /try.)* |
@@ -60,6 +60,6 @@ What is simulated, said on screen where it shows:
 
 ## Before it goes out
 
-- A fresh jury review scores the cut against the hackathon's judging criteria and the patterns of winning demo videos, and we fix what it finds. `docs/video/winning-patterns.md` (named in the awards plan) is not in the repo yet; it is written before that review.
+- A fresh jury review scores the cut against the hackathon's judging criteria and the patterns of winning demo videos, and we fix what it finds.
 - 1080p, royalty-free music under the voice (quiet), English subtitles.
 - Max uploads it unlisted.

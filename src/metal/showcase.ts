@@ -288,7 +288,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
     source: OTHER_RUNS.fourEyes.source, docs: [{ label: "Smart account", href: METAL_DOCS.account }],
   });
   f.push({
-    id: "compliance", title: "Compliance before every payout",
+    id: "compliance", title: "Compliance before a payout from the policy contract",
     plain: "Outgoing funds sit in a send-policy contract. They leave only with a decision Purser signed for exactly that payee, amount and moment, after screening the payee; without it the chain reverts.",
     why: "A sanctioned or unapproved payee cannot be paid from the contract, even by someone holding the payer key; only Purser's compliance key can clear a payment. Eleven attacks on it reverted on chain.",
     figure: "11 attacks reverted", proofs: OTHER_RUNS.compliance.proofs.map((p) => tx(p.tx, p.what)!),
@@ -296,7 +296,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   });
   f.push({
     id: "certificates", title: "Finality certificates as evidence",
-    plain: "For each payment, Purser stores the finality certificate Metal's RPC reports for its block: the header, and which validators signed. It checks the header and the quorum, and keeps it in the dispute pack, the audit report and verify.",
+    plain: "For each payment the runner sees within about 2 hours, Purser stores the finality certificate Metal's RPC reports for its block: the header, and which validators signed. It checks the header and the quorum, and keeps it in the dispute pack, the audit report and verify.",
     why: "Proof of finality kept with the payment, not looked up later. Honest limit: the validators' signature is not verified (their keys are not published for testnet), and nodes keep certificates about 2 hours.",
     figure: "3 of 4 validators", proofs: OTHER_RUNS.fourEyes.proofs.slice(2, 3).map((p) => tx(p.tx, "a certified payment")!),
     source: "The same live runs: all 26 of their transactions have a reported certificate", docs: [{ label: "Finality certificates", href: METAL_DOCS.certificates }],

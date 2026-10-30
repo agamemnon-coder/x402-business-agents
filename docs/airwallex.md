@@ -29,7 +29,7 @@ Each agent has a DELEGATE cardholder and one virtual Visa card. The CFO policy s
 | `GET /issuing/cardholders` | Finds an agent's cardholder by email, so setup runs only once. | Avoids a second cardholder, and so a second card with its own limits, for the same agent. | `test/cards.test.ts` (issues once; adopts an existing card) |
 | `POST /issuing/cardholders/create` | Creates a DELEGATE cardholder for each agent. | A card can only be issued to a cardholder. DELEGATE is the type for someone who spends on the business's behalf. | `docs/runs/2026-10-29-cards.md` † |
 | `GET /issuing/cards` | Finds an agent's card by cardholder and nickname. | Lets a lost answer be settled by a look-up, not by issuing another card. | `test/cards.test.ts` |
-| `POST /issuing/cards/create` | Issues a VIRTUAL, commercial card with `authorization_controls`: `PER_TRANSACTION` and `MONTHLY` limits set from the CFO policy. Also issues the card an outside agent asks for, after Face ID. | The card is the control. Airwallex declines any purchase over the limit, whatever the agent does. | `docs/runs/2026-10-29-cards.md` † (three cards); `docs/runs/2026-10-29-agent-api.md` † (card issued only after Face ID on P-0011) |
+| `POST /issuing/cards/create` | Issues a VIRTUAL, commercial card with `authorization_controls`: `PER_TRANSACTION` and `MONTHLY` limits set from the CFO policy. Also issues the card an outside agent asks for, after Face ID, and single-use task cards from Ask Purser (`allowed_transaction_count: SINGLE`, one merchant category, an end date). | The card is the control. Airwallex declines any purchase over the limit, whatever the agent does; a task card closes itself after its one purchase. | `docs/runs/2026-10-29-cards.md` † (three cards); `docs/runs/2026-10-29-agent-api.md` † (card issued only after Face ID on P-0011); `docs/runs/2026-10-30-single-use.md` (three task cards: a second charge declined `CARD_CLOSED`, a wrong merchant `MERCHANT_CATEGORY_NOT_ALLOWED`) |
 | `GET /issuing/cards/{id}` | Reads the card back after every change and every few seconds. Purser trusts what Airwallex reports, not what it asked for. | A limit is only real if Airwallex holds it. A drift is corrected from the policy. | `test/cards.test.ts` ("brings its limits back to the policy") |
 | `POST /issuing/cards/{id}/update` | Two uses. (1) Sets new limits when the CFO approves a policy change. (2) Sets `card_status` to `INACTIVE` or `ACTIVE` for the emergency stop. | Raising or lowering what an agent can spend is a financial decision. The stop freezes every card at once. | `docs/runs/2026-10-29-cards.md` † (raise 30.00 to 50.00 after Face ID, then the same 45.00 purchase was approved). The stop is covered by `test/freeze.test.ts`. A live `CARD_INACTIVE` decline is in `docs/runs/2026-10-30-single-use.md` (after Purser set a task card INACTIVE); the emergency stop itself is tested against stand-ins only. |
 | `GET /issuing/transactions` | Polls each card's transactions every few seconds and records each one once, by `card_transaction_id`. | The ledger must show what Airwallex approved and declined, or the CFO cannot rely on it. | `docs/runs/2026-10-29-cards.md` †; `test/cards.test.ts` (recorded once however it arrives); `test/issuing-adapter.test.ts` |
@@ -60,7 +60,7 @@ deletes the old one. It changes a secret, so it needs the CFO's go (given on 30 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
 | `GET /webhooks` | Lists subscriptions, so setup does not subscribe twice. | A duplicate subscription would deliver every event twice. | `src/airwallex/webhooks.ts` |
-| `POST /webhooks/create` | Subscribes the relay's `/hooks/airwallex` to `issuing.card_transaction_event.success`, `.failed`, `issuing.transaction.succeeded` and `.failed` (API version 2025-11-11). The signing secret in the answer is stored and never printed. | The CFO sees a card decision within seconds, not at the next poll. | `docs/runs/2026-10-29-cards.md` † (live from 16:57: a merchant's own 9.00 EUR charge and a declined 61.00 EUR charge reached the ledger by webhook) |
+| `POST /webhooks/create` | Subscribes the relay's `/hooks/airwallex` to the 23 events above (API version 2025-11-11); until 30 October, to the four card-transaction events only. The signing secret in the answer is stored and never printed. | The CFO sees a card decision within seconds, not at the next poll. | `docs/runs/2026-10-29-cards.md` † (live from 16:57: a merchant's own 9.00 EUR charge and a declined 61.00 EUR charge reached the ledger by webhook) |
 | `POST /webhooks/{id}/delete` | Removes the old subscription once `--replace` has put the new one in place. | Two subscriptions would deliver every event twice, one signed with a secret nobody checks any more. | `docs/runs/2026-10-30-webhooks.md` (the 29 October subscription was deleted after the new one was in place) |
 
 How a delivery is checked (`worker/src/core.ts`, `src/policy/cardHooks.ts`):
@@ -125,6 +125,12 @@ Other rules:
 - A transfer starts as SUBMITTING in our ledger before the call. One invoice has at most one live payout (`one_live_transfer_per_invoice`).
 - A failed transfer is read as FAILED, then CANCELLED, which is how the sandbox ends it.
 - Opus's advice sits beside the proposal, outside the hash. It cannot change what is paid.
+- **For the bank and the ERP: ISO 20022.** `npm run iso20022 -- BTX-2026-11` exports the paid invoice as a
+  pacs.008.001.08 message ([`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs008-BTX-2026-11.xml)). The SWIFT
+  transfer carries EndToEndId `BTX-2026-11`, Airwallex's transfer id `4d508b0b…feb4` as the UETR, and the invoice as
+  structured remittance. The same message holds the Metal transaction whose earnings were booked at Airwallex as
+  deposit `56366c9d…c838`, so one message links both rails. It is valid against the official XSD; it is not a
+  message a bank sent, and the sandbox assigns no SWIFT UETR.
 
 ## Deposits and balances
 

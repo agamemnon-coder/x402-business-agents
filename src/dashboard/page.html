@@ -487,7 +487,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <section class="proof" aria-label="From the recorded live run">
     <div class="section">
       <div class="grid num">
-        <div><div class="v" id="p-alone">–</div><div class="l">payments inside the limits with no person needed (about half of them the customer&rsquo;s agent buying from us)</div></div>
+        <div><div class="v" id="p-alone">–</div><div class="l">payments inside the limits with no approval at the time (about half of them the customer&rsquo;s agent buying from us)</div></div>
         <div><div class="v" id="p-blocked">–</div><div class="l">stops: by the card, the chain, the fraud checks or the CFO</div></div>
         <div><div class="v" id="p-over">–</div><div class="l">spent above a card's limit</div></div>
         <div><div class="v" id="p-fakes">–</div><div class="l">fake invoices and AI tricks stopped</div></div>
@@ -921,7 +921,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   function renderKpis(d) {
     var m = d.money;
     if (!m) {
-      set("kpis", [kpi("ok", "circle-check", "Done by the agents", String(d.counts.alone), "", "within their limits, no person needed"),
+      set("kpis", [kpi("ok", "circle-check", "Done by the agents", String(d.counts.alone), "", "within their limits, no approval at the time"),
         kpi("wait", "clock", "Waiting for you", String(d.counts.waiting), "", "each needs your Face ID"),
         kpi("bad", "ban", "Blocked", String(d.counts.blocked), "", "refused before money moved")]);
       return;
