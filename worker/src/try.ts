@@ -1,7 +1,8 @@
 // POST /api/try: Try Purser on the relay, for anyone, with no key. It runs in its own Durable Object (its own
 // storage, apart from the approvals) and guards the one thing a public page could cost us, the Claude calls:
 // at most 6 tries a minute and 40 a day from one address, 280 characters a try, only from this site's own page,
-// and a budget per UTC day for the models; past it, code alone reads the request and the page says so. Nothing
+// at most 30 model calls a minute from everyone together, and a budget per UTC day for the models; past either of the
+// last two, code alone reads the request and the page says so. Nothing
 // here reaches Airwallex, Metal or the runner: the demo world is simulated (src/try/engine.ts).
 
 import { claudeModels } from "../../src/try/claude.js";
@@ -12,6 +13,8 @@ interface Sql { exec(query: string, ...bindings: unknown[]): { toArray(): unknow
 
 export const TRY_PER_MINUTE = 6;
 export const TRY_PER_DAY = 40;
+/** Model calls a minute for all visitors together: many addresses at once cannot burn the day's budget in minutes. */
+export const TRY_MODEL_PER_MINUTE = 30;
 /** Model spend allowed per UTC day, in US dollars. */
 export const TRY_DAILY_BUDGET_USD = 3;
 
@@ -57,8 +60,10 @@ export class TryDesk {
     const day = this.now().toISOString().slice(0, 10);
     const spent = (this.sql.exec("SELECT usd FROM try_spend WHERE day = ?", day).toArray() as { usd: number }[])[0]?.usd ?? 0;
     const budget = this.opts.budgetUsd ?? TRY_DAILY_BUDGET_USD;
-    const models = this.opts.anthropicKey && spent < budget ? claudeModels(this.opts.anthropicKey, this.opts.fetcher) : null;
-    const why = !this.opts.anthropicKey ? "no model key is set on this relay" : "today's budget for model calls is spent";
+    const [{ n: busy }] = this.sql.exec("SELECT COUNT(*) AS n FROM try_hits WHERE at > ?", nowMs - 60_000).toArray() as [{ n: number }];
+    const crowded = busy > TRY_MODEL_PER_MINUTE;
+    const models = this.opts.anthropicKey && spent < budget && !crowded ? claudeModels(this.opts.anthropicKey, this.opts.fetcher) : null;
+    const why = !this.opts.anthropicKey ? "no model key is set on this relay" : spent >= budget ? "today's budget for model calls is spent" : "many visitors are trying it right now, so the models pause for a minute";
     const result = await tryPurserSafely(text, models, this.now(), why);
     this.sql.exec("INSERT INTO try_spend (day, usd, tries) VALUES (?, ?, 1) ON CONFLICT(day) DO UPDATE SET usd = usd + excluded.usd, tries = tries + 1", day, result.costUsd);
     return answer(200, result);

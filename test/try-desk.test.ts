@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
-import { TRY_PER_DAY, TRY_PER_MINUTE, TryDesk } from "../worker/src/try.js";
+import { TRY_MODEL_PER_MINUTE, TRY_PER_DAY, TRY_PER_MINUTE, TryDesk } from "../worker/src/try.js";
 
 const sql = () => {
   const db = new Database(":memory:");
@@ -34,6 +34,19 @@ describe("Try Purser on the relay", () => {
     const second = await (await ask(d, "Book a flight to Berlin, max €250", { "cf-connecting-ip": "198.51.100.1" })).json() as { mode: string; steps: { detail: string }[] };
     expect(second.mode).toBe("plain");
     expect(second.steps[0]!.detail).toContain("budget");
+  });
+
+  it("pauses the models for everyone when many addresses try at once, so the day's budget cannot go in minutes", async () => {
+    // Seen live on 30 October: a client behind a rotating proxy shows a new address on most requests.
+    let clock = Date.parse("2026-10-30T12:00:00Z");
+    const d = new TryDesk(sql(), { anthropicKey: "k", now: () => new Date(clock), fetcher: api([{ kind: "software" }, { item: "Figma", merchant: "Figma", amount: null, currency: null, date: null, payee: null }]) });
+    const mode = async (i: number) => (await (await ask(d, "Buy Figma", { "cf-connecting-ip": `198.51.100.${i}` })).json() as { mode: string; steps: { detail: string }[] });
+    for (let i = 1; i <= TRY_MODEL_PER_MINUTE; i++) expect((await mode(i)).mode).toBe("claude");
+    const crowded = await mode(200);
+    expect(crowded.mode).toBe("plain");
+    expect(crowded.steps[0]!.detail).toContain("many visitors");
+    clock += 61_000;
+    expect((await mode(201)).mode).toBe("claude");
   });
 
   it("limits each address per minute and per day", async () => {
