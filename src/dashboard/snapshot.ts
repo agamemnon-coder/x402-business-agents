@@ -770,11 +770,17 @@ function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: stri
 export interface DisputeView {
   case_id: string; claim: string; text: string; opened_at: string; outcome: string; refund: string; route: string; proposal_id: string | null;
   explanation: string; explained_by: string;
-  sales: { sale_id: number; request: string; charged: string; order: string; chain: boolean; delivered: boolean; tx: string; refund: string; why: string; passkey: boolean }[];
+  sales: { sale_id: number; request: string; charged: string; order: string; chain: boolean; delivered: boolean; tx: string; refund: string; why: string; passkey: boolean;
+    /** A refund this sale already had before the case (an earlier claim, e.g. wrong data), with its transaction. */
+    refunded_before: { amount: string; tx: string | null } | null }[];
 }
 
 /** The Dispute desk's cases for the dashboard, from the stored cases only. */
 function disputeViews(db: DB): DisputeView[] {
+  const before = (saleId: number): DisputeView["sales"][number]["refunded_before"] => {
+    const r = db.prepare("SELECT amount_cents, tx_hash FROM refunds WHERE sale_id = ? AND outcome IN ('PAID', 'HELD')").get(saleId) as { amount_cents: number; tx_hash: string | null } | undefined;
+    return r ? { amount: fromCents(r.amount_cents), tx: r.tx_hash } : null;
+  };
   return (oldLedgerSafe(() => disputeCases(db)) ?? []).slice(0, 10).map((c) => ({
     case_id: c.case_id, claim: CLAIM_WORDS[c.claim], text: c.text, opened_at: c.opened_at, outcome: c.decision.outcome, refund: fromCents(c.decision.refund_cents),
     route: c.route, proposal_id: c.proposal_id, explanation: c.explanation, explained_by: c.explained_by,
@@ -784,6 +790,7 @@ function disputeViews(db: DB): DisputeView[] {
         sale_id: p.sale_id, request: p.request, charged: fromCents(p.charged_cents), tx: p.tx, refund: fromCents(d.refund_cents), why: d.why,
         order: p.order.valid ? `signed for ${fromCents(p.order.amount_cents ?? 0)}` : p.order.present ? "does not verify" : "none",
         chain: p.mandate.within, delivered: p.delivery.matches, passkey: !!p.human.passkey?.verified,
+        refunded_before: before(p.sale_id),
       };
     }),
   }));

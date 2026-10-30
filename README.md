@@ -1,6 +1,6 @@
 # Purser
 
-**Give every AI agent its own company card, with limits the CFO sets.**
+**Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
 
 Each agent gets an Airwallex company card and a Metal on-chain mandate. One CFO policy sets the limits for both. When
 an agent needs more, it stops and asks, and the CFO approves on a phone with Face ID.
@@ -33,7 +33,7 @@ npm ci && npm run judge
 ```
 
 No keys, and no network after `npm ci`; the judge step itself starts in about two seconds. It serves the recorded
-live run, the CFO dashboard as it stood at the end, a simulated month, and the Scenario Lab (`/lab`: twelve stories,
+live run, the CFO dashboard as it stood at the end, a simulated month, and the Scenario Lab (`/lab`: 18 stories,
 from a normal purchase to the emergency stop, each with what should happen and what did), and opens your browser.
 
 ## Run it live

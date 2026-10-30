@@ -71,7 +71,7 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 - **What:** `npm run redteam` runs the 14 attacks of `src/redteam/attacks.ts`, each in a throwaway world. It was
   meant to let Opus pick the attacks and write test documents of its own. Opus declined twice, the second time
   with an honest framing as the tester of our own software in a test world. I did not try other wordings or another
-  model to get around that. The report says the model declined, and the attacks ran without it: 14 of 14 blocked.
+  model to get around that. The report says the model declined, and the attacks ran without it: 14 of 14 blocked. (Later runs had Opus attacking: see `docs/redteam/report.json` for the latest.)
 - **Why:** the controls are tested either way, by the same code. The red team still found one real weakness: the
   Claude reader trusted the shape of a model's answer. It now checks every reading against its schema itself.
 - **If wrong:** the demo moment shows "14 attacks, 14 blocked" from code, not from a model choosing attacks. The

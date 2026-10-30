@@ -32,7 +32,10 @@ async function tryDocument(goal: string, text: string): Promise<AttackResult> {
     // fraud check that held: the checks below were then never reached (nothing is paid either way).
     const read = await tools.invoice(text).catch((e: Error) => e);
     if (read instanceof Error) {
-      return { id: "document", title: "A document written by the red team", attempt: goal, blocked: true, defence: "a document that cannot be read pays nothing", evidence: `${verdict}; unreadable by the model and by code (${read.message.slice(0, 80)}): nothing to pay, and the fraud checks were not reached` };
+      // Why the model's reading was not used, from the reader's own audit row, so the report says what to fix.
+      const fb = w.db.prepare("SELECT payload_json FROM audit_log WHERE event = 'claude.fallback' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
+      const why = fb ? String((JSON.parse(fb.payload_json) as { note?: string }).note ?? "").slice(0, 160) : "no model reading";
+      return { id: "document", title: "A document written by the red team", attempt: goal, blocked: true, defence: "a document that cannot be read pays nothing", evidence: `${verdict}; unreadable by the model and by code (model: ${why}; code: ${read.message.slice(0, 60)}): nothing to pay, and the fraud checks were not reached; document: ${JSON.stringify(text.slice(0, 400))}` };
     }
     verdict += `; read by ${read.source === "claude" ? read.model ?? "Claude" : "code (the model was not used)"}`;
     const inv = read.value;

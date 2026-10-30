@@ -183,6 +183,7 @@ table.agents td .sub { display: block; color: var(--faint); font-size: 12.5px; }
 .money .k.sub { font-size: 12px; margin-top: 4px; }
 .txlink { display: inline-block; margin-top: 10px; font-size: 12.5px; color: var(--accent); text-decoration: none; }
 .txlink:hover { text-decoration: underline; }
+.txl { font: 500 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); text-decoration: none; }
 .feed .proof a { color: var(--accent); text-decoration: none; }
 .feed .proof .mono { font-size: 12px; }
 .feed .r { font-size: 12.5px; color: var(--faint); white-space: nowrap; padding-top: 2px; }
@@ -546,7 +547,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <div id="disputes"></div>
   </div>
   <div id="overview">
-  <div class="head"><div><h1>Overview</h1><div class="sub">Your agents' spending, within the limits you set.</div></div></div>
+  <div class="head"><div><h1>Overview</h1><div class="sub">Your AI agents spend through Airwallex and Metal. You stay in control: every limit below is yours.</div></div></div>
   <section class="kpis" id="kpis" aria-label="What the agents did, in money"></section>
   <div class="sect"><h2>Company cards <span class="rail">Airwallex</span></h2><span class="hint">Virtual Visa per agent · limits set by your policy</span></div>
   <section class="grid4 swipe" id="cards" aria-label="Company cards"></section>
@@ -1056,6 +1057,12 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     ]);
   }
   // The Dispute desk: each case with its claim, outcome, the evidence per payment and the explanation.
+  // A Metal transaction as a short link to the testnet explorer.
+  function txLink(tx, label) {
+    if (!tx || !/^0x[0-9a-fA-F]{64}$/.test(tx)) return null;
+    var a = el("a", "txl", [(label ? label + " " : "") + tx.slice(0, 8) + "…" + tx.slice(-4) + " ↗"]); a.href = "https://testnet.metalntwx.com/tx/" + tx; a.target = "_blank"; a.rel = "noopener";
+    return el("div", "sub", [a]);
+  }
   function renderDisputes(d) {
     var cs = d.disputes || [];
     if (!cs.length) { set("disputes", [el("div", "panel empty", [icon("shield-check"), d.recorded ? "No dispute was opened in this recording." : "No disputes yet. A case opens here when a customer disputes an order."])]); return; }
@@ -1070,9 +1077,9 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
           el("td", "", [txt("b", "", String(x.sale_id)), el("div", "sub", [x.request])]),
           txt("td", "num", group(x.charged)),
           el("td", "", [mark(x.order.indexOf("signed") === 0, x.order, x.order)]),
-          el("td", "", [mark(x.chain, "inside the bound mandate", "outside it"), x.passkey ? el("div", "sub", ["owner confirmed with a passkey"]) : null]),
-          el("td", "", [mark(x.delivered, "hash matches", "hash differs")]),
-          el("td", "", [txt("b", "", group(x.refund)), common ? null : el("div", "sub why", [x.why])]),
+          el("td", "", [mark(x.chain, "inside the bound mandate", "outside it"), x.passkey ? el("div", "sub", ["owner confirmed with a passkey"]) : null, txLink(x.tx, "settled")]),
+          el("td", "", [mark(x.delivered, "as recorded", "differs from the record")]),
+          el("td", "", [txt("b", "", group(x.refund)), x.refunded_before ? el("div", "sub", ["already refunded " + group(x.refunded_before.amount) + " earlier (wrong data) ", txLink(x.refunded_before.tx, "")]) : null, common ? null : el("div", "sub why", [x.why])]),
         ]);
         ["Payment", "Charged", "Signed order", "Chain check", "Delivered", "Refund"].forEach(function (l, i) { tr.children[i].setAttribute("data-label", l); });
         return tr;
@@ -1082,6 +1089,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         c.text ? el("p", "sub", ["The customer wrote: \u201c" + c.text + "\u201d"]) : null,
         txt("p", "", route),
         common ? el("p", "sub", [(c.sales.length > 1 ? "Every payment: " : "") + common]) : null,
+        (function () { var n = c.sales.filter(function (x) { return x.refunded_before; }).length; return n ? el("p", "sub", [n + " of these " + c.sales.length + " payments had already been refunded in an earlier case, because the data delivered was wrong (the supplier corrected it). Delivered “as recorded” means the data matches what Northwind recorded when it delivered, not that it was right."]) : null; })(),
         el("table", "wide", [el("thead", "", [head2]), el("tbody", "", rows)]),
         el("div", "review-box", [txt("p", "", c.explanation), txt("p", "sub", "Explained by " + c.explained_by + ". The decision and every amount are code's; the explanation is advice.")]),
       ]);
@@ -1204,7 +1212,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // The red team's latest report (docs/redteam/report.json), on the landing.
   try {
     var RT = JSON.parse(document.getElementById("redteam-data").textContent);
-    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run: " + RT.blocked + " of " + RT.attempts + " attacks blocked (" + dayFmt.format(new Date(RT.ran_at)) + ").";
+    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run: " + RT.blocked + " of " + RT.attempts + " attacks blocked (" + dayFmt.format(new Date(RT.ran_at)) + (RT.model ? ", with Claude Opus playing the attacker" : ", scripted attacks") + ").";
   } catch (e) {}
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
