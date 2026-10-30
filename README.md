@@ -34,7 +34,9 @@ npm ci && npm run judge
 
 No keys, and no network after `npm ci`; the judge step itself starts in about two seconds. It serves the recorded
 live run, the CFO dashboard as it stood at the end, a simulated month, and the Scenario Lab (`/lab`: 18 stories,
-from a normal purchase to the emergency stop, each with what should happen and what did), and opens your browser.
+from a normal purchase to the emergency stop, each with what should happen and what did), "How Purser uses Metal"
+(`/metal`: every Metal feature with its testnet proof and docs link, a mandate inspector per agent, and the Dispute
+desk case order by order), and opens your browser.
 
 ## Run it live
 

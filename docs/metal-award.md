@@ -7,6 +7,12 @@ world with a fresh passkey: [Friday run 1](runs/2026-10-30-friday-1.md) (the rec
 [Friday run 2](runs/2026-10-30-friday-2.md); `npm run verify` passes on both. Explorer: https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4,
 `@metalntwx/metal-agent` 0.3.3, `@metalntwx/metal-ts` 0.3.2.
 
+The same evidence as a page: **`/metal`** ("How Purser uses Metal", served by `npm run judge` and the relay) shows a
+card per Metal feature with its transaction and Metal docs page, a mandate inspector per agent (cap, budget, payee,
+expiry, payments, the chain's refusal) and the Dispute desk case order by order, with its evidence report at
+`/metal/report`. Built from the recorded ledger by `npm run demo:record` into `docs/demo/metal.json`; clearing and the
+receive policy did not run in the recorded run, so their cards name the separate live runs in sections 4 and 5.
+
 ## Why this wins
 
 - **Metal is the agents' spending rail, not a demo add-on.** Every agent that pays per request does it under its
