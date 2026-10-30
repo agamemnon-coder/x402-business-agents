@@ -17,7 +17,7 @@ import { openDb } from "../db/open.js";
 import { execute } from "../executors/index.js";
 import { recoverHolds } from "../policy/holds.js";
 import { resumeInterrupted } from "../policy/saga.js";
-import { health } from "../ops/health.js";
+import { health, RECONCILE_EVERY_MS } from "../ops/health.js";
 import { openEnrolment } from "../passkey/ledger.js";
 import { relayConfig, viewerLink, type RelayConfig } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
@@ -102,12 +102,11 @@ async function cardsTick(): Promise<void> {
   }
 }
 
-// The light daily reconciliation (finance item 5): a minute after start, then once a day. Read-only; a difference is
-// logged and shown on the dashboard.
-const DAY_MS = 24 * 60 * 60 * 1000;
-let reconcileAt = Date.now() - DAY_MS + 60_000;
+// The light reconciliation (finance item 5): a minute after start, then every hour (RECONCILE_EVERY_MS). Read-only;
+// a difference is logged, raises an alarm and is shown on the dashboard.
+let reconcileAt = Date.now() - RECONCILE_EVERY_MS + 60_000;
 async function reconcileTick(): Promise<void> {
-  if (Date.now() - reconcileAt < DAY_MS) return;
+  if (Date.now() - reconcileAt < RECONCILE_EVERY_MS) return;
   reconcileAt = Date.now();
   try {
     const r = await reconcile(db, reconcileSourcesFromEnv());

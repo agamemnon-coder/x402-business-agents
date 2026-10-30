@@ -256,7 +256,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "reconciliation-difference",
     title: "The bank and the ledger disagree",
-    expected: "A card charge at Airwallex that the ledger never saw shows up as a difference in the daily reconciliation.",
+    expected: "A card charge at Airwallex that the ledger never saw shows up as a difference in the hourly reconciliation.",
     offline: "Airwallex is a stand-in; live: npm run reconcile",
     run: async (w) => {
       await buyPlan(w.db, w.issuing, "packwise-starter", w.now());

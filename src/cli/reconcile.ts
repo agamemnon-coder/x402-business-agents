@@ -1,5 +1,5 @@
-// npm run reconcile: the light daily reconciliation (finance item 5) of the ledger (KIT11_DB) against Airwallex and
-// Metal, flow by flow. The runner (npm run relay) also runs it once a day. Differences are logged and shown on the
+// npm run reconcile: the light hourly reconciliation (finance item 5) of the ledger (KIT11_DB) against Airwallex and
+// Metal, flow by flow. The runner (npm run relay) also runs it every hour. Differences are logged and shown on the
 // dashboard; nothing is fixed automatically.
 
 import { openDb } from "../db/open.js";

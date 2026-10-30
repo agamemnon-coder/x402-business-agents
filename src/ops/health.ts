@@ -14,8 +14,13 @@ export type { Alert, Health, Severity } from "./publicHealth.js";
 export const STUCK_AFTER_MS = 10 * 60_000;
 /** A hold older than this was never settled or released. */
 export const HOLD_STALE_AFTER_MS = 60 * 60_000;
-/** The reconciliation runs every few hours; older than this, it stopped. */
-export const RECONCILE_STALE_AFTER_MS = 26 * 3_600_000;
+/**
+ * The runner reconciles the ledger with Airwallex and the chain every hour, so a payment that reached neither the
+ * webhook nor the poll (the red team's hidden card payment) is found within the hour, not prevented.
+ */
+export const RECONCILE_EVERY_MS = 60 * 60_000;
+/** Older than three rounds, the reconciliation stopped. */
+export const RECONCILE_STALE_AFTER_MS = 3 * RECONCILE_EVERY_MS;
 
 const has = (db: DB, table: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
 const n = (db: DB, sql: string, ...a: unknown[]) => (db.prepare(sql).get(...a) as { n: number | null }).n ?? 0;
@@ -31,7 +36,7 @@ export function health(db: DB, now = new Date()): Health {
 
   const rec = lastReconciliation(db);
   if (rec && rec.differences > 0) alerts.push({ code: "reconciliation_difference", severity: "critical", since: rec.at, words: `The last reconciliation found ${rec.differences} difference(s) between the ledger and the outside services.` });
-  if (rec && now.getTime() - Date.parse(rec.at) > RECONCILE_STALE_AFTER_MS) alerts.push({ code: "reconciliation_stale", severity: "warning", since: rec.at, words: "The reconciliation has not run for over a day." });
+  if (rec && now.getTime() - Date.parse(rec.at) > RECONCILE_STALE_AFTER_MS) alerts.push({ code: "reconciliation_stale", severity: "warning", since: rec.at, words: "The reconciliation has not run for over three hours." });
 
   const stuck = db.prepare("SELECT p.proposal_id, MAX(a.ts) AS since FROM proposals p JOIN audit_log a ON a.subject = p.proposal_id AND a.event IN ('proposal.executing', 'proposal.resumed') WHERE p.status = 'EXECUTING' GROUP BY p.proposal_id").all() as { proposal_id: string; since: string }[];
   for (const s of stuck.filter((x) => now.getTime() - Date.parse(x.since) > STUCK_AFTER_MS)) {

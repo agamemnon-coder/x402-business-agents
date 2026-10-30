@@ -1,4 +1,4 @@
-// Light daily reconciliation (finance item 5): the ledger against Airwallex and Metal, flow by flow.
+// Light hourly reconciliation (finance item 5): the ledger against Airwallex and Metal, flow by flow.
 import { describe, expect, it } from "vitest";
 import type { CardTransaction } from "../src/airwallex/issuing.js";
 import { openDb, type DB } from "../src/db/open.js";

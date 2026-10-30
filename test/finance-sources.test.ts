@@ -1,4 +1,4 @@
-// The live sources for the daily reconciliation (src/finance/sources.ts): the chain check confirms a recorded *USDZ
+// The live sources for the hourly reconciliation (src/finance/sources.ts): the chain check confirms a recorded *USDZ
 // payment only when the receipt succeeded and carries exactly that transfer, and each source is wired only when its
 // credentials are set. The chain client and the Airwallex clients are fakes. No network.
 import { encodeAbiParameters, encodeEventTopics, erc20Abi, type Address } from "viem";

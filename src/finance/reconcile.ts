@@ -1,4 +1,4 @@
-// Light daily reconciliation (finance item 5): every money movement in the ledger is checked against the system that
+// Light hourly reconciliation (finance item 5): every money movement in the ledger is checked against the system that
 // moved it, by id and amount. Sandbox balances are millions of test money, so totals say nothing; the flows do.
 //   Airwallex transfers: Airwallex's status and amount for each transfer the ledger holds.
 //   Card transactions: both ways, approved at Airwallex but missing here, or approved here but not at Airwallex.

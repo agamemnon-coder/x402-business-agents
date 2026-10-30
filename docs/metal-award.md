@@ -30,7 +30,7 @@ receive policy did not run in the recorded run, so their cards name the separate
   finality, keyed by `chainId:tx:logIndex`.
 - **Code checks the chain before and after.** Before signing: the CFO policy and the velocity limits (an agent that
   pays too often or too much is stopped). After: `npm run verify` re-checks every credential, pull and receipt, and
-  the daily reconciliation compares each payment in the ledger with its receipt on chain. The dashboard links each
+  the hourly reconciliation compares each payment in the ledger with its receipt on chain. The dashboard links each
   mandate to its newest payment on the explorer.
 - **Honest about what is simulated:** testnet *USDZ is shown as "test USD"; the step from *USDZ to Airwallex is a
   sandbox deposit that names the real testnet transaction.

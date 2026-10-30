@@ -1213,7 +1213,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // The red team's latest report (docs/redteam/report.json), on the landing.
   try {
     var RT = JSON.parse(document.getElementById("redteam-data").textContent);
-    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run: " + RT.blocked + " of " + RT.attempts + " attacks blocked (" + dayFmt.format(new Date(RT.ran_at)) + (RT.model ? ", with Claude Opus playing the attacker" : ", scripted attacks") + ").";
+    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run: " + RT.blocked + " of " + RT.attempts + " attacks blocked" + (RT.inconclusive ? ", " + RT.inconclusive + " inconclusive (they never reached the check they aimed at)" : "") + " (" + dayFmt.format(new Date(RT.ran_at)) + (RT.model ? ", with Claude Opus playing the attacker" : ", scripted attacks") + ").";
   } catch (e) {}
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);

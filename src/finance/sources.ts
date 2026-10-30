@@ -1,4 +1,4 @@
-// The live sources for the daily reconciliation: Airwallex (transfers, card transactions) when its sandbox keys are
+// The live sources for the hourly reconciliation: Airwallex (transfers, card transactions) when its sandbox keys are
 // set, and Metal's chain when METAL_RPC_URL is. Each is read-only.
 
 import { erc20Abi, parseEventLogs, type Hash } from "viem";

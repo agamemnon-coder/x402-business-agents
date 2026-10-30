@@ -109,12 +109,20 @@ export interface InvoicePaymentTerms extends Terms {
  * rule as the one_live_transfer_per_invoice index); a proposal counts while it can still be approved or is running.
  */
 export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date()): string | null {
-  const t = db.prepare("SELECT status FROM transfers WHERE invoice_no = ? AND status <> 'CANCELLED' ORDER BY updated_at DESC LIMIT 1").get(invoiceNo) as { status: string } | undefined;
-  if (t) return t.status === "PAID" ? `invoice ${invoiceNo} is already paid` : `invoice ${invoiceNo} already has a payout (${t.status})`;
-  const p = db.prepare(`SELECT proposal_id FROM proposals WHERE kind = 'invoice_payment' AND json_extract(terms_json, '$.invoice_no') = ?
-    AND (status IN ('APPROVED', 'EXECUTING') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC LIMIT 1`)
-    .get(invoiceNo, now.toISOString()) as { proposal_id: string } | undefined;
-  return p ? `invoice ${invoiceNo} already waits for approval as ${p.proposal_id}` : null;
+  // The same invoice with a cosmetically different number ("btx-dup ", another dash) is still the same invoice.
+  const key = invoiceKey(invoiceNo);
+  const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
+    .find((r) => invoiceKey(r.invoice_no) === key);
+  if (t) return t.status === "PAID" ? `invoice ${t.invoice_no} is already paid` : `invoice ${t.invoice_no} already has a payout (${t.status})`;
+  const p = (db.prepare(`SELECT proposal_id, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
+    AND (status IN ('APPROVED', 'EXECUTING') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
+    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
+  return p ? `invoice ${p.invoice_no} already waits for approval as ${p.proposal_id}` : null;
+}
+
+/** An invoice number as a duplicate check compares it: Unicode-normalised, upper case, any dash as "-", no spaces around it. */
+export function invoiceKey(invoiceNo: string): string {
+  return invoiceNo.normalize("NFKC").toUpperCase().replace(/\s*[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D-]\s*/g, "-").replace(/\s+/g, "");
 }
 
 export type InvoiceOutcome =

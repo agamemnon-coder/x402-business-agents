@@ -168,7 +168,7 @@ export interface Snapshot {
   clearing: ClearingView | null;
   /** The emergency stop, while it is on: who pulled it, when, and why. */
   frozen: { since: string; by: string; proposal_id: string; reason: string } | null;
-  /** The latest daily reconciliation against Airwallex and Metal (finance item 5), or null before the first. */
+  /** The latest hourly reconciliation against Airwallex and Metal (finance item 5), or null before the first. */
   reconciliation: { at: string; checked: number; differences: number; skipped: string[] } | null;
   /** Agents stopped by code for breaking a velocity limit (security item 2); the CFO lifts each with Face ID. */
   stopped: { agent: string; since: string; reason: string }[];

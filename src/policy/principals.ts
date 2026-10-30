@@ -7,6 +7,10 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
+import { AGENT_DISPLAY } from "../config/brand.js";
+
+/** An agent as people read it: "the Sales agent" (internal id support), or "agent ext:acme" for an outside one. */
+const who = (id: string) => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
 
 export type Rail = "metal" | "card" | "airwallex";
 export type Payee = "supplier" | "customer" | "sweep" | "beneficiaries" | "merchants";
@@ -52,8 +56,8 @@ export function principalActive(db: DB, id: string, now = new Date()): boolean {
 export function authorize(db: DB, id: string, need: Need, now = new Date()): string | null {
   const p = principal(db, id, now);
   if (!p) return null;
-  if (p.status === "REVOKED") return `principal_revoked: the ${id} agent's identity was revoked${p.reason ? ` (${p.reason})` : ""}; it can do nothing`;
-  if (p.expires_at && Date.parse(p.expires_at) <= now.getTime()) return `principal_expired: the ${id} agent's identity expired at ${p.expires_at}`;
+  if (p.status === "REVOKED") return `principal_revoked: ${who(id)}'s identity was revoked${p.reason ? ` (${p.reason})` : ""}; it can do nothing`;
+  if (p.expires_at && Date.parse(p.expires_at) <= now.getTime()) return `principal_expired: ${who(id)}'s identity expired at ${p.expires_at}`;
   const c = JSON.parse(p.capabilities_json) as Capabilities;
   if (need.tool && !c.tools.includes(need.tool)) return `capability_denied: the ${id} agent may not use ${need.tool}`;
   if (need.rail && !c.rails.includes(need.rail)) return `capability_denied: the ${id} agent may not pay on ${need.rail}`;

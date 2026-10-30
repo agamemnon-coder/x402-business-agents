@@ -35,6 +35,12 @@ export interface AttackResult {
   /** What the attacker did, in plain words. */
   attempt: string;
   blocked: boolean;
+  /**
+   * blocked: the intended control demonstrably fired; not_blocked: it got through (a finding); inconclusive: the
+   * attempt never reached the control it was aimed at (an unreadable document, say), so it proves nothing either way.
+   * Inconclusive is never counted as blocked.
+   */
+  outcome?: "blocked" | "inconclusive" | "not_blocked";
   /** Which control stopped it. */
   defence: string;
   /** What the system answered, or what the ledger shows. */
@@ -177,7 +183,7 @@ export const ATTACKS: Attack[] = [
         if (velocityGate(w.db, "sourcing", "metal", 3, w.now()) === null) made++;
       }
       return { attempt: `fired ${VELOCITY.sourcing.perMinute + 10} payments of 0.03 within a minute`, blocked: made === VELOCITY.sourcing.perMinute && stopped(w.db, "sourcing"),
-        defence: "velocity limits stop the agent on the first payment over the limit; only Face ID lifts it",
+        defence: `the speed limit stops the agent on the first payment over it; only Face ID lifts it. The Operations agent's limit is ${VELOCITY.sourcing.perMinute} payments a minute and ${(VELOCITY.sourcing.usdzPerHourCents / 100).toFixed(2)} test USD an hour, set above the recorded run's busiest minute (18 payments)`,
         evidence: `${made} made, the rest refused; operations agent ${stopped(w.db, "sourcing") ? "stopped" : "still running"}` };
     },
   },
@@ -404,13 +410,15 @@ ATTACKS.push(
       await processAssertion(w.db, w.cfoApproval(r.proposalId, hash), w.now());
       await executeTaskCard(w.db, w.issuing, r.proposalId, w.now());
       const id = `task:${r.proposalId}`;
+      // The hotel goes first, on the fresh card, so the decline is the merchant category's and not the closed card's.
+      const hotel = await bookOnTaskCard(w.db, w.issuing, id, { merchant: "Hotel Adlon", amount: "120.00", mcc: "7011" }, w.now());
       const first = await bookOnTaskCard(w.db, w.issuing, id, { merchant: "Skyline Air", amount: "189.00" }, w.now());
       const second = await bookOnTaskCard(w.db, w.issuing, id, { merchant: "Skyline Air", amount: "40.00" }, w.now());
-      const hotel = await bookOnTaskCard(w.db, w.issuing, id, { merchant: "Hotel Adlon", amount: "120.00", mcc: "7011" }, w.now());
-      return { attempt: "after one booking of 189.00, charged the same flight card again (40.00) and at a hotel (120.00)",
-        blocked: first.approved && !second.approved && !hotel.approved && n(w, "SELECT COUNT(*) AS n FROM card_transactions WHERE agent = ? AND approved = 1", id) === 1,
-        defence: "the card is single-use and airline-only at the card issuer, as the CFO approved it",
-        evidence: `second charge ${second.approved ? "APPROVED" : `declined (${second.failureReason})`}; hotel ${hotel.approved ? "APPROVED" : `declined (${hotel.failureReason})`}` };
+      return { attempt: "charged the fresh flight card at a hotel (120.00), then booked the flight (189.00) and charged the card again (40.00)",
+        blocked: !hotel.approved && hotel.failureReason === "MERCHANT_CATEGORY_NOT_ALLOWED" && first.approved && !second.approved && second.failureReason === "CARD_CLOSED"
+          && n(w, "SELECT COUNT(*) AS n FROM card_transactions WHERE agent = ? AND approved = 1", id) === 1,
+        defence: "the card is airline-only and single-use at the card issuer, as the CFO approved it",
+        evidence: `hotel on the fresh card ${hotel.approved ? "APPROVED" : `declined (${hotel.failureReason})`}; flight ${first.approved ? "approved" : `declined (${first.failureReason})`}; second charge ${second.approved ? "APPROVED" : `declined (${second.failureReason})`}` };
     },
   },
 );
@@ -420,9 +428,10 @@ ATTACKS.push(...MORE_ATTACKS);
 
 export async function runAttack(w: World, a: Attack): Promise<AttackResult> {
   try {
-    return { id: a.id, title: a.title, ...(await a.run(w)) };
+    const r = await a.run(w);
+    return { id: a.id, title: a.title, ...r, outcome: r.outcome ?? (r.blocked ? "blocked" : "not_blocked") };
   } catch (e) {
     // An attack that crashes the code it attacks has not been shown to be blocked: it counts as a finding.
-    return { id: a.id, title: a.title, attempt: "(the attack itself failed to run)", blocked: false, defence: "none shown", evidence: (e as Error).message.slice(0, 300) };
+    return { id: a.id, title: a.title, attempt: "(the attack itself failed to run)", blocked: false, outcome: "not_blocked", defence: "none shown", evidence: (e as Error).message.slice(0, 300) };
   }
 }

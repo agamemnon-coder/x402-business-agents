@@ -12,7 +12,7 @@ Footage legend: **[MAX]** Max on camera or voice only; **[LIVE]** `/live?present
 
 | Time | Footage | Words (Max) |
 |---|---|---|
-| 0:00 | [MAX] | I'm Max. *(One sentence on who you are.)* Last year, companies reported over three billion dollars lost to business email compromise: fake invoices and changed bank details. *(On screen: "FBI IC3, 2025 Internet Crime Report: $3,046,598,558".)* |
+| 0:00 | [MAX] | I'm Max. *(One sentence on who you are.)* Last year, victims reported over three billion dollars in losses to the FBI from business email compromise: fake invoices and changed bank details. *(On screen: "FBI IC3, 2025 Internet Crime Report: $3,046,598,558".)* |
 | 0:15 | [MAX] | Now AI agents read those emails, and pay those invoices. So who holds the pen? |
 | 0:22 | [LIVE] title | Purser. Your AI agents spend through Airwallex and Metal. The CFO stays in control. |
 | 0:30 | [LIVE] card | On Airwallex, each agent has its own company card. Over its limit, Airwallex itself declines it. The CFO raises the limit with Face ID, and the same purchase goes through. |
@@ -47,7 +47,7 @@ What is simulated, said on screen where it shows:
 
 | Time | Footage | Words |
 |---|---|---|
-| 0:00 | [MAX] | Companies lost three billion dollars to fake invoices last year. Now AI agents pay invoices. |
+| 0:00 | [MAX] | Last year, victims reported three billion dollars in losses to the FBI from fake invoices and changed bank details. Now AI agents pay invoices. |
 | 0:07 | [LIVE] title | Purser: your AI agents spend through Airwallex and Metal; the CFO stays in control. |
 | 0:14 | [LIVE] card | Over its limit, Airwallex itself declines the agent's card. |
 | 0:21 | [LIVE] refuse | On Metal, an overpriced payment bounces off the agent's mandate on chain. |

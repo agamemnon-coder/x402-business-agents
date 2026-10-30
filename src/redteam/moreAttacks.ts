@@ -160,7 +160,7 @@ export const MORE_ATTACKS: Attack[] = [
       w.issuing.txs.push({ transactionId: "tx_hidden", cardId: card.cardId, amountCents: 4200, currency: "EUR", status: "APPROVED", approved: true, failureReason: null, merchant: "Somewhere", mcc: "5734", type: "AUTHORIZATION", occurredAt: new Date(w.now().getTime() - 3 * 3600_000).toISOString() });
       const r = await reconcile(w.db, { cardTransactions: (id) => w.issuing.listCardTransactions(id) }, w.now());
       return { attempt: "a 42.00 EUR card charge that never reached the ledger (lost webhook and poll)", blocked: r.differences.some((d) => d.ref === "tx_hidden"),
-        defence: "the daily reconciliation compares every card's transactions with Airwallex both ways", evidence: `${r.differences.length} difference(s)` };
+        defence: "the hourly reconciliation compares every card's transactions with Airwallex both ways: a charge that reached neither the webhook nor the poll is found within the hour, not prevented", evidence: `${r.differences.length} difference(s)` };
     },
   },
   {
@@ -196,7 +196,7 @@ export const MORE_ATTACKS: Attack[] = [
       const blocked = !!refund?.startsWith("principal_revoked") && !card.startsWith("APPROVED") && others === null && !oldKey;
       return { attempt: "the revoked sales agent refunds and buys ads on its card; an outside agent uses its key from before a rotation", blocked,
         defence: "each agent acts as its own principal: a revoked one is refused before signing and its card is frozen; a rotated key stops at once; the other agents carry on",
-        evidence: `refund: ${refund ?? "reserved"}; card: ${card}; operations agent: ${others ?? "still allowed"}; old key: ${oldKey ? "accepted" : "refused"}` };
+        evidence: `Sales agent's refund: ${refund ?? "reserved"}; Sales agent's card: ${card}; Operations agent: ${others ?? "still allowed"}; old key: ${oldKey ? "accepted" : "refused"}` };
     },
   },
 ];
