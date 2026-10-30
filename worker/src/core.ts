@@ -16,6 +16,8 @@ export interface Pages {
   month: string;
   /** The public demo: a recorded live run played back (K5), its data inside the page. */
   demo: string;
+  /** "Purser live": the animated day, its timeline inside the page. */
+  live: string;
   approve: string;
   enrol: string;
   /** The CFO policy editor. */
@@ -27,7 +29,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -84,6 +86,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/") return page(pages.dashboard, pages.csp.dashboard);
   if (path === "/month") return page(pages.month, pages.csp.month);
   if (path === "/demo") return page(pages.demo, pages.csp.demo);
+  if (path === "/live") return page(pages.live, pages.csp.live);
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
   if (path === "/policy") return page(pages.policy, pages.csp.policy);

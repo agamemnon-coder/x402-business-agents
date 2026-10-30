@@ -1,4 +1,4 @@
-// The guest pages as a juror opens them, with no key: /, /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /demo (every step) and /month (start and end), at phone
+// The guest pages as a juror opens them, with no key: /, /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /demo (every step) and /month (start and end), at phone
 // (390 px) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
 // language, not exactly one h1, a link or button with no name, an image with no alt text).
@@ -116,6 +116,17 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (/USDZ|\$\s?\d/.test(bk)) fail(`/?recorded&books ${tag}: shows USDZ or dollars`);
     await page.screenshot({ path: join(shots, `books-${tag}.png`), fullPage: true });
 
+    // "Purser live": each scene, opened paused, shows its finished picture; nothing undefined, nothing too wide.
+    for (const id of ["title", "coins", "card", "refuse", "faceid", "invoice", "dispute", "ask", "fx", "wall", "end"]) {
+      await page.goto(`${base}/live?scene=${id}&autoplay=0`, { waitUntil: "load" });
+      await page.waitForTimeout(400);
+      await look(page, `/live ${id} ${tag}`, w);
+      const lv = await page.evaluate(() => document.body.innerText);
+      if (!/Recorded runs/.test(lv) || !/Source:/.test(lv)) fail(`/live ${id} ${tag}: no source or no honest label`);
+      if (/USDZ|\$\s?\d/.test(lv)) fail(`/live ${id} ${tag}: shows USDZ or dollars`);
+    }
+    await page.screenshot({ path: join(shots, `live-${tag}.png`), fullPage: true });
+
     // The Dispute desk of the recording: a case with its evidence, or a plain note.
     await page.goto(`${base}/?recorded&disputes`, { waitUntil: "load" });
     await page.waitForTimeout(800);
@@ -156,4 +167,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);

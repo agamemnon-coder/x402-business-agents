@@ -1,4 +1,4 @@
-# "Purser live": storyboard (75 seconds, for Max's go)
+# "Purser live": storyboard (built 30 October, after Max's go)
 
 An animated page (`/live` on the relay and in `npm run judge`) that plays one working day at Northwind Outdoor from
 recorded data: no narration needed, readable with the sound off, honest about what is simulated. Built from the same
@@ -26,3 +26,21 @@ the airline are sandbox simulations." The speed control (pause, 1x, 2x) and a "s
 
 Build: one HTML page with inline SVG and CSS animations, driven by a JSON timeline cut from the recorded snapshot;
 reduced-motion shows the scenes as a stepped list. Estimate 10 to 14 hours after the go, including the browser check.
+
+## Built (30 October)
+
+`/live` on the relay, the local dashboard and `npm run judge` (`src/live/`). It has 11 scenes, about 90 seconds,
+with these changes from the storyboard after Max's go and the Metal jury input:
+
+- **Model labels** at the price notice, the Face ID and the invoice scenes: Haiku sorted, Sonnet read, and Opus's advice, labelled as advice.
+- **A Dispute desk scene**: "Our agent never ordered this", 12 of 12 orders signed and verified on chain, not refunded.
+- **The end card** with the official logos as "Built on Airwallex · Metal · Powered by Claude", and a line saying this
+  is not an endorsement.
+
+Every number comes from the recorded run (`docs/demo/`). Three moments were recorded live in their own runs, and their
+scenes name that run log: the task card (single-use check), the stranger's payment (b1-world) and the dispute case.
+A missing fact stops the build (`test/live.test.ts`).
+
+Controls: pause, 1× or 2×, and skip to a scene. `?scene=<id>&autoplay=0` opens one scene paused, showing its finished
+picture. With reduced motion (or `?still=1`), every scene is shown as a still list. The browser check opens every
+scene at 390 and 1440 px, in light and dark.

@@ -1109,7 +1109,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   }
   function showDash() { document.getElementById("dash").hidden = false; }
   function showLanding(note) {
-    nav([["Overview", "./", true], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
+    nav([["Overview", "./", true], ["Purser live", "live"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
     var p = RECORDED && RECORDED.proof;
     if (p) {
       countUp("p-alone", p.alone); countUp("p-blocked", p.blocked);
@@ -1151,7 +1151,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
   if (wantSignin && !viewKey && MODE !== "local") {
-    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
+    nav([["Overview", "./"], ["Purser live", "live"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
     document.getElementById("signin").hidden = false;
   } else if (wantRecorded && RECORDED) {
     nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
@@ -1164,7 +1164,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     st.title = "The CFO's emergency stop: one Face ID freezes every agent and every card. Live only, not in a recording.";
     showDash(); render(snap);
   } else if (MODE === "local" || viewKey) {
-    nav([["Dashboard", "./", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Disputes", "?disputes", wantDisputes], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
+    nav([["Dashboard", "./", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Disputes", "?disputes", wantDisputes], ["Purser live", "live"], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
     showDash(); statusTimer = setInterval(status, 1000); poll();
   } else {
     showLanding("");

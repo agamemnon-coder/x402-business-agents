@@ -14,6 +14,7 @@ import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
+import { buildLiveTimeline } from "../live/timeline.js";
 
 /** What each agent is called on the pages (docs/decisions.md D2), as a data block: no markup, not part of any hash. */
 const AGENTS_JSON = JSON.stringify(Object.fromEntries(Object.entries(AGENT_DISPLAY).map(([id, a]) => [id, a.name])));
@@ -81,6 +82,13 @@ export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readF
   return LAB_TEMPLATE.replace("__LAB_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
 }
 
+/** "Purser live": the animated day, its timeline inside the page (src/live/timeline.ts), built from the recordings. */
+const LIVE_TEMPLATE = readFileSync(new URL("../live/live.html", import.meta.url), "utf8");
+export const LIVE_CSP = cspFor(LIVE_TEMPLATE);
+export function livePage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
+  return LIVE_TEMPLATE.replace("__LIVE_JSON__", () => JSON.stringify(buildLiveTimeline(story, recorded)).replace(/</g, "\\u003c"));
+}
+
 /** The public demo page (K5 replay) plays a recorded run; no request, no key, nothing live. */
 export const DEMO_CSP = cspFor(DEMO_TEMPLATE);
 
@@ -138,6 +146,11 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/demo", (_req, res) => {
     res.setHeader("Content-Security-Policy", DEMO_CSP);
     res.type("html").send(demoPage());
+  });
+
+  app.get("/live", (_req, res) => {
+    res.setHeader("Content-Security-Policy", LIVE_CSP);
+    res.type("html").send(livePage());
   });
 
   app.get("/month", (_req, res) => {
