@@ -119,6 +119,22 @@ export const TaskSchema = z.object({
   date: z.string().nullable(),
 });
 
+/**
+ * Every Claude call the tools make: the task, the model's role (src/claude/reader.ts MODELS) and who it works for.
+ * The Agents page reads this list; a test checks it against the calls below, so it cannot drift from them.
+ */
+export const CLAUDE_JOBS: { task: string; role: "classify" | "act" | "review"; actor: string; job: string }[] = [
+  { task: "classify_document", role: "classify", actor: "system", job: "sorts every incoming document" },
+  { task: "extract_price_notice", role: "act", actor: "treasury", job: "reads supplier price notices" },
+  { task: "extract_dispute", role: "act", actor: "support", job: "reads retailers' disputes" },
+  { task: "map_corrections", role: "act", actor: "support", job: "reads supplier data corrections" },
+  { task: "read_task", role: "act", actor: "treasury", job: "reads Ask Purser requests" },
+  { task: "extract_invoice", role: "act", actor: "treasury", job: "reads invoices" },
+  { task: "explain_invoice_fraud", role: "review", actor: "claude", job: "explains a blocked invoice to the CFO" },
+  { task: "draft_policy", role: "review", actor: "claude", job: "drafts rules from the CFO's words" },
+  { task: "draft_customer_reply", role: "act", actor: "support", job: "drafts the reply to the customer" },
+];
+
 export class Tools {
   constructor(private readonly db: DB, readonly reader = new ClaudeReader(db)) {}
 

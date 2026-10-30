@@ -20,6 +20,26 @@ at once. `npm run policy` shows the policy and proposes changes from a terminal 
 0.03 --reason "…"`), to approve on the phone or the laptop page. Every change is a `policy.changed` row in the audit
 log; the dashboard shows the policy limit beside each mandate's cap.
 
+## The Agents page
+
+The dashboard's **Agents** tab (`?agents`, also in the recorded run as `?recorded&agents`) shows each agent on one
+panel, all read from the same CFO policy the agents are held to (`src/agents/profiles.ts`; the page keeps no copy):
+
+- its job, and whether it is working, stopped (its own stop, for example a velocity limit) or frozen (the emergency stop);
+- the Claude model for each of its jobs (Haiku sorts documents, Sonnet reads them, Opus reviews its proposals), from
+  the same list the tools call (`CLAUDE_JOBS` in `src/claude/tools.ts`; a test keeps the two equal);
+- its company card (per purchase, per month, merchant categories), its Metal mandate and the policy's limit inside it,
+  and its speed limit (payments a minute, amounts an hour);
+- what it does on its own, and what waits for the CFO's Face ID, with the policy's current numbers;
+- its settings, as the policy editor shows them.
+
+Changing a setting follows the policy's rules, unchanged: **tightening** (a lower limit, stopping the agent) is done
+on the phone, opened for that agent (`/policy?agent=<id>`, or `&stop=on` to stop it), signed with Face ID and applied
+at once. **Loosening** (a higher limit, starting an agent again) is a proposal from the runner (`npm run policy --
+set <key> <value> --reason "…"`, shown under each setting on the local dashboard), approved with Face ID. The phone
+page never loosens: the relay serves it, so a compromised relay must not be able to slip a loosening into a Face ID
+prompt.
+
 ## The CFO policy in plain words
 
 The CFO writes the policy as they would say it, for example "the operations agent's card at most €25 per purchase;

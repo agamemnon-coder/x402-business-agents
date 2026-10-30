@@ -213,6 +213,32 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .chat li.you { align-self: flex-end; background: var(--accent-soft); }
 .chat li .who { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 .panel.claude .money { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* F, the Agents page. */
+.agents-how { margin: 0 0 16px; }
+.agent { margin-top: 16px; }
+.agent .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.agent .top h2 { margin: 0; font-size: 20px; }
+.agent .job { color: var(--muted); font-size: 14px; margin: 4px 0 12px; }
+.agent .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.agent .facts .m { background: var(--sunken); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; }
+.agent .facts .k { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+.agent .facts .v { font-weight: 600; }
+.agent .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 14px; }
+.agent h3 { font-size: 14px; margin: 0 0 6px; }
+.agent ul.plain { margin: 0; padding-left: 18px; font-size: 14px; }
+.agent ul.plain li { margin: 3px 0; }
+.agent table.settings { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13.5px; }
+.agent table.settings td { border-top: 1px solid var(--border); padding: 7px 4px; vertical-align: top; }
+.agent table.settings td.now { text-align: right; font-weight: 600; white-space: nowrap; }
+.agent .acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.agent code { font-size: 12.5px; background: var(--sunken); padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .agent .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agent .two { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .agent .facts { grid-template-columns: 1fr; }
+  .agent table.settings td { display: block; border-top: 0; padding: 2px 0; }
+  .agent table.settings tr { display: block; border-top: 1px solid var(--border); padding: 6px 0; }
+  .agent table.settings td.now { text-align: left; white-space: normal; }
+}
 .panel.claude table.agents { margin-top: 14px; }
 .panel.claude .note { color: var(--muted); font-size: 13.5px; margin: 14px 0 0; }
 @media (max-width: 700px) { .panel.claude .money { grid-template-columns: minmax(0, 1fr); } }
@@ -454,6 +480,12 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 <!-- The CFO's dashboard: live (local, or on the relay with the viewer key) or the recorded run. -->
 <main class="wrap" id="dash" hidden>
   <div class="recbanner" id="recbanner" hidden><span data-icon="database"></span><span id="rec-text">Recorded run.</span></div>
+  <div id="agents-view" hidden>
+    <div class="head"><div><h1>Agents</h1><div class="sub">What each agent does, with which model, within your limits. Every number comes from your CFO policy.</div></div></div>
+    <p class="hint agents-how" id="agents-how"></p>
+    <div id="agents"></div>
+  </div>
+  <div id="overview">
   <div class="head"><div><h1>Overview</h1><div class="sub">Your agents' spending, within the limits you set.</div></div></div>
   <section class="kpis" id="kpis" aria-label="What the agents did, in money"></section>
   <div class="sect"><h2>Company cards <span class="rail">Airwallex</span></h2><span class="hint">Virtual Visa per agent · limits set by your policy</span></div>
@@ -472,6 +504,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   </div>
   <section class="panel ask" id="ask-panel" aria-labelledby="h-ask" hidden><div class="sect flush"><h2 id="h-ask">Ask Purser</h2><span class="hint">from the CFO policy page on your phone</span></div><ul class="chat" id="ask"></ul></section>
   <section class="panel claude" id="claude-panel" aria-labelledby="h-claude" hidden><div class="sect flush"><h2 id="h-claude">Powered by Claude</h2><span class="claudelogo"><img src="assets/logo-claude.png" alt="Claude" width="73" height="16"></span></div><div id="claude"></div></section>
+  </div>
   <div class="foot"><span id="auditline"></span><span id="passkey"></span></div>
 </main>
 
@@ -887,7 +920,51 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     }));
   }
 
+  // F, the Agents page: one panel per agent, from the snapshot's profiles (the CFO policy is their one source).
+  function renderAgents(d) {
+    var ps = d.agents || [], how = document.getElementById("agents-how");
+    var editable = !d.recorded && MODE !== "local";
+    how.textContent = d.recorded ? "Recorded run: the agents as they stood. Changing a setting is live only."
+      : MODE === "local" ? "Tighten a setting on your phone (Policy) with Face ID; it applies at once. Loosening is a proposal from the runner (the command is under each setting), approved with Face ID."
+      : "Tighten a setting here with Face ID; it applies at once. Loosening is a proposal from the runner, approved with Face ID.";
+    if (!ps.length) { set("agents", [el("div", "panel empty", [icon("bot"), d.recorded ? "This recording was made before the Agents page." : "No agents yet."])]); return; }
+    set("agents", ps.map(function (a) {
+      var pill = a.status === "working" ? txt("span", "pill ok", "Working") : txt("span", "pill bad", a.status === "frozen" ? "Frozen (emergency stop)" : "Stopped");
+      var fact = function (k, v) { return el("div", "m", [txt("div", "k", k), el("div", "v", v)]); };
+      var facts = el("div", "facts", [
+        fact("Company card (Airwallex)", [eur(a.card.per_tx) + " a purchase · " + eur(a.card.monthly) + " a month", txt("div", "sub", "Only " + a.card.merchants.join(", ") + ", EUR")]),
+        fact("On chain (Metal mandate)", a.mandate ? [tusd(a.mandate.policy_cap || a.mandate.cap) + " a payment", txt("div", "sub", "budget " + group(a.mandate.budget) + " test USD" + (a.mandate.policy_cap ? "; mandate cap " + a.mandate.cap : ""))] : ["No mandate"]),
+        fact("Speed limit", [a.velocity.per_minute + " payments a minute", txt("div", "sub", (cents(a.velocity.usdz_per_hour) ? group(a.velocity.usdz_per_hour) + " test USD and " : "") + eur(a.velocity.eur_per_hour) + " an hour; over it, code stops the agent")]),
+        fact("Claude", a.models.map(function (m) { return el("div", "", [txt("b", "", m.model.replace("Claude ", "")), " " + m.job]); })),
+      ]);
+      var two = el("div", "two", [
+        el("div", "", [txt("h3", "", "On its own"), el("ul", "plain", a.alone.map(function (x) { return txt("li", "", x); }))]),
+        el("div", "", [txt("h3", "", "Waits for your Face ID"), el("ul", "plain", a.asks.map(function (x) { return txt("li", "", x); }))]),
+      ]);
+      var rows = a.settings.map(function (e) {
+        var cmd = MODE === "local" && !d.recorded ? txt("code", "", "npm run policy -- set " + e.key + " <value> --reason \"…\"") : null;
+        return el("tr", "", [el("td", "", [e.label, cmd ? el("div", "sub", [cmd]) : null]), txt("td", "now", e.display.replace(/\*?USDZ/g, "test USD"))]);
+      });
+      var acts = [];
+      if (editable) {
+        var edit = txt("a", "btn", "Change on your phone"); edit.href = "policy?agent=" + encodeURIComponent(a.id); acts.push(edit);
+        if (a.status === "working") { var stop = el("a", "btn danger", [icon("octagon-x"), "Stop this agent"]); stop.href = "policy?agent=" + encodeURIComponent(a.id) + "&stop=on"; acts.push(stop); }
+      }
+      if (a.status === "stopped" && !d.recorded) acts.push(el("div", "sub", ["Starting it again loosens the policy: a proposal from the runner, ", txt("code", "", "npm run policy -- set stop." + a.id + " off"), ", approved with Face ID."]));
+      return el("section", "panel agent", [
+        el("div", "top", [icon("bot"), txt("h2", "", a.name), pill]),
+        txt("p", "job", a.job.charAt(0).toUpperCase() + a.job.slice(1) + "."),
+        facts, two,
+        rows.length ? el("table", "settings", [el("tbody", "", rows)]) : null,
+        acts.length ? el("div", "acts", acts) : null,
+      ]);
+    }));
+  }
+  var wantAgents = /[?&]agents(=|&|$)/.test(location.search);
+  if (wantAgents) { document.getElementById("overview").hidden = true; document.getElementById("agents-view").hidden = false; }
+
   function render(d) {
+    renderAgents(d);
     renderKpis(d); renderClaude(d); renderAsk(d); renderCards(d); renderAgentsTable(d);
     renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
     var fz = document.getElementById("frozen");
@@ -989,7 +1066,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
     document.getElementById("signin").hidden = false;
   } else if (wantRecorded && RECORDED) {
-    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", true]]);
+    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", !wantAgents], ["Agents", "?recorded&agents", wantAgents]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
     document.getElementById("rec-text").textContent = "Recorded run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
@@ -999,7 +1076,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     st.title = "The CFO's emergency stop: one Face ID freezes every agent and every card. Live only, not in a recording.";
     showDash(); render(snap);
   } else if (MODE === "local" || viewKey) {
-    nav([["Dashboard", "./", true], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
+    nav([["Dashboard", "./", !wantAgents], ["Agents", "?agents", wantAgents], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
     showDash(); statusTimer = setInterval(status, 1000); poll();
   } else {
     showLanding("");

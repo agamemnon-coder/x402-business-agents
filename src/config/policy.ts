@@ -78,6 +78,9 @@ export const FX_QUOTE_MAX_MARKUP_BPS = 50;
 /** A card works this many days from issue; Airwallex declines everything after (its end date, `active_to`). */
 export const CARD_ACTIVE_DAYS = 90;
 
+/** Merchant categories (MCC) in words, as the pages show them. */
+export const MCC_WORDS: Record<string, string> = { "5734": "Software", "7311": "Advertising", "5192": "Books and reports", "4511": "Airlines", "7011": "Hotels", "4112": "Railways" };
+
 /** What an outside agent's card may pay (merchant category 5734); the CFO approves anything else as a policy change. */
 export const OUTSIDE_AGENT_MCCS = ["5734"];
 

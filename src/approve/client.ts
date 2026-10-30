@@ -924,6 +924,8 @@ function enrolPage(): void {
 
 interface PolicyRow {
   key: string;
+  /** The agent the setting belongs to (the Agents page opens this page with ?agent=<id>). */
+  agent?: string;
   label: string;
   unit: string;
   kind: "money" | "optional_money" | "choice";
@@ -997,12 +999,23 @@ async function policyPage(): Promise<void> {
     const f = fields.find((x) => x.e.key === "freeze" && x.e.value !== "on");
     if (f) (f.row.querySelector("select") as HTMLSelectElement).value = "on";
   }
+  // The Agents page opens this page for one agent (?agent=<id>), and with &stop=on to stop it: the switch is set, the
+  // CFO reviews and signs. Only that agent's settings show; the rest of the policy is unchanged.
+  const agentParam = /[?&]agent=([^&]+)/.exec(location.search);
+  const agent = agentParam ? decodeURIComponent(agentParam[1]!) : null;
+  const mine = agent ? fields.filter((f) => f.e.agent === agent) : fields;
+  const wantStop = !!agent && /[?&]stop=on(&|$)/.test(location.search);
+  if (wantStop) {
+    const f = mine.find((x) => x.e.key === `stop.${agent}` && x.e.value !== "on");
+    if (f) (f.row.querySelector("select") as HTMLSelectElement).value = "on";
+  }
   const reason = document.createElement("input");
   reason.id = "reason";
   reason.className = "policy-input";
   reason.maxLength = 300;
   reason.placeholder = "Why, in one line";
   if (/[?&]freeze=on(&|$)/.test(location.search)) reason.value = "Emergency stop";
+  if (wantStop) reason.value = "Stop this agent";
   const reasonLabel = el("label", "policy-label", ["Reason"]);
   reasonLabel.setAttribute("for", "reason");
   const review = el("button", "confirm", ["Review change"]) as HTMLButtonElement;
@@ -1091,12 +1104,14 @@ async function policyPage(): Promise<void> {
   });
   app.replaceChildren(...[
     el("div", "toprow", [back]),
-    txt("h1", "", "CFO policy"),
-    txt("p", "lead", "Limits the agents work within, inside their mandates on chain. A change needs your passkey and takes effect at once."),
+    txt("h1", "", agent && mine.length ? `CFO policy: ${mine[0]!.e.label.split(/:|'s /)[0]}` : "CFO policy"),
+    txt("p", "lead", agent && mine.length
+      ? "This agent's settings. Tightening one needs your passkey and takes effect at once; loosening is a proposal from the runner."
+      : "Limits the agents work within, inside their mandates on chain. A change needs your passkey and takes effect at once."),
     enrolled ? null : txt("p", "warn-box", "No passkey is enrolled yet, so no change can be signed here."),
-    askBox,
-    wordsBox,
-    el("div", "policy", fields.map((f) => f.row)),
+    agent ? null : askBox,
+    agent ? null : wordsBox,
+    el("div", "policy", (mine.length ? mine : fields).map((f) => f.row)),
     el("div", "policy-row", [reasonLabel, reason]),
     review,
     note,

@@ -14,7 +14,8 @@ import { cardLimits, frozen, policyValue } from "../policy/rules.js";
 import { wantCardStatus } from "../policy/cards.js";
 import { stopReason } from "../policy/velocity.js";
 import { lastReconciliation } from "../finance/reconcile.js";
-import { CARDS, type Agent } from "../config/policy.js";
+import { CARDS, MCC_WORDS, type Agent } from "../config/policy.js";
+import { agentProfiles, type AgentProfile } from "../agents/profiles.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -183,6 +184,8 @@ export interface Snapshot {
   /** Ask Purser (G): the latest chat messages, oldest first. */
   /** "you" is the CFO at the runner; "dashboard link" the phone or a viewer; "agent ext:…" an outside agent. */
   ask: { ts: string; from: string; text: string; proposal_id: string | null }[];
+  /** F, the Agents page: each agent's job, models, limits and what waits for the CFO, from the CFO policy. */
+  agents: AgentProfile[];
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
@@ -412,7 +415,6 @@ const DECLINE_WORDS: Record<string, string> = {
   INSUFFICIENT_FUNDS: "not enough money on the account",
 };
 /** Merchant categories in words: the ones Purser's cards use. */
-const MCC_WORDS: Record<string, string> = { "5734": "Software", "7311": "Advertising", "5192": "Books and reports", "4511": "Airlines", "7011": "Hotels", "4112": "Railways" };
 const onlyWords = (c: { allowed_mccs: string; allowed_currencies: string; active_to: string | null }) => {
   const parts = [
     c.allowed_mccs ? c.allowed_mccs.split(",").map((m) => `${MCC_WORDS[m] ?? "Category"} (MCC ${m})`).join(", ") : "",
@@ -858,5 +860,6 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
         : { ts: r.ts, from: "purser", text: str(p.reply), proposal_id: str(p.proposal_id) || null };
     }),
     passkey: passkeyInfo(db, now),
+    agents: agentProfiles(db, now),
   };
 }

@@ -20,6 +20,8 @@ export interface Rule {
   max?: number;
   choices?: string[];
   fallback: string;
+  /** The agent this setting belongs to, for the Agents page; company-wide settings have none. */
+  agent?: string;
 }
 
 export interface PolicyEntry extends Rule {
@@ -34,23 +36,23 @@ const MAX_FLOOR = 10_000_000_000;
 const STATIC: Rule[] = [
   // The emergency stop (E2): on, every agent payment is refused before signing and every company card is frozen.
   { key: "freeze", label: "Emergency stop: all agent payments and cards", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
-  { key: "cap.sourcing", label: "Operations agent: most per payment", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
-  { key: "cap.support", label: "Sales agent: most per refund", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
-  { key: "cap.treasury", label: "Finance agent: most per sweep", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "" },
-  { key: "approval.refund_each", label: "A refund above this needs a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_EACH_CENTS) },
-  { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS) },
+  { key: "cap.sourcing", label: "Operations agent: most per payment", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "sourcing" },
+  { key: "cap.support", label: "Sales agent: most per refund", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "support" },
+  { key: "cap.treasury", label: "Finance agent: most per sweep", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "treasury" },
+  { key: "approval.refund_each", label: "A refund above this needs a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_EACH_CENTS), agent: "support" },
+  { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS), agent: "support" },
   // E1, four eyes: above this a payment needs the Face ID of two different people (src/policy/fourEyes.ts). Off when empty.
   // Ask Purser (G): a task card the CFO asks for up to this amount is issued at once; above it, with Face ID.
-  { key: "approval.task_card_eur", label: "Task cards up to this are issued without Face ID", unit: "EUR", kind: "money", min: 0, max: 150_000, fallback: "300.00" },
+  { key: "approval.task_card_eur", label: "Task cards up to this are issued without Face ID", unit: "EUR", kind: "money", min: 0, max: 150_000, fallback: "300.00", agent: "treasury" },
   { key: "approval.four_eyes_eur", label: "Payments above this need two people (four eyes)", unit: "EUR", kind: "optional_money", min: 0, max: MAX_FLOOR, fallback: "" },
-  { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
-  { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
+  { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "", agent: "treasury" },
+  { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "", agent: "treasury" },
   // Each agent's company card at Airwallex (K2). The card itself is synced to these, so Airwallex declines the rest.
   ...AGENTS.flatMap((a): Rule[] => [
     // Set to on by code when the agent breaks a velocity limit (src/policy/velocity.ts); off again only with Face ID.
-    { key: `stop.${a}`, label: `${agentName(a)}: stopped (velocity limit)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
-    { key: `card.${a}.per_tx`, label: `${agentName(a)}'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(CARDS[a].perTxCents) },
-    { key: `card.${a}.monthly`, label: `${agentName(a)}'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(CARDS[a].monthlyCents) },
+    { key: `stop.${a}`, label: `${agentName(a)}: stopped (velocity limit)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off", agent: a },
+    { key: `card.${a}.per_tx`, label: `${agentName(a)}'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(CARDS[a].perTxCents), agent: a },
+    { key: `card.${a}.monthly`, label: `${agentName(a)}'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(CARDS[a].monthlyCents), agent: a },
   ]),
 ];
 
@@ -59,9 +61,9 @@ export function rules(db: DB): Rule[] {
   // An outside agent's card, once the CFO approved it: the same limits as our own agents', starting from what was approved.
   const outside = (db.prepare("SELECT agent_id, display_name, per_tx_cents, monthly_cents FROM external_agents WHERE status = 'ACTIVE' ORDER BY agent_id").all() as
     { agent_id: string; display_name: string; per_tx_cents: number; monthly_cents: number }[]).flatMap((x): Rule[] => [
-    { key: `stop.${x.agent_id}`, label: `${x.display_name} (outside agent): stopped (velocity limit)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
-    { key: `card.${x.agent_id}.per_tx`, label: `${x.display_name} (outside agent)'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(x.per_tx_cents) },
-    { key: `card.${x.agent_id}.monthly`, label: `${x.display_name} (outside agent)'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(x.monthly_cents) },
+    { key: `stop.${x.agent_id}`, label: `${x.display_name} (outside agent): stopped (velocity limit)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off", agent: x.agent_id },
+    { key: `card.${x.agent_id}.per_tx`, label: `${x.display_name} (outside agent)'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(x.per_tx_cents), agent: x.agent_id },
+    { key: `card.${x.agent_id}.monthly`, label: `${x.display_name} (outside agent)'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(x.monthly_cents), agent: x.agent_id },
   ]);
   // A task card (Ask Purser): its limit is the approved amount, per purchase and in all; like any card it can be stopped.
   const tasks = (db.prepare("SELECT task_id, kind, amount_cents FROM task_cards ORDER BY task_id").all() as
