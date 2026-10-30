@@ -71,6 +71,14 @@ export function railsView(db: DB): RailsView {
       airwallex.push({ what: "Retailers pay into Global Accounts", detail: `${r.length} payments in ${cur}: ${matched} matched to their invoice, ${r.length - matched} escalated to the CFO (short, or no invoice)`, proof: awxId(r[0]!.deposit_id), simulated: true });
     }
   }
+  // Webhooks: Airwallex tells the runner about each card, payout, conversion and deposit as it changes.
+  if (has(db, "airwallex_events")) {
+    const w = one(db, "SELECT COUNT(*) AS n, SUM(CASE WHEN agrees = 0 THEN 1 ELSE 0 END) AS odd, COUNT(DISTINCT object) AS kinds FROM airwallex_events");
+    const first = one(db, "SELECT event_id FROM airwallex_events ORDER BY received_at, rowid LIMIT 1");
+    if (w && Number(w.n) > 0) {
+      airwallex.push({ what: "Airwallex reports each change by webhook", detail: `${Number(w.n)} events on ${Number(w.kinds)} kinds of object, each signed by Airwallex and checked at the relay and again on the runner; ${Number(w.odd) ? `${Number(w.odd)} the ledger could not explain, raised as an alarm` : "all matched the ledger"}`, proof: awxId(first?.event_id) });
+    }
+  }
   for (const d of events(db, "credit.deposited")) {
     airwallex.push({ what: "Metal earnings booked at Airwallex", detail: `USD ${String(d.p.amount)} booked once as a simulated sandbox deposit that names the sweep's testnet transaction (no test USD reached Airwallex)`, proof: awxId(d.p.deposit_id), simulated: true });
   }

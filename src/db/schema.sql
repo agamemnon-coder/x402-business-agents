@@ -546,3 +546,18 @@ CREATE TABLE IF NOT EXISTS receipts (
   detail TEXT NOT NULL,
   received_at TEXT NOT NULL
 );
+
+-- Every Airwallex webhook the runner accepted (HMAC checked at the relay and again on the runner), once per event id,
+-- with what the ledger made of it: agrees 1 (it matches), 0 (the ledger cannot explain it), NULL (nothing to compare).
+CREATE TABLE IF NOT EXISTS airwallex_events (
+  event_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL CHECK (object IN ('card_transaction', 'card', 'transfer', 'conversion', 'deposit', 'other')),
+  object_id TEXT,
+  status TEXT,
+  amount_cents INTEGER,
+  currency TEXT,
+  agrees INTEGER CHECK (agrees IN (0, 1)),
+  outcome TEXT NOT NULL,
+  received_at TEXT NOT NULL
+);

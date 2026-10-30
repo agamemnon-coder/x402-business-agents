@@ -216,6 +216,13 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .panel.claude .money { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 /* The finance view: the Books tab. */
 .books-ok { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+/* Airwallex's webhooks on the Overview: one line per event, the ledger's verdict under it. */
+#awx-hooks { margin: 16px 0; }
+.hooklist { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+.hooklist li { display: flex; flex-direction: column; gap: 2px; padding: 7px 0; border-top: 1px solid var(--border); min-width: 0; overflow-wrap: anywhere; }
+.hooklist li span { font-family: var(--mono); font-size: 12.5px; }
+.hooklist li small { color: var(--muted); }
+.hooklist li.bad small { color: var(--bad); font-weight: 600; }
 .panel.bk { margin-top: 16px; }
 .panel.bk table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
 .panel.bk th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; padding: 6px 4px; }
@@ -561,6 +568,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="drail-awx"></ul></article>
     <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="drail-mtl"></ul></article>
   </div></div>
+  <section class="panel" id="awx-hooks" aria-labelledby="h-hooks" hidden><div class="sect flush"><h2 id="h-hooks">Webhooks from Airwallex</h2><span class="hint">each one signed by Airwallex, checked at the relay and again here, then compared with the ledger</span></div><div id="awx-hooks-body"></div></section>
   <div class="cols">
     <section class="panel" aria-labelledby="h-pending"><div class="sect flush"><h2 id="h-pending">Waiting for you</h2><span class="pill" id="pending-count">0</span></div><div id="pending"></div></section>
     <section class="panel" aria-labelledby="h-feed"><div class="sect flush"><h2 id="h-feed">Activity</h2><span class="hint">newest first</span></div><ul class="feed" id="feed"></ul><details class="tech feed-sys" id="feed-sys-wrap" hidden><summary id="feed-sys-sum">System events</summary><ul class="feed" id="feed-sys"></ul></details></section>
@@ -1113,12 +1121,26 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   var wantDisputes = !wantAgents && !wantBooks && /[?&]disputes(=|&|$)/.test(location.search);
   if (wantAgents || wantBooks || wantDisputes) { document.getElementById("overview").hidden = true; document.getElementById(wantAgents ? "agents-view" : wantBooks ? "books-view" : "disputes-view").hidden = false; }
 
+  // Airwallex's webhooks for cards, payouts, conversions and deposits: what arrived, and whether the ledger agrees.
+  function renderHooks(d) {
+    var h = d.airwallex_events, box = document.getElementById("awx-hooks");
+    if (!h || !h.total) { box.hidden = true; return; }
+    box.hidden = false;
+    var sum = h.by_object.map(function (b) { var l = b.label.toLowerCase(); return b.n + " " + (b.n === 1 && l !== "other" ? l.replace(/s$/, "") : l) + (b.disagree ? " (" + b.disagree + " the ledger cannot explain)" : ""); }).join(" · ");
+    var head = el("p", "books-ok", [txt("span", "pill " + (h.disagree ? "bad" : "ok"), h.disagree ? h.disagree + " to check" : "All match"), txt("span", "hint", h.total + " events: " + sum)]);
+    var rows = h.recent.map(function (r) {
+      var mark = r.agrees === false ? "! " : r.agrees === true ? "✓ " : "· ";
+      return el("li", r.agrees === false ? "bad" : "", [txt("span", "", hm(r.received_at) + "  " + r.name), txt("small", "", mark + plain(r.outcome))]);
+    });
+    document.getElementById("awx-hooks-body").replaceChildren(head, el("ul", "hooklist", rows));
+  }
   function render(d) {
     renderAgents(d); renderBooks(d); renderDisputes(d);
     renderKpis(d); renderClaude(d); renderAsk(d); renderCards(d); renderAgentsTable(d);
     renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
     var dr = d.rails, drw = document.getElementById("dash-rails");
     if (dr && (dr.airwallex.length || dr.metal.length)) { railList("drail-awx", dr.airwallex); railList("drail-mtl", dr.metal); drw.hidden = false; } else drw.hidden = true;
+    renderHooks(d);
     var fz = document.getElementById("frozen");
     if (d.frozen) {
       fz.hidden = false;

@@ -53,11 +53,12 @@ displays was not checked.
 | Red team | 39 of 39 failed, 0 inconclusive: 37 stopped before anything moved, 2 found afterwards (a hidden card charge by the reconciliation, a rewritten log row by `npm run verify`); 35 scripted attacks and 4 documents written by Claude Opus as the attacker, in a throwaway test world | `docs/redteam/report.json` (30 Oct; `caught` per attempt) | The harness now gives every attempt an outcome, and inconclusive never counts as blocked. The task card is tested at a hotel while still fresh (`MERCHANT_CATEGORY_NOT_ALLOWED`). The revoked agent is named correctly. The film's "thirty-four" is now thirty-nine. |
 | Duplicate invoices | A paid invoice sent again as "btx-dup" or with an en dash is refused | `test/invoice-duplicate-key.test.ts`; red team document 4 | Found by the red team and fixed. |
 | Scenario Lab | 18 of 18 as expected | `docs/lab/results.json` | hardening.md said 12. |
-| Tests | 798 in 101 files | `npx vitest run` | |
+| Tests | 807 in 102 files | `npx vitest run` | |
 | Speed limit (Operations agent) | 30 payments a minute, 4.00 test USD an hour | `src/config/policy.ts` `VELOCITY` | Kept on purpose, above the busiest minute of the recorded run (18). |
 | Hidden card payment | Found by the reconciliation within the hour, not prevented | `src/ops/health.ts` `RECONCILE_EVERY_MS`; red team `hidden-payment` | Was daily. The runner now reconciles every hour, and an alarm fires after three missed rounds. |
 | Four eyes | Optional, off in the recorded run | `src/policy/fourEyes.ts` | Was "Above your threshold, two different people approve". |
 | Emergency stop | Stops every agent payment and freezes every card at Airwallex | `test/freeze.test.ts`; Lab scenario | Now says it is tested against stand-ins and not yet run live. |
+| Airwallex webhooks | Live for card transactions only. Cards, payouts, conversions and deposits: built and tested, not yet subscribed (a new subscription means a new signing secret, which waits for Max) | `docs/airwallex.md` Webhooks; `test/airwallex-events.test.ts`; read-only check of the sandbox's subscriptions, 30 Oct: one, with the 4 card transaction events | New. The pages show the webhook panel only when events exist; the recording has none. |
 | Task cards (Ask Purser) | Issued at once within the CFO's policy (up to €300, 3 a day, asked at the runner); otherwise after Face ID | `src/agents/askPurser.ts`, `src/policy/rules.ts` | The README and the film said "after Face ID" or "anything new waits for Face ID". /live no longer shows Face ID for it. |
 
 ## Things that happened in separate live runs, not in the recorded one

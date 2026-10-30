@@ -77,7 +77,7 @@ describe("the runner's side of a webhook", () => {
     // A relay that forges or alters an event gets nowhere.
     expect(handleAirwallexHook(db, { id: "evt-2", ts, signature: sign(ts, body, "relay-made"), body }, SECRET, t0)).toMatch(/signature/);
     expect(handleAirwallexHook(db, { id: "evt-3", ts, signature: sign(ts, event("not-ours")), body: event("not-ours") }, SECRET, t0)).toMatch(/not an agent's card/);
-    expect(handleAirwallexHook(db, { id: "evt-4", ts, signature: sign(ts, '{"id":"x","name":"account.active","data":{}}'), body: '{"id":"x","name":"account.active","data":{}}' }, SECRET, t0)).toMatch(/not a card transaction/);
+    expect(handleAirwallexHook(db, { id: "evt-4", ts, signature: sign(ts, '{"id":"x","name":"account.active","data":{}}'), body: '{"id":"x","name":"account.active","data":{}}' }, SECRET, t0)).toMatch(/not an object Purser acts on/);
     expect(db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get()).toEqual({ n: 1 });
     // The sandbox sends the transaction as data itself, not under data.object.
     const flat = JSON.stringify({ id: "evt-5", name: "issuing.card_transaction_event.success", data: { ...JSON.parse(event(card)).data.object, card_transaction_id: "ct-10", process_result: "APPROVED", failure_reason: null, transaction_amount: 15 } });

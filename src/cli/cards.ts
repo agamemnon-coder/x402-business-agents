@@ -7,7 +7,7 @@
 // npm run cards -- scenario                          S4 for demo:all: issue the cards, a plan inside the limit, one over it
 //                                                     (declined by Airwallex), and the agent's request for a raise
 // npm run cards -- poll                               record transactions Airwallex made that we have not seen yet
-// npm run cards -- webhook                            subscribe the relay to Airwallex's card transaction webhooks; the
+// npm run cards -- webhook [--replace]                subscribe the relay to Airwallex's webhooks for every object Purser uses; the
 //                                                     signing secret goes to the keys dir and the Worker, never the screen
 // Sandbox only. The card number stays at Airwallex; this prints the last four digits.
 
@@ -22,7 +22,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Airwallex, fromEnv } from "../airwallex/client.js";
-import { CARD_EVENTS, createWebhook, listWebhooks, WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
+import { createWebhook, deleteWebhook, listWebhooks, WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
+import { ALL_EVENTS } from "../policy/airwallexEvents.js";
 import { keyPath } from "../metal/agentCli.js";
 import { relayConfig } from "../relay/config.js";
 
@@ -77,21 +78,36 @@ if (cmd === "status") {
   const api = new Airwallex(cfg);
   const url = `${(await relayConfig()).url}/hooks/airwallex`;
   const file = keyPath(WEBHOOK_SECRET_FILE);
+  const events = (process.env.AIRWALLEX_WEBHOOK_EVENTS ?? ALL_EVENTS.join(",")).split(",");
+  const replace = args.includes("--replace");
   const existing = (await listWebhooks(api)).find((w) => w.url === url);
-  if (existing && existsSync(file)) {
-    console.log(`already subscribed: ${existing.id} (${existing.events.join(", ")}); the secret is in the keys dir`);
+  const missing = existing ? events.filter((e) => !existing.events.includes(e)) : events;
+  if (existing && existsSync(file) && missing.length === 0) {
+    console.log(`already subscribed: ${existing.id} (${existing.events.length} events); the secret is in the keys dir`);
     process.exit(0);
   }
-  if (existing) { console.error(`a webhook for ${url} exists (${existing.id}) but its secret is not in the keys dir; delete it in the Airwallex web app and run this again`); process.exit(1); }
-  const w = await createWebhook(api, { url, events: (process.env.AIRWALLEX_WEBHOOK_EVENTS ?? CARD_EVENTS.join(",")).split(","), version: process.env.AIRWALLEX_WEBHOOK_VERSION ?? "2025-11-11" });
-  writeFileSync(file, w.secret + "\n", { mode: 0o600 });
+  if (existing && !replace) {
+    console.error(existsSync(file)
+      ? `${existing.id} lacks ${missing.length} event(s) (${missing.slice(0, 4).join(", ")}${missing.length > 4 ? ", …" : ""}). Airwallex cannot add events to a subscription, so this needs a new one with a NEW signing secret: run with --replace (asks nothing more; get the CFO's go first)`
+      : `a webhook for ${url} exists (${existing.id}) but its secret is not in the keys dir; run with --replace to make a new one`);
+    process.exit(1);
+  }
+  // The new subscription first, its secret on the relay and the runner, and only then the old one goes: no gap in
+  // which Airwallex sends to a relay that cannot check the signature.
+  const w = await createWebhook(api, { url, events, version: process.env.AIRWALLEX_WEBHOOK_VERSION ?? "2025-11-11" });
   // The Worker's copy, through stdin like the relay token: never on a command line, never printed.
   const worker = resolve(import.meta.dirname, "../../worker");
   const r = spawnSync(resolve(worker, "node_modules/.bin/wrangler"), ["secret", "put", "AIRWALLEX_WEBHOOK_SECRET"], {
     cwd: worker, input: w.secret, env: { ...process.env, WRANGLER_SEND_METRICS: "false" }, stdio: ["pipe", "inherit", "inherit"],
   });
-  if (r.status !== 0) { console.error("the webhook exists and its secret is in the keys dir, but the Worker secret was not set; run this again"); process.exit(1); }
-  console.log(`subscribed ${w.id} to ${w.events.join(", ")} (version ${w.version}); restart npm run relay so the runner checks them too`);
+  if (r.status !== 0) {
+    await deleteWebhook(api, w.id);
+    console.error("the Worker secret was not set, so the new subscription was deleted again; nothing changed");
+    process.exit(1);
+  }
+  writeFileSync(file, w.secret + "\n", { mode: 0o600 });
+  if (existing) await deleteWebhook(api, existing.id);
+  console.log(`subscribed ${w.id} to ${w.events.length} events (version ${w.version})${existing ? `; the old subscription ${existing.id} is deleted` : ""}; restart npm run relay so the runner checks them too`);
 } else if (cmd === "scenario") {
   const awx = need();
   console.log("GOAL             every agent its own company card, with the CFO policy's limits on the card itself");

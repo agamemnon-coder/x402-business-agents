@@ -1,5 +1,6 @@
-// Airwallex webhook subscriptions (K2): the relay's /hooks/airwallex gets the card transactions as they happen.
-// The create call is the only place the signing secret appears; the caller stores it and never prints it.
+// Airwallex webhook subscriptions (K2, awards item 5): the relay's /hooks/airwallex gets Airwallex's events as they
+// happen. The create call is the only place the signing secret appears; the caller stores it and never prints it.
+// Airwallex cannot add events to a subscription (update changes only its url), so more events mean a new one.
 
 import { randomUUID } from "node:crypto";
 import type { Airwallex } from "./client.js";
@@ -37,4 +38,8 @@ export async function createWebhook(api: Airwallex, a: { url: string; events: st
   const w = await api.call<Webhook & { secret?: string }>("POST", "/webhooks/create", { request_id: randomUUID(), url: a.url, events: a.events, version: a.version });
   if (!w.secret) throw new Error("Airwallex created the webhook but returned no secret");
   return { id: w.id, url: w.url, events: w.events, version: w.version, secret: w.secret };
+}
+
+export async function deleteWebhook(api: Airwallex, id: string): Promise<void> {
+  await api.call("POST", `/webhooks/${encodeURIComponent(id)}/delete`, {});
 }

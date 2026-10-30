@@ -48,6 +48,12 @@ export function health(db: DB, now = new Date()): Health {
     alerts.push({ code: "hold_stale", severity: "warning", since: holdsOpen.oldest, words: `${holdsOpen.n} spend hold(s) open, the oldest since ${holdsOpen.oldest}; they keep counting until resolved.` });
   }
 
+  // An Airwallex webhook the ledger cannot explain (a payout or conversion Purser did not make, a card live while the
+  // policy has it frozen) stands for a day: a person looks at it in Airwallex and the hourly reconciliation.
+  const DAY = new Date(now.getTime() - 24 * 60 * 60_000).toISOString();
+  const odd = has(db, "airwallex_events") ? (db.prepare("SELECT COUNT(*) AS n, MIN(received_at) AS since FROM airwallex_events WHERE agrees = 0 AND received_at > ?").get(DAY) as { n: number; since: string | null }) : { n: 0, since: null };
+  if (odd.n > 0) alerts.push({ code: "airwallex_disagrees", severity: "critical", since: odd.since, words: `${odd.n} Airwallex webhook(s) in the last day report something the ledger cannot explain; check them on the dashboard.` });
+
   const metrics: Record<string, number> = {
     approvals_waiting: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?", now.toISOString()),
     actions_executing: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'EXECUTING'"),
@@ -56,6 +62,7 @@ export function health(db: DB, now = new Date()): Health {
     agents_stopped: stopped.length,
     emergency_stop: frozen(db) ? 1 : 0,
     reconcile_differences: rec?.differences ?? 0,
+    airwallex_disagreements_24h: odd.n,
     reconcile_age_seconds: rec ? Math.round((now.getTime() - Date.parse(rec.at)) / 1000) : -1,
     principals_revoked: has(db, "principals") ? n(db, "SELECT COUNT(*) AS n FROM principals WHERE status = 'REVOKED'") : 0,
     policy_version: has(db, "policy_versions") ? n(db, "SELECT MAX(version) AS n FROM policy_versions") : 0,

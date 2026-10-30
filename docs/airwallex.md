@@ -37,12 +37,31 @@ Each agent has a DELEGATE cardholder and one virtual Visa card. The CFO policy s
 
 ## Webhooks
 
-Airwallex tells the relay about each card transaction as it happens. The relay checks the signature and keeps the event. The runner then checks the signature again with its own copy of the secret, because it trusts no relay.
+Airwallex tells the relay about each change as it happens. The relay checks the signature and keeps the event. The runner then checks the signature again with its own copy of the secret, because it trusts no relay.
+
+**Live today:** card transactions only (the subscription made on 29 October has the four card transaction events).
+**Built and tested, not yet live:** the other objects Purser uses (`src/policy/airwallexEvents.ts`,
+`test/airwallex-events.test.ts`). Each signed event is recorded once and checked against the ledger:
+
+| Object | Events | What the runner does with it |
+|---|---|---|
+| Card transaction | `issuing.card_transaction_event.*`, `issuing.transaction.*` | Books Airwallex's approve or decline once (as before). A transaction on a card that is no agent's is flagged. |
+| Card | `issuing.card.active`, `.inactive`, `.closed`, `.blocked`, `.lost`, `.stolen` | Compares with the status the CFO policy wants. A card live at Airwallex while the policy has it frozen is flagged; a stricter status is not. |
+| Payout | `payout.transfer.scheduled` … `.paid`, `.failed`, `.cancelled` | Compares with the ledger's transfer. A payout Purser did not make, or one paid in one place and failed in the other, is flagged. |
+| Conversion | `conversion.scheduled`, `.overdue`, `.settled`, `.cancelled` | Compares with the ledger's conversion. A conversion Purser did not make is flagged. |
+| Deposit | `deposit.pending`, `.settled`, `.rejected`, `.reversed` | A settled EUR or GBP deposit into one of Northwind's Global Accounts goes to the receivables agent, which books it once. The poll stays the backup. |
+
+A flagged event stands as the `airwallex_disagrees` alarm in `/health` for a day, and shows on the dashboard. A webhook never
+approves, pays, thaws a card or changes a limit. Airwallex cannot add events to an existing subscription (its update call
+changes only the url), so going live means a new subscription with a new signing secret:
+`npm run cards -- webhook --replace`. That creates the new one, puts its secret on the relay and the runner, and only then
+deletes the old one. It changes a secret, so it waits for the CFO's go.
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
 | `GET /webhooks` | Lists subscriptions, so setup does not subscribe twice. | A duplicate subscription would deliver every event twice. | `src/airwallex/webhooks.ts` |
 | `POST /webhooks/create` | Subscribes the relay's `/hooks/airwallex` to `issuing.card_transaction_event.success`, `.failed`, `issuing.transaction.succeeded` and `.failed` (API version 2025-11-11). The signing secret in the answer is stored and never printed. | The CFO sees a card decision within seconds, not at the next poll. | `docs/runs/2026-10-29-cards.md` † (live from 16:57: a merchant's own 9.00 EUR charge and a declined 61.00 EUR charge reached the ledger by webhook) |
+| `POST /webhooks/{id}/delete` | Removes the old subscription once `--replace` has put the new one in place. | Two subscriptions would deliver every event twice, one signed with a secret nobody checks any more. | `src/cli/cards.ts` (not yet run) |
 
 How a delivery is checked (`worker/src/core.ts`, `src/policy/cardHooks.ts`):
 
@@ -182,7 +201,7 @@ The permissions below come from the endpoints on this page. Max creates the key 
 | FX rates, quotes and conversions | `GET /fx/rates/current`; `POST /fx/quotes/create`; `POST /fx/conversions/create`; `GET /fx/conversions` | Write |
 | Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}` | Write |
 | Issuing: cardholders, cards, transactions | `GET`/`POST /issuing/cardholders`; `GET`/`POST /issuing/cards` and `/issuing/cards/{id}/update`; `GET /issuing/transactions` | Write |
-| Webhooks | `GET /webhooks`; `POST /webhooks/create` (setup only) | Write at setup, then none |
+| Webhooks | `GET /webhooks`; `POST /webhooks/create`; `POST /webhooks/{id}/delete` (setup and `--replace` only) | Write at setup, then none |
 | Sandbox simulation | `POST /simulation/deposit/create`; `POST /simulation/transfers/{id}/transition`; `POST /simulation/issuing/create` | Write (sandbox only; these do not exist in production) |
 
 What the key does not need:

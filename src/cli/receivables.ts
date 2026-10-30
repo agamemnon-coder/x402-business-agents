@@ -7,6 +7,7 @@
 
 import { randomUUID } from "node:crypto";
 import { openReceivable, matchReceipt, receivablesView } from "../agents/receivables.js";
+import { setKnownGlobalAccounts } from "../policy/airwallexEvents.js";
 import { Airwallex, fromEnv } from "../airwallex/client.js";
 import { openDb } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -35,6 +36,8 @@ async function globalAccount(currency: "EUR" | "GBP", country: string): Promise<
 }
 
 const accounts = { EUR: await globalAccount("EUR", "NL"), GBP: await globalAccount("GBP", "GB") };
+// The deposit webhooks are matched only into these accounts (src/policy/airwallexEvents.ts); the poll below is the backup.
+setKnownGlobalAccounts(db, Object.values(accounts));
 
 if (mode === "demo") {
   const now = new Date();

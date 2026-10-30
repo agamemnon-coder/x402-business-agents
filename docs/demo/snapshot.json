@@ -2044,6 +2044,12 @@
       ],
       "suggestions": []
     },
+    "airwallex_events": {
+      "total": 0,
+      "disagree": 0,
+      "by_object": [],
+      "recent": []
+    },
     "health": {
       "status": "ok",
       "at": "2026-10-30T08:33:27.599Z",
@@ -2056,6 +2062,7 @@
         "agents_stopped": 0,
         "emergency_stop": 0,
         "reconcile_differences": 0,
+        "airwallex_disagreements_24h": 0,
         "reconcile_age_seconds": 3309,
         "principals_revoked": 0,
         "policy_version": 0,

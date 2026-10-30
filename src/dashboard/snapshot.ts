@@ -8,6 +8,7 @@ import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS
 import type { DB } from "../db/open.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { receivablesView, type ReceivablesView } from "../agents/receivables.js";
+import { airwallexEventsView, type AirwallexEventsView } from "../policy/airwallexEvents.js";
 import { spendReview, type SpendReview } from "../agents/spendReview.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { callCostMicros } from "../claude/pricing.js";
@@ -213,6 +214,8 @@ export interface Snapshot {
   receivables: ReceivablesView;
   /** Card spend per merchant and category, with subscriptions flagged (src/agents/spendReview.ts). */
   card_spend: SpendReview;
+  /** Airwallex's webhooks, each HMAC-checked twice and compared with the ledger (src/policy/airwallexEvents.ts). */
+  airwallex_events: AirwallexEventsView;
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
   /** Monitoring (B7): the alarms standing now and the numbers behind them; the relay's /health reads this. */
@@ -962,6 +965,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     disputes: disputeViews(db),
     receivables: receivablesView(db),
     card_spend: spendReview(db),
+    airwallex_events: airwallexEventsView(db),
     health: health(db, now),
     rails: railsView(db),
   };

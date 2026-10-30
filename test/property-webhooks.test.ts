@@ -109,7 +109,9 @@ function realise(e: { id: unknown; name: unknown; data: unknown }, cardPick: num
 }
 
 const rows = () => (db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get() as { n: number }).n;
-const handled = (body: string, ts = String(t0.getTime())) => handleAirwallexHook(db, { id: "evt", ts, signature: sign(ts, body), body }, SECRET, t0);
+// The relay passes each event on under the event's own id (worker/src/core.ts keeps only bodies with a string id).
+const idOf = (body: string) => { try { const v = JSON.parse(body) as { id?: unknown }; return typeof v?.id === "string" ? v.id : "evt"; } catch { return "evt"; } };
+const handled = (body: string, ts = String(t0.getTime())) => handleAirwallexHook(db, { id: idOf(body), ts, signature: sign(ts, body), body }, SECRET, t0);
 
 describe("the runner records a webhook's card transaction (handleAirwallexHook)", () => {
   beforeAll(async () => {
