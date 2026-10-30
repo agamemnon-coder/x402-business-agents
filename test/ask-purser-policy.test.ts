@@ -18,7 +18,7 @@ describe("within the CFO policy: issued at once", () => {
     const db = openDb(":memory:");
     const awx = new FakeIssuing();
     expect(policyValue(db, "approval.task_card_eur")).toBe("300.00");
-    const r = await askPurser(db, tools(db), "Book a flight to Berlin on 12 November, at most €250", now, { rail: awx });
+    const r = await askPurser(db, tools(db), "Book a flight to Berlin on 12 November, at most €250", now, { rail: awx, from: "runner" });
     expect(r.proposalId).toBeNull();
     expect(r.taskId).toMatch(/^task:T-\d{4}$/);
     expect(r.reply).toMatch(/within your policy.*•••• \d{4}/);
@@ -65,7 +65,7 @@ describe("closing the card after its one purchase", () => {
   it("closes the card after the approved charge, and syncing keeps it closed", async () => {
     const db = openDb(":memory:");
     const awx = new FakeIssuing();
-    const { taskId } = await askPurser(db, tools(db), "Flight to Berlin, at most €250", now, { rail: awx });
+    const { taskId } = await askPurser(db, tools(db), "Flight to Berlin, at most €250", now, { rail: awx, from: "runner" });
     await bookOnTaskCard(db, awx, taskId!, { merchant: "Skyline Air", amount: "189.00" }, now, awx);
     expect(awx.cards[0]?.status).toBe("INACTIVE");
     expect(wantCardStatus(db, taskId!)).toBe("INACTIVE");
@@ -78,7 +78,7 @@ describe("closing the card after its one purchase", () => {
   it("leaves the card open after a declined try", async () => {
     const db = openDb(":memory:");
     const awx = new FakeIssuing();
-    const { taskId } = await askPurser(db, tools(db), "Flight to Berlin, at most €250", now, { rail: awx });
+    const { taskId } = await askPurser(db, tools(db), "Flight to Berlin, at most €250", now, { rail: awx, from: "runner" });
     await bookOnTaskCard(db, awx, taskId!, { merchant: "Skyline Air", amount: "260.00" }, now, awx);
     expect(awx.cards[0]?.status).toBe("ACTIVE");
   });

@@ -76,8 +76,15 @@ function plantedByDocument(db: DB): Map<string, string> {
   return out;
 }
 
+/**
+ * The phone gets at most this many waiting proposals: policy changes (the emergency stop among them) first, then the
+ * oldest. A flood of proposals can then never push the state over the relay's size limit and hide the stop.
+ */
+export const MAX_RELAY_PROPOSALS = 50;
+
 export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; relayToken: string }, now = new Date()): RelayState {
-  const rows = db.prepare("SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' ORDER BY created_at, proposal_id").all() as PRow[];
+  const rows = db.prepare(`SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?
+    ORDER BY kind != 'policy_change', created_at, proposal_id LIMIT ${MAX_RELAY_PROPOSALS}`).all(now.toISOString()) as PRow[];
   const planted = plantedByDocument(db);
   const proposals: RelayProposal[] = rows.filter((p) => Date.parse(p.expires_at) > now.getTime()).map((p) => {
     let evidence: { sha256?: string }[] = [];

@@ -38,6 +38,15 @@ function migrate(db: DB): void {
     db.exec("ALTER TABLE cards ADD COLUMN allowed_currencies TEXT NOT NULL DEFAULT ''");
     db.exec("ALTER TABLE cards ADD COLUMN active_to TEXT");
   }
+  // Task cards are reserved (PENDING) before Airwallex is asked: widen the status check of an older table.
+  const tc = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'task_cards'").get() as { sql: string } | undefined;
+  if (tc && !tc.sql.includes("'PENDING'")) {
+    db.exec(`ALTER TABLE task_cards RENAME TO task_cards_old;
+      CREATE TABLE task_cards (task_id TEXT PRIMARY KEY CHECK (task_id LIKE 'task:%'), proposal_id TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, purpose TEXT NOT NULL,
+        mccs TEXT NOT NULL, amount_cents INTEGER NOT NULL CHECK (amount_cents > 0), valid_until TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('PENDING', 'ACTIVE', 'USED', 'FAILED')), created_at TEXT NOT NULL);
+      INSERT INTO task_cards SELECT * FROM task_cards_old; DROP TABLE task_cards_old;`);
+  }
   // Velocity limits: a Metal payment's id, so a retry under it is counted once.
   if (!has("velocity_events", "payment_id")) {
     db.exec("ALTER TABLE velocity_events ADD COLUMN payment_id TEXT");

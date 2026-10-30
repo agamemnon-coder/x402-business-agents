@@ -290,8 +290,8 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       sentence: back
         ? `Send the ${str(t.amount)} test USD that Metal held in quarantine back to its sender ${str(t.originator)}. Nothing else moves.`
         : `Accept the ${str(t.amount)} test USD from ${str(t.originator)}, held by Metal in quarantine, into the sweep wallet. Only accept it if you know who sent it and why.`,
-      amount: `${str(t.amount)} test USD`, margin: null, recipient: back ? str(t.originator) : "the sweep wallet",
-      rows: [["From", str(t.originator)], ["Amount", `${str(t.amount)} test USD`], ["Goes to", back ? "its sender" : "the sweep wallet"], ["Held in", `transaction ${str(t.tx_hash).slice(0, 10)}…`]],
+      amount: `${str(t.amount)} test USD`, margin: null, recipient: back ? str(t.originator) : `the sweep wallet ${str(t.to)}`,
+      rows: [["From", str(t.originator)], ["Amount", `${str(t.amount)} test USD`], ["Goes to", back ? `its sender ${str(t.to)}` : `the sweep wallet ${str(t.to)}`], ["Held in", `transaction ${str(t.tx_hash).slice(0, 10)}…`]],
       short: back ? "returning it" : "accepting it", warnings: back ? [] : ["Money from someone you do not know can be a mistake or an attempt to mix funds with yours."],
       amountLabel: back ? "Returns" : "Accepts", label: "Held payment", big: str(t.amount), unit: "test USD",
     };
@@ -301,12 +301,17 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     const mccs = Array.isArray(t.merchant_categories) ? t.merchant_categories.map(str).join(", ") : "";
     const where = mccs === "4511" ? "an airline" : mccs === "7011" ? "a hotel" : mccs === "4112" ? "a railway" : "a merchant";
     const ends = utcMinute(str(t.valid_until));
+    const by = str(t.asked_by);
+    const asked = by === "cfo-at-runner" ? "you, at the runner" : by.startsWith("ext:") ? `outside agent ${by}` : "someone with the dashboard link";
+    const check = by === "cfo-at-runner" ? "Purser read this from your own message."
+      : by.startsWith("ext:") ? `An outside agent (${by}) asked for this card, not you. Approve only if you expect it.`
+      : "This came from a chat message sent with the dashboard link: your phone, or anyone you gave the viewer link. Approve only if you sent it.";
     return {
       approvable: true, title: "Task card",
       sentence: `Issue a single-use virtual card at Airwallex for a ${str(t.label).toLowerCase()}: one purchase of at most ${money(t.amount)} EUR at ${where} (merchant category ${mccs}), until ${ends}. For: ${str(t.purpose)}.`,
       amount: `${money(t.amount)} EUR at most, once`, margin: null, recipient: `${where} (merchant category ${mccs})`,
-      rows: [["For", str(t.purpose)], ["Most", `${money(t.amount)} EUR`], ["Pays", "one purchase, then Airwallex declines"], ["Merchant category", mccs], ["Ends", ends]],
-      short: "this task card", warnings: ["Purser read this from your own message. Check the amount and the end date before you approve."],
+      rows: [["For", str(t.purpose)], ["Asked by", asked], ["Most", `${money(t.amount)} EUR`], ["Pays", "one purchase, then Airwallex declines"], ["Merchant category", mccs], ["Ends", ends]],
+      short: "this task card", warnings: [`${check} Check the amount and the end date before you approve.`],
       amountLabel: "Card limit", label: str(t.label), big: money(t.amount), unit: "EUR, one purchase",
     };
   }

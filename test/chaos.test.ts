@@ -71,9 +71,9 @@ describe("Airwallex fails", () => {
     const db = openDb(":memory:");
     const awx = new FakeIssuing();
     awx.createCard = async () => { throw new Error("Airwallex 503 Service Unavailable"); };
-    const r = await askPurser(db, new Tools(db, new ClaudeReader(db, null)), "Book a flight to Berlin, at most €250", now, { rail: awx });
+    const r = await askPurser(db, new Tools(db, new ClaudeReader(db, null)), "Book a flight to Berlin, at most €250", now, { rail: awx, from: "runner" });
     expect(r).toMatchObject({ proposalId: null, taskId: null, reply: expect.stringMatching(/did not issue the card.*Nothing was charged/) });
-    expect(db.prepare("SELECT COUNT(*) AS n FROM task_cards").get()).toEqual({ n: 0 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM task_cards WHERE status != 'FAILED'").get()).toEqual({ n: 0 });
   });
 
   it("finds a card charge whose webhook was lost with the next poll, and records it once", async () => {

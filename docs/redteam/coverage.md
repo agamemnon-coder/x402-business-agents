@@ -34,5 +34,5 @@ the ledger, not from an error message. Scenario Lab stories are in `npm run lab`
 | 26 | The same invoice twice | `duplicate-invoice` | Lab `duplicate-invoice` |
 | 27 | A model answer of the wrong shape | `schema-slip` | `test/claude.test.ts` |
 | 28 | Ledger and outside world disagree | `hidden-payment` | Lab `reconciliation-difference`; `test/reconcile.test.ts` |
-| 29 | A bigger or reusable task card from a message | `ask-raise-limit-in-words`, `ask-hidden-characters`, `task-card-second-use` | Lab `ask-purser` |
-| — | Outside money into the sweep wallet (B1) | `stranger-into-sweep` | Lab `unknown-sender` |
+| 29 | A card without Face ID, or a bigger or reusable task card, from a message; a flood of requests | `ask-raise-limit-in-words`, `ask-hidden-characters`, `ask-viewer-link-card`, `ask-agent-flood`, `task-card-second-use` | Lab `ask-purser` |
+| — | Outside money into the sweep wallet (B1), and a flood of tiny payments | `stranger-into-sweep`, `quarantine-dust-flood` | Lab `unknown-sender` |

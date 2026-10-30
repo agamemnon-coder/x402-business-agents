@@ -5,7 +5,7 @@
 import type { Card, CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
 import type { Tools } from "../claude/tools.js";
 import { audit } from "../audit/log.js";
-import { TASK_DEFAULT_DAYS, TASK_KINDS, TASK_MAX_DAYS } from "../config/policy.js";
+import { ASK_AGENT_PER_HOUR, TASK_DEFAULT_DAYS, TASK_KINDS, TASK_LINK_PENDING_MAX, TASK_MAX_DAYS, TASK_WITHIN_PER_DAY } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
@@ -67,11 +67,16 @@ function dateOf(text: string, now: Date): string | null {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+// An amount next to a euro sign or the word EUR/euro; a bare number could be a date, a room or a flight number.
+const EURO = /€\s*(\d[\d.,]*\d|\d)|(\d[\d.,]*\d|\d)\s*(?:€|eur\b|euros?\b)/gi;
+/** Every amount the message marks as euros, in cents. */
+function euroAmountsIn(text: string): number[] {
+  return [...text.matchAll(EURO)].flatMap((m) => amountsIn(m[1] ?? m[2] ?? "").slice(0, 1));
+}
+
 /** The plain parser: what Purser reads without a model, and the fallback when the model fails. */
 export function readTaskFallback(text: string, now: Date): TaskReading {
-  // An amount next to a euro sign or the word EUR/euro; a bare number could be a date or a flight number.
-  const m = /€\s*(\d[\d.,]*\d|\d)|(\d[\d.,]*\d|\d)\s*(?:€|eur\b|euros?\b)/i.exec(text);
-  const cents = m ? amountsIn(m[1] ?? m[2] ?? "")[0] : undefined;
+  const cents = euroAmountsIn(text)[0];
   return { kind: kindOf(text), amount_eur: cents === undefined ? null : fromCents(cents), purpose: text, date: dateOf(text, now) };
 }
 
@@ -122,16 +127,21 @@ export type TaskCardTerms = Terms & {
   single_use: true;
   /** The CFO's message, by hash: what the card was asked for, without keeping the words in the terms. */
   message_sha256: string;
+  /** Who asked: the CFO at the runner, someone with the dashboard link (the phone or a viewer), or an outside agent. */
+  asked_by: AskedBy;
 };
 
+/** Where a chat message came from. Only "cfo-at-runner" can be issued within the CFO policy. */
+export type AskedBy = "cfo-at-runner" | "dashboard-link" | `ext:${string}`;
+
 /** The Finance agent proposes the card; nothing is issued before the CFO approves it with Face ID. */
-export function proposeTaskCard(db: DB, task: PlannedTask, message: string, now = new Date(), asker?: Actor): ProposalRow {
+export function proposeTaskCard(db: DB, task: PlannedTask, message: string, now = new Date(), asker?: Actor, askedBy: AskedBy = asker?.startsWith("ext:") ? asker as AskedBy : "dashboard-link"): ProposalRow {
   const terms: TaskCardTerms = {
     schema: TERMS_SCHEMA, kind: "task_card", proposal_id: nextProposalId(db),
     expires_at: new Date(now.getTime() + TASK_PROPOSAL_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z"),
     task: task.kind, label: task.label, purpose: task.purpose, merchant_categories: task.mccs,
     amount: fromCents(task.amountCents), currency: "EUR", valid_until: task.validUntil, single_use: true,
-    message_sha256: sha256Hex(message),
+    message_sha256: sha256Hex(message), asked_by: askedBy,
   };
   return createProposal(db, { terms, createdBy: asker ?? "treasury" }, now);
 }
@@ -157,26 +167,47 @@ type TaskCardSpec = Pick<TaskCardTerms, "task" | "label" | "purpose" | "merchant
  * different is frozen at once and not recorded. Safe to run again: the card is found by its nickname first. `ref` is
  * the proposal id (P-…) or, within the CFO policy, the task's own id (T-…).
  */
+const TASK_HOLDER = "agents+tasks@northwind-outdoor.example";
+function taskNickname(db: DB, ref: string, label: string): string {
+  const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
+  return `task ${ref}: ${label.toLowerCase()}${business ? ` (${business.address.slice(-6).toLowerCase()})` : ""}`;
+}
+const failTask = (db: DB, taskId: string) => db.prepare("UPDATE task_cards SET status = 'FAILED' WHERE task_id = ? AND status = 'PENDING'").run(taskId);
+
+/**
+ * Reserves the task's row (PENDING) before Airwallex is asked, so a number is never used twice. A failed try of an
+ * approved proposal is reserved again (the card is then found by its nickname, not issued twice).
+ */
+function reserveTask(db: DB, ref: string, t: TaskCardSpec, now: Date): void {
+  db.prepare(`INSERT INTO task_cards (task_id, proposal_id, kind, purpose, mccs, amount_cents, valid_until, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
+    ON CONFLICT (task_id) DO UPDATE SET status = 'PENDING', created_at = excluded.created_at WHERE task_cards.status = 'FAILED'`)
+    .run(`task:${ref}`, ref, t.task, t.purpose, t.merchant_categories.join(","), toCents(t.amount), t.valid_until, now.toISOString());
+}
+
 async function issueTaskCard(db: DB, rail: IssuingRail, ref: string, t: TaskCardSpec, now: Date, how: { within_policy: boolean }): Promise<Card> {
   const taskId = `task:${ref}`;
-  const email = "agents+tasks@northwind-outdoor.example";
-  const holder = (await rail.findCardholderByEmail(email)) ?? (await rail.createCardholder({ email, firstName: "Task", lastName: "Cards" }));
-  const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
-  const nickname = `task ${ref}: ${t.label.toLowerCase()}${business ? ` (${business.address.slice(-6).toLowerCase()})` : ""}`;
+  const nickname = taskNickname(db, ref, t.label);
   const cents = toCents(t.amount);
-  const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({
-    cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: { currency: "EUR", perTxCents: cents, monthlyCents: cents },
-    controls: { mccs: t.merchant_categories, currencies: ["EUR"], activeTo: t.valid_until, singleUse: true },
-  }));
+  let card: Card;
+  try {
+    const holder = (await rail.findCardholderByEmail(TASK_HOLDER)) ?? (await rail.createCardholder({ email: TASK_HOLDER, firstName: "Task", lastName: "Cards" }));
+    card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({
+      cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: { currency: "EUR", perTxCents: cents, monthlyCents: cents },
+      controls: { mccs: t.merchant_categories, currencies: ["EUR"], activeTo: t.valid_until, singleUse: true },
+    }));
+  } catch (e) {
+    failTask(db, taskId);
+    throw e;
+  }
   const problem = differs(card, t);
   if (problem) {
     await rail.setCardStatus(card.cardId, "INACTIVE");
+    failTask(db, taskId);
     audit(db, "awx-executor", "card.frozen", taskId, { agent: taskId, last4: card.last4, why: problem }, now);
     throw new Error(`${problem}; the card is frozen and not used`);
   }
   db.transaction(() => {
-    db.prepare("INSERT INTO task_cards (task_id, proposal_id, kind, purpose, mccs, amount_cents, valid_until, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)")
-      .run(taskId, ref, t.task, t.purpose, t.merchant_categories.join(","), cents, t.valid_until, now.toISOString());
+    db.prepare("UPDATE task_cards SET status = 'ACTIVE' WHERE task_id = ? AND status = 'PENDING'").run(taskId);
     storeCard(db, taskId, card, now);
     audit(db, "awx-executor", "card.issued", taskId, {
       agent: taskId, last4: card.last4, nickname, limits: `${t.amount} / ${t.amount}`, currency: "EUR", ...(how.within_policy ? { within_policy: true } : { proposal_id: ref }),
@@ -190,9 +221,10 @@ async function issueTaskCard(db: DB, rail: IssuingRail, ref: string, t: TaskCard
 export async function executeTaskCard(db: DB, rail: IssuingRail, proposalId: string, now = new Date()): Promise<void> {
   const t = beginExecution<TaskCardTerms>(db, proposalId, (terms) => {
     if (terms.kind !== "task_card") throw new Error(`${proposalId} is not a task card`);
-    if (db.prepare("SELECT 1 FROM task_cards WHERE task_id = ?").get(`task:${proposalId}`)) throw new Error(`${proposalId} already has its card`);
+    if (db.prepare("SELECT 1 FROM task_cards WHERE task_id = ? AND status != 'FAILED'").get(`task:${proposalId}`)) throw new Error(`${proposalId} already has its card`);
   }, now);
   try {
+    reserveTask(db, proposalId, t, now);
     const card = await issueTaskCard(db, rail, proposalId, t, now, { within_policy: false });
     finishExecution(db, proposalId, "EXECUTED", { card_last4: card.last4 }, now);
   } catch (e) {
@@ -204,44 +236,110 @@ export async function executeTaskCard(db: DB, rail: IssuingRail, proposalId: str
 /** A chat message is at most this long; longer ones are not read. */
 export const ASK_MAX_CHARS = 500;
 
+/** Purser's words for who asked, in the Opus review and on the dashboard. */
+const ASKED_BY_WORDS = (a: AskedBy) => (a === "cfo-at-runner" ? "The CFO, at the runner," : a === "dashboard-link" ? "Someone with the dashboard link (the CFO's phone, or anyone given the viewer link)" : `An outside agent (${a})`);
+
 /**
  * One chat message to Purser: screened first (planted words never reach a model), read by Sonnet (or the plain
- * parser), checked by planTask. From the CFO, a card up to the policy's threshold (approval.task_card_eur) is issued
- * at once when Airwallex is reachable; anything else, and anything an agent asks for (`asker`), becomes a proposal
- * that Opus reviews and the CFO approves with Face ID. Returns Purser's reply.
+ * parser), checked by planTask. Only the CFO typing at the runner (`from: "runner"`) can get a card issued at once,
+ * within the CFO policy: up to approval.task_card_eur, not above the four-eyes threshold, at most
+ * TASK_WITHIN_PER_DAY a day, with the amount and date written in the message. Everything else, from the relay (the
+ * phone or a viewer link) or an agent (`asker`), becomes a proposal that Opus reviews and the CFO approves with Face
+ * ID. A relay ticket is answered once (`ticket`). Returns Purser's reply.
  */
 export async function askPurser(
-  db: DB, tools: Tools, message: string, now = new Date(), opts: { rail?: IssuingRail | null; asker?: Actor } = {},
+  db: DB, tools: Tools, message: string, now = new Date(),
+  opts: { from?: "runner" | "relay"; rail?: IssuingRail | null; asker?: Actor; ticket?: string } = {},
 ): Promise<{ reply: string; proposalId: string | null; taskId: string | null }> {
+  const askedBy: AskedBy = opts.asker?.startsWith("ext:") ? opts.asker as AskedBy : opts.from === "runner" && !opts.asker ? "cfo-at-runner" : "dashboard-link";
   const answer = (reply: string, proposalId: string | null = null, taskId: string | null = null) => {
     audit(db, "treasury", "ask.replied", proposalId ?? taskId ?? "ask", { reply, proposal_id: proposalId, task_id: taskId }, now);
     return { reply, proposalId, taskId };
   };
+  const subject = opts.ticket ? `ask:${opts.ticket.slice(0, 80)}` : "ask";
+  if (opts.ticket && db.prepare("SELECT 1 FROM audit_log WHERE event = 'ask.received' AND subject = ?").get(subject)) {
+    return { reply: "I already answered this message.", proposalId: null, taskId: null };
+  }
   const text = message.trim();
-  audit(db, opts.asker ?? "human", "ask.received", "ask", { message: text.slice(0, ASK_MAX_CHARS), chars: String(message.length) }, now);
+  // An outside agent may ask a few times an hour (counted before this one).
+  const recent = opts.asker ? (db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'ask.received' AND actor = ? AND ts > ?")
+    .get(opts.asker, new Date(now.getTime() - 3_600_000).toISOString()) as { n: number }).n : 0;
+  audit(db, opts.asker ?? "human", "ask.received", subject, { message: text.slice(0, ASK_MAX_CHARS), chars: String(message.length), asked_by: askedBy }, now);
+  if (opts.asker && recent >= ASK_AGENT_PER_HOUR) return answer(`Too many requests: an agent may ask ${ASK_AGENT_PER_HOUR} times an hour. Try again later.`);
   if (text === "") return answer("Tell me what you need, for example: \"Book a flight to Berlin on 12 November, at most €250\".");
   if (message.length > ASK_MAX_CHARS) return answer(`Please keep it to ${ASK_MAX_CHARS} characters.`);
   // Words aimed at the AI are refused before any model reads them.
   const screened = planTask(text, { kind: "other", amount_eur: null, purpose: "", date: null }, now);
   if (!screened.ok && /instructions aimed at the AI|hidden characters/.test(screened.reply)) return answer(screened.reply);
+  // One waiting request per outside agent, and a few from the dashboard link: no flood of proposals on the phone.
+  const waiting = (db.prepare(`SELECT COUNT(*) AS n FROM proposals WHERE kind = 'task_card' AND status = 'PENDING_APPROVAL' AND expires_at > ?
+    AND json_extract(terms_json, '$.asked_by') = ?`).get(now.toISOString(), askedBy) as { n: number }).n;
+  if (askedBy.startsWith("ext:") && waiting >= 1) return answer("Your earlier request is already waiting for the CFO. Wait for that one first.");
+  if (askedBy === "dashboard-link" && waiting >= TASK_LINK_PENDING_MAX) return answer(`${waiting} task card requests are already waiting for Face ID. Approve or reject those first.`);
   const reading = await tools.task(text, now);
   const plan = planTask(text, reading.value, now);
   if (!plan.ok) return answer(plan.reply);
   const t = plan.task;
   const spec: TaskCardSpec = { task: t.kind, label: t.label, purpose: t.purpose, merchant_categories: t.mccs, amount: fromCents(t.amountCents), valid_until: t.validUntil };
-  const within = !opts.asker && !!opts.rail && !frozen(db) && t.amountCents <= toCents(policyValue(db, "approval.task_card_eur") || "0.00");
-  if (within && opts.rail) {
-    const ref = `T-${String((db.prepare("SELECT COUNT(*) AS n FROM task_cards WHERE task_id LIKE 'task:T-%'").get() as { n: number }).n + 1).padStart(4, "0")}`;
+  if (askedBy === "cfo-at-runner" && opts.rail && withinPolicy(db, text, reading.value, t, now)) {
+    const rail = opts.rail;
+    // The number and the row first, in one write: a crash after Airwallex answers leaves a PENDING row, never a reused number.
+    const ref = db.transaction(() => {
+      const last = (db.prepare("SELECT MAX(CAST(substr(task_id, 8) AS INTEGER)) AS n FROM task_cards WHERE task_id LIKE 'task:T-%'").get() as { n: number | null }).n ?? 0;
+      const r = `T-${String(last + 1).padStart(4, "0")}`;
+      reserveTask(db, r, spec, now);
+      return r;
+    }).immediate();
     try {
-      const card = await issueTaskCard(db, opts.rail, ref, spec, now, { within_policy: true });
+      const card = await issueTaskCard(db, rail, ref, spec, now, { within_policy: true });
       return answer(`Done, within your policy: a single-use ${t.label.toLowerCase()} card •••• ${card.last4}, at most ${spec.amount} EUR, until ${spec.valid_until.slice(0, 10)}. I book it next.`, null, `task:${ref}`);
     } catch (e) {
       return answer(`Airwallex did not issue the card as asked (${(e as Error).message.slice(0, 200)}). Nothing was charged.`);
     }
   }
-  const p = proposeTaskCard(db, t, text, now, opts.asker);
-  await attachReview(db, tools, p, `${opts.asker ? `An agent (${opts.asker})` : "The CFO"} asked in their own words: "${text}"`);
+  const p = proposeTaskCard(db, t, text, now, opts.asker, askedBy);
+  await attachReview(db, tools, p, `${ASKED_BY_WORDS(askedBy)} asked in their own words: "${text}"`);
   return answer(`I proposed ${p.proposal_id}: a single-use ${t.label.toLowerCase()} card, at most ${spec.amount} EUR, until ${spec.valid_until.slice(0, 10)}. Approve it with Face ID and I book it.`, p.proposal_id);
+}
+
+/**
+ * Within the CFO policy, for the CFO at the runner only: not frozen; at most the threshold and not above the four-eyes
+ * threshold; fewer than TASK_WITHIN_PER_DAY such cards in 24 hours; the amount written next to € or EUR, and the date,
+ * if any, written in the message. Anything else goes to Face ID, where the CFO sees what was read.
+ */
+function withinPolicy(db: DB, text: string, reading: TaskReading, t: PlannedTask, now: Date): boolean {
+  if (frozen(db)) return false;
+  if (t.amountCents > toCents(policyValue(db, "approval.task_card_eur") || "0.00")) return false;
+  const fourEyes = policyValue(db, "approval.four_eyes_eur");
+  if (fourEyes && t.amountCents > toCents(fourEyes)) return false;
+  const today = (db.prepare("SELECT COUNT(*) AS n FROM task_cards WHERE task_id LIKE 'task:T-%' AND status != 'FAILED' AND created_at > ?")
+    .get(new Date(now.getTime() - DAY_MS).toISOString()) as { n: number }).n;
+  if (today >= TASK_WITHIN_PER_DAY) return false;
+  if (!euroAmountsIn(text).includes(t.amountCents)) return false;
+  return reading.date === null || reading.date === dateOf(text, now);
+}
+
+/** The relay's chat (the phone, or anyone with the viewer link): always a proposal, never a card at once. */
+export function relayAsk(db: DB, tools: Tools) {
+  return (text: string, ticket: string, now = new Date()) => askPurser(db, tools, text, now, { from: "relay", ticket });
+}
+
+/**
+ * A task card reserved but never finished (the runner stopped between Airwallex and the ledger): after two minutes,
+ * any card Airwallex made for it is frozen and the reservation marked failed, so no live card is unknown to the
+ * emergency stop. Returns how many reservations it closed.
+ */
+export async function recoverTaskCards(db: DB, rail: IssuingRail, now = new Date()): Promise<number> {
+  const stale = db.prepare("SELECT task_id, proposal_id, kind FROM task_cards WHERE status = 'PENDING' AND created_at < ?")
+    .all(new Date(now.getTime() - 120_000).toISOString()) as { task_id: string; proposal_id: string; kind: TaskKind }[];
+  for (const r of stale) {
+    const holder = await rail.findCardholderByEmail(TASK_HOLDER);
+    const card = holder ? await rail.findCard(holder.id, taskNickname(db, r.proposal_id, TASK_KINDS[r.kind].label)) : null;
+    if (card && card.status === "ACTIVE") await rail.setCardStatus(card.cardId, "INACTIVE");
+    failTask(db, r.task_id);
+    audit(db, "awx-executor", "card.frozen", r.task_id, { agent: r.task_id, last4: card?.last4 ?? "", why: "its issue never finished; frozen before use" }, now);
+  }
+  return stale.length;
 }
 
 /**

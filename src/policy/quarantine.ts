@@ -17,6 +17,8 @@ const CURSOR = "quarantine.next_block";
 const RELEASE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const REASONS: Record<number, string> = { 1: "sender blocked", 2: "sender not on the allowlist", 3: "token not accepted", 4: "below the minimum" };
 export const quarantineReason = (n: number) => REASONS[n] ?? `reason ${n}`;
+/** Below this (0.01 *USDZ, in units) a held payment is recorded and shown, but gets no proposals: dust is not worth a Face ID. */
+const DUST_UNITS = 10n ** 16n;
 
 export type QuarantineReleaseTerms = Terms & {
   kind: "quarantine_release";
@@ -69,6 +71,9 @@ export async function pollQuarantine(db: DB, port: ReceivePolicyPort, now = new 
         r.amount.toString(), q.reason, JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? v.toString() : v)), now.toISOString());
       const amount = formatUnits(r.amount, 18);
       audit(db, "system", "quarantine.held", q.receiptId, { from: getAddress(r.originator), amount, reason: quarantineReason(q.reason), tx: q.tx, log_index: String(q.logIndex) }, now);
+      // One pair of options per sender at a time, and none for dust: a stranger cannot fill the CFO's phone.
+      const waiting = db.prepare("SELECT 1 FROM proposals WHERE kind = 'quarantine_release' AND status = 'PENDING_APPROVAL' AND json_extract(terms_json, '$.originator') = ?").get(getAddress(r.originator));
+      if (r.amount < DUST_UNITS || waiting) return;
       for (const [action, to] of [["return", getAddress(r.originator)], ["accept", sweep]] as const) {
         const terms: QuarantineReleaseTerms = {
           schema: TERMS_SCHEMA, kind: "quarantine_release", proposal_id: nextProposalId(db),
@@ -96,7 +101,8 @@ export async function executeQuarantineRelease(db: DB, port: ReceivePolicyPort, 
     const j = JSON.parse(row.receipt_json) as Record<string, string>;
     const receipt: Receipt = { nonce: BigInt(j.nonce!), token: j.token as Address, originator: j.originator as Address, receiver: j.receiver as Address, authority: j.authority as Address, amount: BigInt(j.amount!) };
     // The approved terms must still name this receipt's sender and amount; then Metal must still hold it.
-    if (receiptId(receipt) !== t.receipt_id || receipt.amount.toString() !== t.amount_units || (t.action === "return" && receipt.originator.toLowerCase() !== t.to.toLowerCase())) {
+    if (receiptId(receipt) !== t.receipt_id || receipt.amount.toString() !== t.amount_units || (t.action === "return" && receipt.originator.toLowerCase() !== t.to.toLowerCase())
+      || (t.action === "accept" && wallets(db).sweep.toLowerCase() !== t.to.toLowerCase())) {
       throw new Error("the stored receipt does not match the approved terms");
     }
     if (!(await port.isOpen(t.receipt_id as Hex))) throw new Error("Metal no longer holds this payment (it was released already); nothing sent");

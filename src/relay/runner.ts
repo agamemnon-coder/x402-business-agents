@@ -37,7 +37,7 @@ export interface RunnerDeps {
    *  runner refuses such texts. */
   draftPolicy?: (text: string) => Promise<{ proposalId: string | null; message: string }>;
   /** Ask Purser: answers a chat message from the phone, proposing a task card when it fits the policy. */
-  ask?: (text: string) => Promise<{ proposalId: string | null; reply: string }>;
+  ask?: (text: string, ticket: string) => Promise<{ proposalId: string | null; reply: string }>;
 }
 
 export class RelayRunner {
@@ -153,7 +153,7 @@ export class RelayRunner {
       this.ack(item.ticket, "refused", ask ? "malformed submission" : "this runner does not take chat messages");
       return;
     }
-    const run = ask(text).then(
+    const run = ask(text, item.ticket).then(
       (r) => this.ack(item.ticket, "answered", r.reply),
       (e: unknown) => this.ack(item.ticket, "refused", `Purser could not answer (${(e instanceof Error ? e.message : String(e)).slice(0, 200)}); nothing changed`),
     );

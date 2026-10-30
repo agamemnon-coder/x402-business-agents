@@ -181,7 +181,8 @@ export interface Snapshot {
     eur_paid: string; per_1000_eur_usd_micros: number | null;
   };
   /** Ask Purser (G): the latest chat messages, oldest first. */
-  ask: { ts: string; from: "you" | "purser"; text: string; proposal_id: string | null }[];
+  /** "you" is the CFO at the runner; "dashboard link" the phone or a viewer; "agent ext:…" an outside agent. */
+  ask: { ts: string; from: string; text: string; proposal_id: string | null }[];
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
@@ -726,6 +727,9 @@ function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: stri
 }
 
 // The chat with Purser has its own panel (snapshot.ask).
+/** Who sent a chat line. Lines from before asked_by was recorded came from the runner or the relay, as the CFO. */
+const askFrom = (actor: string, by: string) => (actor.startsWith("ext:") ? `agent ${actor}` : by === "dashboard-link" ? "dashboard link" : "you");
+
 const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied"]);
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
@@ -850,8 +854,8 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     ask: rows.filter((r) => r.event === "ask.received" || r.event === "ask.replied").slice(-8).map((r) => {
       const p = JSON.parse(r.payload_json) as P;
       return r.event === "ask.received"
-        ? { ts: r.ts, from: "you" as const, text: str(p.message), proposal_id: null }
-        : { ts: r.ts, from: "purser" as const, text: str(p.reply), proposal_id: str(p.proposal_id) || null };
+        ? { ts: r.ts, from: askFrom(r.actor, str(p.asked_by)), text: str(p.message), proposal_id: null }
+        : { ts: r.ts, from: "purser", text: str(p.reply), proposal_id: str(p.proposal_id) || null };
     }),
     passkey: passkeyInfo(db, now),
   };

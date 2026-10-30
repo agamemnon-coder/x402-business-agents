@@ -1,14 +1,16 @@
 # Ask Purser: a card for one task, from one sentence
 
-The CFO types on the phone (CFO policy page, "Ask Purser"), or on the runner:
+The CFO types on the runner, or on the phone (CFO policy page, "Ask Purser"):
 
 ```bash
 npm run ask -- "Book a flight to Berlin for the trade fair on 12 November, at most €250"
 ```
 
-Up to the CFO policy's threshold for task cards (`approval.task_card_eur`, 300.00 to start; raising it needs Face ID)
-Purser issues the card at once: *"Done, within your policy: a single-use flight card •••• 4821, at most 250.00 EUR,
-until 2026-11-12."* Above it, Purser proposes it: *"I proposed P-0011: … Approve it with Face ID and I book it."*,
+Typed at the runner, up to the CFO policy's threshold for task cards (`approval.task_card_eur`, 300.00 to start;
+raising it needs Face ID), Purser issues the card at once, at most three a day, never above the four-eyes threshold,
+and only when the amount is written next to € or EUR and the date, if any, is in the message: *"Done, within your policy: a single-use flight card •••• 4821, at most 250.00 EUR,
+until 2026-11-12."* Anything else, and every message sent from the phone or the viewer link (the relay cannot tell who holds the link)
+or by an outside agent, Purser proposes, with who asked in the signed terms: *"I proposed P-0011: … Approve it with Face ID and I book it."*,
 and Opus writes a short risk review beside the proposal. Either way Airwallex issues a virtual card that can pay
 **one** airline charge, up to the amount, until the end of the day named. After that one charge Purser closes the card
 at Airwallex. Then:
@@ -26,7 +28,7 @@ npm run ask -- show P-0011            # a second charge and a hotel charge: Airw
 | Screen the message | code (`src/policy/injection.ts`) | Instructions aimed at the AI ("ignore your rules", "pre-approved") or hidden characters: refused whole, before any model reads it |
 | Read the message | Claude Sonnet 5.5, or the plain parser without a key | Kind, amount as written, purpose, date |
 | Decide | code (`planTask`, `src/agents/askPurser.ts`) | Only flights (merchant category 4511, at most 1,500.00), hotels (7011, 1,000.00) and trains (4112, 500.00); the amount must be in the CFO's own words; the date at most 30 days ahead (7 days when none is named) |
-| Approve | the CFO policy up to its threshold; above it the CFO, Face ID (two people above the four-eyes threshold), with Opus's review beside the terms | The exact card: kind, categories, amount, end, single use, and the hash of the message |
+| Approve | at the runner, the CFO policy up to its threshold; otherwise the CFO, Face ID (two people above the four-eyes threshold), with Opus's review beside the terms | The exact card: kind, categories, amount, end, single use, and the hash of the message |
 | Issue | Airwallex Issuing | `allowed_transaction_count: SINGLE`, the categories, euros only, `active_to`; read back, and frozen if it differs from what was approved |
 | Pay | the merchant, through Airwallex | One successful charge; anything else is declined by Airwallex |
 

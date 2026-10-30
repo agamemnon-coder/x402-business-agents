@@ -107,3 +107,9 @@ export const TASK_KINDS = {
 /** A task card without a date in the message ends after this many days; a date may be at most TASK_MAX_DAYS ahead. */
 export const TASK_DEFAULT_DAYS = 7;
 export const TASK_MAX_DAYS = 30;
+/** Within the CFO policy (no Face ID), at most this many task cards in 24 hours; the next one asks for Face ID. */
+export const TASK_WITHIN_PER_DAY = 3;
+/** At most this many task card requests from the dashboard link wait for the CFO at once. */
+export const TASK_LINK_PENDING_MAX = 3;
+/** An outside agent may ask Purser at most this many times an hour. */
+export const ASK_AGENT_PER_HOUR = 5;

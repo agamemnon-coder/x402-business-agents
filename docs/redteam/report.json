@@ -1,9 +1,9 @@
 {
-  "ran_at": "2026-10-30T06:31:54.025Z",
+  "ran_at": "2026-10-30T06:47:38.279Z",
   "model": null,
   "summary": "the model declined; the attacks ran without it",
-  "attempts": 30,
-  "blocked": 30,
+  "attempts": 33,
+  "blocked": 33,
   "results": [
     {
       "id": "forged-approval",
@@ -140,6 +140,30 @@
       "blocked": true,
       "defence": "the message is screened for hidden characters before anything reads it",
       "evidence": "Your message contains hidden characters, so I did not act on it. Please type it again."
+    },
+    {
+      "id": "ask-viewer-link-card",
+      "title": "Get task cards without Face ID by chatting through the dashboard link",
+      "attempt": "three chat messages through the relay, each for a flight card under the CFO's threshold",
+      "blocked": true,
+      "defence": "only the CFO typing at the runner can get a card within the policy; through the relay every request is a proposal that waits for Face ID",
+      "evidence": "cards issued: 0; proposals: P-0002, P-0003, P-0004"
+    },
+    {
+      "id": "ask-agent-flood",
+      "title": "Flood the CFO's phone with task card requests from one outside agent",
+      "attempt": "one outside agent asked for a task card twelve times in a row",
+      "blocked": true,
+      "defence": "one waiting request per outside agent, and at most five asks an hour",
+      "evidence": "proposals waiting from the agent: 1"
+    },
+    {
+      "id": "quarantine-dust-flood",
+      "title": "Flood the CFO's phone with tiny payments into the sweep wallet",
+      "attempt": "twenty strangers sent dust and one stranger sent five payments of 2.00 into the sweep wallet",
+      "blocked": true,
+      "defence": "every payment is held and shown; dust gets no proposals and a sender gets one pair of options at a time",
+      "evidence": "held: 25; proposals: 2"
     },
     {
       "id": "task-card-second-use",

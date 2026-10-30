@@ -99,7 +99,7 @@ describe("Ask Purser on the dashboard", () => {
     const { buildSnapshot } = await import("../src/dashboard/snapshot.js");
     const db = openDb(":memory:");
     const awx = new FakeIssuing();
-    const { proposalId } = await askPurser(db, tools(db), MSG, now);
+    const { proposalId } = await askPurser(db, tools(db), MSG, now, { from: "runner" });
     const p = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_sha256: string };
     decide(db, { proposalId: proposalId!, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "max", method: "cli" }, now);
     await executeTaskCard(db, awx, proposalId!, now);

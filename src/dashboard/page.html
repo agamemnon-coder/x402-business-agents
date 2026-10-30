@@ -876,7 +876,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var msgs = d.ask || [], panel = document.getElementById("ask-panel");
     panel.hidden = !msgs.length;
     set("ask", msgs.map(function (m) {
-      var li = el("li", m.from, [txt("span", "who", (m.from === "you" ? "You" : "Purser") + " · " + hm(m.ts)), m.text]);
+      var who = m.from === "purser" ? "Purser" : m.from === "you" ? "You" : m.from.charAt(0).toUpperCase() + m.from.slice(1);
+      var li = el("li", m.from === "purser" ? "purser" : "you", [txt("span", "who", who + " · " + hm(m.ts)), m.text]);
       if (m.proposal_id) {
         var a = txt("a", "textlink", m.proposal_id + " is under Waiting for you");
         a.setAttribute("href", "#pending");

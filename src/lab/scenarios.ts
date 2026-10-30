@@ -189,7 +189,7 @@ export const SCENARIOS: Scenario[] = [
     expected: "\"Flight to Berlin, at most €250\" gives a single-use airline card at once (within the policy); one booking goes through, the card is closed after it, and a second charge is declined.",
     offline: "Airwallex is a stand-in; the single-use check live in the sandbox follows the Friday runs",
     run: async (w) => {
-      const r = await askPurser(w.db, tools(w), "Book a flight to Berlin, at most €250", w.now(), { rail: w.issuing });
+      const r = await askPurser(w.db, tools(w), "Book a flight to Berlin, at most €250", w.now(), { rail: w.issuing, from: "runner" });
       if (!r.taskId) return { happened: r.reply, passed: false, evidence: [] };
       const booked = await bookOnTaskCard(w.db, w.issuing, r.taskId, { merchant: "Skyline Air", amount: "189.00" }, w.now(), w.issuing);
       const again = await bookOnTaskCard(w.db, w.issuing, r.taskId, { merchant: "Skyline Air", amount: "40.00" }, w.now(), w.issuing);

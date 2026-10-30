@@ -33,7 +33,7 @@ if (cmd === "book" && id && amount) {
   console.log("  a second charge: " + said(await bookOnTaskCard(db, sim(), `task:${id}`, { merchant: "Skyline Air (second charge)", amount: "40.00" })));
   console.log("  a hotel:         " + said(await bookOnTaskCard(db, sim(), `task:${id}`, { merchant: "Hotel Adlon (wrong kind)", amount: "120.00", mcc: "7011" })));
 } else if (cmd && !["book", "show"].includes(cmd)) {
-  const r = await askPurser(db, new Tools(db), args.join(" "), new Date(), { rail: issuingFromEnv()?.rail ?? null });
+  const r = await askPurser(db, new Tools(db), args.join(" "), new Date(), { rail: issuingFromEnv()?.rail ?? null, from: "runner" });
   console.log(`Purser: ${r.reply}`);
   if (r.proposalId) console.log(`next: ${approvalHint(db, r.proposalId)}`);
   if (r.taskId) console.log(`next: npm run ask -- book ${r.taskId.slice(5)} <amount>`);

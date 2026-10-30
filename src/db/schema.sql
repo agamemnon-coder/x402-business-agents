@@ -439,7 +439,8 @@ CREATE TABLE IF NOT EXISTS task_cards (
   mccs TEXT NOT NULL,
   amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
   valid_until TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'USED')),
+  -- PENDING: reserved before Airwallex is asked; FAILED: Airwallex did not issue it as asked (any card it made is frozen).
+  status TEXT NOT NULL CHECK (status IN ('PENDING', 'ACTIVE', 'USED', 'FAILED')),
   created_at TEXT NOT NULL
 );
 
