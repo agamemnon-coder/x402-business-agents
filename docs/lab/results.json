@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-30T06:49:50.473Z",
+  "at": "2026-10-30T08:35:17.479Z",
   "results": [
     {
       "id": "normal-purchase",
@@ -124,7 +124,7 @@
       "title": "Ask Purser for a flight",
       "expected": "\"Flight to Berlin, at most €250\" gives a single-use airline card at once (within the policy); one booking goes through, the card is closed after it, and a second charge is declined.",
       "offline": "Airwallex is a stand-in; the single-use check live in the sandbox follows the Friday runs",
-      "happened": "Done, within your policy: a single-use flight card •••• 4010, at most 250.00 EUR, until 2026-11-10. I book it next. Booking 189.00: approved; second charge: declined (CARD_INACTIVE)",
+      "happened": "Done, within your policy: a single-use flight card •••• 4010, at most 250.00 EUR, until 2026-11-10. I book it next. Booking 189.00: approved; second charge: declined (CARD_CLOSED)",
       "passed": true,
       "evidence": [
         "task:T-0001",
@@ -140,6 +140,78 @@
       "passed": true,
       "evidence": [
         "audit #14 quarantine.held"
+      ]
+    },
+    {
+      "id": "dispute-never-ordered",
+      "title": "Dispute: \"our agent never ordered this\"",
+      "expected": "Each payment has a valid signed order from the customer's agent, inside the mandate its owner bound: the claim is rejected with that evidence, nothing is refunded.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "rejected; sale 1: refund 0.00; sale 2: refund 0.00",
+      "passed": true,
+      "evidence": [
+        "DD-d6d0560a",
+        "audit #15 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-wrong-price",
+      "title": "Dispute: \"the price was not what our agent agreed\"",
+      "expected": "The agent signed for 0.05 but was charged 0.07: the 0.02 difference is refunded at once, within the CFO's limits; a sale charged as signed is not.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "partial_refund (auto); sale 1: refund 0.02; sale 2: refund 0.00",
+      "passed": true,
+      "evidence": [
+        "DD-c2c1b259",
+        "audit #16 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-not-authorised",
+      "title": "Dispute: \"our agent was not authorised\"",
+      "expected": "The payment is inside the mandate the customer's owner bound on chain, and the chain refuses anything outside it: the claim is rejected with the mandate as evidence.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "rejected; sale 1: refund 0.00; owner bound: yes",
+      "passed": true,
+      "evidence": [
+        "DD-70d6f4c7",
+        "audit #15 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-wrong-data",
+      "title": "Dispute: \"the data you delivered was wrong\"",
+      "expected": "Only the sale the supplier's correction shows was wrong is refunded; the other is not.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "partial_refund; sale 1: refund 0.05; sale 2: refund 0.00",
+      "passed": true,
+      "evidence": [
+        "DD-860cc863",
+        "audit #16 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-forged-order",
+      "title": "Dispute: a forged or reused order",
+      "expected": "An order that does not verify, and the second payment on a reused order, are refunded: the seller cannot stand behind them. The first use of a good order is not.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "partial_refund; sale 1: refund 0.00; sale 2: refund 0.05; sale 3: refund 0.05",
+      "passed": true,
+      "evidence": [
+        "DD-009760b2",
+        "audit #16 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-double-charged",
+      "title": "Dispute: \"we were charged twice\"",
+      "expected": "Two charges for the same request: the second is refunded, the first kept.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "partial_refund; sale 1: refund 0.00; sale 2: refund 0.05",
+      "passed": true,
+      "evidence": [
+        "DD-b5551032",
+        "audit #16 dispute.decided"
       ]
     }
   ]

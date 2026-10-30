@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dispute DD-a88e8959: Northwind Outdoor</title>
+<style>
+:root { --text: #0f172a; --muted: #5b6475; --border: #e3e6ec; --ok: #0f7a3d; --bad: #b42318; --bg: #fff; --sunken: #f5f6f8; --accent: #4f46e5; }
+@media (prefers-color-scheme: dark) { :root { --text: #e8eaf0; --muted: #9aa3b5; --border: #2a2f3a; --ok: #4ade80; --bad: #f87171; --bg: #0d0f14; --sunken: #161a22; --accent: #a5b4fc; } }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 32px 16px 48px; overflow-wrap: anywhere; }
+h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -.01em; } h2 { font-size: 17px; margin: 28px 0 8px; }
+.sub { color: var(--muted); font-size: 13px; } .mono { font-family: ui-monospace, Menlo, monospace; }
+.box { background: var(--sunken); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+.outcome { font-size: 20px; font-weight: 700; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; } th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12.5px; padding: 6px; }
+td { border-top: 1px solid var(--border); padding: 8px 6px; vertical-align: top; overflow-wrap: anywhere; } td.num { text-align: right; white-space: nowrap; }
+.ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; } a { color: var(--accent); }
+.tablewrap { overflow-x: auto; }
+@media (max-width: 640px) { thead { display: none; } tr { display: block; border-top: 1px solid var(--border); padding: 8px 0; } td { display: block; border: 0; padding: 3px 0; } td.num { text-align: left; } }
+</style></head>
+<body><main>
+<p class="sub">Northwind Outdoor · Dispute desk · test money on Metal testnet</p>
+<h1>Your dispute DD-a88e8959</h1>
+<p class="sub">Opened 2026-10-30 08:32 UTC · 12 payments from 0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25</p>
+<div class="box"><div class="sub">You said</div><div>Our agent never ordered this. <span class="sub">"Our agent never placed orders 5 to 16. Please refund all of them."</span></div></div>
+<div class="box"><div class="outcome">Not refunded: 0.00 test USD</div><div>Nothing to refund. Refunds go only to the account that paid, 0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25.</div></div>
+
+<h2>The evidence, per payment</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Payment</th><th>Charged</th><th>Signed order</th><th>Chain check</th><th>Delivered</th><th>Refund</th></tr></thead>
+<tbody><tr>
+      <td><b>5</b><div class="sub">GET /v1/stock?seq=5</div><div class="sub">2026-10-30 07:06:20 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0x2a81d430d7ad08d9c009088b9ce965d30b5d6697c179cf85fe94f14f0922f08a">0x2a81d430…f08a</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">dc5531775ed246ac…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>6</b><div class="sub">GET /v1/stock?seq=6</div><div class="sub">2026-10-30 07:06:24 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0xaf863cecec9e99cd8d7e2108e5289c6edf27eaa663a5d02e0cd7d2f58f833e50">0xaf863cec…3e50</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">9c8b7c9aa9990fbd…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>7</b><div class="sub">GET /v1/stock?seq=7</div><div class="sub">2026-10-30 07:06:28 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0x5362e5e7e9aee4d92a95bcf2f637939f0cca1acf5848748c500ccc2af2be82be">0x5362e5e7…82be</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">dfb5c35698225858…</div></td>
+      <td><b>0.00</b><div class="sub">0.05 already refunded earlier</div><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>8</b><div class="sub">GET /v1/stock?seq=8</div><div class="sub">2026-10-30 07:06:31 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0x294576a13d8a04c71f1ab542ccebed8d65931db409e138766e47dc1c140fffd9">0x294576a1…ffd9</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">1f3c6de5a3b2aee9…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>9</b><div class="sub">GET /v1/stock?seq=9</div><div class="sub">2026-10-30 07:06:35 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0xb7451dbf2b4d3c621a2dbe4082bec3b0c1763244646399d19d1fe8c40b92a282">0xb7451dbf…a282</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">ee416f9e322fea92…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>10</b><div class="sub">GET /v1/stock?seq=10</div><div class="sub">2026-10-30 07:06:38 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0xff9aaa36168e043c1a40e4d858f75499fba4fda57b89c9bbd2a356d56971c64f">0xff9aaa36…c64f</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">7cf8769e4e4e091f…</div></td>
+      <td><b>0.00</b><div class="sub">0.05 already refunded earlier</div><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>11</b><div class="sub">GET /v1/stock?seq=11</div><div class="sub">2026-10-30 07:06:41 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0xe9e765bb66eed6654e78f3a015d60d787e7d2810a01902eefc133c3386ac37d6">0xe9e765bb…37d6</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">5f0679075d0b4092…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>12</b><div class="sub">GET /v1/stock?seq=12</div><div class="sub">2026-10-30 07:06:45 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0xb941d7db8b78e0bd9a4b3405b0af069d3e472b0899ee537a18eb9ca2611cd0c4">0xb941d7db…d0c4</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">8c7b85396fc2e925…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>13</b><div class="sub">GET /v1/stock?seq=13</div><div class="sub">2026-10-30 07:06:48 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0x147281a44d35a4a3b56c04b272e63bd1ce7cdd67dd5db7a4eb755c8c18716676">0x147281a4…6676</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">d022485046ca46aa…</div></td>
+      <td><b>0.00</b><div class="sub">0.05 already refunded earlier</div><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>14</b><div class="sub">GET /v1/stock?seq=14</div><div class="sub">2026-10-30 07:06:52 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0x3167d81015e3e1613bb2f8de8f6d28e5d932e4d498d9e46b5e8c59e2e5b0742e">0x3167d810…742e</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">8cc1081f24ed1d74…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>15</b><div class="sub">GET /v1/stock?seq=15</div><div class="sub">2026-10-30 07:06:55 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0xe20e14284212a1c4db1ddce86908693201df58026188660557eada96dd8de45a">0xe20e1428…e45a</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">8c0aa541d67606bc…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr><tr>
+      <td><b>16</b><div class="sub">GET /v1/stock?seq=16</div><div class="sub">2026-10-30 07:06:59 UTC</div></td>
+      <td class="num">0.05</td>
+      <td><span class="ok">✓ signed for 0.05</span></td>
+      <td><span class="ok">✓ inside the bound mandate</span><div class="sub">payment <a href="https://testnet.metalntwx.com/tx/0x320447bb3fff39f0aa083502fc7e76f2548b33b609ff28550af2ce91ba1e4109">0x320447bb…4109</a></div></td>
+      <td><span class="ok">✓ hash matches</span><div class="sub mono">dccad0d4a63e77ee…</div></td>
+      <td><b>0.00</b><div class="sub">Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.</div></td>
+    </tr></tbody></table></div>
+
+<h2>Who stood behind the purchase</h2>
+<div class="box">Every payment above is checked on chain against the mandate bound on your account <span class="mono">0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25</span> (bound in <a href="https://testnet.metalntwx.com/tx/0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6">0x6a4622a9…59a6</a>). Metal records that this mandate was bound by your account's owner key, with its limits and its only payee; the chain refuses any payment outside it.
+<div class="sub" style="margin-top:6px">What the chain does not prove: that the owner key is held by a person. No passkey confirmation from your side is on file.</div></div>
+
+<h2>The decision, explained</h2>
+<div class="box">Thank you for raising this. We reviewed each of sales 5 to 16 against the evidence. None of these payments was refunded, and the total refunded by this decision is 0.00 test USD to the paying account 0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25. You said your agent never placed these orders. The records show otherwise. For every sale from 5 through 16 (GET /v1/stock, sequence 5 to 16, each charged 0.05 test USD), the evidence is the same: (1) Your agent gave us a valid signed order for 0.05 to us. (2) The on-chain check confirmed the payment was inside the mandate your account bound. (3) The payment settled on chain, and each sale&#39;s transaction ID is listed in the decision record. (4) The data we delivered matches the expected hash. Because a valid signed order, an in-mandate payment and a confirmed delivery exist for each sale, the decision made by code was a refund of 0.00 for each one. If you believe your agent&#39;s signing key or mandate was used without your permission, please let us know so the matter can be reviewed further. This explanation does not change the decision.<div class="sub" style="margin-top:6px">Explained by claude-opus-5-5. The decision and every amount were made by code from the evidence above; the explanation is advice.</div></div>
+
+<h2>Check it yourself</h2>
+<p class="sub">Each payment and refund links to Metal's explorer. The signed orders, the mandate and each payment can be checked with <span class="mono">verifyMandatePayment</span> from <span class="mono">@metalntwx/metal-pay</span> (step 4: the payment is your agent's per-payment mandate, inside the mandate at its block). The delivered data's SHA-256 is shown so you can compare it with what you received.</p>
+</main></body></html>

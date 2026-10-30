@@ -23,6 +23,83 @@ import { priceRiseTargets } from "../agents/treasury.js";
 import { ATTACKS, runAttack } from "../redteam/attacks.js";
 import { FakeReceivePolicy } from "../redteam/receivePolicy.js";
 import { redTeamWorld, type World } from "../redteam/world.js";
+import type { DisputeClaim } from "../seller/disputeDesk.js";
+import { openDisputeCase } from "../seller/desk.js";
+import { LAB_CUSTOMER, labChain, labOrder, labRefund, labSale } from "../seller/standIns.js";
+
+const DESK_OFFLINE = "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md";
+/** A Dispute desk case in the lab world: the stand-in chain, a refund that only records, no model. */
+async function deskCase(w: World, claim: DisputeClaim, saleIds: number[], dataWrong: number[] = []) {
+  const c = await openDisputeCase(w.db, tools(w), { claim, saleIds, customer: LAB_CUSTOMER }, { verify: labChain, refund: labRefund, dataWrong: new Set(dataWrong) }, w.now());
+  const said = c.decision.per_sale.map((x) => `sale ${x.sale_id}: refund ${(x.refund_cents / 100).toFixed(2)}`).join("; ");
+  return { c, said, evidence: [c.case_id, ...rows(w, "dispute.decided")] };
+}
+/** F2, the Dispute desk: Northwind as the seller settles a questioned agent purchase on its own terms (Metal jury input). */
+const DISPUTES: Scenario[] = [
+  {
+    id: "dispute-never-ordered", title: "Dispute: \"our agent never ordered this\"",
+    expected: "Each payment has a valid signed order from the customer's agent, inside the mandate its owner bound: the claim is rejected with that evidence, nothing is refunded.",
+    offline: DESK_OFFLINE,
+    run: async (w) => {
+      const { c, said, evidence } = await deskCase(w, "never_ordered", [labSale(w.db, 5), labSale(w.db, 6)]);
+      return { happened: `${c.decision.outcome}; ${said}`, passed: c.decision.outcome === "rejected" && c.refunds.length === 0, evidence };
+    },
+  },
+  {
+    id: "dispute-wrong-price", title: "Dispute: \"the price was not what our agent agreed\"",
+    expected: "The agent signed for 0.05 but was charged 0.07: the 0.02 difference is refunded at once, within the CFO's limits; a sale charged as signed is not.",
+    offline: DESK_OFFLINE,
+    run: async (w) => {
+      const over = labSale(w.db, 1, { order: labOrder("lab-price", 5), cents: 7 });
+      const { c, said, evidence } = await deskCase(w, "wrong_price", [over, labSale(w.db, 2)]);
+      return { happened: `${c.decision.outcome} (${c.route}); ${said}`, passed: c.decision.refund_cents === 2 && c.route === "auto", evidence };
+    },
+  },
+  {
+    id: "dispute-not-authorised", title: "Dispute: \"our agent was not authorised\"",
+    expected: "The payment is inside the mandate the customer's owner bound on chain, and the chain refuses anything outside it: the claim is rejected with the mandate as evidence.",
+    offline: DESK_OFFLINE,
+    run: async (w) => {
+      const { c, said, evidence } = await deskCase(w, "not_authorised", [labSale(w.db, 3)]);
+      return { happened: `${c.decision.outcome}; ${said}; owner bound: ${c.packs[0]!.human.owner_bound ? "yes" : "no"}`, passed: c.decision.outcome === "rejected" && c.packs[0]!.human.owner_bound, evidence };
+    },
+  },
+  {
+    id: "dispute-wrong-data", title: "Dispute: \"the data you delivered was wrong\"",
+    expected: "Only the sale the supplier's correction shows was wrong is refunded; the other is not.",
+    offline: DESK_OFFLINE,
+    run: async (w) => {
+      const wrong = labSale(w.db, 7);
+      const { c, said, evidence } = await deskCase(w, "wrong_data", [wrong, labSale(w.db, 8)], [wrong]);
+      return { happened: `${c.decision.outcome}; ${said}`, passed: c.decision.refund_cents === 5 && c.refunds.map((r) => r.sale_id).join() === String(wrong), evidence };
+    },
+  },
+  {
+    id: "dispute-forged-order", title: "Dispute: a forged or reused order",
+    expected: "An order that does not verify, and the second payment on a reused order, are refunded: the seller cannot stand behind them. The first use of a good order is not.",
+    offline: DESK_OFFLINE,
+    run: async (w) => {
+      const order = labOrder("lab-reused");
+      const first = labSale(w.db, 9, { order });
+      const replay = labSale(w.db, 10, { order });
+      const forged = labSale(w.db, 11, { forged: true });
+      const { c, said, evidence } = await deskCase(w, "forged_order", [first, replay, forged]);
+      const refunded = c.decision.per_sale.filter((x) => x.refund_cents > 0).map((x) => x.sale_id).sort((a, b) => a - b).join();
+      return { happened: `${c.decision.outcome}; ${said}`, passed: refunded === [replay, forged].sort((a, b) => a - b).join(), evidence };
+    },
+  },
+  {
+    id: "dispute-double-charged", title: "Dispute: \"we were charged twice\"",
+    expected: "Two charges for the same request: the second is refunded, the first kept.",
+    offline: DESK_OFFLINE,
+    run: async (w) => {
+      const a = labSale(w.db, 12);
+      const b = labSale(w.db, 12);
+      const { c, said, evidence } = await deskCase(w, "double_charged", [a, b]);
+      return { happened: `${c.decision.outcome}; ${said}`, passed: c.decision.per_sale.map((x) => x.refund_cents).join() === "0,5", evidence };
+    },
+  },
+];
 
 export interface ScenarioResult {
   id: string;
@@ -212,6 +289,7 @@ export const SCENARIOS: Scenario[] = [
         passed: !credited && held === 1 && n(w, "SELECT COUNT(*) AS n FROM chain_credits") === 0, evidence: rows(w, "quarantine.held") };
     },
   },
+  ...DISPUTES,
 ];
 
 /** One scenario in a fresh world: the reset is the new world. A crash counts as a failure, with its message. */
