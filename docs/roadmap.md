@@ -22,6 +22,7 @@ Nothing below is built unless it says so. What is built is in the README and `do
 | Sales agent | Pays for ads on its card (ads only); settles a retailer's claim with refunds | Airwallex card (MCC 7311); Metal mandate pull |
 | Finance agent | Pays the manufacturer's euro invoice: buys only the euros missing, checks the market rate, pays by SWIFT | Airwallex FX and transfers |
 | Outside agents | Any AI agent connects over MCP, asks for a card, pays within its limits, asks for more | Airwallex card |
+| Ask Purser | The CFO asks for a flight, hotel or train in one sentence; after Face ID a single-use card pays that one booking | Airwallex card (single use) |
 
 ## E-commerce: the next agents
 
