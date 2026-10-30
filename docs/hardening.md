@@ -8,7 +8,7 @@ changed before the Friday runs: those fixes land after run 2.
 
 | What | Result (30 Oct) | How |
 |---|---|---|
-| Line coverage per area | policy 98.7%, passkey 97.6%, relay 94.4%, money 61.8%, executors 42.7%, clearing 19.0% | `npm run test:coverage` (CI fails if an area drops below its floor) |
+| Line coverage per area | Morning of 30 Oct: policy 98.7%, passkey 97.6%, relay 94.4%, money 61.8%, executors 42.7%, clearing 19.0%. After 98 new tests on the Metal executors, x402 payments, clearing and the sweep: money 97.3%, executors 98.6%, clearing 100%, the rest unchanged | `npm run test:coverage`; CI fails if any area drops below 90% |
 | Secrets in git history | none, in the code repo and the plan repo (Airwallex, Metal RPC and endpoint, Anthropic, Cloudflare, every Airwallex webhook secret) | value scan of `git log --all -p`, values never printed |
 | `npm audit` | 0 in the root and in `worker/` | CI on every push |
 | Type checking | `strict` and `noUncheckedIndexedAccess`; no `any` anywhere in `src/` | `npm run typecheck`, `npm run lint` (`no-explicit-any` is an error) |
@@ -24,3 +24,4 @@ changed before the Friday runs: those fixes land after run 2.
 | HF3 | The pre-commit secret scan did not include the Airwallex webhook secrets (they live in the keys repo, not in the environment). | low | fixed: the scan now reads them from the keys dirs; full history is clean |
 | HF4 | `docs/airwallex.md`'s scoped-key table missed `GET /fx/rates/current` and `POST /beneficiaries/schema`, added this week. | info | fixed |
 | HF5 | ESLint: 15 findings. Fixed now: the injection scanner's invisible characters are written as `\u` escapes (proved identical over all 65,536 BMP characters), and unused imports in the red team CLI and a browser check. Left for after the runs: unused assignments in `src/approve/client.ts`, `src/passkey/process.ts`, `src/servers/approvals.ts`, and errors without a `cause` in `src/policy/cards.ts`. | info | partly fixed |
+| HF6 | `netEarnings` (`src/agents/sweep.ts:33-34`) counts only PAID and HELD sweeps and refunds as gone. A pull still PENDING (sent, may still settle) is counted as unswept earnings, so planning a new sweep could plan it again. Today `npm run s3` resumes the unfinished sweep first, and the treasury mandate's budget is a limit on chain, so no money moved twice. | medium | open (money code; after the runs, with the `it.todo` in `test/sweep.test.ts` as its test) |
