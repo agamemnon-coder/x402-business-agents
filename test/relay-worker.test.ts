@@ -71,10 +71,46 @@ describe("viewer key (M2)", () => {
     expect((await get(r, "/api/snapshot")).status).toBe(200);
   });
 
+  // HF2. Breaks if the JSON answers lose HSTS or the other common headers (only the HTML pages had HSTS).
+  it("sends HSTS and the common headers on JSON answers too, refusals included", async () => {
+    const { r } = relay();
+    const { state } = runnerState({ enrolled: true });
+    for (const res of [await push(r, state), await get(r, "/api/snapshot"), await get(r, "/api/snapshot", {}), await get(r, "/nothing")]) {
+      expect(res.headers.get("strict-transport-security")).toBe("max-age=31536000");
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+    }
+  });
+
   it("is derived from the relay token, so the Worker needs no new secret, and differs from it", () => {
     expect(viewKey(TOKEN)).toMatch(/^[0-9a-f]{32}$/);
     expect(TOKEN).not.toContain(viewKey(TOKEN));
     expect(viewKey("other")).not.toBe(viewKey(TOKEN));
+  });
+});
+
+describe("failed attempts (HF1)", () => {
+  // Breaks if failed viewer-key or webhook-signature attempts are not counted per address, or if the count is checked
+  // after the key (a guess that happens to be right would then still get through past the limit).
+  it("refuses an address with 20 failed attempts in ten minutes, even with the right key, and only that address", async () => {
+    const { r, at } = relay();
+    const { state } = runnerState({ enrolled: true });
+    expect((await push(r, state)).status).toBe(200);
+    const ip = { "cf-connecting-ip": "198.51.100.7" };
+    for (let i = 0; i < 20; i++) expect((await get(r, "/api/snapshot", { "x-kit11-view": i.toString(16).padStart(32, "0"), ...ip })).status).toBe(401);
+    expect((await get(r, "/api/snapshot", { ...VIEW, ...ip })).status).toBe(429);
+    expect((await get(r, "/api/snapshot", { ...VIEW, "cf-connecting-ip": "198.51.100.8" })).status).toBe(200);
+    at("2026-10-30T14:10:01Z");
+    expect((await get(r, "/api/snapshot", { ...VIEW, ...ip })).status).toBe(200);
+  });
+
+  it("counts webhooks with a bad signature the same way, and does not count the CFO's own requests", async () => {
+    const r = new Relay(sqlOver(new Database(":memory:")), { relayToken: TOKEN, webhookSecret: "whsec_test", now: () => t0 });
+    const ip = { "cf-connecting-ip": "203.0.113.9" };
+    const hook = () => r.fetch(new Request(`${BASE}/hooks/airwallex`, { method: "POST", headers: { "x-timestamp": String(t0.getTime()), "x-signature": "0".repeat(64), ...ip }, body: "{}" }));
+    for (let i = 0; i < 50; i++) expect((await get(r, "/api/approvals", { ...VIEW, ...ip })).status).not.toBe(429);
+    for (let i = 0; i < 20; i++) expect((await hook()).status).toBe(401);
+    expect((await hook()).status).toBe(429);
   });
 });
 

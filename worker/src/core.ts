@@ -36,6 +36,8 @@ const MAX_QUEUED_PER_PROPOSAL = 3;
 const MAX_QUEUED = 20;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_MAX = 10;
+/** Failed viewer-key and webhook-signature attempts per address in the same window, before it is refused (HF1). */
+const FAILS_MAX = 20;
 const ENROL_ATTEMPTS = 5;
 const ANSWERED_KEEP_MS = 60 * 60 * 1000;
 const QUEUED_KEEP_MS = 30 * 60 * 1000;
@@ -57,6 +59,8 @@ const COMMON_HEADERS: Record<string, string> = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "x-robots-tag": "noindex, nofollow",
+  // On every answer, JSON included (HF2); workers.dev is HTTPS-only, so this is defence in depth.
+  "strict-transport-security": "max-age=31536000",
 };
 
 function json(status: number, body: unknown): Response {
@@ -72,7 +76,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
     headers: {
       ...COMMON_HEADERS, "content-type": "text/html; charset=utf-8", "content-security-policy": csp,
       "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
-      "cross-origin-opener-policy": "same-origin", "strict-transport-security": "max-age=31536000",
+      "cross-origin-opener-policy": "same-origin",
     },
   });
   if (path === "/") return page(pages.dashboard, pages.csp.dashboard);
@@ -253,6 +257,21 @@ export class Relay {
     return true;
   }
 
+  private failKey(req: Request): string {
+    return `fail:${rateKey(req.headers.get("cf-connecting-ip") ?? "unknown")}`;
+  }
+
+  /** True once this address has failed the viewer key or a webhook signature FAILS_MAX times in the window (HF1). */
+  private failedTooOften(req: Request): boolean {
+    this.sql.exec("DELETE FROM hits WHERE at <= ?", this.now().getTime() - RATE_WINDOW_MS);
+    const [{ n }] = this.sql.exec("SELECT COUNT(*) AS n FROM hits WHERE ip = ?", this.failKey(req)).toArray() as [{ n: number }];
+    return n >= FAILS_MAX;
+  }
+
+  private countFailure(req: Request): void {
+    this.sql.exec("INSERT INTO hits (ip, at) VALUES (?, ?)", this.failKey(req), this.now().getTime());
+  }
+
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
@@ -260,11 +279,17 @@ export class Relay {
     const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/enrol/options", "/api/enrol"];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
+    // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,
+    // so guessing is slowed and shows up (HF1). The runner's route has its own token and is not counted.
+    if ((path === "/hooks/airwallex" || path.startsWith("/api/")) && this.failedTooOften(req)) {
+      return error(429, "too many failed attempts from this address; wait ten minutes");
+    }
     // Airwallex's webhooks: no viewer key (Airwallex has none), its own signature instead.
     if (path === "/hooks/airwallex") return req.method === "POST" ? this.hook(req) : error(405, "method not allowed");
     // Everything else under /api/ is the CFO's: the dashboard data, the pending terms, the phone's submissions.
     // Without the viewer key (from the link the runner prints) it answers nothing (security review M2).
     if (path.startsWith("/api/") && !(await sameSecret(req.headers.get("x-kit11-view") ?? "", await viewKeyOf(this.opts.relayToken)))) {
+      this.countFailure(req);
       return error(401, "this relay needs its viewer link: open the link from the runner once on this device");
     }
     if (route("GET", "/api/snapshot")) return this.snapshot();
@@ -330,6 +355,7 @@ export class Relay {
     const age = Math.abs(this.now().getTime() - Number(ts));
     // The body is checked exactly as received, before anything parses it (HF10: also when it is not JSON).
     if (!/^\d{10,16}$/.test(ts) || !(age <= HOOK_TOLERANCE_MS) || !/^[0-9a-f]{64}$/.test(signature) || !(await sameSecret(signature, await hmacHex(secret, ts + text)))) {
+      this.countFailure(req);
       return error(401, "bad or missing webhook signature");
     }
     let v: unknown;

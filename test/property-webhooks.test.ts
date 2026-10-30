@@ -238,8 +238,13 @@ describe("the relay's webhook route (worker Relay /hooks/airwallex)", () => {
   const sql: Sql = { exec(query, ...bindings) { const st = raw.prepare(query); const out = st.reader ? st.all(...bindings) : (st.run(...bindings), []); return { toArray: () => out }; } };
   const relay = new Relay(sql, { relayToken: TOKEN, webhookSecret: SECRET, now: () => t0 });
   afterAll(() => raw.close());
-  const post = (body: string, ts: string, signature: string) =>
-    relay.fetch(new Request(`${BASE}/hooks/airwallex`, { method: "POST", headers: { "content-type": "application/json", "x-timestamp": ts, "x-signature": signature }, body }));
+  // Each request from its own address, so the relay's count of failed signatures (HF1) does not turn 401s into 429s.
+  let from = 0;
+  const post = (body: string, ts: string, signature: string) => {
+    from++;
+    const ip = `10.${(from >> 16) & 255}.${(from >> 8) & 255}.${from & 255}`;
+    return relay.fetch(new Request(`${BASE}/hooks/airwallex`, { method: "POST", headers: { "content-type": "application/json", "x-timestamp": ts, "x-signature": signature, "cf-connecting-ip": ip }, body }));
+  };
   const kept = (): number => (raw.prepare("SELECT COUNT(*) AS n FROM hooks").get() as { n: number } | undefined)?.n ?? 0;
   const fresh = fc.integer({ min: -299_000, max: 299_000 }).map((d) => String(t0.getTime() + d));
   let n = 0;
