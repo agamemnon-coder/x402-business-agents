@@ -25,7 +25,7 @@ every proposal with Face ID. Explorer: https://testnet.metalntwx.com. Packages: 
 - **Honest about what is simulated:** testnet *USDZ is shown as "test USD"; the step from *USDZ to Airwallex is a
   sandbox deposit that names the real testnet transaction.
 
-What we do not use: Metal mainnet, bridges, swaps and on-chain FX (FX happens at Airwallex).
+What we do not use, and why: section 7. Receive policy with quarantine was tried live on testnet: section 5.
 The packages are pinned to the versions above.
 
 ## 1. Accounts, *USDZ and the faucet
@@ -69,7 +69,62 @@ The packages are pinned to the versions above.
 Status: the deposit and five payments ran live. Sales on the real seller wait for the CFO's Face ID on the sourcing
 limit.
 
-## 5. How a judge checks it
+## 5. Receive policy and quarantine (tried on testnet, 30 October; not yet in Purser)
+
+Metal's [receive policy](https://docs.metalntwx.com/reference/compliance/receive-policy.md) lets an account choose
+whom it accepts *USDZ from. A refused credit can go to **quarantine** instead of reverting: the payment completes,
+but `ReceivePolicy` (`0x…0f4d`) holds the funds until the recovery authority releases them. For Purser this fits the
+sweep wallet: accept earnings only from Northwind's own business account, and hold anything else for the CFO.
+
+We tried it with three new throwaway addresses (keys in the private keys repo, `b1-spike`), not with a Northwind
+world:
+
+| Step | Result | Transaction |
+|---|---|---|
+| The receiver sets allowlist-only, refusal `QUARANTINE`, recovery `RECEIVER` | `policyOf` reads `(true, false, 1, 1, 0x0)` | [`0xa5418287…4a3f`](https://testnet.metalntwx.com/tx/0xa54182873017cd2ad4c8120c1d5e2c6cd9bbbfd58ee4a01ccbca933b80f84a3f) |
+| It allows one sender | `reasonFor` gives 0 for that sender, 2 (`SENDER_NOT_ALLOWED`) for any other | [`0x508a71d2…b786`](https://testnet.metalntwx.com/tx/0x508a71d2de0fda97a8d2ba2f26a500059e8841ffea7c48bed082e8e43516b786) |
+| The allowed sender pays 0.01 | credited to the receiver | [`0x336b1655…698b`](https://testnet.metalntwx.com/tx/0x336b16557daa65ff2d6b49a6f2a99bfaf2578036a32b82e0dd14dc1a486a698b) |
+| An unknown sender pays 0.02 | the transfer succeeds but the receiver gets nothing: `Quarantined`, reason 2, and the receipt id we recompute matches the event | [`0x695eea1d…fa83`](https://testnet.metalntwx.com/tx/0x695eea1d805f30d646e0eb530d8e55dd15fda6834a609ef53f8bd11006dcfa83) |
+| The receiver accepts it after review (`claim` to itself) | `open(receiptId)` goes from true to false; the receiver is credited 0.02 less the gas for the claim | [`0x33fb24ff…44fc`](https://testnet.metalntwx.com/tx/0x33fb24ff25bdac52b38767d3e71064106bff106e51cb7bcb7f3633ac1c4f44fc) |
+
+What testnet does not have yet, as Metal's page warns: maximum amounts, sender totals and sender frequency (an
+earlier `ReceivePolicy`; `policyOf` returns five fields). Allowlist, blocklist, token filter, minimum amount,
+quarantine and claim work.
+
+**How it would fit Purser (estimate 8 to 12 hours):** the sweep wallet allows only the business account (the sender
+of a mandate pull is the account whose balance is debited). The sweep is credited to Airwallex only when its
+transfer reaches the wallet; a quarantined credit is never bridged. A quarantine shows on the dashboard as a
+proposal: "accept" (claim to the wallet) or "return to sender" (claim to the originator), each with Face ID. The
+full receipt is kept with chain id, transaction hash and log index, as Metal's page asks.
+
+## 6. Evidence: how Purser's records map to Metal's model
+
+Metal's [Evidence and Regulatory Access](https://docs.metalntwx.com/learn/compliance/regulatory-access.md) page
+describes what a payment service provider keeps so an auditor can follow a MIP20 payment: the on-chain reference
+(chain id, token, transaction hash, the transfer's log index) and the provider's own records under the same payment
+reference. Purser is software, not a payment service provider, but it keeps the same kinds of record:
+
+| Metal's model | Where Purser keeps it | Gap |
+|---|---|---|
+| Chain id, token, transaction hash, log index of the transfer | `chain_credits.event_key` is `chainId:tx:logIndex` for the sweep; the token is always *USDZ (`src/metal/network.ts`) | Sales, refunds and upstream purchases keep the transaction hash but not the log index; the transfer is found in that transaction |
+| Payment instruction, payment reference and each attempt | Refunds by `payment_id` (`refund-<sale>`), sweeps by `payment_id`, each proposal step by `executions.idempotency_key`; a signed purchase in doubt by its nonce; refusals are recorded, not only successes | — |
+| Quarantine receipts and claims | Not used yet (section 5) | Planned with the receive policy |
+| Policy version, checks and decision history | the limits in code (`src/config/policy.ts`) and every CFO policy change as a `policy.changed` event with its from and to values and the approved proposal, `proposals` (terms, evidence, explanation), `approvals` (the hash the CFO signed, method `passkey`), the hash-chained `audit_log` | — |
+| Signed decisions | The customer's signed order per sale (`sales.signed_offer`) and the CFO's passkey signature over the terms hash (`passkey_assertions`) | No signed screening decision (that is a send policy, not built) |
+| Original records and linked corrections | The audit log cannot be updated or deleted (triggers) and is hash-chained; a changed payee is a new record that needs a request, verification and approval (`payee_changes`) | — |
+| Customer and Travel Rule records | None: the customer is simulated and Purser holds no personal data on chain | Out of scope for a testnet demo |
+
+## 7. What we do not use, and why
+
+| Metal feature | Why not |
+|---|---|
+| MIP410 shielded payments | Purser's point is that the CFO and an auditor can see every agent payment on the explorer. Private amounts and parties would hide exactly that. A business paying suppliers privately could use it later, with viewing keys for its auditor. |
+| Payment messaging (pacs.008-style instructions, Travel Rule exchange) | It is for payments between institutions (VASPs). Purser's agents pay one supplier and refund one customer inside a testnet demo; there is no counterparty institution to exchange messages with. |
+| A send policy with a signed screening decision | It needs a deployed contract holding the funds and a screening service to sign. Mandates already limit each agent's spending on chain; screening belongs at Airwallex for the euro payments. Possible after the freeze (estimate 8 to 16 hours). |
+| Bridges, swaps and on-chain FX | The kit says the Airwallex sandbox cannot receive stablecoins, so the step to Airwallex is a simulated deposit that names the testnet transaction. FX happens at Airwallex. |
+| Metal mainnet | Test money only, as the hackathon asks. |
+
+## 8. How a judge checks it
 
 ```bash
 npm run verify
