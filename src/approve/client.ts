@@ -243,7 +243,6 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   if (kind === "policy_change") {
     const changes = arr(t.changes).filter(isObj);
     const shown = (v: unknown) => str(v) || "no extra limit";
-    const cents = (v: unknown) => (/^\d+\.\d{2}$/.test(str(v)) ? Number(str(v).replace(".", "")) : null);
     const one = changes.length === 1 ? changes[0]! : null;
     return {
       approvable: true,
@@ -421,7 +420,7 @@ const RUNNER_STORE = "kit11.runner";
  * link with another key does not replace it (review N3); to re-pin, clear this site's data on the phone.
  */
 export function takeRunnerKey(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null): { key: string; conflict: boolean } {
-  let pinned = "";
+  let pinned: string;
   try { pinned = store?.getItem(RUNNER_STORE) ?? ""; } catch { pinned = ""; }
   const fromLink = /(?:^#|&)runner=([A-Za-z0-9_-]{80,200})(?:&|$)/.exec(hash)?.[1];
   if (pinned) return { key: pinned, conflict: fromLink !== undefined && fromLink !== pinned };
@@ -432,7 +431,7 @@ const SEQ_STORE = "kit11.seq";
 /** The newest ledger counter this phone has seen signed; an older signed set is a replay (review N4). */
 export function freshEnough(seq: number, store: Pick<Storage, "getItem" | "setItem"> | null): boolean {
   if (!Number.isInteger(seq) || seq < 0) return false;
-  let seen = 0;
+  let seen: number;
   try { seen = Number(store?.getItem(SEQ_STORE) ?? "0") || 0; } catch { seen = 0; }
   if (seq < seen) return false;
   try { store?.setItem(SEQ_STORE, String(seq)); } catch { /* keep going without memory */ }
@@ -476,7 +475,7 @@ async function api(path: string, body?: unknown): Promise<{ status: number; data
   const res = await fetch(path, body === undefined
     ? { cache: "no-store", headers: { accept: "application/json", ...view } }
     : { method: "POST", cache: "no-store", headers: { "content-type": "application/json", accept: "application/json", ...view }, body: JSON.stringify(body) });
-  let data: unknown = {};
+  let data: unknown;
   try {
     data = await res.json();
   } catch {
@@ -1060,7 +1059,7 @@ async function policyPage(): Promise<void> {
 }
 
 export function boot(): void {
-  let store: Storage | null = null;
+  let store: Storage | null;
   try { store = localStorage; } catch { store = null; }
   viewKey = takeViewKey(location.hash, store);
   deviceStore = store;

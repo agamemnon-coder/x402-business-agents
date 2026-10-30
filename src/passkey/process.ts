@@ -103,7 +103,7 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   if (DECIDED.has(p.status)) return { status: "already", proposalId: p.proposal_id, message: `${p.proposal_id} is already ${p.status}` };
   // An EXPIRED proposal still gets its signature checked, so a late approval is recorded as too late (F1).
   if (p.status !== "PENDING_APPROVAL" && p.status !== "EXPIRED") return refuse(p.proposal_id, `${p.proposal_id} is ${p.status}, not waiting for approval`);
-  let intact = false;
+  let intact: boolean;
   try {
     intact = termsHash(JSON.parse(p.terms_json) as Terms) === p.terms_sha256;
   } catch {

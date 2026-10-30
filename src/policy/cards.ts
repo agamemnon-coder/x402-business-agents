@@ -79,7 +79,7 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
     try {
       after = await rail.setCardStatus(card.cardId, status);
     } catch (e) {
-      throw new Error(`the ${agent} agent's card was not ${status === "INACTIVE" ? "frozen" : "thawed"} at Airwallex: ${(e as Error).message}`);
+      throw new Error(`the ${agent} agent's card was not ${status === "INACTIVE" ? "frozen" : "thawed"} at Airwallex: ${(e as Error).message}`, { cause: e });
     }
     if (after.status !== status) throw new Error(`the ${agent} agent's card is ${after.status} at Airwallex, not ${status}`);
     audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4, ...(status === "INACTIVE" ? { why: frozen(db) ? "emergency stop" : "velocity limit" } : {}) }, now);
@@ -93,7 +93,7 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
     try {
       after = await rail.setCardControls(card.cardId, wantControls);
     } catch (e) {
-      throw new Error(`the ${agent} agent's card controls were not updated at Airwallex: ${(e as Error).message}`);
+      throw new Error(`the ${agent} agent's card controls were not updated at Airwallex: ${(e as Error).message}`, { cause: e });
     }
     if (!sameControls(after.controls, wantControls)) throw new Error(`the ${agent} agent's card allows ${controlWords(after.controls)} at Airwallex, not ${controlWords(wantControls)}`);
     audit(db, "awx-executor", "card.controls_synced", agent, { agent, last4: after.last4, from: controlWords(card.controls), to: controlWords(wantControls) }, now);
@@ -109,7 +109,7 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
   try {
     after = await rail.setCardLimits(card.cardId, want);
   } catch (e) {
-    throw new Error(`the ${agent} agent's card was not updated at Airwallex: ${(e as Error).message}`);
+    throw new Error(`the ${agent} agent's card was not updated at Airwallex: ${(e as Error).message}`, { cause: e });
   }
   // Trust what Airwallex says the card now has, not what we asked for.
   if (!same(after.limits, want)) throw new Error(`the ${agent} agent's card has ${words(after.limits)} at Airwallex, not ${words(want)}`);

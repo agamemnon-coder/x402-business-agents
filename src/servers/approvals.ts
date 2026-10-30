@@ -74,7 +74,7 @@ function table(entries: [string, unknown][]): string {
 
 function renderProposal(p: Row, csrf: string): string {
   let termsHtml: string;
-  let changed = false;
+  let changed: boolean;
   try {
     const terms = JSON.parse(p.terms_json) as Terms;
     termsHtml = renderValue(terms);
