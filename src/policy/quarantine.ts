@@ -41,6 +41,10 @@ function wallets(db: DB): { sweep: Address; business: Address } {
 /** Sets the sweep wallet's receive policy: allowlist-only, quarantine, released by the wallet, the business allowed. */
 export async function setupReceivePolicy(db: DB, port: ReceivePolicyPort, sweepKeyFile: string, now = new Date()): Promise<{ changed: boolean; txs: Hex[] }> {
   const { sweep, business } = wallets(db);
+  // Polling starts a little before now (nothing can be held for the wallet before its policy exists).
+  if (!db.prepare("SELECT 1 FROM settings WHERE key = ?").get(CURSOR)) {
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)").run(CURSOR, String(Math.max(0, (await port.latestBlock()) - 2000)), now.toISOString());
+  }
   const p = await port.policyOf(sweep);
   if (p.allowlistOnly && p.refusal === 1 && p.recovery === 1 && (await port.senderAllowed(sweep, business))) return { changed: false, txs: [] };
   const txs = await port.configure(sweepKeyFile, [business]);

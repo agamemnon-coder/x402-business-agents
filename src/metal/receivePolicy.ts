@@ -40,6 +40,7 @@ export interface ReceivePolicyPort {
   /** Credits to `receiver` held in quarantine in blocks [fromBlock, latest]; returns the next block to read from. */
   quarantinedSince(receiver: Address, fromBlock: number): Promise<{ events: Quarantined[]; next: number }>;
   isOpen(receiptId: Hex): Promise<boolean>;
+  latestBlock(): Promise<number>;
   /** Releases the receipt to `to`, signed by `keyFile` (the receipt's authority); resolves once Claimed is on chain. */
   claim(keyFile: string, receipt: Receipt, to: Address): Promise<Hex>;
 }
@@ -83,15 +84,26 @@ export class LiveReceivePolicy implements ReceivePolicyPort {
     ];
   }
 
+  async latestBlock(): Promise<number> {
+    return Number(await publicClient().getBlockNumber());
+  }
+
+  /** Reads in ranges of 2,000 blocks (RPC endpoints cap a log query), at most 50 ranges a call; the rest next call. */
   async quarantinedSince(receiver: Address, fromBlock: number): Promise<{ events: Quarantined[]; next: number }> {
     const pc = publicClient();
     const latest = Number(await pc.getBlockNumber());
-    if (fromBlock > latest) return { events: [], next: fromBlock };
-    const logs = await pc.getLogs({ address: RECEIVE_POLICY, fromBlock: BigInt(fromBlock), toBlock: BigInt(latest) });
-    const events = parseEventLogs({ abi: RECEIVE_POLICY_ABI, eventName: "Quarantined", strict: true, logs })
-      .filter((l) => l.args.receiver.toLowerCase() === receiver.toLowerCase())
-      .map((l) => ({ receiptId: l.args.receiptId, receipt: { ...l.args.receipt }, reason: l.args.reason, tx: l.transactionHash!, logIndex: l.logIndex!, block: Number(l.blockNumber) }));
-    return { events, next: latest + 1 };
+    const events: Quarantined[] = [];
+    let from = fromBlock;
+    for (let i = 0; i < 50 && from <= latest; i++) {
+      const to = Math.min(latest, from + 1999);
+      // The receiver is an indexed topic of Quarantined: only this wallet's events come back.
+      const logs = await pc.getLogs({ address: RECEIVE_POLICY, event: RECEIVE_POLICY_ABI.find((x) => x.type === "event" && x.name === "Quarantined") as never, args: { receiver } as never, fromBlock: BigInt(from), toBlock: BigInt(to) });
+      events.push(...parseEventLogs({ abi: RECEIVE_POLICY_ABI, eventName: "Quarantined", strict: true, logs })
+        .filter((l) => l.args.receiver.toLowerCase() === receiver.toLowerCase())
+        .map((l) => ({ receiptId: l.args.receiptId, receipt: { ...l.args.receipt }, reason: l.args.reason, tx: l.transactionHash!, logIndex: l.logIndex!, block: Number(l.blockNumber) })));
+      from = to + 1;
+    }
+    return { events, next: from };
   }
 
   isOpen(id: Hex): Promise<boolean> {

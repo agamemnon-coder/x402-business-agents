@@ -22,9 +22,16 @@ if (!sweep) {
 
 if (cmd === "setup") {
   // Setting the policy is a transaction from the wallet itself; gas is paid in *USDZ.
-  if ((await usdzBalance(sweep)) === 0n) {
-    metalAgent(["fund", sweep]);
-    console.log(`funded the sweep wallet ${sweep} from the faucet for gas`);
+  // The faucet allows one grant a minute per client; wait and try again when it says so.
+  for (let i = 0; (await usdzBalance(sweep)) === 0n; i++) {
+    try {
+      metalAgent(["fund", sweep]);
+      console.log(`funded the sweep wallet ${sweep} from the faucet for gas`);
+    } catch (e) {
+      if (i >= 3 || !/rate.?limit|too recently|retry/i.test((e as Error).message)) throw e;
+      console.log("  the faucet asks us to wait; trying again in 65 s");
+      await new Promise((r) => setTimeout(r, 65_000));
+    }
   }
   const r = await setupReceivePolicy(db, port, keyPath("sweep.key.json"));
   console.log(r.changed ? `receive policy set on ${sweep}: ${r.txs.map((t) => `https://testnet.metalntwx.com/tx/${t}`).join(" ")}` : "receive policy already set; nothing changed");

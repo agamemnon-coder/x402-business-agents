@@ -16,6 +16,8 @@ every proposal with Face ID. Explorer: https://testnet.metalntwx.com. Packages: 
 - **All three ways to pay on Metal, each where it fits:** `exact` x402 with signed orders for per-request sales,
   mandate pulls for refunds and the earnings sweep, and Offer Pay-per-Call Clearing (new in October 2026) for a
   customer that prepays and pays each query with a receipt.
+- **The sweep wallet accepts money only from the business account.** Metal's receive policy holds a payment from
+  anyone else in quarantine; the CFO returns or accepts it with Face ID, and it never reaches the bank on its own.
 - **Money on Metal reaches the bank only when it is final.** The sweep is credited in Airwallex once, after
   finality, keyed by `chainId:tx:logIndex`.
 - **Code checks the chain before and after.** Before signing: the CFO policy and the velocity limits (an agent that
@@ -25,7 +27,7 @@ every proposal with Face ID. Explorer: https://testnet.metalntwx.com. Packages: 
 - **Honest about what is simulated:** testnet *USDZ is shown as "test USD"; the step from *USDZ to Airwallex is a
   sandbox deposit that names the real testnet transaction.
 
-What we do not use, and why: section 7. Receive policy with quarantine was tried live on testnet: section 5.
+What we do not use, and why: section 7. Receive policy with quarantine on the sweep wallet: section 5.
 The packages are pinned to the versions above.
 
 ## 1. Accounts, *USDZ and the faucet
@@ -69,7 +71,7 @@ The packages are pinned to the versions above.
 Status: the deposit and five payments ran live. Sales on the real seller wait for the CFO's Face ID on the sourcing
 limit.
 
-## 5. Receive policy and quarantine (tried on testnet, 30 October; not yet in Purser)
+## 5. Receive policy and quarantine (built into Purser, 30 October)
 
 Metal's [receive policy](https://docs.metalntwx.com/reference/compliance/receive-policy.md) lets an account choose
 whom it accepts *USDZ from. A refused credit can go to **quarantine** instead of reverting: the payment completes,
@@ -91,11 +93,26 @@ What testnet does not have yet, as Metal's page warns: maximum amounts, sender t
 earlier `ReceivePolicy`; `policyOf` returns five fields). Allowlist, blocklist, token filter, minimum amount,
 quarantine and claim work.
 
-**How it would fit Purser (estimate 8 to 12 hours):** the sweep wallet allows only the business account (the sender
-of a mandate pull is the account whose balance is debited). The sweep is credited to Airwallex only when its
-transfer reaches the wallet; a quarantined credit is never bridged. A quarantine shows on the dashboard as a
-proposal: "accept" (claim to the wallet) or "return to sender" (claim to the originator), each with Face ID. The
-full receipt is kept with chain id, transaction hash and log index, as Metal's page asks.
+**In Purser now.** `npm run receive-policy -- setup` sets it on the sweep wallet: allowlist only, quarantine, released
+by the wallet itself, and only the business account allowed (the sender of every earnings sweep is the business
+account, whose balance a mandate pull debits). The runner reads ReceivePolicy's `Quarantined` events for the wallet
+every 30 seconds (`src/policy/quarantine.ts`). Each held payment is recorded once with chain id, transaction hash, log
+index and the full receipt, shown on the dashboard (treasury panel and feed), and never bridged to Airwallex: the
+finality gate only credits a transfer that reached the wallet. The CFO gets two options with Face ID, return it to the
+sender or accept it; the executor checks the stored receipt against the approved terms and that Metal still holds it,
+claims it, and the other option is superseded.
+
+Live on testnet with Purser's own code, in a separate world (`b1-world`; not a Northwind run world):
+
+| Step | Result | Transaction |
+|---|---|---|
+| `npm run receive-policy -- setup` on the sweep wallet `0x5eFC…6b23` | allowlist only, quarantine; the business account `0xBb24…E30F` allowed | [`0xf1a7fe96…0c37`](https://testnet.metalntwx.com/tx/0xf1a7fe9664053c9d2fdf1b2d11122bde5be0668da8afc8d4f17b08088e220c37), [`0xb29628dd…fc2f`](https://testnet.metalntwx.com/tx/0xb29628dd47cc27aebe345ebc19f0af38da6a733dc67a46698d3d8fe13a69fc2f) |
+| An earnings sweep: the treasury mandate pulls 0.01 from the business account | credited to the sweep wallet | [`0x3caf1e9d…11b7`](https://testnet.metalntwx.com/tx/0x3caf1e9dbb0d2fca75e5af80dc825d3790dbeac5a0ff1c3f83a7dd700f7811b7) |
+| An unknown sender `0xA262…b646` pays 0.02 | the sweep wallet gets nothing; Metal holds it | [`0x9076343b…20d3`](https://testnet.metalntwx.com/tx/0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3) |
+| `npm run receive-policy -- poll` | recorded as held; two proposals (return, accept) wait for the CFO's Face ID | — |
+
+Releasing it is a payment, so it waits for Max's Face ID; it is not approved by us. The release itself (`claim`) was
+shown in the spike above.
 
 ## 6. Evidence: how Purser's records map to Metal's model
 
@@ -108,7 +125,7 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 |---|---|---|
 | Chain id, token, transaction hash, log index of the transfer | `chain_credits.event_key` is `chainId:tx:logIndex` for the sweep; the token is always *USDZ (`src/metal/network.ts`) | Sales, refunds and upstream purchases keep the transaction hash but not the log index; the transfer is found in that transaction |
 | Payment instruction, payment reference and each attempt | Refunds by `payment_id` (`refund-<sale>`), sweeps by `payment_id`, each proposal step by `executions.idempotency_key`; a signed purchase in doubt by its nonce; refusals are recorded, not only successes | — |
-| Quarantine receipts and claims | Not used yet (section 5) | Planned with the receive policy |
+| Quarantine receipts and claims | `quarantines`: the full receipt with chain id, transaction hash and log index; the release transaction and the approved proposal | — |
 | Policy version, checks and decision history | the limits in code (`src/config/policy.ts`) and every CFO policy change as a `policy.changed` event with its from and to values and the approved proposal, `proposals` (terms, evidence, explanation), `approvals` (the hash the CFO signed, method `passkey`), the hash-chained `audit_log` | — |
 | Signed decisions | The customer's signed order per sale (`sales.signed_offer`) and the CFO's passkey signature over the terms hash (`passkey_assertions`) | No signed screening decision (that is a send policy, not built) |
 | Original records and linked corrections | The audit log cannot be updated or deleted (triggers) and is hash-chained; a changed payee is a new record that needs a request, verification and approval (`payee_changes`) | — |

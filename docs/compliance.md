@@ -51,7 +51,7 @@ Who is who:
 | Screen payments against sanctions lists | Airwallex | Euro payments go to beneficiaries Airwallex validates and screens. In production a Metal send policy could also require a signed screening decision before an on-chain payment; not built (`docs/metal-award.md`, section 7). | `docs/airwallex.md` |
 | Pay only known payees | Purser, on chain by Metal | A Metal mandate names its one payee. A supplier's changed bank details count only after a request, a person's check outside the system and the CFO's approval, which shows the full new IBAN. | `src/policy/payeeChange.ts`, `test/payee-change.test.ts` |
 | Stop invoice fraud | Purser | The fraud check blocks changed bank details; a model's reading of an invoice must agree with the invoice's own lines on amount, vendor and bank details; planted "pre-approved" lines and hidden characters are flagged and change nothing. | `docs/fraud-and-injection.md` |
-| Refuse money from unknown senders | Metal | Tried on testnet, not yet in Purser: the receive policy holds money from unknown senders in quarantine until the business releases it. | `docs/metal-award.md`, section 5 |
+| Refuse money from unknown senders | Metal enforces; Purser sets it | The sweep wallet accepts test USD only from the business account; Metal holds anything else in quarantine, and the CFO returns or accepts it with Face ID. | `src/policy/quarantine.ts`, `docs/metal-award.md`, section 5 |
 
 ## 6. Segregation of duties (in the spirit of SOX)
 

@@ -41,6 +41,7 @@ export class FakeReceivePolicy implements ReceivePolicyPort {
     return { events: this.log.filter((q) => q.block >= fromBlock && q.receipt.receiver.toLowerCase() === receiver.toLowerCase()), next: this.block + 1 };
   }
   async isOpen(id: Hex) { return this.openIds.has(id); }
+  async latestBlock() { return this.block; }
   async claim(keyFile: string, receipt: Receipt, to: Address): Promise<Hex> {
     const id = receiptId(receipt);
     if (!this.openIds.has(id)) throw new Error("UnknownReceipt()");
