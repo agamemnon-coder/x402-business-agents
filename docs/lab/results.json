@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-30T17:16:51.885Z",
+  "at": "2026-10-30T23:03:48.364Z",
   "results": [
     {
       "id": "normal-purchase",
@@ -41,7 +41,7 @@
       "title": "A fake invoice with changed bank details",
       "expected": "An invoice that asks to pay a new IBAN is blocked; the new account counts only after a request, a check by a person and the CFO's approval.",
       "offline": "Airwallex is a stand-in; live: docs/runs/2026-10-29-fraud.md",
-      "happened": "blocked: possible invoice fraud: the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX; nothing . possible invoice fraud: the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC C / possible invoice fraud: \"Bergtex Texitl GmbH\" is not the allowlisted \"Bergtex Textil GmbH\" but looks like it (1 letter d. Stopped by: the fraud check compares name, IBAN and BIC with the account on file; a change goes through a verified call and Face ID.",
+      "happened": "the invoice is blocked: possible invoice fraud: the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX; nothing is paid until a person verifies with Bergtex Textil GmbH on the phone number on file. The red team's lookalike invoice: blocked. Stopped by: the fraud check compares name, IBAN and BIC with the account on file; a change goes through a verified call and Face ID.",
       "passed": true,
       "evidence": [
         "fixtures/bergtex-invoice-BTX-2027-01-BANKCHANGE.txt",

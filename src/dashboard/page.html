@@ -642,6 +642,9 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     return (neg ? "−" : "") + i + (p.length > 1 ? "." + p[1] : "");
   }
   function eur(s) { var g = group(s); return g.charAt(0) === "−" ? "−€" + g.slice(1) : "€" + g; }
+  // Decimal strings to whole cents and back, without floats.
+  function toCents(s) { s = String(s); var neg = s.charAt(0) === "-"; if (neg) s = s.slice(1); var p = s.split("."); var c = Number(p[0]) * 100 + Number(((p[1] || "") + "00").slice(0, 2)); return neg ? -c : c; }
+  function centsStr(c) { var neg = c < 0; c = Math.abs(c); return (neg ? "-" : "") + Math.floor(c / 100) + "." + String(c % 100).padStart(2, "0"); }
   function usd(s) { return "USD " + group(s); }
   function tusd(s) { return group(s) + " test USD"; }
   function fromC(c) { var n = Math.abs(c); return (c < 0 ? "-" : "") + Math.floor(n / 100) + "." + String(n % 100).padStart(2, "0"); }
@@ -655,6 +658,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       // Only amounts beside a currency are regrouped; ids, IBANs and dates stay as they are.
       .replace(new RegExp(amt + " \\*?USDZ\\b", "g"), function (_m, a) { return tusd(bare(a)); })
       .replace(/\*?USDZ\b/g, "test USD")
+      // The treasury's escalation, in the CFO's words: the same four amounts, read as a reserve after planned bills.
+      .replace(new RegExp("EUR is already " + amt + " below its floor plus commitments \\(available " + amt + ", floor " + amt + ", committed " + amt + "\\)", "g"), function (_m, short, avail, floor, planned) {
+        return "Euros are " + eur(bare(short)) + " short of the " + eur(bare(floor)) + " reserve after bills already planned (at Airwallex " + eur(bare(avail)) + ", set aside for planned bills " + eur(bare(planned)) + ")";
+      })
       // "30.00 / 100.00 → 50.00 / 100.00 EUR": the currency written once after a range applies to every amount in it.
       .replace(new RegExp("((?:" + amt + "(?: / | → ))+" + amt + ") EUR\\b", "g"), function (m) { return m.slice(0, -4).replace(new RegExp(amt, "g"), function (_m, a) { return eur(bare(a)); }); })
       .replace(new RegExp("\\bEUR " + amt + "(?![\\d.])", "g"), function (_m, a) { return eur(bare(a)); })
@@ -850,7 +857,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (a) {
       nodes.push(el("div", "money num", [
         // The company's own euros: the reserve it always keeps, plus what is free for new bills.
-        el("div", "m", [txt("div", "k", "Euros at Airwallex"), txt("div", "v", eur(a.eur.available)), txt("div", "k sub", eur(a.eur.floor) + " reserve kept; sandbox test money")]),
+        // What the plan may use, not the sandbox's millions of test money: available less what planned bills set aside.
+        el("div", "m", [txt("div", "k", "Euros the plan may use"), txt("div", "v", eur(centsStr(toCents(a.eur.available) - toCents(a.eur.committed)))), txt("div", "k sub", "of " + eur(a.eur.available) + " test money in the sandbox; the demo plan sets the rest aside. " + eur(a.eur.floor) + " is the reserve")]),
         (String(a.eur.free).charAt(0) === "-"
           // Below the reserve is not a negative balance: the euros are there, but bills already planned have claimed
           // them. Shown as the shortfall, in words, never as a bare minus.
@@ -1112,7 +1120,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         common ? el("p", "sub", [(c.sales.length > 1 ? "Every payment: " : "") + common]) : null,
         (function () { var n = c.sales.filter(function (x) { return x.refunded_before; }).length; return n ? el("p", "sub", [n + " of these " + c.sales.length + " payments had already been refunded in an earlier case, because the data delivered was wrong (the supplier corrected it). Delivered “as recorded” means the data matches what Northwind recorded when it delivered, not that it was right."]) : null; })(),
         el("table", "wide", [el("thead", "", [head2]), el("tbody", "", rows)]),
-        el("div", "review-box", [txt("p", "", c.explanation), txt("p", "sub", "Explained by " + c.explained_by + ". The decision and every amount are code's; the explanation is advice.")]),
+        el("div", "review-box", [
+          (function () { var b = c.sales.filter(function (x) { return x.refunded_before; }); return b.length ? el("p", "", [txt("b", "", "Already refunded before this claim: "), b.length + " of these payments, for wrong data. Where the explanation below says no payment was refunded, it means by this decision."]) : null; })(),
+          txt("p", "", c.explanation), txt("p", "sub", "Explained by " + c.explained_by + ". The decision and every amount are code's; the explanation is advice."),
+        ]),
       ]);
     }));
   }
