@@ -58,9 +58,9 @@ Metal's docs say what to do: send the same request again, so the client can reso
 **The fix.** The load script now resends a request whose outcome is unknown, up to five times, 3 s apart. Run 2, in
 fresh wallets, paid 2,000 of 2,000.
 
-Purser's customer agent marks such a payment **in doubt** and does not pay again another way (`src/agents/customer.ts`).
-It does not yet resend the request as the load script does; that is a small follow-up. The load test showed the
-clearing client's own guard against paying twice holds under load.
+Purser's customer agent now does the same (`src/agents/customer.ts`, `test/customer-resend.test.ts`): it sends the same
+request again up to five times. If the outcome is still unknown, it marks the payment **in doubt** and never pays it
+again another way. The load test showed the clearing client's own guard against paying twice holds under load.
 
 ## Finding 2: latency is mostly epoch boundaries
 

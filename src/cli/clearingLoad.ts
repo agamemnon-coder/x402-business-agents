@@ -17,7 +17,7 @@ process.env.KIT11_KEYS_DIR ??= resolve(import.meta.dirname, "../../../x402-busin
 const { keyPath, metalAgent } = await import("../metal/agentCli.js");
 const { publicClient, readKeyFile, usdzBalance } = await import("../metal/chain.js");
 const { rpcUrl, FACILITATOR_URL } = await import("../metal/network.js");
-const { NETWORK, CHAIN_ID, betweenEpochs, clearingDeployment } = await import("../metal/clearing.js");
+const { NETWORK, CHAIN_ID, betweenEpochs, clearingDeployment, outcomeUnknown } = await import("../metal/clearing.js");
 const { centsToBaseUnits } = await import("../lib/money.js");
 const { redactSecrets } = await import("../lib/redact.js");
 const { ClearingServerScheme, clearingSpendable, createClearingClient, depositToClearing, registerClearingClient } = await import("@metalntwx/metal-pay");
@@ -106,7 +106,7 @@ await Promise.all(payers.map(async (w) => {
       } catch (e) {
         if (betweenEpochs(e) && retries < 10) { retries++; await new Promise((r) => setTimeout(r, 3000)); continue; }
         // A lost answer holds the wallet until the same request is sent again (Metal's documented behaviour): resend it.
-        if (/outcome is unknown|no receipt/i.test((e as Error).message) && resends < 5) { resends++; retries++; await new Promise((r) => setTimeout(r, 3000)); continue; }
+        if (outcomeUnknown(e) && resends < 5) { resends++; retries++; await new Promise((r) => setTimeout(r, 3000)); continue; }
         results.push({ ok: false, ms: Date.now() - start, retries, reason: redactSecrets(((e as { reason?: string }).reason ?? (e as Error).message).split("\n")[0]!.slice(0, 100)) });
         break;
       }

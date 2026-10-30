@@ -9,7 +9,7 @@ import { registerClearingClient } from "@metalntwx/metal-pay";
 import { createMandatePaymentClient } from "@metalntwx/metal-pay/mandates";
 import { activeMandate, type LoadedMandate } from "../metal/mandate.js";
 import { findSettlementByNonce, payUnderMandate, type PayOutcome } from "../metal/pay.js";
-import { NETWORK, betweenEpochs, customerClearingClient } from "../metal/clearing.js";
+import { NETWORK, betweenEpochs, customerClearingClient, outcomeUnknown } from "../metal/clearing.js";
 import { PREPAID_ROUTE, SELLER_ROUTE } from "../servers/seller.js";
 
 export type Purchase = { seq: number; via: "mandate"; outcome: PayOutcome; charged?: boolean; fallbackFrom?: string };
@@ -23,6 +23,8 @@ export interface CustomerOptions {
   maxUnits?: bigint;
   /** How often to send a request again while the clearing service is between epochs. */
   epochRetries?: number;
+  /** How often to send the same request again when an earlier payment's answer was lost (Metal resolves it then). */
+  resends?: number;
   sleep?: (ms: number) => Promise<void>;
 }
 
@@ -66,12 +68,18 @@ export class CustomerAgent {
       registerClearingClient(paying.client, NETWORK, opened.client);
       const sleep = this.opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
       const url = `${this.sellerBase}${PREPAID_ROUTE}?seq=${seq}`;
-      for (let attempt = 0; ; attempt++) {
+      for (let attempt = 0, resends = 0; ; attempt++) {
         let res: Response;
         try {
           res = await paying.fetchWithPayment(url, { signal: AbortSignal.timeout(60_000) });
         } catch (e) {
           if (betweenEpochs(e) && attempt < (this.opts.epochRetries ?? 8)) {
+            await sleep(3000);
+            continue;
+          }
+          // The same request again, never a new one: the wallet resolves the held payment and pays at most once.
+          if (outcomeUnknown(e) && resends < (this.opts.resends ?? 5)) {
+            resends++;
             await sleep(3000);
             continue;
           }

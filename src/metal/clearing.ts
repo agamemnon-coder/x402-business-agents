@@ -110,3 +110,14 @@ export function betweenEpochs(e: unknown): boolean {
   }
   return false;
 }
+
+/**
+ * True when an error (or its causes) says an earlier payment's outcome is unknown: its answer was lost, and the wallet
+ * holds it until the same request is sent again. It may have been counted, so it is never paid a second way.
+ */
+export function outcomeUnknown(e: unknown): boolean {
+  for (let x: unknown = e; x && typeof x === "object"; x = (x as { cause?: unknown }).cause) {
+    if (/outcome is unknown|no receipt/i.test((x as Error).message ?? "")) return true;
+  }
+  return false;
+}
