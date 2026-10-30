@@ -493,3 +493,12 @@ CREATE TABLE IF NOT EXISTS money_steps (
   updated_at TEXT NOT NULL,
   PRIMARY KEY (action_id, step)
 );
+
+-- Every version of the CFO policy (backend review B4): all rules and their values, and their hash. A decision, an
+-- approval and a hold record the version that applied, so the audit and verify can show which rule held then.
+CREATE TABLE IF NOT EXISTS policy_versions (
+  version INTEGER PRIMARY KEY,
+  sha256 TEXT NOT NULL,
+  values_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);

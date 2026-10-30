@@ -552,6 +552,8 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       const v = (x: unknown) => (str(x) ? `${str(x)}${unit && /^\d+\.\d{2}$/.test(str(x)) ? ` ${unit}` : ""}` : "no extra limit");
       return out(`CFO policy: ${str(p.label)} changed from ${v(p.from)} to ${v(p.to)} (${str(p.proposal_id)})`, "approval");
     }
+    case "proposal.resumed": return out(`${s} resumed after a restart, from its last finished step; nothing done twice`, "info");
+    case "holds.recovered": return out(`After a restart: ${str(p.settled)} hold(s) settled, ${str(p.released)} released, ${str(p.open)} still counted until resolved`, "info");
     case "upstream.in_doubt": return out(`Purchase of stock check #${str(p.seq)} unconfirmed; it is looked up before any retry`, "refusal");
     case "sale.delivered": {
       const sale = saleOf(s);
@@ -794,7 +796,8 @@ function oldLedgerSafe<T>(f: () => T): T | null {
 /** Who sent a chat line. Lines from before asked_by was recorded came from the runner or the relay, as the CFO. */
 const askFrom = (actor: string, by: string) => (actor.startsWith("ext:") ? `agent ${actor}` : by === "dashboard-link" ? "dashboard link" : "you");
 
-const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied"]);
+// policy.version is bookkeeping: each rule change already shows as policy.changed.
+const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version"]);
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
 function counts(db: DB, rows: AuditRow[], waiting: number): Snapshot["counts"] {

@@ -6,6 +6,7 @@ import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
+import { policyVersion } from "./versions.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -58,15 +59,16 @@ export function createProposal(
 ): ProposalRow {
   const sha = termsHash(args.terms);
   return db.transaction(() => {
+    const policy = policyVersion(db, now);
     db.prepare(
-      `INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, evidence_json, explanation, status, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?, ?)`,
+      `INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, evidence_json, explanation, status, expires_at, created_at, policy_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?, ?, ?)`,
     ).run(
       args.terms.proposal_id, args.terms.kind, JSON.stringify(args.terms), sha, args.createdBy,
       args.evidence === undefined ? null : JSON.stringify(args.evidence), args.explanation ?? null,
-      args.terms.expires_at, now.toISOString(),
+      args.terms.expires_at, now.toISOString(), policy.version,
     );
-    audit(db, args.createdBy, "proposal.created", args.terms.proposal_id, { kind: args.terms.kind, terms_sha256: sha }, now);
+    audit(db, args.createdBy, "proposal.created", args.terms.proposal_id, { kind: args.terms.kind, terms_sha256: sha, policy_version: policy.version }, now);
     return get(db, args.terms.proposal_id);
   }).immediate();
 }
@@ -164,13 +166,15 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
       }
       approver = [...signed.map((x) => x.approver), args.approver].join(" + ");
     }
+    // The policy as it stood when the person decided (backend review B4).
+    const policy = policyVersion(db, now);
     db.prepare(
-      `INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, note, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(p.proposal_id, args.decision, p.terms_sha256, approver, args.method, args.typedPrefix.trim().toLowerCase(), args.note ?? null, now.toISOString());
+      `INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, note, created_at, policy_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(p.proposal_id, args.decision, p.terms_sha256, approver, args.method, args.typedPrefix.trim().toLowerCase(), args.note ?? null, now.toISOString(), policy.version);
     transition(db, p.proposal_id, "PENDING_APPROVAL", args.decision);
     audit(db, "human", args.decision === "APPROVED" ? "proposal.approved" : "proposal.rejected", p.proposal_id,
-      { terms_sha256: p.terms_sha256, approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}) }, now);
+      { terms_sha256: p.terms_sha256, approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}), policy_version: policy.version }, now);
     return args.decision;
   }).immediate();
 }

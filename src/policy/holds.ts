@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 import type { CardTransaction } from "../airwallex/issuing.js";
 import { capRefusal } from "./rules.js";
 import { stopped, velocityGate } from "./velocity.js";
+import { policyVersion } from "./versions.js";
 
 export type HoldRail = "metal" | "card";
 export interface SpendRequest { agent: Agent | `ext:${string}`; rail: HoldRail; cents: number; ref: string; now?: Date }
@@ -92,8 +93,10 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
       return `stopped_by_velocity: the ${agent} agent was stopped automatically (velocity limit); it buys nothing until the CFO lifts the stop with Face ID`;
     }
     const ts = now.toISOString();
-    if (existing) db.prepare("UPDATE holds SET agent = ?, rail = ?, cents = ?, status = 'HELD', reason = NULL, updated_at = ? WHERE ref = ?").run(agent, r.rail, r.cents, ts, r.ref);
-    else db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'HELD', ?, ?)").run(r.ref, agent, r.rail, r.cents, ts, ts);
+    // The policy version this reservation was checked against (backend review B4).
+    const policy = policyVersion(db, now).version;
+    if (existing) db.prepare("UPDATE holds SET agent = ?, rail = ?, cents = ?, status = 'HELD', reason = NULL, updated_at = ?, policy_version = ? WHERE ref = ?").run(agent, r.rail, r.cents, ts, policy, r.ref);
+    else db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, created_at, updated_at, policy_version) VALUES (?, ?, ?, ?, 'HELD', ?, ?, ?)").run(r.ref, agent, r.rail, r.cents, ts, ts, policy);
     return null;
   }).immediate();
 }

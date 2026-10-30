@@ -4,6 +4,7 @@
 // - every refund and sweep pull against the credential that made it;
 // - every disputed sale's payment with its signed order (verifyMandatePayment);
 // - every approval made with a passkey, from the stored signature and the pinned public key (offline);
+// - the policy version every decision was made under, and that its stored rules still hash to it;
 // - every sale paid by Metal clearing, its signed payment checked again with Metal's clearing service;
 // - with Airwallex keys: every booked deposit, conversion and transfer against Airwallex (read-only).
 // Prints one line per check and exits 1 if any fails.
@@ -15,6 +16,7 @@ import { getVia, verifyAirwallex } from "../airwallex/verify.js";
 import { checkAnchor, verifyAuditChain, type AuditRowStored } from "../audit/log.js";
 import { approvalMethodChecks, reverifyPasskeyApprovals } from "../passkey/webauthn.js";
 import { openDb } from "../db/open.js";
+import { policyVersionChecks } from "../policy/versions.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
 import { credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
 import { addresses } from "../world/runtime.js";
@@ -100,6 +102,8 @@ if (cleared.length) {
 
 for (const c of await reverifyPasskeyApprovals(db)) line(c.ok, c.what, c.detail);
 for (const c of approvalMethodChecks(db)) line(c.ok, c.what, c.detail);
+// Which policy every decision was made under, and that each recorded version's rules still hash to it (B4).
+for (const c of policyVersionChecks(db)) line(c.ok, c.what, c.detail);
 
 const awx = fromEnv();
 if (awx) {
