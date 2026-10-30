@@ -961,7 +961,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (!c.calls) nodes.push(el("div", "empty", [icon("sparkles"), "No Claude calls in this run: the deterministic parsers decided" + (c.fallbacks ? " (" + c.fallbacks + " times)" : "") + "."]));
     else {
       nodes.push(el("div", "money num", [
-        el("div", "m", [txt("div", "k", "AI cost per €1,000 paid"), txt("div", "v", c.per_1000_eur_usd_micros == null ? "—" : usdMicros(c.per_1000_eur_usd_micros)), txt("div", "k sub", "card spend and euro transfers: " + eur(c.eur_paid))]),
+        el("div", "m", [txt("div", "k", "AI cost per €1,000 paid"), txt("div", "v", c.per_1000_eur_usd_micros == null ? "—" : usdMicros(c.per_1000_eur_usd_micros)), txt("div", "k sub", "in this run: card spend and euro transfers of " + eur(c.eur_paid) + "; the cost follows documents read, not euros")]),
         el("div", "m", [txt("div", "k", "Per Claude call"), txt("div", "v", usdMicros(c.per_call_usd_micros)), txt("div", "k sub", c.calls + " calls, " + usdMicros(c.cost_usd_micros) + " in all")]),
         el("div", "m", [txt("div", "k", "Checked by code"), txt("div", "v", "Every answer"), txt("div", "k sub", c.fallbacks ? c.fallbacks + " times the plain parser decided instead" : "a wrong shape falls back to the plain parser")]),
       ]));
@@ -1050,7 +1050,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var panel = function (title, hint, node) { return el("section", "panel bk", [el("div", "sect flush", [txt("h2", "", title), hint ? txt("span", "hint", hint) : null]), node]); };
     set("books", [
       el("p", "books-ok", [txt("span", "pill " + (b.balanced ? "ok" : "bad"), b.balanced ? "Balanced" : "Not balanced"),
-        txt("span", "hint", b.balanced ? "Debits equal credits in every currency." : "Debits and credits differ: check the journal.")]),
+        txt("span", "hint", b.balanced ? "Debits equal credits in every currency. FX conversions and the Metal-to-Airwallex bridge sit in 1590, money in transit, between currencies." : "Debits and credits differ: check the journal.")]),
       panel("Trial balance", "balance per account and currency, on its debit or credit side", table("wide", [["Account", 0], ["Currency", 0], ["Debit", 1], ["Credit", 1]],
         b.trial.map(function (t) { var dr = t.balance_debit != null ? t.balance_debit : (t.balance.charAt(0) === "-" ? "" : t.balance), cr = t.balance_credit != null ? t.balance_credit : (t.balance.charAt(0) === "-" ? t.balance.slice(1) : ""); return [t.account + " " + words(t.name), cur(t.currency), amt(dr === "0.00" ? "" : dr, t.currency), amt(cr, t.currency)]; }))),
       panel("Bank accounts", "before the run (opening), money in and out, and now" + (d.treasury && d.treasury.airwallex ? " · Airwallex's sandbox holds far more test money than a company would; the Overview's Treasury plans with a " + eur(d.treasury.airwallex.eur.floor) + " reserve and treats the rest as already committed" : ""), table("wide", [["Account", 0], ["Currency", 0], ["Opening", 1], ["In", 1], ["Out", 1], ["Now", 1]],

@@ -106,7 +106,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 /** Each account's role, from the ledger: who a payee is, in words. */
 function payeeName(db: DB, address: string): string {
   const role = has(db, "metal_accounts") ? one(db, "SELECT role FROM metal_accounts WHERE lower(address) = lower(?)", address)?.role : undefined;
-  return ({ supplier: "Stockline, the warehouse API", customer: "Summit Outfitters, a simulated customer", sweep: "Northwind's sweep wallet", business: "Northwind Outdoor" } as Record<string, string>)[String(role)] ?? short(address);
+  return ({ supplier: "Stockline, a stand-in warehouse API we run", customer: "Summit Outfitters, a simulated customer", sweep: "Northwind's sweep wallet", business: "Northwind Outdoor" } as Record<string, string>)[String(role)] ?? short(address);
 }
 
 /** What each mandate paid: the purchases, refunds, sweeps or (for Summit) the sales it paid for. */
@@ -156,7 +156,7 @@ export function mandateViews(db: DB): MandateView[] {
       latest: paid.slice(-4).reverse().map((p) => ({ at: p.at, amount: fromCents(p.cents), what: p.what, tx: tx(p.tx) })),
       refusal: refusal ? {
         at: refusal.ts, reason: String(refusal.p.reason),
-        plain: `Stockline doubled its price. The next purchase was refused by the chain: ${REFUSAL_WORDS[String(refusal.p.reason)] ?? String(refusal.p.reason)}. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID.`,
+        plain: `Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused by the chain: ${REFUSAL_WORDS[String(refusal.p.reason)] ?? String(refusal.p.reason)}. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID.`,
       } : null,
     });
   }
@@ -194,7 +194,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
     const firstBuy = has(db, "upstream_purchases") ? one(db, "SELECT tx_hash FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY created_at LIMIT 1") : undefined;
     f.push({
       id: "x402", title: "Pay per request (x402), with a signed order",
-      plain: "An API answers 402 with its price; the agent signs an order for exactly that amount, payee and resource, and pays under its mandate. Northwind both sells stock checks this way and buys them from its supplier.",
+      plain: "An API answers 402 with its price; the agent signs an order for exactly that amount, payee and resource, and pays under its mandate. Northwind requires every buyer's signed order, and buys from its own supplier the same way under its mandate.",
       why: "Agents buy in cents, thousands of times. Each payment is tied to the order the agent signed, so the seller can prove later what was bought, at what price, by whom.",
       figure: `${sales + buys} payments`,
       proofs: [tx(firstSale?.tx_hash, "first sale"), tx(firstBuy?.tx_hash, "first purchase")].filter((p): p is Proof => !!p),

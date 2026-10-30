@@ -249,7 +249,7 @@ export const SCENARIOS: Scenario[] = [
       await processAssertion(w.db, w.cfoApproval(p.proposal_id, p.terms_sha256), w.now());
       await executeAgentOnboard(w.db, w.issuing, p.proposal_id, w.now());
       const paid = await payWithCard(w.db, w.issuing, id, { merchant: "TrailData Reports", amount: "10.00", description: "report" }, w.now());
-      return { happened: `before approval: ${early}; ${p.proposal_id} approved with Face ID; then 10.00: ${paid.approved ? "approved" : `declined (${paid.failureReason})`}`,
+      return { happened: `before approval: ${early}; ${p.proposal_id} approved with a stand-in passkey; then 10.00: ${paid.approved ? "approved" : `declined (${paid.failureReason})`}`,
         passed: early !== "paid" && paid.approved, evidence: [p.proposal_id, `card transaction ${paid.transactionId}`] };
     },
   },

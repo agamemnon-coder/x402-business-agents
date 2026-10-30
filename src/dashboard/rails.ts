@@ -96,7 +96,7 @@ export function railsView(db: DB): RailsView {
   }
   const refused = events(db, "upstream.refused");
   if (refused.length) {
-    metal.push({ what: "Refused by the chain", detail: `${refused.length} payment${refused.length > 1 ? "s" : ""} over the mandate's cap (${String(refused[0]!.p.reason)}): nothing moved; the Finance agent proposed options to the CFO`, proof: null });
+    metal.push({ what: "Refused against the on-chain mandate", detail: `${refused.length} payment${refused.length > 1 ? "s" : ""} over the mandate's cap, checked by Metal's facilitator against the mandate on chain (${String(refused[0]!.p.reason)}): nothing moved; the Finance agent proposed options to the CFO`, proof: null });
   }
   const replaced = events(db, "mandate.replaced");
   if (replaced.length) metal.push({ what: "Mandate replaced after Face ID", detail: `${replaced.length} replacement${replaced.length > 1 ? "s" : ""} approved by the CFO's passkey; the old mandate is revoked on chain`, proof: tx(replaced[0]!.p.tx) });

@@ -2144,8 +2144,8 @@
           }
         },
         {
-          "what": "Refused by the chain",
-          "detail": "1 payment over the mandate's cap (mandate_cap_exceeded): nothing moved; the Finance agent proposed options to the CFO",
+          "what": "Refused against the on-chain mandate",
+          "detail": "1 payment over the mandate's cap, checked by Metal's facilitator against the mandate on chain (mandate_cap_exceeded): nothing moved; the Finance agent proposed options to the CFO",
           "proof": null
         },
         {

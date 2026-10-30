@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-30T16:19:33.199Z",
+  "at": "2026-10-30T17:16:51.885Z",
   "results": [
     {
       "id": "normal-purchase",
@@ -30,7 +30,7 @@
       "title": "The supplier raises its price: refused, then options",
       "expected": "A stock check at 0.04 is refused (the cap is 0.03); Purser offers options that stay inside the 20.00 the business allows, and nothing changes before the CFO approves one.",
       "offline": "The refusal here is the CFO policy's, checked before signing; live, the chain itself refuses with mandate_cap_exceeded: docs/runs/2026-10-29-s1.md",
-      "happened": "policy_cap_exceeded: 0.04 is over the sourcing limit of 0.03; 2 options (keep the price, margin 1 cents; raise the price, margin 3 cents); new budgets total 20",
+      "happened": "policy_cap_exceeded: 0.04 is over the Operations agent's limit of 0.03; 2 options (keep the price, margin 1 cents; raise the price, margin 3 cents); new budgets total 20",
       "passed": true,
       "evidence": [
         "P-0002"
@@ -85,8 +85,8 @@
       "id": "emergency-stop",
       "title": "The emergency stop",
       "expected": "One Face ID: every agent payment is refused before signing and every card is frozen at Airwallex; a purchase is declined.",
-      "offline": "Airwallex and the phone are stand-ins; live: the dashboard's stop button (docs/phone-approval.md)",
-      "happened": "P-0002 approved; 4 of 4 cards frozen at Airwallex; a purchase: declined (CARD_INACTIVE); on chain: frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the sourcing agent signs nothing",
+      "offline": "Airwallex and the phone are stand-ins; not yet run live; the stop is covered by test/freeze.test.ts and this scenario",
+      "happened": "P-0002 approved; 4 of 4 cards frozen at Airwallex; a purchase: declined (CARD_INACTIVE); on chain: frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the Operations agent signs nothing",
       "passed": true,
       "evidence": [
         "P-0002",
@@ -100,7 +100,7 @@
       "title": "An outside agent asks for a card",
       "expected": "It cannot pay before the CFO approves; after Face ID it gets a card with exactly the approved limits and pays inside them.",
       "offline": "Airwallex and the phone are stand-ins; live: docs/runs/2026-10-29-agent-api.md",
-      "happened": "before approval: ext:lab-buyer has no company card yet; ask for one and wait for the CFO's approval; P-0002 approved with Face ID; then 10.00: approved",
+      "happened": "before approval: ext:lab-buyer has no company card yet; ask for one and wait for the CFO's approval; P-0002 approved with a stand-in passkey; then 10.00: approved",
       "passed": true,
       "evidence": [
         "P-0002",

@@ -57,7 +57,7 @@
     {
       "id": "x402",
       "title": "Pay per request (x402), with a signed order",
-      "plain": "An API answers 402 with its price; the agent signs an order for exactly that amount, payee and resource, and pays under its mandate. Northwind both sells stock checks this way and buys them from its supplier.",
+      "plain": "An API answers 402 with its price; the agent signs an order for exactly that amount, payee and resource, and pays under its mandate. Northwind requires every buyer's signed order, and buys from its own supplier the same way under its mandate.",
       "why": "Agents buy in cents, thousands of times. Each payment is tied to the order the agent signed, so the seller can prove later what was bought, at what price, by whom.",
       "figure": "100 payments",
       "proofs": [
@@ -270,7 +270,7 @@
       "job": "buys live stock checks from the warehouse API and pays the warehouse software",
       "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "payee": {
-        "name": "Stockline, the warehouse API",
+        "name": "Stockline, a stand-in warehouse API we run",
         "address": "0xcAbEcD2afd5b58B48cDcd56B5aB2eEc49f0c3711"
       },
       "cap": "0.04",
@@ -342,7 +342,7 @@
       "refusal": {
         "at": "2026-10-30T07:08:31.940Z",
         "reason": "mandate_cap_exceeded",
-        "plain": "Stockline doubled its price. The next purchase was refused by the chain: the payment was above the mandate's cap per payment. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID."
+        "plain": "Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused by the chain: the payment was above the mandate's cap per payment. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID."
       }
     },
     {

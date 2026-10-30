@@ -65,7 +65,7 @@ Who is who:
 
 | What the rule asks | Who | How Purser supports it | Proof |
 |---|---|---|---|
-| Complete, tamper-evident records | Purser | Every payment, decline, refusal and approval is in an append-only, hash-chained audit log; the database refuses edits and deletes. | `src/db/schema.sql` (`audit_log` triggers), `npm run verify-log` |
+| Complete, tamper-evident records | Purser | Every payment, decline, refusal and approval is in an append-only, hash-chained audit log; the database refuses edits and deletes through the application, and a change made around it (for example by removing the guard) is found afterwards by `npm run verify`. | `src/db/schema.sql` (`audit_log` triggers), `npm run verify-log` |
 | Records an auditor can check | Purser | `npm run audit:report` writes a PDF; `npm run verify` re-checks every credential, pull, disputed payment, clearing receipt, Face ID approval and Airwallex booking; each payment carries a GL account and cost centre and exports to CSV or JSON. | `docs/audit-report-rehearsal-3.pdf`, `docs/metal-award.md` (section 6, evidence model) |
 | Reconciliation | Purser | The runner reconciles the ledger with Airwallex and the chain every hour (and `npm run reconcile` on demand). | `src/finance/reconcile.ts` |
 

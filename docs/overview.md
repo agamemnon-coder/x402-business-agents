@@ -49,8 +49,8 @@ Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, 
 
 - **Limits live in code and on chain.** `src/config/policy.ts` holds the built-in limits; the CFO's adjustable limits (`src/policy/rules.ts`) are stored in the ledger as settings. The chain enforces each mandate.
 - **Approvals bind the exact terms.** Terms are canonical JSON (RFC 8785) with money as decimal strings. On the
-  phone, the approver's passkey signs their SHA-256 (Face ID); on a laptop, the approver types its first 8 hex
-  characters. The executor recomputes the hash, runs once,
+  phone, the approver's passkey signs their SHA-256 (Face ID); before a passkey is enrolled, the approver
+  can type its first 8 hex characters on the runner; once one is, a typed prefix can only reject. The executor recomputes the hash, runs once,
   re-checks the chain or balances first, and builds every payload from the approved terms only. Mandate changes
   anchor the approval on chain (the new credential's hash is bound); Airwallex conversions and transfers carry it
   in `metadata.approval_sha256`.

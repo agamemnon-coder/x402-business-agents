@@ -21,7 +21,7 @@ receive policy did not run in the recorded run, so their cards name the separate
 - **The CFO changes on-chain limits with Face ID, safely.** A price rise becomes options; the CFO signs the exact
   terms on the phone; mandates are replaced in an order that never exceeds the 20.00 the business allows, and the old
   credential is refused (`mandate_revoked`).
-- **All three ways to pay on Metal, each where it fits:** `exact` x402 with signed orders for per-request sales,
+- **Three ways to pay on Metal, each where it fits:** `exact` x402 with signed orders for per-request sales,
   mandate pulls for refunds and the earnings sweep, and Offer Pay-per-Call Clearing (new in October 2026) for a
   customer that prepays and pays each query with a receipt.
 - **Purser can set the sweep wallet to accept money only from the business account** (live on testnet in a separate
@@ -194,5 +194,5 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 npm run verify
 ```
 
-This checks the audit chain, every credential, pull, disputed payment, clearing receipt and Face ID approval again
-from the chain and from Metal's services. The public demo replays the recorded run at `/demo` on the relay.
+This checks the audit chain, and checks every credential, pull, disputed payment and clearing receipt again from the
+chain and from Metal's services, and every Face ID approval against its stored passkey signature. The public demo replays the recorded run at `/demo` on the relay.

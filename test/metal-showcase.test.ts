@@ -28,7 +28,7 @@ describe("How Purser uses Metal (/metal)", () => {
   it("shows a mandate as the chain enforces it now: the latest limits, with the spend carried over", () => {
     const [m] = mandateViews(world());
     expect(m).toMatchObject({ role: "sourcing", agent: "Operations agent", cap: "0.04", budget: "12.00", used: "0.08", left: "11.92", count: 3 });
-    expect(m!.payee.name).toBe("Stockline, the warehouse API");
+    expect(m!.payee.name).toBe("Stockline, a stand-in warehouse API we run");
     // The expiry runs from the latest binding: 40 days.
     expect(m!.expires_at).toBe("2026-12-09T07:10:00.000Z");
     expect(m!.history.map((h) => [h.cap, h.tx?.href?.endsWith(T(1).slice(2)) || h.tx?.href?.endsWith(T(4).slice(2))])).toEqual([["0.03", true], ["0.04", true]]);
