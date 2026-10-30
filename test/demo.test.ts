@@ -23,7 +23,7 @@ describe("the demo story", () => {
     const s = buildStory(ledger(), "test run", new Date("2026-11-01T10:00:00Z"));
     expect(s.steps.map((x) => x.id)).toEqual(["buy", "refused", "audit"]);
     expect(s.steps[0]!.facts.find((f) => f.label === "Summit's first payment to us")).toEqual({ label: "Summit's first payment to us", value: `${TX(2).slice(0, 10)}…${TX(2).slice(-4)}`, href: `https://testnet.metalntwx.com/tx/${TX(2)}` });
-    expect(s.steps[0]!.facts.find((f) => f.label === "Sourcing mandate")?.value).toBe("0.03 a payment, 10.00 in total, Stockline only");
+    expect(s.steps[0]!.facts.find((f) => f.label === "Operations agent's mandate")?.value).toBe("0.03 a payment, 10.00 in total, Stockline only");
     expect(s.steps.at(-1)!.facts[0]!.value).toMatch(/^4, chain intact, head /);
     // Every link is to the public explorer.
     expect(s.steps.flatMap((x) => x.facts).filter((f) => f.href).every((f) => f.href!.startsWith("https://testnet.metalntwx.com/tx/0x"))).toBe(true);
@@ -50,6 +50,27 @@ describe("the demo story", () => {
       ["Paid on its card", "19.00 EUR (1 charge, approved by Airwallex)"],
       ["Raise it asked for", "20.00 → 45.00 per purchase, P-0012, Max · Face ID"],
     ]);
+  });
+
+  it("shows the card control on the kind of shop, and the emergency stop with who turned it on and off", () => {
+    const db = ledger();
+    const at = "2026-10-30T18:40:00.000Z";
+    for (const id of ["P-0020", "P-0021"]) {
+      db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES (?, 'policy_change', '{}', ?, 'human', 'EXECUTED', ?, ?)").run(id, `h${id}`, at, at);
+      db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES (?, 'APPROVED', ?, 'max (passkey k_EWzUuv)', 'passkey', '', ?)").run(id, `h${id}`, at);
+    }
+    audit(db, "sourcing", "card.charge_declined", "t1", { agent: "sourcing", amount: "45.00", currency: "EUR", merchant: "Packwise", reason: "LIMIT_EXCEEDED" });
+    audit(db, "support", "card.charge_declined", "t2", { agent: "support", amount: "19.99", currency: "EUR", merchant: "Packwise", reason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
+    audit(db, "human", "policy.changed", "freeze", { key: "freeze", from: "off", to: "on", proposal_id: "P-0020" });
+    audit(db, "human", "policy.changed", "freeze", { key: "freeze", from: "on", to: "off", proposal_id: "P-0021" });
+    const s = buildStory(db, "test");
+    expect(s.steps.find((x) => x.id === "card")!.facts.find((f) => f.label === "Wrong kind of shop")?.value)
+      .toBe("19.99 EUR at Packwise on the Sales agent's card: declined by Airwallex (MERCHANT_CATEGORY_NOT_ALLOWED)");
+    const stop = s.steps.find((x) => x.id === "stop")!;
+    expect(stop.tab).toBe("Emergency stop");
+    expect(stop.approval).toEqual({ who: "Max · Face ID", proposal: "P-0020", what: "Emergency stop: on" });
+    expect(stop.facts.map((f) => f.label)).toEqual(["Stop on", "Stop off"]);
+    expect(s.steps.map((x) => x.id).indexOf("stop")).toBeLessThan(s.steps.map((x) => x.id).indexOf("audit"));
   });
 
   it("never shows null, undefined or NaN, opens with the company card, and writes amounts as money", () => {

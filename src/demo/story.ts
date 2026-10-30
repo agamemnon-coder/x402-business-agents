@@ -87,7 +87,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
         fact("Sales in this run", `${sales} stock checks at 0.05, then 0.07 *USDZ (testnet dollars)`),
         txFact("Summit's first payment to us", p(sold).tx),
         txFact("Our first purchase from the supplier", p(bought).tx),
-        fact("Sourcing mandate", `${str(m.cap)} a payment, ${str(m.budget)} in total, Stockline only`),
+        fact("Operations agent's mandate", `${str(m.cap)} a payment, ${str(m.budget)} in total, Stockline only`),
       ),
     });
   }
@@ -147,6 +147,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
   // 5. Company cards at Airwallex.
   const declined = first("card.charge_declined", (_r, pl) => str(pl.reason) === "LIMIT_EXCEEDED");
   const approvedCard = first("card.charge_approved");
+  const wrongKind = first("card.charge_declined", (_r, pl) => str(pl.reason) === "MERCHANT_CATEGORY_NOT_ALLOWED");
   if (declined) {
     const synced = first("card.limits_synced", (_r, pl) => str(pl.agent) === str(p(declined).agent));
     const after = synced ? first("card.charge_approved", (r, pl) => r.seq > synced.seq && str(pl.agent) === str(p(declined).agent)) : undefined;
@@ -164,6 +165,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
         fact("Declined by Airwallex", `${str(p(declined).amount)} EUR at ${str(p(declined).merchant)}: LIMIT_EXCEEDED`),
         synced ? fact("Limit raised after Face ID", `${str(p(synced).from)} → ${str(p(synced).to)} EUR`) : fact("Raise", "a proposal for the CFO (Face ID)"),
         after ? fact("Same purchase after the raise", `${str(p(after).amount)} EUR approved`) : null,
+        wrongKind ? fact("Wrong kind of shop", `${str(p(wrongKind).amount)} EUR at ${str(p(wrongKind).merchant)} on the ${agentName(str(p(wrongKind).agent))}'s card: declined by Airwallex (MERCHANT_CATEGORY_NOT_ALLOWED)`) : null,
         fact("Note", "In the sandbox the merchant's charge is simulated; the approve or decline is Airwallex's own"),
       ),
     });
@@ -259,7 +261,25 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     });
   }
 
-  // 8. The audit.
+  // 8. The emergency stop, when the run used it: one Face ID froze every agent and every card.
+  const stopOn = first("policy.changed", (r, pl) => r.subject === "freeze" && str(pl.to) === "on");
+  if (stopOn) {
+    const stopOff = first("policy.changed", (r, pl) => r.seq > stopOn.seq && r.subject === "freeze" && str(pl.to) !== "on");
+    const by = approvals.get(str(p(stopOn).proposal_id));
+    steps.push({
+      id: "stop", rail: "CFO", tone: "approval", at: stopOn.ts,
+      approval: by ? { who: by, proposal: str(p(stopOn).proposal_id), what: "Emergency stop: on" } : null,
+      title: "One Face ID freezes every agent and every card",
+      text: "The CFO presses the emergency stop and confirms with Face ID. Every agent payment is refused from then on, and every company card is frozen at Airwallex. Turning it off again is another Face ID.",
+      details: "The stop is a CFO policy rule. The runner refuses every agent payment before signing while it is on, and sets each card to INACTIVE at Airwallex. Only an approved change, with Face ID, turns it off.",
+      facts: facts(
+        fact("Stop on", `${new Date(stopOn.ts).toISOString().slice(11, 16)} UTC${by ? `, ${by}` : ""}`),
+        stopOff ? fact("Stop off", `${new Date(stopOff.ts).toISOString().slice(11, 16)} UTC${approvals.has(str(p(stopOff).proposal_id)) ? `, ${approvals.get(str(p(stopOff).proposal_id))}` : ""}`) : null,
+      ),
+    });
+  }
+
+  // 9. The audit.
   const head = rows.at(-1);
   if (head) {
     const passkeyApprovals = [...approvals.values()].filter((v) => v.endsWith("Face ID")).length;
@@ -277,9 +297,9 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
   }
 
   // The story opens with the company card (the product), then the per-request payments on Metal.
-  const ORDER = ["card", "buy", "refused", "faceid", "policy", "swift", "stopped", "clearing", "outside", "audit"];
+  const ORDER = ["card", "buy", "refused", "faceid", "policy", "swift", "stopped", "stop", "clearing", "outside", "audit"];
   steps.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
-  const TABS: Record<string, string> = { card: "Company card", buy: "Pay per request", refused: "Refused", faceid: "Face ID", policy: "CFO policy", swift: "Euro bill", stopped: "Blocked", clearing: "Prepaid", outside: "Outside agent", audit: "Audit" };
+  const TABS: Record<string, string> = { card: "Company card", buy: "Pay per request", refused: "Refused", faceid: "Face ID", policy: "CFO policy", swift: "Euro bill", stopped: "Blocked", stop: "Emergency stop", clearing: "Prepaid", outside: "Outside agent", audit: "Audit" };
   for (const st of steps) {
     st.tab = TABS[st.id] ?? st.rail;
     // Amounts read as money: thousands separators on plain amounts (never on ids, hashes or links).
