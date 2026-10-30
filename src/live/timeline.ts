@@ -29,7 +29,7 @@ export interface LiveScene {
   phone: { at: number; text: string } | null;
   /** The one big number of the scene. */
   big: { value: string; label: string } | null;
-  /** The proof: an Airwallex id (the sandbox web app shows it) or a Metal transaction (explorer link). */
+  /** The proof: an Airwallex id (from the sandbox API) or a Metal transaction (explorer link). */
   proofs: LiveFact[];
 }
 export interface LiveMove {

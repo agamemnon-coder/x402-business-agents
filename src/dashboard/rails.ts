@@ -1,6 +1,6 @@
 // What each rail did in this ledger, with its proof (awards item 1): Airwallex and Metal are where the money moves
 // and where the limits hold; Purser is the control layer above them. Every item is read from the ledger and carries
-// the id or transaction that proves it: an Airwallex id (the sandbox web app shows it), or a Metal testnet explorer
+// the id or transaction that proves it: an Airwallex id (as the sandbox API returns it), or a Metal testnet explorer
 // link. Nothing here is typed in by hand; an item the ledger has no record of is left out.
 
 import type { DB } from "../db/open.js";
