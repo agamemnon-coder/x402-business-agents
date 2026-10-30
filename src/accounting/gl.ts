@@ -9,7 +9,7 @@ import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 
 export interface JournalLine {
   date: string;
-  source: "sale" | "upstream" | "refund" | "card" | "transfer" | "fx" | "sweep" | "credit" | "clearing" | "opening";
+  source: "sale" | "upstream" | "refund" | "card" | "transfer" | "fx" | "sweep" | "credit" | "clearing" | "opening" | "receipt";
   ref: string;
   description: string;
   counterparty: string;
@@ -120,6 +120,16 @@ export function journal(db: DB): JournalLine[] {
   }
 
   // Stable sort: lines of one payment (an invoice and its fee, both legs of a conversion) stay together, in order.
+  // Retailers' payments into the Global Accounts (src/agents/receivables.ts): the part applied to an invoice is
+  // wholesale revenue; an overpayment's excess, a payment in the wrong currency and one with no invoice wait in suspense.
+  const hasReceipts = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'receipts'").get();
+  for (const r of hasReceipts ? db.prepare("SELECT deposit_id, currency, amount_cents, applied_cents, payer, invoice_no, outcome, received_at FROM receipts ORDER BY received_at, deposit_id").all() as
+    { deposit_id: string; currency: string; amount_cents: number; applied_cents: number; payer: string | null; invoice_no: string | null; outcome: string; received_at: string }[] : []) {
+    const bank = r.currency === "EUR" ? "1200" : r.currency === "GBP" ? "1202" : "1201";
+    const common = { date: r.received_at, source: "receipt" as const, ref: r.deposit_id, counterparty: r.payer ?? "", agent: "treasury", bank_account: bank, currency: r.currency, proof: r.deposit_id, approval: "" };
+    if (r.applied_cents > 0) add({ ...common, description: `Payment of invoice ${r.invoice_no}`, gl_account: "4200", cents: r.applied_cents, rule: "retailer payment: matched to its invoice" });
+    if (r.amount_cents > r.applied_cents) add({ ...common, description: r.invoice_no ? `Overpayment of invoice ${r.invoice_no}` : "Payment with no matching invoice", gl_account: "2900", cents: r.amount_cents - r.applied_cents, rule: `retailer payment: ${r.outcome.toLowerCase().replace("_", " ")}, held in suspense` });
+  }
   return lines.map((l, i) => [l, i] as const).sort((a, b) => a[0].date.localeCompare(b[0].date) || a[1] - b[1]).map(([l]) => l);
 }
 

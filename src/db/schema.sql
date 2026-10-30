@@ -518,3 +518,31 @@ CREATE TABLE IF NOT EXISTS principals (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+-- Receivables (awards item 5): what retailers owe Northwind, and the payments they send to its Airwallex Global
+-- Accounts (EUR, GBP). The receivables agent matches each payment to an invoice by its reference; a short, an
+-- overpayment, a payment in another currency or one with no invoice is escalated to the CFO. Nothing here moves money.
+CREATE TABLE IF NOT EXISTS receivables (
+  invoice_no TEXT PRIMARY KEY,
+  customer TEXT NOT NULL,
+  currency TEXT NOT NULL CHECK (currency IN ('EUR', 'GBP', 'USD')),
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  paid_cents INTEGER NOT NULL DEFAULT 0,
+  due_date TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('OPEN', 'PAID', 'PARTIAL', 'OVERPAID')),
+  issued_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS receipts (
+  deposit_id TEXT PRIMARY KEY,
+  global_account_id TEXT,
+  currency TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  reference TEXT,
+  payer TEXT,
+  invoice_no TEXT REFERENCES receivables(invoice_no),
+  -- The part applied to the invoice; the rest (an overpayment, or all of an unknown payment) waits in suspense.
+  applied_cents INTEGER NOT NULL DEFAULT 0,
+  outcome TEXT NOT NULL CHECK (outcome IN ('MATCHED', 'SHORT', 'OVER', 'WRONG_CURRENCY', 'UNMATCHED')),
+  detail TEXT NOT NULL,
+  received_at TEXT NOT NULL
+);

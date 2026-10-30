@@ -42,6 +42,7 @@
     "books": "tsx src/cli/books.ts",
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
+    "receivables": "tsx src/cli/receivables.ts",
     "receive-policy": "tsx src/cli/receivePolicy.ts",
     "clearing": "tsx src/cli/clearing.ts",
     "payee": "tsx src/cli/payee.ts",
