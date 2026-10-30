@@ -5,6 +5,7 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,8 +36,9 @@ vi.mock("../src/metal/agentCli.js", () => ({ keyPath: (name: string) => join(h.d
 
 const USDZ = "0x000000000000000000000000000000000000B5d5";
 const SETTLEMENT = "0x00000000000000000000000000000000000c1ea4";
-const PAYER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
-const GAS_KEY = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a";
+// Throwaway keys made at run time (a literal key in a test reads as a leak to gitleaks).
+const PAYER_KEY = keccak256(toHex("purser test: clearing payer"));
+const GAS_KEY = keccak256(toHex("purser test: gas payer"));
 
 type Clearing = typeof import("../src/metal/clearing.js");
 let c: Clearing;

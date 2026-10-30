@@ -22,3 +22,7 @@ f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-ap
 f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:98
 f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:111
 f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:112
+# test/clearing-wallet.test.ts in 0fa6aad held Hardhat's public default test keys (accounts #1 and #2) as literals;
+# the test now derives its throwaway keys at run time.
+0fa6aad8621683823849e09f04f0a317cfffbb7c:test/clearing-wallet.test.ts:generic-api-key:38
+0fa6aad8621683823849e09f04f0a317cfffbb7c:test/clearing-wallet.test.ts:generic-api-key:39
