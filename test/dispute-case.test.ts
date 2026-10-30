@@ -1,6 +1,7 @@
 // The Dispute desk end to end on a ledger: evidence from the stored sales, the seller's decision, refunds within the
 // CFO's limits or a proposal for Face ID above them, and an explanation. The chain check is a stand-in here (the live
 // one is verifyMandatePayment, run in docs/runs/2026-10-30-dispute-desk.md); refunds are a stand-in too.
+import { describe as describeFeed } from "../src/dashboard/snapshot.js";
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { Address } from "viem";
@@ -102,5 +103,19 @@ describe("a case", () => {
     expect(c.decision.refund_cents).toBe(0);
     expect(c.decision.per_sale[0]!.why).toMatch(/Already refunded/);
     expect(paid).toEqual([]);
+  });
+});
+
+describe("Dispute desk events in the CFO's feed", () => {
+  const row = (event: string, payload: Record<string, unknown>) => ({ seq: 1, ts: "2026-10-30T08:32:00Z", actor: "support", event, subject: "DD-a88e8959", payload_json: JSON.stringify(payload), prev_hash: "", hash: "" });
+  it("says what happened in plain words, not the event name", () => {
+    expect(describeFeed(row("dispute.opened", { claim: "never_ordered", sales: "5,6,7", customer: "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25" }) as never, () => undefined).text)
+      .toBe("Summit Outfitters disputes 3 sales: \"our agent never ordered this\" (case DD-a88e8959)");
+    expect(describeFeed(row("dispute.decided", { claim: "never_ordered", outcome: "rejected", refund: "0.00", route: "none" }) as never, () => undefined))
+      .toMatchObject({ text: "Dispute DD-a88e8959 decided by code: not refunded, every order signed and paid inside the customer's mandate", tone: "ok" });
+    expect(describeFeed(row("dispute.decided", { claim: "wrong_data", outcome: "refund", refund: "0.10", route: "approval", proposal_id: "P-0007" }) as never, () => undefined).text)
+      .toBe("Dispute DD-a88e8959 decided by code: refund 0.10 test USD, waiting for your Face ID (P-0007)");
+    expect(describeFeed(row("dispute.decided", { claim: "double_charged", outcome: "partial_refund", refund: "0.05", route: "auto" }) as never, () => undefined).text)
+      .toBe("Dispute DD-a88e8959 decided by code: refund 0.05 test USD, within the automatic limits");
   });
 });

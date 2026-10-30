@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T08:51:39.149Z",
+  "recorded_at": "2026-10-30T08:33:27.599Z",
   "run": "Friday run 1, 30 October 2026, with a Dispute desk case afterwards",
   "company": "Northwind Outdoor",
   "steps": [
@@ -95,7 +95,7 @@
       "facts": [
         {
           "label": "Refusal",
-          "value": "mandate_cap_exceeded (on chain, nothing moved)",
+          "value": "over the mandate's cap: refused on chain, nothing moved",
           "href": null
         },
         {

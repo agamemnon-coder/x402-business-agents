@@ -17,3 +17,5 @@ worker/src/pages.gen.ts
 worker/.wrangler/
 test-results/
 coverage/
+# Rendered video (npm run video): large files, made again from the recordings.
+out/

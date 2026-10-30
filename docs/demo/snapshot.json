@@ -1,9 +1,9 @@
 {
-  "recorded_at": "2026-10-30T08:51:39.200Z",
+  "recorded_at": "2026-10-30T08:33:27.599Z",
   "run": "Friday run 1, 30 October 2026, with a Dispute desk case afterwards",
   "company": "Northwind Outdoor",
   "snapshot": {
-    "generated_at": "2026-10-30T08:51:39.200Z",
+    "generated_at": "2026-10-30T08:33:27.599Z",
     "world": {
       "business": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "customer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25"
@@ -213,8 +213,8 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "dispute.decided DD-a88e8959",
-        "tone": "info"
+        "text": "Dispute DD-a88e8959 decided by code: not refunded, every order signed and paid inside the customer's mandate",
+        "tone": "ok"
       },
       {
         "seq": 193,
@@ -235,7 +235,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "dispute.opened DD-a88e8959",
+        "text": "Summit Outfitters disputes 12 sales: \"our agent never ordered this\" (case DD-a88e8959)",
         "tone": "info"
       },
       {

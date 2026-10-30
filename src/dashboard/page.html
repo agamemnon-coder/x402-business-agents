@@ -233,6 +233,9 @@ details.tech a { color: var(--accent); text-decoration: none; }
 @media (max-width: 560px) { .panel.bk table.wide td { flex-wrap: wrap; } .panel.bk table.wide td .why { flex-basis: 100%; text-align: left; } .panel.bk td:first-child { white-space: normal; } }
 .review-box { background: var(--sunken); border-radius: 12px; padding: 12px 14px; margin-top: 12px; font-size: 14px; }
 .review-box p { margin: 0 0 6px; }
+/* Presentation mode (?present): larger, calmer, for a screen or a recording. Nothing is hidden that changes the story. */
+html.present .feed-sys, html.present .foot, html.present .hint { display: none !important; }
+@media (min-width: 1000px) { html.present body { zoom: 1.2; } }
 /* F, the Agents page. */
 .agents-how { margin: 0 0 16px; }
 .agent { margin-top: 16px; }
@@ -551,6 +554,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 <script type="application/json" id="redteam-data">__REDTEAM_JSON__</script>
 <script>
 (function () {
+  if (/[?&]present(=|&|$)/.test(location.search)) document.documentElement.classList.add("present");
   "use strict";
   // Everything from the ledger is rendered as text (textContent); no ledger string ever becomes HTML. The only markup
   // built here is the fixed icon set below.

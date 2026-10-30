@@ -18,7 +18,7 @@ import { CARDS, MCC_WORDS, type Agent } from "../config/policy.js";
 import { agentProfiles, type AgentProfile } from "../agents/profiles.js";
 import { booksView, type BooksView } from "../accounting/books.js";
 import { disputeCases } from "../seller/desk.js";
-import { CLAIM_WORDS } from "../seller/disputeDesk.js";
+import { CLAIM_WORDS, type DisputeClaim } from "../seller/disputeDesk.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -581,6 +581,18 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "proposal.superseded": return out(`${s} closed: another option (${str(p.by)}) was approved`);
     case "proposal.expired": return out(`${s} expired: its terms can no longer be approved or run`, "refusal");
     case "approval.too_late": return out(`${str(p.approver) || "A person"} approved ${s} after it expired; nothing ran`, "refusal");
+    case "dispute.opened": {
+      const n = str(p.sales).split(",").filter(Boolean).length;
+      const words = CLAIM_WORDS[str(p.claim) as DisputeClaim] ?? str(p.claim);
+      // The only buyer in a Northwind world is Summit Outfitters, as on the sale lines; its wallet address reads as its name.
+      const who = /^0x[0-9a-fA-F]{40}$/.test(str(p.customer)) || !str(p.customer) ? PAYEE_NAMES.customer : str(p.customer);
+      return out(`${who} disputes ${n} sale${n === 1 ? "" : "s"}: "${words}" (case ${s})`);
+    }
+    case "dispute.decided": {
+      if (str(p.outcome) === "rejected") return out(`Dispute ${s} decided by code: not refunded, every order signed and paid inside the customer's mandate`, "ok");
+      const then = str(p.route) === "approval" ? `waiting for your Face ID (${str(p.proposal_id)})` : str(p.route) === "auto" ? "within the automatic limits" : "";
+      return out(`Dispute ${s} decided by code: refund ${str(p.refund)} test USD${then ? `, ${then}` : ""}`, "ok");
+    }
     case "refund.auto_approved": return out(`Refunds for sales ${(Array.isArray(p.sales) ? (p.sales as unknown[]) : []).map((x) => `#${str(x)}`).join(", ")} are within the automatic limits`, "ok");
     case "refund.paid": return out(`Refunded ${str(p.amount)} to Summit Outfitters for sale #${s} (${str(p.payment_id)})`, "ok");
     case "refund.already_paid": return out(`Retry of ${str(p.payment_id)}: already paid, nothing sent`, "ok");

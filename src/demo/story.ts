@@ -102,7 +102,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       text: "The supplier asks more than our agent may pay, so its own account refuses the payment and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
       details: "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The finance agent prices the options with their margins.",
       facts: facts(
-        fact("Refusal", "mandate_cap_exceeded (on chain, nothing moved)"),
+        fact("Refusal", "over the mandate's cap: refused on chain, nothing moved"),
         fact("Customer charged", "no"),
         ...options.filter((o) => o.sell !== null).map((o) => fact(`Option ${str(o.id)}`, `sell at ${str(o.sell)}, margin ${str(o.margin)} (${str(o.margin_percent)}%)`)),
       ),

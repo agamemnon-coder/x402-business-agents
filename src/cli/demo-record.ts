@@ -10,9 +10,13 @@ import { buildRecorded } from "../demo/recorded.js";
 import { oldNamesIn } from "../demo/oldNames.js";
 
 const run = process.argv[2] ?? "recorded run";
-const story = buildStory(openDb(), run);
+// The recording shows the ledger as it stood at its last entry: the same ledger records the same files, and the time
+// on the pages is the run's, not the time someone pressed record.
+const last = (openDb().prepare("SELECT MAX(ts) AS t FROM audit_log").get() as { t: string | null }).t;
+const now = last ? new Date(new Date(last).getTime() + 1000) : new Date();
+const story = buildStory(openDb(), run, now);
 // Guests see only the Northwind runs: a ledger that still carries the earlier example company is not recorded.
-const old = oldNamesIn(JSON.stringify(story) + JSON.stringify(buildRecorded(openDb(), run)));
+const old = oldNamesIn(JSON.stringify(story) + JSON.stringify(buildRecorded(openDb(), run, now)));
 if (old.length) {
   console.error(`not recorded: this ledger shows names from before the rename (${old.join(", ")}); record a Northwind run`);
   process.exit(1);
@@ -20,6 +24,6 @@ if (old.length) {
 const out = resolve(import.meta.dirname, "../../docs/demo/story.json");
 writeFileSync(out, JSON.stringify(story, null, 2) + "\n");
 console.log(`recorded ${story.steps.length} steps (${story.steps.map((s) => s.id).join(", ")}) from ${story.audit.rows} audit rows into docs/demo/story.json`);
-const recorded = buildRecorded(openDb(), run);
+const recorded = buildRecorded(openDb(), run, now);
 writeFileSync(resolve(import.meta.dirname, "../../docs/demo/snapshot.json"), JSON.stringify(recorded, null, 2) + "\n");
 console.log(`recorded the dashboard (${recorded.snapshot.feed.length} activity rows) and the landing figures ${JSON.stringify(recorded.proof)} into docs/demo/snapshot.json`);

@@ -29,6 +29,9 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+/* Presentation mode (?present): larger text, no "how it works" folds, for a screen or a recording. */
+html.present details.how { display: none; }
+@media (min-width: 1000px) { html.present body { zoom: 1.25; } }
 body { background: var(--bg); color: var(--text); font: 15px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
 .num { font-variant-numeric: tabular-nums; }
 /* The same top bar as the dashboard (src/dashboard/page.html). */
@@ -113,6 +116,7 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
 <script type="application/json" id="story-data">__STORY_JSON__</script>
 <script>
 (function () {
+  if (/[?&]present(=|&|$)/.test(location.search)) document.documentElement.classList.add("present");
   "use strict";
   // Every string from the recording is rendered with textContent; links only to the Metal explorer.
   var S = JSON.parse(document.getElementById("story-data").textContent);

@@ -25,14 +25,14 @@ export interface LiveScene {
 export interface LiveTimeline { company: string; recorded_at: string; run: string; scenes: LiveScene[] }
 
 /**
- * The moments recorded after Friday run 1, in their own live runs. Kept here, word for word from the run logs, so the
- * page can show them without a ledger.
+ * The moments recorded after Friday run 1, in their own live runs. Kept here, in the run logs' words (their result
+ * column, without the decline codes), so the page can show them without a ledger.
  */
 export const LIVE_RUNS = {
   task: {
     source: "Live in the Airwallex sandbox, 30 October (docs/runs/2026-10-30-single-use.md)",
     ask: "Book a flight to Berlin on 12 November, at most €150", card: "Single-use flight card •••• 8653, at most 150.00 EUR, until 12 Nov",
-    booked: "Skyline Air 120.00 EUR: approved by Airwallex", second: "A second charge, 20.00 EUR: declined, CARD_CLOSED",
+    booked: "Skyline Air 120.00 EUR: approved by Airwallex", second: "A second charge, 20.00 EUR: declined, Airwallex closed the card itself after its one purchase",
   },
   quarantine: {
     source: "Live on Metal testnet, 30 October (docs/metal-award.md, section 5)",

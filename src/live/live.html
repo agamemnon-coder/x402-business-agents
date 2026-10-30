@@ -80,6 +80,9 @@ svg .box { fill: var(--sunken); stroke: var(--border); }
   .scene.end .vis { display: flex; }
   .bar, .honest { padding-left: 16px; padding-right: 16px; }
 }
+/* Presentation mode (?present): no controls on screen, a little larger. */
+html.present .bar button, html.present .bar select { display: none; }
+@media (min-width: 1000px) { html.present body { zoom: 1.1; } html.present .vis svg { max-width: 1000px; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } .model, .fact, .fade, .pop { opacity: 1; } .coin { display: none; } }
 </style>
 </head>
@@ -92,6 +95,7 @@ svg .box { fill: var(--sunken); stroke: var(--border); }
   var T = JSON.parse(document.getElementById("live-data").textContent);
   var scenes = T.scenes, main = document.getElementById("main");
   var q = new URLSearchParams(location.search);
+  if (q.has("present")) document.documentElement.classList.add("present");
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   document.getElementById("company").textContent = T.company;
   function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k != null) n.appendChild(typeof k === "string" ? document.createTextNode(k) : k); }); return n; }
@@ -204,6 +208,8 @@ svg .box { fill: var(--sunken); stroke: var(--border); }
     started = Date.now();
     bar.style.transition = "none"; bar.style.width = ((1 - left / (scenes[i].seconds * 1000)) * 100) + "%";
     requestAnimationFrame(function () { bar.style.transition = "width " + (left / rate) + "ms linear"; bar.style.width = "100%"; });
+    // ?hold: the scene plays and stays (for a recording that lingers on it); otherwise the next one follows.
+    if (q.has("hold")) return;
     timer = setTimeout(function () { if (i < scenes.length - 1) go(i + 1); else { paused = true; play.textContent = "Replay"; } }, left / rate);
   }
   function go(k) { i = k; render(); }
