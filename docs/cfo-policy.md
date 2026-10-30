@@ -6,8 +6,9 @@ Moved from the project README. Back to the [README](../README.md).
 
 The CFO sets limits the agents work within: each agent's company card limits (per purchase and per month, synced to
 the card at Airwallex), and inside their on-chain mandates a limit per payment for each agent,
-the refund amounts above which a person must approve, the EUR and USD reserve floors, and which Airwallex payees
-are allowed. Each is checked before anything is signed: the operations agent aborts the x402 payment when the
+the refund amounts above which a person must approve, the EUR and USD reserve floors, which Airwallex payees
+are allowed, and up to which amount a task card from Ask Purser is issued without Face ID ("Task cards up to this
+are issued without Face ID", `approval.task_card_eur`, 300.00 EUR to start; see [ask-purser.md](ask-purser.md)). Each is checked before anything is signed: the operations agent aborts the x402 payment when the
 supplier's offer is over its limit (`policy_cap_exceeded`, nothing signed, the customer not charged), refunds and
 sweeps refuse before the pull, and an invoice to a blocked payee escalates. The mandates stay the hard outer wall;
 the policy can only be stricter.

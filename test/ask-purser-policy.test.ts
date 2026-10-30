@@ -83,3 +83,12 @@ describe("closing the card after its one purchase", () => {
     expect(awx.cards[0]?.status).toBe("ACTIVE");
   });
 });
+
+describe("the threshold as a CFO setting", () => {
+  // Breaks if the task card threshold disappears from the policy the phone's policy page shows.
+  it("is on the CFO policy page, at 300.00 EUR to start", async () => {
+    const { currentPolicy } = await import("../src/policy/rules.js");
+    const e = currentPolicy(openDb(":memory:")).find((r) => r.key === "approval.task_card_eur");
+    expect(e).toMatchObject({ label: "Task cards up to this are issued without Face ID", value: "300.00", display: "300.00 EUR" });
+  });
+});
