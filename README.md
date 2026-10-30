@@ -45,6 +45,7 @@ Start here:
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
 - [docs/requirements-matrix.md](docs/requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof
 - [docs/decisions.md](docs/decisions.md): decisions taken during the build, and what each costs if wrong
+- [docs/roadmap.md](docs/roadmap.md): from company cards for agents to the agent finance department (not built yet)
 - [docs/runs/](docs/runs/): logs of live runs
 
 The old README sections, now in docs:
