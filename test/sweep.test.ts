@@ -95,10 +95,14 @@ describe("net earnings", () => {
     expect(netEarnings(db)).toEqual({ revenueCents: 900, upstreamCents: 200, refundsCents: 30, sweptCents: 130, netCents: 540 });
   });
 
-  // Reported, not fixed: netEarnings (src/agents/sweep.ts:33-34) leaves PENDING refunds and sweeps out, though
-  // executeSweep treats a PENDING pull as "may still settle". Only the s3 CLI's resume-the-latest-sweep step keeps a
-  // second sweep of the same earnings from being planned.
-  it.todo("subtracts a PENDING sweep (sent, may still settle) from the net earnings");
+  it("subtracts PENDING refunds and sweeps (sent, may still settle), not PLANNED ones (never sent)", () => {
+    const s1 = sale(db, 500);
+    db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome) VALUES (?, 'refund-p', 25, '0xc1', 'PENDING')").run(s1);
+    db.prepare("INSERT INTO sweeps (payment_id, amount_cents, outcome, created_at) VALUES ('s1', 100, 'PENDING', 'now'), ('s2', 70, 'PLANNED', 'now')").run();
+    // Fails if: a pull that was sent and may still settle counts as earnings not yet swept or refunded (HF6): planning
+    // another sweep would then take the same money twice, and the dashboard would overstate what is left.
+    expect(netEarnings(db)).toEqual({ revenueCents: 500, upstreamCents: 0, refundsCents: 25, sweptCents: 100, netCents: 375 });
+  });
 
   it("is all zero on an empty ledger", () => {
     // Fails if: SUM over no rows (NULL) is not read as 0.

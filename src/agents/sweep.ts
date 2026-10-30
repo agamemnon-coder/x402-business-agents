@@ -26,12 +26,15 @@ export interface Earnings {
   netCents: number;
 }
 
-/** From the ledger alone: what was sold, minus what it cost, minus refunds, minus what was already swept. */
+/**
+ * From the ledger alone: what was sold, minus what it cost, minus refunds, minus what was already swept. A refund or
+ * sweep that was sent (PENDING) or held may still settle on chain, so it counts as gone; one only PLANNED was never sent.
+ */
 export function netEarnings(db: DB): Earnings {
   const revenueCents = sum(db, "SELECT SUM(price_cents) AS s FROM sales WHERE status = 'DELIVERED'");
   const upstreamCents = sum(db, "SELECT SUM(price_cents) AS s FROM upstream_purchases WHERE outcome = 'PAID'");
-  const refundsCents = sum(db, "SELECT SUM(amount_cents) AS s FROM refunds WHERE outcome IN ('PAID', 'HELD')");
-  const sweptCents = sum(db, "SELECT SUM(amount_cents) AS s FROM sweeps WHERE outcome IN ('PAID', 'HELD')");
+  const refundsCents = sum(db, "SELECT SUM(amount_cents) AS s FROM refunds WHERE outcome IN ('PAID', 'PENDING', 'HELD')");
+  const sweptCents = sum(db, "SELECT SUM(amount_cents) AS s FROM sweeps WHERE outcome IN ('PAID', 'PENDING', 'HELD')");
   return { revenueCents, upstreamCents, refundsCents, sweptCents, netCents: revenueCents - upstreamCents - refundsCents - sweptCents };
 }
 
