@@ -44,8 +44,10 @@ agents, Operations, Sales and Finance, each with its own card and its own mandat
 - **Global Accounts (separate live run).** Retailers pay Northwind's EUR and GBP accounts (the retailers and their
   payments are sandbox simulations); a receivables agent matches each payment to its invoice by reference and sends
   anything short or unknown to the CFO.
-- **Webhooks.** Card-transaction webhooks are live (since 29 October; none in the recorded run): each delivery is
-  signature-checked at the relay and again on the runner. Cards, payouts, conversions and deposits are built and tested, not yet subscribed.
+- **Webhooks (separate live run).** Purser subscribes to Airwallex's events for cards, card transactions, payouts,
+  conversions and deposits; each delivery is signature-checked at the relay and again on the runner, then compared with
+  the ledger. Shown live: retailers' deposits matched by the webhook alone, and a card transaction. Payout and conversion
+  events are subscribed but were not caused live.
 - **Emergency stop.** One Face ID freezes every agent card at Airwallex and stops every agent payment (tested against
   stand-ins, not yet run live).
 

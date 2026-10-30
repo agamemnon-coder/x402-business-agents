@@ -39,9 +39,9 @@ Each agent has a DELEGATE cardholder and one virtual Visa card. The CFO policy s
 
 Airwallex tells the relay about each change as it happens. The relay checks the signature and keeps the event. The runner then checks the signature again with its own copy of the secret, because it trusts no relay.
 
-**Live today:** card transactions only (the subscription made on 29 October has the four card transaction events).
-**Built and tested, not yet live:** the other objects Purser uses (`src/policy/airwallexEvents.ts`,
-`test/airwallex-events.test.ts`). Each signed event is recorded once and checked against the ledger:
+**Live since 30 October** (`docs/runs/2026-10-30-webhooks.md`): one subscription with 23 events: card transactions, cards, payouts, conversions and deposits. `conversion.overdue` is left out: this key lacks the permission. Shown live: deposits matched by the webhook alone (EUR 300.00 matched in about 2 seconds; GBP 100.00 short by 20.00, escalated) and a card transaction in both of Airwallex's event shapes. Payout, conversion and card status events are subscribed but were not caused in that run; their checks are covered by tests.
+How each object is handled (`src/policy/airwallexEvents.ts`, `test/airwallex-events.test.ts`). Each signed event is
+recorded once and checked against the ledger:
 
 | Object | Events | What the runner does with it |
 |---|---|---|
@@ -53,15 +53,15 @@ Airwallex tells the relay about each change as it happens. The relay checks the 
 
 A flagged event stands as the `airwallex_disagrees` alarm in `/health` for a day, and shows on the dashboard. A webhook never
 approves, pays, thaws a card or changes a limit. Airwallex cannot add events to an existing subscription (its update call
-changes only the url), so going live means a new subscription with a new signing secret:
+changes only the url), so adding events means a new subscription with a new signing secret:
 `npm run cards -- webhook --replace`. That creates the new one, puts its secret on the relay and the runner, and only then
-deletes the old one. It changes a secret, so it waits for the CFO's go.
+deletes the old one. It changes a secret, so it needs the CFO's go (given on 30 October).
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
 | `GET /webhooks` | Lists subscriptions, so setup does not subscribe twice. | A duplicate subscription would deliver every event twice. | `src/airwallex/webhooks.ts` |
 | `POST /webhooks/create` | Subscribes the relay's `/hooks/airwallex` to `issuing.card_transaction_event.success`, `.failed`, `issuing.transaction.succeeded` and `.failed` (API version 2025-11-11). The signing secret in the answer is stored and never printed. | The CFO sees a card decision within seconds, not at the next poll. | `docs/runs/2026-10-29-cards.md` † (live from 16:57: a merchant's own 9.00 EUR charge and a declined 61.00 EUR charge reached the ledger by webhook) |
-| `POST /webhooks/{id}/delete` | Removes the old subscription once `--replace` has put the new one in place. | Two subscriptions would deliver every event twice, one signed with a secret nobody checks any more. | `src/cli/cards.ts` (not yet run) |
+| `POST /webhooks/{id}/delete` | Removes the old subscription once `--replace` has put the new one in place. | Two subscriptions would deliver every event twice, one signed with a secret nobody checks any more. | `docs/runs/2026-10-30-webhooks.md` (the 29 October subscription was deleted after the new one was in place) |
 
 How a delivery is checked (`worker/src/core.ts`, `src/policy/cardHooks.ts`):
 

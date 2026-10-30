@@ -46,7 +46,7 @@ describe("the submission pack", () => {
   });
 
   it("does not claim what was not shown live", () => {
-    expect(pack).toMatch(/Cards, payouts, conversions and deposits are built and tested, not yet subscribed/);
+    expect(pack).toMatch(/Payout and conversion events are subscribed but were not caused live/);
     expect(pack).toMatch(/tested against\s+stand-ins, not yet run live/);
     expect(pack).not.toMatch(/\bblocked\b/i);
     expect(pack).not.toMatch(/production-ready|guarantee|bank-grade|fully compliant/i);

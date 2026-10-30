@@ -12,11 +12,10 @@ Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal o
 - Draai `npm run health`. Bij `401 Insufficient permissions` noemt de melding het recht dat mist.
 - Zeg daarna tegen Claude: "nieuwe sleutel staat erin". Claude draait dan één keer de kaarten en de eurofactuur; de betaling keur jij goed met Face ID.
 
-## 2. Webhooks voor alle objecten (optioneel, jouw go)
+## 2. Webhooks voor alle objecten (klaar, 30 oktober)
 
-- Nu live: alleen kaarttransacties. Kaarten, betalingen, conversies en stortingen zijn gebouwd en getest.
-- Live zetten geeft een nieuw ondertekeningsgeheim. Daarom alleen met jouw go.
-- Zeg: "Go webhooks". Claude draait dan `npm run cards -- webhook --replace` en een korte live test.
+- Gedaan na jouw go: 23 events live, met een korte live test (`docs/runs/2026-10-30-webhooks.md`).
+- Maak je een nieuwe Airwallex-sleutel (stap 1)? Geef die ook het recht op FX-events; dan kan `conversion.overdue` erbij.
 
 ## 3. Viewer-link vernieuwen
 
