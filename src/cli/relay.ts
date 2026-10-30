@@ -9,6 +9,7 @@
 
 import { displayKey } from "../relay/sign.js";
 import { reconcile } from "../finance/reconcile.js";
+import { certifyPending } from "../metal/finality.js";
 import { reconcileSourcesFromEnv } from "../finance/sources.js";
 import { redactSecrets } from "../lib/redact.js";
 import { keyPath } from "../metal/agentCli.js";
@@ -116,6 +117,20 @@ async function reconcileTick(): Promise<void> {
   }
 }
 
+// Enterprise item 3: Metal's finality certificate for each new chain transaction in the ledger, every minute. Nodes keep
+// them about 2 hours on testnet, so this must not wait for the hourly reconciliation. Read-only towards the chain.
+let finalityAt = 0;
+async function finalityTick(): Promise<void> {
+  if (Date.now() - finalityAt < 60_000) return;
+  finalityAt = Date.now();
+  try {
+    const r = await certifyPending(db);
+    if (r.certified || r.not_kept) console.log(`${stamp()} finality ${r.certified} certificate(s) stored${r.not_kept ? `, ${r.not_kept} no longer kept by the node` : ""}`);
+  } catch (e) {
+    console.error(`${stamp()} finality ${redactSecrets((e as Error).message)}`);
+  }
+}
+
 // B1: payments to the sweep wallet held in quarantine by Metal's receive policy, once it is set up; every 30 s.
 let quarantineAt = 0;
 let quarantineError = "";
@@ -157,6 +172,7 @@ while (!stopping) {
   await cardsTick();
   await quarantineTick();
   await reconcileTick();
+  await finalityTick();
   try {
     await runner.syncOnce();
     if (lastError) console.log(`${stamp()} relay reachable again`);

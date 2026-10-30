@@ -7,6 +7,7 @@ import type { Address } from "viem";
 import { verifyOrders, type OrderEvidence, type SaleRow } from "../agents/disputes.js";
 import type { DB } from "../db/open.js";
 import { orderOf, type EvidencePack } from "./disputeDesk.js";
+import { finalityOf } from "../metal/finality.js";
 
 /** Metal's check of each sale's payment against the customer's bound mandate and its signed order. */
 export type VerifyPort = (sales: SaleRow[], customer: Address) => Promise<OrderEvidence[]>;
@@ -56,6 +57,7 @@ export async function evidenceFor(
       settlement: { settlement_id: r.settlement_id, tx: r.tx_hash },
       human: { owner_bound: !!v?.within_mandate && !!v?.mandate_bound_tx, passkey: r.customer_mandate_ref ? opts.passkey?.(r.customer_mandate_ref) ?? null : null },
       data_wrong: opts.dataWrong?.has(r.sale_id) ?? false,
+      finality: (() => { const fin = r.tx_hash ? finalityOf(db, r.tx_hash) : null; return fin ? { status: fin.status, block_number: fin.block_number, signers: fin.check?.quorum.signers ?? null, participants: fin.check?.quorum.participants ?? null } : null; })(),
     };
   });
 }

@@ -6,6 +6,7 @@
 // - every approval made with a passkey, from the stored signature and the pinned public key (offline);
 // - the policy version every decision was made under, and that its stored rules still hash to it;
 // - every sale paid by Metal clearing, its signed payment checked again with Metal's clearing service;
+// - every Metal finality certificate the runner stored, checked again offline (header, signers, quorum);
 // - with Airwallex keys: every booked deposit, conversion and transfer against Airwallex (read-only).
 // Prints one line per check and exits 1 if any fails.
 
@@ -24,6 +25,7 @@ import { verifyClearingPayment, type ClearingPaid } from "@metalntwx/metal-pay";
 import type { PaymentRequirements } from "@x402/core/types";
 import { clearingDeployment } from "../metal/clearing.js";
 import { rpcUrl } from "../metal/network.js";
+import { finalityChecks } from "../metal/finality.js";
 import { redactSecrets } from "../lib/redact.js";
 
 const db = openDb();
@@ -104,6 +106,11 @@ for (const c of await reverifyPasskeyApprovals(db)) line(c.ok, c.what, c.detail)
 for (const c of approvalMethodChecks(db)) line(c.ok, c.what, c.detail);
 // Which policy every decision was made under, and that each recorded version's rules still hash to it (B4).
 for (const c of policyVersionChecks(db)) line(c.ok, c.what, c.detail);
+// Metal's finality certificates the runner stored: each checked again offline (enterprise item 3).
+for (const c of finalityChecks(db)) {
+  if (c.level === "note") console.log(`note  ${c.what}  ${c.detail}`);
+  else line(c.level === "ok", c.what, c.detail);
+}
 
 const awx = fromEnv();
 if (awx) {

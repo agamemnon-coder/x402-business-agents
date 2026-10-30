@@ -561,3 +561,22 @@ CREATE TABLE IF NOT EXISTS airwallex_events (
   outcome TEXT NOT NULL,
   received_at TEXT NOT NULL
 );
+
+-- Metal finality certificates (src/metal/finality.ts): one per block, as Metal's RPC returned it, with Purser's check
+-- of it (header hash, signer bitmap, quorum; not the BLS signature). ok 0 means it failed a check: never evidence.
+CREATE TABLE IF NOT EXISTS finality_certificates (
+  block_hash TEXT PRIMARY KEY,
+  block_number INTEGER NOT NULL,
+  certificate_json TEXT NOT NULL,
+  ok INTEGER NOT NULL CHECK (ok IN (0, 1)),
+  check_json TEXT NOT NULL,
+  fetched_at TEXT NOT NULL
+);
+-- Each ledger chain transaction's block and what is known of its certificate: CERTIFIED, FAILED (its certificate failed
+-- a check) or NOT_KEPT (looked up after the node stopped keeping it, about 2 hours on testnet).
+CREATE TABLE IF NOT EXISTS finality_evidence (
+  tx TEXT PRIMARY KEY,
+  block_hash TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('CERTIFIED', 'FAILED', 'NOT_KEPT')),
+  recorded_at TEXT NOT NULL
+);
