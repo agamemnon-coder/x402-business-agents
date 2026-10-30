@@ -14,6 +14,9 @@ changed before the Friday runs: those fixes land after run 2.
 | Type checking | `strict` and `noUncheckedIndexedAccess`; no `any` anywhere in `src/` | `npm run typecheck`, `npm run lint` (`no-explicit-any` is an error) |
 | Lint | ESLint 10 with typescript-eslint: 15 findings, 4 left in the phone client, passkey intake, card sync and the local approvals page (unused values, a missing error `cause`) | `npm run lint`; joins CI once those 4 files are fixed after the runs |
 | Property-based tests | 54 properties with fast-check (200 to 500 runs each) on amounts and rounding, the pay guard, the terms hash, policy from plain words, webhook payloads and MCP input; the 6 that found HF7 to HF11 were kept as `it.skip` with their counterexample until the fix, and now run | `test/property-*.test.ts` |
+| Red team | 30 attacks, one or more for every row of the threat model (`docs/redteam/coverage.md`); all blocked on 30 Oct. The attacking model (Opus) declined to play the attacker this time, so the attacks ran without it | `npm run redteam`, `test/redteam.test.ts` in CI |
+| Scenario Lab | the CFO's test script, 12 stories from a normal purchase to money from an unknown sender, each with expected and observed outcome; 12 of 12 as expected | `npm run lab`, `test/lab.test.ts` in CI, `/lab` |
+| Chaos per outside service | Anthropic overloaded or unreachable (plain parser decides, logged), relay unreachable (no ledger change, syncs once back), Metal RPC failing during the quarantine poll (nothing recorded, cursor kept), Airwallex down when issuing a task card (no card, nothing charged), a lost card webhook (the poll records it once); Airwallex timeouts, 429 and lost answers were already covered | `test/chaos.test.ts`, `test/airwallex-client.test.ts`, `test/metal-pay.test.ts` |
 | Dependency pins | every dependency, dev dependency and override on an exact version | `package.json`, `worker/package.json` |
 
 ## Findings
