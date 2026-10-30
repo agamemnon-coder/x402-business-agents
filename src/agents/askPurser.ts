@@ -343,6 +343,26 @@ export async function recoverTaskCards(db: DB, rail: IssuingRail, now = new Date
 }
 
 /**
+ * After a task card's one purchase: Airwallex closes a single-use card itself, a moment later (live, 30 October: the
+ * card still read ACTIVE, a status update was refused, then it read CLOSED). So freeze it if it is still open, and if
+ * Airwallex refuses that, read it again until it is no longer active.
+ */
+async function closeUsedCard(rail: IssuingRail, cardId: string, waitMs = 1000, tries = 5): Promise<Card> {
+  const now = await rail.getCard(cardId);
+  if (now.status !== "ACTIVE") return now;
+  try {
+    return await rail.setCardStatus(cardId, "INACTIVE");
+  } catch (e) {
+    for (let i = 0; i < tries; i++) {
+      const again = await rail.getCard(cardId);
+      if (again.status !== "ACTIVE") return again;
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+    throw e;
+  }
+}
+
+/**
  * An agent pays on a task card (a sandbox simulation of the merchant's charge); Airwallex approves or declines. After
  * the one approved charge the card is closed: marked used here, and set inactive at Airwallex when `rail` is given
  * (otherwise the runner's next card sync does it).
@@ -359,9 +379,11 @@ export async function bookOnTaskCard(db: DB, sim: IssuingSim, taskId: string, a:
   if (t.approved) {
     db.prepare("UPDATE task_cards SET status = 'USED' WHERE task_id = ?").run(taskId);
     if (rail) {
-      const closed = await rail.setCardStatus(card.card_id, "INACTIVE");
+      // Airwallex closes a single-use card after its one purchase (live, 30 October), and a closed card cannot be set
+      // INACTIVE; only a card it left open is frozen here.
+      const closed = await closeUsedCard(rail, card.card_id);
       storeCard(db, taskId, closed, now);
-      audit(db, "awx-executor", "card.closed", taskId, { agent: taskId, last4: card.last4, why: "its one purchase is made" }, now);
+      audit(db, "awx-executor", "card.closed", taskId, { agent: taskId, last4: card.last4, why: closed.status === "INACTIVE" ? "its one purchase is made; frozen by Purser" : "its one purchase is made; closed by Airwallex" }, now);
     }
   }
   return t;

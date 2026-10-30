@@ -46,6 +46,8 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
   }
   async setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE") {
     this.calls.push("setCardStatus");
+    // As the sandbox answered live on 30 October: a closed card cannot change status (400 invalid_argument).
+    if (this.card(cardId).status === "CLOSED") throw new Error("Airwallex 400 invalid_argument: Invalid status update");
     this.card(cardId).status = status;
     return structuredClone(this.card(cardId));
   }
@@ -60,10 +62,9 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
     const category = !!card.controls?.mccs.length && !card.controls.mccs.includes(a.mcc);
     const currency = !!card.controls?.currencies.length && !card.controls.currencies.includes(a.currency);
     const limit = !card.limits || a.amountCents > card.limits.perTxCents || spent + a.amountCents > card.limits.monthlyCents;
-    // Airwallex allows one successful debit on a single-use card. SINGLE_USE_SPENT is this fake's own word until the
-    // sandbox shows the reason it gives.
-    const spentOnce = !!card.controls?.singleUse && this.txs.some((t) => t.cardId === a.cardId && t.approved);
-    const reason = inactive ? "CARD_INACTIVE" : spentOnce ? "SINGLE_USE_SPENT" : category ? "MERCHANT_CATEGORY_NOT_ALLOWED" : currency ? "CURRENCY_NOT_ALLOWED" : limit ? "LIMIT_EXCEEDED" : null;
+    // A single-use card that made its one purchase is closed by Airwallex itself; later charges are declined with
+    // CARD_CLOSED (the sandbox, live on 30 October).
+    const reason = card.status === "CLOSED" ? "CARD_CLOSED" : inactive ? "CARD_INACTIVE" : category ? "MERCHANT_CATEGORY_NOT_ALLOWED" : currency ? "CURRENCY_NOT_ALLOWED" : limit ? "LIMIT_EXCEEDED" : null;
     const over = reason !== null;
     const t: CardTransaction = {
       transactionId: `tx_${++this.n}`, cardId: a.cardId, amountCents: a.amountCents, currency: a.currency,
@@ -71,6 +72,7 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
       merchant: a.merchant, mcc: a.mcc, type: "AUTHORIZATION", occurredAt: new Date(this.clock()).toISOString(),
     };
     this.txs.push(t);
+    if (t.approved && card.controls?.singleUse) card.status = "CLOSED";
     return { ...t };
   }
   private card(id: string): Card {

@@ -67,12 +67,37 @@ describe("closing the card after its one purchase", () => {
     const awx = new FakeIssuing();
     const { taskId } = await askPurser(db, tools(db), "Flight to Berlin, at most €250", now, { rail: awx, from: "runner" });
     await bookOnTaskCard(db, awx, taskId!, { merchant: "Skyline Air", amount: "189.00" }, now, awx);
-    expect(awx.cards[0]?.status).toBe("INACTIVE");
+    expect(awx.cards[0]?.status).toBe("CLOSED");
     expect(wantCardStatus(db, taskId!)).toBe("INACTIVE");
     await syncCards(db, awx, now);
-    expect(awx.cards[0]?.status).toBe("INACTIVE");
+    expect(awx.cards[0]?.status).toBe("CLOSED");
     const again = await bookOnTaskCard(db, awx, taskId!, { merchant: "Skyline Air", amount: "40.00" }, now, awx);
-    expect(again).toMatchObject({ approved: false, failureReason: "CARD_INACTIVE" });
+    expect(again).toMatchObject({ approved: false, failureReason: "CARD_CLOSED" });
+  });
+
+  // Breaks if Airwallex closing the card a moment after the purchase (live, 30 October: ACTIVE at first, then the
+  // status update refused, then CLOSED) makes the booking fail.
+  it("accepts a card Airwallex closes a moment after the purchase", async () => {
+    const db = openDb(":memory:");
+    const awx = new FakeIssuing();
+    const charge = awx.simulateCardCharge.bind(awx);
+    awx.simulateCardCharge = async (a) => { const t = await charge(a); if (t.approved) awx.cards[0]!.status = "ACTIVE"; return t; };
+    awx.setCardStatus = async () => { awx.cards[0]!.status = "CLOSED"; throw new Error("Airwallex 400 invalid_argument: Invalid status update"); };
+    const { taskId } = await askPurser(db, tools(db), "Flight to Berlin, at most €250", now, { rail: awx, from: "runner" });
+    const t = await bookOnTaskCard(db, awx, taskId!, { merchant: "Skyline Air", amount: "189.00" }, now, awx);
+    expect(t.approved).toBe(true);
+    expect(cardOf(db, taskId!)?.status).toBe("CLOSED");
+  });
+
+  // Breaks if a card Airwallex leaves open after its one purchase is not frozen by Purser.
+  it("freezes the card itself when Airwallex leaves it open", async () => {
+    const db = openDb(":memory:");
+    const awx = new FakeIssuing();
+    const charge = awx.simulateCardCharge.bind(awx);
+    awx.simulateCardCharge = async (a) => { const t = await charge(a); awx.cards[0]!.status = "ACTIVE"; return t; };
+    const { taskId } = await askPurser(db, tools(db), "Flight to Berlin, at most €250", now, { rail: awx, from: "runner" });
+    await bookOnTaskCard(db, awx, taskId!, { merchant: "Skyline Air", amount: "189.00" }, now, awx);
+    expect(awx.cards[0]?.status).toBe("INACTIVE");
   });
 
   it("leaves the card open after a declined try", async () => {

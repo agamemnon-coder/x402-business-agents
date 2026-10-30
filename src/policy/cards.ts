@@ -79,6 +79,11 @@ export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => 
 
 /** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
 export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Card, now: Date): Promise<boolean> {
+  // A closed card (a used single-use card) is final at Airwallex: no status or limit can change it.
+  if (card.status === "CLOSED") {
+    storeCard(db, agent, card, now);
+    return false;
+  }
   let changed = false;
   const status = wantCardStatus(db, agent);
   if (card.status !== status) {
@@ -167,7 +172,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
   const changed: string[] = [];
   for (const row of cardRows(db)) {
     const want = cardLimits(db, row.agent);
-    if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent)) continue;
+    if (row.status === "CLOSED" || (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent))) continue;
     await syncOne(db, rail, row.agent, await rail.getCard(row.card_id), now);
     changed.push(row.agent);
   }

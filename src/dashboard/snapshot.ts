@@ -410,7 +410,7 @@ function treasury(db: DB): Snapshot["treasury"] {
 
 const DECLINE_WORDS: Record<string, string> = {
   LIMIT_EXCEEDED: "over the card's limit",
-  SINGLE_USE_SPENT: "the card was single-use and is spent",
+  CARD_CLOSED: "the card is closed (a single-use card closes after its one purchase)",
   MERCHANT_CATEGORY_NOT_ALLOWED: "this card may not pay this kind of merchant",
   CURRENCY_NOT_ALLOWED: "this card may not pay in this currency",
   CARD_INACTIVE: "the card is frozen",

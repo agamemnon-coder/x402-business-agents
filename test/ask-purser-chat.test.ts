@@ -74,7 +74,7 @@ describe("booking on a task card", () => {
   it("books once; a second charge and a hotel are declined by Airwallex, and all three are recorded", async () => {
     const { db, awx, taskId } = await issued();
     expect(await bookOnTaskCard(db, awx, taskId, { merchant: "Skyline Air", amount: "189.00" }, now)).toMatchObject({ approved: true });
-    expect(await bookOnTaskCard(db, awx, taskId, { merchant: "Skyline Air", amount: "40.00" }, now)).toMatchObject({ approved: false, failureReason: "SINGLE_USE_SPENT" });
+    expect(await bookOnTaskCard(db, awx, taskId, { merchant: "Skyline Air", amount: "40.00" }, now)).toMatchObject({ approved: false, failureReason: "CARD_CLOSED" });
     // The card's own limit (one purchase, up to the approved amount) is the control; an agent's velocity limit
     // (100 EUR an hour) would wrongly stop a task card after its one booking.
     const { stopped } = await import("../src/policy/velocity.js");
@@ -110,7 +110,7 @@ describe("Ask Purser on the dashboard", () => {
     const texts = s.feed.map((f) => f.text);
     expect(texts).toContain("Airwallex issued a single-use flight card •••• 4002 for task P-0001: at most 250.00 EUR, once, until 2026-11-12");
     expect(texts).toContain("Airwallex approved 189.00 EUR at Skyline Air on task card •••• 4002 (P-0001)");
-    expect(texts).toContain("Airwallex declined 40.00 EUR at Skyline Air on task card •••• 4002 (P-0001): the card was single-use and is spent");
+    expect(texts).toContain("Airwallex declined 40.00 EUR at Skyline Air on task card •••• 4002 (P-0001): the card is closed (a single-use card closes after its one purchase)");
     expect(texts.some((t) => /^ask\./.test(t))).toBe(false);
   });
 });

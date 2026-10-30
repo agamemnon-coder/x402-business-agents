@@ -43,6 +43,7 @@ like any card.
 ## What is simulated
 
 The airline's charge is Airwallex's sandbox simulation (`POST /simulation/issuing/create`); no real flight is booked.
-Single-use cards are documented by Airwallex ("only 1 successful debit transaction"); the live check in the sandbox,
-and the decline reason it gives for a second charge, is on the list after the Friday runs. Until then the fake used in
-the tests calls that reason `SINGLE_USE_SPENT`.
+Single-use cards are documented by Airwallex ("only 1 successful debit transaction") and checked live in the sandbox
+on 30 October ([run log](runs/2026-10-30-single-use.md)): `SINGLE` is accepted and reads back; after the one purchase
+Airwallex closes the card itself, a moment later, and declines a second charge with `CARD_CLOSED`. Purser freezes the
+card if it is still open and otherwise records it closed.
