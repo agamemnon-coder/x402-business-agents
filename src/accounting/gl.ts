@@ -32,7 +32,7 @@ export function journal(db: DB): JournalLine[] {
   const lines: JournalLine[] = [];
   const add = (l: Omit<JournalLine, "gl_name" | "cost_centre" | "amount"> & { cents: number }) => {
     const { cents, ...rest } = l;
-    lines.push({ ...rest, amount: signed(cents), cost_centre: COST_CENTRES[l.agent] ?? (l.agent.startsWith("ext:") ? "CC400" : ""), gl_name: CHART[l.gl_account] ?? "" });
+    lines.push({ ...rest, amount: signed(cents), cost_centre: COST_CENTRES[l.agent] ?? (l.agent.startsWith("ext:") ? "CC400" : l.agent.startsWith("task:") ? "CC500" : ""), gl_name: CHART[l.gl_account] ?? "" });
   };
   const proposalOf = (sha: string | null) =>
     sha ? ((db.prepare("SELECT proposal_id FROM proposals WHERE terms_sha256 = ?").get(sha) as { proposal_id: string } | undefined)?.proposal_id ?? "") : "";

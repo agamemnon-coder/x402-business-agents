@@ -15,6 +15,7 @@ export const CHART: Record<string, string> = {
   "6100": "Software subscriptions (company cards)",
   "6150": "Advertising (company cards)",
   "6200": "Goods from the manufacturer",
+  "6300": "Travel (task cards)",
   "6800": "Bank and transfer fees",
   "6900": "Other supplier invoices",
 };
@@ -30,6 +31,7 @@ export const COST_CENTRE_NAMES: Record<string, string> = {
   CC200: "Sales agent (ads and retail accounts)",
   CC300: "Finance agent (finance)",
   CC400: "Outside agents (agent API)",
+  CC500: "Task cards (Ask Purser)",
 };
 
 /** Supplier invoices by vendor; anything not listed goes to 6900. */
@@ -41,4 +43,7 @@ export const VENDOR_GL: Record<string, string> = {
 export const MCC_GL: Record<string, string> = {
   "5734": "6100",
   "7311": "6150",
+  "4511": "6300",
+  "7011": "6300",
+  "4112": "6300",
 };

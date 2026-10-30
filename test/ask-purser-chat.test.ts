@@ -75,6 +75,10 @@ describe("booking on a task card", () => {
     const { db, awx, taskId } = await issued();
     expect(await bookOnTaskCard(db, awx, taskId, { merchant: "Skyline Air", amount: "189.00" }, now)).toMatchObject({ approved: true });
     expect(await bookOnTaskCard(db, awx, taskId, { merchant: "Skyline Air", amount: "40.00" }, now)).toMatchObject({ approved: false, failureReason: "SINGLE_USE_SPENT" });
+    // The card's own limit (one purchase, up to the approved amount) is the control; an agent's velocity limit
+    // (100 EUR an hour) would wrongly stop a task card after its one booking.
+    const { stopped } = await import("../src/policy/velocity.js");
+    expect(stopped(db, taskId)).toBe(false);
     const rows = db.prepare("SELECT merchant, amount_cents, approved, purpose FROM card_transactions WHERE agent = ? ORDER BY occurred_at, transaction_id").all(taskId);
     expect(rows).toEqual([
       { merchant: "Skyline Air", amount_cents: 18900, approved: 1, purpose: "Flight: " + MSG },
@@ -86,5 +90,27 @@ describe("booking on a task card", () => {
     const { db, awx, taskId } = await issued();
     expect(await bookOnTaskCard(db, awx, taskId, { merchant: "Hotel Adlon", amount: "120.00", mcc: "7011" }, now)).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
     expect(await bookOnTaskCard(db, awx, taskId, { merchant: "Skyline Air", amount: "250.01" }, now)).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
+  });
+});
+
+describe("Ask Purser on the dashboard", () => {
+  // Breaks if the conversation is lost from the snapshot, or a task card's events read like a nameless agent's.
+  it("shows the conversation and plain lines for the task card", async () => {
+    const { buildSnapshot } = await import("../src/dashboard/snapshot.js");
+    const db = openDb(":memory:");
+    const awx = new FakeIssuing();
+    const { proposalId } = await askPurser(db, tools(db), MSG, now);
+    const p = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_sha256: string };
+    decide(db, { proposalId: proposalId!, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "max", method: "cli" }, now);
+    await executeTaskCard(db, awx, proposalId!, now);
+    await bookOnTaskCard(db, awx, `task:${proposalId}`, { merchant: "Skyline Air", amount: "189.00" }, now);
+    await bookOnTaskCard(db, awx, `task:${proposalId}`, { merchant: "Skyline Air", amount: "40.00" }, now);
+    const s = buildSnapshot(db, now);
+    expect(s.ask.map((m) => [m.from, m.text.slice(0, 20), m.proposal_id])).toEqual([["you", MSG.slice(0, 20), null], ["purser", "I proposed P-0001: a", "P-0001"]]);
+    const texts = s.feed.map((f) => f.text);
+    expect(texts).toContain("Airwallex issued a single-use flight card •••• 4002 for task P-0001: at most 250.00 EUR, once, until 2026-11-12");
+    expect(texts).toContain("Airwallex approved 189.00 EUR at Skyline Air on task card •••• 4002 (P-0001)");
+    expect(texts).toContain("Airwallex declined 40.00 EUR at Skyline Air on task card •••• 4002 (P-0001): the card was single-use and is spent");
+    expect(texts.some((t) => /^ask\./.test(t))).toBe(false);
   });
 });

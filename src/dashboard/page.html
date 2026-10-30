@@ -207,7 +207,11 @@ details.tech a { color: var(--accent); text-decoration: none; }
 /* Claude's official logo has white letters: it sits on a dark ground in both themes, colours unchanged. */
 .claudelogo { display: inline-flex; align-items: center; background: #191919; border-radius: 999px; padding: 7px 14px; }
 .claudelogo img { height: 16px; width: auto; display: block; }
-.panel.claude { margin-top: 20px; }
+.panel.claude, .panel.ask { margin-top: 20px; }
+.chat { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.chat li { max-width: 80%; padding: 10px 14px; border-radius: 14px; background: var(--sunken); font-size: 14.5px; }
+.chat li.you { align-self: flex-end; background: var(--accent-soft); }
+.chat li .who { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 .panel.claude .money { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .panel.claude table.agents { margin-top: 14px; }
 .panel.claude .note { color: var(--muted); font-size: 13.5px; margin: 14px 0 0; }
@@ -466,6 +470,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <section class="panel" aria-labelledby="h-treasury"><div class="sect flush"><h2 id="h-treasury">Treasury</h2><span class="hint" id="treasury-asof"></span></div><div id="treasury"></div></section>
     <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused and blocked</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
   </div>
+  <section class="panel ask" id="ask-panel" aria-labelledby="h-ask" hidden><div class="sect flush"><h2 id="h-ask">Ask Purser</h2><span class="hint">from the CFO policy page on your phone</span></div><ul class="chat" id="ask"></ul></section>
   <section class="panel claude" id="claude-panel" aria-labelledby="h-claude" hidden><div class="sect flush"><h2 id="h-claude">Powered by Claude</h2><span class="claudelogo"><img src="assets/logo-claude.png" alt="Claude" width="73" height="16"></span></div><div id="claude"></div></section>
   <div class="foot"><span id="auditline"></span><span id="passkey"></span></div>
 </main>
@@ -599,7 +604,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
           txt("div", "buys", "Airwallex Issuing"),
           el("div", "row2", [txt("span", "pan", "•••• " + c.last4), txt("span", "brandmark", "VISA")]),
         ]),
-        el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", eur(c.spent_month)), " of " + eur(c.monthly) + " / month"]), txt("span", "", "max " + eur(c.per_tx))])]),
+        el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", eur(c.spent_month)), " of " + eur(c.monthly) + (c.single_use ? ", one purchase" : " / month")]), txt("span", "", c.single_use ? "single use" : "max " + eur(c.per_tx))])]),
         c.only ? el("div", "only", [icon("lock"), txt("span", "", "Only " + c.only)]) : null,
         c.in_sync ? null : txt("div", "pill wait", "Updating the card at Airwallex…"),
         txs.length ? el("ul", "txs", txs) : null,
@@ -804,7 +809,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // One row per agent: both rails side by side.
   function renderAgentsTable(d) {
     var rows = {}, order = [];
-    (d.cards || []).forEach(function (c) { if (!rows[c.agent]) { rows[c.agent] = {}; order.push(c.agent); } rows[c.agent].card = c; });
+    // Task cards (Ask Purser) are not agents: they show in the cards grid and the Ask Purser panel only.
+    (d.cards || []).filter(function (c) { return c.agent.indexOf("task:") !== 0; }).forEach(function (c) { if (!rows[c.agent]) { rows[c.agent] = {}; order.push(c.agent); } rows[c.agent].card = c; });
     d.budgets.agents.forEach(function (a) { if (!rows[a.agent]) { rows[a.agent] = {}; order.push(a.agent); } rows[a.agent].mandate = a; });
     var stopped = (d.stopped || []).map(function (x) { return x.agent; });
     var head = el("tr", "", ["Agent", "Card this month", "Card per purchase", "On chain used", "Per payment", "Status"].map(function (h) { return txt("th", "", h); }));
@@ -855,8 +861,22 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     set("claude", nodes);
   }
 
+  function renderAsk(d) {
+    var msgs = d.ask || [], panel = document.getElementById("ask-panel");
+    panel.hidden = !msgs.length;
+    set("ask", msgs.map(function (m) {
+      var li = el("li", m.from, [txt("span", "who", (m.from === "you" ? "You" : "Purser") + " · " + hm(m.ts)), m.text]);
+      if (m.proposal_id) {
+        var a = txt("a", "textlink", m.proposal_id + " is under Waiting for you");
+        a.setAttribute("href", "#pending");
+        li.appendChild(el("div", "", [a]));
+      }
+      return li;
+    }));
+  }
+
   function render(d) {
-    renderKpis(d); renderClaude(d); renderCards(d); renderAgentsTable(d);
+    renderKpis(d); renderClaude(d); renderAsk(d); renderCards(d); renderAgentsTable(d);
     renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
     var fz = document.getElementById("frozen");
     if (d.frozen) {

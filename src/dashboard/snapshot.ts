@@ -122,6 +122,8 @@ export interface CardView {
   frozen: boolean;
   /** What the card may pay at all, in words ("Advertising (MCC 7311) · EUR only · until 28 Jan 2027"), or "". */
   only: string;
+  /** A task card (Ask Purser): Airwallex lets it pay once; its limit is in all, not per month. */
+  single_use: boolean;
   recent: CardTx[];
 }
 
@@ -172,6 +174,8 @@ export interface Snapshot {
     cost_usd_micros: number; per_call_usd_micros: number | null;
     eur_paid: string; per_1000_eur_usd_micros: number | null;
   };
+  /** Ask Purser (G): the latest chat messages, oldest first. */
+  ask: { ts: string; from: "you" | "purser"; text: string; proposal_id: string | null }[];
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
@@ -383,6 +387,7 @@ function treasury(db: DB): Snapshot["treasury"] {
 
 const DECLINE_WORDS: Record<string, string> = {
   LIMIT_EXCEEDED: "over the card's limit",
+  SINGLE_USE_SPENT: "the card was single-use and is spent",
   MERCHANT_CATEGORY_NOT_ALLOWED: "this card may not pay this kind of merchant",
   CURRENCY_NOT_ALLOWED: "this card may not pay in this currency",
   CARD_INACTIVE: "the card is frozen",
@@ -390,7 +395,7 @@ const DECLINE_WORDS: Record<string, string> = {
   INSUFFICIENT_FUNDS: "not enough money on the account",
 };
 /** Merchant categories in words: the ones Purser's cards use. */
-const MCC_WORDS: Record<string, string> = { "5734": "Software", "7311": "Advertising", "5192": "Books and reports" };
+const MCC_WORDS: Record<string, string> = { "5734": "Software", "7311": "Advertising", "5192": "Books and reports", "4511": "Airlines", "7011": "Hotels", "4112": "Railways" };
 const onlyWords = (c: { allowed_mccs: string; allowed_currencies: string; active_to: string | null }) => {
   const parts = [
     c.allowed_mccs ? c.allowed_mccs.split(",").map((m) => `${MCC_WORDS[m] ?? "Category"} (MCC ${m})`).join(", ") : "",
@@ -399,6 +404,8 @@ const onlyWords = (c: { allowed_mccs: string; allowed_currencies: string; active
   ].filter(Boolean);
   return parts.join(" · ");
 };
+/** "on the Sales agent's card •••• 1234", or for a task card (Ask Purser) "on task card •••• 1234 (P-0011)". */
+const onCard = (agent: string, last4: string) => (agent.startsWith("task:") ? `on task card •••• ${last4} (${agent.slice(5)})` : `on ${cardOwner(agent)}'s card •••• ${last4}`);
 const declineWords = (code: string) => DECLINE_WORDS[code] ?? (code.toLowerCase().replace(/_/g, " ") || "no reason given");
 const limitWords = (s: string) => {
   const [per, month] = s.split(" / ");
@@ -413,19 +420,22 @@ function cards(db: DB, now: Date): CardView[] {
     { agent: string; last4: string; per_tx_cents: number; monthly_cents: number; status: string; allowed_mccs: string; allowed_currencies: string; active_to: string | null }[];
   // An outside agent (P1) shows under its own name, with what its card is for.
   const outside = new Map((db.prepare("SELECT agent_id, display_name, purpose FROM external_agents").all() as { agent_id: string; display_name: string; purpose: string }[]).map((x) => [x.agent_id, x]));
+  // A task card (Ask Purser) shows as what it is for: "Flight task card (P-0011)", single use.
+  const tasks = new Map((db.prepare("SELECT task_id, kind, purpose FROM task_cards").all() as { task_id: string; kind: string; purpose: string }[]).map((x) => [x.task_id, x]));
   return rows.map((c) => {
     const want = cardLimits(db, c.agent);
     const spent = (db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS n FROM card_transactions WHERE agent = ? AND approved = 1 AND substr(occurred_at, 1, 7) = ?").get(c.agent, month) as { n: number }).n;
     const ext = outside.get(c.agent);
+    const task = tasks.get(c.agent);
     const recent = (db.prepare("SELECT occurred_at, merchant, purpose, amount_cents, approved, failure_reason, status FROM card_transactions WHERE agent = ? ORDER BY occurred_at DESC, rowid DESC LIMIT 6").all(c.agent) as
       { occurred_at: string; merchant: string; purpose: string | null; amount_cents: number; approved: number; failure_reason: string | null; status: string }[])
       .map((t) => ({ ts: t.occurred_at, merchant: t.merchant, purpose: t.purpose, amount: fromCents(t.amount_cents), approved: t.approved === 1, reason: t.approved === 1 ? null : declineWords(t.failure_reason ?? t.status) }));
     return {
-      agent: c.agent, name: ext ? `${ext.display_name} (outside agent)` : agentName(c.agent), last4: c.last4,
-      buys: ext ? ext.purpose : (CARDS[c.agent as Agent]?.buys ?? ""), per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
+      agent: c.agent, name: ext ? `${ext.display_name} (outside agent)` : task ? `${capFirst(task.kind)} task card (${c.agent.slice(5)})` : agentName(c.agent), last4: c.last4,
+      buys: ext ? ext.purpose : task ? `${task.purpose} · single use` : (CARDS[c.agent as Agent]?.buys ?? ""), per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
       spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent),
       in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === wantCardStatus(db, c.agent),
-      frozen: c.status === "INACTIVE", only: onlyWords(c), recent,
+      frozen: c.status === "INACTIVE", only: onlyWords(c), single_use: !!task, recent,
     };
   });
 }
@@ -587,15 +597,21 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "payee.change_requested": return out(`${str(p.vendor)}'s bank details: a change to a ${str(p.to_country)} account ending ${str(p.to_last4)} was requested (${s}); nothing changes until a person verifies it with the supplier and the CFO approves`, "approval");
     case "payee.change_verified": return out(`${str(p.by)} verified ${s} with ${str(p.vendor)}: ${str(p.how)}`, "approval");
     case "payee.changed": return out(`${str(p.vendor)} is now paid to the account ending ${str(p.to_last4)} (was …${str(p.from_last4)}), after verification and approval (${str(p.proposal_id)})`, "ok");
-    case "card.issued": return out(`Airwallex issued ${cardOwner(str(p.agent))} a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
+    case "card.issued":
+      if (str(p.agent).startsWith("task:")) {
+        return out(`Airwallex issued a single-use ${str(p.task)} card •••• ${str(p.last4)} for task ${str(p.agent).slice(5)}: at most ${str(p.limits).split(" / ")[0]} EUR, once, until ${str(p.valid_until).slice(0, 10)}`, "ok");
+      }
+      return out(`Airwallex issued ${cardOwner(str(p.agent))} a virtual Visa card •••• ${str(p.last4)}: ${limitWords(str(p.limits))}`, "ok");
     case "card.adopted": return out(`${capFirst(cardOwner(str(p.agent)))}'s Visa card •••• ${str(p.last4)} now follows the CFO policy`, "ok");
     case "card.limits_synced": return out(`Airwallex now has the CFO policy on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}: ${limitWords(str(p.to))} (was ${limitWords(str(p.from))})`, "approval");
     case "agent.card_requested": return out(`${str(p.name)}, an outside agent connected through the agent API, asks for a company card (${str(p.per_tx)} EUR per purchase, ${str(p.monthly)} EUR per month) for ${str(p.purpose)}; nothing is issued until the CFO approves ${str(p.proposal_id)}`, "approval");
-    case "card.purchase_started": return out(`Subscribing to ${str(p.merchant)} (${str(p.plan ?? p.description)}) for ${str(p.amount)} EUR on its card •••• ${str(p.last4)}`);
-    case "card.charge_approved": return out(`Airwallex approved ${str(p.amount)} EUR at ${str(p.merchant)} on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "ok", { awx_id: s || null });
-    case "card.charge_declined": return out(`Airwallex declined ${str(p.amount)} EUR at ${str(p.merchant)} on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}: ${declineWords(str(p.reason))}`, "refusal", { awx_id: s || null });
+    case "card.purchase_started":
+      if (str(p.agent).startsWith("task:")) return out(`Booking at ${str(p.merchant)} for ${str(p.amount)} EUR ${onCard(str(p.agent), str(p.last4))}`);
+      return out(`Subscribing to ${str(p.merchant)} (${str(p.plan ?? p.description)}) for ${str(p.amount)} EUR on its card •••• ${str(p.last4)}`);
+    case "card.charge_approved": return out(`Airwallex approved ${str(p.amount)} EUR at ${str(p.merchant)} ${onCard(str(p.agent), str(p.last4))}`, "ok", { awx_id: s || null });
+    case "card.charge_declined": return out(`Airwallex declined ${str(p.amount)} EUR at ${str(p.merchant)} ${onCard(str(p.agent), str(p.last4))}: ${declineWords(str(p.reason))}`, "refusal", { awx_id: s || null });
     case "card.duplicate_merged": return out(`A card authorisation recorded twice (Airwallex names it by two ids) was merged into one: ${str(p.amount)} ${str(p.currency)}`);
-    case "card.charge_reversed": return out(`Airwallex reversed ${str(p.amount)} EUR at ${str(p.merchant)} on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal", { awx_id: s || null });
+    case "card.charge_reversed": return out(`Airwallex reversed ${str(p.amount)} EUR at ${str(p.merchant)} ${onCard(str(p.agent), str(p.last4))}`, "refusal", { awx_id: s || null });
     case "passkey.enrolment_opened": return out("A one-time code to enrol a passkey was issued (valid 10 minutes)");
     case "passkey.enrolled": return out(`${str(p.label) || "A person"} enrolled passkey ${s.slice(0, 8)}; approvals now need it`, "ok");
     case "passkey.revoked": return out(`Passkey ${s.slice(0, 8)} revoked: replaced by ${str(p.replaced_by).slice(0, 8)}`);
@@ -689,7 +705,8 @@ function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: stri
   };
 }
 
-const FEED_QUIET = new Set(["card.duplicate_merged"]);
+// The chat with Purser has its own panel (snapshot.ask).
+const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied"]);
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
 function counts(db: DB, rows: AuditRow[], waiting: number): Snapshot["counts"] {
@@ -810,6 +827,12 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     counts: counts(db, rows, pending.filter((p) => !p.expired).length),
     money: money(db, rows, pending.filter((p) => !p.expired), now),
     claude: claudeView(db, rows),
+    ask: rows.filter((r) => r.event === "ask.received" || r.event === "ask.replied").slice(-8).map((r) => {
+      const p = JSON.parse(r.payload_json) as P;
+      return r.event === "ask.received"
+        ? { ts: r.ts, from: "you" as const, text: str(p.message), proposal_id: null }
+        : { ts: r.ts, from: "purser" as const, text: str(p.reply), proposal_id: str(p.proposal_id) || null };
+    }),
     passkey: passkeyInfo(db, now),
   };
 }

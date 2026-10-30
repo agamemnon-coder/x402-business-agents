@@ -36,6 +36,8 @@ export interface RunnerDeps {
   /** Drafts rules from the CFO's words (P2, src/policy/fromText.ts) and says what became of them. Without it the
    *  runner refuses such texts. */
   draftPolicy?: (text: string) => Promise<{ proposalId: string | null; message: string }>;
+  /** Ask Purser: answers a chat message from the phone, proposing a task card when it fits the policy. */
+  ask?: (text: string) => Promise<{ proposalId: string | null; reply: string }>;
 }
 
 export class RelayRunner {
@@ -138,6 +140,27 @@ export class RelayRunner {
     void run.finally(() => this.running.delete(run));
   }
 
+  /** Ask Purser: the reply goes back on the ticket; a task card proposal then waits for Face ID like any other. */
+  private answer(item: InboxItem): void {
+    const ask = this.deps.ask;
+    let text: unknown;
+    try {
+      text = (JSON.parse(item.body) as { text?: unknown }).text;
+    } catch {
+      text = undefined;
+    }
+    if (!ask || typeof text !== "string") {
+      this.ack(item.ticket, "refused", ask ? "malformed submission" : "this runner does not take chat messages");
+      return;
+    }
+    const run = ask(text).then(
+      (r) => this.ack(item.ticket, "answered", r.reply),
+      (e: unknown) => this.ack(item.ticket, "refused", `Purser could not answer (${(e instanceof Error ? e.message : String(e)).slice(0, 200)}); nothing changed`),
+    );
+    this.running.add(run);
+    void run.finally(() => this.running.delete(run));
+  }
+
   private async process(item: InboxItem): Promise<void> {
     const { db } = this.deps;
     if (item.kind === "registration") {
@@ -147,6 +170,10 @@ export class RelayRunner {
     }
     if (item.kind === "policy_text") {
       this.draft(item);
+      return;
+    }
+    if (item.kind === "ask") {
+      this.answer(item);
       return;
     }
     const out = item.kind === "policy" ? await processPolicyRequest(db, item, this.now()) : await processAssertion(db, item, this.now());

@@ -16,7 +16,7 @@ import { assertionSha256, verifyApprovalSignature, verifyEnrolmentResponse } fro
 /** One submission as the relay queued it. Only `ticket` and `body` are used; the body is checked from scratch. */
 export interface InboxItem {
   ticket: string;
-  kind: "assertion" | "registration" | "policy" | "policy_text";
+  kind: "assertion" | "registration" | "policy" | "policy_text" | "ask";
   proposal_id: string | null;
   body: string;
   received_at: string;

@@ -556,7 +556,7 @@ function passkeyError(e: unknown): string {
   return `The passkey did not answer: ${e instanceof Error ? e.message : String(e)}`;
 }
 
-const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned"]);
+const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned", "answered"]);
 const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   queued: { tone: "wait", head: "Signed", lead: "Waiting for the runner to check your signature." },
   approved: { tone: "wait", head: "Approved", lead: "The runner checked your signature. Executing now." },
@@ -569,6 +569,7 @@ const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   enrolled: { tone: "ok", head: "Passkey enrolled", lead: "From now on, approvals need this passkey." },
   cosigned: { tone: "wait", head: "1 of 2 approvals", lead: "Your Face ID counts. This one needs a second person (four eyes): it runs only once someone else approves it with their own passkey." },
   drafted: { tone: "ok", head: "Rules drafted", lead: "Opus turned your words into rules and the runner checked each one. Nothing has changed yet: review them and approve with Face ID." },
+  answered: { tone: "info", head: "Purser", lead: "" },
   pending: { tone: "wait", head: "Confirm on the runner", lead: "Tell Claude the fingerprint above. The passkey counts once the runner confirms that same fingerprint." },
 };
 
@@ -1029,11 +1030,52 @@ async function policyPage(): Promise<void> {
     }
     draft.disabled = false;
   });
+  // Ask Purser (G): a request in plain words; at most a task card proposal comes back, approved with Face ID.
+  const ask = document.createElement("textarea");
+  ask.id = "ask";
+  ask.className = "policy-input words";
+  ask.maxLength = 500;
+  ask.rows = 2;
+  ask.placeholder = "For example: book a flight to Berlin on 12 November, at most €250.";
+  const askLabel = el("label", "policy-label", ["Ask Purser"]);
+  askLabel.setAttribute("for", "ask");
+  const askSend = el("button", "secondary", ["Ask"]) as HTMLButtonElement;
+  askSend.type = "button";
+  const asked = el("div", "drafted");
+  const askBox = el("section", "policy-words", [
+    askLabel, ask,
+    txt("p", "muted", "For a flight, a hotel or a train: Purser proposes a card that can pay once, up to your amount, until the day you name. Nothing is issued before you approve it with Face ID."),
+    askSend, asked,
+  ]);
+  askSend.addEventListener("click", async () => {
+    const text = ask.value.trim();
+    if (text === "") {
+      asked.replaceChildren(txt("p", "sheet-status", "Write what you need first."));
+      return;
+    }
+    askSend.disabled = true;
+    const { status, data } = await api("/api/ask", { text }).catch(() => ({ status: 0, data: {} as Obj }));
+    if (status !== 202) {
+      asked.replaceChildren(txt("p", "alarm", str(data.error) || "The relay did not take the message."));
+      askSend.disabled = false;
+      return;
+    }
+    const open = el("a", "confirm", ["Review and approve"]) as HTMLAnchorElement;
+    open.hidden = true;
+    const out = await follow(str(data.ticket), asked, open, `"${text.length > 120 ? `${text.slice(0, 120)}…` : text}"`, "Purser is reading your message on the runner.");
+    const id = /\bI proposed (P-\d{4})\b/.exec(out.message)?.[1];
+    if (out.status === "answered" && id) {
+      open.href = `/approve/${id}`;
+      open.hidden = false;
+    }
+    askSend.disabled = false;
+  });
   app.replaceChildren(...[
     el("div", "toprow", [back]),
     txt("h1", "", "CFO policy"),
     txt("p", "lead", "Limits the agents work within, inside their mandates on chain. A change needs your passkey and takes effect at once."),
     enrolled ? null : txt("p", "warn-box", "No passkey is enrolled yet, so no change can be signed here."),
+    askBox,
     wordsBox,
     el("div", "policy", fields.map((f) => f.row)),
     el("div", "policy-row", [reasonLabel, reason]),

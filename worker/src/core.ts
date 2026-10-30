@@ -50,9 +50,11 @@ const HOOKS_PER_SYNC = 50;
 const HOOK_KEEP_MS = 24 * 60 * 60 * 1000;
 /** How far Airwallex's x-timestamp may be from our clock (a replay of an old event is refused). */
 const HOOK_TOLERANCE_MS = 5 * 60 * 1000;
-const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned"]);
+const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned", "answered"]);
 /** The CFO's policy in plain words (P2): Opus drafts rules from it on the runner. */
 const MAX_POLICY_TEXT = 2000;
+/** A chat message to Purser (Ask Purser): the runner reads it and proposes a task card for Face ID. */
+const MAX_ASK_TEXT = 500;
 
 const COMMON_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
@@ -276,7 +278,7 @@ export class Relay {
     const url = new URL(req.url);
     const path = url.pathname;
     const route = (method: string, p: string | RegExp) => (typeof p === "string" ? path === p : p.test(path)) && (req.method === method || (method === "GET" && req.method === "HEAD"));
-    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/enrol/options", "/api/enrol"];
+    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/ask", "/api/enrol/options", "/api/enrol"];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
     // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,
@@ -296,12 +298,13 @@ export class Relay {
     if (route("GET", "/api/approvals")) return this.approvals();
     if (route("GET", /^\/api\/tickets\/[^/]+$/)) return this.ticket(path.slice("/api/tickets/".length));
     // Everything the phone posts must come from the relay's own pages.
-    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path.startsWith("/api/enrol"))) {
+    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path === "/api/ask" || path.startsWith("/api/enrol"))) {
       if (req.headers.get("origin") !== url.origin) return error(403, "requests must come from this site's own pages");
       if (!this.underRateLimit(req)) return error(429, "too many requests from this address; wait ten minutes");
       if (path === "/api/assertions") return this.assertion(req);
       if (path === "/api/policy") return this.policyChange(req);
       if (path === "/api/policy-text") return this.policyText(req);
+      if (path === "/api/ask") return this.ask(req);
       if (path === "/api/enrol/options") return this.enrolOptions(req);
       if (path === "/api/enrol") return this.enrol(req);
     }
@@ -386,7 +389,7 @@ export class Relay {
     return rows[0] ? json(200, rows[0]) : error(404, "no such ticket");
   }
 
-  private queue(kind: "assertion" | "registration" | "policy" | "policy_text", proposalId: string | null, windowId: string | null, text: string): string {
+  private queue(kind: "assertion" | "registration" | "policy" | "policy_text" | "ask", proposalId: string | null, windowId: string | null, text: string): string {
     const ticket = ticketId();
     const at = this.now().toISOString();
     this.sql.exec("INSERT INTO inbox (ticket, kind, proposal_id, window_id, body, received_at, status, message, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'queued', NULL, ?)",
@@ -473,6 +476,18 @@ export class Relay {
     if (!this.state()) return error(503, "the runner has not connected yet");
     if (this.queued("kind = 'policy_text'") >= 1) return error(429, "the runner is still reading your last text; wait for it");
     return json(202, { ticket: this.queue("policy_text", null, null, JSON.stringify({ text: v.text })) });
+  }
+
+  private async ask(req: Request): Promise<Response> {
+    const body = await readJson(req, MAX_SUBMISSION_BYTES);
+    if (body === null) return error(413, "submission too large");
+    const v = body?.value;
+    if (!isObject(v) || typeof v.text !== "string" || v.text.trim() === "" || v.text.length > MAX_ASK_TEXT) {
+      return error(400, `write your request in at most ${MAX_ASK_TEXT} characters`);
+    }
+    if (!this.state()) return error(503, "the runner has not connected yet");
+    if (this.queued("kind = 'ask'") >= 1) return error(429, "Purser is still answering your last message; wait for it");
+    return json(202, { ticket: this.queue("ask", null, null, JSON.stringify({ text: v.text })) });
   }
 
   /** The open enrolment, after checking the code; counts wrong codes and closes the window after five. */

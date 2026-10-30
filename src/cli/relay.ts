@@ -21,6 +21,7 @@ import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
 import { Tools } from "../claude/tools.js";
 import { draftPolicyFromText, draftSummary } from "../policy/fromText.js";
+import { askPurser } from "../agents/askPurser.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
 import { handleAirwallexHook } from "../policy/cardHooks.js";
@@ -58,7 +59,9 @@ const draftPolicy = async (text: string) => {
   const r = await draftPolicyFromText(db, new Tools(db), text, new Date(), { tightenOnly: true });
   return { proposalId: r.proposal?.proposal_id ?? null, message: draftSummary(r) };
 };
-const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, log: (line) => console.log(`${stamp()} ${line}`) });
+// Ask Purser (G): a chat message from the phone becomes, at most, a task card proposal that waits for Face ID.
+const ask = (text: string) => askPurser(db, new Tools(db), text);
+const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, ask, log: (line) => console.log(`${stamp()} ${line}`) });
 let stopping = false;
 const stop = () => {
   if (stopping) return;

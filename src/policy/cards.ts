@@ -232,7 +232,9 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
     // card sync (every few seconds on the runner) freezes its card at Airwallex.
     // A refund or reversal from the merchant is money coming back, not spending.
     const at = Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now;
-    if (!/REFUND|REVERSAL|CREDIT/i.test(t.type)) velocityObserve(db, card.agent, t.amountCents, t.approved, at);
+    // A task card (Ask Purser) is not an agent: Airwallex lets it pay once, up to the approved amount, which is
+    // stricter than any velocity limit, so it is not counted there.
+    if (!/REFUND|REVERSAL|CREDIT/i.test(t.type) && !card.agent.startsWith("task:")) velocityObserve(db, card.agent, t.amountCents, t.approved, at);
     return true;
   }).immediate();
 }
