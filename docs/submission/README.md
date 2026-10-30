@@ -2,7 +2,7 @@
 
 Copy each block into the form. Max submits; nothing here is sent by itself. Every figure comes from the recorded run
 and the reports in this repo (`src/submission/facts.ts`), and `test/submission.test.ts` checks this page against them.
-Sources for each claim: [docs/claims.md](../claims.md).
+Sources for each claim: [docs/claims.md](../claims.md), section "The submission pack".
 
 Fill in before submitting: the video link, the live link (the relay's address, kept out of the repo) and the repo link
 once the repo is public. Max's steps: [checklist-max.md](checklist-max.md).
@@ -14,7 +14,7 @@ Purser: company cards and on-chain mandates for AI agents, with the CFO in contr
 ## Synopsis
 
 <!-- synopsis -->
-Purser gives each AI agent an Airwallex company card and a Metal on-chain mandate, both set by one CFO policy. Inside the limits agents pay on their own; past a limit Airwallex declines or the chain refuses, and the agent asks. The CFO approves the exact terms on a phone with Face ID. Claude reads invoices and flags fraud and planted instructions, but holds no key and approves nothing. Every payment carries its proof: an Airwallex id or a Metal transaction.
+Purser gives each AI agent an Airwallex company card and a Metal on-chain mandate, within limits the CFO sets. Inside them agents pay on their own; past a limit Airwallex declines or Metal refuses against the mandate, and the agent asks. The CFO approves the exact terms on a phone with Face ID. Claude reads invoices and explains what code flags, but holds no key and approves nothing. Every payment carries its proof: an Airwallex id or a Metal transaction.
 <!-- /synopsis -->
 
 ## Description
@@ -23,27 +23,29 @@ Purser gives each AI agent an Airwallex company card and a Metal on-chain mandat
 
 Purser is for the CFO or controller of a small company that runs AI agents and wants them to spend company money only
 within limits the CFO sets. The example company is Northwind Outdoor: it sells live stock checks to other companies'
-agents and pays its suppliers. It has three agents, Operations, Sales and Finance, each with its own card and its own
-mandate.
+agents (here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. It has three
+agents, Operations, Sales and Finance, each with its own card and its own mandate.
 
 ### How we use Airwallex
 
 - **A company card per agent (Issuing).** Each agent has a DELEGATE cardholder and a virtual Visa card. The CFO policy
-  sets its limits, merchant categories, currency and end date, and Purser writes them to the card and reads them back.
+  sets its limits; its merchant categories, currency and end date are fixed per agent. Purser writes them all to the
+  card and reads them back.
   Airwallex enforces them: in the recorded run it declined a €45.00 charge (`LIMIT_EXCEEDED`) and a €19.99 charge at
   the wrong kind of shop (`MERCHANT_CATEGORY_NOT_ALLOWED`). The CFO raised the limit with Face ID, Purser synced it to
   the card, and the same charge went through.
-- **Single-use task cards.** One sentence (a flight, a hotel or a train, with an amount) becomes one card for that
+- **Single-use task cards (separate live run).** One sentence (a flight, a hotel or a train, with an amount) becomes one card for that
   task, locked to its merchant category, the amount and a date. Within the CFO's policy it is issued at once; otherwise after Face ID.
 - **FX and a supplier payout.** A supplier's €1,850.00 invoice is read, checked against the payee on file, and paid
-  by SWIFT. Only the missing euros are bought (USD 418.40 → EUR 370.00 on a locked quote). One Face ID covers the rate,
+  by SWIFT. Only the shortfall after the EUR reserve and the demo plan's set-aside amount is bought (USD 418.40 → EUR 370.00 on a
+  locked quote). One Face ID covers the rate,
   the payee and the most the fee may be (€20.00; it was €13.41). The transfer carries the approval's hash in its
   metadata.
 - **Global Accounts (separate live run).** Retailers pay Northwind's EUR and GBP accounts (the retailers and their
   payments are sandbox simulations); a receivables agent matches each payment to its invoice by reference and sends
   anything short or unknown to the CFO.
-- **Webhooks.** Card transactions reach the ledger within seconds; each delivery is signature-checked at the relay and
-  again on the runner. Cards, payouts, conversions and deposits are built and tested, not yet subscribed.
+- **Webhooks.** Card-transaction webhooks are live (since 29 October; none in the recorded run): each delivery is
+  signature-checked at the relay and again on the runner. Cards, payouts, conversions and deposits are built and tested, not yet subscribed.
 - **Emergency stop.** One Face ID freezes every agent card at Airwallex and stops every agent payment (tested against
   stand-ins, not yet run live).
 
@@ -51,15 +53,18 @@ mandate.
 
 - **A mandate per agent.** Each agent that pays per request does it under its own on-chain mandate: a cap per payment,
   a total budget, one payee and an end date.
-- **Metal refused a price rise.** When the warehouse API (a stand-in we run) raised its price above the cap, Metal refused the payment
+- **Metal refused a price rise.** When the warehouse API (a stand-in we run) raised its price above the cap, Metal's facilitator refused the payment
   against the mandate on chain (`mandate_cap_exceeded`); nothing moved. The Finance agent proposed options, the CFO
   signed the new terms with Face ID, and Purser replaced the mandates; the old one is refused (`mandate_revoked`).
 - **x402 with signed orders** for per-request sales, **mandate pulls** for refunds and the earnings sweep, and
   **pay-per-call clearing** for a prepaying customer (separate live run).
-- **Money reaches the bank only when final.** The sweep to Airwallex is booked once, after finality.
-- **The Dispute desk.** A customer's agent claimed it never placed 12 orders. Each order was checked against the chain
-  with the signed order Northwind keeps; all 12 were signed and inside the mandate, so none was refunded. Claude wrote
-  the explanation; code made the decision.
+- **Earnings are booked at Airwallex only when final**, exactly once: a simulated sandbox deposit that names the
+  testnet transaction (no test USD actually moves to Airwallex).
+- **The Dispute desk.** Summit, the simulated customer, claimed its agent never placed 12 orders (we filed the claim
+  on its behalf). Each order was checked against the chain with the signed order Northwind keeps; all 12 were signed
+  and inside the mandate, so this claim refunded nothing. 3 of them (orders 7, 10 and 13) had already been refunded
+  earlier for wrong data. Claude wrote the explanation; code made the decision. The case ran after the recorded run, on
+  a copy of its ledger.
 - **Receive policy (separate world):** the sweep wallet can be set to accept money only from the business account;
   anything else waits in quarantine for the CFO.
 
@@ -84,20 +89,24 @@ Claude cost $0.093 per €1,000 the agents paid.
 ### Proof from the recorded run
 
 From Friday run 1, 30 October 2026, with a Dispute desk case afterwards:
-- 106 payments inside the limits with no person needed;
-- 8 payments stopped by the card, the chain, the fraud checks or the CFO; €3,719.99 kept out for good;
+- 106 payments inside the limits with no approval at the time, about half of them the simulated customer's agent
+  buying stock checks from Northwind;
+- 8 stops by the card, the chain, the fraud checks or the CFO (6 payments, 2 planted instructions); €3,719.99 kept
+  out for good;
 - 4 decisions signed with Face ID;
 - 194 audit rows, hash chain intact.
 
-Red team (Claude as the attacker, in a throwaway world): 39 of 39 attacks failed, 0 inconclusive; 37 were stopped
-before anything moved and 2 were found afterwards (a hidden card charge by the reconciliation, a rewritten log row by
-`npm run verify`). Scenario Lab: 18 of 18 stories as expected.
+Red team (35 scripted attacks plus 4 documents written by Claude Opus as the attacker, run against in-memory stand-ins
+for Airwallex, Metal and the phone): 39 of 39 attacks failed, 0 inconclusive; 37 were stopped before the attack
+succeeded (a burst of payments at the speed limit, after 30 allowed ones) and 2 were found afterwards, not prevented (a
+hidden card charge by the reconciliation, a rewritten log row by `npm run verify`). Scenario Lab: 18 of 18 stories as expected.
 
 ### What is real and what is simulated
 
 All money is test money: the Airwallex sandbox and Metal testnet. The cards, limits, declines, conversion, transfer and
 mandates are real API and chain results. Simulated by the sandbox: the merchants' charges, the retailers' deposits and
-the transfer's final status. The step from Metal to Airwallex is a sandbox deposit that names the real testnet
+the transfer's final status. Run by us: the customer Summit Outfitters and its agent, and Stockline, the warehouse
+API. The step from Metal to Airwallex is a sandbox deposit that names the real testnet
 transaction.
 
 ## Instructions
@@ -107,7 +116,7 @@ npm ci && npm run judge
 ```
 
 No keys and no network after `npm ci`. It serves the recorded run, the CFO dashboard as it stood at the end, `/metal`
-(every Metal feature with its testnet proof), `/live` (the day as an animation), `/try` (needs the live link), the
+(every Metal feature with its testnet proof), `/live` (the day as an animation), `/try` (offline it reads requests with code only; the hosted page asks Claude), the
 Scenario Lab and a simulated month, and opens the browser. Running it live (sandbox keys, a Metal RPC) is in
 [docs/run-it.md](../run-it.md).
 

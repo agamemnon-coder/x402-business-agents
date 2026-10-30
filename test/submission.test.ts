@@ -24,19 +24,23 @@ describe("the submission pack", () => {
 
   it("states the recorded run's figures as the recording has them", () => {
     expect(pack).toContain(`From ${f.run}:`);
-    expect(pack).toContain(`${f.alone} payments inside the limits with no person needed`);
-    expect(pack).toContain(`${f.stopped} payments stopped`);
+    expect(pack).toContain(`${f.alone} payments inside the limits with no approval at the time`);
+    expect(pack).toContain(`${f.stopped} stops by the card, the chain, the fraud checks or the CFO`);
     expect(pack).toContain(`${eur(f.kept_out_eur)} kept out for good`);
     expect(pack).toContain(`${f.face_id} decisions signed with Face ID`);
     expect(pack).toContain(`${f.audit_rows} audit rows`);
     expect(pack).toContain(`$${f.claude_per_1000_eur_usd} per €1,000`);
-    expect(pack).toContain(`claimed it never placed ${f.metal.dispute_orders} orders`);
+    expect(pack).toContain(`claimed its agent never placed ${f.metal.dispute_orders} orders`);
     expect(f.metal.dispute_refunded).toBe(0);
+    expect(pack).toContain(`3 of them (orders ${f.metal.refunded_before.slice(0, -1).join(", ")} and ${f.metal.refunded_before.at(-1)}) had already been refunded`);
+    expect(f.metal.refunded_before).toHaveLength(3);
   });
 
   it("states the red team and the Lab as their reports have them, never counting inconclusive as stopped", () => {
     const rt = f.redteam;
-    expect(pack).toContain(`${rt.failed} of ${rt.attempts} attacks failed, ${rt.inconclusive} inconclusive; ${rt.before} were stopped before anything moved and ${rt.after} were found afterwards`);
+    expect(pack).toContain(`${rt.attempts - rt.documents} scripted attacks plus ${rt.documents} documents written by Claude Opus`);
+    expect(pack).toContain(`${rt.failed} of ${rt.attempts} attacks failed, ${rt.inconclusive} inconclusive; ${rt.before} were stopped before the attack succeeded`);
+    expect(pack).toContain(`${rt.after} were found afterwards, not prevented`);
     expect(rt.before + rt.after + rt.inconclusive).toBeLessThanOrEqual(rt.attempts);
     expect(pack).toContain(`Scenario Lab: ${f.lab.passed} of ${f.lab.total} stories as expected`);
   });

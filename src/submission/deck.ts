@@ -22,7 +22,7 @@ export function deckHtml(f: PackFacts): string {
       kicker: "Airwallex Agentic Banking Hackathon · Starter Kit 11",
       title: "Purser",
       body: `<p class="lead">Your AI agents spend through Airwallex and Metal.<br>The CFO stays in control.</p>
-        <p>Each agent gets an Airwallex company card and a Metal on-chain mandate. One CFO policy sets the limits for both.
+        <p>Each agent gets an Airwallex company card and a Metal on-chain mandate, within limits the CFO sets.
         When an agent needs more, it stops and asks, and the CFO approves on a phone with Face ID.</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
     },
@@ -49,10 +49,10 @@ export function deckHtml(f: PackFacts): string {
       kicker: "How we use Airwallex",
       title: "Cards, FX and payouts, with Airwallex enforcing the limits",
       body: list([
-        "<b>A virtual Visa card per agent</b> (Issuing): limits, merchant categories, currency and end date from the CFO policy, written to the card and read back.",
+        "<b>A virtual Visa card per agent</b> (Issuing): limits from the CFO policy, merchant categories, currency and end date fixed per agent; all written to the card and read back.",
         "<b>Declined by Airwallex itself</b> in the recorded run: €45.00 over the limit (<code>LIMIT_EXCEEDED</code>), €19.99 at the wrong kind of shop (<code>MERCHANT_CATEGORY_NOT_ALLOWED</code>). After the CFO's Face ID raise, the same charge went through.",
-        "<b>Single-use task cards</b> for a flight, a hotel or a train, from one sentence.",
-        "<b>A €1,850.00 invoice by SWIFT</b>: only the missing euros bought on a locked quote; one Face ID covers rate, payee and fee ceiling; the approval's hash rides in the transfer's metadata.",
+        "<b>Single-use task cards</b> for a flight, a hotel or a train, from one sentence (separate live run).",
+        "<b>A €1,850.00 invoice by SWIFT</b>: only the EUR shortfall (after the reserve and the demo plan's set-aside) bought on a locked quote; one Face ID covers rate, payee and fee ceiling; the approval's hash rides in the transfer's metadata.",
         "<b>Global Accounts</b> (separate live run): retailers' payments matched to invoices; anything off goes to the CFO.",
       ]),
     },
@@ -61,10 +61,10 @@ export function deckHtml(f: PackFacts): string {
       title: "Mandates on chain: Metal holds the limit, not only Purser",
       body: list([
         "<b>A mandate per agent</b>: a cap per payment, a total budget, one payee, an end date.",
-        "<b>Metal refused a price rise</b> against the mandate on chain (<code>mandate_cap_exceeded</code>): nothing moved. The CFO signed new terms with Face ID; the mandates were replaced and the old one is refused.",
+        "<b>Metal's facilitator refused a price rise</b> against the mandate on chain (<code>mandate_cap_exceeded</code>): nothing moved. The CFO signed new terms with Face ID; the mandates were replaced and the old one is refused.",
         "<b>x402 with signed orders</b> for per-request sales, <b>mandate pulls</b> for refunds and the sweep, <b>pay-per-call clearing</b> for a prepaying customer (separate live run).",
-        "<b>Money reaches Airwallex only when final</b>, booked once (a sandbox deposit that names the testnet transaction).",
-        `<b>The Dispute desk</b>: a customer's agent disputed ${f.metal.dispute_orders} orders; each was checked against the chain with the signed order Northwind keeps; ${f.metal.dispute_refunded === 0 ? "none was" : `${f.metal.dispute_refunded} were`} refunded.`,
+        "<b>Earnings are booked at Airwallex only when final</b>, exactly once (a simulated sandbox deposit that names the testnet transaction).",
+        `<b>The Dispute desk</b> (after the run): the simulated customer disputed ${f.metal.dispute_orders} orders; each was checked against the chain with the signed order Northwind keeps; the claim refunded ${f.metal.dispute_refunded === 0 ? "nothing" : f.metal.dispute_refunded} ${f.metal.refunded_before.length ? ` (orders ${f.metal.refunded_before.join(", ")} had been refunded earlier for wrong data)` : ""}.`,
       ]),
     },
     {
@@ -78,13 +78,13 @@ export function deckHtml(f: PackFacts): string {
       <p>Claude holds no key and approves nothing. In the recorded run: ${f.claude_calls} calls, $${f.claude_per_1000_eur_usd} per €1,000 the agents paid.</p>`,
     },
     {
-      kicker: `Proof · ${f.run}`,
+      kicker: "Proof",
       title: "Every payment has a proof",
-      body: `<div class="stats">${stat(String(f.alone), "payments inside the limits, no person needed")}${stat(String(f.stopped), "stopped by the card, the chain, the fraud checks or the CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}${stat(String(f.face_id), "decisions signed with Face ID")}</div>
+      body: `<p class="note">${esc(f.run)}</p><div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time (about half the simulated customer's)")}${stat(String(f.stopped), "stops by the card, the chain, the fraud checks or the CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}${stat(String(f.face_id), "decisions signed with Face ID")}</div>
         ${list([
-          `Red team, Claude as the attacker: ${rt.failed} of ${rt.attempts} attacks failed, ${rt.inconclusive} inconclusive; ${rt.before} stopped before anything moved, ${rt.after} found afterwards.`,
+          `Red team (scripted attacks plus ${rt.documents} documents by Claude as the attacker, against in-memory stand-ins): ${rt.failed} of ${rt.attempts} failed, ${rt.inconclusive} inconclusive; ${rt.before} stopped before succeeding, ${rt.after} found afterwards, not prevented.`,
           `Scenario Lab: ${f.lab.passed} of ${f.lab.total} stories as expected. Audit log: ${f.audit_rows} rows, hash-chained.`,
-          "All test money: the Airwallex sandbox and Metal testnet. The sandbox simulates merchants' charges, deposits and a transfer's last steps.",
+          "All test money: the Airwallex sandbox and Metal testnet. Simulated: merchants' charges, deposits, a transfer's last steps; the customer Summit and the warehouse API Stockline are run by us.",
         ])}`,
     },
     {
@@ -94,11 +94,11 @@ export function deckHtml(f: PackFacts): string {
         ${list([
           "<b>/</b> what each rail did, with its proof",
           "<b>/?recorded</b> the CFO dashboard at the end of the run",
-          "<b>/metal</b> every Metal feature with its testnet transaction",
+          "<b>/metal</b> every Metal feature with its proof",
           "<b>/live</b> the working day as an animation on the two rails",
           `<b>/lab</b> ${f.lab.total} stories, from a normal purchase to the emergency stop`,
         ])}
-        <p class="small">Built with Claude Code. Sources for every claim: docs/claims.md.</p>`,
+        <p class="small">Built with Claude Code. Sources: docs/claims.md.</p>`,
     },
   ];
   const font = asset("inter.woff2").toString("base64");
@@ -130,6 +130,7 @@ code { font-size: 18px; background: #eef0ff; padding: 1px 6px; border-radius: 4p
 .quote small { display: block; font-size: 16px; font-weight: 400; color: #4b5563; margin-top: 6px; }
 .logos { margin-top: auto; display: flex; gap: 36px; align-items: center; }
 .small { font-size: 16px; color: #4b5563; margin-top: auto; }
+.note { font-size: 17px; color: #4b5563; margin: -16px 0 18px; }
 .with { font-size: 20px; font-weight: 600; color: #4b5563; }
 </style></head><body>
 ${slides.map((s) => `<section><p class="kicker">${esc(s.kicker)}</p><h1>${esc(s.title)}</h1>${s.body}</section>`).join("\n")}

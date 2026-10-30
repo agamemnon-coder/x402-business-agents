@@ -12,7 +12,7 @@ interface Recorded {
 }
 interface RedTeam { attempts: number; blocked: number; caught_after?: number; inconclusive?: number; not_blocked?: number; results: { id: string }[] }
 interface Lab { results: { passed: boolean }[] }
-interface Metal { features: unknown[]; mandates: unknown[]; dispute: { packs: unknown[]; refunds: unknown[] } | null }
+interface Metal { features: unknown[]; mandates: unknown[]; dispute: { packs: { seq: number; refunded_cents: number }[]; refunds: unknown[] } | null }
 
 export interface PackFacts {
   run: string;
@@ -30,7 +30,8 @@ export interface PackFacts {
   claude_per_1000_eur_usd: string;
   redteam: { attempts: number; failed: number; before: number; after: number; inconclusive: number; documents: number };
   lab: { passed: number; total: number };
-  metal: { features: number; mandates: number; dispute_orders: number; dispute_refunded: number };
+  /** dispute_refunded: refunds this claim made; refunded_before: the disputed orders refunded in an earlier case. */
+  metal: { features: number; mandates: number; dispute_orders: number; dispute_refunded: number; refunded_before: number[] };
 }
 
 export function packFacts(): PackFacts {
@@ -54,6 +55,6 @@ export function packFacts(): PackFacts {
     claude_per_1000_eur_usd: (rec.snapshot.claude.per_1000_eur_usd_micros / 1e6).toFixed(3),
     redteam: { attempts: rt.attempts, failed: rt.blocked, before: rt.blocked - after, after, inconclusive: rt.inconclusive ?? 0, documents: rt.results.filter((r) => r.id === "document").length },
     lab: { passed: lab.results.filter((r) => r.passed).length, total: lab.results.length },
-    metal: { features: metal.features.length, mandates: metal.mandates.length, dispute_orders: metal.dispute?.packs.length ?? 0, dispute_refunded: metal.dispute?.refunds.length ?? 0 },
+    metal: { features: metal.features.length, mandates: metal.mandates.length, dispute_orders: metal.dispute?.packs.length ?? 0, dispute_refunded: metal.dispute?.refunds.length ?? 0, refunded_before: (metal.dispute?.packs ?? []).filter((x) => x.refunded_cents > 0).map((x) => x.seq) },
   };
 }

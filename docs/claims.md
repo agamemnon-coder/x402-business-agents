@@ -5,8 +5,8 @@ where it comes from. Checked on 30 October 2026 by two separate read-only audits
 - 191 claims on the pages;
 - 200 claims in the written materials.
 
-What could not be proven was removed or softened (the "Changed" column, and the list at the end). There is no slide
-deck in the repo.
+What could not be proven was removed or softened (the "Changed" column, and the list at the end). The submission
+pack's own sentences, including the deck's, are in "The submission pack" below.
 
 Sources:
 - **Recording:** the recorded run (Friday run 1, 30 October, 07:05 to 07:38 UTC; the Dispute desk case ran afterwards, 08:32, on a copy of its ledger with later code): `docs/demo/story.json`, `docs/demo/snapshot.json` and `docs/demo/metal.json`, recorded by `npm run demo:record`.
@@ -53,7 +53,7 @@ displays was not checked.
 | Red team | 39 of 39 failed, 0 inconclusive: 37 stopped before anything moved, 2 found afterwards (a hidden card charge by the reconciliation, a rewritten log row by `npm run verify`); 35 scripted attacks and 4 documents written by Claude Opus as the attacker, in a throwaway test world | `docs/redteam/report.json` (30 Oct; `caught` per attempt) | The harness now gives every attempt an outcome, and inconclusive never counts as blocked. The task card is tested at a hotel while still fresh (`MERCHANT_CATEGORY_NOT_ALLOWED`). The revoked agent is named correctly. The film's "thirty-four" is now thirty-nine. |
 | Duplicate invoices | A paid invoice sent again as "btx-dup" or with an en dash is refused | `test/invoice-duplicate-key.test.ts`; red team document 4 | Found by the red team and fixed. |
 | Scenario Lab | 18 of 18 as expected | `docs/lab/results.json` | hardening.md said 12. |
-| Tests | 807 in 102 files | `npx vitest run` | |
+| Tests | 812 in 103 files | `npx vitest run` | |
 | Speed limit (Operations agent) | 30 payments a minute, 4.00 test USD an hour | `src/config/policy.ts` `VELOCITY` | Kept on purpose, above the busiest minute of the recorded run (18). |
 | Hidden card payment | Found by the reconciliation within the hour, not prevented | `src/ops/health.ts` `RECONCILE_EVERY_MS`; red team `hidden-payment` | Was daily. The runner now reconciles every hour, and an alarm fires after three missed rounds. |
 | Four eyes | Optional, off in the recorded run | `src/policy/fourEyes.ts` | Was "Above your threshold, two different people approve". |
@@ -76,6 +76,30 @@ displays was not checked.
 |---|---|---|
 | $3,046,598,558 in business email compromise losses | FBI IC3, 2025 Internet Crime Report (April 2026) | Now "reported by victims to the FBI". |
 | Pace | `docs/video/script.md` computes words per minute from the words; the hybrid script is about 440 words in 3:55 | Was "about 115" and "about 120". |
+
+## The submission pack (`docs/submission/`)
+
+The form text and the deck take every figure from `src/submission/facts.ts` (the recorded files above);
+`test/submission.test.ts` checks the form text against it. A fresh reviewer read the pack against this page and the
+code on 30 October; the sentences below were changed on its findings.
+
+| Claim | Proof | Changed |
+|---|---|---|
+| Claude reads invoices and explains what code flags | `src/policy/fraud.ts`, `src/policy/injection.ts` (code decides; Opus may explain) | Was "Claude flags fraud and planted instructions". |
+| The card's limits come from the CFO policy; merchant categories, currency and end date are fixed per agent | `src/policy/rules.ts`; `PLANS`, `CARD_ACTIVE_DAYS` in `src/config/policy.ts` | Was "the CFO policy sets its limits, merchant categories, currency and end date". |
+| Card and mandate "within limits the CFO sets" | The card limits from the policy; mandate terms change only by a Face ID proposal (P-0002); the policy is an optional stricter cap inside the mandate (`docs/cfo-policy.md`) | Was "both set by one CFO policy". |
+| Single-use task cards, separate live run | `docs/runs/2026-10-30-single-use.md` | Now labelled. |
+| Card-transaction webhooks live since 29 October, none in the recorded run | `docs/runs/2026-10-29-cards.md`; snapshot `airwallex_events.total` 0 | Now says so. |
+| Only the EUR shortfall after the reserve and the demo plan's set-aside is bought | snapshot `treasury` | Was "only the missing euros". |
+| Metal's facilitator refused the price rise against the on-chain mandate | snapshot `rails` | Was "the chain refused". |
+| Earnings booked at Airwallex only when final, as a simulated sandbox deposit | snapshot `rails` ("no test USD reached Airwallex") | Was "money reaches the bank". |
+| Dispute: Summit is simulated, we filed the claim, nothing refunded, orders 7, 10 and 13 refunded earlier, ran after the run | metal.json `dispute.packs[].refunded_cents`; `docs/runs/2026-10-30-dispute-desk.md` | Was "a customer's agent … none was refunded". |
+| 106 with no approval at the time, about half the simulated customer's | snapshot `counts.alone` (see the first table) | Was "with no person needed". |
+| 8 stops: 6 payments and 2 planted instructions | snapshot `counts.blocked` (see the first table) | Was "8 payments stopped". |
+| Red team: 35 scripted attacks plus 4 Claude-written documents, against in-memory stand-ins; 37 stopped before succeeding (the burst after 30 allowed payments), 2 found afterwards | `docs/redteam/report.json`; `src/redteam/world.ts` | Was "Claude as the attacker … stopped before anything moved". |
+| Summit and Stockline are run by us | metal.json payee names | Added to "what is simulated". |
+| Offline `/try` reads requests with code only | `src/cli/judge.ts` | Was "needs the live link". |
+| Deck: "Metal holds the limit, not only Purser" | The mandate is checked by Metal's facilitator on every payment (`docs/metal-award.md`) | Was "the limit holds even if Purser is wrong". |
 
 ## Removed or softened after the audits (summary)
 
