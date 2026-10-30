@@ -1,0 +1,287 @@
+1
+00:00:00,300 --> 00:00:04,240
+AI agents are starting to spend company money.
+
+2
+00:00:04,290 --> 00:00:09,185
+They buy software, pay suppliers, settle customer claims.
+
+3
+00:00:09,235 --> 00:00:12,655
+So every CFO will ask the same question:
+
+4
+00:00:12,705 --> 00:00:14,650
+who is holding the pen?
+
+5
+00:00:15,300 --> 00:00:19,174
+Today a company has two bad options.
+
+6
+00:00:19,224 --> 00:00:24,405
+Hand an agent a card number and hope it behaves:
+
+7
+00:00:24,455 --> 00:00:27,675
+no auditor will sign that off.
+
+8
+00:00:27,725 --> 00:00:34,650
+Or approve every cent yourself, and the agent saves you nothing.
+
+9
+00:00:35,300 --> 00:00:37,606
+Purser is the third option.
+
+10
+00:00:37,656 --> 00:00:42,668
+Every agent gets its own company card and its own on-chain
+
+11
+00:00:42,718 --> 00:00:46,072
+mandate, with limits the CFO sets once.
+
+12
+00:00:46,122 --> 00:00:49,650
+Anything new waits for the CFO's Face ID.
+
+13
+00:00:50,300 --> 00:00:55,207
+Meet Northwind Outdoor, a retailer that runs three agents.
+
+14
+00:00:55,257 --> 00:01:01,275
+Its operations agent buys warehouse software on its own Airwallex card:
+
+15
+00:01:01,325 --> 00:01:02,044
+approved.
+
+16
+00:01:02,094 --> 00:01:06,745
+Then it wants the Pro plan, forty-five euros, on a card
+
+17
+00:01:06,795 --> 00:01:08,369
+that allows thirty.
+
+18
+00:01:08,419 --> 00:01:10,249
+Airwallex declines it:
+
+19
+00:01:10,299 --> 00:01:13,839
+the bank enforces the limit, not a prompt.
+
+20
+00:01:13,889 --> 00:01:15,890
+The agent asks for more.
+
+21
+00:01:15,940 --> 00:01:20,505
+The CFO sees the exact terms on the phone and approves
+
+22
+00:01:20,555 --> 00:01:21,616
+with Face ID.
+
+23
+00:01:21,666 --> 00:01:26,659
+The new limit syncs to the card, the purchase goes through,
+
+24
+00:01:26,709 --> 00:01:29,650
+and every step is in the audit log.
+
+25
+00:01:30,300 --> 00:01:31,567
+Now a real bill:
+
+26
+00:01:31,617 --> 00:01:36,093
+eighteen hundred and fifty euros from the manufacturer.
+
+27
+00:01:36,143 --> 00:01:41,360
+The finance agent reads the invoice, checks the balances and the
+
+28
+00:01:41,410 --> 00:01:44,570
+reserve floors, and takes a live quote.
+
+29
+00:01:44,620 --> 00:01:49,672
+It converts only the euros that are missing, three hundred and
+
+30
+00:01:49,722 --> 00:01:52,964
+seventy, and prepares the SWIFT payment.
+
+31
+00:01:53,014 --> 00:01:57,572
+The CFO approves the exact amount, the rate and the most
+
+32
+00:01:57,622 --> 00:01:58,807
+the fee may be.
+
+33
+00:01:58,857 --> 00:02:00,288
+Airwallex pays it:
+
+34
+00:02:00,338 --> 00:02:04,650
+status PAID, with the approval's hash in the payment.
+
+35
+00:02:05,300 --> 00:02:09,694
+Agents also pay per request on Metal, a few cents at
+
+36
+00:02:09,744 --> 00:02:13,284
+a time, under mandates that live on chain.
+
+37
+00:02:13,334 --> 00:02:19,096
+When the supplier doubles its price, the agent's own account refuses
+
+38
+00:02:19,146 --> 00:02:20,121
+the payment:
+
+39
+00:02:20,171 --> 00:02:24,053
+nothing moves, and the customer isn't charged.
+
+40
+00:02:24,103 --> 00:02:29,437
+Purser prices two options, Opus reviews them, and the CFO picks
+
+41
+00:02:29,487 --> 00:02:29,779
+one.
+
+42
+00:02:29,829 --> 00:02:31,745
+Then a customer claims:
+
+43
+00:02:31,795 --> 00:02:34,223
+our agent never ordered this.
+
+44
+00:02:34,273 --> 00:02:38,497
+Northwind's Dispute desk checks what it can prove:
+
+45
+00:02:38,547 --> 00:02:44,650
+every order the customer's agent signed, every payment verified on chain
+
+46
+00:02:44,700 --> 00:02:47,214
+inside the customer's mandate.
+
+47
+00:02:47,264 --> 00:02:49,009
+Twelve out of twelve.
+
+48
+00:02:49,059 --> 00:02:54,650
+Not refunded, with a report the customer can check for themselves.
+
+49
+00:02:55,300 --> 00:02:59,423
+Sometimes the CFO just needs something done:
+
+50
+00:02:59,473 --> 00:03:04,355
+book a flight to Berlin, at most a hundred and fifty
+
+51
+00:03:04,405 --> 00:03:04,924
+euros.
+
+52
+00:03:04,974 --> 00:03:11,562
+Purser checks it against the policy, and Airwallex issues a single-use
+
+53
+00:03:11,612 --> 00:03:12,036
+card:
+
+54
+00:03:12,086 --> 00:03:17,442
+airlines only, a hundred and fifty euros, until that day.
+
+55
+00:03:17,492 --> 00:03:19,813
+The booking goes through.
+
+56
+00:03:19,863 --> 00:03:22,469
+A second charge is declined:
+
+57
+00:03:22,519 --> 00:03:24,650
+the card closed itself.
+
+58
+00:03:25,300 --> 00:03:26,559
+Why trust it?
+
+59
+00:03:26,609 --> 00:03:31,190
+Code decides; the models only read and advise.
+
+60
+00:03:31,240 --> 00:03:37,835
+Our red team ran thirty-four attacks, from fake invoices to prompt
+
+61
+00:03:37,885 --> 00:03:40,855
+injection to forged approvals:
+
+62
+00:03:40,905 --> 00:03:43,775
+all thirty-four were blocked.
+
+63
+00:03:43,825 --> 00:03:48,104
+Above a threshold, two people must approve.
+
+64
+00:03:48,154 --> 00:03:52,836
+One Face ID freezes every agent and every card.
+
+65
+00:03:52,886 --> 00:03:57,770
+Eighteen end-to-end scenarios replay as expected.
+
+66
+00:03:57,820 --> 00:04:03,206
+The AI costs about nine cents per thousand euros paid.
+
+67
+00:04:03,256 --> 00:04:09,650
+And every payment lands in the books, double-entry and balanced.
+
+68
+00:04:10,300 --> 00:04:14,874
+Every company will soon run agents that spend.
+
+69
+00:04:14,924 --> 00:04:21,106
+Purser lets them move at machine speed, while the finance team
+
+70
+00:04:21,156 --> 00:04:22,513
+keeps the pen.
+
+71
+00:04:22,563 --> 00:04:27,338
+Built on Airwallex and Metal, powered by Claude.
+
+72
+00:04:27,388 --> 00:04:29,650
+Every euro has a proof.

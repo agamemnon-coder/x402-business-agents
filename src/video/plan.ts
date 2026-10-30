@@ -156,7 +156,7 @@ export function scriptMarkdown(): string {
   const lines = [
     "# Purser: the video script (4:30)", "",
     "Read it over the silent master (`master.mp4`). Each beat starts at the time shown; the subtitles (`subtitles.srt`) carry the same words.",
-    "About 150 words a minute leaves room to breathe.", "",
+    "The words run at about 115 a minute: speak calmly, and take a breath at each heading. Record each beat on its own if that is easier; the clips have the same names.", "",
   ];
   for (const b of BEATS) {
     const m = Math.floor(t / 60), s = Math.round(t % 60);
