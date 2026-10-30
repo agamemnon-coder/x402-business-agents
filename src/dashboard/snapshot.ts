@@ -22,6 +22,7 @@ import { CLAIM_WORDS, type DisputeClaim } from "../seller/disputeDesk.js";
 import { eurInFlightCents, mandateAvailability } from "../policy/available.js";
 import { heldCents } from "../policy/holds.js";
 import { health, type Health } from "../ops/health.js";
+import { railsView, type RailsView } from "./rails.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -205,6 +206,8 @@ export interface Snapshot {
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
   /** Monitoring (B7): the alarms standing now and the numbers behind them; the relay's /health reads this. */
   health: Health;
+  /** What Airwallex and Metal did, each with its proof (an Airwallex id or a Metal transaction). */
+  rails: RailsView;
 }
 
 type AuditRow = { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string; row_hash: string };
@@ -932,5 +935,6 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     books: oldLedgerSafe(() => booksView(db)),
     disputes: disputeViews(db),
     health: health(db, now),
+    rails: railsView(db),
   };
 }

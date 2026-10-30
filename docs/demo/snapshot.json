@@ -2009,6 +2009,122 @@
         "audit_rows": 194,
         "alerts": 0
       }
+    },
+    "rails": {
+      "airwallex": [
+        {
+          "what": "A company card per agent (Issuing)",
+          "detail": "3 virtual Visa cards; each card's limits, merchant categories and currency sit on the card at Airwallex",
+          "proof": {
+            "label": "•••• 8120 · •••• 6882 · •••• 7786",
+            "href": null
+          }
+        },
+        {
+          "what": "Approved by Airwallex",
+          "detail": "2 charges, €64.99 in all, inside the card's limits",
+          "proof": {
+            "label": "Airwallex id 01a18bb9-4…b03b",
+            "href": null
+          },
+          "simulated": true
+        },
+        {
+          "what": "Declined by Airwallex",
+          "detail": "2 charges the card refused itself (LIMIT_EXCEEDED, MERCHANT_CATEGORY_NOT_ALLOWED); the agent could not spend past it",
+          "proof": {
+            "label": "Airwallex id 01a18bb9-5…3132",
+            "href": null
+          },
+          "simulated": true
+        },
+        {
+          "what": "FX conversion on a locked quote",
+          "detail": "USD 418.40 → EUR 370.00, only the shortfall, SETTLED",
+          "proof": {
+            "label": "Airwallex id 08736b6e-0…f3c7",
+            "href": null
+          }
+        },
+        {
+          "what": "SWIFT payout of an invoice",
+          "detail": "EUR 1850.00 to the allowlisted supplier, PAID, fee EUR 13.41; the approval hash is in the transfer's metadata",
+          "proof": {
+            "label": "Airwallex id 4d508b0b-e…feb4",
+            "href": null
+          },
+          "simulated": true
+        },
+        {
+          "what": "Earnings credited from Metal",
+          "detail": "USD 1.35 booked once, referenced by the sweep's transaction (1 test USD = 1 USD)",
+          "proof": {
+            "label": "Airwallex id 56366c9d-e…c838",
+            "href": null
+          },
+          "simulated": true
+        }
+      ],
+      "metal": [
+        {
+          "what": "A mandate per agent, on chain",
+          "detail": "Operations agent: 0.04 a payment, 12.00 in total, one payee; Sales agent: 0.10 a payment, 4.00 in total, one payee; Finance agent: 4.00 a payment, 4.00 in total, one payee",
+          "proof": {
+            "label": "0x25952ab9…60aa",
+            "href": "https://testnet.metalntwx.com/tx/0x25952ab99bf9ba1abd31050883bcb5aa8c2b6337d0e9b70f88656461f19260aa"
+          }
+        },
+        {
+          "what": "Paid per request (x402), with a signed order",
+          "detail": "50 stock checks sold, each paid under the customer's mandate and settled by Metal's facilitator",
+          "proof": {
+            "label": "0xa59a1461…b19e",
+            "href": "https://testnet.metalntwx.com/tx/0xa59a14619b0cacfa707dca5c3257088b229f1e87f4417c24b65df4094536b19e"
+          }
+        },
+        {
+          "what": "The agent buys from its supplier",
+          "detail": "50 purchases, each under the Operations agent's mandate",
+          "proof": {
+            "label": "0xa465e23b…ea2a",
+            "href": "https://testnet.metalntwx.com/tx/0xa465e23be513b2f0b9586c87d7b60a6896fdb6eb97df89278ab3b1615137ea2a"
+          }
+        },
+        {
+          "what": "Refused by the chain",
+          "detail": "1 payment over the mandate's cap (mandate_cap_exceeded): nothing moved, the agent asked the CFO",
+          "proof": null
+        },
+        {
+          "what": "Mandate replaced after Face ID",
+          "detail": "2 replacements approved by the CFO's passkey; the old mandate is revoked on chain",
+          "proof": {
+            "label": "0x2909b164…8aed",
+            "href": "https://testnet.metalntwx.com/tx/0x2909b164c50779c342783309943901472cf1c966402c550d0d28f5ab86a08aed"
+          }
+        },
+        {
+          "what": "Refunds as mandate pulls",
+          "detail": "3 refunds, 0.15 test USD, back to the paying account only, each under its own payment id",
+          "proof": {
+            "label": "0xcf11b76d…bed1",
+            "href": "https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1"
+          }
+        },
+        {
+          "what": "Sweep, after finality",
+          "detail": "earnings moved once their block (9401051) was finalized (9401068); booked at Airwallex exactly once",
+          "proof": {
+            "label": "0x808f9133…a94f",
+            "href": "https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f"
+          }
+        },
+        {
+          "what": "Dispute desk, decided from the chain",
+          "detail": "1 case (12 orders): each payment checked against the customer's mandate and its signed order; refund 0.00 test USD",
+          "proof": null
+        }
+      ]
     }
   },
   "proof": {

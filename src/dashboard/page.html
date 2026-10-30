@@ -331,6 +331,25 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 @keyframes show { 0% { opacity: .32; } 4%, 88% { opacity: 1; } 96%, 100% { opacity: .32; } }
 .still .flow li, .still .stage .bar i { animation: none; opacity: 1; transform: none; } .still .stage .bar i { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .flow li, .stage .bar i, .feed li.fresh { animation: none; opacity: 1; transform: none; } .stage .bar i { width: 100%; } }
+.rails h2 { font-size: 32px; letter-spacing: -.02em; margin: 0 0 10px; }
+.rails .lead { max-width: 760px; }
+.rails-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }
+.rail { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px 22px 8px; }
+.rail header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.rail .logo { display: inline-flex; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; }
+.rail .logo img { height: 20px; width: auto; display: block; }
+.rail .what { color: var(--muted); font-size: 14px; font-weight: 600; }
+.rail ul { list-style: none; margin: 0; padding: 0; }
+.rail li { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.rail li:last-child { border-bottom: 0; }
+.rail li b { display: block; font-size: 15px; }
+.rail li span.d { display: block; color: var(--muted); font-size: 14px; margin-top: 3px; line-height: 1.5; }
+.rail li .pf { display: inline-flex; align-items: center; gap: 6px; margin-top: 7px; font: 500 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); text-decoration: none; background: var(--sunken); border-radius: 999px; padding: 3px 10px; }
+.rail li .pf.id { color: var(--muted); }
+.rail li .sim { margin-left: 8px; font-size: 12px; color: var(--faint); }
+.rails-grid.dash { margin: 0 0 28px; }
+.railnote { color: var(--faint); font-size: 12.5px; margin-top: 14px; max-width: 900px; }
+@media (max-width: 760px) { .rails-grid { grid-template-columns: 1fr; } .rails h2 { font-size: 26px; } }
 .proof { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
 .proof .section { padding: 36px 32px; }
 .proof .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
@@ -438,13 +457,13 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <section class="section hero">
     <div>
       <span class="eyebrow"><span data-icon="shield-check"></span>For CFOs of companies that run AI agents</span>
-      <h1>Give every AI agent its own company card, with limits the CFO sets.</h1>
-      <p class="lead">Your agents buy software, data and services on their own cards. You set the limits once; the bank enforces them. Anything more waits for your Face ID.</p>
+      <h1>Your AI agents spend through Airwallex and Metal. The CFO stays in control.</h1>
+      <p class="lead">Each agent gets its own Airwallex company card and its own Metal mandate. You set the limits once; Airwallex and the chain enforce them. Anything more waits for your Face ID.</p>
       <div class="ctas"><a class="btn primary" href="try"><span data-icon="sparkles"></span>Try it yourself</a><a class="btn" href="demo"><span data-icon="play"></span>Watch the demo</a><a class="btn" href="month"><span data-icon="calendar-range"></span>A month in 90 seconds</a></div>
       <div class="built">Built on <span class="logos"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"><span class="sep"></span><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span></div>
     </div>
     <div class="stage" aria-label="A card purchase from the recorded run">
-      <div class="cc"><div class="row1"><span>Operations agent</span><span>Virtual</span></div><div class="who">Warehouse software</div><div class="buys">Airwallex Issuing</div><div class="row2"><span class="pan">•••• 1902</span><span class="brandmark">VISA</span></div></div>
+      <div class="cc"><div class="row1"><span>Operations agent</span><span>Virtual</span></div><div class="who">Warehouse software</div><div class="buys">Airwallex Issuing</div><div class="row2"><span class="pan" id="hero-pan">•••• 8120</span><span class="brandmark">VISA</span></div></div>
       <div class="limitrow num"><span>Limit per purchase</span><b>€30 → €50</b></div>
       <div class="bar" aria-hidden="true"><i></i></div>
       <ol class="flow">
@@ -467,6 +486,16 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       </div>
       <div class="src"><span data-icon="database"></span><span id="p-src">From a recorded live run on Metal testnet and the Airwallex sandbox (test money).</span><a href="?recorded">Open the recorded CFO dashboard →</a></div>
     </div>
+  </section>
+  <!-- The two rails: what Airwallex and Metal did in the recorded run, each with its proof. -->
+  <section class="section rails" aria-labelledby="h-rails" id="rails-sec" hidden>
+    <h2 id="h-rails">Where the money moves, and where the limits hold</h2>
+    <p class="lead">Purser is the control layer. The money moves on Airwallex and Metal, and they enforce the limits: a card declines at Airwallex, a payment is refused by the chain. Everything below happened in the recorded run.</p>
+    <div class="rails-grid">
+      <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="rail-awx"></ul></article>
+      <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="rail-mtl"></ul></article>
+    </div>
+    <p class="railnote">Airwallex ids are from the Airwallex sandbox (its web app shows them); Metal transactions open on the testnet explorer. Simulated by the sandbox: a merchant's card charge, a transfer's last steps (sent, paid), and the deposit that stands in for Metal earnings.</p>
   </section>
   <section class="section metal" id="metal">
     <div class="mandate" aria-label="A mandate refusing a payment on chain, from the recorded run">
@@ -497,7 +526,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     </div>
     <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> Airwallex, the regulated provider, does KYC, card issuing and sanctions screening; Metal enforces the limits on chain; Purser holds no money, logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
   </section>
-  <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
+  <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="try">Try it</a><a href="film">Film</a><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
 </div>
 
 <!-- The CFO's dashboard: live (local, or on the relay with the viewer key) or the recorded run. -->
@@ -525,6 +554,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <section class="grid4 swipe" id="budgets" aria-label="On-chain budgets"></section>
   <div class="sect"><h2>Per agent</h2><span class="hint">What each agent may spend, and has spent, on both rails</span></div>
   <div class="tablewrap"><table class="agents" id="agents-table" aria-label="Per agent"></table></div>
+  <div id="dash-rails" hidden><div class="sect"><h2>On each rail</h2><span class="hint">What Airwallex and Metal did, each with its proof</span></div>
+  <div class="rails-grid dash">
+    <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="drail-awx"></ul></article>
+    <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="drail-mtl"></ul></article>
+  </div></div>
   <div class="cols">
     <section class="panel" aria-labelledby="h-pending"><div class="sect flush"><h2 id="h-pending">Waiting for you</h2><span class="pill" id="pending-count">0</span></div><div id="pending"></div></section>
     <section class="panel" aria-labelledby="h-feed"><div class="sect flush"><h2 id="h-feed">Activity</h2><span class="hint">newest first</span></div><ul class="feed" id="feed"></ul><details class="tech feed-sys" id="feed-sys-wrap" hidden><summary id="feed-sys-sum">System events</summary><ul class="feed" id="feed-sys"></ul></details></section>
@@ -807,7 +841,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       nodes.push(el("div", "money num", [
         // The company's own euros: the reserve it always keeps, plus what is free for new bills.
         el("div", "m", [txt("div", "k", "Euros on hand"), txt("div", "v", eur(fromC(cents(a.eur.floor) + Math.max(0, cents(a.eur.free))))), txt("div", "k sub", eur(a.eur.floor) + " reserve kept")]),
-        el("div", "m", [txt("div", "k", "Free for new bills"), txt("div", "v" + (String(a.eur.free).charAt(0) === "-" ? " neg" : ""), eur(a.eur.free)), txt("div", "k sub", "above the reserve, after bills already planned")]),
+        (String(a.eur.free).charAt(0) === "-"
+          // Below the reserve is not a negative balance: the euros are there, but bills already planned have claimed
+          // them. Shown as the shortfall, in words, never as a bare minus.
+          ? el("div", "m", [txt("div", "k", "Below the reserve"), txt("div", "v neg", eur(String(a.eur.free).slice(1))), txt("div", "k sub", "after bills already planned; a new bill restores the reserve first, so it goes to you")])
+          : el("div", "m", [txt("div", "k", "Free for new bills"), txt("div", "v", eur(a.eur.free)), txt("div", "k sub", "above the reserve, after bills already planned")])),
       ]));
       nodes.push(el("div", "rows num", [el("div", "", ["US dollars we may convert", txt("b", "", usd(a.usd.headroom))])]));
       nodes.push(el("details", "tech", [txt("summary", "", "Sandbox totals"), el("div", "rows num", [
@@ -1009,7 +1047,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         txt("span", "hint", b.balanced ? "Debits equal credits in every currency." : "Debits and credits differ: check the journal.")]),
       panel("Trial balance", "balance per account and currency, on its debit or credit side", table("wide", [["Account", 0], ["Currency", 0], ["Debit", 1], ["Credit", 1]],
         b.trial.map(function (t) { var dr = t.balance_debit != null ? t.balance_debit : (t.balance.charAt(0) === "-" ? "" : t.balance), cr = t.balance_credit != null ? t.balance_credit : (t.balance.charAt(0) === "-" ? t.balance.slice(1) : ""); return [t.account + " " + words(t.name), cur(t.currency), amt(dr === "0.00" ? "" : dr, t.currency), amt(cr, t.currency)]; }))),
-      panel("Bank accounts", "before the run (opening), money in and out, and now", table("wide", [["Account", 0], ["Currency", 0], ["Opening", 1], ["In", 1], ["Out", 1], ["Now", 1]],
+      panel("Bank accounts", "before the run (opening), money in and out, and now" + (d.treasury && d.treasury.airwallex ? " · Airwallex's sandbox holds far more test money than a company would; the Overview's Treasury plans with a " + eur(d.treasury.airwallex.eur.floor) + " reserve and treats the rest as already committed" : ""), table("wide", [["Account", 0], ["Currency", 0], ["Opening", 1], ["In", 1], ["Out", 1], ["Now", 1]],
         b.cash.map(function (c) { return [c.account + " " + words(c.name), cur(c.currency), c.opening != null ? amt(c.opening, c.currency) : "", c.in != null ? amt(c.in, c.currency) : "", c.out != null ? amt(c.out, c.currency) : amt(c.moved, c.currency), c.closing != null ? amt(c.closing, c.currency) : ""]; }))),
       panel("Spend per cost centre", "per currency: euros on the cards and Airwallex, test USD on Metal", table("wide", [["Cost centre", 0], ["Currency", 0], ["Spent", 1]],
         b.spend.map(function (x) { return [x.cost_centre + " " + x.name, cur(x.currency), amt(x.amount, x.currency)]; }))),
@@ -1058,6 +1096,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     renderAgents(d); renderBooks(d); renderDisputes(d);
     renderKpis(d); renderClaude(d); renderAsk(d); renderCards(d); renderAgentsTable(d);
     renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
+    var dr = d.rails, drw = document.getElementById("dash-rails");
+    if (dr && (dr.airwallex.length || dr.metal.length)) { railList("drail-awx", dr.airwallex); railList("drail-mtl", dr.metal); drw.hidden = false; } else drw.hidden = true;
     var fz = document.getElementById("frozen");
     if (d.frozen) {
       fz.hidden = false;
@@ -1110,9 +1150,19 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     live(fresh ? "on" : "", fresh ? "Live" : lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS ? "Stale · runner offline" : "Stale");
     Array.prototype.forEach.call(document.querySelectorAll("[data-expires]"), function (n) { n.textContent = countdown(n.getAttribute("data-expires")); });
   }
+  // One rail's items: what it did, the numbers, and the proof (a link to the explorer, or an Airwallex id).
+  function railList(id, items) {
+    var ul = document.getElementById(id); if (!ul) return;
+    ul.textContent = "";
+    items.forEach(function (i) {
+      var pf = i.proof ? (i.proof.href ? el("a", "pf", [i.proof.label + " ↗"]) : el("span", "pf id", [i.proof.label])) : null;
+      if (pf && i.proof.href) { pf.href = i.proof.href; pf.target = "_blank"; pf.rel = "noopener"; }
+      ul.appendChild(el("li", "", [txt("b", "", i.what), txt("span", "d", i.detail), pf, i.simulated ? txt("span", "sim", "sandbox simulates the other side") : null]));
+    });
+  }
   function showDash() { document.getElementById("dash").hidden = false; }
   function showLanding(note) {
-    nav([["Overview", "./", true], ["Purser live", "live"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
+    nav([["Overview", "./", true], ["Try it", "try"], ["Film", "film"], ["Purser live", "live"], ["Demo", "demo"], ["Recorded dashboard", "?recorded"]]);
     var p = RECORDED && RECORDED.proof;
     if (p) {
       countUp("p-alone", p.alone); countUp("p-blocked", p.blocked);
@@ -1122,6 +1172,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       document.getElementById("p-src").textContent = "From the recorded live run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "), on Metal testnet and the Airwallex sandbox (test money). Every number comes from its audit log.";
     }
     if (note) document.getElementById("p-src").textContent += " " + note;
+    // The hero card shows the recorded operations agent's own card number.
+    var opCard = RECORDED && RECORDED.snapshot && (RECORDED.snapshot.cards || []).filter(function (c) { return c.agent === "sourcing"; })[0];
+    if (opCard) document.getElementById("hero-pan").textContent = "•••• " + opCard.last4;
+    var rv = RECORDED && RECORDED.snapshot && RECORDED.snapshot.rails;
+    if (rv && (rv.airwallex.length || rv.metal.length)) { railList("rail-awx", rv.airwallex); railList("rail-mtl", rv.metal); document.getElementById("rails-sec").hidden = false; }
     document.getElementById("landing").hidden = false;
     document.getElementById("signin-link").hidden = false;
   }
@@ -1154,10 +1209,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
   if (wantSignin && !viewKey && MODE !== "local") {
-    nav([["Overview", "./"], ["Purser live", "live"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
+    nav([["Overview", "./"], ["Try it", "try"], ["Film", "film"], ["Purser live", "live"], ["Demo", "demo"], ["Recorded dashboard", "?recorded"]]);
     document.getElementById("signin").hidden = false;
   } else if (wantRecorded && RECORDED) {
-    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
+    nav([["Overview", "./"], ["Try it", "try"], ["Demo", "demo"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
     document.getElementById("rec-text").textContent = "Recorded run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";

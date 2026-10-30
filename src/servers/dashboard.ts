@@ -104,7 +104,12 @@ export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
 }
 
 /** Try Purser (src/try/): the page; its requests go to POST /api/try. */
-export const TRY_PAGE = readFileSync(new URL("../try/try.html", import.meta.url), "utf8");
+// It carries the recorded run's rails and AI tricks, so each answer can show the same flow as it ran live.
+export const TRY_PAGE = (() => {
+  const rec = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as { snapshot?: { rails?: unknown }; proof?: { ai_tricks?: number } };
+  const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null };
+  return readFileSync(new URL("../try/try.html", import.meta.url), "utf8").replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
+})();
 export const TRY_CSP = cspFor(TRY_PAGE);
 
 /** The public demo page (K5 replay) plays a recorded run; no request, no key, nothing live. */

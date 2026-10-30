@@ -28,7 +28,7 @@ describe("Try Purser's models", () => {
   it("takes only known kinds and plain fields from Sonnet, whatever it returns", async () => {
     expect((await claudeModels("k", api({ kind: "steal" }).f).classify("x")).value).toBe("unclear");
     const r = await claudeModels("k", api({ item: "flight", merchant: 7, amount: "250", currency: "GBP", date: null, payee: null }).f).read("x", "flight");
-    expect(r.value).toEqual({ item: "flight", merchant: null, amount: "250", currency: null, date: null, payee: null });
+    expect(r.value).toEqual({ item: "flight", merchant: null, amount: "250", currency: null, date: null, payee: null, quantity: null, per_unit: null });
   });
 
   it("asks Sonnet with a schema the API accepts: nullable fields as anyOf, never an enum with null in it", async () => {

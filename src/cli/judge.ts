@@ -36,7 +36,7 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
     const text = typeof (req.body as { text?: unknown })?.text === "string" ? (req.body as { text: string }).text.trim() : "";
     if (!text) return void res.status(400).json({ error: "type what an agent should do" });
     if (text.length > TRY_MAX_CHARS) return void res.status(413).json({ error: `at most ${TRY_MAX_CHARS} characters` });
-    res.json(await tryPurserSafely(text, null, new Date(), "npm run judge asks no model; the hosted page does"));
+    res.json(await tryPurserSafely(text, null, new Date(), "this offline copy asks no model; the hosted page does"));
   });
   const lab = labPage();
   app.get("/lab", page(LAB_CSP, () => lab));
