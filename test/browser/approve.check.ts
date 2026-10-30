@@ -15,7 +15,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { openDb } from "../../src/db/open.js";
-import { TERMS_SCHEMA, type Terms } from "../../src/lib/terms.js";
+import { type Terms } from "../../src/lib/terms.js";
 import { activePasskey, confirmPasskey, openEnrolment, pendingPasskeys } from "../../src/passkey/ledger.js";
 import { reverifyPasskeyApprovals } from "../../src/passkey/webauthn.js";
 import { createProposal, nextProposalId } from "../../src/policy/approvals.js";

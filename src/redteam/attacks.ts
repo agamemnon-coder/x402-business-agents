@@ -239,7 +239,7 @@ export const ATTACKS: Attack[] = [
     id: "dispute-injection",
     title: "Get every order refunded, to the attacker's address, from a dispute email",
     category: "documents",
-    run: async (w) => {
+    run: async () => {
       const email = fixture("summit-dispute-email.txt");
       const claims = parseDisputeFallback(email);
       const sales: SaleRow[] = claims.sale_refs.map((seq) => ({ sale_id: 100 + seq, seq, price_cents: 5, payer: "0xc", tx_hash: "0x0", signed_offer: "", requirements_json: null, body_json: JSON.stringify({ stock: servedCheck(seq, false) }) }));

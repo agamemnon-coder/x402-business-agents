@@ -12,7 +12,7 @@ export interface InjectionFinding {
 }
 
 // Zero-width characters and bidirectional controls: invisible on screen, read by a model.
-const HIDDEN = /[​-‏‪-‮⁠-⁤⁦-⁩﻿]/u;
+const HIDDEN = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/u;
 const HIDDEN_ALL = new RegExp(HIDDEN.source, "gu");
 
 const INSTRUCTION = [

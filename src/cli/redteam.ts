@@ -10,7 +10,6 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { checkInvoice, ibanSha } from "../agents/invoice.js";
-import { ClaudeReader } from "../claude/reader.js";
 import { Tools } from "../claude/tools.js";
 import { redactSecrets } from "../lib/redact.js";
 import { ATTACKS, runAttack, type AttackResult } from "../redteam/attacks.js";
