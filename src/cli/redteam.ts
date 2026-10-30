@@ -135,7 +135,11 @@ const blocked = results.filter((r) => r.outcome === "blocked").length;
 const inconclusive = results.filter((r) => r.outcome === "inconclusive").length;
 const notBlocked = results.length - blocked - inconclusive;
 const caughtAfter = results.filter((r) => r.outcome === "blocked" && r.caught === "after").length;
-const report = { ran_at: new Date().toISOString(), model: apiKey && !summary.startsWith("the model declined") ? MODEL : null, summary, attempts: results.length, blocked, caught_after: caughtAfter, inconclusive, not_blocked: notBlocked, results };
+// How to read "blocked": the attack failed. Most were stopped before anything moved; the ones marked caught "after"
+// were found afterwards (by the reconciliation or npm run verify), not prevented. The model's summary uses "blocked" for both.
+const after = results.filter((r) => r.outcome === "blocked" && r.caught === "after").map((r) => r.id);
+const reading = `"blocked" means the attack failed: ${blocked - after.length} were stopped before anything moved${after.length ? `, ${after.length} were found afterwards, not prevented (${after.join(", ")})` : ""}. The summary is the attacking model's own text and uses "blocked" for both.`;
+const report = { ran_at: new Date().toISOString(), model: apiKey && !summary.startsWith("the model declined") ? MODEL : null, reading, summary, attempts: results.length, blocked, caught_after: caughtAfter, inconclusive, not_blocked: notBlocked, results };
 const dir = resolve(import.meta.dirname, "../../docs/redteam");
 mkdirSync(dir, { recursive: true });
 writeFileSync(resolve(dir, "report.json"), JSON.stringify(report, null, 2) + "\n");
