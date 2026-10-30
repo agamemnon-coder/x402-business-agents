@@ -159,7 +159,7 @@
         "what": "Operations agent's card: most per purchase: 50.00"
       },
       "title": "One CFO policy, stricter than any limit on chain",
-      "text": "On the phone the CFO lowers an agent's limit, and the next purchase over it is refused before anything is signed. The phone can only make the policy stricter; loosening it needs a proposal and Face ID.",
+      "text": "The agent asked for a higher limit; the CFO approved that exact change with Face ID, and the new limit went to the card at Airwallex at once. One policy sets the limits on the cards and inside the mandates: loosening it always needs Face ID, tightening it can be done on the phone.",
       "details": "The CFO policy sits inside the on-chain mandates and the card limits, and is checked before any signature. Here: Operations agent's card: most per purchase goes from 30.00 to 50.00.",
       "facts": [
         {

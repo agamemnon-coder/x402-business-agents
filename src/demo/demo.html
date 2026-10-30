@@ -139,7 +139,9 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
   var when = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" });
 
   var rp = document.getElementById("replay");
-  rp.appendChild(el("b", "", ["Recorded run, started " + when.format(new Date(steps[0] ? steps[0].at : S.recorded_at))]));
+  // The steps follow the story, not the clock: the run started at its earliest step.
+  var firstAt = steps.reduce(function (m, s) { var t = Date.parse(s.at); return isNaN(t) ? m : Math.min(m, t); }, Date.parse(S.recorded_at));
+  rp.appendChild(el("b", "", ["Recorded run, started " + when.format(new Date(firstAt))]));
   // Recordings made before the rename carry no company: they were made with the earlier example company.
   rp.appendChild(document.createTextNode(" · " + (S.company || "Tidemark Data, the earlier example company") + " · test money, real systems "));
   rp.appendChild(el("details", "", [el("summary", "", ["details"]), el("p", "", ["Every step really happened, in one live run, on Metal testnet and in the Airwallex sandbox. This page only plays it back, so it cannot fail on stage. Amounts on Metal are Metal's test dollars, shown as test USD."])]));

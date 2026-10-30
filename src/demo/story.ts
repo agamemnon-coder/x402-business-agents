@@ -135,7 +135,10 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "policy", rail: "CFO", tone: "approval", at: policy.ts,
       approval: by ? { who: by, proposal: str(p(policy).proposal_id), what: `${str(p(policy).label)}: ${str(p(policy).to)}` } : null,
       title: "One CFO policy, stricter than any limit on chain",
-      text: "On the phone the CFO lowers an agent's limit, and the next purchase over it is refused before anything is signed. The phone can only make the policy stricter; loosening it needs a proposal and Face ID.",
+      // Said the way it went: a raise (the agent asked, the CFO approved with Face ID) or a cut made on the phone.
+      text: Number(str(p(policy).to)) > Number(str(p(policy).from) || "0")
+        ? "The agent asked for a higher limit; the CFO approved that exact change with Face ID, and the new limit went to the card at Airwallex at once. One policy sets the limits on the cards and inside the mandates: loosening it always needs Face ID, tightening it can be done on the phone."
+        : "On the phone the CFO lowers an agent's limit, and the next purchase over it is refused before anything is signed. The phone can only make the policy stricter; loosening it needs a proposal and Face ID.",
       details: `The CFO policy sits inside the on-chain mandates and the card limits, and is checked before any signature. Here: ${str(p(policy).label)} goes from ${str(p(policy).from) || "no extra limit"} to ${str(p(policy).to)}${policyRefusal ? ", and the next purchase over it is refused before signing (policy_cap_exceeded)" : ""}.`,
       facts: facts(
         fact("Changed", `${str(p(policy).label)}: ${str(p(policy).from) || "no extra limit"} → ${str(p(policy).to)}`),
