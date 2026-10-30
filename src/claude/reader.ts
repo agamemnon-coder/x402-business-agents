@@ -12,6 +12,7 @@ import type { z } from "zod";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
+import { callCostMicros } from "./pricing.js";
 
 export const MODELS = {
   classify: "claude-haiku-5-5",
@@ -43,7 +44,7 @@ export function claudeClient(env = process.env): Anthropic | null {
 }
 
 export class ClaudeReader {
-  constructor(private readonly db: DB, private readonly client: Anthropic | null = claudeClient()) {}
+  constructor(private readonly db: DB, private readonly client: Anthropic | null = claudeClient(), private readonly clock: () => number = Date.now) {}
 
   get live(): boolean {
     return this.client !== null;
@@ -67,6 +68,7 @@ export class ClaudeReader {
     if (!this.client) return useFallback("no KIT11_ANTHROPIC_API_KEY");
 
     try {
+      const started = this.clock();
       const res = await this.client.beta.messages.parse({
         model,
         max_tokens: 16000,
@@ -76,15 +78,21 @@ export class ClaudeReader {
         // Haiku has no server-side fallback; Sonnet 5.5 and Opus 5.5 take the "default" routing.
         ...(a.role === "classify" ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
       });
+      const latencyMs = this.clock() - started;
       const requestId = (res as { _request_id?: string | null })._request_id ?? null;
       if (res.stop_reason === "refusal") return useFallback(`refused (${res.stop_details?.category ?? "no category"})`);
       if (res.parsed_output == null) return useFallback(`no parsed output (stop_reason ${res.stop_reason})`);
       // Checked again here, not only by the SDK: a reading of the wrong shape is never used.
       const fits = a.schema.safeParse(res.parsed_output);
       if (!fits.success) return useFallback(`the reading does not fit its schema (${fits.error.issues[0]?.path.join(".") || "root"})`);
+      const usage = {
+        input: res.usage.input_tokens, output: res.usage.output_tokens,
+        cache_read: res.usage.cache_read_input_tokens ?? 0, cache_write: res.usage.cache_creation_input_tokens ?? 0,
+      };
+      // Latency and cost per decision, for the "Powered by Claude" panel; the cost is at list price.
       audit(this.db, a.actor, "claude.read", a.task, {
         model: res.model, request_id: requestId, input_sha256: inputSha, output: fits.data as never,
-        usage: { input: res.usage.input_tokens, output: res.usage.output_tokens, cache_read: res.usage.cache_read_input_tokens ?? 0 },
+        usage, latency_ms: latencyMs, cost_usd_micros: callCostMicros(res.model, usage),
       });
       return { value: fits.data as z.infer<S>, source: "claude", model: res.model };
     } catch (err) {

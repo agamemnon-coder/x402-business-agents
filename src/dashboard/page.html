@@ -204,6 +204,14 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .money .m { background: var(--sunken); border-radius: 12px; padding: 14px; }
 .money .m .k { font-size: 13px; color: var(--muted); }
 .money .m .v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; }
+/* Claude's official logo has white letters: it sits on a dark ground in both themes, colours unchanged. */
+.claudelogo { display: inline-flex; align-items: center; background: #191919; border-radius: 999px; padding: 7px 14px; }
+.claudelogo img { height: 16px; width: auto; display: block; }
+.panel.claude { margin-top: 20px; }
+.panel.claude .money { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.panel.claude table.agents { margin-top: 14px; }
+.panel.claude .note { color: var(--muted); font-size: 13.5px; margin: 14px 0 0; }
+@media (max-width: 700px) { .panel.claude .money { grid-template-columns: minmax(0, 1fr); } }
 .money .m .v.neg { color: var(--bad); }
 .rows { margin-top: 12px; display: grid; gap: 6px; font-size: 13.5px; }
 .rows div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
@@ -458,6 +466,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <section class="panel" aria-labelledby="h-treasury"><div class="sect flush"><h2 id="h-treasury">Treasury</h2><span class="hint" id="treasury-asof"></span></div><div id="treasury"></div></section>
     <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused and blocked</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
   </div>
+  <section class="panel claude" id="claude-panel" aria-labelledby="h-claude" hidden><div class="sect flush"><h2 id="h-claude">Powered by Claude</h2><span class="claudelogo"><img src="assets/logo-claude.png" alt="Claude" width="73" height="16"></span></div><div id="claude"></div></section>
   <div class="foot"><span id="auditline"></span><span id="passkey"></span></div>
 </main>
 
@@ -816,8 +825,38 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     set("agents-table", [el("thead", "", [head]), el("tbody", "", body)]);
   }
 
+  // Claude's part: what each model does, how fast, and what it costs (list price); nothing it says moves money.
+  function usdMicros(m) { return "$" + (m / 1e6).toFixed(m >= 10000 ? 2 : 4); }
+  function renderClaude(d) {
+    var c = d.claude, panel = document.getElementById("claude-panel");
+    panel.hidden = !c;
+    if (!c) return;
+    var nodes = [];
+    if (!c.calls) nodes.push(el("div", "empty", [icon("sparkles"), "No Claude calls in this run: the deterministic parsers decided" + (c.fallbacks ? " (" + c.fallbacks + " times)" : "") + "."]));
+    else {
+      nodes.push(el("div", "money num", [
+        el("div", "m", [txt("div", "k", "AI cost per €1,000 paid"), txt("div", "v", c.per_1000_eur_usd_micros == null ? "—" : usdMicros(c.per_1000_eur_usd_micros)), txt("div", "k sub", "card spend and euro transfers: " + eur(c.eur_paid))]),
+        el("div", "m", [txt("div", "k", "Per Claude decision"), txt("div", "v", usdMicros(c.per_call_usd_micros)), txt("div", "k sub", c.calls + " calls, " + usdMicros(c.cost_usd_micros) + " in all")]),
+        el("div", "m", [txt("div", "k", "Checked by code"), txt("div", "v", "Every answer"), txt("div", "k sub", c.fallbacks ? c.fallbacks + " times the plain parser decided instead" : "a wrong shape falls back to the plain parser")]),
+      ]));
+      var labels = ["Model", "What it does", "Calls", "Average time", "Cost"];
+      var head = el("tr", "", labels.map(function (h) { return txt("th", "", h); }));
+      var body = c.models.map(function (m) {
+        var tr = el("tr", "", [
+          el("td", "", [txt("b", "", m.model)]), el("td", "", [m.role]), el("td", "num", [String(m.calls)]),
+          el("td", "num", [m.avg_latency_ms == null ? "not recorded" : (m.avg_latency_ms / 1000).toFixed(1) + " s"]), el("td", "num", [usdMicros(m.cost_usd_micros)]),
+        ]);
+        Array.prototype.forEach.call(tr.children, function (td, i) { td.setAttribute("data-label", labels[i]); });
+        return tr;
+      });
+      nodes.push(el("table", "agents", [el("thead", "", [head]), el("tbody", "", body)]));
+    }
+    nodes.push(txt("p", "note", "Claude reads and advises; code checks every answer, and only your Face ID moves money. Costs at Anthropic's list prices in US dollars. Built with Claude Code."));
+    set("claude", nodes);
+  }
+
   function render(d) {
-    renderKpis(d); renderCards(d); renderAgentsTable(d);
+    renderKpis(d); renderClaude(d); renderCards(d); renderAgentsTable(d);
     renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
     var fz = document.getElementById("frozen");
     if (d.frozen) {

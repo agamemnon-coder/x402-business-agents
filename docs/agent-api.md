@@ -9,7 +9,7 @@ agent API as an MCP server on stdio. Whoever sets it up names the outside agent 
 example, for Claude Code (`.mcp.json`):
 
 ```json
-{ "mcpServers": { "tidemark": { "command": "npm", "args": ["run", "-s", "mcp"],
+{ "mcpServers": { "purser": { "command": "npm", "args": ["run", "-s", "mcp"],
   "env": { "KIT11_AGENT": "acme-research", "KIT11_DB": "data/rehearsal-3.sqlite" } } } }
 ```
 

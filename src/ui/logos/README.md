@@ -8,3 +8,4 @@ no stretching), on a white ground in both themes, and never in a way that sugges
 |---|---|
 | airwallex.png | Airwallex wordmark |
 | metal.svg | Metal wordmark |
+| claude.png | Claude (Anthropic) logo, scaled to 72 px high, colours unchanged; white letters, so it sits on a dark ground |

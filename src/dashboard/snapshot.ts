@@ -7,6 +7,7 @@ import { agentName } from "../config/brand.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
+import { callCostMicros } from "../claude/pricing.js";
 import { cardLimits, frozen, policyValue } from "../policy/rules.js";
 import { wantCardStatus } from "../policy/cards.js";
 import { stopReason } from "../policy/velocity.js";
@@ -160,6 +161,16 @@ export interface Snapshot {
     blocked_eur: string; blocked_usdz: string;
     /** What the blocked euros are: invoices stopped as possible fraud, and card attempts Airwallex declined. */
     blocked_fraud_eur: string; blocked_fraud_n: number; blocked_declined_eur: string; blocked_declined_n: number;
+  };
+  /**
+   * Claude's part (D): calls per model with average latency and cost at list price, the cost per call, and the AI
+   * cost per €1,000 of euro payments (approved card spend plus paid euro transfers). Costs in micro-dollars.
+   */
+  claude: {
+    calls: number; fallbacks: number;
+    models: { model: string; role: string; calls: number; avg_latency_ms: number | null; cost_usd_micros: number }[];
+    cost_usd_micros: number; per_call_usd_micros: number | null;
+    eur_paid: string; per_1000_eur_usd_micros: number | null;
   };
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
@@ -596,6 +607,52 @@ const BLOCKED_EVENTS = new Set([
 ]);
 
 /** The KPIs in money. Card amounts are EUR; Metal amounts *USDZ (test USD); they are never added together. */
+const CLAUDE_ROLES: [RegExp, string, string][] = [
+  [/haiku/i, "Haiku", "sorts each incoming document"],
+  [/sonnet/i, "Sonnet", "reads documents into checked fields"],
+  [/opus/i, "Opus", "reviews a proposal's risk for the CFO"],
+];
+
+function claudeView(db: DB, rows: AuditRow[]): Snapshot["claude"] {
+  const per = CLAUDE_ROLES.map(([re, name, role]) => ({ re, name, role, version: "", calls: 0, latencies: [] as number[], cost: 0 }));
+  let fallbacks = 0;
+  for (const r of rows) {
+    if (r.event === "claude.fallback") fallbacks++;
+    if (r.event !== "claude.read") continue;
+    const p = JSON.parse(r.payload_json) as P;
+    const model = str(p.model);
+    const m = per.find((x) => x.re.test(model));
+    if (!m) continue;
+    m.calls++;
+    m.version ||= /-(\d+)-(\d+)$/.exec(model)?.slice(1).join(".") ?? "";
+    if (typeof p.latency_ms === "number") m.latencies.push(p.latency_ms);
+    // Older rows have usage but no cost: priced the same way, without cache writes (they were not recorded).
+    const u = (p.usage ?? {}) as Record<string, number | undefined>;
+    m.cost += typeof p.cost_usd_micros === "number" ? p.cost_usd_micros
+      : callCostMicros(model, { input: u.input ?? 0, output: u.output ?? 0, cache_read: u.cache_read ?? 0, cache_write: u.cache_write ?? 0 }) ?? 0;
+  }
+  const calls = per.reduce((n, m) => n + m.calls, 0);
+  const cost = per.reduce((n, m) => n + m.cost, 0);
+  const hasCards = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get();
+  const cardCents = hasCards ? sum(db, "SELECT SUM(amount_cents) AS n FROM card_transactions WHERE approved = 1 AND currency = 'EUR'") : 0;
+  const transferCents = (db.prepare("SELECT amount FROM transfers WHERE status = 'PAID' AND currency = 'EUR'").all() as { amount: string }[])
+    .reduce((n, t) => n + toCents(t.amount), 0);
+  const eurCents = cardCents + transferCents;
+  return {
+    calls, fallbacks,
+    models: per.filter((m) => m.calls > 0).map((m) => ({
+      model: m.version ? `${m.name} ${m.version}` : m.name, role: m.role, calls: m.calls,
+      avg_latency_ms: m.latencies.length ? Math.round(m.latencies.reduce((a, b) => a + b, 0) / m.latencies.length) : null,
+      cost_usd_micros: m.cost,
+    })),
+    cost_usd_micros: cost,
+    per_call_usd_micros: calls ? Math.ceil(cost / calls) : null,
+    eur_paid: fromCents(eurCents),
+    // micro-dollars per €1,000 = cost / (cents / 100,000), rounded up.
+    per_1000_eur_usd_micros: calls && eurCents ? Math.ceil((cost * 100_000) / eurCents) : null,
+  };
+}
+
 function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: string }[], now: Date): Snapshot["money"] {
   const hasCards = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'card_transactions'").get();
   const one = (sql: string, ...a: unknown[]) => (db.prepare(sql).get(...a) as { c: number | null }).c ?? 0;
@@ -747,6 +804,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
       .map((r) => r.key.slice("stop.".length)).map((agent) => ({ agent, ...stopReason(db, agent)! })),
     counts: counts(db, rows, pending.filter((p) => !p.expired).length),
     money: money(db, rows, pending.filter((p) => !p.expired), now),
+    claude: claudeView(db, rows),
     passkey: passkeyInfo(db, now),
   };
 }

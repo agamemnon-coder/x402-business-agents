@@ -47,6 +47,7 @@ Start here:
 - [docs/metal-award.md](docs/metal-award.md): what the build uses from Metal, with proof on testnet
 - [docs/airwallex.md](docs/airwallex.md): every Airwallex API Purser calls, and why
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
+- [docs/claude.md](docs/claude.md): Powered by Claude: which model does what, why, and what it costs per decision
 - [docs/compliance.md](docs/compliance.md): who does what (Airwallex, Metal, Purser) for the EU AI Act, PSD2, GDPR, AML and audit
 - [docs/requirements-matrix.md](docs/requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof
 - [docs/decisions.md](docs/decisions.md): decisions taken during the build, and what each costs if wrong
