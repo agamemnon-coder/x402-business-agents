@@ -69,6 +69,22 @@ agents, Operations, Sales and Finance, each with its own card and its own mandat
   a copy of its ledger.
 - **Receive policy (separate world):** the sweep wallet can be set to accept money only from the business account;
   anything else waits in quarantine for the CFO.
+- **For a bigger company, more control on chain (separate test worlds, Metal testnet, 30 October):**
+  - **Four eyes on chain.** A 2-of-2 Metal account: the CFO and a controller. A payment signed by the CFO alone, the
+    same payment co-signed by a stranger's key, and a mandate revoke by the CFO alone each reverted on chain; with both
+    owners signing, they went through.
+  - **Compliance before a payout.** Our send-policy contract pays only with Purser's signed screening decision for
+    that payee, amount and moment. Eleven attacks reverted on chain, among them a replay, a redirect to the attacker
+    and a self-made decision for a sanctioned stand-in. Agents' mandate payments do not pass through it (Metal's
+    design).
+  - **Finality certificates.** For each payment the runner sees within about 2 hours, Purser keeps the finality
+    certificate Metal's RPC reports, in the dispute pack, the audit report and `npm run verify`. The validators' BLS
+    signature is not verified: Metal has not published testnet's validator keys.
+  - **Clearing under load.** 2,000 of 2,000 pay-per-call payments in 471.8 s (4.24 a second, p50 1.4 s, p95 8.1 s), at
+    about $0.0007 of RPC calls per payment (an estimate from Metal's published rates, not a bill). A first run paid
+    1,879 before one wallet was held by a lost answer; resending the same request fixed it.
+- **ISO 20022.** The recorded run's paid invoice exports as one pacs.008.001.08 message linking the Airwallex SWIFT
+  transfer and the Metal transaction, valid against the official XSD.
 
 ### Where Claude is used
 
@@ -141,6 +157,6 @@ Scenario Lab and a simulated month, and opens the browser. Running it live (sand
 
 ## Deck and zip
 
-- `purser-deck.pdf`: eight slides, made by `npm run submission` from the same figures.
+- `purser-deck.pdf`: nine slides, made by `npm run submission` from the same figures.
 - The zip: `npm run submission` writes `out/submission/purser-source.zip` (`git archive` of the current commit: the
   code, no keys, no ledger). Not committed.

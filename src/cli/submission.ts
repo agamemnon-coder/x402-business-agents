@@ -1,6 +1,6 @@
 // npm run submission: the submission pack's files (awards item 6), from the recorded pages and files. Writes
 //   docs/submission/screens/1-6 *.png   six screenshots of the recorded pages at 1440 x 900 (npm run judge serves them)
-//   docs/submission/purser-deck.pdf      eight slides with the recorded figures (src/submission/deck.ts)
+//   docs/submission/purser-deck.pdf      nine slides with the recorded figures (src/submission/deck.ts)
 //   out/submission/purser-source.zip     git archive of the current commit: code and docs, no keys, no ledger
 // Nothing is sent anywhere; Max uploads them.
 

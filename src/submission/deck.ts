@@ -1,4 +1,4 @@
-// The submission deck (awards item 6): eight 16:9 slides as one HTML page, printed to PDF by npm run submission.
+// The submission deck (awards item 6): nine 16:9 slides as one HTML page, printed to PDF by npm run submission.
 // Every figure comes from packFacts(), the same recorded files the pages use; the font and the sponsors' logos are
 // embedded, so the PDF needs no network.
 
@@ -65,6 +65,18 @@ export function deckHtml(f: PackFacts): string {
         "<b>x402 with signed orders</b> for per-request sales, <b>mandate pulls</b> for refunds and the sweep, <b>pay-per-call clearing</b> for a prepaying customer (separate live run).",
         "<b>Earnings are booked at Airwallex only when final</b>, exactly once (a simulated sandbox deposit that names the testnet transaction).",
         `<b>The Dispute desk</b> (after the run): the simulated customer disputed ${f.metal.dispute_orders} orders; each was checked against the chain with the signed order Northwind keeps; the claim refunded ${f.metal.dispute_refunded === 0 ? "nothing" : f.metal.dispute_refunded} ${f.metal.refunded_before.length ? ` (orders ${f.metal.refunded_before.join(", ")} had been refunded earlier for wrong data)` : ""}.`,
+      ]),
+    },
+    {
+      kicker: "For a bigger company",
+      title: "More control moves on chain",
+      body: list([
+        "<b>Four eyes on chain</b>: a 2-of-2 Metal account (CFO + controller). One signature, or the CFO with a stranger's key, reverted on chain; both owners together passed.",
+        "<b>Compliance before a payout</b>: a send-policy contract pays only with Purser's signed screening decision. Eleven attacks reverted on chain. Mandate payments do not pass through it.",
+        "<b>Finality certificates</b> kept as evidence for each payment seen within about 2 hours (the validators' signature is not verified: their testnet keys are not published).",
+        "<b>Clearing under load</b>: 2,000 of 2,000 payments at 4.24 a second, about $0.0007 of RPC per payment (an estimate).",
+        "<b>ISO 20022</b>: the paid invoice as one pacs.008 message linking the SWIFT transfer and the Metal transaction.",
+        "All in separate test worlds on Metal testnet, 30 October; not in the recorded run.",
       ]),
     },
     {
