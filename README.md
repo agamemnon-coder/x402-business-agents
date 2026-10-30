@@ -8,6 +8,10 @@ an agent needs more, it stops and asks, and the CFO approves on a phone with Fac
 **Who it is for:** the CFO (or controller) of a small company that runs AI agents and wants them to spend company
 money only within limits the CFO sets.
 
+**Built for the rules, not certified:** Airwallex does KYC, card issuing and sanctions screening, Metal enforces the
+limits on chain, and Purser holds no money, logs every AI step and keeps a person in charge
+([docs/compliance.md](docs/compliance.md)).
+
 ```mermaid
 flowchart LR
   A["AI agents"] --> P["CFO policy<br/>limits, floors, payees"]
@@ -43,6 +47,7 @@ Start here:
 - [docs/metal-award.md](docs/metal-award.md): what the build uses from Metal, with proof on testnet
 - [docs/airwallex.md](docs/airwallex.md): every Airwallex API Purser calls, and why
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
+- [docs/compliance.md](docs/compliance.md): who does what (Airwallex, Metal, Purser) for the EU AI Act, PSD2, GDPR, AML and audit
 - [docs/requirements-matrix.md](docs/requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof
 - [docs/decisions.md](docs/decisions.md): decisions taken during the build, and what each costs if wrong
 - [docs/roadmap.md](docs/roadmap.md): from company cards for agents to the agent finance department (not built yet)

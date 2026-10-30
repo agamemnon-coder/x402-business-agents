@@ -37,7 +37,7 @@ nothing, because nothing a model says can approve or move money:
 - Their readings have no field for a payee or an approval. Where code can read the document's own lines, Sonnet's
   invoice reading must agree with them on number, vendor, amount, currency, IBAN and BIC, or code uses those lines
   instead (`claude.rejected`). Payees come from the allowlist, refund addresses from the ledger.
-- Opus only writes advice beside a proposal. Only Max's passkey (or his typed hash) approves, and the executor runs
+- Opus only writes advice beside a proposal. Only Max's passkey (or their typed hash) approves, and the executor runs
   only the approved hash.
 
 `npm run inject` runs it live: an invoice that says it is "pre-approved by the CFO", asks to skip approval and to pay

@@ -293,6 +293,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 .textlink { color: var(--accent); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
 .sec h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 8px; }
 .sec .subl { color: var(--muted); margin: 0 0 28px; }
+.sec .rules { color: var(--muted); margin: 24px 0 0; max-width: 72ch; }
 .sec .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .sec .item { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
 .sec .item .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 14px; }
@@ -433,6 +434,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       <div class="item"><span class="ic" data-icon="zap"></span><h3>Speed limits, and our own red team</h3><p id="redteam-line">An agent that pays too often or too much is stopped by code. Our red team attacks Purser; every attack must fail.</p></div>
       <div class="item"><span class="ic" data-icon="file-check"></span><h3>A log you can check</h3><p>Every payment, decline and approval in a tamper-evident log, re-checkable from public sources.</p></div>
     </div>
+    <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> Airwallex, the regulated provider, does KYC, card issuing and sanctions screening; Metal enforces the limits on chain; Purser holds no money, logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
   </section>
   <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
 </div>
