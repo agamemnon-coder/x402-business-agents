@@ -7,7 +7,7 @@ import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit
 export const SANDBOX_SWIFT_FEE_CENTS = 1347;
 
 export class FakeAirwallex implements AirwallexRail, SandboxSim {
-  bal: Record<Currency, Balance> = { USD: { availableCents: 0, pendingCents: 0, reservedCents: 0 }, EUR: { availableCents: 1_000_000, pendingCents: 0, reservedCents: 0 } };
+  bal: Record<Currency, Balance> = { USD: { availableCents: 0, pendingCents: 0, reservedCents: 0 }, EUR: { availableCents: 3_500_000, pendingCents: 0, reservedCents: 0 } };
   deposits: (Deposit & { createdAt: string })[] = [];
   quotes = new Map<string, Quote>();
   conversions: Conversion[] = [];

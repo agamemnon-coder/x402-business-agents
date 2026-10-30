@@ -259,14 +259,15 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 .stage .bar i { width: 60%; animation: raise 12s infinite; }
 @keyframes raise { 0%, 38% { width: 60%; } 46%, 100% { width: 100%; } }
 .flow { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 8px; }
-.flow li { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); font-size: 14.5px; opacity: 0; transform: translateY(6px); animation: show 12s infinite; }
+.flow li { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); font-size: 14.5px; opacity: .32; animation: show 12s infinite; }
 .flow li > svg { color: var(--muted); }
 .flow li .amt { margin-left: auto; font-weight: 650; white-space: nowrap; padding-left: 8px; }
 .flow li.bad { box-shadow: inset 3px 0 0 var(--bad); } .flow li.bad > svg { color: var(--bad); }
 .flow li.ok > svg, .flow li.face > svg { color: var(--ok); }
 .flow li:nth-child(2) { animation-delay: 1.2s; } .flow li:nth-child(3) { animation-delay: 2.6s; } .flow li:nth-child(4) { animation-delay: 4s; } .flow li:nth-child(5) { animation-delay: 5.4s; }
 .flow li.bad { animation-name: show, shake; animation-duration: 12s, .45s; animation-delay: 1.2s, 1.6s; animation-iteration-count: infinite, 1; }
-@keyframes show { 0% { opacity: 0; transform: translateY(6px); } 4%, 88% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+/* Every step of the story is on the card from the start (no empty panel); each lights up in turn. */
+@keyframes show { 0% { opacity: .32; } 4%, 88% { opacity: 1; } 96%, 100% { opacity: .32; } }
 .still .flow li, .still .stage .bar i { animation: none; opacity: 1; transform: none; } .still .stage .bar i { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .flow li, .stage .bar i, .feed li.fresh { animation: none; opacity: 1; transform: none; } .stage .bar i { width: 100%; } }
 .proof { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -449,11 +450,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <div class="tablewrap"><table class="agents" id="agents-table" aria-label="Per agent"></table></div>
   <div class="cols">
     <section class="panel" aria-labelledby="h-pending"><div class="sect flush"><h2 id="h-pending">Waiting for you</h2><span class="pill" id="pending-count">0</span></div><div id="pending"></div></section>
-    <section class="panel" aria-labelledby="h-feed"><div class="sect flush"><h2 id="h-feed">Activity</h2><span class="hint">newest first</span></div><ul class="feed" id="feed"></ul></section>
+    <section class="panel" aria-labelledby="h-feed"><div class="sect flush"><h2 id="h-feed">Activity</h2><span class="hint">newest first</span></div><ul class="feed" id="feed"></ul><details class="tech feed-sys" id="feed-sys-wrap" hidden><summary id="feed-sys-sum">System events</summary><ul class="feed" id="feed-sys"></ul></details></section>
   </div>
   <div class="cols">
     <section class="panel" aria-labelledby="h-treasury"><div class="sect flush"><h2 id="h-treasury">Treasury</h2><span class="hint" id="treasury-asof"></span></div><div id="treasury"></div></section>
-    <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused, blocked and expired</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
+    <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused and blocked</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
   </div>
   <div class="foot"><span id="auditline"></span><span id="passkey"></span></div>
 </main>
@@ -518,6 +519,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   function eur(s) { var g = group(s); return g.charAt(0) === "−" ? "−€" + g.slice(1) : "€" + g; }
   function usd(s) { return "USD " + group(s); }
   function tusd(s) { return group(s) + " test USD"; }
+  function fromC(c) { var n = Math.abs(c); return (c < 0 ? "-" : "") + Math.floor(n / 100) + "." + String(n % 100).padStart(2, "0"); }
   function cents(s) { var m = /^(-?)(\d+)\.(\d{2})$/.exec(String(s)); return m ? (m[1] ? -1 : 1) * (Number(m[2]) * 100 + Number(m[3])) : 0; }
   // Ledger text in the words a CFO uses: euros as €, chain money as test USD, outside agents by their name.
   function plain(t) {
@@ -684,24 +686,36 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     return { icon: "circle-dot", label: "", cls: f.tone === "refusal" ? "bad" : "" };
   }
 
+  // The CFO's feed shows business events; our own bookkeeping (AI readings, proposal states, syncs, merges) folds away.
+  var SYSTEM_EVENTS = { "claude.read": 1, "claude.fallback": 1, "claude.rejected": 1, "proposal.executing": 1, "proposal.executed": 1,
+    "setting.changed": 1, "card.purchase_started": 1, "card.adopted": 1, "card.limits_synced": 1, "card.controls_synced": 1,
+    "card.duplicate_merged": 1, "passkey.enrolment_opened": 1, "credit.locked": 1, "reconcile.done": 1, "treasury.seeded": 1,
+    "business.funded": 1, "sale.prepaid_not_offered": 1, "refund.already_paid": 1, "fx.rate_checked": 1 };
+  function isSystem(f) { return SYSTEM_EVENTS[f.event] === 1 || (f.event === "transfer.status" && !/PAID/.test(f.text)); }
+  function feedRow(f, first) {
+    var k = kindOf(f), refs = [];
+    if (f.tx && TX.test(f.tx)) { var a = txt("a", "mono", "Metal tx " + f.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; refs.push(a); }
+    if (f.awx_id) refs.push(txt("span", "mono", "Airwallex id " + String(f.awx_id).slice(0, 8) + "…"));
+    var when = txt("span", "r num", hm(f.ts)); when.title = "Audit log row #" + f.seq;
+    var li = el("li", k.cls + (!first && !seen[f.seq] ? " fresh" : ""), [
+      el("span", "ic", [icon(k.icon)]),
+      el("div", "", [
+        k.label ? txt("div", "kind", k.label) : null,
+        txt("div", "t", plain(f.text)),
+        el("div", "who", [agentName(f.actor)].concat(refs.length ? [" · ", el("span", "proof", refs)] : [])),
+      ]),
+      when,
+    ]);
+    seen[f.seq] = true;
+    return li;
+  }
   function renderFeed(d) {
     var body = document.getElementById("feed"), keep = body.scrollTop, first = !Object.keys(seen).length;
-    set("feed", d.feed.map(function (f) {
-      var k = kindOf(f), refs = [];
-      if (f.tx && TX.test(f.tx)) { var a = txt("a", "mono", "Metal tx " + f.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; refs.push(a); }
-      if (f.awx_id) refs.push(txt("span", "mono", "Airwallex id " + String(f.awx_id).slice(0, 8) + "…"));
-      var li = el("li", k.cls + (!first && !seen[f.seq] ? " fresh" : ""), [
-        el("span", "ic", [icon(k.icon)]),
-        el("div", "", [
-          k.label ? txt("div", "kind", k.label) : null,
-          txt("div", "t", plain(f.text)),
-          el("div", "who", [agentName(f.actor), " · ", el("span", "proof", refs.length ? refs : [txt("span", "mono", "audit row #" + f.seq)])]),
-        ]),
-        txt("span", "r num", hm(f.ts)),
-      ]);
-      seen[f.seq] = true;
-      return li;
-    }));
+    var biz = d.feed.filter(function (f) { return !isSystem(f); }), sys = d.feed.filter(isSystem);
+    set("feed", biz.map(function (f) { return feedRow(f, first); }));
+    document.getElementById("feed-sys-wrap").hidden = !sys.length;
+    document.getElementById("feed-sys-sum").textContent = sys.length + " system event" + (sys.length === 1 ? "" : "s") + ": AI readings, bookkeeping, syncs";
+    set("feed-sys", sys.map(function (f) { return feedRow(f, first); }));
     body.scrollTop = keep;
   }
 
@@ -710,8 +724,9 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     document.getElementById("treasury-asof").textContent = a ? "Airwallex balances checked at " + hm(a.as_of) : "";
     if (a) {
       nodes.push(el("div", "money num", [
-        el("div", "m", [txt("div", "k", "Free euros for new bills"), txt("div", "v" + (String(a.eur.free).charAt(0) === "-" ? " neg" : ""), eur(a.eur.free)), txt("div", "k sub", "after the reserve and the bills already planned")]),
-        el("div", "m", [txt("div", "k", "Euro reserve kept"), txt("div", "v", eur(a.eur.floor))]),
+        // The company's own euros: the reserve it always keeps, plus what is free for new bills.
+        el("div", "m", [txt("div", "k", "Euros on hand"), txt("div", "v", eur(fromC(cents(a.eur.floor) + Math.max(0, cents(a.eur.free))))), txt("div", "k sub", eur(a.eur.floor) + " reserve kept")]),
+        el("div", "m", [txt("div", "k", "Free for new bills"), txt("div", "v" + (String(a.eur.free).charAt(0) === "-" ? " neg" : ""), eur(a.eur.free)), txt("div", "k sub", "above the reserve, after bills already planned")]),
       ]));
       nodes.push(el("div", "rows num", [el("div", "", ["US dollars we may convert", txt("b", "", usd(a.usd.headroom))])]));
       nodes.push(el("details", "tech", [txt("summary", "", "Sandbox totals"), el("div", "rows num", [
@@ -730,13 +745,14 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   }
 
   function renderRefusals(d) {
-    // The count matches "Stopped in time"; expired proposals are listed too, but nobody was stopped by them.
-    var expired = d.refusals.filter(function (r) { return /expired/i.test(r.what); }).length;
-    document.getElementById("refusals-count").textContent = String(d.counts ? d.counts.blocked : d.refusals.length - expired) + (expired ? " + " + expired + " expired" : "");
-    var nodes = d.refusals.slice(0, 10).map(function (r) {
-      return el("div", "refusal", [el("div", "what", [icon("ban"), plain(r.what)]), txt("div", "reason", plain(r.reason)), txt("div", "meta num", agentName(r.agent) + " · " + hm(r.ts))]);
-    });
-    if (!nodes.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing refused yet."]));
+    // Blocks and refusals first; proposals that simply expired fold away below (nobody was stopped by them).
+    var expired = d.refusals.filter(function (r) { return /expired/i.test(r.what); });
+    var blocked = d.refusals.filter(function (r) { return !/expired/i.test(r.what); });
+    document.getElementById("refusals-count").textContent = String(d.counts ? d.counts.blocked : blocked.length);
+    var row = function (r) { return el("div", "refusal", [el("div", "what", [icon("ban"), plain(r.what)]), txt("div", "reason", plain(r.reason)), txt("div", "meta num", agentName(r.agent) + " · " + hm(r.ts))]); };
+    var nodes = blocked.slice(0, 10).map(row);
+    if (!nodes.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing refused or blocked yet."]));
+    if (expired.length) nodes.push(el("details", "tech", [txt("summary", "", expired.length + " expired proposal" + (expired.length === 1 ? "" : "s") + ": nobody approved in time, nothing ran"), el("div", "", expired.slice(0, 10).map(row))]));
     set("refusals", nodes);
   }
 

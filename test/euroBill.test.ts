@@ -69,7 +69,7 @@ describe("euro bill (S3) against the Airwallex port", () => {
     expect(r.transfer.status).toBe("PAID");
     expect(awx.transfers[0]!.metadata).toBe(out.proposal.terms_sha256);
     // The floor and the committed obligations stay whole; what is left is the unused part of the fee ceiling.
-    expect(awx.bal.EUR.availableCents).toBe(50_000 + 800_000 + 2000 - 1347);
+    expect(awx.bal.EUR.availableCents).toBe(2_500_000 + 850_000 + 2000 - 1347);
     const { fee_actual } = db.prepare("SELECT fee_actual FROM transfers WHERE transfer_id = ?").get(r.transfer.id) as { fee_actual: string };
     expect(fee_actual).toBe("EUR 13.47");
     expect(awx.bal.USD.availableCents).toBeGreaterThanOrEqual(2_000_000);

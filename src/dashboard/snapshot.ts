@@ -727,7 +727,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   });
 
   // Bookkeeping of our own (two ids for one card authorisation) stays in the audit log, not in the CFO's feed.
-  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event)).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf) }));
+  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf) }));
 
   return {
     generated_at: now.toISOString(),

@@ -200,6 +200,8 @@ describe("dashboard snapshot", () => {
     expect(declines).toHaveLength(1);
     // The merge is our own bookkeeping: in the audit log, not in the CFO's activity feed.
     expect(buildSnapshot(db, t0).feed.map((f) => f.event)).not.toContain("card.duplicate_merged");
+    // And the decline itself shows once in the feed too, under the id that was kept.
+    expect(buildSnapshot(db, t0).feed.filter((f) => f.event === "card.charge_declined").map((f) => f.text)).toHaveLength(1);
   });
 
   it("sums the money, not just the events: card spend, chain spend, what waits and what was stopped", async () => {

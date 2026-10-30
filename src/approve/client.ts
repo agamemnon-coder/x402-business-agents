@@ -457,6 +457,20 @@ const UNSIGNED = "What the relay sent is not signed by the runner this phone kno
 
 const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave you once on this phone, then come back.";
 
+/**
+ * A guest without the viewer link: say what this page is and where to look instead, without asking the relay (which
+ * would only answer 401). On localhost the page may run without a key, so it asks as before.
+ */
+function guestWithoutLink(app: HTMLElement): boolean {
+  if (viewKey || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return false;
+  const signin = el("a", "", ["how the CFO signs in"]) as HTMLAnchorElement;
+  signin.href = "/?signin";
+  const rec = el("a", "", ["the recorded CFO dashboard"]) as HTMLAnchorElement;
+  rec.href = "/?recorded";
+  app.replaceChildren(el("p", "alarm", ["This page is for the CFO and needs the private viewer link. As a guest, see ", signin, " or ", rec, "."]));
+  return true;
+}
+
 async function api(path: string, body?: unknown): Promise<{ status: number; data: Obj }> {
   const view = { "x-kit11-view": viewKey };
   const res = await fetch(path, body === undefined
@@ -708,6 +722,7 @@ function parsedOrEmpty(canonical: string): Obj {
 
 async function approvePage(): Promise<void> {
   const app = document.getElementById("app")!;
+  if (guestWithoutLink(app)) return;
   const id = decodeURIComponent(location.pathname.split("/").pop() ?? "");
   const { status, data } = await api("/api/approvals").catch(() => ({ status: 0, data: {} as Obj }));
   if (status !== 200) {
@@ -882,6 +897,7 @@ interface PolicyRow {
  */
 async function policyPage(): Promise<void> {
   const app = document.getElementById("app")!;
+  if (guestWithoutLink(app)) return;
   const { status, data } = await api("/api/approvals").catch(() => ({ status: 0, data: {} as Obj }));
   if (status !== 200) {
     app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the relay."));

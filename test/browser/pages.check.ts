@@ -72,6 +72,16 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!(await page.isVisible("#signin >> text=recorded CFO dashboard"))) fail(`/?signin ${tag}: no way to the recording`);
     await page.screenshot({ path: join(shots, `signin-${tag}.png`), fullPage: true });
 
+    // The CFO's phone pages, opened by a guest on the relay: no request that can only fail (a 401 is a console error),
+    // and a way on. The judge serves no phone pages, so this runs with --live only.
+    if (liveAt >= 0) {
+      for (const path of ["/policy", "/approve/P-0001"]) {
+        await page.goto(`${base}${path}`, { waitUntil: "load" });
+        await page.waitForTimeout(1500);
+        if (!(await page.isVisible("text=needs the private viewer link"))) fail(`${path} ${tag}: no guest explanation`);
+      }
+    }
+
     // The CFO's dashboard as it stood at the end of a recorded live run: labelled as such, with Metal as visible as
     // the cards, chain money in test USD (never "$" or "USDZ"), and bank transfers told apart from card payments.
     await page.goto(`${base}/?recorded`, { waitUntil: "load" });
@@ -111,4 +121,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin, /?recorded, /demo (every step), /month at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /demo (every step), /month at 390 and 1440 px, light and dark (screenshots in ${shots})`);

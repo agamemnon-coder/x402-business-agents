@@ -37,7 +37,7 @@ export const QUOTE_SAFETY_MS = 30 * 1000;
  * in advance (transfers/validate only answers "OK"); the sandbox charged EUR 13.47 on 2026-10-29.
  */
 export const SWIFT_FEE_MAX_EUR_CENTS = 2000;
-export const EUR_FLOOR_CENTS = 50_000;
+export const EUR_FLOOR_CENTS = 2_500_000;
 /** The seed step sets committed EUR obligations so free EUR is exactly this, whatever the sandbox starts with. */
 export const TARGET_FREE_EUR_CENTS = 150_000;
 
