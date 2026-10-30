@@ -21,6 +21,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      # The ISO 20022 export is validated against the official XSD with xmllint (test/iso20022.test.ts).
+      - name: xmllint
+        run: command -v xmllint || (sudo apt-get update && sudo apt-get install -y libxml2-utils)
       - name: Tests with coverage, per area
         run: npm run test:coverage
       - run: npm run relay:pages
