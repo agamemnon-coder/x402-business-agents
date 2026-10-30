@@ -61,6 +61,14 @@ The packages are pinned to the versions above.
 | Pull payments under a mandate: refunds and the earnings sweep, each with its own payment id, so a retry pays nothing twice (`metal-agent mandate pull`) | `src/executors/refunds.ts`, `src/agents/sweep.ts` | refunds [`0x0197b1c9…2281`](https://testnet.metalntwx.com/tx/0x0197b1c9e3c8339775439ff90b22d416644f9f0774fc58244826cc724c622281), [`0xa4fb723c…8e52`](https://testnet.metalntwx.com/tx/0xa4fb723c41bddbe6de84ac1064aa9abbadaab3a2d4c5be29efeba04e25b48e52), [`0x788788ee…08d1`](https://testnet.metalntwx.com/tx/0x788788eec4c8d99bb7d7129a68f0a0eea42412b87879d8ec41e66cefee0c08d1); sweep [`0x7c53378d…486b`](https://testnet.metalntwx.com/tx/0x7c53378d3e989e8f780657f39392dfd0a319a79cb0e4d84aae158a430fd0486b) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 | Every credential checked again by `metal-agent mandate verify`; mandate state read from the chain (`mandate status`) | `src/cli/verify.ts`, `src/metal/mandate.ts` | `npm run verify`: all checks pass on rehearsal 3 (20 in its run log) and on both Friday runs | [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 
+**In the recorded run (Friday run 1, 30 October),** the CFO approved P-0002 with Face ID and the mandates were
+replaced in the safe order: treasury shrunk to 4.00
+([`0x2909b164…8aed`](https://testnet.metalntwx.com/tx/0x2909b164c50779c342783309943901472cf1c966402c550d0d28f5ab86a08aed)),
+then sourcing grown to 0.04 a check and 12.00 in total
+([`0xbc70858f…b5d7`](https://testnet.metalntwx.com/tx/0xbc70858fef5ca185cb8dffb860becac2fe0876888aa5ea57d8aee2700449b5d7)).
+Both are rows 102 and 103 of the run's audit log ([docs/audit/](audit/README.md)). The rows above link the
+rehearsals of 29 October.
+
 ## 3. x402 on Metal: agents pay per request
 
 | What | Where in the code | Proof | Metal docs |
@@ -262,9 +270,17 @@ pacs.008.001.08 message: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs
 
 ## 10. How a judge checks it
 
-```bash
-npm run verify
-```
+With no keys:
+- **Every hash on this page and on `/metal`** opens on the Metal testnet explorer.
+- **The recorded run's audit log** is in the repo. This recomputes its 194-row chain offline:
 
-This checks the audit chain, and checks every credential, pull, disputed payment and clearing receipt again from the
-chain and from Metal's services, and every Face ID approval against its stored passkey signature. The public demo replays the recorded run at `/demo` on the relay.
+  ```bash
+  npm run verify-log -- --jsonl docs/audit/friday-1-audit.jsonl
+  ```
+
+  The head matches the one the pages show ([docs/audit/](audit/README.md)).
+- **`npm run judge`** serves the recorded run's pages offline: start at `/`, then `/metal`.
+
+With the ledger and a Metal RPC endpoint, `npm run verify` goes further. It re-checks every credential, pull,
+disputed payment and clearing receipt against the chain and Metal's services, and every Face ID approval against its
+stored passkey signature.

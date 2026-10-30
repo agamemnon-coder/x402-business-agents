@@ -69,7 +69,7 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
   const { server, url } = await startJudge(Number(process.env.PORT ?? 4311));
   if (args.includes("--check")) {
     let ok = true;
-    for (const path of ["/", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
+    for (const path of ["/", "/metal", "/metal/report", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
       const res = await fetch(`${url}${path}`);
       const body = await res.text();
       const good = res.status === 200 && body.length > 1000;
@@ -79,6 +79,16 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
     server.close();
     process.exit(ok ? 0 : 1);
   }
-  console.log(`The recorded demo runs at ${url}/demo (no keys, nothing live). A month in 90 seconds: ${url}/month. The Scenario Lab: ${url}/lab. Stop with Ctrl+C.`);
-  if (!args.includes("--no-open")) openBrowser(`${url}/demo`);
+  console.log([
+    `Purser, the recorded run, offline (no keys, nothing live). Start here: ${url}/`,
+    `  ${url}/metal         how Purser uses Metal, every proof linked to the explorer`,
+    `  ${url}/?recorded     the CFO dashboard at the end of the recorded run`,
+    `  ${url}/live          the working day on two rails, Airwallex and Metal`,
+    `  ${url}/try           type a task for an agent (offline, code reads it)`,
+    `  ${url}/demo          the run, step by step`,
+    `  ${url}/month         a simulated month in 90 seconds`,
+    `  ${url}/lab           the Scenario Lab, 18 stories`,
+    "Stop with Ctrl+C.",
+  ].join("\n"));
+  if (!args.includes("--no-open")) openBrowser(`${url}/`);
 }
