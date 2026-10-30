@@ -20,6 +20,7 @@ import { payWithCard, requestCardRaise } from "../platform/externalAgents.js";
 import { askPurser, bookOnTaskCard, executeTaskCard } from "../agents/askPurser.js";
 import { executeQuarantineRelease, pollQuarantine, setupReceivePolicy } from "../policy/quarantine.js";
 import { FakeReceivePolicy } from "./receivePolicy.js";
+import { MORE_ATTACKS } from "./moreAttacks.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { capRefusal, policyValue, rules } from "../policy/rules.js";
 import { stopped, velocityGate } from "../policy/velocity.js";
@@ -343,6 +344,9 @@ ATTACKS.push(
     },
   },
 );
+
+// The second round (src/redteam/moreAttacks.ts), one for each threat model row that had none.
+ATTACKS.push(...MORE_ATTACKS);
 
 export async function runAttack(w: World, a: Attack): Promise<AttackResult> {
   try {
