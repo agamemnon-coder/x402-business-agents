@@ -118,7 +118,10 @@ async function recordBeat(browser: import("playwright").Browser, base: string, b
     // that holds the target (following it as the page scrolls); an unzoom eases back to the whole viewport.
     let cam = { from: FULL, sel: null as string | null, scale: 1, start: 0 };
     let now = FULL;
+    // A page that draws itself from a time it is given (the film) gets that time for every frame.
+    const manual = /[?&]manual(&|$)/.test(shot.path) ? Number(/[?&]from=([\d.]+)/.exec(shot.path)?.[1] ?? 0) : null;
     for (let f = 0; f < frames; f++) {
+      if (manual !== null) await within(`${beat.id} frame ${f}: the film`, page.evaluate(`window.__film(${manual + f / FPS})`));
       while (actions.length && actions[0]!.at * FPS <= f) {
         const a = actions.shift() as Action;
         if (a.do === "zoom" || a.do === "scroll") await within(`${beat.id} frame ${f}: scroll`, page.evaluate(`window.__v.scroll(${JSON.stringify(a.target)}, ${a.do === "zoom" ? a.scale ?? 1.3 : 1})`));

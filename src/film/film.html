@@ -318,8 +318,11 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       sc.update(Math.max(0, lt));
     });
   }
-  // ?t=seconds shows one moment; ?from=seconds plays from there; otherwise the film plays from the start.
+  // ?t=seconds shows one moment; ?manual leaves the clock to the caller (npm run video calls __film(t) for every
+  // frame, so the film cannot drift from the recording); ?from=seconds plays from there; otherwise from the start.
+  window.__film = function (t) { render(Math.min(Math.max(0, t), total)); };
   if (q.has("t")) { render(Number(q.get("t"))); return; }
+  if (q.has("manual")) { render(Number(q.get("from") || 0)); return; }
   var from = Number(q.get("from") || 0), t0 = null;
   function frame(now) { if (t0 === null) t0 = now; var t = from + (now - t0) / 1000; render(Math.min(t, total)); requestAnimationFrame(frame); }
   render(from);

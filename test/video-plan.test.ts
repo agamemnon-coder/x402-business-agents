@@ -7,7 +7,7 @@ describe("the video plan", () => {
   it("is the film, scene by scene, under three minutes", () => {
     expect(totalSeconds()).toBe(173);
     expect(BEATS.map((b) => b.id)).toEqual(["01-open", "02-problem", "03-reveal", "04-card", "05-bill", "06-metal", "07-dispute", "08-ask", "09-trust", "10-end"]);
-    expect(BEATS.map((b) => b.shots[0]!.path)).toEqual(["/film?from=0", "/film?from=12", "/film?from=24", "/film?from=38", "/film?from=60", "/film?from=82", "/film?from=112", "/film?from=132", "/film?from=146", "/film?from=163"]);
+    expect(BEATS.map((b) => b.shots[0]!.path)).toEqual([0, 12, 24, 38, 60, 82, 112, 132, 146, 163].map((s) => `/film?manual&from=${s}`));
   });
 
   it("gives each beat time to say its words (at most 150 words a minute)", () => {

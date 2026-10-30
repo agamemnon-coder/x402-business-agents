@@ -31,7 +31,7 @@ export interface Beat {
 /** The video is the film (src/film/), one shot per scene, each played from the second its scene starts. */
 export const BEATS: Beat[] = filmTimeline().map((t, n) => {
   const scene = FILM_SCENES[n]!;
-  return { id: `${String(n + 1).padStart(2, "0")}-${scene.id}`, title: scene.title, voice: scene.voice, shots: [{ path: `/film?from=${t.start}`, seconds: t.seconds }] };
+  return { id: `${String(n + 1).padStart(2, "0")}-${scene.id}`, title: scene.title, voice: scene.voice, shots: [{ path: `/film?manual&from=${t.start}`, seconds: t.seconds }] };
 });
 
 export const beatSeconds = (b: Beat) => b.shots.reduce((s, x) => s + x.seconds, 0);
