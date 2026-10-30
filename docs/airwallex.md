@@ -140,15 +140,15 @@ A credit is booked only after the sweep is final on Metal, and once per `chainId
 
 Purser should run on a scoped API key, not an admin key. Airwallex lets each key have Read or Write per resource. Read covers `GET`. Write covers `GET` and `POST` ([manage API keys](https://www.airwallex.com/docs/developer-tools/api/manage-api-keys), [API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices)).
 
-The permissions below come from the endpoints on this page. Max creates the key himself in the Airwallex web app before submission. We do not create it and we never see the secret in a chat. The names in the web app may differ a little from the names here. If one is missing, tell us and we will match it.
+The permissions below come from the endpoints on this page. Max creates the key in the Airwallex web app before submission. We do not create it and we never see the secret in a chat. The names in the web app may differ a little from the names here. If one is missing, tell us and we will match it.
 
 | Resource | Endpoints used | Permission |
 |---|---|---|
 | Balances | `GET /balances/current` | Read |
 | Global accounts | `GET /global_accounts`; `POST /global_accounts/create` (once, at setup) | Read; Write only until the account exists |
 | Deposits | `GET /deposits` | Read |
-| Beneficiaries | `GET /beneficiaries`; `POST /beneficiaries/validate`; `POST /beneficiaries/create` | Write (needed at setup and for every approved bank-detail change) |
-| FX quotes and conversions | `POST /fx/quotes/create`; `POST /fx/conversions/create`; `GET /fx/conversions` | Write |
+| Beneficiaries | `GET /beneficiaries`; `POST /beneficiaries/schema`; `POST /beneficiaries/validate`; `POST /beneficiaries/create` | Write (needed at setup and for every approved bank-detail change) |
+| FX rates, quotes and conversions | `GET /fx/rates/current`; `POST /fx/quotes/create`; `POST /fx/conversions/create`; `GET /fx/conversions` | Write |
 | Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}` | Write |
 | Issuing: cardholders, cards, transactions | `GET`/`POST /issuing/cardholders`; `GET`/`POST /issuing/cards` and `/issuing/cards/{id}/update`; `GET /issuing/transactions` | Write |
 | Webhooks | `GET /webhooks`; `POST /webhooks/create` (setup only) | Write at setup, then none |
