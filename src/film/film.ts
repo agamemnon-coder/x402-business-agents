@@ -6,7 +6,7 @@
 
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
-import { LIVE_RUNS } from "../live/timeline.js";
+import { FROM_RUN_LOG, LIVE_RUNS } from "../live/timeline.js";
 
 export interface FilmData {
   company: string;
@@ -22,8 +22,7 @@ export interface FilmData {
   trust: { attacks: number; blocked: number; scenarios: number; passed: number; per1000: string; auditRows: string; faceIds: number };
 }
 
-/** Stockline's price before the rise, as Friday run 1's log records it ("S1 price rise: Stockline 0.02 -> 0.04"). */
-export const FROM_RUN_LOG = { oldPrice: "0.02", source: "docs/runs/2026-10-30-friday-1.md" } as const;
+export { FROM_RUN_LOG };
 
 const money = (s: string) => s.replace(/\*?USDZ( \(testnet dollars\))?/g, "test USD");
 

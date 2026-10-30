@@ -19,6 +19,22 @@ describe("the Purser live timeline", () => {
     expect(t.scenes.reduce((a, s) => a + s.seconds, 0)).toBeLessThanOrEqual(100);
   });
 
+  it("gives Airwallex and Metal about thirty seconds each, and every scene where money moves carries its proof", () => {
+    const t = buildLiveTimeline(story, recorded);
+    const per = (rail: string) => t.scenes.filter((s) => s.rail === rail).reduce((a, s) => a + s.seconds, 0);
+    for (const rail of ["airwallex", "metal"]) {
+      expect(per(rail)).toBeGreaterThanOrEqual(26);
+      expect(per(rail)).toBeLessThanOrEqual(36);
+    }
+    for (const s of t.scenes) {
+      for (const m of s.moves) expect(m.at + 2).toBeLessThanOrEqual(s.seconds);
+      if (s.rail) expect(s.proofs.length, s.id).toBeGreaterThan(0);
+      for (const p of s.proofs) expect(p.value).not.toMatch(/USDZ|undefined/);
+    }
+    // A payment the rail stops says who stopped it.
+    for (const m of t.scenes.flatMap((s) => s.moves)) if (m.outcome !== "ok" && m.outcome !== "in") expect(m.gate).toMatch(/Airwallex|chain|Metal|Purser/);
+  });
+
   // Breaks if a scene could show a number the recording does not hold.
   it("stops when the recording lacks a fact, instead of making one up", () => {
     const thin = { ...story, steps: story.steps.filter((s) => s.id !== "swift") };
