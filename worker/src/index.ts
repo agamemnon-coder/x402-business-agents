@@ -38,7 +38,8 @@ export default {
     const path = new URL(req.url).pathname;
     // Try Purser runs in its own instance: its storage and its load stay apart from the approvals.
     if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
-    if (path.startsWith("/api/") || path === "/hooks/airwallex") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
+    // /health is the relay's too: it knows when the runner last synced (B7).
+    if (path.startsWith("/api/") || path === "/hooks/airwallex" || path === "/health") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
     return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" } });
   },
 } satisfies ExportedHandler<Env>;
