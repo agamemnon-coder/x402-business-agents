@@ -2,7 +2,9 @@
 
 What this build uses from Metal, where it runs, and the proof on Metal testnet. The transactions below come from
 rehearsal 3 (29 October 2026, [run log](runs/2026-10-29-rehearsal-3.md)): a fresh world from zero, with Max approving
-every proposal with Face ID. Explorer: https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4,
+every proposal with Face ID. The same story ran live twice more on 30 October, on the frozen code, each in its own
+world with a fresh passkey: [Friday run 1](runs/2026-10-30-friday-1.md) (the recorded demo) and
+[Friday run 2](runs/2026-10-30-friday-2.md); `npm run verify` passes on both. Explorer: https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4,
 `@metalntwx/metal-agent` 0.3.3, `@metalntwx/metal-ts` 0.3.2.
 
 ## Why this wins
@@ -140,6 +142,16 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 | A send policy with a signed screening decision | It needs a deployed contract holding the funds and a screening service to sign. Mandates already limit each agent's spending on chain; screening belongs at Airwallex for the euro payments. Possible after the freeze (estimate 8 to 16 hours). |
 | Bridges, swaps and on-chain FX | The kit says the Airwallex sandbox cannot receive stablecoins, so the step to Airwallex is a simulated deposit that names the testnet transaction. FX happens at Airwallex. |
 | Metal mainnet | Test money only, as the hackathon asks. |
+
+## Friday runs (30 October): the chain's answers, twice
+
+| What Metal did | Run 1 | Run 2 |
+|---|---|---|
+| Stock check #41 refused on chain at the old cap (`mandate_cap_exceeded`), customer not charged (absent from `/settlements`) | yes | yes |
+| Old sourcing credential refused after the CFO's mandate replace (`mandate_revoked`) | yes | yes |
+| Disputed orders verified (`verifyMandatePayment`): signed by the customer's mandate key, inside its bound mandate | 12/12 | 12/12 |
+| Refunds pulled under the support mandate, to the customer only | 3 ([`0xcf11b76d…`](https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1)) | 3 + 9 approved by the CFO ([`0x3fd87766…`](https://testnet.metalntwx.com/tx/0x3fd87766d4392f93ed20a88c47d6d5e7a1c7fee2a8d534990371694aed9321a5)) |
+| Earnings swept under the treasury mandate, credited to Airwallex after finality | 1.35 ([`0x808f9133…`](https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f)) | 1.15 ([`0x1844bff9…`](https://testnet.metalntwx.com/tx/0x1844bff9d11282add2b74a3cc639e61cc6b3258bff87d44b00eb98b90e82fea8)) |
 
 ## 8. How a judge checks it
 
