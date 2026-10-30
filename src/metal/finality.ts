@@ -75,11 +75,12 @@ export interface FinalityPorts {
   certificate: (blockHash: string) => Promise<FinalityCertificate | null>;
 }
 
-/** Live: the receipt's block, only once Metal reports it final; then the certificate from the same RPC. */
+/** Live: the receipt's block (succeeded or reverted), only once Metal reports it final; then the certificate. */
 export const livePorts: FinalityPorts = {
   blockOf: async (tx) => {
     const r = await publicClient().getTransactionReceipt({ hash: tx as Hex }).catch(() => null);
-    if (!r || r.status !== "success") return null;
+    // A reverted transaction is final too: its certificate proves the refusal stands. The receipt says which it was.
+    if (!r) return null;
     const st = await rpc<{ finalized: { number: number | string } }>("consensus_status");
     return BigInt(r.blockNumber) <= BigInt(st.finalized.number) ? r.blockHash : null;
   },
@@ -107,7 +108,14 @@ const isTx = (s: string) => /^0x[0-9a-fA-F]{64}$/.test(s);
  * the checks is stored as FAILED, never as good. Read-only towards the chain.
  */
 export async function certifyPending(db: DB, ports: FinalityPorts = livePorts, now = new Date(), limit = 200): Promise<{ certified: number; not_kept: number; pending: number }> {
-  const txs = (db.prepare(`SELECT tx FROM (${LEDGER_TXS}) WHERE tx NOT IN (SELECT tx FROM finality_evidence) LIMIT ?`).all(limit) as { tx: string }[]).map((r) => r.tx).filter(isTx);
+  const txs = (db.prepare(`SELECT tx FROM (${LEDGER_TXS}) WHERE tx NOT IN (SELECT tx FROM finality_evidence) LIMIT ?`).all(limit) as { tx: string }[]).map((r) => r.tx);
+  return certifyTxs(db, txs, ports, now);
+}
+
+/** The same for named transactions (a demo run's own, which sit in no ledger table); each looked up once. */
+export async function certifyTxs(db: DB, list: readonly string[], ports: FinalityPorts = livePorts, now = new Date()): Promise<{ certified: number; not_kept: number; pending: number }> {
+  const seen = db.prepare("SELECT 1 FROM finality_evidence WHERE tx = ?");
+  const txs = [...new Set(list)].filter((t) => isTx(t) && !seen.get(t));
   const out = { certified: 0, not_kept: 0, pending: 0 };
   for (const tx of txs) {
     const block = await ports.blockOf(tx).catch(() => null);

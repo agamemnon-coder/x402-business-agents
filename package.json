@@ -56,6 +56,7 @@
     "outside-agent": "tsx src/cli/outside-agent.ts",
     "judge": "tsx src/cli/judge.ts",
     "submission": "tsx src/cli/submission.ts",
+    "four-eyes": "tsx src/cli/fourEyes.ts",
     "redteam": "tsx src/cli/redteam.ts",
     "reconcile": "tsx src/cli/reconcile.ts",
     "evals": "tsx src/cli/evals.ts"
