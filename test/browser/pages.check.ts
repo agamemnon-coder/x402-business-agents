@@ -112,6 +112,13 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       await look(page, `/month${q} ${tag}`, w);
       await page.screenshot({ path: join(shots, `month${q ? "-end" : ""}-${tag}.png`), fullPage: true });
     }
+
+    // The Scenario Lab (judge only: the relay does not serve it).
+    if (liveAt < 0) {
+      await page.goto(`${base}/lab`, { waitUntil: "load" });
+      await look(page, `/lab ${tag}`, w);
+      await page.screenshot({ path: join(shots, `lab-${tag}.png`), fullPage: true });
+    }
     await context.close();
   }
 }
@@ -121,4 +128,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /demo (every step), /month at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);

@@ -9,6 +9,7 @@ import type { NextFunction, Request, Response } from "express";
 import type { DB } from "../db/open.js";
 import { buildSnapshot } from "../dashboard/snapshot.js";
 import { simulateMonth, type MonthReport } from "../sim/month.js";
+import { runAll, runScenario, SCENARIOS, type ScenarioResult } from "../lab/scenarios.js";
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
@@ -40,6 +41,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
 };
 const MONTH_TEMPLATE = readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8");
 const DEMO_TEMPLATE = readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8");
+const LAB_TEMPLATE = readFileSync(new URL("../dashboard/lab.html", import.meta.url), "utf8");
+const LAB_FILE = new URL("../../docs/lab/results.json", import.meta.url);
 const STORY_FILE = new URL("../../docs/demo/story.json", import.meta.url);
 
 /** The hash of a page's one inline script or style (a data block, <script type=…>, is not a script and not hashed). */
@@ -69,6 +72,14 @@ export const PAGE = dashboardPage();
 export const CSP = cspFor(PAGE);
 /** The month replay carries its data inside the page, so it needs no request at all once loaded. */
 export const MONTH_CSP = cspFor(MONTH_TEMPLATE);
+
+/** The Scenario Lab (E) carries its results inside the page, like the month replay. */
+export const LAB_CSP = cspFor(LAB_TEMPLATE);
+export interface LabData { mode: "live" | "recorded"; at: string; results: ScenarioResult[] }
+/** The Lab page: results run now (on the runner) or the ones recorded by npm run lab (docs/lab/results.json). */
+export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readFileSync(LAB_FILE, "utf8")) as Omit<LabData, "mode">) }): string {
+  return LAB_TEMPLATE.replace("__LAB_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
+}
 
 /** The public demo page (K5 replay) plays a recorded run; no request, no key, nothing live. */
 export const DEMO_CSP = cspFor(DEMO_TEMPLATE);
@@ -132,6 +143,16 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/month", (_req, res) => {
     res.setHeader("Content-Security-Policy", MONTH_CSP);
     res.type("html").send(monthPage());
+  });
+
+  // The Scenario Lab, run on click: each scenario in a fresh throwaway world (no money, nothing outside), so a run
+  // is also the reset. ?run=<id> runs one, ?run=all or nothing runs them all.
+  app.get("/lab", async (req, res) => {
+    const id = String(req.query.run ?? "all");
+    const one = SCENARIOS.find((s) => s.id === id);
+    const results = one ? [await runScenario(one)] : await runAll();
+    res.setHeader("Content-Security-Policy", LAB_CSP);
+    res.type("html").send(labPage({ mode: "live", at: new Date().toISOString(), results }));
   });
 
   app.get("/api/snapshot", (_req, res) => {

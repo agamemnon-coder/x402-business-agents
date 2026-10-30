@@ -9,7 +9,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
-import { CSP, DEMO_CSP, FONT, LOGOS, MONTH_CSP, PAGE, demoPage, monthPage } from "../servers/dashboard.js";
+import { CSP, DEMO_CSP, FONT, LAB_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, labPage, monthPage } from "../servers/dashboard.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
@@ -25,6 +25,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/", page(CSP, () => PAGE));
   app.get("/demo", page(DEMO_CSP, () => demo));
   app.get("/month", page(MONTH_CSP, () => month));
+  const lab = labPage();
+  app.get("/lab", page(LAB_CSP, () => lab));
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
   for (const [name, logo] of Object.entries(LOGOS)) app.get(`/assets/${name}`, (_req, res) => { res.type(logo.type).send(logo.body); });
   // Nothing live here: the start page asks for no data without a viewer key, and nothing else answers.
@@ -51,7 +53,7 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
   const { server, url } = await startJudge(Number(process.env.PORT ?? 4311));
   if (args.includes("--check")) {
     let ok = true;
-    for (const path of ["/", "/demo", "/month"]) {
+    for (const path of ["/", "/demo", "/month", "/lab"]) {
       const res = await fetch(`${url}${path}`);
       const body = await res.text();
       const good = res.status === 200 && body.length > 1000;
@@ -61,6 +63,6 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
     server.close();
     process.exit(ok ? 0 : 1);
   }
-  console.log(`The recorded demo runs at ${url}/demo (no keys, nothing live). A month in 90 seconds: ${url}/month. Stop with Ctrl+C.`);
+  console.log(`The recorded demo runs at ${url}/demo (no keys, nothing live). A month in 90 seconds: ${url}/month. The Scenario Lab: ${url}/lab. Stop with Ctrl+C.`);
   if (!args.includes("--no-open")) openBrowser(`${url}/demo`);
 }
