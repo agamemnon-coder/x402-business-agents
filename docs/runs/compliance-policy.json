@@ -1,0 +1,178 @@
+{
+  "ran_at": "2026-10-30T21:42:30.774Z",
+  "network": "Metal testnet",
+  "contract": "0xdd659fbe72e9170ce7d8099636a45121173342b2",
+  "compiler": "solc 0.8.36+commit.8a079791.Emscripten.clang",
+  "source_sha256": "59d2fb7a1729d79612bfa220588184bcb31b793a534e1227b74fc37f7ef778d5",
+  "compliance_signer": "0xeFbec4eb4aF100a86e8e4420994A2957A0077a7D",
+  "operator": "0xdeC3Fd19CDB22d29c0b2AdE41A3F34F43Ad9368d",
+  "payee": "0x5262dAd00217FdBE978c74477786754110f2b496",
+  "sanctioned_stand_in": "0x010B80F4DB0c8406784D8E199A7d4fD8A5E635d9",
+  "list": "purser-test-list-2026-10-30 (a stand-in address, not a real sanctions list)",
+  "contract_balance_after": "1.50",
+  "steps": [
+    {
+      "step": "deploy ComplianceSendPolicy: signer = Purser's compliance key, operator = the payer key",
+      "outcome": "done",
+      "tx": "0x93533e4a2f08846d411f3411e802eb5cf7398321f3cef905d772bbc9e175faa5",
+      "detail": "contract 0xdd659fbe72e9170ce7d8099636a45121173342b2",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10085916,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "fund the contract with 2.00 test USD",
+      "outcome": "done",
+      "tx": "0xbad409c3aae604c6ebe444d2c017806a6eee2624f81a6d42302a170d9ee0850c",
+      "detail": "",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10085934,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "pay 0.50 to the screened payee with Purser's signed decision (cleared by screening)",
+      "outcome": "done",
+      "tx": "0xf35de591c5f0dc4b9eaf083e1a4da401f69d78848e78d32f36d1e9b5ed9f331a",
+      "detail": "the payee received 0.50",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10086080,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "Purser screens a sanctioned payee (a stand-in address on the test list)",
+      "outcome": "refused",
+      "tx": null,
+      "detail": "no decision signed: on the sanctions list",
+      "finality": null
+    },
+    {
+      "step": "attack: no decision at all",
+      "outcome": "reverted",
+      "tx": "0x9e642db498e780356221d5bbff5c881e16ad057a20bf921a638c03113ea01e1e",
+      "detail": "reverted on chain (BadSignature); used 26676 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10086217,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: a decision signed by another key (the attacker's)",
+      "outcome": "reverted",
+      "tx": "0x44dfdef4ba5fb1d619a984c031bf491ad7353b77c9d55ed996c2fbbdacffcb62",
+      "detail": "reverted on chain (NotCleared); used 220846 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10086360,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: the same decision a second time (replay)",
+      "outcome": "reverted",
+      "tx": "0xfc11229101730e83567986c6391b111564cb8cac34e8e2d1a9b3f161e02072b7",
+      "detail": "reverted on chain (PaymentIdSpent); used 29160 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10086494,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: the payee's decision used to pay the attacker",
+      "outcome": "reverted",
+      "tx": "0xcd8ce25d0c93e9354429cf7a7db0bbe325e8bff19eb9bdc0519f2d99bab59c2c",
+      "detail": "reverted on chain (NotCleared); used 220822 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10086636,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: the amount raised from 0.50 to 1.50 under the same decision",
+      "outcome": "reverted",
+      "tx": "0x05af39ff52b183b51b36d6d90aedff9ef391b98d2cfe8087a412e7f93f113125",
+      "detail": "reverted on chain (NotCleared); used 220814 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10086770,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: an expired decision",
+      "outcome": "reverted",
+      "tx": "0xd2f81433a05133983e9334de67d5d604a6dfe890b7079610d2daee3cf131afd3",
+      "detail": "reverted on chain (DecisionExpired); used 29160 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10086914,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: a valid decision submitted by someone else (the attacker's key)",
+      "outcome": "reverted",
+      "tx": "0x860292601aaf7aab3b9d74ae677fd1e7147f121ba4e4f796fa4a8295c351a679",
+      "detail": "reverted on chain (NotOperator); used 29190 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10087054,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: the valid decision's signature malleated (high s)",
+      "outcome": "reverted",
+      "tx": "0xc1949a03895c18c20e4e65f56b42b88b2a8284de6f0ddfa69023be3c62af3e49",
+      "detail": "reverted on chain (BadSignature); used 29160 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10087186,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: a decision Purser signed for another contract",
+      "outcome": "reverted",
+      "tx": "0x81a926c27a355ae1810cdbcf83bcee1aa6b8dbc054c59879d45175f9cc40595b",
+      "detail": "reverted on chain (NotCleared); used 220802 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10087321,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: pay the sanctioned payee with a decision the attacker made itself",
+      "outcome": "reverted",
+      "tx": "0xbf8775d2b75a896eac6666efe69cda9c36ae06724efebddb5bdc3a8e10c4f573",
+      "detail": "reverted on chain (NotCleared); used 220814 of 349026 gas",
+      "finality": {
+        "status": "CERTIFIED",
+        "block": 10087465,
+        "signers": 3,
+        "participants": 4
+      }
+    }
+  ]
+}

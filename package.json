@@ -57,6 +57,8 @@
     "judge": "tsx src/cli/judge.ts",
     "submission": "tsx src/cli/submission.ts",
     "four-eyes": "tsx src/cli/fourEyes.ts",
+    "contracts": "tsx src/compliance/compile.ts",
+    "compliance-policy": "tsx src/cli/compliancePolicy.ts",
     "redteam": "tsx src/cli/redteam.ts",
     "reconcile": "tsx src/cli/reconcile.ts",
     "evals": "tsx src/cli/evals.ts"
@@ -88,6 +90,7 @@
     "eslint": "10.12.0",
     "fast-check": "4.10.2",
     "playwright": "1.63.0",
+    "solc": "0.8.36",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.2",
@@ -101,6 +104,7 @@
     "@x402/extensions": "2.29.0",
     "@metalntwx/metal-agent": {
       "zod": "4.6.7"
-    }
+    },
+    "tmp": "0.2.7"
   }
 }
