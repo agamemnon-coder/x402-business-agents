@@ -117,6 +117,33 @@ Live on testnet with Purser's own code, in a separate world (`b1-world`; not a N
 So the whole path is in the evidence: a stranger's payment held by Metal, recorded by Purser, never bridged, and
 returned only after the CFO's Face ID.
 
+## 5b. The Dispute desk: what the seller can prove, then decide (Metal jury input, 30 October)
+
+When a customer says its agent never agreed to an order or a price, or asks whether the agent acted under a mandate a
+real person signed, Northwind as the seller settles it on its own terms (`src/seller/`, `npm run dispute`):
+
+| What the seller holds | From Metal | Proves |
+|---|---|---|
+| The order the customer's agent signed | the signed offer in the x402 payment (`signedOfferOf`), with the checkout: amount, payee, resource | what the agent agreed to, and the price |
+| The payment checked against the customer's mandate | `verifyMandatePayment` (step 4: the payment is the agent's per-payment mandate, inside the mandate at its block) | the agent acted inside limits its principal set |
+| The mandate | its `MandateBound` event on the customer's account: limits, payee, expiry, bound by the owner key | who stood behind it: the account's owner |
+| The settlement and the delivery | the tx and `/settlements`; the SHA-256 of the data delivered | that it was paid once and what was delivered |
+
+The rules are code (`decideDispute`):
+
+- A valid signed order inside the bound mandate: the "never ordered", "not authorised" and "wrong price" claims are rejected with that evidence.
+- No valid signed order, a reused (replayed) order, or a second charge for the same request: refunded.
+- Data the supplier's correction shows was wrong: refunded.
+- A refund goes only to the payer, never twice and never above what was paid. Within the CFO's limits it is paid at once; above them it becomes a proposal for Face ID.
+
+Opus explains the decision (advice). The customer gets a one-page report with explorer links
+([example, live](disputes/DD-a88e8959.html), [run log](runs/2026-10-30-dispute-desk.md)).
+
+**A real person?** Metal proves the owner key bound the mandate. It does not prove that a person holds that key.
+Purser's optional addition: the customer's owner registers a passkey with the seller and confirms each mandate with it
+(Face ID or similar), and the seller checks the signature (`src/seller/humanProof.ts`). This is labelled as Purser's,
+not enforced by Metal.
+
 ## 6. Evidence: how Purser's records map to Metal's model
 
 Metal's [Evidence and Regulatory Access](https://docs.metalntwx.com/learn/compliance/regulatory-access.md) page

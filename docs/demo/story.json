@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-30T08:05:25.941Z",
-  "run": "Friday run 1, 30 October 2026",
+  "recorded_at": "2026-10-30T08:51:39.149Z",
+  "run": "Friday run 1, 30 October 2026, with a Dispute desk case afterwards",
   "company": "Northwind Outdoor",
   "steps": [
     {
@@ -254,7 +254,7 @@
       "id": "audit",
       "rail": "Audit",
       "tone": "info",
-      "at": "2026-10-30T07:38:18.466Z",
+      "at": "2026-10-30T08:32:14.869Z",
       "approval": null,
       "title": "Everything is in an audit log you can check yourself",
       "text": "Every step is written to a log that cannot be changed without it showing. One command checks it all again: the payments on chain, every Face ID signature and every Airwallex booking.",
@@ -262,7 +262,7 @@
       "facts": [
         {
           "label": "Audit rows",
-          "value": "191, chain intact, head 8c086f1e2e6b…",
+          "value": "194, chain intact, head ee0732445a71…",
           "href": null
         },
         {
@@ -280,7 +280,7 @@
     }
   ],
   "audit": {
-    "rows": 191,
-    "head": "8c086f1e2e6bbf096970cf05606e435bf3ff2d1b16e1638efc341c1c411fa3d6"
+    "rows": 194,
+    "head": "ee0732445a717f7386b4c6ccd94c0f5459b515e1d3e0869833c10d328fd83618"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-30T08:35:17.479Z",
+  "at": "2026-10-30T08:49:19.092Z",
   "results": [
     {
       "id": "normal-purchase",
@@ -169,9 +169,9 @@
     {
       "id": "dispute-not-authorised",
       "title": "Dispute: \"our agent was not authorised\"",
-      "expected": "The payment is inside the mandate the customer's owner bound on chain, and the chain refuses anything outside it: the claim is rejected with the mandate as evidence.",
-      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
-      "happened": "rejected; sale 1: refund 0.00; owner bound: yes",
+      "expected": "The payment is inside the mandate the customer's owner bound on chain, and the chain refuses anything outside it; the owner also confirmed that mandate with a passkey (Purser's addition): the claim is rejected with both as evidence.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md; the customer's passkey is a software stand-in",
+      "happened": "rejected; sale 1: refund 0.00; owner bound: yes; passkey confirmation: verified (Summit Outfitters owner)",
       "passed": true,
       "evidence": [
         "DD-70d6f4c7",

@@ -9,6 +9,8 @@ import type { DB } from "../db/open.js";
 import type { RefundResult } from "../executors/refunds.js";
 
 export const LAB_CUSTOMER = "0x00000000000000000000000000000000000000c1" as Address;
+/** The customer's mandate, as each lab sale names it. */
+export const LAB_MANDATE_REF = `0x${"2f".repeat(32)}`;
 const SELLER = "0x828c7de12cab8149aa516958433f6eee23aec875";
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 
@@ -20,8 +22,8 @@ export const labOrder = (nonce: string, cents = 5) =>
 export function labSale(db: DB, seq: number, o: { order?: string | null; cents?: number; forged?: boolean } = {}): number {
   const body = JSON.stringify({ seller: "Northwind Outdoor", seq, stock: { on_hand: 90 + seq, reserved: 1 } });
   const offer = o.order === undefined ? labOrder(`lab-${seq}-${Math.random().toString(36).slice(2)}`) : o.order;
-  return Number(db.prepare(`INSERT INTO sales (route, price_cents, payer, signed_offer, tx_hash, request_url, request_params_json, body_sha256, body_json, status, created_at)
-    VALUES ('mandate', ?, ?, ?, ?, ?, ?, ?, ?, 'DELIVERED', ?)`).run(o.cents ?? 5, LAB_CUSTOMER, o.forged && offer ? `${offer}forged` : offer,
+  return Number(db.prepare(`INSERT INTO sales (route, price_cents, payer, customer_mandate_ref, signed_offer, tx_hash, request_url, request_params_json, body_sha256, body_json, status, created_at)
+    VALUES ('mandate', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DELIVERED', ?)`).run(o.cents ?? 5, LAB_CUSTOMER, LAB_MANDATE_REF, o.forged && offer ? `${offer}forged` : offer,
     `0x${createHash("sha256").update(`${seq}-${Math.random()}`).digest("hex")}`, `http://127.0.0.1:4102/v1/stock?seq=${seq}`, JSON.stringify({ seq: String(seq) }),
     createHash("sha256").update(body, "utf8").digest("hex"), body, new Date().toISOString()).lastInsertRowid);
 }

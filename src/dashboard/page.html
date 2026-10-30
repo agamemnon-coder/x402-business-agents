@@ -227,6 +227,12 @@ details.tech a { color: var(--accent); text-decoration: none; }
   .panel.bk table.wide td::before { content: attr(data-label); color: var(--muted); }
   .panel.bk table.wide td.num { text-align: right; }
 }
+/* The Dispute desk tab. */
+.okc { color: var(--ok, #0f7a3d); font-weight: 600; } .badc { color: var(--bad); font-weight: 600; }
+.panel.bk td:first-child { white-space: nowrap; }
+@media (max-width: 560px) { .panel.bk table.wide td { flex-wrap: wrap; } .panel.bk table.wide td .why { flex-basis: 100%; text-align: left; } .panel.bk td:first-child { white-space: normal; } }
+.review-box { background: var(--sunken); border-radius: 12px; padding: 12px 14px; margin-top: 12px; font-size: 14px; }
+.review-box p { margin: 0 0 6px; }
 /* F, the Agents page. */
 .agents-how { margin: 0 0 16px; }
 .agent { margin-top: 16px; }
@@ -502,6 +508,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <div id="books-view" hidden>
     <div class="head"><div><h1>Books</h1><div class="sub">Double entry from the agents' journal: every payment a debit and a credit of the same amount. Only what Purser booked; opening balances are not here.</div></div></div>
     <div id="books"></div>
+  </div>
+  <div id="disputes-view" hidden>
+    <div class="head"><div><h1>Dispute desk</h1><div class="sub">When a customer questions what its agent bought, Northwind decides from what it can prove: the order the agent signed, the payment checked on chain against the customer's mandate, the delivery. Code decides; Claude explains.</div></div></div>
+    <div id="disputes"></div>
   </div>
   <div id="overview">
   <div class="head"><div><h1>Overview</h1><div class="sub">Your agents' spending, within the limits you set.</div></div></div>
@@ -1004,12 +1014,45 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         b.postings.map(function (p) { return [day(p.date), p.account + " " + words(p.account_name), words(p.description), amt(p.debit, p.currency), amt(p.credit, p.currency)]; }))),
     ]);
   }
+  // The Dispute desk: each case with its claim, outcome, the evidence per payment and the explanation.
+  function renderDisputes(d) {
+    var cs = d.disputes || [];
+    if (!cs.length) { set("disputes", [el("div", "panel empty", [icon("shield-check"), d.recorded ? "No dispute was opened in this recording." : "No disputes yet. A case is opened with npm run dispute."])]); return; }
+    var OUT = { rejected: "Not refunded", refund: "Refunded in full", partial_refund: "Partly refunded" };
+    var mark = function (ok, yes, no) { return txt("span", ok ? "okc" : "badc", (ok ? "✓ " : "✗ ") + (ok ? yes : no)); };
+    set("disputes", cs.map(function (c) {
+      var head = el("div", "sect flush", [txt("h2", "", c.case_id + ": \u201c" + c.claim.charAt(0).toUpperCase() + c.claim.slice(1) + "\u201d"), txt("span", "pill " + (c.outcome === "rejected" ? "ok" : "wait"), OUT[c.outcome] + " · " + group(c.refund) + " test USD")]);
+      var route = c.route === "approval" ? "Above the CFO's automatic limits: " + c.proposal_id + " waits for Face ID." : c.route === "auto" ? "Refunded at once, within the CFO's automatic limits, to the account that paid." : "Nothing to refund.";
+      var common = c.sales.every(function (x) { return x.why === c.sales[0].why; }) ? c.sales[0].why : null;
+      var rows = c.sales.map(function (x) {
+        var tr = el("tr", "", [
+          el("td", "", [txt("b", "", String(x.sale_id)), el("div", "sub", [x.request])]),
+          txt("td", "num", group(x.charged)),
+          el("td", "", [mark(x.order.indexOf("signed") === 0, x.order, x.order)]),
+          el("td", "", [mark(x.chain, "inside the bound mandate", "outside it"), x.passkey ? el("div", "sub", ["owner confirmed with a passkey"]) : null]),
+          el("td", "", [mark(x.delivered, "hash matches", "hash differs")]),
+          el("td", "", [txt("b", "", group(x.refund)), common ? null : el("div", "sub why", [x.why])]),
+        ]);
+        ["Payment", "Charged", "Signed order", "Chain check", "Delivered", "Refund"].forEach(function (l, i) { tr.children[i].setAttribute("data-label", l); });
+        return tr;
+      });
+      var head2 = el("tr", "", ["Payment", "Charged", "Signed order", "Chain check", "Delivered", "Refund"].map(function (h, i) { return txt("th", i === 1 ? "num" : "", h); }));
+      return el("section", "panel bk", [head,
+        c.text ? el("p", "sub", ["The customer wrote: \u201c" + c.text + "\u201d"]) : null,
+        txt("p", "", route),
+        common ? el("p", "sub", [(c.sales.length > 1 ? "Every payment: " : "") + common]) : null,
+        el("table", "wide", [el("thead", "", [head2]), el("tbody", "", rows)]),
+        el("div", "review-box", [txt("p", "", c.explanation), txt("p", "sub", "Explained by " + c.explained_by + ". The decision and every amount are code's; the explanation is advice.")]),
+      ]);
+    }));
+  }
   var wantAgents = /[?&]agents(=|&|$)/.test(location.search);
   var wantBooks = !wantAgents && /[?&]books(=|&|$)/.test(location.search);
-  if (wantAgents || wantBooks) { document.getElementById("overview").hidden = true; document.getElementById(wantAgents ? "agents-view" : "books-view").hidden = false; }
+  var wantDisputes = !wantAgents && !wantBooks && /[?&]disputes(=|&|$)/.test(location.search);
+  if (wantAgents || wantBooks || wantDisputes) { document.getElementById("overview").hidden = true; document.getElementById(wantAgents ? "agents-view" : wantBooks ? "books-view" : "disputes-view").hidden = false; }
 
   function render(d) {
-    renderAgents(d); renderBooks(d);
+    renderAgents(d); renderBooks(d); renderDisputes(d);
     renderKpis(d); renderClaude(d); renderAsk(d); renderCards(d); renderAgentsTable(d);
     renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
     var fz = document.getElementById("frozen");
@@ -1111,7 +1154,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded"]]);
     document.getElementById("signin").hidden = false;
   } else if (wantRecorded && RECORDED) {
-    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks]]);
+    nav([["Overview", "./"], ["Demo", "demo"], ["A month in 90 seconds", "month"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
     document.getElementById("rec-text").textContent = "Recorded run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
@@ -1121,7 +1164,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     st.title = "The CFO's emergency stop: one Face ID freezes every agent and every card. Live only, not in a recording.";
     showDash(); render(snap);
   } else if (MODE === "local" || viewKey) {
-    nav([["Dashboard", "./", !wantAgents && !wantBooks], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
+    nav([["Dashboard", "./", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Disputes", "?disputes", wantDisputes], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
     showDash(); statusTimer = setInterval(status, 1000); poll();
   } else {
     showLanding("");

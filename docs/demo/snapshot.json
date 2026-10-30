@@ -1,16 +1,16 @@
 {
-  "recorded_at": "2026-10-30T08:05:26.002Z",
-  "run": "Friday run 1, 30 October 2026",
+  "recorded_at": "2026-10-30T08:51:39.200Z",
+  "run": "Friday run 1, 30 October 2026, with a Dispute desk case afterwards",
   "company": "Northwind Outdoor",
   "snapshot": {
-    "generated_at": "2026-10-30T08:05:26.002Z",
+    "generated_at": "2026-10-30T08:51:39.200Z",
     "world": {
       "business": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "customer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25"
     },
     "audit": {
-      "rows": 191,
-      "head": "8c086f1e2e6bbf096970cf05606e435bf3ff2d1b16e1638efc341c1c411fa3d6",
+      "rows": 194,
+      "head": "ee0732445a717f7386b4c6ccd94c0f5459b515e1d3e0869833c10d328fd83618",
       "intact": true
     },
     "budgets": {
@@ -205,6 +205,39 @@
       }
     ],
     "feed": [
+      {
+        "seq": 194,
+        "ts": "2026-10-30T08:32:14.869Z",
+        "actor": "support",
+        "event": "dispute.decided",
+        "model": null,
+        "tx": null,
+        "awx_id": null,
+        "text": "dispute.decided DD-a88e8959",
+        "tone": "info"
+      },
+      {
+        "seq": 193,
+        "ts": "2026-10-30T08:33:26.599Z",
+        "actor": "support",
+        "event": "claude.read",
+        "model": "Opus",
+        "tx": null,
+        "awx_id": null,
+        "text": "Claude explain dispute",
+        "tone": "info"
+      },
+      {
+        "seq": 192,
+        "ts": "2026-10-30T08:32:14.869Z",
+        "actor": "support",
+        "event": "dispute.opened",
+        "model": null,
+        "tx": null,
+        "awx_id": null,
+        "text": "dispute.opened DD-a88e8959",
+        "tone": "info"
+      },
       {
         "seq": 191,
         "ts": "2026-10-30T07:38:18.466Z",
@@ -831,39 +864,6 @@
         "awx_id": null,
         "text": "The support agent proposed P-0003 (refund batch)",
         "tone": "approval"
-      },
-      {
-        "seq": 134,
-        "ts": "2026-10-30T07:21:53.363Z",
-        "actor": "support",
-        "event": "refund.paid",
-        "model": null,
-        "tx": "0xa0c537b44c103df51ffa07865f6f3d51d4cc12eff5cb4140565e02a0c2d470ad",
-        "awx_id": null,
-        "text": "Refunded 0.05 to Summit Outfitters for sale #13 (refund-13)",
-        "tone": "ok"
-      },
-      {
-        "seq": 133,
-        "ts": "2026-10-30T07:21:47.729Z",
-        "actor": "support",
-        "event": "refund.paid",
-        "model": null,
-        "tx": "0x512fdb1d9680e74d8a735d9d9596211d266904018f816104f2a5c13f838fa97b",
-        "awx_id": null,
-        "text": "Refunded 0.05 to Summit Outfitters for sale #10 (refund-10)",
-        "tone": "ok"
-      },
-      {
-        "seq": 132,
-        "ts": "2026-10-30T07:21:43.542Z",
-        "actor": "support",
-        "event": "refund.paid",
-        "model": null,
-        "tx": "0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1",
-        "awx_id": null,
-        "text": "Refunded 0.05 to Summit Outfitters for sale #7 (refund-7)",
-        "tone": "ok"
       }
     ],
     "cards": [
@@ -977,7 +977,7 @@
       "blocked_declined_n": 2
     },
     "claude": {
-      "calls": 22,
+      "calls": 23,
       "fallbacks": 0,
       "models": [
         {
@@ -997,15 +997,15 @@
         {
           "model": "Opus 5.5",
           "role": "reviews a proposal's risk for the CFO",
-          "calls": 6,
-          "avg_latency_ms": null,
-          "cost_usd_micros": 139062
+          "calls": 7,
+          "avg_latency_ms": 6977,
+          "cost_usd_micros": 158546
         }
       ],
-      "cost_usd_micros": 159163,
-      "per_call_usd_micros": 7235,
+      "cost_usd_micros": 178647,
+      "per_call_usd_micros": 7768,
       "eur_paid": "1914.99",
-      "per_1000_eur_usd_micros": 83115
+      "per_1000_eur_usd_micros": 93289
     },
     "ask": [],
     "passkey": {
@@ -1127,6 +1127,10 @@
           {
             "model": "Claude Sonnet 5.5",
             "job": "drafts the reply to the customer"
+          },
+          {
+            "model": "Claude Opus 5.5",
+            "job": "explains a Dispute desk decision from its evidence"
           },
           {
             "model": "Claude Opus 5.5",
@@ -1739,7 +1743,167 @@
         }
       ],
       "total_postings": 222
-    }
+    },
+    "disputes": [
+      {
+        "case_id": "DD-a88e8959",
+        "claim": "our agent never ordered this",
+        "text": "Our agent never placed orders 5 to 16. Please refund all of them.",
+        "opened_at": "2026-10-30T08:32:14.869Z",
+        "outcome": "rejected",
+        "refund": "0.00",
+        "route": "none",
+        "proposal_id": null,
+        "explanation": "Thank you for raising this. We reviewed each of sales 5 to 16 against the evidence. None of these payments was refunded, and the total refunded by this decision is 0.00 test USD to the paying account 0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25. You said your agent never placed these orders. The records show otherwise. For every sale from 5 through 16 (GET /v1/stock, sequence 5 to 16, each charged 0.05 test USD), the evidence is the same: (1) Your agent gave us a valid signed order for 0.05 to us. (2) The on-chain check confirmed the payment was inside the mandate your account bound. (3) The payment settled on chain, and each sale's transaction ID is listed in the decision record. (4) The data we delivered matches the expected hash. Because a valid signed order, an in-mandate payment and a confirmed delivery exist for each sale, the decision made by code was a refund of 0.00 for each one. If you believe your agent's signing key or mandate was used without your permission, please let us know so the matter can be reviewed further. This explanation does not change the decision.",
+        "explained_by": "claude-opus-5-5",
+        "sales": [
+          {
+            "sale_id": 5,
+            "request": "GET /v1/stock?seq=5",
+            "charged": "0.05",
+            "tx": "0x2a81d430d7ad08d9c009088b9ce965d30b5d6697c179cf85fe94f14f0922f08a",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 6,
+            "request": "GET /v1/stock?seq=6",
+            "charged": "0.05",
+            "tx": "0xaf863cecec9e99cd8d7e2108e5289c6edf27eaa663a5d02e0cd7d2f58f833e50",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 7,
+            "request": "GET /v1/stock?seq=7",
+            "charged": "0.05",
+            "tx": "0x5362e5e7e9aee4d92a95bcf2f637939f0cca1acf5848748c500ccc2af2be82be",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 8,
+            "request": "GET /v1/stock?seq=8",
+            "charged": "0.05",
+            "tx": "0x294576a13d8a04c71f1ab542ccebed8d65931db409e138766e47dc1c140fffd9",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 9,
+            "request": "GET /v1/stock?seq=9",
+            "charged": "0.05",
+            "tx": "0xb7451dbf2b4d3c621a2dbe4082bec3b0c1763244646399d19d1fe8c40b92a282",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 10,
+            "request": "GET /v1/stock?seq=10",
+            "charged": "0.05",
+            "tx": "0xff9aaa36168e043c1a40e4d858f75499fba4fda57b89c9bbd2a356d56971c64f",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 11,
+            "request": "GET /v1/stock?seq=11",
+            "charged": "0.05",
+            "tx": "0xe9e765bb66eed6654e78f3a015d60d787e7d2810a01902eefc133c3386ac37d6",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 12,
+            "request": "GET /v1/stock?seq=12",
+            "charged": "0.05",
+            "tx": "0xb941d7db8b78e0bd9a4b3405b0af069d3e472b0899ee537a18eb9ca2611cd0c4",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 13,
+            "request": "GET /v1/stock?seq=13",
+            "charged": "0.05",
+            "tx": "0x147281a44d35a4a3b56c04b272e63bd1ce7cdd67dd5db7a4eb755c8c18716676",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 14,
+            "request": "GET /v1/stock?seq=14",
+            "charged": "0.05",
+            "tx": "0x3167d81015e3e1613bb2f8de8f6d28e5d932e4d498d9e46b5e8c59e2e5b0742e",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 15,
+            "request": "GET /v1/stock?seq=15",
+            "charged": "0.05",
+            "tx": "0xe20e14284212a1c4db1ddce86908693201df58026188660557eada96dd8de45a",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          },
+          {
+            "sale_id": 16,
+            "request": "GET /v1/stock?seq=16",
+            "charged": "0.05",
+            "tx": "0x320447bb3fff39f0aa083502fc7e76f2548b33b609ff28550af2ce91ba1e4109",
+            "refund": "0.00",
+            "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound.",
+            "order": "signed for 0.05",
+            "chain": true,
+            "delivered": true,
+            "passkey": false
+          }
+        ]
+      }
+    ]
   },
   "proof": {
     "alone": 106,

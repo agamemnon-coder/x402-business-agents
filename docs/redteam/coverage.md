@@ -35,4 +35,5 @@ the ledger, not from an error message. Scenario Lab stories are in `npm run lab`
 | 27 | A model answer of the wrong shape | `schema-slip` | `test/claude.test.ts` |
 | 28 | Ledger and outside world disagree | `hidden-payment` | Lab `reconciliation-difference`; `test/reconcile.test.ts` |
 | 29 | A card without Face ID, or a bigger or reusable task card, from a message; a flood of requests | `ask-raise-limit-in-words`, `ask-hidden-characters`, `ask-viewer-link-card`, `ask-agent-flood`, `task-card-second-use` | Lab `ask-purser` |
+| 30 | A refund obtained from the seller by a false dispute, or sent elsewhere | `dispute-refund-elsewhere` | Lab `dispute-*` (six); `test/dispute-desk.test.ts`, `test/dispute-case.test.ts` |
 | — | Outside money into the sweep wallet (B1), and a flood of tiny payments | `stranger-into-sweep`, `quarantine-dust-flood` | Lab `unknown-sender` |

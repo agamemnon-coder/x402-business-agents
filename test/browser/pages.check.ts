@@ -1,4 +1,4 @@
-// The guest pages as a juror opens them, with no key: /, /?recorded, /?recorded&agents, /?recorded&books, /demo (every step) and /month (start and end), at phone
+// The guest pages as a juror opens them, with no key: /, /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /demo (every step) and /month (start and end), at phone
 // (390 px) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
 // language, not exactly one h1, a link or button with no name, an image with no alt text).
@@ -116,6 +116,15 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (/USDZ|\$\s?\d/.test(bk)) fail(`/?recorded&books ${tag}: shows USDZ or dollars`);
     await page.screenshot({ path: join(shots, `books-${tag}.png`), fullPage: true });
 
+    // The Dispute desk of the recording: a case with its evidence, or a plain note.
+    await page.goto(`${base}/?recorded&disputes`, { waitUntil: "load" });
+    await page.waitForTimeout(800);
+    await look(page, `/?recorded&disputes ${tag}`, w);
+    const dd = await page.evaluate(() => document.body.innerText);
+    if (!/Dispute desk/.test(dd) || !(/signed for|does not verify/.test(dd) || /No dispute was opened/.test(dd))) fail(`/?recorded&disputes ${tag}: no cases and no note`);
+    if (/USDZ|\$\s?\d/.test(dd)) fail(`/?recorded&disputes ${tag}: shows USDZ or dollars`);
+    await page.screenshot({ path: join(shots, `disputes-${tag}.png`), fullPage: true });
+
     await page.goto(`${base}/demo`, { waitUntil: "load" });
     const steps = await page.locator("#steps button").count();
     if (steps < 5) fail(`/demo ${tag}: only ${steps} steps`);
@@ -147,4 +156,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);

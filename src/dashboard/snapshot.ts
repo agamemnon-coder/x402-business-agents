@@ -17,6 +17,8 @@ import { lastReconciliation } from "../finance/reconcile.js";
 import { CARDS, MCC_WORDS, type Agent } from "../config/policy.js";
 import { agentProfiles, type AgentProfile } from "../agents/profiles.js";
 import { booksView, type BooksView } from "../accounting/books.js";
+import { disputeCases } from "../seller/desk.js";
+import { CLAIM_WORDS } from "../seller/disputeDesk.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -189,6 +191,8 @@ export interface Snapshot {
   agents: AgentProfile[];
   /** The finance view: double-entry books from the GL journal (the same as npm run books); null for a ledger too old for it. */
   books: BooksView | null;
+  /** The Dispute desk: each decided case, newest first (at most ten). */
+  disputes: DisputeView[];
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
 }
@@ -732,6 +736,28 @@ function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: stri
 }
 
 // The chat with Purser has its own panel (snapshot.ask).
+export interface DisputeView {
+  case_id: string; claim: string; text: string; opened_at: string; outcome: string; refund: string; route: string; proposal_id: string | null;
+  explanation: string; explained_by: string;
+  sales: { sale_id: number; request: string; charged: string; order: string; chain: boolean; delivered: boolean; tx: string; refund: string; why: string; passkey: boolean }[];
+}
+
+/** The Dispute desk's cases for the dashboard, from the stored cases only. */
+function disputeViews(db: DB): DisputeView[] {
+  return (oldLedgerSafe(() => disputeCases(db)) ?? []).slice(0, 10).map((c) => ({
+    case_id: c.case_id, claim: CLAIM_WORDS[c.claim], text: c.text, opened_at: c.opened_at, outcome: c.decision.outcome, refund: fromCents(c.decision.refund_cents),
+    route: c.route, proposal_id: c.proposal_id, explanation: c.explanation, explained_by: c.explained_by,
+    sales: c.packs.map((p) => {
+      const d = c.decision.per_sale.find((x) => x.sale_id === p.sale_id)!;
+      return {
+        sale_id: p.sale_id, request: p.request, charged: fromCents(p.charged_cents), tx: p.tx, refund: fromCents(d.refund_cents), why: d.why,
+        order: p.order.valid ? `signed for ${fromCents(p.order.amount_cents ?? 0)}` : p.order.present ? "does not verify" : "none",
+        chain: p.mandate.within, delivered: p.delivery.matches, passkey: !!p.human.passkey?.verified,
+      };
+    }),
+  }));
+}
+
 /** A view that needs tables an older ledger (an early recording) does not have: absent there, not an error. */
 function oldLedgerSafe<T>(f: () => T): T | null {
   try {
@@ -875,5 +901,6 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     passkey: passkeyInfo(db, now),
     agents: agentProfiles(db, now),
     books: oldLedgerSafe(() => booksView(db)),
+    disputes: disputeViews(db),
   };
 }

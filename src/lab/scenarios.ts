@@ -25,12 +25,14 @@ import { FakeReceivePolicy } from "../redteam/receivePolicy.js";
 import { redTeamWorld, type World } from "../redteam/world.js";
 import type { DisputeClaim } from "../seller/disputeDesk.js";
 import { openDisputeCase } from "../seller/desk.js";
-import { LAB_CUSTOMER, labChain, labOrder, labRefund, labSale } from "../seller/standIns.js";
+import { LAB_CUSTOMER, LAB_MANDATE_REF, labChain, labOrder, labRefund, labSale } from "../seller/standIns.js";
+import { confirmationChallenge, mandatePasskey, recordMandateConfirmation, registerCustomerPasskey } from "../seller/humanProof.js";
+import { FakeAuthenticator } from "../redteam/authenticator.js";
 
 const DESK_OFFLINE = "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md";
 /** A Dispute desk case in the lab world: the stand-in chain, a refund that only records, no model. */
 async function deskCase(w: World, claim: DisputeClaim, saleIds: number[], dataWrong: number[] = []) {
-  const c = await openDisputeCase(w.db, tools(w), { claim, saleIds, customer: LAB_CUSTOMER }, { verify: labChain, refund: labRefund, dataWrong: new Set(dataWrong) }, w.now());
+  const c = await openDisputeCase(w.db, tools(w), { claim, saleIds, customer: LAB_CUSTOMER }, { verify: labChain, refund: labRefund, dataWrong: new Set(dataWrong), passkey: mandatePasskey(w.db) }, w.now());
   const said = c.decision.per_sale.map((x) => `sale ${x.sale_id}: refund ${(x.refund_cents / 100).toFixed(2)}`).join("; ");
   return { c, said, evidence: [c.case_id, ...rows(w, "dispute.decided")] };
 }
@@ -57,11 +59,18 @@ const DISPUTES: Scenario[] = [
   },
   {
     id: "dispute-not-authorised", title: "Dispute: \"our agent was not authorised\"",
-    expected: "The payment is inside the mandate the customer's owner bound on chain, and the chain refuses anything outside it: the claim is rejected with the mandate as evidence.",
-    offline: DESK_OFFLINE,
+    expected: "The payment is inside the mandate the customer's owner bound on chain, and the chain refuses anything outside it; the owner also confirmed that mandate with a passkey (Purser's addition): the claim is rejected with both as evidence.",
+    offline: `${DESK_OFFLINE}; the customer's passkey is a software stand-in`,
     run: async (w) => {
+      // The customer's owner registered a passkey with Northwind and confirmed the mandate with it (Face ID, user verified).
+      const auth = new FakeAuthenticator();
+      const origin = "https://summit.example";
+      await registerCustomerPasskey(w.db, { label: "Summit Outfitters owner", rpId: "summit.example", origin, challenge: "bGFi" }, auth.register({ challenge: "bGFi", origin, rpId: "summit.example" }));
+      await recordMandateConfirmation(w.db, LAB_MANDATE_REF, auth.sign({ challenge: Buffer.from(confirmationChallenge(LAB_MANDATE_REF), "hex").toString("base64url"), origin, rpId: "summit.example", counter: 1 }));
       const { c, said, evidence } = await deskCase(w, "not_authorised", [labSale(w.db, 3)]);
-      return { happened: `${c.decision.outcome}; ${said}; owner bound: ${c.packs[0]!.human.owner_bound ? "yes" : "no"}`, passed: c.decision.outcome === "rejected" && c.packs[0]!.human.owner_bound, evidence };
+      const h = c.packs[0]!.human;
+      return { happened: `${c.decision.outcome}; ${said}; owner bound: ${h.owner_bound ? "yes" : "no"}; passkey confirmation: ${h.passkey?.verified ? `verified (${h.passkey.label})` : "none"}`,
+        passed: c.decision.outcome === "rejected" && h.owner_bound && !!h.passkey?.verified, evidence };
     },
   },
   {
