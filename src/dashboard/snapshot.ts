@@ -21,6 +21,7 @@ import { disputeCases } from "../seller/desk.js";
 import { CLAIM_WORDS, type DisputeClaim } from "../seller/disputeDesk.js";
 import { eurInFlightCents, mandateAvailability } from "../policy/available.js";
 import { heldCents } from "../policy/holds.js";
+import { health, type Health } from "../ops/health.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -202,6 +203,8 @@ export interface Snapshot {
   disputes: DisputeView[];
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
+  /** Monitoring (B7): the alarms standing now and the numbers behind them; the relay's /health reads this. */
+  health: Health;
 }
 
 type AuditRow = { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string; row_hash: string };
@@ -928,5 +931,6 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     agents: agentProfiles(db, now),
     books: oldLedgerSafe(() => booksView(db)),
     disputes: disputeViews(db),
+    health: health(db, now),
   };
 }

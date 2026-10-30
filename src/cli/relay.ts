@@ -17,6 +17,7 @@ import { openDb } from "../db/open.js";
 import { execute } from "../executors/index.js";
 import { recoverHolds } from "../policy/holds.js";
 import { resumeInterrupted } from "../policy/saga.js";
+import { health } from "../ops/health.js";
 import { openEnrolment } from "../passkey/ledger.js";
 import { relayConfig, viewerLink, type RelayConfig } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
@@ -141,8 +142,19 @@ async function quarantineTick(): Promise<void> {
   for (const r of await resumeInterrupted(db, execute)) console.log(`${stamp()} recover  ${r.id} resumed after a restart: ${redactSecrets(r.outcome)}`);
 }
 
+// Monitoring (B7): each alarm is logged once when it is raised and once when it clears; the relay's /health shows them.
+let standing = new Set<string>();
+function alarmsTick(): void {
+  const now = health(db);
+  const codes = new Set(now.alerts.map((a) => `${a.code}:${a.words}`));
+  for (const a of now.alerts) if (!standing.has(`${a.code}:${a.words}`)) console.error(`${stamp()} ALARM    ${a.severity}: ${a.words}`);
+  for (const c of standing) if (!codes.has(c)) console.log(`${stamp()} alarm    cleared: ${c.slice(c.indexOf(":") + 1)}`);
+  standing = codes;
+}
+
 let lastError = "";
 while (!stopping) {
+  alarmsTick();
   await cardsTick();
   await quarantineTick();
   await reconcileTick();

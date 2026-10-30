@@ -136,5 +136,8 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
 
 /** Changes only when the ledger does: the build time is left out, so an idle runner pushes nothing new. */
 export function stateHash(s: RelayState): string {
-  return sha256(JSON.stringify({ ...s, generated_at: null, snapshot: { ...s.snapshot, generated_at: null } }));
+  // Moments and ages change every second without anything happening; the alarms themselves still count.
+  const h = s.snapshot.health;
+  const health = h ? { ...h, at: null, metrics: { ...h.metrics, reconcile_age_seconds: null } } : h;
+  return sha256(JSON.stringify({ ...s, generated_at: null, snapshot: { ...s.snapshot, generated_at: null, health } }));
 }

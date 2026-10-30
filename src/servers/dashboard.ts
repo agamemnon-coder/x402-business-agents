@@ -18,6 +18,7 @@ import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { buildLiveTimeline } from "../live/timeline.js";
+import { health, prometheus } from "../ops/health.js";
 
 /** What each agent is called on the pages (docs/decisions.md D2), as a data block: no markup, not part of any hash. */
 const AGENTS_JSON = JSON.stringify(Object.fromEntries(Object.entries(AGENT_DISPLAY).map(([id, a]) => [id, a.name])));
@@ -204,6 +205,15 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
 
   app.get("/api/snapshot", (_req, res) => {
     res.json(buildSnapshot(db, opts.now?.() ?? new Date()));
+  });
+
+  // Monitoring (B7): the alarms and numbers, as JSON (503 while an alarm stands) and as Prometheus metrics.
+  app.get("/health", (_req, res) => {
+    const h = health(db, opts.now?.() ?? new Date());
+    res.status(h.status === "ok" ? 200 : 503).set("cache-control", "no-store").json(h);
+  });
+  app.get("/metrics", (_req, res) => {
+    res.type("text/plain; version=0.0.4").set("cache-control", "no-store").send(prometheus(health(db, opts.now?.() ?? new Date())));
   });
 
   app.get("/approve/:id", (req, res) => {

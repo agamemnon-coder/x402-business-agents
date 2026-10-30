@@ -4,6 +4,7 @@
 // signature itself. Its own checks (origin, hash, queue and rate limits, the enrolment code) only refuse early.
 
 import { normalizeCode } from "../../src/passkey/code.js";
+import { publicHealth, type Health } from "../../src/ops/publicHealth.js";
 
 export type SqlValue = string | number | null;
 export interface Sql {
@@ -290,6 +291,16 @@ export class Relay {
     const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/ask", "/api/enrol/options", "/api/enrol"];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
+    // Monitoring (B7), for an uptime monitor and anyone: all well or not, alarm codes only, 503 while anything is wrong
+    // or the runner has stopped syncing. No amounts, names or ids; the details stay behind the viewer key.
+    if (route("GET", "/health")) {
+      const state = this.state();
+      const raw = state?.snapshot.health as Health | undefined;
+      // A runner too old to send health is "unknown", never "ok".
+      const ok = raw && typeof raw.at === "string" && Array.isArray(raw.alerts) ? raw : null;
+      const h = publicHealth(ok, state ? this.relayInfo(state).age_ms : null);
+      return new Response(JSON.stringify(h.body), { status: h.status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+    }
     // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,
     // so guessing is slowed and shows up (HF1). The runner's route has its own token and is not counted.
     if ((path === "/hooks/airwallex" || path.startsWith("/api/")) && this.failedTooOften(req)) {
