@@ -128,11 +128,16 @@ function ticketId(): string {
 }
 
 /** Reads a body up to a limit. Null means too large; undefined means not JSON. */
-async function readJson(req: Request, limit: number): Promise<{ text: string; value: unknown } | null | undefined> {
-  // A declared size over the limit is refused before a byte is read.
+/** The body as text, or null when it is over the limit (a declared size over it is refused before a byte is read). */
+async function readText(req: Request, limit: number): Promise<string | null> {
   if (Number(req.headers.get("content-length") ?? "0") > limit) return null;
   const text = await req.text();
-  if (new TextEncoder().encode(text).length > limit) return null;
+  return new TextEncoder().encode(text).length > limit ? null : text;
+}
+
+async function readJson(req: Request, limit: number): Promise<{ text: string; value: unknown } | null | undefined> {
+  const text = await readText(req, limit);
+  if (text === null) return null;
   try {
     return { text, value: JSON.parse(text) as unknown };
   } catch {
@@ -318,17 +323,17 @@ export class Relay {
   private async hook(req: Request): Promise<Response> {
     const secret = this.opts.webhookSecret;
     if (!secret) return error(503, "webhooks are not set up on this relay");
-    const body = await readJson(req, MAX_HOOK_BYTES);
-    if (body === null) return error(413, "event too large");
+    const text = await readText(req, MAX_HOOK_BYTES);
+    if (text === null) return error(413, "event too large");
     const ts = req.headers.get("x-timestamp") ?? "";
     const signature = (req.headers.get("x-signature") ?? "").toLowerCase();
     const age = Math.abs(this.now().getTime() - Number(ts));
-    // The body is checked exactly as received, before anything parses it.
-    const text = body === undefined ? "" : body.text;
+    // The body is checked exactly as received, before anything parses it (HF10: also when it is not JSON).
     if (!/^\d{10,16}$/.test(ts) || !(age <= HOOK_TOLERANCE_MS) || !/^[0-9a-f]{64}$/.test(signature) || !(await sameSecret(signature, await hmacHex(secret, ts + text)))) {
       return error(401, "bad or missing webhook signature");
     }
-    const v = body?.value;
+    let v: unknown;
+    try { v = JSON.parse(text); } catch { return error(400, "malformed event"); }
     if (!isObject(v) || typeof v.id !== "string" || v.id.length > 128) return error(400, "malformed event");
     this.sql.exec("INSERT INTO hooks (id, ts, signature, body, received_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING", v.id, ts, signature, text, this.now().toISOString());
     // A flood cannot grow the store: the oldest events go first (the runner's poll still finds their transactions).

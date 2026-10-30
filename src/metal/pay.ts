@@ -38,8 +38,12 @@ export async function payUnderMandate(
   let blocked: string | null = null;
   if (guard) {
     paying.client.onBeforePaymentCreation(async ({ selectedRequirements }) => {
-      // Rounded up to whole cents, so an offer of 0.0301 is not taken for 0.03 by a limit.
-      blocked = guard(Number((BigInt(selectedRequirements.amount) + 10n ** 16n - 1n) / 10n ** 16n), selectedRequirements.payTo);
+      // Rounded up to whole cents, so an offer of 0.0301 is not taken for 0.03 by a limit. An offer too large to count
+      // exactly as a number of cents is refused before the guard sees it (HF11).
+      const cents = (BigInt(selectedRequirements.amount) + 10n ** 16n - 1n) / 10n ** 16n;
+      blocked = cents > BigInt(Number.MAX_SAFE_INTEGER)
+        ? "policy_cap_exceeded: the offer is too large to count in cents"
+        : guard(Number(cents), selectedRequirements.payTo);
       return blocked ? { abort: true as const, reason: blocked } : undefined;
     });
   }

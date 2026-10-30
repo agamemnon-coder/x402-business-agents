@@ -23,19 +23,23 @@ export function hookSignatureOk(h: RelayedHook, secret: string): boolean {
   return got.length === want.length && timingSafeEqual(got, want);
 }
 
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
 /** Handles one relayed event and says what happened, in a line for the runner's log. Never throws. */
 export function handleAirwallexHook(db: DB, h: RelayedHook, secret: string, now = new Date()): string {
-  if (!hookSignatureOk(h, secret)) return `webhook ${h.id.slice(0, 40)}: bad signature, ignored`;
-  let event: { id?: unknown; name?: unknown; data?: unknown };
+  if (!hookSignatureOk(h, secret)) return `webhook ${String(h.id).slice(0, 40)}: bad signature, ignored`;
+  let event: unknown;
   try {
-    event = JSON.parse(h.body) as typeof event;
+    event = JSON.parse(h.body);
   } catch {
-    return `webhook ${h.id.slice(0, 40)}: not JSON, ignored`;
+    return `webhook ${String(h.id).slice(0, 40)}: not JSON, ignored`;
   }
-  const name = String(event.name ?? "");
+  // Signed is not the same as well-formed: anything but an object with a string name is ignored (HF9).
+  if (!isObject(event) || typeof event.name !== "string") return `webhook ${String(h.id).slice(0, 40)}: not an event, ignored`;
+  const name = event.name;
   // The docs put the resource under data.object; the sandbox (version 2025-11-11) sends it as data itself.
-  const data = event.data as Record<string, unknown> | undefined;
-  const object = (data?.object ?? data) as Record<string, unknown> | undefined;
+  const data = isObject(event.data) ? event.data : undefined;
+  const object = isObject(data?.object) ? data.object : data;
   if (!name.startsWith("issuing.") || !object || typeof object.card_id !== "string" || object.transaction_amount === undefined) {
     return `webhook ${name || "?"}: not a card transaction, ignored (fields: ${Object.keys(object ?? {}).slice(0, 12).join(", ")})`;
   }

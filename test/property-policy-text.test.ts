@@ -225,7 +225,7 @@ describe("policy from plain words, whatever the model returns (draftPolicyFromTe
   // fromText.ts says the model "may not invent, split, add up or round amounts". The CFO still sees and signs the
   // proposal, so it is not a bypass of approval, but the code check does not hold. Fix idea: require every accepted
   // amount to be in amountsIn(text) too (or match the quote on digit boundaries). Skipped until fixed.
-  it.skip("keeps only amounts the CFO actually wrote (fails: a quote may cut a number)", async () => {
+  it("keeps only amounts the CFO actually wrote, whole", async () => {
     const example = {
       text: "The sourcing card may spend at most €1500 a month.",
       draft: { changes: [{ key: "approval.refund_each", to: "0.00", quote: "0", why: "x" }], not_mapped: [], questions: [] },

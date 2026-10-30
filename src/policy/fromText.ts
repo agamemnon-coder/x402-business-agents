@@ -89,7 +89,9 @@ export async function draftPolicyFromText(db: DB, tools: Tools, text: string, no
         refuse(`${c.to} is not an amount with two decimals`);
         continue;
       }
-      if (!amountsIn(c.quote).includes(cents)) { refuse(`${fromCents(cents)} is not an amount in "${c.quote}"`); continue; }
+      // The amount must be in the quote AND be one the CFO wrote whole: a quote may not cut "1500" down to "500" or
+      // "0" (HF7), so the amounts of the whole text are the ones that count.
+      if (!amountsIn(c.quote).includes(cents) || !amountsIn(text).includes(cents)) { refuse(`${fromCents(cents)} is not an amount in "${c.quote}"`); continue; }
     }
     if (accepted.some((a) => a.key === c.key)) { refuse(`${rule.label} is changed twice; the first reading is kept`); continue; }
     const from = policyValue(db, c.key);

@@ -88,18 +88,21 @@ describe("the pay guard rounds an offer up to whole cents (src/metal/pay.ts)", (
     }), { numRuns: 300 });
   });
 
-  // FOUND (hardening plan item 2): src/metal/pay.ts:42 converts the rounded-up BigInt to a JS number with Number(...),
-  // which is exact only up to 2^53 cents. Above that the number is rounded to the nearest double, which can be LOWER
-  // than the cents owed. Counterexample (shrunk by fast-check): amount = 2^53 * 10^16 + 1 base units
-  // ("90071992547409920000000000000001"): owed is ceil = 9007199254740993 cents, the guard sees 9007199254740992, one
-  // cent less than owed. Impact is nil in practice
-  // (any such amount is far over every cap and every mandate budget, so it is still refused), but the guard's contract
-  // "never rounds down" does not hold over the full range. Kept skipped until pay.ts refuses amounts above
-  // Number.MAX_SAFE_INTEGER cents (or passes a bigint to the guard).
-  it.skip("never rounds down over the full range of offers (fails above 2^53 cents)", async () => {
+  // HF11 (found by this file): the rounded-up cents were turned into a JS number with Number(...), exact only up to
+  // 2^53 cents, so amount = 2^53 * 10^16 + 1 base units was shown to the guard as one cent less than owed. Now an offer
+  // too large to count exactly in cents is refused before the guard runs and before anything is signed.
+  // Breaks if pay.ts goes back to Number(...) without the size check.
+  it("never rounds down over the full range of offers: too large to count is refused unsigned", async () => {
     await fc.assert(fc.asyncProperty(fc.bigInt({ min: 0n, max: 2n ** 80n * CENT }), async (u) => {
-      const { seen } = await guardSees(u);
-      expect(BigInt(seen) * CENT >= u).toBe(true);
-    }), { numRuns: 300, examples: [[2n ** 53n * CENT + 1n]] });
+      const signedBefore = offer.signed;
+      const { seen, outcome } = await guardSees(u);
+      if (u > MAX_CENTS * CENT) {
+        expect(seen).toBe(-1);
+        expect(outcome.kind).toBe("refused");
+        expect(offer.signed).toBe(signedBefore);
+      } else {
+        expect(BigInt(seen) * CENT >= u).toBe(true);
+      }
+    }), { numRuns: 300, examples: [[2n ** 53n * CENT + 1n], [MAX_CENTS * CENT], [MAX_CENTS * CENT + 1n]] });
   });
 });

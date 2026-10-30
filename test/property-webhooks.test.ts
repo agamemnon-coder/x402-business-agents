@@ -126,7 +126,7 @@ describe("the runner records a webhook's card transaction (handleAirwallexHook)"
   // FOUND (bug 3, also when "name" is an object such as {"toString":""}: String(name) throws "Cannot convert object to
   // primitive value"; seed 1960890412). Skipped until the handler refuses such bodies instead of throwing (after the
   // Friday runs); then un-skip.
-  it.skip("never throws on any signed body and records at most one transaction per event", () => {
+  it("never throws on any signed body and records at most one transaction per event", () => {
     fc.assert(fc.property(fc.oneof(eventArb.chain((e) => fc.nat().map((n) => realise(e, n))), bodyArb), (body) => {
       fc.pre(body.trim() !== "null"); // the one body that does throw: see the skipped test below
       const before = rows();
@@ -144,7 +144,7 @@ describe("the runner records a webhook's card transaction (handleAirwallexHook)"
   // The relay never passes such a body on (it answers 400 to anything but an object with a string id), and it needs a
   // valid signature, so this is a robustness gap in the runner's own check, not a forgery path. Fix idea: refuse any
   // parsed value that is not a plain object before reading fields. Skipped until fixed.
-  it.skip("never throws, even on a signed body of null (fails)", () => {
+  it("never throws, even on a signed body of null", () => {
     fc.assert(fc.property(fc.constantFrom("null", " null ", "null\n"), (body) => {
       expect(() => handled(body)).not.toThrow();
     }), { numRuns: 10 });
@@ -212,8 +212,8 @@ describe("the runner records a webhook's card transaction (handleAirwallexHook)"
   // The signature means only Airwallex (or whoever holds the webhook secret) can send these, so the risk is a
   // misread rather than a forgery: a wrong amount in the ledger and in the agent's velocity count. Fix idea: accept
   // only a finite number or a decimal string as the amount (cents() on the raw value, without Number()), and only a
-  // string status. Skipped until fixed.
-  it.skip("never records an approved charge from a malformed event (fails: amount and status types are not checked)", () => {
+  // string status. Fixed (HF8): src/airwallex/issuing.ts cardAmountCents and the result check.
+  it("never records an approved charge from a malformed event", () => {
     const malformed = fc.record({
       bad: fc.oneof(
         fc.constantFrom(true, null, [45], "0x2d", "1e2", "", false, {}, "  7 ").map((a) => ({ transaction_amount: a as unknown })),
@@ -289,7 +289,7 @@ describe("the relay's webhook route (worker Relay /hooks/airwallex)", () => {
   // webhook signature" (and a correctly signed non-JSON body gets 401 instead of 400). Nothing is kept either way, so
   // there is no forgery path, but it contradicts the comment "The body is checked exactly as received, before anything
   // parses it". Fix idea: keep the raw text when JSON.parse fails. Skipped until fixed.
-  it.skip("answers 401 to every change of the signed body (fails for non-JSON bodies)", async () => {
+  it("answers 401 to every change of the signed body, JSON or not", async () => {
     await fc.assert(fc.asyncProperty(relayBody.chain((b) => fc.tuple(fc.constant(b), edited(b))), fresh, fc.integer({ min: 1, max: 200_000 }), fc.boolean(), async ([body, changed], ts, dt, inTs) => {
       fc.pre(new TextEncoder().encode(changed).join() !== new TextEncoder().encode(body).join());
       const before = kept();

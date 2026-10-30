@@ -100,7 +100,19 @@ type AwxTx = {
 };
 
 /** The words Airwallex uses for a refused authorisation. Anything else went through (PENDING, APPROVED, CLEARED, ...). */
-const DECLINED = new Set(["FAILED", "DECLINED", "REVERSED"]);
+const DECLINED = new Set(["FAILED", "DECLINED", "REVERSED", "EXPIRED"]);
+/** The results that mean money was (or will be) taken from the card. Anything else is refused, never guessed. */
+const APPROVED = new Set(["APPROVED", "PENDING", "CLEARED", "SETTLED"]);
+
+/**
+ * A card amount as Airwallex sends it: a JSON number or a plain decimal string, signed from the card's side. A boolean,
+ * null, an array, hex, an exponent or an empty string is not an amount (security review HF8).
+ */
+function cardAmountCents(v: unknown): number {
+  if (typeof v === "number" && Number.isFinite(v)) return cents(Math.abs(v));
+  if (typeof v === "string" && /^-?\d+(\.\d+)?$/.test(v)) return cents(v.replace(/^-/, ""));
+  throw new Error(`not a card amount: ${JSON.stringify(v)?.slice(0, 40)}`);
+}
 
 export function toLimits(l: AwxLimits | undefined): CardLimits | null {
   if (!l || l.currency !== "EUR") return null;
@@ -127,11 +139,16 @@ export function toCardTransaction(t: AwxTx): CardTransaction {
   // A card transaction event webhook carries neither status nor process_result: a failure reason means declined.
   const status = t.status ?? t.process_result ?? (t.failure_reason ? "DECLINED" : t.card_transaction_id ? "APPROVED" : undefined);
   const when = t.transaction_date ?? t.transacted_at ?? t.created_at;
-  if (!id || !status || !when) throw new Error("an Airwallex card transaction without an id, a result or a date");
+  if (typeof id !== "string" || !id || typeof status !== "string" || !when) throw new Error("an Airwallex card transaction without an id, a result or a date");
+  if (!APPROVED.has(status) && !DECLINED.has(status)) throw new Error(`an unknown card transaction result: ${status.slice(0, 40)}`);
+  if (typeof t.card_id !== "string" || typeof t.transaction_currency !== "string" || !/^[A-Z]{3}$/.test(t.transaction_currency)) {
+    throw new Error("an Airwallex card transaction without a card or a currency");
+  }
+  if (Number.isNaN(new Date(when).getTime())) throw new Error("an Airwallex card transaction with a date that is not a date");
   return {
     transactionId: id, ...(t.transaction_id ? { legacyId: t.transaction_id } : {}), cardId: t.card_id,
     // Airwallex signs amounts from the card's side (a purchase is negative).
-    amountCents: cents(Math.abs(Number(t.transaction_amount))), currency: t.transaction_currency,
+    amountCents: cardAmountCents(t.transaction_amount), currency: t.transaction_currency,
     status, approved: !DECLINED.has(status), failureReason: t.failure_reason ?? null,
     // The sandbox pads merchant names with underscores.
     merchant: (t.merchant?.name ?? "").replace(/_+$/, "").trim(), mcc: t.merchant?.category_code ?? null,
