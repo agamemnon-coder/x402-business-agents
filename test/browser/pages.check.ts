@@ -87,7 +87,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/?recorded`, { waitUntil: "load" });
     await page.waitForTimeout(1500);
     await look(page, `/?recorded ${tag}`, w);
-    const rec = await page.evaluate(() => document.body.innerText);
+    // Claude's costs are real US dollars (list prices); chain money must read "test USD" everywhere else.
+    const rec = await page.evaluate(() => { const c = document.getElementById("claude-panel"); const all = document.body.innerText; return c ? all.replace(c.innerText, "") : all; });
     for (const want of [/Recorded run of/, /On-chain budgets/i, /test USD/, /Company cards/i]) {
       if (!want.test(rec)) fail(`/?recorded ${tag}: missing ${want}`);
     }

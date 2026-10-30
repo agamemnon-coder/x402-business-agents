@@ -493,7 +493,7 @@ let runnerConflict = false;
 let deviceStore: Pick<Storage, "getItem" | "setItem"> | null = null;
 const KEY_CONFLICT = "This link carries another runner key than the one this phone pinned, so it was not accepted. If the runner really changed, clear this site's data on the phone and open the new link.";
 const REPLAYED = "The relay sent an older signed state than this phone already saw. Nothing can be signed here; tell Claude.";
-const UNSIGNED = "What the relay sent is not signed by the runner this phone knows. Nothing can be signed here. Open the viewer link from Claude again, and tell Claude if this stays.";
+const UNSIGNED = "What the relay sent is not signed by the runner this phone knows. Nothing can be signed here. If you opened another run's viewer link on this phone before, it still holds that runner's key: open this run's viewer link in a private tab, or clear this site's data and open it again. Tell Claude if this stays.";
 
 const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave you once on this phone, then come back.";
 
@@ -642,6 +642,16 @@ interface SheetContext {
 }
 
 /**
+ * A loud line when the CFO is about to approve what Opus advises rejecting (Friday run 2: a refund batch Opus advised
+ * against was approved, meant as a rejection). Advice only: it never stops the CFO.
+ */
+export function againstAdvice(decision: "APPROVED" | "REJECTED", review: { recommendation: string } | null | undefined): string[] {
+  return decision === "APPROVED" && review?.recommendation === "reject"
+    ? ["Opus advises rejecting this, and you are about to APPROVE it. To reject, go Back and tap Reject."]
+    : [];
+}
+
+/**
  * The full-screen summary of one proposal (mis-tap prevention): built only from its hashed terms; Confirm arms
  * after 0.8 s and only it starts the passkey, whose challenge is this proposal's hash; Back signs nothing.
  */
@@ -664,6 +674,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     txt("p", "eyebrow", rejecting ? "You are rejecting" : "You are approving"),
     el("h2", "sheet-title", [f.title]),
     txt("p", "sentence", rejecting ? `Nothing of this will happen: ${f.sentence}` : f.sentence),
+    ...againstAdvice(rejecting ? "REJECTED" : "APPROVED", o.review).map((w) => txt("p", "alarm big", w)),
     ...f.warnings.map((w) => txt("p", "alarm", w)),
     ...(o.warnings ?? []).map((w) => txt("p", "alarm", w)),
     el("dl", "facts", [

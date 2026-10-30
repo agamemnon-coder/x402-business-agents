@@ -38,6 +38,7 @@ main > h1 { font-size: 24px; line-height: 1.25; margin: 6px 0 6px; letter-spacin
 .pid { color: var(--muted); font-size: 13px; }
 
 .alarm { display: block; background: var(--bad-soft); color: var(--bad); font-weight: 650; padding: 10px 12px; border-radius: 10px; margin: 10px 0; }
+.alarm.big { font-size: 17px; border: 2px solid var(--bad); }
 .warn-box { background: var(--warn-soft); color: var(--warn); font-weight: 600; padding: 10px 12px; border-radius: 10px; }
 
 /* Options, side by side when there are two */

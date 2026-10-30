@@ -225,3 +225,14 @@ describe("the runner's pinned key and its ledger counter (N3, N4)", () => {
     expect(freshEnough(Number.NaN, store)).toBe(false);
   });
 });
+
+describe("approving against Opus's advice", () => {
+  // Breaks if the approval sheet no longer warns when the CFO approves what Opus advises rejecting (Friday run 2).
+  it("warns loudly on approve when Opus advises reject, and never on reject", async () => {
+    const { againstAdvice } = await import("../src/approve/client.js");
+    expect(againstAdvice("APPROVED", { recommendation: "reject" })[0]).toMatch(/about to APPROVE/);
+    expect(againstAdvice("REJECTED", { recommendation: "reject" })).toEqual([]);
+    expect(againstAdvice("APPROVED", { recommendation: "approve" })).toEqual([]);
+    expect(againstAdvice("APPROVED", null)).toEqual([]);
+  });
+});
