@@ -38,6 +38,7 @@
     "cards": "tsx src/cli/cards.ts",
     "ask": "tsx src/cli/ask.ts",
     "lab": "tsx src/cli/lab.ts",
+    "books": "tsx src/cli/books.ts",
     "receive-policy": "tsx src/cli/receivePolicy.ts",
     "clearing": "tsx src/cli/clearing.ts",
     "payee": "tsx src/cli/payee.ts",

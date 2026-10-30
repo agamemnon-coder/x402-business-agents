@@ -52,3 +52,13 @@ charge is not.
 The chart in `src/config/gl.ts` is an example: map the numbers to your own chart there. Text cells that a spreadsheet
 would read as a formula (a merchant name from outside, say) get a leading apostrophe.
 
+
+## The books (double entry)
+
+`npm run books` turns the GL journal into double entry: every line is a debit and a credit of the same integer cents
+in its own currency (money in: debit the bank account, credit the GL account; money out: the other way round), so
+debits equal credits in every currency, checked for any journal by a property test (`test/books.test.ts`). It prints
+the trial balance, the cash moved through each bank account and the spend per cost centre; `--csv` exports every
+posting for an ERP, `--json` the whole view. Only movements Purser booked are there: opening balances are not. A
+currency conversion leaves account 1590 (money in transit) with a USD debit and a EUR credit, since one currency
+cannot net against another; an FX result account is the next step.
