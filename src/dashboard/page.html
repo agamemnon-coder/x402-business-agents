@@ -348,6 +348,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 .rail .logo img { height: 20px; width: auto; display: block; }
 .rail .what { color: var(--muted); font-size: 14px; font-weight: 600; }
 .rail ul { list-style: none; margin: 0; padding: 0; }
+.railextra { margin: 6px 0 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.railextra h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.railextra li { font-size: 14px; line-height: 1.5; color: var(--text); padding: 4px 0; }
+.railextra code { font-size: 12px; }
 .rail li { padding: 14px 0; border-bottom: 1px solid var(--border); }
 .rail li:last-child { border-bottom: 0; }
 .rail li b { display: block; font-size: 15px; }
@@ -499,9 +503,13 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <!-- The two rails: what Airwallex and Metal did in the recorded run, each with its proof. -->
   <section class="section rails" aria-labelledby="h-rails" id="rails-sec" hidden>
     <h2 id="h-rails">Where the money moves, and where the limits hold</h2>
-    <p class="lead">Purser is the control layer. The money moves on Airwallex and Metal, and they enforce the limits: a card declines at Airwallex, a payment is refused by the chain. Everything below happened in the recorded run.</p>
+    <p class="lead">Purser is the control layer. The money moves on Airwallex and Metal, and they enforce the limits: a card declines at Airwallex, a payment is refused by the chain. Everything below happened in the recorded run, except the block marked as separate runs.</p>
     <div class="rails-grid">
-      <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="rail-awx"></ul></article>
+      <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="rail-awx"></ul><div class="railextra"><h3>Also live in the Airwallex sandbox, in separate runs on 30 October</h3><ul>
+        <li><b>Global Accounts:</b> four retailers' payments into Northwind's EUR and GBP accounts; two matched to their invoices, one €10.00 short and one with no invoice went to the CFO.</li>
+        <li><b>Webhooks:</b> 23 Airwallex events subscribed, each signature-checked twice; two deposits matched or escalated by the webhook alone.</li>
+        <li><b>Single-use task cards:</b> one purchase each; a second charge was declined <code>CARD_CLOSED</code>, a wrong merchant <code>MERCHANT_CATEGORY_NOT_ALLOWED</code>.</li>
+      </ul></div></article>
       <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="rail-mtl"></ul><a class="raillink" href="metal">How Purser uses Metal: every feature, the mandate inspector and the Dispute desk →</a></article>
     </div>
     <p class="railnote">Airwallex ids are the ones the Airwallex sandbox API returned (each checked again, read-only, on 30 October); Metal transactions open on the testnet explorer. Simulated by the sandbox: a merchant's card charge, a transfer's last steps (sent, paid), and the deposit that stands in for Metal earnings.</p>
