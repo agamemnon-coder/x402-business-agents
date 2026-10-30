@@ -23,6 +23,7 @@
     "s2": "tsx src/cli/s2.ts",
     "s3": "tsx src/cli/s3.ts",
     "verify": "tsx src/cli/verify.ts",
+    "principals": "tsx src/cli/principals.ts",
     "audit:export": "tsx src/cli/auditExport.ts",
     "audit:report": "tsx src/cli/auditReport.ts",
     "verify-log": "tsx src/cli/verifyLog.ts",

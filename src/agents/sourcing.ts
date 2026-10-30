@@ -51,7 +51,7 @@ export class SourcingAgent {
     const ref = `upstream:${seq}:${started + 60_000}`;
     let held = false;
     const out = await payUnderMandate(this.mandate, `${this.supplierBase}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents) => {
-      const refused = reserveSpend(this.db, { agent: "sourcing", rail: "metal", cents, ref });
+      const refused = reserveSpend(this.db, { agent: "sourcing", rail: "metal", cents, ref, payee: "supplier" });
       held = refused === null;
       return refused;
     });

@@ -9,6 +9,7 @@ import { fromCents } from "../lib/money.js";
 import type { Card, CardLimits, CardTransaction, IssuingRail, CardControls } from "../airwallex/issuing.js";
 import { cardLimits, frozen } from "./rules.js";
 import { stopped, velocityObserve } from "./velocity.js";
+import { principalActive } from "./principals.js";
 
 export interface CardRow {
   /** An own agent (sourcing, support, treasury) or an outside one (ext:<name>, P1). */
@@ -75,7 +76,8 @@ const sameControls = (a: Pick<CardControls, "mccs" | "currencies"> | null | unde
 
 /** The status the policy wants a card in: frozen by the emergency stop or its agent's velocity stop, closed once a task card is used, or active. */
 const taskUsed = (db: DB, agent: string) => agent.startsWith("task:") && !!db.prepare("SELECT 1 FROM task_cards WHERE task_id = ? AND status = 'USED'").get(agent);
-export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) || taskUsed(db, agent) ? "INACTIVE" : "ACTIVE");
+// A revoked or expired agent identity (B5) freezes its card too; the other agents' cards stay as they are.
+export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) || taskUsed(db, agent) || !principalActive(db, agent) ? "INACTIVE" : "ACTIVE");
 
 /** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
 export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Card, now: Date): Promise<boolean> {

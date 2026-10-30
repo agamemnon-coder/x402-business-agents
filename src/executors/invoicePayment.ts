@@ -14,6 +14,7 @@ import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { checkpoint, step } from "../policy/saga.js";
+import { authorize } from "../policy/principals.js";
 
 export interface InvoicePaymentResult {
   conversionId: string | null;
@@ -31,6 +32,9 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     if (!counterpartyAllowed(db, t.beneficiary_name)) throw new Error(`${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`);
     if (frozen(db)) throw new Error("the CFO pulled the emergency stop; nothing is paid until it is lifted");
     if (stopped(db, "treasury")) throw new Error("the finance agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop");
+    // The finance agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
+    const denied = authorize(db, "treasury", { rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, now());
+    if (denied) throw new Error(`${denied}; nothing is paid`);
     // Another payout for the same invoice (an older proposal approved elsewhere): stop before any conversion.
     const other = db.prepare("SELECT status FROM transfers WHERE invoice_no = ? AND request_id <> ? AND status <> 'CANCELLED' LIMIT 1").get(t.invoice_no, t.transfer_request_id) as { status: string } | undefined;
     if (other) throw new Error(`invoice ${t.invoice_no} ${other.status === "PAID" ? "is already paid" : `already has a payout (${other.status})`} by another proposal; nothing is converted or paid`);

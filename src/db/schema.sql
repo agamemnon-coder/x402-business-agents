@@ -502,3 +502,19 @@ CREATE TABLE IF NOT EXISTS policy_versions (
   values_json TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+-- Agent identities (backend review B5): each agent acts as a principal with its own capabilities (which tools, rails,
+-- currencies and kinds of payee), which can be revoked, can expire, and (for an outside agent) has a key that can be
+-- rotated. Only the key's hash is kept; the key itself goes to a key file, never to the ledger or a log.
+CREATE TABLE IF NOT EXISTS principals (
+  principal_id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL CHECK (kind IN ('internal', 'outside')),
+  capabilities_json TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'REVOKED')),
+  expires_at TEXT,
+  key_sha256 TEXT,
+  key_version INTEGER NOT NULL DEFAULT 0,
+  reason TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

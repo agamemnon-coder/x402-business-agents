@@ -48,7 +48,7 @@ export async function refundSale(
   const inFlight = !!existing && (existing.outcome === "PENDING" || existing.outcome === "HELD");
   const refusal = inFlight
     ? capRefusal(db, "support", r.amount_cents) ?? velocityGate(db, "support", "metal", r.amount_cents, new Date(), paymentId)
-    : reserveSpend(db, { agent: "support", rail: "metal", cents: r.amount_cents, ref: paymentId });
+    : reserveSpend(db, { agent: "support", rail: "metal", cents: r.amount_cents, ref: paymentId, payee: "customer" });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its state.
     if (existing && (existing.outcome === "PENDING" || existing.outcome === "HELD")) {

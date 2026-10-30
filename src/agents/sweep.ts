@@ -89,7 +89,7 @@ export async function executeSweep(db: DB, paymentId: string, amountCents: numbe
   const inFlight = row.outcome === "PENDING" || row.outcome === "HELD";
   const refusal = inFlight
     ? capRefusal(db, "treasury", amountCents) ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId)
-    : reserveSpend(db, { agent: "treasury", rail: "metal", cents: amountCents, ref: paymentId });
+    : reserveSpend(db, { agent: "treasury", rail: "metal", cents: amountCents, ref: paymentId, payee: "sweep" });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its
     // state, so it is never mistaken for a sweep that did not happen and swept again under a new id.

@@ -18,9 +18,10 @@ import type { CardTransaction } from "../airwallex/issuing.js";
 import { capRefusal } from "./rules.js";
 import { stopped, velocityGate } from "./velocity.js";
 import { policyVersion } from "./versions.js";
+import { authorize, type Payee } from "./principals.js";
 
 export type HoldRail = "metal" | "card";
-export interface SpendRequest { agent: Agent | `ext:${string}`; rail: HoldRail; cents: number; ref: string; now?: Date }
+export interface SpendRequest { agent: Agent | `ext:${string}`; rail: HoldRail; cents: number; ref: string; now?: Date; payee?: Payee }
 
 const AGENTS: Agent[] = ["sourcing", "support", "treasury"];
 
@@ -66,6 +67,9 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
     }
     const agent = r.agent;
     const ours = (AGENTS as string[]).includes(agent);
+    // The agent's identity first (B5): revoked, expired, or not allowed this rail, currency or kind of payee.
+    const denied = authorize(db, agent, { rail: r.rail, currency: r.rail === "metal" ? "USDZ" : "EUR", payee: r.payee }, now);
+    if (denied) return denied;
     if (r.rail === "metal") {
       if (ours) {
         const refused = capRefusal(db, agent as Agent, r.cents);
@@ -118,7 +122,7 @@ export function releaseHold(db: DB, ref: string, reason: string, now = new Date(
  */
 export async function chargeUnderHold(db: DB, agent: string, cents: number, now: Date, charge: () => Promise<CardTransaction>): Promise<CardTransaction> {
   const ref = `card:${agent}:${now.toISOString()}:${randomUUID().slice(0, 8)}`;
-  const refused = reserveSpend(db, { agent: agent as SpendRequest["agent"], rail: "card", cents, ref, now });
+  const refused = reserveSpend(db, { agent: agent as SpendRequest["agent"], rail: "card", cents, ref, now, payee: "merchants" });
   if (refused) throw new Error(refused.replace(/^[a-z_]+: /, ""));
   const t = await charge();
   if (t.approved) settleHold(db, ref, now);

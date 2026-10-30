@@ -16,6 +16,8 @@ import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { syncCards } from "../policy/cards.js";
 import { capRefusal } from "../policy/rules.js";
+import { reserveSpend } from "../policy/holds.js";
+import { authorize, keyMatches, revokePrincipal, rotatePrincipalKey } from "../policy/principals.js";
 import { viewKey } from "../relay/config.js";
 import { sqlOver } from "../relay/local.js";
 import { Relay } from "../../worker/src/core.js";
@@ -174,6 +176,27 @@ export const MORE_ATTACKS: Attack[] = [
       const chain = capRefusal(w.db, "sourcing", 1);
       return { attempt: "an agent bought on its card and paid on chain after the stop", blocked: !t.startsWith("APPROVED") && !!chain?.startsWith("frozen_by_cfo"),
         defence: "the stop refuses every agent payment before signing and freezes every card at the card issuer", evidence: `card: ${t}; chain: ${chain ?? "not refused"}` };
+    },
+  },
+  {
+    id: "revoked-agent",
+    title: "A revoked agent keeps paying, or an old key keeps working",
+    category: "outside agent",
+    run: async (w) => {
+      // The sales agent's identity is revoked (a leaked machine); an outside agent's key was rotated.
+      revokePrincipal(w.db, "support", "machine reported lost", "max", w.now());
+      await syncCards(w.db, w.issuing, w.now());
+      const refund = reserveSpend(w.db, { agent: "support", rail: "metal", cents: 5, ref: "rt-refund", now: w.now(), payee: "customer" });
+      const card = await buyPlan(w.db, w.issuing, "adwave-starter", w.now()).then((x) => (x.approved ? "APPROVED" : `declined (${x.failureReason})`), (e: Error) => `refused (${e.message.slice(0, 60)})`);
+      const others = authorize(w.db, "sourcing", { rail: "metal", currency: "USDZ", payee: "supplier" }, w.now());
+      const ext = "ext:acme-research";
+      const old = rotatePrincipalKey(w.db, ext, "max", w.now()).key;
+      rotatePrincipalKey(w.db, ext, "max", w.now());
+      const oldKey = keyMatches(w.db, ext, old, w.now());
+      const blocked = !!refund?.startsWith("principal_revoked") && !card.startsWith("APPROVED") && others === null && !oldKey;
+      return { attempt: "the revoked sales agent refunds and buys ads on its card; an outside agent uses its key from before a rotation", blocked,
+        defence: "each agent acts as its own principal: a revoked one is refused before signing and its card is frozen; a rotated key stops at once; the other agents carry on",
+        evidence: `refund: ${refund ?? "reserved"}; card: ${card}; operations agent: ${others ?? "still allowed"}; old key: ${oldKey ? "accepted" : "refused"}` };
     },
   },
 ];
