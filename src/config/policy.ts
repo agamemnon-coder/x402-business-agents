@@ -94,3 +94,16 @@ export const PLANS: Record<string, { agent: Agent; merchant: string; label: stri
   // Not a plan the agent should buy: warehouse software on the sales card, which may pay only ads (a demo moment).
   "packwise-on-sales-card": { agent: "support", merchant: "Packwise", label: "Starter plan, monthly, on the sales card", amountCents: 1999, mcc: "5734" },
 };
+
+/**
+ * Ask Purser (G): what a task card may be for. Each kind is a single-use card for its merchant categories only, at
+ * most this amount; anything else is refused. The CFO approves every task card with Face ID.
+ */
+export const TASK_KINDS = {
+  flight: { label: "Flight", mccs: ["4511"], maxCents: 150_000 },
+  hotel: { label: "Hotel", mccs: ["7011"], maxCents: 100_000 },
+  train: { label: "Train", mccs: ["4112"], maxCents: 50_000 },
+} as const;
+/** A task card without a date in the message ends after this many days; a date may be at most TASK_MAX_DAYS ahead. */
+export const TASK_DEFAULT_DAYS = 7;
+export const TASK_MAX_DAYS = 30;
