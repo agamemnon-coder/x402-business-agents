@@ -16,3 +16,4 @@ audit.head
 worker/src/pages.gen.ts
 worker/.wrangler/
 test-results/
+coverage/

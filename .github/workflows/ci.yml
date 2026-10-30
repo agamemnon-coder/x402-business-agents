@@ -20,7 +20,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+      - name: Tests with coverage, per area
+        run: npm run test:coverage
       - run: npm run relay:pages
       - name: Relay Worker type check
         working-directory: worker
