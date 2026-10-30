@@ -13,8 +13,8 @@ const ask = (d: TryDesk, text: string, headers: Record<string, string> = {}) =>
 const api = (answers: Record<string, unknown>[]) => {
   let n = 0;
   return (async (_u: string, init: RequestInit) => {
-    const body = JSON.parse(String(init.body)) as { tools: { name: string }[] };
-    return new Response(JSON.stringify({ content: [{ type: "tool_use", name: body.tools[0]!.name, input: answers[n++ % answers.length] }], usage: { input_tokens: 1000, output_tokens: 100 } }));
+    void init;
+    return new Response(JSON.stringify({ stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify(answers[n++ % answers.length]) }], usage: { input_tokens: 1000, output_tokens: 100 } }));
   }) as unknown as typeof fetch;
 };
 
