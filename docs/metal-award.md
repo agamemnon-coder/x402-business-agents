@@ -112,9 +112,10 @@ Live on testnet with Purser's own code, in a separate world (`b1-world`; not a N
 | An earnings sweep: the treasury mandate pulls 0.01 from the business account | credited to the sweep wallet | [`0x3caf1e9d…11b7`](https://testnet.metalntwx.com/tx/0x3caf1e9dbb0d2fca75e5af80dc825d3790dbeac5a0ff1c3f83a7dd700f7811b7) |
 | An unknown sender `0xA262…b646` pays 0.02 | the sweep wallet gets nothing; Metal holds it | [`0x9076343b…20d3`](https://testnet.metalntwx.com/tx/0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3) |
 | `npm run receive-policy -- poll` | recorded as held; two proposals (return, accept) wait for the CFO's Face ID | — |
+| Max approves P-0001 (return to the sender) with his passkey on the phone, 30 October 08:45 UTC | Purser checks the receipt against the approved terms and that Metal still holds it, then the sweep wallet claims it back to `0xA262…b646`; P-0002 (accept) is superseded | [`0x786686b6…fc3c`](https://testnet.metalntwx.com/tx/0x786686b6dd5112b80bbf84902c8b51f407459c3e3112a6a3d8a0e23bac60fc3c) |
 
-Releasing it is a payment, so it waits for Max's Face ID; it is not approved by us. The release itself (`claim`) was
-shown in the spike above.
+So the whole path is in the evidence: a stranger's payment held by Metal, recorded by Purser, never bridged, and
+returned only after the CFO's Face ID.
 
 ## 6. Evidence: how Purser's records map to Metal's model
 
