@@ -5,7 +5,7 @@
 // subtitles.srt and script.md. Nothing here is live: the pages are the recordings, as npm run judge serves them.
 
 import { spawn } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
 import express from "express";
@@ -186,7 +186,8 @@ for (const beat of BEATS) {
 }
 await browser.close();
 srv.close();
-if (!only.size) {
+// The master is rebuilt whenever every clip is there, also after recording only some beats again.
+if (BEATS.every((b) => existsSync(resolve(out, "clips", `${b.id}.mp4`)))) {
   writeFileSync(resolve(out, "clips.txt"), BEATS.map((b) => `file 'clips/${b.id}.mp4'`).join("\n") + "\n");
   await ffmpeg(["-f", "concat", "-safe", "0", "-i", resolve(out, "clips.txt"), "-c", "copy", "-movflags", "+faststart", resolve(out, "master.mp4")]);
   await ffmpeg(["-i", resolve(out, "master.mp4"), "-vf", `subtitles=${resolve(out, "subtitles.srt")}:force_style='FontName=Inter,FontSize=22,Outline=2,Shadow=0,MarginV=36'`,

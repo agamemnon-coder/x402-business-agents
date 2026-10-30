@@ -33,74 +33,85 @@ const scene = (id: string, seconds: number, scale = 1.25): Shot => ({ path: live
 export const BEATS: Beat[] = [
   {
     id: "b1-hook", title: "Hook",
-    voice: "Your company's AI agents are about to start spending money. Buying software, paying suppliers, settling customer claims. So here's the question every CFO will ask: who is holding the pen?",
+    voice: "AI agents are starting to spend company money. They buy software, pay suppliers, settle customer claims. So every CFO will ask the same question: who is holding the pen?",
     shots: [{ path: live("title"), seconds: 6 }, scene("coins", 9)],
   },
   {
     id: "b2-problem", title: "The problem",
-    voice: "Today there are two bad options. Hand an agent a card number and hope it behaves. Or approve every single cent yourself. The first is a risk no auditor will sign off. The second means the agent saves you nothing.",
-    shots: [{ path: "/?present", seconds: 25, actions: [
-      { at: 1, do: "point", target: "#landing h1" }, { at: 3, do: "zoom", target: ".flow", scale: 1.5 }, { at: 5, do: "point", target: ".flow li.bad" }, { at: 12, do: "unzoom" },
-      { at: 13, do: "zoom", target: "#p-blocked", scale: 1.5 }, { at: 14, do: "point", target: "#p-blocked" }, { at: 18, do: "point", target: "#p-over" }, { at: 23.4, do: "unzoom" },
+    voice: "Today a company has two bad options. Hand an agent a card number and hope it behaves: no auditor will sign that off. Or approve every cent yourself, and the agent saves you nothing.",
+    shots: [{ path: "/?present", seconds: 20, actions: [
+      { at: 1, do: "point", target: "#landing h1" }, { at: 2.5, do: "zoom", target: ".flow", scale: 1.5 }, { at: 4, do: "point", target: ".flow li.bad" }, { at: 10, do: "unzoom" },
+      { at: 11, do: "zoom", target: "#p-blocked", scale: 1.5 }, { at: 12, do: "point", target: "#p-blocked" }, { at: 15, do: "point", target: "#p-over" }, { at: 18.5, do: "unzoom" },
     ] }],
   },
   {
     id: "b3-purser", title: "Purser in one sentence",
-    voice: "This is Purser. Every AI agent gets its own company card and its own on-chain mandate, with limits the CFO sets. And anything new waits for the CFO's Face ID.",
+    voice: "Purser is the third option. Every agent gets its own company card and its own on-chain mandate, with limits the CFO sets once. Anything new waits for the CFO's Face ID.",
     shots: [{ path: "/?recorded&present", seconds: 15, actions: [
       { at: 1, do: "point", target: "#cards" }, { at: 2, do: "zoom", target: "#cards", scale: 1.3 }, { at: 7, do: "unzoom" },
-      { at: 8, do: "scroll", target: "#budgets" }, { at: 9, do: "zoom", target: "#budgets", scale: 1.3 }, { at: 14, do: "unzoom" },
+      { at: 8, do: "zoom", target: "#budgets", scale: 1.3 }, { at: 14, do: "unzoom" },
     ] }],
   },
   {
     id: "b4-card", title: "Wow 1: a company card and Face ID",
-    voice: "Meet Northwind Outdoor. Its operations agent buys warehouse software on its own Airwallex card: approved. Then it needs the Pro plan, forty-five euros, on a card that allows thirty. Airwallex declines it. Not our code: the card itself. The agent asks for more. The CFO sees the exact terms on the phone, approves with Face ID, the new limit syncs to the card, and the same purchase goes through. Every step is in the audit log.",
+    voice: "Meet Northwind Outdoor, a retailer that runs three agents. Its operations agent buys warehouse software on its own Airwallex card: approved. Then it wants the Pro plan, forty-five euros, on a card that allows thirty. Airwallex declines it: the bank enforces the limit, not a prompt. The agent asks for more. The CFO sees the exact terms on the phone and approves with Face ID. The new limit syncs to the card, the purchase goes through, and every step is in the audit log.",
     shots: [
-      scene("card", 10),
-      { path: "/?recorded&present", seconds: 12, actions: [{ at: 1, do: "point", target: "#cards" }, { at: 2, do: "zoom", target: "#cards", scale: 1.45 }, { at: 11, do: "unzoom" }] },
-      { path: "/?recorded&agents&present", seconds: 13, actions: [{ at: 1, do: "point", target: "#agents .agent" }, { at: 2, do: "zoom", target: "#agents .agent .facts", scale: 1.4 }, { at: 12, do: "unzoom" }] },
-      scene("faceid", 10),
+      scene("card", 9),
+      { path: "/?recorded&present", seconds: 11, actions: [{ at: 1, do: "point", target: "#cards" }, { at: 2, do: "zoom", target: "#cards", scale: 1.45 }, { at: 10, do: "unzoom" }] },
+      { path: "/?recorded&agents&present", seconds: 11, actions: [{ at: 1, do: "point", target: "#agents .agent" }, { at: 2, do: "zoom", target: "#agents .agent .facts", scale: 1.4 }, { at: 10, do: "unzoom" }] },
+      scene("faceid", 9),
     ],
   },
   {
-    id: "b5-metal", title: "Wow 2: Metal refuses, and the Dispute desk",
-    voice: "Now Metal. Our agents also pay per request, a few cents at a time, under mandates that live on chain. When the supplier doubles its price, our agent's own account refuses the payment. Nothing moves, and the customer isn't charged. Purser prices two options, Opus reviews them, and the CFO picks one. And when a customer says: our agent never ordered this, Northwind's Dispute desk checks what it can prove. Every order the customer's agent signed, every payment verified on chain inside the mandate the customer's owner bound. Twelve out of twelve. Not refunded, with a report the customer can check for themselves.",
+    id: "b5-fx", title: "Wow 2: a euro bill, paid through Airwallex",
+    voice: "Now a real bill: eighteen hundred and fifty euros from the manufacturer. The finance agent reads the invoice, checks the balances and the reserve floors, and takes a live quote. It converts only the euros that are missing, three hundred and seventy, and prepares the SWIFT payment. The CFO approves the exact amount, the rate and the most the fee may be. Airwallex pays it: status PAID, with the approval's hash in the payment.",
     shots: [
-      scene("refuse", 12),
-      scene("dispute", 13),
-      { path: "/?recorded&disputes&present", seconds: 16, actions: [{ at: 1, do: "point", target: "#disputes .bk table" }, { at: 2, do: "zoom", target: "#disputes .bk table", scale: 1.3 }, { at: 9, do: "unzoom" }, { at: 10, do: "scroll", target: "#disputes .review-box" }, { at: 11, do: "zoom", target: "#disputes .review-box", scale: 1.3 }, { at: 15, do: "unzoom" }] },
-      { path: "/dispute-report", seconds: 14, actions: [{ at: 1, do: "zoom", target: ".outcome", scale: 1.6 }, { at: 6, do: "unzoom" }, { at: 7, do: "scroll", target: "table" }, { at: 8, do: "zoom", target: "table", scale: 1.25 }, { at: 13, do: "unzoom" }] },
-    ],
-  },
-  {
-    id: "b6-ask", title: "Wow 3: Ask Purser books a flight",
-    voice: "Sometimes the CFO just needs something done. Book a flight to Berlin, at most a hundred and fifty euros. Purser reads it, checks it against the policy, and Airwallex issues a single-use card: airlines only, a hundred and fifty euros, until that day. One booking goes through. A second charge? Declined. The card closed itself.",
-    shots: [
-      { path: live("ask"), seconds: 24, actions: [{ at: 1, do: "zoom", target: ".vis svg", scale: 1.35 }, { at: 11, do: "zoom", target: ".facts", scale: 1.4 }, { at: 22, do: "unzoom" }] },
-      { path: "/?recorded&agents&present", seconds: 16, actions: [
-        { at: 1, do: "zoom", target: "#agents .agent:nth-of-type(3) .two", scale: 1.4 }, { at: 3, do: "point", target: "#agents .agent:nth-of-type(3) .two ul.plain li:nth-child(3)" }, { at: 14.5, do: "unzoom" },
+      scene("fx", 12),
+      { path: "/demo?step=6&present", seconds: 23, actions: [
+        { at: 1, do: "zoom", target: "main table", scale: 1.4 }, { at: 4, do: "point", target: "main table tr:nth-child(2)" },
+        { at: 10, do: "point", target: "main table tr:nth-child(3)" }, { at: 15, do: "point", target: "main table tr:nth-child(4)" }, { at: 21.5, do: "unzoom" },
       ] },
     ],
   },
   {
-    id: "b7-trust", title: "Why you can trust it",
-    voice: "Why trust it? Code decides; the models only read and advise. Our red team ran thirty-four attacks: fake invoices, prompt injection, forged approvals. All thirty-four were blocked. Above a threshold, two people must approve. One Face ID freezes every agent and every card. We mapped the controls to the EU AI Act, PSD2 and SOX-style duties. Our Scenario Lab replays eighteen situations end to end: all eighteen as expected. You can see what the AI costs: about nine cents for every thousand euros paid. And every payment lands in the books, double-entry and balanced.",
+    id: "b6-metal", title: "Wow 3: Metal refuses, and the Dispute desk",
+    voice: "Agents also pay per request on Metal, a few cents at a time, under mandates that live on chain. When the supplier doubles its price, the agent's own account refuses the payment: nothing moves, and the customer isn't charged. Purser prices two options, Opus reviews them, and the CFO picks one. Then a customer claims: our agent never ordered this. Northwind's Dispute desk checks what it can prove: every order the customer's agent signed, every payment verified on chain inside the customer's mandate. Twelve out of twelve. Not refunded, with a report the customer can check for themselves.",
     shots: [
-      { path: "/?present", seconds: 22, actions: [
+      scene("refuse", 11),
+      scene("dispute", 12),
+      { path: "/?recorded&disputes&present", seconds: 14, actions: [{ at: 1, do: "point", target: "#disputes .bk table" }, { at: 2, do: "zoom", target: "#disputes .bk table", scale: 1.3 }, { at: 8, do: "unzoom" }, { at: 9, do: "zoom", target: "#disputes .review-box", scale: 1.3 }, { at: 13, do: "unzoom" }] },
+      { path: "/dispute-report", seconds: 13, actions: [{ at: 1, do: "zoom", target: ".outcome", scale: 1.6 }, { at: 6, do: "unzoom" }, { at: 7, do: "zoom", target: "table", scale: 1.25 }, { at: 12, do: "unzoom" }] },
+    ],
+  },
+  {
+    id: "b7-ask", title: "Wow 4: Ask Purser books a flight",
+    voice: "Sometimes the CFO just needs something done: book a flight to Berlin, at most a hundred and fifty euros. Purser checks it against the policy, and Airwallex issues a single-use card: airlines only, a hundred and fifty euros, until that day. The booking goes through. A second charge is declined: the card closed itself.",
+    shots: [
+      { path: live("ask"), seconds: 18, actions: [{ at: 1, do: "zoom", target: ".vis svg", scale: 1.35 }, { at: 8, do: "zoom", target: ".facts", scale: 1.4 }, { at: 16.5, do: "unzoom" }] },
+      { path: "/?recorded&agents&present", seconds: 12, actions: [
+        { at: 1, do: "zoom", target: "#agents .agent:nth-of-type(3) .two", scale: 1.4 }, { at: 3, do: "point", target: "#agents .agent:nth-of-type(3) .two ul.plain li:nth-child(3)" }, { at: 10.5, do: "unzoom" },
+      ] },
+    ],
+  },
+  {
+    id: "b8-trust", title: "Why you can trust it",
+    voice: "Why trust it? Code decides; the models only read and advise. Our red team ran thirty-four attacks, from fake invoices to prompt injection to forged approvals: all thirty-four were blocked. Above a threshold, two people must approve. One Face ID freezes every agent and every card. Eighteen end-to-end scenarios replay as expected. The AI costs about nine cents per thousand euros paid. And every payment lands in the books, double-entry and balanced.",
+    shots: [
+      { path: "/?present", seconds: 20, actions: [
         { at: 0.5, do: "zoom", target: "#redteam-line", scale: 1.7 }, { at: 1.5, do: "point", target: "#redteam-line" },
-        { at: 6, do: "zoom", target: "#security .item:nth-child(2)", scale: 1.5 }, { at: 6.5, do: "point", target: "#security .item:nth-child(2) h3" },
-        { at: 10.5, do: "zoom", target: "#security .item:nth-child(3)", scale: 1.5 }, { at: 11, do: "point", target: "#security .item:nth-child(3) h3" },
-        { at: 15, do: "zoom", target: "#compliance-line", scale: 1.4 }, { at: 16, do: "point", target: "#compliance-line" }, { at: 20.5, do: "unzoom" },
+        { at: 5, do: "zoom", target: "#security .item:nth-child(2)", scale: 1.5 }, { at: 5.5, do: "point", target: "#security .item:nth-child(2) h3" },
+        { at: 9.5, do: "zoom", target: "#security .item:nth-child(3)", scale: 1.5 }, { at: 10, do: "point", target: "#security .item:nth-child(3) h3" },
+        { at: 14, do: "zoom", target: "#compliance-line", scale: 1.4 }, { at: 15, do: "point", target: "#compliance-line" }, { at: 18.5, do: "unzoom" },
       ] },
-      { path: "/lab?present", seconds: 8, actions: [{ at: 0.5, do: "zoom", target: "#count", scale: 1.6 }, { at: 6.5, do: "unzoom" }] },
-      { path: "/?recorded&present", seconds: 10, actions: [{ at: 0.5, do: "zoom", target: "#claude-panel", scale: 1.25 }, { at: 9, do: "unzoom" }] },
-      { path: "/?recorded&books&present", seconds: 10, actions: [{ at: 0.5, do: "zoom", target: "#books .bk", scale: 1.25 }, { at: 9, do: "unzoom" }] },
+      { path: "/lab?present", seconds: 7, actions: [{ at: 0.5, do: "zoom", target: "#count", scale: 1.6 }, { at: 5.5, do: "unzoom" }] },
+      { path: "/?recorded&present", seconds: 9, actions: [{ at: 0.5, do: "zoom", target: "#claude-panel", scale: 1.25 }, { at: 8, do: "unzoom" }] },
+      { path: "/?recorded&books&present", seconds: 9, actions: [{ at: 0.5, do: "zoom", target: "#books .bk", scale: 1.25 }, { at: 8, do: "unzoom" }] },
     ],
   },
   {
-    id: "b8-vision", title: "Vision",
-    voice: "Every company will soon run agents that spend. Purser lets them move at machine speed while the finance team keeps the pen. Built on Airwallex and Metal, powered by Claude. Every euro has a proof.",
-    shots: [scene("wall", 8), { path: live("end"), seconds: 17 }],
+    id: "b9-vision", title: "Vision",
+    voice: "Every company will soon run agents that spend. Purser lets them move at machine speed, while the finance team keeps the pen. Built on Airwallex and Metal, powered by Claude. Every euro has a proof.",
+    shots: [scene("wall", 7), { path: live("end"), seconds: 13, actions: [{ at: 1.5, do: "zoom", target: ".scene.end .vis", scale: 1.25 }] }],
   },
 ];
 

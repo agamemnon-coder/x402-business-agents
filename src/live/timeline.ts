@@ -32,7 +32,7 @@ export const LIVE_RUNS = {
   task: {
     source: "Live in the Airwallex sandbox, 30 October (docs/runs/2026-10-30-single-use.md)",
     ask: "Book a flight to Berlin on 12 November, at most €150", card: "Single-use flight card •••• 8653, at most 150.00 EUR, until 12 Nov",
-    booked: "Skyline Air 120.00 EUR: approved by Airwallex", second: "A second charge, 20.00 EUR: declined, Airwallex closed the card itself after its one purchase",
+    booked: "Skyline Air 120.00 EUR: approved by Airwallex", second: "A second charge, 20.00 EUR: declined, the card had closed itself",
   },
   quarantine: {
     source: "Live on Metal testnet, 30 October (docs/metal-award.md, section 5)",
