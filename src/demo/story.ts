@@ -3,7 +3,7 @@
 // characters of hashes. No address of ours beyond what the chain shows, no key, no URL with a credential.
 // A step whose events are missing from the ledger is left out, so the page never shows something that did not run.
 
-import { COMPANY } from "../config/brand.js";
+import { agentName, COMPANY } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { approverName, modelName } from "../dashboard/snapshot.js";
@@ -115,13 +115,13 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
   if (replaced.length && approvals.has(replacedBy)) {
     steps.push({
       id: "faceid", rail: "CFO", tone: "approval", at: replaced[0]!.ts,
-      approval: { who: approvals.get(replacedBy)!, proposal: replacedBy, what: replaced.map((r) => `${str(r.subject)} ${str(p(r).cap)} a payment, ${str(p(r).budget)} in total`).join("; ") },
+      approval: { who: approvals.get(replacedBy)!, proposal: replacedBy, what: replaced.map((r) => `${agentName(str(r.subject))} ${str(p(r).cap)} a payment, ${str(p(r).budget)} in total`).join("; ") },
       title: "The CFO approves the exact terms with Face ID",
       text: "The CFO reads the options on their phone and approves one with Face ID. Only exactly those terms can run; the agents' limits change in a safe order, and the old limit stops working at once.",
-      details: "Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. The mandates are replaced in a safe order: treasury shrinks first, sourcing grows second, never over the 20.00 total. The old credential is refused from then on (mandate_revoked).",
+      details: "Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. The mandates are replaced in a safe order: the Finance agent's shrinks first, the Operations agent's grows second, never over the 20.00 total. The old credential is refused from then on (mandate_revoked).",
       facts: facts(
         review(replacedBy) ? fact("Advice (not a decision)", review(replacedBy)) : null,
-        ...replaced.map((r) => txFact(`${str(r.subject)} mandate replaced`, p(r).tx)),
+        ...replaced.map((r) => txFact(`${agentName(str(r.subject))} mandate replaced`, p(r).tx)),
       ),
     });
   }
@@ -136,7 +136,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       approval: by ? { who: by, proposal: str(p(policy).proposal_id), what: `${str(p(policy).label)}: ${str(p(policy).to)}` } : null,
       title: "One CFO policy, stricter than any limit on chain",
       text: "On the phone the CFO lowers an agent's limit, and the next purchase over it is refused before anything is signed. The phone can only make the policy stricter; loosening it needs a proposal and Face ID.",
-      details: "The CFO policy sits inside the on-chain mandates and is checked before any signature. Here the sourcing limit goes to 0.03, below the mandate's 0.04 (policy_cap_exceeded on the next purchase). The same policy holds the company cards' limits.",
+      details: `The CFO policy sits inside the on-chain mandates and the card limits, and is checked before any signature. Here: ${str(p(policy).label)} goes from ${str(p(policy).from) || "no extra limit"} to ${str(p(policy).to)}${policyRefusal ? ", and the next purchase over it is refused before signing (policy_cap_exceeded)" : ""}.`,
       facts: facts(
         fact("Changed", `${str(p(policy).label)}: ${str(p(policy).from) || "no extra limit"} → ${str(p(policy).to)}`),
         policyRefusal ? fact("Next purchase", "refused before signing (policy_cap_exceeded)") : null,
