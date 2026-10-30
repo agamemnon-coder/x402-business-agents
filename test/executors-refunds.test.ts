@@ -132,7 +132,7 @@ describe("refundSale", () => {
     const s = sale(5);
     const r = await refundSale(db, { sale_id: s, amount_cents: 5, to: PAYER, dispute_id: "D-1" });
     // Fails if: capRefusal is not consulted before metalAgent.
-    expect(r).toEqual({ sale_id: s, payment_id: `refund-${s}`, outcome: "REFUSED", tx: null, reason: "policy_cap_exceeded: 0.05 is over the support limit of 0.04", already: false });
+    expect(r).toEqual({ sale_id: s, payment_id: `refund-${s}`, outcome: "REFUSED", tx: null, reason: "policy_cap_exceeded: 0.05 is over the Sales agent's limit of 0.04", already: false });
     expect(h.cli).toEqual([]);
     expect(refundRow(db, s)).toMatchObject({ outcome: "REFUSED", refusal_reason: expect.stringMatching(/^policy_cap_exceeded/) });
     expect(events(db, "refund.refused")).toHaveLength(1);

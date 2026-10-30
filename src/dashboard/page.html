@@ -481,7 +481,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <div class="section">
       <div class="grid num">
         <div><div class="v" id="p-alone">–</div><div class="l">actions the agents completed on their own</div></div>
-        <div><div class="v" id="p-blocked">–</div><div class="l">attempts blocked before money moved</div></div>
+        <div><div class="v" id="p-blocked">–</div><div class="l">stops: by the card, the chain, the fraud checks or the CFO</div></div>
         <div><div class="v" id="p-over">–</div><div class="l">spent above a card's limit</div></div>
         <div><div class="v" id="p-fakes">–</div><div class="l">fake invoices and AI tricks stopped</div></div>
         <div><div class="v" id="p-faceid">–</div><div class="l">decisions signed with Face ID</div></div>
@@ -510,23 +510,23 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     </div>
     <div class="copy">
       <span class="eyebrow"><span data-icon="zap"></span>Pay per request on Metal</span>
-      <h2 class="big">For thousands of tiny payments, a limit the chain enforces.</h2>
+      <h2 class="big">For payments of a few cents each, a limit the chain enforces.</h2>
       <p class="lead">Agents that buy data or API calls pay a few cents per request on Metal. Each pays under a mandate: a cap per payment, a total, one allowed payee and an end date. Ask for more than the mandate allows and the chain refuses; the CFO decides with the same Face ID.</p>
       <a class="textlink" href="demo?step=2">See it in the recorded run <span data-icon="arrow-right"></span></a>
     </div>
   </section>
   <section class="section sec" id="security">
     <h2>Safe by design, not by prompt</h2>
-    <p class="subl">Nothing an AI says can move money. Limits sit in the bank and on the chain; exceptions need you.</p>
+    <p class="subl">Nothing an AI reads or writes can raise a limit or move money outside it. The limits sit at Airwallex and on the chain; exceptions need you.</p>
     <div class="row">
       <div class="item"><span class="ic" data-icon="scan-face"></span><h3>Face ID on the exact terms</h3><p>You sign the precise amount, payee and fee. Change one character and the signature no longer fits.</p></div>
-      <div class="item"><span class="ic" data-icon="users"></span><h3>Four eyes</h3><p>Above your threshold, two different people approve. Whoever proposed it never can.</p></div>
-      <div class="item"><span class="ic" data-icon="octagon-x"></span><h3>Emergency stop</h3><p>One Face ID freezes every agent and every card at the bank.</p></div>
+      <div class="item"><span class="ic" data-icon="users"></span><h3>Four eyes, if you want it</h3><p>Optional: above a threshold you set, two different people must approve; whoever proposed it never can. (Off in the recorded run.)</p></div>
+      <div class="item"><span class="ic" data-icon="octagon-x"></span><h3>Emergency stop</h3><p>One Face ID stops every agent payment and freezes every card at Airwallex. (Tested against stand-ins; not yet run live.)</p></div>
       <div class="item"><span class="ic" data-icon="shield-alert"></span><h3>Fakes and AI tricks blocked</h3><p>Changed bank details and hidden "pre-approved" lines are caught before any money moves.</p></div>
       <div class="item"><span class="ic" data-icon="zap"></span><h3>Speed limits, and our own red team</h3><p id="redteam-line">An agent that pays too often or too much is stopped by code. Our red team attacks Purser; every attack must fail.</p></div>
-      <div class="item"><span class="ic" data-icon="file-check"></span><h3>A log you can check</h3><p>Every payment, decline and approval in a tamper-evident log, re-checkable from public sources.</p></div>
+      <div class="item"><span class="ic" data-icon="file-check"></span><h3>A log you can check</h3><p>Every payment, decline and approval in a tamper-evident log. Chain payments and signatures can be checked from public sources; Airwallex bookings with read-only API keys.</p></div>
     </div>
-    <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> Airwallex, the regulated provider, does KYC, card issuing and sanctions screening; Metal enforces the limits on chain; Purser holds no money, logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
+    <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> Airwallex, the regulated provider, does KYC, card issuing and sanctions screening; Metal enforces the limits on chain; Purser holds no funds of its own (its runner keeps the testnet owner key that binds the mandates), logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
   </section>
   <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="try">Try it</a><a href="metal">Purser on Metal</a><a href="film">Film</a><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
 </div>
@@ -842,7 +842,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (a) {
       nodes.push(el("div", "money num", [
         // The company's own euros: the reserve it always keeps, plus what is free for new bills.
-        el("div", "m", [txt("div", "k", "Euros on hand"), txt("div", "v", eur(fromC(cents(a.eur.floor) + Math.max(0, cents(a.eur.free))))), txt("div", "k sub", eur(a.eur.floor) + " reserve kept")]),
+        el("div", "m", [txt("div", "k", "Euros at Airwallex"), txt("div", "v", eur(a.eur.available)), txt("div", "k sub", eur(a.eur.floor) + " reserve kept; sandbox test money")]),
         (String(a.eur.free).charAt(0) === "-"
           // Below the reserve is not a negative balance: the euros are there, but bills already planned have claimed
           // them. Shown as the shortfall, in words, never as a bare minus.
@@ -852,7 +852,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       nodes.push(el("div", "rows num", [el("div", "", ["US dollars we may convert", txt("b", "", usd(a.usd.headroom))])]));
       nodes.push(el("details", "tech", [txt("summary", "", "Sandbox totals"), el("div", "rows num", [
         el("div", "", ["Euros at Airwallex", txt("b", "", eur(a.eur.available))]),
-        el("div", "", ["Committed to other bills", txt("b", "", eur(a.eur.committed))]),
+        el("div", "", ["Set aside in the demo plan", txt("b", "", eur(a.eur.committed))]),
+        txt("p", "note", "The sandbox account holds millions in test money. The demo plan sets aside all but the reserve, so the reserve rule shows on screen as a real company would see it."),
         el("div", "", ["US dollars / floor", txt("b", "", usd(a.usd.available) + " / " + group(a.usd.floor))]),
       ])]));
     } else nodes.push(el("div", "empty", [icon("wallet"), "No Airwallex balance read yet."]));
@@ -860,7 +861,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     nodes.push(el("div", "sub2", [icon("link-2"), "Earnings from data sales on Metal"]));
     nodes.push(el("div", "rows num", [
       el("div", "", ["Sales, less supplier and refunds", txt("b", "", tusd(m.net))]),
-      el("div", "", ["Moved to Airwallex once final on chain", txt("b", "", tusd(m.swept))]),
+      el("div", "", ["Swept once final on chain; booked at Airwallex as a simulated sandbox deposit", txt("b", "", tusd(m.swept))]),
     ]));
     // B1: payments to the sweep wallet from unknown senders, held by Metal's receive policy until the CFO decides.
     var held = (m.quarantine || []).filter(function (q) { return q.status === "OPEN"; });
@@ -902,9 +903,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   function blockedNote(m, n) {
     var parts = [];
     if (m.blocked_fraud_n) parts.push(m.blocked_fraud_n + " fake invoice" + (m.blocked_fraud_n > 1 ? "s" : "") + " (" + eur(m.blocked_fraud_eur) + ")");
-    if (m.blocked_declined_n) parts.push(m.blocked_declined_n + " card decline" + (m.blocked_declined_n > 1 ? "s" : "") + " (" + eur(m.blocked_declined_eur) + ")");
+    if (m.blocked_declined_n) parts.push(m.blocked_declined_n + " card decline" + (m.blocked_declined_n > 1 ? "s" : "") + (m.blocked_declined_later_paid_n ? " (" + m.blocked_declined_later_paid_n + " paid later, after a raise)" : ""));
     if (cents(m.blocked_usdz)) parts.push("refusals on chain");
-    return n + " attempts stopped" + (parts.length ? ": " + parts.join(", ") : " before money moved");
+    if (m.blocked_rejected_n) parts.push(m.blocked_rejected_n + " rejected by the CFO");
+    return n + " stops, all counted" + (parts.length ? ", among them " + parts.join(", ") : "") + ". The amount is what stayed out for good.";
   }
   function renderKpis(d) {
     var m = d.money;
@@ -919,7 +921,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       kpi("ok", "credit-card", "Card spend this month", eur(m.card_spent_eur), "of " + eur(m.card_limit_eur), "spent by the agents alone, inside the cards' limits", bar(m.card_spent_eur, m.card_limit_eur)),
       kpi("ok", "file-lock-2", "On-chain spend", group(m.chain_spent_usdz), "of " + tusd(m.chain_limit_usdz), "paid under the mandates, per request", bar(m.chain_spent_usdz, m.chain_limit_usdz)),
       kpi("wait", "scan-face", "Waiting for your Face ID", m.waiting ? String(m.waiting) : "Nothing", m.waiting ? (waitMoney || "proposals") : "", m.waiting ? "each one on the exact terms" : "the agents are inside their limits"),
-      kpi("bad", "shield-check", "Stopped in time", eur(m.blocked_eur), cents(m.blocked_usdz) ? "+ " + tusd(m.blocked_usdz) : "", blockedNote(m, d.counts.blocked)),
+      kpi("bad", "shield-check", "Kept out for good", eur(m.blocked_eur), cents(m.blocked_usdz) ? "+ " + tusd(m.blocked_usdz) : "", blockedNote(m, d.counts.blocked)),
     ]);
   }
   // One row per agent: both rails side by side.
@@ -958,7 +960,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     else {
       nodes.push(el("div", "money num", [
         el("div", "m", [txt("div", "k", "AI cost per €1,000 paid"), txt("div", "v", c.per_1000_eur_usd_micros == null ? "—" : usdMicros(c.per_1000_eur_usd_micros)), txt("div", "k sub", "card spend and euro transfers: " + eur(c.eur_paid))]),
-        el("div", "m", [txt("div", "k", "Per Claude decision"), txt("div", "v", usdMicros(c.per_call_usd_micros)), txt("div", "k sub", c.calls + " calls, " + usdMicros(c.cost_usd_micros) + " in all")]),
+        el("div", "m", [txt("div", "k", "Per Claude call"), txt("div", "v", usdMicros(c.per_call_usd_micros)), txt("div", "k sub", c.calls + " calls, " + usdMicros(c.cost_usd_micros) + " in all")]),
         el("div", "m", [txt("div", "k", "Checked by code"), txt("div", "v", "Every answer"), txt("div", "k sub", c.fallbacks ? c.fallbacks + " times the plain parser decided instead" : "a wrong shape falls back to the plain parser")]),
       ]));
       var labels = ["Model", "What it does", "Calls", "Average time", "Cost"];
@@ -973,7 +975,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       });
       nodes.push(el("table", "agents", [el("thead", "", [head]), el("tbody", "", body)]));
     }
-    nodes.push(txt("p", "note", "Claude reads and advises; code checks every answer, and only your Face ID moves money. Costs at Anthropic's list prices in US dollars. Built with Claude Code."));
+    nodes.push(txt("p", "note", "Claude reads and advises; code checks every answer, and only your Face ID can move money beyond the agents' limits. Costs at Anthropic's list prices in US dollars. Built with Claude Code."));
     set("claude", nodes);
   }
 
@@ -1178,7 +1180,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       document.getElementById("p-over").textContent = eur(p.over_limit_eur).replace(".00", "");
       document.getElementById("p-fakes").textContent = p.fake_invoices + " + " + p.ai_tricks;
       countUp("p-faceid", p.face_id);
-      document.getElementById("p-src").textContent = "From the recorded live run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "), on Metal testnet and the Airwallex sandbox (test money). Every number comes from its audit log.";
+      document.getElementById("p-src").textContent = "From the recorded live run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "), on Metal testnet and the Airwallex sandbox (test money). Every number comes from its audit log.";
     }
     if (note) document.getElementById("p-src").textContent += " " + note;
     // The hero card shows the recorded operations agent's own card number.
@@ -1213,7 +1215,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // The red team's latest report (docs/redteam/report.json), on the landing.
   try {
     var RT = JSON.parse(document.getElementById("redteam-data").textContent);
-    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run: " + RT.blocked + " of " + RT.attempts + " attacks blocked" + (RT.inconclusive ? ", " + RT.inconclusive + " inconclusive (they never reached the check they aimed at)" : "") + " (" + dayFmt.format(new Date(RT.ran_at)) + (RT.model ? ", with Claude Opus playing the attacker" : ", scripted attacks") + ").";
+    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run, in a throwaway test world (" + dayFmt.format(new Date(RT.ran_at)) + "): " + RT.blocked + " of " + RT.attempts + " attempts blocked" + (RT.model && RT.documents ? ": " + (RT.attempts - RT.documents) + " scripted attacks and " + RT.documents + " documents written by Claude Opus as the attacker" : ", scripted attacks") + (RT.inconclusive ? "; " + RT.inconclusive + " inconclusive (they never reached the check they aimed at)" : "") + ".";
   } catch (e) {}
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
@@ -1224,7 +1226,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     nav([["Overview", "./"], ["Try it", "try"], ["Demo", "demo"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
-    document.getElementById("rec-text").textContent = "Recorded run of " + whenFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
+    document.getElementById("rec-text").textContent = "Recorded run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
     live("rec", "Recorded");
     // The emergency stop is the CFO's, live only; in a recording it shows where it is, but does nothing.
     var st = document.getElementById("stop"); st.hidden = false; st.disabled = true; st.lastChild.textContent = "Emergency stop · live only";

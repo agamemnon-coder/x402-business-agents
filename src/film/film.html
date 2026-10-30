@@ -88,7 +88,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
   var stage = document.getElementById("stage");
   var q = new URLSearchParams(location.search);
   document.getElementById("foot-l").textContent = "Recorded runs · test money · Airwallex sandbox and Metal testnet";
-  document.getElementById("foot-r").textContent = D.data.company + " · " + D.data.run;
+  document.getElementById("foot-r").textContent = D.data.company + " · " + D.data.run + "; Ask Purser, the receive policy, the red team and the Lab from their own runs";
 
   // Fit the 1920x1080 stage to the window.
   function fit() { var s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = "translate(" + (innerWidth - 1920 * s) / 2 + "px," + (innerHeight - 1080 * s) / 2 + "px) scale(" + s + ")"; }
@@ -281,14 +281,14 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var s = put(L, E("div", "big ok", "0"), 760, 330), sl = put(L, E("div", "h3", "of " + d.trust.scenarios + " scenarios as expected"), 770, 530);
       var stop = put(L, E("div", "stop", "STOP"), 1450, 300);
       var minis = d.cards.map(function (c, i) { return put(L, E("div", "mini", null, [E("div", "t", c.name), E("div", "n", "•••• " + c.last4), E("div", "l", "")]), 140 + i * 340, 660); });
-      var eyes = put(L, E("div", "pill", "Above a threshold: two people approve"), 1180, 620);
+      var eyes = put(L, E("div", "pill", "Optional: two people approve above a threshold"), 1180, 620);
       var cost = put(L, E("div", "pill ai", "AI cost: " + d.trust.per1000 + " per €1,000 paid"), 1180, 720);
       var books = put(L, E("div", "pill", "Double-entry books, balanced"), 1180, 820);
       return function (t) {
         rise(k, t, .1); rise(h, t, .3);
         a.textContent = count(t, 1, 3.5, 0, d.trust.blocked); s.textContent = count(t, 3, 5.5, 0, d.trust.passed); rise(a, t, 1); rise(al, t, 1.2); rise(s, t, 3); rise(sl, t, 3.2);
         pop(stop, t, 6.5); var pressed = prog(t, 8, 8.3); stop.style.transform += " scale(" + (1 - .12 * Math.sin(pressed * Math.PI)) + ")";
-        minis.forEach(function (m, i) { rise(m, t, 6.8 + i * .2); var f = prog(t, 8.3 + i * .15, 8.8 + i * .15); m.style.filter = "grayscale(" + f + ")"; m.querySelector(".l").textContent = f > .5 ? "Frozen by the CFO" : "Active"; m.querySelector(".l").style.color = f > .5 ? "var(--bad)" : ""; });
+        minis.forEach(function (m, i) { rise(m, t, 6.8 + i * .2); var f = prog(t, 8.3 + i * .15, 8.8 + i * .15); m.style.filter = "grayscale(" + f + ")"; m.querySelector(".l").textContent = f > .5 ? "Frozen (tested on stand-ins)" : "Active"; m.querySelector(".l").style.color = f > .5 ? "var(--bad)" : ""; });
         rise(eyes, t, 10.5); rise(cost, t, 12); rise(books, t, 13.5);
       };
     },
@@ -296,7 +296,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var p = put(L, E("div", "h1", "Purser"), 140, 220); p.style.fontSize = "150px";
       var s = put(L, E("div", "h2 muted", "Agents move at machine speed. The CFO keeps the pen."), 140, 420); s.style.width = "1500px";
       var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep"), E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])]), 140, 640);
-      var e = put(L, E("div", "h2", "Every euro has a proof."), 140, 820); e.style.color = "var(--accent2)";
+      var e = put(L, E("div", "h2", "Every payment has a proof."), 140, 820); e.style.color = "var(--accent2)";
       var note = put(L, E("div", "muted", "“Built on” and “Powered by” name the services Purser uses; they are not an endorsement."), 140, 950); note.style.fontSize = "20px";
       return function (t) { rise(p, t, .2); rise(s, t, .8); rise(lg, t, 2); rise(e, t, 3.5); rise(note, t, 4); };
     },

@@ -87,7 +87,8 @@ export function buildRecorded(db: DB, run: string, now = new Date()): Recorded {
       blocked: snap.counts.blocked,
       over_limit_eur: fromCents(overLimitCents(db)),
       fake_invoices: count("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'invoice.fraud_suspected'"),
-      ai_tricks: count("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'document.injection_flagged'"),
+      // One document flagged twice (read again later) is one trick, not two.
+      ai_tricks: count("SELECT COUNT(DISTINCT COALESCE(json_extract(payload_json, '$.document_sha256'), seq)) AS n FROM audit_log WHERE event = 'document.injection_flagged'"),
       face_id: count("SELECT COUNT(*) AS n FROM approvals WHERE method = 'passkey'"),
       card_declines: count("SELECT COUNT(*) AS n FROM card_transactions WHERE approved = 0"),
       chain_refusals: count("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'upstream.refused' AND payload_json LIKE '%mandate_%'"),

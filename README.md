@@ -8,8 +8,10 @@ an agent needs more, it stops and asks, and the CFO approves on a phone with Fac
 **Who it is for:** the CFO (or controller) of a small company that runs AI agents and wants them to spend company
 money only within limits the CFO sets.
 
-**Built for the rules, not certified:** Airwallex does KYC, card issuing and sanctions screening, Metal enforces the
-limits on chain, and Purser holds no money, logs every AI step and keeps a person in charge
+**Built for the rules, not certified:** Airwallex is the regulated provider (accounts, card issuing, payouts; its KYB,
+KYC and screening are its own, not shown in this repo), Metal enforces the limits on chain, and Purser holds no funds of
+its own (they stay in the business's Airwallex and Metal accounts), logs every model call its agents make and keeps a
+person in charge
 ([docs/compliance.md](docs/compliance.md)).
 
 ```mermaid
@@ -32,10 +34,10 @@ flowchart LR
 npm ci && npm run judge
 ```
 
-No keys, and no network after `npm ci`; the judge step itself starts in about two seconds. It serves the recorded
+No keys, and no network after `npm ci`; the judge step itself starts in seconds. It serves the recorded
 live run, the CFO dashboard as it stood at the end, a simulated month, and the Scenario Lab (`/lab`: 18 stories,
 from a normal purchase to the emergency stop, each with what should happen and what did), "How Purser uses Metal"
-(`/metal`: every Metal feature with its testnet proof and docs link, a mandate inspector per agent, and the Dispute
+(`/metal`: every Metal feature Purser uses, with its testnet proof and docs link (clearing and the receive policy from separate live runs), a mandate inspector per agent, and the Dispute
 desk case order by order), and opens your browser.
 
 ## Run it live
@@ -50,7 +52,7 @@ Start here:
 - [docs/metal-award.md](docs/metal-award.md): what the build uses from Metal, with proof on testnet
 - [docs/airwallex.md](docs/airwallex.md): every Airwallex API Purser calls, and why
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
-- [docs/ask-purser.md](docs/ask-purser.md): Ask Purser: a single-use card for one task (a flight, a hotel, a train) from one sentence, after Face ID
+- [docs/ask-purser.md](docs/ask-purser.md): Ask Purser: a single-use card for one task (a flight, a hotel, a train) from one sentence: at once within the CFO's policy (up to €300, 3 a day, asked at the runner), otherwise after Face ID
 - [docs/claude.md](docs/claude.md): Powered by Claude: which model does what, why, and what it costs per decision
 - [docs/compliance.md](docs/compliance.md): who does what (Airwallex, Metal, Purser) for the EU AI Act, PSD2, GDPR, AML and audit
 - [docs/requirements-matrix.md](docs/requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof
@@ -75,7 +77,8 @@ The old README sections, now in docs:
 
 ## Test money
 
-All money here is test money: the Airwallex sandbox and Metal testnet. Card merchant charges are simulated in the
-sandbox, and *USDZ is shown as "test USD".
+All money here is test money: the Airwallex sandbox and Metal testnet. Simulated by the sandbox:
+merchants' card charges, a SWIFT transfer's last steps (SENT, PAID), the deposit that stands in for Metal earnings at
+Airwallex, and retailers' payments into the Global Accounts. *USDZ is shown as "test USD".
 
 Built with Claude (Anthropic) as the developer, directed and reviewed by Max Geurtsen. Licence: MIT.

@@ -204,6 +204,27 @@ describe("dashboard snapshot", () => {
     expect(buildSnapshot(db, t0).feed.filter((f) => f.event === "card.charge_declined").map((f) => f.text)).toHaveLength(1);
   });
 
+  it("counts a document flagged twice as one stop", () => {
+    const db = ledger();
+    const before = buildSnapshot(db, t0).counts.blocked;
+    for (const at of [t0, new Date(t0.getTime() + 1000)]) audit(db, "system", "document.injection_flagged", "dispute", { document_sha256: "ab".repeat(32), findings: [] }, at);
+    audit(db, "system", "document.injection_flagged", "invoice", { document_sha256: "cd".repeat(32), findings: [] }, t0);
+    expect(buildSnapshot(db, new Date(t0.getTime() + 2000)).counts.blocked).toBe(before + 2);
+  });
+
+  it("counts a declined purchase that was paid later, after a raise, as a stop but not as money kept out", async () => {
+    const db = ledger();
+    const awx = new FakeIssuing();
+    awx.clock = () => t0.getTime();
+    await setupCards(db, awx, t0);
+    await buyPlan(db, awx, "packwise-pro", t0); // 45.00 on a 30.00 limit: declined
+    const card = db.prepare("SELECT card_id FROM cards WHERE agent = 'sourcing'").get() as { card_id: string };
+    db.prepare("INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, source, occurred_at, recorded_at) SELECT 'later', card_id, agent, merchant, mcc, amount_cents, currency, 'APPROVED', 1, 'simulation', ?, ? FROM card_transactions WHERE card_id = ? AND approved = 0")
+      .run(new Date(t0.getTime() + 60_000).toISOString(), t0.toISOString(), card.card_id);
+    const m = buildSnapshot(db, new Date(t0.getTime() + 120_000)).money;
+    expect(m).toMatchObject({ blocked_declined_n: 1, blocked_declined_later_paid_n: 1, blocked_declined_eur: "0.00", blocked_eur: "0.00" });
+  });
+
   it("sums the money, not just the events: card spend, chain spend, what waits and what was stopped", async () => {
     const db = ledger();
     const awx = new FakeIssuing();
@@ -219,7 +240,7 @@ describe("dashboard snapshot", () => {
       chain_spent_usdz: "2.70", chain_limit_usdz: "20.00", // purchases 1.20, refunds 0.15, sweep 1.35
       waiting: 1, waiting_eur: "0.00", waiting_usdz: "0.15",
       blocked_eur: "1895.00", blocked_usdz: "0.00",
-      blocked_fraud_eur: "1850.00", blocked_fraud_n: 1, blocked_declined_eur: "45.00", blocked_declined_n: 1,
+      blocked_fraud_eur: "1850.00", blocked_fraud_n: 1, blocked_declined_eur: "45.00", blocked_declined_n: 1, blocked_declined_later_paid_n: 0, blocked_rejected_n: 0,
     });
   });
 

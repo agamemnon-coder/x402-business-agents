@@ -11,7 +11,7 @@ export const COMPANY = "Northwind Outdoor";
 export const AGENT_DISPLAY: Record<"sourcing" | "support" | "treasury", { name: string; job: string }> = {
   sourcing: { name: "Operations agent", job: "buys live stock checks from the warehouse API and pays the warehouse software" },
   support: { name: "Sales agent", job: "pays for ads and settles retailers' claims" },
-  treasury: { name: "Finance agent", job: "pays the manufacturer by SWIFT, sweeps earnings to Airwallex and pays the bookkeeping" },
+  treasury: { name: "Finance agent", job: "pays the manufacturer by SWIFT, sweeps earnings on Metal once final, books them at Airwallex, and pays the bookkeeping" },
 };
 
 /** The display name of an agent id, or the id itself for anything else. */

@@ -134,7 +134,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
         <tr><th>Who enforces the limit</th><td data-l="Airwallex company card">Airwallex, on the card: per purchase, per month, merchant categories, currency</td><td data-l="Metal mandate (x402)">The chain: cap per payment, total budget, one payee, expiry</td><td data-l="Metal clearing">The deposit: the buyer can never pay more than it put in</td></tr>
         <tr><th>Per payment</th><td data-l="Airwallex company card">A card authorisation</td><td data-l="Metal mandate (x402)">One on-chain transaction, settled by Metal's facilitator</td><td data-l="Metal clearing">A signed receipt, no transaction</td></tr>
         <tr><th>Proof afterwards</th><td data-l="Airwallex company card">Airwallex's transaction id and the card's own decline</td><td data-l="Metal mandate (x402)">The signed order, the transaction and verifyMandatePayment</td><td data-l="Metal clearing">Receipts signed by payer and operator, checked with verifyClearingPayment</td></tr>
-        <tr><th>In Northwind's run</th><td data-l="Airwallex company card">Each agent's own card; a Pro plan declined over the limit, then approved after Face ID</td><td data-l="Metal mandate (x402)">Stock checks bought and sold; refunds and the earnings sweep as mandate pulls</td><td data-l="Metal clearing">Data sales to a prepaid customer, with the mandate route as fallback</td></tr>
+        <tr><th>Where it ran</th><td data-l="Airwallex company card">The recorded run: each agent's own card; a Pro plan declined over the limit, then approved after Face ID</td><td data-l="Metal mandate (x402)">The recorded run: stock checks bought and sold; refunds and the earnings sweep as mandate pulls</td><td data-l="Metal clearing">A separate live run (29 Oct): five queries paid by receipt from one deposit; the recorded run used the mandate route</td></tr>
       </tbody>
     </table></div>
   </section>
@@ -280,7 +280,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
     all.addEventListener("click", function () { box.classList.add("all"); });
     box.appendChild(all);
   }
-  box.appendChild(el("div", "explain", [c.explanation, el("small", "", ["Explained by " + c.explained_by + " from the evidence above. The decision and every amount were made by code; the explanation is advice and changes nothing."])]));
+  box.appendChild(el("div", "explain", [c.explanation, el("small", "", ["Explained by " + c.explained_by + " from the evidence above, as recorded. The decision and every amount were made by code; the explanation is advice and changes nothing." + (before.length ? " It overlooks that orders " + before.map(function (p) { return p.sale_id; }).join(", ") + " had already been refunded earlier for wrong data, as the table shows." : "")])]));
   var rep = el("a", "btn", ["Open the evidence report the seller sends ↗"]); rep.href = "metal/report"; rep.target = "_blank"; rep.rel = "noopener";
   box.appendChild(rep);
 })();

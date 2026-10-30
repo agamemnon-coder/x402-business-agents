@@ -100,7 +100,8 @@ export const PLANS: Record<string, { agent: Agent; merchant: string; label: stri
 
 /**
  * Ask Purser (G): what a task card may be for. Each kind is a single-use card for its merchant categories only, at
- * most this amount; anything else is refused. The CFO approves every task card with Face ID.
+ * most this amount; anything else is refused. Within the CFO's policy (up to the task-card threshold, asked at the
+ * runner) a card is issued at once; anything above it, or asked through the relay, waits for the CFO's Face ID.
  */
 export const TASK_KINDS = {
   flight: { label: "Flight", mccs: ["4511"], maxCents: 150_000 },

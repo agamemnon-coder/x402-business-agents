@@ -530,7 +530,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "The sourcing agent proposed P-0005 (policy change)",
+        "text": "The Operations agent proposed P-0005 (policy change)",
         "tone": "approval"
       },
       {
@@ -728,7 +728,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "The treasury agent proposed P-0004 (invoice payment)",
+        "text": "The Finance agent proposed P-0004 (invoice payment)",
         "tone": "approval"
       },
       {
@@ -871,7 +871,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "The support agent proposed P-0003 (refund batch)",
+        "text": "The Sales agent proposed P-0003 (refund batch)",
         "tone": "approval"
       }
     ],
@@ -968,7 +968,7 @@
     "counts": {
       "alone": 106,
       "waiting": 0,
-      "blocked": 9
+      "blocked": 8
     },
     "money": {
       "card_spent_eur": "64.99",
@@ -978,12 +978,14 @@
       "waiting": 0,
       "waiting_eur": "0.00",
       "waiting_usdz": "0.00",
-      "blocked_eur": "3764.99",
+      "blocked_eur": "3719.99",
       "blocked_usdz": "0.00",
       "blocked_fraud_eur": "3700.00",
       "blocked_fraud_n": 2,
-      "blocked_declined_eur": "64.99",
-      "blocked_declined_n": 2
+      "blocked_declined_eur": "19.99",
+      "blocked_declined_n": 2,
+      "blocked_declined_later_paid_n": 1,
+      "blocked_rejected_n": 1
     },
     "claude": {
       "calls": 23,
@@ -1257,7 +1259,7 @@
       {
         "id": "treasury",
         "name": "Finance agent",
-        "job": "pays the manufacturer by SWIFT, sweeps earnings to Airwallex and pays the bookkeeping",
+        "job": "pays the manufacturer by SWIFT, sweeps earnings on Metal once final, books them at Airwallex, and pays the bookkeeping",
         "status": "working",
         "models": [
           {
@@ -2077,8 +2079,8 @@
           "simulated": true
         },
         {
-          "what": "Earnings credited from Metal",
-          "detail": "USD 1.35 booked once, referenced by the sweep's transaction (1 test USD = 1 USD)",
+          "what": "Metal earnings booked at Airwallex",
+          "detail": "USD 1.35 booked once as a simulated sandbox deposit that names the sweep's testnet transaction (no test USD reached Airwallex)",
           "proof": {
             "label": "Airwallex id 56366c9d-e…c838",
             "href": null
@@ -2113,7 +2115,7 @@
         },
         {
           "what": "Refused by the chain",
-          "detail": "1 payment over the mandate's cap (mandate_cap_exceeded): nothing moved, the agent asked the CFO",
+          "detail": "1 payment over the mandate's cap (mandate_cap_exceeded): nothing moved; the Finance agent proposed options to the CFO",
           "proof": null
         },
         {
@@ -2150,10 +2152,10 @@
   },
   "proof": {
     "alone": 106,
-    "blocked": 9,
+    "blocked": 8,
     "over_limit_eur": "0.00",
     "fake_invoices": 2,
-    "ai_tricks": 3,
+    "ai_tricks": 2,
     "face_id": 4,
     "card_declines": 2,
     "chain_refusals": 1,

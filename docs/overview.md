@@ -11,19 +11,20 @@ Northwind Outdoor's three AI agents each hold a virtual Visa card from [Airwalle
 and a [Metal](https://docs.metalntwx.com) mandate for paying per request over x402. One CFO policy sets the limits
 for both rails, and each rail enforces them itself: Airwallex declines a card purchase over the card's limit, and the
 Metal account refuses a payment over the mandate, whatever the agent tries. When an agent needs more (a dearer
-software plan, a supplier's price rise, a refund, a euro bill), it stops and asks. The CFO approves a SHA-256 hash of
+software plan, a supplier's price rise, a refund above its limits, a euro bill), it stops and asks. The CFO approves a SHA-256 hash of
 the exact terms with Face ID, and only then do the card, the mandate or the payment change. Airwallex also books the
-earnings and pays the euro invoice with fee-aware FX above a reserve floor.
+earnings (as a simulated sandbox deposit that names the Metal transaction) and pays the euro invoice with fee-aware FX above a reserve floor.
 
 Built for the Airwallex Agentic Banking Hackathon, Starter Kit 11 (x402 Business Agents), Metal Award.
 
-> Work in progress (build phase until 13 November 2026). Everything runs live today, on Metal testnet and in the
-> Airwallex sandbox; approvals can be given on a phone with a passkey (Face ID).
+> Work in progress (build phase until 13 November 2026). Everything runs on Metal testnet and in the Airwallex
+> sandbox (the sandbox simulates merchants' charges, a transfer's last steps and deposits; clearing and the receive
+> policy ran in separate worlds); approvals can be given on a phone with a passkey (Face ID).
 ## The story
 
-- **Northwind Outdoor** (us) sells EUR/USD ticks to other companies' agents over x402, 0.05 *USDZ per query, and
-  requires each buyer's signed order.
-- **Stockline** sells us the raw ticks at 0.02. **Summit Outfitters** is a customer whose agent buys under its
+- **Northwind Outdoor** (us) sells live stock checks to other companies' agents over x402, 0.05 *USDZ each (0.07 after
+  the price rise), and requires each buyer's signed order.
+- **Stockline**, the warehouse API, sells us each stock check at 0.02 (0.04 after its price rise). **Summit Outfitters** is a customer whose agent buys under its
   own mandate. **Bergtex Textil GmbH** bills a EUR 1,850.00 manufacturer's invoice.
 - Our three agents share one Metal account (20.00 *USDZ). Each has its own mandate that the account enforces on
   every payment:
@@ -46,7 +47,7 @@ Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, 
 
 ## Controls
 
-- **Limits live in code and on chain.** `src/config/policy.ts` holds every number. The chain enforces each mandate.
+- **Limits live in code and on chain.** `src/config/policy.ts` holds the built-in limits; the CFO's adjustable limits (`src/policy/rules.ts`) are stored in the ledger as settings. The chain enforces each mandate.
 - **Approvals bind the exact terms.** Terms are canonical JSON (RFC 8785) with money as decimal strings. On the
   phone, the approver's passkey signs their SHA-256 (Face ID); on a laptop, the approver types its first 8 hex
   characters. The executor recomputes the hash, runs once,
@@ -66,7 +67,7 @@ Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, 
   person, who decided and how (Face ID or typed hash), the outcome and the terms hash. Then what the agents did
   alone, every refusal, and the anchor for `verify-log`. Example: [docs/audit-report-rehearsal-3.pdf](audit-report-rehearsal-3.pdf).
 - **Failure tests:** `npm run fail -- f1` (an approval after the quote ran out approves nothing; the re-quote
-  needs a new approval), `npm run fail -- f2` (refund over the mandate cap, refused on chain, nothing sent) and
+  needs a new approval), `npm run fail -- f2` (refund over the mandate cap, refused on chain, nothing sent; on demand, no run log yet) and
   `npm run fail -- f4` (an annual invoice whose conversion would break the USD floor escalates with options;
   no proposal, no money moved) run live; the rest run in `npm test`.
 

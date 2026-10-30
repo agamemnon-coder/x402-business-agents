@@ -1,8 +1,8 @@
 # Metal Award checklist
 
 What this build uses from Metal, where it runs, and the proof on Metal testnet. The transactions below come from
-rehearsal 3 (29 October 2026, [run log](runs/2026-10-29-rehearsal-3.md)): a fresh world from zero, with Max approving
-every proposal with Face ID. The same story ran live twice more on 30 October, on the frozen code, each in its own
+rehearsal 3 (29 October 2026, [run log](runs/2026-10-29-rehearsal-3.md)): a fresh world from zero, with every approval
+given by Max with Face ID. The same story ran live twice more on 30 October, on the frozen code, each in its own
 world with a fresh passkey: [Friday run 1](runs/2026-10-30-friday-1.md) (the recorded demo) and
 [Friday run 2](runs/2026-10-30-friday-2.md); `npm run verify` passes on both. Explorer: https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4,
 `@metalntwx/metal-agent` 0.3.3, `@metalntwx/metal-ts` 0.3.2.
@@ -24,8 +24,9 @@ receive policy did not run in the recorded run, so their cards name the separate
 - **All three ways to pay on Metal, each where it fits:** `exact` x402 with signed orders for per-request sales,
   mandate pulls for refunds and the earnings sweep, and Offer Pay-per-Call Clearing (new in October 2026) for a
   customer that prepays and pays each query with a receipt.
-- **The sweep wallet accepts money only from the business account.** Metal's receive policy holds a payment from
-  anyone else in quarantine; the CFO returns or accepts it with Face ID, and it never reaches the bank on its own.
+- **Purser can set the sweep wallet to accept money only from the business account** (live on testnet in a separate
+  world, 30 October; not set in the recorded run). Metal's receive policy then holds a payment from anyone else in
+  quarantine; the CFO returns or accepts it with Face ID, and it never reaches the bank on its own.
 - **Money on Metal reaches the bank only when it is final.** The sweep is credited in Airwallex once, after
   finality, keyed by `chainId:tx:logIndex`.
 - **Code checks the chain before and after.** Before signing: the CFO policy and the velocity limits (an agent that
@@ -55,7 +56,7 @@ The packages are pinned to the versions above.
 | Mandates replaced after Face ID, in a safe order (shrink treasury, then grow sourcing; never over 20.00) (`metal-agent mandate replace`) | `src/executors/mandateReplace.ts`, `src/policy/mandates.ts` | treasury [`0x6b77d994…6f7e`](https://testnet.metalntwx.com/tx/0x6b77d9942f5e7ff9669c0a2fd11d4cea166f7db4eaf3f9728c89bc45ac846f7e), sourcing [`0x4c995a76…ccdc`](https://testnet.metalntwx.com/tx/0x4c995a768da10d611bee3d82d0d54812b3018bbdc12969bc4c20e46f3a5dccdc) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | The replaced credential is refused: `mandate_revoked` | `src/cli/s1.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | Pull payments under a mandate: refunds and the earnings sweep, each with its own payment id, so a retry pays nothing twice (`metal-agent mandate pull`) | `src/executors/refunds.ts`, `src/agents/sweep.ts` | refunds [`0x0197b1c9…2281`](https://testnet.metalntwx.com/tx/0x0197b1c9e3c8339775439ff90b22d416644f9f0774fc58244826cc724c622281), [`0xa4fb723c…8e52`](https://testnet.metalntwx.com/tx/0xa4fb723c41bddbe6de84ac1064aa9abbadaab3a2d4c5be29efeba04e25b48e52), [`0x788788ee…08d1`](https://testnet.metalntwx.com/tx/0x788788eec4c8d99bb7d7129a68f0a0eea42412b87879d8ec41e66cefee0c08d1); sweep [`0x7c53378d…486b`](https://testnet.metalntwx.com/tx/0x7c53378d3e989e8f780657f39392dfd0a319a79cb0e4d84aae158a430fd0486b) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
-| Every credential checked again by `metal-agent mandate verify`; mandate state read from the chain (`mandate status`) | `src/cli/verify.ts`, `src/metal/mandate.ts` | `npm run verify`: 21 checks, all pass on rehearsal 3 (rerun 29 Oct, 17:30 UTC) | [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
+| Every credential checked again by `metal-agent mandate verify`; mandate state read from the chain (`mandate status`) | `src/cli/verify.ts`, `src/metal/mandate.ts` | `npm run verify`: all checks pass on rehearsal 3 (20 in its run log) and on both Friday runs | [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 
 ## 3. x402 on Metal: agents pay per request
 
@@ -71,13 +72,13 @@ The packages are pinned to the versions above.
 
 | What | Where in the code | Proof | Metal docs |
 |---|---|---|---|
-| Summit deposits *USDZ once into the Clearing contract and pays each 0.07 query with a signed receipt, with no transaction per query | `src/metal/clearing.ts`, `src/agents/customer.ts` | deposit [`0x055ba899…6766`](https://testnet.metalntwx.com/tx/0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766); [clearing run log](runs/2026-10-29-clearing.md) | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
+| A prepaying test customer (a new account in the rehearsal-3 world) deposits 5.00 *USDZ once into the Clearing contract and pays each 0.07 query with a signed receipt, with no transaction per query | `src/metal/clearing.ts`, `src/agents/customer.ts` | deposit [`0x055ba899…6766`](https://testnet.metalntwx.com/tx/0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766); [clearing run log](runs/2026-10-29-clearing.md) | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
 | Our seller offers the `bajillion` scheme on a prepaid route beside `exact`. It offers clearing only when it can deliver (a clearing payment is counted before the seller can refuse, as seen live), and falls back to the mandate route | `src/servers/seller.ts` | [clearing run log](runs/2026-10-29-clearing.md) | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
 | Our earnings leave clearing in two steps: a queued withdrawal, then a claim once its epoch is final | `src/metal/clearing.ts`, `src/cli/clearing.ts` | queue [`0x902badf6…c3d4`](https://testnet.metalntwx.com/tx/0x902badf6f82f4e453c99ff9e5fd870d3e96ab40293bff64e3a611014930cc3d4), claim of 0.70 [`0x522470d2…5092`](https://testnet.metalntwx.com/tx/0x522470d292f78b390fe153cb40905cdc6102afef1345d62e1dc975f900145092) | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
 | Each clearing receipt is checked again with Metal's clearing service (`verifyClearingPayment`) | `src/cli/verify.ts` | `npm run verify` | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
 
-Status: the deposit and five payments ran live. Sales on the real seller wait for the CFO's Face ID on the sourcing
-limit.
+Status: the deposit and five probe payments ran live; then, after the CFO approved P-0009 with Face ID, five real
+clearing sales ran on the seller, all five receipts verified, and 0.70 was withdrawn (clearing run log).
 
 ## 5. Receive policy and quarantine (built into Purser, 30 October)
 
@@ -182,9 +183,9 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 | What Metal did | Run 1 | Run 2 |
 |---|---|---|
 | Stock check #41 refused on chain at the old cap (`mandate_cap_exceeded`), customer not charged (absent from `/settlements`) | yes | yes |
-| Old sourcing credential refused after the CFO's mandate replace (`mandate_revoked`) | yes | yes |
+| Old Operations agent credential refused after the CFO's mandate replace (`mandate_revoked`) | yes | not logged |
 | Disputed orders verified (`verifyMandatePayment`): signed by the customer's mandate key, inside its bound mandate | 12/12 | 12/12 |
-| Refunds pulled under the support mandate, to the customer only | 3 ([`0xcf11b76d…`](https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1)) | 3 + 9 approved by the CFO ([`0x3fd87766…`](https://testnet.metalntwx.com/tx/0x3fd87766d4392f93ed20a88c47d6d5e7a1c7fee2a8d534990371694aed9321a5)) |
+| Refunds pulled under the support mandate, to the customer only | 3 ([`0xcf11b76d…`](https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1)) | 3 + 9 (P-0003 approved by mistake; still paid only to Summit's own account) ([`0x3fd87766…`](https://testnet.metalntwx.com/tx/0x3fd87766d4392f93ed20a88c47d6d5e7a1c7fee2a8d534990371694aed9321a5)) |
 | Earnings swept under the treasury mandate, credited to Airwallex after finality | 1.35 ([`0x808f9133…`](https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f)) | 1.15 ([`0x1844bff9…`](https://testnet.metalntwx.com/tx/0x1844bff9d11282add2b74a3cc639e61cc6b3258bff87d44b00eb98b90e82fea8)) |
 
 ## 8. How a judge checks it

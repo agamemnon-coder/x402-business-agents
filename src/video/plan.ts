@@ -75,7 +75,7 @@ export function scriptMarkdown(): string {
   const lines = [
     `# Purser: the video script (${Math.floor(totalSeconds() / 60)}:${String(totalSeconds() % 60).padStart(2, "0")})`, "",
     "Read it over the silent master (`master.mp4`). Each beat starts at the time shown; the subtitles (`subtitles.srt`) carry the same words.",
-    "The words run at about 115 a minute: speak calmly, and take a breath at each heading. Record each beat on its own if that is easier; the clips have the same names.", "",
+    `The words run at about ${Math.round(BEATS.reduce((n, b) => n + b.voice.split(/\s+/).length, 0) / (totalSeconds() / 60))} a minute: speak calmly, and take a breath at each heading. Record each beat on its own if that is easier; the clips have the same names.`, "",
   ];
   for (const b of BEATS) {
     const m = Math.floor(t / 60), s = Math.round(t % 60);

@@ -161,7 +161,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "card", rail: "Airwallex", tone: after ? "approval" : "refusal", at: declined.ts,
       approval: raised && raisedBy ? { who: raisedBy, proposal: str(p(raised).proposal_id), what: `${str(p(raised).label)}: ${str(p(raised).from)} → ${str(p(raised).to)} EUR` } : null,
       title: "Every AI agent gets its own company card, with limits the CFO sets",
-      text: "Our operations agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by the bank itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
+      text: "Our operations agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by Airwallex itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
       details: "Virtual Visa cards from Airwallex Issuing (sandbox), one per agent. The limits come from the CFO policy; they are synced to the card at Airwallex and read back, so Airwallex declines anything over them (LIMIT_EXCEEDED), whatever the agent does. The raise is a policy change approved with Face ID. In the sandbox the merchant's charge is simulated; the approve or decline is Airwallex's own.",
       facts: facts(
         approvedCard ? fact("Approved by Airwallex", `${str(p(approvedCard).amount)} EUR at ${str(p(approvedCard).merchant)} (card •••• ${str(p(approvedCard).last4)})`) : null,
@@ -290,7 +290,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "audit", rail: "Audit", tone: "info", at: head.ts, approval: null,
       title: "Everything is in an audit log you can check yourself",
       text: "Every step is written to a log that cannot be changed without it showing. One command checks it all again: the payments on chain, every Face ID signature and every Airwallex booking.",
-      details: "A hash-chained, append-only audit log. npm run verify re-checks it from public sources: the chain, every credential and payment, every passkey signature against the pinned public key, and every Airwallex booking.",
+      details: "A hash-chained, append-only audit log. npm run verify re-checks it: the chain, every credential and payment and every passkey signature against the pinned public key from public sources; the Airwallex deposits, conversions and transfers with read-only API keys.",
       facts: facts(
         fact("Audit rows", `${rows.length}, chain ${verifyAuditChain(db).ok ? "intact" : "BROKEN"}, head ${head.row_hash.slice(0, 12)}…`),
         fact("Approvals with Face ID", String(passkeyApprovals)),

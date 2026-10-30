@@ -227,7 +227,7 @@ export const SCENARIOS: Scenario[] = [
     id: "emergency-stop",
     title: "The emergency stop",
     expected: "One Face ID: every agent payment is refused before signing and every card is frozen at Airwallex; a purchase is declined.",
-    offline: "Airwallex and the phone are stand-ins; live: the dashboard's stop button (docs/phone-approval.md)",
+    offline: "Airwallex and the phone are stand-ins; not yet run live; the stop is covered by test/freeze.test.ts and this scenario",
     run: async (w) => {
       const pid = await cfoApprovesPolicy(w, [{ key: "freeze", to: "on" }], "something looks wrong");
       const card = await buyPlan(w.db, w.issuing, "packwise-starter", w.now()).catch((e: Error) => ({ approved: false, failureReason: e.message.slice(0, 60), transactionId: "-" }));

@@ -6,6 +6,7 @@ import { verifyAuditChain } from "../audit/log.js";
 import { agentName } from "../config/brand.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
+import { AGENT_DISPLAY } from "../config/brand.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { callCostMicros } from "../claude/pricing.js";
 import { formatUnits } from "viem";
@@ -182,6 +183,10 @@ export interface Snapshot {
     blocked_eur: string; blocked_usdz: string;
     /** What the blocked euros are: invoices stopped as possible fraud, and card attempts Airwallex declined. */
     blocked_fraud_eur: string; blocked_fraud_n: number; blocked_declined_eur: string; blocked_declined_n: number;
+    /** Declines whose purchase was paid later, after the CFO raised the limit: counted as stops, not as money kept out. */
+    blocked_declined_later_paid_n?: number;
+    /** Proposals the CFO rejected: counted among the stops. */
+    blocked_rejected_n?: number;
   };
   /**
    * Claude's part (D): calls per model with average latency and cost at list price, the cost per call, and the AI
@@ -582,7 +587,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     }
     case "claude.fallback": return out(`Claude was not used for ${s.replace(/_/g, " ")}; the deterministic parser decided (${str(p.note)})`, "info", { model: modelName(str(p.model)) });
     case "claude.rejected": return out(`Claude's answer for ${s.replace(/_/g, " ")} failed the code check and was not used`, "refusal", { model: modelName(str(p.model)) });
-    case "proposal.created": return out(`${r.actor === "human" ? "Max" : `The ${r.actor} agent`} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()})`, "approval");
+    case "proposal.created": return out(`${r.actor === "human" ? "Max" : r.actor in AGENT_DISPLAY ? `The ${AGENT_DISPLAY[r.actor as keyof typeof AGENT_DISPLAY].name}` : `Agent ${r.actor}`} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()})`, "approval");
     case "price_rise.options": {
       const opts = Array.isArray(p.options) ? (p.options as P[]) : [];
       return out(`Priced the options: ${opts.map((o) => (o.sell === null ? `${str(o.id)} ${str(o.label)}` : `${str(o.id)} sell ${str(o.sell)} (margin ${str(o.margin)})`)).join(", ")}`, "approval");
@@ -754,7 +759,10 @@ function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: stri
     const p = JSON.parse(r.payload_json) as P;
     return s + (str(p.currency) === "EUR" && /^\d+\.\d{2}$/.test(str(p.amount)) ? toCents(str(p.amount)) : 0);
   }, 0);
-  const declinedEur = hasCards ? one("SELECT SUM(amount_cents) AS c FROM card_transactions WHERE approved = 0") : 0;
+  // A decline counts as money kept out only if the same purchase was not paid later (after the CFO raised the limit).
+  const laterPaid = "EXISTS (SELECT 1 FROM card_transactions a WHERE a.approved = 1 AND a.card_id = d.card_id AND a.merchant = d.merchant AND a.amount_cents = d.amount_cents AND a.occurred_at > d.occurred_at)";
+  const declinedEur = hasCards ? one(`SELECT SUM(amount_cents) AS c FROM card_transactions d WHERE approved = 0 AND NOT ${laterPaid}`) : 0;
+  const declinedLater = hasCards ? one(`SELECT COUNT(*) AS c FROM card_transactions d WHERE approved = 0 AND ${laterPaid}`) : 0;
   const refusedUsdz = one("SELECT SUM(price_cents) AS c FROM upstream_purchases WHERE outcome = 'REFUSED'") + one("SELECT SUM(amount_cents) AS c FROM refunds WHERE outcome = 'REFUSED'");
   return {
     card_spent_eur: fromCents(cardSpent), card_limit_eur: fromCents(cardLimit),
@@ -763,6 +771,7 @@ function money(db: DB, rows: AuditRow[], live: { kind: string; proposal_id: stri
     blocked_eur: fromCents(fraudEur + declinedEur), blocked_usdz: fromCents(refusedUsdz),
     blocked_fraud_eur: fromCents(fraudEur), blocked_fraud_n: rows.filter((r) => r.event === "invoice.fraud_suspected").length,
     blocked_declined_eur: fromCents(declinedEur), blocked_declined_n: hasCards ? one("SELECT COUNT(*) AS c FROM card_transactions WHERE approved = 0") : 0,
+    blocked_declined_later_paid_n: declinedLater, blocked_rejected_n: rows.filter((r) => r.event === "proposal.rejected").length,
   };
 }
 
@@ -821,7 +830,9 @@ function counts(db: DB, rows: AuditRow[], waiting: number): Snapshot["counts"] {
     alone: n("SELECT COUNT(*) AS n FROM sales WHERE status = 'DELIVERED'") + n("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'PAID'")
       + n("SELECT COUNT(*) AS n FROM refunds WHERE outcome = 'PAID'") + n("SELECT COUNT(*) AS n FROM sweeps WHERE outcome = 'PAID'") + card(1),
     waiting,
-    blocked: n("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'REFUSED'") + card(0) + rows.filter((r) => BLOCKED_EVENTS.has(r.event)).length,
+    // A document flagged twice (read again later) counts once.
+    blocked: n("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'REFUSED'") + card(0) + rows.filter((r) => BLOCKED_EVENTS.has(r.event) && r.event !== "document.injection_flagged").length
+      + new Set(rows.filter((r) => r.event === "document.injection_flagged").map((r) => (JSON.parse(r.payload_json) as { document_sha256?: string }).document_sha256 ?? String(r.seq))).size,
   };
 }
 

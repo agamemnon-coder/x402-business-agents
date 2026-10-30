@@ -63,7 +63,7 @@ export function railsView(db: DB): RailsView {
     }
   }
   for (const d of events(db, "credit.deposited")) {
-    airwallex.push({ what: "Earnings credited from Metal", detail: `USD ${String(d.p.amount)} booked once, referenced by the sweep's transaction (1 test USD = 1 USD)`, proof: awxId(d.p.deposit_id), simulated: true });
+    airwallex.push({ what: "Metal earnings booked at Airwallex", detail: `USD ${String(d.p.amount)} booked once as a simulated sandbox deposit that names the sweep's testnet transaction (no test USD reached Airwallex)`, proof: awxId(d.p.deposit_id), simulated: true });
   }
 
   // Metal: the mandates, the payments under them, and the chain's own refusals.
@@ -87,7 +87,7 @@ export function railsView(db: DB): RailsView {
   }
   const refused = events(db, "upstream.refused");
   if (refused.length) {
-    metal.push({ what: "Refused by the chain", detail: `${refused.length} payment${refused.length > 1 ? "s" : ""} over the mandate's cap (${String(refused[0]!.p.reason)}): nothing moved, the agent asked the CFO`, proof: null });
+    metal.push({ what: "Refused by the chain", detail: `${refused.length} payment${refused.length > 1 ? "s" : ""} over the mandate's cap (${String(refused[0]!.p.reason)}): nothing moved; the Finance agent proposed options to the CFO`, proof: null });
   }
   const replaced = events(db, "mandate.replaced");
   if (replaced.length) metal.push({ what: "Mandate replaced after Face ID", detail: `${replaced.length} replacement${replaced.length > 1 ? "s" : ""} approved by the CFO's passkey; the old mandate is revoked on chain`, proof: tx(replaced[0]!.p.tx) });

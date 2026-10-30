@@ -127,10 +127,10 @@ export function frozen(db: DB): boolean {
 
 /** Why a payment of this size must not be signed, or null if the policy allows it. */
 export function capRefusal(db: DB, agent: Agent, cents: number): string | null {
-  if (frozen(db)) return `frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the ${agent} agent signs nothing`;
-  if (stopped(db, agent)) return `stopped_by_velocity: the ${agent} agent was stopped automatically (velocity limit); the CFO lifts it with Face ID`;
+  if (frozen(db)) return `frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the ${agentName(agent)} signs nothing`;
+  if (stopped(db, agent)) return `stopped_by_velocity: the ${agentName(agent)} was stopped automatically (velocity limit); the CFO lifts it with Face ID`;
   const cap = policyCapCents(db, agent);
-  return cap !== null && cents > cap ? `policy_cap_exceeded: ${fromCents(cents)} is over the ${agent} limit of ${fromCents(cap)}` : null;
+  return cap !== null && cents > cap ? `policy_cap_exceeded: ${fromCents(cents)} is over the ${agentName(agent)}'s limit of ${fromCents(cap)}` : null;
 }
 
 /** The limits the agent's card should have at Airwallex, from the policy. */

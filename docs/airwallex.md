@@ -7,7 +7,7 @@ All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1
 Two marks are used in the tables:
 
 - **Sandbox only.** The call exists to simulate something the sandbox cannot do by itself. Purser keeps these calls behind separate interfaces (`SandboxSim`, `IssuingSim`), so no production path can reach them.
-- † The proof comes from the 29 October rehearsals with the earlier example company (Tidemark Data). The runs of Friday 30 October with Northwind Outdoor will refresh it.
+- † The proof comes from the 29 October rehearsals with the earlier example company (Tidemark Data). The Friday 30 October runs with Northwind Outdoor repeated these steps live (Friday run 1: cards •••• 8120, 6882, 7786; conversion `08736b6e…`; SWIFT transfer `4d508b0b…`, fee EUR 13.41); each of those ids was re-read from the sandbox, read-only, on 30 October.
 
 Run logs are in `docs/runs/`. Tests are in `test/`.
 
@@ -31,7 +31,7 @@ Each agent has a DELEGATE cardholder and one virtual Visa card. The CFO policy s
 | `GET /issuing/cards` | Finds an agent's card by cardholder and nickname. | Lets a lost answer be settled by a look-up, not by issuing another card. | `test/cards.test.ts` |
 | `POST /issuing/cards/create` | Issues a VIRTUAL, commercial card with `authorization_controls`: `PER_TRANSACTION` and `MONTHLY` limits set from the CFO policy. Also issues the card an outside agent asks for, after Face ID. | The card is the control. Airwallex declines any purchase over the limit, whatever the agent does. | `docs/runs/2026-10-29-cards.md` † (three cards); `docs/runs/2026-10-29-agent-api.md` † (card issued only after Face ID on P-0011) |
 | `GET /issuing/cards/{id}` | Reads the card back after every change and every few seconds. Purser trusts what Airwallex reports, not what it asked for. | A limit is only real if Airwallex holds it. A drift is corrected from the policy. | `test/cards.test.ts` ("brings its limits back to the policy") |
-| `POST /issuing/cards/{id}/update` | Two uses. (1) Sets new limits when the CFO approves a policy change. (2) Sets `card_status` to `INACTIVE` or `ACTIVE` for the emergency stop. | Raising or lowering what an agent can spend is a financial decision. The stop freezes every card at once. | `docs/runs/2026-10-29-cards.md` † (raise 30.00 to 50.00 after Face ID, then the same 45.00 purchase was approved). The stop is covered by `test/freeze.test.ts`. The README says a decline with `CARD_INACTIVE` was checked live, but no run log shows it yet. |
+| `POST /issuing/cards/{id}/update` | Two uses. (1) Sets new limits when the CFO approves a policy change. (2) Sets `card_status` to `INACTIVE` or `ACTIVE` for the emergency stop. | Raising or lowering what an agent can spend is a financial decision. The stop freezes every card at once. | `docs/runs/2026-10-29-cards.md` † (raise 30.00 to 50.00 after Face ID, then the same 45.00 purchase was approved). The stop is covered by `test/freeze.test.ts`. A live `CARD_INACTIVE` decline is in `docs/runs/2026-10-30-single-use.md` (after Purser set a task card INACTIVE); the emergency stop itself is tested against stand-ins only. |
 | `GET /issuing/transactions` | Polls each card's transactions every few seconds and records each one once, by `card_transaction_id`. | The ledger must show what Airwallex approved and declined, or the CFO cannot rely on it. | `docs/runs/2026-10-29-cards.md` †; `test/cards.test.ts` (recorded once however it arrives); `test/issuing-adapter.test.ts` |
 | `POST /simulation/issuing/create` (**sandbox only**) | Simulates a merchant's charge on an agent's card (amount, merchant, merchant category code). | A sandbox has no real merchants. The approval or decline that follows is Airwallex's own. The merchant's charge is the simulated part. | `docs/runs/2026-10-29-cards.md` † (19.99 EUR approved; 45.00 EUR declined `LIMIT_EXCEEDED`) |
 
@@ -42,7 +42,7 @@ Airwallex tells the relay about each card transaction as it happens. The relay c
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
 | `GET /webhooks` | Lists subscriptions, so setup does not subscribe twice. | A duplicate subscription would deliver every event twice. | `src/airwallex/webhooks.ts` |
-| `POST /webhooks/create` | Subscribes the relay's `/hooks/airwallex` to `issuing.card_transaction_event.success`, `.failed`, `issuing.transaction.succeeded` and `.failed` (API version 2025-11-11). The signing secret in the answer is stored and never printed. | The CFO sees a card decision within a second, not at the next poll. | `docs/runs/2026-10-29-cards.md` † (live from 16:57: a merchant's own 9.00 EUR charge and a declined 61.00 EUR charge reached the ledger by webhook) |
+| `POST /webhooks/create` | Subscribes the relay's `/hooks/airwallex` to `issuing.card_transaction_event.success`, `.failed`, `issuing.transaction.succeeded` and `.failed` (API version 2025-11-11). The signing secret in the answer is stored and never printed. | The CFO sees a card decision within seconds, not at the next poll. | `docs/runs/2026-10-29-cards.md` † (live from 16:57: a merchant's own 9.00 EUR charge and a declined 61.00 EUR charge reached the ledger by webhook) |
 
 How a delivery is checked (`worker/src/core.ts`, `src/policy/cardHooks.ts`):
 
@@ -59,7 +59,7 @@ The Finance agent pays a euro invoice from a USD balance. It converts only the s
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `GET /fx/rates/current` | **Not called.** The quote carries the rate (`client_rate`), and the quote is what the CFO approves. | Not needed: an indicative rate cannot be booked, a quote can. | none |
+| `GET /fx/rates/current` | Checks the locked quote against the market's current rate before the CFO sees it; a quote more than 0.50% dearer is escalated to the CFO. | The CFO approves the quote; this check stops a bad one reaching the phone. | feed event `fx.rate_checked` |
 | `POST /fx/quotes/create` | Locks a rate for the amount to buy (`buy_currency` EUR, `sell_currency` USD, `buy_amount`, `validity` `MIN_15`, or `MIN_1` in the late-approval test). The quote id, the rate and `valid_to_at` go into the terms the CFO approves. | Without a locked rate the CFO would approve an amount that can move before it is booked. | `docs/runs/2026-10-29-s3.md` † (quote `101475c7-493b-3442-9734-3b2c0ce83f6f`); `docs/runs/2026-10-29-f1.md` † |
 | `POST /fx/conversions/create` | Books the conversion on the approved quote, with a `request_id` and `metadata.approval_sha256`. | This moves company money between currencies. It happens only after Face ID on the exact terms. | `docs/runs/2026-10-29-rehearsal-3.md` † (conversion `0650049f-acb1-476e-a72f-c4de56d5b7b1`, EUR 370.00); `docs/runs/2026-10-29-s3.md` †; `test/airwallex-adapter.test.ts` |
 | `GET /fx/conversions` | Reads the conversion back by `request_id` for `npm run verify`: amount, quote and the approval hash in metadata. | An auditor can check that Airwallex booked what the CFO approved. | `src/airwallex/verify.ts`; `test/airwallex-verify.test.ts`; `docs/runs/2026-10-29-s3.md` † |
@@ -67,7 +67,7 @@ The Finance agent pays a euro invoice from a USD balance. It converts only the s
 The rules in code (`src/policy/treasury.ts`, `src/agents/euroBill.ts`):
 
 - **Only the shortfall.** The need is the invoice plus a SWIFT fee ceiling of EUR 20.00. Free EUR is the balance minus the EUR floor and what is already committed. Only the difference is bought. Rehearsal 3: EUR 1,870.00 needed, EUR 1,500.00 free, EUR 370.00 converted. †
-- **Fee-aware.** The kit says the SWIFT fee is a flat EUR 12.85. Airwallex charged EUR 13.46 and EUR 13.47 in our runs. The ceiling absorbs that. `npm run verify` fails a fee above the ceiling.
+- **Fee-aware.** The kit says the SWIFT fee is a flat EUR 12.85. Airwallex charged between EUR 13.40 and EUR 13.47 in our runs. The ceiling absorbs that. `npm run verify` fails a fee above the ceiling.
 - **Above the reserve floor.** A quote is usable only if selling its USD keeps USD at or above its floor. If not, the agent escalates with options, asks for no approval and moves nothing (`docs/runs/2026-10-29-f4.md` †). If EUR is already below its floor plus commitments, it makes no plan and gets no quote.
 - **Quote expiry.** A proposal expires 30 seconds before its quote does. A late approval approves nothing (`docs/runs/2026-10-29-f1.md` †). A new quote means a new hash and a new approval.
 - **Single use.** A quote is booked once, under one `request_id`. Airwallex would accept the same quote under a new `request_id`, so the single use is enforced in our code (`src/executors/invoicePayment.ts`).
@@ -79,14 +79,14 @@ Only an allowlisted beneficiary can be paid. The allowlist is in the ledger. An 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
 | `GET /beneficiaries` | Finds a beneficiary by IBAN, so an invoice is checked against the real account at Airwallex. | A payout goes to an account on file or it does not go. | `src/airwallex/adapter.ts`; `test/euroBill.test.ts` |
-| `POST /beneficiaries/validate` | Validates the bank details (DE, EUR, IBAN plus `swift_code`) before create. Purser does not call `POST /beneficiaries/schema`. | A wrong IBAN would send money to the wrong place. | `docs/runs/2026-10-29-s3.md` † |
+| `POST /beneficiaries/validate` | Reads `POST /beneficiaries/schema` for the required fields, then validates the bank details (DE, EUR, IBAN plus `swift_code`) with `POST /beneficiaries/validate` before create. | A wrong IBAN would send money to the wrong place. | `docs/runs/2026-10-29-s3.md` † |
 | `POST /beneficiaries/create` | Adds the supplier as a SWIFT beneficiary (setup), or the new account after a bank-detail change. | A transfer needs a `beneficiary_id`. | `docs/runs/2026-10-29-s3.md` † (beneficiary `1322d7e4-5102-4858-ac2f-912d0ad5b999`) |
 
 A supplier's bank-detail change takes three separate steps (`src/policy/payeeChange.ts`):
 
 1. A request. It changes nothing.
 2. A person records that the supplier confirmed the account on a contact already in our own records. An agent cannot do this.
-3. A proposal with the full new IBAN and that verification, approved with Face ID. Above the four-eyes threshold, two people must approve.
+3. A proposal with the full new IBAN and that verification, approved with Face ID. When four eyes is on, a bank-detail change always needs two people, whatever the amount.
 
 Only then is the account created at Airwallex and made the active payee. The old account stays in the ledger as REPLACED. Before any of this, an invoice with changed bank details is blocked by code, before Airwallex is called (`src/policy/fraud.ts`).
 
@@ -128,7 +128,7 @@ A credit is booked only after the sweep is final on Metal, and once per `chainId
 
 - **Idempotency keys on every money movement.** Each conversion and each transfer carries a `request_id` (a UUID) that is fixed inside the approved terms. It is reused only to retry the same operation. A new operation gets a new id. A lost answer is looked up by `request_id`, never resent with a new one. Card creation is looked up by nickname after a lost answer. Setting a card's limits twice is harmless, so that is settled by reading the card back. Proof: `test/euroBill.test.ts` (F8), `test/cards.test.ts`, `test/airwallex-client.test.ts`.
 - **The approval hash in transfer metadata.** `metadata.approval_sha256` on `POST /fx/conversions/create` and `POST /transfers/create` is the SHA-256 of the exact terms the CFO signed with Face ID. `npm run verify` reads Airwallex back and fails if the metadata, amount, quote or fee differs from the approved terms. Proof: `test/airwallex-verify.test.ts`, `docs/runs/2026-10-29-rehearsal-3.md` †.
-- **Tracing each payment to agent, task and policy rule.** Airwallex holds the hash and the Airwallex ids. Our ledger ties them to the rest. Each card transaction row holds the agent and the purpose (the task). The GL export adds the cost centre, the rule that chose the account and the approval. The audit report lists each decision that needed a person: the agent that proposed it, the policy rule that sent it to a person, who decided and how, and the terms hash. Limits: one card per agent, not per task, and the purpose is stored in our ledger, not at Airwallex. Proof: `src/accounting/gl.ts`, `test/gl-export.test.ts`, `docs/audit-report-rehearsal-3.pdf` †.
+- **Tracing each payment to agent, task and policy rule.** Airwallex holds the hash and the Airwallex ids. Our ledger ties them to the rest. Each card transaction row holds the agent and, when the agent gave one, the purpose (the task). The GL export adds the cost centre, the rule that chose the account and the approval. The audit report lists each decision that needed a person: the agent that proposed it, the policy rule that sent it to a person, who decided and how, and the terms hash. Limits: one card per agent, not per task, and the purpose is stored in our ledger, not at Airwallex. Proof: `src/accounting/gl.ts`, `test/gl-export.test.ts`, `docs/audit-report-rehearsal-3.pdf` †.
 - **Webhook signature checks.** HMAC-SHA256 over timestamp plus raw body, a five-minute window, checked on the relay and again on the runner. See "Webhooks" above.
 - **Quote expiry.** The proposal ends before the quote does. A late approval approves nothing. See "FX" above.
 - **Only the shortfall is converted.** Fee-aware, and never below the reserve floors. See "FX" above.

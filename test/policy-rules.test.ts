@@ -55,7 +55,7 @@ describe("policy rules", () => {
     expect(capRefusal(db, "sourcing", 4)).toBeNull();
     approveAndRun(db, p.proposal_id);
     expect(capRefusal(db, "sourcing", 3)).toBeNull();
-    expect(capRefusal(db, "sourcing", 4)).toBe("policy_cap_exceeded: 0.04 is over the sourcing limit of 0.03");
+    expect(capRefusal(db, "sourcing", 4)).toBe("policy_cap_exceeded: 0.04 is over the Operations agent's limit of 0.03");
     const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'policy.changed'").get() as { payload_json: string };
     expect(JSON.parse(row.payload_json)).toEqual({ key: "cap.sourcing", label: "Operations agent: most per payment", from: "", to: "0.03", proposal_id: p.proposal_id });
     expect(verifyAuditChain(db).ok).toBe(true);

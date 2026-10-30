@@ -351,7 +351,7 @@
       "job": "pays for ads and settles retailers' claims",
       "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "payee": {
-        "name": "Summit Outfitters, a customer",
+        "name": "Summit Outfitters, a simulated customer",
         "address": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25"
       },
       "cap": "0.10",
@@ -406,7 +406,7 @@
     {
       "role": "treasury",
       "agent": "Finance agent",
-      "job": "pays the manufacturer by SWIFT, sweeps earnings to Airwallex and pays the bookkeeping",
+      "job": "pays the manufacturer by SWIFT, sweeps earnings on Metal once final, books them at Airwallex, and pays the bookkeeping",
       "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "payee": {
         "name": "Northwind's sweep wallet",
@@ -456,7 +456,7 @@
     {
       "role": "customer",
       "agent": "Summit's buying agent",
-      "job": "Summit Outfitters, a customer, buys Northwind's stock checks under a mandate its own owner bound",
+      "job": "Summit Outfitters, a simulated customer, buys Northwind's stock checks under a mandate its own owner bound",
       "account": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
       "payee": {
         "name": "Northwind Outdoor",

@@ -106,7 +106,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 /** Each account's role, from the ledger: who a payee is, in words. */
 function payeeName(db: DB, address: string): string {
   const role = has(db, "metal_accounts") ? one(db, "SELECT role FROM metal_accounts WHERE lower(address) = lower(?)", address)?.role : undefined;
-  return ({ supplier: "Stockline, the warehouse API", customer: "Summit Outfitters, a customer", sweep: "Northwind's sweep wallet", business: "Northwind Outdoor" } as Record<string, string>)[String(role)] ?? short(address);
+  return ({ supplier: "Stockline, the warehouse API", customer: "Summit Outfitters, a simulated customer", sweep: "Northwind's sweep wallet", business: "Northwind Outdoor" } as Record<string, string>)[String(role)] ?? short(address);
 }
 
 /** What each mandate paid: the purchases, refunds, sweeps or (for Summit) the sales it paid for. */
@@ -142,7 +142,7 @@ export function mandateViews(db: DB): MandateView[] {
     const usedCents = paid.reduce((s, p) => s + p.cents, 0);
     const budget = money(last.p.budget);
     const refusal = role === "sourcing" ? refusals.find((r) => String(r.p.reason ?? "").startsWith("mandate_")) : undefined;
-    const display = role === "customer" ? { name: "Summit's buying agent", job: "Summit Outfitters, a customer, buys Northwind's stock checks under a mandate its own owner bound" } : AGENT_DISPLAY[role];
+    const display = role === "customer" ? { name: "Summit's buying agent", job: "Summit Outfitters, a simulated customer, buys Northwind's stock checks under a mandate its own owner bound" } : AGENT_DISPLAY[role];
     out.push({
       role, agent: display.name, job: display.job, account: String(b.p.principal ?? ""),
       payee: { name: payeeName(db, String(b.p.payee ?? "")), address: String(b.p.payee ?? "") },
