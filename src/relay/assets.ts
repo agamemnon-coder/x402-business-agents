@@ -4,7 +4,7 @@
 
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { CSP as DASHBOARD_CSP, DEMO_CSP, FONT, LIVE_CSP, LOGOS, MONTH_CSP, PAGE as DASHBOARD_PAGE, demoPage, livePage, monthPage } from "../servers/dashboard.js";
+import { CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LIVE_CSP, LOGOS, MONTH_CSP, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, livePage, monthPage } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -25,6 +25,8 @@ export function buildPages(): Pages {
     month: monthPage(),
     demo: demoPage(),
     live: livePage(),
+    film: filmPage(),
+    try: TRY_PAGE,
     approve: read("../approve/page.html"),
     enrol: read("../approve/enrol.html"),
     policy: read("../approve/policy.html"),
@@ -32,7 +34,7 @@ export function buildPages(): Pages {
     css: read("../approve/style.css"),
     font: FONT.toString("base64"),
     images: Object.fromEntries(Object.entries(LOGOS).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])),
-    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
+    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }
 

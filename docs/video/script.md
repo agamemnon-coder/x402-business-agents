@@ -1,40 +1,44 @@
-# Purser: the video script (4:30)
+# Purser: the video script (2:53)
 
 Read it over the silent master (`master.mp4`). Each beat starts at the time shown; the subtitles (`subtitles.srt`) carry the same words.
 The words run at about 115 a minute: speak calmly, and take a breath at each heading. Record each beat on its own if that is easier; the clips have the same names.
 
-## 0:00 Hook (15 s, clip `b1-hook.mp4`)
+## 0:00 Hook (12 s, clip `01-open.mp4`)
 
-AI agents are starting to spend company money. They buy software, pay suppliers, settle customer claims. So every CFO will ask the same question: who is holding the pen?
+AI agents are starting to spend company money: software, suppliers, refunds. So every CFO asks the same question: who is holding the pen?
 
-## 0:15 The problem (20 s, clip `b2-problem.mp4`)
+## 0:12 The problem (12 s, clip `02-problem.mp4`)
 
-Today a company has two bad options. Hand an agent a card number and hope it behaves: no auditor will sign that off. Or approve every cent yourself, and the agent saves you nothing.
+Give an agent a card number and hope, or approve every cent yourself. One is a risk no auditor signs off. The other saves you nothing.
 
-## 0:35 Purser in one sentence (15 s, clip `b3-purser.mp4`)
+## 0:24 Purser (14 s, clip `03-reveal.mp4`)
 
-Purser is the third option. Every agent gets its own company card and its own on-chain mandate, with limits the CFO sets once. Anything new waits for the CFO's Face ID.
+Purser gives every AI agent its own company card and its own on-chain mandate, with limits the CFO sets once. Anything new waits for Face ID.
 
-## 0:50 Wow 1: a company card and Face ID (40 s, clip `b4-card.mp4`)
+## 0:38 A company card, and Face ID (22 s, clip `04-card.mp4`)
 
-Meet Northwind Outdoor, a retailer that runs three agents. Its operations agent buys warehouse software on its own Airwallex card: approved. Then it wants the Pro plan, forty-five euros, on a card that allows thirty. Airwallex declines it: the bank enforces the limit, not a prompt. The agent asks for more. The CFO sees the exact terms on the phone and approves with Face ID. The new limit syncs to the card, the purchase goes through, and every step is in the audit log.
+Watch. The operations agent buys software: approved by Airwallex. Then the Pro plan, forty-five euros, on a thirty euro limit: declined, by the bank itself. The agent asks for more. The CFO checks the exact terms and approves with Face ID. The limit moves to fifty, and the same purchase goes through.
 
-## 1:30 Wow 2: a euro bill, paid through Airwallex (35 s, clip `b5-fx.mp4`)
+## 1:00 A euro bill, paid (22 s, clip `05-bill.mp4`)
 
-Now a real bill: eighteen hundred and fifty euros from the manufacturer. The finance agent reads the invoice, checks the balances and the reserve floors, and takes a live quote. It converts only the euros that are missing, three hundred and seventy, and prepares the SWIFT payment. The CFO approves the exact amount, the rate and the most the fee may be. Airwallex pays it: status PAID, with the approval's hash in the payment.
+A euro invoice arrives: eighteen hundred and fifty. The finance agent checks balances and reserve floors, takes a live quote and converts only the missing three hundred and seventy. One Face ID covers the rate, the payee and the fee. Airwallex pays it by SWIFT: paid.
 
-## 2:05 Wow 3: Metal refuses, and the Dispute desk (50 s, clip `b6-metal.mp4`)
+## 1:22 On chain with Metal (30 s, clip `06-metal.mp4`)
 
-Agents also pay per request on Metal, a few cents at a time, under mandates that live on chain. When the supplier doubles its price, the agent's own account refuses the payment: nothing moves, and the customer isn't charged. Purser prices two options, Opus reviews them, and the CFO picks one. Then a customer claims: our agent never ordered this. Northwind's Dispute desk checks what it can prove: every order the customer's agent signed, every payment verified on chain inside the customer's mandate. Twelve out of twelve. Not refunded, with a report the customer can check for themselves.
+On Metal, agents pay per request, cents at a time, under mandates that live on chain. When the supplier doubles its price, the payment hits the mandate's cap and bounces: nothing moves, and the customer is not charged. Purser prices two options, Opus reviews them, the CFO signs one, and the mandates are replaced on chain. Mandates, x402, signed orders, payouts, clearing and a receive policy: all live on Metal testnet.
 
-## 2:55 Wow 4: Ask Purser books a flight (30 s, clip `b7-ask.mp4`)
+## 1:52 The Dispute desk (20 s, clip `07-dispute.mp4`)
 
-Sometimes the CFO just needs something done: book a flight to Berlin, at most a hundred and fifty euros. Purser checks it against the policy, and Airwallex issues a single-use card: airlines only, a hundred and fifty euros, until that day. The booking goes through. A second charge is declined: the card closed itself.
+Then a customer says: our agent never ordered this, refund everything. Northwind's Dispute desk checks the proof: every order signed by their agent, every payment inside their mandate on chain, every delivery matched. Twelve of twelve. Not refunded.
 
-## 3:25 Why you can trust it (45 s, clip `b8-trust.mp4`)
+## 2:12 Ask Purser (14 s, clip `08-ask.mp4`)
 
-Why trust it? Code decides; the models only read and advise. Our red team ran thirty-four attacks, from fake invoices to prompt injection to forged approvals: all thirty-four were blocked. Above a threshold, two people must approve. One Face ID freezes every agent and every card. Eighteen end-to-end scenarios replay as expected. The AI costs about nine cents per thousand euros paid. And every payment lands in the books, double-entry and balanced.
+Need something once? Ask Purser: a flight to Berlin, at most one hundred and fifty euros. Airwallex issues a single-use card. The booking goes through; a second charge is declined.
 
-## 4:10 Vision (20 s, clip `b9-vision.mp4`)
+## 2:26 Why you can trust it (17 s, clip `09-trust.mp4`)
 
-Every company will soon run agents that spend. Purser lets them move at machine speed, while the finance team keeps the pen. Built on Airwallex and Metal, powered by Claude. Every euro has a proof.
+Code decides; the models only read and advise. Thirty-four red-team attacks: all blocked. Eighteen scenarios: all as expected. Two people above a threshold, one Face ID to freeze everything, and nine cents of AI per thousand euros paid.
+
+## 2:43 Purser (10 s, clip `10-end.mp4`)
+
+Purser. Agents move at machine speed, and the CFO keeps the pen. Every euro has a proof.

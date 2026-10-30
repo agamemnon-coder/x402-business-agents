@@ -3,6 +3,7 @@
 
 import { DurableObject } from "cloudflare:workers";
 import { pageResponse, Relay } from "./core.js";
+import { TryDesk } from "./try.js";
 import { PAGES } from "./pages.gen.js";
 
 export interface Env {
@@ -11,18 +12,22 @@ export interface Env {
   RELAY_TOKEN: string;
   /** Airwallex's webhook signing secret, set by npm run cards -- webhook. Without it the webhook route answers 503. */
   AIRWALLEX_WEBHOOK_SECRET?: string;
+  /** Claude for Try Purser, set with `wrangler secret put ANTHROPIC_API_KEY`. Without it the page reads by code alone. */
+  ANTHROPIC_API_KEY?: string;
 }
 
 export class RelayObject extends DurableObject<Env> {
   private readonly relay: Relay;
+  private readonly tryDesk: TryDesk;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.relay = new Relay(ctx.storage.sql, { relayToken: env.RELAY_TOKEN, webhookSecret: env.AIRWALLEX_WEBHOOK_SECRET });
+    this.tryDesk = new TryDesk(ctx.storage.sql, { anthropicKey: env.ANTHROPIC_API_KEY });
   }
 
   override fetch(req: Request): Promise<Response> {
-    return this.relay.fetch(req);
+    return new URL(req.url).pathname === "/api/try" ? this.tryDesk.fetch(req) : this.relay.fetch(req);
   }
 }
 
@@ -31,6 +36,8 @@ export default {
     const page = pageResponse(req, PAGES);
     if (page) return page;
     const path = new URL(req.url).pathname;
+    // Try Purser runs in its own instance: its storage and its load stay apart from the approvals.
+    if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
     if (path.startsWith("/api/") || path === "/hooks/airwallex") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
     return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" } });
   },

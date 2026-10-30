@@ -127,7 +127,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
   var build = {
     open: function (L) {
       var flying = [["Packwise", "€" + d.card.small], ["Stockline", d.metal.oldPrice + " test USD"], ["Bergtex invoice", "€" + d.bill.invoice], ["Skyline Air", "€120.00"], ["Summit Outfitters", "0.05 test USD"], ["Packwise Pro", "€" + d.card.big]];
-      var chips = flying.map(function (f, i) { return put(L, E("div", "pill", f[0] + "  " + f[1]), 0, 150 + i * 140); });
+      var chips = flying.map(function (f, i) { return put(L, E("div", "pill", f[0] + "  " + f[1]), 0, [40, 120, 200, 820, 900, 980][i]); }); // above and below the words, never through them
       var k = put(L, E("div", "kicker", "Agentic spending"), 140, 330), h = put(L, E("div", "h1", "AI agents are starting to spend company money."), 140, 390);
       h.style.width = "1300px";
       var q2 = put(L, E("div", "h1", "Who is holding the pen?"), 140, 650); q2.style.color = "var(--accent2)";
@@ -143,7 +143,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var rl = put(L, E("div", "h3 bad", "Risk no auditor signs off"), 160, 720);
       var ph = put(L, E("div", "phone", null, [E("div", "sheet", null, [E("div", "pid", "Approve?"), E("div", "big", "0")])]), 1220, 180);
       var num = ph.querySelector(".big"); num.style.fontSize = "150px"; num.style.textAlign = "center"; num.style.marginTop = "140px";
-      var pl = put(L, E("div", "h3 muted", "Approve every cent: no time saved"), 1060, 1010 - 20);
+      var pl = put(L, E("div", "h3 muted", "Or approve every cent: no time saved"), 160, 820);
       return function (t) {
         rise(t1, t, .1); slide(c, t, .6, -300); ri.style.width = 100 * out3(prog(t, 1.5, 5)) + "%"; risk.style.opacity = prog(t, 1.2, 1.6); rise(rl, t, 3.5);
         slide(ph, t, 5.5, 300); num.textContent = count(t, 6, 10, 1, 99) + (t > 10 ? "+" : ""); rise(pl, t, 7.5);

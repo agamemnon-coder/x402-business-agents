@@ -2,6 +2,7 @@
 // so it holds no key and cannot approve or move money. "Review: approve or reject" hands over to the approval page.
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
+import { TRY_MAX_CHARS, tryPurserSafely } from "../try/engine.js";
 import { buildFilm } from "../film/film.js";
 import { filmTimeline } from "../film/script.js";
 import { createHash } from "node:crypto";
@@ -101,6 +102,10 @@ export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
   return FILM_TEMPLATE.replace("__FILM_JSON__", () => JSON.stringify({ data, scenes: filmTimeline() }).replace(/</g, "\\u003c"));
 }
 
+/** Try Purser (src/try/): the page; its requests go to POST /api/try. */
+export const TRY_PAGE = readFileSync(new URL("../try/try.html", import.meta.url), "utf8");
+export const TRY_CSP = cspFor(TRY_PAGE);
+
 /** The public demo page (K5 replay) plays a recorded run; no request, no key, nothing live. */
 export const DEMO_CSP = cspFor(DEMO_TEMPLATE);
 
@@ -158,6 +163,18 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/demo", (_req, res) => {
     res.setHeader("Content-Security-Policy", DEMO_CSP);
     res.type("html").send(demoPage());
+  });
+
+  app.get("/try", (_req, res) => {
+    res.setHeader("Content-Security-Policy", TRY_CSP);
+    res.type("html").send(TRY_PAGE);
+  });
+  // Locally Try Purser reads with code alone: no model is asked from this server (the relay asks Claude, with limits).
+  app.post("/api/try", express.json({ limit: "2kb" }), async (req, res) => {
+    const text = typeof (req.body as { text?: unknown })?.text === "string" ? ((req.body as { text: string }).text).trim() : "";
+    if (!text) return void res.status(400).json({ error: "type what an agent should do" });
+    if (text.length > TRY_MAX_CHARS) return void res.status(413).json({ error: `at most ${TRY_MAX_CHARS} characters` });
+    res.json(await tryPurserSafely(text, null, new Date(), "this local server asks no model; the hosted page does"));
   });
 
   app.get("/film", (_req, res) => {

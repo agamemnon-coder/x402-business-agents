@@ -9,7 +9,8 @@
 import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
-import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { TRY_MAX_CHARS, tryPurserSafely } from "../try/engine.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
@@ -29,6 +30,14 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/live", page(LIVE_CSP, () => live));
   const film = filmPage();
   app.get("/film", page(FILM_CSP, () => film));
+  app.get("/try", page(TRY_CSP, () => TRY_PAGE));
+  // Try Purser without keys: code reads the request; the hosted relay page asks Claude.
+  app.post("/api/try", express.json({ limit: "2kb" }), async (req, res) => {
+    const text = typeof (req.body as { text?: unknown })?.text === "string" ? (req.body as { text: string }).text.trim() : "";
+    if (!text) return void res.status(400).json({ error: "type what an agent should do" });
+    if (text.length > TRY_MAX_CHARS) return void res.status(413).json({ error: `at most ${TRY_MAX_CHARS} characters` });
+    res.json(await tryPurserSafely(text, null, new Date(), "npm run judge asks no model; the hosted page does"));
+  });
   const lab = labPage();
   app.get("/lab", page(LAB_CSP, () => lab));
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
@@ -57,7 +66,7 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
   const { server, url } = await startJudge(Number(process.env.PORT ?? 4311));
   if (args.includes("--check")) {
     let ok = true;
-    for (const path of ["/", "/demo", "/live", "/film", "/month", "/lab"]) {
+    for (const path of ["/", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
       const res = await fetch(`${url}${path}`);
       const body = await res.text();
       const good = res.status === 200 && body.length > 1000;
