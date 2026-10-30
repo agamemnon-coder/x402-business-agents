@@ -197,7 +197,7 @@ check(policyValue(db, "cap.sourcing") === "0.03", "policy editor: signed with th
 await page.goto(`${url}/policy`);
 await page.waitForSelector("#words");
 await page.fill("#words", "De sourcing-agent mag hooguit 0,02 per betaling uitgeven.");
-await page.click(".policy-words button");
+await page.click(".policy-words:has(#words) button"); // the box with the words, not Ask Purser above it
 await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
 check((await page.textContent(".verdict-head")) === "Rules drafted", "policy in words: the runner drafted rules");
 check(/waits for your Face ID: Operations agent: most per payment: 0\.03 → 0\.02/.test((await page.textContent(".verdict-detail")) ?? ""), "policy in words: it says which rule came from the words");
