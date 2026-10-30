@@ -42,7 +42,7 @@ export interface AuditReport {
   /** Each automatic refusal with the rule that made it (E5). */
   refusals: { at: string; agent: string; what: string; reason: string; rule: string }[];
   /** Metal finality certificates stored for the ledger's chain transactions (enterprise item 3). */
-  finality: { certified: number; not_kept: number; failed: number; blocks: { block_number: number; block_hash: string; signers: number; participants: number; ok: boolean }[] };
+  finality: { reported: number; not_kept: number; failed: number; not_found: number; blocks: { block_number: number; block_hash: string; signers: number; participants: number; ok: boolean }[] };
 }
 
 /** Why a person had to decide, per kind (the CFO policy and the build plan's approval rules). */
@@ -210,10 +210,10 @@ export function reportLines(r: AuditReport): Line[] {
     L.push({ style: "mono", text: `Terms SHA-256 ${d.terms_sha256}` });
   }
   const f = r.finality;
-  if (f.certified + f.not_kept + f.failed > 0) {
+  if (f.reported + f.not_kept + f.failed + f.not_found > 0) {
     L.push({ style: "h2", text: "Finality on Metal" });
-    L.push({ style: "text", text: `${f.certified} chain transaction(s) have Metal's finality certificate for their block, stored when fetched: the header hashes to the block and at least the quorum of validators signed.${f.not_kept ? ` ${f.not_kept} were looked up after the node stopped keeping the certificate (about 2 hours on testnet).` : ""}${f.failed ? ` ${f.failed} have a certificate that FAILED a check.` : ""}` });
-    for (const b of f.blocks.slice(0, 40)) L.push({ style: "mono", text: `block ${b.block_number} ${b.block_hash.slice(0, 18)}... ${b.signers} of ${b.participants} validators ${b.ok ? "ok" : "FAILED"}` });
+    L.push({ style: "text", text: `${f.reported} chain transaction(s) have the finality certificate Metal's RPC reported for their block, stored when fetched: its header hashes to the block and carries its number, and its signer bitmap reaches the quorum of the pinned validator count. The validators' signature is not verified.${f.not_kept ? ` ${f.not_kept} were looked up after the node stopped keeping the certificate (about 2 hours on testnet).` : ""}${f.failed ? ` ${f.failed} have a certificate that FAILED a check.` : ""}${f.not_found ? ` ${f.not_found} never showed as final.` : ""}` });
+    for (const b of f.blocks.slice(0, 40)) L.push({ style: "mono", text: `block ${b.block_number} ${b.block_hash.slice(0, 18)}... reported ${b.signers} of ${b.participants} validators ${b.ok ? "consistent" : "FAILED"}` });
     L.push({ style: "small", text: `Not checked: ${NOT_CHECKED}. npm run verify checks the stored certificates again.` });
   }
   L.push({ style: "h2", text: `Refusals and escalations (${r.refusals.length})` });

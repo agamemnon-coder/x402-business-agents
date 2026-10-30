@@ -54,6 +54,15 @@ function migrate(db: DB): void {
     db.exec("ALTER TABLE velocity_events ADD COLUMN payment_id TEXT");
     db.exec("CREATE UNIQUE INDEX IF NOT EXISTS velocity_payment_id ON velocity_events (payment_id)");
   }
+  // Finality evidence (enterprise item 3): CERTIFIED became REPORTED (the BLS signature is not verified), and NOT_FOUND.
+  const fe = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'finality_evidence'").get() as { sql: string } | undefined;
+  if (fe && !fe.sql.includes("'REPORTED'")) {
+    db.exec(`ALTER TABLE finality_evidence RENAME TO finality_evidence_old;
+      CREATE TABLE finality_evidence (tx TEXT PRIMARY KEY, block_hash TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('REPORTED', 'FAILED', 'NOT_KEPT', 'NOT_FOUND')), recorded_at TEXT NOT NULL);
+      INSERT INTO finality_evidence SELECT tx, block_hash, CASE status WHEN 'CERTIFIED' THEN 'REPORTED' ELSE status END, recorded_at FROM finality_evidence_old;
+      DROP TABLE finality_evidence_old;`);
+  }
   allowPasskeyApprovals(db);
   allowPasskeyRejections(db);
 }

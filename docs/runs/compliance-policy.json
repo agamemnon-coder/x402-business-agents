@@ -1,24 +1,24 @@
 {
-  "ran_at": "2026-10-30T21:42:30.774Z",
+  "ran_at": "2026-10-30T21:55:56.668Z",
   "network": "Metal testnet",
-  "contract": "0xdd659fbe72e9170ce7d8099636a45121173342b2",
+  "contract": "0x498d1f70c57a869799b44bcf869983b0e121fa4f",
   "compiler": "solc 0.8.36+commit.8a079791.Emscripten.clang",
-  "source_sha256": "59d2fb7a1729d79612bfa220588184bcb31b793a534e1227b74fc37f7ef778d5",
-  "compliance_signer": "0xeFbec4eb4aF100a86e8e4420994A2957A0077a7D",
-  "operator": "0xdeC3Fd19CDB22d29c0b2AdE41A3F34F43Ad9368d",
-  "payee": "0x5262dAd00217FdBE978c74477786754110f2b496",
-  "sanctioned_stand_in": "0x010B80F4DB0c8406784D8E199A7d4fD8A5E635d9",
+  "source_sha256": "3e077e12ff8d498550fc177f10b71a6b0e69cfa911810f9af21e1715599231ff",
+  "compliance_signer": "0x5f0F997AbD18539118EEceC959B61E68d0aBD965",
+  "operator": "0x5022c244b1E0B5F98cd25c2101333ea94749c191",
+  "payee": "0x026cb40753452f9262D4Ffe8443e1Ab10a77B711",
+  "sanctioned_stand_in": "0x0859a54d0f95599ee56402c56B393ed5DEE3654A",
   "list": "purser-test-list-2026-10-30 (a stand-in address, not a real sanctions list)",
   "contract_balance_after": "1.50",
   "steps": [
     {
       "step": "deploy ComplianceSendPolicy: signer = Purser's compliance key, operator = the payer key",
       "outcome": "done",
-      "tx": "0x93533e4a2f08846d411f3411e802eb5cf7398321f3cef905d772bbc9e175faa5",
-      "detail": "contract 0xdd659fbe72e9170ce7d8099636a45121173342b2",
+      "tx": "0xec54efc4e64a7aa6535dfe250c66940c6ce76cd0447d5653deaab9a772128dbf",
+      "detail": "contract 0x498d1f70c57a869799b44bcf869983b0e121fa4f",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10085916,
+        "status": "REPORTED",
+        "block": 10096543,
         "signers": 3,
         "participants": 4
       }
@@ -26,23 +26,35 @@
     {
       "step": "fund the contract with 2.00 test USD",
       "outcome": "done",
-      "tx": "0xbad409c3aae604c6ebe444d2c017806a6eee2624f81a6d42302a170d9ee0850c",
+      "tx": "0x819201e3eb93e2949b322b228f8746fb9a82c3915c72fcd846ef8ee8280d8908",
       "detail": "",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10085934,
+        "status": "REPORTED",
+        "block": 10096564,
         "signers": 3,
         "participants": 4
       }
     },
     {
-      "step": "pay 0.50 to the screened payee with Purser's signed decision (cleared by screening)",
+      "step": "pay 0.50 to the screened payee with Purser's signed decision (screened: cleared)",
       "outcome": "done",
-      "tx": "0xf35de591c5f0dc4b9eaf083e1a4da401f69d78848e78d32f36d1e9b5ed9f331a",
+      "tx": "0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237",
       "detail": "the payee received 0.50",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10086080,
+        "status": "REPORTED",
+        "block": 10096702,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "Purser cancels an unused decision (signed by the compliance key)",
+      "outcome": "done",
+      "tx": "0x217da656e278a1264dad7c0ae9ed50f41b6d34c52356229e44d691a3fcf8f898",
+      "detail": "the payment id is spent; the decision can no longer pay",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10096842,
         "signers": 3,
         "participants": 4
       }
@@ -57,11 +69,11 @@
     {
       "step": "attack: no decision at all",
       "outcome": "reverted",
-      "tx": "0x9e642db498e780356221d5bbff5c881e16ad057a20bf921a638c03113ea01e1e",
-      "detail": "reverted on chain (BadSignature); used 26676 of 349026 gas",
+      "tx": "0x8a38082862518f9a7743ab9af9958819a5579a7b20371f7988dbb71f572b3ca2",
+      "detail": "reverted on chain (BadSignature); used 26823 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10086217,
+        "status": "REPORTED",
+        "block": 10096980,
         "signers": 3,
         "participants": 4
       }
@@ -69,11 +81,11 @@
     {
       "step": "attack: a decision signed by another key (the attacker's)",
       "outcome": "reverted",
-      "tx": "0x44dfdef4ba5fb1d619a984c031bf491ad7353b77c9d55ed996c2fbbdacffcb62",
-      "detail": "reverted on chain (NotCleared); used 220846 of 349026 gas",
+      "tx": "0x5c037a1c97f949b9ee1118fa0caf1f4cb6d1b8ac979328caa48981f5eddaa0ce",
+      "detail": "reverted on chain (NotCleared); used 220993 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10086360,
+        "status": "REPORTED",
+        "block": 10097116,
         "signers": 3,
         "participants": 4
       }
@@ -81,11 +93,11 @@
     {
       "step": "attack: the same decision a second time (replay)",
       "outcome": "reverted",
-      "tx": "0xfc11229101730e83567986c6391b111564cb8cac34e8e2d1a9b3f161e02072b7",
-      "detail": "reverted on chain (PaymentIdSpent); used 29160 of 349026 gas",
+      "tx": "0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737",
+      "detail": "reverted on chain (PaymentIdSpent); used 29160 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10086494,
+        "status": "REPORTED",
+        "block": 10097250,
         "signers": 3,
         "participants": 4
       }
@@ -93,11 +105,11 @@
     {
       "step": "attack: the payee's decision used to pay the attacker",
       "outcome": "reverted",
-      "tx": "0xcd8ce25d0c93e9354429cf7a7db0bbe325e8bff19eb9bdc0519f2d99bab59c2c",
-      "detail": "reverted on chain (NotCleared); used 220822 of 349026 gas",
+      "tx": "0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a",
+      "detail": "reverted on chain (NotCleared); used 220973 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10086636,
+        "status": "REPORTED",
+        "block": 10097390,
         "signers": 3,
         "participants": 4
       }
@@ -105,11 +117,11 @@
     {
       "step": "attack: the amount raised from 0.50 to 1.50 under the same decision",
       "outcome": "reverted",
-      "tx": "0x05af39ff52b183b51b36d6d90aedff9ef391b98d2cfe8087a412e7f93f113125",
-      "detail": "reverted on chain (NotCleared); used 220814 of 349026 gas",
+      "tx": "0x7e6bfa28a34a14d25fe5dd36bfc6d55d8e3d3cfd1959a5ec267ad6445da3fbfc",
+      "detail": "reverted on chain (NotCleared); used 220993 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10086770,
+        "status": "REPORTED",
+        "block": 10097525,
         "signers": 3,
         "participants": 4
       }
@@ -117,11 +129,11 @@
     {
       "step": "attack: an expired decision",
       "outcome": "reverted",
-      "tx": "0xd2f81433a05133983e9334de67d5d604a6dfe890b7079610d2daee3cf131afd3",
-      "detail": "reverted on chain (DecisionExpired); used 29160 of 349026 gas",
+      "tx": "0x25915601aaacb522f15543ceaf1b6b7f0ae750f4be84c4f3c5c8b2f057d502f0",
+      "detail": "reverted on chain (DecisionExpired); used 29160 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10086914,
+        "status": "REPORTED",
+        "block": 10097663,
         "signers": 3,
         "participants": 4
       }
@@ -129,11 +141,11 @@
     {
       "step": "attack: a valid decision submitted by someone else (the attacker's key)",
       "outcome": "reverted",
-      "tx": "0x860292601aaf7aab3b9d74ae677fd1e7147f121ba4e4f796fa4a8295c351a679",
-      "detail": "reverted on chain (NotOperator); used 29190 of 349026 gas",
+      "tx": "0xcd0ef962a88c01a2e04773d84466eb36b5fad11dab48189001368dbb1f323250",
+      "detail": "reverted on chain (NotOperator); used 29160 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10087054,
+        "status": "REPORTED",
+        "block": 10097810,
         "signers": 3,
         "participants": 4
       }
@@ -141,11 +153,11 @@
     {
       "step": "attack: the valid decision's signature malleated (high s)",
       "outcome": "reverted",
-      "tx": "0xc1949a03895c18c20e4e65f56b42b88b2a8284de6f0ddfa69023be3c62af3e49",
-      "detail": "reverted on chain (BadSignature); used 29160 of 349026 gas",
+      "tx": "0xa8150620651c1a6c9f97aeb1e90f2efd2ccf5de65b90b07b4b742eb6cfa612e5",
+      "detail": "reverted on chain (BadSignature); used 29130 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10087186,
+        "status": "REPORTED",
+        "block": 10097954,
         "signers": 3,
         "participants": 4
       }
@@ -153,11 +165,23 @@
     {
       "step": "attack: a decision Purser signed for another contract",
       "outcome": "reverted",
-      "tx": "0x81a926c27a355ae1810cdbcf83bcee1aa6b8dbc054c59879d45175f9cc40595b",
-      "detail": "reverted on chain (NotCleared); used 220802 of 349026 gas",
+      "tx": "0xb40ea23957665f1a6238b4fe2f9fc4f316ca4c1f87de63bae727d590e6030858",
+      "detail": "reverted on chain (NotCleared); used 220981 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10087321,
+        "status": "REPORTED",
+        "block": 10098090,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "attack: a decision Purser cancelled",
+      "outcome": "reverted",
+      "tx": "0x9f58cab1cc1e5466184da28e22d49193d7a428bb25cb73822c597bb54bba206d",
+      "detail": "reverted on chain (PaymentIdSpent); used 29130 of 349194 gas",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10098222,
         "signers": 3,
         "participants": 4
       }
@@ -165,11 +189,11 @@
     {
       "step": "attack: pay the sanctioned payee with a decision the attacker made itself",
       "outcome": "reverted",
-      "tx": "0xbf8775d2b75a896eac6666efe69cda9c36ae06724efebddb5bdc3a8e10c4f573",
-      "detail": "reverted on chain (NotCleared); used 220814 of 349026 gas",
+      "tx": "0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e",
+      "detail": "reverted on chain (NotCleared); used 220985 of 349194 gas",
       "finality": {
-        "status": "CERTIFIED",
-        "block": 10087465,
+        "status": "REPORTED",
+        "block": 10098356,
         "signers": 3,
         "participants": 4
       }

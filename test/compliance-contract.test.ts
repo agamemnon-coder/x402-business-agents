@@ -14,10 +14,10 @@ describe("ComplianceSendPolicy", () => {
     expect(committed.compiler).toMatch(/^solc 0\.8\.36\+/);
   }, 60_000);
 
-  it("has one way out for the funds, send, and checks a decision of exactly the type Purser signs", () => {
+  it("has one way out for the funds, send (cancel only spends an id), and checks a decision of exactly the type Purser signs", () => {
     const src = readFileSync(new URL("../contracts/ComplianceSendPolicy.sol", import.meta.url), "utf8");
     const fns = loadArtifact().abi.filter((x) => x.type === "function" && !["view", "pure"].includes((x as { stateMutability: string }).stateMutability)).map((x) => (x as { name: string }).name);
-    expect(fns).toEqual(["send"]);
+    expect(fns.sort()).toEqual(["cancel", "send"]);
     expect(src).toContain('keccak256("Decision(bytes32 paymentId,address to,uint256 amount,uint64 validUntil,bytes32 screeningRef)")');
     expect(src).toContain('keccak256("PurserComplianceSendPolicy"), keccak256("1")');
   });

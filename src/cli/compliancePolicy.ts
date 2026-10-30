@@ -2,12 +2,13 @@
 // world (KIT11_KEYS_DIR, default ../x402-business-agents-keys/compliance) with test keys and test money:
 //   1. deploys ComplianceSendPolicy (contracts/, the committed artifact) with Purser's compliance key as the signer and
 //      the payer key as the only operator, and funds it with 2.00 test USD;
-//   2. screens the payee (src/compliance/screening.ts), signs the decision, and pays 0.50: paid;
+//   2. screens the payee (inside signDecision, src/compliance/screening.ts), signs the decision, and pays 0.50: paid;
+//      Purser also signs a decision and then cancels it on chain;
 //   3. runs the red team's attacks, each simulated for the contract's reason and then sent with the gas the good
 //      payment used, so each refusal stands on chain as a reverted transaction:
 //      no decision, a decision by another key, the same decision twice, a decision for another payee, a raised amount,
 //      an expired decision, a valid decision sent by someone else, a malleated signature, a decision for another
-//      contract, and a sanctioned payee (Purser refuses to sign; a self-made decision is refused by the chain);
+//      contract, a cancelled decision, and a sanctioned payee (Purser refuses to sign; a self-made decision is refused by the chain);
 //   4. stores Metal's finality certificate for every transaction. Writes docs/runs/compliance-policy.json.
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
@@ -20,7 +21,7 @@ const { keyPath, metalAgent } = await import("../metal/agentCli.js");
 const { publicClient, readKeyFile, transferUsdz, usdzBalance } = await import("../metal/chain.js");
 const { CHAIN_ID, EXPLORER_TX, USDZ } = await import("../metal/network.js");
 const { loadArtifact } = await import("../compliance/compile.js");
-const { screenPayee, signDecision } = await import("../compliance/screening.js");
+const { DECISION_TYPES, policyDomain, screenPayee, signCancel, signDecision } = await import("../compliance/screening.js");
 const { openDb } = await import("../db/open.js");
 const { certifyTxs, finalityOf } = await import("../metal/finality.js");
 const { baseUnitsToCents, centsToBaseUnits, fromCents } = await import("../lib/money.js");
@@ -76,51 +77,63 @@ record("fund the contract with 2.00 test USD", "done", fund, "");
 const now = BigInt(Math.floor(Date.now() / 1000));
 const pid = (label: string) => keccak256(toHex(`purser:${contract}:${label}`));
 const amount = centsToBaseUnits(50);
-const screening = screenPayee(payee, lists);
-const validUntil = now + 3600n;
-const good = { paymentId: pid("good"), sig: await signDecision(compliance, { chainId: CHAIN_ID, contract, screening, paymentId: pid("good"), amount, validUntil }) };
+const validUntil = now + 3000n;
+/** Purser's decision for the payee: screened inside signDecision, which signs nothing for a payee that fails. */
+const decide = (paymentId: Hex, a: { amt?: bigint; until?: bigint; contractFor?: Address } = {}) =>
+  signDecision(compliance, { chainId: CHAIN_ID, contract: a.contractFor ?? contract, payee, lists, paymentId, amount: a.amt ?? amount, validUntil: a.until ?? validUntil, now });
+/** A decision made by some other key, as an attacker would: same typed data, wrong signer. */
+const forge = (key: PrivateKeyAccount, m: { paymentId: Hex; to: Address; amount: bigint; validUntil: bigint; screeningRef: Hex }) =>
+  key.signTypedData({ domain: policyDomain(CHAIN_ID, contract), types: DECISION_TYPES, primaryType: "Decision", message: m });
 const sendData = (a: readonly unknown[]) => encodeFunctionData({ abi: art.abi, functionName: "send", args: a });
 const args = (paymentId: Hex, to: Address, amt: bigint, until: bigint, ref: Hex, sig: Hex) => [paymentId, to, amt, until, ref, sig] as const;
 
 // 1. The good payment: screened, decided, paid.
+const good = await decide(pid("good"));
 const before = await usdzBalance(payee);
-const ok = await sendTx(operator, contract, sendData(args(good.paymentId, payee, amount, validUntil, screening.ref, good.sig)));
-record(`pay 0.50 to the screened payee with Purser's signed decision (${screening.cleared ? "cleared" : "refused"} by screening)`, ok.ok ? "done" : "reverted", ok.tx, ok.ok ? `the payee received ${fromCents(baseUnitsToCents((await usdzBalance(payee)) - before))}` : "UNEXPECTED: reverted");
+const ok = await sendTx(operator, contract, sendData(args(pid("good"), payee, amount, validUntil, good.screening.ref, good.signature)));
+record(`pay 0.50 to the screened payee with Purser's signed decision (screened: ${good.screening.cleared ? "cleared" : "refused"})`, ok.ok ? "done" : "reverted", ok.tx, ok.ok ? `the payee received ${fromCents(baseUnitsToCents((await usdzBalance(payee)) - before))}` : "UNEXPECTED: reverted");
 const gas = ok.gas;
 
-// 2. The attacks. Each is a call the chain must refuse.
+// 2. Purser withdraws a decision before it is used: anyone may submit the signed cancellation; it only stops a payment.
+const withdrawn = await decide(pid("withdrawn"));
+const cancelData = encodeFunctionData({ abi: art.abi, functionName: "cancel", args: [pid("withdrawn"), await signCancel(compliance, { chainId: CHAIN_ID, contract, paymentId: pid("withdrawn") })] });
+const c = await sendTx(operator, contract, cancelData);
+record("Purser cancels an unused decision (signed by the compliance key)", c.ok ? "done" : "reverted", c.tx, c.ok ? "the payment id is spent; the decision can no longer pay" : "UNEXPECTED: reverted");
+
+// 3. The attacks. Each is a call the chain must refuse.
 const otherContract = "0x000000000000000000000000000000000000dEaD" as Address;
 const highS = (sig: Hex): Hex => {
   const N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
-  const s = BigInt(`0x${sig.slice(66, 130)}`);
+  const sv = BigInt(`0x${sig.slice(66, 130)}`);
   const v = parseInt(sig.slice(130, 132), 16);
-  return `${sig.slice(0, 66)}${(N - s).toString(16).padStart(64, "0")}${(v === 27 ? 28 : 27).toString(16)}` as Hex;
+  return `${sig.slice(0, 66)}${(N - sv).toString(16).padStart(64, "0")}${(v === 27 ? 28 : 27).toString(16)}` as Hex;
 };
+const ref = good.screening.ref;
+const redirect = await decide(pid("redirect"));
+const raise = await decide(pid("raise"));
+const expired = await decide(pid("expired"), { until: now - 60n });
+const thief = await decide(pid("thief"));
+const malleable = await decide(pid("malleable"));
+const domain = await decide(pid("domain"), { contractFor: otherContract });
 const attacks: { name: string; from: PrivateKeyAccount; a: readonly unknown[] }[] = [
-  { name: "no decision at all", from: operator, a: args(pid("none"), payee, amount, validUntil, screening.ref, "0x") },
-  { name: "a decision signed by another key (the attacker's)", from: operator, a: args(pid("forged"), payee, amount, validUntil, screening.ref,
-    await signDecision(attacker, { chainId: CHAIN_ID, contract, screening, paymentId: pid("forged"), amount, validUntil })) },
-  { name: "the same decision a second time (replay)", from: operator, a: args(good.paymentId, payee, amount, validUntil, screening.ref, good.sig) },
-  { name: "the payee's decision used to pay the attacker", from: operator, a: args(pid("redirect"), attacker.address, amount, validUntil, screening.ref,
-    await signDecision(compliance, { chainId: CHAIN_ID, contract, screening, paymentId: pid("redirect"), amount, validUntil })) },
-  { name: "the amount raised from 0.50 to 1.50 under the same decision", from: operator, a: args(pid("raise"), payee, centsToBaseUnits(150), validUntil, screening.ref,
-    await signDecision(compliance, { chainId: CHAIN_ID, contract, screening, paymentId: pid("raise"), amount, validUntil })) },
-  { name: "an expired decision", from: operator, a: args(pid("expired"), payee, amount, now - 60n, screening.ref,
-    await signDecision(compliance, { chainId: CHAIN_ID, contract, screening, paymentId: pid("expired"), amount, validUntil: now - 60n })) },
-  { name: "a valid decision submitted by someone else (the attacker's key)", from: attacker, a: args(pid("thief"), payee, amount, validUntil, screening.ref,
-    await signDecision(compliance, { chainId: CHAIN_ID, contract, screening, paymentId: pid("thief"), amount, validUntil })) },
-  { name: "the valid decision's signature malleated (high s)", from: operator, a: args(pid("malleable"), payee, amount, validUntil, screening.ref,
-    highS(await signDecision(compliance, { chainId: CHAIN_ID, contract, screening, paymentId: pid("malleable"), amount, validUntil }))) },
-  { name: "a decision Purser signed for another contract", from: operator, a: args(pid("domain"), payee, amount, validUntil, screening.ref,
-    await signDecision(compliance, { chainId: CHAIN_ID, contract: otherContract, screening, paymentId: pid("domain"), amount, validUntil })) },
+  { name: "no decision at all", from: operator, a: args(pid("none"), payee, amount, validUntil, ref, "0x") },
+  { name: "a decision signed by another key (the attacker's)", from: operator, a: args(pid("forged"), payee, amount, validUntil, ref, await forge(attacker, { paymentId: pid("forged"), to: payee, amount, validUntil, screeningRef: ref })) },
+  { name: "the same decision a second time (replay)", from: operator, a: args(pid("good"), payee, amount, validUntil, ref, good.signature) },
+  { name: "the payee's decision used to pay the attacker", from: operator, a: args(pid("redirect"), attacker.address, amount, validUntil, redirect.screening.ref, redirect.signature) },
+  { name: "the amount raised from 0.50 to 1.50 under the same decision", from: operator, a: args(pid("raise"), payee, centsToBaseUnits(150), validUntil, raise.screening.ref, raise.signature) },
+  { name: "an expired decision", from: operator, a: args(pid("expired"), payee, amount, now - 60n, expired.screening.ref, expired.signature) },
+  { name: "a valid decision submitted by someone else (the attacker's key)", from: attacker, a: args(pid("thief"), payee, amount, validUntil, thief.screening.ref, thief.signature) },
+  { name: "the valid decision's signature malleated (high s)", from: operator, a: args(pid("malleable"), payee, amount, validUntil, malleable.screening.ref, highS(malleable.signature)) },
+  { name: "a decision Purser signed for another contract", from: operator, a: args(pid("domain"), payee, amount, validUntil, domain.screening.ref, domain.signature) },
+  { name: "a decision Purser cancelled", from: operator, a: args(pid("withdrawn"), payee, amount, validUntil, withdrawn.screening.ref, withdrawn.signature) },
 ];
 // The sanctioned payee: Purser's screening refuses, so the compliance key signs nothing; the attacker makes its own.
-const sanctions = screenPayee(sanctioned, lists);
 let refusedToSign = "";
-try { await signDecision(compliance, { chainId: CHAIN_ID, contract, screening: sanctions, paymentId: pid("sanctioned"), amount, validUntil }); } catch (e) { refusedToSign = (e as Error).message; }
+try { await signDecision(compliance, { chainId: CHAIN_ID, contract, payee: sanctioned, lists, paymentId: pid("sanctioned"), amount, validUntil, now }); } catch (e) { refusedToSign = (e as Error).message; }
 record("Purser screens a sanctioned payee (a stand-in address on the test list)", refusedToSign ? "refused" : "done", null, refusedToSign ? `no decision signed: ${refusedToSign.split(": ").slice(1).join(": ")}` : "UNEXPECTED: signed");
-attacks.push({ name: "pay the sanctioned payee with a decision the attacker made itself", from: operator, a: args(pid("sanctioned"), sanctioned, amount, validUntil, sanctions.ref,
-  await signDecision(attacker, { chainId: CHAIN_ID, contract, screening: { ...sanctions, cleared: true }, paymentId: pid("sanctioned"), amount, validUntil })) });
+const sanctionRef = screenPayee(sanctioned, lists, now).ref;
+attacks.push({ name: "pay the sanctioned payee with a decision the attacker made itself", from: operator, a: args(pid("sanctioned"), sanctioned, amount, validUntil, sanctionRef,
+  await forge(attacker, { paymentId: pid("sanctioned"), to: sanctioned, amount, validUntil, screeningRef: sanctionRef })) });
 
 for (const at of attacks) {
   const why = await reason(contract, at.from.address, at.a);
@@ -142,4 +155,4 @@ const out = {
   steps: steps.map((s) => ({ ...s, finality: s.tx ? (() => { const f = finalityOf(db, s.tx); return f ? { status: f.status, block: f.block_number, signers: f.check?.quorum.signers ?? null, participants: f.check?.quorum.participants ?? null } : null; })() : null })),
 };
 writeFileSync(resolve(import.meta.dirname, "../../docs/runs/compliance-policy.json"), JSON.stringify(out, null, 2) + "\n");
-say(`\n${steps.filter((s) => s.detail.startsWith("UNEXPECTED")).length} unexpected; ${out.steps.filter((s) => s.finality?.status === "CERTIFIED").length} of ${txs.length} transactions certified final; docs/runs/compliance-policy.json`);
+say(`\n${steps.filter((s) => s.detail.startsWith("UNEXPECTED")).length} unexpected; ${out.steps.filter((s) => s.finality?.status === "REPORTED").length} of ${txs.length} transactions with a reported finality certificate; docs/runs/compliance-policy.json`);

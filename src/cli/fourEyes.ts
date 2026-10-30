@@ -47,11 +47,11 @@ const payee = key("payee.key.json");
 const wallet = createWalletClient({ account: sponsor, chain: pc.chain, transport: custom(pc) });
 
 /** Sends a call from the sponsor; `gas` set means sent as is, so a call the chain refuses lands as a reverted transaction. */
-async function send(to: Address, data: Hex, gas?: bigint): Promise<{ tx: Hex; ok: boolean }> {
+async function send(to: Address, data: Hex, gas?: bigint): Promise<{ tx: Hex; ok: boolean; gasUsed: bigint; gas: bigint }> {
   const g = gas ?? ((await pc.estimateGas({ account: sponsor.address, to, data })) * 6n) / 5n;
   const tx = await wallet.sendTransaction({ to, data, gas: g, maxFeePerGas: 1n, maxPriorityFeePerGas: 1n, chain: pc.chain, account: sponsor });
   const r = await pc.waitForTransactionReceipt({ hash: tx });
-  return { tx, ok: r.status === "success" };
+  return { tx, ok: r.status === "success", gasUsed: r.gasUsed, gas: g };
 }
 /** Why the chain refuses a call, from a simulation (a short revert reason or error name, never the RPC's URL). */
 async function whyRefused(to: Address, data: Hex): Promise<string> {
@@ -111,7 +111,7 @@ for (const [who, signers] of [["the CFO alone", [cfo]], ["the CFO and a stranger
   const data = await signedExecution({ chainId: CHAIN_ID, account, calls: [transfer], nonce: await nonceFor(), validUntil: validUntil(), signers });
   const why = await whyRefused(account, data);
   const r = await send(account, data, gasBoth);
-  record(`pay 1.00 from the account, signed by ${who}`, r.ok ? "done" : "reverted", r.tx, r.ok ? "UNEXPECTED: paid" : `reverted on chain with the gas the two-owner payment uses; the account's reason: ${why}`);
+  record(`pay 1.00 from the account, signed by ${who}`, r.ok ? "done" : "reverted", r.tx, r.ok ? "UNEXPECTED: paid" : `reverted on chain; used ${r.gasUsed} of the ${r.gas} gas the two-owner payment needs; the account's reason: ${why}`);
 }
 const before = await usdzBalance(payee.address);
 const paid = await send(account, both, gasBoth);
@@ -125,11 +125,12 @@ if (reference && /^0x[0-9a-fA-F]{64}$/.test(reference)) {
   const one = await signedExecution({ chainId: CHAIN_ID, account, calls: [revoke], nonce: await nonceFor(), validUntil: validUntil(), signers: [cfo] });
   const why = await whyRefused(account, one);
   const r1 = await send(account, one, gasRevoke);
-  record("revoke the mandate with the CFO's signature alone", r1.ok ? "done" : "reverted", r1.tx, r1.ok ? "UNEXPECTED: revoked" : `reverted on chain; the account's reason: ${why}`);
+  record("revoke the mandate with the CFO's signature alone", r1.ok ? "done" : "reverted", r1.tx, r1.ok ? "UNEXPECTED: revoked" : `reverted on chain; used ${r1.gasUsed} of the ${r1.gas} gas the two-owner revoke needs; the account's reason: ${why}`);
   const r2 = await send(account, bothRevoke, gasRevoke);
   record("revoke the mandate with the CFO's and the controller's signatures", r2.ok ? "done" : "reverted", r2.tx, r2.ok ? "revoked" : "UNEXPECTED: reverted");
   const after = metalAgent(["mandate", "pull", "--credential", cred, "--to", payee.address, "--amount", "0.05", "--payment-id", `four-eyes-after-${Date.now()}`, "--record-refusal", "--key", keyPath("sponsor.key.json")], [0, 1]);
-  record("the agent tries 0.05 after the revoke", after.code === 0 ? "done" : "refused", after.fields.get("transaction")?.[0] ?? null, after.code === 0 ? "UNEXPECTED: paid" : `refused: ${(after.out.split("\n").find((l) => /mandate_|revoked|refus/i.test(l) && !/^transaction /.test(l)) ?? after.out.split("\n")[0]!).slice(0, 140)}`);
+  const revoked = metalAgent(["mandate", "status", "--credential", cred]).fields.get("revoked")?.[0];
+  record("the agent tries 0.05 after the revoke", after.code === 0 ? "done" : "refused", after.fields.get("transaction")?.[0] ?? null, after.code === 0 ? "UNEXPECTED: paid" : `refused; mandate status: revoked ${revoked ?? "?"}`);
 } else say(`no mandate reference to revoke (status said: ${status.out.split("\n").slice(0, 3).join(" | ")})`);
 
 // 5. Metal's finality certificates for every transaction above, once final.
@@ -147,4 +148,4 @@ const out = {
   steps: steps.map((s) => ({ ...s, finality: s.tx ? (() => { const f = finalityOf(db, s.tx); return f ? { status: f.status, block: f.block_number, signers: f.check?.quorum.signers ?? null, participants: f.check?.quorum.participants ?? null } : null; })() : null })),
 };
 writeFileSync(resolve(import.meta.dirname, "../../docs/runs/four-eyes.json"), JSON.stringify(out, null, 2) + "\n");
-say(`\n${steps.filter((s) => s.detail.startsWith("UNEXPECTED")).length} unexpected; ${out.steps.filter((s) => s.finality?.status === "CERTIFIED").length} of ${txs.length} transactions certified final; docs/runs/four-eyes.json`);
+say(`\n${steps.filter((s) => s.detail.startsWith("UNEXPECTED")).length} unexpected; ${out.steps.filter((s) => s.finality?.status === "REPORTED").length} of ${txs.length} transactions with a reported finality certificate; docs/runs/four-eyes.json`);

@@ -125,7 +125,7 @@ async function finalityTick(): Promise<void> {
   finalityAt = Date.now();
   try {
     const r = await certifyPending(db);
-    if (r.certified || r.not_kept) console.log(`${stamp()} finality ${r.certified} certificate(s) stored${r.not_kept ? `, ${r.not_kept} no longer kept by the node` : ""}`);
+    if (r.reported || r.not_kept || r.failed) console.log(`${stamp()} finality ${r.reported} reported certificate(s) stored${r.not_kept ? `, ${r.not_kept} no longer kept by the node` : ""}${r.failed ? `, ${r.failed} FAILED a check` : ""}`);
   } catch (e) {
     console.error(`${stamp()} finality ${redactSecrets((e as Error).message)}`);
   }

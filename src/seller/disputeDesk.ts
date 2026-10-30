@@ -45,7 +45,7 @@ export interface EvidencePack {
   /** Already refunded for this sale (an earlier decision): never refunded twice. */
   refunded_cents?: number;
   /** Metal's finality certificate for the payment's block, if the runner stored one (src/metal/finality.ts). */
-  finality?: { status: "CERTIFIED" | "NOT_KEPT" | "FAILED"; block_number: number | null; signers: number | null; participants: number | null } | null;
+  finality?: { status: "REPORTED" | "NOT_KEPT" | "FAILED" | "NOT_FOUND"; block_number: number | null; signers: number | null; participants: number | null } | null;
 }
 
 export interface SaleDecision {
