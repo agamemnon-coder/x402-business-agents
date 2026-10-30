@@ -352,8 +352,8 @@ describe("enrolment from the phone", () => {
 
 describe("pages", () => {
   const pages: Pages = {
-    dashboard: "<!doctype html><title>d</title>", month: "<!doctype html><title>m</title>", demo: "<!doctype html><title>x</title>", live: "<!doctype html><title>l</title>", film: "<!doctype html><title>f</title>", try: "<!doctype html><title>t</title>", lab: "<!doctype html><title>b</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", policy: "<!doctype html><title>p</title>", client: "export {};", css: "body{}", font: btoa("wOF2\u0000\u0001"), images: { "logo-x.svg": { type: "image/svg+xml", data: btoa("<svg/>") } },
-    csp: { dashboard: "default-src 'none'; script-src 'sha256-x'", month: "default-src 'none'; script-src 'sha256-m'", demo: "default-src 'none'; script-src 'sha256-x'", live: "default-src 'none'; script-src 'sha256-l'", film: "default-src 'none'; script-src 'sha256-f'", try: "default-src 'none'; script-src 'sha256-t'", lab: "default-src 'none'; script-src 'sha256-b'", approve: "default-src 'none'; script-src 'self'", enrol: "default-src 'none'; script-src 'self'", policy: "default-src 'none'; script-src 'self'" },
+    dashboard: "<!doctype html><title>d</title>", month: "<!doctype html><title>m</title>", demo: "<!doctype html><title>x</title>", live: "<!doctype html><title>l</title>", film: "<!doctype html><title>f</title>", try: "<!doctype html><title>t</title>", lab: "<!doctype html><title>b</title>", metal: "<!doctype html><title>mtl</title>", metalReport: "<!doctype html><title>rep</title>", approve: "<!doctype html><title>a</title>", enrol: "<!doctype html><title>e</title>", policy: "<!doctype html><title>p</title>", client: "export {};", css: "body{}", font: btoa("wOF2\u0000\u0001"), images: { "logo-x.svg": { type: "image/svg+xml", data: btoa("<svg/>") } },
+    csp: { dashboard: "default-src 'none'; script-src 'sha256-x'", month: "default-src 'none'; script-src 'sha256-m'", demo: "default-src 'none'; script-src 'sha256-x'", live: "default-src 'none'; script-src 'sha256-l'", film: "default-src 'none'; script-src 'sha256-f'", try: "default-src 'none'; script-src 'sha256-t'", lab: "default-src 'none'; script-src 'sha256-b'", metal: "default-src 'none'; script-src 'sha256-mtl'", metalReport: "default-src 'none'; style-src 'sha256-rep'", approve: "default-src 'none'; script-src 'self'", enrol: "default-src 'none'; script-src 'self'", policy: "default-src 'none'; script-src 'self'" },
   };
   const page = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages);
 
@@ -370,6 +370,9 @@ describe("pages", () => {
     expect(page("/film")!.headers.get("content-security-policy")).toBe(pages.csp.film);
     expect(page("/try")!.headers.get("content-security-policy")).toBe(pages.csp.try);
     expect(page("/lab")!.headers.get("content-security-policy")).toBe(pages.csp.lab);
+    expect(page("/metal")!.headers.get("content-security-policy")).toBe(pages.csp.metal);
+    expect(await page("/metal/report")!.text()).toBe(pages.metalReport);
+    expect(page("/metal/report")!.headers.get("content-security-policy")).toBe(pages.csp.metalReport);
     const js = page("/assets/approve.js")!;
     expect(js.headers.get("content-type")).toMatch(/^text\/javascript/);
     expect(page("/assets/approve.css")!.headers.get("content-type")).toMatch(/^text\/css/);

@@ -350,6 +350,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 .rail li .sim { margin-left: 8px; font-size: 12px; color: var(--faint); }
 .rails-grid.dash { margin: 0 0 28px; }
 .railnote { color: var(--faint); font-size: 12.5px; margin-top: 14px; max-width: 900px; }
+.raillink { display: block; margin-top: 12px; font-weight: 700; font-size: 14px; color: var(--accent); text-decoration: none; }
 @media (max-width: 760px) { .rails-grid { grid-template-columns: 1fr; } .rails h2 { font-size: 26px; } }
 .proof { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
 .proof .section { padding: 36px 32px; }
@@ -494,7 +495,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <p class="lead">Purser is the control layer. The money moves on Airwallex and Metal, and they enforce the limits: a card declines at Airwallex, a payment is refused by the chain. Everything below happened in the recorded run.</p>
     <div class="rails-grid">
       <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="rail-awx"></ul></article>
-      <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="rail-mtl"></ul></article>
+      <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="rail-mtl"></ul><a class="raillink" href="metal">How Purser uses Metal: every feature, the mandate inspector and the Dispute desk →</a></article>
     </div>
     <p class="railnote">Airwallex ids are from the Airwallex sandbox (its web app shows them); Metal transactions open on the testnet explorer. Simulated by the sandbox: a merchant's card charge, a transfer's last steps (sent, paid), and the deposit that stands in for Metal earnings.</p>
   </section>
@@ -527,7 +528,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     </div>
     <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> Airwallex, the regulated provider, does KYC, card issuing and sanctions screening; Metal enforces the limits on chain; Purser holds no money, logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
   </section>
-  <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="try">Try it</a><a href="film">Film</a><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
+  <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="try">Try it</a><a href="metal">Purser on Metal</a><a href="film">Film</a><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
 </div>
 
 <!-- The CFO's dashboard: live (local, or on the relay with the viewer key) or the recorded run. -->
@@ -1170,7 +1171,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   }
   function showDash() { document.getElementById("dash").hidden = false; }
   function showLanding(note) {
-    nav([["Overview", "./", true], ["Try it", "try"], ["Film", "film"], ["Purser live", "live"], ["Demo", "demo"], ["Recorded dashboard", "?recorded"]]);
+    nav([["Overview", "./", true], ["Try it", "try"], ["Metal", "metal"], ["Film", "film"], ["Purser live", "live"], ["Demo", "demo"], ["Recorded dashboard", "?recorded"]]);
     var p = RECORDED && RECORDED.proof;
     if (p) {
       countUp("p-alone", p.alone); countUp("p-blocked", p.blocked);
@@ -1217,7 +1218,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
   if (wantSignin && !viewKey && MODE !== "local") {
-    nav([["Overview", "./"], ["Try it", "try"], ["Film", "film"], ["Purser live", "live"], ["Demo", "demo"], ["Recorded dashboard", "?recorded"]]);
+    nav([["Overview", "./"], ["Try it", "try"], ["Metal", "metal"], ["Film", "film"], ["Purser live", "live"], ["Demo", "demo"], ["Recorded dashboard", "?recorded"]]);
     document.getElementById("signin").hidden = false;
   } else if (wantRecorded && RECORDED) {
     nav([["Overview", "./"], ["Try it", "try"], ["Demo", "demo"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);

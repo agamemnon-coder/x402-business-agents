@@ -48,6 +48,7 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; } th { text-ali
 td { border-top: 1px solid var(--border); padding: 8px 6px; vertical-align: top; overflow-wrap: anywhere; } td.num { text-align: right; white-space: nowrap; }
 .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; } a { color: var(--accent); }
 .tablewrap { overflow-x: auto; }
+.gap { margin-top: 6px; }
 @media (max-width: 640px) { thead { display: none; } tr { display: block; border-top: 1px solid var(--border); padding: 8px 0; } td { display: block; border: 0; padding: 3px 0; } td.num { text-align: left; } }
 </style></head>
 <body><main>
@@ -64,10 +65,10 @@ td { border-top: 1px solid var(--border); padding: 8px 6px; vertical-align: top;
 
 <h2>Who stood behind the purchase</h2>
 <div class="box">${m ? `Every payment above is checked on chain against the mandate bound on your account <span class="mono">${esc(m.principal)}</span> (bound in ${tx(m.bound_tx)}). Metal records that this mandate was bound by your account's owner key, with its limits and its only payee; the chain refuses any payment outside it.` : "No bound mandate was found for these payments."}
-<div class="sub" style="margin-top:6px">What the chain does not prove: that the owner key is held by a person. ${passkeys.length ? `Your owner also confirmed this mandate with a passkey (Face ID or similar) for ${passkeys.length} payment${passkeys.length === 1 ? "" : "s"}: ${passkeys.map((p) => (p.human.passkey!.verified ? "verified" : "did not verify")).join(", ")}. That confirmation is Purser's own addition, not enforced by Metal.` : "No passkey confirmation from your side is on file."}</div></div>
+<div class="sub gap">What the chain does not prove: that the owner key is held by a person. ${passkeys.length ? `Your owner also confirmed this mandate with a passkey (Face ID or similar) for ${passkeys.length} payment${passkeys.length === 1 ? "" : "s"}: ${passkeys.map((p) => (p.human.passkey!.verified ? "verified" : "did not verify")).join(", ")}. That confirmation is Purser's own addition, not enforced by Metal.` : "No passkey confirmation from your side is on file."}</div></div>
 
 <h2>The decision, explained</h2>
-<div class="box">${esc(c.explanation)}<div class="sub" style="margin-top:6px">Explained by ${esc(c.explained_by)}. The decision and every amount were made by code from the evidence above; the explanation is advice.</div></div>
+<div class="box">${esc(c.explanation)}<div class="sub gap">Explained by ${esc(c.explained_by)}. The decision and every amount were made by code from the evidence above; the explanation is advice.</div></div>
 
 <h2>Check it yourself</h2>
 <p class="sub">Each payment and refund links to Metal's explorer. The signed orders, the mandate and each payment can be checked with <span class="mono">verifyMandatePayment</span> from <span class="mono">@metalntwx/metal-pay</span> (step 4: the payment is your agent's per-payment mandate, inside the mandate at its block). The delivered data's SHA-256 is shown so you can compare it with what you received.</p>

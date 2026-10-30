@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purser on Metal</title>
+<style>
+@font-face { font-family: Inter; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root { --bg: #f6f7fb; --surface: #ffffff; --text: #0d1220; --muted: #5d6578; --faint: #7a8296; --border: #e4e7ef; --accent: #5b4cf0; --accent-soft: #ecebfe; --ok: #0f8a4f; --ok-soft: #e7f6ee; --bad: #c8261b; --bad-soft: #fdecea; --wait: #b45309; --wait-soft: #fdf3e6; --sunken: #f1f3f8; --ink: #111827; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0a0c11; --surface: #12151d; --text: #eef0f6; --muted: #98a0b3; --faint: #7d859a; --border: #232838; --accent: #8f85ff; --accent-soft: #1d1a3d; --ok: #3ccf7e; --ok-soft: #0f2419; --bad: #ff6b5f; --bad-soft: #2c1312; --wait: #f2a34a; --wait-soft: #2a1d0c; --sunken: #181c26; --ink: #e9ebf1; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+.top { display: flex; align-items: center; gap: 12px; padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.brand { font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; }
+.brand i { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); display: inline-block; }
+.chip { font-size: 12.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; }
+.top nav { margin-left: auto; display: flex; gap: 16px; font-size: 14px; flex-wrap: wrap; }
+.top nav a { color: var(--muted); text-decoration: none; font-weight: 600; } .top nav a:hover, .top nav a[aria-current] { color: var(--accent); }
+main { max-width: 1180px; margin: 0 auto; padding: 36px 24px 64px; }
+.kicker { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+h1 { font-size: 44px; line-height: 1.08; letter-spacing: -.03em; margin: 8px 0 12px; max-width: 900px; }
+h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; }
+.lead { font-size: 18px; line-height: 1.5; color: var(--muted); margin: 0 0 22px; max-width: 780px; }
+.sub { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 0 0 18px; max-width: 780px; }
+.built { display: inline-flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; color: #5d6578; font-weight: 600; }
+.built img { height: 18px; width: auto; display: block; }
+section { margin-top: 56px; scroll-margin-top: 16px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; }
+.stat .v { font-size: 30px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stat .l { color: var(--muted); font-size: 13.5px; margin-top: 2px; line-height: 1.35; }
+/* Mandate inspector */
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+.tabs button { font: 700 14px Inter, system-ui, sans-serif; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 9px 16px; cursor: pointer; min-height: 40px; }
+.tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.inspector { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; }
+.inspector h3 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+.inspector .job { color: var(--muted); font-size: 14.5px; margin: 0 0 16px; line-height: 1.45; }
+.limits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.lim { background: var(--sunken); border-radius: 14px; padding: 12px 14px; }
+.lim .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.lim .l { font-size: 12.5px; color: var(--muted); }
+.bar { height: 10px; border-radius: 999px; background: var(--sunken); margin: 14px 0 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.kv { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 6px 12px; font-size: 14px; margin-top: 14px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+.h4 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); font-weight: 700; margin: 0 0 8px; }
+.tl { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 8px; }
+.tl li { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.45; }
+.tl li::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-top: 5px; }
+.tl li.pay::before { background: var(--ok); } .tl li.no::before { background: var(--bad); }
+.tl small { display: block; color: var(--muted); font-size: 12.5px; }
+.pf { display: inline-block; margin: 4px 6px 0 0; font: 500 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--sunken); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; color: var(--muted); text-decoration: none; overflow-wrap: anywhere; }
+a.pf { color: var(--accent); } a.pf:hover { border-color: var(--accent); }
+.refusal { border: 1px solid var(--bad); background: var(--bad-soft); border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.5; }
+.refusal b { color: var(--bad); }
+/* Feature cards */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.card .hd { display: flex; justify-content: space-between; gap: 8px 12px; align-items: baseline; flex-wrap: wrap; }
+.card h3 { margin: 0; font-size: 18px; letter-spacing: -.01em; }
+.card .fig { font-size: 13px; font-weight: 800; color: var(--ok); background: var(--ok-soft); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.card p { margin: 0; font-size: 14.5px; line-height: 1.5; }
+.card p.why { color: var(--muted); }
+.card .src { font-size: 12.5px; color: var(--faint); line-height: 1.4; }
+.card .src.other { color: var(--wait); }
+.card .docs { font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
+/* Comparison */
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 12px 14px; vertical-align: top; border-top: 1px solid var(--border); line-height: 1.45; }
+thead th { border-top: 0; font-size: 13px; color: var(--muted); background: var(--sunken); }
+tbody th { color: var(--muted); font-weight: 600; width: 18%; }
+.railhead { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; }
+.railhead i { width: 9px; height: 9px; border-radius: 50%; background: #ff4f42; } .railhead i.mtl { background: var(--ink); }
+/* Dispute desk */
+.case { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 22px; overflow-wrap: anywhere; min-width: 0; }
+.case .claim { font-size: 20px; font-weight: 700; line-height: 1.35; margin: 4px 0 6px; }
+.verdict { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
+.verdict div { background: var(--sunken); border-radius: 14px; padding: 12px 14px; }
+.verdict b { display: block; font-size: 20px; } .verdict span { font-size: 12.5px; color: var(--muted); }
+.orders td { font-size: 13.5px; }
+.ok { color: var(--ok); font-weight: 700; } .bad { color: var(--bad); font-weight: 700; }
+.explain { background: var(--sunken); border-radius: 14px; padding: 14px 16px; font-size: 14.5px; line-height: 1.55; margin-top: 16px; }
+.explain small { display: block; color: var(--muted); margin-top: 8px; font-size: 12.5px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; font: 700 15px Inter, system-ui, sans-serif; background: var(--accent); color: #fff; border-radius: 12px; padding: 12px 18px; text-decoration: none; margin-top: 16px; min-height: 46px; }
+.allbtn { display: none; font: 700 14px Inter, system-ui, sans-serif; color: var(--accent); background: var(--accent-soft); border: 0; border-radius: 12px; padding: 12px 16px; margin-top: 10px; cursor: pointer; min-height: 44px; width: 100%; }
+footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
+@media (max-width: 960px) { .inspector { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  main { padding: 24px 16px 48px; } h1 { font-size: 31px; } h2 { font-size: 23px; } .lead { font-size: 16px; } .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; }
+  .cards { grid-template-columns: 1fr; } .inspector, .case { padding: 16px; } .verdict { grid-template-columns: 1fr; } footer { padding: 0 16px 32px; }
+  .orders thead { display: none; } .orders tr { display: block; border-top: 1px solid var(--border); padding: 8px 0; } .orders td { display: block; border: 0; padding: 4px 14px; }
+  .orders td[data-l]::before { content: attr(data-l) ": "; color: var(--muted); font-weight: 600; }
+  .cmp thead { display: none; } .cmp tr { display: block; border-top: 1px solid var(--border); padding: 6px 0; } .cmp th, .cmp td { display: block; border: 0; padding: 4px 14px; width: auto; }
+  .cmp td[data-l]::before { content: attr(data-l); display: block; color: var(--muted); font-size: 12px; font-weight: 700; }
+  .case:not(.all) tr.more { display: none; } .allbtn { display: block; } .case.all .allbtn { display: none; }
+  .kv { grid-template-columns: 1fr; gap: 0 0; } .kv dd { margin-bottom: 8px; }
+}
+</style>
+</head>
+<body>
+<header class="top"><a class="brand" href="/"><i></i>Purser</a><span class="chip">How Purser uses Metal</span>
+  <nav aria-label="Pages"><a href="/">Overview</a><a href="try">Try it</a><a href="metal" aria-current="page">Metal</a><a href="film">Film</a><a href="/?recorded">CFO dashboard</a></nav></header>
+<main>
+  <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>
+  <h1>How Purser uses Metal</h1>
+  <p class="lead">On Metal, Northwind's agents pay on chain, in cents, under mandates the chain itself enforces. Purser is the CFO's control layer on top: it sets the mandates, asks for Face ID before any limit goes up, and proves every payment afterwards. Everything below ran live on Metal testnet with test money; every card links to its transaction and to Metal's docs.</p>
+  <span class="built">Built on <img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span>
+  <div class="stats" id="stats"></div>
+
+  <section id="inspector-sec" aria-labelledby="ins-h">
+    <h2 id="ins-h">Mandate inspector</h2>
+    <p class="sub">Pick an agent to see its mandate as the chain enforces it: the cap per payment, the budget, the one payee, the expiry, what it has paid and what the chain refused.</p>
+    <div class="tabs" role="tablist" id="tabs" aria-label="Agents"></div>
+    <div class="inspector" id="inspector" role="tabpanel"></div>
+  </section>
+
+  <section id="features" aria-labelledby="f-h">
+    <h2 id="f-h">Every Metal feature Purser uses</h2>
+    <p class="sub">What it does, why it matters when the spender is an AI agent, and the live proof.</p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section id="compare" aria-labelledby="c-h">
+    <h2 id="c-h">Card, mandate or clearing: when to use which</h2>
+    <p class="sub">Purser gives each agent the rail that fits the payment. One CFO policy sets the limits on all three.</p>
+    <div class="tablewrap"><table class="cmp">
+      <thead><tr><th></th><th><span class="railhead"><i></i>Airwallex company card</span></th><th><span class="railhead"><i class="mtl"></i>Metal mandate (x402)</span></th><th><span class="railhead"><i class="mtl"></i>Metal clearing</span></th></tr></thead>
+      <tbody>
+        <tr><th>Best for</th><td data-l="Airwallex company card">Merchants that take cards: software, travel, ads</td><td data-l="Metal mandate (x402)">APIs and agents that charge per request, in cents</td><td data-l="Metal clearing">Many tiny calls to one seller, at machine speed</td></tr>
+        <tr><th>Who enforces the limit</th><td data-l="Airwallex company card">Airwallex, on the card: per purchase, per month, merchant categories, currency</td><td data-l="Metal mandate (x402)">The chain: cap per payment, total budget, one payee, expiry</td><td data-l="Metal clearing">The deposit: the buyer can never pay more than it put in</td></tr>
+        <tr><th>Per payment</th><td data-l="Airwallex company card">A card authorisation</td><td data-l="Metal mandate (x402)">One on-chain transaction, settled by Metal's facilitator</td><td data-l="Metal clearing">A signed receipt, no transaction</td></tr>
+        <tr><th>Proof afterwards</th><td data-l="Airwallex company card">Airwallex's transaction id and the card's own decline</td><td data-l="Metal mandate (x402)">The signed order, the transaction and verifyMandatePayment</td><td data-l="Metal clearing">Receipts signed by payer and operator, checked with verifyClearingPayment</td></tr>
+        <tr><th>In Northwind's run</th><td data-l="Airwallex company card">Each agent's own card; a Pro plan declined over the limit, then approved after Face ID</td><td data-l="Metal mandate (x402)">Stock checks bought and sold; refunds and the earnings sweep as mandate pulls</td><td data-l="Metal clearing">Data sales to a prepaid customer, with the mandate route as fallback</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="dispute" aria-labelledby="d-h">
+    <h2 id="d-h">The Dispute desk</h2>
+    <p class="sub">A customer's agent bought stock checks, then its company said it never ordered them. Northwind, as the seller, decides on its own terms from what Metal lets it prove, order by order.</p>
+    <div class="case" id="case"></div>
+  </section>
+</main>
+<footer>Test money only: Metal testnet *USDZ and the Airwallex sandbox. Metal and Airwallex logos are their owners'; shown as "built on", not as an endorsement. The proofs are the recorded Northwind run unless a card names a separate live run.</footer>
+<script type="application/json" id="metal-data">__METAL_JSON__</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("metal-data").textContent);
+  function el(tag, cls, kids) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    (kids || []).forEach(function (k) { if (k !== null && k !== undefined) e.appendChild(typeof k === "string" ? document.createTextNode(k) : k); });
+    return e;
+  }
+  function proof(p) {
+    if (!p) return null;
+    if (p.href) { var a = el("a", "pf", [p.label]); a.href = p.href; if (p.href.charAt(0) !== "#") { a.target = "_blank"; a.rel = "noopener"; } return a; }
+    return el("span", "pf", [p.label]);
+  }
+  function link(label, href) { var a = el("a", "", [label]); a.href = href; a.target = "_blank"; a.rel = "noopener"; return a; }
+  var when = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  function at(iso) { var t = Date.parse(iso); return isNaN(t) ? "" : when.format(new Date(t)) + " UTC"; }
+  var day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  function short(s) { s = String(s || ""); return s.length > 14 ? s.slice(0, 6) + "…" + s.slice(-4) : s; }
+  function usd(s) { return s + " test USD"; }
+
+  // The figures at the top, from the recorded ledger.
+  var ours = D.mandates.filter(function (m) { return m.role !== "customer"; });
+  var paid = D.mandates.reduce(function (n, m) { return n + m.count; }, 0);
+  var refused = D.mandates.filter(function (m) { return m.refusal; }).length;
+  var stats = [[String(ours.length), "mandates on chain, one per agent"], [String(paid), "payments under mandates"], [String(refused), refused === 1 ? "payment refused by the chain, nothing moved" : "payments refused by the chain"]];
+  if (D.dispute) stats.push([D.dispute.packs.filter(function (p) { return p.mandate.within; }).length + "/" + D.dispute.packs.length, "disputed orders proven on chain"]);
+  var sEl = document.getElementById("stats");
+  stats.forEach(function (s) { sEl.appendChild(el("div", "stat", [el("div", "v", [s[0]]), el("div", "l", [s[1]])])); });
+
+  // The mandate inspector.
+  var tabs = document.getElementById("tabs"), panel = document.getElementById("inspector");
+  function show(i) {
+    var m = D.mandates[i];
+    Array.prototype.forEach.call(tabs.children, function (b, j) { b.setAttribute("aria-selected", String(i === j)); b.tabIndex = i === j ? 0 : -1; });
+    panel.setAttribute("aria-labelledby", "tab-" + i);
+    panel.textContent = "";
+    var usedPct = Math.min(100, Math.round(100 * Number(m.used) / Math.max(0.01, Number(m.budget))));
+    var bar = el("div", "bar", [el("i")]); bar.firstChild.style.width = usedPct + "%";
+    bar.setAttribute("role", "img"); bar.setAttribute("aria-label", usedPct + "% of the budget used");
+    var dl = el("dl", "kv", [
+      el("dt", "", ["Pays only"]), el("dd", "", [m.payee.name, el("br"), el("span", "mono", [short(m.payee.address)])]),
+      el("dt", "", ["From account"]), el("dd", "mono", [short(m.account)]),
+      el("dt", "", ["Expires"]), el("dd", "", [day.format(new Date(m.expires_at)) + ", unless replaced or revoked first"]),
+    ]);
+    var left = el("div", "", [
+      el("h3", "", [m.agent]), el("p", "job", [m.job]),
+      el("div", "limits", [
+        el("div", "lim", [el("div", "v", [m.cap]), el("div", "l", ["test USD cap per payment"])]),
+        el("div", "lim", [el("div", "v", [m.budget]), el("div", "l", ["test USD total budget"])]),
+        el("div", "lim", [el("div", "v", [m.used]), el("div", "l", ["paid under it so far"])]),
+        el("div", "lim", [el("div", "v", [m.left]), el("div", "l", ["left before the chain refuses"])]),
+      ]),
+      bar, dl,
+    ]);
+    var hist = el("ul", "tl", m.history.map(function (h) {
+      return el("li", "", [el("div", "", [h.what + ": " + h.cap + " a payment, " + h.budget + " in total", el("small", "", [at(h.at)]), proof(h.tx)])]);
+    }));
+    if (m.refusal) hist.appendChild(el("li", "no", [el("div", "", ["Refused by the chain: " + m.refusal.reason, el("small", "", [at(m.refusal.at)])])]));
+    var pays = el("ul", "tl", m.latest.map(function (p) {
+      return el("li", "pay", [el("div", "", [usd(p.amount) + ": " + p.what, el("small", "", [at(p.at)]), proof(p.tx)])]);
+    }));
+    var right = el("div", "", [
+      el("div", "h4", ["How the chain holds it"]), hist,
+      el("div", "h4", ["Latest of " + m.count + " payment" + (m.count === 1 ? "" : "s") + " under it"]), m.latest.length ? pays : el("p", "job", ["No payment under it yet."]),
+      m.refusal ? el("div", "refusal", [el("b", "", ["What happened at the refusal. "]), m.refusal.plain]) : null,
+    ]);
+    panel.appendChild(left); panel.appendChild(right);
+  }
+  D.mandates.forEach(function (m, i) {
+    var b = el("button", "", [m.agent]); b.type = "button"; b.id = "tab-" + i; b.setAttribute("role", "tab");
+    b.addEventListener("click", function () { show(i); });
+    b.addEventListener("keydown", function (e) {
+      var n = D.mandates.length, j = e.key === "ArrowRight" ? (i + 1) % n : e.key === "ArrowLeft" ? (i - 1 + n) % n : -1;
+      if (j >= 0) { e.preventDefault(); show(j); tabs.children[j].focus(); }
+    });
+    tabs.appendChild(b);
+  });
+  if (D.mandates.length) show(0); else document.getElementById("inspector-sec").hidden = true;
+
+  // The feature cards.
+  var cards = document.getElementById("cards");
+  D.features.forEach(function (f) {
+    var other = /separate live run/.test(f.source);
+    cards.appendChild(el("article", "card", [
+      el("div", "hd", [el("h3", "", [f.title]), f.figure ? el("span", "fig", [f.figure]) : null]),
+      el("p", "", [f.plain]), el("p", "why", [f.why]),
+      el("div", "", f.proofs.map(proof)),
+      el("div", "src" + (other ? " other" : ""), ["Proof from " + f.source.charAt(0).toLowerCase() + f.source.slice(1) + "."]),
+      el("div", "docs", [el("span", "", ["Metal docs:"])].concat(f.docs.map(function (d) { return link(d.label + " ↗", d.href); }))),
+    ]));
+  });
+
+  // The Dispute desk's recorded case, order by order.
+  var c = D.dispute, box = document.getElementById("case");
+  if (!c) { document.getElementById("dispute").hidden = true; return; }
+  var refund = c.decision.per_sale.reduce(function (n, s) { return n + s.refund_cents; }, 0);
+  var outcome = { rejected: "Not refunded", refund: "Refunded in full", partial_refund: "Partly refunded" }[c.decision.outcome];
+  var before = c.packs.filter(function (p) { return p.refunded_cents; });
+  box.appendChild(el("div", "h4", ["Case " + c.case_id + " · opened " + at(c.opened_at)]));
+  box.appendChild(el("div", "claim", ["“" + (c.text || c.claim) + "”"]));
+  box.appendChild(el("p", "job", ["Summit Outfitters, the customer, about " + c.packs.length + " stock checks its agent paid for."]));
+  box.appendChild(el("div", "verdict", [
+    el("div", "", [el("b", "", [outcome]), el("span", "", ["decided by code from the evidence"])]),
+    el("div", "", [el("b", "", [(refund / 100).toFixed(2) + " test USD"]), el("span", "", ["refunded by this decision"])]),
+    el("div", "", [el("b", "", [c.packs.filter(function (p) { return p.order.valid && p.mandate.within && p.delivery.matches; }).length + " of " + c.packs.length]), el("span", "", ["orders with a valid signed order, a payment inside the mandate and the data delivered"])]),
+  ]));
+  if (before.length) box.appendChild(el("p", "job", [before.length + " of these orders had already been refunded earlier, for wrong data (" + before.map(function (p) { return p.sale_id; }).join(", ") + "); nothing is refunded twice."]));
+  var rows = c.packs.map(function (p) {
+    var d = c.decision.per_sale.filter(function (x) { return x.sale_id === p.sale_id; })[0] || { refund_cents: 0, why: "" };
+    var okv = function (ok, good, bad) { return el("span", ok ? "ok" : "bad", [(ok ? "✓ " : "✕ ") + (ok ? good : bad)]); };
+    return el("tr", "", [
+      el("td", "", [el("b", "", ["Order " + p.sale_id]), el("br"), el("span", "mono", [p.request]), el("br"), el("small", "", [at(p.paid_at)])]),
+      el("td", "", [usd((p.charged_cents / 100).toFixed(2))]),
+      (function () { var t = el("td", "", [okv(p.order.valid, "signed for " + ((p.order.amount_cents || 0) / 100).toFixed(2), p.order.present ? "does not verify" : "none"), el("br"), el("small", "mono", ["nonce " + (p.order.nonce || "–")])]); t.setAttribute("data-l", "Signed order"); return t; })(),
+      (function () { var t = el("td", "", [okv(p.mandate.within, "inside the bound mandate", p.mandate.detail)]); t.setAttribute("data-l", "verifyMandatePayment"); return t; })(),
+      (function () { var t = el("td", "", [proof({ label: short(p.settlement.tx || p.tx), href: /^0x[0-9a-fA-F]{64}$/.test(p.settlement.tx || p.tx) ? "https://testnet.metalntwx.com/tx/" + (p.settlement.tx || p.tx) : null })]); t.setAttribute("data-l", "Settlement"); return t; })(),
+      (function () { var t = el("td", "", [okv(p.delivery.matches, "hash matches", "hash differs"), el("br"), el("small", "mono", [p.delivery.body_sha256.slice(0, 12) + "…"])]); t.setAttribute("data-l", "Data delivered"); return t; })(),
+      (function () { var t = el("td", "", [el("b", "", [usd((d.refund_cents / 100).toFixed(2))]), p.refunded_cents ? el("small", "", [" (" + (p.refunded_cents / 100).toFixed(2) + " refunded earlier)"]) : null]); t.setAttribute("data-l", "Refund"); return t; })(),
+    ]);
+  });
+  box.appendChild(el("div", "tablewrap", [el("table", "orders", [
+    el("thead", "", [el("tr", "", ["Order", "Charged", "Signed order", "verifyMandatePayment", "Settlement", "Data delivered", "Refund"].map(function (h) { return el("th", "", [h]); }))]),
+    el("tbody", "", rows),
+  ])]));
+  // On a phone the first three orders show; the rest are one tap away (they are all alike, and all on the page).
+  rows.forEach(function (r, i) { if (i >= 3) r.className = "more"; });
+  if (rows.length > 3) {
+    var all = el("button", "allbtn", ["Show all " + rows.length + " orders"]); all.type = "button";
+    all.addEventListener("click", function () { box.classList.add("all"); });
+    box.appendChild(all);
+  }
+  box.appendChild(el("div", "explain", [c.explanation, el("small", "", ["Explained by " + c.explained_by + " from the evidence above. The decision and every amount were made by code; the explanation is advice and changes nothing."])]));
+  var rep = el("a", "btn", ["Open the evidence report the seller sends ↗"]); rep.href = "metal/report"; rep.target = "_blank"; rep.rel = "noopener";
+  box.appendChild(rep);
+})();
+</script>
+</body>
+</html>

@@ -19,6 +19,8 @@ import { ICONS } from "../ui/icons.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { buildLiveTimeline } from "../live/timeline.js";
 import { health, prometheus } from "../ops/health.js";
+import type { DisputeCase } from "../seller/desk.js";
+import { disputeReportHtml } from "../seller/report.js";
 
 /** What each agent is called on the pages (docs/decisions.md D2), as a data block: no markup, not part of any hash. */
 const AGENTS_JSON = JSON.stringify(Object.fromEntries(Object.entries(AGENT_DISPLAY).map(([id, a]) => [id, a.name])));
@@ -112,6 +114,20 @@ export const TRY_PAGE = (() => {
 })();
 export const TRY_CSP = cspFor(TRY_PAGE);
 
+/** "How Purser uses Metal" (src/metal/): the features, mandates and Dispute desk case recorded in docs/demo/metal.json. */
+const METAL_FILE = new URL("../../docs/demo/metal.json", import.meta.url);
+const metalData = () => JSON.parse(readFileSync(METAL_FILE, "utf8")) as { dispute: DisputeCase | null };
+export const METAL_PAGE = readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8").replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
+export const METAL_CSP = cspFor(METAL_PAGE);
+/** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
+export const METAL_REPORT = (() => {
+  const c = metalData().dispute;
+  return c ? disputeReportHtml(c) : null;
+})();
+export const METAL_REPORT_CSP = METAL_REPORT ? [
+  "default-src 'none'", `style-src ${inlineHash(METAL_REPORT, "style")}`, "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+].join("; ") : "";
+
 /** The public demo page (K5 replay) plays a recorded run; no request, no key, nothing live. */
 export const DEMO_CSP = cspFor(DEMO_TEMPLATE);
 
@@ -181,6 +197,16 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     if (!text) return void res.status(400).json({ error: "type what an agent should do" });
     if (text.length > TRY_MAX_CHARS) return void res.status(413).json({ error: `at most ${TRY_MAX_CHARS} characters` });
     res.json(await tryPurserSafely(text, null, new Date(), "this local server asks no model; the hosted page does"));
+  });
+
+  app.get("/metal", (_req, res) => {
+    res.setHeader("Content-Security-Policy", METAL_CSP);
+    res.type("html").send(METAL_PAGE);
+  });
+  app.get("/metal/report", (_req, res, next) => {
+    if (!METAL_REPORT) return next();
+    res.setHeader("Content-Security-Policy", METAL_REPORT_CSP);
+    res.type("html").send(METAL_REPORT);
   });
 
   app.get("/film", (_req, res) => {
