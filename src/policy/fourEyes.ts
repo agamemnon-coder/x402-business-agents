@@ -17,5 +17,6 @@ export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">): b
   const over = (s: string | undefined) => (s !== undefined && /^\d+\.\d{2}$/.test(s) ? toCents(s) > threshold : false);
   if (p.kind === "invoice_payment") return over(t.amount);
   if (p.kind === "agent_onboard") return over(t.card?.monthly);
+  if (p.kind === "task_card") return over(t.amount);
   return p.kind === "payee_change";
 }

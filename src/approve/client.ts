@@ -140,6 +140,14 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   return true;
 }
 
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "12 Nov 2026, 23:59 UTC": the same on every phone, whatever its time zone. */
+function utcMinute(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return iso;
+  return `${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
+}
+
 export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   const nameOf = (a: string) => names[a.toLowerCase()] ?? null;
   const who = (a: string) => (nameOf(a) ? `${nameOf(a)} ${shortAddr(a)}` : shortAddr(a));
@@ -272,6 +280,20 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       short: "this bank-detail change",
       warnings: ["Changed bank details are how invoice fraud works. Approve only if the new IBAN matches what the supplier told you on a number you already had."],
       amountLabel: "Moves now", label: "Bank details", big: `…${iban.slice(-4)}`, unit: "new account",
+    };
+  }
+
+  if (kind === "task_card") {
+    const mccs = Array.isArray(t.merchant_categories) ? t.merchant_categories.map(str).join(", ") : "";
+    const where = mccs === "4511" ? "an airline" : mccs === "7011" ? "a hotel" : mccs === "4112" ? "a railway" : "a merchant";
+    const ends = utcMinute(str(t.valid_until));
+    return {
+      approvable: true, title: "Task card",
+      sentence: `Issue a single-use virtual card at Airwallex for a ${str(t.label).toLowerCase()}: one purchase of at most ${money(t.amount)} EUR at ${where} (merchant category ${mccs}), until ${ends}. For: ${str(t.purpose)}.`,
+      amount: `${money(t.amount)} EUR at most, once`, margin: null, recipient: `${where} (merchant category ${mccs})`,
+      rows: [["For", str(t.purpose)], ["Most", `${money(t.amount)} EUR`], ["Pays", "one purchase, then Airwallex declines"], ["Merchant category", mccs], ["Ends", ends]],
+      short: "this task card", warnings: ["Purser read this from your own message. Check the amount and the end date before you approve."],
+      amountLabel: "Card limit", label: str(t.label), big: money(t.amount), unit: "EUR, one purchase",
     };
   }
 

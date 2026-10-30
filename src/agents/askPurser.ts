@@ -2,8 +2,14 @@
 // below) reads the message into typed fields; planTask decides. The amount must be written in the message itself, the
 // kind must be one Purser makes cards for, and a message with words aimed at the AI is refused whole.
 
+import type { Card, IssuingRail } from "../airwallex/issuing.js";
+import { audit } from "../audit/log.js";
 import { TASK_DEFAULT_DAYS, TASK_KINDS, TASK_MAX_DAYS } from "../config/policy.js";
-import { fromCents } from "../lib/money.js";
+import type { DB } from "../db/open.js";
+import { fromCents, toCents } from "../lib/money.js";
+import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
+import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
+import { storeCard } from "../policy/cards.js";
 import { amountsIn } from "../policy/fromText.js";
 import { findInjections } from "../policy/injection.js";
 
@@ -95,4 +101,89 @@ export function planTask(text: string, reading: TaskReading, now: Date): TaskPla
   }
   const purpose = plain(reading.purpose) || kind.label;
   return { ok: true, task: { kind: reading.kind, label: kind.label, mccs: [...kind.mccs], amountCents: cents, validUntil, purpose } };
+}
+
+/** A task card proposal waits this long for the CFO. */
+const TASK_PROPOSAL_TTL_MS = 60 * 60 * 1000;
+
+export type TaskCardTerms = Terms & {
+  kind: "task_card";
+  task: TaskKind;
+  label: string;
+  purpose: string;
+  merchant_categories: string[];
+  amount: string;
+  currency: "EUR";
+  valid_until: string;
+  single_use: true;
+  /** The CFO's message, by hash: what the card was asked for, without keeping the words in the terms. */
+  message_sha256: string;
+};
+
+/** The Finance agent proposes the card; nothing is issued before the CFO approves it with Face ID. */
+export function proposeTaskCard(db: DB, task: PlannedTask, message: string, now = new Date()): ProposalRow {
+  const terms: TaskCardTerms = {
+    schema: TERMS_SCHEMA, kind: "task_card", proposal_id: nextProposalId(db),
+    expires_at: new Date(now.getTime() + TASK_PROPOSAL_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    task: task.kind, label: task.label, purpose: task.purpose, merchant_categories: task.mccs,
+    amount: fromCents(task.amountCents), currency: "EUR", valid_until: task.validUntil, single_use: true,
+    message_sha256: sha256Hex(message),
+  };
+  return createProposal(db, { terms, createdBy: "treasury" }, now);
+}
+
+const sameSecond = (a: string | null | undefined, b: string) => !!a && Math.floor(Date.parse(a) / 1000) === Math.floor(Date.parse(b) / 1000);
+
+/** Why the card Airwallex has is not the approved one, or null when it is. */
+function differs(card: Card, t: TaskCardTerms): string | null {
+  const cents = toCents(t.amount);
+  if (!card.limits || card.limits.perTxCents !== cents || card.limits.monthlyCents !== cents) return `the card at Airwallex has other limits than the approved ${t.amount} EUR`;
+  const c = card.controls;
+  if (!c?.singleUse) return "the card at Airwallex is not single-use";
+  if ([...c.mccs].sort().join(",") !== [...t.merchant_categories].sort().join(",") || c.currencies.join(",") !== "EUR") return "the card at Airwallex allows other merchants or currencies than approved";
+  if (!sameSecond(c.activeTo, t.valid_until)) return `the card at Airwallex ends at ${c.activeTo ?? "no date"}, not ${t.valid_until}`;
+  return null;
+}
+
+/**
+ * After the CFO's approval: one single-use card at Airwallex with exactly the approved controls, read back before it
+ * counts. A card that comes back different is frozen at once and not recorded. Safe to run again: the card is found
+ * by its nickname before a new one is issued.
+ */
+export async function executeTaskCard(db: DB, rail: IssuingRail, proposalId: string, now = new Date()): Promise<void> {
+  const taskId = `task:${proposalId}`;
+  const t = beginExecution<TaskCardTerms>(db, proposalId, (terms) => {
+    if (terms.kind !== "task_card") throw new Error(`${proposalId} is not a task card`);
+    if (db.prepare("SELECT 1 FROM task_cards WHERE task_id = ?").get(taskId)) throw new Error(`${proposalId} already has its card`);
+  }, now);
+  try {
+    const email = "agents+tasks@northwind-outdoor.example";
+    const holder = (await rail.findCardholderByEmail(email)) ?? (await rail.createCardholder({ email, firstName: "Task", lastName: "Cards" }));
+    const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
+    const nickname = `task ${proposalId}: ${t.label.toLowerCase()}${business ? ` (${business.address.slice(-6).toLowerCase()})` : ""}`;
+    const cents = toCents(t.amount);
+    const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({
+      cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: { currency: "EUR", perTxCents: cents, monthlyCents: cents },
+      controls: { mccs: t.merchant_categories, currencies: ["EUR"], activeTo: t.valid_until, singleUse: true },
+    }));
+    const problem = differs(card, t);
+    if (problem) {
+      await rail.setCardStatus(card.cardId, "INACTIVE");
+      audit(db, "awx-executor", "card.frozen", taskId, { agent: taskId, last4: card.last4, why: problem }, now);
+      throw new Error(`${problem}; the card is frozen and not used`);
+    }
+    db.transaction(() => {
+      db.prepare("INSERT INTO task_cards (task_id, proposal_id, kind, purpose, mccs, amount_cents, valid_until, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)")
+        .run(taskId, proposalId, t.task, t.purpose, t.merchant_categories.join(","), cents, t.valid_until, now.toISOString());
+      storeCard(db, taskId, card, now);
+      audit(db, "awx-executor", "card.issued", taskId, {
+        agent: taskId, last4: card.last4, nickname, limits: `${t.amount} / ${t.amount}`, currency: "EUR", proposal_id: proposalId,
+        task: t.task, merchant_categories: t.merchant_categories.join(","), valid_until: t.valid_until, single_use: true,
+      }, now);
+      finishExecution(db, proposalId, "EXECUTED", { card_last4: card.last4 }, now);
+    }).immediate();
+  } catch (e) {
+    finishExecution(db, proposalId, "FAILED", { error: (e as Error).message.slice(0, 300) }, now);
+    throw e;
+  }
 }

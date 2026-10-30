@@ -223,6 +223,7 @@ const KIND_TITLES: Record<string, string> = {
   policy_change: "Policy change",
   payee_change: "Supplier bank details",
   agent_onboard: "Company card for an outside agent",
+  task_card: "Task card",
   dev_test: "Dev test (moves no money)",
 };
 export const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
@@ -255,6 +256,10 @@ export function summarize(kind: string, termsJson: string): string {
   if (kind === "payee_change") {
     const v = (t.verification ?? {}) as P;
     return `Pay ${str(t.vendor)} to the account ending ${str(t.new_iban).slice(-4)} instead of …${str(t.old_iban_last4)}; verified by ${str(v.by)}`;
+  }
+  if (kind === "task_card") {
+    const mccs = Array.isArray(t.merchant_categories) ? (t.merchant_categories as unknown[]).map(str).join(", ") : "";
+    return `${str(t.label)} card, one purchase of at most EUR ${str(t.amount)} at merchant category ${mccs}, until ${str(t.valid_until).slice(0, 10)}: ${str(t.purpose)}`;
   }
   if (kind === "agent_onboard") {
     const c = (t.card ?? {}) as P;

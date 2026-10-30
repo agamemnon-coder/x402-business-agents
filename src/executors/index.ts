@@ -1,3 +1,4 @@
+import { executeTaskCard } from "../agents/askPurser.js";
 import type { DB } from "../db/open.js";
 import { executeMandateReplace } from "./mandateReplace.js";
 import { executeRefundBatch } from "./refundBatch.js";
@@ -19,6 +20,12 @@ export async function execute(db: DB, proposalId: string): Promise<void> {
     executePolicyChange(db, proposalId);
     // A card limit in the policy only counts once the card at Airwallex has it too.
     await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);
+    return;
+  }
+  if (row.kind === "task_card") {
+    const issuing = issuingFromEnv();
+    if (!issuing) throw new Error("Airwallex sandbox keys are not set; the task card cannot be issued");
+    await executeTaskCard(db, issuing.rail, proposalId);
     return;
   }
   if (row.kind === "agent_onboard") {
