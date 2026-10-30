@@ -90,7 +90,7 @@ tbody th { color: var(--muted); font-weight: 600; width: 18%; }
 footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
 @media (max-width: 960px) { .inspector { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
-  main { padding: 24px 16px 48px; } h1 { font-size: 31px; } h2 { font-size: 23px; } .lead { font-size: 16px; } .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; }
+  main { padding: 24px 16px 48px; } h1 { font-size: 31px; } h2 { font-size: 23px; } .lead { font-size: 16px; } .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 14px; mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } .top nav a { white-space: nowrap; }
   .cards { grid-template-columns: 1fr; } .inspector, .case { padding: 16px; } .verdict { grid-template-columns: 1fr; } footer { padding: 0 16px 32px; }
   .orders thead { display: none; } .orders tr { display: block; border-top: 1px solid var(--border); padding: 8px 0; } .orders td { display: block; border: 0; padding: 4px 14px; }
   .orders td[data-l]::before { content: attr(data-l) ": "; color: var(--muted); font-weight: 600; }
@@ -103,7 +103,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
 </head>
 <body>
 <header class="top"><a class="brand" href="/"><i></i>Purser</a><span class="chip">How Purser uses Metal</span>
-  <nav aria-label="Pages"><a href="/">Overview</a><a href="try">Try it</a><a href="metal" aria-current="page">Metal</a><a href="film">Film</a><a href="/?recorded">CFO dashboard</a></nav></header>
+  <nav aria-label="Pages"><a href="./">Overview</a><a href="try">Try it</a><a href="metal" aria-current="page">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
 <main>
   <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>
   <h1>How Purser uses Metal</h1>

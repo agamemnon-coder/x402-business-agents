@@ -93,7 +93,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
   .grid { grid-template-columns: 1fr; } .side { position: static; }
 }
 @media (max-width: 640px) {
-  main { padding: 24px 16px 48px; } h1 { font-size: 31px; } .lead { font-size: 16px; } textarea { font-size: 18px; } .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; }
+  main { padding: 24px 16px 48px; } h1 { font-size: 31px; } .lead { font-size: 16px; } textarea { font-size: 18px; } .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 14px; mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } .top nav a { white-space: nowrap; }
   .step { grid-template-columns: 1fr; gap: 6px; } .by { justify-self: start; } .meta { text-align: left; }
   .outcome { grid-template-columns: 1fr; } .outcome h3 { font-size: 21px; } .realbox { margin: 12px 16px 0; }
 }
@@ -102,7 +102,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
 </head>
 <body>
 <header class="top"><a class="brand" href="/"><i></i>Purser</a><span class="chip">Try it yourself</span><button class="real" id="real-btn" type="button" aria-expanded="false" aria-controls="real">Demo world · what's real?</button>
-  <nav aria-label="Pages"><a href="/">Overview</a><a href="metal">Metal</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="/?recorded">CFO dashboard</a></nav></header>
+  <nav aria-label="Pages"><a href="./">Overview</a><a href="try" aria-current="page">Try it</a><a href="metal">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
 <div class="realbox" id="real" hidden><b>What is real here.</b> The models are real: Claude Haiku sorts your request and Claude Sonnet reads it, and you see what each call cost. The limits are Northwind's CFO policy as in the recorded live run (€50 a software purchase, every bank transfer with Face ID, 0.04 test USD a request on Metal; task cards up to €300 without Face ID, a policy that ran live in a separate test); on this page a copy of those rules is checked in code. Simulated here: the cards and the payments; nothing on this page calls Airwallex or Metal, and no money exists. Each answer shows the same flow from the recorded live run, where Airwallex and Metal did act. Fair use: 6 tries a minute and 40 a day per visitor, 280 characters each; when many people try at once, or the day's model budget is used, code alone reads the request and says so.</div>
 <main>
   <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>

@@ -103,7 +103,7 @@ button.ctl, select.ctl { font: inherit; font-size: 14px; font-weight: 600; color
   .story { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; }
+  .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 14px; mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } .top nav a { white-space: nowrap; }
   .wrap { padding: 14px 16px 0; } .bar, .honest { padding-left: 16px; padding-right: 16px; }
   .track { height: 96px; } .tok { font-size: 13px; padding: 6px 10px; top: 34%; } .tok.r2 { top: 20%; } .tok.r3 { top: 48%; }
   .dest { top: auto; height: 30px; width: 100%; min-width: 0; left: 0; flex-direction: row; flex-wrap: wrap; gap: 2px 10px; border-left: 0; border-top: 1px solid var(--border); font-size: 11.5px; }
@@ -119,7 +119,7 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
 <body>
 <script type="application/json" id="live-data">__LIVE_JSON__</script>
 <header class="top"><a class="brand" href="/"><i></i>Purser live</a><span class="chip" id="company"></span><span class="chip">Recorded runs · test money</span><span class="count" id="count"></span>
-  <nav aria-label="Pages"><a href="/">Overview</a><a href="try">Try it</a><a href="metal">Metal</a><a href="film">Film</a></nav></header>
+  <nav aria-label="Pages"><a href="./">Overview</a><a href="try">Try it</a><a href="metal">Metal</a><a href="live" aria-current="page">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
 <main id="main"></main>
 <script>
 (function () {

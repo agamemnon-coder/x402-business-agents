@@ -44,7 +44,7 @@ button { font: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: -.01em; text-decoration: none; white-space: nowrap; }
 .brand .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
 .brand .mark svg { width: 16px; height: 16px; }
-.nav { display: flex; gap: 4px; }
+.nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; }
 .nav a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: 14px; padding: 8px 12px; border-radius: 8px; white-space: nowrap; }
 .nav a.on { color: var(--text); background: var(--sunken); }
 .top .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
@@ -408,7 +408,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   table.agents td:first-child { display: block; padding-bottom: 6px; }
   table.agents td:not(:first-child)::before { content: attr(data-label); color: var(--muted); font-size: 13px; margin-right: auto; }
   table.agents td .sub { display: inline; margin-left: 4px; }
-  .top { padding: 0 16px; gap: 12px; } .top .nav { display: none; } .live .lbl { display: none; }
+  .top { padding: 8px 16px; gap: 4px 12px; height: auto; flex-wrap: wrap; } .top .nav { order: 9; width: 100%; overflow-x: auto; mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } .top .nav a { padding: 6px 8px; font-size: 13px; } .live .lbl { display: none; }
   .note { padding: 10px 16px 0; } .frozen { padding: 12px 16px; }
   .wrap { padding: 16px 16px 40px; }
   .kpis { gap: 8px; } .kpi { padding: 14px 12px; } .kpi .v { font-size: 32px; } .kpi .note2 { display: none; } .kpi .lab { font-size: 12.5px; } .kpi .lab .ic { display: none; }
@@ -1216,7 +1216,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   }
   function showDash() { document.getElementById("dash").hidden = false; }
   function showLanding(note) {
-    nav([["Overview", "./", true], ["Try it", "try"], ["Metal", "metal"], ["Film", "film"], ["Purser live", "live"], ["Demo", "demo"], ["Recorded dashboard", "?recorded"]]);
+    nav([["Overview", "./", true], ["Try it", "try"], ["Metal", "metal"], ["Live", "live"], ["Film", "film"], ["Recorded run", "demo"], ["Month", "month"], ["Lab", "lab"], ["CFO dashboard", "./?recorded"]]);
     var p = RECORDED && RECORDED.proof;
     if (p) {
       countUp("p-alone", p.alone); countUp("p-blocked", p.blocked);
@@ -1263,10 +1263,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
   if (wantSignin && !viewKey && MODE !== "local") {
-    nav([["Overview", "./"], ["Try it", "try"], ["Metal", "metal"], ["Film", "film"], ["Purser live", "live"], ["Demo", "demo"], ["Recorded dashboard", "?recorded"]]);
+    nav([["Overview", "./", false], ["Try it", "try"], ["Metal", "metal"], ["Live", "live"], ["Film", "film"], ["Recorded run", "demo"], ["Month", "month"], ["Lab", "lab"], ["CFO dashboard", "./?recorded"]]);
     document.getElementById("signin").hidden = false;
   } else if (wantRecorded && RECORDED) {
-    nav([["Overview", "./"], ["Try it", "try"], ["Demo", "demo"], ["Recorded dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
+    nav([["Overview", "./"], ["Metal", "metal"], ["Recorded run", "demo"], ["CFO dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
     document.getElementById("rec-text").textContent = "Recorded run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
