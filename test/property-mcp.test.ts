@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { openDb, type DB } from "../src/db/open.js";
 import { fromCents, toCents } from "../src/lib/money.js";
 import { decide } from "../src/policy/approvals.js";
+import { ClaudeReader } from "../src/claude/reader.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
 import { agentId, executeAgentOnboard, requestCompanyCard, type ExternalAgentId } from "../src/platform/externalAgents.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
@@ -45,7 +46,7 @@ const call = fc.record({ name: fc.oneof(fc.constantFrom(...TOOLS), fc.constantFr
 async function connect(db: DB, id: ExternalAgentId, awx: FakeIssuing) {
   const client = new Client({ name: "prop-agent", version: "1.0.0" });
   const [a, b] = InMemoryTransport.createLinkedPair();
-  await Promise.all([agentApiServer(db, id, awx).connect(a), client.connect(b)]);
+  await Promise.all([agentApiServer(db, id, awx, new ClaudeReader(db, null)).connect(a), client.connect(b)]);
   return client;
 }
 

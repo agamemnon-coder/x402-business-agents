@@ -73,8 +73,9 @@ const controlWords = (c: Pick<CardControls, "mccs" | "currencies"> | null | unde
 const sameControls = (a: Pick<CardControls, "mccs" | "currencies"> | null | undefined, b: Pick<CardControls, "mccs" | "currencies">) =>
   !!a && a.mccs.join(",") === b.mccs.join(",") && a.currencies.join(",") === b.currencies.join(",");
 
-/** The status the policy wants a card in: frozen by the emergency stop or by its agent's velocity stop, or active. */
-export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) ? "INACTIVE" : "ACTIVE");
+/** The status the policy wants a card in: frozen by the emergency stop or its agent's velocity stop, closed once a task card is used, or active. */
+const taskUsed = (db: DB, agent: string) => agent.startsWith("task:") && !!db.prepare("SELECT 1 FROM task_cards WHERE task_id = ? AND status = 'USED'").get(agent);
+export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) || taskUsed(db, agent) ? "INACTIVE" : "ACTIVE");
 
 /** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
 export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Card, now: Date): Promise<boolean> {

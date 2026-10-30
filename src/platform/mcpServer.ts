@@ -8,6 +8,10 @@ import { z } from "zod";
 import type { IssuingSim } from "../airwallex/issuing.js";
 import type { DB } from "../db/open.js";
 import { redactSecrets } from "../lib/redact.js";
+import { askPurser } from "../agents/askPurser.js";
+import type { Actor } from "../audit/log.js";
+import { ClaudeReader } from "../claude/reader.js";
+import { Tools } from "../claude/tools.js";
 import { cardStatus, payWithCard, requestCardRaise, requestCompanyCard, type ExternalAgentId } from "./externalAgents.js";
 
 const EUR = z.string().regex(/^\d{1,6}\.\d{2}$/, "an amount in EUR with two decimals, like 25.00");
@@ -16,9 +20,9 @@ type Text = { content: { type: "text"; text: string }[]; isError?: boolean };
 const ok = (text: string): Text => ({ content: [{ type: "text", text }] });
 const fail = (e: unknown): Text => ({ content: [{ type: "text", text: redactSecrets(e instanceof Error ? e.message : String(e)) }], isError: true });
 
-export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | null): McpServer {
+export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | null, reader: ClaudeReader = new ClaudeReader(db)): McpServer {
   const server = new McpServer({ name: "tidemark-agent-api", version: "1.0.0" }, {
-    instructions: `You are connected to Northwind Outdoor's agent API as the outside agent ${id}. You can ask for a company card, pay merchants on it, ask for a higher limit, and see your card. Every request is decided by Northwind's CFO with Face ID; the card's limits are enforced by Airwallex. You cannot approve anything yourself.`,
+    instructions: `You are connected to Northwind Outdoor's agent API as the outside agent ${id}. You can ask for a company card, pay merchants on it, ask for a higher limit, see your card, and ask Purser for a single-use card for one task (a flight, a hotel or a train). Every request is decided by Northwind's CFO with Face ID; the card's limits are enforced by Airwallex. You cannot approve anything yourself.`,
   });
 
   server.registerTool("request_company_card", {
@@ -87,6 +91,20 @@ export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | nu
     try {
       const p = requestCardRaise(db, id, { perTx: a.per_purchase_eur, monthly: a.monthly_eur }, a.reason);
       return ok(`Asked. ${p.proposal_id} waits for the CFO's Face ID until ${p.expires_at}.`);
+    } catch (e) {
+      return fail(e);
+    }
+  });
+
+  server.registerTool("ask_for_task_card", {
+    title: "Ask Purser for a card for one task",
+    description: "Ask, in plain words, for a single-use card for one flight, hotel or train, with the most it may cost (for example: 'a train ticket to Antwerp on 12 November, at most €40'). It becomes a proposal the CFO approves with Face ID; you never get a card at once.",
+    inputSchema: { message: z.string().min(1).max(500).describe("What you need, the most it may cost in EUR, and the day") },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  }, async (a) => {
+    try {
+      const r = await askPurser(db, new Tools(db, reader), a.message, new Date(), { asker: id as Actor });
+      return ok(r.reply);
     } catch (e) {
       return fail(e);
     }

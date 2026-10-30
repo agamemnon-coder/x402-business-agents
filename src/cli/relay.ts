@@ -60,7 +60,7 @@ const draftPolicy = async (text: string) => {
   return { proposalId: r.proposal?.proposal_id ?? null, message: draftSummary(r) };
 };
 // Ask Purser (G): a chat message from the phone becomes, at most, a task card proposal that waits for Face ID.
-const ask = (text: string) => askPurser(db, new Tools(db), text);
+const ask = (text: string) => askPurser(db, new Tools(db), text, new Date(), { rail: issuingFromEnv()?.rail ?? null });
 const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, ask, log: (line) => console.log(`${stamp()} ${line}`) });
 let stopping = false;
 const stop = () => {

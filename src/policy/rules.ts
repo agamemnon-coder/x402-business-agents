@@ -8,7 +8,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { stopped } from "./velocity.js";
 
-export type PolicyKey = "freeze" | `stop.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | `counterparty:${string}`;
+export type PolicyKey = "freeze" | `stop.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`;
 
 export interface Rule {
   key: PolicyKey;
@@ -40,6 +40,8 @@ const STATIC: Rule[] = [
   { key: "approval.refund_each", label: "A refund above this needs a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_EACH_CENTS) },
   { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS) },
   // E1, four eyes: above this a payment needs the Face ID of two different people (src/policy/fourEyes.ts). Off when empty.
+  // Ask Purser (G): a task card the CFO asks for up to this amount is issued at once; above it, with Face ID.
+  { key: "approval.task_card_eur", label: "Task cards up to this are issued without Face ID", unit: "EUR", kind: "money", min: 0, max: 150_000, fallback: "300.00" },
   { key: "approval.four_eyes_eur", label: "Payments above this need two people (four eyes)", unit: "EUR", kind: "optional_money", min: 0, max: MAX_FLOOR, fallback: "" },
   { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },
   { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "" },

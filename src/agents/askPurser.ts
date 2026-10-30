@@ -11,6 +11,9 @@ import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { cardOf, ingestCardTransaction, storeCard } from "../policy/cards.js";
+import { frozen, policyValue } from "../policy/rules.js";
+import { attachReview } from "../claude/review.js";
+import type { Actor } from "../audit/log.js";
 import { amountsIn } from "../policy/fromText.js";
 import { findInjections } from "../policy/injection.js";
 
@@ -122,7 +125,7 @@ export type TaskCardTerms = Terms & {
 };
 
 /** The Finance agent proposes the card; nothing is issued before the CFO approves it with Face ID. */
-export function proposeTaskCard(db: DB, task: PlannedTask, message: string, now = new Date()): ProposalRow {
+export function proposeTaskCard(db: DB, task: PlannedTask, message: string, now = new Date(), asker?: Actor): ProposalRow {
   const terms: TaskCardTerms = {
     schema: TERMS_SCHEMA, kind: "task_card", proposal_id: nextProposalId(db),
     expires_at: new Date(now.getTime() + TASK_PROPOSAL_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z"),
@@ -130,13 +133,13 @@ export function proposeTaskCard(db: DB, task: PlannedTask, message: string, now 
     amount: fromCents(task.amountCents), currency: "EUR", valid_until: task.validUntil, single_use: true,
     message_sha256: sha256Hex(message),
   };
-  return createProposal(db, { terms, createdBy: "treasury" }, now);
+  return createProposal(db, { terms, createdBy: asker ?? "treasury" }, now);
 }
 
 const sameSecond = (a: string | null | undefined, b: string) => !!a && Math.floor(Date.parse(a) / 1000) === Math.floor(Date.parse(b) / 1000);
 
 /** Why the card Airwallex has is not the approved one, or null when it is. */
-function differs(card: Card, t: TaskCardTerms): string | null {
+function differs(card: Card, t: Pick<TaskCardTerms, "amount" | "merchant_categories" | "valid_until">): string | null {
   const cents = toCents(t.amount);
   if (!card.limits || card.limits.perTxCents !== cents || card.limits.monthlyCents !== cents) return `the card at Airwallex has other limits than the approved ${t.amount} EUR`;
   const c = card.controls;
@@ -146,43 +149,52 @@ function differs(card: Card, t: TaskCardTerms): string | null {
   return null;
 }
 
+/** What a task card is, whether approved by Face ID (a proposal's terms) or issued within the CFO policy. */
+type TaskCardSpec = Pick<TaskCardTerms, "task" | "label" | "purpose" | "merchant_categories" | "amount" | "valid_until">;
+
 /**
- * After the CFO's approval: one single-use card at Airwallex with exactly the approved controls, read back before it
- * counts. A card that comes back different is frozen at once and not recorded. Safe to run again: the card is found
- * by its nickname before a new one is issued.
+ * One single-use card at Airwallex with exactly these controls, read back before it counts. A card that comes back
+ * different is frozen at once and not recorded. Safe to run again: the card is found by its nickname first. `ref` is
+ * the proposal id (P-…) or, within the CFO policy, the task's own id (T-…).
  */
+async function issueTaskCard(db: DB, rail: IssuingRail, ref: string, t: TaskCardSpec, now: Date, how: { within_policy: boolean }): Promise<Card> {
+  const taskId = `task:${ref}`;
+  const email = "agents+tasks@northwind-outdoor.example";
+  const holder = (await rail.findCardholderByEmail(email)) ?? (await rail.createCardholder({ email, firstName: "Task", lastName: "Cards" }));
+  const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
+  const nickname = `task ${ref}: ${t.label.toLowerCase()}${business ? ` (${business.address.slice(-6).toLowerCase()})` : ""}`;
+  const cents = toCents(t.amount);
+  const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({
+    cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: { currency: "EUR", perTxCents: cents, monthlyCents: cents },
+    controls: { mccs: t.merchant_categories, currencies: ["EUR"], activeTo: t.valid_until, singleUse: true },
+  }));
+  const problem = differs(card, t);
+  if (problem) {
+    await rail.setCardStatus(card.cardId, "INACTIVE");
+    audit(db, "awx-executor", "card.frozen", taskId, { agent: taskId, last4: card.last4, why: problem }, now);
+    throw new Error(`${problem}; the card is frozen and not used`);
+  }
+  db.transaction(() => {
+    db.prepare("INSERT INTO task_cards (task_id, proposal_id, kind, purpose, mccs, amount_cents, valid_until, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)")
+      .run(taskId, ref, t.task, t.purpose, t.merchant_categories.join(","), cents, t.valid_until, now.toISOString());
+    storeCard(db, taskId, card, now);
+    audit(db, "awx-executor", "card.issued", taskId, {
+      agent: taskId, last4: card.last4, nickname, limits: `${t.amount} / ${t.amount}`, currency: "EUR", ...(how.within_policy ? { within_policy: true } : { proposal_id: ref }),
+      task: t.task, merchant_categories: t.merchant_categories.join(","), valid_until: t.valid_until, single_use: true,
+    }, now);
+  }).immediate();
+  return card;
+}
+
+/** After the CFO's approval with Face ID: the approved card, issued and checked by issueTaskCard. */
 export async function executeTaskCard(db: DB, rail: IssuingRail, proposalId: string, now = new Date()): Promise<void> {
-  const taskId = `task:${proposalId}`;
   const t = beginExecution<TaskCardTerms>(db, proposalId, (terms) => {
     if (terms.kind !== "task_card") throw new Error(`${proposalId} is not a task card`);
-    if (db.prepare("SELECT 1 FROM task_cards WHERE task_id = ?").get(taskId)) throw new Error(`${proposalId} already has its card`);
+    if (db.prepare("SELECT 1 FROM task_cards WHERE task_id = ?").get(`task:${proposalId}`)) throw new Error(`${proposalId} already has its card`);
   }, now);
   try {
-    const email = "agents+tasks@northwind-outdoor.example";
-    const holder = (await rail.findCardholderByEmail(email)) ?? (await rail.createCardholder({ email, firstName: "Task", lastName: "Cards" }));
-    const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
-    const nickname = `task ${proposalId}: ${t.label.toLowerCase()}${business ? ` (${business.address.slice(-6).toLowerCase()})` : ""}`;
-    const cents = toCents(t.amount);
-    const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({
-      cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: { currency: "EUR", perTxCents: cents, monthlyCents: cents },
-      controls: { mccs: t.merchant_categories, currencies: ["EUR"], activeTo: t.valid_until, singleUse: true },
-    }));
-    const problem = differs(card, t);
-    if (problem) {
-      await rail.setCardStatus(card.cardId, "INACTIVE");
-      audit(db, "awx-executor", "card.frozen", taskId, { agent: taskId, last4: card.last4, why: problem }, now);
-      throw new Error(`${problem}; the card is frozen and not used`);
-    }
-    db.transaction(() => {
-      db.prepare("INSERT INTO task_cards (task_id, proposal_id, kind, purpose, mccs, amount_cents, valid_until, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)")
-        .run(taskId, proposalId, t.task, t.purpose, t.merchant_categories.join(","), cents, t.valid_until, now.toISOString());
-      storeCard(db, taskId, card, now);
-      audit(db, "awx-executor", "card.issued", taskId, {
-        agent: taskId, last4: card.last4, nickname, limits: `${t.amount} / ${t.amount}`, currency: "EUR", proposal_id: proposalId,
-        task: t.task, merchant_categories: t.merchant_categories.join(","), valid_until: t.valid_until, single_use: true,
-      }, now);
-      finishExecution(db, proposalId, "EXECUTED", { card_last4: card.last4 }, now);
-    }).immediate();
+    const card = await issueTaskCard(db, rail, proposalId, t, now, { within_policy: false });
+    finishExecution(db, proposalId, "EXECUTED", { card_last4: card.last4 }, now);
   } catch (e) {
     finishExecution(db, proposalId, "FAILED", { error: (e as Error).message.slice(0, 300) }, now);
     throw e;
@@ -194,15 +206,19 @@ export const ASK_MAX_CHARS = 500;
 
 /**
  * One chat message to Purser: screened first (planted words never reach a model), read by Sonnet (or the plain
- * parser), checked by planTask, and turned into a task card proposal for the CFO. Returns Purser's reply.
+ * parser), checked by planTask. From the CFO, a card up to the policy's threshold (approval.task_card_eur) is issued
+ * at once when Airwallex is reachable; anything else, and anything an agent asks for (`asker`), becomes a proposal
+ * that Opus reviews and the CFO approves with Face ID. Returns Purser's reply.
  */
-export async function askPurser(db: DB, tools: Tools, message: string, now = new Date()): Promise<{ reply: string; proposalId: string | null }> {
-  const answer = (reply: string, proposalId: string | null = null) => {
-    audit(db, "treasury", "ask.replied", proposalId ?? "ask", { reply, proposal_id: proposalId }, now);
-    return { reply, proposalId };
+export async function askPurser(
+  db: DB, tools: Tools, message: string, now = new Date(), opts: { rail?: IssuingRail | null; asker?: Actor } = {},
+): Promise<{ reply: string; proposalId: string | null; taskId: string | null }> {
+  const answer = (reply: string, proposalId: string | null = null, taskId: string | null = null) => {
+    audit(db, "treasury", "ask.replied", proposalId ?? taskId ?? "ask", { reply, proposal_id: proposalId, task_id: taskId }, now);
+    return { reply, proposalId, taskId };
   };
   const text = message.trim();
-  audit(db, "human", "ask.received", "ask", { message: text.slice(0, ASK_MAX_CHARS), chars: String(message.length) }, now);
+  audit(db, opts.asker ?? "human", "ask.received", "ask", { message: text.slice(0, ASK_MAX_CHARS), chars: String(message.length) }, now);
   if (text === "") return answer("Tell me what you need, for example: \"Book a flight to Berlin on 12 November, at most €250\".");
   if (message.length > ASK_MAX_CHARS) return answer(`Please keep it to ${ASK_MAX_CHARS} characters.`);
   // Words aimed at the AI are refused before any model reads them.
@@ -211,13 +227,29 @@ export async function askPurser(db: DB, tools: Tools, message: string, now = new
   const reading = await tools.task(text, now);
   const plan = planTask(text, reading.value, now);
   if (!plan.ok) return answer(plan.reply);
-  const p = proposeTaskCard(db, plan.task, text, now);
   const t = plan.task;
-  return answer(`I proposed ${p.proposal_id}: a single-use ${t.label.toLowerCase()} card, at most ${fromCents(t.amountCents)} EUR, until ${t.validUntil.slice(0, 10)}. Approve it with Face ID and I book it.`, p.proposal_id);
+  const spec: TaskCardSpec = { task: t.kind, label: t.label, purpose: t.purpose, merchant_categories: t.mccs, amount: fromCents(t.amountCents), valid_until: t.validUntil };
+  const within = !opts.asker && !!opts.rail && !frozen(db) && t.amountCents <= toCents(policyValue(db, "approval.task_card_eur") || "0.00");
+  if (within && opts.rail) {
+    const ref = `T-${String((db.prepare("SELECT COUNT(*) AS n FROM task_cards WHERE task_id LIKE 'task:T-%'").get() as { n: number }).n + 1).padStart(4, "0")}`;
+    try {
+      const card = await issueTaskCard(db, opts.rail, ref, spec, now, { within_policy: true });
+      return answer(`Done, within your policy: a single-use ${t.label.toLowerCase()} card •••• ${card.last4}, at most ${spec.amount} EUR, until ${spec.valid_until.slice(0, 10)}. I book it next.`, null, `task:${ref}`);
+    } catch (e) {
+      return answer(`Airwallex did not issue the card as asked (${(e as Error).message.slice(0, 200)}). Nothing was charged.`);
+    }
+  }
+  const p = proposeTaskCard(db, t, text, now, opts.asker);
+  await attachReview(db, tools, p, `${opts.asker ? `An agent (${opts.asker})` : "The CFO"} asked in their own words: "${text}"`);
+  return answer(`I proposed ${p.proposal_id}: a single-use ${t.label.toLowerCase()} card, at most ${spec.amount} EUR, until ${spec.valid_until.slice(0, 10)}. Approve it with Face ID and I book it.`, p.proposal_id);
 }
 
-/** An agent pays on a task card (a sandbox simulation of the merchant's charge); Airwallex approves or declines. */
-export async function bookOnTaskCard(db: DB, sim: IssuingSim, taskId: string, a: { merchant: string; amount: string; mcc?: string }, now = new Date()): Promise<CardTransaction> {
+/**
+ * An agent pays on a task card (a sandbox simulation of the merchant's charge); Airwallex approves or declines. After
+ * the one approved charge the card is closed: marked used here, and set inactive at Airwallex when `rail` is given
+ * (otherwise the runner's next card sync does it).
+ */
+export async function bookOnTaskCard(db: DB, sim: IssuingSim, taskId: string, a: { merchant: string; amount: string; mcc?: string }, now = new Date(), rail?: IssuingRail): Promise<CardTransaction> {
   const task = db.prepare("SELECT kind, purpose, mccs FROM task_cards WHERE task_id = ?").get(taskId) as { kind: TaskKind; purpose: string; mccs: string } | undefined;
   const card = cardOf(db, taskId);
   if (!task || !card) throw new Error(`no task card ${taskId}`);
@@ -226,5 +258,13 @@ export async function bookOnTaskCard(db: DB, sim: IssuingSim, taskId: string, a:
   audit(db, "treasury", "card.purchase_started", taskId, { agent: taskId, last4: card.last4, merchant: a.merchant, amount: fromCents(toCents(a.amount)), currency: "EUR", mcc }, now);
   const t = await sim.simulateCardCharge({ cardId: card.card_id, amountCents: toCents(a.amount), currency: "EUR", merchant: a.merchant, mcc });
   ingestCardTransaction(db, t, "simulation", now, purpose);
+  if (t.approved) {
+    db.prepare("UPDATE task_cards SET status = 'USED' WHERE task_id = ?").run(taskId);
+    if (rail) {
+      const closed = await rail.setCardStatus(card.card_id, "INACTIVE");
+      storeCard(db, taskId, closed, now);
+      audit(db, "awx-executor", "card.closed", taskId, { agent: taskId, last4: card.last4, why: "its one purchase is made" }, now);
+    }
+  }
   return t;
 }

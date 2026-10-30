@@ -439,6 +439,6 @@ CREATE TABLE IF NOT EXISTS task_cards (
   mccs TEXT NOT NULL,
   amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
   valid_until TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('ACTIVE')),
+  status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'USED')),
   created_at TEXT NOT NULL
 );
