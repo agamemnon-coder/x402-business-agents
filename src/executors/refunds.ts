@@ -2,6 +2,7 @@
 // Each carries the payment id refund-<sale_id>: the database allows one refund per sale, and metal-agent
 // pays a payment id at most once, so a retry after a crash reports the first outcome instead of paying again.
 
+import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -44,8 +45,12 @@ export async function refundSale(
       .run(r.sale_id, paymentId, r.amount_cents, r.to, r.proposal_id ?? null, r.dispute_id);
   }
 
-  // The CFO policy's limit per refund and the velocity limits, checked before anything is signed.
-  const refusal = capRefusal(db, "support", r.amount_cents) ?? velocityGate(db, "support", "metal", r.amount_cents, new Date(), paymentId);
+  // The CFO policy's limit per refund, the velocity limits, the mandate's budget and the agents' shared total, reserved
+  // together before anything is signed (a hold). A pull already sent is counted by its ledger row: its retry only checks.
+  const inFlight = !!existing && (existing.outcome === "PENDING" || existing.outcome === "HELD");
+  const refusal = inFlight
+    ? capRefusal(db, "support", r.amount_cents) ?? velocityGate(db, "support", "metal", r.amount_cents, new Date(), paymentId)
+    : reserveSpend(db, { agent: "support", rail: "metal", cents: r.amount_cents, ref: paymentId });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its state.
     if (existing && (existing.outcome === "PENDING" || existing.outcome === "HELD")) {
@@ -66,6 +71,8 @@ export async function refundSale(
   const tx = res.fields.get("transaction")?.[0] ?? null;
   const reason = res.fields.get("reason")?.[0] ?? null;
   db.prepare("UPDATE refunds SET outcome = ?, tx_hash = COALESCE(?, tx_hash), refusal_reason = ? WHERE sale_id = ?").run(outcome, tx, reason, r.sale_id);
+  if (outcome === "REFUSED") releaseHold(db, paymentId, reason ?? "refused on chain");
+  else settleHold(db, paymentId);
   audit(db, "support", already ? "refund.already_paid" : `refund.${outcome.toLowerCase()}`, String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx, reason });
   return { sale_id: r.sale_id, payment_id: paymentId, outcome, tx, reason, already };
 }

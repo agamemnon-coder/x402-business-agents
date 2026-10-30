@@ -3,6 +3,7 @@
 // credit is booked anywhere. The sandbox cannot receive *USDZ, so the credit is a simulated deposit of the
 // same amount whose reference is the transaction hash, booked once per on-chain transfer.
 
+import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import { erc20Abi, parseEventLogs, type Address, type Hash } from "viem";
 import type { AirwallexRail, SandboxSim } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
@@ -76,8 +77,12 @@ export async function executeSweep(db: DB, paymentId: string, amountCents: numbe
   db.prepare("INSERT OR IGNORE INTO sweeps (payment_id, amount_cents, outcome, created_at) VALUES (?, ?, 'PLANNED', ?)").run(paymentId, amountCents, new Date().toISOString());
   const row = db.prepare("SELECT amount_cents, outcome FROM sweeps WHERE payment_id = ?").get(paymentId) as { amount_cents: number; outcome: string };
   if (row.amount_cents !== amountCents) throw new Error(`${paymentId} was planned for ${fromCents(row.amount_cents)}; a retry must not change the amount`);
-  // The CFO policy's limit per sweep and the velocity limits, checked before anything is signed.
-  const refusal = capRefusal(db, "treasury", amountCents) ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId);
+  // The CFO policy's limit per sweep, the velocity limits, the mandate's budget and the agents' shared total, reserved
+  // together before anything is signed (a hold). A pull already sent is counted by its ledger row: its retry only checks.
+  const inFlight = row.outcome === "PENDING" || row.outcome === "HELD";
+  const refusal = inFlight
+    ? capRefusal(db, "treasury", amountCents) ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId)
+    : reserveSpend(db, { agent: "treasury", rail: "metal", cents: amountCents, ref: paymentId });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its
     // state, so it is never mistaken for a sweep that did not happen and swept again under a new id.
@@ -95,6 +100,8 @@ export async function executeSweep(db: DB, paymentId: string, amountCents: numbe
   const tx = r.fields.get("transaction")?.[0] ?? null;
   const reason = r.fields.get("reason")?.[0] ?? null;
   db.prepare("UPDATE sweeps SET outcome = ?, tx_hash = COALESCE(?, tx_hash) WHERE payment_id = ?").run(outcome, tx, paymentId);
+  if (outcome === "REFUSED") releaseHold(db, paymentId, reason ?? "refused on chain");
+  else settleHold(db, paymentId);
   audit(db, "treasury", `sweep.${outcome.toLowerCase()}`, paymentId, { amount: fromCents(amountCents), to, tx, reason });
   return { outcome, tx, reason };
 }

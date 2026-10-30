@@ -463,3 +463,19 @@ CREATE TABLE IF NOT EXISTS quarantines (
   created_at TEXT NOT NULL,
   resolved_at TEXT
 );
+
+-- Spend holds (backend review B1): every agent payment reserves its amount here, in one exclusive transaction, before
+-- anything is signed or charged; the reservation counts against the agent's mandate budget, the shared total and the
+-- card's month at once, so concurrent payments can never together pass a limit. SETTLED: the payment is in its ledger
+-- (and counted there); RELEASED: it did not happen. A hold left HELD by a crash keeps counting until it is resolved.
+CREATE TABLE IF NOT EXISTS holds (
+  ref TEXT PRIMARY KEY,
+  agent TEXT NOT NULL,
+  rail TEXT NOT NULL CHECK (rail IN ('metal', 'card')),
+  cents INTEGER NOT NULL CHECK (cents > 0),
+  status TEXT NOT NULL CHECK (status IN ('HELD', 'SETTLED', 'RELEASED')),
+  reason TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS holds_open ON holds (status, agent);
