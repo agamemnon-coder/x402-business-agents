@@ -103,6 +103,10 @@ button.confirm, button.secondary { font: inherit; font-weight: 700; font-size: 1
 button.confirm { background: var(--accent); color: var(--on-accent); border: 0; }
 button.confirm:disabled { opacity: .45; cursor: not-allowed; }
 button.confirm.reject { background: var(--bad); color: #fff; }
+button.confirm.against { background: transparent; color: var(--bad); border: 2px solid var(--bad); }
+/* Against Opus's advice: "Reject instead" is the wide first button; Back and "Approve anyway" sit below it. */
+.sheet-actions:has(.instead) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.sheet-actions .instead { grid-column: 1 / -1; order: -1; }
 .reject-btn {
   font: inherit; font-weight: 650; font-size: 15px; min-height: 44px; border-radius: 12px; cursor: pointer;
   background: transparent; color: var(--bad); border: 1.5px solid var(--bad-soft);

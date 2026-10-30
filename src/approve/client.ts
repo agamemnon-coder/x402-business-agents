@@ -638,7 +638,7 @@ interface SheetContext {
   /** REJECTED: the sheet says so, and the passkey signs the rejection hash instead of the terms hash. */
   decision?: "APPROVED" | "REJECTED";
   /** Sends the signed assertion; 202 means queued for the runner. */
-  send: (credential: Obj) => Promise<{ status: number; data: Obj }>;
+  send: (credential: Obj, decision: "APPROVED" | "REJECTED") => Promise<{ status: number; data: Obj }>;
 }
 
 /**
@@ -663,13 +663,18 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   const from = x.from;
   const cd = el("span", "countdown big");
   cd.dataset.expires = o.expires_at;
-  const confirm = el("button", rejecting ? "confirm reject" : "confirm", [rejecting ? "Reject with Face ID" : "Confirm with Face ID"]) as HTMLButtonElement;
+  // Approving what Opus advises rejecting is the slow, second choice: twice in live runs a CFO who meant to reject
+  // tapped the proposal and approved it. The sheet then says "Approve anyway", arms after 3 s, and offers to reject.
+  const against = !rejecting && o.review?.recommendation === "reject";
+  const confirm = el("button", rejecting ? "confirm reject" : against ? "confirm against" : "confirm",
+    [rejecting ? "Reject with Face ID" : against ? "Approve anyway with Face ID" : "Confirm with Face ID"]) as HTMLButtonElement;
   const backBtn = el("button", "secondary", ["Back"]) as HTMLButtonElement;
+  const instead = against ? el("button", "confirm reject instead", ["Reject instead"]) as HTMLButtonElement : null;
   confirm.type = "button";
   backBtn.type = "button";
   // A double tap on the option must not land on Confirm: it arms after a moment.
   confirm.disabled = true;
-  const arm = setTimeout(() => { confirm.disabled = !x.enrolled || countdown(o.expires_at).over; }, 800);
+  const arm = setTimeout(() => { confirm.disabled = !x.enrolled || countdown(o.expires_at).over; }, against ? 3000 : 800);
   const body = el("div", "sheet-body", [
     txt("p", "eyebrow", rejecting ? "You are rejecting" : "You are approving"),
     el("h2", "sheet-title", [f.title]),
@@ -689,7 +694,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
   ]);
   const status = el("div", "sheet-status");
-  const actions = el("div", "sheet-actions", [backBtn, confirm]);
+  const actions = el("div", "sheet-actions", instead ? [backBtn, instead, confirm] : [backBtn, confirm]);
   sheet.replaceChildren(el("div", "sheet-card", [body, status, actions]));
   sheet.hidden = false;
   sheet.setAttribute("role", "dialog");
@@ -707,6 +712,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     from.focus();
   };
   backBtn.addEventListener("click", close);
+  instead?.addEventListener("click", () => { clearTimeout(arm); openSheet(o, terms, { ...x, decision: "REJECTED" }); });
   confirm.addEventListener("click", async () => {
     confirm.disabled = true;
     backBtn.disabled = true;
@@ -747,7 +753,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
       return;
     }
     status.textContent = "Sending the signature…";
-    const sent = await x.send(serializeAssertion(cred))
+    const sent = await x.send(serializeAssertion(cred), rejecting ? "REJECTED" : "APPROVED")
       .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
     if (sent.status !== 202) {
       status.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}. ${rejecting ? "Nothing was rejected." : "Nothing was approved."}`;
@@ -854,7 +860,7 @@ async function approvePage(): Promise<void> {
     openSheet(o, terms, {
       names: a.names, nots: notList(o, checked.filter((c) => c.check.ok).map((c) => c.p), a.names), enrolled,
       credentials: a.passkey.credentials, from, decision,
-      send: (credential) => api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential }),
+      send: (credential, d) => api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision: d, credential }),
     });
   }
 }

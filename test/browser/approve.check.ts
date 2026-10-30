@@ -217,6 +217,18 @@ check(policyValue(db, "cap.sourcing") === "0.02", "policy in words: applied afte
 await page.goto(`${url}/approve/${rejectId}`);
 await page.waitForSelector("button.reject-btn");
 check((await page.textContent("button.reject-btn")) === "Reject (Opus advises this)", "reject: offered beside the proposal, marked when Opus advises it");
+// A tap on the proposal itself, when Opus advises against it: approving is the slow, second choice, and the
+// sheet offers to reject instead (twice in live runs a CFO who meant to reject approved by tapping the proposal).
+await page.click("button.option");
+await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
+check((await page.textContent("#sheet button.confirm.against")) === "Approve anyway with Face ID", "against advice: Confirm says it approves anyway");
+await page.waitForTimeout(1500);
+check(await page.$eval("#sheet button.confirm.against", (b: Element) => (b as HTMLButtonElement).disabled), "against advice: approving stays disarmed for 3 s, not 0.8 s");
+check((await page.textContent("#sheet button.instead")) === "Reject instead", "against advice: the sheet offers to reject instead");
+await page.click("#sheet button.instead");
+await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
+check((await page.textContent("#sheet .eyebrow")) === "You are rejecting" && (await page.textContent("#sheet button.confirm")) === "Reject with Face ID", "against advice: Reject instead turns the summary into a rejection");
+await page.click("#sheet button.secondary");
 await page.click("button.reject-btn");
 await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
 check((await page.textContent("#sheet .eyebrow")) === "You are rejecting" && (await page.textContent("#sheet button.confirm")) === "Reject with Face ID", "reject: the summary says it rejects");
