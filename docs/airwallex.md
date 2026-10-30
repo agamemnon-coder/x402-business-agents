@@ -122,7 +122,38 @@ A credit is booked only after the sweep is final on Metal, and once per `chainId
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
 | `GET /global_accounts` | Finds the active USD global account that receives deposits. | The USD balance that funds the euro invoice comes in through it. | `src/airwallex/adapter.ts` (`usdGlobalAccountId`) |
-| `POST /global_accounts/create` | Creates a US, USD, LOCAL account once, only if none exists. | Without a USD account there is nowhere to book the earnings. | `src/airwallex/adapter.ts` |
+| `POST /global_accounts/create` | Creates a US, USD, LOCAL account once, only if none exists. For receivables, a GB, GBP, LOCAL account the same way. | Without a USD account there is nowhere to book the earnings; without a GBP one, UK retailers cannot pay in pounds. | `src/airwallex/adapter.ts`; `src/cli/receivables.ts` (GBP account `3964c579…` created 30 Oct) |
+
+### Receivables: retailers pay into the Global Accounts
+
+Retailers pay Northwind's invoices into its EUR account (NL, SEPA) and GBP account (GB). The receivables agent
+(`src/agents/receivables.ts`, `npm run receivables`) works as follows:
+- It reads every settled deposit into those accounts (`GET /deposits`).
+- It matches each one once, by its Airwallex id, to an open invoice, using the invoice number in the reference
+  (written any way).
+- It books the payment as wholesale revenue in its own currency.
+- It escalates a short payment, an overpayment, the wrong currency or a payment with no invoice to the CFO. Nothing here
+  moves money.
+
+Live in the sandbox on 30 October (`docs/runs/2026-10-30-receivables.md`); the retailers' payments are the sandbox's
+`POST /simulation/deposit/create`:
+
+| Deposit | Amount | Result |
+|---|---|---|
+| `50f623ac…` | 1,240.00 EUR | matched to NW-R-101 |
+| `95fcf339…` | 860.50 GBP | matched to NW-R-102 |
+| `5a6323a6…` | 500.00 EUR | short by 10.00 EUR on NW-R-103: escalated |
+| `acf543d2…` | 25.00 EUR | no invoice: held in suspense, escalated |
+
+The dashboard's Books tab shows them, and the landing's Airwallex rail counts them.
+
+### Card spend by merchant
+
+From the card transactions Purser already records (`GET /issuing/transactions`, the webhooks), `src/agents/spendReview.ts`
+gives each agent's card spend per merchant and category, with the declines counted apart. A merchant that charged the
+same amount again about a month later is flagged as a subscription, with how the CFO stops it: lower the card's monthly
+limit, or take the category off the card. Both are tightenings the CFO can make on the phone. It reads only; it changes
+no card. The recorded run has no subscription yet; `test/spend-review.test.ts` shows one being found.
 
 ## Best practices we follow
 
