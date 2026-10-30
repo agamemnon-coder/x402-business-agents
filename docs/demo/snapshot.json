@@ -1,16 +1,16 @@
 {
-  "recorded_at": "2026-10-30T08:33:27.599Z",
-  "run": "Friday run 1, 30 October 2026, with a Dispute desk case afterwards",
+  "recorded_at": "2026-10-30T16:31:17.877Z",
+  "run": "Friday run 1, 30 October 2026, with a Dispute desk case and Global Accounts receipts afterwards",
   "company": "Northwind Outdoor",
   "snapshot": {
-    "generated_at": "2026-10-30T08:33:27.599Z",
+    "generated_at": "2026-10-30T16:31:17.877Z",
     "world": {
       "business": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "customer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25"
     },
     "audit": {
-      "rows": 194,
-      "head": "ee0732445a717f7386b4c6ccd94c0f5459b515e1d3e0869833c10d328fd83618",
+      "rows": 198,
+      "head": "fb0de6b4d97f480337bda8dfc39a767f610ac3ac9f305e880684505b7de7da18",
       "intact": true
     },
     "budgets": {
@@ -214,6 +214,50 @@
       }
     ],
     "feed": [
+      {
+        "seq": 198,
+        "ts": "2026-10-30T16:31:16.877Z",
+        "actor": "treasury",
+        "event": "receivable.escalated",
+        "model": null,
+        "tx": null,
+        "awx_id": "acf543d2-8363-416f-91a3-333d64592751",
+        "text": "Global Account, to the CFO: 25.00 EUR from an unknown payer names no open invoice (\"Payment\"): held in suspense until the CFO identifies it",
+        "tone": "refusal"
+      },
+      {
+        "seq": 197,
+        "ts": "2026-10-30T16:31:16.876Z",
+        "actor": "treasury",
+        "event": "receivable.escalated",
+        "model": null,
+        "tx": null,
+        "awx_id": "5a6323a6-c186-4e82-b390-a4fb3734336b",
+        "text": "Global Account, to the CFO: NW-R-103 from Kustlijn Buitensport BV: paid 500.00 EUR, short by 10.00 EUR; the rest stays open and the customer is asked",
+        "tone": "refusal"
+      },
+      {
+        "seq": 196,
+        "ts": "2026-10-30T16:31:16.872Z",
+        "actor": "treasury",
+        "event": "receivable.matched",
+        "model": null,
+        "tx": null,
+        "awx_id": "95fcf339-2aec-4027-ab51-77f88a06eaad",
+        "text": "Global Account: NW-R-102 from Fellside Outdoor Ltd paid in full, 860.50 GBP",
+        "tone": "ok"
+      },
+      {
+        "seq": 195,
+        "ts": "2026-10-30T16:31:07.342Z",
+        "actor": "treasury",
+        "event": "receivable.matched",
+        "model": null,
+        "tx": null,
+        "awx_id": "50f623ac-a20e-4c74-87fa-ada72f024249",
+        "text": "Global Account: NW-R-101 from Alpenweg Sport AG paid in full, 1240.00 EUR",
+        "tone": "ok"
+      },
       {
         "seq": 194,
         "ts": "2026-10-30T08:32:14.869Z",
@@ -829,50 +873,6 @@
         "awx_id": null,
         "text": "Swept 1.35 USDZ of earnings to the sweep wallet (sweep-20261030-1)",
         "tone": "ok"
-      },
-      {
-        "seq": 138,
-        "ts": "2026-10-30T07:22:10.249Z",
-        "actor": "support",
-        "event": "claude.read",
-        "model": "Sonnet",
-        "tx": null,
-        "awx_id": null,
-        "text": "Claude drafted the reply to the customer (a person sends it)",
-        "tone": "info"
-      },
-      {
-        "seq": 137,
-        "ts": "2026-10-30T07:22:06.278Z",
-        "actor": "support",
-        "event": "refund.already_paid",
-        "model": null,
-        "tx": "0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1",
-        "awx_id": null,
-        "text": "Retry of refund-7: already paid, nothing sent",
-        "tone": "ok"
-      },
-      {
-        "seq": 136,
-        "ts": "2026-10-30T07:22:03.738Z",
-        "actor": "claude",
-        "event": "claude.read",
-        "model": "Opus",
-        "tx": null,
-        "awx_id": null,
-        "text": "Claude reviewed a refund batch proposal: reject (advisory)",
-        "tone": "info"
-      },
-      {
-        "seq": 135,
-        "ts": "2026-10-30T07:21:53.366Z",
-        "actor": "support",
-        "event": "proposal.created",
-        "model": null,
-        "tx": null,
-        "awx_id": null,
-        "text": "The Sales agent proposed P-0003 (refund batch)",
-        "tone": "approval"
       }
     ],
     "cards": [
@@ -1410,10 +1410,10 @@
           "account": "1200",
           "name": "Bank: Airwallex EUR (incl. company cards)",
           "currency": "EUR",
-          "debit": "9994154.51",
+          "debit": "9995919.51",
           "credit": "1928.40",
-          "balance": "9992226.11",
-          "balance_debit": "9992226.11",
+          "balance": "9993991.11",
+          "balance_debit": "9993991.11",
           "balance_credit": ""
         },
         {
@@ -1424,6 +1424,16 @@
           "credit": "418.40",
           "balance": "10020830.26",
           "balance_debit": "10020830.26",
+          "balance_credit": ""
+        },
+        {
+          "account": "1202",
+          "name": "Bank: Airwallex GBP",
+          "currency": "GBP",
+          "debit": "860.50",
+          "credit": "0.00",
+          "balance": "860.50",
+          "balance_debit": "860.50",
           "balance_credit": ""
         },
         {
@@ -1465,6 +1475,16 @@
           "balance": "1.35",
           "balance_debit": "1.35",
           "balance_credit": ""
+        },
+        {
+          "account": "2900",
+          "name": "Unidentified receipts (suspense, until the CFO identifies them)",
+          "currency": "EUR",
+          "debit": "0.00",
+          "credit": "25.00",
+          "balance": "-25.00",
+          "balance_debit": "",
+          "balance_credit": "25.00"
         },
         {
           "account": "3000",
@@ -1517,6 +1537,26 @@
           "balance_credit": ""
         },
         {
+          "account": "4200",
+          "name": "Revenue: wholesale to retailers (paid into Airwallex Global Accounts)",
+          "currency": "EUR",
+          "debit": "0.00",
+          "credit": "1740.00",
+          "balance": "-1740.00",
+          "balance_debit": "",
+          "balance_credit": "1740.00"
+        },
+        {
+          "account": "4200",
+          "name": "Revenue: wholesale to retailers (paid into Airwallex Global Accounts)",
+          "currency": "GBP",
+          "debit": "0.00",
+          "credit": "860.50",
+          "balance": "-860.50",
+          "balance_debit": "",
+          "balance_credit": "860.50"
+        },
+        {
           "account": "5000",
           "name": "Purchased stock data (warehouse API)",
           "currency": "USDZ",
@@ -1563,10 +1603,10 @@
           "name": "Bank: Airwallex EUR (incl. company cards)",
           "currency": "EUR",
           "opening": "9993784.51",
-          "in": "370.00",
+          "in": "2135.00",
           "out": "1928.40",
-          "moved": "-1558.40",
-          "closing": "9992226.11"
+          "moved": "206.60",
+          "closing": "9993991.11"
         },
         {
           "account": "1201",
@@ -1577,6 +1617,16 @@
           "out": "418.40",
           "moved": "-417.05",
           "closing": "10020830.26"
+        },
+        {
+          "account": "1202",
+          "name": "Bank: Airwallex GBP",
+          "currency": "GBP",
+          "opening": "0.00",
+          "in": "860.50",
+          "out": "0.00",
+          "moved": "860.50",
+          "closing": "860.50"
         },
         {
           "account": "1210",
@@ -1610,6 +1660,94 @@
         }
       ],
       "postings": [
+        {
+          "entry": "J-00118",
+          "date": "2026-10-30T16:31:06+0000",
+          "account": "2900",
+          "account_name": "Unidentified receipts (suspense, until the CFO identifies them)",
+          "debit": "",
+          "credit": "25.00",
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "description": "Payment with no matching invoice"
+        },
+        {
+          "entry": "J-00118",
+          "date": "2026-10-30T16:31:06+0000",
+          "account": "1200",
+          "account_name": "Bank: Airwallex EUR (incl. company cards)",
+          "debit": "25.00",
+          "credit": "",
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "description": "Payment with no matching invoice"
+        },
+        {
+          "entry": "J-00117",
+          "date": "2026-10-30T16:31:05+0000",
+          "account": "4200",
+          "account_name": "Revenue: wholesale to retailers (paid into Airwallex Global Accounts)",
+          "debit": "",
+          "credit": "860.50",
+          "currency": "GBP",
+          "cost_centre": "CC300",
+          "description": "Payment of invoice NW-R-102"
+        },
+        {
+          "entry": "J-00117",
+          "date": "2026-10-30T16:31:05+0000",
+          "account": "1202",
+          "account_name": "Bank: Airwallex GBP",
+          "debit": "860.50",
+          "credit": "",
+          "currency": "GBP",
+          "cost_centre": "CC300",
+          "description": "Payment of invoice NW-R-102"
+        },
+        {
+          "entry": "J-00116",
+          "date": "2026-10-30T16:31:05+0000",
+          "account": "4200",
+          "account_name": "Revenue: wholesale to retailers (paid into Airwallex Global Accounts)",
+          "debit": "",
+          "credit": "500.00",
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "description": "Payment of invoice NW-R-103"
+        },
+        {
+          "entry": "J-00116",
+          "date": "2026-10-30T16:31:05+0000",
+          "account": "1200",
+          "account_name": "Bank: Airwallex EUR (incl. company cards)",
+          "debit": "500.00",
+          "credit": "",
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "description": "Payment of invoice NW-R-103"
+        },
+        {
+          "entry": "J-00115",
+          "date": "2026-10-30T16:31:04+0000",
+          "account": "4200",
+          "account_name": "Revenue: wholesale to retailers (paid into Airwallex Global Accounts)",
+          "debit": "",
+          "credit": "1240.00",
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "description": "Payment of invoice NW-R-101"
+        },
+        {
+          "entry": "J-00115",
+          "date": "2026-10-30T16:31:04+0000",
+          "account": "1200",
+          "account_name": "Bank: Airwallex EUR (incl. company cards)",
+          "debit": "1240.00",
+          "credit": "",
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "description": "Payment of invoice NW-R-101"
+        },
         {
           "entry": "J-00114",
           "date": "2026-10-30T07:34:36.807Z",
@@ -1741,97 +1879,9 @@
           "currency": "USD",
           "cost_centre": "CC300",
           "description": "Convert USD to EUR"
-        },
-        {
-          "entry": "J-00108",
-          "date": "2026-10-30T07:22:20.106Z",
-          "account": "1590",
-          "account_name": "Money in transit (between own accounts)",
-          "debit": "",
-          "credit": "1.35",
-          "currency": "USD",
-          "cost_centre": "CC300",
-          "description": "Sweep credited at Airwallex (1 *USDZ = 1 USD)"
-        },
-        {
-          "entry": "J-00108",
-          "date": "2026-10-30T07:22:20.106Z",
-          "account": "1201",
-          "account_name": "Bank: Airwallex USD",
-          "debit": "1.35",
-          "credit": "",
-          "currency": "USD",
-          "cost_centre": "CC300",
-          "description": "Sweep credited at Airwallex (1 *USDZ = 1 USD)"
-        },
-        {
-          "entry": "J-00107",
-          "date": "2026-10-30T07:22:13.665Z",
-          "account": "1210",
-          "account_name": "Bank: Metal account (*USDZ, testnet)",
-          "debit": "",
-          "credit": "1.35",
-          "currency": "USDZ",
-          "cost_centre": "CC300",
-          "description": "Sweep earnings from Metal to Airwallex"
-        },
-        {
-          "entry": "J-00107",
-          "date": "2026-10-30T07:22:13.665Z",
-          "account": "1590",
-          "account_name": "Money in transit (between own accounts)",
-          "debit": "1.35",
-          "credit": "",
-          "currency": "USDZ",
-          "cost_centre": "CC300",
-          "description": "Sweep earnings from Metal to Airwallex"
-        },
-        {
-          "entry": "J-00106",
-          "date": "2026-10-30T07:21:53.363Z",
-          "account": "1210",
-          "account_name": "Bank: Metal account (*USDZ, testnet)",
-          "debit": "",
-          "credit": "0.05",
-          "currency": "USDZ",
-          "cost_centre": "CC200",
-          "description": "Refund of query 13"
-        },
-        {
-          "entry": "J-00106",
-          "date": "2026-10-30T07:21:53.363Z",
-          "account": "4100",
-          "account_name": "Refunds to customers",
-          "debit": "0.05",
-          "credit": "",
-          "currency": "USDZ",
-          "cost_centre": "CC200",
-          "description": "Refund of query 13"
-        },
-        {
-          "entry": "J-00105",
-          "date": "2026-10-30T07:21:47.729Z",
-          "account": "1210",
-          "account_name": "Bank: Metal account (*USDZ, testnet)",
-          "debit": "",
-          "credit": "0.05",
-          "currency": "USDZ",
-          "cost_centre": "CC200",
-          "description": "Refund of query 10"
-        },
-        {
-          "entry": "J-00105",
-          "date": "2026-10-30T07:21:47.729Z",
-          "account": "4100",
-          "account_name": "Refunds to customers",
-          "debit": "0.05",
-          "credit": "",
-          "currency": "USDZ",
-          "cost_centre": "CC200",
-          "description": "Refund of query 10"
         }
       ],
-      "total_postings": 228
+      "total_postings": 236
     },
     "disputes": [
       {
@@ -2014,10 +2064,97 @@
         ]
       }
     ],
+    "receivables": {
+      "open": [
+        {
+          "invoice_no": "NW-R-103",
+          "customer": "Kustlijn Buitensport BV",
+          "currency": "EUR",
+          "amount": "510.00",
+          "paid": "500.00",
+          "status": "PARTIAL"
+        }
+      ],
+      "receipts": [
+        {
+          "deposit_id": "acf543d2-8363-416f-91a3-333d64592751",
+          "currency": "EUR",
+          "reference": "Payment",
+          "invoice_no": null,
+          "outcome": "UNMATCHED",
+          "detail": "25.00 EUR from an unknown payer names no open invoice (\"Payment\"): held in suspense until the CFO identifies it",
+          "received_at": "2026-10-30T16:31:06+0000",
+          "amount": "25.00"
+        },
+        {
+          "deposit_id": "95fcf339-2aec-4027-ab51-77f88a06eaad",
+          "currency": "GBP",
+          "reference": "NW-R-102",
+          "invoice_no": "NW-R-102",
+          "outcome": "MATCHED",
+          "detail": "NW-R-102 from Fellside Outdoor Ltd paid in full, 860.50 GBP",
+          "received_at": "2026-10-30T16:31:05+0000",
+          "amount": "860.50"
+        },
+        {
+          "deposit_id": "5a6323a6-c186-4e82-b390-a4fb3734336b",
+          "currency": "EUR",
+          "reference": "nw-r-103",
+          "invoice_no": "NW-R-103",
+          "outcome": "SHORT",
+          "detail": "NW-R-103 from Kustlijn Buitensport BV: paid 500.00 EUR, short by 10.00 EUR; the rest stays open and the customer is asked",
+          "received_at": "2026-10-30T16:31:05+0000",
+          "amount": "500.00"
+        },
+        {
+          "deposit_id": "50f623ac-a20e-4c74-87fa-ada72f024249",
+          "currency": "EUR",
+          "reference": "Invoice NW-R-101 Alpenweg",
+          "invoice_no": "NW-R-101",
+          "outcome": "MATCHED",
+          "detail": "NW-R-101 from Alpenweg Sport AG paid in full, 1240.00 EUR",
+          "received_at": "2026-10-30T16:31:04+0000",
+          "amount": "1240.00"
+        }
+      ],
+      "escalated": 2
+    },
+    "card_spend": {
+      "rows": [
+        {
+          "agent": "Operations agent",
+          "merchant": "Packwise",
+          "category": "Software",
+          "currency": "EUR",
+          "charges": 2,
+          "total": "64.99",
+          "declined": 1,
+          "subscription": false
+        },
+        {
+          "agent": "Sales agent",
+          "merchant": "Packwise",
+          "category": "Software",
+          "currency": "EUR",
+          "charges": 0,
+          "total": "0.00",
+          "declined": 1,
+          "subscription": false
+        }
+      ],
+      "suggestions": []
+    },
     "health": {
-      "status": "ok",
-      "at": "2026-10-30T08:33:27.599Z",
-      "alerts": [],
+      "status": "alert",
+      "at": "2026-10-30T16:31:17.877Z",
+      "alerts": [
+        {
+          "code": "reconciliation_stale",
+          "severity": "warning",
+          "since": "2026-10-30T07:38:18.466Z",
+          "words": "The reconciliation has not run for over three hours."
+        }
+      ],
       "metrics": {
         "approvals_waiting": 0,
         "actions_executing": 0,
@@ -2026,11 +2163,11 @@
         "agents_stopped": 0,
         "emergency_stop": 0,
         "reconcile_differences": 0,
-        "reconcile_age_seconds": 3309,
+        "reconcile_age_seconds": 31979,
         "principals_revoked": 0,
         "policy_version": 0,
-        "audit_rows": 194,
-        "alerts": 0
+        "audit_rows": 198,
+        "alerts": 1
       }
     },
     "rails": {
@@ -2074,6 +2211,15 @@
           "detail": "EUR 1850.00 to the allowlisted supplier, PAID, fee EUR 13.41; the approval hash is in the transfer's metadata",
           "proof": {
             "label": "Airwallex id 4d508b0b-e…feb4",
+            "href": null
+          },
+          "simulated": true
+        },
+        {
+          "what": "Retailers pay into Global Accounts",
+          "detail": "4 payments in EUR and GBP: 2 matched to their invoice, 2 escalated to the CFO (short, or no invoice)",
+          "proof": {
+            "label": "Airwallex id 50f623ac-a…4249",
             "href": null
           },
           "simulated": true

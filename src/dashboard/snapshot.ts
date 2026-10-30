@@ -7,6 +7,8 @@ import { agentName } from "../config/brand.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
+import { receivablesView, type ReceivablesView } from "../agents/receivables.js";
+import { spendReview, type SpendReview } from "../agents/spendReview.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { callCostMicros } from "../claude/pricing.js";
 import { formatUnits } from "viem";
@@ -207,6 +209,10 @@ export interface Snapshot {
   books: BooksView | null;
   /** The Dispute desk: each decided case, newest first (at most ten). */
   disputes: DisputeView[];
+  /** Retailers' payments into the Airwallex Global Accounts, matched to invoices (src/agents/receivables.ts). */
+  receivables: ReceivablesView;
+  /** Card spend per merchant and category, with subscriptions flagged (src/agents/spendReview.ts). */
+  card_spend: SpendReview;
   /** The passkey every phone approval needs (first 8 characters of its id), and whether one can be enrolled now. */
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
   /** Monitoring (B7): the alarms standing now and the numbers behind them; the relay's /health reads this. */
@@ -629,6 +635,8 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "credit.locked": return out(`Sweep final on chain (block ${str(p.block)} <= finalized ${str(p.finalized_block)}); credit locked once`, "ok");
     case "credit.deposited":
     case "credit.adopted": return out(`Booked in Airwallex: ${str(p.currency)} ${str(p.amount)} deposit, reference = the chain tx`, "ok", { awx_id: str(p.deposit_id) || null, tx: TX.test(str(p.reference)) ? str(p.reference) : tx });
+    case "receivable.matched": return out(`Global Account: ${str(p.detail)}`, "ok", { awx_id: s || null });
+    case "receivable.escalated": return out(`Global Account, to the CFO: ${str(p.detail)}`, "refusal", { awx_id: s || null });
     case "treasury.seeded": return out(`Airwallex sandbox seeded with ${str(p.currency)} ${str(p.amount)}`);
     case "invoice.escalated": return out(`Invoice ${s} escalated to a person: ${str(p.reason)}`, "refusal");
     case "document.injection_flagged": {
@@ -952,6 +960,8 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     agents: agentProfiles(db, now),
     books: oldLedgerSafe(() => booksView(db)),
     disputes: disputeViews(db),
+    receivables: receivablesView(db),
+    card_spend: spendReview(db),
     health: health(db, now),
     rails: railsView(db),
   };

@@ -62,6 +62,15 @@ export function railsView(db: DB): RailsView {
       airwallex.push({ what: "SWIFT payout of an invoice", detail: `${String(t.currency)} ${t.amount} to the allowlisted supplier, ${String(t.status)}${t.fee_actual ? `, fee ${t.fee_actual}` : ""}; the approval hash is in the transfer's metadata`, proof: awxId(t.transfer_id), simulated: t.status === "PAID" });
     }
   }
+  // Global Accounts: retailers' payments, matched to their invoices by the receivables agent.
+  if (has(db, "receipts")) {
+    const r = all(db, "SELECT deposit_id, currency, outcome FROM receipts ORDER BY received_at");
+    if (r.length) {
+      const matched = r.filter((x) => x.outcome === "MATCHED").length;
+      const cur = [...new Set(r.map((x) => String(x.currency)))].join(" and ");
+      airwallex.push({ what: "Retailers pay into Global Accounts", detail: `${r.length} payments in ${cur}: ${matched} matched to their invoice, ${r.length - matched} escalated to the CFO (short, or no invoice)`, proof: awxId(r[0]!.deposit_id), simulated: true });
+    }
+  }
   for (const d of events(db, "credit.deposited")) {
     airwallex.push({ what: "Metal earnings booked at Airwallex", detail: `USD ${String(d.p.amount)} booked once as a simulated sandbox deposit that names the sweep's testnet transaction (no test USD reached Airwallex)`, proof: awxId(d.p.deposit_id), simulated: true });
   }

@@ -9,7 +9,7 @@ What could not be proven was removed or softened (the "Changed" column, and the 
 deck in the repo.
 
 Sources:
-- **Recording:** the recorded run (Friday run 1, 30 October, with the Dispute desk case afterwards): `docs/demo/story.json`, `docs/demo/snapshot.json` and `docs/demo/metal.json`, recorded by `npm run demo:record`.
+- **Recording:** the recorded run (Friday run 1, 30 October, with the Dispute desk case and the Global Accounts receipts afterwards): `docs/demo/story.json`, `docs/demo/snapshot.json` and `docs/demo/metal.json`, recorded by `npm run demo:record`.
 - **Red team:** `docs/redteam/report.json`.
 - **Lab:** `docs/lab/results.json`.
 - **Run logs:** `docs/runs/`.
@@ -30,7 +30,7 @@ Sources:
 | Euro bill | €1,850.00 by SWIFT; USD 418.40 → EUR 370.00; fee €13.41 (ceiling €20.00) | story `swift`; conversion and transfer re-read from Airwallex | PAID is now said to be set by the sandbox's simulation. |
 | Metal earnings at Airwallex | 1.35, after finality (block 9401051, final 9401068) | metal.json `finality`; deposit `56366c9d…` SETTLED | Now said to be a simulated sandbox deposit that names the testnet transaction. |
 | Dispute desk | 12 of 12 orders signed and inside the bound mandate; not refunded | metal.json `dispute` | Now says that orders 7, 10 and 13 had already been refunded for wrong data, and that Opus's recorded explanation overlooks this. |
-| Audit log | 194 rows, hash chain intact | story `audit` | |
+| Audit log | 198 rows, hash chain intact (194 for the run and the dispute, 4 for the receivables afterwards) | story `audit` | |
 | Claude cost | $0.093 per €1,000 paid | snapshot `claude.per_1000_eur_usd_micros` | "Per Claude decision" is now "Per Claude call". |
 | Euros at Airwallex | 9,992,226.11 (sandbox test money); reserve €25,000 | snapshot `treasury.airwallex.eur` | Was "Euros on hand €25,000"; the demo plan's set-aside amount is now explained. |
 
@@ -67,7 +67,7 @@ displays was not checked.
 | Pay-per-call clearing | Separate run, 29 October (`docs/runs/2026-10-29-clearing.md`) | /metal card and comparison table, film, metal-award.md |
 | Receive policy and quarantine | Separate world, 30 October (`docs/metal-award.md` section 5) | /metal card, /live scene source, compliance.md |
 | Ask Purser single-use card | On a backup of Friday run 2 (`docs/runs/2026-10-30-single-use.md`) | /live scene source, film footer |
-| Receivables on Global Accounts | On a copy of the recorded ledger (`docs/runs/2026-10-30-receivables.md`) | Run log, docs/airwallex.md |
+| Receivables on Global Accounts | Live in the sandbox, on the recorded ledger after the run (`docs/runs/2026-10-30-receivables.md`): 2 matched, 1 short by 10.00 EUR, 1 with no invoice | Dashboard Books tab, the Airwallex rail on the landing |
 
 ## The video
 

@@ -1055,6 +1055,14 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         b.cash.map(function (c) { return [c.account + " " + words(c.name), cur(c.currency), c.opening != null ? amt(c.opening, c.currency) : "", c.in != null ? amt(c.in, c.currency) : "", c.out != null ? amt(c.out, c.currency) : amt(c.moved, c.currency), c.closing != null ? amt(c.closing, c.currency) : ""]; }))),
       panel("Spend per cost centre", "per currency: euros on the cards and Airwallex, test USD on Metal", table("wide", [["Cost centre", 0], ["Currency", 0], ["Spent", 1]],
         b.spend.map(function (x) { return [x.cost_centre + " " + x.name, cur(x.currency), amt(x.amount, x.currency)]; }))),
+      (d.card_spend && d.card_spend.rows.length ? panel("Card spend by merchant", "each agent's Airwallex card: what it paid where, declines apart" + (d.card_spend.suggestions.length ? "" : " · no subscriptions seen yet (the same amount again a month later)"),
+        el("div", "", [table("wide", [["Card", 0], ["Merchant", 0], ["Category", 0], ["Paid", 1], ["Charges", 1], ["Declined", 1]], d.card_spend.rows.map(function (r) {
+          return [r.agent, r.merchant + (r.subscription ? " · subscription" : ""), r.category, amt(r.total, r.currency), String(r.charges), String(r.declined)];
+        }))].concat(d.card_spend.suggestions.map(function (s) { return txt("p", "hint", s); })))) : null),
+      (d.receivables && d.receivables.receipts.length ? panel("Receivables: retailers' payments into the Global Accounts", "each payment matched to its invoice by reference; anything off goes to you · the retailers and their payments are sandbox simulations",
+        table("wide", [["Paid in", 0], ["Reference", 0], ["Amount", 1], ["Result", 0]], d.receivables.receipts.map(function (r) {
+          return [day(r.received_at), r.reference || "—", amt(r.amount, r.currency), ({ MATCHED: "✓ ", SHORT: "! ", OVER: "! ", WRONG_CURRENCY: "! ", UNMATCHED: "? " })[r.outcome] + r.detail];
+        }))) : null),
       panel("Latest postings", b.postings.length + " of " + b.total_postings + " · the full journal exports as CSV on the runner", table("wide", [["Date", 0], ["Account", 0], ["What", 0], ["Debit", 1], ["Credit", 1]],
         b.postings.map(function (p) { return [day(p.date), p.account + " " + words(p.account_name), words(p.description), amt(p.debit, p.currency), amt(p.credit, p.currency)]; }))),
     ]);
