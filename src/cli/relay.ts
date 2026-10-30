@@ -22,6 +22,8 @@ import { RelayRunner } from "../relay/runner.js";
 import { Tools } from "../claude/tools.js";
 import { draftPolicyFromText, draftSummary } from "../policy/fromText.js";
 import { askPurser } from "../agents/askPurser.js";
+import { pollQuarantine } from "../policy/quarantine.js";
+import { LiveReceivePolicy } from "../metal/receivePolicy.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
 import { handleAirwallexHook } from "../policy/cardHooks.js";
@@ -109,9 +111,27 @@ async function reconcileTick(): Promise<void> {
   }
 }
 
+// B1: payments to the sweep wallet held in quarantine by Metal's receive policy, once it is set up; every 30 s.
+let quarantineAt = 0;
+let quarantineError = "";
+async function quarantineTick(): Promise<void> {
+  if (Date.now() - quarantineAt < 30_000 || !db.prepare("SELECT 1 FROM audit_log WHERE event = 'receive_policy.set'").get()) return;
+  quarantineAt = Date.now();
+  try {
+    const held = await pollQuarantine(db, new LiveReceivePolicy());
+    if (held) console.log(`${stamp()} metal    ${held} payment(s) from an unknown sender held in quarantine; return or accept with Face ID`);
+    quarantineError = "";
+  } catch (e) {
+    const message = redactSecrets((e as Error).message);
+    if (message !== quarantineError) console.error(`${stamp()} metal    ${message}`);
+    quarantineError = message;
+  }
+}
+
 let lastError = "";
 while (!stopping) {
   await cardsTick();
+  await quarantineTick();
   await reconcileTick();
   try {
     await runner.syncOnce();

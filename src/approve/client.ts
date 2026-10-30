@@ -283,6 +283,20 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "quarantine_release") {
+    const back = str(t.action) === "return";
+    return {
+      approvable: true, title: back ? "Return a held payment" : "Accept a held payment",
+      sentence: back
+        ? `Send the ${str(t.amount)} test USD that Metal held in quarantine back to its sender ${str(t.originator)}. Nothing else moves.`
+        : `Accept the ${str(t.amount)} test USD from ${str(t.originator)}, held by Metal in quarantine, into the sweep wallet. Only accept it if you know who sent it and why.`,
+      amount: `${str(t.amount)} test USD`, margin: null, recipient: back ? str(t.originator) : "the sweep wallet",
+      rows: [["From", str(t.originator)], ["Amount", `${str(t.amount)} test USD`], ["Goes to", back ? "its sender" : "the sweep wallet"], ["Held in", `transaction ${str(t.tx_hash).slice(0, 10)}…`]],
+      short: back ? "returning it" : "accepting it", warnings: back ? [] : ["Money from someone you do not know can be a mistake or an attempt to mix funds with yours."],
+      amountLabel: back ? "Returns" : "Accepts", label: "Held payment", big: str(t.amount), unit: "test USD",
+    };
+  }
+
   if (kind === "task_card") {
     const mccs = Array.isArray(t.merchant_categories) ? t.merchant_categories.map(str).join(", ") : "";
     const where = mccs === "4511" ? "an airline" : mccs === "7011" ? "a hotel" : mccs === "4112" ? "a railway" : "a merchant";

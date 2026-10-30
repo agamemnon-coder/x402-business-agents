@@ -442,3 +442,23 @@ CREATE TABLE IF NOT EXISTS task_cards (
   status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'USED')),
   created_at TEXT NOT NULL
 );
+
+-- B1: payments to the sweep wallet from anyone but the business account, held by Metal's ReceivePolicy in quarantine.
+-- Kept with Metal's evidence reference (chain id, transaction, log index) and the full receipt needed to release it.
+CREATE TABLE IF NOT EXISTS quarantines (
+  receipt_id TEXT PRIMARY KEY,
+  chain_id INTEGER NOT NULL,
+  tx_hash TEXT NOT NULL,
+  log_index INTEGER NOT NULL,
+  block INTEGER NOT NULL,
+  token TEXT NOT NULL,
+  originator TEXT NOT NULL,
+  receiver TEXT NOT NULL,
+  amount_units TEXT NOT NULL,
+  reason INTEGER NOT NULL,
+  receipt_json TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('OPEN', 'RETURNED', 'ACCEPTED')),
+  resolved_tx TEXT,
+  created_at TEXT NOT NULL,
+  resolved_at TEXT
+);

@@ -757,6 +757,17 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       el("div", "", ["Sales, less supplier and refunds", txt("b", "", tusd(m.net))]),
       el("div", "", ["Moved to Airwallex once final on chain", txt("b", "", tusd(m.swept))]),
     ]));
+    // B1: payments to the sweep wallet from unknown senders, held by Metal's receive policy until the CFO decides.
+    var held = (m.quarantine || []).filter(function (q) { return q.status === "OPEN"; });
+    if ((m.quarantine || []).length) {
+      nodes.push(el("div", "sub2", [icon("shield-alert"), held.length ? "Held by Metal: from senders the sweep wallet does not accept" : "Payments Metal held from unknown senders"]));
+      nodes.push(el("div", "rows num", (m.quarantine || []).slice(0, 4).map(function (q) {
+        var state = q.status === "OPEN" ? "waits for you" : q.status === "RETURNED" ? "returned" : "accepted";
+        var from = q.from.slice(0, 6) + "…" + q.from.slice(-4) + " · " + state, l = null;
+        if (TX.test(q.tx)) { l = txt("a", "mono", from + " ↗"); l.href = EXPLORER + q.tx; l.target = "_blank"; l.rel = "noopener noreferrer"; }
+        return el("div", "", [l || from, txt("b", "", q.amount + " test USD")]);
+      })));
+    }
     set("treasury", nodes);
   }
 

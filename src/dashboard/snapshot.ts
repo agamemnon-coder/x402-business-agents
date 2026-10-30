@@ -8,6 +8,8 @@ import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { callCostMicros } from "../claude/pricing.js";
+import { formatUnits } from "viem";
+import { quarantineReason } from "../policy/quarantine.js";
 import { cardLimits, frozen, policyValue } from "../policy/rules.js";
 import { wantCardStatus } from "../policy/cards.js";
 import { stopReason } from "../policy/velocity.js";
@@ -139,7 +141,11 @@ export interface Snapshot {
       eur: { available: string; floor: string; committed: string; free: string };
       usd: { available: string; floor: string; headroom: string };
     };
-    metal: { sales: string; upstream: string; refunds: string; net: string; swept: string; sell_price: string; upstream_price: string };
+    metal: {
+      sales: string; upstream: string; refunds: string; net: string; swept: string; sell_price: string; upstream_price: string;
+      /** B1: payments to the sweep wallet from unknown senders, held by Metal's receive policy (newest first). */
+      quarantine: { receipt_id: string; from: string; amount: string; reason: string; status: string; tx: string }[];
+    };
   };
   pending: Pending[];
   decisions: Decision[];
@@ -187,6 +193,7 @@ const TX = /^0x[0-9a-fA-F]{64}$/;
 const str = (v: unknown): string => (v === null || v === undefined ? "" : String(v));
 const signed = (cents: number) => (cents < 0 ? `-${fromCents(-cents)}` : fromCents(cents));
 const short = (a: string) => (a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
+const hasTable = (db: DB, name: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name);
 const sum = (db: DB, sql: string) => (db.prepare(sql).get() as { n: number | null }).n ?? 0;
 
 export const PAYEE_NAMES: Record<string, string> = {
@@ -228,6 +235,7 @@ const KIND_TITLES: Record<string, string> = {
   payee_change: "Supplier bank details",
   agent_onboard: "Company card for an outside agent",
   task_card: "Task card",
+  quarantine_release: "Held payment",
   dev_test: "Dev test (moves no money)",
 };
 export const kindTitle = (kind: string) => KIND_TITLES[kind] ?? kind.replace(/_/g, " ");
@@ -260,6 +268,11 @@ export function summarize(kind: string, termsJson: string): string {
   if (kind === "payee_change") {
     const v = (t.verification ?? {}) as P;
     return `Pay ${str(t.vendor)} to the account ending ${str(t.new_iban).slice(-4)} instead of …${str(t.old_iban_last4)}; verified by ${str(v.by)}`;
+  }
+  if (kind === "quarantine_release") {
+    return t.action === "return"
+      ? `Return ${str(t.amount)} test USD held in quarantine to its sender ${str(t.originator)}`
+      : `Accept ${str(t.amount)} test USD from ${str(t.originator)}, held in quarantine, into the sweep wallet`;
   }
   if (kind === "task_card") {
     const mccs = Array.isArray(t.merchant_categories) ? (t.merchant_categories as unknown[]).map(str).join(", ") : "";
@@ -381,6 +394,9 @@ function treasury(db: DB): Snapshot["treasury"] {
     metal: {
       sales: fromCents(sales), upstream: fromCents(upstream), refunds: fromCents(refunds), net: signed(sales - upstream - refunds),
       swept: fromCents(swept), sell_price: setting(db, "sell_price") ?? "0.05", upstream_price: setting(db, "upstream_price") ?? "0.02",
+      quarantine: hasTable(db, "quarantines") ? (db.prepare("SELECT receipt_id, originator, amount_units, reason, status, tx_hash FROM quarantines ORDER BY created_at DESC, rowid DESC LIMIT 10").all() as
+        { receipt_id: string; originator: string; amount_units: string; reason: number; status: string; tx_hash: string }[])
+        .map((q) => ({ receipt_id: q.receipt_id, from: q.originator, amount: formatUnits(BigInt(q.amount_units), 18), reason: quarantineReason(q.reason), status: q.status, tx: q.tx_hash })) : [],
     },
   };
 }
@@ -597,6 +613,10 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "payee.change_requested": return out(`${str(p.vendor)}'s bank details: a change to a ${str(p.to_country)} account ending ${str(p.to_last4)} was requested (${s}); nothing changes until a person verifies it with the supplier and the CFO approves`, "approval");
     case "payee.change_verified": return out(`${str(p.by)} verified ${s} with ${str(p.vendor)}: ${str(p.how)}`, "approval");
     case "payee.changed": return out(`${str(p.vendor)} is now paid to the account ending ${str(p.to_last4)} (was …${str(p.from_last4)}), after verification and approval (${str(p.proposal_id)})`, "ok");
+    case "receive_policy.set": return out("The sweep wallet now accepts test USD only from the business account; anything else is held by Metal in quarantine", "ok", { tx: str(p.txs).split(",")[0] || null });
+    case "quarantine.held": return out(`Metal held ${str(p.amount)} test USD sent to the sweep wallet by an unknown sender ${short(str(p.from))} (${str(p.reason)}); it waits for you`, "refusal", { tx: str(p.tx) || null });
+    case "quarantine.returned": return out(`The held ${str(p.amount)} test USD went back to its sender ${short(str(p.to))} (${str(p.proposal_id)})`, "approval", { tx: str(p.tx) || null });
+    case "quarantine.accepted": return out(`The held ${str(p.amount)} test USD was accepted into the sweep wallet (${str(p.proposal_id)})`, "approval", { tx: str(p.tx) || null });
     case "card.issued":
       if (str(p.agent).startsWith("task:")) {
         return out(`Airwallex issued a single-use ${str(p.task)} card •••• ${str(p.last4)} for task ${str(p.agent).slice(5)}: at most ${str(p.limits).split(" / ")[0]} EUR, once, until ${str(p.valid_until).slice(0, 10)}`, "ok");
