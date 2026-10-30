@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-30T10:23:32.602Z",
+  "at": "2026-10-30T16:19:33.199Z",
   "results": [
     {
       "id": "normal-purchase",
@@ -10,7 +10,7 @@
       "passed": true,
       "evidence": [
         "card transaction tx_9",
-        "audit #14 card.charge_approved"
+        "audit #16 card.charge_approved"
       ]
     },
     {
@@ -75,7 +75,7 @@
       "title": "An agent pays too often: stopped by itself",
       "expected": "Past its speed limit the agent is stopped automatically; only the CFO's Face ID lifts the stop.",
       "offline": "Metal is a stand-in; live: docs/runs/2026-10-29-rehearsal-6.md",
-      "happened": "30 made, the rest refused; operations agent stopped. Stopped by: velocity limits stop the agent on the first payment over the limit; only Face ID lifts it.",
+      "happened": "30 made, the rest refused; operations agent stopped. Stopped by: the speed limit stops the agent on the first payment over it; only Face ID lifts it. The Operations agent's limit is 30 payments a minute and 4.00 test USD an hour, set above the recorded run's busiest minute (18 payments).",
       "passed": true,
       "evidence": [
         "red team attack velocity-burst"
@@ -90,9 +90,9 @@
       "passed": true,
       "evidence": [
         "P-0002",
-        "audit #18 card.frozen",
-        "audit #19 card.frozen",
-        "audit #20 card.frozen"
+        "audit #20 card.frozen",
+        "audit #21 card.frozen",
+        "audit #22 card.frozen"
       ]
     },
     {
@@ -110,13 +110,13 @@
     {
       "id": "reconciliation-difference",
       "title": "The bank and the ledger disagree",
-      "expected": "A card charge at Airwallex that the ledger never saw shows up as a difference in the daily reconciliation.",
+      "expected": "A card charge at Airwallex that the ledger never saw shows up as a difference in the hourly reconciliation.",
       "offline": "Airwallex is a stand-in; live: npm run reconcile",
       "happened": "2 checked, 1 difference(s): card tx_unseen: ledger not recorded, Airwallex approved EUR 12.34 at Unknown merchant on the sourcing card",
       "passed": true,
       "evidence": [
         "card transaction tx_unseen",
-        "audit #16 reconcile.done"
+        "audit #18 reconcile.done"
       ]
     },
     {
@@ -128,7 +128,7 @@
       "passed": true,
       "evidence": [
         "task:T-0001",
-        "audit #19 card.closed"
+        "audit #21 card.closed"
       ]
     },
     {
@@ -139,7 +139,7 @@
       "happened": "credited to the wallet: no; held and recorded: 1; options for the CFO: 2; bridged: 0",
       "passed": true,
       "evidence": [
-        "audit #14 quarantine.held"
+        "audit #15 quarantine.held"
       ]
     },
     {
@@ -151,7 +151,7 @@
       "passed": true,
       "evidence": [
         "DD-d6d0560a",
-        "audit #15 dispute.decided"
+        "audit #16 dispute.decided"
       ]
     },
     {
@@ -163,7 +163,7 @@
       "passed": true,
       "evidence": [
         "DD-c2c1b259",
-        "audit #16 dispute.decided"
+        "audit #17 dispute.decided"
       ]
     },
     {
@@ -175,7 +175,7 @@
       "passed": true,
       "evidence": [
         "DD-70d6f4c7",
-        "audit #15 dispute.decided"
+        "audit #16 dispute.decided"
       ]
     },
     {
@@ -187,7 +187,7 @@
       "passed": true,
       "evidence": [
         "DD-860cc863",
-        "audit #16 dispute.decided"
+        "audit #17 dispute.decided"
       ]
     },
     {
@@ -199,7 +199,7 @@
       "passed": true,
       "evidence": [
         "DD-009760b2",
-        "audit #16 dispute.decided"
+        "audit #17 dispute.decided"
       ]
     },
     {
@@ -211,7 +211,7 @@
       "passed": true,
       "evidence": [
         "DD-b5551032",
-        "audit #16 dispute.decided"
+        "audit #17 dispute.decided"
       ]
     }
   ]
