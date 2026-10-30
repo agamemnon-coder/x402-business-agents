@@ -430,7 +430,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <div class="item"><span class="ic" data-icon="scan-face"></span><h3>2. Face ID to decide</h3><p>Approving needs the CFO's passkey: Face ID or Touch ID on the phone, bound to this site. It signs the exact terms (amount, payee, fee), and the runner checks that signature against the key it pinned when the CFO enrolled. A copied link can look, but never approve.</p></div>
     <div class="item"><span class="ic" data-icon="shield-check"></span><h3>3. Enrolment you confirm</h3><p>A new passkey only counts after the CFO reads its fingerprint off the phone and confirms it on the runner. A second approver for large amounts is added the same way.</p></div>
   </div>
-  <div class="callout"><span data-icon="info"></span><p>You are a guest, so there is nothing to sign in to here. Everything the CFO sees is in the <a href="?recorded">recorded CFO dashboard</a>, and the <a href="demo">demo</a> walks through one real run step by step. To run it yourself: <code>npm run judge</code>.</p></div>
+  <div class="callout"><span data-icon="info"></span><p>You are a guest, so there is nothing to sign in to here. Everything the CFO sees is in the <a href="?recorded">recorded CFO dashboard</a>, and the <a href="demo">demo</a> walks through one real run step by step. To run it yourself, the README has the steps.</p></div>
 </section>
 
 <!-- For guests: what this is, and the way to the recorded run. -->
@@ -509,7 +509,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <div id="agents"></div>
   </div>
   <div id="books-view" hidden>
-    <div class="head"><div><h1>Books</h1><div class="sub">Double entry from the agents' journal: every payment a debit and a credit of the same amount. Only what Purser booked; opening balances are not here.</div></div></div>
+    <div class="head"><div><h1>Books</h1><div class="sub">Double entry from the agents' journal: every payment a debit and a credit of the same amount, after an opening entry for the money that was there before the run (sandbox and testnet test money).</div></div></div>
     <div id="books"></div>
   </div>
   <div id="disputes-view" hidden>
@@ -957,7 +957,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var ps = d.agents || [], how = document.getElementById("agents-how");
     var editable = !d.recorded && MODE !== "local";
     how.textContent = d.recorded ? "Recorded run: the agents as they stood. Changing a setting is live only."
-      : MODE === "local" ? "Tighten a setting on your phone (Policy) with Face ID; it applies at once. Loosening is a proposal from the runner (the command is under each setting), approved with Face ID."
+      : MODE === "local" ? "Tighten a setting on your phone (Policy) with Face ID; it applies at once. Loosening is a proposal from the runner, approved with Face ID."
       : "Tighten a setting here with Face ID; it applies at once. Loosening is a proposal from the runner, approved with Face ID.";
     if (!ps.length) { set("agents", [el("div", "panel empty", [icon("bot"), d.recorded ? "This recording was made before the Agents page." : "No agents yet."])]); return; }
     set("agents", ps.map(function (a) {
@@ -974,15 +974,14 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         el("div", "", [txt("h3", "", "Waits for your Face ID"), el("ul", "plain", a.asks.map(function (x) { return txt("li", "", x); }))]),
       ]);
       var rows = a.settings.map(function (e) {
-        var cmd = MODE === "local" && !d.recorded ? txt("code", "", "npm run policy -- set " + e.key + " <value> --reason \"…\"") : null;
-        return el("tr", "", [el("td", "", [e.label, cmd ? el("div", "sub", [cmd]) : null]), txt("td", "now", e.display.replace(/\*?USDZ/g, "test USD"))]);
+        return el("tr", "", [el("td", "", [e.label]), txt("td", "now", e.display.replace(/\*?USDZ/g, "test USD"))]);
       });
       var acts = [];
       if (editable) {
         var edit = txt("a", "btn", "Change on your phone"); edit.href = "policy?agent=" + encodeURIComponent(a.id); acts.push(edit);
         if (a.status === "working") { var stop = el("a", "btn danger", [icon("octagon-x"), "Stop this agent"]); stop.href = "policy?agent=" + encodeURIComponent(a.id) + "&stop=on"; acts.push(stop); }
       }
-      if (a.status === "stopped" && !d.recorded) acts.push(el("div", "sub", ["Starting it again loosens the policy: a proposal from the runner, ", txt("code", "", "npm run policy -- set stop." + a.id + " off"), ", approved with Face ID."]));
+      if (a.status === "stopped" && !d.recorded) acts.push(el("div", "sub", "Starting it again loosens the policy: a proposal from the runner, approved with Face ID."));
       return el("section", "panel agent", [
         el("div", "top", [icon("bot"), txt("h2", "", a.name), pill]),
         txt("p", "job", a.job.charAt(0).toUpperCase() + a.job.slice(1) + "."),
@@ -1008,20 +1007,20 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     set("books", [
       el("p", "books-ok", [txt("span", "pill " + (b.balanced ? "ok" : "bad"), b.balanced ? "Balanced" : "Not balanced"),
         txt("span", "hint", b.balanced ? "Debits equal credits in every currency." : "Debits and credits differ: check the journal.")]),
-      panel("Trial balance", "per account and currency", table("wide", [["Account", 0], ["Currency", 0], ["Debit", 1], ["Credit", 1], ["Balance", 1]],
-        b.trial.map(function (t) { return [t.account + " " + words(t.name), cur(t.currency), amt(t.debit, t.currency), amt(t.credit, t.currency), amt(t.balance, t.currency)]; }))),
-      panel("Cash moved", "what went through each bank account, not its balance", table("wide", [["Account", 0], ["Moved", 1]],
-        b.cash.map(function (c) { return [c.account + " " + words(c.name), amt(c.moved, c.currency)]; }))),
-      panel("Spend per cost centre", null, table("wide", [["Cost centre", 0], ["Spent", 1]],
-        b.spend.map(function (x) { return [x.cost_centre + " " + x.name, amt(x.amount, x.currency)]; }))),
-      panel("Latest postings", b.postings.length + " of " + b.total_postings + " · all of them: npm run books -- --csv", table("wide", [["Date", 0], ["Account", 0], ["What", 0], ["Debit", 1], ["Credit", 1]],
+      panel("Trial balance", "balance per account and currency, on its debit or credit side", table("wide", [["Account", 0], ["Currency", 0], ["Debit", 1], ["Credit", 1]],
+        b.trial.map(function (t) { var dr = t.balance_debit != null ? t.balance_debit : (t.balance.charAt(0) === "-" ? "" : t.balance), cr = t.balance_credit != null ? t.balance_credit : (t.balance.charAt(0) === "-" ? t.balance.slice(1) : ""); return [t.account + " " + words(t.name), cur(t.currency), amt(dr === "0.00" ? "" : dr, t.currency), amt(cr, t.currency)]; }))),
+      panel("Bank accounts", "before the run (opening), money in and out, and now", table("wide", [["Account", 0], ["Currency", 0], ["Opening", 1], ["In", 1], ["Out", 1], ["Now", 1]],
+        b.cash.map(function (c) { return [c.account + " " + words(c.name), cur(c.currency), c.opening != null ? amt(c.opening, c.currency) : "", c.in != null ? amt(c.in, c.currency) : "", c.out != null ? amt(c.out, c.currency) : amt(c.moved, c.currency), c.closing != null ? amt(c.closing, c.currency) : ""]; }))),
+      panel("Spend per cost centre", "per currency: euros on the cards and Airwallex, test USD on Metal", table("wide", [["Cost centre", 0], ["Currency", 0], ["Spent", 1]],
+        b.spend.map(function (x) { return [x.cost_centre + " " + x.name, cur(x.currency), amt(x.amount, x.currency)]; }))),
+      panel("Latest postings", b.postings.length + " of " + b.total_postings + " · the full journal exports as CSV on the runner", table("wide", [["Date", 0], ["Account", 0], ["What", 0], ["Debit", 1], ["Credit", 1]],
         b.postings.map(function (p) { return [day(p.date), p.account + " " + words(p.account_name), words(p.description), amt(p.debit, p.currency), amt(p.credit, p.currency)]; }))),
     ]);
   }
   // The Dispute desk: each case with its claim, outcome, the evidence per payment and the explanation.
   function renderDisputes(d) {
     var cs = d.disputes || [];
-    if (!cs.length) { set("disputes", [el("div", "panel empty", [icon("shield-check"), d.recorded ? "No dispute was opened in this recording." : "No disputes yet. A case is opened with npm run dispute."])]); return; }
+    if (!cs.length) { set("disputes", [el("div", "panel empty", [icon("shield-check"), d.recorded ? "No dispute was opened in this recording." : "No disputes yet. A case opens here when a customer disputes an order."])]); return; }
     var OUT = { rejected: "Not refunded", refund: "Refunded in full", partial_refund: "Partly refunded" };
     var mark = function (ok, yes, no) { return txt("span", ok ? "okc" : "badc", (ok ? "✓ " : "✗ ") + (ok ? yes : no)); };
     set("disputes", cs.map(function (c) {

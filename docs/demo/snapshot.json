@@ -21,6 +21,8 @@
           "cap": "0.04",
           "budget": "12.00",
           "spent": "1.20",
+          "pending": "0.00",
+          "held": "0.00",
           "remaining": "10.80",
           "expires_on": "2026-12-09",
           "credentials": 2,
@@ -33,6 +35,8 @@
           "cap": "0.10",
           "budget": "4.00",
           "spent": "0.15",
+          "pending": "0.00",
+          "held": "0.00",
           "remaining": "3.85",
           "expires_on": "2026-12-08",
           "credentials": 1,
@@ -45,6 +49,8 @@
           "cap": "4.00",
           "budget": "4.00",
           "spent": "1.35",
+          "pending": "0.00",
+          "held": "0.00",
           "remaining": "2.65",
           "expires_on": "2026-12-09",
           "credentials": 2,
@@ -58,6 +64,8 @@
         "cap": "0.10",
         "budget": "5.00",
         "spent": "2.70",
+        "pending": "0.00",
+        "held": "0.00",
         "remaining": "2.30",
         "expires_on": "2026-12-08",
         "credentials": 1,
@@ -75,7 +83,8 @@
           "available": "9992226.11",
           "floor": "25000.00",
           "committed": "9967284.51",
-          "free": "-58.40"
+          "free": "-58.40",
+          "in_flight": "0.00"
         },
         "usd": {
           "available": "10020831.61",
@@ -1031,7 +1040,7 @@
           }
         ],
         "alone": [
-          "Pays the warehouse for live stock checks on chain (x402), up to its mandate's cap",
+          "Pays the warehouse for live stock checks on chain (x402), up to 0.04 test USD a payment",
           "Buys warehouse software on its card: up to 50.00 EUR a purchase, 100.00 EUR a month"
         ],
         "asks": [
@@ -1047,7 +1056,11 @@
             "Software (MCC 5734)"
           ]
         },
-        "mandate": null,
+        "mandate": {
+          "cap": "0.04",
+          "budget": "12.00",
+          "policy_cap": null
+        },
         "velocity": {
           "per_minute": 30,
           "usdz_per_hour": "4.00",
@@ -1154,7 +1167,11 @@
             "Advertising (MCC 7311)"
           ]
         },
-        "mandate": null,
+        "mandate": {
+          "cap": "0.10",
+          "budget": "4.00",
+          "policy_cap": null
+        },
         "velocity": {
           "per_minute": 10,
           "usdz_per_hour": "1.50",
@@ -1265,7 +1282,7 @@
           }
         ],
         "alone": [
-          "Sweeps earnings to Airwallex, up to its mandate's cap",
+          "Sweeps earnings to Airwallex, up to 4.00 test USD a payment",
           "Buys bookkeeping software on its card: up to 25.00 EUR a purchase, 50.00 EUR a month",
           "Issues a single-use task card up to 300.00 EUR when you ask at the runner (3 a day)"
         ],
@@ -1284,7 +1301,11 @@
             "Software (MCC 5734)"
           ]
         },
-        "mandate": null,
+        "mandate": {
+          "cap": "4.00",
+          "budget": "4.00",
+          "policy_cap": null
+        },
         "velocity": {
           "per_minute": 5,
           "usdz_per_hour": "8.00",
@@ -1387,25 +1408,31 @@
           "account": "1200",
           "name": "Bank: Airwallex EUR (incl. company cards)",
           "currency": "EUR",
-          "debit": "370.00",
+          "debit": "9994154.51",
           "credit": "1928.40",
-          "balance": "-1558.40"
+          "balance": "9992226.11",
+          "balance_debit": "9992226.11",
+          "balance_credit": ""
         },
         {
           "account": "1201",
           "name": "Bank: Airwallex USD",
           "currency": "USD",
-          "debit": "1.35",
+          "debit": "10021248.66",
           "credit": "418.40",
-          "balance": "-417.05"
+          "balance": "10020830.26",
+          "balance_debit": "10020830.26",
+          "balance_credit": ""
         },
         {
           "account": "1210",
           "name": "Bank: Metal account (*USDZ, testnet)",
           "currency": "USDZ",
-          "debit": "2.70",
+          "debit": "22.70",
           "credit": "2.70",
-          "balance": "0.00"
+          "balance": "20.00",
+          "balance_debit": "20.00",
+          "balance_credit": ""
         },
         {
           "account": "1590",
@@ -1413,7 +1440,9 @@
           "currency": "EUR",
           "debit": "0.00",
           "credit": "370.00",
-          "balance": "-370.00"
+          "balance": "-370.00",
+          "balance_debit": "",
+          "balance_credit": "370.00"
         },
         {
           "account": "1590",
@@ -1421,7 +1450,9 @@
           "currency": "USD",
           "debit": "418.40",
           "credit": "1.35",
-          "balance": "417.05"
+          "balance": "417.05",
+          "balance_debit": "417.05",
+          "balance_credit": ""
         },
         {
           "account": "1590",
@@ -1429,7 +1460,39 @@
           "currency": "USDZ",
           "debit": "1.35",
           "credit": "0.00",
-          "balance": "1.35"
+          "balance": "1.35",
+          "balance_debit": "1.35",
+          "balance_credit": ""
+        },
+        {
+          "account": "3000",
+          "name": "Owner's equity: opening balances and owner funding",
+          "currency": "EUR",
+          "debit": "0.00",
+          "credit": "9993784.51",
+          "balance": "-9993784.51",
+          "balance_debit": "",
+          "balance_credit": "9993784.51"
+        },
+        {
+          "account": "3000",
+          "name": "Owner's equity: opening balances and owner funding",
+          "currency": "USD",
+          "debit": "0.00",
+          "credit": "10021247.31",
+          "balance": "-10021247.31",
+          "balance_debit": "",
+          "balance_credit": "10021247.31"
+        },
+        {
+          "account": "3000",
+          "name": "Owner's equity: opening balances and owner funding",
+          "currency": "USDZ",
+          "debit": "0.00",
+          "credit": "20.00",
+          "balance": "-20.00",
+          "balance_debit": "",
+          "balance_credit": "20.00"
         },
         {
           "account": "4000",
@@ -1437,7 +1500,9 @@
           "currency": "USDZ",
           "debit": "0.00",
           "credit": "2.70",
-          "balance": "-2.70"
+          "balance": "-2.70",
+          "balance_debit": "",
+          "balance_credit": "2.70"
         },
         {
           "account": "4100",
@@ -1445,7 +1510,9 @@
           "currency": "USDZ",
           "debit": "0.15",
           "credit": "0.00",
-          "balance": "0.15"
+          "balance": "0.15",
+          "balance_debit": "0.15",
+          "balance_credit": ""
         },
         {
           "account": "5000",
@@ -1453,7 +1520,9 @@
           "currency": "USDZ",
           "debit": "1.20",
           "credit": "0.00",
-          "balance": "1.20"
+          "balance": "1.20",
+          "balance_debit": "1.20",
+          "balance_credit": ""
         },
         {
           "account": "6100",
@@ -1461,7 +1530,9 @@
           "currency": "EUR",
           "debit": "64.99",
           "credit": "0.00",
-          "balance": "64.99"
+          "balance": "64.99",
+          "balance_debit": "64.99",
+          "balance_credit": ""
         },
         {
           "account": "6200",
@@ -1469,7 +1540,9 @@
           "currency": "EUR",
           "debit": "1850.00",
           "credit": "0.00",
-          "balance": "1850.00"
+          "balance": "1850.00",
+          "balance_debit": "1850.00",
+          "balance_credit": ""
         },
         {
           "account": "6800",
@@ -1477,7 +1550,9 @@
           "currency": "EUR",
           "debit": "13.41",
           "credit": "0.00",
-          "balance": "13.41"
+          "balance": "13.41",
+          "balance_debit": "13.41",
+          "balance_credit": ""
         }
       ],
       "cash": [
@@ -1485,19 +1560,31 @@
           "account": "1200",
           "name": "Bank: Airwallex EUR (incl. company cards)",
           "currency": "EUR",
-          "moved": "-1558.40"
+          "opening": "9993784.51",
+          "in": "370.00",
+          "out": "1928.40",
+          "moved": "-1558.40",
+          "closing": "9992226.11"
         },
         {
           "account": "1201",
           "name": "Bank: Airwallex USD",
           "currency": "USD",
-          "moved": "-417.05"
+          "opening": "10021247.31",
+          "in": "1.35",
+          "out": "418.40",
+          "moved": "-417.05",
+          "closing": "10020830.26"
         },
         {
           "account": "1210",
           "name": "Bank: Metal account (*USDZ, testnet)",
           "currency": "USDZ",
-          "moved": "0.00"
+          "opening": "20.00",
+          "in": "2.70",
+          "out": "2.70",
+          "moved": "0.00",
+          "closing": "20.00"
         }
       ],
       "spend": [
@@ -1522,7 +1609,7 @@
       ],
       "postings": [
         {
-          "entry": "J-00111",
+          "entry": "J-00114",
           "date": "2026-10-30T07:34:36.807Z",
           "account": "1200",
           "account_name": "Bank: Airwallex EUR (incl. company cards)",
@@ -1533,7 +1620,7 @@
           "description": "Packwise, Pro plan, monthly (more warehouses, live sync)"
         },
         {
-          "entry": "J-00111",
+          "entry": "J-00114",
           "date": "2026-10-30T07:34:36.807Z",
           "account": "6100",
           "account_name": "Software subscriptions (company cards)",
@@ -1544,7 +1631,7 @@
           "description": "Packwise, Pro plan, monthly (more warehouses, live sync)"
         },
         {
-          "entry": "J-00110",
+          "entry": "J-00113",
           "date": "2026-10-30T07:32:17.666Z",
           "account": "1200",
           "account_name": "Bank: Airwallex EUR (incl. company cards)",
@@ -1555,7 +1642,7 @@
           "description": "Card: Packwise"
         },
         {
-          "entry": "J-00110",
+          "entry": "J-00113",
           "date": "2026-10-30T07:32:17.666Z",
           "account": "6100",
           "account_name": "Software subscriptions (company cards)",
@@ -1566,7 +1653,7 @@
           "description": "Card: Packwise"
         },
         {
-          "entry": "J-00109",
+          "entry": "J-00112",
           "date": "2026-10-30T07:32:05.824Z",
           "account": "1200",
           "account_name": "Bank: Airwallex EUR (incl. company cards)",
@@ -1577,7 +1664,7 @@
           "description": "Transfer fee, invoice BTX-2026-11"
         },
         {
-          "entry": "J-00109",
+          "entry": "J-00112",
           "date": "2026-10-30T07:32:05.824Z",
           "account": "6800",
           "account_name": "Bank and transfer fees",
@@ -1588,7 +1675,7 @@
           "description": "Transfer fee, invoice BTX-2026-11"
         },
         {
-          "entry": "J-00108",
+          "entry": "J-00111",
           "date": "2026-10-30T07:32:05.824Z",
           "account": "1200",
           "account_name": "Bank: Airwallex EUR (incl. company cards)",
@@ -1599,7 +1686,7 @@
           "description": "Invoice BTX-2026-11"
         },
         {
-          "entry": "J-00108",
+          "entry": "J-00111",
           "date": "2026-10-30T07:32:05.824Z",
           "account": "6200",
           "account_name": "Goods from the manufacturer",
@@ -1610,7 +1697,7 @@
           "description": "Invoice BTX-2026-11"
         },
         {
-          "entry": "J-00107",
+          "entry": "J-00110",
           "date": "2026-10-30T07:22:27.000Z",
           "account": "1590",
           "account_name": "Money in transit (between own accounts)",
@@ -1621,7 +1708,7 @@
           "description": "Convert USD to EUR"
         },
         {
-          "entry": "J-00107",
+          "entry": "J-00110",
           "date": "2026-10-30T07:22:27.000Z",
           "account": "1200",
           "account_name": "Bank: Airwallex EUR (incl. company cards)",
@@ -1632,7 +1719,7 @@
           "description": "Convert USD to EUR"
         },
         {
-          "entry": "J-00106",
+          "entry": "J-00109",
           "date": "2026-10-30T07:22:27.000Z",
           "account": "1201",
           "account_name": "Bank: Airwallex USD",
@@ -1643,7 +1730,7 @@
           "description": "Convert USD to EUR"
         },
         {
-          "entry": "J-00106",
+          "entry": "J-00109",
           "date": "2026-10-30T07:22:27.000Z",
           "account": "1590",
           "account_name": "Money in transit (between own accounts)",
@@ -1654,7 +1741,7 @@
           "description": "Convert USD to EUR"
         },
         {
-          "entry": "J-00105",
+          "entry": "J-00108",
           "date": "2026-10-30T07:22:20.106Z",
           "account": "1590",
           "account_name": "Money in transit (between own accounts)",
@@ -1665,7 +1752,7 @@
           "description": "Sweep credited at Airwallex (1 *USDZ = 1 USD)"
         },
         {
-          "entry": "J-00105",
+          "entry": "J-00108",
           "date": "2026-10-30T07:22:20.106Z",
           "account": "1201",
           "account_name": "Bank: Airwallex USD",
@@ -1676,7 +1763,7 @@
           "description": "Sweep credited at Airwallex (1 *USDZ = 1 USD)"
         },
         {
-          "entry": "J-00104",
+          "entry": "J-00107",
           "date": "2026-10-30T07:22:13.665Z",
           "account": "1210",
           "account_name": "Bank: Metal account (*USDZ, testnet)",
@@ -1687,7 +1774,7 @@
           "description": "Sweep earnings from Metal to Airwallex"
         },
         {
-          "entry": "J-00104",
+          "entry": "J-00107",
           "date": "2026-10-30T07:22:13.665Z",
           "account": "1590",
           "account_name": "Money in transit (between own accounts)",
@@ -1698,7 +1785,7 @@
           "description": "Sweep earnings from Metal to Airwallex"
         },
         {
-          "entry": "J-00103",
+          "entry": "J-00106",
           "date": "2026-10-30T07:21:53.363Z",
           "account": "1210",
           "account_name": "Bank: Metal account (*USDZ, testnet)",
@@ -1709,7 +1796,7 @@
           "description": "Refund of query 13"
         },
         {
-          "entry": "J-00103",
+          "entry": "J-00106",
           "date": "2026-10-30T07:21:53.363Z",
           "account": "4100",
           "account_name": "Refunds to customers",
@@ -1720,7 +1807,7 @@
           "description": "Refund of query 13"
         },
         {
-          "entry": "J-00102",
+          "entry": "J-00105",
           "date": "2026-10-30T07:21:47.729Z",
           "account": "1210",
           "account_name": "Bank: Metal account (*USDZ, testnet)",
@@ -1731,7 +1818,7 @@
           "description": "Refund of query 10"
         },
         {
-          "entry": "J-00102",
+          "entry": "J-00105",
           "date": "2026-10-30T07:21:47.729Z",
           "account": "4100",
           "account_name": "Refunds to customers",
@@ -1742,7 +1829,7 @@
           "description": "Refund of query 10"
         }
       ],
-      "total_postings": 222
+      "total_postings": 228
     },
     "disputes": [
       {
@@ -1903,7 +1990,26 @@
           }
         ]
       }
-    ]
+    ],
+    "health": {
+      "status": "ok",
+      "at": "2026-10-30T08:33:27.599Z",
+      "alerts": [],
+      "metrics": {
+        "approvals_waiting": 0,
+        "actions_executing": 0,
+        "holds_open": 0,
+        "holds_open_cents": 0,
+        "agents_stopped": 0,
+        "emergency_stop": 0,
+        "reconcile_differences": 0,
+        "reconcile_age_seconds": 3309,
+        "principals_revoked": 0,
+        "policy_version": 0,
+        "audit_rows": 194,
+        "alerts": 0
+      }
+    }
   },
   "proof": {
     "alone": 106,

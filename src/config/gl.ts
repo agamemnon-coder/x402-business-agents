@@ -9,6 +9,7 @@ export const CHART: Record<string, string> = {
   "1210": "Bank: Metal account (*USDZ, testnet)",
   "1220": "Bank: Metal clearing (*USDZ, testnet)",
   "1590": "Money in transit (between own accounts)",
+  "3000": "Owner's equity: opening balances and owner funding",
   "4000": "Revenue: stock data sales to retailers",
   "4100": "Refunds to customers",
   "5000": "Purchased stock data (warehouse API)",

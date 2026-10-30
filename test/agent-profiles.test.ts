@@ -2,6 +2,7 @@
 // in the policy changes the profile; nothing on the page has its own copy.
 import { describe, expect, it } from "vitest";
 import { agentProfiles } from "../src/agents/profiles.js";
+import { audit } from "../src/audit/log.js";
 import { CLAUDE_JOBS } from "../src/claude/tools.js";
 import { buildSnapshot } from "../src/dashboard/snapshot.js";
 import { openDb, type DB } from "../src/db/open.js";
@@ -19,6 +20,20 @@ const change = (db: DB, key: string, to: string) => {
 const of = (db: DB, id: string) => agentProfiles(db, now).find((a) => a.id === id)!;
 
 describe("agent profiles", () => {
+  it("shows each agent's mandate as bound on chain, and the replacement once one is made", () => {
+    const db = openDb(":memory:");
+    // Before this fix every agent read "No mandate": the page looked in a table nothing writes (seen 31 Oct).
+    expect(of(db, "sourcing").mandate).toBeNull();
+    const bind = (agent: string, event: string, cap: string, budget: string) =>
+      audit(db, "treasury", event, agent, { cap, budget, payee: "0x0000000000000000000000000000000000000001" }, now);
+    bind("sourcing", "mandate.bound", "0.03", "4.00");
+    bind("support", "mandate.bound", "0.10", "4.00");
+    bind("sourcing", "mandate.replaced", "0.04", "4.00");
+    expect(of(db, "sourcing").mandate).toEqual({ cap: "0.04", budget: "4.00", policy_cap: null });
+    expect(of(db, "support").mandate).toEqual({ cap: "0.10", budget: "4.00", policy_cap: null });
+    expect(of(db, "treasury").mandate).toBeNull();
+  });
+
   it("has one profile per agent, with its job, card, mandate limit, velocity and settings", () => {
     const db = openDb(":memory:");
     const ps = agentProfiles(db, now);

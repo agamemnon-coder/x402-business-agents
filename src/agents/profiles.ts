@@ -12,6 +12,7 @@ import { fromCents } from "../lib/money.js";
 import { cardControls } from "../policy/cards.js";
 import { currentPolicy, frozen, policyValue, type PolicyEntry } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
+import { spendLimits } from "../policy/holds.js";
 
 export interface AgentProfile {
   id: string;
@@ -41,10 +42,11 @@ function models(actor: string): AgentProfile["models"] {
   return [...sorts, ...own, { model: modelWords(MODELS.review), job: "reviews each of its proposals for the CFO (advice only)" }];
 }
 
+/** The agent's mandate as bound on chain: the last bind or replacement in the audit log, as the holds read it. */
 function mandateOf(db: DB, agent: string): AgentProfile["mandate"] {
-  const m = db.prepare("SELECT cap_cents, budget_cents FROM mandates WHERE agent = ? AND status = 'BOUND'").get(agent) as { cap_cents: number; budget_cents: number } | undefined;
-  if (!m) return null;
-  return { cap: fromCents(m.cap_cents), budget: fromCents(m.budget_cents), policy_cap: policyValue(db, `cap.${agent}`) || null };
+  const { capCents, budgetCents } = spendLimits(db, agent);
+  if (capCents === null || budgetCents === null) return null;
+  return { cap: fromCents(capCents), budget: fromCents(budgetCents), policy_cap: policyValue(db, `cap.${agent}`) || null };
 }
 
 /** The Agents page: Purser's three agents, then outside agents with an approved card. */

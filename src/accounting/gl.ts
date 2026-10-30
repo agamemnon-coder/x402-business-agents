@@ -9,7 +9,7 @@ import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 
 export interface JournalLine {
   date: string;
-  source: "sale" | "upstream" | "refund" | "card" | "transfer" | "fx" | "sweep" | "credit" | "clearing";
+  source: "sale" | "upstream" | "refund" | "card" | "transfer" | "fx" | "sweep" | "credit" | "clearing" | "opening";
   ref: string;
   description: string;
   counterparty: string;
