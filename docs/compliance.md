@@ -26,7 +26,7 @@ Who is who:
 
 | What the rule asks | Who | How Purser supports it | Proof |
 |---|---|---|---|
-| A person can oversee the AI and stop it | The business, with Purser's controls | No model output moves money. Code checks every limit; anything above the CFO's limits waits for the CFO's Face ID on the exact terms (small refunds and task cards within the policy run alone). Optional four eyes above a threshold the CFO sets. One Face ID stops every agent and freezes every card. | `src/policy/approvals.ts`, `src/policy/fourEyes.ts`, `src/policy/rules.ts` (`frozen`), `test/freeze.test.ts` |
+| A person can oversee the AI and stop it | The business, with Purser's controls | No model output moves money. Code checks every limit; anything above the CFO's limits waits for the CFO's Face ID on the exact terms (small refunds and task cards within the policy run alone). Optional four eyes above a threshold the CFO sets. One Face ID stops every agent payment and freezes every card (tested against stand-ins; not yet run live). | `src/policy/approvals.ts`, `src/policy/fourEyes.ts`, `src/policy/rules.ts` (`frozen`), `test/freeze.test.ts` |
 | Each AI step is logged | Purser | Every Claude reading is an audit row with the model, the request id, a hash of the input, the checked output and the token use; a fallback to the plain parser is logged too, with the reason. | `src/claude/reader.ts` (`claude.read`, `claude.fallback`) |
 | People know when AI is involved | Purser | Proposals show which agent proposed and why; the dashboard says the agents are AI and that a person decides; simulated parts are labelled. | `src/dashboard/page.html`, `docs/overview.md` |
 | Accuracy and robustness | Purser | Evals of the agents' readings run in CI on the deterministic parsers, and with the Claude models on demand (`npm run evals`); a red team attacks Purser and every attack must fail; injection in documents is caught before money moves. | `src/evals/cases.ts`, `docs/redteam/`, `docs/fraud-and-injection.md`, `test/adversarial.test.ts` |
@@ -65,7 +65,7 @@ Who is who:
 
 | What the rule asks | Who | How Purser supports it | Proof |
 |---|---|---|---|
-| Complete, unalterable records | Purser | Every payment, decline, refusal and approval is in an append-only, hash-chained audit log; the database refuses edits and deletes. | `src/db/schema.sql` (`audit_log` triggers), `npm run verify-log` |
+| Complete, tamper-evident records | Purser | Every payment, decline, refusal and approval is in an append-only, hash-chained audit log; the database refuses edits and deletes. | `src/db/schema.sql` (`audit_log` triggers), `npm run verify-log` |
 | Records an auditor can check | Purser | `npm run audit:report` writes a PDF; `npm run verify` re-checks every credential, pull, disputed payment, clearing receipt, Face ID approval and Airwallex booking; each payment carries a GL account and cost centre and exports to CSV or JSON. | `docs/audit-report-rehearsal-3.pdf`, `docs/metal-award.md` (section 6, evidence model) |
 | Reconciliation | Purser | The runner reconciles the ledger with Airwallex and the chain every hour (and `npm run reconcile` on demand). | `src/finance/reconcile.ts` |
 
@@ -73,7 +73,7 @@ Who is who:
 
 | What the rule asks | Who | How Purser supports it | Proof |
 |---|---|---|---|
-| Contain an incident fast | The business, with Purser's controls | The emergency stop: one Face ID refuses every agent payment before signing and freezes every card at Airwallex. | `test/freeze.test.ts` |
+| Contain an incident fast | The business, with Purser's controls | The emergency stop: one Face ID makes Purser refuse to sign any agent payment and freezes every card at Airwallex (tested against stand-ins; not yet run live). The Metal mandates stay bound until revoked. | `test/freeze.test.ts` |
 | Survive an outside service failing | Purser | Timeouts and retries per service; a payment without an answer is looked up, never resent; without a model the plain parsers take over; without keys the demo replays the recorded run. | `docs/security.md` (timeouts table), `docs/run-it.md` |
 | Know what happened | Purser | The hardening log lists each finding and its fix. | `docs/hardening.md` |
 

@@ -22,11 +22,11 @@ Footage legend: **[MAX]** Max on camera or voice only; **[LIVE]** `/live?present
 | 1:30 | [PAGE] `/?recorded` rails section | This is the CFO dashboard from our recorded live run. Each payment line has its proof: an Airwallex id, or a Metal transaction. |
 | 1:42 | [PAGE] `/metal` inspector | This is how Purser uses Metal. Each agent's mandate, as the chain enforces it: the cap, the budget, the one payee, and what the chain refused. |
 | 1:57 | [PROOF] explorer: mandate replaced `0xbc70858f…b5d7` | And the proof is public: here is the mandate the CFO approved, replaced on Metal testnet. |
-| 2:05 | [PAGE] `/metal#dispute` | A customer said: "our agent never ordered this". Northwind's Dispute desk checked each of the twelve orders: signed by their agent, inside their mandate on chain, data delivered. Twelve of twelve. The claim is rejected; three of those orders had already been refunded that morning for wrong data, and nothing is refunded twice. |
+| 2:05 | [PAGE] `/metal#dispute` | A customer said: "our agent never ordered this". Northwind's Dispute desk checked each of the twelve orders: signed by their agent, inside their mandate on chain. Twelve of twelve. The claim is rejected; three of those orders had already been refunded that morning for wrong data, and nothing is refunded twice. |
 | 2:22 | [PROOF] Airwallex sandbox web app (Max's recording) | In Airwallex's own app you see the same: the agents' cards, the decline, the conversion and the SWIFT transfer. *(Keep this line only if the recording shows the Friday run's cards •••• 8120, 6882, 7786 and transfer 4d508b0b.)* |
 | 2:37 | [PHONE] Face ID (Max's recording) | And this is the one thing an agent can never do: approve. The phone shows the exact terms. Face ID signs them. |
 | 2:52 | [PAGE] `/?recorded&books` | Every payment lands in the books, debit and credit, ready for the bookkeeper. |
-| 3:02 | [PAGE] `/lab`, then the landing's trust figures | Code decides; Claude only reads and advises. Our red team ran thirty-nine attacks in a test world, thirty-five scripted and four written by Claude Opus as the attacker: all blocked. Optional four eyes above a threshold, one Face ID to freeze every card and stop every agent, and Claude costs about nine cents per thousand euros paid. |
+| 3:02 | [PAGE] `/lab`, then the landing's trust figures | Code decides; Claude only reads and advises. Our red team ran thirty-nine attacks in a test world, thirty-five scripted and four written by Claude Opus as the attacker: all failed; two of them were found afterwards rather than stopped. Optional four eyes above a threshold, one Face ID to freeze every card and stop every agent (tested on stand-ins), and Claude costs about nine cents per thousand euros paid. |
 | 3:28 | [MAX] | Agents will move money at machine speed. Purser lets them, on Airwallex and Metal, and keeps the CFO in control. |
 | 3:42 | [PAGE] `/try` | Try it yourself. *(On screen: the link to /try.)* |
 | 3:55 | end | |
@@ -36,7 +36,7 @@ About 440 words in 3:55, so about 115 words a minute: calm, with room to breathe
 Where each figure comes from:
 - **$3,046,598,558:** FBI IC3, 2025 Internet Crime Report, published April 2026 (https://www.ic3.gov/AnnualReport/Reports/2025_ic3report.pdf), business email compromise losses.
 - **The run:** the card, the price rise, the bill, twelve of twelve: the recorded run of 30 October (`docs/demo/`).
-- **39 of 39:** `docs/redteam/report.json`.
+- **39 of 39 failed:** `docs/redteam/report.json` (37 stopped before anything moved, 2 found afterwards).
 - **About nine cents per thousand euros:** the recorded dashboard's Claude cost, $0.093 per €1,000.
 
 What is simulated, said on screen where it shows:

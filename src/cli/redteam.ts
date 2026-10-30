@@ -134,7 +134,8 @@ if (!apiKey) {
 const blocked = results.filter((r) => r.outcome === "blocked").length;
 const inconclusive = results.filter((r) => r.outcome === "inconclusive").length;
 const notBlocked = results.length - blocked - inconclusive;
-const report = { ran_at: new Date().toISOString(), model: apiKey && !summary.startsWith("the model declined") ? MODEL : null, summary, attempts: results.length, blocked, inconclusive, not_blocked: notBlocked, results };
+const caughtAfter = results.filter((r) => r.outcome === "blocked" && r.caught === "after").length;
+const report = { ran_at: new Date().toISOString(), model: apiKey && !summary.startsWith("the model declined") ? MODEL : null, summary, attempts: results.length, blocked, caught_after: caughtAfter, inconclusive, not_blocked: notBlocked, results };
 const dir = resolve(import.meta.dirname, "../../docs/redteam");
 mkdirSync(dir, { recursive: true });
 writeFileSync(resolve(dir, "report.json"), JSON.stringify(report, null, 2) + "\n");

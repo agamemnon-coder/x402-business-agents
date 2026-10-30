@@ -39,7 +39,7 @@ const merchants = (mccs: string[]) => mccs.map((m) => `${MCC_WORDS[m] ?? "Catego
 function models(actor: string): AgentProfile["models"] {
   const sorts = CLAUDE_JOBS.filter((j) => j.role === "classify").map((j) => ({ model: modelWords(MODELS.classify), job: j.job }));
   const own = CLAUDE_JOBS.filter((j) => j.actor === actor).map((j) => ({ model: modelWords(MODELS[j.role]), job: j.job }));
-  return [...sorts, ...own, { model: modelWords(MODELS.review), job: "reviews each of its proposals for the CFO (advice only)" }];
+  return [...sorts, ...own, { model: modelWords(MODELS.review), job: "reviews its mandate changes, invoice payments, refund batches and task-card requests for the CFO (advice only); a card-limit change goes to the CFO without a review" }];
 }
 
 /** The agent's mandate as bound on chain: the last bind or replacement in the audit log, as the holds read it. */

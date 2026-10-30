@@ -145,7 +145,7 @@ Live in the sandbox on 30 October (`docs/runs/2026-10-30-receivables.md`); the r
 | `5a6323a6…` | 500.00 EUR | short by 10.00 EUR on NW-R-103: escalated |
 | `acf543d2…` | 25.00 EUR | no invoice: held in suspense, escalated |
 
-The dashboard's Books tab shows them, and the landing's Airwallex rail counts them.
+On a live runner the dashboard's Books tab and the Airwallex rail show them. They are kept out of the public recording, so that its balances, reconciliation and waiting items stay one consistent moment.
 
 ### Card spend by merchant
 

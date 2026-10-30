@@ -216,8 +216,8 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   if (dispute) {
     const within = dispute.packs.filter((p) => p.mandate.within).length;
     f.push({
-      id: "verify", title: "verifyMandatePayment: proof from the chain alone",
-      plain: "Anyone can check a payment from its transaction hash: the owner bound the mandate it was paid under, and the agent paid inside its limits.",
+      id: "verify", title: "verifyMandatePayment: each payment checked against the chain",
+      plain: "With the payment's transaction and the signed order the seller keeps, the chain confirms that the owner bound the mandate it was paid under and that the agent paid inside its limits.",
       why: "When a customer says \"our agent never ordered this\", the seller does not argue. It checks each payment on chain and shows the signed order.",
       figure: `${within} of ${dispute.packs.length} verified`,
       proofs: [tx(dispute.packs.find((p) => p.mandate.bound_tx)?.mandate.bound_tx, "the customer's mandate")].filter((p): p is Proof => !!p),

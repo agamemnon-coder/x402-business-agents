@@ -157,7 +157,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var awx = put(L, E("div", "pill", "Airwallex Issuing · Visa"), 140, 620);
       var mand = d.mandates.map(function (m, i) { return put(L, E("div", "pill", m.name.replace(" agent", "") + ": at most " + m.cap + " test USD a payment, " + m.payee + " only"), 140, 720 + i * 78); });
       var metal = put(L, E("div", "pill", "Mandates on chain · Metal"), 1300, 620); metal.style.color = "var(--metal)";
-      var fid = put(L, E("div", "pill ok", "Anything new: Face ID"), 1300, 400);
+      var fid = put(L, E("div", "pill ok", "Above the limits: Face ID"), 1300, 400);
       return function (t) {
         rise(k, t, .1); rise(h, t, .3);
         cards.forEach(function (c, i) { var p = out3(prog(t, 1.4 + i * .25, 2.2 + i * .25)); c.style.opacity = p; c.style.transform = "translateY(" + (1 - p) * 120 + "px) rotate(" + (1 - p) * (i - 1) * 8 + "deg)"; });

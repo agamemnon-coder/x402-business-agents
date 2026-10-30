@@ -1,6 +1,6 @@
 {
-  "recorded_at": "2026-10-30T16:31:17.877Z",
-  "run": "Friday run 1, 30 October 2026, with a Dispute desk case and Global Accounts receipts afterwards",
+  "recorded_at": "2026-10-30T08:33:27.599Z",
+  "run": "Friday run 1, 30 October 2026, with a Dispute desk case afterwards",
   "features": [
     {
       "id": "mandates",
@@ -112,8 +112,8 @@
     },
     {
       "id": "verify",
-      "title": "verifyMandatePayment: proof from the chain alone",
-      "plain": "Anyone can check a payment from its transaction hash: the owner bound the mandate it was paid under, and the agent paid inside its limits.",
+      "title": "verifyMandatePayment: each payment checked against the chain",
+      "plain": "With the payment's transaction and the signed order the seller keeps, the chain confirms that the owner bound the mandate it was paid under and that the agent paid inside its limits.",
       "why": "When a customer says \"our agent never ordered this\", the seller does not argue. It checks each payment on chain and shows the signed order.",
       "figure": "12 of 12 verified",
       "proofs": [

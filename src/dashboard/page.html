@@ -480,7 +480,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <section class="proof" aria-label="From the recorded live run">
     <div class="section">
       <div class="grid num">
-        <div><div class="v" id="p-alone">–</div><div class="l">actions the agents completed on their own</div></div>
+        <div><div class="v" id="p-alone">–</div><div class="l">payments inside the limits with no person needed (about half of them the customer&rsquo;s agent buying from us)</div></div>
         <div><div class="v" id="p-blocked">–</div><div class="l">stops: by the card, the chain, the fraud checks or the CFO</div></div>
         <div><div class="v" id="p-over">–</div><div class="l">spent above a card's limit</div></div>
         <div><div class="v" id="p-fakes">–</div><div class="l">fake invoices and AI tricks stopped</div></div>
@@ -526,7 +526,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       <div class="item"><span class="ic" data-icon="zap"></span><h3>Speed limits, and our own red team</h3><p id="redteam-line">An agent that pays too often or too much is stopped by code. Our red team attacks Purser; every attack must fail.</p></div>
       <div class="item"><span class="ic" data-icon="file-check"></span><h3>A log you can check</h3><p>Every payment, decline and approval in a tamper-evident log. Chain payments and signatures can be checked from public sources; Airwallex bookings with read-only API keys.</p></div>
     </div>
-    <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> Airwallex, the regulated provider, does KYC, card issuing and sanctions screening; Metal enforces the limits on chain; Purser holds no funds of its own (its runner keeps the testnet owner key that binds the mandates), logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
+    <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> In production Airwallex, the regulated provider, does KYB/KYC, card issuing and sanctions screening (the sandbox demo does not exercise KYC or screening); Metal enforces the limits on chain; Purser holds no funds of its own (its runner keeps the testnet owner key that binds the mandates), logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
   </section>
   <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="try">Try it</a><a href="metal">Purser on Metal</a><a href="film">Film</a><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
 </div>
@@ -884,6 +884,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     document.getElementById("refusals-count").textContent = String(d.counts ? d.counts.blocked : blocked.length);
     var row = function (r) { return el("div", "refusal", [el("div", "what", [icon("ban"), plain(r.what)]), txt("div", "reason", plain(r.reason)), txt("div", "meta num", agentName(r.agent) + " · " + hm(r.ts))]); };
     var nodes = blocked.slice(0, 10).map(row);
+    // The pill counts each stop once; the rows can differ (one document flagged twice, an invoice escalated for the reserve).
+    if (d.counts && blocked.length !== d.counts.blocked) nodes.push(txt("p", "hint", "The count is " + d.counts.blocked + " stops, each once; the list shows " + blocked.length + " events (a document seen twice is one stop, and an invoice escalated for the reserve is a question to you, not a stop)."));
     if (!nodes.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing refused or blocked yet."]));
     if (expired.length) nodes.push(el("details", "tech", [txt("summary", "", expired.length + " expired proposal" + (expired.length === 1 ? "" : "s") + ": nobody approved in time, nothing ran"), el("div", "", expired.slice(0, 10).map(row))]));
     set("refusals", nodes);
@@ -975,7 +977,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       });
       nodes.push(el("table", "agents", [el("thead", "", [head]), el("tbody", "", body)]));
     }
-    nodes.push(txt("p", "note", "Claude reads and advises; code checks every answer, and only your Face ID can move money beyond the agents' limits. Costs at Anthropic's list prices in US dollars. Built with Claude Code."));
+    nodes.push(txt("p", "note", "Claude reads and advises; code checks every answer, and beyond the agents' limits, Purser's runner moves money only after it has verified your Face ID signature on the exact terms. Costs at Anthropic's list prices in US dollars. Built with Claude Code."));
     set("claude", nodes);
   }
 
@@ -1188,7 +1190,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       document.getElementById("p-over").textContent = eur(p.over_limit_eur).replace(".00", "");
       document.getElementById("p-fakes").textContent = p.fake_invoices + " + " + p.ai_tricks;
       countUp("p-faceid", p.face_id);
-      document.getElementById("p-src").textContent = "From the recorded live run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "), on Metal testnet and the Airwallex sandbox (test money). Every number comes from its audit log.";
+      document.getElementById("p-src").textContent = "From the recorded live run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + ", Friday run 1), on Metal testnet and the Airwallex sandbox (test money), with a Dispute desk case afterwards on a copy of its ledger. Every number comes from that audit log.";
     }
     if (note) document.getElementById("p-src").textContent += " " + note;
     // The hero card shows the recorded operations agent's own card number.
@@ -1223,7 +1225,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // The red team's latest report (docs/redteam/report.json), on the landing.
   try {
     var RT = JSON.parse(document.getElementById("redteam-data").textContent);
-    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run, in a throwaway test world (" + dayFmt.format(new Date(RT.ran_at)) + "): " + RT.blocked + " of " + RT.attempts + " attempts blocked" + (RT.model && RT.documents ? ": " + (RT.attempts - RT.documents) + " scripted attacks and " + RT.documents + " documents written by Claude Opus as the attacker" : ", scripted attacks") + (RT.inconclusive ? "; " + RT.inconclusive + " inconclusive (they never reached the check they aimed at)" : "") + ".";
+    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run, in a throwaway test world (" + dayFmt.format(new Date(RT.ran_at)) + "): " + RT.blocked + " of " + RT.attempts + " attacks failed" + (RT.caught_after ? " (" + (RT.blocked - RT.caught_after) + " stopped before anything moved, " + RT.caught_after + " found afterwards by the reconciliation or the audit check)" : "") + (RT.model && RT.documents ? ": " + (RT.attempts - RT.documents) + " scripted attacks and " + RT.documents + " documents written by Claude Opus as the attacker" : ", scripted attacks") + (RT.inconclusive ? "; " + RT.inconclusive + " inconclusive (they never reached the check they aimed at)" : "") + ".";
   } catch (e) {}
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);

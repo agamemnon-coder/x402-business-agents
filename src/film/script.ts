@@ -18,11 +18,11 @@ export const FILM_SCENES: FilmScene[] = [
   { id: "metal", title: "On chain with Metal", seconds: 30,
     voice: "On Metal, agents pay per request, cents at a time, under mandates that live on chain. When the supplier doubles its price, the payment hits the mandate's cap and bounces: nothing moves, and the customer is not charged. Purser prices two options, Opus reviews them, the CFO signs one, and the mandates are replaced on chain. Mandates, x402, signed orders and payouts ran here; clearing and a receive policy in separate live runs." },
   { id: "dispute", title: "The Dispute desk", seconds: 20,
-    voice: "Then a customer says: our agent never ordered this, refund everything. Northwind's Dispute desk checks the proof: every order signed by their agent, every payment inside their mandate on chain, every delivery matched. Twelve of twelve. Claim rejected; nothing more refunded." },
+    voice: "Then a customer says: our agent never ordered this, refund everything. Northwind's Dispute desk checks the proof: every order signed by their agent, every payment inside their mandate on chain. Twelve of twelve. Claim rejected; nothing more refunded." },
   { id: "ask", title: "Ask Purser", seconds: 14,
     voice: "Need something once? Ask Purser: a flight to Berlin, at most one hundred and fifty euros. Airwallex issues a single-use card. The booking goes through; a second charge is declined." },
   { id: "trust", title: "Why you can trust it", seconds: 17,
-    voice: "Code decides; the models only read and advise. Thirty-nine red-team attacks, four by Claude Opus: all blocked. Eighteen scenarios: as expected. Optional four eyes, one Face ID to stop every agent and card, and about nine cents of AI per thousand euros." },
+    voice: "Code decides; the models only read and advise. Thirty-nine red-team attacks, four by Claude Opus: all failed. Eighteen scenarios: as expected. Optional four eyes, one Face ID to stop every agent and card, and about nine cents of AI per thousand euros." },
   { id: "end", title: "Purser", seconds: 10,
     voice: "Purser. Agents move at machine speed, and the CFO keeps the pen. Every payment has a proof." },
 ];

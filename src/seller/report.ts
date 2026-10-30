@@ -26,7 +26,7 @@ export function disputeReportHtml(c: DisputeCase, seller = "Northwind Outdoor"):
       <td class="num">${esc(fromCents(p.charged_cents))}</td>
       <td>${yes(p.order.valid, `signed for ${fromCents(p.order.amount_cents ?? 0)}`, p.order.present ? "does not verify" : "none")}${p.order.first_use_sale && p.order.first_use_sale !== p.sale_id ? `<div class="sub bad">already used for ${esc(p.order.first_use_sale)}</div>` : ""}</td>
       <td>${yes(p.mandate.within, "inside the bound mandate", p.mandate.detail)}<div class="sub">payment ${tx(p.tx)}</div></td>
-      <td>${yes(p.delivery.matches, "hash matches", "hash differs")}<div class="sub mono">${esc(p.delivery.body_sha256.slice(0, 16))}…</div></td>
+      <td>${yes(p.delivery.matches, "as we recorded it", "differs from our record")}<div class="sub mono">${esc(p.delivery.body_sha256.slice(0, 16))}…</div></td>
       <td><b>${d.refund_cents ? esc(fromCents(d.refund_cents)) : "0.00"}</b>${paid?.tx ? `<div class="sub">refund ${tx(paid.tx)}</div>` : ""}${p.refunded_cents ? `<div class="sub">${esc(fromCents(p.refunded_cents))} already refunded earlier</div>` : ""}<div class="sub">${esc(d.why)}</div></td>
     </tr>`;
   }).join("");
@@ -68,7 +68,7 @@ td { border-top: 1px solid var(--border); padding: 8px 6px; vertical-align: top;
 <div class="sub gap">What the chain does not prove: that the owner key is held by a person. ${passkeys.length ? `Your owner also confirmed this mandate with a passkey (Face ID or similar) for ${passkeys.length} payment${passkeys.length === 1 ? "" : "s"}: ${passkeys.map((p) => (p.human.passkey!.verified ? "verified" : "did not verify")).join(", ")}. That confirmation is Purser's own addition, not enforced by Metal.` : "No passkey confirmation from your side is on file."}</div></div>
 
 <h2>The decision, explained</h2>
-<div class="box">${esc(c.explanation)}<div class="sub gap">Explained by ${esc(c.explained_by)}. The decision and every amount were made by code from the evidence above; the explanation is advice.</div></div>
+<div class="box">${esc(c.explanation)}${c.packs.some((p) => p.refunded_cents) ? `<div class="sub gap">Note: orders ${esc(c.packs.filter((p) => p.refunded_cents).map((p) => p.sale_id).join(", "))} had already been refunded earlier (${esc(fromCents(c.packs.reduce((n, p) => n + (p.refunded_cents ?? 0), 0)))} test USD in all) for wrong data; the explanation above does not say so.</div>` : ""}<div class="sub gap">Explained by ${esc(c.explained_by)}. The decision and every amount were made by code from the evidence above; the explanation is advice.</div></div>
 
 <h2>Check it yourself</h2>
 <p class="sub">Each payment and refund links to Metal's explorer. The signed orders, the mandate and each payment can be checked with <span class="mono">verifyMandatePayment</span> from <span class="mono">@metalntwx/metal-pay</span> (step 4: the payment is your agent's per-payment mandate, inside the mandate at its block). The delivered data's SHA-256 is shown so you can compare it with what you received.</p>

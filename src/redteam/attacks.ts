@@ -41,6 +41,8 @@ export interface AttackResult {
    * Inconclusive is never counted as blocked.
    */
   outcome?: "blocked" | "inconclusive" | "not_blocked";
+  /** "after": the control finds it afterwards (the reconciliation, npm run verify) rather than stopping it first. */
+  caught?: "before" | "after";
   /** Which control stopped it. */
   defence: string;
   /** What the system answered, or what the ledger shows. */
@@ -426,10 +428,13 @@ ATTACKS.push(
 // The second round (src/redteam/moreAttacks.ts), one for each threat model row that had none.
 ATTACKS.push(...MORE_ATTACKS);
 
+/** Attacks whose control finds them afterwards instead of stopping them before money or records move. */
+export const CAUGHT_AFTER = new Set(["hidden-payment", "rewrite-history"]);
+
 export async function runAttack(w: World, a: Attack): Promise<AttackResult> {
   try {
     const r = await a.run(w);
-    return { id: a.id, title: a.title, ...r, outcome: r.outcome ?? (r.blocked ? "blocked" : "not_blocked") };
+    return { id: a.id, title: a.title, ...r, outcome: r.outcome ?? (r.blocked ? "blocked" : "not_blocked"), caught: CAUGHT_AFTER.has(a.id) ? "after" : "before" };
   } catch (e) {
     // An attack that crashes the code it attacks has not been shown to be blocked: it counts as a finding.
     return { id: a.id, title: a.title, attempt: "(the attack itself failed to run)", blocked: false, outcome: "not_blocked", defence: "none shown", evidence: (e as Error).message.slice(0, 300) };

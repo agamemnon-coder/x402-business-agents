@@ -29,9 +29,9 @@ const AGENTS_JSON = JSON.stringify(Object.fromEntries(Object.entries(AGENT_DISPL
 const REDTEAM_FILE = new URL("../../docs/redteam/report.json", import.meta.url);
 const REDTEAM_JSON = (() => {
   try {
-    const r = JSON.parse(readFileSync(REDTEAM_FILE, "utf8")) as { ran_at: string; attempts: number; blocked: number; inconclusive?: number; model: string | null; results: { id: string }[] };
+    const r = JSON.parse(readFileSync(REDTEAM_FILE, "utf8")) as { ran_at: string; attempts: number; blocked: number; inconclusive?: number; caught_after?: number; model: string | null; results: { id: string }[] };
     const documents = r.results.filter((x) => x.id === "document").length;
-    return JSON.stringify({ ran_at: r.ran_at, attempts: r.attempts, blocked: r.blocked, inconclusive: r.inconclusive ?? 0, model: r.model, documents }).replace(/</g, "\\u003c");
+    return JSON.stringify({ ran_at: r.ran_at, attempts: r.attempts, blocked: r.blocked, inconclusive: r.inconclusive ?? 0, caught_after: r.caught_after ?? 0, model: r.model, documents }).replace(/</g, "\\u003c");
   } catch {
     return "null";
   }

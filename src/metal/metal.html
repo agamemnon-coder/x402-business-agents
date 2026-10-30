@@ -107,7 +107,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
 <main>
   <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>
   <h1>How Purser uses Metal</h1>
-  <p class="lead">On Metal, Northwind's agents pay on chain, in cents, under mandates the chain itself enforces. Purser is the CFO's control layer on top: it sets the mandates, asks for Face ID before any limit goes up, and proves every payment afterwards. Everything below ran live on Metal testnet with test money; every card links to its transaction and to Metal's docs.</p>
+  <p class="lead">On Metal, Northwind's agents pay on chain, in cents, under mandates the chain itself enforces. Purser is the CFO's control layer on top: it sets the mandates, asks for Face ID before any limit goes up, and proves every payment afterwards. Everything below ran live on Metal testnet with test money; each card links to its proof and to Metal's docs.</p>
   <span class="built">Built on <img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span>
   <div class="stats" id="stats"></div>
 
@@ -141,7 +141,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
 
   <section id="dispute" aria-labelledby="d-h">
     <h2 id="d-h">The Dispute desk</h2>
-    <p class="sub">A customer's agent bought stock checks, then its company said it never ordered them. Northwind, as the seller, decides on its own terms from what Metal lets it prove, order by order.</p>
+    <p class="sub">A customer's agent bought stock checks, then its company said it never ordered them. Northwind, as the seller, decides on its own terms from what Metal lets it prove, order by order. Summit Outfitters is a simulated customer whose account and agent run on our runner; we filed this claim on its behalf to show the desk, on a copy of Friday run 1's ledger after the run.</p>
     <div class="case" id="case"></div>
   </section>
 </main>
@@ -173,8 +173,8 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
   var ours = D.mandates.filter(function (m) { return m.role !== "customer"; });
   var paid = D.mandates.reduce(function (n, m) { return n + m.count; }, 0);
   var refused = D.mandates.filter(function (m) { return m.refusal; }).length;
-  var stats = [[String(ours.length), "mandates on chain, one per agent"], [String(paid), "payments under mandates"], [String(refused), refused === 1 ? "payment refused by the chain, nothing moved" : "payments refused by the chain"]];
-  if (D.dispute) stats.push([D.dispute.packs.filter(function (p) { return p.mandate.within; }).length + "/" + D.dispute.packs.length, "disputed orders proven on chain"]);
+  var stats = [[String(ours.length), "mandates on chain, one per agent"], [String(paid), "payments under mandates (" + D.mandates.filter(function (m) { return m.role === "customer"; }).reduce(function (n, m) { return n + m.count; }, 0) + " of them by the customer's agent, buying from us)"], [String(refused), refused === 1 ? "payment refused by the chain, nothing moved" : "payments refused by the chain"]];
+  if (D.dispute) stats.push([D.dispute.packs.filter(function (p) { return p.mandate.within; }).length + "/" + D.dispute.packs.length, "disputed orders verified against the chain"]);
   var sEl = document.getElementById("stats");
   stats.forEach(function (s) { sEl.appendChild(el("div", "stat", [el("div", "v", [s[0]]), el("div", "l", [s[1]])])); });
 
@@ -265,7 +265,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
       (function () { var t = el("td", "", [okv(p.order.valid, "signed for " + ((p.order.amount_cents || 0) / 100).toFixed(2), p.order.present ? "does not verify" : "none"), el("br"), el("small", "mono", ["nonce " + (p.order.nonce || "–")])]); t.setAttribute("data-l", "Signed order"); return t; })(),
       (function () { var t = el("td", "", [okv(p.mandate.within, "inside the bound mandate", p.mandate.detail)]); t.setAttribute("data-l", "verifyMandatePayment"); return t; })(),
       (function () { var t = el("td", "", [proof({ label: short(p.settlement.tx || p.tx), href: /^0x[0-9a-fA-F]{64}$/.test(p.settlement.tx || p.tx) ? "https://testnet.metalntwx.com/tx/" + (p.settlement.tx || p.tx) : null })]); t.setAttribute("data-l", "Settlement"); return t; })(),
-      (function () { var t = el("td", "", [okv(p.delivery.matches, "hash matches", "hash differs"), el("br"), el("small", "mono", [p.delivery.body_sha256.slice(0, 12) + "…"])]); t.setAttribute("data-l", "Data delivered"); return t; })(),
+      (function () { var t = el("td", "", [okv(p.delivery.matches, "as Northwind recorded it", "differs from the record"), el("br"), el("small", "mono", [p.delivery.body_sha256.slice(0, 12) + "…"])]); t.setAttribute("data-l", "Data delivered"); return t; })(),
       (function () { var t = el("td", "", [el("b", "", [usd((d.refund_cents / 100).toFixed(2))]), p.refunded_cents ? el("small", "", [" (" + (p.refunded_cents / 100).toFixed(2) + " refunded earlier)"]) : null]); t.setAttribute("data-l", "Refund"); return t; })(),
     ]);
   });

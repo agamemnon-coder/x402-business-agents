@@ -9,7 +9,7 @@ What could not be proven was removed or softened (the "Changed" column, and the 
 deck in the repo.
 
 Sources:
-- **Recording:** the recorded run (Friday run 1, 30 October, with the Dispute desk case and the Global Accounts receipts afterwards): `docs/demo/story.json`, `docs/demo/snapshot.json` and `docs/demo/metal.json`, recorded by `npm run demo:record`.
+- **Recording:** the recorded run (Friday run 1, 30 October, 07:05 to 07:38 UTC; the Dispute desk case ran afterwards, 08:32, on a copy of its ledger with later code): `docs/demo/story.json`, `docs/demo/snapshot.json` and `docs/demo/metal.json`, recorded by `npm run demo:record`.
 - **Red team:** `docs/redteam/report.json`.
 - **Lab:** `docs/lab/results.json`.
 - **Run logs:** `docs/runs/`.
@@ -18,7 +18,7 @@ Sources:
 
 | Claim | Value | Proof | Changed |
 |---|---|---|---|
-| Payments the agents made alone, inside their limits | 106 | snapshot `counts.alone` (50 sales, 50 purchases, 3 refunds, 1 sweep, 2 card charges) | |
+| Payments inside the limits with no person needed | 106 | snapshot `counts.alone`: 56 by Northwind's agents (50 purchases, 3 refunds, 1 sweep, 2 card charges) and 50 stock checks the customer's agent bought from us | The label says about half are the customer's agent. |
 | Stops by the card, the chain, the fraud checks or the CFO | 8 | snapshot `counts.blocked`: 1 chain refusal, 2 card declines, 2 fake invoices, 2 planted instructions, 1 refund batch the CFO rejected | Was 9: one document flagged twice is now counted once; the label no longer says "attempts blocked before money moved". |
 | Money kept out for good | €3,719.99 | snapshot `money.blocked_eur`: 2 invoices (€3,700) and the €19.99 decline at the wrong kind of shop; the €45.00 decline was paid after the raise | Was "Stopped in time €3,764.99". |
 | Decisions signed with Face ID | 4 | snapshot `proof.face_id`: 3 approvals and 1 rejection by passkey | The demo's audit step counts the 3 approvals; both say which. |
@@ -29,8 +29,8 @@ Sources:
 | Mandates replaced after Face ID | P-0002, `0x2909b164…8aed`, `0xbc70858f…b5d7` | story `faceid`; on chain (below) | |
 | Euro bill | €1,850.00 by SWIFT; USD 418.40 → EUR 370.00; fee €13.41 (ceiling €20.00) | story `swift`; conversion and transfer re-read from Airwallex | PAID is now said to be set by the sandbox's simulation. |
 | Metal earnings at Airwallex | 1.35, after finality (block 9401051, final 9401068) | metal.json `finality`; deposit `56366c9d…` SETTLED | Now said to be a simulated sandbox deposit that names the testnet transaction. |
-| Dispute desk | 12 of 12 orders signed and inside the bound mandate; not refunded | metal.json `dispute` | Now says that orders 7, 10 and 13 had already been refunded for wrong data, and that Opus's recorded explanation overlooks this. |
-| Audit log | 198 rows, hash chain intact (194 for the run and the dispute, 4 for the receivables afterwards) | story `audit` | |
+| Dispute desk | 12 of 12 orders signed and verified against the chain with the signed order the seller keeps; not refunded. Summit is a simulated customer; we filed the claim on its behalf | metal.json `dispute` | Now says that orders 7, 10 and 13 had already been refunded for wrong data, and that Opus's recorded explanation overlooks this (also in the report the customer gets). "Hash matches" is now "as Northwind recorded it": it is not proof the data was right. |
+| Audit log | 194 rows, hash chain intact (the run and the dispute case afterwards) | story `audit` | |
 | Claude cost | $0.093 per €1,000 paid | snapshot `claude.per_1000_eur_usd_micros` | "Per Claude decision" is now "Per Claude call". |
 | Euros at Airwallex | 9,992,226.11 (sandbox test money); reserve €25,000 | snapshot `treasury.airwallex.eur` | Was "Euros on hand €25,000"; the demo plan's set-aside amount is now explained. |
 
@@ -50,7 +50,7 @@ displays was not checked.
 
 | Claim | Value | Proof | Changed |
 |---|---|---|---|
-| Red team | 39 of 39 blocked, 0 inconclusive: 35 scripted attacks and 4 documents written by Claude Opus as the attacker, in a throwaway test world | `docs/redteam/report.json` (30 Oct) | The harness now gives every attempt an outcome, and inconclusive never counts as blocked. The task card is tested at a hotel while still fresh (`MERCHANT_CATEGORY_NOT_ALLOWED`). The revoked agent is named correctly. The film's "thirty-four" is now thirty-nine. |
+| Red team | 39 of 39 failed, 0 inconclusive: 37 stopped before anything moved, 2 found afterwards (a hidden card charge by the reconciliation, a rewritten log row by `npm run verify`); 35 scripted attacks and 4 documents written by Claude Opus as the attacker, in a throwaway test world | `docs/redteam/report.json` (30 Oct; `caught` per attempt) | The harness now gives every attempt an outcome, and inconclusive never counts as blocked. The task card is tested at a hotel while still fresh (`MERCHANT_CATEGORY_NOT_ALLOWED`). The revoked agent is named correctly. The film's "thirty-four" is now thirty-nine. |
 | Duplicate invoices | A paid invoice sent again as "btx-dup" or with an en dash is refused | `test/invoice-duplicate-key.test.ts`; red team document 4 | Found by the red team and fixed. |
 | Scenario Lab | 18 of 18 as expected | `docs/lab/results.json` | hardening.md said 12. |
 | Tests | 795 in 100 files | `npx vitest run` | |
@@ -67,7 +67,7 @@ displays was not checked.
 | Pay-per-call clearing | Separate run, 29 October (`docs/runs/2026-10-29-clearing.md`) | /metal card and comparison table, film, metal-award.md |
 | Receive policy and quarantine | Separate world, 30 October (`docs/metal-award.md` section 5) | /metal card, /live scene source, compliance.md |
 | Ask Purser single-use card | On a backup of Friday run 2 (`docs/runs/2026-10-30-single-use.md`) | /live scene source, film footer |
-| Receivables on Global Accounts | Live in the sandbox, on the recorded ledger after the run (`docs/runs/2026-10-30-receivables.md`): 2 matched, 1 short by 10.00 EUR, 1 with no invoice | Dashboard Books tab, the Airwallex rail on the landing |
+| Receivables on Global Accounts | Live in the sandbox, on a copy of the recorded ledger after the run (`docs/runs/2026-10-30-receivables.md`): 2 matched, 1 short by 10.00 EUR, 1 with no invoice. Kept out of the recording so its balances, reconciliation and waiting items stay one consistent moment. | Run log, docs/airwallex.md |
 
 ## The video
 
