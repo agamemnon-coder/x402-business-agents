@@ -76,7 +76,7 @@ export function deckHtml(f: PackFacts): string {
         "<b>Finality certificates</b> kept as evidence for each payment seen within about 2 hours (the validators' signature is not verified: their testnet keys are not published).",
         "<b>Clearing under load</b>: 2,000 of 2,000 payments at 4.24 a second, about $0.0007 of RPC per payment (an estimate).",
         "<b>ISO 20022</b>: the paid invoice as one pacs.008 message linking the SWIFT transfer and the Metal transaction.",
-        "All in separate test worlds on Metal testnet, 30 October; not in the recorded run.",
+        "Four eyes, compliance, certificates and clearing: separate test worlds on Metal testnet, 30 October, not in the recorded run. The ISO 20022 message is exported from the recorded run.",
       ]),
     },
     {

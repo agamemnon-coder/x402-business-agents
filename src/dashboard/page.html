@@ -865,8 +865,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (a) {
       nodes.push(el("div", "money num", [
         // The company's own euros: the reserve it always keeps, plus what is free for new bills.
-        // What the plan may use, not the sandbox's millions of test money: available less what planned bills set aside.
-        el("div", "m", [txt("div", "k", "Euros the plan may use"), txt("div", "v", eur(centsStr(toCents(a.eur.available) - toCents(a.eur.committed)))), txt("div", "k sub", "of " + eur(a.eur.available) + " test money in the sandbox; the demo plan sets the rest aside. " + eur(a.eur.floor) + " is the reserve")]),
+        // What is left after planned bills, not the sandbox's millions of test money: available less what they set aside.
+        el("div", "m", [txt("div", "k", "Euros after planned bills"), txt("div", "v", eur(centsStr(toCents(a.eur.available) - toCents(a.eur.committed)))), txt("div", "k sub", "of " + eur(a.eur.available) + " test money in the sandbox; the demo plan sets the rest aside. The reserve is " + eur(a.eur.floor) + (String(a.eur.free).charAt(0) === "-" ? ", so none of this is free for new bills" : ""))]),
         (String(a.eur.free).charAt(0) === "-"
           // Below the reserve is not a negative balance: the euros are there, but bills already planned have claimed
           // them. Shown as the shortfall, in words, never as a bare minus.
@@ -1129,7 +1129,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         (function () { var n = c.sales.filter(function (x) { return x.refunded_before; }).length; return n ? el("p", "sub", [n + " of these " + c.sales.length + " payments had already been refunded in an earlier case, because the data delivered was wrong (the supplier corrected it). Delivered “as recorded” means the data matches what Northwind recorded when it delivered, not that it was right."]) : null; })(),
         el("table", "wide", [el("thead", "", [head2]), el("tbody", "", rows)]),
         el("div", "review-box", [
-          (function () { var b = c.sales.filter(function (x) { return x.refunded_before; }); return b.length ? el("p", "", [txt("b", "", "Already refunded before this claim: "), b.length + " of these payments, for wrong data. Where the explanation below says no payment was refunded, it means by this decision."]) : null; })(),
+          (function () { var b = c.sales.filter(function (x) { return x.refunded_before; }); return b.length ? el("p", "", [txt("b", "", "Already refunded before this claim: "), b.length + " of these payments, for wrong data. Where the explanation below says no payment was refunded, it means by this decision. Where it says the data matches the expected hash, it means the hash recorded at delivery, not that the data was right."]) : null; })(),
           txt("p", "", c.explanation), txt("p", "sub", "Explained by " + c.explained_by + ". The decision and every amount are code's; the explanation is advice."),
         ]),
       ]);

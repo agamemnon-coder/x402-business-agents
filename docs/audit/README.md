@@ -1,7 +1,9 @@
 # The recorded run's audit log
 
 `friday-1-audit.jsonl` is the audit log of the recorded run (Friday run 1, 30 October 2026, Northwind Outdoor), as
-stored: 194 rows, one per line. Rows 192 to 194 are the Dispute desk case, decided after the run on the same ledger.
+stored: 194 rows, one per line. Rows 1 to 175 are what the run's `npm run verify` checked (head `5f8bb068…`); rows
+176 to 191 are the fraud, planted-instruction and reconciliation steps that followed; rows 192 to 194 are the
+Dispute desk case, decided after the run on the same ledger.
 
 Each row's hash is SHA-256 over the previous row's hash and the row itself (`src/audit/log.ts`), so changing,
 removing or reordering any row breaks every hash after it. Check it offline, with no keys:

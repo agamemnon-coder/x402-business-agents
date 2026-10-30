@@ -282,7 +282,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
   }
   box.appendChild(el("div", "explain", [
     // Code's own fact first, so the recorded explanation's "none was refunded" cannot be read as the whole story.
-    before.length ? el("p", "", [el("b", "", ["Already refunded before this claim: "]), "orders " + before.map(function (p) { return p.sale_id; }).join(", ") + ", for wrong data. Where the explanation below says no payment was refunded, it means by this decision."]) : null,
+    before.length ? el("p", "", [el("b", "", ["Already refunded before this claim: "]), "orders " + before.map(function (p) { return p.sale_id; }).join(", ") + ", for wrong data. Where the explanation below says no payment was refunded, it means by this decision. Where it says the data matches the expected hash, it means the hash recorded at delivery, not that the data was right."]) : null,
     c.explanation,
     el("small", "", ["Explained by " + c.explained_by + " from the evidence above, as recorded. The decision and every amount were made by code; the explanation is advice and changes nothing."]),
   ]));
