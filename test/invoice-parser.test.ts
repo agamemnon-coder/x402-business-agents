@@ -12,11 +12,15 @@ describe("the invoice parser", () => {
     expect(parseInvoiceFallback(normal.replace("Total due                                     EUR 1,850.00", "Total due EUR 18500.00")).amount).toBe("18500.00");
   });
 
-  // Breaks if a total written the German way ("1.850,00") is read as 1.85: the parser must give up instead, so the
-  // model's reading is checked by code alone, and no EUR 1.85 payment is proposed.
-  it("refuses a total it cannot read whole, rather than read part of it", () => {
-    for (const total of ["EUR 1.850,00", "EUR 1 850.00", "EUR 1,850.005", "EUR 1,85"]) {
-      expect(() => parseInvoiceFallback(normal.replace("Total due                                     EUR 1,850.00", `Total due ${total}`))).toThrow(/no total/);
+  // Breaks if a total written another way ("1.850,00", "1 850.00", "€1850") is read as anything but 1850.00, or a
+  // malformed total is read at all: the parser must give up then, so code checks the model's reading alone.
+  it("reads the total in every common notation, or not at all", () => {
+    const line = "Total due                                     EUR 1,850.00";
+    for (const total of ["EUR 1.850,00", "EUR 1 850.00", "€1850", "EUR 1.850", "1.850,00 €"]) {
+      expect({ total, read: parseInvoiceFallback(normal.replace(line, `Total due ${total}`)).amount }).toEqual({ total, read: "1850.00" });
+    }
+    for (const total of ["EUR 1,850.005", "EUR 1.85.0", "EUR 12,34,56"]) {
+      expect(() => parseInvoiceFallback(normal.replace(line, `Total due ${total}`))).toThrow(/total/);
     }
   });
 });

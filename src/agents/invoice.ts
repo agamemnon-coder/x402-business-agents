@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import type { DB } from "../db/open.js";
 import { CONTRACTED_EUR_CENTS } from "../config/policy.js";
-import { fromCents, toCents } from "../lib/money.js";
+import { fromCents, readAmount, toCents } from "../lib/money.js";
 import { assessInvoice, type FraudFinding } from "../policy/fraud.js";
 import { counterpartyAllowed, frozen } from "../policy/rules.js";
 
@@ -35,12 +35,14 @@ export function parseInvoiceFallback(text: string): Invoice {
     if (!m) throw new Error(`invoice: no ${what}`);
     return m[1]!.trim();
   };
-  // The whole amount or nothing: "1.850,00" must not be read as 1.85 (a misread line would overrule the model).
-  const total = get(/Total due\s+EUR\s+((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?![\d.,])/, "total");
+  // The whole amount or nothing, in any common notation (src/lib/money.ts readAmount): "1.850,00" must never be read
+  // as 1.85, because where the parser reads a line the model's reading must agree with it.
+  const total = readAmount(get(/Total due[ \t]+((?:EUR|€)?[ \t\u00a0]*[0-9][0-9.,  \u00a0\u202f]*[0-9](?:[ \t]*(?:EUR|€))?)[ \t]*$/m, "total"));
+  if (total === null) throw new Error("invoice: no total it can read whole");
   return {
     invoice_no: get(/INVOICE\s+(\S+)/, "invoice number"),
     vendor: text.trim().split("\n")[0]!.trim(),
-    amount: total.replace(/,/g, ""),
+    amount: total,
     currency: "EUR",
     due_date: isoDate(get(/Due date:\s*(.+)/, "due date")),
     iban: get(/IBAN:\s*([A-Z0-9 ]+)/, "IBAN").replace(/\s+/g, ""),

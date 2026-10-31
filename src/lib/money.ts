@@ -36,3 +36,23 @@ export function baseUnitsToCents(units: bigint): number {
   if (cents > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("amount too large");
   return Number(cents);
 }
+
+/**
+ * A written amount, in the notations suppliers use ("1.850,00", "1,850.00", "€1850", "1 850,00", "EUR 1.850"), as
+ * Purser's one form ("1850.00"); null when it cannot be read whole. Thousands are grouped by one separator (dot,
+ * comma or a space), used consistently; the decimal part, if any, is two digits after the other separator. A dot or
+ * comma with three digits after it is a thousands separator, not a decimal one.
+ */
+export function readAmount(written: string): string | null {
+  const s = written.trim().replace(/^(?:EUR|USD|USDZ|€|\$)\s*/i, "").replace(/\s*(?:EUR|USD|€)$/i, "");
+  let whole: string, cents = "00";
+  let m: RegExpExecArray | null;
+  if ((m = /^(\d+)$/.exec(s))) whole = m[1]!;
+  else if ((m = /^(\d+)[.,](\d{2})$/.exec(s))) [whole, cents] = [m[1]!, m[2]!];
+  else if ((m = /^(\d{1,3})([., \u00a0\u202f])(\d{3}(?:\2\d{3})*)(?:([.,])(\d{2}))?$/.exec(s)) && m[4] !== m[2]) {
+    whole = m[1]! + m[3]!.split(m[2]!).join("");
+    if (m[5]) cents = m[5];
+  } else return null;
+  const total = Number(whole) * 100 + Number(cents);
+  return Number.isSafeInteger(total) ? fromCents(total) : null;
+}
