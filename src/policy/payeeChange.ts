@@ -59,6 +59,8 @@ export function requestPayeeChange(db: DB, a: { vendor: string; iban: string; bi
   const bic = a.bic.trim().toUpperCase();
   if (!IBAN.test(iban)) throw new Error(`not an IBAN: ${a.iban}`);
   if (!BIC.test(bic)) throw new Error(`not a BIC: ${a.bic}`);
+  // The executor can only add a German account at Airwallex: say so now, before two people are asked to approve it.
+  if (!iban.startsWith("DE")) throw new Error(`this build adds German (DE) accounts at Airwallex only, not ${iban.slice(0, 2)}; nothing was requested`);
   const on = active(db, a.vendor);
   if (!on) throw new Error(`${a.vendor} is not an allowlisted payee; a new supplier is not a bank-detail change`);
   if (on.iban_sha256 === ibanSha(iban) && on.bic === bic) throw new Error(`these bank details are already on file for ${a.vendor}`);

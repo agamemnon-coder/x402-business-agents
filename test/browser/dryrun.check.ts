@@ -362,7 +362,7 @@ await timed("12 Emergency stop on, a card charge declined, stop off", async () =
   await executed(lift);
 });
 await timed("13 Bank change for Bergtex in three steps (test identities)", async () => {
-  const req = cli("payee.ts", "request", "Bergtex Textil GmbH", "GB29NWBK60161331926819", "NWBKGB2LXXX");
+  const req = cli("payee.ts", "request", "Bergtex Textil GmbH", "DE02100100100006820101", "PBNKDEFFXXX");
   const id = /(B-\d{4})/.exec(req)?.[1] ?? "";
   cli("payee.ts", "verified", id, "--by", "test-controller", "--how", "dry run: no call made (test world)");
   cli("payee.ts", "propose", id);
@@ -387,9 +387,12 @@ await timed("Links: a private tab twice, and a phone that pinned another runner"
     await ctx.close();
   }
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const first = await ctx.newPage();
+  await first.goto(url);
+  await first.evaluate(() => localStorage.setItem("kit11.runner", "AAAAold-runner-key"));
+  await first.close();
+  // A fresh page, as a phone opens the link: going to the same page with only a new #fragment would not reload it.
   const page = await ctx.newPage();
-  await page.goto(url);
-  await page.evaluate(() => localStorage.setItem("kit11.runner", "AAAAold-runner-key"));
   await page.goto(viewer);
   await page.waitForTimeout(2000);
   check(/another runner key/.test((await page.textContent("body")) ?? ""), "a phone that pinned another runner is told so, and the link is not accepted");

@@ -54,6 +54,12 @@ describe("changing a supplier's bank details", () => {
     expect(() => requestPayeeChange(db, { vendor: "Bergtex Textil GmbH", iban: OLD, bic: "COBADEFFXXX", source: null }, "treasury", now)).toThrow(/already on file/);
   });
 
+  // Asked of two people only to fail at Airwallex afterwards (the dry run's GB account did that): refused up front.
+  it("refuses an account this build cannot add at Airwallex before anyone is asked to approve it", () => {
+    expect(() => requestPayeeChange(db, { vendor: "Bergtex Textil GmbH", iban: "GB29NWBK60161331926819", bic: "NWBKGB2LXXX", source: null }, "treasury", now)).toThrow(/German \(DE\) accounts/);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM payee_changes").get() as { n: number }).n).toBe(0);
+  });
+
   it("does not apply a change whose payee changed meanwhile", async () => {
     const c = requestPayeeChange(db, { vendor: "Bergtex Textil GmbH", iban: NEW, bic: "PBNKDEFFXXX", source: null }, "human", now);
     recordVerification(db, c.change_id, { by: "max", how: "called the number on our contract and confirmed", actor: "human" }, now);
