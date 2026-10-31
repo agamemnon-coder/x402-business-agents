@@ -588,3 +588,19 @@ CREATE TABLE IF NOT EXISTS finality_pending (
   tries INTEGER NOT NULL,
   last_at TEXT NOT NULL
 );
+-- Agent recognition (the agent-recognition profile of Visa's Trusted Agent Protocol spec): our self-hosted registry of
+-- each agent's Ed25519 public key, the merchant domains it may sign for, an end date and a revocation; and every nonce
+-- a merchant accepted, so none is accepted twice. Not Visa's directory.
+CREATE TABLE IF NOT EXISTS tap_agents (
+  keyid TEXT PRIMARY KEY,
+  agent TEXT NOT NULL,
+  public_jwk TEXT NOT NULL,
+  domains_json TEXT NOT NULL,
+  not_after INTEGER NOT NULL,
+  revoked_at TEXT
+);
+CREATE TABLE IF NOT EXISTS tap_nonces (
+  nonce TEXT PRIMARY KEY,
+  keyid TEXT NOT NULL,
+  seen_at INTEGER NOT NULL
+);
