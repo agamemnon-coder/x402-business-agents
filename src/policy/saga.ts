@@ -90,5 +90,17 @@ export async function resumeInterrupted(db: DB, run: (db: DB, proposalId: string
       resuming.delete(id);
     }
   }
+  // Approved, but the process died before the executor began (dry-6: killed right after the CFO's Face ID). Its
+  // executor starts it as usual, with every check it makes (hash, approval, expiry, quote): a late one runs nothing.
+  const approved = (db.prepare("SELECT proposal_id FROM proposals WHERE status = 'APPROVED' ORDER BY proposal_id").all() as { proposal_id: string }[]).map((r) => r.proposal_id);
+  for (const id of approved) {
+    audit(db, "system", "proposal.resumed", id, { after: "a restart; approved, but its execution had not begun" }, now);
+    try {
+      await run(db, id);
+      out.push({ id, outcome: (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id) as { status: string }).status });
+    } catch (e) {
+      out.push({ id, outcome: `error: ${(e as Error).message}` });
+    }
+  }
   return out;
 }
