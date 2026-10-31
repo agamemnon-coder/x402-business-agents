@@ -28,6 +28,11 @@ describe("the video plan", () => {
     expect(cues.map((c) => c.text).join(" ").split(/\s+/)).toEqual(BEATS.map((b) => b.voice).join(" ").split(/\s+/));
   });
 
+  it("never leaves a cue of a word or two on screen for a blink", () => {
+    const cues = subtitlesSrt().trim().split(/\n\n/).map((c) => c.split("\n").slice(2).join(" "));
+    for (const c of cues) expect(c.split(/\s+/).length, c).toBeGreaterThanOrEqual(3);
+  });
+
   it("writes the script with the time each beat starts", () => {
     expect(scriptMarkdown()).toContain("# Purser: the video script (2:53)");
     expect(scriptMarkdown()).toContain("## 0:00 Hook (12 s, clip `01-open.mp4`)");

@@ -1,7 +1,7 @@
 # Powered by Claude
 
 Claude is how Purser's agents read the world: supplier notices, customer disputes, invoices, the CFO's policy in
-plain words. Code decides what happens with what Claude read, and only the CFO's Face ID moves money that needs a
+plain words. Code checks what Claude read and what the agents decide, and only the CFO's Face ID moves money that needs a
 person. The dashboard's "Powered by Claude" panel shows each model's calls, average time and cost.
 
 ## Three models, each for one job

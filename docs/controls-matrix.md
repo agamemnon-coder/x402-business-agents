@@ -45,7 +45,7 @@ What to do when a control fires: [runbook.md](runbook.md). Claims and their sour
 | A payout to a sanctioned or unapproved payee | Compliance send policy: the contract pays only with Purser's signed decision, after screening | Chain, code | `test/compliance-screening.test.ts`, `test/compliance-contract.test.ts` | [Compliance run](runs/2026-10-30-compliance-policy.md): 11 attacks reverted on chain; the sanctioned stand-in got no decision |
 | A planted instruction in a document or a chat | Documents screened by code; a reading cannot carry a payee or approve | Code | `test/injection.test.ts`, `test/adversarial.test.ts` | Recorded run: two planted instructions flagged |
 | Money from a stranger mixed into the business's funds | Metal receive policy on the sweep wallet; quarantine until the CFO decides | Chain, person | `test/quarantine.test.ts` | Separate world, 30 October ([metal-award.md](metal-award.md) section 5) |
-| A customer disputes payments falsely | Dispute desk: each order checked against the chain with the signed order kept; code decides | Code, chain | `test/dispute-desk.test.ts`, `test/dispute-case.test.ts` | Recorded dispute case: 12 orders verified |
+| A customer disputes payments falsely | Dispute desk: each order checked against the chain with the signed order kept; code checks | Code, chain | `test/dispute-desk.test.ts`, `test/dispute-case.test.ts` | Recorded dispute case: 12 orders verified |
 
 ## Detection and evidence
 

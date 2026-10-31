@@ -301,7 +301,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       facts: facts(
         fact("Audit rows", `${rows.length}, chain ${verifyAuditChain(db).ok ? "intact" : "BROKEN"}, head ${head.row_hash.slice(0, 12)}…`),
         fact("Approvals with Face ID", String(passkeyApprovals)),
-        fact("Models", "Haiku classifies, Sonnet reads, Opus advises; code decides, a person approves"),
+        fact("Models", "Haiku classifies, Sonnet reads, Opus advises; Metal and Airwallex enforce the limits, a person approves"),
       ),
     });
   }

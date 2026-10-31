@@ -306,7 +306,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
     f.push({
       id: "dispute", title: "The Dispute desk",
       plain: "Northwind, as the seller, decides a customer's claim from what Metal lets it prove: the signed order, the chain check, the settlement and the hash of the data delivered.",
-      why: "Agent commerce needs a fair way to settle \"we never ordered this\". Code decides from the evidence, Opus explains it, and a refund above the CFO's limits waits for Face ID.",
+      why: "Agent commerce needs a fair way to settle \"we never ordered this\". Code checks each order against the evidence, Opus explains it, and a refund above the CFO's limits waits for Face ID.",
       figure: `${dispute.packs.length} orders checked`, proofs: [{ label: `case ${dispute.case_id}`, href: "#dispute" }],
       source: afterwards, docs: [{ label: "Verifying", href: `${METAL_DOCS.mandates}#verifying` }, { label: "Signed orders", href: `${METAL_DOCS.mandates}#signed-orders` }],
     });

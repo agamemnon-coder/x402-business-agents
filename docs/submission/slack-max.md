@@ -19,7 +19,7 @@ Screenshot: `docs/submission/screens/14-dispute.png` (of `5-disputes.png`). De l
 
 > Thanks for the Dispute desk idea, Man! We built it: when a customer disputes payments, the seller checks each one
 > against the chain (the customer's signed order, its mandate via verifyMandatePayment, first use, the delivery
-> record) and code decides the refund; Claude only writes the explanation. In our run, 12 disputed orders all verified,
+> record) and code checks each refund against the evidence; Claude writes the explanation. In our run, 12 disputed orders all verified,
 > so the claim refunded nothing new (3 had been refunded earlier for wrong data).
 > It is now a small open-source example any seller on Metal can use: `examples/metal-dispute-desk` (MIT, 59 tests).
 > We also wrote down what we ran into on testnet, with reproductions: `docs/feedback-for-metal-and-airwallex.md`.

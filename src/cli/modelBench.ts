@@ -68,7 +68,7 @@ const md = [
   "",
   `Run on ${ranAt.slice(0, 10)} with \`npm run model-bench\`: ${runs} run(s) per row, real Claude models, throwaway worlds (nothing reached Airwallex, Metal or a phone). Raw results: [evals/model-benchmark.json](evals/model-benchmark.json).`,
   "",
-  "A case counts for a model only if it passed with every reading from the model itself. When a model fails, Purser's deterministic parsers take over so the decision stays the same; here that counts against the model. In every row the code decides: no case can approve or pay.",
+  "A case counts for a model only if it passed with every reading from the model itself. When a model fails, Purser's deterministic parsers take over so the decision stays the same; here that counts against the model. In every row the code checks: no case can approve or pay.",
   "",
   ...Object.entries(sets).flatMap(([id, s]) => [
     `## ${id === "hard" ? "Harder documents" : "The agents' eval cases"}`,

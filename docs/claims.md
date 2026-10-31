@@ -115,7 +115,7 @@ code on 30 October; the sentences below were changed on its findings.
 
 | Claim | Proof | Changed |
 |---|---|---|
-| Claude reads invoices and explains what code flags | `src/policy/fraud.ts`, `src/policy/injection.ts` (code decides; Opus may explain) | Was "Claude flags fraud and planted instructions". |
+| Claude reads invoices and explains what code flags | `src/policy/fraud.ts`, `src/policy/injection.ts` (code checks; Opus may explain) | Was "Claude flags fraud and planted instructions". |
 | The card's limits come from the CFO policy; merchant categories, currency and end date are fixed per agent | `src/policy/rules.ts`; `PLANS`, `CARD_ACTIVE_DAYS` in `src/config/policy.ts` | Was "the CFO policy sets its limits, merchant categories, currency and end date". |
 | Card and mandate "within limits the CFO sets" | The card limits from the policy; mandate terms change only by a Face ID proposal (P-0002); the policy is an optional stricter cap inside the mandate (`docs/cfo-policy.md`) | Was "both set by one CFO policy". |
 | Single-use task cards, separate live run | `docs/runs/2026-10-30-single-use.md` | Now labelled. |

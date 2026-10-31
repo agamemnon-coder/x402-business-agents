@@ -5,7 +5,7 @@ Moved from the project README. Back to the [README](../README.md).
 ## Invoice fraud
 
 Business email compromise is the classic way to steal a B2B payment: an invoice that looks like the supplier's
-announces new bank details, or comes from a name one letter off. Here the code decides, from the ledger, before
+announces new bank details, or comes from a name one letter off. Here code checks, from the ledger, before
 Airwallex is called (`src/policy/fraud.ts`):
 
 - **Changed bank details:** the invoice's IBAN or BIC differs from the allowlisted beneficiary's.

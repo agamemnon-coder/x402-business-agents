@@ -22,7 +22,7 @@ export const FILM_SCENES: FilmScene[] = [
   { id: "ask", title: "Ask Purser", seconds: 14,
     voice: "Need something once? Ask Purser: a flight to Berlin, at most one hundred and fifty euros. Airwallex issues a single-use card. The booking goes through; a second charge is declined." },
   { id: "trust", title: "Why you can trust it", seconds: 17,
-    voice: "Code decides; the models only read and advise. Thirty-nine red-team attacks in a test world: all failed, two found only afterwards. Eighteen scenarios as expected. Optional four eyes, an emergency stop tested on stand-ins, about nine cents of AI per thousand euros." },
+    voice: "Claude agents read, plan and advise; Metal and Airwallex enforce the limits. Thirty-nine red-team attacks in a test world: all failed, two found only afterwards. Optional four eyes, an emergency stop tested on stand-ins, about nine cents of AI per thousand euros." },
   { id: "end", title: "Purser", seconds: 10,
     voice: "Purser. Agents move at machine speed, and the CFO keeps the pen. Every payment has a proof." },
 ];

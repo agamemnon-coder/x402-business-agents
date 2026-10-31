@@ -53,9 +53,20 @@ export function subtitlesSrt(): string {
     const chunks = sentences.flatMap((s) => {
       const words = s.trim().split(/\s+/);
       const parts: string[] = [];
-      for (let i = 0; i < words.length; i += 11) parts.push(words.slice(i, i + 11).join(" "));
+      // At most 11 words a cue, split evenly: 12 words make two cues of 6, never one of 11 and one of 1.
+      const size = Math.ceil(words.length / Math.ceil(words.length / 11));
+      for (let i = 0; i < words.length; i += size) parts.push(words.slice(i, i + size).join(" "));
       return parts;
     });
+    // A sentence of a word or two ("Watch.") joins the next line, so no cue blinks past.
+    for (let i = 0; i < chunks.length; i++) {
+      if (chunks[i]!.split(/\s+/).length < 3 && chunks.length > 1) {
+        const j = i + 1 < chunks.length ? i + 1 : i - 1;
+        chunks[j] = j > i ? `${chunks[i]} ${chunks[j]}` : `${chunks[j]} ${chunks[i]}`;
+        chunks.splice(i, 1);
+        i = -1;
+      }
+    }
     const total = chunks.reduce((s, c) => s + c.length, 0);
     let at = t + 0.3;
     const usable = len - 0.6;
