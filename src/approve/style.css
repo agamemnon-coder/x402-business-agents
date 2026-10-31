@@ -37,7 +37,7 @@ main > h1 { font-size: 24px; line-height: 1.25; margin: 6px 0 6px; letter-spacin
 .back { color: var(--accent); text-decoration: none; font-weight: 600; display: inline-block; padding: 10px 0; min-height: 44px; }
 .pid { color: var(--muted); font-size: 13px; }
 
-.alarm { display: block; background: var(--bad-soft); color: var(--bad); font-weight: 650; padding: 10px 12px; border-radius: 10px; margin: 10px 0; }
+.alarm { display: block; background: var(--bad-soft); color: var(--bad); font-weight: 650; padding: 10px 12px; border-radius: 10px; margin: 10px 0; overflow-wrap: anywhere; }
 .alarm.big { font-size: 17px; border: 2px solid var(--bad); }
 .warn-box { background: var(--warn-soft); color: var(--warn); font-weight: 600; padding: 10px 12px; border-radius: 10px; }
 
@@ -71,7 +71,7 @@ main > h1 { font-size: 24px; line-height: 1.25; margin: 6px 0 6px; letter-spacin
 .sheet { position: fixed; inset: 0; z-index: 10; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .sheet[hidden] { display: none; }
 .sheet-card { max-width: 640px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; background: var(--surface); }
-.sheet-body { padding: calc(18px + env(safe-area-inset-top)) 18px 12px; flex: 1; }
+.sheet-body { padding: calc(18px + env(safe-area-inset-top)) 18px 12px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .eyebrow { text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 4px; }
 .sheet-title { font-size: 26px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -.01em; }
 .sentence { font-size: 17px; margin: 0 0 14px; }

@@ -17,8 +17,13 @@ verschillende mensen. Claude typt de commando's en keurt nooit iets goed. Max ne
 1. Max opent de enrol-link in een privé-Safari-tab en zet zijn passkey met Face ID. In de chat zegt hij:
    "Bevestig passkey &lt;vingerafdruk&gt;".
 2. De controller doet hetzelfde op het eigen apparaat (`npm run passkey -- add controller`).
-3. Claude zet vier ogen aan boven €1.000. Vanaf dan heeft elke mandaatwijziging, elke bankwijziging en elke betaling
-   boven €1.000 beide passkeys nodig.
+   Wacht na het tonen van de code ongeveer 10 seconden voordat je hem typt: de runner moet het enrol-venster eerst
+   naar de relay brengen.
+3. Claude stelt vier ogen boven €1.000 voor (een beleidswijziging, P-0001). **Max keurt die goed met Face ID.** Pas
+   daarna staat vier ogen aan: elke mandaatwijziging, elke bankwijziging en elke betaling boven €1.000 heeft dan beide
+   passkeys nodig. Claude controleert met `npm run policy` dat `approval.four_eyes_eur` op 1000.00 staat, en begint
+   pas dan aan stap 1. (De proefrun dry-6 vond dit: zonder die Face ID werd de mandaatwijziging na één passkey al
+   goedgekeurd.)
 
 ## De run, in de volgorde van Kit 11
 
