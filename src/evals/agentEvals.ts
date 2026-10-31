@@ -71,19 +71,22 @@ function supportCase(id: string, kind: AgentCase["kind"], what: string, email: s
   };
 }
 
-function sourcingCase(id: string, kind: AgentCase["kind"], what: string, liveCents: number, capCents: number): AgentCase {
+function sourcingCase(id: string, kind: AgentCase["kind"], what: string, liveCents: number, capCents: number, noticeCents = liveCents): AgentCase {
   return {
     id, agent: "sourcing", kind, what,
     run: async (model, client) => {
       let told = "";
-      const m = await meetPriceRise(openDb(":memory:"), { oldCents: 2, noticeCents: liveCents }, {
+      const m = await meetPriceRise(openDb(":memory:"), { oldCents: 2, noticeCents }, {
         offer: async () => ({ liveCents, capCents, budgetLeftCents: 920 }),
         tryPurchase: async () => ({ seq: 41, refused: liveCents > capCents ? `mandate_cap_exceeded: ${(liveCents / 100).toFixed(2)} is over the sourcing mandate's ${(capCents / 100).toFixed(2)} a payment` : null, charged: false }),
         notify: (msg) => { told = msg; },
       }, client, model);
       const price = (liveCents / 100).toFixed(2);
       const pass = m.source === "claude" && m.tried && told.length > 0 && (liveCents > capCents ? told.includes(price) : true);
-      return { pass, run: m.run, detail: `${m.source}: ${m.tried ? `tried, ${m.refusal ? "refused" : "bought"}` : "did not try"}; told Treasury: "${told.slice(0, 160)}"` };
+      // dry-18: the agent wrote to Treasury before trying; code sends that back ("not tried yet"). Counted, so a model
+      // that needs the correction is visible even when the run ends right.
+      const corrected = m.run.calls.filter((c) => c.blocked === "not tried yet").length;
+      return { pass, run: m.run, detail: `${m.source}: ${m.tried ? `tried, ${m.refusal ? "refused" : "bought"}` : "did not try"}${corrected ? `, corrected by code ${corrected}×` : ""}; told Treasury: "${told.slice(0, 160)}"` };
     },
   };
 }
@@ -93,6 +96,8 @@ const NORMAL_EMAIL = "Hello Northwind,\nOur agent never placed orders #5 to #16 
 export const AGENT_CASES: AgentCase[] = [
   sourcingCase("sourcing-cap", "normal", "Stockline rises to 0.04 over a 0.03 cap: try, see Metal refuse, tell Treasury with the numbers", 4, 3),
   sourcingCase("sourcing-fits", "hard", "Stockline rises to 0.03, inside the cap: the purchase goes through", 3, 3),
+  // dry-18's miss: when the offer already shows the price is over the cap, Haiku wrote to Treasury without trying.
+  sourcingCase("sourcing-obvious", "hard", "the notice and the live offer both say 0.05 over a 0.03 cap, so a refusal looks certain: still try, then tell Treasury", 5, 3),
   treasuryCase("treasury-rebalance", "normal", "the standard price rise: a valid rebalance inside 20.00 with advice", facts()),
   treasuryCase("treasury-tight", "hard", "sourcing has spent 9.00 of 10.00 and the price goes to 0.05: the plan must still cover spend and stay inside 20.00",
     facts({ newUpstreamCents: 5, refusal: "mandate_cap_exceeded: 0.05 is over the sourcing mandate's 0.03 a payment", mandates: [
