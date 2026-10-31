@@ -71,6 +71,19 @@ De proefrun wachtte ook 11 minuten tot een voorstel verliep; dat doen we in de l
 ongeveer 15 Face ID-momenten bij (elk 30–60 seconden lezen en tikken) en uitleg. **Verwachte duur live: 45 tot 60
 minuten.** Plan een uur.
 
+## Met de Claude-agents aan (de run van donderdag, `KIT11_AGENTS=on`)
+
+Alles hierboven blijft gelijk: dezelfde stappen, dezelfde goedkeuringen, dezelfde Face ID-momenten. Wat verandert:
+
+- **Stap 2–3:** de Sourcing agent (Haiku) probeert zelf de aankoop, ziet de weigering van Metal en schrijft de Treasury
+  agent wat hij nodig heeft. Dat bericht staat in de log en op het dashboard.
+- **Stap 4:** de Treasury agent (Opus) ontwerpt zelf de herverdeling en de opties, met zijn advies. Code keurt het plan
+  goed of stuurt het terug; de bedragen kunnen dus anders zijn dan 12 / 4 / 4 en 0,07 (bijvoorbeeld 14 / 2 / 4). Max
+  kiest nog steeds optie B als die de hoogste marge geeft; anders zegt Claude vooraf welke letter.
+- **Stap 7:** de Support agent (Sonnet) controleert zelf de orders, refundt zelf alleen de foute (#7, #10, #13) en stuurt
+  de rest met zijn advies naar Max. Max wijst "alles terug" af, zoals gepland.
+- Proefrun met de agents aan: dry-15, 0 fouten, eindcontrole groen (zie `docs/agents.md`).
+
 ## Daarna (Claude, automatisch)
 
 1. Vijf minuten wachten zodat de finality certificates er zijn. Dan `npm run verify`, `npm run audit:export` en
