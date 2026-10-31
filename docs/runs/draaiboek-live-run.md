@@ -78,8 +78,11 @@ Alles hierboven blijft gelijk: dezelfde stappen, dezelfde goedkeuringen, dezelfd
 - **Stap 2–3:** de Sourcing agent (Haiku) probeert zelf de aankoop, ziet de weigering van Metal en schrijft de Treasury
   agent wat hij nodig heeft. Dat bericht staat in de log en op het dashboard.
 - **Stap 4:** de Treasury agent (Opus) ontwerpt zelf de herverdeling en de opties, met zijn advies. Code keurt het plan
-  goed of stuurt het terug; de bedragen kunnen dus anders zijn dan 12 / 4 / 4 en 0,07 (bijvoorbeeld 14 / 2 / 4). Max
-  kiest nog steeds optie B als die de hoogste marge geeft; anders zegt Claude vooraf welke letter.
+  goed of stuurt het terug; de bedragen kunnen dus anders zijn dan 12 / 4 / 4 (in de dry runs meestal 14 / 2 / 4).
+  **Optie A is altijd de laagste prijs, optie B de hoogste**: code stuurt een plan in een andere volgorde terug (dry-19
+  en dry-20 hadden het omgekeerd). Sourcing krijgt altijd meer budget. Claude noemt de bedragen in de chat vóór Face ID.
+- **Stap 12b (nieuw):** Max pauzeert de Support agent met Face ID: het mandaat wordt op de chain ingetrokken en de kaart
+  bevroren. Daarna hervatten met beide passkeys (vier ogen); de agent krijgt wat er van zijn budget over was.
 - **Stap 7:** de Support agent (Sonnet) controleert zelf de orders, refundt zelf alleen de foute (#7, #10, #13) en stuurt
   de rest met zijn advies naar Max. Max wijst "alles terug" af, zoals gepland.
 - Proefrun met de agents aan: dry-15, 0 fouten, eindcontrole groen (zie `docs/agents.md`).
