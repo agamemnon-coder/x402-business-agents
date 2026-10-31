@@ -263,7 +263,7 @@ pacs.008.001.08 message: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs
 | What Metal did | Run 1 | Run 2 |
 |---|---|---|
 | Stock check #41 refused on chain at the old cap (`mandate_cap_exceeded`), customer not charged (absent from `/settlements`) | yes | yes |
-| Old Operations agent credential refused after the CFO's mandate replace (`mandate_revoked`) | yes | not logged |
+| Old Sourcing agent credential refused after the CFO's mandate replace (`mandate_revoked`) | yes | not logged |
 | Disputed orders verified (`verifyMandatePayment`): signed by the customer's mandate key, inside its bound mandate | 12/12 | 12/12 |
 | Refunds pulled under the support mandate, to the customer only | 3 ([`0xcf11b76d…`](https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1)) | 3 + 9 (P-0003 approved by mistake; still paid only to Summit's own account) ([`0x3fd87766…`](https://testnet.metalntwx.com/tx/0x3fd87766d4392f93ed20a88c47d6d5e7a1c7fee2a8d534990371694aed9321a5)) |
 | Earnings swept under the treasury mandate, credited to Airwallex after finality | 1.35 ([`0x808f9133…`](https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f)) | 1.15 ([`0x1844bff9…`](https://testnet.metalntwx.com/tx/0x1844bff9d11282add2b74a3cc639e61cc6b3258bff87d44b00eb98b90e82fea8)) |

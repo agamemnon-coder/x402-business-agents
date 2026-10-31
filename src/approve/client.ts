@@ -1045,7 +1045,7 @@ async function policyPage(): Promise<void> {
   words.className = "policy-input words";
   words.maxLength = 2000;
   words.rows = 4;
-  words.placeholder = "For example: the operations agent's card at most €25 per purchase. Refunds above 0.05 I want to see.";
+  words.placeholder = "For example: the sourcing agent's card at most €25 per purchase. Refunds above 0.05 I want to see.";
   const wordsLabel = el("label", "policy-label", ["In your own words"]);
   wordsLabel.setAttribute("for", "words");
   const draft = el("button", "secondary", ["Draft rules from my words"]) as HTMLButtonElement;

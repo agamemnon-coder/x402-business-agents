@@ -114,7 +114,7 @@ if (cmd === "status") {
   await setupCards(db, awx.rail);
   status();
   const ok = await buyPlan(db, awx.sim, "packwise-starter");
-  console.log(`PLAN             the operations agent subscribes to Packwise Starter, 19.99 EUR: ${ok.approved ? "approved by Airwallex" : `DECLINED (${ok.failureReason})`}`);
+  console.log(`PLAN             the sourcing agent subscribes to Packwise Starter, 19.99 EUR: ${ok.approved ? "approved by Airwallex" : `DECLINED (${ok.failureReason})`}`);
   const pro = await buyPlan(db, awx.sim, "packwise-pro");
   console.log(`NEW INFORMATION  it needs the Pro plan, 45.00 EUR, on a card that allows ${fromCents(cardRows(db).find((c) => c.agent === "sourcing")!.per_tx_cents)} a purchase: ${pro.approved ? "approved (the limit was already high enough)" : `DECLINED by Airwallex (${pro.failureReason})`}`);
   const open = db.prepare("SELECT proposal_id FROM proposals WHERE kind = 'policy_change' AND status = 'PENDING_APPROVAL' AND created_by = 'sourcing'").get() as { proposal_id: string } | undefined;
@@ -122,10 +122,10 @@ if (cmd === "status") {
     const p = proposeCardRaise(db, "sourcing", { perTx: "50.00" }, "Packwise's Pro plan costs 45.00 EUR a month; my card allows 30.00 per purchase, so Airwallex declined it. The Pro plan gives the faster prices our customers pay for. Monthly limit stays 100.00.");
     console.log(`REVISED DECISION the agent asks the CFO for 50.00 per purchase: ${p.proposal_id}, hash ${p.terms_sha256.slice(0, 8)}; ${approvalHint(db, p.proposal_id, p.terms_sha256.slice(0, 8))}`);
   }
-  // Governance: a card may pay only its own kind of merchant. The sales card is for ads; Airwallex itself declines
+  // Governance: a card may pay only its own kind of merchant. The support card is for helpdesk software; Airwallex itself declines
   // warehouse software on it, whatever its limits.
-  const wrong = await buyPlan(db, awx.sim, "packwise-on-sales-card");
-  console.log(`CONTROL          the sales agent's card tries warehouse software (MCC 5734) on an ads-only card: ${wrong.approved ? "APPROVED (the control did not hold)" : `declined by Airwallex (${wrong.failureReason})`}`);
+  const wrong = await buyPlan(db, awx.sim, "packwise-on-support-card");
+  console.log(`CONTROL          the support agent's card tries warehouse software (MCC 5734) on a helpdesk-only card (MCC 7372): ${wrong.approved ? "APPROVED (the control did not hold)" : `declined by Airwallex (${wrong.failureReason})`}`);
 } else if (cmd === "raise") {
   const [, agent, perTx, monthly] = args;
   const at = args.indexOf("--reason");

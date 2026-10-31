@@ -31,7 +31,7 @@ const short = (s: string) => (s.length > 14 ? `${s.slice(0, 10)}…${s.slice(-4)
 const tx = (hash: unknown): RailItem["proof"] => (typeof hash === "string" && /^0x[0-9a-fA-F]{64}$/.test(hash) ? { label: short(hash), href: `${EXPLORER_TX}${hash}` } : null);
 const awxId = (id: unknown): RailItem["proof"] => (typeof id === "string" && id ? { label: `Airwallex id ${short(id)}`, href: null } : null);
 const events = (db: DB, event: string) => all(db, "SELECT ts, subject, payload_json FROM audit_log WHERE event = ? ORDER BY seq", event).map((r) => ({ ts: String(r.ts), subject: String(r.subject ?? ""), p: JSON.parse(String(r.payload_json)) as Row }));
-const AGENT = { sourcing: "Operations agent", support: "Sales agent", treasury: "Finance agent" } as Record<string, string>;
+const AGENT = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent" } as Record<string, string>;
 
 export function railsView(db: DB): RailsView {
   const airwallex: RailItem[] = [];
@@ -100,11 +100,11 @@ export function railsView(db: DB): RailsView {
   if (has(db, "upstream_purchases")) {
     const n = one(db, "SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'PAID'");
     const first = one(db, "SELECT tx_hash FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY created_at LIMIT 1");
-    if (n && Number(n.n) > 0) metal.push({ what: "The agent buys from its supplier", detail: `${String(n.n)} purchases, each under the Operations agent's mandate`, proof: tx(first?.tx_hash) });
+    if (n && Number(n.n) > 0) metal.push({ what: "The agent buys from its supplier", detail: `${String(n.n)} purchases, each under the Sourcing agent's mandate`, proof: tx(first?.tx_hash) });
   }
   const refused = events(db, "upstream.refused");
   if (refused.length) {
-    metal.push({ what: "Refused against the on-chain mandate", detail: `${refused.length} payment${refused.length > 1 ? "s" : ""} over the mandate's cap, checked by Metal's facilitator against the mandate on chain (${String(refused[0]!.p.reason)}): nothing moved; the Finance agent proposed options to the CFO`, proof: null });
+    metal.push({ what: "Refused against the on-chain mandate", detail: `${refused.length} payment${refused.length > 1 ? "s" : ""} over the mandate's cap, checked by Metal's facilitator against the mandate on chain (${String(refused[0]!.p.reason)}): nothing moved; the Treasury agent proposed options to the CFO`, proof: null });
   }
   const replaced = events(db, "mandate.replaced");
   if (replaced.length) metal.push({ what: "Mandate replaced after Face ID", detail: `${replaced.length} replacement${replaced.length > 1 ? "s" : ""} approved by the CFO's passkey; the old mandate is revoked on chain`, proof: tx(replaced[0]!.p.tx) });

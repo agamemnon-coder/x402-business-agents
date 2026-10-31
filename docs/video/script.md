@@ -17,11 +17,11 @@ Purser gives every AI agent its own company card and its own on-chain mandate, w
 
 ## 0:38 A company card, and Face ID (22 s, clip `04-card.mp4`)
 
-Watch. The operations agent buys software: approved by Airwallex. Then the Pro plan, forty-five euros, on a thirty euro limit: declined, by Airwallex itself. The agent asks for more. The CFO checks the exact terms and approves with Face ID. The limit moves to fifty, and the same purchase goes through.
+Watch. The sourcing agent buys software: approved by Airwallex. Then the Pro plan, forty-five euros, on a thirty euro limit: declined, by Airwallex itself. The agent asks for more. The CFO checks the exact terms and approves with Face ID. The limit moves to fifty, and the same purchase goes through.
 
 ## 1:00 A euro bill, paid (22 s, clip `05-bill.mp4`)
 
-A euro invoice arrives: eighteen hundred and fifty. The finance agent checks the reserve, takes a live quote and converts only the missing three hundred and seventy. One Face ID covers the rate, the payee and the most the fee may be. Airwallex sends it by SWIFT; in the sandbox it is marked paid.
+A euro invoice arrives: eighteen hundred and fifty. The treasury agent checks the reserve, takes a live quote and converts only the missing three hundred and seventy. One Face ID covers the rate, the payee and the most the fee may be. Airwallex sends it by SWIFT; in the sandbox it is marked paid.
 
 ## 1:22 On chain with Metal (30 s, clip `06-metal.mp4`)
 

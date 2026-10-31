@@ -17,7 +17,8 @@ import { runAll, runScenario, SCENARIOS, type ScenarioResult } from "../lab/scen
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
-import { AGENT_DISPLAY } from "../config/brand.js";
+import { AGENT_DISPLAY, RECORDING_NAMES_NOTE } from "../config/brand.js";
+import { kit11NamesRecorded } from "../demo/oldNames.js";
 import { buildLiveTimeline } from "../live/timeline.js";
 import { health, prometheus } from "../ops/health.js";
 import type { DisputeCase } from "../seller/desk.js";
@@ -38,6 +39,19 @@ const REDTEAM_JSON = (() => {
   }
 })();
 
+/**
+ * Until the live run with the Kit 11 names is recorded, every page that plays the 30 October recording says, at the
+ * top, that it was made before the rename (src/config/brand.ts). The dashboard shows it in its recorded-run lines; the
+ * film, a fixed 1920x1080 stage, at the bottom. Added before each page's CSP hash is taken.
+ */
+const NAMES_NOTE = kit11NamesRecorded() ? null : RECORDING_NAMES_NOTE;
+const withNamesNote = (page: string, where: "top" | "bottom" = "top") => !NAMES_NOTE ? page : page
+  .replace("</style>", () => `.names-note { margin: 0; padding: 10px 16px; font: 500 13.5px/1.5 Inter, system-ui, sans-serif; background: #fff7e6; color: #5c3b00; border-bottom: 1px solid #f0d9a8; text-align: center; }
+.names-note.bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; border-bottom: 0; border-top: 1px solid #f0d9a8; }
+@media (prefers-color-scheme: dark) { .names-note { background: #2a2110; color: #f3dca8; border-color: #4a3a1c; } }
+</style>`)
+  .replace(/<body[^>]*>/, (m) => `${m}\n<p class="names-note${where === "bottom" ? " bottom" : ""}" role="note">${NAMES_NOTE}</p>`);
+
 const PAGE_TEMPLATE = readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
 /** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
@@ -49,7 +63,7 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-claude.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/claude.png", import.meta.url)) },
 };
 const MONTH_TEMPLATE = readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8");
-const DEMO_TEMPLATE = readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8");
+const DEMO_TEMPLATE = withNamesNote(readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8"));
 const LAB_TEMPLATE = readFileSync(new URL("../dashboard/lab.html", import.meta.url), "utf8");
 const LAB_FILE = new URL("../../docs/lab/results.json", import.meta.url);
 const STORY_FILE = new URL("../../docs/demo/story.json", import.meta.url);
@@ -72,7 +86,7 @@ const cspFor = (page: string) => [
 export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
   return PAGE_TEMPLATE
     .replace("__ICONS_JSON__", () => JSON.stringify(ICONS))
-    .replace("__RECORDED_JSON__", () => JSON.stringify(recorded).replace(/</g, "\\u003c"))
+    .replace("__RECORDED_JSON__", () => JSON.stringify(NAMES_NOTE ? { ...recorded, names_note: NAMES_NOTE } : recorded).replace(/</g, "\\u003c"))
     .replace("__AGENTS_JSON__", AGENTS_JSON)
     .replace("__REDTEAM_JSON__", () => REDTEAM_JSON);
 }
@@ -91,13 +105,13 @@ export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readF
 }
 
 /** "Purser live": the animated day, its timeline inside the page (src/live/timeline.ts), built from the recordings. */
-const LIVE_TEMPLATE = readFileSync(new URL("../live/live.html", import.meta.url), "utf8");
+const LIVE_TEMPLATE = withNamesNote(readFileSync(new URL("../live/live.html", import.meta.url), "utf8"));
 export const LIVE_CSP = cspFor(LIVE_TEMPLATE);
 export function livePage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
   return LIVE_TEMPLATE.replace("__LIVE_JSON__", () => JSON.stringify(buildLiveTimeline(story, recorded)).replace(/</g, "\\u003c"));
 }
 
-const FILM_TEMPLATE = readFileSync(new URL("../film/film.html", import.meta.url), "utf8");
+const FILM_TEMPLATE = withNamesNote(readFileSync(new URL("../film/film.html", import.meta.url), "utf8"), "bottom");
 export const FILM_CSP = cspFor(FILM_TEMPLATE);
 /** The film (src/film/): its facts from the recordings and the latest red team and Lab reports, its scenes timed. */
 export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
@@ -119,7 +133,7 @@ export const TRY_CSP = cspFor(TRY_PAGE);
 /** "How Purser uses Metal" (src/metal/): the features, mandates and Dispute desk case recorded in docs/demo/metal.json. */
 const METAL_FILE = new URL("../../docs/demo/metal.json", import.meta.url);
 const metalData = () => JSON.parse(readFileSync(METAL_FILE, "utf8")) as { dispute: DisputeCase | null };
-export const METAL_PAGE = readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8").replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
+export const METAL_PAGE = withNamesNote(readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8")).replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
 export const METAL_CSP = cspFor(METAL_PAGE);
 /** /visa: agent recognition, then the agent's own Airwallex Visa card (src/visa/page.ts). */
 export const VISA_PAGE = visaPage();

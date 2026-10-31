@@ -1,4 +1,4 @@
-// The merchant we run for the agent-recognition demo: Packwise, the warehouse software the Operations agent buys.
+// The merchant we run for the agent-recognition demo: Packwise, the warehouse software the Sourcing agent buys.
 // It recognises the agent first (src/visa/tap.ts: the agent-recognition profile of Visa's TAP spec, our registry and
 // test keys), and only then is the agent's own Airwallex Visa card charged, inside the CFO limit Airwallex enforces
 // (src/agents/cardBuyer.ts). In the sandbox the charge is a simulated card authorisation. Every outcome is audited.

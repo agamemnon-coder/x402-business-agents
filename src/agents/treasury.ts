@@ -1,4 +1,4 @@
-// The finance agent's planning for a supplier price rise (scenario S1). Everything here is code:
+// The treasury agent's planning for a supplier price rise (scenario S1). Everything here is code:
 // it reads the chain, prices the options and writes proposals. It moves nothing.
 
 import { readFileSync } from "node:fs";

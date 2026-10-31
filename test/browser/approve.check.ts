@@ -64,7 +64,7 @@ const executed: string[] = [];
 const signer = displayKey(join(dir, "relay-display-key.pem"));
 // Opus's reading of the CFO's words (P2), fixed for the check: one rule, quoted from the words typed below.
 const opus = { beta: { messages: { parse: async (p: { model: string }) => ({ model: p.model, stop_reason: "end_turn", stop_details: null, usage: { input_tokens: 1, output_tokens: 1 },
-  parsed_output: { changes: [{ key: "cap.sourcing", to: "0.02", quote: "hooguit 0,02 per betaling", why: "the operations agent's limit per payment" }], not_mapped: [], questions: [] } }) } } } as unknown as Anthropic;
+  parsed_output: { changes: [{ key: "cap.sourcing", to: "0.02", quote: "hooguit 0,02 per betaling", why: "the sourcing agent's limit per payment" }], not_mapped: [], questions: [] } }) } } } as unknown as Anthropic;
 const tools = new Tools(db, new ClaudeReader(db, opus));
 const runner = new RelayRunner({
   db, cfg, fetch, signer, log: (l) => console.log(`  runner: ${l}`),
@@ -175,18 +175,18 @@ await page.click("button.confirm");
 await page.waitForSelector(".verdict.bad", { timeout: 20_000 });
 check(/another option/.test((await page.textContent(".verdict-detail")) ?? ""), "the other option after B: refused by the runner");
 
-// The CFO policy editor: lower the operations agent's limit, sign it with the passkey, see it applied.
+// The CFO policy editor: lower the sourcing agent's limit, sign it with the passkey, see it applied.
 await page.goto(`${url}/policy`);
 await page.waitForSelector(".policy-row input");
-// The operations agent's limit, found by its label (the emergency stop is the first row).
-const capId = await page.locator(".policy-row", { hasText: "Operations agent: most per payment" }).locator(".policy-input").getAttribute("id");
+// The sourcing agent's limit, found by its label (the emergency stop is the first row).
+const capId = await page.locator(".policy-row", { hasText: "Sourcing agent: most per payment" }).locator(".policy-input").getAttribute("id");
 await page.fill(`#${capId}`, "0,03"); // a phone types a decimal comma
 await page.fill("#reason", "supplier prices are rising");
 await page.screenshot({ path: join(shots, "policy-editor.png") });
 await page.click("main > button.confirm");
 await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
 check((await page.textContent(".sheet-title")) === "Policy change", "policy editor: the change opens the same confirm screen");
-check((await page.textContent(".sentence")) === "Change Operations agent: most per payment from no extra limit to 0.03. Reason: supplier prices are rising.", "policy editor: it says exactly what changes");
+check((await page.textContent(".sentence")) === "Change Sourcing agent: most per payment from no extra limit to 0.03. Reason: supplier prices are rising.", "policy editor: it says exactly what changes");
 await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 3000 });
 await page.screenshot({ path: join(shots, "policy-confirm.png") });
 await page.click("#sheet button.confirm");
@@ -200,7 +200,7 @@ await page.fill("#words", "De sourcing-agent mag hooguit 0,02 per betaling uitge
 await page.click(".policy-words:has(#words) button"); // the box with the words, not Ask Purser above it
 await page.waitForSelector(".verdict.ok", { timeout: 20_000 });
 check((await page.textContent(".verdict-head")) === "Rules drafted", "policy in words: the runner drafted rules");
-check(/waits for your Face ID: Operations agent: most per payment: 0\.03 → 0\.02/.test((await page.textContent(".verdict-detail")) ?? ""), "policy in words: it says which rule came from the words");
+check(/waits for your Face ID: Sourcing agent: most per payment: 0\.03 → 0\.02/.test((await page.textContent(".verdict-detail")) ?? ""), "policy in words: it says which rule came from the words");
 check(policyValue(db, "cap.sourcing") === "0.03", "policy in words: nothing applied before Face ID");
 await page.screenshot({ path: join(shots, "policy-words.png") });
 await page.click(".policy-words a.confirm");

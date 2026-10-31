@@ -56,7 +56,7 @@ agents, Operations, Sales and Finance, each with its own card and its own mandat
 - **A mandate per agent.** Each agent that pays per request does it under its own on-chain mandate: a cap per payment,
   a total budget, one payee and an end date.
 - **Metal refused a price rise.** When the warehouse API (a stand-in we run) raised its price above the cap, Metal's facilitator refused the payment
-  against the mandate on chain (`mandate_cap_exceeded`); nothing moved. The Finance agent proposed options, the CFO
+  against the mandate on chain (`mandate_cap_exceeded`); nothing moved. The Treasury agent proposed options, the CFO
   signed the new terms with Face ID, and Purser replaced the mandates; the old one is refused (`mandate_revoked`).
 - **x402 with signed orders** for per-request sales, **mandate pulls** for refunds and the earnings sweep, and
   **pay-per-call clearing** for a prepaying customer (separate live run).

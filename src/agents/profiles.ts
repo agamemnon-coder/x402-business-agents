@@ -69,7 +69,7 @@ export function agentProfiles(db: DB, now = new Date()): AgentProfile[] {
         asks: ["A supplier price above its limit: it stops, proposes options and waits", ...always],
       },
       support: {
-        alone: [`Settles retailers' claims: refunds up to ${v("approval.refund_each")} test USD each and ${v("approval.refund_per_dispute")} per dispute`, onCard(id, "ads")],
+        alone: [`Refunds customers when a dispute holds: refunds up to ${v("approval.refund_each")} test USD each and ${v("approval.refund_per_dispute")} per dispute`, onCard(id, "helpdesk software")],
         asks: [`A refund above ${v("approval.refund_each")} each or ${v("approval.refund_per_dispute")} per dispute`, ...always],
       },
       treasury: {

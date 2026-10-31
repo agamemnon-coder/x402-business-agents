@@ -2,7 +2,7 @@
 // Agent recognition (the agent-recognition profile of Visa's Trusted Agent Protocol spec), live with the Airwallex
 // sandbox. setup: each agent with a card gets an Ed25519 key (a key file in KIT11_KEYS_DIR, never printed) and its
 // public key goes into our self-hosted registry for the merchant we run (Packwise, on 127.0.0.1). run: the merchant
-// listens over HTTP; the Operations agent signs a checkout and pays with its own Airwallex card (a simulated
+// listens over HTTP; the Sourcing agent signs a checkout and pays with its own Airwallex card (a simulated
 // authorisation in the sandbox, inside the CFO limit); then the red team sends what the merchant must refuse, over
 // the same HTTP. Writes docs/runs/visa-tap.json (RUN_OUT names another run). Registry and keys are ours, not Visa's.
 
@@ -78,14 +78,14 @@ const step = async (name: string, expect: string, r: Promise<{ status: number; b
 };
 
 const good = await checkout(ops);
-await step("the Operations agent buys Packwise Starter (EUR 19.99), signed", "recognised, approved by Airwallex", send(good.clone()));
+await step("the Sourcing agent buys Packwise Starter (EUR 19.99), signed", "recognised, approved by Airwallex", send(good.clone()));
 await step("the same signed request again", "refused: nonce replay", send(good));
 await step("no signature", "refused", send(new Request(`http://${AUTHORITY}/checkout`, { method: "POST", body: JSON.stringify({ plan: "packwise-starter" }) })));
 await step("signed for another merchant, sent here", "refused: the signature covers the other host", send(await checkout(ops, { url: "http://other.example/checkout" })));
 await step("a browsing signature at checkout", "refused: wrong tag", send(await checkout(ops, { tag: "agent-browser-auth" })));
 await step("a stranger's key", "refused: unknown key", send(await checkout(await newAgentKey("stranger"))));
 await step("signed ten minutes ago", "refused: expired", send(await checkout(ops, { now: Math.floor(Date.now() / 1000) - 600 })));
-await step("the Operations agent buys Packwise Pro (EUR 45.00), over its card limit", "recognised, declined by Airwallex", send(await checkout(ops, { body: JSON.stringify({ plan: "packwise-pro" }) })));
+await step("the Sourcing agent buys Packwise Pro (EUR 45.00), over its card limit", "recognised, declined by Airwallex", send(await checkout(ops, { body: JSON.stringify({ plan: "packwise-pro" }) })));
 revokeAgent(db, ops.keyid);
 await step("after the key is revoked", "refused: revoked", send(await checkout(ops)));
 registerAgent(db, { agent: "sourcing", keyid: ops.keyid, publicJwk: ops.publicJwk, domains: [AUTHORITY], notAfter: Math.floor(Date.now() / 1000) + 30 * 86_400 });

@@ -37,7 +37,7 @@ describe("agent profiles", () => {
   it("has one profile per agent, with its job, card, mandate limit, velocity and settings", () => {
     const db = openDb(":memory:");
     const ps = agentProfiles(db, now);
-    expect(ps.map((p) => [p.id, p.name])).toEqual([["sourcing", "Operations agent"], ["support", "Sales agent"], ["treasury", "Finance agent"]]);
+    expect(ps.map((p) => [p.id, p.name])).toEqual([["sourcing", "Sourcing agent"], ["support", "Support agent"], ["treasury", "Treasury agent"]]);
     const ops = ps[0]!;
     expect(ops.card).toMatchObject({ per_tx: "30.00", monthly: "100.00", currency: "EUR" });
     expect(ops.card.merchants.join(" ")).toMatch(/Software \(MCC 5734\)/);

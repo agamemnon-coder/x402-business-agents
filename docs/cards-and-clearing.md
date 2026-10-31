@@ -7,7 +7,7 @@ Moved from the project README. Back to the [README](../README.md).
 | Agent | Card | Per purchase | Per month | Buys |
 |---|---|---|---|---|
 | sourcing | virtual Visa | 30.00 EUR | 100.00 EUR | market data (Packwise) |
-| support | virtual Visa | 60.00 EUR | 150.00 EUR | helpdesk seats (Adwave) |
+| support | virtual Visa | 60.00 EUR | 150.00 EUR | helpdesk software (Replyhub) |
 | treasury | virtual Visa | 25.00 EUR | 50.00 EUR | bookkeeping software (Ledgerly) |
 
 The merchants are fictional (Microsoft's sample company names).
@@ -45,7 +45,7 @@ issues a receipt and certifies the totals on chain each epoch, so there is no tr
   - Summit tries clearing first. It falls back to the mandate route whenever clearing took nothing, so a sale never
     depends on the new scheme. It never pays a tick a second way when a clearing payment may have been counted.
 - **Offered only when we can deliver.** Seen live: a clearing payment is counted when the buyer makes it, before the
-  seller can refuse. So before the prepaid route makes an offer, the operations agent checks the supplier's price
+  seller can refuse. So before the prepaid route makes an offer, the sourcing agent checks the supplier's price
   against its mandate and the CFO policy, for free. If that check fails, the answer is 503 "not offered" and nobody
   pays.
 - **On the dashboard,** the prepaid clearing budget is shown apart from the mandates.

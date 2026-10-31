@@ -8,7 +8,7 @@ The CFO sets limits the agents work within: each agent's company card limits (pe
 the card at Airwallex), and inside their on-chain mandates a limit per payment for each agent,
 the refund amounts above which a person must approve, the EUR and USD reserve floors, which Airwallex payees
 are allowed, and up to which amount a task card from Ask Purser is issued without Face ID ("Task cards up to this
-are issued without Face ID", `approval.task_card_eur`, 300.00 EUR to start; see [ask-purser.md](ask-purser.md)). Each is checked before anything is signed: the operations agent aborts the x402 payment when the
+are issued without Face ID", `approval.task_card_eur`, 300.00 EUR to start; see [ask-purser.md](ask-purser.md)). Each is checked before anything is signed: the sourcing agent aborts the x402 payment when the
 supplier's offer is over its limit (`policy_cap_exceeded`, nothing signed, the customer not charged), refunds and
 sweeps refuse before the pull, and an invoice to a blocked payee escalates. The mandates stay the hard outer wall;
 the policy can only be stricter.
@@ -42,7 +42,7 @@ prompt.
 
 ## The CFO policy in plain words
 
-The CFO writes the policy as they would say it, for example "the operations agent's card at most €25 per purchase;
+The CFO writes the policy as they would say it, for example "the sourcing agent's card at most €25 per purchase;
 refunds above 0.05 I want to see". This works on the runner (`npm run policy -- from-text "…"`) or in the box at the
 top of the phone's policy page.
 

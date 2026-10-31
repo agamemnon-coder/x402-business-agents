@@ -30,25 +30,25 @@ describe("a company card per agent (K2)", () => {
     const end = new Date(now.getTime() + 90 * 86_400_000).toISOString();
     expect(awx.cards.map((c) => c.controls)).toEqual([
       { mccs: ["5734"], currencies: ["EUR"], activeTo: end },
-      { mccs: ["7311"], currencies: ["EUR"], activeTo: end },
+      { mccs: ["7372"], currencies: ["EUR"], activeTo: end },
       { mccs: ["5734"], currencies: ["EUR"], activeTo: end },
     ]);
     expect(db.prepare("SELECT agent, allowed_mccs, allowed_currencies, active_to FROM cards ORDER BY agent").all()).toEqual([
       { agent: "sourcing", allowed_mccs: "5734", allowed_currencies: "EUR", active_to: end },
-      { agent: "support", allowed_mccs: "7311", allowed_currencies: "EUR", active_to: end },
+      { agent: "support", allowed_mccs: "7372", allowed_currencies: "EUR", active_to: end },
       { agent: "treasury", allowed_mccs: "5734", allowed_currencies: "EUR", active_to: end },
     ]);
-    // The sales agent's card is for ads: warehouse software on it is declined by the card issuer itself.
-    const t = await buyPlan(db, awx, "packwise-on-sales-card", now);
+    // The support agent's card is for helpdesk software: warehouse software on it is declined by the card issuer itself.
+    const t = await buyPlan(db, awx, "packwise-on-support-card", now);
     expect(t).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
   });
 
   it("brings an adopted card's merchant categories and currencies back to the policy", async () => {
-    const h = await awx.createCardholder({ email: "agents+support@northwind-outdoor.example", firstName: "Sales", lastName: "Agent" });
-    await awx.createCard({ cardholderId: h.id, nickname: "sales agent: ads", createdBy: "x", limits: { currency: "EUR", perTxCents: 6000, monthlyCents: 15000 } });
+    const h = await awx.createCardholder({ email: "agents+support@northwind-outdoor.example", firstName: "Support", lastName: "Agent" });
+    await awx.createCard({ cardholderId: h.id, nickname: "support agent: helpdesk software", createdBy: "x", limits: { currency: "EUR", perTxCents: 6000, monthlyCents: 15000 } });
     await setupCards(db, awx, now);
-    expect(awx.cards[0]!.controls).toMatchObject({ mccs: ["7311"], currencies: ["EUR"] });
-    expect(events(db, "card.controls_synced")[0]).toMatchObject({ agent: "support", from: "any merchant, any currency", to: "MCC 7311, EUR" });
+    expect(awx.cards[0]!.controls).toMatchObject({ mccs: ["7372"], currencies: ["EUR"] });
+    expect(events(db, "card.controls_synced")[0]).toMatchObject({ agent: "support", from: "any merchant, any currency", to: "MCC 7372, EUR" });
   });
 
   it("issues one virtual card per agent with the CFO policy's limits, and only once", async () => {
@@ -56,9 +56,9 @@ describe("a company card per agent (K2)", () => {
     await setupCards(db, awx, now);
     expect(awx.holders).toHaveLength(3);
     expect(awx.cards.map((c) => [c.nickname, c.limits?.perTxCents, c.limits?.monthlyCents])).toEqual([
-      ["operations agent: warehouse software", 3000, 10000],
-      ["sales agent: ads", 6000, 15000],
-      ["finance agent: bookkeeping", 2500, 5000],
+      ["sourcing agent: warehouse and data software", 3000, 10000],
+      ["support agent: helpdesk software", 6000, 15000],
+      ["treasury agent: bookkeeping", 2500, 5000],
     ]);
     const rows = db.prepare("SELECT agent, last4, per_tx_cents FROM cards ORDER BY agent").all();
     expect(rows).toHaveLength(3);
@@ -68,7 +68,7 @@ describe("a company card per agent (K2)", () => {
   it("gives each world its own cards, named after its business account", async () => {
     db.prepare("INSERT INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000AbC12', 'business')").run();
     await setupCards(db, awx, now);
-    expect(awx.cards[0]!.nickname).toBe("operations agent: warehouse software (0abc12)");
+    expect(awx.cards[0]!.nickname).toBe("sourcing agent: warehouse and data software (0abc12)");
     const other = openDb(":memory:");
     other.prepare("INSERT INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000DeF34', 'business')").run();
     await setupCards(other, awx, now);
@@ -78,9 +78,9 @@ describe("a company card per agent (K2)", () => {
 
   it("adopts a card that already exists at Airwallex and brings its limits back to the policy", async () => {
     const h = await awx.createCardholder({ email: "agents+sourcing@northwind-outdoor.example", firstName: "Sourcing", lastName: "Agent" });
-    await awx.createCard({ cardholderId: h.id, nickname: "operations agent: warehouse software", createdBy: "x", limits: { currency: "EUR", perTxCents: 5000, monthlyCents: 10000 } });
+    await awx.createCard({ cardholderId: h.id, nickname: "sourcing agent: warehouse and data software", createdBy: "x", limits: { currency: "EUR", perTxCents: 5000, monthlyCents: 10000 } });
     await setupCards(db, awx, now);
-    expect(awx.cards.filter((c) => c.nickname.startsWith("operations"))).toHaveLength(1);
+    expect(awx.cards.filter((c) => c.nickname.startsWith("sourcing"))).toHaveLength(1);
     expect(awx.cards[0]!.limits).toEqual({ currency: "EUR", perTxCents: 3000, monthlyCents: 10000 });
     expect(events(db, "card.limits_synced")[0]).toMatchObject({ agent: "sourcing", from: "50.00 / 100.00", to: "30.00 / 100.00" });
   });
@@ -99,7 +99,7 @@ describe("a company card per agent (K2)", () => {
     const p = proposeCardRaise(db, "sourcing", { perTx: "50.00" }, "the Pro plan costs 45.00 EUR", now);
     expect(p.status).toBe("PENDING_APPROVAL");
     expect(Date.parse(p.expires_at) - now.getTime()).toBe(60 * 60 * 1000);
-    expect(JSON.parse(p.terms_json).changes).toEqual([{ key: "card.sourcing.per_tx", label: "Operations agent's card: most per purchase", from: "30.00", to: "50.00" }]);
+    expect(JSON.parse(p.terms_json).changes).toEqual([{ key: "card.sourcing.per_tx", label: "Sourcing agent's card: most per purchase", from: "30.00", to: "50.00" }]);
     // Approving changes the policy; the card at Airwallex follows.
     approve(db, p.proposal_id);
     executePolicyChange(db, p.proposal_id, now);
@@ -127,7 +127,7 @@ describe("a company card per agent (K2)", () => {
 
   it("records each Airwallex transaction once, however it arrives", async () => {
     await setupCards(db, awx, now);
-    const t = await buyPlan(db, awx, "adwave-starter", now);
+    const t = await buyPlan(db, awx, "replyhub-starter", now);
     await pollCardTransactions(db, awx, now);
     ingestCardTransaction(db, t, "webhook", now);
     expect(db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get()).toEqual({ n: 1 });
@@ -145,7 +145,7 @@ describe("a company card per agent (K2)", () => {
   it("knows a decline is the same one when Airwallex names it by two different ids", async () => {
     await setupCards(db, awx, now);
     const card = awx.cards[1]!.cardId;
-    const base = { cardId: card, amountCents: 6100, currency: "EUR", status: "FAILED", approved: false, failureReason: "LIMIT_EXCEEDED", merchant: "Adwave", mcc: "5734", type: "AUTHORIZATION", occurredAt: "2026-11-03T10:00:00.990Z" };
+    const base = { cardId: card, amountCents: 6100, currency: "EUR", status: "FAILED", approved: false, failureReason: "LIMIT_EXCEEDED", merchant: "Replyhub", mcc: "5734", type: "AUTHORIZATION", occurredAt: "2026-11-03T10:00:00.990Z" };
     expect(ingestCardTransaction(db, { ...base, transactionId: "legacy-id" }, "poll", now)).toBe(true);
     expect(ingestCardTransaction(db, { ...base, transactionId: "card-transaction-id", status: "DECLINED" }, "webhook", now)).toBe(false);
     expect(db.prepare("SELECT COUNT(*) AS n FROM card_transactions").get()).toEqual({ n: 1 });

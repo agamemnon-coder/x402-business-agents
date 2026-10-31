@@ -135,7 +135,7 @@ export type TaskCardTerms = Terms & {
 /** Where a chat message came from. Only "cfo-at-runner" can be issued within the CFO policy. */
 export type AskedBy = "cfo-at-runner" | "dashboard-link" | `ext:${string}`;
 
-/** The Finance agent proposes the card; nothing is issued before the CFO approves it with Face ID. */
+/** The Treasury agent proposes the card; nothing is issued before the CFO approves it with Face ID. */
 export function proposeTaskCard(db: DB, task: PlannedTask, message: string, now = new Date(), asker?: Actor, askedBy: AskedBy = asker?.startsWith("ext:") ? asker as AskedBy : "dashboard-link"): ProposalRow {
   const terms: TaskCardTerms = {
     schema: TERMS_SCHEMA, kind: "task_card", proposal_id: nextProposalId(db),

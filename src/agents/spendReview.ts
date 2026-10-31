@@ -10,7 +10,7 @@ import { fromCents } from "../lib/money.js";
 
 /** Merchant categories, in words (the ones the agents' cards allow, and the task cards'). */
 export const MCC_WORDS: Record<string, string> = {
-  "5734": "Software", "7311": "Advertising", "4511": "Airlines", "7011": "Hotels", "4112": "Trains", "8931": "Bookkeeping",
+  "5734": "Software", "7372": "Software services", "7311": "Advertising", "4511": "Airlines", "7011": "Hotels", "4112": "Trains", "8931": "Bookkeeping",
 };
 
 export interface SpendRow { agent: string; merchant: string; category: string; currency: string; charges: number; total: string; declined: number; subscription: boolean }

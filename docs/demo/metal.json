@@ -10,15 +10,15 @@
       "figure": "3 mandates",
       "proofs": [
         {
-          "label": "Operations agent · 0x25952ab9…60aa",
+          "label": "Sourcing agent · 0x25952ab9…60aa",
           "href": "https://testnet.metalntwx.com/tx/0x25952ab99bf9ba1abd31050883bcb5aa8c2b6337d0e9b70f88656461f19260aa"
         },
         {
-          "label": "Sales agent · 0x1b3308e2…f7d1",
+          "label": "Support agent · 0x1b3308e2…f7d1",
           "href": "https://testnet.metalntwx.com/tx/0x1b3308e2c59d278acafeb2d06a796cbf81241a32daf56758914d936680e5f7d1"
         },
         {
-          "label": "Finance agent · 0xb89ea437…7585",
+          "label": "Treasury agent · 0xb89ea437…7585",
           "href": "https://testnet.metalntwx.com/tx/0xb89ea43765c42ed0325ed5b66c691790df93224dae26bcc6e2030d65aefd7585"
         }
       ],
@@ -38,11 +38,11 @@
       "figure": "2 replacements",
       "proofs": [
         {
-          "label": "Operations agent · 0xbc70858f…b5d7",
+          "label": "Sourcing agent · 0xbc70858f…b5d7",
           "href": "https://testnet.metalntwx.com/tx/0xbc70858fef5ca185cb8dffb860becac2fe0876888aa5ea57d8aee2700449b5d7"
         },
         {
-          "label": "Finance agent · 0x2909b164…8aed",
+          "label": "Treasury agent · 0x2909b164…8aed",
           "href": "https://testnet.metalntwx.com/tx/0x2909b164c50779c342783309943901472cf1c966402c550d0d28f5ab86a08aed"
         }
       ],
@@ -133,7 +133,7 @@
     {
       "id": "pull",
       "title": "Refunds as mandate pulls",
-      "plain": "A refund is a payment under the Sales agent's own mandate, whose only payee is the customer's account, each with its own payment id.",
+      "plain": "A refund is a payment under the Support agent's own mandate, whose only payee is the customer's account, each with its own payment id.",
       "why": "A refund can only go back to the account that paid, never to an address in an email, and a retry never pays twice.",
       "figure": "3 refunds",
       "proofs": [
@@ -165,7 +165,7 @@
     {
       "id": "finality",
       "title": "Sweep after finality",
-      "plain": "Earnings move to the sweep wallet under the Finance agent's mandate. Purser books them at Airwallex only once their block (9401051) is final (9401068), and exactly once.",
+      "plain": "Earnings move to the sweep wallet under the Treasury agent's mandate. Purser books them at Airwallex only once their block (9401051) is final (9401068), and exactly once.",
       "why": "The books never count money that could still be undone, and a restart never credits it twice.",
       "figure": "booked once",
       "proofs": [
@@ -350,7 +350,7 @@
   "mandates": [
     {
       "role": "sourcing",
-      "agent": "Operations agent",
+      "agent": "Sourcing agent",
       "job": "buys live stock checks from the warehouse API and pays the warehouse software",
       "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "payee": {
@@ -431,7 +431,7 @@
     },
     {
       "role": "support",
-      "agent": "Sales agent",
+      "agent": "Support agent",
       "job": "pays for ads and settles retailers' claims",
       "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "payee": {
@@ -489,7 +489,7 @@
     },
     {
       "role": "treasury",
-      "agent": "Finance agent",
+      "agent": "Treasury agent",
       "job": "pays the manufacturer by SWIFT, sweeps earnings on Metal once final, books them at Airwallex, and pays the bookkeeping",
       "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
       "payee": {

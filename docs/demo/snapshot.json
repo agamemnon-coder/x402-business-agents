@@ -182,14 +182,14 @@
         "ts": "2026-10-30T07:32:25.287Z",
         "agent": "support",
         "what": "Card purchase declined by Airwallex",
-        "reason": "Airwallex declined 19.99 EUR at Packwise on the Sales agent's card •••• 6882: this card may not pay this kind of merchant"
+        "reason": "Airwallex declined 19.99 EUR at Packwise on the Support agent's card •••• 6882: this card may not pay this kind of merchant"
       },
       {
         "seq": 165,
         "ts": "2026-10-30T07:32:21.525Z",
         "agent": "sourcing",
         "what": "Card purchase declined by Airwallex",
-        "reason": "Airwallex declined 45.00 EUR at Packwise on the Operations agent's card •••• 8120: over the card's limit"
+        "reason": "Airwallex declined 45.00 EUR at Packwise on the Sourcing agent's card •••• 8120: over the card's limit"
       },
       {
         "seq": 162,
@@ -431,7 +431,7 @@
         "model": null,
         "tx": null,
         "awx_id": "01a18bbb-6607-7000-ac01-0b4d20104e8e",
-        "text": "Airwallex approved 45.00 EUR at Packwise on the Operations agent's card •••• 8120",
+        "text": "Airwallex approved 45.00 EUR at Packwise on the Sourcing agent's card •••• 8120",
         "tone": "ok"
       },
       {
@@ -453,7 +453,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Airwallex now has the CFO policy on the Operations agent's card •••• 8120: up to 50.00 EUR per purchase, 100.00 EUR a month (was up to 30.00 EUR per purchase, 100.00 EUR a month)",
+        "text": "Airwallex now has the CFO policy on the Sourcing agent's card •••• 8120: up to 50.00 EUR per purchase, 100.00 EUR a month (was up to 30.00 EUR per purchase, 100.00 EUR a month)",
         "tone": "approval"
       },
       {
@@ -475,7 +475,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "CFO policy: Operations agent's card: most per purchase changed from 30.00 EUR to 50.00 EUR (P-0005)",
+        "text": "CFO policy: Sourcing agent's card: most per purchase changed from 30.00 EUR to 50.00 EUR (P-0005)",
         "tone": "approval"
       },
       {
@@ -508,7 +508,7 @@
         "model": null,
         "tx": null,
         "awx_id": "7edb809a-48d4-440e-ab1f-3805645fd605",
-        "text": "Airwallex declined 19.99 EUR at Packwise on the Sales agent's card •••• 6882: this card may not pay this kind of merchant",
+        "text": "Airwallex declined 19.99 EUR at Packwise on the Support agent's card •••• 6882: this card may not pay this kind of merchant",
         "tone": "refusal"
       },
       {
@@ -519,7 +519,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Subscribing to Packwise (Starter plan, monthly, on the sales card) for 19.99 EUR on its card •••• 6882",
+        "text": "Subscribing to Packwise (Starter plan, monthly, on the support card) for 19.99 EUR on its card •••• 6882",
         "tone": "info"
       },
       {
@@ -530,7 +530,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "The Operations agent proposed P-0005 (policy change)",
+        "text": "The Sourcing agent proposed P-0005 (policy change)",
         "tone": "approval"
       },
       {
@@ -541,7 +541,7 @@
         "model": null,
         "tx": null,
         "awx_id": "01a18bb9-571a-7000-a390-0e6d4b0e3132",
-        "text": "Airwallex declined 45.00 EUR at Packwise on the Operations agent's card •••• 8120: over the card's limit",
+        "text": "Airwallex declined 45.00 EUR at Packwise on the Sourcing agent's card •••• 8120: over the card's limit",
         "tone": "refusal"
       },
       {
@@ -563,7 +563,7 @@
         "model": null,
         "tx": null,
         "awx_id": "01a18bb9-4682-7000-bd95-43a3a930b03b",
-        "text": "Airwallex approved 19.99 EUR at Packwise on the Operations agent's card •••• 8120",
+        "text": "Airwallex approved 19.99 EUR at Packwise on the Sourcing agent's card •••• 8120",
         "tone": "ok"
       },
       {
@@ -596,7 +596,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Airwallex issued the Finance agent a virtual Visa card •••• 7786: up to 25.00 EUR per purchase, 50.00 EUR a month",
+        "text": "Airwallex issued the Treasury agent a virtual Visa card •••• 7786: up to 25.00 EUR per purchase, 50.00 EUR a month",
         "tone": "ok"
       },
       {
@@ -607,7 +607,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Airwallex issued the Sales agent a virtual Visa card •••• 6882: up to 60.00 EUR per purchase, 150.00 EUR a month",
+        "text": "Airwallex issued the Support agent a virtual Visa card •••• 6882: up to 60.00 EUR per purchase, 150.00 EUR a month",
         "tone": "ok"
       },
       {
@@ -618,7 +618,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Airwallex issued the Operations agent a virtual Visa card •••• 8120: up to 30.00 EUR per purchase, 100.00 EUR a month",
+        "text": "Airwallex issued the Sourcing agent a virtual Visa card •••• 8120: up to 30.00 EUR per purchase, 100.00 EUR a month",
         "tone": "ok"
       },
       {
@@ -728,7 +728,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "The Finance agent proposed P-0004 (invoice payment)",
+        "text": "The Treasury agent proposed P-0004 (invoice payment)",
         "tone": "approval"
       },
       {
@@ -871,14 +871,14 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "The Sales agent proposed P-0003 (refund batch)",
+        "text": "The Support agent proposed P-0003 (refund batch)",
         "tone": "approval"
       }
     ],
     "cards": [
       {
         "agent": "sourcing",
-        "name": "Operations agent",
+        "name": "Sourcing agent",
         "last4": "8120",
         "buys": "warehouse software",
         "per_tx": "50.00",
@@ -918,7 +918,7 @@
       },
       {
         "agent": "support",
-        "name": "Sales agent",
+        "name": "Support agent",
         "last4": "6882",
         "buys": "ads",
         "per_tx": "60.00",
@@ -942,7 +942,7 @@
       },
       {
         "agent": "treasury",
-        "name": "Finance agent",
+        "name": "Treasury agent",
         "last4": "7786",
         "buys": "bookkeeping software",
         "per_tx": "25.00",
@@ -1028,7 +1028,7 @@
     "agents": [
       {
         "id": "sourcing",
-        "name": "Operations agent",
+        "name": "Sourcing agent",
         "job": "buys live stock checks from the warehouse API and pays the warehouse software",
         "status": "working",
         "models": [
@@ -1071,7 +1071,7 @@
         "settings": [
           {
             "key": "cap.sourcing",
-            "label": "Operations agent: most per payment",
+            "label": "Sourcing agent: most per payment",
             "unit": "USDZ",
             "kind": "optional_money",
             "min": 1,
@@ -1083,7 +1083,7 @@
           },
           {
             "key": "stop.sourcing",
-            "label": "Operations agent: stopped (velocity limit)",
+            "label": "Sourcing agent: stopped (velocity limit)",
             "unit": "",
             "kind": "choice",
             "choices": [
@@ -1097,7 +1097,7 @@
           },
           {
             "key": "card.sourcing.per_tx",
-            "label": "Operations agent's card: most per purchase",
+            "label": "Sourcing agent's card: most per purchase",
             "unit": "EUR",
             "kind": "money",
             "min": 100,
@@ -1109,7 +1109,7 @@
           },
           {
             "key": "card.sourcing.monthly",
-            "label": "Operations agent's card: most per month",
+            "label": "Sourcing agent's card: most per month",
             "unit": "EUR",
             "kind": "money",
             "min": 100,
@@ -1123,7 +1123,7 @@
       },
       {
         "id": "support",
-        "name": "Sales agent",
+        "name": "Support agent",
         "job": "pays for ads and settles retailers' claims",
         "status": "working",
         "models": [
@@ -1182,7 +1182,7 @@
         "settings": [
           {
             "key": "cap.support",
-            "label": "Sales agent: most per refund",
+            "label": "Support agent: most per refund",
             "unit": "USDZ",
             "kind": "optional_money",
             "min": 1,
@@ -1218,7 +1218,7 @@
           },
           {
             "key": "stop.support",
-            "label": "Sales agent: stopped (velocity limit)",
+            "label": "Support agent: stopped (velocity limit)",
             "unit": "",
             "kind": "choice",
             "choices": [
@@ -1232,7 +1232,7 @@
           },
           {
             "key": "card.support.per_tx",
-            "label": "Sales agent's card: most per purchase",
+            "label": "Support agent's card: most per purchase",
             "unit": "EUR",
             "kind": "money",
             "min": 100,
@@ -1244,7 +1244,7 @@
           },
           {
             "key": "card.support.monthly",
-            "label": "Sales agent's card: most per month",
+            "label": "Support agent's card: most per month",
             "unit": "EUR",
             "kind": "money",
             "min": 100,
@@ -1258,7 +1258,7 @@
       },
       {
         "id": "treasury",
-        "name": "Finance agent",
+        "name": "Treasury agent",
         "job": "pays the manufacturer by SWIFT, sweeps earnings on Metal once final, books them at Airwallex, and pays the bookkeeping",
         "status": "working",
         "models": [
@@ -1316,7 +1316,7 @@
         "settings": [
           {
             "key": "cap.treasury",
-            "label": "Finance agent: most per sweep",
+            "label": "Treasury agent: most per sweep",
             "unit": "USDZ",
             "kind": "optional_money",
             "min": 1,
@@ -1364,7 +1364,7 @@
           },
           {
             "key": "stop.treasury",
-            "label": "Finance agent: stopped (velocity limit)",
+            "label": "Treasury agent: stopped (velocity limit)",
             "unit": "",
             "kind": "choice",
             "choices": [
@@ -1378,7 +1378,7 @@
           },
           {
             "key": "card.treasury.per_tx",
-            "label": "Finance agent's card: most per purchase",
+            "label": "Treasury agent's card: most per purchase",
             "unit": "EUR",
             "kind": "money",
             "min": 100,
@@ -1390,7 +1390,7 @@
           },
           {
             "key": "card.treasury.monthly",
-            "label": "Finance agent's card: most per month",
+            "label": "Treasury agent's card: most per month",
             "unit": "EUR",
             "kind": "money",
             "min": 100,
@@ -1592,19 +1592,19 @@
       "spend": [
         {
           "cost_centre": "CC100",
-          "name": "Operations agent (operations)",
+          "name": "Sourcing agent (operations)",
           "currency": "EUR",
           "amount": "64.99"
         },
         {
           "cost_centre": "CC100",
-          "name": "Operations agent (operations)",
+          "name": "Sourcing agent (operations)",
           "currency": "USDZ",
           "amount": "1.20"
         },
         {
           "cost_centre": "CC300",
-          "name": "Finance agent (finance)",
+          "name": "Treasury agent (finance)",
           "currency": "EUR",
           "amount": "1863.41"
         }
@@ -2022,7 +2022,7 @@
     "card_spend": {
       "rows": [
         {
-          "agent": "Operations agent",
+          "agent": "Sourcing agent",
           "merchant": "Packwise",
           "category": "Software",
           "currency": "EUR",
@@ -2032,7 +2032,7 @@
           "subscription": false
         },
         {
-          "agent": "Sales agent",
+          "agent": "Support agent",
           "merchant": "Packwise",
           "category": "Software",
           "currency": "EUR",
@@ -2128,7 +2128,7 @@
       "metal": [
         {
           "what": "A mandate per agent, on chain",
-          "detail": "Operations agent: 0.04 a payment, 12.00 in total, one payee; Sales agent: 0.10 a payment, 4.00 in total, one payee; Finance agent: 4.00 a payment, 4.00 in total, one payee",
+          "detail": "Sourcing agent: 0.04 a payment, 12.00 in total, one payee; Support agent: 0.10 a payment, 4.00 in total, one payee; Treasury agent: 4.00 a payment, 4.00 in total, one payee",
           "proof": {
             "label": "0x25952ab9…60aa",
             "href": "https://testnet.metalntwx.com/tx/0x25952ab99bf9ba1abd31050883bcb5aa8c2b6337d0e9b70f88656461f19260aa"
@@ -2144,7 +2144,7 @@
         },
         {
           "what": "The agent buys from its supplier",
-          "detail": "50 purchases, each under the Operations agent's mandate",
+          "detail": "50 purchases, each under the Sourcing agent's mandate",
           "proof": {
             "label": "0xa465e23b…ea2a",
             "href": "https://testnet.metalntwx.com/tx/0xa465e23be513b2f0b9586c87d7b60a6896fdb6eb97df89278ab3b1615137ea2a"
@@ -2152,7 +2152,7 @@
         },
         {
           "what": "Refused against the on-chain mandate",
-          "detail": "1 payment over the mandate's cap, checked by Metal's facilitator against the mandate on chain (mandate_cap_exceeded): nothing moved; the Finance agent proposed options to the CFO",
+          "detail": "1 payment over the mandate's cap, checked by Metal's facilitator against the mandate on chain (mandate_cap_exceeded): nothing moved; the Treasury agent proposed options to the CFO",
           "proof": null
         },
         {

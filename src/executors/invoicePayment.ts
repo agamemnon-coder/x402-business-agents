@@ -31,8 +31,8 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     // The CFO may block a payee after the approval: checked again here, before Airwallex is called (review L2).
     if (!counterpartyAllowed(db, t.beneficiary_name)) throw new Error(`${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`);
     if (frozen(db)) throw new Error("the CFO pulled the emergency stop; nothing is paid until it is lifted");
-    if (stopped(db, "treasury")) throw new Error("the finance agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop");
-    // The finance agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
+    if (stopped(db, "treasury")) throw new Error("the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop");
+    // The treasury agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
     const denied = authorize(db, "treasury", { rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, now());
     if (denied) throw new Error(`${denied}; nothing is paid`);
     // Another payout for the same invoice (an older proposal approved elsewhere): stop before any conversion.

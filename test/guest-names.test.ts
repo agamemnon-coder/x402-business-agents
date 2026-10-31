@@ -14,7 +14,7 @@ describe("guests see only Northwind", () => {
   });
 
   it("finds the old names it guards against", () => {
-    expect(oldNamesIn("the Sourcing agent paid Feedstock")).toEqual(["Feedstock", "Sourcing agent"]);
-    expect(oldNamesIn("the Operations agent paid Stockline")).toEqual([]);
+    expect(oldNamesIn("the agent paid Feedstock via Contoso")).toEqual(["Feedstock", "Contoso"]);
+    expect(oldNamesIn("the Sourcing agent paid Stockline")).toEqual([]);
   });
 });

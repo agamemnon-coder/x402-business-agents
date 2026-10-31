@@ -25,11 +25,11 @@ Eén zin: **"Your AI agents spend through Airwallex and Metal. The CFO stays in 
 
 ## 3. Kit 11: wie is wie
 
-| Purser | Kit 11 | Budget bij start → na Face ID |
+| Agent (Kit 11-naam) | Taak | Budget bij start → na Face ID |
 |---|---|---|
-| Operations agent | sourcing agent (koopt data in) | 10.00 → 12.00 |
-| Sales agent | support agent (terugbetalingen aan klanten) | 4.00 → 4.00 |
-| Finance agent | treasury agent (bewaakt uitgaven, veegt winst naar Airwallex, betaalt de licentie in euro) | 6.00 → 4.00 |
+| Sourcing agent | koopt upstream data per vraag; kaart voor warehouse- en datasoftware | 10.00 → 12.00 (max 3 → 4 cent per aankoop) |
+| Support agent | terugbetalingen bij disputes; kaart voor helpdesksoftware | 4.00 → 4.00 |
+| Treasury agent | bewaakt uitgaven, veegt winst naar Airwallex, betaalt de maandelijkse licentie in euro (FX + SWIFT, Face ID) | 6.00 → 4.00 |
 
 Samen altijd 20.00 test-USD. Dat staat vast in de code.
 

@@ -23,7 +23,7 @@ describe("the demo story", () => {
     const s = buildStory(ledger(), "test run", new Date("2026-11-01T10:00:00Z"));
     expect(s.steps.map((x) => x.id)).toEqual(["buy", "refused", "audit"]);
     expect(s.steps[0]!.facts.find((f) => f.label === "Summit's first payment to us")).toEqual({ label: "Summit's first payment to us", value: `${TX(2).slice(0, 10)}…${TX(2).slice(-4)}`, href: `https://testnet.metalntwx.com/tx/${TX(2)}` });
-    expect(s.steps[0]!.facts.find((f) => f.label === "Operations agent's mandate")?.value).toBe("0.03 a payment, 10.00 in total, Stockline only");
+    expect(s.steps[0]!.facts.find((f) => f.label === "Sourcing agent's mandate")?.value).toBe("0.03 a payment, 10.00 in total, Stockline only");
     expect(s.steps.at(-1)!.facts[0]!.value).toMatch(/^4, chain intact, head /);
     // Every link is to the public explorer.
     expect(s.steps.flatMap((x) => x.facts).filter((f) => f.href).every((f) => f.href!.startsWith("https://testnet.metalntwx.com/tx/0x"))).toBe(true);
@@ -65,7 +65,7 @@ describe("the demo story", () => {
     audit(db, "human", "policy.changed", "freeze", { key: "freeze", from: "on", to: "off", proposal_id: "P-0021" });
     const s = buildStory(db, "test");
     expect(s.steps.find((x) => x.id === "card")!.facts.find((f) => f.label === "Wrong kind of shop")?.value)
-      .toBe("19.99 EUR at Packwise on the Sales agent's card: declined by Airwallex (MERCHANT_CATEGORY_NOT_ALLOWED)");
+      .toBe("19.99 EUR at Packwise on the Support agent's card: declined by Airwallex (MERCHANT_CATEGORY_NOT_ALLOWED)");
     const stop = s.steps.find((x) => x.id === "stop")!;
     expect(stop.tab).toBe("Emergency stop");
     expect(stop.approval).toEqual({ who: "Max · Face ID", proposal: "P-0020", what: "Emergency stop: on" });

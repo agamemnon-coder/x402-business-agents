@@ -82,12 +82,12 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "buy", rail: "Metal", tone: "ok", at: bought.ts, approval: null,
       title: "Agents also pay per request, each inside its own limits",
       text: "A retailer's buying agent pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
-      details: "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our operations agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
+      details: "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our sourcing agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
       facts: facts(
         fact("Sales in this run", `${sales} stock checks at 0.05, then 0.07 *USDZ (testnet dollars)`),
         txFact("Summit's first payment to us", p(sold).tx),
         txFact("Our first purchase from the supplier", p(bought).tx),
-        fact("Operations agent's mandate", `${str(m.cap)} a payment, ${str(m.budget)} in total, Stockline only`),
+        fact("Sourcing agent's mandate", `${str(m.cap)} a payment, ${str(m.budget)} in total, Stockline only`),
       ),
     });
   }
@@ -100,7 +100,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "refused", rail: "Metal", tone: "refusal", at: refused.ts, approval: null,
       title: "The supplier raises its price, and the payment is refused",
       text: "The supplier asks more than our agent may pay, so its own account refuses the payment and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
-      details: "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The finance agent prices the options with their margins.",
+      details: "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The treasury agent prices the options with their margins.",
       facts: facts(
         fact("Refusal", "over the mandate's cap: refused on chain, nothing moved"),
         fact("Customer charged", "no"),
@@ -118,7 +118,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       approval: { who: approvals.get(replacedBy)!, proposal: replacedBy, what: replaced.map((r) => `${agentName(str(r.subject))} ${str(p(r).cap)} a payment, ${str(p(r).budget)} in total`).join("; ") },
       title: "The CFO approves the exact terms with Face ID",
       text: "The CFO reads the options on their phone and approves one with Face ID. Only exactly those terms can run; the agents' limits change in a safe order, and the old limit stops working at once.",
-      details: "Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. The mandates are replaced in a safe order: the Finance agent's shrinks first, the Operations agent's grows second, never over the 20.00 total. The old credential is refused from then on (mandate_revoked).",
+      details: "Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. The mandates are replaced in a safe order: the Treasury agent's shrinks first, the Sourcing agent's grows second, never over the 20.00 total. The old credential is refused from then on (mandate_revoked).",
       facts: facts(
         review(replacedBy) ? fact("Advice (not a decision)", review(replacedBy)) : null,
         ...replaced.map((r) => txFact(`${agentName(str(r.subject))} mandate replaced`, p(r).tx)),
@@ -161,7 +161,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "card", rail: "Airwallex", tone: after ? "approval" : "refusal", at: declined.ts,
       approval: raised && raisedBy ? { who: raisedBy, proposal: str(p(raised).proposal_id), what: `${str(p(raised).label)}: ${str(p(raised).from)} → ${str(p(raised).to)} EUR` } : null,
       title: "Every AI agent gets its own company card, with limits the CFO sets",
-      text: "Our operations agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by Airwallex itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
+      text: "Our sourcing agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by Airwallex itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
       details: "Virtual Visa cards from Airwallex Issuing (sandbox), one per agent. The limits come from the CFO policy; they are synced to the card at Airwallex and read back, so Airwallex declines anything over them (LIMIT_EXCEEDED), whatever the agent does. The raise is a policy change approved with Face ID. In the sandbox the merchant's charge is simulated; the approve or decline is Airwallex's own.",
       facts: facts(
         approvedCard ? fact("Approved by Airwallex", `${str(p(approvedCard).amount)} EUR at ${str(p(approvedCard).merchant)} (card •••• ${str(p(approvedCard).last4)})`) : null,

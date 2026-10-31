@@ -154,8 +154,8 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
   }
 
   // The rig, drawn once; each scene sets who acts, which lane is on, what moves and what the phone shows.
-  var ACTORS = [["Operations agent", "Op"], ["Sales agent", "Sa"], ["Finance agent", "Fi"], ["Summit's agent", "Su"], ["Unknown sender", "?"]];
-  var ACTOR_OF = { ops: "Operations agent", sales: "Sales agent", finance: "Finance agent", customer: "Summit's agent", stranger: "Unknown sender" };
+  var ACTORS = [["Sourcing agent", "Op"], ["Support agent", "Sa"], ["Treasury agent", "Fi"], ["Summit's agent", "Su"], ["Unknown sender", "?"]];
+  var ACTOR_OF = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent", customer: "Summit's agent", stranger: "Unknown sender" };
   var cast = el("aside", "cast", ACTORS.map(function (a) { var n = el("div", "who", [txt("b", "", a[1]), a[0]]); n.dataset.name = a[0]; return n; }));
   function lane(cls, src, alt, w, caption) {
     var im = document.createElement("img"); im.src = src; im.alt = alt; im.width = w; im.height = 18;

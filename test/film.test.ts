@@ -17,7 +17,7 @@ describe("the film", () => {
     expect(f.bill).toMatchObject({ invoice: "1,850.00", usd: "418.40", eur: "370.00", fee: "13.41", ceiling: "20.00" });
     expect(f.metal).toMatchObject({ cap: "0.03", newPrice: "0.04" });
     expect(f.dispute.rows).toHaveLength(12);
-    expect(f.mandates[0]).toMatchObject({ name: "Operations agent", cap: "0.03" });
+    expect(f.mandates[0]).toMatchObject({ name: "Sourcing agent", cap: "0.03" });
     expect(f.trust).toMatchObject({ blocked: 34, passed: 18, per1000: "$0.09" });
   });
 

@@ -66,6 +66,7 @@
     "visa": "tsx src/cli/visa.ts",
     "redteam": "tsx src/cli/redteam.ts",
     "reconcile": "tsx src/cli/reconcile.ts",
+    "data-qa": "tsx src/cli/dataQa.ts",
     "evals": "tsx src/cli/evals.ts",
     "model-bench": "tsx src/cli/modelBench.ts"
   },

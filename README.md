@@ -13,11 +13,11 @@ on-chain mandate. Both from the recorded live run (test money).*
 **Kit 11 (x402 Business Agents), as built.** Northwind Outdoor sells live stock data per query: the kit's data
 business. Three agents draw on one Metal account, each under its own mandate:
 
-| Purser's agent | Kit 11's agent | Budget when bound → after the CFO's Face ID |
+| Kit 11 agent | Its job in the brief | Budget when bound → after the CFO's Face ID |
 |---|---|---|
-| Operations agent | sourcing agent (buys the upstream data) | 10.00 → 12.00, cap 0.03 → 0.04 a purchase |
-| Sales agent | support agent (refunds customers) | 4.00 |
-| Finance agent | treasury agent (watches spending, sweeps earnings to Airwallex, pays the euro licence fee) | 6.00 → 4.00 |
+| Sourcing agent | buys the upstream data per query; its card pays warehouse and data software | 10.00 → 12.00, cap 0.03 → 0.04 a purchase |
+| Support agent | refunds customers when a dispute holds; its card pays helpdesk software | 4.00 |
+| Treasury agent | watches spending, sweeps earnings to Airwallex, pays the monthly licence fee in EUR (Airwallex FX and SWIFT, after Face ID) | 6.00 → 4.00 |
 
 20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). Every Kit 11 sentence and where
 it is done: [docs/requirements-matrix.md](docs/requirements-matrix.md) section 4.

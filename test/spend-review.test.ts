@@ -23,14 +23,14 @@ describe("card spend review", () => {
       ["Skyline Air", "Airlines", 1, "120.00", 0],
       ["Packwise", "Software", 2, "39.98", 1],
     ]);
-    expect(r.rows[1]).toMatchObject({ agent: "Operations agent", currency: "EUR" });
+    expect(r.rows[1]).toMatchObject({ agent: "Sourcing agent", currency: "EUR" });
   });
 
   it("flags the same amount at the same merchant about a month apart as a subscription, with a way to stop it", () => {
     const r = spendReview(world());
     expect(r.rows.find((x) => x.merchant === "Packwise")!.subscription).toBe(true);
     expect(r.rows.find((x) => x.merchant === "Skyline Air")!.subscription).toBe(false);
-    expect(r.suggestions).toEqual([expect.stringMatching(/Packwise charges the Operations agent's card 19\.99 EUR every month.*stop/i)]);
+    expect(r.suggestions).toEqual([expect.stringMatching(/Packwise charges the Sourcing agent's card 19\.99 EUR every month.*stop/i)]);
   });
 
   it("is empty, not an error, on a ledger without cards", () => {

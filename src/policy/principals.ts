@@ -9,7 +9,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 
-/** An agent as people read it: "the Sales agent" (internal id support), or "agent ext:acme" for an outside one. */
+/** An agent as people read it: "the Support agent" (internal id support), or "agent ext:acme" for an outside one. */
 const who = (id: string) => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
 
 export type Rail = "metal" | "card" | "airwallex";

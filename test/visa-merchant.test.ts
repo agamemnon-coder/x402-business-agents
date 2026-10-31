@@ -47,7 +47,7 @@ describe("checkout at the agent-recognising merchant", () => {
 
   it("refuses an agent buying on another agent's card", async () => {
     const r = await tapCheckout(db, awx, await buy(sales, "packwise-starter"), now);
-    expect(r).toMatchObject({ recognised: true, approved: false, reason: expect.stringMatching(/Operations agent's card/) });
+    expect(r).toMatchObject({ recognised: true, approved: false, reason: expect.stringMatching(/Sourcing agent's card/) });
     expect(awx.calls).not.toContain("charge");
   });
 

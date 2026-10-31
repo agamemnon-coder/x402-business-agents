@@ -28,7 +28,7 @@ describe("agent principals (B5)", () => {
     const db = world();
     expect(pay(db, "support", "r1", "customer")).toBeNull();
     revokePrincipal(db, "support", "laptop lost", "max", at(1));
-    expect(pay(db, "support", "r2", "customer", at(2))).toMatch(/^principal_revoked: the Sales agent.*laptop lost/);
+    expect(pay(db, "support", "r2", "customer", at(2))).toMatch(/^principal_revoked: the Support agent.*laptop lost/);
     expect(pay(db, "sourcing", "s1", "supplier", at(2))).toBeNull();
     expect(pay(db, "treasury", "t1", "sweep", at(2))).toBeNull();
     expect(["sourcing", "support", "treasury"].map((a) => wantCardStatus(db, a))).toEqual(["ACTIVE", "INACTIVE", "ACTIVE"]);

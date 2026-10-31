@@ -156,7 +156,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "normal-purchase",
     title: "A purchase inside the limit",
-    expected: "The Operations agent pays 19.99 EUR for its warehouse software; Airwallex approves it; no one is asked.",
+    expected: "The Sourcing agent pays 19.99 EUR for its warehouse software; Airwallex approves it; no one is asked.",
     offline: "Airwallex is a stand-in; live: docs/runs/2026-10-29-cards.md",
     run: async (w) => {
       const t = await buyPlan(w.db, w.issuing, "packwise-starter", w.now());
@@ -177,7 +177,7 @@ export const SCENARIOS: Scenario[] = [
       await syncCards(w.db, w.issuing, w.now());
       w.advance(60_000);
       const second = await buyPlan(w.db, w.issuing, "packwise-pro", w.now());
-      return { happened: `first try ${first.approved ? "APPROVED" : `declined (${first.failureReason})`}; ${p.proposal_id} ${r.status} with Face ID; card now ${(w.issuing.cards.find((c) => c.nickname.includes("operations"))?.limits?.perTxCents ?? 0) / 100} EUR per purchase; second try ${second.approved ? "approved" : `declined (${second.failureReason})`}`,
+      return { happened: `first try ${first.approved ? "APPROVED" : `declined (${first.failureReason})`}; ${p.proposal_id} ${r.status} with Face ID; card now ${(w.issuing.cards.find((c) => c.nickname.includes("sourcing"))?.limits?.perTxCents ?? 0) / 100} EUR per purchase; second try ${second.approved ? "approved" : `declined (${second.failureReason})`}`,
         passed: !first.approved && first.failureReason === "LIMIT_EXCEEDED" && r.status === "approved" && second.approved, evidence: [p.proposal_id, `card transactions ${first.transactionId}, ${second.transactionId}`] };
     },
   },

@@ -74,7 +74,7 @@ How a delivery is checked (`worker/src/core.ts`, `src/policy/cardHooks.ts`):
 
 ## FX: rates, quotes with expiry, conversions
 
-The Finance agent pays a euro invoice from a USD balance. It converts only the shortfall, fee included, and only if USD stays above its floor.
+The Treasury agent pays a euro invoice from a USD balance. It converts only the shortfall, fee included, and only if USD stays above its floor.
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
@@ -136,7 +136,7 @@ Other rules:
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `GET /balances/current` | Reads cash balances (`account_type=cash`). Only `available_amount` counts as spendable. Pending and reserved amounts never count. Also used by `npm run health`. | The Finance agent's plan depends on free EUR and USD above the floors. | `docs/runs/2026-10-29-s3.md` † (starting balances read live); `test/euroBill.test.ts` |
+| `GET /balances/current` | Reads cash balances (`account_type=cash`). Only `available_amount` counts as spendable. Pending and reserved amounts never count. Also used by `npm run health`. | The Treasury agent's plan depends on free EUR and USD above the floors. | `docs/runs/2026-10-29-s3.md` † (starting balances read live); `test/euroBill.test.ts` |
 | `GET /deposits` | Finds a deposit by its `reference`. | Earnings are credited once the on-chain sweep is final. The reference is the Metal transaction hash. | `docs/runs/2026-10-29-s3.md` † ("the reference comes back verbatim"); `test/airwallex-adapter.test.ts` |
 | `POST /simulation/deposit/create` (**sandbox only**) | Seeds USD, and books the sweep as a deposit with the Metal transaction hash as `reference`. | The sandbox cannot receive stablecoins. So the USDZ to Airwallex step is **simulated**: 1 USDZ is booked as 1 USD. No real USDZ reaches Airwallex. | `docs/runs/2026-10-29-s3.md` † (deposit `e49d68f2-bcc2-4a0d-ab22-abca60ea6509`); `docs/runs/2026-10-29-rehearsal-3.md` † (deposit `03d9d67d-449a-482b-9281-e2acf4fe058c`); `docs/security.md` |
 

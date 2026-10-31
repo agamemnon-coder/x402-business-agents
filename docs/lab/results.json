@@ -4,7 +4,7 @@
     {
       "id": "normal-purchase",
       "title": "A purchase inside the limit",
-      "expected": "The Operations agent pays 19.99 EUR for its warehouse software; Airwallex approves it; no one is asked.",
+      "expected": "The Sourcing agent pays 19.99 EUR for its warehouse software; Airwallex approves it; no one is asked.",
       "offline": "Airwallex is a stand-in; live: docs/runs/2026-10-29-cards.md",
       "happened": "Airwallex approved 19.99 EUR at Packwise; 0 proposals wait",
       "passed": true,
@@ -30,7 +30,7 @@
       "title": "The supplier raises its price: refused, then options",
       "expected": "A stock check at 0.04 is refused (the cap is 0.03); Purser offers options that stay inside the 20.00 the business allows, and nothing changes before the CFO approves one.",
       "offline": "The refusal here is the CFO policy's, checked before signing; live, the chain itself refuses with mandate_cap_exceeded: docs/runs/2026-10-29-s1.md",
-      "happened": "policy_cap_exceeded: 0.04 is over the Operations agent's limit of 0.03; 2 options (keep the price, margin 1 cents; raise the price, margin 3 cents); new budgets total 20",
+      "happened": "policy_cap_exceeded: 0.04 is over the Sourcing agent's limit of 0.03; 2 options (keep the price, margin 1 cents; raise the price, margin 3 cents); new budgets total 20",
       "passed": true,
       "evidence": [
         "P-0002"
@@ -75,7 +75,7 @@
       "title": "An agent pays too often: stopped by itself",
       "expected": "Past its speed limit the agent is stopped automatically; only the CFO's Face ID lifts the stop.",
       "offline": "Metal is a stand-in; live: docs/runs/2026-10-29-rehearsal-6.md",
-      "happened": "30 made, the rest refused; operations agent stopped. Stopped by: the speed limit stops the agent on the first payment over it; only Face ID lifts it. The Operations agent's limit is 30 payments a minute and 4.00 test USD an hour, set above the recorded run's busiest minute (18 payments).",
+      "happened": "30 made, the rest refused; sourcing agent stopped. Stopped by: the speed limit stops the agent on the first payment over it; only Face ID lifts it. The Sourcing agent's limit is 30 payments a minute and 4.00 test USD an hour, set above the recorded run's busiest minute (18 payments).",
       "passed": true,
       "evidence": [
         "red team attack velocity-burst"
@@ -86,7 +86,7 @@
       "title": "The emergency stop",
       "expected": "One Face ID: every agent payment is refused before signing and every card is frozen at Airwallex; a purchase is declined.",
       "offline": "Airwallex and the phone are stand-ins; not yet run live; the stop is covered by test/freeze.test.ts and this scenario",
-      "happened": "P-0002 approved; 4 of 4 cards frozen at Airwallex; a purchase: declined (CARD_INACTIVE); on chain: frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the Operations agent signs nothing",
+      "happened": "P-0002 approved; 4 of 4 cards frozen at Airwallex; a purchase: declined (CARD_INACTIVE); on chain: frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the Sourcing agent signs nothing",
       "passed": true,
       "evidence": [
         "P-0002",

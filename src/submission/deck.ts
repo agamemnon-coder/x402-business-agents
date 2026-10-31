@@ -6,6 +6,7 @@
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
+import { KIT11_JOBS } from "../config/brand.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
 const dataUri = (p: string, type: string) => `data:${type};base64,${asset(p).toString("base64")}`;
@@ -46,7 +47,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Each agent pays under its own on-chain mandate; 20.00 test USD between them, held in code.",
         "A supplier price rise is refused; the CFO approves new limits within the 20 with Face ID.",
       ],
-      pic: `<div class="kitmap">${f.kit11.map((k) => `<div><b>${esc(k.agent)}</b><span>= Kit 11's ${esc(k.role)} agent</span><em>${esc(k.bound === k.now ? k.now : `${k.bound} → ${k.now}`)}</em></div>`).join("")}<p>budgets in test USD, when bound → after the CFO's Face ID (recorded run)</p></div>`,
+      pic: `<div class="kitmap">${f.kit11.map((k) => `<div><b>${esc(k.agent)}</b><span>${esc(KIT11_JOBS[k.role as keyof typeof KIT11_JOBS] ?? "")}</span><em>${esc(k.bound === k.now ? k.now : `${k.bound} → ${k.now}`)}</em></div>`).join("")}<p>budgets in test USD, when bound → after the CFO's Face ID (recorded run)</p></div>`,
     },
     {
       kicker: "The problem",

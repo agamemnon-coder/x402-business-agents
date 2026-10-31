@@ -85,7 +85,7 @@ Who is who:
 
 | What the rule asks | Who | How Purser supports it | Proof |
 |---|---|---|---|
-| Limits and allowed merchants per card | Airwallex enforces; the CFO sets | Each agent's card has a per-payment and monthly limit and allowed merchant categories (software 5734, ads 7311), synced from the CFO policy and read back; Airwallex declines the rest. Cards end after 90 days. | `src/config/policy.ts` (`CARDS`, `PLANS`, `CARD_ACTIVE_DAYS`), `src/policy/cards.ts`, `test/cards.test.ts` |
+| Limits and allowed merchants per card | Airwallex enforces; the CFO sets | Each agent's card has a per-payment and monthly limit and allowed merchant categories (software 5734, helpdesk software 7372), synced from the CFO policy and read back; Airwallex declines the rest. Cards end after 90 days. | `src/config/policy.ts` (`CARDS`, `PLANS`, `CARD_ACTIVE_DAYS`), `src/policy/cards.ts`, `test/cards.test.ts` |
 | No card numbers where they are not needed | Purser | Agents and models never see the card number or CVV. | `docs/security.md` |
 
 ## What a real launch would add

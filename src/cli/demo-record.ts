@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 import { openDb } from "../db/open.js";
 import { buildStory } from "../demo/story.js";
 import { buildRecorded } from "../demo/recorded.js";
-import { oldNamesIn } from "../demo/oldNames.js";
+import { oldNamesIn, preKit11NamesIn } from "../demo/oldNames.js";
 import { metalShowcase } from "../metal/showcase.js";
 
 const run = process.argv[2] ?? "recorded run";
@@ -18,13 +18,16 @@ const last = (openDb().prepare("SELECT MAX(ts) AS t FROM audit_log").get() as { 
 const now = last ? new Date(new Date(last).getTime() + 1000) : new Date();
 const story = buildStory(openDb(), run, now);
 // Guests see only the Northwind runs: a ledger that still carries the earlier example company is not recorded.
-const old = oldNamesIn(JSON.stringify(story) + JSON.stringify(buildRecorded(openDb(), run, now)) + JSON.stringify(metalShowcase(openDb())));
+// The same for the agents' names before Kit 11's: a recording that shows one is refused; a clean one is marked, and
+// the pages then drop their "recorded before the rename" note (src/servers/dashboard.ts).
+const all = JSON.stringify(story) + JSON.stringify(buildRecorded(openDb(), run, now)) + JSON.stringify(metalShowcase(openDb()));
+const old = [...oldNamesIn(all), ...preKit11NamesIn(all)];
 if (old.length) {
-  console.error(`not recorded: this ledger shows names from before the rename (${old.join(", ")}); record a Northwind run`);
+  console.error(`not recorded: this ledger shows names from before the rename (${old.join(", ")}); record a run with the Kit 11 names`);
   process.exit(1);
 }
 const out = resolve(import.meta.dirname, "../../docs/demo/story.json");
-writeFileSync(out, JSON.stringify(story, null, 2) + "\n");
+writeFileSync(out, JSON.stringify({ ...story, agent_names: "kit11" }, null, 2) + "\n");
 console.log(`recorded ${story.steps.length} steps (${story.steps.map((s) => s.id).join(", ")}) from ${story.audit.rows} audit rows into docs/demo/story.json`);
 const recorded = buildRecorded(openDb(), run, now);
 writeFileSync(resolve(import.meta.dirname, "../../docs/demo/snapshot.json"), JSON.stringify(recorded, null, 2) + "\n");

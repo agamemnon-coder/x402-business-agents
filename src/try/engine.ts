@@ -68,10 +68,10 @@ export interface TryResult {
  */
 export const DEMO_WORLD = {
   company: "Northwind Outdoor (demo world)",
-  softwareCard: { agent: "Operations agent", perTxCents: 5_000, monthlyLeftCents: 10_000, only: "software" },
+  softwareCard: { agent: "Sourcing agent", perTxCents: 5_000, monthlyLeftCents: 10_000, only: "software" },
   taskCardAutoCents: 30_000,
-  /** The operations agent's mandate on Metal, as in the recorded run: 0.04 a payment, 12.00 in total, 1.20 used. */
-  metal: { agent: "Operations agent", payee: "Stockline", capCents: 4, budgetLeftCents: 1_080, priceCents: 4, unit: "stock check" },
+  /** The sourcing agent's mandate on Metal, as in the recorded run: 0.04 a payment, 12.00 in total, 1.20 used. */
+  metal: { agent: "Sourcing agent", payee: "Stockline", capCents: 4, budgetLeftCents: 1_080, priceCents: 4, unit: "stock check" },
   fourEyesCents: 1_000_000,
   eurFreeCents: 150_000,
   suppliers: ["Bergtex Textil GmbH", "Stockline"],
@@ -151,7 +151,7 @@ export async function tryPurser(input: string, models: TryModels, now: Date, mod
   const f = r.value;
   steps.push({ by: r.model, title: "Read the request", detail: [f.item && `item: ${f.item}`, f.merchant && `from: ${f.merchant}`, f.payee && `pay to: ${f.payee}`, f.amount && `amount: ${f.amount} ${f.currency ?? ""}`.trim(), f.date && `date: ${f.date}`].filter(Boolean).join(" · ") || "no fields", ms: r.ms, costUsd: r.costUsd });
 
-  // Pay per request on Metal: the operations agent's mandate, checked here as the chain checks it.
+  // Pay per request on Metal: the sourcing agent's mandate, checked here as the chain checks it.
   if (c.value === "api_data") return metalRequest(text, f, steps, (o, h, d) => { rail = "metal"; live = o === "paid" ? "x402" : h === "Refused by the chain" ? "chain_refused" : null; return done(o, h, d); });
 
   // 4. Code checks the amount against the words typed: a model cannot add a number the CFO did not write.
@@ -243,7 +243,7 @@ export async function tryPurser(input: string, models: TryModels, now: Date, mod
 
   // A purchase no agent's card is for: each card only pays its own kind of merchant, so Airwallex would decline it.
   rail = "card"; live = "card_declined";
-  policy("No agent has a card for this: the operations agent buys software, the sales agent ads, the finance agent bookkeeping.", "bad");
+  policy("No agent has a card for this: the sourcing agent buys warehouse and data software, the support agent helpdesk software, the treasury agent bookkeeping.", "bad");
   return done("refused", "Refused by the policy", `${cents !== null ? `${eur(cents)}${priced} for ` : ""}${f.item || "this purchase"} is not something any agent may buy. The CFO would have to change the policy first; a message cannot.`);
 }
 
@@ -267,7 +267,7 @@ export async function tryPurserSafely(input: string, models: TryModels | null, n
 const usdz = (cents: number) => `${(cents / 100).toFixed(2)} test USD`;
 
 /**
- * A request to pay for data per request (x402 on Metal), under the operations agent's mandate: one payee (Stockline),
+ * A request to pay for data per request (x402 on Metal), under the sourcing agent's mandate: one payee (Stockline),
  * at most the mandate's cap a payment, inside what is left of its budget. These are the checks Metal itself makes on
  * chain; here code makes them on the demo world's copy of the mandate.
  */

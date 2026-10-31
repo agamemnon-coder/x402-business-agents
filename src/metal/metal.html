@@ -136,7 +136,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
     <div class="tablewrap"><table class="cmp">
       <thead><tr><th></th><th><span class="railhead"><i></i>Airwallex company card</span></th><th><span class="railhead"><i class="mtl"></i>Metal mandate (x402)</span></th><th><span class="railhead"><i class="mtl"></i>Metal clearing</span></th></tr></thead>
       <tbody>
-        <tr><th>Best for</th><td data-l="Airwallex company card">Merchants that take cards: software, travel, ads</td><td data-l="Metal mandate (x402)">APIs and agents that charge per request, in cents</td><td data-l="Metal clearing">Many tiny calls to one seller, at machine speed</td></tr>
+        <tr><th>Best for</th><td data-l="Airwallex company card">Merchants that take cards: software, travel, services</td><td data-l="Metal mandate (x402)">APIs and agents that charge per request, in cents</td><td data-l="Metal clearing">Many tiny calls to one seller, at machine speed</td></tr>
         <tr><th>Who enforces the limit</th><td data-l="Airwallex company card">Airwallex, on the card: per purchase, per month, merchant categories, currency</td><td data-l="Metal mandate (x402)">The chain: cap per payment, total budget, one payee, expiry</td><td data-l="Metal clearing">The deposit: the buyer can never pay more than it put in</td></tr>
         <tr><th>Per payment</th><td data-l="Airwallex company card">A card authorisation</td><td data-l="Metal mandate (x402)">One on-chain transaction, settled by Metal's facilitator</td><td data-l="Metal clearing">A signed receipt, no transaction</td></tr>
         <tr><th>Proof afterwards</th><td data-l="Airwallex company card">Airwallex's transaction id and the card's own decline</td><td data-l="Metal mandate (x402)">The signed order, the transaction and verifyMandatePayment</td><td data-l="Metal clearing">Receipts signed by payer and operator, checked with verifyClearingPayment</td></tr>
@@ -159,7 +159,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
   var D = JSON.parse(document.getElementById("metal-data").textContent);
   // Kit 11 as built, from the recorded mandates: each role's budget when bound and after the CFO's Face ID replace.
   (function () {
-    var KIT = { sourcing: "sourcing agent", support: "support agent", treasury: "treasury agent" };
+    var KIT = { sourcing: "buys upstream data per query", support: "refunds customers in disputes", treasury: "watches spending, sweeps to Airwallex, pays the EUR licence fee" };
     var ms = (D.mandates || []).filter(function (m) { return KIT[m.role]; });
     if (ms.length !== 3) return;
     var first = function (m) { return (m.history && m.history[0] && m.history[0].budget) || m.budget; };
@@ -168,7 +168,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
     box.appendChild(el("div", "", [el("b", "", ["Kit 11, as built. "]), "Northwind sells live stock data per query: the kit's data business. Three agents draw on one Metal account, each under its own mandate; " + sum(first).toFixed(2) + " test USD between them when bound, " + sum(function (m) { return m.budget; }).toFixed(2) + " after the CFO approved new limits, the total held in code."]));
     box.appendChild(el("div", "map", ms.map(function (m) {
       var b0 = first(m), b1 = m.budget;
-      return el("div", "", [el("b", "", [m.agent]), el("small", "", ["= Kit 11's " + KIT[m.role] + " · budget " + (b0 === b1 ? b1 : b0 + " → " + b1)])]);
+      return el("div", "", [el("b", "", [m.agent]), el("small", "", [KIT[m.role] + " · budget "+ (b0 === b1 ? b1 : b0 + " → " + b1)])]);
     })));
     box.hidden = false;
   })();

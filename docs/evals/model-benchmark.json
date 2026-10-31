@@ -1,0 +1,75 @@
+{
+  "ran_at": "2026-10-31T08:00:34.742Z",
+  "runs": 3,
+  "cases": [
+    "normal",
+    "too-expensive",
+    "fraud",
+    "injection",
+    "double-payment",
+    "price-notice"
+  ],
+  "models": {
+    "classify": "claude-haiku-5-5",
+    "act": "claude-sonnet-5-5",
+    "review": "claude-opus-5-5"
+  },
+  "rows": [
+    {
+      "id": "purser",
+      "label": "Purser's split: Haiku sorts, Sonnet reads, Opus reviews",
+      "runs": 3,
+      "cases": 18,
+      "passed_by_model": 18,
+      "fallbacks": 0,
+      "calls": 42,
+      "cost_usd_micros": 42949,
+      "cost_per_run_usd_micros": 14317,
+      "p50_latency_ms": 1573,
+      "unpriced_calls": 0,
+      "problems": []
+    },
+    {
+      "id": "haiku",
+      "label": "Haiku for every role",
+      "runs": 3,
+      "cases": 18,
+      "passed_by_model": 18,
+      "fallbacks": 0,
+      "calls": 42,
+      "cost_usd_micros": 3385,
+      "cost_per_run_usd_micros": 1129,
+      "p50_latency_ms": 872,
+      "unpriced_calls": 0,
+      "problems": []
+    },
+    {
+      "id": "sonnet",
+      "label": "Sonnet for every role",
+      "runs": 3,
+      "cases": 18,
+      "passed_by_model": 18,
+      "fallbacks": 0,
+      "calls": 42,
+      "cost_usd_micros": 58598,
+      "cost_per_run_usd_micros": 19533,
+      "p50_latency_ms": 1710,
+      "unpriced_calls": 0,
+      "problems": []
+    },
+    {
+      "id": "opus",
+      "label": "Opus for every role",
+      "runs": 3,
+      "cases": 18,
+      "passed_by_model": 18,
+      "fallbacks": 0,
+      "calls": 42,
+      "cost_usd_micros": 123411,
+      "cost_per_run_usd_micros": 41137,
+      "p50_latency_ms": 2442,
+      "unpriced_calls": 0,
+      "problems": []
+    }
+  ]
+}

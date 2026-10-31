@@ -147,3 +147,18 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 - **Why:** CI runs `npm audit --audit-level=low`; lowering that level would weaken a check. minimatch is used only by
   the lint tooling, and lint passes on 11.0.3.
 - **If wrong:** drop the override once eslint's own dependency moves to a fixed version.
+
+### D14. The agents carry Kit 11's names, word for word (31 October)
+
+- **What:** Operations agent → Sourcing agent, Sales agent → Support agent, Finance agent → Treasury agent, in the
+  code, every page, the deck, the README and the docs a juror reads. The Support agent's card pays helpdesk software
+  (MCC 7372) instead of ads. Budgets stay the brief's: 10 / 4 / 6 = 20, at most 3 cents a purchase, then 12 / 4 / 4
+  after the price rise.
+- **The recording:** the 30 October run was made with the earlier names. Its recorded data (`docs/demo/*.json`, the
+  Lab and red-team reports, the Visa dev test) now shows the Kit 11 names, and every page that plays it says at the
+  top that it was recorded before the rename and that the Support card then bought ads. The audit log
+  (`docs/audit/friday-1-audit.jsonl`) and the dated run logs in `docs/runs/` are left as they were: they are the
+  record, and the chain's hashes cover the old wording. The live run with Max becomes the new recording; the label
+  goes away when `docs/demo/story.json` carries `agent_names: "kit11"`.
+- **Why:** Max: the names must be literally Kit 11's, with no "= Kit 11's …" mapping.
+- **If wrong:** the names live in `src/config/brand.ts`; the guard is `test/kit11-names.test.ts`.

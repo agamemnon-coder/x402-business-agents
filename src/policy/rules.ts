@@ -36,9 +36,9 @@ const MAX_FLOOR = 10_000_000_000;
 const STATIC: Rule[] = [
   // The emergency stop (E2): on, every agent payment is refused before signing and every company card is frozen.
   { key: "freeze", label: "Emergency stop: all agent payments and cards", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
-  { key: "cap.sourcing", label: "Operations agent: most per payment", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "sourcing" },
-  { key: "cap.support", label: "Sales agent: most per refund", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "support" },
-  { key: "cap.treasury", label: "Finance agent: most per sweep", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "treasury" },
+  { key: "cap.sourcing", label: "Sourcing agent: most per payment", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "sourcing" },
+  { key: "cap.support", label: "Support agent: most per refund", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "support" },
+  { key: "cap.treasury", label: "Treasury agent: most per sweep", unit: "USDZ", kind: "optional_money", min: 1, max: 2000, fallback: "", agent: "treasury" },
   { key: "approval.refund_each", label: "A refund above this needs a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_EACH_CENTS), agent: "support" },
   { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS), agent: "support" },
   // E1, four eyes: above this a payment needs the Face ID of two different people (src/policy/fourEyes.ts). Off when empty.

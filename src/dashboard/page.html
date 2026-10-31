@@ -492,7 +492,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       <p class="withclaude">Built with Claude: three models, each for what it does best. Code decides.</p>
     </div>
     <div class="stage" aria-label="A card purchase from the recorded run">
-      <div class="cc"><div class="row1"><span>Operations agent</span><span>Virtual</span></div><div class="who">Warehouse software</div><div class="buys">Airwallex Issuing</div><div class="row2"><span class="pan" id="hero-pan">•••• 8120</span><span class="brandmark">VISA</span></div></div>
+      <div class="cc"><div class="row1"><span>Sourcing agent</span><span>Virtual</span></div><div class="who">Warehouse software</div><div class="buys">Airwallex Issuing</div><div class="row2"><span class="pan" id="hero-pan">•••• 8120</span><span class="brandmark">VISA</span></div></div>
       <div class="limitrow num"><span>Limit per purchase</span><b>€30 → €50</b></div>
       <div class="bar" aria-hidden="true"><i></i></div>
       <ol class="flow">
@@ -532,7 +532,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   </section>
   <section class="section metal" id="metal">
     <div class="mandate" aria-label="A mandate refusing a payment on chain, from the recorded run">
-      <div class="mh"><span data-icon="file-lock-2"></span>Mandate · operations agent<span class="pill acc">on Metal</span></div>
+      <div class="mh"><span data-icon="file-lock-2"></span>Mandate · sourcing agent<span class="pill acc">on Metal</span></div>
       <dl class="num"><dt>Per payment</dt><dd>at most 0.03 test USD</dd><dt>In total</dt><dd>10.00 test USD</dd><dt>Pays only</dt><dd>Stockline (data supplier)</dd><dt>Enforced by</dt><dd>the account on chain</dd></dl>
       <div class="pay"><span data-icon="circle-check"></span><div>A stock check, paid per request</div><span class="amt num">0.02 test USD</span></div>
       <div class="pay bad"><span data-icon="ban"></span><div>Price rose: refused by the chain itself<small>over the mandate's cap · nothing moved</small></div><span class="amt num">0.04 test USD</span></div>
@@ -1045,7 +1045,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       : "Tighten a setting here with Face ID; it applies at once. Loosening is a proposal from the runner, approved with Face ID.";
     if (!ps.length) { set("agents", [el("div", "panel empty", [icon("bot"), d.recorded ? "This recording was made before the Agents page." : "No agents yet."])]); return; }
     // Kit 11's names for the three roles, and what no agent may ever do (src/policy/principals.ts, src/claude/reader.ts).
-    var KIT = { sourcing: "Kit 11's sourcing agent: buys the upstream data", support: "Kit 11's support agent: refunds customers", treasury: "Kit 11's treasury agent: watches spending, sweeps earnings to Airwallex, pays the euro bills" };
+    var KIT = { sourcing: "Kit 11 job: buys upstream data per query; its card pays warehouse and data software", support: "Kit 11 job: refunds customers when a dispute holds; its card pays helpdesk software", treasury: "Kit 11 job: watches spending, sweeps earnings to Airwallex, pays the monthly licence fee in EUR" };
     var NEVER = "Never: hold an owner key, see a card number, add a payee or bank account, raise its own limit, or approve.";
     // How the work is split across Claude's models, with what each cost in this run (list prices).
     var split = d.claude && d.claude.models && d.claude.models.length ? el("section", "panel split", [
@@ -1273,10 +1273,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       document.getElementById("p-over").textContent = eur(p.over_limit_eur).replace(".00", "");
       document.getElementById("p-fakes").textContent = p.fake_invoices + " + " + p.ai_tricks;
       countUp("p-faceid", p.face_id);
-      document.getElementById("p-src").textContent = "From the recorded live run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + ", Friday run 1), on Metal testnet and the Airwallex sandbox (test money), with a Dispute desk case afterwards on a copy of its ledger. Every number comes from that audit log.";
+      document.getElementById("p-src").textContent = "From the recorded live run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + ", Friday run 1), on Metal testnet and the Airwallex sandbox (test money), with a Dispute desk case afterwards on a copy of its ledger. Every number comes from that audit log." + (RECORDED.names_note ? " " + RECORDED.names_note : "");
     }
     if (note) document.getElementById("p-src").textContent += " " + note;
-    // The hero card shows the recorded operations agent's own card number.
+    // The hero card shows the recorded sourcing agent's own card number.
     var opCard = RECORDED && RECORDED.snapshot && (RECORDED.snapshot.cards || []).filter(function (c) { return c.agent === "sourcing"; })[0];
     if (opCard) document.getElementById("hero-pan").textContent = "•••• " + opCard.last4;
     var rv = RECORDED && RECORDED.snapshot && RECORDED.snapshot.rails;
@@ -1320,7 +1320,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     nav([["Overview", "./"], ["Metal", "metal"], ["Recorded run", "demo"], ["CFO dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
-    document.getElementById("rec-text").textContent = "Recorded run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live.";
+    document.getElementById("rec-text").textContent = "Recorded run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live." + (RECORDED.names_note ? " " + RECORDED.names_note : "");
     live("rec", "Recorded");
     // The emergency stop is the CFO's, live only; in a recording it shows where it is, but does nothing.
     var st = document.getElementById("stop"); st.hidden = false; st.disabled = true; st.lastChild.textContent = "Emergency stop · live only";

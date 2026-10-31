@@ -308,7 +308,7 @@ describe("rejection by passkey", () => {
 });
 
 describe("policy change from the phone", () => {
-  const change = { key: "cap.sourcing", label: "Operations agent: most per payment", from: "", to: "0.03" };
+  const change = { key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03" };
   const termsOf = (over: Record<string, unknown> = {}) => ({
     schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: "C-0a1b2c3d", expires_at: "2026-10-30T14:10:00Z", changes: [change], reason: "prices rising", ...over,
   });

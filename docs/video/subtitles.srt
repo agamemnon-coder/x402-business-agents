@@ -48,7 +48,7 @@ Watch.
 
 13
 00:00:38,735 --> 00:00:41,224
-The operations agent buys software:
+The sourcing agent buys software:
 
 14
 00:00:41,274 --> 00:00:42,820
@@ -84,7 +84,7 @@ eighteen hundred and fifty.
 
 22
 00:01:04,002 --> 00:01:08,395
-The finance agent checks the reserve, takes a live quote and
+The treasury agent checks the reserve, takes a live quote and
 
 23
 00:01:08,445 --> 00:01:12,246

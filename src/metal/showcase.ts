@@ -250,7 +250,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   if (support?.count) {
     f.push({
       id: "pull", title: "Refunds as mandate pulls",
-      plain: "A refund is a payment under the Sales agent's own mandate, whose only payee is the customer's account, each with its own payment id.",
+      plain: "A refund is a payment under the Support agent's own mandate, whose only payee is the customer's account, each with its own payment id.",
       why: "A refund can only go back to the account that paid, never to an address in an email, and a retry never pays twice.",
       figure: `${support.count} refunds`, proofs: support.latest.map((l) => l.tx).filter((p): p is Proof => !!p),
       source: recorded, docs: [{ label: "How a payment is checked", href: `${METAL_DOCS.mandates}#how-a-payment-is-checked` }, { label: "Payouts", href: METAL_DOCS.payouts }],
@@ -260,7 +260,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   if (sweep) {
     f.push({
       id: "finality", title: "Sweep after finality",
-      plain: `Earnings move to the sweep wallet under the Finance agent's mandate. Purser books them at Airwallex only once their block (${String(sweep.p.block)}) is final (${String(sweep.p.finalized_block)}), and exactly once.`,
+      plain: `Earnings move to the sweep wallet under the Treasury agent's mandate. Purser books them at Airwallex only once their block (${String(sweep.p.block)}) is final (${String(sweep.p.finalized_block)}), and exactly once.`,
       why: "The books never count money that could still be undone, and a restart never credits it twice.",
       figure: "booked once", proofs: [tx(sweep.p.tx, "sweep")].filter((p): p is Proof => !!p),
       source: recorded, docs: [{ label: "Settlement and finality", href: METAL_DOCS.finality }],

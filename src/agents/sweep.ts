@@ -1,4 +1,4 @@
-// The earnings bridge, Metal side (scenario S3, steps 1-2). The finance agent sweeps net earnings from
+// The earnings bridge, Metal side (scenario S3, steps 1-2). The treasury agent sweeps net earnings from
 // the business account to the sweep wallet under its own mandate, then waits for finality before any
 // credit is booked anywhere. The sandbox cannot receive *USDZ, so the credit is a simulated deposit of the
 // same amount whose reference is the transaction hash, booked once per on-chain transfer.

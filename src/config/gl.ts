@@ -32,9 +32,9 @@ export const COST_CENTRES: Record<Agent, string> & Record<string, string> = {
 };
 
 export const COST_CENTRE_NAMES: Record<string, string> = {
-  CC100: "Operations agent (operations)",
-  CC200: "Sales agent (ads and retail accounts)",
-  CC300: "Finance agent (finance)",
+  CC100: "Sourcing agent (operations)",
+  CC200: "Support agent (refunds and helpdesk software)",
+  CC300: "Treasury agent (finance)",
   CC400: "Outside agents (agent API)",
   CC500: "Task cards (Ask Purser)",
 };
@@ -48,6 +48,7 @@ export const VENDOR_GL: Record<string, string> = {
 /** Card spend by merchant category; anything not listed goes to 6100. */
 export const MCC_GL: Record<string, string> = {
   "5734": "6100",
+  "7372": "6100",
   "7311": "6150",
   "4511": "6300",
   "7011": "6300",

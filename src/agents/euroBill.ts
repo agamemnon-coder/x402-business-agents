@@ -1,4 +1,4 @@
-// The finance agent's euro-bill work (scenario S3) against the Airwallex port.
+// The treasury agent's euro-bill work (scenario S3) against the Airwallex port.
 // Seeding calibrates floors so the demo shows a shortfall whatever the sandbox starts with; planning
 // converts only the shortfall, fee included, on a locked quote, and never below either floor.
 

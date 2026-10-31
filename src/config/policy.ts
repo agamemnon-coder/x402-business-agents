@@ -56,7 +56,7 @@ export const MANDATE_PROPOSAL_TTL_MS = 60 * 60 * 1000;
 /**
  * Velocity limits (security item 2): an agent that pays more often or more in total than this, in a sliding minute or
  * hour, is stopped by code at once; only the CFO's Face ID lifts the stop. Set well above the busiest live run so far
- * (rehearsal 3: the operations agent peaked at 18 payments in a minute and 52 in an hour). Metal amounts are *USDZ
+ * (rehearsal 3: the sourcing agent peaked at 18 payments in a minute and 52 in an hour). Metal amounts are *USDZ
  * cents, card amounts EUR cents; a declined card attempt counts towards the minute, not towards the amount.
  */
 export const VELOCITY: Record<Agent | "outside", { perMinute: number; usdzPerHourCents: number; eurPerHourCents: number }> = {
@@ -72,13 +72,13 @@ export const DATA_TOLERANCE_UNITS = 0;
 /**
  * Each agent's company card (K2): a virtual Visa card from Airwallex Issuing, in EUR. The limits are the CFO
  * policy's starting values; the policy (card.<agent>.per_tx / .monthly) is what the card is synced to.
- * Merchants are fictional, and so are their prices, chosen to look like an outdoor brand's ordinary tools: warehouse
- * software, ads and bookkeeping.
+ * Merchants are fictional, and so are their prices, chosen to fit each agent's Kit 11 job: warehouse and data
+ * software for sourcing, helpdesk software for support, bookkeeping for treasury.
  */
 export const CARDS: Record<Agent, { firstName: string; email: string; nickname: string; perTxCents: number; monthlyCents: number; buys: string }> = {
-  sourcing: { firstName: "Operations", email: "agents+sourcing@northwind-outdoor.example", nickname: "operations agent: warehouse software", perTxCents: 3000, monthlyCents: 10000, buys: "warehouse software" },
-  support: { firstName: "Sales", email: "agents+support@northwind-outdoor.example", nickname: "sales agent: ads", perTxCents: 6000, monthlyCents: 15000, buys: "ads" },
-  treasury: { firstName: "Finance", email: "agents+treasury@northwind-outdoor.example", nickname: "finance agent: bookkeeping", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
+  sourcing: { firstName: "Sourcing", email: "agents+sourcing@northwind-outdoor.example", nickname: "sourcing agent: warehouse and data software", perTxCents: 3000, monthlyCents: 10000, buys: "warehouse and data software" },
+  support: { firstName: "Support", email: "agents+support@northwind-outdoor.example", nickname: "support agent: helpdesk software", perTxCents: 6000, monthlyCents: 15000, buys: "helpdesk software" },
+  treasury: { firstName: "Treasury", email: "agents+treasury@northwind-outdoor.example", nickname: "treasury agent: bookkeeping", perTxCents: 2500, monthlyCents: 5000, buys: "bookkeeping software" },
 };
 
 /** A locked FX quote may cost at most this much (basis points) above the market's current rate; dearer, it escalates. */
@@ -88,7 +88,7 @@ export const FX_QUOTE_MAX_MARKUP_BPS = 50;
 export const CARD_ACTIVE_DAYS = 90;
 
 /** Merchant categories (MCC) in words, as the pages show them. */
-export const MCC_WORDS: Record<string, string> = { "5734": "Software", "7311": "Advertising", "5192": "Books and reports", "4511": "Airlines", "7011": "Hotels", "4112": "Railways" };
+export const MCC_WORDS: Record<string, string> = { "5734": "Software", "7372": "Software services", "7311": "Advertising", "5192": "Books and reports", "4511": "Airlines", "7011": "Hotels", "4112": "Railways" };
 
 /** What an outside agent's card may pay (merchant category 5734); the CFO approves anything else as a policy change. */
 export const OUTSIDE_AGENT_MCCS = ["5734"];
@@ -96,15 +96,19 @@ export const OUTSIDE_AGENT_MCCS = ["5734"];
 /** An agent's request for a higher card limit waits up to an hour for the CFO; it carries no quote that could expire. */
 export const CARD_RAISE_TTL_MS = 60 * 60 * 1000;
 
-/** What each agent may buy on its card: software plans (merchant category 5734, computer software stores) and ads (7311, advertising services). */
+/**
+ * What each agent may buy on its card: warehouse and bookkeeping software (merchant category 5734, computer software
+ * stores) and helpdesk software (7372, computer programming and data processing services). Advertising (7311) stays
+ * in MCC_WORDS and the GL map only for the 30 October recording, when the Support agent's card bought ads.
+ */
 export const PLANS: Record<string, { agent: Agent; merchant: string; label: string; amountCents: number; mcc: string }> = {
   "packwise-starter": { agent: "sourcing", merchant: "Packwise", label: "Starter plan, monthly", amountCents: 1999, mcc: "5734" },
   "packwise-pro": { agent: "sourcing", merchant: "Packwise", label: "Pro plan, monthly (more warehouses, live sync)", amountCents: 4500, mcc: "5734" },
-  "adwave-starter": { agent: "support", merchant: "Adwave", label: "Ads credit, starter", amountCents: 3800, mcc: "7311" },
-  "adwave-growth": { agent: "support", merchant: "Adwave", label: "Ads credit, growth", amountCents: 9500, mcc: "7311" },
+  "replyhub-starter": { agent: "support", merchant: "Replyhub", label: "Helpdesk, starter, monthly", amountCents: 3800, mcc: "7372" },
+  "replyhub-growth": { agent: "support", merchant: "Replyhub", label: "Helpdesk, growth, monthly (more seats, live chat)", amountCents: 9500, mcc: "7372" },
   "ledgerly-starter": { agent: "treasury", merchant: "Ledgerly", label: "Bookkeeping, starter, monthly", amountCents: 1500, mcc: "5734" },
-  // Not a plan the agent should buy: warehouse software on the sales card, which may pay only ads (a demo moment).
-  "packwise-on-sales-card": { agent: "support", merchant: "Packwise", label: "Starter plan, monthly, on the sales card", amountCents: 1999, mcc: "5734" },
+  // Not a plan the agent should buy: warehouse software on the support card, which may pay only helpdesk software (a demo moment).
+  "packwise-on-support-card": { agent: "support", merchant: "Packwise", label: "Starter plan, monthly, on the support card", amountCents: 1999, mcc: "5734" },
 };
 
 /**

@@ -1,5 +1,5 @@
 // The agents' eval set (agent quality, master prompt part 4): fixed documents through the same intake the runner
-// uses (classify, read, code checks, the finance agent's decision), each in a fresh throwaway ledger with an
+// uses (classify, read, code checks, the treasury agent's decision), each in a fresh throwaway ledger with an
 // in-memory Airwallex. Five cases the CFO asks about: a normal invoice, one that is too expensive, a fraudulent one,
 // one with instructions aimed at the AI, and the same invoice twice; plus the supplier's price notice.
 // With a Claude client the models read the documents (npm run evals); without one the deterministic parsers do
@@ -36,7 +36,7 @@ const fixture = (name: string) => readFileSync(new URL(`../../fixtures/${name}`,
 
 interface Ctx { db: DB; awx: FakeAirwallex; tools: Tools }
 
-/** One document through the intake: classify, read, and (for an invoice) the finance agent's decision. */
+/** One document through the intake: classify, read, and (for an invoice) the treasury agent's decision. */
 async function intake(c: Ctx, text: string): Promise<{ kind: string; outcome?: InvoiceOutcome; read: unknown }> {
   const kind = (await c.tools.classify(text)).value.kind;
   if (kind === "invoice") {

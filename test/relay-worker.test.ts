@@ -261,7 +261,7 @@ describe("passkey approvals from the phone", () => {
 describe("policy changes from the phone", () => {
   const policyTerms = (over: Record<string, unknown> = {}) => canonicalTerms({
     schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: "C-0a1b2c3d", expires_at: "2026-10-30T14:10:00Z",
-    changes: [{ key: "cap.sourcing", label: "Operations agent: most per payment", from: "", to: "0.03" }], reason: "r", ...over,
+    changes: [{ key: "cap.sourcing", label: "Sourcing agent: most per payment", from: "", to: "0.03" }], reason: "r", ...over,
   } as Terms);
   const submission = (canonical: string, hash = sha256Hex(canonical), id = "cred-1") => ({
     canonical, terms_sha256: hash,

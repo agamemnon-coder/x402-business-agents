@@ -43,13 +43,13 @@ describe("the books of a world", () => {
   it("shows a balanced trial balance, cash moved per account and currency, and spend per cost centre; exports as CSV", async () => {
     const w = await redTeamWorld();
     await buyPlan(w.db, w.issuing, "packwise-starter", w.now());
-    await buyPlan(w.db, w.issuing, "adwave-starter", w.now());
+    await buyPlan(w.db, w.issuing, "replyhub-starter", w.now());
     const b = books(w.db);
     expect(b.balanced).toBe(true);
     expect(b.cash).toContainEqual(expect.objectContaining({ account: "1200", currency: "EUR", moved_cents: -(1999 + 3800) }));
     expect(b.spend).toEqual(expect.arrayContaining([
-      { cost_centre: "CC100", name: "Operations agent (operations)", currency: "EUR", cents: 1999 },
-      { cost_centre: "CC200", name: "Sales agent (ads and retail accounts)", currency: "EUR", cents: 3800 },
+      { cost_centre: "CC100", name: "Sourcing agent (operations)", currency: "EUR", cents: 1999 },
+      { cost_centre: "CC200", name: "Support agent (refunds and helpdesk software)", currency: "EUR", cents: 3800 },
     ]));
     const csv = booksCsv(b.postings).split("\n");
     expect(csv[0]).toBe("entry,date,account,account_name,debit,credit,currency,cost_centre,ref,description,proof");
@@ -84,7 +84,7 @@ describe("opening balances (the money there before the run)", () => {
     await buyPlan(w.db, w.issuing, "packwise-starter", t0);
     w.db.prepare("INSERT INTO balance_snapshots (taken_at, label, json) VALUES (?, 'seed', ?)").run(new Date(t0.getTime() + 1000).toISOString(), JSON.stringify({ EUR: { availableCents: 148_001 }, USD: { availableCents: 2_500_000 } }));
     w.issuing.clock = () => t0.getTime() + 2000; // the card issuer stamps its own time on the charge
-    await buyPlan(w.db, w.issuing, "adwave-starter", new Date(t0.getTime() + 2000));
+    await buyPlan(w.db, w.issuing, "replyhub-starter", new Date(t0.getTime() + 2000));
     const b = books(w.db);
     expect(b.balanced).toBe(true);
     const cash = (acc: string, cur: string) => b.cash.find((c) => c.account === acc && c.currency === cur)!;

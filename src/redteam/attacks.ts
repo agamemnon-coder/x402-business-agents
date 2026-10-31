@@ -170,7 +170,7 @@ export const ATTACKS: Attack[] = [
       await processAssertion(w.db, w.cfoApproval(p.proposal_id, p.terms_sha256), w.now());
       executePolicyChange(w.db, p.proposal_id, w.now());
       const r = capRefusal(w.db, "sourcing", 50);
-      return { attempt: "the operations agent tried to pay 0.50 for one stock check, with a CFO limit of 0.03", blocked: r !== null,
+      return { attempt: "the sourcing agent tried to pay 0.50 for one stock check, with a CFO limit of 0.03", blocked: r !== null,
         defence: "the CFO policy is checked before anything is signed; the mandate on chain is the outer wall", evidence: r ?? "no refusal" };
     },
   },
@@ -185,8 +185,8 @@ export const ATTACKS: Attack[] = [
         if (velocityGate(w.db, "sourcing", "metal", 3, w.now()) === null) made++;
       }
       return { attempt: `fired ${VELOCITY.sourcing.perMinute + 10} payments of 0.03 within a minute`, blocked: made === VELOCITY.sourcing.perMinute && stopped(w.db, "sourcing"),
-        defence: `the speed limit stops the agent on the first payment over it; only Face ID lifts it. The Operations agent's limit is ${VELOCITY.sourcing.perMinute} payments a minute and ${(VELOCITY.sourcing.usdzPerHourCents / 100).toFixed(2)} test USD an hour, set above the recorded run's busiest minute (18 payments)`,
-        evidence: `${made} made, the rest refused; operations agent ${stopped(w.db, "sourcing") ? "stopped" : "still running"}` };
+        defence: `the speed limit stops the agent on the first payment over it; only Face ID lifts it. The Sourcing agent's limit is ${VELOCITY.sourcing.perMinute} payments a minute and ${(VELOCITY.sourcing.usdzPerHourCents / 100).toFixed(2)} test USD an hour, set above the recorded run's busiest minute (18 payments)`,
+        evidence: `${made} made, the rest refused; sourcing agent ${stopped(w.db, "sourcing") ? "stopped" : "still running"}` };
     },
   },
   {
@@ -204,7 +204,7 @@ export const ATTACKS: Attack[] = [
       const outs = [];
       for (const c of tries) { w.advance(1000); outs.push(await processPolicyRequest(w.db, policyRequest(w, w.cfo, c), w.now())); }
       const after = n(w, "SELECT COUNT(*) AS n FROM proposals WHERE kind = 'policy_change'");
-      return { attempt: "made the CFO's own passkey sign three loosenings on a taken-over phone page: lift the sales agent's stop, raise the refund threshold, lift the emergency stop",
+      return { attempt: "made the CFO's own passkey sign three loosenings on a taken-over phone page: lift the support agent's stop, raise the refund threshold, lift the emergency stop",
         blocked: outs.every((o) => o.status === "refused") && after === before && stopped(w.db, "support"),
         defence: "the phone may only tighten; a loosening is proposed on the runner and then approved with Face ID", evidence: outs.map((o) => o.message).join(" / ") };
     },

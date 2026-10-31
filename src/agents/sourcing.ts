@@ -1,4 +1,4 @@
-// The operations agent: buys stock checks from the supplier under its own mandate (payee: the supplier only,
+// The sourcing agent: buys stock checks from the supplier under its own mandate (payee: the supplier only,
 // a per-purchase cap, a budget). It holds its mandate key and nothing else.
 
 import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";

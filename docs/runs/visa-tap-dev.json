@@ -7,7 +7,7 @@
   "card_payments": "Airwallex sandbox simulated authorisations",
   "steps": [
     {
-      "step": "the Operations agent buys Packwise Starter (EUR 19.99), signed",
+      "step": "the Sourcing agent buys Packwise Starter (EUR 19.99), signed",
       "expect": "recognised, approved by Airwallex",
       "status": 200,
       "result": {
@@ -79,7 +79,7 @@
       }
     },
     {
-      "step": "the Operations agent buys Packwise Pro (EUR 45.00), over its card limit",
+      "step": "the Sourcing agent buys Packwise Pro (EUR 45.00), over its card limit",
       "expect": "recognised, declined by Airwallex",
       "status": 402,
       "result": {

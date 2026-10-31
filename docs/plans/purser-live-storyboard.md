@@ -11,13 +11,13 @@ Bottom, a running ledger line and a clock (09:00 to 18:00, compressed).
 | Time | Scene | On screen | Data source |
 |---|---|---|---|
 | 0:00–0:06 | Title | "A day at Northwind Outdoor. Three AI agents, one CFO." The three agent cards fade in with their limits. | CFO policy |
-| 0:06–0:16 | Agents at work alone | Stock checks flow from the Operations agent to the supplier as small coins on the Metal rail (0.02 each); retailers' payments flow back (0.05). A counter ticks: "48 payments, no one asked". | sales, upstream purchases |
-| 0:16–0:24 | A card purchase inside the limit | The Operations agent's card slides to "Packwise 19.99", a green check from Airwallex. | card transaction |
+| 0:06–0:16 | Agents at work alone | Stock checks flow from the Sourcing agent to the supplier as small coins on the Metal rail (0.02 each); retailers' payments flow back (0.05). A counter ticks: "48 payments, no one asked". | sales, upstream purchases |
+| 0:16–0:24 | A card purchase inside the limit | The Sourcing agent's card slides to "Packwise 19.99", a green check from Airwallex. | card transaction |
 | 0:24–0:34 | The limit holds | The supplier raises its price to 0.04. A coin bounces off the mandate: "refused on chain: over the 0.03 cap". Purser drafts two options; the phone lights up. | price rise, refusal, proposals |
 | 0:34–0:42 | Face ID | The phone shows the exact terms, Face ID icon, "Approved". The mandates are replaced; the next coin passes. | approval, mandate replace tx |
 | 0:42–0:50 | A fake invoice | A PDF drops in with "pre-approved" in small grey text. A red stamp: "Planted instruction ignored; changed IBAN blocked". Nothing moves. | fraud and injection rows |
 | 0:50–0:58 | Ask Purser | A chat bubble: "Flight to Berlin, at most €250". A single-use card appears, pays Skyline Air 189.00, then greys out: "used, closed". | task card rows (after the live check) |
-| 0:58–1:06 | The euro bill | Finance agent: "Convert only the missing euros." USD to EUR at the checked rate, SWIFT to the manufacturer: PAID. | FX, transfer |
+| 0:58–1:06 | The euro bill | Treasury agent: "Convert only the missing euros." USD to EUR at the checked rate, SWIFT to the manufacturer: PAID. | FX, transfer |
 | 1:06–1:12 | Money from a stranger | A coin from an unknown address stops at a glass wall: "held by Metal in quarantine; the CFO decides". | quarantine row |
 | 1:12–1:15 | End card | "Every euro has a proof. The CFO keeps the pen." Links: the dashboard, the demo, the Lab. | — |
 

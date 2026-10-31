@@ -165,12 +165,12 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       };
     },
     card: function (L) {
-      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Operations agent"), E("span", null, "Virtual")]), E("div", "n", "•••• " + d.card.last4), E("div", "b", null, [E("span", null, "Warehouse software"), E("span", "visa", "VISA")])]), 140, 170);
+      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Sourcing agent"), E("span", null, "Virtual")]), E("div", "n", "•••• " + d.card.last4), E("div", "b", null, [E("span", null, "Warehouse software"), E("span", "visa", "VISA")])]), 140, 170);
       var lim = put(L, E("div", "h3", ""), 140, 520), bar = put(L, E("div", "bar"), 140, 580), bi = E("i"); bar.appendChild(bi);
       var t1 = put(L, toast("ok", d.card.merchant + " Starter", "approved by Airwallex", "€" + d.card.small), 760, 170);
       var t2 = put(L, toast("bad", d.card.merchant + " Pro", "declined by Airwallex: over the €" + d.card.from + " limit", "€" + d.card.big), 760, 300);
       var ask = put(L, E("div", "chat", "Can I have €" + d.card.to + " a purchase for the Pro plan?"), 760, 450); ask.style.fontSize = "30px"; ask.style.maxWidth = "620px";
-      var ph = phone(d.card.proposal, "Operations agent's card: most per purchase", [["now", "€" + d.card.from], ["after", "€" + d.card.to]], 8.6); put(L, ph.n, 1440, 130);
+      var ph = phone(d.card.proposal, "Sourcing agent's card: most per purchase", [["now", "€" + d.card.from], ["after", "€" + d.card.to]], 8.6); put(L, ph.n, 1440, 130);
       var t3 = put(L, toast("ok", d.card.merchant + " Pro, again", "approved by Airwallex, after Face ID", "€" + d.card.big), 140, 680);
       var log = put(L, E("div", "pill", "Every step in the audit log"), 140, 840);
       return function (t) {
@@ -205,7 +205,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var k = put(L, E("div", "kicker", "On chain · Metal"), 140, 90); k.style.color = "var(--metal)";
       var h = put(L, E("div", "h2", "Pay per request, inside a mandate"), 140, 136);
       var a = put(L, E("div", "node", null, [E("b", null, "Summit's agent"), E("span", null, "a retail customer")]), 140, 360);
-      var b = put(L, E("div", "node", null, [E("b", null, "Northwind"), E("span", null, "Operations agent")]), 810, 360);
+      var b = put(L, E("div", "node", null, [E("b", null, "Northwind"), E("span", null, "Sourcing agent")]), 810, 360);
       var c = put(L, E("div", "node", null, [E("b", null, "Stockline"), E("span", null, "")]), 1480, 360);
       var price = c.querySelector("span");
       var wall = put(L, E("div", "wall"), 1290, 290); var wl = put(L, E("div", "pill", ""), 1150, 610);

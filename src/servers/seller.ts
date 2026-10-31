@@ -1,13 +1,13 @@
 // Northwind Outdoor's query route. Other companies' agents pay per stock check with x402, under their own
 // mandate, and must sign the order (requireSignedOffer). The handler buys the upstream stock check first,
-// through the operations agent's mandate. If that purchase is refused, the handler answers 503, so the
+// through the sourcing agent's mandate. If that purchase is refused, the handler answers 503, so the
 // middleware never settles and the customer is not charged. A sale is recorded only on the settle
 // answer that claimed the payment first, with its signed order, tx and the exact body delivered.
 //
 // Beside it, the prepaid route takes Metal's Offer Pay-per-Call Clearing (scheme `bajillion`): the buyer pays from a
 // clearing deposit with a signed receipt, no transaction per query. A clearing payment is counted when the buyer makes
 // it, before this handler runs, so a refused upstream purchase would leave the buyer charged. The prepaid route
-// therefore offers itself only when the supplier's current price is within the operations agent's limits (a free look
+// therefore offers itself only when the supplier's current price is within the sourcing agent's limits (a free look
 // at the supplier's offer); otherwise it answers 503 and the buyer uses the mandate route, where nothing moves unless
 // the stock check is delivered.
 

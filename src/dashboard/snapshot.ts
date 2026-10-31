@@ -249,7 +249,7 @@ function policyUnit(key: string): string {
   return "";
 }
 
-/** Whose card it is, in words: "the Operations agent" for ours; an outside agent keeps its id, which the page names. */
+/** Whose card it is, in words: "the Sourcing agent" for ours; an outside agent keeps its id, which the page names. */
 const cardOwner = (agent: string) => (agentName(agent) !== agent ? `the ${agentName(agent)}` : `the ${agent} agent`);
 const capFirst = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
@@ -461,7 +461,7 @@ const onlyWords = (c: { allowed_mccs: string; allowed_currencies: string; active
   ].filter(Boolean);
   return parts.join(" · ");
 };
-/** "on the Sales agent's card •••• 1234", or for a task card (Ask Purser) "on task card •••• 1234 (P-0011)". */
+/** "on the Support agent's card •••• 1234", or for a task card (Ask Purser) "on task card •••• 1234 (P-0011)". */
 const onCard = (agent: string, last4: string) => (agent.startsWith("task:") ? `on task card •••• ${last4} (${agent.slice(5)})` : `on ${cardOwner(agent)}'s card •••• ${last4}`);
 const declineWords = (code: string) => DECLINE_WORDS[code] ?? (code.toLowerCase().replace(/_/g, " ") || "no reason given");
 const limitWords = (s: string) => {

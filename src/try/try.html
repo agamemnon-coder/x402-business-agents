@@ -121,7 +121,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
     <aside class="side" aria-label="How the request flows">
       <section class="flow">
         <h2>The flow</h2>
-        <div class="node" id="n-agent"><div class="ic">◎</div><div><b id="n-agent-t">An agent gets your task</b><small id="n-agent-s">Operations, Sales or Finance agent</small></div></div>
+        <div class="node" id="n-agent"><div class="ic">◎</div><div><b id="n-agent-t">An agent gets your task</b><small id="n-agent-s">Operations, Sales or Treasury agent</small></div></div>
         <div class="link" id="l1"></div>
         <div class="node" id="n-purser"><div class="ic">✦</div><div><b>Purser: Claude reads, code decides</b><small id="n-purser-s">Haiku sorts · Sonnet reads · the CFO policy decides</small></div></div>
         <div class="link" id="l2"></div>
@@ -155,7 +155,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
 
   var NAMES = { "claude-haiku-5-5": "Haiku 5.5", "claude-sonnet-5-5": "Sonnet 5.5", "code": "Code", "demo world": "Demo world" };
   var ICON = { paid: "✓", face_id: "◉", refused: "✕", blocked: "⛨", question: "?" };
-  var AGENT = { card: "Operations agent", task_card: "Finance agent (task cards)", swift: "Finance agent", metal: "Operations agent" };
+  var AGENT = { card: "Sourcing agent", task_card: "Treasury agent (task cards)", swift: "Treasury agent", metal: "Sourcing agent" };
   var ROLE = { card: "buys software on its own card", task_card: "books travel on single-use cards", swift: "pays suppliers' invoices", metal: "pays for data per request" };
   var RAILNOTE = { card: "Its company card at Airwallex: the limit sits on the card", task_card: "A single-use card from Airwallex Issuing", swift: "An Airwallex SWIFT payout, on a locked FX quote if needed", metal: "Its mandate on Metal: the chain enforces the cap" };
   function usd(v) { return v >= 0.01 ? "$" + v.toFixed(3) : "$" + v.toFixed(4); }
@@ -209,7 +209,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
     // The flow lights up step by step, then the rail, then the outcome and the live proof.
     document.getElementById("n-agent-t").textContent = AGENT[r.rail] || "An agent gets your task";
     document.getElementById("n-purser-s").textContent = modelRan ? "Haiku sorted · Sonnet read · the CFO policy decided" : r.outcome === "blocked" ? "Code stopped it before any model read it" : "Code read it alone (no model here) · the CFO policy decided";
-    document.getElementById("n-agent-s").textContent = ROLE[r.rail] || "Operations, Sales or Finance agent";
+    document.getElementById("n-agent-s").textContent = ROLE[r.rail] || "Operations, Sales or Treasury agent";
     var items = list.children, k;
     on("n-agent", true);
     for (k = 0; k < items.length; k++) (function (n, i) { setTimeout(function () { n.classList.add("show"); }, 120 + i * 240); })(items[k], k);

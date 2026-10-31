@@ -52,13 +52,13 @@ export function buildFilm(story: Story, recorded: Recorded, reports: { redteam: 
   // The card story: 19.99 approved, 45.00 declined over a 30.00 limit, the raise to 50.00, then 45.00 approved.
   const approved = fact("card", /^Approved by Airwallex/);
   const raise = fact("card", /^Limit raised/).match(/^([\d.]+) \/ [\d.]+ → ([\d.]+)/);
-  const ops = need(snap.cards.find((c) => c.agent === "sourcing"), "the operations agent's card");
+  const ops = need(snap.cards.find((c) => c.agent === "sourcing"), "the sourcing agent's card");
   const cards = snap.cards.map((c) => ({ name: c.name, last4: c.last4, perTx: c.agent === "sourcing" && raise ? raise[1]! : c.per_tx, only: c.only.split(" · ")[0]!.replace(/^Software/, "Software").replace(/ \(MCC \d+\)/, "") }));
-  const names: Record<string, string> = { sourcing: "Operations agent", support: "Sales agent", treasury: "Finance agent" };
-  // The mandates as the day starts: the operations agent's from the story (the price rise replaces it later); the
-  // sales agent's never changes. The finance agent's is left out: it too is replaced during the day.
-  const opsStart = need(fact("buy", /Operations agent's mandate/).match(/^([\d.]+) a payment/)?.[1], "the operations agent's first mandate");
-  const sales = need(snap.budgets.agents.find((m) => m.agent === "support"), "the sales agent's mandate");
+  const names: Record<string, string> = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent" };
+  // The mandates as the day starts: the sourcing agent's from the story (the price rise replaces it later); the
+  // support agent's never changes. The treasury agent's is left out: it too is replaced during the day.
+  const opsStart = need(fact("buy", /Sourcing agent's mandate/).match(/^([\d.]+) a payment/)?.[1], "the sourcing agent's first mandate");
+  const sales = need(snap.budgets.agents.find((m) => m.agent === "support"), "the support agent's mandate");
   const mandates = [{ name: names.sourcing!, cap: opsStart, payee: "Stockline" }, { name: names.support!, cap: sales.cap, payee: sales.payee }];
 
   const faceid = step("faceid");
@@ -87,7 +87,7 @@ export function buildFilm(story: Story, recorded: Recorded, reports: { redteam: 
     metal: {
       sales: fact("buy", /^Sales in this run/), firstTx: fact("buy", /first payment/i), cap: capRise[2]!, oldPrice, newPrice: capRise[1]!,
       optionA: fact("refused", /^Option A/), optionB: fact("refused", /^Option B/), advice: fact("faceid", /^Advice/).replace(/^Opus advised /, ""),
-      mandateTx: fact("faceid", /^Operations agent mandate replaced/), proposal: need(faceid.approval?.proposal, "the mandate change's proposal"),
+      mandateTx: fact("faceid", /^Sourcing agent mandate replaced/), proposal: need(faceid.approval?.proposal, "the mandate change's proposal"),
     },
     dispute: {
       caseId: dispute.case_id, text: dispute.text, refund: dispute.refund,

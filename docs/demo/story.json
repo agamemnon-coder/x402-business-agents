@@ -11,10 +11,10 @@
       "approval": {
         "who": "Max · Face ID",
         "proposal": "P-0005",
-        "what": "Operations agent's card: most per purchase: 30.00 → 50.00 EUR"
+        "what": "Sourcing agent's card: most per purchase: 30.00 → 50.00 EUR"
       },
       "title": "Every AI agent gets its own company card, with limits the CFO sets",
-      "text": "Our operations agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by Airwallex itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
+      "text": "Our sourcing agent pays for a software plan with its own card: approved. Then it tries a more expensive plan, over its limit, and the card is declined by Airwallex itself. The agent asks for more; the CFO approves with Face ID; the card follows, and the same purchase goes through.",
       "details": "Virtual Visa cards from Airwallex Issuing (sandbox), one per agent. The limits come from the CFO policy; they are synced to the card at Airwallex and read back, so Airwallex declines anything over them (LIMIT_EXCEEDED), whatever the agent does. The raise is a policy change approved with Face ID. In the sandbox the merchant's charge is simulated; the approve or decline is Airwallex's own.",
       "facts": [
         {
@@ -39,7 +39,7 @@
         },
         {
           "label": "Wrong kind of shop",
-          "value": "19.99 EUR at Packwise on the Sales agent's card: declined by Airwallex (MERCHANT_CATEGORY_NOT_ALLOWED)",
+          "value": "19.99 EUR at Packwise on the Support agent's card: declined by Airwallex (MERCHANT_CATEGORY_NOT_ALLOWED)",
           "href": null
         },
         {
@@ -58,7 +58,7 @@
       "approval": null,
       "title": "Agents also pay per request, each inside its own limits",
       "text": "A retailer's buying agent pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
-      "details": "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our operations agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
+      "details": "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our sourcing agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
       "facts": [
         {
           "label": "Sales in this run",
@@ -76,7 +76,7 @@
           "href": "https://testnet.metalntwx.com/tx/0xa465e23be513b2f0b9586c87d7b60a6896fdb6eb97df89278ab3b1615137ea2a"
         },
         {
-          "label": "Operations agent's mandate",
+          "label": "Sourcing agent's mandate",
           "value": "0.03 a payment, 10.00 in total, Stockline only",
           "href": null
         }
@@ -91,7 +91,7 @@
       "approval": null,
       "title": "The supplier raises its price, and the payment is refused",
       "text": "The supplier asks more than our agent may pay, so its own account refuses the payment and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
-      "details": "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The finance agent prices the options with their margins.",
+      "details": "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The treasury agent prices the options with their margins.",
       "facts": [
         {
           "label": "Refusal",
@@ -124,11 +124,11 @@
       "approval": {
         "who": "Max · Face ID",
         "proposal": "P-0002",
-        "what": "Finance agent 4.00 a payment, 4.00 in total; Operations agent 0.04 a payment, 12.00 in total"
+        "what": "Treasury agent 4.00 a payment, 4.00 in total; Sourcing agent 0.04 a payment, 12.00 in total"
       },
       "title": "The CFO approves the exact terms with Face ID",
       "text": "The CFO reads the options on their phone and approves one with Face ID. Only exactly those terms can run; the agents' limits change in a safe order, and the old limit stops working at once.",
-      "details": "Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. The mandates are replaced in a safe order: the Finance agent's shrinks first, the Operations agent's grows second, never over the 20.00 total. The old credential is refused from then on (mandate_revoked).",
+      "details": "Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. The mandates are replaced in a safe order: the Treasury agent's shrinks first, the Sourcing agent's grows second, never over the 20.00 total. The old credential is refused from then on (mandate_revoked).",
       "facts": [
         {
           "label": "Advice (not a decision)",
@@ -136,12 +136,12 @@
           "href": null
         },
         {
-          "label": "Finance agent mandate replaced",
+          "label": "Treasury agent mandate replaced",
           "value": "0x2909b164…8aed",
           "href": "https://testnet.metalntwx.com/tx/0x2909b164c50779c342783309943901472cf1c966402c550d0d28f5ab86a08aed"
         },
         {
-          "label": "Operations agent mandate replaced",
+          "label": "Sourcing agent mandate replaced",
           "value": "0xbc70858f…b5d7",
           "href": "https://testnet.metalntwx.com/tx/0xbc70858fef5ca185cb8dffb860becac2fe0876888aa5ea57d8aee2700449b5d7"
         }
@@ -156,15 +156,15 @@
       "approval": {
         "who": "Max · Face ID",
         "proposal": "P-0005",
-        "what": "Operations agent's card: most per purchase: 50.00"
+        "what": "Sourcing agent's card: most per purchase: 50.00"
       },
       "title": "One CFO policy, stricter than any limit on chain",
       "text": "The agent asked for a higher limit; the CFO approved that exact change with Face ID, and the new limit went to the card at Airwallex at once. One policy sets the limits on the cards and inside the mandates: loosening it always needs Face ID, tightening it can be done on the phone.",
-      "details": "The CFO policy sits inside the on-chain mandates and the card limits, and is checked before any signature. Here: Operations agent's card: most per purchase goes from 30.00 to 50.00.",
+      "details": "The CFO policy sits inside the on-chain mandates and the card limits, and is checked before any signature. Here: Sourcing agent's card: most per purchase goes from 30.00 to 50.00.",
       "facts": [
         {
           "label": "Changed",
-          "value": "Operations agent's card: most per purchase: 30.00 → 50.00",
+          "value": "Sourcing agent's card: most per purchase: 30.00 → 50.00",
           "href": null
         }
       ],

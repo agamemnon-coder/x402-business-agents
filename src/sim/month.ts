@@ -31,7 +31,7 @@ export interface MonthEvent {
 
 export interface PnlLine {
   agent: Agent;
-  /** What the agent's work earned (the data product's sales are the operations agent's). */
+  /** What the agent's work earned (the data product's sales are the sourcing agent's). */
   earned: string;
   /** Pay-per-request spend over x402 (supplier stock checks, refunds). */
   x402: string;
@@ -169,7 +169,7 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
     let sales = Math.round(base * (0.85 + 0.3 * r()));
 
     if (day === 1) {
-      for (const [m, p] of [[540, "packwise-starter"], [545, "adwave-starter"], [550, "ledgerly-starter"]] as const) charge(day, m, p, today);
+      for (const [m, p] of [[540, "packwise-starter"], [545, "replyhub-starter"], [550, "ledgerly-starter"]] as const) charge(day, m, p, today);
     }
     // Day 9: Stockline raises its price to 0.04. The chain refuses every purchase over the 0.03 cap from 14:00, so
     // the afternoon's queries are answered "unavailable" and nobody is charged for them.
@@ -198,7 +198,7 @@ export function simulateMonth(opts: { seed?: number; month?: string } = {}): Mon
       }
     }
     if (day === 20) {
-      if (!charge(day, 615, "adwave-growth", today)) {
+      if (!charge(day, 615, "replyhub-growth", today)) {
         ev(day, 617, "support", "waiting", "Asked the CFO to raise its card to 100.00 EUR per purchase for 5 helpdesk seats");
         ev(day, 720, "cfo", "rejected", "Rejected: 2 seats cover the dispute volume; the card stays at 60.00");
         counts.blocked++;

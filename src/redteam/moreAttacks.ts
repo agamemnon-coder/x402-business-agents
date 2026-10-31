@@ -125,8 +125,8 @@ export const MORE_ATTACKS: Attack[] = [
     title: "Use an agent's card for something it is not for",
     category: "money",
     run: async (w) => {
-      const t = await buyPlan(w.db, w.issuing, "packwise-on-sales-card", w.now());
-      return { attempt: "the Sales agent (ads only) paid warehouse software on its card", blocked: !t.approved,
+      const t = await buyPlan(w.db, w.issuing, "packwise-on-support-card", w.now());
+      return { attempt: "the Support agent (helpdesk software only) paid warehouse software on its card", blocked: !t.approved,
         defence: "the card's merchant categories are set at the card issuer", evidence: t.approved ? "APPROVED" : `declined (${t.failureReason})` };
     },
   },
@@ -183,20 +183,20 @@ export const MORE_ATTACKS: Attack[] = [
     title: "A revoked agent keeps paying, or an old key keeps working",
     category: "outside agent",
     run: async (w) => {
-      // The sales agent's identity is revoked (a leaked machine); an outside agent's key was rotated.
+      // The support agent's identity is revoked (a leaked machine); an outside agent's key was rotated.
       revokePrincipal(w.db, "support", "machine reported lost", "max", w.now());
       await syncCards(w.db, w.issuing, w.now());
       const refund = reserveSpend(w.db, { agent: "support", rail: "metal", cents: 5, ref: "rt-refund", now: w.now(), payee: "customer" });
-      const card = await buyPlan(w.db, w.issuing, "adwave-starter", w.now()).then((x) => (x.approved ? "APPROVED" : `declined (${x.failureReason})`), (e: Error) => `refused (${e.message.slice(0, 60)})`);
+      const card = await buyPlan(w.db, w.issuing, "replyhub-starter", w.now()).then((x) => (x.approved ? "APPROVED" : `declined (${x.failureReason})`), (e: Error) => `refused (${e.message.slice(0, 60)})`);
       const others = authorize(w.db, "sourcing", { rail: "metal", currency: "USDZ", payee: "supplier" }, w.now());
       const ext = "ext:acme-research";
       const old = rotatePrincipalKey(w.db, ext, "max", w.now()).key;
       rotatePrincipalKey(w.db, ext, "max", w.now());
       const oldKey = keyMatches(w.db, ext, old, w.now());
       const blocked = !!refund?.startsWith("principal_revoked") && !card.startsWith("APPROVED") && others === null && !oldKey;
-      return { attempt: "the revoked sales agent refunds and buys ads on its card; an outside agent uses its key from before a rotation", blocked,
+      return { attempt: "the revoked support agent refunds and buys helpdesk software on its card; an outside agent uses its key from before a rotation", blocked,
         defence: "each agent acts as its own principal: a revoked one is refused before signing and its card is frozen; a rotated key stops at once; the other agents carry on",
-        evidence: `Sales agent's refund: ${refund ?? "reserved"}; Sales agent's card: ${card}; Operations agent: ${others ?? "still allowed"}; old key: ${oldKey ? "accepted" : "refused"}` };
+        evidence: `Support agent's refund: ${refund ?? "reserved"}; Support agent's card: ${card}; Sourcing agent: ${others ?? "still allowed"}; old key: ${oldKey ? "accepted" : "refused"}` };
     },
   },
 ];

@@ -201,7 +201,7 @@ describe("executing a sweep", () => {
     db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('cap.treasury', '2.00', 'now')").run();
     const r = await executeSweep(db, "sweep-1", 250, SWEEP);
     // Fails if: capRefusal is not checked before metalAgent (the pull would be signed over the CFO's limit).
-    expect(r).toEqual({ outcome: "REFUSED", tx: null, reason: "policy_cap_exceeded: 2.50 is over the Finance agent's limit of 2.00" });
+    expect(r).toEqual({ outcome: "REFUSED", tx: null, reason: "policy_cap_exceeded: 2.50 is over the Treasury agent's limit of 2.00" });
     expect(h.cli).toEqual([]);
     expect(sweepRow(db, "sweep-1")).toMatchObject({ outcome: "REFUSED" });
     expect(events(db, "sweep.refused")).toEqual([expect.objectContaining({ reason: expect.stringMatching(/^policy_cap_exceeded/) })]);
