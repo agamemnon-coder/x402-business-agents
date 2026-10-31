@@ -181,3 +181,37 @@ behind its flag and the pages say nothing about it.
 
 Total about 39 hours for Saturday evening to Wednesday evening, beside three dry runs a day. If time runs short,
 block 5 (the jury's own run) is the first to stay behind its flag: it has the highest risk and /try already works.
+
+### D16. Face ID signs on chain: research (31 October, late evening)
+
+Question (Max, block 1): can the CFO's and the controller's passkeys themselves be the two signers on chain, so no
+server key changes a mandate? Findings, each tested or read, nothing created on chain:
+
+1. **The P-256 precompile is there.** Metal testnet (chain 63825) answers RIP-7212 at `0x…0100`: an `eth_call` with a
+   P-256 signature made here returned `1`; the same signature over another hash returned empty. (The node's gas
+   estimate for the call was 470,019, which includes Metal's base cost; the verify itself is to be measured in a
+   contract.) Script: scratchpad `p256/precompile.ts`, read-only.
+2. **MetalAccount owners are ERC-7913 signers** (`src/metal/fourEyes.ts`, from Metal's docs: "To use other ERC-7913
+   signer types, provide their verifier and signature encoding"). The account factory
+   (`0x3dbED5DebA965A639bB0Fd40BE96b97922070FA8`) accepted, in a read-only `predictAccount`, a 2-of-2 configuration
+   with an EOA and a signer of the form *verifier address ‖ 64-byte P-256 key*. Owners can also be changed later through
+   the account's own `addSigners` / `removeSigners` / `setThreshold`, with the current quorum's approval, keeping the
+   address and the funds.
+3. **What Metal does not document:** a deployed WebAuthn/P-256 verifier, the signature encoding it expects, and
+   whether the account calls `verify` on an ERC-7913 signer exactly as OpenZeppelin's `ERC7913` signers do. Max asks
+   Metal in Slack (draft below); until they answer, the build tests it on testnet.
+4. **Bind/replace/revoke are the account's own calls** (`OnlySelf` in the mandate ABI), so if the owners are the two
+   passkeys, a mandate change *cannot* happen without both Face IDs: the owner key on the runner is gone for mandates.
+
+**Plan (behind a flag, `KIT11_PASSKEY_OWNERS=on`; estimate 10 h; risk high):** deploy OpenZeppelin's audited
+`ERC7913WebAuthnVerifier` (pinned `@openzeppelin/contracts`, compiled with the repo's `solc`) on testnet; create a 2-of-2
+business account whose owners are the two passkeys (verifier ‖ public key from enrolment); the phone signs the
+account's EIP-712 `Execute` digest as the WebAuthn challenge; the runner only relays `executeSigned` and pays gas, it
+signs nothing. Tests and red team: replay (nonce), a wrong challenge, one signature alone, an expired `validUntil`,
+a third key. If it is not green by Wednesday 23:00 it stays labelled as now, with this research in the roadmap.
+
+**Slack draft for Metal (for Max to send):** "Hi Metal team, we're building passkey owners for a MetalAccount: two
+ERC-7913 signers (verifier ‖ P-256 key) with threshold 2, so the CFO's and the controller's Face ID approve mandate
+changes on chain. RIP-7212 at 0x…0100 works on testnet and predictAccount accepts the signer bytes. Two questions: does
+MetalAccount validate ERC-7913 signers via `IERC7913SignatureVerifier.verify(key, hash, signature)`, and is there a
+WebAuthn verifier you already deploy or recommend? Thanks!"
