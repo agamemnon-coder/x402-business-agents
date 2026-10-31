@@ -35,7 +35,11 @@ function treasuryCase(id: string, kind: AgentCase["kind"], what: string, f: Pric
     id, agent: "treasury", kind, what,
     run: async (model, client) => {
       const d = await designPriceRise(openDb(":memory:"), f, client, model);
-      const ok = d.source === "claude" && checkPricePlan(f, d.plan).length === 0 && d.plan.advice.length > 0;
+      // The job is a rebalance: Sourcing must get more budget for the higher price (review 31 Oct: Haiku "passed" while
+      // leaving 10/6/4 as it was). Code's checks (the 20.00 total, the cap, option order) must accept the plan as well.
+      const before = f.mandates.find((m) => m.agent === "sourcing")!.budgetCents;
+      const after = d.plan.targets.find((t) => t.agent === "sourcing")!.budgetCents;
+      const ok = d.source === "claude" && checkPricePlan(f, d.plan).length === 0 && d.plan.advice.length > 0 && after > before;
       return { pass: ok, run: d.run, detail: `${d.source}, ${d.attempts} ${d.attempts === 1 ? "try" : "tries"}: ${d.plan.targets.map((t) => `${t.agent} ${(t.budgetCents / 100).toFixed(2)}`).join(" / ")}, cap ${(d.plan.targets.find((t) => t.agent === "sourcing")!.capCents / 100).toFixed(2)}, prices ${d.plan.options.map((o) => (o.sellCents / 100).toFixed(2)).join(" or ")}` };
     },
   };

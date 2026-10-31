@@ -77,9 +77,22 @@ describe("the Treasury agent's plan, checked by code", () => {
     expect(p.join(" ")).toMatch(/Support's mandate stays as it is/);
   });
 
+  // Eval 31 Oct: Opus once left 10/6/4 as it was; Kit 11 asks Treasury to rebalance, and a dearer supplier needs more.
+  it("makes the Sourcing budget grow: leaving it as it was is no rebalance", () => {
+    const p = checkPricePlan(facts, { ...fallbackPricePlan(facts), targets: [{ agent: "sourcing", capCents: 4, budgetCents: 1000 }, { agent: "support", capCents: 10, budgetCents: 400 }, { agent: "treasury", capCents: 600, budgetCents: 600 }] });
+    expect(p.join(" ")).toMatch(/Sourcing's budget must grow above 10\.00/);
+  });
+
   it("never shrinks the Sourcing budget: it pays for every query", () => {
     const p = checkPricePlan(facts, { ...fallbackPricePlan(facts), targets: [{ agent: "sourcing", capCents: 4, budgetCents: 100 }, { agent: "support", capCents: 10, budgetCents: 400 }, { agent: "treasury", capCents: 600, budgetCents: 600 }] });
-    expect(p.join(" ")).toMatch(/Sourcing's budget may not shrink/);
+    expect(p.join(" ")).toMatch(/Sourcing's budget must grow/);
+  });
+
+  // Dry-19 and dry-20: Opus listed 0.07 as option A, the draaiboek says B is the higher price; live that is a mis-tap.
+  // Code sends such a plan back, so the model lists them in order and its advice keeps naming the right letter.
+  it("refuses options that are not listed from the lowest price to the highest (A is always the lower one)", () => {
+    const p = checkPricePlan(facts, { ...fallbackPricePlan(facts), options: [{ id: "A", label: "raise", sellCents: 7 }, { id: "B", label: "keep", sellCents: 5 }] });
+    expect(p.join(" ")).toMatch(/lowest sell price to the highest/);
   });
 
   it("refuses an option that sells at a loss, or the same price twice", () => {
@@ -107,6 +120,12 @@ describe("designPriceRise", () => {
     expect(d.source).toBe("claude");
     expect(d.attempts).toBe(2);
     expect(JSON.stringify(sent[1]!.messages.at(-1))).toMatch(/20\.00/);
+  });
+
+  it("drops a letter the model put in front of its own label (no \"A A: keep the price\" on the phone)", async () => {
+    const db = openDb(":memory:");
+    const d = await designPriceRise(db, facts, fake([{ ...good, options: [{ label: "A: keep the price", sell_price: "0.05" }, { label: "Option B - raise the price", sell_price: "0.07" }] }]).client);
+    expect(d.plan.options.map((o) => o.label)).toEqual(["keep the price", "raise the price"]);
   });
 
   it("falls back to code's fixed plan after three rejected plans", async () => {

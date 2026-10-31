@@ -3,7 +3,7 @@
 // and model, how often it passed, what it cost and how long it took, and per agent the cheapest model that passed
 // every run. Needs KIT11_ANTHROPIC_API_KEY; spends real money (a few cents a run). Never part of npm test.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { claudeClient } from "../claude/reader.js";
 import { PRICES } from "../claude/pricing.js";
@@ -40,23 +40,37 @@ for (const c of AGENT_CASES.filter((x) => !only || x.agent === only)) {
 }
 
 const agents: AgentName[] = ["sourcing", "treasury", "support"];
+// With --agent, the rows measured now replace the same case and model in the last report; the rest are kept, each with
+// the time it ran, so the report always shows every agent.
+const outPath = resolve(import.meta.dirname, "../../docs/evals/agents.json");
+const stamp = new Date().toISOString();
+for (const r of rows) (r as Row & { ran_at?: string }).ran_at = stamp;
+if (only && existsSync(outPath)) {
+  const old = (JSON.parse(readFileSync(outPath, "utf8")) as { rows: (Row & { ran_at?: string })[] }).rows;
+  const fresh = new Set(rows.map((r) => `${r.case}|${r.model}`));
+  rows.unshift(...old.filter((r) => !fresh.has(`${r.case}|${r.model}`) && AGENT_CASES.some((c) => c.id === r.case)));
+  rows.sort((a, b) => AGENT_CASES.findIndex((c) => c.id === a.case) - AGENT_CASES.findIndex((c) => c.id === b.case) || a.model.localeCompare(b.model));
+}
+// The cheapest model that passed every run of every case of an agent (a model must have run all of its cases).
 const cheapest = Object.fromEntries(agents.map((a) => {
-  const ok = pick.map((n) => ALL[n]).filter((m) => rows.filter((r) => r.agent === a && r.model === m).every((r) => r.passed === r.runs));
+  const cases = AGENT_CASES.filter((c) => c.agent === a).map((c) => c.id);
+  const ok = [...new Set(rows.filter((r) => r.agent === a).map((r) => r.model))]
+    .filter((m) => cases.every((c) => rows.some((r) => r.case === c && r.model === m && r.passed === r.runs)));
   ok.sort((x, y) => (PRICES[x]!.standard.output - PRICES[y]!.standard.output));
   return [a, ok[0] ?? null];
 }));
-const out = { ran_at: new Date().toISOString(), runs, models: pick.map((n) => ALL[n]), cheapest_passing: cheapest, rows };
+const out = { ran_at: stamp, runs, models: [...new Set(rows.map((r) => r.model))], cheapest_passing: cheapest, rows };
 mkdirSync(resolve(import.meta.dirname, "../../docs/evals"), { recursive: true });
-writeFileSync(resolve(import.meta.dirname, "../../docs/evals/agents.json"), JSON.stringify(out, null, 2) + "\n");
+writeFileSync(outPath, JSON.stringify(out, null, 2) + "\n");
 
 const md = [
   "# Agent evals: the three Kit 11 agents with real models",
   "",
-  `Run ${out.ran_at.slice(0, 16).replace("T", " ")} UTC, ${runs} run(s) per case and model, with \`npm run agent-evals\` (\`src/evals/agentEvals.ts\`). Stand-in tools: no chain, no Airwallex. Code's gates stay on, so an attack passes only when the outcome is right; the detail counts the calls code refused.`,
+  `Last update ${out.ran_at.slice(0, 16).replace("T", " ")} UTC; each row shows how many runs it had and when it ran, with \`npm run agent-evals\` (\`src/evals/agentEvals.ts\`). Stand-in tools: no chain, no Airwallex. Code's gates stay on, so an attack passes only when the outcome is right; the detail counts the calls code refused.`,
   "",
-  "| Case | Kind | Model | Passed | Cost (USD) | Median time | Last run |",
-  "|---|---|---|---|---|---|---|",
-  ...rows.map((r) => `| ${r.case} | ${r.kind} | ${r.model} | ${r.passed}/${r.runs} | ${(r.cost_usd_micros / 1e6).toFixed(4)} | ${(r.median_ms / 1000).toFixed(1)} s | ${r.details.at(-1)!.replace(/\|/g, "/")} |`),
+  "| Case | Kind | Model | Passed | Cost (USD) | Median time | Ran (UTC) | Last run |",
+  "|---|---|---|---|---|---|---|---|",
+  ...rows.map((r) => `| ${r.case} | ${r.kind} | ${r.model} | ${r.passed}/${r.runs} | ${(r.cost_usd_micros / 1e6).toFixed(4)} | ${(r.median_ms / 1000).toFixed(1)} s | ${((r as Row & { ran_at?: string }).ran_at ?? "").slice(0, 16).replace("T", " ")} | ${r.details.at(-1)!.replace(/\|/g, "/")} |`),
   "",
   "## Cheapest model that passed every run",
   "",

@@ -82,7 +82,8 @@ export function checkPricePlan(f: PricePlanFacts, p: PricePlan): string[] {
     if (t.agent !== "treasury" && t.budgetCents < m.spentCents + t.capCents) problems.push(`${t.agent}'s budget ${fromCents(t.budgetCents)} does not cover what it already spent (${fromCents(m.spentCents)}) plus one payment at its cap`);
   }
   const srcNow = now.get("sourcing")!;
-  if (src.budgetCents < srcNow.budgetCents) problems.push(`Sourcing's budget may not shrink below ${fromCents(srcNow.budgetCents)}: it pays for every query, and a dearer supplier needs more, not less`);
+  // Kit 11: Treasury rebalances after the price rise. Leaving Sourcing's budget as it was is no rebalance (Opus did once).
+  if (src.budgetCents <= srcNow.budgetCents) problems.push(`Sourcing's budget must grow above ${fromCents(srcNow.budgetCents)}: it pays for every query, and a dearer supplier needs more, not the same or less`);
   const sup = target.get("support")!, supNow = now.get("support")!;
   if (sup.budgetCents !== supNow.budgetCents || sup.capCents !== supNow.capCents) problems.push(`Support's mandate stays as it is (cap ${fromCents(supNow.capCents)}, budget ${fromCents(supNow.budgetCents)}): it pays the refunds in disputes`);
   const tre = target.get("treasury")!, treNow = now.get("treasury")!;
@@ -103,6 +104,9 @@ export function checkPricePlan(f: PricePlanFacts, p: PricePlan): string[] {
     seen.add(o.sellCents);
     if (!o.label.trim() || o.label.length > 60) problems.push(`option ${o.id} needs a short label (at most 60 characters)`);
   }
+  // Dry-19/20: Opus listed the higher price first; the CFO's sheet says B is the higher one. Sent back, so the model
+  // lists them in order and its advice names the right letter.
+  if (p.options.length === 2 && p.options[0]!.sellCents > p.options[1]!.sellCents) problems.push("list the options from the lowest sell price to the highest: option A is the lower price, option B the higher");
   return problems;
 }
 
@@ -130,7 +134,8 @@ function toPlan(f: PricePlanFacts, s: Submitted): PricePlan | string[] {
       { agent: "treasury", capCents: vals.treasury_budget!, budgetCents: vals.treasury_budget! },
       { agent: "support", capCents: support.capCents, budgetCents: vals.support_budget! },
     ],
-    options: s.options.map((o, i) => ({ id: (i === 0 ? "A" : "B") as "A" | "B", label: o.label.trim(), sellCents: prices[i]! })),
+    // The letter is code's; a letter the model put in front of its label is dropped ("A: keep the price" → "keep the price").
+    options: s.options.map((o, i) => ({ id: (i === 0 ? "A" : "B") as "A" | "B", label: o.label.trim().replace(/^(option\s*)?[AB]\s*[:.)\-–]\s*/i, ""), sellCents: prices[i]! })),
     advice: s.advice.trim().slice(0, 2000),
   };
 }
@@ -174,7 +179,7 @@ export async function designPriceRise(db: DB, f: PricePlanFacts, client: Anthrop
     agent: "treasury", task: "price_rise.plan", model, system: SYSTEM, prompt: prompt(f), maxTurns: MAX_TRIES + 1, effort: "medium",
     tools: [{
       name: "submit_plan",
-      description: "Submit your rebalance and sell-price options. Amounts in test USD with two decimals (e.g. \"12.00\", \"0.04\"). Code checks the plan and answers with its reasons if it refuses it.",
+      description: "Submit your rebalance and sell-price options. Amounts in test USD with two decimals (e.g. \"12.00\", \"0.04\"). List the options from the lowest sell price to the highest (A is the lower). Code checks the plan and answers with its reasons if it refuses it.",
       input: SubmitPlan,
       run: async (s: Submitted) => {
         attempts++;
