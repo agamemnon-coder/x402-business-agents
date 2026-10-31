@@ -15,7 +15,7 @@ const facts: PricePlanFacts = {
     { agent: "treasury", capCents: 600, budgetCents: 600, spentCents: 0 },
   ],
 };
-const good = { sourcing_cap: "0.04", sourcing_budget: "12.00", support_budget: "4.00", treasury_budget: "4.00", options: [{ label: "keep the price", sell_price: "0.05" }, { label: "raise the price", sell_price: "0.07" }], advice: "Raise to 0.07: it restores the 0.03 margin." };
+const good = { sourcing_cap: "0.04", sourcing_budget: "12.00", support_budget: "4.00", treasury_budget: "4.00", options: [{ label: "keep the price", sell_price: "0.05" }, { label: "raise the price", sell_price: "0.07" }], recommended_option: "B", advice: "Raise to 0.07: it restores the 0.03 margin." };
 
 function fake(inputs: unknown[]): { client: Anthropic; sent: { messages: { role: string; content: unknown }[] }[] } {
   const sent: { messages: { role: string; content: unknown }[] }[] = [];
@@ -132,6 +132,16 @@ describe("designPriceRise", () => {
     const db = openDb(":memory:");
     const d = await designPriceRise(db, facts, fake([{ ...good, options: [{ label: "A: keep the price", sell_price: "0.05" }, { label: "Option B - raise the price", sell_price: "0.07" }] }]).client);
     expect(d.plan.options.map((o) => o.label)).toEqual(["keep the price", "raise the price"]);
+  });
+
+  // The CFO is told to choose what the Treasury agent recommends; the phone can only show that if it is a field, checked.
+  it("records which option it recommends, and code refuses a recommendation that is not one of the options", async () => {
+    const db = openDb(":memory:");
+    const d = await designPriceRise(db, facts, fake([good]).client);
+    expect(d.plan.recommended).toBe("B");
+    const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'price_rise.plan'").get() as { payload_json: string };
+    expect(JSON.parse(row.payload_json)).toMatchObject({ recommended: "B" });
+    expect(checkPricePlan(facts, { ...fallbackPricePlan(facts), recommended: "C" as never }).join(" ")).toMatch(/recommends option C/);
   });
 
   it("falls back to code's fixed plan after three rejected plans", async () => {

@@ -39,6 +39,25 @@ function ledger(): DB {
   return db;
 }
 
+describe("the Treasury agent's recommendation on the phone (agents on)", () => {
+  // The CFO is told to choose the option the Treasury agent recommends: the phone shows it, as advice, on that option.
+  it("marks the recommended option and carries the agent's advice, under the runner's signature like the rest", () => {
+    const db = ledger();
+    audit(db, "treasury", "price_rise.plan", null, { source: "claude", model: "claude-opus-5-5", attempts: 1, recommended: "B", advice: "B restores the 0.03 margin." }, t0);
+    const ps = buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0).approvals.proposals;
+    expect(ps.find((p) => p.proposal_id === "P-0002")!.agent_advice).toEqual({ agent: "Treasury agent", model: "claude-opus-5-5", recommends: true, text: "B restores the 0.03 margin." });
+    expect(ps.find((p) => p.proposal_id === "P-0001")!.agent_advice).toMatchObject({ recommends: false });
+    expect(ps.find((p) => p.proposal_id === "P-0003")!.agent_advice).toBeUndefined();
+  });
+
+  it("carries nothing when code made the plan (agents off, or the agent's plan was not used)", () => {
+    const db = ledger();
+    audit(db, "treasury", "price_rise.plan", null, { source: "fallback", attempts: 3, advice: "" }, t0);
+    expect(buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0).approvals.proposals.every((p) => p.agent_advice === undefined)).toBe(true);
+    expect(buildRelayState(ledger(), { rpId: RP, relayToken: TOKEN }, t0).approvals.proposals.every((p) => p.agent_advice === undefined)).toBe(true);
+  });
+});
+
 describe("relay state", () => {
   it("carries each waiting proposal's exact canonical terms, which hash to its recorded hash", () => {
     const s = buildRelayState(ledger(), { rpId: RP, relayToken: TOKEN }, t0);

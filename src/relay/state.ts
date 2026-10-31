@@ -26,6 +26,11 @@ export interface RelayProposal {
   warnings: string[];
   /** E1: present when this proposal needs two different people; who has approved it so far. */
   four_eyes?: { approved_by: string[] };
+  /**
+   * With the agents on: the Treasury agent's recommendation for a price-rise option, advisory like the Opus review
+   * (code accepted its plan; the CFO decides). Absent when code made the plan.
+   */
+  agent_advice?: { agent: string; model: string | null; recommends: boolean; text: string };
 }
 
 export interface RelayEnrolment {
@@ -86,6 +91,15 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
   const rows = db.prepare(`SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?
     ORDER BY kind != 'policy_change', created_at, proposal_id LIMIT ${MAX_RELAY_PROPOSALS}`).all(now.toISOString()) as PRow[];
   const planted = plantedByDocument(db);
+  // The Treasury agent's last plan (with the agents on): which option it recommends, and its advice in its own words.
+  const plans = (db.prepare("SELECT ts, payload_json FROM audit_log WHERE event = 'price_rise.plan' ORDER BY seq").all() as { ts: string; payload_json: string }[])
+    .map((r) => ({ ts: r.ts, p: JSON.parse(r.payload_json) as { source?: string; model?: string; recommended?: string; advice?: string } }))
+    .filter((x) => x.p.source === "claude" && (x.p.recommended === "A" || x.p.recommended === "B"));
+  const adviceFor = (createdAt: string, option: unknown) => {
+    const plan = plans.filter((x) => x.ts <= createdAt).at(-1);
+    if (!plan || typeof option !== "string") return undefined;
+    return { agent: "Treasury agent", model: plan.p.model ?? null, recommends: plan.p.recommended === option, text: String(plan.p.advice ?? "").slice(0, 600) };
+  };
   const proposals: RelayProposal[] = rows.filter((p) => Date.parse(p.expires_at) > now.getTime()).map((p) => {
     let evidence: { sha256?: string }[] = [];
     try {
@@ -96,11 +110,15 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
       ? [`Code found a line aimed at the AI in the document behind this proposal, and ignored it: "${planted.get(e.sha256)}"`] : []));
     let canonical = p.terms_json;
     let group = p.proposal_id;
+    let advice: RelayProposal["agent_advice"];
     try {
       const terms = JSON.parse(p.terms_json) as Terms;
       canonical = canonicalTerms(terms);
       // Price options are proposed together and change the same mandates in the same steps.
-      if (p.kind === "mandate_replace") group = `mandate_replace:${sha256(JSON.stringify(terms.steps ?? null)).slice(0, 16)}`;
+      if (p.kind === "mandate_replace") {
+        group = `mandate_replace:${sha256(JSON.stringify(terms.steps ?? null)).slice(0, 16)}`;
+        advice = adviceFor(p.created_at, terms.option);
+      }
     } catch {
       // Unreadable terms go out as stored: the phone's own hash check fails and it refuses to sign them.
     }
@@ -108,6 +126,7 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
     return {
       proposal_id: p.proposal_id, kind: p.kind, group, canonical, terms_sha256: p.terms_sha256, expires_at: p.expires_at,
       created_by: p.created_by, created_at: p.created_at, review: parseReview(p.explanation), warnings,
+      ...(advice ? { agent_advice: advice } : {}),
       ...(twoPeople ? { four_eyes: { approved_by: (db.prepare("SELECT person FROM cosignatures WHERE proposal_id = ? ORDER BY created_at").all(p.proposal_id) as { person: string }[]).map((x) => x.person) } } : {}),
     };
   });

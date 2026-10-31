@@ -20,6 +20,8 @@ export interface PhoneProposal {
   warnings?: string[];
   /** E1: this one needs two different people; who has approved it so far (signed by the runner). */
   four_eyes?: { approved_by: string[] };
+  /** With the agents on: the Treasury agent's recommendation for this price option, advisory (signed by the runner). */
+  agent_advice?: { agent: string; model: string | null; recommends: boolean; text: string };
 }
 
 interface Approvals {
@@ -690,6 +692,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
       txt("dt", "", "Hash"), el("dd", "hash", [txt("strong", "mono", o.terms_sha256.slice(0, 8)), txt("span", "mono", o.terms_sha256.slice(8))]),
     ]),
     nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
+    o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.recommends ? "recommends this option" : "recommends the other option"}`), txt("p", "", o.agent_advice.text)]) : null,
     o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
     el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
   ]);
@@ -828,6 +831,7 @@ async function approvePage(attempt = 0): Promise<void> {
       f?.big ? el("span", "option-amount", [f.big, txt("small", "", ` ${f.unit}`)]) : null,
       f?.margin ? txt("span", "option-margin", `margin ${f.margin}`) : null,
       f && group.length === 1 ? txt("span", "option-sentence", f.sentence) : null,
+      o.agent_advice?.recommends ? txt("span", "chip approve", `${o.agent_advice.agent} recommends this`) : null,
       o.review ? txt("span", `chip ${o.review.recommendation}`, o.review.recommendation === "drafted" ? "Drafted by Opus from your words" : `Opus: ${o.review.recommendation.replace(/_/g, " ")} (advisory)`) : null,
       el("span", "option-meta", [cd, " · ", el("span", "mono", [`hash ${o.terms_sha256.slice(0, 8)}`])]),
       check.ok ? null : txt("span", "alarm", `Do not approve: ${check.problem}.`),
@@ -1201,3 +1205,8 @@ export function boot(): void {
 }
 
 if (typeof document !== "undefined") boot();
+
+/** "claude-opus-5-5" → "Opus": the model's family name for a person. */
+function modelWord(model: string): string {
+  return /opus/i.test(model) ? "Opus" : /sonnet/i.test(model) ? "Sonnet" : /haiku/i.test(model) ? "Haiku" : model;
+}

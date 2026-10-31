@@ -42,6 +42,8 @@ const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z")
 
 // Two fresh price options (cloned from the rehearsal's S1 options) and a refund batch, all waiting.
 const s1 = db.prepare("SELECT terms_json FROM proposals WHERE kind = 'mandate_replace' ORDER BY proposal_id").all() as { terms_json: string }[];
+// With the agents on, the Treasury agent's plan recommends B (Thursday: the CFO chooses what it recommends).
+audit(db, "treasury", "price_rise.plan", null, { source: "claude", model: "claude-opus-5-5", attempts: 1, recommended: "B", advice: "Option B restores the 0.03 margin; A keeps the old price at a 0.01 margin." }, now);
 const ids: string[] = [];
 for (const r of s1) {
   const t = JSON.parse(r.terms_json) as Terms;
@@ -139,6 +141,8 @@ await page.goto(`${url}/approve/${optB}`);
 await page.waitForSelector("button.option");
 const cards = await page.$$eval("button.option .option-title", (n: Element[]) => n.map((x) => x.textContent));
 check(cards.length === 2 && cards[0] === "Option A" && cards[1] === "Option B", `approval page: both options side by side (${cards.join(" | ")})`);
+const recommended = await page.$$eval("button.option", (n: Element[]) => n.map((x) => /Treasury agent recommends this/.test(x.textContent ?? "")));
+check(recommended.join() === "false,true", `approval page: only option B carries "Treasury agent recommends this" (${recommended.join()})`);
 await page.screenshot({ path: join(shots, "approve-options.png") });
 
 // Tap B: the summary of that one option; Confirm is not armed at once.
@@ -148,6 +152,8 @@ check((await page.textContent(".sheet-title")) === "Option B: sell at 0.07", "co
 check(await page.isDisabled("button.confirm"), "confirm screen: Confirm is not armed at once");
 const nots = await page.$$eval(".nots li", (n: Element[]) => n.map((x) => x.textContent));
 check(nots.length === 1 && nots[0] === "option A: sell at 0.05 per query (margin 0.01)", `confirm screen: names what it is not (${nots.join(" | ")})`);
+const adviceEyebrow = await page.$$eval("#sheet .review .eyebrow", (n: Element[]) => n.map((x) => x.textContent));
+check(adviceEyebrow.includes("Treasury agent (Opus), advisory: recommends this option"), `confirm screen: the Treasury agent's advice, marked advisory (${adviceEyebrow.join(" | ")})`);
 const hashShown = await page.textContent(".hash strong");
 const bHash = (db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(optB) as { terms_sha256: string }).terms_sha256;
 check(hashShown === bHash.slice(0, 8), "confirm screen: the hash prefix is option B's");

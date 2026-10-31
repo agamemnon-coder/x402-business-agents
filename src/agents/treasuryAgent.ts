@@ -38,6 +38,8 @@ export interface PricePlan {
   options: PlanOption[];
   /** The agent's advice to the CFO, in its own words; empty for code's fixed plan. */
   advice: string;
+  /** The option the agent recommends (shown on the phone as advisory); absent for code's fixed plan. */
+  recommended?: "A" | "B";
 }
 
 /** Treasury keeps at least this much for the sweep of the day's earnings after finality. */
@@ -107,6 +109,7 @@ export function checkPricePlan(f: PricePlanFacts, p: PricePlan): string[] {
   }
   // Dry-19/20: Opus listed the higher price first; the CFO's sheet says B is the higher one. Sent back, so the model
   // lists them in order and its advice names the right letter.
+  if (p.recommended !== undefined && !p.options.some((o) => o.id === p.recommended)) problems.push(`the plan recommends option ${p.recommended}, which is not one of its options`);
   if (p.options.length === 2 && p.options[0]!.sellCents > p.options[1]!.sellCents) problems.push("list the options from the lowest sell price to the highest: option A is the lower price, option B the higher");
   return problems;
 }
@@ -115,6 +118,7 @@ const Money = z.string();
 const SubmitPlan = z.strictObject({
   sourcing_cap: Money, sourcing_budget: Money, support_budget: Money, treasury_budget: Money,
   options: z.array(z.strictObject({ label: z.string(), sell_price: Money })),
+  recommended_option: z.enum(["A", "B"]),
   advice: z.string(),
 });
 type Submitted = z.infer<typeof SubmitPlan>;
@@ -138,6 +142,7 @@ function toPlan(f: PricePlanFacts, s: Submitted): PricePlan | string[] {
     // The letter is code's; a letter the model put in front of its label is dropped ("A: keep the price" → "keep the price").
     options: s.options.map((o, i) => ({ id: (i === 0 ? "A" : "B") as "A" | "B", label: o.label.trim().replace(/^(option\s*)?[AB]\s*[:.)\-–]\s*/i, ""), sellCents: prices[i]! })),
     advice: s.advice.trim().slice(0, 2000),
+    recommended: s.recommended_option,
   };
 }
 
@@ -180,7 +185,7 @@ export async function designPriceRise(db: DB, f: PricePlanFacts, client: Anthrop
     agent: "treasury", task: "price_rise.plan", model, system: SYSTEM, prompt: prompt(f), maxTurns: MAX_TRIES + 1, effort: "medium",
     tools: [{
       name: "submit_plan",
-      description: "Submit your rebalance and sell-price options. Amounts in test USD with two decimals (e.g. \"12.00\", \"0.04\"). List the options from the lowest sell price to the highest (A is the lower). Code checks the plan and answers with its reasons if it refuses it.",
+      description: "Submit your rebalance and sell-price options. Amounts in test USD with two decimals (e.g. \"12.00\", \"0.04\"). List the options from the lowest sell price to the highest (A is the lower) and give the letter you recommend in recommended_option. Code checks the plan and answers with its reasons if it refuses it.",
       input: SubmitPlan,
       run: async (s: Submitted) => {
         attempts++;
@@ -202,6 +207,7 @@ export async function designPriceRise(db: DB, f: PricePlanFacts, client: Anthrop
     source, attempts, model: run.model, ...(note ? { note } : {}),
     budgets: plan.targets.map((t) => `${t.agent} ${fromCents(t.budgetCents)} (cap ${fromCents(t.capCents)})`),
     options: plan.options.map((o) => `${o.id} ${o.label} ${fromCents(o.sellCents)}`), advice: plan.advice,
+    ...(plan.recommended ? { recommended: plan.recommended } : {}),
   });
   return { plan, source, attempts, run, ...(note ? { note } : {}) };
 }
