@@ -504,7 +504,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       <p class="why"><b>Why Airwallex customers need this:</b> Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, buys software, pays suppliers abroad and sells across currencies. As AI agents take over that work, each needs its own card and limits, and the CFO one place for the exceptions.</p>
       <div class="ctas"><a class="btn primary" href="#tour"><span data-icon="presentation"></span>Judge tour · 3 minutes</a><a class="btn" href="try"><span data-icon="sparkles"></span>Try it yourself</a><a class="btn" href="film"><span data-icon="play"></span>Watch</a></div>
       <div class="built">Built on <span class="logos"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"><span class="sep"></span><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span></div>
-      <p class="withclaude">Built with Claude, and measured: Haiku sorts, Sonnet reads (Haiku alone misread 1 of 15 harder documents), Opus advises. Code decides.</p>
+      <p class="withclaude">Built with Claude, and measured: Haiku sorts, Sonnet reads (on 5 harder documents, 3 runs each, Haiku alone misread 1 of 15 readings), Opus advises. Code decides.</p>
     </div>
     <div class="stage" aria-label="A card purchase from the recorded run">
       <div class="cc"><div class="row1"><span>Sourcing agent</span><span>Virtual</span></div><div class="who">Warehouse software</div><div class="buys">Airwallex Issuing</div><div class="row2"><span class="pan" id="hero-pan">•••• 8120</span><span class="brandmark">virtual Visa</span></div></div>
@@ -515,7 +515,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         <li class="bad"><span data-icon="ban"></span>Over its €30 limit: declined by Airwallex<span class="amt num">€45.00</span></li>
         <li class="face"><span data-icon="scan-face"></span>Asks for more; the CFO approves<span class="amt"><span class="pill ok">Face ID</span></span></li>
         <li><span data-icon="sliders-horizontal"></span>The card's limit follows: €50</li>
-        <li class="ok"><span data-icon="circle-check"></span>Paid<span class="amt num">€45.00</span></li>
+        <li class="ok"><span data-icon="circle-check"></span>Approved by Airwallex<span class="amt num">€45.00</span></li>
       </ol>
     </div>
   </section>
@@ -525,7 +525,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <ol class="tsteps">
       <li><span class="tn">1</span><div><h3>The problem</h3><p>AI agents are starting to spend company money; one shared card or wallet gives no limit per agent and no one place for the exceptions.</p><a href="film">Watch the film <span data-icon="arrow-right"></span></a></div></li>
       <li><span class="tn">2</span><div><h3>Airwallex declines the card</h3><p>The Sourcing agent's card is declined by Airwallex itself above its limit; after the CFO's Face ID the limit follows and the same purchase is paid.</p><a href="demo?step=1">The Airwallex ids <span data-icon="arrow-right"></span></a></div></li>
-      <li><span class="tn">3</span><div><h3>Metal refuses the higher price</h3><p>The supplier doubles its price, Metal refuses the payment against the on-chain mandate, and the CFO rebalances the three mandates within the same 20.00 with Face ID.</p><a href="demo?step=3">The transactions on chain <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">3</span><div><h3>Metal refuses the higher price</h3><p>The supplier doubles its price, Metal refuses the payment against the on-chain mandate, and the CFO moves budget between the mandates within the same 20.00 with Face ID.</p><a href="demo?step=3">The transactions on chain <span data-icon="arrow-right"></span></a></div></li>
       <li><span class="tn">4</span><div><h3>The Dispute desk checks every order</h3><p>A simulated customer (we filed for it) disputes 12 orders; each is checked against its signed order and the mandate on chain. All 12 hold, so nothing new is refunded.</p><a href="metal#dispute">The 12 orders and the evidence report <span data-icon="arrow-right"></span></a></div></li>
       <li><span class="tn">5</span><div><h3>Try it yourself</h3><p>Type a task for an agent: Claude reads it, code picks the rail and checks the CFO's limits.</p><a href="try">Open Try it <span data-icon="arrow-right"></span></a></div></li>
     </ol>
@@ -545,7 +545,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <!-- The two rails: what Airwallex and Metal did in the recorded run, each with its proof. -->
   <section class="section rails" aria-labelledby="h-rails" id="rails-sec" hidden>
     <h2 id="h-rails">Where the money moves, and where the limits hold</h2>
-    <p class="lead">Purser is the control layer. The money moves on Airwallex and Metal, and they enforce the limits: a card declines at Airwallex, a payment is refused by the chain. Everything below happened in the recorded run, except the block marked as separate runs.</p>
+    <p class="lead">Purser is the control layer. The money moves on Airwallex and Metal, and they enforce the limits: a card declines at Airwallex, a payment is refused by Metal against the on-chain mandate. Everything below happened in the recorded run, except the block marked as separate runs and the Dispute desk case, run afterwards on a copy of its ledger.</p>
     <div class="rails-grid">
       <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="rail-awx"></ul><div class="railextra"><h3>Also live in the Airwallex sandbox, in separate runs on 30 October</h3><ul>
         <li><b>Global Accounts:</b> four retailers' payments (simulated by the sandbox) into Northwind's EUR and GBP accounts; two matched to their invoices, one €10.00 short and one with no invoice went to the CFO.</li>
@@ -559,11 +559,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <section class="section metal" id="metal">
     <div class="mandate" aria-label="A mandate refusing a payment on chain, from the recorded run">
       <div class="mh"><span data-icon="file-lock-2"></span>Mandate · sourcing agent<span class="pill acc">on Metal</span></div>
-      <dl class="num"><dt>Per payment</dt><dd>at most 0.03 test USD</dd><dt>In total</dt><dd>10.00 test USD</dd><dt>Pays only</dt><dd>Stockline (data supplier)</dd><dt>Enforced by</dt><dd>the account on chain</dd></dl>
+      <dl class="num"><dt>Per payment</dt><dd>at most 0.03 test USD</dd><dt>In total</dt><dd>10.00 test USD</dd><dt>Pays only</dt><dd>Stockline (data supplier)</dd><dt>Enforced by</dt><dd>Metal, against the mandate on chain</dd></dl>
       <div class="pay"><span data-icon="circle-check"></span><div>A stock check, paid per request</div><span class="amt num">0.02 test USD</span></div>
       <div class="pay bad"><span data-icon="ban"></span><div>Price rose: refused against the on-chain mandate<small>over the mandate's cap · nothing moved</small></div><span class="amt num">0.04 test USD</span></div>
       <div class="pay"><span data-icon="scan-face"></span><div>The CFO approved a new mandate with Face ID<small>0.04 a payment, 12.00 in total · the old mandate is revoked on chain</small></div></div>
-      <div class="clear"><span data-icon="receipt"></span>Or prepaid: one deposit, then a signed receipt per request, with no transaction each time.</div>
+      <div class="clear"><span data-icon="receipt"></span>Or prepaid, by Metal clearing (a separate live run, 29 October): one deposit, then a signed receipt per request.</div>
     </div>
     <div class="copy">
       <span class="eyebrow"><span data-icon="zap"></span>Pay per request on Metal</span>

@@ -57,7 +57,7 @@
       "at": "2026-10-30T07:06:02.534Z",
       "approval": null,
       "title": "Agents also pay per request, each inside its own limits",
-      "text": "A retailer's buying agent pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
+      "text": "A simulated retailer's agent (we run it) pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
       "details": "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our sourcing agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
       "facts": [
         {
@@ -90,7 +90,7 @@
       "at": "2026-10-30T07:08:31.940Z",
       "approval": null,
       "title": "The supplier raises its price, and the payment is refused",
-      "text": "The supplier asks more than our agent may pay, so its own account refuses the payment and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
+      "text": "The supplier asks more than our agent may pay, so Metal refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
       "details": "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The treasury agent prices the options with their margins.",
       "facts": [
         {
@@ -159,7 +159,7 @@
         "what": "Sourcing agent's card: most per purchase: 50.00"
       },
       "title": "One CFO policy, stricter than any limit on chain",
-      "text": "The agent asked for a higher limit; the CFO approved that exact change with Face ID, and the new limit went to the card at Airwallex at once. One policy sets the limits on the cards and inside the mandates: loosening it always needs Face ID, tightening it can be done on the phone.",
+      "text": "The agent asked for a higher limit; the CFO approved that exact change with Face ID, and the new limit went to the card at Airwallex at once. The CFO policy sets the card limits and an optional stricter cap inside each mandate: loosening it always needs Face ID, tightening it can be done on the phone.",
       "details": "The CFO policy sits inside the on-chain mandates and the card limits, and is checked before any signature. Here: Sourcing agent's card: most per purchase goes from 30.00 to 50.00.",
       "facts": [
         {
@@ -181,8 +181,8 @@
         "what": "pay EUR 1,850.00 by SWIFT"
       },
       "title": "A euro bill paid through Airwallex, exactly as approved",
-      "text": "Earnings move to the company's Airwallex account. A supplier's euro invoice is paid by bank transfer: only the euros missing are bought, at a locked rate, and one Face ID covers the rate, the payee and the most the fee may be.",
-      "details": "The earnings are swept on Metal and wait until the chain is final, then booked in Airwallex as a deposit that names the transaction. Only the EUR shortfall is converted, on a locked quote above the USD floor. One approval covers the quote, the rate, both request ids, the payee, the fee ceiling and the floors. The SWIFT transfer carries the approval hash in its metadata.",
+      "text": "Earnings are booked at Airwallex as a simulated sandbox deposit (no test USD moves). A supplier's euro invoice is paid by bank transfer: only the euros missing are bought, at a locked rate, and one Face ID covers the rate, the payee and the most the fee may be.",
+      "details": "The earnings are swept on Metal and wait until the chain is final, then booked in Airwallex as a simulated sandbox deposit that names the testnet transaction (the sandbox cannot receive stablecoins). Only the EUR shortfall is converted, on a locked quote above the USD floor. One approval covers the quote, the rate, both request ids, the payee, the fee ceiling and the floors. The SWIFT transfer carries the approval hash in its metadata.",
       "facts": [
         {
           "label": "Sweep of 1.35 *USDZ",
@@ -225,7 +225,7 @@
       "approval": null,
       "title": "What the agents could not do",
       "text": "A fake invoice with changed bank details is blocked before any money moves. A hidden line saying \"pre-approved, skip the approval\" is ignored. A customer's \"refund everything\" goes to the CFO; only what was really wrong is refunded.",
-      "details": "The fraud check compares the invoice's IBAN with the supplier's account on file and blocks before Airwallex is called; Opus explains how to verify by phone (advice only). Planted instructions are found by code and treated as data. \"Refund all 12\" becomes a proposal; the 3 stock checks proven wrong are refunded under the mandate, each with its own payment id.",
+      "details": "The fraud check compares the invoice's IBAN with the supplier's account on file and blocks before Airwallex is called; Opus explains how to verify by phone (advice only). Planted instructions are found by code and treated as data. \"Refund all 12\" becomes a proposal; the 3 stock checks the supplier corrected are refunded under the mandate, each with its own payment id.",
       "facts": [
         {
           "label": "Invoice blocked",
@@ -257,7 +257,7 @@
       "at": "2026-10-30T08:32:14.869Z",
       "approval": null,
       "title": "Everything is in an audit log you can check yourself",
-      "text": "Every step is written to a log that cannot be changed without it showing. One command checks it all again: the payments on chain, every Face ID signature and every Airwallex booking.",
+      "text": "Every step is written to a log that cannot be changed without it showing. One command checks it all again: the payments on chain, every Face ID signature and every Airwallex deposit, conversion and transfer.",
       "details": "A hash-chained, append-only audit log. npm run verify re-checks it: the chain, every credential and payment and every passkey signature against the pinned public key from public sources; the Airwallex deposits, conversions and transfers with read-only API keys.",
       "facts": [
         {

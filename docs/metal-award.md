@@ -17,7 +17,7 @@ receive policy did not run in the recorded run, so their cards name the separate
 
 - **Metal is the agents' spending rail, not a demo add-on.** Every agent that pays per request does it under its
   own on-chain mandate: a cap per payment, a total budget, one payee and an end date. When the supplier raised its
-  price, the chain itself refused the next payment (`mandate_cap_exceeded`) and the customer was not charged.
+  price, Metal refused the next payment against the on-chain mandate (`mandate_cap_exceeded`) and the customer was not charged.
 - **The CFO changes on-chain limits with Face ID, safely.** A price rise becomes options; the CFO signs the exact
   terms on the phone; mandates are replaced in an order that never exceeds the 20.00 the business allows, and the old
   credential is refused (`mandate_revoked`).
@@ -55,7 +55,7 @@ The packages are pinned to the versions above.
 | What | Where in the code | Proof | Metal docs |
 |---|---|---|---|
 | Four mandates bound on chain (three agents and the customer's; the links here are from the 29 October rehearsal world, Northwind's own binds are audit rows 2 to 5 of the recorded run, e.g. the customer's [`0x6a4622a9…59a6`](https://testnet.metalntwx.com/tx/0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6)), each with a per-payment cap, a total budget, one payee and an expiry (`metal-agent mandate bind`) | `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts` | sourcing [`0xd525573c…19bf`](https://testnet.metalntwx.com/tx/0xd525573c5ef06c01e4a92c39f0ab087c06ef21ec5281a3a490dfe410615919bf), support [`0x12a319f3…76ee`](https://testnet.metalntwx.com/tx/0x12a319f3baf957dbbb6a6cadfc4f1dda0a28ccda6fe4c4f766de1853fad576ee), treasury [`0x6ea66684…8e0e`](https://testnet.metalntwx.com/tx/0x6ea6668492b625f7812cbae5be1178dc2adc13f83342136b074a547283378e0e), Summit [`0xe78b3197…c729`](https://testnet.metalntwx.com/tx/0xe78b3197e617179a3a78fd0f59c4a8f05715984caca0594e82e0d293edd9c729) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| The chain refuses a payment over the cap: `mandate_cap_exceeded`, so the customer is not charged (S1) | `src/agents/sourcing.ts`, `src/servers/seller.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Metal refuses a payment over the cap, against the on-chain mandate: `mandate_cap_exceeded`, so the customer is not charged (S1) | `src/agents/sourcing.ts`, `src/servers/seller.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | Mandates replaced after Face ID, in a safe order (shrink treasury, then grow sourcing; never over 20.00) (`metal-agent mandate replace`) | `src/executors/mandateReplace.ts`, `src/policy/mandates.ts` | treasury [`0x6b77d994…6f7e`](https://testnet.metalntwx.com/tx/0x6b77d9942f5e7ff9669c0a2fd11d4cea166f7db4eaf3f9728c89bc45ac846f7e), sourcing [`0x4c995a76…ccdc`](https://testnet.metalntwx.com/tx/0x4c995a768da10d611bee3d82d0d54812b3018bbdc12969bc4c20e46f3a5dccdc) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | The replaced credential is refused: `mandate_revoked` | `src/cli/s1.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | Pull payments under a mandate: refunds and the earnings sweep, each with its own payment id, so a retry pays nothing twice (`metal-agent mandate pull`) | `src/executors/refunds.ts`, `src/agents/sweep.ts` | refunds [`0x0197b1c9…2281`](https://testnet.metalntwx.com/tx/0x0197b1c9e3c8339775439ff90b22d416644f9f0774fc58244826cc724c622281), [`0xa4fb723c…8e52`](https://testnet.metalntwx.com/tx/0xa4fb723c41bddbe6de84ac1064aa9abbadaab3a2d4c5be29efeba04e25b48e52), [`0x788788ee…08d1`](https://testnet.metalntwx.com/tx/0x788788eec4c8d99bb7d7129a68f0a0eea42412b87879d8ec41e66cefee0c08d1); sweep [`0x7c53378d…486b`](https://testnet.metalntwx.com/tx/0x7c53378d3e989e8f780657f39392dfd0a319a79cb0e4d84aae158a430fd0486b) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
@@ -262,7 +262,7 @@ pacs.008.001.08 message: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs
 
 | What Metal did | Run 1 | Run 2 |
 |---|---|---|
-| Stock check #41 refused on chain at the old cap (`mandate_cap_exceeded`), customer not charged (absent from `/settlements`) | yes | yes |
+| Stock check #41 refused against the on-chain mandate at the old cap (`mandate_cap_exceeded`), customer not charged (absent from `/settlements`) | yes | yes |
 | Old Sourcing agent credential refused after the CFO's mandate replace (`mandate_revoked`) | yes | not logged |
 | Disputed orders verified (`verifyMandatePayment`): signed by the customer's mandate key, inside its bound mandate | 12/12 | 12/12 |
 | Refunds pulled under the support mandate, to the customer only | 3 ([`0xcf11b76d…`](https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1)) | 3 + 9 (P-0003 approved by mistake; still paid only to Summit's own account) ([`0x3fd87766…`](https://testnet.metalntwx.com/tx/0x3fd87766d4392f93ed20a88c47d6d5e7a1c7fee2a8d534990371694aed9321a5)) |

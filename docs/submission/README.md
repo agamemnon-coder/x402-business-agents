@@ -14,7 +14,7 @@ Purser: company cards and on-chain mandates for AI agents, with the CFO in contr
 ## Synopsis
 
 <!-- synopsis -->
-Purser gives each AI agent an Airwallex company card and a Metal on-chain mandate, within limits the CFO sets. Inside them agents pay on their own; past a limit Airwallex declines or Metal refuses against the mandate, and the agent asks. The CFO approves the exact terms on a phone with Face ID. Claude reads invoices and explains what code flags, but holds no key and approves nothing. Every payment carries its proof: an Airwallex id or a Metal transaction.
+Purser gives each AI agent an Airwallex company card and a Metal on-chain mandate, within limits the CFO sets. Inside them agents pay on their own; past a limit Airwallex declines or Metal refuses against the mandate, and the agent asks. The CFO approves the exact terms on a phone with Face ID. Claude reads invoices and explains what code flags, but holds no key and approves nothing. Every payment carries its proof: an Airwallex id, a Metal transaction or a signed clearing receipt.
 <!-- /synopsis -->
 
 ## Description
@@ -117,7 +117,7 @@ From Friday run 1, 30 October 2026, with a Dispute desk case afterwards:
 Red team (35 scripted attacks plus 4 documents written by Claude Opus as the attacker, run against in-memory stand-ins
 for Airwallex, Metal and the phone): 39 of 39 attacks failed, 0 inconclusive; 37 were stopped before the attack
 succeeded (a burst of payments at the speed limit, after 30 allowed ones) and 2 were found afterwards, not prevented (a
-hidden card charge by the reconciliation, a rewritten log row by `npm run verify`). Scenario Lab: 18 of 18 stories as expected.
+hidden card charge by the reconciliation, a rewritten log row by `npm run verify`). Scenario Lab: 18 of 18 stories as expected (run against stand-ins for Airwallex and Metal).
 
 ### What is real and what is simulated
 
@@ -134,7 +134,7 @@ npm ci && npm run judge
 ```
 
 No keys and no network after `npm ci`. It serves the recorded run, the CFO dashboard as it stood at the end, `/metal`
-(every Metal feature with its testnet proof), `/live` (the day as an animation), `/try` (offline it reads requests with code only; the hosted page asks Claude), the
+(every Metal feature with its testnet proof; some from separate live runs), `/live` (the day as an animation), `/try` (offline it reads requests with code only; the hosted page asks Claude), the
 Scenario Lab and a simulated month, and opens the browser. Running it live (sandbox keys, a Metal RPC) is in
 [docs/run-it.md](../run-it.md).
 

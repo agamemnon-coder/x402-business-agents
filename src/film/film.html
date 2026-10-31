@@ -129,7 +129,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
   var build = {
     open: function (L) {
       var flying = [["Packwise", "€" + d.card.small], ["Stockline", d.metal.oldPrice + " test USD"], ["Bergtex invoice", "€" + d.bill.invoice], ["Skyline Air", "€120.00"], ["Summit Outfitters", "0.05 test USD"], ["Packwise Pro", "€" + d.card.big]];
-      var chips = flying.map(function (f, i) { return put(L, E("div", "pill", f[0] + "  " + f[1]), 0, [40, 120, 200, 820, 900, 980][i]); }); // above and below the words, never through them
+      var chips = flying.map(function (f, i) { return put(L, E("div", "pill", f[0] + "  " + f[1]), 0, [40, 120, 200, 800, 870, 940][i]); }); // above and below the words, never through them
       var k = put(L, E("div", "kicker", "Agentic spending"), 140, 330), h = put(L, E("div", "h1", "AI agents are starting to spend company money."), 140, 390);
       h.style.width = "1300px";
       var q2 = put(L, E("div", "h1", "Who is holding the pen?"), 140, 650); q2.style.color = "var(--accent2)";
@@ -212,7 +212,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var coinsA = [0, 1, 2, 3].map(function () { return put(L, E("div", "coin"), 0, 405); });
       var coinsB = [0, 1, 2, 3].map(function () { return put(L, E("div", "coin"), 0, 405); });
       var bounce = put(L, E("div", "coin"), 0, 405);
-      var refused = put(L, E("div", "pill bad", "refused on chain · nothing moved · customer not charged"), 700, 700);
+      var refused = put(L, E("div", "pill bad", "refused against the on-chain mandate · nothing moved · customer not charged"), 700, 700);
       var tick = put(L, E("div", "ticker", ""), 140, 520);
       var A = put(L, E("div", "panel", null, [E("div", "h3", "Option A"), E("div", "muted", d.metal.optionA)]), 140, 700), B = put(L, E("div", "panel", null, [E("div", "h3", "Option B"), E("div", "muted", d.metal.optionB)]), 600, 700);
       A.style.width = B.style.width = "430px"; A.style.fontSize = B.style.fontSize = "24px";

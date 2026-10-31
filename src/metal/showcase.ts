@@ -178,7 +178,7 @@ export function mandateViews(db: DB): MandateView[] {
       latest: paid.slice(-4).reverse().map((p) => ({ at: p.at, amount: fromCents(p.cents), what: p.what, tx: tx(p.tx) })),
       refusal: refusal ? {
         at: refusal.ts, reason: String(refusal.p.reason),
-        plain: `Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused by the chain: ${REFUSAL_WORDS[String(refusal.p.reason)] ?? String(refusal.p.reason)}. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID.`,
+        plain: `Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused against the on-chain mandate: ${REFUSAL_WORDS[String(refusal.p.reason)] ?? String(refusal.p.reason)}. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID.`,
       } : null,
     });
   }
@@ -189,6 +189,7 @@ export function mandateViews(db: DB): MandateView[] {
 export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeCase | null): MetalFeature[] {
   const f: MetalFeature[] = [];
   const recorded = "The recorded Northwind run on Metal testnet, 29 and 30 October";
+  const afterwards = "The recorded Northwind run's payments, checked afterwards on a copy of its ledger";
   const ours = mandates.filter((m) => m.role !== "customer");
   if (ours.length) {
     f.push({
@@ -243,7 +244,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
       why: "When a customer says \"our agent never ordered this\", the seller does not argue. It checks each payment on chain and shows the signed order.",
       figure: `${within} of ${dispute.packs.length} verified`,
       proofs: [tx(dispute.packs.find((p) => p.mandate.bound_tx)?.mandate.bound_tx, "the customer's mandate")].filter((p): p is Proof => !!p),
-      source: recorded, docs: [{ label: "Verifying", href: `${METAL_DOCS.mandates}#verifying` }],
+      source: afterwards, docs: [{ label: "Verifying", href: `${METAL_DOCS.mandates}#verifying` }],
     });
   }
   const support = mandates.find((m) => m.role === "support");
@@ -275,14 +276,14 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   });
   f.push({
     id: "receive", title: "Receive policy: money from strangers held",
-    plain: "The sweep wallet accepts money only from Northwind's own account. Anything else is held by Metal in quarantine; the CFO returns or accepts it with Face ID.",
+    plain: "Purser can set the sweep wallet to accept money only from the business's own account. Anything else is held by Metal in quarantine; the CFO returns or accepts it with Face ID.",
     why: "Unknown money is a compliance problem, not a windfall. It never reaches the books or the bank until a person decides.",
     figure: "held, then returned", proofs: OTHER_RUNS.receive.proofs.map((p) => tx(p.tx, p.what)!),
     source: OTHER_RUNS.receive.source, docs: [{ label: "Receive policy", href: METAL_DOCS.receive }],
   });
   f.push({
     id: "four-eyes", title: "Four eyes on chain",
-    plain: "A Metal account with two owners, the CFO and the controller, and a threshold of two. Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
+    plain: "A Metal account with two owners, the CFO and the controller, and a threshold of two (a test account; Northwind's own account has one owner). Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
     why: "No single person, and no single stolen owner key, can change an agent's limits or move the account's money beyond what the agents' mandates allow. Agents still pay alone inside their mandates.",
     figure: "1 signature: reverted", proofs: OTHER_RUNS.fourEyes.proofs.map((p) => tx(p.tx, p.what)!),
     source: OTHER_RUNS.fourEyes.source, docs: [{ label: "Smart account", href: METAL_DOCS.account }],
@@ -307,7 +308,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
       plain: "Northwind, as the seller, decides a customer's claim from what Metal lets it prove: the signed order, the chain check, the settlement and the hash of the data delivered.",
       why: "Agent commerce needs a fair way to settle \"we never ordered this\". Code decides from the evidence, Opus explains it, and a refund above the CFO's limits waits for Face ID.",
       figure: `${dispute.packs.length} orders checked`, proofs: [{ label: `case ${dispute.case_id}`, href: "#dispute" }],
-      source: recorded, docs: [{ label: "Verifying", href: `${METAL_DOCS.mandates}#verifying` }, { label: "Signed orders", href: `${METAL_DOCS.mandates}#signed-orders` }],
+      source: afterwards, docs: [{ label: "Verifying", href: `${METAL_DOCS.mandates}#verifying` }, { label: "Signed orders", href: `${METAL_DOCS.mandates}#signed-orders` }],
     });
   }
   return f;

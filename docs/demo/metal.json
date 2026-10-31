@@ -122,7 +122,7 @@
           "href": "https://testnet.metalntwx.com/tx/0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6"
         }
       ],
-      "source": "The recorded Northwind run on Metal testnet, 29 and 30 October",
+      "source": "The recorded Northwind run's payments, checked afterwards on a copy of its ledger",
       "docs": [
         {
           "label": "Verifying",
@@ -213,7 +213,7 @@
     {
       "id": "receive",
       "title": "Receive policy: money from strangers held",
-      "plain": "The sweep wallet accepts money only from Northwind's own account. Anything else is held by Metal in quarantine; the CFO returns or accepts it with Face ID.",
+      "plain": "Purser can set the sweep wallet to accept money only from the business's own account. Anything else is held by Metal in quarantine; the CFO returns or accepts it with Face ID.",
       "why": "Unknown money is a compliance problem, not a windfall. It never reaches the books or the bank until a person decides.",
       "figure": "held, then returned",
       "proofs": [
@@ -241,7 +241,7 @@
     {
       "id": "four-eyes",
       "title": "Four eyes on chain",
-      "plain": "A Metal account with two owners, the CFO and the controller, and a threshold of two. Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
+      "plain": "A Metal account with two owners, the CFO and the controller, and a threshold of two (a test account; Northwind's own account has one owner). Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
       "why": "No single person, and no single stolen owner key, can change an agent's limits or move the account's money beyond what the agents' mandates allow. Agents still pay alone inside their mandates.",
       "figure": "1 signature: reverted",
       "proofs": [
@@ -334,7 +334,7 @@
           "href": "#dispute"
         }
       ],
-      "source": "The recorded Northwind run on Metal testnet, 29 and 30 October",
+      "source": "The recorded Northwind run's payments, checked afterwards on a copy of its ledger",
       "docs": [
         {
           "label": "Verifying",
@@ -426,7 +426,7 @@
       "refusal": {
         "at": "2026-10-30T07:08:31.940Z",
         "reason": "mandate_cap_exceeded",
-        "plain": "Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused by the chain: the payment was above the mandate's cap per payment. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID."
+        "plain": "Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused against the on-chain mandate: the payment was above the mandate's cap per payment. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID."
       }
     },
     {

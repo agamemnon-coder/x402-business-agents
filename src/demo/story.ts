@@ -99,7 +99,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     steps.push({
       id: "refused", rail: "Metal", tone: "refusal", at: refused.ts, approval: null,
       title: "The supplier raises its price, and the payment is refused",
-      text: "The supplier asks more than our agent may pay, so its own account refuses the payment and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
+      text: "The supplier asks more than our agent may pay, so Metal refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
       details: "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The treasury agent prices the options with their margins.",
       facts: facts(
         fact("Refusal", "over the mandate's cap: refused on chain, nothing moved"),
@@ -210,7 +210,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "stopped", rail: "CFO", tone: "refusal", at: (fraud ?? injection)?.ts ?? now.toISOString(), approval: null,
       title: "What the agents could not do",
       text: "A fake invoice with changed bank details is blocked before any money moves. A hidden line saying \"pre-approved, skip the approval\" is ignored. A customer's \"refund everything\" goes to the CFO; only what was really wrong is refunded.",
-      details: "The fraud check compares the invoice's IBAN with the supplier's account on file and blocks before Airwallex is called; Opus explains how to verify by phone (advice only). Planted instructions are found by code and treated as data. \"Refund all 12\" becomes a proposal; the 3 stock checks proven wrong are refunded under the mandate, each with its own payment id.",
+      details: "The fraud check compares the invoice's IBAN with the supplier's account on file and blocks before Airwallex is called; Opus explains how to verify by phone (advice only). Planted instructions are found by code and treated as data. \"Refund all 12\" becomes a proposal; the 3 stock checks the supplier corrected are refunded under the mandate, each with its own payment id.",
       facts: facts(
         fraud ? fact("Invoice blocked", `${str(p(fraud).currency)} ${str(p(fraud).amount)} to IBAN …${str(p(fraud).iban_last4)}: bank details changed`) : null,
         findings[0] ? fact("Planted instruction ignored", `"${clip(str(findings[0].excerpt), 90)}"`) : null,
@@ -289,7 +289,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     steps.push({
       id: "audit", rail: "Audit", tone: "info", at: head.ts, approval: null,
       title: "Everything is in an audit log you can check yourself",
-      text: "Every step is written to a log that cannot be changed without it showing. One command checks it all again: the payments on chain, every Face ID signature and every Airwallex booking.",
+      text: "Every step is written to a log that cannot be changed without it showing. One command checks it all again: the payments on chain, every Face ID signature and every Airwallex deposit, conversion and transfer.",
       details: "A hash-chained, append-only audit log. npm run verify re-checks it: the chain, every credential and payment and every passkey signature against the pinned public key from public sources; the Airwallex deposits, conversions and transfers with read-only API keys.",
       facts: facts(
         fact("Audit rows", `${rows.length}, chain ${verifyAuditChain(db).ok ? "intact" : "BROKEN"}, head ${head.row_hash.slice(0, 12)}…`),

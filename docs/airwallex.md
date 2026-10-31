@@ -189,6 +189,7 @@ no card. The recorded run has no subscription yet; `test/spend-review.test.ts` s
 - **Quote expiry.** The proposal ends before the quote does. A late approval approves nothing. See "FX" above.
 - **Only the shortfall is converted.** Fee-aware, and never below the reserve floors. See "FX" above.
 - **Limits and read-backs.** Calls are spaced to half of the sandbox limit. Card limits are read back from Airwallex, not assumed.
+- **Data QA reads Airwallex back.** `npm run data-qa` checks every payment the ledger shows against Airwallex with GET requests only: `GET /balances/current`, `GET /transfers/{id}`, `GET /fx/conversions/{id}` (or by `request_id`), `GET /deposits/{id}` (or the list) and `GET /issuing/transactions/{id}`. Proof: `src/finance/dataQa.ts`, `test/data-qa.test.ts`.
 - **Sandbox calls are separate.** Simulations sit behind their own interface, as the builder guide advises.
 - **Secrets.** The API key never reaches a model. Logged bodies are redacted. Card numbers and CVVs are never requested. Proof: `test/redact.test.ts`, `test/adversarial.test.ts`.
 

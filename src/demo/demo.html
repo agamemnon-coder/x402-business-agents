@@ -147,7 +147,7 @@ footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.
   rp.appendChild(el("b", "", ["Recorded run, started " + when.format(new Date(firstAt))]));
   // Recordings made before the rename carry no company: they were made with the earlier example company.
   rp.appendChild(document.createTextNode(" · " + (S.company || "Tidemark Data, the earlier example company") + " · test money, real systems "));
-  rp.appendChild(el("details", "", [el("summary", "", ["details"]), el("p", "", ["Every step really happened, in one live run, on Metal testnet and in the Airwallex sandbox. This page only plays it back, so it cannot fail on stage. Amounts on Metal are Metal's test dollars, shown as test USD."])]));
+  rp.appendChild(el("details", "", [el("summary", "", ["details"]), el("p", "", ["Every step really happened, live on Metal testnet and in the Airwallex sandbox; the Dispute desk case ran afterwards on a copy of the run's ledger. This page only plays it back, so it cannot fail on stage. Amounts on Metal are Metal's test dollars, shown as test USD."])]));
   document.getElementById("foot").textContent = "Saved " + when.format(new Date(S.recorded_at)) + ", after the last step, from the run's audit log (" + S.audit.rows + " rows, head " + S.audit.head.slice(0, 12) + "…). Built with Claude Code.";
 
   var nav = document.getElementById("steps");

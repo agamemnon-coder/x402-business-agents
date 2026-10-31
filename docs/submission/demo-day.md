@@ -19,7 +19,7 @@ en laat het bewijs zien. Lees de zinnen niet voor; ken ze.
 | 0:20 | Tour stap 1, het probleem | "AI-agents gaan bedrijfsgeld uitgeven. Met één gedeelde kaart heb je geen limiet per agent en geen plek voor de uitzonderingen." |
 | 0:40 | Stap 2: `/demo?step=1` | "Boven de limiet weigert Airwallex zelf de kaart. Na mijn Face ID volgt de limiet, en dezelfde aankoop gaat door. Dit zijn de echte Airwallex-id's uit de sandbox." |
 | 1:20 | Stap 3: `/demo?step=3` | "De leverancier verdubbelt zijn prijs. Metal weigert de betaling tegen het mandaat op de chain. De Treasury agent stelt opties voor binnen dezelfde 20, Opus geeft advies, en ik kies er één met Face ID." |
-| 2:00 | Stap 4: `/metal#dispute` | "Een gesimuleerde klant betwist 12 orders. Elke order wordt gecontroleerd tegen de getekende order en het mandaat op de chain. Alle 12 kloppen, dus er wordt niets extra terugbetaald." |
+| 2:00 | Stap 4: `/metal#dispute` | "Een gesimuleerde klant betwist 12 orders. Elke order wordt gecontroleerd tegen de getekende order en het mandaat op de chain. 3 met foute data waren al terugbetaald; de andere 9 worden afgewezen, met bewijs." |
 | 2:30 | Stap 5: `/try`, typ "Pay our supplier €1,180" | "Probeer het zelf: Claude leest de taak, de code kiest het spoor en checkt de limieten." |
 | 2:50 | Slot | "Gebouwd op Airwallex en Metal, met Claude. Testgeld, echte systemen. Dank je wel." |
 
@@ -37,6 +37,6 @@ en laat het bewijs zien. Lees de zinnen niet voor; ken ze.
 
 - "Binnen de limiet betaalt de agent zelf; daarbuiten beslist de CFO met Face ID."
 - "Airwallex en de chain dwingen de limieten af, niet een prompt."
-- "Alles wat gesimuleerd is, staat erbij: de klant-agent, de red team, en de agentherkenning als dev test."
+- "Alles wat gesimuleerd is, staat erbij: de klant-agent, de stortingen in de sandbox, de red team en het Lab tegen nep-versies, en de agentherkenning als dev test."
 
 Meer vragen en antwoorden: [docs/uitleg-voor-max.md](../uitleg-voor-max.md).

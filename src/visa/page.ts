@@ -32,6 +32,8 @@ export function visaPage(): string {
     return `<tr><td data-l="Request">${esc(s.step)}</td><td data-l="Merchant">${merchant}</td><td data-l="Airwallex">${awx}</td></tr>`;
   }).join("");
   const dev = run?.file === "visa-tap-dev.json";
+  const declines = (run?.steps ?? []).filter((s) => s.result.recognised && !s.result.approved).length;
+  const declineNote = declines === 0 ? "" : declines === 1 ? "; the one decline is Airwallex's own" : `; the ${declines} declines are Airwallex's own`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -62,7 +64,7 @@ h2.gap { margin-top: 28px; }
     <div><b>3. Its own card pays</b><span>The agent's Airwallex Visa card, inside the CFO's limit; over it, Airwallex declines.</span></div>
   </div>
   <h2>${dev ? "A dev test, live in the Airwallex sandbox" : "Live in the Airwallex sandbox"}</h2>
-  <p class="sub">${run ? `${esc(run.merchant)} (the merchant we run), ${esc(run.ran_at.slice(0, 10))}${dev ? ", on a copy of the Friday run 2 ledger" : ""}. Every refusal happened before Airwallex was called.` : "No run recorded yet."}</p>
+  <p class="sub">${run ? `${esc(run.merchant)} (the merchant we run), ${esc(run.ran_at.slice(0, 10))}${dev ? ", on a copy of the Friday run 2 ledger" : ""}. Every merchant refusal happened before Airwallex was called${declineNote}.` : "No run recorded yet."}</p>
   ${rows ? `<table class="orders"><thead><tr><th>Request</th><th>Merchant</th><th>Airwallex</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
   <h2 class="gap">What this is, and is not</h2>
   <p class="label">${esc(VISA_LABEL)}</p>

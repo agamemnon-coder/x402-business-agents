@@ -11,7 +11,6 @@ import { KIT11_JOBS } from "../config/brand.js";
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
 const dataUri = (p: string, type: string) => `data:${type};base64,${asset(p).toString("base64")}`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-const eur = (v: string) => `€${Number(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** The public page the last slide's QR code opens. */
 export const TRY_URL = "https://kit11.max-31b.workers.dev/try";
@@ -36,7 +35,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Airwallex Agentic Banking Hackathon · Metal Award",
       title: "Purser",
       extra: `<p class="lead">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</p>
-        <div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time (about half by the simulated customer's agent)")}${stat(String(f.stopped), "stops by card, chain, fraud checks or CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}</div>
+        <div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time (about half by the simulated customer's agent)")}${stat(`${f.card_declines} · ${f.chain_refusals}`, "declined by Airwallex · refused by Metal against the on-chain mandate")}${stat(String(f.face_id), "decisions by the CFO with Face ID")}</div>
         <p class="src">${esc(f.run)}. Audit log: ${f.audit_rows} rows, hash-chained, checkable offline. Test money only.</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
       pic: shot(s.landing, "The landing page, from the recorded live run"),
@@ -49,7 +48,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Each agent pays under its own on-chain mandate; 20.00 test USD between them, held in code.",
         "A supplier price rise is refused; the CFO approves new limits within the 20 with Face ID.",
       ],
-      pic: `<div class="kitmap">${f.kit11.map((k) => `<div><b>${esc(k.agent)}</b><span>${esc(KIT11_JOBS[k.role as keyof typeof KIT11_JOBS] ?? "")}</span><em>${esc(k.bound === k.now ? k.now : `${k.bound} → ${k.now}`)}</em></div>`).join("")}<p>budgets in test USD, when bound → after the CFO's Face ID (recorded run)</p></div>`,
+      pic: `<div class="kitmap">${f.kit11.map((k) => `<div><b>${esc(k.agent)}</b><span>${esc(KIT11_JOBS[k.role as keyof typeof KIT11_JOBS] ?? "")}</span><em>${esc(k.bound === k.now ? k.now : `${k.bound} → ${k.now}`)}</em></div>`).join("")}<p>budgets in test USD, when bound → after the CFO's Face ID (recorded run, 30 October, before the agents took Kit 11's names; the licence fee joins in the live run)</p></div>`,
     },
     {
       kicker: "The problem",
@@ -106,7 +105,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
     },
     {
       kicker: "The Dispute desk",
-      title: "The seller proves each payment from the chain",
+      title: "The seller checks each payment against the chain",
       points: [
         `A simulated customer (we filed for it) disputed ${f.metal.dispute_orders} orders; each was checked against its signed order and mandate.`,
         `All ${f.metal.dispute_orders} were signed and inside the mandate: ${f.metal.dispute_refunded === 0 ? "nothing new refunded" : `${f.metal.dispute_refunded} refunded`} (${f.metal.refunded_before.length} had been refunded earlier for wrong data).`,

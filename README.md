@@ -12,7 +12,7 @@ or offline with `npm ci && npm run judge` (no keys, no network):
    and no one place for the exceptions. ([Watch](https://kit11.max-31b.workers.dev/film))
 2. **Airwallex declines the card** above its limit; after the CFO's Face ID the limit follows and the same purchase
    is paid. ([the Airwallex ids](https://kit11.max-31b.workers.dev/demo?step=1))
-3. **Metal refuses the higher price** against the on-chain mandate, and the CFO rebalances the three mandates within the same 20.00 with
+3. **Metal refuses the higher price** against the on-chain mandate, and the CFO moves budget between the mandates within the same 20.00 with
    Face ID. ([the transactions](https://kit11.max-31b.workers.dev/demo?step=3))
 4. **The Dispute desk checks every order:** a simulated customer (we filed for it) disputes 12 orders; each is
    checked against its signed order and the mandate on chain. All 12 hold, so nothing new is refunded. ([the evidence](https://kit11.max-31b.workers.dev/metal#dispute))
@@ -71,9 +71,9 @@ npm ci && npm run judge
 ```
 
 No keys, and no network after `npm ci`; the judge step itself starts in seconds. It serves the recorded
-live run, the CFO dashboard as it stood at the end, a simulated month, and the Scenario Lab (`/lab`: 18 stories,
+live run, the CFO dashboard as it stood at the end, a simulated month, and the Scenario Lab (`/lab`: 18 stories run against stand-ins for Airwallex and Metal,
 from a normal purchase to the emergency stop, each with what should happen and what did), "How Purser uses Metal"
-(`/metal`: every Metal feature Purser uses, with its testnet proof and docs link (clearing and the receive policy from separate live runs), a mandate inspector per agent, and the Dispute
+(`/metal`: every Metal feature Purser uses, with its testnet proof and docs link (clearing, the receive policy, four eyes and compliance from separate live runs), a mandate inspector per agent, and the Dispute
 desk case order by order), and opens your browser.
 
 ## Run it live
@@ -117,6 +117,7 @@ The old README sections, now in docs:
 
 All money here is test money: the Airwallex sandbox and Metal testnet. Simulated by the sandbox:
 merchants' card charges, a SWIFT transfer's last steps (SENT, PAID), the deposit that stands in for Metal earnings at
-Airwallex, and retailers' payments into the Global Accounts. *USDZ is shown as "test USD".
+Airwallex, and retailers' payments into the Global Accounts. *USDZ is shown as "test USD". Run by us: Summit and its
+agent, and Stockline. Northwind Outdoor is the example company.
 
 Built with Claude (Anthropic) as the developer, directed and reviewed by Max Geurtsen. Licence: MIT.

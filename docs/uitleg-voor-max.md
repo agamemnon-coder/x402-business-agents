@@ -18,7 +18,7 @@ Eén zin: **"Your AI agents spend through Airwallex and Metal. The CFO stays in 
 2. **Elke agent krijgt een kaart en een mandaat.** Een virtuele Visa-kaart van Airwallex (limiet, soort winkel,
    alleen EUR, einddatum) en een mandaat op Metal (max per betaling, budget, één ontvanger, einddatum).
 3. **Binnen de limiet betaalt de agent zelf.** Geen mens nodig. In de opgenomen run: 106 betalingen zo (ongeveer de helft door de gesimuleerde klant-agent).
-4. **Daarbuiten weigert iemand.** Airwallex weigert de kaart, Metal weigert op de chain, of Purser stopt het
+4. **Daarbuiten weigert iemand.** Airwallex weigert de kaart, Metal weigert tegen het mandaat op de chain, of Purser stopt het
    (fraude, dubbele factuur). Daarna vraagt de agent de CFO.
 5. **De CFO beslist met Face ID.** Op de telefoon, met een passkey. Geen wachtwoord. Een agent kan nooit zelf
    goedkeuren.
@@ -38,7 +38,7 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 **Echt, live gedraaid (testgeld):**
 - Airwallex sandbox: kaarten, geweigerde betalingen, FX, SWIFT-betaling van €1.850,00, Global Accounts, webhooks.
 - Metal testnet: mandaten, x402-betalingen, clearing, receive policy, four eyes (2-van-2), compliance-contract.
-- Elke goedkeuring in de live runs: jouw Face ID.
+- Elke goedkeuring in de opgenomen run: jouw Face ID. De losse four-eyes- en compliance-runs gebruikten testsleutels.
 
 **Gesimuleerd of nog niet live (zeg het erbij):**
 - De klant-agent van Summit is gesimuleerd (ongeveer de helft van de 106 betalingen).
@@ -80,7 +80,7 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 19. **Wat is x402?** Betalen per verzoek via internet (HTTP 402). Een agent koopt data per vraag en betaalt meteen.
 20. **Wat is clearing?** Veel kleine betalingen samen afgerekend. Belastingtest (aparte testwereld, 30 oktober): 2.000 van 2.000 betaald in 471,8 seconden, 4,24 per seconde.
 21. **Wat is four eyes op de chain?** Een account met twee eigenaren: CFO en controller. Alleen de CFO: geweigerd op de chain. Beiden: gaat door. Dit draaide live in een aparte testwereld.
-22. **Wat is de receive policy?** Geld dat binnenkomt op de wallet wordt gecontroleerd; van een onbekende afzender gaat het in quarantaine.
+22. **Wat is de receive policy?** Geld dat binnenkomt op de wallet wordt gecontroleerd; van een onbekende afzender gaat het in quarantaine. (Dat liep in een aparte wereld, niet in de opgenomen run.)
 23. **Wat doet het compliance-contract?** Geld gaat pas weg met Pursers getekende beslissing voor precies die betaling, na controle van de ontvanger. 11 aanvallen werden op de chain geweigerd. Mandaatbetalingen gaan er niet doorheen (zo werkt Metal).
 
 ### Veiligheid (24–30)
@@ -96,7 +96,7 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 ### Claude en AI (31–35)
 
 31. **Waarvoor gebruik je Claude?** Haiku sorteert documenten, Sonnet leest ze, Opus beoordeelt risico's voor de CFO. Claude heeft geen sleutel en keurt niets goed.
-32. **Waarom drie modellen?** Dat hebben we gemeten. Op de gewone testgevallen doet Haiku alleen het even goed. Op moeilijkere documenten las Haiku één geschil fout (het nam een order mee die de klant zelf had besteld). De verdeling Haiku sorteert, Sonnet leest, Opus adviseert haalde 15 van 15, en is de goedkoopste die dat haalt.
+32. **Waarom drie modellen?** Het was een ontwerpkeuze; daarna hebben we het gemeten. Op de gewone testgevallen doet Haiku alleen het even goed. Op moeilijkere documenten las Haiku één geschil fout (het nam een order mee die de klant zelf had besteld). De verdeling Haiku sorteert, Sonnet leest, Opus adviseert haalde 15 van 15, en is de goedkoopste die dat haalt.
 33. **Wat kost de AI?** In de opgenomen run: 23 calls, USD 0,093 per €1.000 betaald.
 34. **Wat als Claude uitvalt?** Dan nemen vaste parsers het over. Dezelfde beslissingen, want de code beslist.
 35. **Hoe heb je dit gebouwd?** Met Claude Code als ontwikkelaar. Ik deed het product, de beslissingen en elke Face ID.

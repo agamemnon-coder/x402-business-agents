@@ -112,7 +112,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
 <main>
   <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>
   <h1>How Purser uses Metal</h1>
-  <p class="lead">On Metal, Northwind's agents pay on chain, in cents, under mandates the chain itself enforces. Purser is the CFO's control layer on top: it sets the mandates, asks for Face ID before any limit goes up, and checks every payment afterwards. Everything below ran on Metal testnet with test money, in the recorded run or in the separate run each card names; each card links to its proof and to Metal's docs.</p>
+  <p class="lead">On Metal, Northwind's agents pay on chain, in cents, under mandates bound on chain, which Metal enforces. Purser is the CFO's control layer on top: it sets the mandates, asks for Face ID before any limit goes up, and checks every payment afterwards. Everything below ran on Metal testnet with test money, in the recorded run or in the separate run each card names; each card links to its proof and to Metal's docs.</p>
   <div class="kit11" id="kit11" hidden></div>
   <span class="built">Built on <img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span>
   <div class="stats" id="stats"></div>
@@ -194,7 +194,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
   var ours = D.mandates.filter(function (m) { return m.role !== "customer"; });
   var paid = D.mandates.reduce(function (n, m) { return n + m.count; }, 0);
   var refused = D.mandates.filter(function (m) { return m.refusal; }).length;
-  var stats = [[String(ours.length), "mandates on chain, one per agent"], [String(paid), "payments under mandates (" + D.mandates.filter(function (m) { return m.role === "customer"; }).reduce(function (n, m) { return n + m.count; }, 0) + " of them by the customer's agent, buying from us)"], [String(refused), refused === 1 ? "payment refused by the chain, nothing moved" : "payments refused by the chain"]];
+  var stats = [[String(ours.length), "mandates on chain, one per agent"], [String(paid), "payments under mandates (" + D.mandates.filter(function (m) { return m.role === "customer"; }).reduce(function (n, m) { return n + m.count; }, 0) + " of them by the customer's agent, buying from us)"], [String(refused), refused === 1 ? "payment refused against the on-chain mandate, nothing moved" : "payments refused against the on-chain mandate"]];
   if (D.dispute) stats.push([D.dispute.packs.filter(function (p) { return p.mandate.within; }).length + "/" + D.dispute.packs.length, "disputed orders verified against the chain"]);
   var sEl = document.getElementById("stats");
   stats.forEach(function (s) { sEl.appendChild(el("div", "stat", [el("div", "v", [s[0]]), el("div", "l", [s[1]])])); });
@@ -220,7 +220,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
         el("div", "lim", [el("div", "v", [m.cap]), el("div", "l", ["test USD cap per payment"])]),
         el("div", "lim", [el("div", "v", [m.budget]), el("div", "l", ["test USD total budget"])]),
         el("div", "lim", [el("div", "v", [m.used]), el("div", "l", ["paid under it so far"])]),
-        el("div", "lim", [el("div", "v", [m.left]), el("div", "l", ["left before the chain refuses"])]),
+        el("div", "lim", [el("div", "v", [m.left]), el("div", "l", ["left before Metal refuses"])]),
       ]),
       bar, dl,
     ]);

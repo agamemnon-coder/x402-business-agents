@@ -169,7 +169,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
     card_declined: function () { return railItem("airwallex", "Declined by Airwallex"); },
     swift: function () { return railItem("airwallex", "SWIFT payout of an invoice"); },
     x402: function () { return railItem("metal", "Paid per request (x402), with a signed order"); },
-    chain_refused: function () { return railItem("metal", "Refused by the chain"); },
+    chain_refused: function () { return railItem("metal", "Refused against the on-chain mandate"); },
     task_card: function () { return { what: "Single-use task cards", detail: "Checked live in the Airwallex sandbox on 30 October: a card for one purchase, other merchant kinds and amounts over the limit declined by Airwallex, and the card closed by Airwallex after its one purchase.", proof: null }; },
     planted: function () { return DATA.ai_tricks ? { what: "Planted instructions", detail: DATA.ai_tricks + " instructions aimed at the AI, hidden in documents in the recorded run, were flagged by code and ignored; nothing moved.", proof: null } : null; },
   };
