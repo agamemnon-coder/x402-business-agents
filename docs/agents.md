@@ -32,7 +32,9 @@ themselves); a plan that cut Sourcing to 1.00; a cap with headroom.
 
 **Dry runs with the agents on** (`KIT11_AGENTS=on` with `test/browser/dryrun.check.ts`): in dry-14 the Sourcing agent
 told Treasury "I need the CFO to approve a new per-purchase cap of at least 0.04", Opus's plan was accepted on the
-first try, and the Support agent refunded exactly #7, #10 and #13 and sent the other 9 to the CFO.
+first try, and the Support agent refunded exactly #7, #10 and #13 and sent the other 9 to the CFO. Dry-15 ran the whole
+draaiboek with the agents on, two passkeys, the expiry, the mis-tap, network loss, a failed Face ID and a runner restart:
+0 failures, `npm run verify` passed every check, nothing paid twice (25 minutes, the 11-minute expiry wait included).
 
 **Not (yet) an agent decision.** The sweep's moment and amount and the licence payment stay code's (finality, receive
 policy and FX/SWIFT with Face ID as before). Routine purchases per query stay code's inside the mandate; the agent
