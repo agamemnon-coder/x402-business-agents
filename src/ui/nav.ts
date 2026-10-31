@@ -41,7 +41,10 @@ export const NAV_CSS = `.pnav { display: flex; align-items: center; gap: 2px; fl
 .pmenu a { text-decoration: none; color: var(--text, #0b1220); font: 500 14px/1.3 Inter, system-ui, sans-serif; padding: 9px 12px; border-radius: 8px; }
 .pmenu a:hover, .pmenu a.on { background: var(--sunken, var(--surface2, rgba(127,127,127,.12))); }
 /* On a phone the brand already links home, so "Overview" makes room for the other four and "More". */
-@media (max-width: 560px) { .pnav > a, .pmore > summary { padding: 6px 7px; font-size: 13px; } .pnav > a[data-nav="overview"] { display: none; } .pmenu { right: 0; left: auto; } }`;
+@media (max-width: 560px) { .pnav > a, .pmore > summary { padding: 6px 7px; font-size: 13px; } .pnav > a[data-nav="overview"] { display: none; } }
+/* Below laptop width "More" can wrap anywhere in the row, so its menu hangs from the whole nav, not from "More":
+   it then always opens on the screen (the site check found it off the left edge at 390 px). */
+@media (max-width: 900px) { .pnav { position: relative; } .pmore { position: static; } .pmenu { right: 0; left: auto; max-width: calc(100vw - 24px); } }`;
 
 /** Replaces a page's own navigation with the shared one and adds its style (before the page's CSP hash is taken). */
 export function withNav(page: string, current: NavKey | null): string {

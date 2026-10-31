@@ -42,6 +42,16 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   for (const u of a11y.noAlt) fail(`${name}: an image with no alt text: ${u}`);
   const over = await page.evaluate(() => document.documentElement.scrollWidth) - width;
   if (over > 1) fail(`${name}: ${over}px wider than the screen`);
+  // The "More" menu opens on the screen, wherever "More" wraps to (the site check found it off the left edge).
+  const menu = await page.evaluate(`(() => {
+    const d = document.querySelector(".pmore");
+    if (!d || !d.offsetParent) return null;
+    const was = d.open; d.open = true;
+    const r = d.querySelector(".pmenu").getBoundingClientRect();
+    d.open = was;
+    return { left: Math.round(r.left), right: Math.round(r.right) };
+  })()`) as { left: number; right: number } | null;
+  if (menu && (menu.left < 0 || menu.right > width)) fail(`${name}: the More menu opens off the screen (${menu.left} to ${menu.right} of ${width})`);
 }
 
 const browser = await chromium.launch();
