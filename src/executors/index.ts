@@ -8,7 +8,9 @@ import { executeRefundBatch } from "./refundBatch.js";
 import { executeInvoicePayment } from "./invoicePayment.js";
 import { airwallexFromEnv } from "../airwallex/adapter.js";
 import { executeDevTest } from "./devTest.js";
-import { executePolicyChange } from "./policyChange.js";
+import { executePolicyChange, touchesPause, type PolicyChangeTerms } from "./policyChange.js";
+import { executePauseChange, pausedCredential } from "../policy/pause.js";
+import { LivePauseChain } from "../metal/pauseChain.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { syncCardsAfterPolicy } from "../policy/cards.js";
 import { executePayeeChange } from "../policy/payeeChange.js";
@@ -20,6 +22,20 @@ export async function execute(db: DB, proposalId: string): Promise<void> {
   if (!row) throw new Error(`no proposal ${proposalId}`);
   if (row.kind === "dev_test") return executeDevTest(db, proposalId);
   if (row.kind === "policy_change") {
+    const terms = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_json: string }).terms_json) as PolicyChangeTerms;
+    if (touchesPause(terms)) {
+      // 4.2 Pause or resume one agent: the chain step runs here too (src/policy/pause.ts). The card is synced even
+      // when the revoke failed: the agent is paused in Purser, so its card must be frozen whatever the chain said.
+      let failed: unknown = null;
+      try {
+        await executePauseChange(db, proposalId, new LivePauseChain(() => `resume-${proposalId}`, (agent) => pausedCredential(db, agent)));
+      } catch (e) {
+        failed = e;
+      }
+      await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);
+      if (failed) throw failed;
+      return;
+    }
     executePolicyChange(db, proposalId);
     // A card limit in the policy only counts once the card at Airwallex has it too.
     await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);

@@ -136,7 +136,7 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
-  if (c.key === "freeze" || c.key.startsWith("stop.")) return c.from === "on" && c.to !== "on";
+  if (c.key === "freeze" || c.key.startsWith("stop.") || c.key.startsWith("pause.")) return c.from === "on" && c.to !== "on";
   return true;
 }
 
@@ -1033,6 +1033,12 @@ async function policyPage(): Promise<void> {
     const f = mine.find((x) => x.e.key === `stop.${agent}` && x.e.value !== "on");
     if (f) (f.row.querySelector("select") as HTMLSelectElement).value = "on";
   }
+  // 4.2 &pause=on: the CFO pauses this one agent; the runner revokes its Metal mandate and freezes its card.
+  const wantPause = !!agent && /[?&]pause=on(&|$)/.test(location.search);
+  if (wantPause) {
+    const f = mine.find((x) => x.e.key === `pause.${agent}` && x.e.value !== "on");
+    if (f) (f.row.querySelector("select") as HTMLSelectElement).value = "on";
+  }
   const reason = document.createElement("input");
   reason.id = "reason";
   reason.className = "policy-input";
@@ -1040,6 +1046,7 @@ async function policyPage(): Promise<void> {
   reason.placeholder = "Why, in one line";
   if (/[?&]freeze=on(&|$)/.test(location.search)) reason.value = "Emergency stop";
   if (wantStop) reason.value = "Stop this agent";
+  if (wantPause) reason.value = "Pause this agent";
   const reasonLabel = el("label", "policy-label", ["Reason"]);
   reasonLabel.setAttribute("for", "reason");
   const review = el("button", "confirm", ["Review change"]) as HTMLButtonElement;

@@ -1126,7 +1126,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       ]),
     ]);
     set("agents", [split].concat(ps.map(function (a) {
-      var pill = a.status === "working" ? txt("span", "pill ok", "Working") : txt("span", "pill bad", a.status === "frozen" ? "Frozen (emergency stop)" : "Stopped");
+      var pill = a.status === "working" ? txt("span", "pill ok", "Working") : txt("span", "pill bad", a.status === "frozen" ? "Frozen (emergency stop)" : a.status === "paused" ? "Paused by you: mandate revoked, card frozen" : "Stopped");
       var fact = function (k, v) { return el("div", "m", [txt("div", "k", k), el("div", "v", v)]); };
       var facts = el("div", "facts", [
         fact("Company card (Airwallex)", [eur(a.card.per_tx) + " a purchase · " + eur(a.card.monthly) + " a month", txt("div", "sub", "Only " + a.card.merchants.join(", ") + ", EUR")]),
@@ -1148,7 +1148,12 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       if (editable) {
         var edit = txt("a", "btn", "Change on your phone"); edit.href = "policy?agent=" + encodeURIComponent(a.id); acts.push(edit);
         if (a.status === "working") { var stop = el("a", "btn danger", [icon("octagon-x"), "Stop this agent"]); stop.href = "policy?agent=" + encodeURIComponent(a.id) + "&stop=on"; acts.push(stop); }
+        // 4.2 With the agents on: pause one agent with Face ID. Its Metal mandate is revoked and its card frozen.
+        if (a.status === "working" && a.settings.some(function (e) { return e.key === "pause." + a.id; })) {
+          var pause = el("a", "btn danger", [icon("octagon-x"), "Pause this agent"]); pause.href = "policy?agent=" + encodeURIComponent(a.id) + "&pause=on"; acts.push(pause);
+        }
       }
+      if (a.status === "paused" && !d.recorded) acts.push(el("div", "sub", "Resuming binds its mandate on chain again: a proposal from the runner, approved with Face ID (both of you, with four eyes on)."));
       if (a.status === "stopped" && !d.recorded) acts.push(el("div", "sub", "Starting it again loosens the policy: a proposal from the runner, approved with Face ID."));
       return el("section", "panel agent", [
         el("div", "top", [icon("bot"), txt("h2", "", a.name), pill]),

@@ -168,11 +168,4 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
   return finish("incomplete", `no answer within ${maxTurns} turns`);
 }
 
-/**
- * The agents decide only when KIT11_AGENTS=on. Off (the default), every flow runs code's fixed decisions exactly as in
- * the recorded runs and the dry runs; the switch stays off until the agents pass their evals, the red team and a full
- * dry run (the kill rule of 4 November).
- */
-export function agentsOn(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.KIT11_AGENTS === "on";
-}
+export { agentsOn } from "../config/agents.js";

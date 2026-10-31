@@ -47,11 +47,24 @@ export function proposePolicyChange(db: DB, req: { changes: { key: string; to: s
   return createProposal(db, { terms, createdBy }, now);
 }
 
+/** Whether a policy change pauses or resumes an agent: that one needs the chain (src/policy/pause.ts). */
+export function touchesPause(t: { changes?: { key: string }[] }): boolean {
+  return (t.changes ?? []).some((c) => c.key.startsWith("pause."));
+}
+
 export function executePolicyChange(db: DB, proposalId: string, now = new Date()): void {
+  const pending = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_json: string } | undefined)?.terms_json ?? "{\"changes\":[]}") as PolicyChangeTerms;
+  // A pause without the chain would leave the mandate live, a resume would leave it revoked: refuse, before anything.
+  if (touchesPause(pending)) throw new Error(`${proposalId} pauses or resumes an agent: it runs with the chain (executePauseChange), not here`);
   const terms = beginExecution<PolicyChangeTerms>(db, proposalId, (t) => {
     if (t.kind !== "policy_change") throw new Error(`${proposalId} is not a policy change`);
     checkChanges(db, t.changes);
   }, now);
+  applyPolicyChanges(db, proposalId, terms, now);
+}
+
+/** Applies an approved, begun policy change in one transaction and marks it executed. */
+export function applyPolicyChanges(db: DB, proposalId: string, terms: PolicyChangeTerms, now = new Date()): void {
   db.transaction(() => {
     for (const c of terms.changes) {
       db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")

@@ -15,7 +15,10 @@ import { openDb } from "../../src/db/open.js";
 import { redactSecrets } from "../../src/lib/redact.js";
 import { activePasskey, confirmPasskey, openEnrolment, pendingPasskeys } from "../../src/passkey/ledger.js";
 import { FOUR_EYES_KEY } from "../../src/policy/fourEyes.js";
-import { policyValue } from "../../src/policy/rules.js";
+import { capRefusal, policyValue } from "../../src/policy/rules.js";
+import { activeMandate, mandateSpent } from "../../src/metal/mandate.js";
+import { publicClient } from "../../src/metal/chain.js";
+import { readMandateState } from "@metalntwx/metal-pay/mandates";
 
 const ledger = process.env.KIT11_DB ?? "";
 const keys = process.env.KIT11_KEYS_DIR ?? "";
@@ -391,6 +394,34 @@ await timed("12 Emergency stop on, a card charge declined, stop off", async () =
   const lift = latest("policy_change", "status = 'PENDING_APPROVAL'") ?? "";
   await sign(cfo, lift, { tag: "stop-off" });
   await executed(lift);
+});
+// 4.2, only with the agents on (Thursday's run): the CFO pauses one agent with Face ID. Its Metal mandate is revoked on
+// chain and its card frozen at Airwallex; resuming takes both passkeys (four eyes) and puts the same mandate back with
+// its spend carried over.
+if (process.env.KIT11_AGENTS === "on") await timed("12b Pause the Support agent (mandate revoked on chain, card frozen), then resume with both passkeys", async () => {
+  const before = await activeMandate("support");
+  const spentBefore = await mandateSpent(before);
+  cli("policy.ts", "set", "pause.support", "on", "--reason", "dry run: pause the Support agent");
+  const p = latest("policy_change", "status = 'PENDING_APPROVAL'") ?? "";
+  check(!!p, `pause proposal ${p}`);
+  await sign(cfo, p, { tag: "pause-support" });
+  await executed(p);
+  const rev = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'mandate.revoked' AND subject = 'support' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
+  const revTx = rev ? String((JSON.parse(rev.payload_json) as { tx?: string }).tx ?? "") : "";
+  check(/^0x[0-9a-f]{64}$/i.test(revTx), `the Support mandate revoked on chain (tx ${revTx.slice(0, 12)}…)`);
+  check((await readMandateState(publicClient(), before.principal, before.reference)).revoked, "the chain says the Support mandate is revoked");
+  check(/^paused_by_cfo:/.test(capRefusal(db(), "support", 5) ?? ""), "Purser refuses the Support agent's payments before signing");
+  await until("the Support card inactive at Airwallex", () => (db().prepare("SELECT status FROM cards WHERE agent = 'support'").get() as { status: string } | undefined)?.status === "INACTIVE", 60_000)
+    .then(() => check(true, "the Support card is inactive at Airwallex"), () => check(false, "the Support card is inactive at Airwallex"));
+  cli("policy.ts", "set", "pause.support", "off", "--reason", "dry run: resume the Support agent");
+  const r = latest("policy_change", "status = 'PENDING_APPROVAL'") ?? "";
+  check((await sign(cfo, r, { tag: "resume-support-cfo" })) === "1 of 2 approvals", "resume: first passkey 1 of 2 (four eyes)");
+  await sign(controller, r, { tag: "resume-support-controller" });
+  await executed(r);
+  const after = await activeMandate("support");
+  check(after.credentialHash !== before.credentialHash, "a new Support mandate is bound in place of the revoked one");
+  check((await mandateSpent(after)) === spentBefore, `its spend carried over (${spentBefore} base units)`);
+  check(capRefusal(db(), "support", 5) === null, "Purser lets the Support agent pay again");
 });
 await timed("13 Bank change for Bergtex in three steps (test identities)", async () => {
   const req = cli("payee.ts", "request", "Bergtex Textil GmbH", "DE02100100100006820101", "PBNKDEFFXXX");

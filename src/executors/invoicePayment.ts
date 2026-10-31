@@ -3,7 +3,7 @@
 // Transfer lifecycle: SUBMITTING (row written before the call) -> SENT -> PAID, or FAILED -> CANCELLED.
 // A lost answer is resolved by looking the request_id up, never by a blind resend with a new id.
 
-import { counterpartyAllowed, frozen } from "../policy/rules.js";
+import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import type { AirwallexRail, SandboxSim, Transfer } from "../airwallex/port.js";
@@ -32,6 +32,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     if (!counterpartyAllowed(db, t.beneficiary_name)) throw new Error(`${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`);
     if (frozen(db)) throw new Error("the CFO pulled the emergency stop; nothing is paid until it is lifted");
     if (stopped(db, "treasury")) throw new Error("the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop");
+    if (paused(db, "treasury")) throw new Error("the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID");
     // The treasury agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
     const denied = authorize(db, "treasury", { rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, now());
     if (denied) throw new Error(`${denied}; nothing is paid`);

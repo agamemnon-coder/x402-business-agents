@@ -15,7 +15,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { randomUUID } from "node:crypto";
 import type { CardTransaction } from "../airwallex/issuing.js";
-import { capRefusal } from "./rules.js";
+import { capRefusal, paused } from "./rules.js";
 import { stopped, velocityGate } from "./velocity.js";
 import { policyVersion } from "./versions.js";
 import { authorize, type Payee } from "./principals.js";
@@ -90,6 +90,8 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
         const fast = velocityGate(db, agent, "metal", r.cents, now, r.ref);
         if (fast) return fast;
       }
+    } else if (paused(db, agent)) {
+      return `paused_by_cfo: the ${agent} agent is paused by the CFO; it buys nothing until the CFO resumes it with Face ID`;
     } else if (stopped(db, agent)) {
       // A card's limits sit on the card at Airwallex, which authorises each charge against them atomically: the
       // issuer, not this ledger, refuses a purchase over them (and the demo shows its decline). Here a card hold only

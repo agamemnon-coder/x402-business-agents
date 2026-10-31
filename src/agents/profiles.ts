@@ -10,7 +10,7 @@ import { CLAUDE_JOBS } from "../claude/tools.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { cardControls } from "../policy/cards.js";
-import { currentPolicy, frozen, policyValue, type PolicyEntry } from "../policy/rules.js";
+import { currentPolicy, frozen, paused, policyValue, type PolicyEntry } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
 import { spendLimits } from "../policy/holds.js";
 
@@ -19,7 +19,7 @@ export interface AgentProfile {
   name: string;
   job: string;
   /** working; stopped (its own stop, e.g. a velocity limit); frozen (the emergency stop). */
-  status: "working" | "stopped" | "frozen";
+  status: "working" | "stopped" | "paused" | "frozen";
   models: { model: string; job: string }[];
   /** What it does on its own, within the limits below. */
   alone: string[];
@@ -53,7 +53,7 @@ function mandateOf(db: DB, agent: string): AgentProfile["mandate"] {
 export function agentProfiles(db: DB, now = new Date()): AgentProfile[] {
   const policy = currentPolicy(db);
   const v = (key: string) => policyValue(db, key);
-  const status = (id: string): AgentProfile["status"] => (frozen(db) ? "frozen" : stopped(db, id) ? "stopped" : "working");
+  const status = (id: string): AgentProfile["status"] => (frozen(db) ? "frozen" : paused(db, id) ? "paused" : stopped(db, id) ? "stopped" : "working");
   const velocity = (k: Agent | "outside") => ({ per_minute: VELOCITY[k].perMinute, usdz_per_hour: fromCents(VELOCITY[k].usdzPerHourCents), eur_per_hour: fromCents(VELOCITY[k].eurPerHourCents) });
   const card = (id: string) => ({ per_tx: v(`card.${id}.per_tx`), monthly: v(`card.${id}.monthly`), currency: "EUR" as const, merchants: merchants(cardControls(id, now, db).mccs) });
   const onCard = (id: string, what: string) => `Buys ${what} on its card: up to ${v(`card.${id}.per_tx`)} EUR a purchase, ${v(`card.${id}.monthly`)} EUR a month`;

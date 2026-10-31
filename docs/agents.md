@@ -47,3 +47,28 @@ failed runs counted as decisions on the dashboard; the prompt itself was not red
 **Not (yet) an agent decision.** The sweep's moment and amount and the licence payment stay code's (finality, receive
 policy and FX/SWIFT with Face ID as before). Routine purchases per query stay code's inside the mandate; the agent
 decides at the price rise.
+
+**Dry-17 and dry-18 (31 October, agents on, fresh worlds).** Dry-17: the whole draaiboek, 43 checks, 0 failures, verify
+green, the three agents decided as the evals expect. Dry-18 found a miss: the Sourcing agent (Haiku) checked the offer
+and wrote to Treasury without trying the purchase, so code took over that step (safely: nothing extra was paid). Fixed:
+`notify_treasury` is refused until `try_purchase` ran, so the agent tries first and then tells; the evals afterwards:
+10/10 on Haiku. Dry-18 does not count toward three green in a row; the count starts again with the fix.
+
+## The trace: one decision as a timeline (4.1)
+
+Each agent decision on the dashboard has a **Trace** button on its feed line (and on a refused call's line). It opens
+the decision as a timeline, the way LangSmith or Datadog show a request: the model, every tool call with its input,
+result and time, what each call caused (a refusal on chain with its tx, a refund, an Airwallex id), the check that
+let it through or stopped it, tokens, cost and latency, and every step's hash in the audit chain. It is built from
+audit rows only (`src/dashboard/trace.ts`), so the trace is as trustworthy as the chain it reads. Test:
+`test/agent-trace.test.ts`; browser check at phone and laptop width, light and dark: `test/browser/trace.check.ts`.
+
+## Pause one agent with Face ID (4.2)
+
+With the agents on, the CFO can pause one agent instead of all (the emergency stop stays for all). The Agents page has
+"Pause this agent"; the phone shows the change and Face ID signs it. An approved pause does three things, in this
+order, so that a failure always leaves the agent stopped: Purser's switch goes on (its payments are refused before
+signing), its Airwallex card goes inactive, and its **Metal mandate is revoked on chain** (`mandate revoke`), so even
+a signed payment would be refused there. Resuming binds its mandate again: that re-grants spending power, so it is a
+mandate change and takes **both passkeys** when four eyes is on; the mandate is restored on chain first, and only then
+does the switch go off. Code: `src/policy/pause.ts`; tests: `test/agent-pause.test.ts`.

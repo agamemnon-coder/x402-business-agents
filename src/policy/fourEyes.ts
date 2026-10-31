@@ -19,5 +19,7 @@ export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">): b
   if (p.kind === "invoice_payment") return over(t.amount);
   if (p.kind === "agent_onboard") return over(t.card?.monthly);
   if (p.kind === "task_card") return over(t.amount);
+  // 4.2 Resuming a paused agent binds a mandate again: a change of its mandate, so two people. Pausing only takes away.
+  if (p.kind === "policy_change") return ((JSON.parse(p.terms_json) as { changes?: { key: string; from: string; to: string }[] }).changes ?? []).some((c) => c.key.startsWith("pause.") && c.from === "on" && c.to !== "on");
   return p.kind === "payee_change" || p.kind === "mandate_replace";
 }

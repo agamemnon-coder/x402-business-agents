@@ -10,7 +10,7 @@ vi.mock("../src/executors/mandateReplace.js", () => ({ executeMandateReplace: sp
 vi.mock("../src/executors/refundBatch.js", () => ({ executeRefundBatch: spy("refund_batch") }));
 vi.mock("../src/executors/invoicePayment.js", () => ({ executeInvoicePayment: spy("invoice_payment") }));
 vi.mock("../src/executors/devTest.js", () => ({ executeDevTest: spy("dev_test") }));
-vi.mock("../src/executors/policyChange.js", () => ({ executePolicyChange: vi.fn((...a: unknown[]) => { h.calls.push(["policy_change", ...a.slice(1)]); }) }));
+vi.mock("../src/executors/policyChange.js", () => ({ executePolicyChange: vi.fn((...a: unknown[]) => { h.calls.push(["policy_change", ...a.slice(1)]); }), touchesPause: () => false }));
 vi.mock("../src/policy/cards.js", () => ({ syncCardsAfterPolicy: spy("sync_cards") }));
 vi.mock("../src/policy/payeeChange.js", () => ({ executePayeeChange: spy("payee_change") }));
 vi.mock("../src/platform/externalAgents.js", () => ({ executeAgentOnboard: spy("agent_onboard") }));

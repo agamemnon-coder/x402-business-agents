@@ -7,8 +7,9 @@ import { agentName } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { stopped } from "./velocity.js";
+import { agentsOn } from "../config/agents.js";
 
-export type PolicyKey = "freeze" | `stop.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`;
+export type PolicyKey = "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`;
 
 export interface Rule {
   key: PolicyKey;
@@ -75,7 +76,22 @@ export function rules(db: DB): Rule[] {
   const payees = (db.prepare("SELECT DISTINCT name FROM beneficiaries ORDER BY name").all() as { name: string }[]).map((b): Rule => ({
     key: `counterparty:${b.name}`, label: `${b.name} (Airwallex payee)`, unit: "", kind: "choice", choices: ["allowed", "blocked"], fallback: "allowed",
   }));
-  return [...STATIC, ...outside, ...tasks, ...payees];
+  return [...STATIC, ...pauseRules(), ...outside, ...tasks, ...payees];
+}
+
+/**
+ * 4.2 The CFO pauses one agent with Face ID: its Metal mandate is revoked on chain and its card frozen at Airwallex
+ * (src/policy/pause.ts); here, Purser refuses its payments before signing. Only with the agents switch on.
+ */
+function pauseRules(): Rule[] {
+  if (!agentsOn()) return [];
+  return AGENTS.map((a): Rule => ({ key: `pause.${a}`, label: `${agentName(a)}: paused by the CFO (Metal mandate revoked, card frozen)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off", agent: a }));
+}
+
+/** Whether the CFO has paused this agent (4.2). */
+export function paused(db: DB, agent: string): boolean {
+  const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(`pause.${agent}`) as { value: string } | undefined;
+  return row?.value === "on";
 }
 
 export function policyValue(db: DB, key: string): string {
@@ -128,6 +144,7 @@ export function frozen(db: DB): boolean {
 /** Why a payment of this size must not be signed, or null if the policy allows it. */
 export function capRefusal(db: DB, agent: Agent, cents: number): string | null {
   if (frozen(db)) return `frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the ${agentName(agent)} signs nothing`;
+  if (paused(db, agent)) return `paused_by_cfo: the CFO paused the ${agentName(agent)}; its Metal mandate is revoked and its card frozen, so it signs nothing`;
   if (stopped(db, agent)) return `stopped_by_velocity: the ${agentName(agent)} was stopped automatically (velocity limit); the CFO lifts it with Face ID`;
   const cap = policyCapCents(db, agent);
   return cap !== null && cents > cap ? `policy_cap_exceeded: ${fromCents(cents)} is over the ${agentName(agent)}'s limit of ${fromCents(cap)}` : null;
@@ -161,6 +178,6 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
-  if (c.key === "freeze" || c.key.startsWith("stop.")) return c.from === "on" && c.to !== "on";
+  if (c.key === "freeze" || c.key.startsWith("stop.") || c.key.startsWith("pause.")) return c.from === "on" && c.to !== "on";
   return true;
 }

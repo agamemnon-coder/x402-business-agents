@@ -37,6 +37,7 @@
     "relay:pages": "tsx src/cli/relay-pages.ts",
     "devtest": "tsx src/cli/dev-test.ts",
     "policy": "tsx src/cli/policy.ts",
+    "pause": "tsx src/cli/pause.ts",
     "cards": "tsx src/cli/cards.ts",
     "ask": "tsx src/cli/ask.ts",
     "lab": "tsx src/cli/lab.ts",

@@ -7,7 +7,7 @@ import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import type { Card, CardLimits, CardTransaction, IssuingRail, CardControls } from "../airwallex/issuing.js";
-import { cardLimits, frozen } from "./rules.js";
+import { cardLimits, frozen, paused } from "./rules.js";
 import { stopped, velocityObserve } from "./velocity.js";
 import { principalActive } from "./principals.js";
 
@@ -77,7 +77,7 @@ const sameControls = (a: Pick<CardControls, "mccs" | "currencies"> | null | unde
 /** The status the policy wants a card in: frozen by the emergency stop or its agent's velocity stop, closed once a task card is used, or active. */
 const taskUsed = (db: DB, agent: string) => agent.startsWith("task:") && !!db.prepare("SELECT 1 FROM task_cards WHERE task_id = ? AND status = 'USED'").get(agent);
 // A revoked or expired agent identity (B5) freezes its card too; the other agents' cards stay as they are.
-export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) || taskUsed(db, agent) || !principalActive(db, agent) ? "INACTIVE" : "ACTIVE");
+export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) || paused(db, agent) || taskUsed(db, agent) || !principalActive(db, agent) ? "INACTIVE" : "ACTIVE");
 
 /** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
 export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Card, now: Date): Promise<boolean> {
@@ -185,7 +185,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
 export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: IssuingRail | null, now = new Date()): Promise<string[]> {
   const p = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ? AND kind = 'policy_change'").get(proposalId) as { terms_json: string } | undefined;
   const keys = p ? (JSON.parse(p.terms_json) as { changes: { key: string }[] }).changes.map((c) => c.key) : [];
-  if (!keys.some((k) => k.startsWith("card.") || k.startsWith("stop.") || k === "freeze")) return [];
+  if (!keys.some((k) => k.startsWith("card.") || k.startsWith("stop.") || k.startsWith("pause.") || k === "freeze")) return [];
   if (!rail) throw new Error("the policy changed, but the Airwallex sandbox keys are not set, so the card is not updated yet");
   return syncCardsIfChanged(db, rail, now);
 }
