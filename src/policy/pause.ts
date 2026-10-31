@@ -12,6 +12,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { applyPolicyChanges, checkChanges, type PolicyChangeTerms } from "../executors/policyChange.js";
 import { beginExecution, finishExecution } from "./approvals.js";
+import { AGENTS } from "../config/policy.js";
 
 export { paused } from "./rules.js";
 
@@ -22,7 +23,35 @@ export { paused } from "./rules.js";
  */
 export interface PauseChain {
   revoke(agent: string): Promise<{ tx: string | null; credential_hash: string }>;
-  resume(agent: string): Promise<{ tx: string | null; credential_hash: string; spent_before?: string; budget?: string }>;
+  /** `bound: false`: the old mandate was still bound (its revoke never happened), so nothing new was bound. */
+  resume(agent: string): Promise<{ tx: string | null; credential_hash: string; spent_before?: string; budget?: string; bound?: boolean }>;
+}
+
+/** Every agent: a rebalance after any resume is refused (a resumed budget on chain hides what was spent before). */
+export const AGENTS_ALL: string[] = [...AGENTS];
+
+/**
+ * The mandate a pause revoked, among an agent's credentials: the revoked one bound last. A rebalance revokes its
+ * predecessor too, but that one was bound earlier. Used when a retried revoke finds the first try already landed.
+ */
+export function latestRevoked<T extends { bound: boolean; revoked: boolean; boundBlock: bigint }>(all: T[]): T | null {
+  return all.filter((x) => x.bound && x.revoked).sort((a, b) => (a.boundBlock < b.boundBlock ? 1 : a.boundBlock > b.boundBlock ? -1 : 0))[0] ?? null;
+}
+
+/** Seconds a resumed mandate may live: the revoked one's own expiry, never longer; an expired one is not revived. */
+export function resumeExpiresIn(expiry: number, nowSeconds = Math.floor(Date.now() / 1000)): number {
+  const left = expiry - nowSeconds;
+  if (left <= 60) throw new Error("the paused mandate has expired (or expires within a minute); resuming would revive it, so a new mandate needs its own approval");
+  return left;
+}
+
+/** Agents paused in Purser whose mandate was not revoked on chain since that pause (a failed or interrupted revoke). */
+export function pausesNotRevoked(db: DB): string[] {
+  const rows = db.prepare("SELECT key FROM settings WHERE key LIKE 'pause.%' AND value = 'on' ORDER BY key").all() as { key: string }[];
+  return rows.map((r) => r.key).filter((key) => {
+    const since = (db.prepare("SELECT MAX(seq) AS s FROM audit_log WHERE event = 'policy.changed' AND subject = ?").get(key) as { s: number | null }).s ?? 0;
+    return !db.prepare("SELECT 1 FROM audit_log WHERE event = 'mandate.revoked' AND subject = ? AND seq > ?").get(agentOf(key), since);
+  }).map(agentOf);
 }
 
 const agentOf = (key: string) => key.slice("pause.".length);
@@ -46,6 +75,11 @@ export async function executePauseChange(db: DB, proposalId: string, chain: Paus
   for (const agent of resumes) {
     try {
       const r = await chain.resume(agent);
+      if (r.bound === false) {
+        // The pause's revoke never landed: the old mandate is still bound, nothing new was bound, nothing re-granted.
+        audit(db, "owner-signer", "mandate.resume_not_needed", agent, { agent, proposal_id: proposalId, credential_hash: r.credential_hash, note: "its mandate was still bound: the revoke had not happened" }, now);
+        continue;
+      }
       audit(db, "owner-signer", "mandate.resumed", agent, {
         agent, proposal_id: proposalId, tx: r.tx, credential_hash: r.credential_hash,
         ...(r.spent_before !== undefined ? { spent_before: r.spent_before } : {}), ...(r.budget !== undefined ? { budget: r.budget } : {}),
@@ -77,11 +111,7 @@ export async function executePauseChange(db: DB, proposalId: string, chain: Paus
  */
 export async function syncPauses(db: DB, chain: PauseChain, now = new Date()): Promise<string[]> {
   const done: string[] = [];
-  const rows = db.prepare("SELECT key FROM settings WHERE key LIKE 'pause.%' AND value = 'on' ORDER BY key").all() as { key: string }[];
-  for (const { key } of rows) {
-    const agent = agentOf(key);
-    const since = (db.prepare("SELECT MAX(seq) AS s FROM audit_log WHERE event = 'policy.changed' AND subject = ?").get(key) as { s: number | null }).s ?? 0;
-    if (db.prepare("SELECT 1 FROM audit_log WHERE event = 'mandate.revoked' AND subject = ? AND seq > ?").get(agent, since)) continue;
+  for (const agent of pausesNotRevoked(db)) {
     const r = await chain.revoke(agent);
     audit(db, "owner-signer", "mandate.revoked", agent, { agent, tx: r.tx, credential_hash: r.credential_hash, reason: "paused by the CFO (finished by the sync)" }, now);
     done.push(agent);

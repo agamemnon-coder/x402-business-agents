@@ -79,6 +79,16 @@ describe("the agent trace", () => {
     expect(t!.steps.filter((s) => s.kind === "tool").every((s) => typeof s.ms === "number")).toBe(true);
   });
 
+  it("leaves out a tool call of another task by the same agent (review of 4.2)", async () => {
+    const db = openDb(":memory:");
+    audit(db, "support", "agent.tool", "dispute.D-1", { tool: "refund", result: "x" });
+    const t0 = (db.prepare("SELECT MAX(seq) AS s FROM audit_log").get() as { s: number }).s;
+    audit(db, "support", "agent.tool", "dispute.D-2", { tool: "check_data", result: "y" });
+    audit(db, "support", "agent.run", "dispute.D-2", { agent: "support", model: "m", status: "done", turns: 1, from_seq: t0 - 1 });
+    const [t] = agentTraces(db);
+    expect(t!.steps.filter((x) => x.kind === "tool").map((x) => x.tool)).toEqual(["check_data"]);
+  });
+
   it("leaves rows from before the run out of it", async () => {
     const [t] = agentTraces(await world());
     expect(t!.steps.some((s) => s.event === "upstream.paid")).toBe(false);

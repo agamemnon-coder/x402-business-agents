@@ -6,8 +6,7 @@
 // reports what the chain has and changes nothing.
 
 import { existsSync } from "node:fs";
-import { MANDATE_EXPIRES_IN_SECONDS } from "../config/policy.js";
-import type { PauseChain } from "../policy/pause.js";
+import { latestRevoked, resumeExpiresIn, type PauseChain } from "../policy/pause.js";
 import { keyPath, metalAgent } from "./agentCli.js";
 import { credentialFiles, loadCredentialFile, type LoadedMandate, type MandateAgent } from "./mandate.js";
 import { readMandateState } from "@metalntwx/metal-pay/mandates";
@@ -15,12 +14,12 @@ import { publicClient } from "./chain.js";
 
 const OWNER = "owner-business.key.json";
 
-async function states(agent: MandateAgent): Promise<{ m: LoadedMandate; bound: boolean; revoked: boolean }[]> {
-  const out: { m: LoadedMandate; bound: boolean; revoked: boolean }[] = [];
+async function states(agent: MandateAgent): Promise<{ m: LoadedMandate; bound: boolean; revoked: boolean; boundBlock: bigint }[]> {
+  const out: { m: LoadedMandate; bound: boolean; revoked: boolean; boundBlock: bigint }[] = [];
   for (const path of credentialFiles(agent)) {
     const m = loadCredentialFile(agent, path);
     const s = await readMandateState(publicClient(), m.principal, m.reference);
-    out.push({ m, bound: s.boundBlock > 0n, revoked: s.revoked });
+    out.push({ m, bound: s.boundBlock > 0n, revoked: s.revoked, boundBlock: s.boundBlock });
   }
   return out;
 }
@@ -44,7 +43,9 @@ export class LivePauseChain implements PauseChain {
     const all = await states(agent as MandateAgent);
     const live = all.filter((x) => x.bound && !x.revoked);
     if (live.length === 0) {
-      const done = all.find((x) => x.bound && x.revoked);
+      // A retry after a revoke that landed: the revoked mandate bound last is the one the pause revoked (a rebalance's
+      // revoked predecessors were bound earlier). Review of 4.2: file order picked an old one.
+      const done = latestRevoked(all);
       if (done) return { tx: null, credential_hash: done.m.credentialHash };
       throw new Error(`${agent}: no mandate bound on chain`);
     }
@@ -54,10 +55,12 @@ export class LivePauseChain implements PauseChain {
     return { tx: r.fields.get("transaction")?.[0] ?? null, credential_hash: m.credentialHash };
   }
 
-  async resume(agent: string): Promise<{ tx: string | null; credential_hash: string; spent_before?: string; budget?: string }> {
+  async resume(agent: string): Promise<{ tx: string | null; credential_hash: string; spent_before?: string; budget?: string; bound?: boolean }> {
     const all = await states(agent as MandateAgent);
     const live = all.filter((x) => x.bound && !x.revoked);
-    if (live.length === 1) return { tx: null, credential_hash: live[0]!.m.credentialHash };
+    // One bound already: either an earlier try of this resume bound it (a resume credential), or the pause's revoke
+    // never happened and the old one is still live (nothing was re-granted; review of 4.2).
+    if (live.length === 1) return { tx: null, credential_hash: live[0]!.m.credentialHash, bound: /\.resume-[^/]*\.credential\.json$/.test(live[0]!.m.credentialPath) };
     if (live.length > 1) throw new Error(`${agent}: ${live.length} mandates bound; expected one`);
     const hash = this.pausedHash(agent);
     const old = all.find((x) => x.bound && x.revoked && hash !== null && x.m.credentialHash.toLowerCase() === hash.toLowerCase())?.m;
@@ -70,6 +73,8 @@ export class LivePauseChain implements PauseChain {
     const payees = (st.fields.get("payee") ?? []).map((p) => { const [address, ...name] = p.split(" "); return `${address},${name.join(" ")}`; });
     if (!principal || payees.length === 0) throw new Error(`${agent}: cannot read the revoked mandate's principal and payees from the chain`);
     const cap = amount(st.fields.get("per-payment-cap")?.[0], "cap");
+    // The fresh mandate ends when the revoked one would have ended; an expired one is not revived (review of 4.2).
+    const expiresIn = resumeExpiresIn(Number(/^(\d+)/.exec(st.fields.get("expiry")?.[0] ?? "")?.[1] ?? NaN));
     const budget = amount(st.fields.get("budget")?.[0], "budget");
     const spent = amount(st.fields.get("spent")?.[0], "spent");
     const leftCents = Math.round(Number(budget) * 100) - Math.round(Number(spent) * 100);
@@ -79,7 +84,7 @@ export class LivePauseChain implements PauseChain {
     if (!existsSync(out)) {
       metalAgent([
         "mandate", "credential", "create", "--principal", principal, "--cap", cap, "--budget", left,
-        ...payees.flatMap((p) => ["--payee", p]), "--expires-in", String(MANDATE_EXPIRES_IN_SECONDS),
+        ...payees.flatMap((p) => ["--payee", p]), "--expires-in", String(expiresIn),
         "--description", `kit11 ${this.proposalTag(agent)} ${agent} resumed`, "--mandate-key-file", old.keyFile,
         "--key", keyPath(OWNER), "--out", out,
       ]);

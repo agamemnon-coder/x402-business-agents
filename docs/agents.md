@@ -80,3 +80,15 @@ So resuming binds a fresh mandate with the same cap and **what was left of the b
 chain stays what the CFO approved. Because that fresh mandate's spend starts at nothing, a later rebalance would not
 count what was spent before the pause; code therefore **refuses a mandate change for an agent resumed after a pause**
 (`refuseAfterResume`), before anything is issued or signed. In Thursday's run the pause comes after the rebalance.
+
+**Fresh review of 4.1 and 4.2 (31 October, evening).** No way was found for a paused agent, or a document it reads, to
+get money moved: every payment path (Metal purchases, refunds, sweeps, card purchases and holds, invoice payments)
+checks the pause before signing. Fixed, each with a test: a retried revoke could record an older revoked mandate (now
+the one bound last); a rebalance that left the resumed agent out could push the chain's budgets past 20.00 (now any
+rebalance after any resume is refused); a revoke cut off by a crash left no alarm (now a health alarm, and the runner
+finishes it at start); a resume gave the fresh mandate a new 30-day life (now it keeps the old expiry and never revives
+an expired one); a resume after a revoke that never happened blocked rebalances for nothing (now recorded as "not
+needed"); Sourcing kept the revoked mandate until a restart (now it looks up the bound one); a trace could show another
+task's tool calls (now only its own); a paused agent could not be resumed with the switch off (its rule stays while it
+is paused). **Known limit:** pausing counts as tightening, so one Face ID on the phone does it; a compromised relay page
+could get a pause signed. That stops an agent, never pays anyone, and is undone with both passkeys.

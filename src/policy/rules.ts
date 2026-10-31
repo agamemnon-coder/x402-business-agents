@@ -76,16 +76,16 @@ export function rules(db: DB): Rule[] {
   const payees = (db.prepare("SELECT DISTINCT name FROM beneficiaries ORDER BY name").all() as { name: string }[]).map((b): Rule => ({
     key: `counterparty:${b.name}`, label: `${b.name} (Airwallex payee)`, unit: "", kind: "choice", choices: ["allowed", "blocked"], fallback: "allowed",
   }));
-  return [...STATIC, ...pauseRules(), ...outside, ...tasks, ...payees];
+  return [...STATIC, ...pauseRules(db), ...outside, ...tasks, ...payees];
 }
 
 /**
  * 4.2 The CFO pauses one agent with Face ID: its Metal mandate is revoked on chain and its card frozen at Airwallex
  * (src/policy/pause.ts); here, Purser refuses its payments before signing. Only with the agents switch on.
  */
-function pauseRules(): Rule[] {
-  if (!agentsOn()) return [];
-  return AGENTS.map((a): Rule => ({ key: `pause.${a}`, label: `${agentName(a)}: paused by the CFO (Metal mandate revoked, card frozen)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off", agent: a }));
+function pauseRules(db: DB): Rule[] {
+  // A paused agent keeps its rule even with the switch off, so it can still be resumed (review of 4.2).
+  return AGENTS.filter((a) => agentsOn() || paused(db, a)).map((a): Rule => ({ key: `pause.${a}`, label: `${agentName(a)}: paused by the CFO (Metal mandate revoked, card frozen)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off", agent: a }));
 }
 
 /** Whether the CFO has paused this agent (4.2). */

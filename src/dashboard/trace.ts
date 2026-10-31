@@ -88,7 +88,8 @@ export function agentTraces(db: DB, all?: Row[]): Trace[] {
     const nextRun = runs.find((r) => r.actor === agent && r.seq > run.seq)?.seq ?? Infinity;
     // Runs recorded before the trace existed have no from_seq: they start at their first tool call.
     const from = num(p.from_seq) ?? ((rows.find((r) => r.seq > prevRun && r.seq < run.seq && r.actor === agent && r.event === "agent.tool")?.seq ?? run.seq) - 1);
-    const mine = rows.filter((r) => r.seq > Math.max(from, prevRun) && r.seq <= run.seq && r.actor === agent && r.event !== "agent.run");
+    // Tool calls of this run only (same task); what they caused is the agent's other rows in between (review of 4.2).
+    const mine = rows.filter((r) => r.seq > Math.max(from, prevRun) && r.seq <= run.seq && r.actor === agent && r.event !== "agent.run" && (r.event !== "agent.tool" || r.subject === run.subject));
     const decision = rows.find((r) => r.seq > run.seq && r.seq < nextRun && r.actor === agent && r.event === DECISION[agent]) ?? null;
 
     const steps: TraceStep[] = [];

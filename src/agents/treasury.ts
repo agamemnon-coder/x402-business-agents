@@ -10,7 +10,7 @@ import {
 } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { issueReplacementCredential } from "../executors/ownerSigner.js";
-import { refuseAfterResume } from "../policy/pause.js";
+import { AGENTS_ALL, refuseAfterResume } from "../policy/pause.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { activeMandate, mandateSpent, type LoadedMandate } from "../metal/mandate.js";
@@ -94,8 +94,9 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
     sellCents, oldUpstreamCents: 0, newUpstreamCents: ev.liveOfferCents, refusal: ev.refusal.reason, mandates: [...current.values()].map((c) => c.now),
   });
   const steps = planReplaceSteps([...current.values()].map((c) => c.now), design.targets);
-  // 4.2 An agent resumed after a pause has a fresh mandate whose spend restarted at nothing: no rebalance over it yet.
-  refuseAfterResume(db, steps.map((s) => s.agent));
+  // 4.2 After any resume a fresh mandate's spend restarted at nothing, so the budgets on chain no longer add up to what
+  // was spent: no rebalance at all until that is carried (review of 4.2: leaving the resumed agent out still leaked).
+  refuseAfterResume(db, AGENTS_ALL);
   const firstId = nextProposalId(db);
 
   // Credentials are issued before approval (off-chain, no gas), so their hash goes into the terms.

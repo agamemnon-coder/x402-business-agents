@@ -70,6 +70,8 @@ export class SourcingAgent {
       const id = Number(insert.run(0, out.nonce ?? null, null, "REFUSED", out.reason, now).lastInsertRowid);
       if (held) releaseHold(this.db, ref, out.reason);
       audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason });
+      // A revoked mandate (a pause, or a replace) is not used again: the next purchase looks up the bound one.
+      if (out.reason.startsWith("mandate_revoked")) this.mandate = undefined;
       return { ok: false, purchaseId: id, reason: out.reason, inDoubt: false };
     }
     // In doubt: the purchase may have settled. Look its nonce up before anything else; never pay twice.

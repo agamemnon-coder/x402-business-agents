@@ -10,7 +10,8 @@ import { capRefusal, loosens, rules } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { fourEyes } from "../src/policy/fourEyes.js";
 import { wantCardStatus } from "../src/policy/cards.js";
-import { executePauseChange, paused, resumedSince, syncPauses, type PauseChain } from "../src/policy/pause.js";
+import { executePauseChange, latestRevoked, paused, pausesNotRevoked, resumeExpiresIn, resumedSince, syncPauses, type PauseChain } from "../src/policy/pause.js";
+import { health } from "../src/ops/health.js";
 import { setupCards } from "../src/policy/cards.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
 import { buyPlan } from "../src/agents/cardBuyer.js";
@@ -152,5 +153,61 @@ describe("a mandate change after a resume", () => {
     expect(() => refuseAfterResume(db, ["sourcing", "treasury"])).toThrow(/resumed after a pause/);
     expect(() => refuseAfterResume(db, ["treasury", "support"])).not.toThrow();
     delete process.env.KIT11_AGENTS;
+  });
+});
+
+describe("review of 4.2 (31 October)", () => {
+  beforeEach(() => { process.env.KIT11_AGENTS = "on"; });
+  afterEach(() => { delete process.env.KIT11_AGENTS; });
+
+  // A retried revoke whose first try landed on chain must record the mandate the pause revoked: the revoked one bound
+  // last. A rebalance also revokes its predecessor, and those come earlier.
+  it("picks the revoked mandate bound last, not the first one in file order", () => {
+    expect(latestRevoked([
+      { hash: "0xold-replaced", bound: true, revoked: true, boundBlock: 10n },
+      { hash: "0xpaused", bound: true, revoked: true, boundBlock: 50n },
+      { hash: "0xnever", bound: false, revoked: false, boundBlock: 0n },
+    ])?.hash).toBe("0xpaused");
+  });
+
+  it("refuses a rebalance after any resume, also one that leaves the resumed agent out", async () => {
+    const db = openDb(":memory:");
+    await pause(db, "sourcing", "on");
+    await pause(db, "sourcing", "off");
+    const { refuseAfterResume, AGENTS_ALL } = await import("../src/policy/pause.js");
+    expect(() => refuseAfterResume(db, AGENTS_ALL)).toThrow(/sourcing was resumed/);
+  });
+
+  it("raises a health alarm while a paused agent's mandate is not revoked yet", async () => {
+    const db = openDb(":memory:");
+    await expect(pause(db, "support", "on", chain({ revoke: "rpc down" }))).rejects.toThrow();
+    expect(pausesNotRevoked(db)).toEqual(["support"]);
+    expect(health(db, now).alerts.map((a) => a.code)).toContain("pause_not_revoked");
+    await syncPauses(db, chain(), now);
+    expect(pausesNotRevoked(db)).toEqual([]);
+  });
+
+  it("keeps the revoked mandate's expiry on resume, and refuses one that has expired", () => {
+    expect(resumeExpiresIn(1_000_000 + 3600, 1_000_000)).toBe(3600);
+    expect(() => resumeExpiresIn(1_000_000 - 1, 1_000_000)).toThrow(/expired/);
+  });
+
+  it("records a resume only when a fresh mandate was bound; a revoke that never happened blocks no rebalance", async () => {
+    const db = openDb(":memory:");
+    await expect(pause(db, "support", "on", chain({ revoke: "rpc down" }))).rejects.toThrow();
+    const c = chain();
+    c.resume = async (agent) => { c.calls.push(`resume ${agent}`); return { tx: null, credential_hash: "0xstill", bound: false }; };
+    await pause(db, "support", "off", c);
+    expect(events(db, "mandate.resumed")).toEqual([]);
+    expect(resumedSince(db, "support")).toBe(false);
+    expect(paused(db, "support")).toBe(false);
+  });
+
+  it("keeps the pause rule while an agent is paused, even with the agents switched off, so it can be resumed", async () => {
+    const db = openDb(":memory:");
+    await pause(db, "support", "on");
+    delete process.env.KIT11_AGENTS;
+    expect(rules(db).some((r) => r.key === "pause.support")).toBe(true);
+    expect(rules(db).some((r) => r.key === "pause.sourcing")).toBe(false);
   });
 });

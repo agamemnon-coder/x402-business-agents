@@ -33,6 +33,9 @@ import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/ca
 import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { existsSync, readFileSync } from "node:fs";
+import { agentsOn } from "../config/agents.js";
+import { pausedCredential, pausesNotRevoked, syncPauses } from "../policy/pause.js";
+import { LivePauseChain } from "../metal/pauseChain.js";
 
 const args = process.argv.slice(2);
 const once = args.includes("--once");
@@ -158,6 +161,16 @@ async function quarantineTick(): Promise<void> {
   const holds = recoverHolds(db);
   if (holds.settled + holds.released + holds.open) console.log(`${stamp()} recover  holds: ${holds.settled} settled, ${holds.released} released, ${holds.open} still open`);
   for (const r of await resumeInterrupted(db, execute)) console.log(`${stamp()} recover  ${r.id} resumed after a restart: ${redactSecrets(r.outcome)}`);
+  // 4.2 A pause whose revoke failed or was cut off by a crash: finish it now (review of 4.2). Purser refused the agent
+  // all along; this makes the chain refuse it too. A failure here stays a health alarm until it succeeds.
+  if (agentsOn() && pausesNotRevoked(db).length) {
+    try {
+      const done = await syncPauses(db, new LivePauseChain(() => "resume-sync", (agent) => pausedCredential(db, agent)));
+      if (done.length) console.log(`${stamp()} recover  paused agent(s) revoked on chain: ${done.join(", ")}`);
+    } catch (e) {
+      console.error(`${stamp()} recover  revoke of a paused agent failed: ${redactSecrets((e as Error).message)}`);
+    }
+  }
 }
 
 // Monitoring (B7): each alarm is logged once when it is raised and once when it clears; the relay's /health shows them.

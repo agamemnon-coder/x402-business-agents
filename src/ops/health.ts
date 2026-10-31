@@ -6,6 +6,7 @@
 import type { DB } from "../db/open.js";
 import { lastReconciliation } from "../finance/reconcile.js";
 import { frozen } from "../policy/rules.js";
+import { pausesNotRevoked } from "../policy/pause.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -29,6 +30,9 @@ export function health(db: DB, now = new Date()): Health {
   const alerts: Alert[] = [];
 
   const freeze = db.prepare("SELECT ts FROM audit_log WHERE event = 'policy.changed' AND subject = 'freeze' ORDER BY seq DESC LIMIT 1").get() as { ts: string } | undefined;
+  // 4.2 A paused agent whose mandate is still bound on chain (a failed or interrupted revoke): Purser refuses it, but
+  // the chain would not; npm run pause -- sync (also run at the runner's start) finishes it.
+  for (const a of pausesNotRevoked(db)) alerts.push({ code: "pause_not_revoked", severity: "critical", since: null, words: `The ${a} agent is paused, but its Metal mandate is not revoked on chain yet; run npm run pause -- sync.` });
   if (frozen(db)) alerts.push({ code: "emergency_stop", severity: "critical", since: freeze?.ts ?? null, words: "The CFO pulled the emergency stop: no agent pays until it is lifted with Face ID." });
 
   const stopped = db.prepare("SELECT key, updated_at FROM settings WHERE key LIKE 'stop.%' AND value = 'on' ORDER BY key").all() as { key: string; updated_at: string }[];
