@@ -50,10 +50,10 @@ displays was not checked.
 
 | Claim | Value | Proof | Changed |
 |---|---|---|---|
-| Red team | 39 of 39 failed, 0 inconclusive: 37 stopped before anything moved, 2 found afterwards (a hidden card charge by the reconciliation, a rewritten log row by `npm run verify`); 35 scripted attacks and 4 documents written by Claude Opus as the attacker, in a throwaway test world | `docs/redteam/report.json` (30 Oct; `caught` per attempt) | The harness now gives every attempt an outcome, and inconclusive never counts as blocked. The task card is tested at a hotel while still fresh (`MERCHANT_CATEGORY_NOT_ALLOWED`). The revoked agent is named correctly. The film's "thirty-four" is now thirty-nine. |
+| Red team | 30 Oct: 39 of 39 failed, 0 inconclusive. 31 Oct, three runs in a row: 118 of 120 blocked, 2 inconclusive (bank-change notices the classifier read as data corrections: nothing was paid or changed, but not counted as blocked; [runs](runs/redteam-2026-10-31/README.md)). On 30 Oct: 37 stopped before anything moved, 2 found afterwards (a hidden card charge by the reconciliation, a rewritten log row by `npm run verify`); 35 scripted attacks and 4 documents written by Claude Opus as the attacker, in a throwaway test world | `docs/redteam/report.json` (30 Oct; `caught` per attempt) | The harness now gives every attempt an outcome, and inconclusive never counts as blocked. The task card is tested at a hotel while still fresh (`MERCHANT_CATEGORY_NOT_ALLOWED`). The revoked agent is named correctly. The film's "thirty-four" is now thirty-nine. |
 | Duplicate invoices | A paid invoice sent again as "btx-dup" or with an en dash is refused | `test/invoice-duplicate-key.test.ts`; red team document 4 | Found by the red team and fixed. |
 | Scenario Lab | 18 of 18 as expected | `docs/lab/results.json` | hardening.md said 12. |
-| Tests | 974 in 123 files | `npx vitest run` | |
+| Tests | 1074 in 136 files (31 Oct, evening) | `npx vitest run` | |
 | Speed limit (Sourcing agent) | 30 payments a minute, 4.00 test USD an hour | `src/config/policy.ts` `VELOCITY` | Kept on purpose, above the busiest minute of the recorded run (18). |
 | Hidden card payment | Found by the reconciliation within the hour, not prevented | `src/ops/health.ts` `RECONCILE_EVERY_MS`; red team `hidden-payment` | Was daily. The runner now reconciles every hour, and an alarm fires after three missed rounds. |
 | Four eyes | Optional, off in the recorded run | `src/policy/fourEyes.ts` | Was "Above your threshold, two different people approve". |
@@ -146,3 +146,9 @@ code on 30 October; the sentences below were changed on its findings.
 - **compliance.md:** Airwallex's KYC and screening are its own, not shown here; agent cardholders carry placeholder details in the sandbox; reconciliation is hourly; the scope of `npm run verify` is stated exactly.
 - **airwallex.md:** `GET /fx/rates/current` and `POST /beneficiaries/schema` are called; a bank-detail change needs four eyes at any amount once four eyes is on; fees ranged from €13.40 to €13.47.
 - **metal-award.md:** the clearing customer was a test account in the rehearsal-3 world, not Summit; clearing sales did run after P-0009; the sweep-wallet allowlist was live in a separate world.
+
+**What "refused on chain" means here.** Each agent's limits are its mandate, bound on chain in Metal's mandate contract.
+When a payment would break them, Metal's facilitator checks it against that on-chain mandate and refuses it before
+anything is sent: nothing moves and no transaction reverts (the refusal and its reason, e.g. `mandate_cap_exceeded`,
+come back from Metal). `metal-agent mandate pull --record-refusal` can also record such a refusal on chain; the recorded
+run did not. Pages say "refused on chain" for this; it is the chain's mandate that refuses, checked before sending.

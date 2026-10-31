@@ -1,4 +1,6 @@
-# Purser: the hybrid video (4:10, and a 60-second cut)
+# Purser: the hybrid video (target ≤ 3:55, and a 60-second cut)
+
+**To fix before recording (31 Oct review):** this draft runs 4:10, over the 4:00 limit; cut 15 s and rebuild it from Thursday's run.
 
 The jury asks for a video walkthrough of a working demo, so this cut mixes four kinds of footage:
 - **Max**: his own voice and face;
@@ -14,7 +16,7 @@ Footage legend: **[MAX]** Max on camera or voice only; **[LIVE]** `/live?present
 |---|---|---|
 | 0:00 | [MAX] | I'm Max. *(One sentence on who you are.)* Last year, victims reported over three billion dollars in losses to the FBI from business email compromise: fake invoices and changed bank details. *(On screen: "FBI IC3, 2025 Internet Crime Report: $3,046,598,558".)* |
 | 0:15 | [MAX] | Now AI agents are starting to read those emails and pay those invoices. So who holds the pen? |
-| 0:22 | [LIVE] title; on screen: "Kit 11 · three agents, one Metal account · Operations = sourcing, Sales = support, Finance = treasury" | Purser. Your AI agents spend through Airwallex and Metal. The CFO stays in control. |
+| 0:22 | [LIVE] title; on screen: "Kit 11 · three agents, one Metal account · the Sourcing, Support and Treasury agents" | Purser. Your AI agents spend through Airwallex and Metal. The CFO stays in control. |
 | 0:30 | [LIVE] card | On Airwallex, each agent has its own company card. Over its limit, Airwallex itself declines it. The CFO raises the limit with Face ID, and the same purchase goes through. |
 | 0:45 | [LIVE] refuse | On Metal, agents pay per request under mandates that live on chain. The supplier doubles its price: the payment bounces off the mandate. Nothing moves. |
 | 0:58 | [LIVE] fx | A euro bill: only the euro shortfall is converted, one Face ID covers the rate, the payee and the most the fee may be, and Airwallex sends it by SWIFT; in the sandbox it is marked paid. |

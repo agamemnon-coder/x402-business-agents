@@ -115,7 +115,7 @@ From Friday run 1, 30 October 2026, with a Dispute desk case afterwards:
 - 194 audit rows, hash chain intact.
 
 Red team (35 scripted attacks plus 4 documents written by Claude Opus as the attacker, run against in-memory stand-ins
-for Airwallex, Metal and the phone): 39 of 39 attacks failed, 0 inconclusive; 37 were stopped before the attack
+for Airwallex, Metal and the phone): 39 of 39 attacks failed, 0 inconclusive on 30 October (three runs on 31 October: 118 of 120 blocked, 2 inconclusive, none paid anything); 37 were stopped before the attack
 succeeded (a burst of payments at the speed limit, after 30 allowed ones) and 2 were found afterwards, not prevented (a
 hidden card charge by the reconciliation, a rewritten log row by `npm run verify`). Scenario Lab: 18 of 18 stories as expected (run against stand-ins for Airwallex and Metal).
 

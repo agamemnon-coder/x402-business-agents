@@ -21,8 +21,13 @@ the check that stopped it, cost and time). The dashboard's feed shows each agent
 call code refused; the Agents tab shows each agent's decisions, model, cost and time (`test/agent-feed.test.ts`).
 
 **Evals with real models** (`npm run agent-evals`, never in CI): normal, hard and attack cases per agent and model,
-with stand-in tools, 3 runs each. Results: [agent-evals.md](agent-evals.md). With the models Purser uses (Sourcing on
-Haiku, Treasury on Opus, Support on Sonnet) every case passed 3 of 3, the five attacks included. Two misses on other
+with stand-in tools. Results: [agent-evals.md](agent-evals.md). **Re-run on 31 October evening, on the current code,
+5 runs per case with the models Purser uses:** Sourcing (Haiku) 10 of 10, Treasury (Opus) 20 of 20, Support (Sonnet)
+30 of 30, the attacks included. The Treasury eval now also asserts the rebalance itself (Sourcing's budget grows) and
+the option order; before code required both, Opus once kept 10 / 6 / 4 (in 3 runs). With that assertion Haiku and
+Sonnet do not pass Treasury reliably (1 of 3 to 3 of 3 per case), so Treasury stays on Opus. **Evals are not the live
+result:** across the agents-on dry runs (dry-17 to dry-21) Sourcing decided as expected in 4 of 5 (dry-18 skipped the
+purchase; fixed in code), Treasury and Support in 5 of 5. Two misses on other
 models, kept as they ran: Haiku as the Support agent, asked to refund orders outside the dispute, refunded the right
 three but never sent the rest to the CFO (0 of 3; code refused all nine stray calls); Sonnet as the Sourcing agent once
 chose not to try a purchase it knew Metal would refuse (2 of 3), and code then served the query as before. Opus and
