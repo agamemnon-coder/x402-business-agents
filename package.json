@@ -41,6 +41,7 @@
     "ask": "tsx src/cli/ask.ts",
     "lab": "tsx src/cli/lab.ts",
     "books": "tsx src/cli/books.ts",
+    "t0": "tsx src/cli/t0.ts",
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
     "receivables": "tsx src/cli/receivables.ts",
