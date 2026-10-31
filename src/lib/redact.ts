@@ -24,8 +24,10 @@ export function redactSecrets(text: string, env: NodeJS.ProcessEnv = process.env
     if (v && v.length >= 8) out = out.split(v).join("[redacted]");
   }
   // Derived secrets: the relay token (from the Cloudflare token unless set) and the viewer key (review N7).
-  const token = relayToken(env);
-  if (token) for (const v of [token, viewKey(token)]) out = out.split(v).join("[redacted]");
+  // A local relay token kept across restarts (KIT11_LOCAL_RELAY_TOKEN, the dry run) is one too, with its viewer key.
+  for (const token of [relayToken(env), env.KIT11_LOCAL_RELAY_TOKEN]) {
+    if (token && token.length >= 8) for (const v of [token, viewKey(token)]) out = out.split(v).join("[redacted]");
+  }
   return out
     .replace(/https:\/\/rpc-testnet\.metalntwx\.com\/\S*/g, "[rpc-url]")
     .replace(/\/v1\/[A-Za-z0-9_-]{16,}/g, "/v1/[redacted]")

@@ -7,6 +7,7 @@
 // ledger that is not a dry-* world. Writes a step log with timings to the out dir (default: the scratchpad's qa/).
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { createWriteStream, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
@@ -28,7 +29,8 @@ mkdirSync(out, { recursive: true });
 mkdirSync(keys, { recursive: true });
 const PORT = Number(process.env.KIT11_RELAY_PORT ?? 4466);
 const url = `http://localhost:${PORT}`;
-const env = { ...process.env, KIT11_APPROVER: "test-cfo", KIT11_RELAY_PORT: String(PORT) };
+// One local relay token for every start of the runner, so a restart keeps the phones' viewer link (never printed).
+const env = { ...process.env, KIT11_APPROVER: "test-cfo", KIT11_RELAY_PORT: String(PORT), KIT11_LOCAL_RELAY_TOKEN: randomBytes(32).toString("hex") };
 const repo = resolve(import.meta.dirname, "../..");
 
 const log = createWriteStream(join(out, "dryrun.log"));

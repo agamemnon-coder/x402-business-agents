@@ -38,7 +38,11 @@ const args = process.argv.slice(2);
 const once = args.includes("--once");
 let cfg: RelayConfig;
 if (args.includes("--local")) {
-  const token = randomBytes(32).toString("hex");
+  // A fresh token each start, unless the caller keeps one across restarts (the dry run restarts the runner on purpose;
+  // a new token would void the phones' viewer link). The hosted relay keeps its own token anyway.
+  const kept = process.env.KIT11_LOCAL_RELAY_TOKEN ?? "";
+  if (kept && !/^[0-9a-f]{64}$/.test(kept)) throw new Error("KIT11_LOCAL_RELAY_TOKEN must be 64 hex characters");
+  const token = kept || randomBytes(32).toString("hex");
   const { url } = await startLocalRelay({ port: Number(process.env.KIT11_RELAY_PORT ?? 4400), token });
   cfg = { url, origin: url, rpId: new URL(url).hostname, token };
 } else {

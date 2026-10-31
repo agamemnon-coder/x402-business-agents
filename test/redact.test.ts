@@ -46,6 +46,12 @@ describe("redacting the RPC URL (M1)", () => {
     expect(redactSecrets(text, env)).toBe("token [redacted] view [redacted]");
   });
 
+  it("also removes a kept local relay token and its viewer key", () => {
+    const local = "ab".repeat(32);
+    const env = { KIT11_LOCAL_RELAY_TOKEN: local };
+    expect(redactSecrets(`token ${local} view ${viewKey(local)}`, env)).toBe("token [redacted] view [redacted]");
+  });
+
   it("keeps it out of the audit log, so out of the dashboard and the relay", async () => {
     process.env.METAL_RPC_URL = URL_;
     const db = openDb(":memory:");
