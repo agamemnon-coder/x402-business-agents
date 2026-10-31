@@ -4,7 +4,7 @@
 
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -30,6 +30,7 @@ export function buildPages(): Pages {
     lab: labPage(),
     metal: METAL_PAGE,
     metalReport: METAL_REPORT ?? "",
+    visa: VISA_PAGE,
     approve: read("../approve/page.html"),
     enrol: read("../approve/enrol.html"),
     policy: read("../approve/policy.html"),
@@ -37,7 +38,7 @@ export function buildPages(): Pages {
     css: read("../approve/style.css"),
     font: FONT.toString("base64"),
     images: Object.fromEntries(Object.entries(LOGOS).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])),
-    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
+    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }
 

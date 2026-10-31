@@ -9,7 +9,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
-import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { TRY_MAX_CHARS, tryPurserSafely } from "../try/engine.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
@@ -41,6 +41,7 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   const lab = labPage();
   app.get("/lab", page(LAB_CSP, () => lab));
   app.get("/metal", page(METAL_CSP, () => METAL_PAGE));
+  app.get("/visa", page(VISA_CSP, () => VISA_PAGE));
   const report = METAL_REPORT;
   if (report) app.get("/metal/report", page(METAL_REPORT_CSP, () => report));
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
@@ -69,7 +70,7 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
   const { server, url } = await startJudge(Number(process.env.PORT ?? 4311));
   if (args.includes("--check")) {
     let ok = true;
-    for (const path of ["/", "/metal", "/metal/report", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
+    for (const path of ["/", "/metal", "/metal/report", "/visa", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
       const res = await fetch(`${url}${path}`);
       const body = await res.text();
       const good = res.status === 200 && body.length > 1000;
@@ -85,6 +86,7 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
     `  ${url}/?recorded     the CFO dashboard at the end of the recorded run`,
     `  ${url}/live          the working day on two rails, Airwallex and Metal`,
     `  ${url}/try           type a task for an agent (offline, code reads it)`,
+    `  ${url}/visa          agent recognition, then the agent's own Airwallex Visa card`,
     `  ${url}/demo          the run, step by step`,
     `  ${url}/month         a simulated month in 90 seconds`,
     `  ${url}/lab           the Scenario Lab, 18 stories`,

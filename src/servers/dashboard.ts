@@ -2,6 +2,7 @@
 // so it holds no key and cannot approve or move money. "Review: approve or reject" hands over to the approval page.
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
+import { visaPage } from "../visa/page.js";
 import { TRY_MAX_CHARS, tryPurserSafely } from "../try/engine.js";
 import { buildFilm } from "../film/film.js";
 import { filmTimeline } from "../film/script.js";
@@ -120,6 +121,10 @@ const METAL_FILE = new URL("../../docs/demo/metal.json", import.meta.url);
 const metalData = () => JSON.parse(readFileSync(METAL_FILE, "utf8")) as { dispute: DisputeCase | null };
 export const METAL_PAGE = readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8").replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
 export const METAL_CSP = cspFor(METAL_PAGE);
+/** /visa: agent recognition, then the agent's own Airwallex Visa card (src/visa/page.ts). */
+export const VISA_PAGE = visaPage();
+// No script on /visa: a style-only policy, as for the evidence report.
+export const VISA_CSP = ["default-src 'none'", `style-src ${inlineHash(VISA_PAGE, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
 export const METAL_REPORT = (() => {
   const c = metalData().dispute;
@@ -203,6 +208,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/metal", (_req, res) => {
     res.setHeader("Content-Security-Policy", METAL_CSP);
     res.type("html").send(METAL_PAGE);
+  });
+  app.get("/visa", (_req, res) => {
+    res.setHeader("Content-Security-Policy", VISA_CSP);
+    res.type("html").send(VISA_PAGE);
   });
   app.get("/metal/report", (_req, res, next) => {
     if (!METAL_REPORT) return next();

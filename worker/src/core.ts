@@ -29,6 +29,7 @@ export interface Pages {
   metal: string;
   /** The recorded case's evidence report (no script); empty when no case was recorded. */
   metalReport: string;
+  visa: string;
   approve: string;
   enrol: string;
   /** The CFO policy editor. */
@@ -40,7 +41,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -102,6 +103,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/try") return page(pages.try, pages.csp.try);
   if (path === "/lab") return page(pages.lab, pages.csp.lab);
   if (path === "/metal") return page(pages.metal, pages.csp.metal);
+  if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
   if (path === "/metal/report" && pages.metalReport) return page(pages.metalReport, pages.csp.metalReport);
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);

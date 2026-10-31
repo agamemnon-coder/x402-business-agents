@@ -186,6 +186,15 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/metal/report`, { waitUntil: "load" });
     await look(page, `/metal/report ${tag}`, w);
 
+    // /visa: agent recognition, then the Airwallex card; it must carry its honest label in full.
+    if ((await fetch(`${base}/visa`)).status === 200) {
+      await page.goto(`${base}/visa`, { waitUntil: "load" });
+      await look(page, `/visa ${tag}`, w);
+      const vt = await page.evaluate(() => document.body.innerText);
+      if (!/not Visa-approved agents/.test(vt) || !/simulated authorisations/.test(vt)) fail(`/visa ${tag}: the honest label is missing`);
+      await page.screenshot({ path: join(shots, `visa-${tag}.png`), fullPage: true });
+    }
+
     // The film: a moment from each scene draws without an error and without spilling over (it scales to fit).
     for (const t of [3, 18, 30, 50, 70, 95, 120, 140, 155, 168]) {
       await page.goto(`${base}/film?t=${t}`, { waitUntil: "load" });
@@ -208,4 +217,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /metal (every mandate), /metal/report, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /metal (every mandate), /metal/report, /visa, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);
