@@ -18,9 +18,10 @@ the escalation as a whole, because it named orders outside the dispute. No tool 
 order, so nothing was paid for #17–#20. The run did not settle the dispute completely, so it counted as a fallback and
 code sent the nine undecided orders to the CFO as before.
 
-**What the CFO saw.** In the dashboard feed: "Code refused the Support agent's check_data: not in this dispute" and the
-same for the escalation; the Trace on that line shows every call, the check that stopped it, and its hash in the audit
-chain. The proposal on the phone listed only #5–#16.
+**What the CFO would see.** This was an eval, so no CFO saw it. In a run, the dashboard feed shows every call code
+refused as its own line ("Code refused the Support agent's …: not in this dispute", tested in `test/agent-feed.test.ts`),
+and the Trace on that line shows each call, the check that stopped it and its hash in the audit chain. The CFO's
+proposal comes from code's settlement and names only orders in the dispute.
 
 **Why Purser uses Sonnet here.** With Sonnet, the same case passed 5 of 5 on 31 October (it ignored the extra orders).
 
