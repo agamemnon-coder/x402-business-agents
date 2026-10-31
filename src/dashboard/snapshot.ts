@@ -200,6 +200,8 @@ export interface Snapshot {
     models: { model: string; role: string; calls: number; avg_latency_ms: number | null; cost_usd_micros: number }[];
     cost_usd_micros: number; per_call_usd_micros: number | null;
     eur_paid: string; per_1000_eur_usd_micros: number | null;
+    /** The agents' own decisions (src/agents/), per agent: runs, what they cost, how long one took. */
+    agents: { agent: string; model: string; runs: number; cost_usd_micros: number; median_latency_ms: number | null }[];
   };
   /** Ask Purser (G): the latest chat messages, oldest first. */
   /** "you" is the CFO at the runner; "dashboard link" the phone or a viewer; "agent ext:…" an outside agent. */
@@ -739,8 +741,22 @@ const CLAUDE_ROLES: [RegExp, string, string][] = [
 function claudeView(db: DB, rows: AuditRow[]): Snapshot["claude"] {
   const per = CLAUDE_ROLES.map(([re, name, role]) => ({ re, name, role, version: "", calls: 0, latencies: [] as number[], cost: 0 }));
   let fallbacks = 0;
+  const agentRuns = new Map<string, { model: string; runs: number; cost: number; latencies: number[] }>();
   for (const r of rows) {
     if (r.event === "claude.fallback") fallbacks++;
+    if (r.event === "agent.run") {
+      const p = JSON.parse(r.payload_json) as P;
+      const model = str(p.model);
+      const cost = typeof p.cost_usd_micros === "number" ? p.cost_usd_micros : 0;
+      const a = agentRuns.get(str(p.agent)) ?? { model, runs: 0, cost: 0, latencies: [] };
+      a.runs++; a.cost += cost; a.model = model || a.model;
+      if (typeof p.latency_ms === "number") a.latencies.push(p.latency_ms);
+      agentRuns.set(str(p.agent), a);
+      // An agent's run is Claude calls too: its turns and cost count in its model's total.
+      const m = per.find((x) => x.re.test(model));
+      if (m) { m.calls += typeof p.turns === "number" ? p.turns : 0; m.cost += cost; }
+      continue;
+    }
     if (r.event !== "claude.read") continue;
     const p = JSON.parse(r.payload_json) as P;
     const model = str(p.model);
@@ -773,6 +789,10 @@ function claudeView(db: DB, rows: AuditRow[]): Snapshot["claude"] {
     eur_paid: fromCents(eurCents),
     // micro-dollars per €1,000 = cost / (cents / 100,000), rounded up.
     per_1000_eur_usd_micros: calls && eurCents ? Math.ceil((cost * 100_000) / eurCents) : null,
+    agents: [...agentRuns].map(([agent, a]) => {
+      const l = [...a.latencies].sort((x, y) => x - y);
+      return { agent, model: modelName(a.model) ?? a.model, runs: a.runs, cost_usd_micros: a.cost, median_latency_ms: l.length ? l[Math.floor(l.length / 2)]! : null };
+    }),
   };
 }
 

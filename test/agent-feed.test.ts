@@ -43,4 +43,13 @@ describe("the agents in the CFO's feed", () => {
   it("never shows a raw agent event name", () => {
     for (const f of buildSnapshot(world()).feed) expect(f.text).not.toMatch(/agent\.(run|tool)|price_rise\.|dispute\.settled/);
   });
+
+  it("counts each agent's decisions and what they cost, for the dashboard", () => {
+    const c = buildSnapshot(world()).claude;
+    expect(c.agents).toEqual([
+      { agent: "sourcing", model: "Haiku", runs: 1, cost_usd_micros: 500, median_latency_ms: 6000 },
+      { agent: "treasury", model: "Opus", runs: 1, cost_usd_micros: 20000, median_latency_ms: 9000 },
+    ]);
+    expect(c.cost_usd_micros).toBe(20500);
+  });
 });

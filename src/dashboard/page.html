@@ -1078,7 +1078,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       el("div", "sect flush", [txt("h2", "", "How the work is split across Claude's models"), txt("span", "hint", d.claude.calls + " calls in this run, " + usdMicros(d.claude.cost_usd_micros).replace("$", "USD ") + " in all at Anthropic's list prices; Metal and Airwallex enforce the limits")]),
       el("div", "splitgrid", d.claude.models.map(function (m) {
         return el("div", "m", [txt("div", "k", m.model), txt("div", "v", m.role.charAt(0).toUpperCase() + m.role.slice(1)), txt("div", "sub", m.calls + " calls · " + usdMicros(m.cost_usd_micros).replace("$", "USD "))]);
-      }).concat([el("div", "m code", [txt("div", "k", "Code"), txt("div", "v", "Checks every answer, decides every payment"), txt("div", "sub", "limits, prices, budgets, the FX check")])])),
+      }).concat([el("div", "m code", [txt("div", "k", "Code"), txt("div", "v", "Checks every answer and every agent's call"), txt("div", "sub", "limits, prices, budgets, the FX check")])])),
     ]) : null;
     var others = el("section", "panel split", [
       el("div", "sect flush", [txt("h2", "", "Also on the same limits")]),
@@ -1095,7 +1095,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         fact("On chain (Metal mandate)", a.mandate ? [tusd(a.mandate.policy_cap || a.mandate.cap) + " a payment", txt("div", "sub", "budget " + group(a.mandate.budget) + " test USD" + (a.mandate.policy_cap ? "; mandate cap " + a.mandate.cap : ""))] : ["No mandate"]),
         fact("Speed limit", [a.velocity.per_minute + " payments a minute", txt("div", "sub", (cents(a.velocity.usdz_per_hour) ? group(a.velocity.usdz_per_hour) + " test USD and " : "") + eur(a.velocity.eur_per_hour) + " an hour; over it, code stops the agent")]),
         fact("Claude", a.models.map(function (m) { return el("div", "", [txt("b", "", m.model.replace("Claude ", "")), " " + m.job]); })),
-      ]);
+      ].concat((d.claude && d.claude.agents || []).filter(function (x) { return x.agent === a.id; }).map(function (x) {
+        // The agent's own decisions in this run (its Claude loop with tools), what they cost and how long one took.
+        return fact("Its own decisions", [x.runs + (x.runs === 1 ? " decision" : " decisions") + " · " + x.model, txt("div", "sub", usdMicros(x.cost_usd_micros).replace("$", "USD ") + " in all" + (x.median_latency_ms ? " · about " + Math.round(x.median_latency_ms / 1000) + " s each" : ""))]);
+      })));
       var two = el("div", "two", [
         el("div", "", [txt("h3", "", "On its own"), el("ul", "plain", a.alone.map(function (x) { return txt("li", "", x); }))]),
         el("div", "", [txt("h3", "", "Waits for your Face ID"), el("ul", "plain", a.asks.map(function (x) { return txt("li", "", x); }))]),
