@@ -62,6 +62,7 @@
     "iso20022": "tsx src/cli/iso20022.ts",
     "clearing-load": "tsx src/cli/clearingLoad.ts",
     "compliance-policy": "tsx src/cli/compliancePolicy.ts",
+    "visa": "tsx src/cli/visa.ts",
     "redteam": "tsx src/cli/redteam.ts",
     "reconcile": "tsx src/cli/reconcile.ts",
     "evals": "tsx src/cli/evals.ts"
