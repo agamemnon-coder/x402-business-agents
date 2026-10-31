@@ -252,7 +252,7 @@ await timed("2-4 Price rise, refusal on chain, two options with Opus's advice", 
   check(!!optA && !!optB, `options A (${optA}) and B (${optB}) proposed`);
 });
 await timed("5 Four eyes on chain (2-of-2 account in this world)", async () => {
-  const r = spawnSync("npx", ["tsx", "src/cli/fourEyes.ts"], { cwd: repo, env: { ...env, KIT11_KEYS_DIR: `${keys}/four-eyes`, RUN_OUT: `dry-run-four-eyes` }, encoding: "utf8" });
+  const r = spawnSync("npx", ["tsx", "src/cli/fourEyes.ts"], { cwd: repo, env: { ...env, KIT11_KEYS_DIR: `${keys}/four-eyes`, RUN_OUT: `dry-run-four-eyes`, RUN_OUT_DIR: out }, encoding: "utf8" });
   const text = `${r.stdout}${r.stderr}`;
   check(/reverted.*CFO alone/.test(text.replace(/\n/g, " ")) || /reverted/.test(text), "the CFO's signature alone reverted on chain");
   check(r.status === 0, "four-eyes run finished");
@@ -404,7 +404,7 @@ await timed("13 Bank change for Bergtex in three steps (test identities)", async
 });
 await timed("14 Agent recognition (dev test)", async () => {
   cli("visa.ts", "setup");
-  const r = spawnSync("npx", ["tsx", "src/cli/visa.ts", "run"], { cwd: repo, env: { ...env, RUN_OUT: "dry-run-visa" }, encoding: "utf8" });
+  const r = spawnSync("npx", ["tsx", "src/cli/visa.ts", "run"], { cwd: repo, env: { ...env, RUN_OUT: "dry-run-visa", RUN_OUT_DIR: out }, encoding: "utf8" });
   check(/approved by Airwallex/.test(r.stdout) && /LIMIT_EXCEEDED/.test(r.stdout), "recognised and approved; over the limit declined by Airwallex");
 });
 await timed("Links: a private tab twice, and a phone that pinned another runner", linksStep);

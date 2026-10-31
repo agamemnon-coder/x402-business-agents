@@ -147,5 +147,6 @@ const out = {
   stranger: stranger.address, payee: payee.address, mandate: reference || null,
   steps: steps.map((s) => ({ ...s, finality: s.tx ? (() => { const f = finalityOf(db, s.tx); return f ? { status: f.status, block: f.block_number, signers: f.check?.quorum.signers ?? null, participants: f.check?.quorum.participants ?? null } : null; })() : null })),
 };
-writeFileSync(resolve(import.meta.dirname, `../../docs/runs/${process.env.RUN_OUT ?? "four-eyes"}.json`), JSON.stringify(out, null, 2) + "\n");
+// RUN_OUT_DIR: a dry run keeps its records in its own output folder, not in docs/runs.
+writeFileSync(resolve(process.env.RUN_OUT_DIR ?? resolve(import.meta.dirname, "../../docs/runs"), `${process.env.RUN_OUT ?? "four-eyes"}.json`), JSON.stringify(out, null, 2) + "\n");
 say(`\n${steps.filter((s) => s.detail.startsWith("UNEXPECTED")).length} unexpected; ${out.steps.filter((s) => s.finality?.status === "REPORTED").length} of ${txs.length} transactions with a reported finality certificate; docs/runs/four-eyes.json`);

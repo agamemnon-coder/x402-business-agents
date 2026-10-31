@@ -92,8 +92,9 @@ registerAgent(db, { agent: "sourcing", keyid: ops.keyid, publicJwk: ops.publicJw
 
 server.close();
 const out = { ran_at: new Date().toISOString(), merchant: TAP_MERCHANT.name, authority: AUTHORITY, profile: "agent recognition per Visa's TAP spec (RFC 9421, tags agent-browser-auth / agent-payer-auth, 8-minute window, nonce replay block)", registry: "self-hosted, test keys; not Visa's directory", card_payments: "Airwallex sandbox simulated authorisations", steps };
-const dir = resolve(import.meta.dirname, "../../docs/runs");
+// RUN_OUT_DIR: a dry run keeps its records in its own output folder, not in docs/runs.
+const dir = process.env.RUN_OUT_DIR ? resolve(process.env.RUN_OUT_DIR) : resolve(import.meta.dirname, "../../docs/runs");
 mkdirSync(dir, { recursive: true });
 writeFileSync(resolve(dir, `${process.env.RUN_OUT ?? "visa-tap"}.json`), JSON.stringify(out, null, 2) + "\n");
-console.log(`\n${steps.length} steps written to docs/runs/${process.env.RUN_OUT ?? "visa-tap"}.json`);
+console.log(`\n${steps.length} steps written to ${process.env.RUN_OUT_DIR ? "the run's output folder" : "docs/runs"}/${process.env.RUN_OUT ?? "visa-tap"}.json`);
 process.exit(0);
