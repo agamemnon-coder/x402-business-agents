@@ -77,13 +77,15 @@ export function checkPricePlan(f: PricePlanFacts, p: PricePlan): string[] {
     const m = now.get(t.agent)!;
     if (t.capCents <= 0 || t.budgetCents <= 0) problems.push(`${t.agent}'s cap and budget must be above zero`);
     if (t.capCents > t.budgetCents) problems.push(`${t.agent}'s cap ${fromCents(t.capCents)} is above its budget ${fromCents(t.budgetCents)}`);
-    if (t.budgetCents < m.spentCents + t.capCents) problems.push(`${t.agent}'s budget ${fromCents(t.budgetCents)} does not cover what it already spent (${fromCents(m.spentCents)}) plus one payment at its cap`);
+    // Treasury's cap equals its budget (one sweep at a time), so its room is checked below, not as spent + cap.
+    if (t.agent !== "treasury" && t.budgetCents < m.spentCents + t.capCents) problems.push(`${t.agent}'s budget ${fromCents(t.budgetCents)} does not cover what it already spent (${fromCents(m.spentCents)}) plus one payment at its cap`);
   }
+  const srcNow = now.get("sourcing")!;
+  if (src.budgetCents < srcNow.budgetCents) problems.push(`Sourcing's budget may not shrink below ${fromCents(srcNow.budgetCents)}: it pays for every query, and a dearer supplier needs more, not less`);
   const sup = target.get("support")!, supNow = now.get("support")!;
   if (sup.budgetCents < supNow.budgetCents || sup.capCents !== supNow.capCents) problems.push(`Support's mandate stays as it is (cap ${fromCents(supNow.capCents)}, budget ${fromCents(supNow.budgetCents)}): it pays the refunds in disputes`);
   const tre = target.get("treasury")!, treNow = now.get("treasury")!;
   if (tre.budgetCents < treNow.spentCents + TREASURY_SWEEP_ROOM_CENTS) problems.push(`Treasury needs at least ${fromCents(TREASURY_SWEEP_ROOM_CENTS)} left for the sweep after finality`);
-  if (tre.capCents !== tre.budgetCents) problems.push(`Treasury's cap equals its budget (one sweep at a time): set both to ${fromCents(tre.budgetCents)}`);
   if (problems.length === 0) {
     try {
       planReplaceSteps(f.mandates, p.targets);
@@ -150,7 +152,7 @@ function prompt(f: PricePlanFacts): string {
     `- Northwind sells a stock check at ${fromCents(f.sellCents)}.`,
     ...(f.sourcingMessage ? [`- The Sourcing agent told you: "${f.sourcingMessage.replace(/"/g, "'")}"`] : []),
     ...f.mandates.map((m) => `- ${m.agent} mandate now: cap ${fromCents(m.capCents)} a payment, budget ${fromCents(m.budgetCents)}, spent ${fromCents(m.spentCents)}.`),
-    `- Rules: total budgets at most ${fromCents(TOTAL_BUDGET_CENTS)}; Support's mandate stays as it is; Treasury keeps at least ${fromCents(TREASURY_SWEEP_ROOM_CENTS)} for the sweep and its cap equals its budget; each budget covers what that agent already spent plus one payment at its cap; each sell price above Stockline's new price.`,
+    `- Rules: total budgets at most ${fromCents(TOTAL_BUDGET_CENTS)}; Sourcing's budget does not shrink and covers what it already spent plus one purchase at its cap; Support's mandate stays as it is; Treasury's budget covers what it already swept plus at least ${fromCents(TREASURY_SWEEP_ROOM_CENTS)} for the next sweep (its cap is set to its budget); each sell price above Stockline's new price.`,
     "Design the plan and submit it.",
   ].join("\n");
 }

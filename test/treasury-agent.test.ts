@@ -60,6 +60,18 @@ describe("the Treasury agent's plan, checked by code", () => {
     expect(treasury.join(" ")).toMatch(/sweep/);
   });
 
+  // dry-run evals: with Treasury's cap equal to its budget, "budget covers spent + one payment at its cap" could
+  // never hold once Treasury had swept anything; Opus and Sonnet both said so. Treasury only needs room to sweep.
+  it("accepts a plan once Treasury has already swept something", () => {
+    const swept: PricePlanFacts = { ...facts, mandates: [{ agent: "sourcing", capCents: 3, budgetCents: 1000, spentCents: 900 }, { agent: "support", capCents: 10, budgetCents: 400, spentCents: 15 }, { agent: "treasury", capCents: 600, budgetCents: 600, spentCents: 105 }] };
+    expect(checkPricePlan(swept, { ...fallbackPricePlan(swept), targets: [{ agent: "sourcing", capCents: 4, budgetCents: 1200 }, { agent: "support", capCents: 10, budgetCents: 400 }, { agent: "treasury", capCents: 400, budgetCents: 400 }] })).toEqual([]);
+  });
+
+  it("never shrinks the Sourcing budget: it pays for every query", () => {
+    const p = checkPricePlan(facts, { ...fallbackPricePlan(facts), targets: [{ agent: "sourcing", capCents: 4, budgetCents: 100 }, { agent: "support", capCents: 10, budgetCents: 400 }, { agent: "treasury", capCents: 600, budgetCents: 600 }] });
+    expect(p.join(" ")).toMatch(/Sourcing's budget may not shrink/);
+  });
+
   it("refuses an option that sells at a loss, or the same price twice", () => {
     const loss = checkPricePlan(facts, { ...fallbackPricePlan(facts), options: [{ id: "A", label: "cheap", sellCents: 4 }] });
     expect(loss.join(" ")).toMatch(/margin/);
