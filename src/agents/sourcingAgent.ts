@@ -69,9 +69,11 @@ export async function meetPriceRise(db: DB, f: { oldCents: number; noticeCents: 
         },
       },
       {
-        name: "notify_treasury", description: "Tells the Treasury agent what happened and what you need.",
+        name: "notify_treasury", description: "Tells the Treasury agent what happened and what you need. Only after try_purchase: Treasury acts on Metal's answer.",
         input: z.strictObject({ message: z.string() }),
         run: async ({ message: m }: { message: string }) => {
+          // dry-18: Haiku wrote to Treasury without trying, so code had to take over. Treasury needs Metal's answer.
+          if (!tried) return { text: "Not sent: first serve the next customer query with try_purchase. Treasury needs Metal's answer on chain, not the notice alone.", blocked: "not tried yet" };
           message = m.trim().slice(0, 600);
           deps.notify(message);
           return { text: "Treasury has your message.", final: true };

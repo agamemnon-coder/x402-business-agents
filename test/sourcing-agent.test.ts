@@ -43,6 +43,22 @@ describe("the Sourcing agent meets the price rise", () => {
     expect(r.message).toMatch(/0\.04/);
   });
 
+  // dry-18: Haiku checked the offer and wrote to Treasury without trying the purchase, so code had to take over. Treasury
+  // needs Metal's answer, not the notice: the message is refused until the purchase was tried, and the agent goes on.
+  it("may not tell Treasury before it tried the purchase; it tries, then tells", async () => {
+    const db = openDb(":memory:");
+    const d = deps();
+    const r = await meetPriceRise(db, { oldCents: 2, noticeCents: 4 }, d, fake([
+      [{ name: "check_offer", input: {} }],
+      [{ name: "notify_treasury", input: { message: "Stockline will charge 0.04; I need a cap of 0.04." } }],
+      [{ name: "try_purchase", input: {} }],
+      [{ name: "notify_treasury", input: { message: "Metal refused #41 at 0.04 over my 0.03 cap; I need a cap of 0.04." } }],
+    ]));
+    expect(r.run.calls.map((c) => c.blocked ?? "ok")).toEqual(["ok", "not tried yet", "Metal mandate", "ok"]);
+    expect(d.told).toEqual(["Metal refused #41 at 0.04 over my 0.03 cap; I need a cap of 0.04."]);
+    expect(r).toMatchObject({ source: "claude", tried: true });
+  });
+
   it("tries the purchase only once", async () => {
     const db = openDb(":memory:");
     const d = deps();
