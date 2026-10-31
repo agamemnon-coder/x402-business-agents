@@ -25,7 +25,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 .card .t { font-size: 22px; font-weight: 600; opacity: .85; display: flex; justify-content: space-between; }
 .card .n { font-size: 38px; font-weight: 700; margin-top: 70px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 .card .b { display: flex; justify-content: space-between; align-items: end; margin-top: 18px; font-size: 22px; opacity: .9; }
-.card .visa { font-weight: 900; font-style: italic; font-size: 34px; letter-spacing: -.02em; }
+.card .visa { font-weight: 500; font-size: 20px; opacity: .85; }
 .mini { width: 300px; height: 186px; border-radius: 18px; padding: 20px 22px; background: linear-gradient(135deg, #2a2f45 0%, #11131c 100%); box-shadow: 0 20px 50px rgba(0,0,0,.45); }
 .mini .t { font-size: 17px; font-weight: 600; opacity: .8; }
 .mini .n { font-size: 22px; font-weight: 700; margin-top: 44px; font-variant-numeric: tabular-nums; }
@@ -140,7 +140,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     },
     problem: function (L) {
       var t1 = put(L, E("div", "h2", "Two bad options"), 140, 110);
-      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Agent's card"), E("span", null, "no limit")]), E("div", "n", "•••• ••••"), E("div", "b", null, [E("span", null, "Hope it behaves"), E("span", "visa", "VISA")])]), 160, 300);
+      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Agent's card"), E("span", null, "no limit")]), E("div", "n", "•••• ••••"), E("div", "b", null, [E("span", null, "Hope it behaves"), E("span", "visa", "virtual Visa")])]), 160, 300);
       var risk = put(L, E("div", "bar"), 160, 680); var ri = E("i"); risk.appendChild(ri); risk.querySelector("i").style.background = "linear-gradient(90deg,#f5a524,#ff5d52)";
       var rl = put(L, E("div", "h3 bad", "Risk no auditor signs off"), 160, 720);
       var ph = put(L, E("div", "phone", null, [E("div", "sheet", null, [E("div", "pid", "Approve?"), E("div", "big", "0")])]), 1220, 180);
@@ -165,7 +165,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       };
     },
     card: function (L) {
-      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Sourcing agent"), E("span", null, "Virtual")]), E("div", "n", "•••• " + d.card.last4), E("div", "b", null, [E("span", null, "Warehouse software"), E("span", "visa", "VISA")])]), 140, 170);
+      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Sourcing agent"), E("span", null, "Virtual")]), E("div", "n", "•••• " + d.card.last4), E("div", "b", null, [E("span", null, "Warehouse software"), E("span", "visa", "virtual Visa")])]), 140, 170);
       var lim = put(L, E("div", "h3", ""), 140, 520), bar = put(L, E("div", "bar"), 140, 580), bi = E("i"); bar.appendChild(bi);
       var t1 = put(L, toast("ok", d.card.merchant + " Starter", "approved by Airwallex", "€" + d.card.small), 760, 170);
       var t2 = put(L, toast("bad", d.card.merchant + " Pro", "declined by Airwallex: over the €" + d.card.from + " limit", "€" + d.card.big), 760, 300);
@@ -247,10 +247,10 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var head = put(L, E("div", "rowv", null, [E("b", null, "Order"), E("b", null, "Paid"), E("b", null, "Signed order"), E("b", null, "Paid inside their mandate"), E("b", null, "Delivered")]), 140, 270);
       head.style.background = "transparent"; head.style.border = "0"; head.style.color = "var(--muted)";
       var rows = d.dispute.rows.map(function (r, i) {
-        var n = E("div", "rowv", null, [E("b", null, r.seq), E("span", null, r.amount), E("span", "k", "✓ signed"), E("span", "k", "✓ " + r.tx), E("span", "k", "✓ hash")]);
+        var n = E("div", "rowv", null, [E("b", null, r.seq), E("span", null, r.amount), E("span", "k", "✓ signed"), E("span", "k", "✓ " + r.tx), E("span", "k", "✓ as recorded")]);
         return put(L, n, 140, 320 + i * 54);
       });
-      var cnt = put(L, E("div", "big", "0"), 1300, 300), of = put(L, E("div", "h3 muted", "of " + d.dispute.rows.length + " proven"), 1320, 500);
+      var cnt = put(L, E("div", "big", "0"), 1300, 300), of = put(L, E("div", "h3 muted", "of " + d.dispute.rows.length + " verified on chain · simulated customer"), 1320, 500);
       var st = put(L, E("div", "stamp bad", "NOT REFUNDED"), 1230, 650); st.style.fontSize = "64px";
       var rep = put(L, E("div", "pill", "A report the customer can check: " + d.dispute.caseId), 1230, 880);
       return function (t) {
@@ -265,7 +265,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     ask: function (L) {
       var k = put(L, E("div", "kicker", "Ask Purser"), 140, 110);
       var me = put(L, E("div", "chat me", ""), 140, 180);
-      var c = put(L, E("div", "card v", null, [E("div", "t", null, [E("span", null, "Flight · single use"), E("span", null, "airlines only")]), E("div", "n", d.ask.card.match(/•+ \d+/)[0]), E("div", "b", null, [E("span", null, d.ask.card.replace(/^.*?, /, "")), E("span", "visa", "VISA")])]), 140, 380);
+      var c = put(L, E("div", "card v", null, [E("div", "t", null, [E("span", null, "Flight · single use"), E("span", null, "airlines only")]), E("div", "n", d.ask.card.match(/•+ \d+/)[0]), E("div", "b", null, [E("span", null, d.ask.card.replace(/^.*?, /, "")), E("span", "visa", "virtual Visa")])]), 140, 380);
       var booked = d.ask.booked.match(/^(.*?) ([\d.]+) EUR/); var ok = put(L, toast("ok", booked[1], "approved by Airwallex", "€" + booked[2]), 780, 420);
       var no = put(L, toast("bad", "A second charge", "declined: the card had closed itself", "€20.00"), 780, 560);
       return function (t) {
@@ -277,7 +277,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     },
     trust: function (L) {
       var k = put(L, E("div", "kicker", "Why you can trust it"), 140, 100), h = put(L, E("div", "h2", "Code decides. Models only read and advise."), 140, 150);
-      var a = put(L, E("div", "big ok", "0"), 140, 330), al = put(L, E("div", "h3", "of " + d.trust.attacks + " red-team attacks blocked"), 150, 530);
+      var a = put(L, E("div", "big ok", "0"), 140, 330), al = put(L, E("div", "h3", "of " + d.trust.attacks + " red-team attacks failed · stand-ins, test world"), 150, 530);
       var s = put(L, E("div", "big ok", "0"), 760, 330), sl = put(L, E("div", "h3", "of " + d.trust.scenarios + " scenarios as expected"), 770, 530);
       var stop = put(L, E("div", "stop", "STOP"), 1450, 300);
       var minis = d.cards.map(function (c, i) { return put(L, E("div", "mini", null, [E("div", "t", c.name), E("div", "n", "•••• " + c.last4), E("div", "l", "")]), 140 + i * 340, 660); });

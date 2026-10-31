@@ -217,7 +217,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
     f.push({
       id: "x402", title: "Pay per request (x402), with a signed order",
       plain: "An API answers 402 with its price; the agent signs an order for exactly that amount, payee and resource, and pays under its mandate. Northwind requires every buyer's signed order, and buys from its own supplier the same way under its mandate.",
-      why: "Agents buy in cents, thousands of times. Each payment is tied to the order the agent signed, so the seller can prove later what was bought, at what price, by whom.",
+      why: "Agents buy in cents, many times a day. Each payment is tied to the order the agent signed, so the seller can prove later what was bought, at what price, by whom.",
       figure: `${sales + buys} payments`,
       proofs: [tx(firstSale?.tx_hash, "first sale"), tx(firstBuy?.tx_hash, "first purchase")].filter((p): p is Proof => !!p),
       source: recorded, docs: [{ label: "x402 on Metal", href: METAL_DOCS.x402 }, { label: "Signed orders", href: `${METAL_DOCS.mandates}#signed-orders` }],
@@ -229,7 +229,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
     f.push({
       id: "facilitator", title: "Settled by Metal's facilitator, or refused",
       plain: "Metal's hosted facilitator settles each x402 payment and gives it a settlement id; a payment outside the mandate is refused with a reason, and nothing moves.",
-      why: "The refusal is the safety: when the supplier doubled its price, the chain said no before a cent left, and the agent had to ask the CFO.",
+      why: "The refusal is the safety: when the supplier doubled its price, Metal checked the on-chain mandate and said no before a cent left, and the agent had to ask the CFO.",
       figure: refused ? "1 refusal, 0 moved" : null,
       proofs: ([settlement?.settlement_id ? { label: `settlement id ${short(String(settlement.settlement_id).split(":").at(-1) ?? "")}`, href: null } : null, refused ? { label: `refused: ${refused.reason}`, href: null } : null] as (Proof | null)[]).filter((p): p is Proof => !!p),
       source: recorded, docs: [{ label: "Facilitator", href: METAL_DOCS.facilitator }, { label: "Refusal reasons", href: `${METAL_DOCS.facilitator}#refusal-reasons` }],
@@ -260,7 +260,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   if (sweep) {
     f.push({
       id: "finality", title: "Sweep after finality",
-      plain: `Earnings move to the sweep wallet under the Treasury agent's mandate. Purser books them at Airwallex only once their block (${String(sweep.p.block)}) is final (${String(sweep.p.finalized_block)}), and exactly once.`,
+      plain: `Earnings move to the sweep wallet under the Treasury agent's mandate. Purser books them at Airwallex, as a simulated sandbox deposit, only once their block (${String(sweep.p.block)}) is final (${String(sweep.p.finalized_block)}), and exactly once.`,
       why: "The books never count money that could still be undone, and a restart never credits it twice.",
       figure: "booked once", proofs: [tx(sweep.p.tx, "sweep")].filter((p): p is Proof => !!p),
       source: recorded, docs: [{ label: "Settlement and finality", href: METAL_DOCS.finality }],

@@ -53,8 +53,8 @@ h2.gap { margin-top: 28px; }
 <header class="top"><a class="brand" href="./"><i></i>Purser</a><span class="chip">Agent recognition · Visa cards</span>
   <nav aria-label="Pages"><a href="./">Overview</a><a href="try">Try it</a><a href="metal">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
 <main>
-  <div class="kicker">Airwallex-issued Visa cards, with agent recognition first</div>
-  <h1>Every agent proves who it is before it pays</h1>
+  <div class="kicker">Dev test, following Visa's Trusted Agent Protocol spec · our own registry, test keys</div>
+  <h1>Dev test: an agent signs before it pays</h1>
   <p class="lead">Before an agent pays a merchant, it signs its request. The merchant checks the signature against the registry of Northwind's agents and refuses anything it does not recognise. Only then does the agent pay, with its own Airwallex Visa card, inside the limit the CFO set.</p>
   <div class="flow">
     <div><b>1. The agent signs</b><span>RFC 9421 signature over the merchant's host and path, a fresh nonce, an 8-minute window, and a tag: agent-payer-auth to pay.</span></div>

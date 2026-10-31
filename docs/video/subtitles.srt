@@ -43,67 +43,67 @@ own on-chain mandate, with limits the CFO sets once.
 Anything above those limits waits for the CFO's Face ID.
 
 12
-00:00:38,300 --> 00:00:38,685
+00:00:38,300 --> 00:00:38,688
 Watch.
 
 13
-00:00:38,735 --> 00:00:41,224
+00:00:38,738 --> 00:00:41,098
 The sourcing agent buys software:
 
 14
-00:00:41,274 --> 00:00:42,820
+00:00:41,148 --> 00:00:42,705
 approved by Airwallex.
 
 15
-00:00:42,870 --> 00:00:47,173
+00:00:42,755 --> 00:00:47,088
 Then the Pro plan, forty-five euros, on a thirty euro limit:
 
 16
-00:00:47,223 --> 00:00:49,349
+00:00:47,138 --> 00:00:49,279
 declined, by Airwallex itself.
 
 17
-00:00:49,399 --> 00:00:51,090
+00:00:49,329 --> 00:00:51,032
 The agent asks for more.
 
 18
-00:00:51,140 --> 00:00:55,225
+00:00:51,082 --> 00:00:55,195
 The CFO checks the exact terms and approves with Face ID.
 
 19
-00:00:55,275 --> 00:00:59,650
+00:00:55,245 --> 00:00:59,650
 The limit moves to fifty, and the same purchase goes through.
 
 20
-00:01:00,300 --> 00:01:01,953
+00:01:00,300 --> 00:01:01,947
 A euro invoice arrives:
 
 21
-00:01:02,003 --> 00:01:03,952
+00:01:01,997 --> 00:01:03,940
 eighteen hundred and fifty.
 
 22
-00:01:04,002 --> 00:01:08,395
+00:01:03,990 --> 00:01:08,441
 The treasury agent checks the reserve, takes a live quote and
 
 23
-00:01:08,445 --> 00:01:12,246
+00:01:08,491 --> 00:01:12,278
 converts only the missing three hundred and seventy.
 
 24
-00:01:12,296 --> 00:01:16,022
+00:01:12,328 --> 00:01:16,042
 One Face ID covers the rate, the payee and the most
 
 25
-00:01:16,072 --> 00:01:17,133
+00:01:16,092 --> 00:01:17,149
 the fee may be.
 
 26
-00:01:17,183 --> 00:01:21,280
+00:01:17,199 --> 00:01:21,281
 Airwallex sends it by SWIFT; in the sandbox it is marked
 
 27
-00:01:21,330 --> 00:01:21,650
+00:01:21,331 --> 00:01:21,650
 paid.
 
 28
@@ -143,31 +143,31 @@ Mandates, x402, signed orders and payouts ran here; clearing and a
 receive policy in separate live runs.
 
 37
-00:01:52,300 --> 00:01:53,920
-Then a customer says:
+00:01:52,300 --> 00:01:55,861
+Then our simulated customer disputes twelve orders:
 
 38
-00:01:53,970 --> 00:01:57,736
+00:01:55,911 --> 00:01:59,259
 our agent never ordered this, refund everything.
 
 39
-00:01:57,786 --> 00:02:01,075
+00:01:59,309 --> 00:02:02,233
 Northwind's Dispute desk checks the proof:
 
 40
-00:02:01,125 --> 00:02:06,561
+00:02:02,283 --> 00:02:07,119
 every order signed by their agent, every payment inside their mandate
 
 41
-00:02:06,611 --> 00:02:07,277
+00:02:07,169 --> 00:02:07,756
 on chain.
 
 42
-00:02:07,327 --> 00:02:08,629
+00:02:07,806 --> 00:02:08,959
 Twelve of twelve.
 
 43
-00:02:08,679 --> 00:02:11,650
+00:02:09,009 --> 00:02:11,650
 Claim rejected; nothing more refunded.
 
 44
@@ -191,41 +191,37 @@ Airwallex issues a single-use card.
 The booking goes through; a second charge is declined.
 
 49
-00:02:26,300 --> 00:02:29,329
+00:02:26,300 --> 00:02:29,152
 Code decides; the models only read and advise.
 
 50
-00:02:29,379 --> 00:02:32,676
-Thirty-nine red-team attacks, four by Claude Opus:
+00:02:29,202 --> 00:02:31,990
+Thirty-nine red-team attacks in a test world:
 
 51
-00:02:32,726 --> 00:02:33,412
-all failed.
+00:02:32,040 --> 00:02:34,387
+all failed, two found only afterwards.
 
 52
-00:02:33,462 --> 00:02:34,684
-Eighteen scenarios:
+00:02:34,437 --> 00:02:36,342
+Eighteen scenarios as expected.
 
 53
-00:02:34,734 --> 00:02:35,488
-as expected.
+00:02:36,392 --> 00:02:40,695
+Optional four eyes, an emergency stop tested on stand-ins, about nine
 
 54
-00:02:35,538 --> 00:02:39,169
-Optional four eyes, one Face ID to stop every agent and
+00:02:40,745 --> 00:02:42,650
+cents of AI per thousand euros.
 
 55
-00:02:39,219 --> 00:02:42,650
-card, and about nine cents of AI per thousand euros.
-
-56
 00:02:43,300 --> 00:02:43,989
 Purser.
 
-57
+56
 00:02:44,039 --> 00:02:49,904
 Agents move at machine speed, and the CFO keeps the pen.
 
-58
+57
 00:02:49,954 --> 00:02:52,650
 Every payment has a proof.

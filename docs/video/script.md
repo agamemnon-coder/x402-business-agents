@@ -1,7 +1,7 @@
 # Purser: the video script (2:53)
 
 Read it over the silent master (`master.mp4`). Each beat starts at the time shown; the subtitles (`subtitles.srt`) carry the same words.
-The words run at about 133 a minute: speak calmly, and take a breath at each heading. Record each beat on its own if that is easier; the clips have the same names.
+The words run at about 134 a minute: speak calmly, and take a breath at each heading. Record each beat on its own if that is easier; the clips have the same names.
 
 ## 0:00 Hook (12 s, clip `01-open.mp4`)
 
@@ -29,7 +29,7 @@ On Metal, agents pay per request, cents at a time, under mandates that live on c
 
 ## 1:52 The Dispute desk (20 s, clip `07-dispute.mp4`)
 
-Then a customer says: our agent never ordered this, refund everything. Northwind's Dispute desk checks the proof: every order signed by their agent, every payment inside their mandate on chain. Twelve of twelve. Claim rejected; nothing more refunded.
+Then our simulated customer disputes twelve orders: our agent never ordered this, refund everything. Northwind's Dispute desk checks the proof: every order signed by their agent, every payment inside their mandate on chain. Twelve of twelve. Claim rejected; nothing more refunded.
 
 ## 2:12 Ask Purser (14 s, clip `08-ask.mp4`)
 
@@ -37,7 +37,7 @@ Need something once? Ask Purser: a flight to Berlin, at most one hundred and fif
 
 ## 2:26 Why you can trust it (17 s, clip `09-trust.mp4`)
 
-Code decides; the models only read and advise. Thirty-nine red-team attacks, four by Claude Opus: all failed. Eighteen scenarios: as expected. Optional four eyes, one Face ID to stop every agent and card, and about nine cents of AI per thousand euros.
+Code decides; the models only read and advise. Thirty-nine red-team attacks in a test world: all failed, two found only afterwards. Eighteen scenarios as expected. Optional four eyes, an emergency stop tested on stand-ins, about nine cents of AI per thousand euros.
 
 ## 2:43 Purser (10 s, clip `10-end.mp4`)
 

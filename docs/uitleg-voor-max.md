@@ -17,7 +17,7 @@ Eén zin: **"Your AI agents spend through Airwallex and Metal. The CFO stays in 
    echt in de woorden van de CFO staan. De CFO keurt het voorstel goed met Face ID.
 2. **Elke agent krijgt een kaart en een mandaat.** Een virtuele Visa-kaart van Airwallex (limiet, soort winkel,
    alleen EUR, einddatum) en een mandaat op Metal (max per betaling, budget, één ontvanger, einddatum).
-3. **Binnen de limiet betaalt de agent zelf.** Geen mens nodig. In de opgenomen run: 106 betalingen zo.
+3. **Binnen de limiet betaalt de agent zelf.** Geen mens nodig. In de opgenomen run: 106 betalingen zo (ongeveer de helft door de gesimuleerde klant-agent).
 4. **Daarbuiten weigert iemand.** Airwallex weigert de kaart, Metal weigert op de chain, of Purser stopt het
    (fraude, dubbele factuur). Daarna vraagt de agent de CFO.
 5. **De CFO beslist met Face ID.** Op de telefoon, met een passkey. Geen wachtwoord. Een agent kan nooit zelf
@@ -58,7 +58,7 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 3. **Welk probleem los je op?** Agents kunnen betalen, maar een bedrijf durft ze geen geld te geven. Purser maakt het veilig: harde limieten, en een mens voor alles daarbuiten.
 4. **Waarom niet gewoon één bedrijfskaart voor alle agents?** Dan weet je niet wie wat deed, en één fout raakt alles. Met een kaart per agent zie je per agent wat er gebeurt, en kun je er één bevriezen.
 5. **Wat ziet de CFO?** Een dashboard: elke betaling met bewijs, wat gestopt is en waarom, de boeken, en een telefoonscherm om goed te keuren.
-6. **Hoeveel ging er in de opgenomen run vanzelf?** 106 betalingen binnen de limieten, zonder mens op dat moment. 8 keer gestopt. €3.719,99 bleef buiten de deur.
+6. **Hoeveel ging er in de opgenomen run vanzelf?** 106 betalingen binnen de limieten, zonder mens op dat moment (ongeveer de helft door de gesimuleerde klant-agent). 8 keer gestopt. €3.719,99 bleef buiten de deur.
 7. **Hoe vaak moest de CFO iets doen?** 4 keer Face ID in de opgenomen run.
 8. **Kan ik het zelf proberen?** Ja: `/try` online, of `npm ci && npm run judge` zonder sleutels en zonder internet.
 
@@ -78,7 +78,7 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 17. **Wie mag een mandaat veranderen?** Pas na Face ID van de CFO zet Purser het nieuwe mandaat op de chain. De agent kan het niet.
 18. **Wat gebeurde er bij de prijsverhoging?** De leverancier ging van 0.02 naar 0.04. De betaling liep tegen het mandaat aan: `mandate_cap_exceeded`, niets bewogen. Daarna keurde de CFO nieuwe limieten goed.
 19. **Wat is x402?** Betalen per verzoek via internet (HTTP 402). Een agent koopt data per vraag en betaalt meteen.
-20. **Wat is clearing?** Veel kleine betalingen samen afgerekend. Belastingtest: 2.000 van 2.000 betaald in 471,8 seconden, 4,24 per seconde.
+20. **Wat is clearing?** Veel kleine betalingen samen afgerekend. Belastingtest (aparte testwereld, 30 oktober): 2.000 van 2.000 betaald in 471,8 seconden, 4,24 per seconde.
 21. **Wat is four eyes op de chain?** Een account met twee eigenaren: CFO en controller. Alleen de CFO: geweigerd op de chain. Beiden: gaat door. Dit draaide live in een aparte testwereld.
 22. **Wat is de receive policy?** Geld dat binnenkomt op de wallet wordt gecontroleerd; van een onbekende afzender gaat het in quarantaine.
 23. **Wat doet het compliance-contract?** Geld gaat pas weg met Pursers getekende beslissing voor precies die betaling, na controle van de ontvanger. 11 aanvallen werden op de chain geweigerd. Mandaatbetalingen gaan er niet doorheen (zo werkt Metal).
@@ -96,7 +96,7 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 ### Claude en AI (31–35)
 
 31. **Waarvoor gebruik je Claude?** Haiku sorteert documenten, Sonnet leest ze, Opus beoordeelt risico's voor de CFO. Claude heeft geen sleutel en keurt niets goed.
-32. **Waarom drie modellen?** Elk voor wat het het best doet, tegen de laagste kosten. "Three models, each for what it does best. Code decides."
+32. **Waarom drie modellen?** Dat hebben we gemeten. Op de gewone testgevallen doet Haiku alleen het even goed. Op moeilijkere documenten las Haiku één geschil fout (het nam een order mee die de klant zelf had besteld). De verdeling Haiku sorteert, Sonnet leest, Opus adviseert haalde 15 van 15, en is de goedkoopste die dat haalt.
 33. **Wat kost de AI?** In de opgenomen run: 23 calls, USD 0,093 per €1.000 betaald.
 34. **Wat als Claude uitvalt?** Dan nemen vaste parsers het over. Dezelfde beslissingen, want de code beslist.
 35. **Hoe heb je dit gebouwd?** Met Claude Code als ontwikkelaar. Ik deed het product, de beslissingen en elke Face ID.

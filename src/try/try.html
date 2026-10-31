@@ -103,7 +103,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
 <body>
 <header class="top"><a class="brand" href="/"><i></i>Purser</a><span class="chip">Try it yourself</span><button class="real" id="real-btn" type="button" aria-expanded="false" aria-controls="real">Demo world · what's real?</button>
   <nav aria-label="Pages"><a href="./">Overview</a><a href="try" aria-current="page">Try it</a><a href="metal">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
-<div class="realbox" id="real" hidden><b>What is real here.</b> The models are real: Claude Haiku sorts your request and Claude Sonnet reads it, and you see what each call cost. The limits are Northwind's CFO policy as in the recorded live run (€50 a software purchase, every bank transfer with Face ID, 0.04 test USD a request on Metal; task cards up to €300 without Face ID, a policy that ran live in a separate test); on this page a copy of those rules is checked in code. Simulated here: the cards and the payments; nothing on this page calls Airwallex or Metal, and no money exists. Each answer shows the same flow from the recorded live run, where Airwallex and Metal did act. Fair use: 6 tries a minute and 40 a day per visitor, 280 characters each; when many people try at once, or the day's model budget is used, code alone reads the request and says so.</div>
+<div class="realbox" id="real" hidden><b>What is real here.</b> On the hosted page the models are real: Claude Haiku sorts your request and Claude Sonnet reads it (offline, code alone reads it), and you see what each call cost. The limits are Northwind's CFO policy as in the recorded live run (€50 a software purchase, every bank transfer with Face ID, 0.04 test USD a request on Metal; task cards up to €300 without Face ID, a policy that ran live in a separate test); on this page a copy of those rules is checked in code. Simulated here: the cards and the payments; nothing on this page calls Airwallex or Metal, and no money exists. Each answer shows the same flow from the recorded live run, where Airwallex and Metal did act. Fair use: 6 tries a minute and 40 a day per visitor, 280 characters each; when many people try at once, or the day's model budget is used, code alone reads the request and says so.</div>
 <main>
   <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>
   <h1>Give an agent a task. Watch the limits hold.</h1>
@@ -116,7 +116,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
         <div class="row"><span class="count" id="count">0 / 280</span><button class="run" id="run" type="button">Run it</button></div>
       </div>
       <div class="examples" id="examples"></div>
-      <div id="steps-wrap" aria-live="polite"><p class="idle">Pick an example or type your own. Each one runs through real Claude models and Northwind's limits.</p></div>
+      <div id="steps-wrap" aria-live="polite"><p class="idle">Pick an example or type your own. On the hosted page Claude Haiku and Sonnet read it; offline, code alone. Northwind's limits apply either way.</p></div>
     </div>
     <aside class="side" aria-label="How the request flows">
       <section class="flow">

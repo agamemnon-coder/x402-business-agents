@@ -1,4 +1,4 @@
-// The submission deck (awards item 6): sixteen 16:9 slides as one HTML page, printed to PDF by npm run submission.
+// The submission deck (awards item 6): twelve 16:9 slides as one HTML page, printed to PDF by npm run submission.
 // One picture per slide and at most three short points: the screenshots are the recorded pages (npm run judge),
 // the phone screens come from the browser check's dev-test world. Every figure comes from packFacts(), the same
 // recorded files the pages use; the font, the logos, the screenshots and the QR code are embedded, so the PDF needs
@@ -115,10 +115,10 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       pic: shot(s.dispute, "The Disputes tab; the case ran after the recorded run, on a copy of its ledger"),
     },
     {
-      kicker: "Built with Claude: three models, each for what it does best",
+      kicker: "Built with Claude, and measured",
       title: "No model can raise a limit or move money outside it",
       points: [
-        "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO and played the attacker.",
+        "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO. On harder documents Haiku alone misread 1 of 15; this split read all 15.",
         `Claude holds no key and approves nothing. ${f.claude_calls} calls, $${f.claude_per_1000_eur_usd} per €1,000 paid.`,
         `Red team, in a throwaway test world: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,
       ],
@@ -133,7 +133,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Today the sandbox and testnet; next a KMS, Postgres and a pager; then Metal mainnet.",
       ],
       pic: `<div class="timeline">
-        <div><b>Now</b><span>Airwallex sandbox · Metal testnet</span><ul><li>live runs end to end, every approval with Face ID</li><li>one company per ledger</li><li>tests and checks in CI on every push</li></ul></div>
+        <div><b>Now</b><span>Airwallex sandbox · Metal testnet</span><ul><li>live runs on sandbox and testnet; licence fee, T:0 and emergency stop not yet live</li><li>one company per ledger</li><li>tests and checks in CI on every push</li></ul></div>
         <div><b>Next</b><span>production basics</span><ul><li>keys in a KMS, not files</li><li>Postgres with point-in-time recovery</li><li>a pager on <code>/health</code>; many companies</li></ul></div>
         <div><b>Then</b><span>scale</span><ul><li>Metal mainnet</li><li>four eyes as the default</li><li>finality proofs verified in full</li></ul></div>
       </div>`,

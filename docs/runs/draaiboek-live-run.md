@@ -26,7 +26,7 @@ verschillende mensen. Claude typt de commando's en keurt nooit iets goed. Max ne
 |---|---|---|---|
 | 1 | De Sourcing agent verkoopt live voorraaddata per vraag voor 0,05. Hij koopt die bij Stockline voor 0,02. | niemand (binnen de limiet) | Verkopen lopen op; per betaling staat een Metal-bewijs. |
 | 2 | Stockline verhoogt de prijs naar 0,04. | — | Een melding van de prijsstijging. |
-| 3 | De aankoop botst op het mandaat (max 0,03): Metal weigert hem op de chain. | — | `mandate_cap_exceeded`; er is niets bewogen. |
+| 3 | De aankoop botst op het mandaat (max 0,03): Metal weigert hem tegen het mandaat op de chain. | — | `mandate_cap_exceeded`; er is niets bewogen. |
 | 4 | De Treasury agent stelt twee opties voor binnen de 20,00: A verkopen voor 0,05 (marge 0,01) en B voor 0,07 (marge 0,03). Opus geeft advies. | — | Twee opties op de telefoon, met het advies van Opus. |
 | 5 | Vier ogen op de chain: een 2-van-2-rekening (CFO + controller) in dezelfde wereld. Eén handtekening wordt geweigerd, twee gaan door. | — (Claude draait `npm run four-eyes`) | De geweigerde en de geslaagde transactie in de explorer. |
 | 6 | De nieuwe mandaten: 12 / 4 / 4, max 0,04 per aankoop. | **Max + controller** | "1 van 2" na Max, daarna "goedgekeurd"; de mandaten zijn vervangen op de chain. |

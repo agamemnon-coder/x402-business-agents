@@ -112,7 +112,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
 <main>
   <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>
   <h1>How Purser uses Metal</h1>
-  <p class="lead">On Metal, Northwind's agents pay on chain, in cents, under mandates the chain itself enforces. Purser is the CFO's control layer on top: it sets the mandates, asks for Face ID before any limit goes up, and proves every payment afterwards. Everything below ran live on Metal testnet with test money; each card links to its proof and to Metal's docs.</p>
+  <p class="lead">On Metal, Northwind's agents pay on chain, in cents, under mandates the chain itself enforces. Purser is the CFO's control layer on top: it sets the mandates, asks for Face ID before any limit goes up, and checks every payment afterwards. Everything below ran on Metal testnet with test money, in the recorded run or in the separate run each card names; each card links to its proof and to Metal's docs.</p>
   <div class="kit11" id="kit11" hidden></div>
   <span class="built">Built on <img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span>
   <div class="stats" id="stats"></div>
@@ -227,7 +227,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
     var hist = el("ul", "tl", m.history.map(function (h) {
       return el("li", "", [el("div", "", [h.what + ": " + h.cap + " a payment, " + h.budget + " in total", el("small", "", [at(h.at)]), proof(h.tx)])]);
     }));
-    if (m.refusal) hist.appendChild(el("li", "no", [el("div", "", ["Refused by the chain: " + m.refusal.reason, el("small", "", [at(m.refusal.at)])])]));
+    if (m.refusal) hist.appendChild(el("li", "no", [el("div", "", ["Refused against the on-chain mandate: " + m.refusal.reason, el("small", "", [at(m.refusal.at)])])]));
     var pays = el("ul", "tl", m.latest.map(function (p) {
       return el("li", "pay", [el("div", "", [usd(p.amount) + ": " + p.what, el("small", "", [at(p.at)]), proof(p.tx)])]);
     }));

@@ -46,7 +46,7 @@ agents, the Sourcing, Support and Treasury agent, each with its own card and its
   anything short or unknown to the CFO.
 - **Webhooks (separate live run).** Purser subscribes to Airwallex's events for cards, card transactions, payouts,
   conversions and deposits; each delivery is signature-checked at the relay and again on the runner, then compared with
-  the ledger. Shown live: retailers' deposits matched by the webhook alone, and a card transaction. Payout and conversion
+  the ledger. Shown live: two retailer deposits (simulated by the sandbox), one matched and one sent to the CFO as short, by the webhook alone, and a card transaction. Payout and conversion
   events are subscribed but were not caused live.
 - **Emergency stop.** One Face ID freezes every agent card at Airwallex and stops every agent payment (tested against
   stand-ins, not yet run live).
@@ -84,7 +84,7 @@ agents, the Sourcing, Support and Treasury agent, each with its own card and its
     about $0.0007 of RPC calls per payment (an estimate from Metal's published rates, not a bill). A first run paid
     1,879 before one wallet was held by a lost answer; resending the same request fixed it.
 - **ISO 20022.** The recorded run's paid invoice exports as one pacs.008.001.08 message linking the Airwallex SWIFT
-  transfer and the Metal transaction, valid against the official XSD.
+  transfer and the Metal transaction, valid against the official XSD. Not sent to any bank.
 
 ### Where Claude is used
 
@@ -157,6 +157,6 @@ Scenario Lab and a simulated month, and opens the browser. Running it live (sand
 
 ## Deck and zip
 
-- `purser-deck.pdf`: sixteen slides, one picture each, made by `npm run submission` from the same figures.
+- `purser-deck.pdf`: twelve slides, one message each, made by `npm run submission` from the same figures.
 - The zip: `npm run submission` writes `out/submission/purser-source.zip` (`git archive` of the current commit: the
   code, no keys, no ledger). Not committed.

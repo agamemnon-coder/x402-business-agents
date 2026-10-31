@@ -81,7 +81,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     steps.push({
       id: "buy", rail: "Metal", tone: "ok", at: bought.ts, approval: null,
       title: "Agents also pay per request, each inside its own limits",
-      text: "A retailer's buying agent pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
+      text: "A simulated retailer's agent (we run it) pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
       details: "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our sourcing agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
       facts: facts(
         fact("Sales in this run", `${sales} stock checks at 0.05, then 0.07 *USDZ (testnet dollars)`),
@@ -137,7 +137,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       title: "One CFO policy, stricter than any limit on chain",
       // Said the way it went: a raise (the agent asked, the CFO approved with Face ID) or a cut made on the phone.
       text: Number(str(p(policy).to)) > Number(str(p(policy).from) || "0")
-        ? "The agent asked for a higher limit; the CFO approved that exact change with Face ID, and the new limit went to the card at Airwallex at once. One policy sets the limits on the cards and inside the mandates: loosening it always needs Face ID, tightening it can be done on the phone."
+        ? "The agent asked for a higher limit; the CFO approved that exact change with Face ID, and the new limit went to the card at Airwallex at once. The CFO policy sets the card limits and an optional stricter cap inside each mandate: loosening it always needs Face ID, tightening it can be done on the phone."
         : "On the phone the CFO lowers an agent's limit, and the next purchase over it is refused before anything is signed. The phone can only make the policy stricter; loosening it needs a proposal and Face ID.",
       details: `The CFO policy sits inside the on-chain mandates and the card limits, and is checked before any signature. Here: ${str(p(policy).label)} goes from ${str(p(policy).from) || "no extra limit"} to ${str(p(policy).to)}${policyRefusal ? ", and the next purchase over it is refused before signing (policy_cap_exceeded)" : ""}.`,
       facts: facts(
@@ -186,8 +186,8 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       id: "swift", rail: "Airwallex", tone: "ok", at: transfer.ts,
       approval: approvals.has(invoiceApproval) ? { who: approvals.get(invoiceApproval)!, proposal: invoiceApproval, what: `pay ${str(p(transfer).amount)} by SWIFT` } : null,
       title: "A euro bill paid through Airwallex, exactly as approved",
-      text: "Earnings move to the company's Airwallex account. A supplier's euro invoice is paid by bank transfer: only the euros missing are bought, at a locked rate, and one Face ID covers the rate, the payee and the most the fee may be.",
-      details: "The earnings are swept on Metal and wait until the chain is final, then booked in Airwallex as a deposit that names the transaction. Only the EUR shortfall is converted, on a locked quote above the USD floor. One approval covers the quote, the rate, both request ids, the payee, the fee ceiling and the floors. The SWIFT transfer carries the approval hash in its metadata.",
+      text: "Earnings are booked at Airwallex as a simulated sandbox deposit (no test USD moves). A supplier's euro invoice is paid by bank transfer: only the euros missing are bought, at a locked rate, and one Face ID covers the rate, the payee and the most the fee may be.",
+      details: "The earnings are swept on Metal and wait until the chain is final, then booked in Airwallex as a simulated sandbox deposit that names the testnet transaction (the sandbox cannot receive stablecoins). Only the EUR shortfall is converted, on a locked quote above the USD floor. One approval covers the quote, the rate, both request ids, the payee, the fee ceiling and the floors. The SWIFT transfer carries the approval hash in its metadata.",
       facts: facts(
         sweep ? txFact(`Sweep of ${str(p(sweep).amount)} *USDZ`, p(sweep).tx) : null,
         fx ? fact("Conversion", `${str(p(fx).sell)} → ${str(p(fx).buy)} on a locked quote`) : null,

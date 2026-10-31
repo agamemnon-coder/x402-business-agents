@@ -12,10 +12,10 @@ or offline with `npm ci && npm run judge` (no keys, no network):
    and no one place for the exceptions. ([Watch](https://kit11.max-31b.workers.dev/film))
 2. **Airwallex declines the card** above its limit; after the CFO's Face ID the limit follows and the same purchase
    is paid. ([the Airwallex ids](https://kit11.max-31b.workers.dev/demo?step=1))
-3. **Metal refuses the higher price** on chain, and the CFO rebalances the three mandates within the same 20.00 with
+3. **Metal refuses the higher price** against the on-chain mandate, and the CFO rebalances the three mandates within the same 20.00 with
    Face ID. ([the transactions](https://kit11.max-31b.workers.dev/demo?step=3))
-4. **The Dispute desk proves every order:** 12 disputed orders, each checked against its signed mandate on chain;
-   only wrong data is refunded. ([the evidence](https://kit11.max-31b.workers.dev/metal#dispute))
+4. **The Dispute desk checks every order:** a simulated customer (we filed for it) disputes 12 orders; each is
+   checked against its signed order and the mandate on chain. All 12 hold, so nothing new is refunded. ([the evidence](https://kit11.max-31b.workers.dev/metal#dispute))
 5. **Try it yourself:** type a task for an agent. ([Try it](https://kit11.max-31b.workers.dev/try))
 
 <p>
@@ -33,7 +33,7 @@ retailers per query: the kit's data business. Three agents draw on one Metal acc
 |---|---|---|
 | Sourcing agent | buys the upstream data per query; its card pays warehouse and data software | 10.00 → 12.00, cap 0.03 → 0.04 a purchase |
 | Support agent | refunds customers when a dispute holds; its card pays helpdesk software | 4.00 |
-| Treasury agent | watches spending, sweeps earnings to Airwallex, pays the monthly licence fee in EUR (Airwallex FX and SWIFT, after Face ID) | 6.00 → 4.00 |
+| Treasury agent | watches spending, sweeps earnings to Airwallex, pays the monthly licence fee in EUR (Airwallex FX and SWIFT, after Face ID; built and tested, joins the live run with Max) | 6.00 → 4.00 |
 
 20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). Every Kit 11 sentence and where
 it is done: [docs/requirements-matrix.md](docs/requirements-matrix.md) section 4.
@@ -91,7 +91,7 @@ Start here:
 - [docs/controls-matrix.md](docs/controls-matrix.md): every risk, the control against it, its test and the live evidence
 - [docs/runbook.md](docs/runbook.md): incidents, the emergency stop, key rotation and recovery
 - [docs/ask-purser.md](docs/ask-purser.md): Ask Purser: a single-use card for one task (a flight, a hotel, a train) from one sentence: at once within the CFO's policy (up to €300, 3 a day, asked at the runner), otherwise after Face ID
-- [docs/claude.md](docs/claude.md): Powered by Claude: which model does what, why, and what it costs per decision
+- [docs/claude.md](docs/claude.md): Powered by Claude: which model does what, why, and what it costs per call and per €1,000 paid
 - [docs/compliance.md](docs/compliance.md): who does what (Airwallex, Metal, Purser) for the EU AI Act, PSD2, GDPR, AML and audit
 - [docs/requirements-matrix.md](docs/requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof
 - [docs/decisions.md](docs/decisions.md): decisions taken during the build, and what each costs if wrong

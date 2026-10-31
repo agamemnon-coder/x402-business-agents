@@ -58,7 +58,7 @@
       "id": "x402",
       "title": "Pay per request (x402), with a signed order",
       "plain": "An API answers 402 with its price; the agent signs an order for exactly that amount, payee and resource, and pays under its mandate. Northwind requires every buyer's signed order, and buys from its own supplier the same way under its mandate.",
-      "why": "Agents buy in cents, thousands of times. Each payment is tied to the order the agent signed, so the seller can prove later what was bought, at what price, by whom.",
+      "why": "Agents buy in cents, many times a day. Each payment is tied to the order the agent signed, so the seller can prove later what was bought, at what price, by whom.",
       "figure": "100 payments",
       "proofs": [
         {
@@ -86,7 +86,7 @@
       "id": "facilitator",
       "title": "Settled by Metal's facilitator, or refused",
       "plain": "Metal's hosted facilitator settles each x402 payment and gives it a settlement id; a payment outside the mandate is refused with a reason, and nothing moves.",
-      "why": "The refusal is the safety: when the supplier doubled its price, the chain said no before a cent left, and the agent had to ask the CFO.",
+      "why": "The refusal is the safety: when the supplier doubled its price, Metal checked the on-chain mandate and said no before a cent left, and the agent had to ask the CFO.",
       "figure": "1 refusal, 0 moved",
       "proofs": [
         {
@@ -165,7 +165,7 @@
     {
       "id": "finality",
       "title": "Sweep after finality",
-      "plain": "Earnings move to the sweep wallet under the Treasury agent's mandate. Purser books them at Airwallex only once their block (9401051) is final (9401068), and exactly once.",
+      "plain": "Earnings move to the sweep wallet under the Treasury agent's mandate. Purser books them at Airwallex, as a simulated sandbox deposit, only once their block (9401051) is final (9401068), and exactly once.",
       "why": "The books never count money that could still be undone, and a restart never credits it twice.",
       "figure": "booked once",
       "proofs": [
