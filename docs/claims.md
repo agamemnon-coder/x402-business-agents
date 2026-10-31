@@ -89,9 +89,11 @@ displays was not checked.
 | Claim | Source |
 |---|---|
 | Visa Intelligent Commerce: credentials and controls for AI-initiated payments | visa.com/en-us/solutions/intelligent-commerce (read 31 October 2026) |
-| Mastercard Agent Pay | mastercard.com press, "Mastercard launches Agent Pay for Machines" (June 2026) |
+| Mastercard Agent Pay, announced April 2025 | mastercard.com/us/en/news-and-trends/press/2025/april/mastercard-unveils-agent-pay-pioneering-agentic-payments-technology-to-power-commerce-in-the-age-of-ai.html |
+| AI agents could mediate $3 trillion to $5 trillion of global consumer commerce by 2030 | McKinsey, "The agentic commerce opportunity: How AI agents are ushering in a new era for consumers and merchants", 17 October 2025 (mckinsey.com/capabilities/quantumblack/our-insights) |
 | Google's Agent Payments Protocol (AP2), announced 16 September 2025 | cloud.google.com/blog/products/ai-machine-learning/announcing-agents-to-payments-ap2-protocol |
-| "Why Airwallex customers need this" (landing and deck) | Northwind is the example company; no market figure is claimed |
+| "Why Airwallex customers need this" (landing and deck) | Northwind is the example company; the only market figure is McKinsey's, above |
+| Team: Max Geurtsen, International Business student with an e-commerce background | Max, 31 October 2026 |
 | Business model and roadmap slides | Labelled as a plan; the roadmap follows docs/architecture.md ("Not now" / "Production path") |
 
 ## The submission pack (`docs/submission/`)

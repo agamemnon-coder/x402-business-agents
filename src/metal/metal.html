@@ -232,13 +232,14 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
   var cards = document.getElementById("cards");
   D.features.forEach(function (f) {
     var other = /separate live run/.test(f.source);
-    cards.appendChild(el("article", "card", [
+    var art = cards.appendChild(el("article", "card", [
       el("div", "hd", [el("h3", "", [f.title]), f.figure ? el("span", "fig", [f.figure]) : null]),
       el("p", "", [f.plain]), el("p", "why", [f.why]),
       el("div", "", f.proofs.map(proof)),
       el("div", "src" + (other ? " other" : ""), ["Proof from " + f.source.charAt(0).toLowerCase() + f.source.slice(1) + "."]),
       el("div", "docs", [el("span", "", ["Metal docs:"])].concat(f.docs.map(function (d) { return link(d.label + " ↗", d.href); }))),
     ]));
+    art.id = "card-" + f.id;
   });
 
   // The Dispute desk's recorded case, order by order.

@@ -2,6 +2,14 @@
 
 **Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
 
+<p>
+  <img src="docs/media/purser-card.gif" width="49%" alt="Airwallex declines the agent's card over its limit">
+  <img src="docs/media/purser-metal.gif" width="49%" alt="Metal refuses a payment over the agent's on-chain mandate">
+</p>
+
+*Left: Airwallex itself declines the agent's card over its limit. Right: Metal refuses a payment over the agent's
+on-chain mandate. Both from the recorded live run (test money).*
+
 Each agent gets an Airwallex company card and a Metal on-chain mandate. The CFO sets the limits for both: card limits come from the CFO policy, and an agent's mandate changes only when
 the CFO signs the new terms with Face ID. When an agent needs more, it stops and asks, and the CFO approves on a phone with Face ID.
 

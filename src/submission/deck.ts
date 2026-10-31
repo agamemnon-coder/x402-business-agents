@@ -16,7 +16,7 @@ const eur = (v: string) => `€${Number(v).toLocaleString("en-GB", { minimumFrac
 export const TRY_URL = "https://kit11.max-31b.workers.dev/try";
 
 /** Screenshots by name (data URIs), as npm run submission takes them. */
-export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "enterprise" | "try", string>;
+export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "enterprise" | "try" | "max", string>;
 
 interface Slide { kicker: string; title: string; points?: string[]; extra?: string; pic: string }
 
@@ -50,11 +50,11 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Why now",
       title: "The networks are building rails for agents to pay",
       points: [
-        "<b>Visa Intelligent Commerce</b>: credentials and controls for AI-initiated payments.",
-        "<b>Mastercard Agent Pay</b> and <b>Google's Agent Payments Protocol (AP2)</b>, announced 16 September 2025.",
+        "<b>Mastercard Agent Pay</b> (April 2025), <b>Visa Intelligent Commerce</b>, <b>Google's AP2</b> (16 September 2025).",
         "Agents will be able to pay everywhere. Someone still has to set and enforce the limits.",
       ],
-      extra: `<p class="src">Sources: visa.com/en-us/solutions/intelligent-commerce · mastercard.com (Agent Pay) · cloud.google.com/blog (AP2, 16 Sep 2025)</p>`,
+      extra: `<p class="quote">AI agents could mediate $3 trillion to $5 trillion of global consumer commerce by 2030.<small>McKinsey, "The agentic commerce opportunity", 17 October 2025</small></p>
+        <p class="src">Sources: mastercard.com press release, April 2025 (Agent Pay) · visa.com/en-us/solutions/intelligent-commerce · cloud.google.com/blog, 16 Sep 2025 (AP2) · mckinsey.com/capabilities/quantumblack</p>`,
       pic: shot(s.try, "Try Purser: a task in plain words becomes a rail and a policy check"),
     },
     {
@@ -106,7 +106,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "<b>Under load</b>: 2,000 of 2,000 clearing payments, 4.24 a second.",
       ],
       extra: `<p class="src">Separate test worlds on Metal testnet, 30 October; not in the recorded run.</p>`,
-      pic: shot(s.enterprise, "The four-eyes, compliance and certificate cards on /metal"),
+      pic: shot(s.enterprise, "The receive-policy, four-eyes, compliance and certificate cards on /metal"),
     },
     {
       kicker: "The Dispute desk",
@@ -153,22 +153,26 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "<b>Next</b>: keys in a KMS, Postgres, a pager on <code>/health</code>, many companies.",
         "<b>Then</b>: Metal mainnet, four eyes as default, finality proofs verified in full.",
       ],
-      pic: `<div class="timeline"><div><b>Now</b><span>sandbox + testnet</span></div><div><b>Next</b><span>KMS · Postgres · pager · tenants</span></div><div><b>Then</b><span>mainnet · four eyes default</span></div></div>`,
+      pic: `<div class="timeline">
+        <div><b>Now</b><span>Airwallex sandbox · Metal testnet</span><ul><li>live runs end to end, every approval with Face ID</li><li>one company per ledger</li><li>tests and checks in CI on every push</li></ul></div>
+        <div><b>Next</b><span>production basics</span><ul><li>keys in a KMS, not files</li><li>Postgres with point-in-time recovery</li><li>a pager on <code>/health</code>; many companies</li></ul></div>
+        <div><b>Then</b><span>scale</span><ul><li>Metal mainnet</li><li>four eyes as the default</li><li>finality proofs verified in full</li></ul></div>
+      </div>`,
     },
     {
       kicker: "Team",
-      title: "Max",
+      title: "Max Geurtsen",
       points: [
-        "Max Geurtsen: product, decisions, and every Face ID in the live runs.",
-        "Built with Claude Code as the developer, reviewed by fresh Claude reviewers.",
-        `${f.lab.passed} of ${f.lab.total} Lab stories as expected, CI on every push.`,
+        "International Business student with a background in e-commerce.",
+        "Product, decisions, and every Face ID in the live runs.",
+        "Built with Claude Code as the developer.",
       ],
-      pic: shot(s.landing, "Purser, built for this hackathon"),
+      pic: s.max ? `<figure class="photo"><img src="${s.max}" alt="Max"></figure>` : `<div class="photo empty">Photo of Max</div>`,
     },
     {
       kicker: "Try it",
       title: "Type a task for an agent",
-      extra: `<div class="qr">${qrSvg}<div><p class="lead">${esc(TRY_URL.replace(/^https:\/\//, ""))}</p><p class="small">Or offline, no keys: <code>npm ci &amp;&amp; npm run judge</code></p></div></div>`,
+      extra: `<div class="qr">${qrSvg}</div><p class="url">${esc(TRY_URL.replace(/^https:\/\//, ""))}</p><p class="small">Or offline, no keys: <code>npm ci &amp;&amp; npm run judge</code></p>`,
       pic: shot(s.try, "Try Purser"),
     },
   ];
@@ -212,13 +216,18 @@ figcaption { font-size: 13px; color: #6b7280; margin-top: 10px; text-align: cent
 .box.accent { background: #4f46e5; color: #fff; border-color: #4f46e5; }
 .box.accent small { color: #e0e7ff; }
 .arrow { font-size: 28px; color: #9ca3af; }
-.timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; }
-.timeline div { border-top: 6px solid #4f46e5; background: #f6f7f9; border-radius: 0 0 12px 12px; padding: 18px; }
-.timeline div:nth-child(2) { border-color: #818cf8; } .timeline div:nth-child(3) { border-color: #c7d2fe; }
+.timeline { display: grid; grid-template-rows: repeat(3, 1fr); gap: 16px; width: 100%; height: 100%; }
+.timeline > div { border-left: 8px solid #4f46e5; background: #f6f7f9; border-radius: 0 12px 12px 0; padding: 18px 24px; }
+.timeline ul { margin: 8px 0 0; padding-left: 20px; } .timeline li { font-size: 17px; margin: 0 0 4px; }
+.timeline > div:nth-child(2) { border-color: #818cf8; } .timeline > div:nth-child(3) { border-color: #c7d2fe; }
 .timeline b { display: block; font-size: 24px; } .timeline span { display: block; font-size: 16px; color: #4b5563; margin-top: 6px; }
 .qr { display: flex; gap: 28px; align-items: center; margin-top: 8px; }
 .qr svg { width: 220px; height: 220px; flex: none; }
-.qr .lead { font-size: 22px; white-space: nowrap; } .qr code { white-space: nowrap; }
+.url { font-size: 26px; font-weight: 700; margin: 18px 0 8px; white-space: nowrap; letter-spacing: -.01em; }
+.small code { white-space: nowrap; }
+.photo { width: 100%; display: flex; justify-content: center; }
+.photo img { width: 420px; height: 520px; object-fit: cover; border-radius: 20px; box-shadow: 0 18px 40px rgba(15, 23, 42, .14); }
+.photo.empty { width: 420px; height: 520px; border: 2px dashed #c7d2fe; border-radius: 20px; align-items: center; color: #6b7280; font-size: 20px; background: #f6f7f9; }
 </style></head><body>
 ${slides.map((x) => `<section><div class="text"><p class="kicker">${esc(x.kicker)}</p><h1>${esc(x.title)}</h1>${list(x.points ?? [])}${x.extra ?? ""}</div><div class="pic">${x.pic}</div></section>`).join("\n")}
 </body></html>`;

@@ -8,9 +8,8 @@
 // Nothing is sent anywhere; Max uploads them.
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
 import QRCode from "qrcode";
 import { startJudge } from "./judge.js";
@@ -43,16 +42,25 @@ try {
     console.log(`screens/${name}.png  ${path}`);
   }
   // Close-ups: one part of a page each, so a slide shows one thing.
-  const CLOSEUPS: [string, string, string][] = [
-    ["7-rails", "/", "#rails-sec"],
-    ["8-inspector", "/metal", "#inspector-sec"],
-    ["9-enterprise", "/metal", "#features"],
+  // The sticky header stays out of close-ups: it would otherwise lie across the element being captured.
+  // Set on the elements themselves: the pages' CSP refuses an added stylesheet.
+  const unstick = () => page.evaluate(() => document.querySelectorAll<HTMLElement>(".top, header").forEach((e) => e.style.setProperty("position", "static", "important")));
+  const CLOSEUPS: [string, string, string[]][] = [
+    ["7-rails", "/", ["#rails-sec"]],
+    ["8-inspector", "/metal", ["#inspector-sec"]],
+    ["9-enterprise", "/metal", ["#card-four-eyes", "#card-compliance", "#card-certificates"]],
   ];
-  for (const [name, path, sel] of CLOSEUPS) {
+  for (const [name, path, sels] of CLOSEUPS) {
     await page.goto(`${judge.url}${path}`, { waitUntil: "load" });
+    await unstick();
     await page.waitForTimeout(1200);
-    await page.locator(sel).first().screenshot({ path: resolve(shots, `${name}.png`) });
-    console.log(`screens/${name}.png  ${path} ${sel}`);
+    // One element, or the box around several (the three enterprise cards), captured from the full page.
+    const boxes = await Promise.all(sels.map(async (sel) => (await page.locator(sel).first().boundingBox())!));
+    const [x, y] = [Math.min(...boxes.map((b) => b.x)), Math.min(...boxes.map((b) => b.y))];
+    const clip = { x: x - 8, y: y - 8, width: Math.max(...boxes.map((b) => b.x + b.width)) - x + 16, height: Math.max(...boxes.map((b) => b.y + b.height)) - y + 16 };
+    await page.evaluate((top) => window.scrollTo(0, top), 0);
+    await page.screenshot({ path: resolve(shots, `${name}.png`), clip, fullPage: true });
+    console.log(`screens/${name}.png  ${path} ${sels.join(" ")}`);
   }
   await page.goto(`${judge.url}/try?q=${encodeURIComponent("Pay our supplier €1,180")}`, { waitUntil: "load" });
   await page.waitForSelector(".outcome.show", { timeout: 15_000 });
@@ -65,6 +73,8 @@ try {
     landing: png("1-landing"), dashboard: png("2-dashboard"), metal: png("3-metal"), live: png("4-live"), disputes: png("5-disputes"), books: png("6-books"),
     rails: png("7-rails"), inspector: png("8-inspector"), enterprise: png("9-enterprise"), try: png("10-try"),
     phoneOptions: png("phone-options"), phoneConfirm: png("phone-confirm"),
+    // Max's photo for the team slide, when he has added it (docs/submission/screens/max.jpg); a placeholder until then.
+    max: existsSync(resolve(shots, "max.jpg")) ? `data:image/jpeg;base64,${readFileSync(resolve(shots, "max.jpg")).toString("base64")}` : "",
   };
   const qr = await QRCode.toString(TRY_URL, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
   const deck = await browser.newPage();
