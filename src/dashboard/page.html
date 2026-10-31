@@ -541,11 +541,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <p class="subl">Nothing an AI reads or writes can raise a limit or move money outside it. The limits sit at Airwallex and on the chain; exceptions need you.</p>
     <div class="row">
       <div class="item"><span class="ic" data-icon="scan-face"></span><h3>Face ID on the exact terms</h3><p>You sign the precise amount, payee and fee. Change one character and the signature no longer fits.</p></div>
-      <div class="item"><span class="ic" data-icon="users"></span><h3>Four eyes, if you want it</h3><p>Optional: above a threshold you set, two different people must approve; whoever proposed it never can. (Off in the recorded run.)</p></div>
-      <div class="item"><span class="ic" data-icon="octagon-x"></span><h3>Emergency stop</h3><p>One Face ID stops every agent payment and freezes every card at Airwallex. (Tested against stand-ins; not yet run live.)</p></div>
+      <div class="item"><span class="ic" data-icon="users"></span><h3>Four eyes</h3><p>Above a threshold, two people approve. On Metal, a 2-of-2 account refused one signature (test world).</p></div>
+      <div class="item"><span class="ic" data-icon="octagon-x"></span><h3>Emergency stop</h3><p>One Face ID stops every agent and freezes every card at Airwallex. (Tested on stand-ins; not yet run live.)</p></div>
       <div class="item"><span class="ic" data-icon="shield-alert"></span><h3>Fakes and AI tricks blocked</h3><p>Changed bank details and hidden "pre-approved" lines are caught before any money moves.</p></div>
       <div class="item"><span class="ic" data-icon="zap"></span><h3>Speed limits, and our own red team</h3><p id="redteam-line">An agent that pays too often or too much is stopped by code. Our red team attacks Purser; every attack must fail.</p></div>
-      <div class="item"><span class="ic" data-icon="file-check"></span><h3>A log you can check</h3><p>Every payment, decline and approval in a tamper-evident log. Chain payments and signatures can be checked from public sources; Airwallex bookings with read-only API keys.</p></div>
+      <div class="item"><span class="ic" data-icon="file-check"></span><h3>A log you can check</h3><p>Every payment and approval in a hash-chained log you can re-check offline.</p></div>
     </div>
     <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> In production Airwallex, the regulated provider, does KYB/KYC, card issuing and sanctions screening (the sandbox demo does not exercise KYC or screening); Metal enforces the limits on chain; Purser holds no funds of its own (its runner keeps the testnet owner key that binds the mandates), logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
   </section>
@@ -1280,7 +1280,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // The red team's latest report (docs/redteam/report.json), on the landing.
   try {
     var RT = JSON.parse(document.getElementById("redteam-data").textContent);
-    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often or too much is stopped by code. Our red team's latest run, in a throwaway test world (" + dayFmt.format(new Date(RT.ran_at)) + "): " + RT.blocked + " of " + RT.attempts + " attacks failed" + (RT.caught_after ? " (" + (RT.blocked - RT.caught_after) + " stopped before anything moved, " + RT.caught_after + " found afterwards by the reconciliation or the audit check)" : "") + (RT.model && RT.documents ? ": " + (RT.attempts - RT.documents) + " scripted attacks and " + RT.documents + " documents written by Claude Opus as the attacker" : ", scripted attacks") + (RT.inconclusive ? "; " + RT.inconclusive + " inconclusive (they never reached the check they aimed at)" : "") + ".";
+    // Short on the card; the full breakdown is in docs/redteam/report.json and on /lab.
+    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often is stopped by code. Red team, in a test world: " + RT.blocked + " of " + RT.attempts + " attacks failed" + (RT.caught_after ? ", " + RT.caught_after + " of them found afterwards, not prevented." : ".");
   } catch (e) {}
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
