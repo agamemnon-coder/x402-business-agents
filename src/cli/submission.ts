@@ -2,7 +2,7 @@
 //   docs/submission/screens/1-6 *.png   six screenshots of the recorded pages at 1440 x 900 (npm run judge serves them)
 //   docs/submission/screens/7-* .. 14-*  close-ups for the deck, one panel each (rails, inspector, enterprise cards,
 //                                        Try Purser, overview, Claude, the run's result, the dispute case)
-//   docs/submission/purser-deck.pdf      fifteen slides, one picture each (src/submission/deck.ts); the phone screens
+//   docs/submission/purser-deck.pdf      sixteen slides, one picture each (src/submission/deck.ts); the phone screens
 //                                        (screens/phone-*.png) come from test/browser/approve.check.ts, a dev-test world
 //   out/submission/purser-source.zip     git archive of the current commit: code and docs, no keys, no ledger
 // Nothing is sent anywhere; Max uploads them.

@@ -1,4 +1,4 @@
-// The submission deck (awards item 6): fifteen 16:9 slides as one HTML page, printed to PDF by npm run submission.
+// The submission deck (awards item 6): sixteen 16:9 slides as one HTML page, printed to PDF by npm run submission.
 // One picture per slide and at most three short points: the screenshots are the recorded pages (npm run judge),
 // the phone screens come from the browser check's dev-test world. Every figure comes from packFacts(), the same
 // recorded files the pages use; the font, the logos, the screenshots and the QR code are embedded, so the PDF needs
@@ -37,6 +37,16 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       extra: `<p class="lead">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
       pic: shot(s.landing, "The landing page, from the recorded live run"),
+    },
+    {
+      kicker: "Kit 11 · x402 Business Agents",
+      title: "Three agents, one Metal account",
+      points: [
+        "Northwind sells live stock data per query: Kit 11's data business.",
+        "Each agent pays under its own on-chain mandate; 20.00 test USD between them, held in code.",
+        "A supplier price rise is refused; the CFO approves new limits within the 20 with Face ID.",
+      ],
+      pic: `<div class="kitmap">${f.kit11.map((k) => `<div><b>${esc(k.agent)}</b><span>= Kit 11's ${esc(k.role)} agent</span><em>${esc(k.bound === k.now ? k.now : `${k.bound} → ${k.now}`)}</em></div>`).join("")}<p>budgets in test USD, when bound → after the CFO's Face ID (recorded run)</p></div>`,
     },
     {
       kicker: "The problem",
@@ -228,6 +238,10 @@ figcaption { font-size: 13px; color: #6b7280; margin-top: 10px; text-align: cent
 .timeline b { display: block; font-size: 24px; } .timeline span { display: block; font-size: 16px; color: #4b5563; margin-top: 6px; }
 .qr { display: flex; gap: 28px; align-items: center; margin-top: 8px; }
 .qr svg { width: 220px; height: 220px; flex: none; }
+.kitmap { width: 100%; display: grid; gap: 14px; }
+.kitmap div { display: grid; grid-template-columns: 1fr 1.3fr auto; align-items: center; gap: 16px; background: #f6f7f9; border: 1px solid #e5e7eb; border-left: 6px solid #4f46e5; border-radius: 14px; padding: 22px 24px; }
+.kitmap b { font-size: 24px; } .kitmap span { font-size: 18px; color: #4b5563; } .kitmap em { font-style: normal; font-size: 26px; font-weight: 700; }
+.kitmap p { font-size: 14px; color: #6b7280; text-align: center; margin: 4px 0 0; }
 .url { font-size: 26px; font-weight: 700; margin: 18px 0 8px; white-space: nowrap; letter-spacing: -.01em; }
 .small code { white-space: nowrap; }
 .photo { width: 100%; display: flex; justify-content: center; }

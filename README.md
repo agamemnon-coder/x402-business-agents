@@ -10,6 +10,18 @@
 *Left: Airwallex itself declines the agent's card over its limit. Right: Metal refuses a payment over the agent's
 on-chain mandate. Both from the recorded live run (test money).*
 
+**Kit 11 (x402 Business Agents), as built.** Northwind Outdoor sells live stock data per query: the kit's data
+business. Three agents draw on one Metal account, each under its own mandate:
+
+| Purser's agent | Kit 11's agent | Budget when bound → after the CFO's Face ID |
+|---|---|---|
+| Operations agent | sourcing agent (buys the upstream data) | 10.00 → 12.00, cap 0.03 → 0.04 a purchase |
+| Sales agent | support agent (refunds customers) | 4.00 |
+| Finance agent | treasury agent (watches spending, sweeps earnings to Airwallex, pays the euro licence fee) | 6.00 → 4.00 |
+
+20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). Every Kit 11 sentence and where
+it is done: [docs/requirements-matrix.md](docs/requirements-matrix.md) section 4.
+
 Each agent gets an Airwallex company card and a Metal on-chain mandate. The CFO sets the limits for both: card limits come from the CFO policy, and an agent's mandate changes only when
 the CFO signs the new terms with Face ID. When an agent needs more, it stops and asks, and the CFO approves on a phone with Face ID.
 

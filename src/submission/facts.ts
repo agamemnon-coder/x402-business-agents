@@ -12,7 +12,7 @@ interface Recorded {
 }
 interface RedTeam { attempts: number; blocked: number; caught_after?: number; inconclusive?: number; not_blocked?: number; results: { id: string }[] }
 interface Lab { results: { passed: boolean }[] }
-interface Metal { features: unknown[]; mandates: unknown[]; dispute: { packs: { seq: number; refunded_cents: number }[]; refunds: unknown[] } | null }
+interface Metal { features: unknown[]; mandates: { agent: string; role: string; budget: string; history: { budget: string }[] }[]; dispute: { packs: { seq: number; refunded_cents: number }[]; refunds: unknown[] } | null }
 
 export interface PackFacts {
   run: string;
@@ -31,6 +31,8 @@ export interface PackFacts {
   redteam: { attempts: number; failed: number; before: number; after: number; inconclusive: number; documents: number };
   lab: { passed: number; total: number };
   /** dispute_refunded: refunds this claim made; refunded_before: the disputed orders refunded in an earlier case. */
+  /** Kit 11's three roles as Purser's agents, with each budget when bound and after the CFO's replace (recorded). */
+  kit11: { agent: string; role: string; bound: string; now: string }[];
   metal: { features: number; mandates: number; dispute_orders: number; dispute_refunded: number; refunded_before: number[] };
 }
 
@@ -55,6 +57,7 @@ export function packFacts(): PackFacts {
     claude_per_1000_eur_usd: (rec.snapshot.claude.per_1000_eur_usd_micros / 1e6).toFixed(3),
     redteam: { attempts: rt.attempts, failed: rt.blocked, before: rt.blocked - after, after, inconclusive: rt.inconclusive ?? 0, documents: rt.results.filter((r) => r.id === "document").length },
     lab: { passed: lab.results.filter((r) => r.passed).length, total: lab.results.length },
+    kit11: metal.mandates.filter((m) => ["sourcing", "support", "treasury"].includes(m.role)).map((m) => ({ agent: m.agent, role: m.role, bound: m.history[0]?.budget ?? m.budget, now: m.budget })),
     metal: { features: metal.features.length, mandates: metal.mandates.length, dispute_orders: metal.dispute?.packs.length ?? 0, dispute_refunded: metal.dispute?.refunds.length ?? 0, refunded_before: (metal.dispute?.packs ?? []).filter((x) => x.refunded_cents > 0).map((x) => x.seq) },
   };
 }

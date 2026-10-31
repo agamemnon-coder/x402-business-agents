@@ -22,6 +22,11 @@ main { max-width: 1180px; margin: 0 auto; padding: 36px 24px 64px; }
 h1 { font-size: 44px; line-height: 1.08; letter-spacing: -.03em; margin: 8px 0 12px; max-width: 900px; }
 h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; }
 .lead { font-size: 18px; line-height: 1.5; color: var(--muted); margin: 0 0 22px; max-width: 780px; }
+.kit11 { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; padding: 14px 18px; margin: 0 0 22px; max-width: 780px; font-size: 15px; line-height: 1.55; }
+.kit11 b { font-weight: 700; } .kit11 .map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.kit11 .map div { background: var(--sunken, rgba(127,127,127,.08)); border-radius: 10px; padding: 10px 12px; }
+.kit11 .map small { display: block; color: var(--muted); font-size: 13px; }
+@media (max-width: 640px) { .kit11 .map { grid-template-columns: 1fr; } }
 .sub { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 0 0 18px; max-width: 780px; }
 .built { display: inline-flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; color: #5d6578; font-weight: 600; }
 .built img { height: 18px; width: auto; display: block; }
@@ -108,6 +113,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
   <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>
   <h1>How Purser uses Metal</h1>
   <p class="lead">On Metal, Northwind's agents pay on chain, in cents, under mandates the chain itself enforces. Purser is the CFO's control layer on top: it sets the mandates, asks for Face ID before any limit goes up, and proves every payment afterwards. Everything below ran live on Metal testnet with test money; each card links to its proof and to Metal's docs.</p>
+  <div class="kit11" id="kit11" hidden></div>
   <span class="built">Built on <img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span>
   <div class="stats" id="stats"></div>
 
@@ -151,6 +157,21 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
 (function () {
   "use strict";
   var D = JSON.parse(document.getElementById("metal-data").textContent);
+  // Kit 11 as built, from the recorded mandates: each role's budget when bound and after the CFO's Face ID replace.
+  (function () {
+    var KIT = { sourcing: "sourcing agent", support: "support agent", treasury: "treasury agent" };
+    var ms = (D.mandates || []).filter(function (m) { return KIT[m.role]; });
+    if (ms.length !== 3) return;
+    var first = function (m) { return (m.history && m.history[0] && m.history[0].budget) || m.budget; };
+    var sum = function (f) { return ms.reduce(function (n, m) { return n + Math.round(Number(f(m)) * 100); }, 0) / 100; };
+    var box = document.getElementById("kit11");
+    box.appendChild(el("div", "", [el("b", "", ["Kit 11, as built. "]), "Northwind sells live stock data per query: the kit's data business. Three agents draw on one Metal account, each under its own mandate; " + sum(first).toFixed(2) + " test USD between them when bound, " + sum(function (m) { return m.budget; }).toFixed(2) + " after the CFO approved new limits, the total held in code."]));
+    box.appendChild(el("div", "map", ms.map(function (m) {
+      var b0 = first(m), b1 = m.budget;
+      return el("div", "", [el("b", "", [m.agent]), el("small", "", ["= Kit 11's " + KIT[m.role] + " · budget " + (b0 === b1 ? b1 : b0 + " → " + b1)])]);
+    })));
+    box.hidden = false;
+  })();
   function el(tag, cls, kids) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
