@@ -224,6 +224,15 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .hooklist li small { color: var(--muted); }
 .hooklist li.bad small { color: var(--bad); font-weight: 600; }
 .panel.bk { margin-top: 16px; }
+.withclaude { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); }
+.panel.split { margin-bottom: 16px; }
+.splitgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.splitgrid .m { background: var(--sunken); border-radius: 12px; padding: 14px 16px; }
+.splitgrid .m .k { font-weight: 700; } .splitgrid .m .v { font-size: 14px; margin: 4px 0; } .splitgrid .m .sub { color: var(--muted); font-size: 13px; }
+.splitgrid .m.code { border: 1px dashed var(--border); background: transparent; }
+@media (max-width: 760px) { .splitgrid { grid-template-columns: 1fr 1fr; } }
+.kitrole { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--accent); }
+.never { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); }
 details.panel.bk.fold > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 2px 0; }
 details.panel.bk.fold h3 { font-size: 14px; margin: 16px 0 0; }
 details.panel.bk.fold .hint { display: block; margin-top: 8px; }
@@ -480,6 +489,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       <p class="why"><b>Why Airwallex customers need this:</b> a cross-border company like Northwind buys software, pays suppliers abroad and sells across currencies. As AI agents take over that work, each needs its own card and limits, and the CFO one place for the exceptions.</p>
       <div class="ctas"><a class="btn primary" href="try"><span data-icon="sparkles"></span>Try it yourself</a><a class="btn" href="demo"><span data-icon="play"></span>Watch the demo</a><a class="btn" href="month"><span data-icon="calendar-range"></span>A month in 90 seconds</a></div>
       <div class="built">Built on <span class="logos"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"><span class="sep"></span><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span></div>
+      <p class="withclaude">Built with Claude: three models, each for what it does best. Code decides.</p>
     </div>
     <div class="stage" aria-label="A card purchase from the recorded run">
       <div class="cc"><div class="row1"><span>Operations agent</span><span>Virtual</span></div><div class="who">Warehouse software</div><div class="buys">Airwallex Issuing</div><div class="row2"><span class="pan" id="hero-pan">•••• 8120</span><span class="brandmark">VISA</span></div></div>
@@ -1034,7 +1044,24 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       : MODE === "local" ? "Tighten a setting on your phone (Policy) with Face ID; it applies at once. Loosening is a proposal from the runner, approved with Face ID."
       : "Tighten a setting here with Face ID; it applies at once. Loosening is a proposal from the runner, approved with Face ID.";
     if (!ps.length) { set("agents", [el("div", "panel empty", [icon("bot"), d.recorded ? "This recording was made before the Agents page." : "No agents yet."])]); return; }
-    set("agents", ps.map(function (a) {
+    // Kit 11's names for the three roles, and what no agent may ever do (src/policy/principals.ts, src/claude/reader.ts).
+    var KIT = { sourcing: "Kit 11's sourcing agent: buys the upstream data", support: "Kit 11's support agent: refunds customers", treasury: "Kit 11's treasury agent: watches spending, sweeps earnings to Airwallex, pays the euro bills" };
+    var NEVER = "Never: hold an owner key, see a card number, add a payee or bank account, raise its own limit, or approve.";
+    // How the work is split across Claude's models, with what each cost in this run (list prices).
+    var split = d.claude && d.claude.models && d.claude.models.length ? el("section", "panel split", [
+      el("div", "sect flush", [txt("h2", "", "How the work is split across Claude's models"), txt("span", "hint", d.claude.calls + " calls in this run, " + usdMicros(d.claude.cost_usd_micros).replace("$", "USD ") + " in all at Anthropic's list prices; code decides")]),
+      el("div", "splitgrid", d.claude.models.map(function (m) {
+        return el("div", "m", [txt("div", "k", m.model), txt("div", "v", m.role.charAt(0).toUpperCase() + m.role.slice(1)), txt("div", "sub", m.calls + " calls · " + usdMicros(m.cost_usd_micros).replace("$", "USD "))]);
+      }).concat([el("div", "m code", [txt("div", "k", "Code"), txt("div", "v", "Checks every answer, decides every payment"), txt("div", "sub", "limits, prices, budgets, the FX check")])])),
+    ]) : null;
+    var others = el("section", "panel split", [
+      el("div", "sect flush", [txt("h2", "", "Also on the same limits")]),
+      el("div", "two", [
+        el("div", "", [txt("h3", "", "An outside agent, over MCP"), txt("p", "sub", "Any agent that speaks MCP, Claude Code included, can ask for a company card, pay inside its limits and ask the CFO for more. Four tools, no keys; it never approves.")]),
+        el("div", "", [txt("h3", "", "Ask Purser"), txt("p", "sub", "A task in one sentence (a flight, a hotel, a train) becomes a single-use Airwallex card for that task, inside the CFO's policy; anything more waits for Face ID.")]),
+      ]),
+    ]);
+    set("agents", [split].concat(ps.map(function (a) {
       var pill = a.status === "working" ? txt("span", "pill ok", "Working") : txt("span", "pill bad", a.status === "frozen" ? "Frozen (emergency stop)" : "Stopped");
       var fact = function (k, v) { return el("div", "m", [txt("div", "k", k), el("div", "v", v)]); };
       var facts = el("div", "facts", [
@@ -1058,12 +1085,13 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       if (a.status === "stopped" && !d.recorded) acts.push(el("div", "sub", "Starting it again loosens the policy: a proposal from the runner, approved with Face ID."));
       return el("section", "panel agent", [
         el("div", "top", [icon("bot"), txt("h2", "", a.name), pill]),
+        KIT[a.id] ? txt("p", "kitrole", KIT[a.id]) : null,
         txt("p", "job", a.job.charAt(0).toUpperCase() + a.job.slice(1) + "."),
-        facts, two,
+        facts, two, txt("p", "never", NEVER),
         rows.length ? el("table", "settings", [el("tbody", "", rows)]) : null,
         acts.length ? el("div", "acts", acts) : null,
       ]);
-    }));
+    })).concat([others]).filter(Boolean));
   }
   // The finance view: trial balance, cash moved per bank account, spend per cost centre, latest postings.
   function renderBooks(d) {

@@ -131,7 +131,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       pic: shot(s.dispute, "The Disputes tab; the case ran after the recorded run, on a copy of its ledger"),
     },
     {
-      kicker: "Claude reads, code decides",
+      kicker: "Built with Claude: three models, each for what it does best",
       title: "No model can raise a limit or move money outside it",
       points: [
         "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO and played the attacker.",
