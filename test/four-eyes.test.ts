@@ -65,6 +65,17 @@ describe("four eyes (E1)", () => {
     expect(sign(db, small.proposal_id, "max", "cred-max")).toBe("APPROVED");
   });
 
+  // Breaks if the CFO alone can change the agents' on-chain limits while four eyes is on (Kit 11: the agents'
+  // budgets are rebalanced only with two people's Face ID).
+  it("asks for a change of the agents' mandates at any amount, once four eyes is on", () => {
+    const replace = createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "mandate_replace", proposal_id: nextProposalId(db), expires_at: "2026-11-03T11:00:00Z", option: "B" }, createdBy: "treasury" }, now);
+    expect(fourEyes(db, replace)).toBe(false);
+    setting(db, "approval.four_eyes_eur", "1000.00");
+    expect(fourEyes(db, replace)).toBe(true);
+    expect(sign(db, replace.proposal_id, "max", "cred-max")).toBe("PENDING_APPROVAL");
+    expect(sign(db, replace.proposal_id, "anna", "cred-anna")).toBe("APPROVED");
+  });
+
   it("needs two different people; the same person twice does not count", () => {
     setting(db, "approval.four_eyes_eur", "500.00");
     const p = invoice(db, "1850.00");

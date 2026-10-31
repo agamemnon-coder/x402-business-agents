@@ -1,6 +1,7 @@
 // E1, four eyes: which proposals need the Face ID of two different people. Set by the CFO policy
 // (approval.four_eyes_eur); off until the CFO sets it. Above the threshold: an invoice payment, and an outside
-// agent's card whose monthly limit is above it; at any amount, a supplier's new bank details.
+// agent's card whose monthly limit is above it; at any amount, a supplier's new bank details and a change of the
+// agents' on-chain mandates (Kit 11's rebalance within the 20.00 total).
 
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
@@ -18,5 +19,5 @@ export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">): b
   if (p.kind === "invoice_payment") return over(t.amount);
   if (p.kind === "agent_onboard") return over(t.card?.monthly);
   if (p.kind === "task_card") return over(t.amount);
-  return p.kind === "payee_change";
+  return p.kind === "payee_change" || p.kind === "mandate_replace";
 }

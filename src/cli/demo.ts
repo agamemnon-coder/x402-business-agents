@@ -67,9 +67,11 @@ if (!db.prepare("SELECT 1 FROM proposals WHERE kind = 'mandate_replace'").get())
 await waitForExecuted("mandate_replace", "S1 mandate change");
 if ((db.prepare("SELECT COUNT(*) AS n FROM sales").get() as { n: number }).n < 50) step("S1 Sales resume", "s1.ts", "resume");
 step("S2 Disputed batch", "s2.ts");
+// Kit 11: earnings are swept only once final, to a wallet whose receive policy accepts the business account alone.
+step("Receive policy on the sweep wallet", "receivePolicy.ts", "setup");
 step("S3 Manufacturer's euro invoice", "s3.ts");
 if (fromEnv()) await waitForExecuted("invoice_payment", "S3 invoice payment", () => step("S3 A fresh quote for the euro invoice", "s3.ts"), "BTX-2026-11");
-// Kit 11: the treasury (Finance) agent pays the monthly licence fee invoiced in euros (the fee is in code).
+// Kit 11: the Treasury agent pays the monthly licence fee invoiced in euros (the fee is in code).
 if (fromEnv()) {
   step("S3b Kit 11 monthly licence fee (EUR)", "licence.ts");
   await waitForExecuted("invoice_payment", "S3b licence fee", () => step("S3b A fresh quote for the licence fee", "licence.ts"), "SLL-2026-11");
