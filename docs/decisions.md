@@ -162,3 +162,22 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
   goes away when `docs/demo/story.json` carries `agent_names: "kit11"`.
 - **Why:** Max: the names must be literally Kit 11's, with no "= Kit 11's …" mapping.
 - **If wrong:** the names live in `src/config/brand.ts`; the guard is `test/kit11-names.test.ts`.
+
+### D15. From good to winner: estimates and risk, before any code (31 October, evening)
+
+All of this sits behind `KIT11_AGENTS=on` and is for Thursday's run. The reserve run runs from the tag
+`reserve-run-2026-11-02` (`eff08b4`) in its own git worktree, so nothing below can reach it. Kill rule: a block goes
+into Thursday's run only if it is in three green dry runs in a row by Wednesday 4 November 23:00; otherwise it stays
+behind its flag and the pages say nothing about it.
+
+| Order | Block | Estimate | Risk | Why that risk |
+|---|---|---|---|---|
+| 1 | 4.1 Agent trace: one timeline per decision (model, tool calls, tokens, cost, latency, the check that let it through or stopped it, tx or Airwallex id, audit hash), opened from its feed line | 4 h | low | Read-only; built from audit rows that exist. Tokens need one more field in `agent.run`. |
+| 2 | 4.2 Pause per agent with Face ID: really revokes the agent's Metal mandate (`mandate revoke`) and freezes its Airwallex card; resume binds a fresh credential for what is left of the budget and unfreezes the card | 7 h | **high** | Money and chain code. A revoked mandate cannot come back: resume binds a new one, whose budget must be the old budget minus what was spent, or the agent could spend twice its budget. Resume re-grants spending power, so it needs four eyes like any mandate change. |
+| 3 | 3 The agent picks the rail: x402 via Metal for data, a single-use Airwallex task card for a card-only supplier; code checks the choice | 6 h | medium | Task cards exist (Ask Purser); the agent only chooses. Code refuses a rail the purchase does not allow. |
+| 4 | 2 Customer agents (Summit, Stockline) on Claude: they buy, sign orders, Summit opens the dispute in its own words | 8 h | medium | Summit's agent becomes another reader of hostile text; its signed orders must still be checked by code. Labelled "customer agents simulated by us, running on Claude". |
+| 5 | 1 The jury raises the supplier price on /try and watches the agents work, with a real Metal refusal | 10 h | **high** | Public, real chain, real Claude spend. Needs its own wallet with little *USDZ, an hourly reset, a per-IP limit, a daily cap on runs and on Claude cost, view-only proposals. Biggest abuse surface. |
+| 6 | 4.3 Unit economics per agent, 4.4 the "agent was wrong" case, 5 pitch and ten jury questions | 4 h | low | Docs and one table from real run numbers only. |
+
+Total about 39 hours for Saturday evening to Wednesday evening, beside three dry runs a day. If time runs short,
+block 5 (the jury's own run) is the first to stay behind its flag: it has the highest risk and /try already works.
