@@ -804,10 +804,10 @@ async function approvePage(attempt = 0): Promise<void> {
   const back = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
   back.href = "/";
   if (!p) {
-    // A proposal made a moment ago reaches the relay at the runner's next sync, a few seconds later (the dry run opened
-    // the link that fast): look again for about 20 seconds before saying it is not there.
-    if (attempt < 8) {
-      app.replaceChildren(txt("h1", "", id), txt("p", "", `Looking for ${id}: the runner sends new proposals every few seconds.`), back);
+    // A proposal made a moment ago reaches the relay at the runner's next sync. That is usually seconds, but can be
+    // longer while the runner checks the books with Airwallex (dry-14 waited about 25 s): look again for 90 seconds.
+    if (attempt < 36) {
+      app.replaceChildren(txt("h1", "", id), txt("p", "", `Looking for ${id}: the runner sends new proposals as soon as it is free, usually within seconds.`), back);
       setTimeout(() => void approvePage(attempt + 1), 2500);
       return;
     }

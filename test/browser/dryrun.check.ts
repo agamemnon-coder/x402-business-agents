@@ -155,7 +155,7 @@ async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag:
   const page = p.page;
   await page.goto(`${url}/approve/${id}`);
   try {
-    await page.waitForSelector(o.reject ? "button.reject-btn" : "button.option", { timeout: 60_000 });
+    await page.waitForSelector(o.reject ? "button.reject-btn" : "button.option", { timeout: 120_000 });
   } catch (e) {
     await shot(page, `${o.tag}-no-proposal`);
     say(`  the phone shows: ${((await page.textContent("body")) ?? "").replace(/\s+/g, " ").slice(0, 300)}`);
