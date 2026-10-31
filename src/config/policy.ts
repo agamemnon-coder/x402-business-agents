@@ -16,6 +16,15 @@ export const INITIAL_MANDATES: Record<Agent, { capCents: number; budgetCents: nu
 /** The simulated customer's own mandate (Summit Outfitters pays us under it). */
 export const CUSTOMER_MANDATE = { capCents: 10, budgetCents: 500 };
 
+/**
+ * Kit 11: the treasury (Finance) agent pays a monthly licence fee invoiced in euros, kept in code. Stockline's data
+ * licence: the right to resell its stock checks. An invoice from the licensor for any other amount waits for a person.
+ */
+export const LICENCE_FEE_EUR_CENTS = 24_000;
+export const LICENSOR_NAME = "Stockline Data GmbH";
+/** Payees whose invoices must match a contracted amount in code exactly. */
+export const CONTRACTED_EUR_CENTS: Record<string, number> = { [LICENSOR_NAME]: LICENCE_FEE_EUR_CENTS };
+
 export const SELL_PRICE_CENTS = 5;
 export const ALT_SELL_PRICE_CENTS = 7;
 export const UPSTREAM_PRICE_CENTS = 2;

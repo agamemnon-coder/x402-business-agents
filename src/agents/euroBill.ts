@@ -5,7 +5,7 @@
 import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, Quote, SandboxSim } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
-import { EUR_FLOOR_CENTS, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_MAX_EUR_CENTS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
+import { EUR_FLOOR_CENTS, LICENSOR_NAME, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_MAX_EUR_CENTS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
@@ -32,6 +32,17 @@ export const MANUFACTURER = {
   address: { street: "Textilweg 4", city: "Reutlingen", postcode: "72760", countryCode: "DE" as const },
 };
 
+/** Kit 11's licensor: Stockline's monthly data licence, invoiced in euros (LICENCE_FEE_EUR_CENTS in code). */
+export const LICENSOR = {
+  name: LICENSOR_NAME,
+  iban: "DE02120300000000202051",
+  bic: "BYLADEM1001",
+  currency: "EUR" as const,
+  countryCode: "DE" as const,
+  bankName: "Deutsche Kreditbank",
+  address: { street: "Datenallee 12", city: "Berlin", postcode: "10115", countryCode: "DE" as const },
+};
+
 export async function snapshot(db: DB, rail: AirwallexRail, label: string) {
   const b = await rail.balances();
   db.prepare("INSERT INTO balance_snapshots (taken_at, label, json) VALUES (?, ?, ?)").run(new Date().toISOString(), label, JSON.stringify(b));
@@ -54,10 +65,13 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
     setSetting(db, "treasury", "eur_obligations", fromCents(Math.max(0, eur - EUR_FLOOR_CENTS - TARGET_FREE_EUR_CENTS)));
   }
 
-  let ben = await rail.findBeneficiaryByIban(MANUFACTURER.iban);
-  ben ??= await rail.createBeneficiary(MANUFACTURER);
-  db.prepare("INSERT OR IGNORE INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES (?, ?, ?, ?, ?, 'EUR', 'SWIFT')")
-    .run(ben.id, MANUFACTURER.name, MANUFACTURER.iban.slice(-4), ibanSha(MANUFACTURER.iban), MANUFACTURER.bic);
+  // The allowlisted payees: the manufacturer and Kit 11's licensor, each created once at Airwallex.
+  for (const payee of [MANUFACTURER, LICENSOR]) {
+    let ben = await rail.findBeneficiaryByIban(payee.iban);
+    ben ??= await rail.createBeneficiary(payee);
+    db.prepare("INSERT OR IGNORE INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES (?, ?, ?, ?, ?, 'EUR', 'SWIFT')")
+      .run(ben.id, payee.name, payee.iban.slice(-4), ibanSha(payee.iban), payee.bic);
+  }
   return treasuryState(db, b);
 }
 

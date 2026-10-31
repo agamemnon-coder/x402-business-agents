@@ -21,7 +21,16 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
   const credit = await bookCredit(db, rest, rest, eventKey);
   console.log(`CREDIT           ${eventKey} -> Airwallex deposit ${credit.depositId}${credit.adopted ? " (already booked)" : ""}; reference = tx hash; 1 *USDZ = 1 USD (SIMULATED deposit: the sandbox cannot receive stablecoins)`);
 
-  const path = resolve(import.meta.dirname, "../../fixtures/bergtex-invoice-BTX-2026-11.txt");
+  await planInvoice(db, rest, s, "bergtex-invoice-BTX-2026-11.txt");
+}
+
+/**
+ * Reads an invoice from fixtures/, checks it, and plans its payment as one proposal for the CFO's Face ID: the euros
+ * it needs, only the shortfall converted on a locked quote, the SWIFT fee ceiling. Used for the manufacturer's invoice
+ * (S3) and Kit 11's monthly licence fee (npm run licence). Nothing moves until the proposal is approved.
+ */
+export async function planInvoice(db: DB, rest: AirwallexRest, s: Awaited<ReturnType<typeof seedTreasury>>, fixture: string): Promise<void> {
+  const path = resolve(import.meta.dirname, `../../fixtures/${fixture}`);
   const text = readFileSync(path, "utf8");
   const tools = new Tools(db);
   const kind = await tools.classify(text);

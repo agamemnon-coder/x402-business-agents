@@ -20,6 +20,7 @@ export const CHART: Record<string, string> = {
   "6150": "Advertising (company cards)",
   "6200": "Goods from the manufacturer",
   "6300": "Travel (task cards)",
+  "6350": "Data licence (Stockline, monthly)",
   "6800": "Bank and transfer fees",
   "6900": "Other supplier invoices",
 };
@@ -41,6 +42,7 @@ export const COST_CENTRE_NAMES: Record<string, string> = {
 /** Supplier invoices by vendor; anything not listed goes to 6900. */
 export const VENDOR_GL: Record<string, string> = {
   "Bergtex Textil GmbH": "6200",
+  "Stockline Data GmbH": "6350",
 };
 
 /** Card spend by merchant category; anything not listed goes to 6100. */

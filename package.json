@@ -22,6 +22,7 @@
     "s1:resume": "tsx src/cli/s1.ts resume",
     "s2": "tsx src/cli/s2.ts",
     "s3": "tsx src/cli/s3.ts",
+    "licence": "tsx src/cli/licence.ts",
     "verify": "tsx src/cli/verify.ts",
     "principals": "tsx src/cli/principals.ts",
     "audit:export": "tsx src/cli/auditExport.ts",

@@ -4,7 +4,8 @@
 
 import { createHash } from "node:crypto";
 import type { DB } from "../db/open.js";
-import { toCents } from "../lib/money.js";
+import { CONTRACTED_EUR_CENTS } from "../config/policy.js";
+import { fromCents, toCents } from "../lib/money.js";
 import { assessInvoice, type FraudFinding } from "../policy/fraud.js";
 import { counterpartyAllowed, frozen } from "../policy/rules.js";
 
@@ -69,5 +70,10 @@ export function checkInvoice(db: DB, inv: Invoice, text = ""): InvoiceCheck {
   const b = fraud.allowlisted!;
   if (!counterpartyAllowed(db, b.name)) return { ok: false, reason: `${b.name} is blocked by the CFO policy` };
   if (frozen(db)) return { ok: false, reason: "the CFO pulled the emergency stop" };
+  // A contracted fee (Kit 11's licence fee) is paid only for exactly the amount in code, whatever the invoice says.
+  const contracted = CONTRACTED_EUR_CENTS[b.name];
+  if (contracted !== undefined && toCents(inv.amount) !== contracted) {
+    return { ok: false, reason: `the licence fee in code is EUR ${fromCents(contracted)}; this invoice from ${b.name} asks EUR ${inv.amount}: a person checks the contract first` };
+  }
   return { ok: true, beneficiaryId: b.beneficiary_id, name: b.name, ibanLast4: b.iban_last4, bic: b.bic, amountCents: toCents(inv.amount) };
 }
