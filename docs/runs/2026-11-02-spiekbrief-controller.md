@@ -1,4 +1,4 @@
-# Spiekbrief controller (de vader van Max): maandag 2 november, 10:00
+# Spiekbrief controller (de vader van Max): datum ______________, 10:00
 
 Jij bent de tweede sleutel ("vier ogen"). Boven €1.000 gaat er niets weg zonder jouw Face ID. Het is testgeld.
 

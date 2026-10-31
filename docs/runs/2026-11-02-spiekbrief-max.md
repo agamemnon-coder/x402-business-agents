@@ -1,6 +1,6 @@
-# Spiekbrief Max (CFO): reserve-run maandag 2 november
+# Spiekbrief Max (CFO): reserve-run, datum: ________________
 
-**Start 10:00, klaar rond 11:00.** Agents uit. Testgeld: Airwallex-sandbox en Metal testnet. Claude typt alle
+**Start 10:00 (zondag 1 of maandag 2 november: Max bevestigt), klaar rond 11:00.** Agents uit. Testgeld: Airwallex-sandbox en Metal testnet. Claude typt alle
 commando's en keurt nooit iets goed. Jij leest en tikt. Claude geeft één stap per regel. Zeg "ok" als je klaar
 bent. Twijfel je? Zeg "stop". Er gaat dan niets weg.
 
@@ -53,4 +53,4 @@ Klopt iets niet? Niet tikken. Zeg "stop".
 
 - Stop de schermopname en stuur hem naar Claude.
 - Claude controleert alles (verify, reconcile, data-QA) en schrijft het runverslag
-  `docs/runs/2026-11-02-reserve-run.md`.
+  `docs/runs/<datum>-reserve-run.md`.
