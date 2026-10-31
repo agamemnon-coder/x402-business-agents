@@ -1429,7 +1429,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // 4.1 The agent trace, opened from a feed line. Built from the snapshot's traces, every string as text.
   var traceSheet = document.getElementById("trace-sheet"), traceFrom = null;
   var STEP_KIND = { tool: "Tool call", effect: "What it caused", run: "Claude", decision: "Decision" };
-  function usd(micros) { return "$" + (Number(micros || 0) / 1e6).toFixed(4); }
+  function traceUsd(micros) { return "$" + (Number(micros || 0) / 1e6).toFixed(4); }
   function openTrace(seq, from) {
     var t = traceIndex[seq];
     if (!t) return;
@@ -1442,7 +1442,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       cell("Model", t.model || "none"),
       cell("Outcome", t.status + " · " + t.turns + " turn" + (t.turns === 1 ? "" : "s")),
       cell("Tokens", total === null ? "not recorded" : total + (tk ? " (" + tk.input + " in, " + tk.output + " out)" : "")),
-      cell("Cost", usd(t.cost_usd_micros)),
+      cell("Cost", traceUsd(t.cost_usd_micros)),
       cell("Time", t.latency_ms === null ? "not recorded" : (t.latency_ms / 1000).toFixed(1) + " s"),
     ]);
     var said = document.getElementById("trace-said");
