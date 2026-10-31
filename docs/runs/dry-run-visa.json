@@ -1,5 +1,5 @@
 {
-  "ran_at": "2026-10-31T16:40:18.450Z",
+  "ran_at": "2026-10-31T17:05:49.580Z",
   "merchant": "Packwise",
   "authority": "127.0.0.1:4410",
   "profile": "agent recognition per Visa's TAP spec (RFC 9421, tags agent-browser-auth / agent-payer-auth, 8-minute window, nonce replay block)",
@@ -9,13 +9,13 @@
     {
       "step": "the Sourcing agent buys Packwise Starter (EUR 19.99), signed",
       "expect": "recognised, approved by Airwallex",
-      "status": 402,
+      "status": 200,
       "result": {
         "recognised": true,
         "agent": "sourcing",
-        "approved": false,
-        "reason": "declined by Airwallex: CARD_INACTIVE",
-        "transactionId": "01a192d5-3ef0-7000-a3a0-fdaf94b1c838"
+        "approved": true,
+        "reason": null,
+        "transactionId": "01a192ec-a517-7000-a942-a9c35af4c9f9"
       }
     },
     {
@@ -86,8 +86,8 @@
         "recognised": true,
         "agent": "sourcing",
         "approved": false,
-        "reason": "declined by Airwallex: CARD_INACTIVE",
-        "transactionId": "01a192d5-4d7a-7000-b213-198727098b35"
+        "reason": "declined by Airwallex: LIMIT_EXCEEDED",
+        "transactionId": "01a192ec-afb0-7000-b58c-701c85c3e126"
       }
     },
     {
@@ -97,7 +97,7 @@
       "result": {
         "recognised": false,
         "approved": false,
-        "reason": "key revoked at 2026-10-31T16:40:18.436Z"
+        "reason": "key revoked at 2026-10-31T17:05:49.574Z"
       }
     }
   ]
