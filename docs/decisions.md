@@ -132,3 +132,18 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 - **Why:** an external QA pass read "€6.54 free" next to a EUR 500 reserve as not credible for a real company, and
   found the earlier example company's names still visible to guests.
 - **If wrong:** the reserve is one constant (`EUR_FLOOR_CENTS`) and a CFO policy value (`eur_floor`).
+
+### D12. The Dispute desk rules live in one shared example (31 October)
+
+- **What:** the per-payment dispute rules, the evidence pack and the refund routing moved unchanged into
+  `examples/metal-dispute-desk/`; Purser imports them from there. A parity test runs one case table against both.
+- **Why:** the judge review asked for something any seller on Metal can reuse; one copy cannot drift.
+- **If wrong:** the example is plain functions; moving them back is a revert of one commit.
+
+### D13. minimatch pinned to 11.0.3 by override (31 October)
+
+- **What:** `overrides.minimatch` is `11.0.3`. eslint's own range resolved to 10.2.6, which npm audit now reports as
+  moderate (GHSA-g3hv-75wg-m249); the fix exists only from 11.0.1.
+- **Why:** CI runs `npm audit --audit-level=low`; lowering that level would weaken a check. minimatch is used only by
+  the lint tooling, and lint passes on 11.0.3.
+- **If wrong:** drop the override once eslint's own dependency moves to a fixed version.
