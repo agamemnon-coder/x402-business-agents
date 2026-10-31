@@ -778,7 +778,7 @@ function parsedOrEmpty(canonical: string): Obj {
   }
 }
 
-async function approvePage(): Promise<void> {
+async function approvePage(attempt = 0): Promise<void> {
   const app = document.getElementById("app")!;
   if (guestWithoutLink(app)) return;
   const id = decodeURIComponent(location.pathname.split("/").pop() ?? "");
@@ -804,6 +804,13 @@ async function approvePage(): Promise<void> {
   const back = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
   back.href = "/";
   if (!p) {
+    // A proposal made a moment ago reaches the relay at the runner's next sync, a few seconds later (the dry run opened
+    // the link that fast): look again for about 20 seconds before saying it is not there.
+    if (attempt < 8) {
+      app.replaceChildren(txt("h1", "", id), txt("p", "", `Looking for ${id}: the runner sends new proposals every few seconds.`), back);
+      setTimeout(() => void approvePage(attempt + 1), 2500);
+      return;
+    }
     app.replaceChildren(txt("h1", "", id), txt("p", "", `${id} is not waiting for approval: it was decided, it expired, or it does not exist.`), back);
     return;
   }

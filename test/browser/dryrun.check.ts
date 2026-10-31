@@ -152,7 +152,13 @@ async function enrol(p: { page: Page }, person: string | null): Promise<void> {
 async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag: string; reject?: boolean; expectNoVerdict?: boolean; beforeConfirm?: () => Promise<void> }): Promise<string> {
   const page = p.page;
   await page.goto(`${url}/approve/${id}`);
-  await page.waitForSelector(o.reject ? "button.reject-btn" : "button.option", { timeout: 60_000 });
+  try {
+    await page.waitForSelector(o.reject ? "button.reject-btn" : "button.option", { timeout: 60_000 });
+  } catch (e) {
+    await shot(page, `${o.tag}-no-proposal`);
+    say(`  the phone shows: ${((await page.textContent("body")) ?? "").replace(/\s+/g, " ").slice(0, 300)}`);
+    throw e;
+  }
   if (o.reject) await page.click("button.reject-btn");
   else if (o.option) await page.locator("button.option", { hasText: `Option ${o.option}` }).first().tap();
   else await page.locator("button.option").first().tap();
