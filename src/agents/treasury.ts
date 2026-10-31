@@ -6,7 +6,7 @@ import { extractTerms, hashCredential, parseCredential } from "@metalntwx/metal-
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
 import {
-  ALT_SELL_PRICE_CENTS, INITIAL_MANDATES, MANDATE_PROPOSAL_TTL_MS, TOTAL_BUDGET_CENTS, type Agent,
+  INITIAL_MANDATES, MANDATE_PROPOSAL_TTL_MS, TOTAL_BUDGET_CENTS, type Agent,
 } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { issueReplacementCredential } from "../executors/ownerSigner.js";
@@ -14,8 +14,9 @@ import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { activeMandate, mandateSpent, type LoadedMandate } from "../metal/mandate.js";
 import { createProposal, nextProposalId } from "../policy/approvals.js";
-import { planReplaceSteps, priceRiseOptions, type MandateNow, type MandateTarget } from "../policy/mandates.js";
+import { planReplaceSteps, type MandateNow, type MandateTarget } from "../policy/mandates.js";
 import type { Addresses } from "../world/runtime.js";
+import { fallbackPricePlan, type PricePlan } from "./treasuryAgent.js";
 
 export interface ReplaceStepTerms {
   [k: string]: string | string[];
@@ -63,7 +64,8 @@ export interface PriceRiseEvidence {
   refusal: { purchaseId: number; reason: string };
 }
 
-export async function proposePriceRise(db: DB, addr: Addresses, sellCents: number, ev: PriceRiseEvidence, now = new Date()) {
+/** Each agent's mandate as the chain has it now: cap, budget and what it already spent. */
+export async function mandatesNow(): Promise<Map<Agent, { m: LoadedMandate; now: MandateNow }>> {
   const current = new Map<Agent, { m: LoadedMandate; now: MandateNow }>();
   for (const agent of ["sourcing", "support", "treasury"] as const) {
     const m = await activeMandate(agent);
@@ -78,7 +80,19 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
       },
     });
   }
-  const steps = planReplaceSteps([...current.values()].map((c) => c.now), priceRiseTargets(ev.liveOfferCents));
+  return current;
+}
+
+/**
+ * The mandate-replace proposals for a price rise, one per sell-price option, sharing the same replace steps. `plan`
+ * is the Treasury agent's design once code accepted it (src/agents/treasuryAgent.ts); without it, code's fixed plan.
+ */
+export async function proposePriceRise(db: DB, addr: Addresses, sellCents: number, ev: PriceRiseEvidence, now = new Date(), plan?: PricePlan) {
+  const current = await mandatesNow();
+  const design = plan ?? fallbackPricePlan({
+    sellCents, oldUpstreamCents: 0, newUpstreamCents: ev.liveOfferCents, refusal: ev.refusal.reason, mandates: [...current.values()].map((c) => c.now),
+  });
+  const steps = planReplaceSteps([...current.values()].map((c) => c.now), design.targets);
   const firstId = nextProposalId(db);
 
   // Credentials are issued before approval (off-chain, no gas), so their hash goes into the terms.
@@ -106,23 +120,22 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
     { type: "refusal", ref: `upstream_purchase:${ev.refusal.purchaseId}:${ev.refusal.reason}`, sha256: sha256Hex(ev.refusal.reason) },
   ];
   const expires = new Date(now.getTime() + MANDATE_PROPOSAL_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z");
-  const options = priceRiseOptions(sellCents, ALT_SELL_PRICE_CENTS, ev.liveOfferCents).filter((o) => o.sellCents !== null);
   const totalAfter = steps.at(-1)?.totalAfterCents ?? TOTAL_BUDGET_CENTS;
 
-  const proposals = options.map((o, i) => {
+  const proposals = design.options.map((o, i) => {
     const id = i === 0 ? firstId : nextProposalId(db);
     const terms: MandateReplaceTerms = {
       schema: TERMS_SCHEMA, kind: "mandate_replace", proposal_id: id, expires_at: expires,
-      option: o.id, query_price: fromCents(o.sellCents!), upstream_price: fromCents(ev.liveOfferCents), margin: fromCents(o.marginCents!),
+      option: o.id, query_price: fromCents(o.sellCents), upstream_price: fromCents(ev.liveOfferCents), margin: fromCents(o.sellCents - ev.liveOfferCents),
       total_budget: fromCents(totalAfter), steps: stepTerms, evidence,
     };
     return createProposal(db, { terms, createdBy: "treasury", evidence }, now);
   });
   audit(db, "treasury", "price_rise.options", firstId, {
-    options: priceRiseOptions(sellCents, ALT_SELL_PRICE_CENTS, ev.liveOfferCents).map((o) => ({
-      id: o.id, label: o.label, sell: o.sellCents === null ? null : fromCents(o.sellCents), margin: o.marginCents === null ? null : fromCents(o.marginCents),
-      margin_percent: o.marginPercent === null ? null : String(o.marginPercent),
-    })),
+    options: [...design.options.map((o) => ({
+      id: o.id, label: o.label, sell: fromCents(o.sellCents), margin: fromCents(o.sellCents - ev.liveOfferCents),
+      margin_percent: String(Math.round(((o.sellCents - ev.liveOfferCents) * 100) / o.sellCents)),
+    })), { id: "C", label: "pause sales", sell: null, margin: null, margin_percent: null }],
   }, now);
   return proposals;
 }

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb } from "../src/db/open.js";
-import { runAgent, type AgentTool } from "../src/agents/loop.js";
+import { agentsOn, runAgent, type AgentTool } from "../src/agents/loop.js";
 
 type Block = { type: "text"; text: string } | { type: "tool_use"; id: string; name: string; input: unknown };
 type Reply = { content: Block[]; stop_reason: string; stop_details?: unknown };
@@ -143,5 +143,11 @@ describe("the agent loop", () => {
     const run = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.run'").get() as { payload_json: string }).payload_json);
     expect(run).toMatchObject({ agent: "treasury", status: "done", turns: 2, tools: ["add"] });
     expect(typeof run.latency_ms).toBe("number");
+  });
+
+  it("decides nothing unless KIT11_AGENTS=on: off, every flow runs code's fixed decisions", () => {
+    expect(agentsOn({})).toBe(false);
+    expect(agentsOn({ KIT11_AGENTS: "1" })).toBe(false);
+    expect(agentsOn({ KIT11_AGENTS: "on" })).toBe(true);
   });
 });

@@ -8,7 +8,9 @@ import { resolve } from "node:path";
 import { crossCheckNotice } from "../agents/notices.js";
 import { attachReview } from "../claude/review.js";
 import { Tools } from "../claude/tools.js";
-import { priceRiseContext, proposePriceRise, type MandateReplaceTerms } from "../agents/treasury.js";
+import { mandatesNow, priceRiseContext, proposePriceRise, type MandateReplaceTerms } from "../agents/treasury.js";
+import { designPriceRise } from "../agents/treasuryAgent.js";
+import { agentsOn } from "../agents/loop.js";
 import { RAISED_UPSTREAM_PRICE_CENTS } from "../config/policy.js";
 import { openDb } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
@@ -53,7 +55,19 @@ try {
     console.log(`                 customer: ${p.outcome.kind === "paid" ? "PAID (unexpected)" : `HTTP ${p.outcome.kind === "in_doubt" || p.outcome.kind === "refused" ? p.outcome.status : "?"}, charged: ${p.charged ? "YES" : "no (not in /settlements)"}`}`);
     if (!refusal || p.charged) throw new Error("expected a refusal and no charge");
 
-    const proposals = await proposePriceRise(db, rt.addr, toCents(sellPrice(db)), { noticePath, liveOfferCents: live.cents, refusal: { purchaseId: refusal.id, reason: refusal.refusal_reason } });
+    // The Treasury agent designs the answer (Opus, with a tool); code checks the plan before it can reach the CFO.
+    // Off (KIT11_AGENTS not "on"), code's fixed plan as in every recorded run.
+    const sellCents = toCents(sellPrice(db));
+    const design = agentsOn() ? await designPriceRise(db, {
+      sellCents, oldUpstreamCents: toCents(notice.old_price), newUpstreamCents: live.cents, refusal: refusal.refusal_reason,
+      mandates: [...(await mandatesNow()).values()].map((c) => c.now),
+    }) : null;
+    if (design) {
+      console.log(`TREASURY AGENT   ${design.source === "claude" ? `${design.run.model}: plan accepted by code after ${design.attempts} ${design.attempts === 1 ? "try" : "tries"}` : `code's fixed plan (${design.note})`}`);
+      for (const c of design.run.calls.filter((x) => x.blocked)) console.log(`                 refused by code: ${c.text.slice(0, 300)}`);
+      if (design.plan.advice) console.log(`                 "${design.plan.advice}"`);
+    }
+    const proposals = await proposePriceRise(db, rt.addr, sellCents, { noticePath, liveOfferCents: live.cents, refusal: { purchaseId: refusal.id, reason: refusal.refusal_reason } }, new Date(), design?.plan);
     console.log(`PLAN             options for the approver (limits stay within 20.00):`);
     for (const pr of proposals) {
       const t = JSON.parse(pr.terms_json) as MandateReplaceTerms;
