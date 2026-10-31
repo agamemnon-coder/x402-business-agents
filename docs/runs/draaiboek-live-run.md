@@ -9,8 +9,9 @@ verschillende mensen. Claude typt de commando's en keurt nooit iets goed. Max ne
 - Een verse wereld met eigen sleutels: `KIT11_DB=data/live-1.sqlite`, `KIT11_KEYS_DIR=…-keys/live-1`. Niets uit eerdere
   werelden wordt hergebruikt.
 - `npm run health` is groen: Airwallex, Metal en Claude antwoorden.
-- De proefrun (dry run) laat zien dat elke stap werkt tot aan het eerste Face ID-moment. Het verslag staat in
-  `docs/runs/2026-10-31-dry-run.md`.
+- De proefrun (dry run) liet elke stap werken, ook met twee passkeys, een verlopen quote, een mis-tik, netwerk weg,
+  Face ID mislukt en een herstart van de runner. Verslagen: `docs/runs/2026-10-31-dry-run.md` en
+  `docs/runs/2026-10-31-dry-run-2.md`.
 
 ## Begin (Max en de controller, 5 minuten)
 
@@ -43,6 +44,32 @@ verschillende mensen. Claude typt de commando's en keurt nooit iets goed. Max ne
 | 12 | Noodknop aan, een kaartbetaling wordt geweigerd, noodknop uit. | **Max** (aan en uit) | Alle kaarten op inactief, daarna weer actief. |
 | 13 | Een bankwijziging voor Bergtex in drie stappen: verzoek, terugbellen, voorstel. | **Max + controller** | Het oude en het nieuwe IBAN naast elkaar. |
 | 14 | Agentherkenning (Visa TAP-profiel, dev test): eerst herkennen, daarna betaalt de agent zelf met zijn kaart. | — | €19,99 goed, 7 pogingen geweigerd, €45,00 geweigerd door Airwallex. |
+
+## Echte tijden (proefrun dry-12, 31 oktober, alles automatisch met twee virtuele passkeys)
+
+| Stap | Tijd |
+|---|---|
+| Gezondheid en runner | 6 s |
+| Twee passkeys inschrijven + vier ogen aan (P-0001) | 37 s |
+| Start van de wereld (rekeningen, mandaten) | 38 s |
+| 1 Verkopen 1–40 | 2 min 16 s |
+| 2–4 Prijsstijging, weigering, opties met advies van Opus | 33 s |
+| 5 Vier ogen op de chain (2-van-2) | 54 s |
+| 6 Mandaten vervangen (optie B, beide passkeys) + verkopen 41–50 | 56 s |
+| 7 Dispute, "refund all 12" afwijzen | 1 min 10 s |
+| 8 Receive policy en sweep | 10 s |
+| 9 Bergtex €1.850 voorstellen en betalen (beide passkeys) | 41 s |
+| 10 Licentie €240 (FX + SWIFT), met een herstart van de runner | 49 s |
+| 11 Kaarten €19,99 / €45 / verhoging €30 → €50 | 37 s |
+| 12 Noodknop aan en uit | 47 s |
+| 13 Bankwijziging Bergtex (beide passkeys) | 17 s |
+| 14 Agentherkenning (dev test) | 10 s |
+| Controle (verify) | 1 min 55 s |
+| **Totaal zonder wachten** | **ongeveer 13 minuten** |
+
+De proefrun wachtte ook 11 minuten tot een voorstel verliep; dat doen we in de live run niet. Met mensen erbij komen er
+ongeveer 15 Face ID-momenten bij (elk 30–60 seconden lezen en tikken) en uitleg. **Verwachte duur live: 45 tot 60
+minuten.** Plan een uur.
 
 ## Daarna (Claude, automatisch)
 
