@@ -35,7 +35,8 @@ export function parseInvoiceFallback(text: string): Invoice {
     if (!m) throw new Error(`invoice: no ${what}`);
     return m[1]!.trim();
   };
-  const total = get(/Total due\s+EUR\s+([\d,]+\.\d{2})/, "total");
+  // The whole amount or nothing: "1.850,00" must not be read as 1.85 (a misread line would overrule the model).
+  const total = get(/Total due\s+EUR\s+((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?![\d.,])/, "total");
   return {
     invoice_no: get(/INVOICE\s+(\S+)/, "invoice number"),
     vendor: text.trim().split("\n")[0]!.trim(),
