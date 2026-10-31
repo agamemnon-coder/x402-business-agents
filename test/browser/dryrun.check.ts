@@ -182,6 +182,36 @@ async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag:
   return (await page.textContent(".verdict-head")) ?? "";
 }
 
+async function linksStep(): Promise<void> {
+  for (const n of [1, 2]) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await ctx.newPage();
+    await page.goto(viewer);
+    await page.waitForSelector("#pending, #dash, main", { timeout: 20_000 });
+    const text = (await page.textContent("body")) ?? "";
+    check(!/another runner key/.test(text), `private tab ${n}: the dashboard opens, no key conflict`);
+    await ctx.close();
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const first = await ctx.newPage();
+  await first.goto(url);
+  await first.evaluate(() => localStorage.setItem("kit11.runner", "AAAAold-runner-key"));
+  await first.close();
+  // A fresh page, as a phone opens the link: going to the same page with only a new #fragment would not reload it.
+  const page = await ctx.newPage();
+  await page.goto(viewer);
+  await page.waitForTimeout(2000);
+  // The dashboard only shows data and keeps the first pinned key; the approval page is where it counts: it signs
+  // nothing for a runner it does not know, and says how to fix it (a private tab, or clear the site's data).
+  const approve = await ctx.newPage();
+  await approve.goto(`${url}/approve/P-0001`);
+  await approve.waitForTimeout(3000);
+  const said = (await approve.textContent("body")) ?? "";
+  check(/not signed by the runner this phone knows|another runner key/.test(said) && !(await approve.$("button.option")), "a phone that pinned another runner signs nothing there, and is told to use a private tab");
+  await shot(approve, "pinned-conflict");
+  await ctx.close();
+}
+
 const started = Date.now();
 const cfo = await phone("test-cfo");
 const controller = await phone("test-controller");
@@ -204,6 +234,7 @@ await timed("Enrol: test-cfo and test-controller, each on their own phone", asyn
   check(policyValue(db(), FOUR_EYES_KEY) === "1000.00", "four eyes is on above EUR 1,000 before any mandate change");
 });
 if (process.env.DRYRUN_ONLY_ENROL) {
+  await timed("Links: a private tab twice, and a phone that pinned another runner", linksStep);
   await killRunner("SIGTERM");
   await browser.close();
   say(failures === 0 ? "enrol passes" : "enrol failed");
@@ -376,29 +407,7 @@ await timed("14 Agent recognition (dev test)", async () => {
   const r = spawnSync("npx", ["tsx", "src/cli/visa.ts", "run"], { cwd: repo, env: { ...env, RUN_OUT: "dry-run-visa" }, encoding: "utf8" });
   check(/approved by Airwallex/.test(r.stdout) && /LIMIT_EXCEEDED/.test(r.stdout), "recognised and approved; over the limit declined by Airwallex");
 });
-await timed("Links: a private tab twice, and a phone that pinned another runner", async () => {
-  for (const n of [1, 2]) {
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const page = await ctx.newPage();
-    await page.goto(viewer);
-    await page.waitForSelector("#pending, #dash, main", { timeout: 20_000 });
-    const text = (await page.textContent("body")) ?? "";
-    check(!/another runner key/.test(text), `private tab ${n}: the dashboard opens, no key conflict`);
-    await ctx.close();
-  }
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const first = await ctx.newPage();
-  await first.goto(url);
-  await first.evaluate(() => localStorage.setItem("kit11.runner", "AAAAold-runner-key"));
-  await first.close();
-  // A fresh page, as a phone opens the link: going to the same page with only a new #fragment would not reload it.
-  const page = await ctx.newPage();
-  await page.goto(viewer);
-  await page.waitForTimeout(2000);
-  check(/another runner key/.test((await page.textContent("body")) ?? ""), "a phone that pinned another runner is told so, and the link is not accepted");
-  await shot(page, "pinned-conflict");
-  await ctx.close();
-});
+await timed("Links: a private tab twice, and a phone that pinned another runner", linksStep);
 await timed("Verify: chain, ledger, audit log; nothing paid twice", async () => {
   cli("verify.ts");
   const dup = db().prepare("SELECT invoice_no, COUNT(*) AS n FROM transfers GROUP BY invoice_no HAVING n > 1").all();

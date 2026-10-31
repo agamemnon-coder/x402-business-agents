@@ -1,5 +1,5 @@
 {
-  "ran_at": "2026-10-31T14:05:21.508Z",
+  "ran_at": "2026-10-31T14:30:06.341Z",
   "merchant": "Packwise",
   "authority": "127.0.0.1:4410",
   "profile": "agent recognition per Visa's TAP spec (RFC 9421, tags agent-browser-auth / agent-payer-auth, 8-minute window, nonce replay block)",
@@ -15,7 +15,7 @@
         "agent": "sourcing",
         "approved": true,
         "reason": null,
-        "transactionId": "01a19247-620d-7000-bc1f-43ea8bdb6801"
+        "transactionId": "01a1925e-0f11-7000-9041-c90255da7c4b"
       }
     },
     {
@@ -87,7 +87,7 @@
         "agent": "sourcing",
         "approved": false,
         "reason": "declined by Airwallex: LIMIT_EXCEEDED",
-        "transactionId": "01a19247-71b7-7000-b676-0c4e88dc8d19"
+        "transactionId": "01a1925e-1a65-7000-8057-0f6452b38e34"
       }
     },
     {
@@ -97,7 +97,7 @@
       "result": {
         "recognised": false,
         "approved": false,
-        "reason": "key revoked at 2026-10-31T14:05:21.499Z"
+        "reason": "key revoked at 2026-10-31T14:30:06.335Z"
       }
     }
   ]
