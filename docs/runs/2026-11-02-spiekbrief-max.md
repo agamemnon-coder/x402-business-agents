@@ -27,7 +27,7 @@ bent. Twijfel je? Zeg "stop". Er gaat dan niets weg.
 |---|---|---|---|
 | Begin | Vier ogen boven €1.000 | Tik de kaart → Confirm with Face ID | — |
 | 6 | Twee opties voor de mandaten | **Optie B (0,07)** → Confirm with Face ID | Je ziet "1 of 2 approvals". Dan je vader. |
-| 7 | Summit: "refund all 12" (Opus adviseert afwijzen) | **Reject** → Confirm with Face ID | — |
+| 7 | Summit: "refund all 12" (Opus adviseert afwijzen) | **Reject** → **Reject with Face ID** | — |
 | 9 | Factuur Bergtex **€1.850,00** | Tik de kaart → Confirm with Face ID | "1 of 2". Dan je vader. |
 | 10 | Licentie Stockline **EUR 240,00** (koers, begunstigde) | Tik de kaart → Confirm with Face ID | — |
 | 11 | Kaartlimiet van €30 naar **€50** | Tik de kaart → Confirm with Face ID | — |
