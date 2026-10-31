@@ -81,9 +81,8 @@ Alles hierboven blijft gelijk: dezelfde stappen, dezelfde goedkeuringen, dezelfd
   goed of stuurt het terug; de bedragen kunnen dus anders zijn dan 12 / 4 / 4 (in de dry runs meestal 14 / 2 / 4).
   **Optie A is altijd de laagste prijs, optie B de hoogste**: code stuurt een plan in een andere volgorde terug (dry-19
   en dry-20 hadden het omgekeerd). Sourcing krijgt altijd meer budget. Claude noemt de bedragen in de chat vóór Face ID. **Max kiest
-  de optie die de Treasury agent aanbeveelt**, tenzij die tegen de regels in gaat (code stuurt zo'n plan terug). Die
-  aanbeveling staat nu in het dashboard en de log, nog niet op de telefoon; Claude leest hem voor. Op de telefoon komt
-  hij zondag (eigen dry runs).
+  de optie die de Treasury agent aanbeveelt**, tenzij die tegen de regels in gaat (code stuurt zo'n plan terug). Op de
+  telefoon staat bij die optie "Treasury agent recommends this", en in het bevestigingsscherm zijn advies (adviserend).
 - **Stap 12b (nieuw, alleen als blok 6 woensdag groen is):** Max pauzeert de Support agent met Face ID: het mandaat wordt op de chain ingetrokken en de kaart
   bevroren. Daarna hervatten met beide passkeys (vier ogen); de agent krijgt wat er van zijn budget over was.
 - **Stap 7:** de Support agent (Sonnet) controleert zelf de orders, refundt zelf alleen de foute (#7, #10, #13) en stuurt
