@@ -67,7 +67,7 @@ const SYSTEM = [
   "Code checks every refund against its own evidence and limits and tells you when it refuses one. When you are done, sum up what you decided in two or three sentences.",
 ].join("\n");
 
-export async function settleDispute(db: DB, f: DisputeFacts, deps: SupportDeps, client: Anthropic | null = claudeClient()): Promise<Settlement> {
+export async function settleDispute(db: DB, f: DisputeFacts, deps: SupportDeps, client: Anthropic | null = claudeClient(), model: string = MODELS.act): Promise<Settlement> {
   const inDispute = new Set(f.seqs);
   const refunded: number[] = [];
   let refundedCents = 0;
@@ -75,7 +75,7 @@ export async function settleDispute(db: DB, f: DisputeFacts, deps: SupportDeps, 
   const Seq = z.strictObject({ seq: z.number() });
 
   const run = await runAgent(db, {
-    agent: "support", task: `dispute.${f.disputeId}`, model: MODELS.act, system: SYSTEM, maxTurns: 10, effort: "medium",
+    agent: "support", task: `dispute.${f.disputeId}`, model, system: SYSTEM, maxTurns: 10, effort: "medium",
     prompt: [
       `Dispute ${f.disputeId} from ${f.customer} about stock checks ${f.seqs.map((s) => `#${s}`).join(", ")}; the customer asks: ${f.requested}.`,
       `Your automatic limits: ${fromCents(deps.limits.eachCents)} per refund and ${fromCents(deps.limits.perDisputeCents)} per dispute.`,

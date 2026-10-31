@@ -37,11 +37,11 @@ const SYSTEM = [
   "You cannot raise your own cap or budget, or pay anyone else: Metal enforces your mandate on chain, and only the CFO can approve a new one.",
 ].join("\n");
 
-export async function meetPriceRise(db: DB, f: { oldCents: number; noticeCents: number }, deps: SourcingDeps, client: Anthropic | null = claudeClient()): Promise<PriceRiseMeeting> {
+export async function meetPriceRise(db: DB, f: { oldCents: number; noticeCents: number }, deps: SourcingDeps, client: Anthropic | null = claudeClient(), model: string = MODELS.classify): Promise<PriceRiseMeeting> {
   let tried = false, refusal: string | null = null, seq: number | null = null, message = "";
   const None = z.strictObject({});
   const run = await runAgent(db, {
-    agent: "sourcing", task: "price_rise.meet", model: MODELS.classify, system: SYSTEM, maxTurns: 6, effort: "low",
+    agent: "sourcing", task: "price_rise.meet", model, system: SYSTEM, maxTurns: 6, effort: "low",
     prompt: `Stockline's notice says its price per stock check goes from ${fromCents(f.oldCents)} to ${fromCents(f.noticeCents)}. Code has read the notice and cross-checked it against the live offer.`,
     tools: [
       {

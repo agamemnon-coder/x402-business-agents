@@ -12,7 +12,7 @@ import { mandatesNow, priceRiseContext, proposePriceRise, type MandateReplaceTer
 import { designPriceRise } from "../agents/treasuryAgent.js";
 import { agentsOn } from "../agents/loop.js";
 import { meetPriceRise } from "../agents/sourcingAgent.js";
-import { RAISED_UPSTREAM_PRICE_CENTS } from "../config/policy.js";
+import { RAISED_UPSTREAM_PRICE_CENTS, type Agent } from "../config/policy.js";
 import { openDb } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { metalAgent } from "../metal/agentCli.js";
@@ -101,7 +101,8 @@ try {
     }
     console.log(`                 option C: pause sales (approve nothing)`);
     for (const pr of proposals) {
-      const r = await attachReview(db, tools, pr, await priceRiseContext(rt.addr, toCents(sellPrice(db)), notice.old_price, live.cents, refusal.refusal_reason));
+      const steps = (JSON.parse(pr.terms_json) as MandateReplaceTerms).steps.map((st) => st.agent as Agent);
+      const r = await attachReview(db, tools, pr, await priceRiseContext(rt.addr, toCents(sellPrice(db)), notice.old_price, live.cents, refusal.refusal_reason, steps));
       console.log(`REVIEW           ${pr.proposal_id}: ${r.recommendation} (${r.source === "claude" ? "Opus, advisory" : "no model"}): ${r.summary}`);
     }
     console.log(`\nNext: npm run proposals, then ${approvalHint(db)}`);

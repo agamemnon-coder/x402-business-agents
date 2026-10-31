@@ -136,6 +136,7 @@ const SYSTEM = [
   "You are the Treasury agent of Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query.",
   "Three agents spend from one Metal account under on-chain mandates that together may bind at most 20.00 test USD: the Sourcing agent buys each stock check from the supplier Stockline, the Support agent refunds customers in disputes, and you sweep earnings to Airwallex.",
   "When Stockline raises its price, you decide how to answer it: the new budget for each mandate, the Sourcing agent's cap per purchase, and one or two sell prices per stock check for the CFO to choose from, with your advice.",
+  "Kit 11's design: when supplier costs rise, Treasury rebalances the budgets inside the fixed total so the Sourcing agent can keep buying at the higher price; Treasury keeps what it needs for the sweep, and Support keeps its refund budget.",
   "Submit your plan with the submit_plan tool. Code checks it against the limits; if it refuses the plan, it tells you why, and you fix it and submit again.",
   "You cannot pay anyone, choose a payee or bind a mandate yourself: the CFO and the controller approve the change with their passkeys, and Metal enforces the mandates on chain.",
   "Write your advice for a CFO in two or three plain sentences: which option you recommend and why, in numbers.",
@@ -163,11 +164,11 @@ export interface PriceDesign {
   note?: string;
 }
 
-export async function designPriceRise(db: DB, f: PricePlanFacts, client: Anthropic | null = claudeClient()): Promise<PriceDesign> {
+export async function designPriceRise(db: DB, f: PricePlanFacts, client: Anthropic | null = claudeClient(), model: string = MODELS.review): Promise<PriceDesign> {
   let attempts = 0;
   let accepted: PricePlan | null = null;
   const run = await runAgent(db, {
-    agent: "treasury", task: "price_rise.plan", model: MODELS.review, system: SYSTEM, prompt: prompt(f), maxTurns: MAX_TRIES + 1, effort: "medium",
+    agent: "treasury", task: "price_rise.plan", model, system: SYSTEM, prompt: prompt(f), maxTurns: MAX_TRIES + 1, effort: "medium",
     tools: [{
       name: "submit_plan",
       description: "Submit your rebalance and sell-price options. Amounts in test USD with two decimals (e.g. \"12.00\", \"0.04\"). Code checks the plan and answers with its reasons if it refuses it.",
