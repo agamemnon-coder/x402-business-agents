@@ -53,8 +53,10 @@ try {
     let served: { seq: number; p: Awaited<ReturnType<typeof rt.customer.buy>>; refusal: { id: number; refusal_reason: string } | undefined } | null = null;
     const serveNext = async () => {
       const seq = nextSeq();
+      // Only a refusal of this purchase counts, never an older one.
+      const before = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM upstream_purchases").get() as { n: number }).n;
       const p = await rt.customer.buy(seq);
-      const refusal = db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' ORDER BY id DESC LIMIT 1").get() as { id: number; refusal_reason: string } | undefined;
+      const refusal = db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' AND id > ? ORDER BY id DESC LIMIT 1").get(before) as { id: number; refusal_reason: string } | undefined;
       served = { seq, p, refusal };
       return served;
     };
@@ -72,6 +74,8 @@ try {
         },
         notify: (m) => { sourcingMessage = m; },
       });
+      // Its message reaches Treasury only when the agent itself decided (it tried the purchase).
+      if (met.source !== "claude") sourcingMessage = "";
       console.log(`SOURCING AGENT   ${met.source === "claude" ? `${met.run.model}: tried stock check #${met.seq}, ${met.refusal ? "refused by Metal" : "bought"}` : "not available; code serves the next query"}`);
       if (met.message) console.log(`                 to Treasury: "${met.message}"`);
     }

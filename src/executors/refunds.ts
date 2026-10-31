@@ -35,6 +35,10 @@ export async function refundSale(
   if (r.amount_cents > sale.price_cents) throw new Error(`refund ${r.amount_cents} exceeds what sale ${r.sale_id} cost`);
 
   const existing = db.prepare("SELECT outcome, tx_hash, payment_id FROM refunds WHERE sale_id = ?").get(r.sale_id) as { outcome: RefundOutcome | "PROPOSED"; tx_hash: string | null } | undefined;
+  // A retry repeats a refund that was started; it never starts one (nothing approved it).
+  if (opts.retry && !existing) {
+    return { sale_id: r.sale_id, payment_id: paymentId, outcome: "REFUSED", tx: null, reason: "nothing to retry: this sale has no refund yet", already: false };
+  }
   if (existing && (existing.outcome === "PAID" || existing.outcome === "HELD") && !opts.retry) {
     return { sale_id: r.sale_id, payment_id: paymentId, outcome: existing.outcome, tx: existing.tx_hash, reason: null, already: true };
   }

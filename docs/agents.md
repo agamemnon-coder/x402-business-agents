@@ -2,8 +2,9 @@
 
 Each of Kit 11's three agents has its own Claude loop with typed tools (`src/agents/loop.ts`). Inside its mandate it
 acts on its own; every tool call goes through the same code checks as before, and Metal and Airwallex enforce the
-limits. When Claude is not there, fails, refuses, or cannot satisfy the checks, code's fixed decision takes over, as in
-every earlier run, and the log says so.
+limits. When Claude is not there, fails, refuses, cannot satisfy the checks, or leaves its job unfinished (the Support
+agent must refund or escalate every sale code finds wrong, and send a "refund all" request to the CFO), code's fixed
+decision takes over, as in every earlier run, and the log says so.
 
 **Switch.** The agents decide only with `KIT11_AGENTS=on`. Off (the default), every flow runs exactly as in the recorded
 runs and dry-12. The switch goes on for a live run once evals, red team and a full dry run are green (Max's kill rule:
@@ -35,6 +36,13 @@ told Treasury "I need the CFO to approve a new per-purchase cap of at least 0.04
 first try, and the Support agent refunded exactly #7, #10 and #13 and sent the other 9 to the CFO. Dry-15 ran the whole
 draaiboek with the agents on, two passkeys, the expiry, the mis-tap, network loss, a failed Face ID and a runner restart:
 0 failures, `npm run verify` passed every check, nothing paid twice (25 minutes, the 11-minute expiry wait included).
+
+**A fresh review of this code (31 October) found, and we fixed, each with a test:** a retry in the dispute script that
+could pay a refund nobody approved (now a retry only repeats a refund that was started); a Support run that ended
+without acting counted as settled (now it must be complete, else code settles); the per-dispute limit and "escalate
+once" held per run only (now counted from the ledger across runs); the agent's advice inside the terms the CFO signs
+(now the reason is code's, the advice goes to the review); Support's budget could grow (now it stays exactly as it is);
+failed runs counted as decisions on the dashboard; the prompt itself was not redacted.
 
 **Not (yet) an agent decision.** The sweep's moment and amount and the licence payment stay code's (finality, receive
 policy and FX/SWIFT with Face ID as before). Routine purchases per query stay code's inside the mandate; the agent

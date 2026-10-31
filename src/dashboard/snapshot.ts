@@ -753,10 +753,13 @@ function claudeView(db: DB, rows: AuditRow[]): Snapshot["claude"] {
       const p = JSON.parse(r.payload_json) as P;
       const model = str(p.model);
       const cost = typeof p.cost_usd_micros === "number" ? p.cost_usd_micros : 0;
-      const a = agentRuns.get(str(p.agent)) ?? { model, runs: 0, cost: 0, latencies: [] };
-      a.runs++; a.cost += cost; a.model = model || a.model;
-      if (typeof p.latency_ms === "number") a.latencies.push(p.latency_ms);
-      agentRuns.set(str(p.agent), a);
+      // A decision is a finished run; one that never reached a model (no key, a refusal, a failure) is not.
+      if (str(p.status) === "done") {
+        const a = agentRuns.get(str(p.agent)) ?? { model, runs: 0, cost: 0, latencies: [] };
+        a.runs++; a.cost += cost; a.model = model || a.model;
+        if (typeof p.latency_ms === "number") a.latencies.push(p.latency_ms);
+        agentRuns.set(str(p.agent), a);
+      }
       // An agent's run is Claude calls too: its turns and cost count in its model's total.
       const m = per.find((x) => x.re.test(model));
       if (m) { m.calls += typeof p.turns === "number" ? p.turns : 0; m.cost += cost; }

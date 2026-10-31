@@ -164,7 +164,10 @@ export async function priceRiseContext(addr: Addresses, sellCents: number, oldUp
     `Current sell price: ${fromCents(sellCents)}. In the terms, query_price is the sell price this option would set, and margin = query_price - upstream_price. The approver chooses between options (another option keeps the current price; pausing sales means approving nothing).`,
     `Mandates bound now (read from the chain), ${fromCents(total)} of the ${fromCents(TOTAL_BUDGET_CENTS)} total:`,
     ...lines,
-    `The proposal replaces ${replaced.join(" and ")} only (its steps say so); the others stay as they are, so total_budget counts all three mandates and never exceeds ${fromCents(TOTAL_BUDGET_CENTS)}.`,
+    // Code's fixed plan replaces sourcing and treasury: the sentence its reviews always had, word for word.
+    [...replaced].sort().join() === "sourcing,treasury"
+      ? `The proposal replaces sourcing and treasury only; support stays as it is, so total_budget counts all three mandates and never exceeds ${fromCents(TOTAL_BUDGET_CENTS)}.`
+      : `The proposal replaces ${replaced.join(" and ")} only (its steps say so); the others stay as they are, so total_budget counts all three mandates and never exceeds ${fromCents(TOTAL_BUDGET_CENTS)}.`,
     "Checked by code: each replaces_credential_hash is the credential bound now; each new credential was issued by the business owner key with exactly these caps, budgets, payees and expiry; the payees are the known supplier and our own sweep wallet.",
     "Metal semantics: a replacement mandate carries what the agent has already spent, so spent_at_proposal counts against the new budget. Steps run in order, shrinking first, so the total never exceeds the limit at any moment.",
     "By design: sourcing's cap equals the supplier price with no headroom, so any further rise is refused on chain and comes back to a person; treasury's cap equals its budget because it makes one sweep at a time to our own wallet.",

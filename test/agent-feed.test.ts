@@ -57,6 +57,15 @@ describe("the agents in the CFO's feed", () => {
 // dry-14: the refusal reason now carries its detail ("mandate_cap_exceeded: 0.04 is over …"); the recording looked
 // for the bare code and would have left the refusal out of every new recording.
 import { buildStory } from "../src/demo/story.js";
+describe("decisions that did not happen", () => {
+  it("counts only finished runs as an agent's decisions (no key, a refusal or a failure is not a decision)", () => {
+    const db = openDb(":memory:");
+    audit(db, "treasury", "agent.run", "price_rise.plan", { agent: "treasury", model: "claude-opus-5-5", status: "unavailable", turns: 0, tools: [], said: "", cost_usd_micros: 0, latency_ms: 1, note: "no KIT11_ANTHROPIC_API_KEY" });
+    audit(db, "support", "agent.run", "dispute.D-1", { agent: "support", model: "claude-sonnet-5-5", status: "done", turns: 3, tools: ["refund"], said: "ok", cost_usd_micros: 30000, latency_ms: 12000 });
+    expect(buildSnapshot(db).claude.agents.map((a) => a.agent)).toEqual(["support"]);
+  });
+});
+
 describe("a refusal reason with its detail", () => {
   function refusedWorld() {
     const db = openDb(":memory:");

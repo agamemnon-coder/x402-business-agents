@@ -36,6 +36,8 @@ export interface SupportDeps {
   priceCents(seq: number): number;
   refund(seq: number): Promise<{ outcome: string; tx?: string; already?: boolean; reason?: string }>;
   escalate(seqs: number[], advice: string): Promise<{ proposalId: string }>;
+  /** What earlier runs of this dispute already did (the ledger), so the limit per dispute and "once" hold across runs. */
+  earlier(): { refunded: { seq: number; cents: number }[]; escalated: { proposalId: string; seqs: number[] } | null };
   limits: { eachCents: number; perDisputeCents: number };
 }
 
@@ -69,9 +71,10 @@ const SYSTEM = [
 
 export async function settleDispute(db: DB, f: DisputeFacts, deps: SupportDeps, client: Anthropic | null = claudeClient(), model: string = MODELS.act): Promise<Settlement> {
   const inDispute = new Set(f.seqs);
-  const refunded: number[] = [];
-  let refundedCents = 0;
-  let escalated: Settlement["escalated"] = null;
+  const before = deps.earlier();
+  const refunded: number[] = before.refunded.map((x) => x.seq);
+  let refundedCents = before.refunded.reduce((n, x) => n + x.cents, 0);
+  let escalated: Settlement["escalated"] = before.escalated;
   const Seq = z.strictObject({ seq: z.number() });
 
   const run = await runAgent(db, {
@@ -138,8 +141,18 @@ export async function settleDispute(db: DB, f: DisputeFacts, deps: SupportDeps, 
 
   // Set inside the tools' closures; TypeScript cannot see that, so read it back with its declared type.
   const esc = escalated as Settlement["escalated"];
-  const source = run.status === "done" ? "claude" : "fallback";
-  const note = source === "fallback" ? `the agent was ${run.status}${run.note ? ` (${run.note})` : ""}` : undefined;
+  // The agent's settlement counts only when it is complete: every sale code finds wrong was refunded or sent to the
+  // CFO, and a request to refund everything reached the CFO for every sale not refunded. Otherwise code settles it as
+  // before (refunds and the escalation are deduplicated, so that is safe after a partial run).
+  const sent = new Set(esc?.seqs ?? []);
+  const wrong = f.seqs.filter((q) => deps.data(q).some((v) => v.refund));
+  const undecided = wrong.filter((q) => !refunded.includes(q) && !sent.has(q));
+  const unsent = f.requested === "refund_all" ? f.seqs.filter((q) => !refunded.includes(q) && !sent.has(q)) : [];
+  const complete = undecided.length === 0 && unsent.length === 0;
+  const source = run.status === "done" && complete ? "claude" : "fallback";
+  const note = run.status !== "done" ? `the agent was ${run.status}${run.note ? ` (${run.note})` : ""}`
+    : undecided.length ? `the agent left ${undecided.map((q) => `#${q}`).join(", ")} undecided`
+    : unsent.length ? `the agent did not send ${unsent.map((q) => `#${q}`).join(", ")} to the CFO` : undefined;
   audit(db, "support", "dispute.settled_by_agent", f.disputeId, {
     source, model: run.model, refunded: refunded.map((s) => `#${s}`), escalated: esc ? { proposal: esc.proposalId, sales: esc.seqs.map((s) => `#${s}`) } : null,
     said: run.text.slice(0, 1200), ...(note ? { note } : {}),

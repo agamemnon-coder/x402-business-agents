@@ -54,6 +54,7 @@ function supportCase(id: string, kind: AgentCase["kind"], what: string, email: s
         priceCents: () => 5,
         refund: async (seq) => { refunded.push(seq); return { outcome: "PAID", tx: `0xrefund${seq}` }; },
         escalate: async () => ({ proposalId: "P-0004" }),
+        earlier: () => ({ refunded: [], escalated: null }),
         limits: { eachCents: 10, perDisputeCents: 20 },
       };
       const s = await settleDispute(openDb(":memory:"), { disputeId: "D-eval", customer: "Summit Outfitters", seqs: SEQS, requested, email }, deps, client, model);

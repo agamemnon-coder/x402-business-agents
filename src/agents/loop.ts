@@ -81,7 +81,8 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
     name: t.name, description: t.description, strict: true,
     input_schema: z.toJSONSchema(t.input) as Anthropic.Beta.BetaTool.InputSchema,
   }));
-  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: spec.prompt }];
+  // The prompt carries ledger text (a refusal reason, another agent's message): redacted like everything else.
+  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: redactSecrets(spec.prompt) }];
   const maxTurns = spec.maxTurns ?? 8;
 
   while (turns < maxTurns) {

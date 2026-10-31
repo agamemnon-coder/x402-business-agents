@@ -84,7 +84,7 @@ export function checkPricePlan(f: PricePlanFacts, p: PricePlan): string[] {
   const srcNow = now.get("sourcing")!;
   if (src.budgetCents < srcNow.budgetCents) problems.push(`Sourcing's budget may not shrink below ${fromCents(srcNow.budgetCents)}: it pays for every query, and a dearer supplier needs more, not less`);
   const sup = target.get("support")!, supNow = now.get("support")!;
-  if (sup.budgetCents < supNow.budgetCents || sup.capCents !== supNow.capCents) problems.push(`Support's mandate stays as it is (cap ${fromCents(supNow.capCents)}, budget ${fromCents(supNow.budgetCents)}): it pays the refunds in disputes`);
+  if (sup.budgetCents !== supNow.budgetCents || sup.capCents !== supNow.capCents) problems.push(`Support's mandate stays as it is (cap ${fromCents(supNow.capCents)}, budget ${fromCents(supNow.budgetCents)}): it pays the refunds in disputes`);
   const tre = target.get("treasury")!, treNow = now.get("treasury")!;
   if (tre.budgetCents < treNow.spentCents + TREASURY_SWEEP_ROOM_CENTS) problems.push(`Treasury needs at least ${fromCents(TREASURY_SWEEP_ROOM_CENTS)} left for the sweep after finality`);
   if (problems.length === 0) {

@@ -84,6 +84,16 @@ describe("refundSale", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM refunds").get()).toEqual({ n: 1 });
   });
 
+  // Review of the agents work: s2's RETRY line called refundSale({retry}) for a sale that had no refund yet, and paid it
+  // with no approval (for example while the batch waited for the CFO's Face ID). A retry only repeats a refund.
+  it("never starts a refund on a retry: a sale with no refund yet is not paid", async () => {
+    const s = sale(5);
+    const r = await refundSale(db, { sale_id: s, amount_cents: 5, to: PAYER, dispute_id: "D-1" }, { retry: true });
+    expect(r).toMatchObject({ outcome: "REFUSED", already: false, reason: expect.stringMatching(/nothing to retry/) });
+    expect(h.cli).toHaveLength(0);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM refunds").get()).toEqual({ n: 0 });
+  });
+
   it("retries a pending refund under the same payment id", async () => {
     const s = sale(5);
     h.answer = () => cli(3, ["transaction 0xp", "reason submitted"]);

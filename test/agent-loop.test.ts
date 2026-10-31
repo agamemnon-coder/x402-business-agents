@@ -135,6 +135,13 @@ describe("the agent loop", () => {
     expect(all).not.toContain("abcdefghijklmnopqrstuvwxyz");
   });
 
+  it("keeps secrets out of the prompt it sends", async () => {
+    const db = openDb(":memory:");
+    const { client, sent } = fake([say("ok")]);
+    await runAgent(db, spec([add], { prompt: "see https://rpc-testnet.metalntwx.com/v1/abcdefghijklmnopqrstuvwxyz" }), client);
+    expect(JSON.stringify(sent[0])).not.toContain("abcdefghijklmnopqrstuvwxyz");
+  });
+
   it("counts what the run cost, for the dashboard", async () => {
     const db = openDb(":memory:");
     const { client } = fake([use("t1", "add", { a: 2, b: 3 }), say("5")]);
