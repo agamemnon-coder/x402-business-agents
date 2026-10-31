@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { openDb } from "../src/db/open.js";
-import { ledgerPayments, renderReport, runDataQa, type ChainReceipt, type QaSources } from "../src/finance/dataQa.js";
+import { airwallexDiffs, chainDiffs, ledgerPayments, renderReport, runDataQa, type ChainReceipt, type QaSources } from "../src/finance/dataQa.js";
 import { USDZ } from "../src/metal/network.js";
 
 const BUSINESS = "0x00000000000000000000000000000000000000b1";
@@ -67,5 +67,62 @@ describe("data QA", () => {
     expect(found.find((c) => c.side === "Airwallex")).toMatchObject({ outcome: "match" });
     expect(found.find((c) => c.side === "Books")).toMatchObject({ outcome: "match" });
     expect(gets.every((p) => p.startsWith("/issuing/transactions"))).toBe(true);
+  });
+
+  // Breaks if a payment kind drops out of the cross-check: funding, sales (one by clearing), a refund, the sweep and
+  // the mandate binds each become a payment with the chain and Books sides they must match.
+  it("finds funding, sales, refunds, the sweep and mandate changes in the ledger", () => {
+    const db = openDb(":memory:");
+    db.prepare("INSERT INTO metal_accounts (address, role) VALUES (?, 'business'), (?, 'owner'), (?, 'sweep')").run(BUSINESS, SUPPLIER, `0x${"d".repeat(40)}`);
+    const sale = db.prepare("INSERT INTO sales (sale_id, route, price_cents, payer, request_url, request_params_json, status, created_at, scheme, tx_hash) VALUES (?, '/stock', 5, ?, 'u', '{}', 'DELIVERED', 'x', ?, ?)");
+    sale.run(1, SUPPLIER, "exact", TX1);
+    sale.run(2, SUPPLIER, "bajillion", null);
+    db.prepare("INSERT INTO refunds (refund_id, sale_id, payment_id, amount_cents, to_address, outcome, tx_hash) VALUES (1, 1, 'rf-1', 5, ?, 'PAID', ?)").run(SUPPLIER, TX2);
+    db.prepare("INSERT INTO sweeps (payment_id, amount_cents, tx_hash, outcome, created_at) VALUES ('sw-1', 135, ?, 'PAID', 'x')").run(TX2);
+    audit(db, "owner-signer", "business.funded", BUSINESS, { amount: "20.00", tx: TX1 });
+    audit(db, "support", "sale.delivered", "1", {});
+    audit(db, "support", "sale.delivered", "2", {});
+    audit(db, "support", "refund.paid", "1", {});
+    audit(db, "treasury", "sweep.paid", "sw-1", {});
+    audit(db, "owner-signer", "mandate.bound", "sourcing", { tx: TX1, cap: "0.03", budget: "10.00" });
+    audit(db, "owner-signer", "mandate.replaced", "sourcing", { tx: TX2, cap: "0.04", budget: "12.00", proposal_id: "P-0002" });
+    const ps = ledgerPayments(db, 99);
+    expect(ps.map((p) => p.kind)).toEqual(["Metal funding", "Metal sale", "Metal sale", "Metal refund", "Metal sweep", "Metal mandate", "Metal mandate"]);
+    expect(ps[2]!.chain).toBeUndefined(); // a clearing sale has a receipt, not its own transaction
+    expect(ps[3]!.chain?.transfer).toEqual({ from: BUSINESS, to: SUPPLIER, cents: 5 });
+    expect(ps[6]!.ledger).toMatch(/replaced \(P-0002\): cap 0\.04, budget 12\.00/);
+  });
+
+  // Breaks if a transfer, conversion or deposit that differs at Airwallex is called a match, or if a lookup by id that
+  // fails is not followed by the list lookup.
+  it("compares transfers, conversions and deposits with Airwallex, by id and then by list", async () => {
+    const transfer = { type: "transfer" as const, id: "tr1", amount: "1850.00", currency: "EUR", status: "PAID", fee: "EUR 13.41" };
+    const same = await airwallexDiffs(async () => ({ transfer_amount: 1850, transfer_currency: "EUR", status: "PAID", fee_amount: 13.41, fee_currency: "EUR" }), transfer);
+    expect(same).toMatchObject({ found: true, diffs: [] });
+    const off = await airwallexDiffs(async () => ({ transfer_amount: "1850.5", transfer_currency: "EUR", status: "FAILED" }), transfer);
+    expect(off).toMatchObject({ found: true, diffs: ["status: Airwallex FAILED, ledger PAID", "amount: Airwallex 1850.50, ledger 1850.00"] });
+    await expect(airwallexDiffs(async () => { throw new Error("503"); }, transfer)).rejects.toThrow("503");
+
+    const conversion = { type: "conversion" as const, id: "cv1", requestId: "rq1", buy: "370.00", buyCurrency: "EUR", sell: "418.40", sellCurrency: "USD", status: "SETTLED" };
+    const paths: string[] = [];
+    const listed = await airwallexDiffs(async (path) => {
+      paths.push(path);
+      if (path.startsWith("/fx/conversions/")) throw new Error("404");
+      return { items: [{ request_id: "rq1", buy_amount: 370, buy_currency: "EUR", sell_amount: 418.4, sell_currency: "USD", status: "SETTLED" }], has_more: false };
+    }, conversion);
+    expect(listed).toMatchObject({ found: true, diffs: [] });
+    expect(paths).toEqual(["/fx/conversions/cv1", "/fx/conversions"]);
+
+    const deposit = { type: "deposit" as const, id: "dp1", amount: "1.35", currency: "USD", reference: "0xABC", since: "2026-10-29T00:00:00Z" };
+    expect(await airwallexDiffs(async () => ({ amount: 1.35, currency: "USD", status: "SETTLED", reference: "0xabc" }), deposit)).toMatchObject({ found: true, diffs: [] });
+    const none = await airwallexDiffs(async (path) => (path.startsWith("/deposits/") ? Promise.reject(new Error("404")) : { items: [{ id: "other" }], has_more: false }), deposit);
+    expect(none).toEqual({ found: false });
+  });
+
+  it("reports a missing transaction, a revert and a wrong block on chain", () => {
+    expect(chainDiffs(null, { tx: TX1 }, USDZ)).toEqual({ diffs: ["no such transaction on chain"], said: "not found" });
+    const r = chainDiffs(receipt({ status: "reverted", block: 8 }), { tx: TX1, block: 7, transfer: { from: BUSINESS, to: SUPPLIER, cents: 2 } }, USDZ);
+    expect(r.diffs).toEqual(["the transaction reverted on chain", "block: chain 8, ledger 7"]);
+    expect(chainDiffs(receipt({ transfers: [] }), { tx: TX1, transfer: { from: BUSINESS, to: SUPPLIER, cents: 2 } }, USDZ).diffs[0]).toMatch(/the receipt has no \*USDZ transfer/);
   });
 });
