@@ -77,6 +77,14 @@ displays was not checked.
 | Clearing load test | Separate test world, 30 October (`docs/runs/2026-10-30-clearing-load.md`): 2,000 of 2,000 paid in 471.8 s (4.24 a second), p50 1.4 s, p95 8.1 s; about $0.0007 RPC per payment (estimate from Metal's published rates, not a bill). A first run paid 1,879: one wallet held by a lost answer, fixed by resending | /metal card, controls-matrix.md, metal-award.md |
 | Runbook | Procedures say which were exercised live, tested, or not yet exercised; the full emergency stop has not been pulled live | `docs/runbook.md` |
 
+## Built after the recording, not yet in a live run with Max
+
+| Feature | Status | Proof | Said where |
+|---|---|---|---|
+| Kit 11's monthly licence fee in euros (EUR 240.00 in code, paid by the Finance agent) | Built and tested end to end against the sandbox stand-in; joins the next live run | `test/licence-fee.test.ts`; `npm run licence` | requirements matrix K1b/K4c (🟠 until it runs live) |
+| Agent recognition per the agent-recognition profile of Visa's TAP spec, then the agent's own Airwallex Visa card | Dev test, live in the Airwallex sandbox on a copy of the Friday run 2 ledger; not claimed for the Visa Award until the organisers confirm | `docs/runs/2026-10-31-visa-tap-dev.md`; `test/visa-tap.test.ts`, `test/visa-merchant.test.ts` | /visa (with its label in full); matrix V1/V2 (🟠) |
+| Posting the books to T:0 | Built and tested against a fake; nothing posted yet (no key) | `test/t0.test.ts`; `docs/t0.md` | nowhere public until it has posted and matched |
+
 ## The video
 
 | Claim | Proof | Changed |

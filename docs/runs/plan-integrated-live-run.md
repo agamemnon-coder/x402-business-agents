@@ -36,6 +36,8 @@ sub-folders of the same keys folder and write their records under `RUN_OUT=live-
 | 7 | Four eyes on chain, same afternoon, same keys folder | `KIT11_KEYS_DIR=$KIT11_KEYS_DIR/four-eyes RUN_OUT=live-1-four-eyes npm run four-eyes` | — | reverted and passed transactions |
 | 8 | Compliance contract, same afternoon | `KIT11_KEYS_DIR=$KIT11_KEYS_DIR/compliance RUN_OUT=live-1-compliance npm run compliance-policy` | — | 11 reverted attacks |
 | 9 | Finality certificates while fresh (runner running), verify, record | runner keeps running ≥ 5 min; `npm run verify`; `npm run audit:export`; `npm run demo:record` | — | REPORTED certificates for this run's transactions; a new audit chain |
+| 9b | Agent recognition (Visa TAP profile), then the Airwallex Visa card | `npm run visa -- setup`; `RUN_OUT=visa-tap-live-1 npm run visa -- run` | — | recognised purchase approved, attacks refused, over-limit declined by Airwallex |
+| 9c | T:0, if Max has the key | `npm run t0 -- push`; `npm run t0 -- compare` | — | posted entries; "matches our Books line by line" |
 | 10 | Dispute desk on this run | `npm run dispute -- never_ordered 5-16 "…"` | — | the case and its report |
 
 ## Honest limits, said in the run log

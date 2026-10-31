@@ -128,8 +128,8 @@ Source: the [hackathon site](https://airwallex.hackerearth.com/), sections "Priz
 
 | Id | Requirement | Where Purser does it | Evidence | Status |
 |---|---|---|---|---|
-| V1 | "Visa Award $15,000 Requires use of Visa and Airwallex tooling" | Not claimed. Purser uses Airwallex tooling, but no Visa tooling (see V2). | `docs/quality-plan.md` item 18 (not started). | ❌ |
-| V2 | "Visa --> Trusted Access Protocol (TAP), Visa Intelligence Commerce (VIC) + Slack support" (the page's only definition of Visa tooling) | Purser does not use TAP or VIC. The agents' cards are Visa cards issued by Airwallex Issuing. The page lists TAP and VIC as Visa tooling, so we do not count Airwallex-issued cards as Visa tooling. We do not claim this award. | None. | ❌ |
+| V1 | "Visa Award $15,000 Requires use of Visa and Airwallex tooling" | Not claimed until the organisers confirm (Max asks in Slack: `docs/submission/slack-max.md`). Built: agent recognition per the agent-recognition profile of Visa's TAP spec, then the agent's own Airwallex-issued Visa card inside the CFO limit (`/visa`). | `docs/runs/2026-10-31-visa-tap-dev.md` (dev test, live in the Airwallex sandbox); `test/visa-tap.test.ts`, `test/visa-merchant.test.ts`. | 🟠 |
+| V2 | "Visa --> Trusted Access Protocol (TAP), Visa Intelligence Commerce (VIC) + Slack support" (the page's only definition of Visa tooling) | TAP: the agent-recognition signature only (RFC 9421 over `@authority` and `@path`, tags `agent-browser-auth` / `agent-payer-auth`, 8-minute window, nonce replay block), our own code (`src/visa/tap.ts`, http-message-sig 0.3.0), a self-hosted registry with test keys. Not done, and not claimed: Visa's key directory, the Visa ID token (consumer recognition), the payment container, and VIC. Visa's reference code is not used (its licence is not open source). | `/visa`; `docs/runs/2026-10-31-visa-tap-dev.md`. | 🟠 |
 
 ## 7. Backend review: agentic banking (Max, 30 October)
 
@@ -162,7 +162,7 @@ Metal's docs and a live test on testnet. Risks, controls and tests: [docs/contro
 
 ## Count
 
-✅ 74 · 🟠 11 · ❌ 2
+✅ 74 · 🟠 13 · ❌ 0
 
 ## Open items
 
