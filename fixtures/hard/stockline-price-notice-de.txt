@@ -1,0 +1,12 @@
+From: billing@stockline.example
+To: purchasing@northwind-outdoor.example
+Subject: Preisanpassung Bestandsabfragen
+
+Sehr geehrte Damen und Herren,
+
+wegen gestiegener Rechenkosten passen wir unsere Preise an: Ab dem 1. Dezember 2026,
+00:00 UTC, kostet eine Bestandsabfrage 0,04 *USDZ statt bisher 0,02 *USDZ.
+Alle anderen Bedingungen bleiben gleich.
+
+Mit freundlichen Grüßen
+Stockline Data GmbH

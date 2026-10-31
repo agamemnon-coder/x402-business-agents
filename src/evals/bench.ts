@@ -5,7 +5,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { MODELS, type Role } from "../claude/reader.js";
-import { runEvals, type EvalResult } from "./cases.js";
+import { CASES, runEvals, type Case, type EvalResult } from "./cases.js";
 
 export interface BenchConfig { id: string; label: string; models: Partial<Record<Role, string>> }
 
@@ -60,8 +60,8 @@ export function summariseBench(config: BenchConfig, runs: EvalResult[][]): Bench
   };
 }
 
-export async function benchConfig(client: Anthropic, config: BenchConfig, runs: number): Promise<BenchRow> {
+export async function benchConfig(client: Anthropic, config: BenchConfig, runs: number, cases: Case[] = CASES): Promise<BenchRow> {
   const results: EvalResult[][] = [];
-  for (let i = 0; i < runs; i++) results.push(await runEvals(client, config.models));
+  for (let i = 0; i < runs; i++) results.push(await runEvals(client, config.models, cases));
   return summariseBench(config, results);
 }

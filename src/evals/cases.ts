@@ -34,24 +34,25 @@ export interface EvalResult {
 
 const fixture = (name: string) => readFileSync(new URL(`../../fixtures/${name}`, import.meta.url), "utf8");
 
-interface Ctx { db: DB; awx: FakeAirwallex; tools: Tools }
+export interface Ctx { db: DB; awx: FakeAirwallex; tools: Tools }
 
 /** One document through the intake: classify, read, and (for an invoice) the treasury agent's decision. */
-async function intake(c: Ctx, text: string): Promise<{ kind: string; outcome?: InvoiceOutcome; read: unknown }> {
+export async function intake(c: Ctx, text: string): Promise<{ kind: string; outcome?: InvoiceOutcome; read: unknown }> {
   const kind = (await c.tools.classify(text)).value.kind;
   if (kind === "invoice") {
     const inv = (await c.tools.invoice(text)).value;
     return { kind, read: inv, outcome: await proposeInvoicePayment(c.db, c.awx, inv, text) };
   }
   if (kind === "price_notice") return { kind, read: (await c.tools.priceNotice(text)).value };
+  if (kind === "dispute") return { kind, read: (await c.tools.dispute(text)).value };
   return { kind, read: null };
 }
 
-const said = (o?: InvoiceOutcome) => !o ? "nothing to pay" : o.kind === "proposed"
+export const said = (o?: InvoiceOutcome) => !o ? "nothing to pay" : o.kind === "proposed"
   ? `proposed ${o.terms.proposal_id}: EUR ${o.terms.amount} to ${o.terms.beneficiary_name} (IBAN …${o.terms.iban_last4}); it waits for the CFO's Face ID`
   : "escalated to the CFO; nothing proposed";
 
-interface Case {
+export interface Case {
   id: string;
   title: string;
   run: (c: Ctx, problems: string[]) => Promise<{ outcome: string; why: string }>;
@@ -131,11 +132,11 @@ export const CASES: Case[] = [
 
 /**
  * Runs every case in its own world. `client` null forces the deterministic parsers; undefined uses the key if set.
- * `models` swaps the model for a role (the model benchmark only).
+ * `models` swaps the model for a role and `cases` picks the set (the model benchmark only).
  */
-export async function runEvals(client?: Anthropic | null, models: Partial<Record<Role, string>> = {}): Promise<EvalResult[]> {
+export async function runEvals(client?: Anthropic | null, models: Partial<Record<Role, string>> = {}, cases: Case[] = CASES): Promise<EvalResult[]> {
   const out: EvalResult[] = [];
-  for (const k of CASES) {
+  for (const k of cases) {
     const db = openDb(":memory:");
     const awx = new FakeAirwallex();
     await seedTreasury(db, awx, awx);
