@@ -545,6 +545,8 @@ const TASK_WORDS: Record<string, string> = {
   draft_customer_reply: "drafted the reply to the customer (a person sends it)",
 };
 
+const agentWho = (id: string): string => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
+
 /** Plain words for one audit row. Ids and hashes go in their own fields, never into the sentence's links. */
 export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined): Omit<FeedItem, "seq" | "ts" | "actor" | "event"> {
   const p = JSON.parse(r.payload_json) as P;
@@ -593,6 +595,29 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       if (task === "explain_invoice_fraud") what = `explained the blocked invoice to the CFO: ${str(o.recommendation).replace(/_/g, " ") || "see the ledger"} (advisory)`;
       else if (task.startsWith("review_")) what = `reviewed a ${task.slice(7).replace(/_/g, " ")} proposal: ${str(o.recommendation).replace(/_/g, " ") || "see the approval page"} (advisory)`;
       return out(`Claude ${what}`, "info", { model: modelName(str(p.model)) });
+    }
+    // The agents (src/agents/): each decision in the agent's own words, and every call code refused.
+    case "agent.tool": {
+      const who = agentWho(str(p.agent));
+      if (str(p.blocked_by) === "Metal mandate") return out(`Metal refused ${who}'s purchase against its on-chain mandate`, "refusal", { model: modelName(str(p.model)) });
+      return out(`Code refused ${who}'s ${str(p.tool).replace(/_/g, " ")}: ${str(p.blocked_by)}`, "refusal", { model: modelName(str(p.model)) });
+    }
+    case "price_rise.met": return str(p.source) === "claude"
+      ? out(`The Sourcing agent told the Treasury agent: "${str(p.message)}"`, "info", { model: modelName(str(p.model)) })
+      : out("The Sourcing agent's model was not available; code served the next query as before", "info");
+    case "price_rise.plan": {
+      const budgets = (Array.isArray(p.budgets) ? (p.budgets as unknown[]) : []).map((x) => str(x).replace(/ \(cap [^)]*\)/, "")).join(" / ");
+      return str(p.source) === "claude"
+        ? out(`The Treasury agent planned ${budgets}, accepted by code${Number(p.attempts) > 1 ? ` after ${str(p.attempts)} tries` : ""}: "${str(p.advice)}"`, "info", { model: modelName(str(p.model)) })
+        : out(`The Treasury agent's plan was not used (${str(p.note)}); code's fixed plan went to the CFO`, "info");
+    }
+    case "dispute.settled_by_agent": {
+      const refunded = Array.isArray(p.refunded) ? (p.refunded as unknown[]).map(str) : [];
+      const esc = (p.escalated ?? null) as P | null;
+      const sent = esc ? ` and sent ${(Array.isArray(esc.sales) ? (esc.sales as unknown[]) : []).length} to the CFO (${str(esc.proposal)})` : "";
+      return str(p.source) === "claude"
+        ? out(`The Support agent refunded ${refunded.join(", ") || "nothing"} itself${sent}: "${str(p.said)}"`, "info", { model: modelName(str(p.model)) })
+        : out("The Support agent's model was not available; code settled the dispute as before", "info");
     }
     case "claude.fallback": return out(`Claude was not used for ${s.replace(/_/g, " ")}; the deterministic parser decided (${str(p.note)})`, "info", { model: modelName(str(p.model)) });
     case "claude.rejected": return out(`Claude's answer for ${s.replace(/_/g, " ")} failed the code check and was not used`, "refusal", { model: modelName(str(p.model)) });
@@ -830,7 +855,9 @@ function oldLedgerSafe<T>(f: () => T): T | null {
 const askFrom = (actor: string, by: string) => (actor.startsWith("ext:") ? `agent ${actor}` : by === "dashboard-link" ? "dashboard link" : "you");
 
 // policy.version is bookkeeping: each rule change already shows as policy.changed.
-const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version"]);
+// agent.run: the decision rows below carry the agent's own words; a tool call that simply went through stays quiet.
+const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version", "agent.run"]);
+const quietTool = (r: { event: string; payload_json: string }) => r.event === "agent.tool" && !(JSON.parse(r.payload_json) as { blocked_by?: string }).blocked_by;
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
 function counts(db: DB, rows: AuditRow[], waiting: number): Snapshot["counts"] {
@@ -932,7 +959,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   });
 
   // Bookkeeping of our own (two ids for one card authorisation) stays in the audit log, not in the CFO's feed.
-  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf) }));
+  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event) && !quietTool(r) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf) }));
 
   return {
     generated_at: now.toISOString(),
