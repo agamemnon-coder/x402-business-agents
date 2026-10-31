@@ -44,7 +44,8 @@ export function claudeClient(env = process.env): Anthropic | null {
 }
 
 export class ClaudeReader {
-  constructor(private readonly db: DB, private readonly client: Anthropic | null = claudeClient(), private readonly clock: () => number = Date.now) {}
+  /** `models` swaps the model for a role; only the model benchmark (src/evals/bench.ts) passes one. */
+  constructor(private readonly db: DB, private readonly client: Anthropic | null = claudeClient(), private readonly clock: () => number = Date.now, private readonly models: Partial<Record<Role, string>> = {}) {}
 
   get live(): boolean {
     return this.client !== null;
@@ -58,7 +59,7 @@ export class ClaudeReader {
     a: { task: string; role: Role; actor: Actor; schema: S; instruction: string; document: string; effort?: "low" | "medium" | "high" },
     fallback: () => z.infer<S>,
   ): Promise<Read<z.infer<S>>> {
-    const model = MODELS[a.role];
+    const model = this.models[a.role] ?? MODELS[a.role];
     const inputSha = sha256Hex(a.document);
     const useFallback = (note: string): Read<z.infer<S>> => {
       const value = fallback();
@@ -76,7 +77,7 @@ export class ClaudeReader {
         messages: [{ role: "user", content: `${a.instruction}\n\n<document>\n${a.document}\n</document>` }],
         output_config: { effort: a.effort ?? "low", format: betaZodOutputFormat(a.schema) },
         // Haiku has no server-side fallback; Sonnet 5.5 and Opus 5.5 take the "default" routing.
-        ...(a.role === "classify" ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
+        ...(model.startsWith("claude-haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
       });
       const latencyMs = this.clock() - started;
       const requestId = (res as { _request_id?: string | null })._request_id ?? null;
