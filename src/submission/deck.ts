@@ -36,6 +36,8 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Airwallex Agentic Banking Hackathon · Metal Award",
       title: "Purser",
       extra: `<p class="lead">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</p>
+        <div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time (about half by the simulated customer's agent)")}${stat(String(f.stopped), "stops by card, chain, fraud checks or CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}</div>
+        <p class="src">${esc(f.run)}. Audit log: ${f.audit_rows} rows, hash-chained, checkable offline. Test money only.</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
       pic: shot(s.landing, "The landing page, from the recorded live run"),
     },
@@ -55,30 +57,11 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       points: [
         "An agent spends as fast as it is told to, also by a fake invoice or a planted instruction.",
         "A limit in a prompt can be talked out of. It has to live in the rails and in code.",
+        "<b>Why now:</b> Mastercard Agent Pay (April 2025), Visa Intelligent Commerce and Google's AP2 (16 September 2025) let agents pay.",
       ],
-      extra: `<p class="quote">$3,046,598,558 in business email compromise losses, reported by victims to the FBI in 2025.<small>FBI IC3, 2025 Internet Crime Report</small></p>`,
+      extra: `<p class="quote">$3,046,598,558 in business email compromise losses, reported by victims to the FBI in 2025.<small>FBI IC3, 2025 Internet Crime Report</small></p>
+        <p class="src">McKinsey: AI agents could mediate $3 trillion to $5 trillion of global consumer commerce by 2030 ("The agentic commerce opportunity", 17 October 2025). Sources: mastercard.com (Agent Pay, April 2025) · visa.com/en-us/solutions/intelligent-commerce · cloud.google.com/blog (AP2, 16 Sep 2025) · mckinsey.com/capabilities/quantumblack</p>`,
       pic: shot(s.refuse, "Purser live: Metal's facilitator refuses a payment over the on-chain mandate; nothing moved"),
-    },
-    {
-      kicker: "Why now",
-      title: "The networks are building rails for agents to pay",
-      points: [
-        "<b>Mastercard Agent Pay</b> (April 2025), <b>Visa Intelligent Commerce</b> and <b>Google's AP2</b> (16 September 2025).",
-        "Agents will be able to pay everywhere. Someone still has to set and enforce the limits.",
-      ],
-      extra: `<p class="quote">AI agents could mediate $3 trillion to $5 trillion of global consumer commerce by 2030.<small>McKinsey, "The agentic commerce opportunity", 17 October 2025</small></p>
-        <p class="src">Sources: mastercard.com press release, April 2025 (Agent Pay) · visa.com/en-us/solutions/intelligent-commerce · cloud.google.com/blog, 16 Sep 2025 (AP2) · mckinsey.com/capabilities/quantumblack</p>`,
-      pic: `<div class="rails3"><div class="net">Mastercard<small>Agent Pay · April 2025</small></div><div class="net">Visa<small>Intelligent Commerce</small></div><div class="net">Google<small>Agent Payments Protocol · Sep 2025</small></div><div class="arrow">↓ agents can pay</div><div class="box accent">Who sets and enforces the limits?<small>Purser, on Airwallex and Metal</small></div></div>`,
-    },
-    {
-      kicker: "Why Airwallex customers need this",
-      title: "Cross-border businesses are handing work to agents",
-      points: [
-        "A company like Northwind Outdoor buys software, pays suppliers abroad and sells data, across currencies.",
-        "With agents doing that work, each needs its own card and limits, and the CFO one place for exceptions.",
-        "Purser adds that control layer on top of the Airwallex account the company already uses.",
-      ],
-      pic: shot(s.overview, "The CFO dashboard of the recorded run: what the agents did, and each agent's card"),
     },
     {
       kicker: "How it works",
@@ -142,26 +125,13 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       pic: shot(s.claude, "The Claude panel of the recorded run: each model, its calls and its cost"),
     },
     {
-      kicker: "Proof",
-      title: "Every payment has a proof",
-      extra: `<div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time (about half by the simulated customer's agent)")}${stat(String(f.stopped), "stops by card, chain, fraud checks or CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}</div>
-        <p class="src">${esc(f.run)}. Audit log: ${f.audit_rows} rows, hash-chained, checkable offline. Test money only.</p>`,
-      pic: shot(s.result, "The Books: the result of the run, double entry for every payment"),
-    },
-    {
-      kicker: "Business model (plan)",
+      kicker: "Business model (plan) and roadmap",
       title: "A monthly fee per active agent",
       points: [
-        "Priced per company and per active agent; no cut of payments.",
-        "Airwallex and Metal keep their own fees; Purser adds the control layer.",
+        "Priced per company and per active agent; no cut of payments. Airwallex and Metal keep their own fees.",
         "First customers: small cross-border companies on Airwallex that run AI agents.",
+        "Today the sandbox and testnet; next a KMS, Postgres and a pager; then Metal mainnet.",
       ],
-      pic: `<div class="diagram"><div class="box">Company on Airwallex<small>cards · FX · payouts</small></div><div class="arrow">↓</div><div class="box accent">Purser<small>limits · approvals · proof</small></div><div class="arrow">↓</div><div class="row"><div class="box">AI agents<small>pay alone inside limits</small></div><div class="box">CFO<small>Face ID for the rest</small></div></div></div>`,
-    },
-    {
-      kicker: "Roadmap",
-      title: "From testnet to production",
-      points: ["Live end to end on the Airwallex sandbox and Metal testnet today; three steps to production."],
       pic: `<div class="timeline">
         <div><b>Now</b><span>Airwallex sandbox · Metal testnet</span><ul><li>live runs end to end, every approval with Face ID</li><li>one company per ledger</li><li>tests and checks in CI on every push</li></ul></div>
         <div><b>Next</b><span>production basics</span><ul><li>keys in a KMS, not files</li><li>Postgres with point-in-time recovery</li><li>a pager on <code>/health</code>; many companies</li></ul></div>
@@ -181,7 +151,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
     {
       kicker: "Try it",
       title: "Type a task for an agent",
-      extra: `<div class="qr">${qrSvg}</div><p class="url">${esc(TRY_URL.replace(/^https:\/\//, ""))}</p><p class="small">Or offline, no keys: <code>npm ci &amp;&amp; npm run judge</code></p>`,
+      extra: `<div class="qr">${qrSvg}</div><p class="url">${esc(TRY_URL.replace(/^https:\/\//, ""))}</p><p class="small">Or offline, no keys: <code>npm ci &amp;&amp; npm run judge</code></p><p class="built">Built on Airwallex and Metal, with Claude.</p>`,
       pic: shot(s.try, "Type a task; Claude reads it, code picks the rail and checks the CFO policy"),
     },
   ];
@@ -199,6 +169,7 @@ section::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; wi
 h1 { font-size: 42px; line-height: 1.12; margin: 0 0 26px; letter-spacing: -.02em; }
 li { font-size: 22px; line-height: 1.4; margin: 0 0 14px; }
 p { margin: 0 0 14px; }
+.built { margin-top: 18px; font-size: 20px; font-weight: 600; }
 .lead { font-size: 28px; font-weight: 600; line-height: 1.3; }
 ul { margin: 0; padding-left: 24px; }
 code { font-size: 17px; background: #eef0ff; padding: 1px 6px; border-radius: 4px; }
