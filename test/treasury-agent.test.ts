@@ -95,6 +95,12 @@ describe("the Treasury agent's plan, checked by code", () => {
     expect(p.join(" ")).toMatch(/lowest sell price to the highest/);
   });
 
+  // dry-24: an option labelled just "A" reached the phone; the CFO must read what each option does.
+  it("refuses an option whose label does not say what it does (just a letter)", () => {
+    const p = checkPricePlan(facts, { ...fallbackPricePlan(facts), options: [{ id: "A", label: "A", sellCents: 5 }, { id: "B", label: "raise the price", sellCents: 7 }] });
+    expect(p.join(" ")).toMatch(/option A needs a short label/);
+  });
+
   it("refuses an option that sells at a loss, or the same price twice", () => {
     const loss = checkPricePlan(facts, { ...fallbackPricePlan(facts), options: [{ id: "A", label: "cheap", sellCents: 4 }] });
     expect(loss.join(" ")).toMatch(/margin/);

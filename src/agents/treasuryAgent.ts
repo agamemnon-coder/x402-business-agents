@@ -102,7 +102,8 @@ export function checkPricePlan(f: PricePlanFacts, p: PricePlan): string[] {
     if (o.sellCents > MAX_SELL_CENTS) problems.push(`option ${o.id} sells at ${fromCents(o.sellCents)}, above ${fromCents(MAX_SELL_CENTS)} for a stock check`);
     if (seen.has(o.sellCents)) problems.push(`the same price ${fromCents(o.sellCents)} is offered twice`);
     seen.add(o.sellCents);
-    if (!o.label.trim() || o.label.length > 60) problems.push(`option ${o.id} needs a short label (at most 60 characters)`);
+    // In words: dry-24 sent an option labelled just "A" to the phone.
+    if ((o.label.match(/[a-z]/gi) ?? []).length < 3 || o.label.length > 60) problems.push(`option ${o.id} needs a short label that says what it does, in words (at most 60 characters)`);
   }
   // Dry-19/20: Opus listed the higher price first; the CFO's sheet says B is the higher one. Sent back, so the model
   // lists them in order and its advice names the right letter.
