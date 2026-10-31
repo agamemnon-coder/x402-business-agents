@@ -1,8 +1,8 @@
 // 4.2 The chain side of pausing one agent, with the pinned metal-agent CLI and the business owner's key (the only
 // key that can revoke or bind). Revoke: the agent's one bound mandate, `mandate revoke`; every later payment under it
-// is refused on chain. Resume: a credential with exactly the revoked mandate's limits and payees (read back from the
-// chain, never chosen here) put in its place with `mandate replace`, so what was spent carries over and the budget
-// does not start again. Both are idempotent: a revoke with nothing bound, or a resume with a mandate already bound,
+// is refused on chain. Resume: Metal cannot replace a revoked mandate, so a fresh credential is bound with the revoked
+// one's cap and payees (read back from the chain, never chosen here) and what was left of its budget: the agent's
+// lifetime limit on chain stays what the CFO approved. Both are idempotent: a revoke with nothing bound, or a resume with a mandate already bound,
 // reports what the chain has and changes nothing.
 
 import { existsSync } from "node:fs";
@@ -54,7 +54,7 @@ export class LivePauseChain implements PauseChain {
     return { tx: r.fields.get("transaction")?.[0] ?? null, credential_hash: m.credentialHash };
   }
 
-  async resume(agent: string): Promise<{ tx: string | null; credential_hash: string }> {
+  async resume(agent: string): Promise<{ tx: string | null; credential_hash: string; spent_before?: string; budget?: string }> {
     const all = await states(agent as MandateAgent);
     const live = all.filter((x) => x.bound && !x.revoked);
     if (live.length === 1) return { tx: null, credential_hash: live[0]!.m.credentialHash };
@@ -62,23 +62,30 @@ export class LivePauseChain implements PauseChain {
     const hash = this.pausedHash(agent);
     const old = all.find((x) => x.bound && x.revoked && hash !== null && x.m.credentialHash.toLowerCase() === hash.toLowerCase())?.m;
     if (!old) throw new Error(`${agent}: the mandate the pause revoked (${hash ?? "none recorded"}) is not among its revoked credentials`);
+    // Metal will not replace a revoked mandate (testnet, 31 October: "already revoked; bind the new credential"), and a
+    // fresh binding starts with nothing spent. So the fresh one keeps the cap and gets only what was left of the budget:
+    // what the agent may spend over its life stays exactly what the CFO approved.
     const st = metalAgent(["mandate", "status", "--credential", old.credentialPath]);
     const principal = st.fields.get("principal")?.[0];
     const payees = (st.fields.get("payee") ?? []).map((p) => { const [address, ...name] = p.split(" "); return `${address},${name.join(" ")}`; });
     if (!principal || payees.length === 0) throw new Error(`${agent}: cannot read the revoked mandate's principal and payees from the chain`);
     const cap = amount(st.fields.get("per-payment-cap")?.[0], "cap");
     const budget = amount(st.fields.get("budget")?.[0], "budget");
+    const spent = amount(st.fields.get("spent")?.[0], "spent");
+    const leftCents = Math.round(Number(budget) * 100) - Math.round(Number(spent) * 100);
+    if (leftCents <= 0) throw new Error(`${agent}: nothing left of its ${budget} budget (spent ${spent}); there is nothing to resume`);
+    const left = (leftCents / 100).toFixed(2);
     const out = keyPath(`${agent}.${this.proposalTag(agent)}.credential.json`);
     if (!existsSync(out)) {
       metalAgent([
-        "mandate", "credential", "create", "--principal", principal, "--cap", cap, "--budget", budget,
+        "mandate", "credential", "create", "--principal", principal, "--cap", cap, "--budget", left,
         ...payees.flatMap((p) => ["--payee", p]), "--expires-in", String(MANDATE_EXPIRES_IN_SECONDS),
         "--description", `kit11 ${this.proposalTag(agent)} ${agent} resumed`, "--mandate-key-file", old.keyFile,
         "--key", keyPath(OWNER), "--out", out,
       ]);
     }
     const next = loadCredentialFile(agent as MandateAgent, out);
-    const r = metalAgent(["mandate", "replace", "--credential", out, "--replaces", old.credentialPath, "--key", keyPath(OWNER)]);
-    return { tx: r.fields.get("transaction")?.[0] ?? null, credential_hash: next.credentialHash };
+    const r = metalAgent(["mandate", "bind", "--credential", out, "--key", keyPath(OWNER)]);
+    return { tx: r.fields.get("transaction")?.[0] ?? null, credential_hash: next.credentialHash, spent_before: spent, budget: left };
   }
 }

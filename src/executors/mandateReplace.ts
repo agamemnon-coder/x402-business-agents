@@ -10,6 +10,7 @@ import { publicClient } from "../metal/chain.js";
 import { activeMandate, credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { setSetting } from "../world/settings.js";
+import { refuseAfterResume } from "../policy/pause.js";
 import type { MandateReplaceTerms } from "../agents/treasury.js";
 import { replaceMandate } from "./ownerSigner.js";
 
@@ -39,6 +40,7 @@ export async function executeMandateReplace(db: DB, proposalId: string, now = ne
 
   const terms = beginExecution<MandateReplaceTerms>(db, proposalId, (t) => {
     if (toCents(t.total_budget) > TOTAL_BUDGET_CENTS) throw new Error(`total ${t.total_budget} exceeds the limit`);
+    refuseAfterResume(db, t.steps.map((s) => s.agent));
     for (const step of t.steps) {
       const f = facts.get(step.order)!;
       if (f.activeHash.toLowerCase() !== step.replaces_credential_hash.toLowerCase()) {

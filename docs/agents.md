@@ -69,6 +69,14 @@ With the agents on, the CFO can pause one agent instead of all (the emergency st
 "Pause this agent"; the phone shows the change and Face ID signs it. An approved pause does three things, in this
 order, so that a failure always leaves the agent stopped: Purser's switch goes on (its payments are refused before
 signing), its Airwallex card goes inactive, and its **Metal mandate is revoked on chain** (`mandate revoke`), so even
-a signed payment would be refused there. Resuming binds its mandate again: that re-grants spending power, so it is a
-mandate change and takes **both passkeys** when four eyes is on; the mandate is restored on chain first, and only then
-does the switch go off. Code: `src/policy/pause.ts`; tests: `test/agent-pause.test.ts`.
+a signed payment would be refused there (testnet, 31 October: a payment under the revoked mandate was refused with
+`mandate_revoked`). Resuming binds its mandate again: that re-grants spending power, so it is a mandate change and
+takes **both passkeys** when four eyes is on; the mandate is restored on chain first, and only then does the switch go
+off. Code: `src/policy/pause.ts`, `src/metal/pauseChain.ts`; tests: `test/agent-pause.test.ts`.
+
+**What Metal allows, found on testnet.** A revoked mandate cannot be replaced ("already revoked; bind the new
+credential"), and a replacement must leave room above what was spent, so a "zero-room" pause is not possible either.
+So resuming binds a fresh mandate with the same cap and **what was left of the budget**: the agent's lifetime limit on
+chain stays what the CFO approved. Because that fresh mandate's spend starts at nothing, a later rebalance would not
+count what was spent before the pause; code therefore **refuses a mandate change for an agent resumed after a pause**
+(`refuseAfterResume`), before anything is issued or signed. In Thursday's run the pause comes after the rebalance.

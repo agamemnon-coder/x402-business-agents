@@ -10,7 +10,7 @@ import { capRefusal, loosens, rules } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { fourEyes } from "../src/policy/fourEyes.js";
 import { wantCardStatus } from "../src/policy/cards.js";
-import { executePauseChange, paused, syncPauses, type PauseChain } from "../src/policy/pause.js";
+import { executePauseChange, paused, resumedSince, syncPauses, type PauseChain } from "../src/policy/pause.js";
 import { setupCards } from "../src/policy/cards.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
 import { buyPlan } from "../src/agents/cardBuyer.js";
@@ -25,7 +25,7 @@ function chain(fail: Partial<Record<"revoke" | "resume", string>> = {}): PauseCh
   return {
     calls,
     revoke: async (agent) => { calls.push(`revoke ${agent}`); if (fail.revoke) throw new Error(fail.revoke); return { tx: `0x${"1".repeat(64)}`, credential_hash: "0xold" }; },
-    resume: async (agent) => { calls.push(`resume ${agent}`); if (fail.resume) throw new Error(fail.resume); return { tx: `0x${"2".repeat(64)}`, credential_hash: "0xnew" }; },
+    resume: async (agent) => { calls.push(`resume ${agent}`); if (fail.resume) throw new Error(fail.resume); return { tx: `0x${"2".repeat(64)}`, credential_hash: "0xnew", spent_before: "0.15", budget: "3.85" }; },
   };
 }
 
@@ -73,7 +73,11 @@ describe("pause one agent (agents on)", () => {
     expect(c.calls).toEqual(["resume support"]);
     expect(paused(db, "support")).toBe(false);
     expect(capRefusal(db, "support", 5)).toBeNull();
-    expect(events(db, "mandate.resumed")[0]).toMatchObject({ agent: "support", tx: `0x${"2".repeat(64)}` });
+    // Testnet (dry-18 world, 31 Oct): a revoked mandate cannot be replaced, only a fresh one bound; its spend starts at
+    // nothing. So the fresh one gets what was left of the budget: the lifetime limit on chain stays the same.
+    expect(events(db, "mandate.resumed")[0]).toMatchObject({ agent: "support", tx: `0x${"2".repeat(64)}`, spent_before: "0.15", budget: "3.85" });
+    expect(resumedSince(db, "support")).toBe(true);
+    expect(resumedSince(db, "sourcing")).toBe(false);
   });
 
   it("a failed resume leaves the agent paused (nothing re-granted) and the proposal failed", async () => {
@@ -133,5 +137,20 @@ describe("pause one agent (agents off)", () => {
     const db = openDb(":memory:");
     expect(rules(db).some((r) => r.key.startsWith("pause."))).toBe(false);
     expect(() => proposePolicyChange(db, { changes: [{ key: "pause.support", to: "on" }], reason: "x" }, "human", now)).toThrow();
+  });
+});
+
+describe("a mandate change after a resume", () => {
+  // The resumed mandate's spend on chain starts at nothing; a replace would carry only that, so the budgets of a new
+  // plan would no longer count what was spent before the pause. Until that is handled, code refuses it outright.
+  it("is refused before anything is issued or signed", async () => {
+    process.env.KIT11_AGENTS = "on";
+    const db = openDb(":memory:");
+    await pause(db, "sourcing", "on");
+    await pause(db, "sourcing", "off");
+    const { refuseAfterResume } = await import("../src/policy/pause.js");
+    expect(() => refuseAfterResume(db, ["sourcing", "treasury"])).toThrow(/resumed after a pause/);
+    expect(() => refuseAfterResume(db, ["treasury", "support"])).not.toThrow();
+    delete process.env.KIT11_AGENTS;
   });
 });

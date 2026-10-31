@@ -10,6 +10,7 @@ import {
 } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { issueReplacementCredential } from "../executors/ownerSigner.js";
+import { refuseAfterResume } from "../policy/pause.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { activeMandate, mandateSpent, type LoadedMandate } from "../metal/mandate.js";
@@ -93,6 +94,8 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
     sellCents, oldUpstreamCents: 0, newUpstreamCents: ev.liveOfferCents, refusal: ev.refusal.reason, mandates: [...current.values()].map((c) => c.now),
   });
   const steps = planReplaceSteps([...current.values()].map((c) => c.now), design.targets);
+  // 4.2 An agent resumed after a pause has a fresh mandate whose spend restarted at nothing: no rebalance over it yet.
+  refuseAfterResume(db, steps.map((s) => s.agent));
   const firstId = nextProposalId(db);
 
   // Credentials are issued before approval (off-chain, no gas), so their hash goes into the terms.

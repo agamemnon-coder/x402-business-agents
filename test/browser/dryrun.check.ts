@@ -18,7 +18,7 @@ import { FOUR_EYES_KEY } from "../../src/policy/fourEyes.js";
 import { capRefusal, policyValue } from "../../src/policy/rules.js";
 import { activeMandate, mandateSpent } from "../../src/metal/mandate.js";
 import { publicClient } from "../../src/metal/chain.js";
-import { readMandateState } from "@metalntwx/metal-pay/mandates";
+import { extractTerms, readMandateState } from "@metalntwx/metal-pay/mandates";
 
 const ledger = process.env.KIT11_DB ?? "";
 const keys = process.env.KIT11_KEYS_DIR ?? "";
@@ -396,8 +396,8 @@ await timed("12 Emergency stop on, a card charge declined, stop off", async () =
   await executed(lift);
 });
 // 4.2, only with the agents on (Thursday's run): the CFO pauses one agent with Face ID. Its Metal mandate is revoked on
-// chain and its card frozen at Airwallex; resuming takes both passkeys (four eyes) and puts the same mandate back with
-// its spend carried over.
+// chain and its card frozen at Airwallex; resuming takes both passkeys (four eyes) and binds a fresh mandate with the
+// same cap and what was left of the budget.
 if (process.env.KIT11_AGENTS === "on") await timed("12b Pause the Support agent (mandate revoked on chain, card frozen), then resume with both passkeys", async () => {
   const before = await activeMandate("support");
   const spentBefore = await mandateSpent(before);
@@ -420,7 +420,10 @@ if (process.env.KIT11_AGENTS === "on") await timed("12b Pause the Support agent 
   await executed(r);
   const after = await activeMandate("support");
   check(after.credentialHash !== before.credentialHash, "a new Support mandate is bound in place of the revoked one");
-  check((await mandateSpent(after)) === spentBefore, `its spend carried over (${spentBefore} base units)`);
+  // Metal binds a fresh mandate (a revoked one cannot be replaced): same cap, only what was left of the budget.
+  const budgetOf = (m: typeof before) => extractTerms(m.credential).constraints.budget;
+  check(budgetOf(after) === budgetOf(before) - spentBefore && (await mandateSpent(after)) === 0n,
+    `the resumed mandate has what was left of the budget (${budgetOf(before) - spentBefore} of ${budgetOf(before)} base units), so the lifetime limit is unchanged`);
   check(capRefusal(db(), "support", 5) === null, "Purser lets the Support agent pay again");
 });
 await timed("13 Bank change for Bergtex in three steps (test identities)", async () => {

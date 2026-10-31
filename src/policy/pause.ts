@@ -15,10 +15,14 @@ import { beginExecution, finishExecution } from "./approvals.js";
 
 export { paused } from "./rules.js";
 
-/** The chain side of a pause: revoke the agent's bound mandate; restore one with the same limits and its spend. */
+/**
+ * The chain side of a pause. Revoke: the agent's bound mandate. Resume: Metal cannot replace a revoked mandate, only
+ * bind a fresh one, whose spend starts at nothing (tested on testnet, 31 October); so the fresh one gets the same cap
+ * and what was left of the budget, and the agent's lifetime limit on chain stays what it was.
+ */
 export interface PauseChain {
   revoke(agent: string): Promise<{ tx: string | null; credential_hash: string }>;
-  resume(agent: string): Promise<{ tx: string | null; credential_hash: string }>;
+  resume(agent: string): Promise<{ tx: string | null; credential_hash: string; spent_before?: string; budget?: string }>;
 }
 
 const agentOf = (key: string) => key.slice("pause.".length);
@@ -42,7 +46,10 @@ export async function executePauseChange(db: DB, proposalId: string, chain: Paus
   for (const agent of resumes) {
     try {
       const r = await chain.resume(agent);
-      audit(db, "owner-signer", "mandate.resumed", agent, { agent, proposal_id: proposalId, tx: r.tx, credential_hash: r.credential_hash }, now);
+      audit(db, "owner-signer", "mandate.resumed", agent, {
+        agent, proposal_id: proposalId, tx: r.tx, credential_hash: r.credential_hash,
+        ...(r.spent_before !== undefined ? { spent_before: r.spent_before } : {}), ...(r.budget !== undefined ? { budget: r.budget } : {}),
+      }, now);
     } catch (e) {
       finishExecution(db, proposalId, "FAILED", { error: `resume ${agent}: ${(e as Error).message}` }, now);
       throw e;
@@ -80,4 +87,20 @@ export async function syncPauses(db: DB, chain: PauseChain, now = new Date()): P
     done.push(agent);
   }
   return done;
+}
+
+/** Whether this agent's mandate was ever resumed after a pause (its spend on chain then restarted at nothing). */
+export function resumedSince(db: DB, agent: string): boolean {
+  return !!db.prepare("SELECT 1 FROM audit_log WHERE event = 'mandate.resumed' AND subject = ?").get(agent);
+}
+
+/**
+ * A mandate change (Treasury's rebalance) for an agent that was resumed after a pause is refused, before any credential
+ * is issued or signed: the resumed mandate's spend starts at nothing, a replace carries only that, and the new budgets
+ * would no longer count what was spent before the pause. Purser's own 20.00 total (src/policy/holds.ts) still holds;
+ * this keeps the chain's limit honest too. Lifting it needs the spend before the pause carried into the new budgets.
+ */
+export function refuseAfterResume(db: DB, agents: string[]): void {
+  const hit = agents.filter((a) => resumedSince(db, a));
+  if (hit.length) throw new Error(`${hit.join(", ")} was resumed after a pause: its spend on chain started again at nothing, so a mandate change would not count what it spent before. Not supported yet; nothing was issued or signed.`);
 }
