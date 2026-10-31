@@ -30,6 +30,16 @@ describe("Kit 11's agent names, word for word", () => {
     });
   });
 
+  // The avatars on /live carry each agent's initials: the old names' initials (Op, Sa, Fi) slipped through once.
+  it("gives each agent on /live the initials of its Kit 11 name", () => {
+    const actors = /var ACTORS = (\[.*?\]);/.exec(read("src/live/live.html"))?.[1];
+    const pairs = JSON.parse(actors ?? "[]") as [string, string][];
+    const shown = new Map(pairs);
+    for (const a of Object.values(AGENT_DISPLAY)) expect({ agent: a.name, initials: shown.get(a.name) }).toEqual({ agent: a.name, initials: a.name.slice(0, 2) });
+    const initials = pairs.map(([, i]) => i);
+    expect(new Set(initials).size).toBe(initials.length);
+  });
+
   // Breaks if an old name comes back in any page, script or recorded data the relay serves to guests.
   it("shows no earlier agent name on any page the relay serves", () => {
     const pages = buildPages();

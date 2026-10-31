@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-30T23:03:48.364Z",
+  "at": "2026-10-31T13:00:25.225Z",
   "results": [
     {
       "id": "normal-purchase",
@@ -30,7 +30,7 @@
       "title": "The supplier raises its price: refused, then options",
       "expected": "A stock check at 0.04 is refused (the cap is 0.03); Purser offers options that stay inside the 20.00 the business allows, and nothing changes before the CFO approves one.",
       "offline": "The refusal here is the CFO policy's, checked before signing; live, the chain itself refuses with mandate_cap_exceeded: docs/runs/2026-10-29-s1.md",
-      "happened": "policy_cap_exceeded: 0.04 is over the Sourcing agent's limit of 0.03; 2 options (keep the price, margin 1 cents; raise the price, margin 3 cents); new budgets total 20",
+      "happened": "policy_cap_exceeded: 0.04 is over the Sourcing agent's limit of 0.03; 2 options (keep the price, margin 0.01; raise the price, margin 0.03); new budgets total 20",
       "passed": true,
       "evidence": [
         "P-0002"

@@ -58,6 +58,13 @@ const thousands = (t: string) => t.replace(/(?<![\w.])(\d{4,})(\.\d{2})(?!\d)/g,
 const clip = (t: string, n: number) => (t.length <= n ? t : `${t.slice(0, t.lastIndexOf(" ", n) > 0 ? t.lastIndexOf(" ", n) : n)}…`);
 const facts = (...f: (StoryFact | null)[]) => f.filter((x): x is StoryFact => x !== null);
 
+/** The sales and the prices they were paid at, from the ledger: the price changes only when the CFO approves an option. */
+export function salesLine(db: DB, sales: number): string {
+  const prices = (db.prepare("SELECT price_cents AS c, COUNT(*) AS n FROM sales GROUP BY price_cents ORDER BY MIN(rowid)").all() as { c: number; n: number }[])
+    .filter((p) => p.c > 0).map((p) => `${p.n} at ${(p.c / 100).toFixed(2)}`);
+  return prices.length ? `${sales} stock checks: ${prices.join(", then ")} *USDZ (testnet dollars)` : `${sales} stock checks`;
+}
+
 export function buildStory(db: DB, run: string, now = new Date()): Story {
   const rows = db.prepare("SELECT seq, ts, actor, event, subject, payload_json, row_hash FROM audit_log ORDER BY seq").all() as Row[];
   const p = (r: Row | undefined): P => (r ? (JSON.parse(r.payload_json) as P) : {});
@@ -84,7 +91,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       text: "A simulated retailer's agent (we run it) pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
       details: "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our sourcing agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
       facts: facts(
-        fact("Sales in this run", `${sales} stock checks at 0.05, then 0.07 *USDZ (testnet dollars)`),
+        fact("Sales in this run", salesLine(db, sales)),
         txFact("Summit's first payment to us", p(sold).tx),
         txFact("Our first purchase from the supplier", p(bought).tx),
         fact("Sourcing agent's mandate", `${str(m.cap)} a payment, ${str(m.budget)} in total, Stockline only`),

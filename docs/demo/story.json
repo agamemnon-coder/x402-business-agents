@@ -62,7 +62,7 @@
       "facts": [
         {
           "label": "Sales in this run",
-          "value": "50 stock checks at 0.05, then 0.07 *USDZ (testnet dollars)",
+          "value": "50 stock checks: 40 at 0.05, then 10 at 0.07 *USDZ (testnet dollars)",
           "href": null
         },
         {

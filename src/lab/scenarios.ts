@@ -191,7 +191,7 @@ export const SCENARIOS: Scenario[] = [
       const refused = capRefusal(w.db, "sourcing", RAISED_UPSTREAM_PRICE_CENTS);
       const options = priceRiseOptions(SELL_PRICE_CENTS, ALT_SELL_PRICE_CENTS, RAISED_UPSTREAM_PRICE_CENTS).filter((o) => o.sellCents !== null);
       const total = priceRiseTargets(RAISED_UPSTREAM_PRICE_CENTS).reduce((s, t) => s + t.budgetCents, 0);
-      return { happened: `${refused ?? "not refused"}; ${options.length} options (${options.map((o) => `${o.label}, margin ${o.marginCents} cents`).join("; ")}); new budgets total ${total / 100}`,
+      return { happened: `${refused ?? "not refused"}; ${options.length} options (${options.map((o) => `${o.label}, margin ${o.marginCents === null ? "unknown" : (o.marginCents / 100).toFixed(2)}`).join("; ")}); new budgets total ${total / 100}`,
         passed: refused !== null && options.length === 2 && total <= TOTAL_BUDGET_CENTS, evidence: [pid] };
     },
   },
