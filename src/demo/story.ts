@@ -100,18 +100,26 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
   }
 
   // 2. The chain refuses.
-  const refused = first("upstream.refused", (_r, pl) => str(pl.reason) === "mandate_cap_exceeded");
+  const refused = first("upstream.refused", (_r, pl) => /^mandate_cap_exceeded\b/.test(str(pl.reason)));
   if (refused) {
     const options = (p(first("price_rise.options")).options as P[] | undefined) ?? [];
+    // With the agents on (src/agents/): the Sourcing agent's own message and the Treasury agent's own plan.
+    const met = p(first("price_rise.met"));
+    const plan = p(first("price_rise.plan"));
+    const agents = str(met.source) === "claude" && str(plan.source) === "claude";
     steps.push({
       id: "refused", rail: "Metal", tone: "refusal", at: refused.ts, approval: null,
       title: "The supplier raises its price, and the payment is refused",
-      text: "The supplier asks more than our agent may pay, so Metal refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
+      text: agents
+        ? "The supplier asks more than our agent may pay, so Metal refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. The Sourcing agent tells the Treasury agent, which designs the answer inside the same 20.00; code checks the plan before it reaches the CFO."
+        : "The supplier asks more than our agent may pay, so Metal refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
       details: "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The treasury agent prices the options with their margins.",
       facts: facts(
         fact("Refusal", "over the mandate's cap: refused on chain, nothing moved"),
         fact("Customer charged", "no"),
         ...options.filter((o) => o.sell !== null).map((o) => fact(`Option ${str(o.id)}`, `sell at ${str(o.sell)}, margin ${str(o.margin)} (${str(o.margin_percent)}%)`)),
+        agents ? fact(`Sourcing agent (${modelName(str(met.model)) ?? "Claude"}) to Treasury`, `"${str(met.message)}"`) : null,
+        agents ? fact(`Treasury agent (${modelName(str(plan.model)) ?? "Claude"}) planned`, `${(Array.isArray(plan.budgets) ? (plan.budgets as unknown[]).map((x) => str(x).replace(/ \(cap [^)]*\)/, "")) : []).join(" / ")}, accepted by code; "${str(plan.advice)}"`) : null,
       ),
     });
   }
@@ -125,7 +133,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       approval: { who: approvals.get(replacedBy)!, proposal: replacedBy, what: replaced.map((r) => `${agentName(str(r.subject))} ${str(p(r).cap)} a payment, ${str(p(r).budget)} in total`).join("; ") },
       title: "The CFO approves the exact terms with Face ID",
       text: "The CFO reads the options on their phone and approves one with Face ID. Only exactly those terms can run; the agents' limits change in a safe order, and the old limit stops working at once.",
-      details: "Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. The mandates are replaced in a safe order: the Treasury agent's shrinks first, the Sourcing agent's grows second, never over the 20.00 total. The old credential is refused from then on (mandate_revoked).",
+      details: `Face ID (a passkey) signs the SHA-256 hash of the exact terms, and the runner checks that signature itself. ${replaced.length > 1 ? `The mandates are replaced in a safe order, the shrinking budget first: ${replaced.map((r) => `the ${agentName(str(r.subject))}'s`).join(", then ")}, never over the 20.00 total.` : `Only the ${agentName(str(replaced[0]!.subject))}'s mandate changes; the total stays within 20.00.`} The old credential is refused from then on (mandate_revoked).`,
       facts: facts(
         review(replacedBy) ? fact("Advice (not a decision)", review(replacedBy)) : null,
         ...replaced.map((r) => txFact(`${agentName(str(r.subject))} mandate replaced`, p(r).tx)),

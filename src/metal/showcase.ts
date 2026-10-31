@@ -178,7 +178,7 @@ export function mandateViews(db: DB): MandateView[] {
       latest: paid.slice(-4).reverse().map((p) => ({ at: p.at, amount: fromCents(p.cents), what: p.what, tx: tx(p.tx) })),
       refusal: refusal ? {
         at: refusal.ts, reason: String(refusal.p.reason),
-        plain: `Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused against the on-chain mandate: ${REFUSAL_WORDS[String(refusal.p.reason)] ?? String(refusal.p.reason)}. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID.`,
+        plain: `Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused against the on-chain mandate: ${REFUSAL_WORDS[String(refusal.p.reason).split(":")[0]!] ?? String(refusal.p.reason)}. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID.`,
       } : null,
     });
   }

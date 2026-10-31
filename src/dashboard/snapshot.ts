@@ -265,7 +265,12 @@ const REFUSAL_WORDS: Record<string, string> = {
 const CALIBRATION = new Map([["usd_floor", "USD floor"], ["eur_obligations", "EUR already committed to other bills"]]);
 
 /** Plain words for a refusal; the code itself goes with the feed item, for a tooltip, not into the sentence. */
-const refusalWords = (code: string) => REFUSAL_WORDS[code] ?? (code || "no reason given");
+/** A refusal in words: a bare code ("mandate_cap_exceeded"), or a code with its detail ("mandate_cap_exceeded: 0.04 is over …"). */
+export const refusalWords = (reason: string): string => {
+  const m = /^([a-z_]+): (.+)$/s.exec(reason);
+  if (m && REFUSAL_WORDS[m[1]!]) return `${REFUSAL_WORDS[m[1]!]} (${m[2]})`;
+  return REFUSAL_WORDS[reason] ?? (reason || "no reason given");
+};
 
 const KIND_TITLES: Record<string, string> = {
   mandate_replace: "Mandate change",

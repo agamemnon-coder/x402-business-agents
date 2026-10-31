@@ -53,3 +53,21 @@ describe("the agents in the CFO's feed", () => {
     expect(c.cost_usd_micros).toBe(20500);
   });
 });
+
+// dry-14: the refusal reason now carries its detail ("mandate_cap_exceeded: 0.04 is over …"); the recording looked
+// for the bare code and would have left the refusal out of every new recording.
+import { buildStory } from "../src/demo/story.js";
+describe("a refusal reason with its detail", () => {
+  function refusedWorld() {
+    const db = openDb(":memory:");
+    audit(db, "sourcing", "upstream.refused", "1", { reason: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", seq: 41 });
+    return db;
+  }
+  it("still makes the refusal step of the recording", () => {
+    expect(buildStory(refusedWorld(), "test").steps.map((s) => s.id)).toContain("refused");
+  });
+  it("reads in words in the feed, without the raw code", () => {
+    const line = buildSnapshot(refusedWorld()).feed.find((f) => f.event === "upstream.refused")!;
+    expect(line.text).toBe("Purchase of stock check #41 refused on chain: over the mandate's per-payment cap (0.04 is over the sourcing mandate's 0.03 a payment)");
+  });
+});
