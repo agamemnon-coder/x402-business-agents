@@ -9,7 +9,7 @@
 //      no decision, a decision by another key, the same decision twice, a decision for another payee, a raised amount,
 //      an expired decision, a valid decision sent by someone else, a malleated signature, a decision for another
 //      contract, a cancelled decision, and a sanctioned payee (Purser refuses to sign; a self-made decision is refused by the chain);
-//   4. stores Metal's finality certificate for every transaction. Writes docs/runs/compliance-policy.json.
+//   4. stores Metal's finality certificate for every transaction. Writes docs/runs/compliance-policy.json (RUN_OUT names another run, so earlier records stay).
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -145,7 +145,7 @@ say(`the contract holds ${fromCents(baseUnitsToCents(left))}: only the good paym
 
 // 3. Finality certificates for every transaction.
 mkdirSync(resolve(import.meta.dirname, "../../data"), { recursive: true });
-const db = openDb(resolve(import.meta.dirname, "../../data/compliance-policy.sqlite"));
+const db = openDb(resolve(import.meta.dirname, `../../data/${process.env.RUN_OUT ?? "compliance-policy"}.sqlite`));
 const txs = steps.map((s) => s.tx).filter((t): t is string => !!t);
 for (let i = 0; i < 12; i++) { if ((await certifyTxs(db, txs)).pending === 0) break; await new Promise((r) => setTimeout(r, 5000)); }
 const out = {
@@ -154,5 +154,5 @@ const out = {
   contract_balance_after: fromCents(baseUnitsToCents(left)),
   steps: steps.map((s) => ({ ...s, finality: s.tx ? (() => { const f = finalityOf(db, s.tx); return f ? { status: f.status, block: f.block_number, signers: f.check?.quorum.signers ?? null, participants: f.check?.quorum.participants ?? null } : null; })() : null })),
 };
-writeFileSync(resolve(import.meta.dirname, "../../docs/runs/compliance-policy.json"), JSON.stringify(out, null, 2) + "\n");
+writeFileSync(resolve(import.meta.dirname, `../../docs/runs/${process.env.RUN_OUT ?? "compliance-policy"}.json`), JSON.stringify(out, null, 2) + "\n");
 say(`\n${steps.filter((s) => s.detail.startsWith("UNEXPECTED")).length} unexpected; ${out.steps.filter((s) => s.finality?.status === "REPORTED").length} of ${txs.length} transactions with a reported finality certificate; docs/runs/compliance-policy.json`);

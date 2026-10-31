@@ -2,6 +2,8 @@
 // npm run receive-policy -- setup       allow only the business account to pay the sweep wallet; anything else is held
 //                                       in quarantine (funds the wallet from the faucet first if it has no *USDZ for gas)
 // npm run receive-policy -- poll        record payments held since the last poll and propose return/accept for each
+// npm run receive-policy -- stranger    dev test: a test key that is not the business account pays the sweep wallet
+//                                       0.02 *USDZ, so the policy has something to hold (funded from the faucet)
 // Metal testnet (B1). Releasing a held payment is a proposal the CFO approves with Face ID; the runner executes it.
 
 import { formatUnits, type Address } from "viem";
@@ -35,6 +37,16 @@ if (cmd === "setup") {
   }
   const r = await setupReceivePolicy(db, port, keyPath("sweep.key.json"));
   console.log(r.changed ? `receive policy set on ${sweep}: ${r.txs.map((t) => `https://testnet.metalntwx.com/tx/${t}`).join(" ")}` : "receive policy already set; nothing changed");
+} else if (cmd === "stranger") {
+  // A dev test, labelled as such: someone other than the business account pays the sweep wallet. Test money only.
+  const { existsSync } = await import("node:fs");
+  const { transferUsdz } = await import("../metal/chain.js");
+  const file = keyPath("stranger.key.json");
+  if (!existsSync(file)) metalAgent(["key", "create", "--out", file]);
+  const { address } = JSON.parse((await import("node:fs")).readFileSync(file, "utf8")) as { address: Address };
+  if ((await usdzBalance(address)) === 0n) { metalAgent(["fund", address]); console.log(`funded the stranger test key ${address} from the faucet`); }
+  const tx = await transferUsdz(file, sweep, 2n * 10n ** 16n);
+  console.log(`dev test: a stranger paid 0.02 *USDZ to the sweep wallet: https://testnet.metalntwx.com/tx/${tx}; run poll next`);
 } else if (cmd === "poll") {
   console.log(`${await pollQuarantine(db, port)} new payment(s) held in quarantine`);
 } else {

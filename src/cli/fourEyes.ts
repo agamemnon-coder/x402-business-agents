@@ -8,7 +8,7 @@
 //   4. the mandate revoked with the CFO alone: reverted on chain; with both: revoked;
 //   5. Metal's finality certificate for every transaction above (src/metal/finality.ts).
 // A refused transaction is sent with the gas its two-signature twin needs, so it cannot fail for want of gas.
-// Test money only (*USDZ on testnet); the keys are test keys and never printed. Writes docs/runs/four-eyes.json.
+// Test money only (*USDZ on testnet); the keys are test keys and never printed. Writes docs/runs/four-eyes.json (RUN_OUT names another run, so earlier records stay).
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -135,7 +135,7 @@ if (reference && /^0x[0-9a-fA-F]{64}$/.test(reference)) {
 
 // 5. Metal's finality certificates for every transaction above, once final.
 mkdirSync(resolve(import.meta.dirname, "../../data"), { recursive: true });
-const db = openDb(resolve(import.meta.dirname, "../../data/four-eyes.sqlite"));
+const db = openDb(resolve(import.meta.dirname, `../../data/${process.env.RUN_OUT ?? "four-eyes"}.sqlite`));
 const txs = steps.map((s) => s.tx).filter((t): t is string => !!t);
 for (let i = 0; i < 12; i++) {
   const r = await certifyTxs(db, txs);
@@ -147,5 +147,5 @@ const out = {
   stranger: stranger.address, payee: payee.address, mandate: reference || null,
   steps: steps.map((s) => ({ ...s, finality: s.tx ? (() => { const f = finalityOf(db, s.tx); return f ? { status: f.status, block: f.block_number, signers: f.check?.quorum.signers ?? null, participants: f.check?.quorum.participants ?? null } : null; })() : null })),
 };
-writeFileSync(resolve(import.meta.dirname, "../../docs/runs/four-eyes.json"), JSON.stringify(out, null, 2) + "\n");
+writeFileSync(resolve(import.meta.dirname, `../../docs/runs/${process.env.RUN_OUT ?? "four-eyes"}.json`), JSON.stringify(out, null, 2) + "\n");
 say(`\n${steps.filter((s) => s.detail.startsWith("UNEXPECTED")).length} unexpected; ${out.steps.filter((s) => s.finality?.status === "REPORTED").length} of ${txs.length} transactions with a reported finality certificate; docs/runs/four-eyes.json`);
