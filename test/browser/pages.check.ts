@@ -107,12 +107,12 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (/USDZ|\$\s?\d/.test(ag)) fail(`/?recorded&agents ${tag}: shows USDZ or dollars`);
     await page.screenshot({ path: join(shots, `agents-${tag}.png`), fullPage: true });
 
-    // The finance view of the recording: a balanced trial balance, or a plain note for a recording made before it.
+    // The finance view of the recording: the run's result and a balanced journal, or a plain note for a recording made before it.
     await page.goto(`${base}/?recorded&books`, { waitUntil: "load" });
     await page.waitForTimeout(800);
     await look(page, `/?recorded&books ${tag}`, w);
     const bk = await page.evaluate(() => document.body.innerText);
-    if (!/Books/.test(bk) || !(/Trial balance/.test(bk) || /before the Books tab/.test(bk))) fail(`/?recorded&books ${tag}: no books and no note`);
+    if (!/Books/.test(bk) || !((/Result of the run/.test(bk) && /Balanced/.test(bk)) || /before the Books tab/.test(bk))) fail(`/?recorded&books ${tag}: no books and no note`);
     if (/USDZ|\$\s?\d/.test(bk)) fail(`/?recorded&books ${tag}: shows USDZ or dollars`);
     await page.screenshot({ path: join(shots, `books-${tag}.png`), fullPage: true });
 
