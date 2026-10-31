@@ -19,6 +19,7 @@ import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
 import { AGENT_DISPLAY, RECORDING_NAMES_NOTE } from "../config/brand.js";
 import { kit11NamesRecorded } from "../demo/oldNames.js";
+import { withNav } from "../ui/nav.js";
 import { buildLiveTimeline } from "../live/timeline.js";
 import { health, prometheus } from "../ops/health.js";
 import type { DisputeCase } from "../seller/desk.js";
@@ -52,7 +53,7 @@ const withNamesNote = (page: string, where: "top" | "bottom" = "top") => !NAMES_
 </style>`)
   .replace(/<body[^>]*>/, (m) => `${m}\n<p class="names-note${where === "bottom" ? " bottom" : ""}" role="note">${NAMES_NOTE}</p>`);
 
-const PAGE_TEMPLATE = readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8");
+const PAGE_TEMPLATE = withNav(readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8"), "overview");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
 /** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
 export const FONT = readFileSync(new URL("../ui/inter.woff2", import.meta.url));
@@ -62,9 +63,9 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-metal.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/metal.svg", import.meta.url)) },
   "logo-claude.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/claude.png", import.meta.url)) },
 };
-const MONTH_TEMPLATE = readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8");
-const DEMO_TEMPLATE = withNamesNote(readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8"));
-const LAB_TEMPLATE = readFileSync(new URL("../dashboard/lab.html", import.meta.url), "utf8");
+const MONTH_TEMPLATE = withNav(readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8"), "month");
+const DEMO_TEMPLATE = withNav(withNamesNote(readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8")), "demo");
+const LAB_TEMPLATE = withNav(readFileSync(new URL("../dashboard/lab.html", import.meta.url), "utf8"), "lab");
 const LAB_FILE = new URL("../../docs/lab/results.json", import.meta.url);
 const STORY_FILE = new URL("../../docs/demo/story.json", import.meta.url);
 
@@ -105,7 +106,7 @@ export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readF
 }
 
 /** "Purser live": the animated day, its timeline inside the page (src/live/timeline.ts), built from the recordings. */
-const LIVE_TEMPLATE = withNamesNote(readFileSync(new URL("../live/live.html", import.meta.url), "utf8"));
+const LIVE_TEMPLATE = withNav(withNamesNote(readFileSync(new URL("../live/live.html", import.meta.url), "utf8")), "live");
 export const LIVE_CSP = cspFor(LIVE_TEMPLATE);
 export function livePage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
   return LIVE_TEMPLATE.replace("__LIVE_JSON__", () => JSON.stringify(buildLiveTimeline(story, recorded)).replace(/</g, "\\u003c"));
@@ -126,17 +127,17 @@ export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
 export const TRY_PAGE = (() => {
   const rec = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as { snapshot?: { rails?: unknown }; proof?: { ai_tricks?: number } };
   const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null };
-  return readFileSync(new URL("../try/try.html", import.meta.url), "utf8").replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
+  return withNav(readFileSync(new URL("../try/try.html", import.meta.url), "utf8"), "try").replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
 })();
 export const TRY_CSP = cspFor(TRY_PAGE);
 
 /** "How Purser uses Metal" (src/metal/): the features, mandates and Dispute desk case recorded in docs/demo/metal.json. */
 const METAL_FILE = new URL("../../docs/demo/metal.json", import.meta.url);
 const metalData = () => JSON.parse(readFileSync(METAL_FILE, "utf8")) as { dispute: DisputeCase | null };
-export const METAL_PAGE = withNamesNote(readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8")).replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
+export const METAL_PAGE = withNav(withNamesNote(readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8")), "metal").replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
 export const METAL_CSP = cspFor(METAL_PAGE);
 /** /visa: agent recognition, then the agent's own Airwallex Visa card (src/visa/page.ts). */
-export const VISA_PAGE = visaPage();
+export const VISA_PAGE = withNav(visaPage(), "visa");
 // No script on /visa: a style-only policy, as for the evidence report.
 export const VISA_CSP = ["default-src 'none'", `style-src ${inlineHash(VISA_PAGE, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */

@@ -2,6 +2,22 @@
 
 **Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
 
+Kit 11 · x402 Business Agents: three agents (Sourcing, Support, Treasury) on one Metal account, rebalancing when
+supplier costs rise — plus Airwallex for cards, FX and the euro licence fee.
+
+**Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/#tour))
+or offline with `npm ci && npm run judge` (no keys, no network):
+
+1. **The problem:** AI agents are starting to spend company money; one shared card or wallet gives no limit per agent
+   and no one place for the exceptions. ([Watch](https://kit11.max-31b.workers.dev/film))
+2. **Airwallex declines the card** above its limit; after the CFO's Face ID the limit follows and the same purchase
+   is paid. ([the Airwallex ids](https://kit11.max-31b.workers.dev/demo?step=1))
+3. **Metal refuses the higher price** on chain, and the CFO rebalances the three mandates within the same 20.00 with
+   Face ID. ([the transactions](https://kit11.max-31b.workers.dev/demo?step=3))
+4. **The Dispute desk proves every order:** 12 disputed orders, each checked against its signed mandate on chain;
+   only wrong data is refunded. ([the evidence](https://kit11.max-31b.workers.dev/metal#dispute))
+5. **Try it yourself:** type a task for an agent. ([Try it](https://kit11.max-31b.workers.dev/try))
+
 <p>
   <img src="docs/media/purser-card.gif" width="49%" alt="Airwallex declines the agent's card over its limit">
   <img src="docs/media/purser-metal.gif" width="49%" alt="Metal refuses a payment over the agent's on-chain mandate">
@@ -10,8 +26,8 @@
 *Left: Airwallex itself declines the agent's card over its limit. Right: Metal refuses a payment over the agent's
 on-chain mandate. Both from the recorded live run (test money).*
 
-**Kit 11 (x402 Business Agents), as built.** Northwind Outdoor sells live stock data per query: the kit's data
-business. Three agents draw on one Metal account, each under its own mandate:
+**Kit 11 (x402 Business Agents), as built.** Northwind Outdoor, an outdoor wholesaler that sells live stock data to
+retailers per query: the kit's data business. Three agents draw on one Metal account, each under its own mandate:
 
 | Kit 11 agent | Its job in the brief | Budget when bound → after the CFO's Face ID |
 |---|---|---|

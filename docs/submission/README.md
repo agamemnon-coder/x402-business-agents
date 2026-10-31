@@ -22,9 +22,9 @@ Purser gives each AI agent an Airwallex company card and a Metal on-chain mandat
 **Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
 
 Purser is for the CFO or controller of a small company that runs AI agents and wants them to spend company money only
-within limits the CFO sets. The example company is Northwind Outdoor: it sells live stock checks to other companies'
-agents (here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. It has three
-agents, Operations, Sales and Finance, each with its own card and its own mandate.
+within limits the CFO sets. The example company is Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query
+(here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. It has Kit 11's three
+agents, the Sourcing, Support and Treasury agent, each with its own card and its own mandate.
 
 ### How we use Airwallex
 

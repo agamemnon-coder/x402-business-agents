@@ -44,6 +44,19 @@ button { font: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: -.01em; text-decoration: none; white-space: nowrap; }
 .brand .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
 .brand .mark svg { width: 16px; height: 16px; }
+.hero .why + .ctas { margin-top: 22px; }
+.kitline { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--muted); max-width: 640px; }
+.tour h2 { margin: 0 0 18px; }
+.tsteps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.tsteps li { display: flex; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.tsteps .tn { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: var(--accent); color: var(--accent-ink); }
+.tsteps h3 { margin: 2px 0 6px; font-size: 15px; } .tsteps p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.tsteps a { font-size: 13.5px; font-weight: 600; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 1100px) { .tsteps { grid-template-columns: 1fr; } }
+.dtabs { display: flex; gap: 4px; padding: 8px 24px; border-bottom: 1px solid var(--border); background: var(--bg); overflow-x: auto; }
+.dtabs a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: 14px; padding: 7px 12px; border-radius: 8px; white-space: nowrap; }
+.dtabs a.on { color: var(--text); background: var(--sunken); }
+@media (max-width: 560px) { .dtabs { padding: 6px 12px; } .dtabs a { font-size: 13px; padding: 6px 9px; } }
 .nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; }
 .nav a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: 14px; padding: 8px 12px; border-radius: 8px; white-space: nowrap; }
 .nav a.on { color: var(--text); background: var(--sunken); }
@@ -461,6 +474,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <button class="btn stop" id="stop" type="button" hidden><span data-icon="octagon-x"></span>Emergency stop</button>
   </div>
 </header>
+<div class="dtabs" id="dtabs" role="navigation" aria-label="Dashboard sections" hidden></div>
 <details class="note" id="note"><summary><span data-icon="info"></span>Test money, real systems: Airwallex sandbox and Metal testnet · details</summary>
   <p>One CFO policy for both rails: Airwallex cards and bank transfers, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, amounts are in USDZ, Metal's test dollars, shown here as "test USD". The step from test USD to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate.</p></details>
 <div class="frozen" id="frozen" hidden></div>
@@ -483,11 +497,12 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 <div id="landing" hidden>
   <section class="section hero">
     <div>
+      <p class="kitline" id="kitline">Kit 11 · x402 Business Agents: three agents (Sourcing, Support, Treasury) on one Metal account, rebalancing when supplier costs rise — plus Airwallex for cards, FX and the euro licence fee.</p>
       <span class="eyebrow"><span data-icon="shield-check"></span>For CFOs of companies that run AI agents</span>
       <h1>Your AI agents spend through Airwallex and Metal. The CFO stays in control.</h1>
       <p class="lead">Each agent gets its own Airwallex company card and its own Metal mandate. You set the limits once; Airwallex and the chain enforce them. Anything more waits for your Face ID.</p>
-      <p class="why"><b>Why Airwallex customers need this:</b> a cross-border company like Northwind buys software, pays suppliers abroad and sells across currencies. As AI agents take over that work, each needs its own card and limits, and the CFO one place for the exceptions.</p>
-      <div class="ctas"><a class="btn primary" href="try"><span data-icon="sparkles"></span>Try it yourself</a><a class="btn" href="demo"><span data-icon="play"></span>Watch the demo</a><a class="btn" href="month"><span data-icon="calendar-range"></span>A month in 90 seconds</a></div>
+      <p class="why"><b>Why Airwallex customers need this:</b> Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, buys software, pays suppliers abroad and sells across currencies. As AI agents take over that work, each needs its own card and limits, and the CFO one place for the exceptions.</p>
+      <div class="ctas"><a class="btn primary" href="#tour"><span data-icon="presentation"></span>Judge tour · 3 minutes</a><a class="btn" href="try"><span data-icon="sparkles"></span>Try it yourself</a><a class="btn" href="film"><span data-icon="play"></span>Watch</a></div>
       <div class="built">Built on <span class="logos"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"><span class="sep"></span><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span></div>
       <p class="withclaude">Built with Claude: three models, each for what it does best. Code decides.</p>
     </div>
@@ -503,6 +518,17 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         <li class="ok"><span data-icon="circle-check"></span>Paid<span class="amt num">€45.00</span></li>
       </ol>
     </div>
+  </section>
+  <!-- The judge tour: five steps, one sentence each, each with its proof. -->
+  <section class="section tour" id="tour" aria-labelledby="h-tour">
+    <h2 id="h-tour">Judge tour: five steps, three minutes</h2>
+    <ol class="tsteps">
+      <li><span class="tn">1</span><div><h3>The problem</h3><p>AI agents are starting to spend company money; one shared card or wallet gives no limit per agent and no one place for the exceptions.</p><a href="film">Watch the film <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">2</span><div><h3>Airwallex declines the card</h3><p>The Sourcing agent's card is declined by Airwallex itself above its limit; after the CFO's Face ID the limit follows and the same purchase is paid.</p><a href="demo?step=1">The Airwallex ids <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">3</span><div><h3>Metal refuses the higher price</h3><p>The supplier doubles its price, the chain refuses the payment, and the CFO rebalances the three mandates within the same 20.00 with Face ID.</p><a href="demo?step=3">The transactions on chain <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">4</span><div><h3>The Dispute desk proves every order</h3><p>A customer disputes 12 orders; each is checked against its signed mandate on chain, and only wrong data is refunded.</p><a href="metal#dispute">The 12 orders and the evidence report <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">5</span><div><h3>Try it yourself</h3><p>Type a task for an agent: Claude reads it, code picks the rail and checks the CFO's limits.</p><a href="try">Open Try it <span data-icon="arrow-right"></span></a></div></li>
+    </ol>
   </section>
   <section class="proof" aria-label="From the recorded live run">
     <div class="section">
@@ -1222,8 +1248,19 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   }
 
   // Navigation for each kind of visitor.
-  function nav(items) {
-    set("nav", items.map(function (x) { var a = txt("a", x[2] ? "on" : "", x[0]); a.href = x[1]; return a; }));
+  // The dashboard's own sections (Agents, Books, Disputes) as tabs under the header, apart from the site navigation.
+  function tabs(items) {
+    var box = document.getElementById("dtabs");
+    box.hidden = false;
+    set("dtabs", items.map(function (x) { var a = txt("a", x[2] ? "on" : "", x[0]); a.href = x[1]; if (x[2]) a.setAttribute("aria-current", "page"); return a; }));
+  }
+  // The navigation comes with the page (src/ui/nav.ts); this marks where the reader is.
+  function markNav(key) {
+    Array.prototype.forEach.call(document.querySelectorAll("#nav a"), function (a) {
+      var on = a.getAttribute("data-nav") === key;
+      a.classList.toggle("on", on);
+      if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
   }
 
   var MODE = document.body.getAttribute("data-mode");
@@ -1266,7 +1303,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   }
   function showDash() { document.getElementById("dash").hidden = false; }
   function showLanding(note) {
-    nav([["Overview", "./", true], ["Try it", "try"], ["Metal", "metal"], ["Live", "live"], ["Film", "film"], ["Recorded run", "demo"], ["Month", "month"], ["Lab", "lab"], ["CFO dashboard", "./?recorded"]]);
+    markNav("overview");
     var p = RECORDED && RECORDED.proof;
     if (p) {
       countUp("p-alone", p.alone); countUp("p-blocked", p.blocked);
@@ -1314,10 +1351,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
   if (wantSignin && !viewKey && MODE !== "local") {
-    nav([["Overview", "./", false], ["Try it", "try"], ["Metal", "metal"], ["Live", "live"], ["Film", "film"], ["Recorded run", "demo"], ["Month", "month"], ["Lab", "lab"], ["CFO dashboard", "./?recorded"]]);
+    markNav("dashboard");
     document.getElementById("signin").hidden = false;
   } else if (wantRecorded && RECORDED) {
-    nav([["Overview", "./"], ["Metal", "metal"], ["Recorded run", "demo"], ["CFO dashboard", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
+    markNav("dashboard");
+    tabs([["Overview", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
     document.getElementById("rec-text").textContent = "Recorded run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + "): the CFO dashboard as it stood, real data from the Airwallex sandbox and Metal testnet. Nothing here is live." + (RECORDED.names_note ? " " + RECORDED.names_note : "");
@@ -1327,7 +1365,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     st.title = "The CFO's emergency stop: one Face ID freezes every agent and every card. Live only, not in a recording.";
     showDash(); render(snap);
   } else if (MODE === "local" || viewKey) {
-    nav([["Dashboard", "./", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Disputes", "?disputes", wantDisputes], ["Purser live", "live"], ["Demo", "demo"], ["A month in 90 seconds", "month"]].concat(MODE === "local" ? [["Lab", "lab"]] : [["Policy", "policy"]]));
+    markNav("dashboard");
+    tabs([["Dashboard", "./", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Disputes", "?disputes", wantDisputes]].concat(MODE === "local" ? [] : [["Policy", "policy"]]));
     showDash(); statusTimer = setInterval(status, 1000); poll();
   } else {
     showLanding("");

@@ -4,7 +4,7 @@ An animated page (`/live` on the relay and in `npm run judge`) that plays one wo
 recorded data: no narration needed, readable with the sound off, honest about what is simulated. Built from the same
 ledger rows as the dashboard, so every number on screen is a real one from the recorded run.
 
-Layout: a calm white stage. Left, the three agents as cards (Operations, Sales, Finance) and an "outside agent" slot.
+Layout: a calm white stage. Left, the three agents as cards (Sourcing, Support, Treasury) and an "outside agent" slot.
 Middle, the rails: Airwallex (cards, FX, SWIFT) and Metal (mandates, x402, clearing). Right, the CFO's phone.
 Bottom, a running ledger line and a clock (09:00 to 18:00, compressed).
 

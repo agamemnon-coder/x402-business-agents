@@ -58,7 +58,9 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // Long enough for a page that polls to show it (it must not, without a key).
     await page.waitForTimeout(2500);
     await look(page, `/ ${tag}`, w);
-    if (!(await page.isVisible("text=Watch the demo"))) fail(`/ ${tag}: no "Watch the demo" for a guest`);
+    if (!(await page.isVisible("text=Judge tour · 3 minutes"))) fail(`/ ${tag}: no "Judge tour" button for a guest`);
+    if ((await page.locator("#tour .tsteps > li").count()) !== 5) fail(`/ ${tag}: the judge tour does not have five steps`);
+    if (!(await page.isVisible("#kitline"))) fail(`/ ${tag}: no Kit 11 line on the landing`);
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.

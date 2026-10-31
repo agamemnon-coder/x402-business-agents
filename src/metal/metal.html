@@ -165,7 +165,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
     var first = function (m) { return (m.history && m.history[0] && m.history[0].budget) || m.budget; };
     var sum = function (f) { return ms.reduce(function (n, m) { return n + Math.round(Number(f(m)) * 100); }, 0) / 100; };
     var box = document.getElementById("kit11");
-    box.appendChild(el("div", "", [el("b", "", ["Kit 11, as built. "]), "Northwind sells live stock data per query: the kit's data business. Three agents draw on one Metal account, each under its own mandate; " + sum(first).toFixed(2) + " test USD between them when bound, " + sum(function (m) { return m.budget; }).toFixed(2) + " after the CFO approved new limits, the total held in code."]));
+    box.appendChild(el("div", "", [el("b", "", ["Kit 11, as built. "]), "Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business. Three agents draw on one Metal account, each under its own mandate; " + sum(first).toFixed(2) + " test USD between them when bound, " + sum(function (m) { return m.budget; }).toFixed(2) + " after the CFO approved new limits, the total held in code."]));
     box.appendChild(el("div", "map", ms.map(function (m) {
       var b0 = first(m), b1 = m.budget;
       return el("div", "", [el("b", "", [m.agent]), el("small", "", [KIT[m.role] + " · budget "+ (b0 === b1 ? b1 : b0 + " → " + b1)])]);

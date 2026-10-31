@@ -4,8 +4,10 @@
 export const PRODUCT = "Purser";
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
-/** The example company that runs Purser in the demo: a D2C outdoor brand in Amsterdam, selling in the EU and the US. */
+/** The example company that runs Purser in the demo. */
 export const COMPANY = "Northwind Outdoor";
+/** How Northwind is described everywhere a juror reads it: Kit 11's data business, in one sentence. */
+export const NORTHWIND_LINE = "an outdoor wholesaler that sells live stock data to retailers per query";
 
 /** What each agent is called where a person reads it (Kit 11's names, word for word), and its job in Kit 11's brief. */
 export const AGENT_DISPLAY: Record<"sourcing" | "support" | "treasury", { name: string; job: string }> = {

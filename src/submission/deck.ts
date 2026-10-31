@@ -43,7 +43,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Kit 11 · x402 Business Agents",
       title: "Three agents, one Metal account",
       points: [
-        "Northwind sells live stock data per query: Kit 11's data business.",
+        "Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query: Kit 11's data business.",
         "Each agent pays under its own on-chain mandate; 20.00 test USD between them, held in code.",
         "A supplier price rise is refused; the CFO approves new limits within the 20 with Face ID.",
       ],

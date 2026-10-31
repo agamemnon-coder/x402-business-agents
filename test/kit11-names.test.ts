@@ -4,7 +4,9 @@
 // say plainly that it was made before the rename.
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AGENT_DISPLAY, RECORDING_NAMES_NOTE } from "../src/config/brand.js";
+import { AGENT_DISPLAY, NORTHWIND_LINE, RECORDING_NAMES_NOTE } from "../src/config/brand.js";
+import { deckHtml } from "../src/submission/deck.js";
+import { packFacts } from "../src/submission/facts.js";
 import { CARDS, INITIAL_MANDATES, PLANS, TOTAL_BUDGET_CENTS } from "../src/config/policy.js";
 import { kit11NamesRecorded, PRE_KIT11_NAMES, preKit11NamesIn } from "../src/demo/oldNames.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -42,6 +44,22 @@ describe("Kit 11's agent names, word for word", () => {
     const mapping = /(sourcing|support|treasury) agent\s*=\s*(kit 11's )?(sourcing|support|treasury) agent|= kit 11's/i;
     for (const [name, body] of Object.entries(buildPages())) if (typeof body === "string") expect({ page: name, mapped: mapping.exec(body)?.[0] ?? null }).toEqual({ page: name, mapped: null });
     for (const f of GUEST_DOCS) expect({ f, mapped: mapping.exec(read(f))?.[0] ?? null }).toEqual({ f, mapped: null });
+  });
+
+  // Breaks if the old names come back as a bare list ("Operations, Sales and Finance"), which the guard above misses.
+  it("lists no earlier names without the word agent either", () => {
+    const list = /\b(Operations|Sales|Finance)\b(, | and | or )(Operations|Sales|Finance|Support|Treasury)\b/;
+    for (const [name, body] of Object.entries(buildPages())) if (typeof body === "string") expect({ page: name, list: list.exec(body)?.[0] ?? null }).toEqual({ page: name, list: null });
+    for (const f of GUEST_DOCS) expect({ f, list: list.exec(read(f))?.[0] ?? null }).toEqual({ f, list: null });
+  });
+
+  // Breaks if Northwind is described differently in the places a juror meets it first.
+  it("describes Northwind in one sentence everywhere a juror meets it", () => {
+    const pages = buildPages();
+    const flat = (t: string) => t.replace(/\s+/g, " ");
+    for (const [where, text] of [["landing", pages.dashboard], ["metal", pages.metal], ["README", read("README.md")], ["form text", read("docs/submission/README.md")], ["deck", deckHtml(packFacts(), {} as never, "")]] as const) {
+      expect({ where, has: flat(text as string).includes(NORTHWIND_LINE) }).toEqual({ where, has: true });
+    }
   });
 
   it("shows no earlier agent name in what a juror reads", () => {
