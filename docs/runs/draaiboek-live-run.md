@@ -96,5 +96,5 @@ Alles hierboven blijft gelijk: dezelfde stappen, dezelfde goedkeuringen, dezelfd
 
 - De 2-van-2-rekening in stap 5 is een aparte rekening in dezelfde wereld. De eigen rekening van Northwind heeft één
   eigenaar op de chain; daarom vragen we op Purser-niveau beide passkeys voor de mandaatwijziging in stap 6.
-- De agentherkenning in stap 13 is een dev test: met onze eigen sleutels, niet goedgekeurd door Visa.
+- De agentherkenning in stap 14 is een dev test: met onze eigen sleutels, niet goedgekeurd door Visa.
 - Summits klant-agent is gesimuleerd. Alle andere geldstromen gaan live, met testgeld.
