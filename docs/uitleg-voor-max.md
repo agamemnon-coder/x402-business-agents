@@ -11,6 +11,14 @@ run (vrijdag-run 1, 30 oktober) of uit een losse live test; waar het staat, zie 
 
 Eén zin: **"Your AI agents spend through Airwallex and Metal. The CFO stays in control."**
 
+**Met de agents aan (donderdag), om uit je hoofd te kennen (30 seconden):**
+
+> "Drie Claude-agents runnen het bedrijf: Sourcing koopt de data in, Support handelt geschillen af, Treasury herverdeelt
+> het budget. Ze beslissen zelf, met echte tools. Maar ze kunnen niet meer uitgeven dan mag: Metal weigert elke betaling
+> boven hun mandaat, Airwallex weigert elke kaartbetaling boven hun limiet. Alles daarbuiten (een groter budget, een
+> grote factuur, een nieuw bankrekeningnummer) gaat naar mij, en ik keur het goed met Face ID. Elke beslissing van een
+> agent kun je stap voor stap terugzien, met het bewijs op de chain."
+
 ## 2. Hoe het werkt, in 5 stappen
 
 1. **De CFO zet de regels.** In gewone woorden. Claude Opus maakt er een voorstel van; code houdt alleen regels die
@@ -49,7 +57,7 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 - Finality certificates: we checken de kop en het quorum, niet de BLS-handtekening (Metal publiceert de sleutels niet).
 - ISO 20022: geldig bericht, maar naar geen enkele bank gestuurd.
 
-## 5. De 40 juryvragen
+## 5. De 50 juryvragen
 
 ### Product (1–8)
 
@@ -109,6 +117,33 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 39. **Wat is nodig voor productie?** Sleutels in een KMS, Postgres met herstel, een pager op `/health`, en meer bedrijven per installatie. Daarna Metal mainnet.
 40. **Wat is het moeilijkste geweest?** Dat elke claim klopt. Elke betaling heeft een bewijs, en alles wat gesimuleerd is staat erbij.
 
+### De Claude-agents (41–50)
+
+41. **Wat als Claude zich vergist?** Dan houdt code of de rail het tegen. Echt voorbeeld: een agent liet zich door een
+    klant-mail verleiden om ook orders buiten het geschil mee te nemen; code weigerde dat, er ging niets weg
+    ([agent-was-wrong.md](agent-was-wrong.md)). De agent kan geen ontvanger kiezen en niet boven zijn mandaat betalen.
+42. **Waarom niet volledig autonoom?** Binnen de limieten wél: de agents betalen en beslissen zelf. Een groter budget, een
+    grote factuur of een nieuw rekeningnummer kan geld kwijtraken dat niet terugkomt; daar wil een CFO zelf ja zeggen.
+43. **Wat kost een beslissing?** Gemeten in vier dry runs: Sourcing $0,0007, Treasury ongeveer $0,026, Support ongeveer
+    $0,046 per beslissing. Per vraag van een klant samen ongeveer een halve cent; de marge blijft 1,9 cent per vraag
+    ([unit-economics.md](unit-economics.md)).
+44. **Kan een klant-agent liegen?** Ja, en daar is het op gebouwd. Wat de klant schrijft is alleen data; code controleert
+    elke order zelf (getekend, binnen het mandaat, betaald) en refundt alleen als code's eigen data-check fout vindt.
+45. **Waarom Metal en niet alleen kaarten?** Een kaart kan geen betaling van 5 cent per vraag doen, en de limiet zit bij
+    de bank. Op Metal zit het mandaat per agent op de chain: maximum per betaling, totaalbudget, één ontvanger. Voor
+    leveranciers die alleen kaarten nemen, gebruiken we Airwallex. Beide, elk waar het past.
+46. **Hoe weet je dat de agents goed werken?** Evals met echte modellen, 5 runs per geval: Sourcing 10/10, Treasury
+    20/20, Support 30/30. En live in de dry runs: Sourcing 4 van 5 goed (één keer sloeg hij een stap over; code nam het
+    over en het is gerepareerd), Treasury en Support 5 van 5.
+47. **Waarom drie verschillende modellen?** Gemeten: Haiku is goed genoeg voor Sourcing en kost bijna niets; Treasury
+    moet echt herverdelen en dat doet alleen Opus betrouwbaar; Support op Sonnet negeert valse verzoeken in de mail.
+48. **Kun je één agent stilzetten?** Ja, met Face ID. Zijn mandaat wordt op de chain ingetrokken en zijn kaart bevroren.
+    Weer aanzetten kan alleen met beide passkeys.
+49. **Wat als een agent iets doet wat je niet snapt?** Op elke regel van het dashboard staat "Trace": elke stap, welke
+    tool, wat het kostte, welke check het doorliet of tegenhield, met de hash in de audit-keten.
+50. **Wat doet Claude níet?** Claude heeft geen sleutel, keurt niets goed en kiest geen ontvanger. De sweep en de
+    licentiebetaling zijn beslissingen van code, niet van een agent.
+
 ## 6. Zeg dit niet
 
 - Niet "volledig productieklaar": het draait op sandbox en testnet.
@@ -116,6 +151,10 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 - Niet "de red team draaide live": tegen nep-versies, in een wegwerpwereld.
 - Niet "finality volledig geverifieerd": de BLS-handtekening checken we niet.
 - Niet "T:0 werkt live": nog geen sleutel.
+- Niet "de agents beslissen alles": ze beslissen op de uitzonderingen (prijsstijging, herverdeling, geschil); routine en
+  de sweep en de licentie doet code.
+- Niet "Metal draaide een transactie terug": Metal toetst tegen het mandaat op de chain en weigert vóór er iets
+  verstuurd wordt.
 
 ## 7. Dagelijkse quiz (10 vragen)
 
