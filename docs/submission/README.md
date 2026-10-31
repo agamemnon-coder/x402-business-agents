@@ -157,6 +157,6 @@ Scenario Lab and a simulated month, and opens the browser. Running it live (sand
 
 ## Deck and zip
 
-- `purser-deck.pdf`: nine slides, made by `npm run submission` from the same figures.
+- `purser-deck.pdf`: fifteen slides, one picture each, made by `npm run submission` from the same figures.
 - The zip: `npm run submission` writes `out/submission/purser-source.zip` (`git archive` of the current commit: the
   code, no keys, no ledger). Not committed.

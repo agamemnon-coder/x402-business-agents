@@ -1,6 +1,8 @@
-// The submission deck (awards item 6): nine 16:9 slides as one HTML page, printed to PDF by npm run submission.
-// Every figure comes from packFacts(), the same recorded files the pages use; the font and the sponsors' logos are
-// embedded, so the PDF needs no network.
+// The submission deck (awards item 6): fifteen 16:9 slides as one HTML page, printed to PDF by npm run submission.
+// One picture per slide and at most three short points: the screenshots are the recorded pages (npm run judge),
+// the phone screens come from the browser check's dev-test world. Every figure comes from packFacts(), the same
+// recorded files the pages use; the font, the logos, the screenshots and the QR code are embedded, so the PDF needs
+// no network. Market facts carry their source on the slide and in docs/claims.md.
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
@@ -10,107 +12,164 @@ const dataUri = (p: string, type: string) => `data:${type};base64,${asset(p).toS
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const eur = (v: string) => `€${Number(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-interface Slide { kicker: string; title: string; body: string }
+/** The public page the last slide's QR code opens. */
+export const TRY_URL = "https://kit11.max-31b.workers.dev/try";
 
-const list = (items: string[]) => `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+/** Screenshots by name (data URIs), as npm run submission takes them. */
+export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "enterprise" | "try", string>;
+
+interface Slide { kicker: string; title: string; points?: string[]; extra?: string; pic: string }
+
+const list = (items: string[]) => (items.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>` : "");
+const shot = (src: string, caption: string) => `<figure class="shot"><img src="${src}" alt=""><figcaption>${esc(caption)}</figcaption></figure>`;
+const phones = (a: string, b: string, caption: string) =>
+  `<figure class="phones"><div><img src="${a}" alt=""><img src="${b}" alt=""></div><figcaption>${esc(caption)}</figcaption></figure>`;
 const stat = (value: string, label: string) => `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`;
 
-export function deckHtml(f: PackFacts): string {
+export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const rt = f.redteam;
   const slides: Slide[] = [
     {
-      kicker: "Airwallex Agentic Banking Hackathon · Starter Kit 11",
+      kicker: "Airwallex Agentic Banking Hackathon · Starter Kit 11 · Metal Award",
       title: "Purser",
-      body: `<p class="lead">Your AI agents spend through Airwallex and Metal.<br>The CFO stays in control.</p>
-        <p>Each agent gets an Airwallex company card and a Metal on-chain mandate, within limits the CFO sets.
-        When an agent needs more, it stops and asks, and the CFO approves on a phone with Face ID.</p>
+      extra: `<p class="lead">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
+      pic: shot(s.landing, "The landing page, from the recorded live run"),
     },
     {
       kicker: "The problem",
       title: "Agents can pay now. Who holds the limit?",
-      body: `${list([
-        "An agent with a card or a wallet spends as fast as it is told to, including by a fake invoice or a planted instruction.",
-        "A limit written in a prompt can be talked out of. It has to live in the rails and in code.",
-        "The CFO needs to approve the exact terms, not a summary, and to prove later what was approved.",
-      ])}
-      <p class="quote">$3,046,598,558 in business email compromise losses were reported by victims to the FBI in 2025.<small>FBI IC3, 2025 Internet Crime Report</small></p>`,
+      points: [
+        "An agent spends as fast as it is told to, also by a fake invoice or a planted instruction.",
+        "A limit in a prompt can be talked out of. It has to live in the rails and in code.",
+      ],
+      extra: `<p class="quote">$3,046,598,558 in business email compromise losses, reported by victims to the FBI in 2025.<small>FBI IC3, 2025 Internet Crime Report</small></p>`,
+      pic: shot(s.live, "Purser live: the chain refuses a payment over the mandate"),
+    },
+    {
+      kicker: "Why now",
+      title: "The networks are building rails for agents to pay",
+      points: [
+        "<b>Visa Intelligent Commerce</b>: credentials and controls for AI-initiated payments.",
+        "<b>Mastercard Agent Pay</b> and <b>Google's Agent Payments Protocol (AP2)</b>, announced 16 September 2025.",
+        "Agents will be able to pay everywhere. Someone still has to set and enforce the limits.",
+      ],
+      extra: `<p class="src">Sources: visa.com/en-us/solutions/intelligent-commerce · mastercard.com (Agent Pay) · cloud.google.com/blog (AP2, 16 Sep 2025)</p>`,
+      pic: shot(s.try, "Try Purser: a task in plain words becomes a rail and a policy check"),
+    },
+    {
+      kicker: "Why Airwallex customers need this",
+      title: "Cross-border businesses are handing work to agents",
+      points: [
+        "A company like Northwind Outdoor buys software, pays suppliers abroad and sells data, across currencies.",
+        "With agents doing that work, each needs its own card and limits, and the CFO one place for exceptions.",
+        "Purser adds that control layer on top of the Airwallex account the company already uses.",
+      ],
+      pic: shot(s.dashboard, "The CFO dashboard at the end of the recorded run"),
     },
     {
       kicker: "How it works",
       title: "Alone inside the limits. Face ID for the rest.",
-      body: `<div class="cols3">
-        <div><h3>The agent may, alone</h3><p>Pay inside its card limits and its on-chain mandate.</p></div>
-        <div><h3>The CFO approves</h3><p>Anything above a limit, a new payee, a bank-detail change, a looser policy: the exact terms, signed with Face ID on the phone. The runner checks the signature and the terms' hash before money moves.</p></div>
-        <div><h3>Exceptions</h3><p>A price rise is refused on chain and becomes options. A suspected fake invoice or a planted instruction waits for a person. An agent that pays too often is stopped.</p></div>
-      </div>`,
+      points: [
+        "The agent pays alone inside its card limits and its on-chain mandate.",
+        "Above a limit, the CFO sees the exact terms and signs their hash with Face ID.",
+        "The runner checks signature and hash before any money moves.",
+      ],
+      pic: phones(s.phoneOptions, s.phoneConfirm, "The approval screens on a phone (a dev-test world, virtual passkey)"),
     },
     {
-      kicker: "How we use Airwallex",
-      title: "Cards, FX and payouts, with Airwallex enforcing the limits",
-      body: list([
-        "<b>A virtual Visa card per agent</b> (Issuing): limits from the CFO policy, merchant categories, currency and end date fixed per agent; all written to the card and read back.",
-        "<b>Declined by Airwallex itself</b> in the recorded run: €45.00 over the limit (<code>LIMIT_EXCEEDED</code>), €19.99 at the wrong kind of shop (<code>MERCHANT_CATEGORY_NOT_ALLOWED</code>). After the CFO's Face ID raise, the same charge went through.",
-        "<b>Single-use task cards</b> for a flight, a hotel or a train, from one sentence (separate live run).",
-        "<b>A €1,850.00 invoice by SWIFT</b>: only the EUR shortfall (after the reserve and the demo plan's set-aside) bought on a locked quote; one Face ID covers rate, payee and fee ceiling; the approval's hash rides in the transfer's metadata.",
-        "<b>Global Accounts</b> (separate live run): retailers' payments matched to invoices; anything off goes to the CFO.",
-      ]),
+      kicker: "Airwallex enforces the limits",
+      title: "A company card per agent, FX and payouts",
+      points: [
+        `<b>Declined by Airwallex itself</b>: €45.00 over the limit, €19.99 at the wrong kind of shop.`,
+        "<b>One Face ID</b> raised the limit; the same charge then went through.",
+        "<b>€1,850.00 by SWIFT</b>: only the EUR shortfall converted; the approval's hash rides in the transfer.",
+      ],
+      pic: shot(s.rails, "Each step with its Airwallex id or Metal transaction"),
     },
     {
-      kicker: "How we use Metal",
-      title: "Mandates on chain: Metal holds the limit, not only Purser",
-      body: list([
-        "<b>A mandate per agent</b>: a cap per payment, a total budget, one payee, an end date.",
-        "<b>Metal's facilitator refused a price rise</b> against the mandate on chain (<code>mandate_cap_exceeded</code>): nothing moved. The CFO signed new terms with Face ID; the mandates were replaced and the old one is refused.",
-        "<b>x402 with signed orders</b> for per-request sales, <b>mandate pulls</b> for refunds and the sweep, <b>pay-per-call clearing</b> for a prepaying customer (separate live run).",
-        "<b>Earnings are booked at Airwallex only when final</b>, exactly once (a simulated sandbox deposit that names the testnet transaction).",
-        `<b>The Dispute desk</b> (after the run): the simulated customer disputed ${f.metal.dispute_orders} orders; each was checked against the chain with the signed order Northwind keeps; the claim refunded ${f.metal.dispute_refunded === 0 ? "nothing" : f.metal.dispute_refunded} ${f.metal.refunded_before.length ? ` (orders ${f.metal.refunded_before.join(", ")} had been refunded earlier for wrong data)` : ""}.`,
-      ]),
+      kicker: "Metal enforces the limits",
+      title: "Mandates on chain: Metal holds the limit",
+      points: [
+        "<b>A mandate per agent</b>: cap per payment, budget, one payee, end date.",
+        "<b>A price rise was refused on chain</b> (<code>mandate_cap_exceeded</code>); nothing moved.",
+        "<b>x402 with signed orders</b>, refunds as mandate pulls, earnings swept once final.",
+      ],
+      pic: shot(s.inspector, "The mandate inspector on /metal"),
     },
     {
       kicker: "For a bigger company",
       title: "More control moves on chain",
-      body: list([
-        "<b>Four eyes on chain</b>: a 2-of-2 Metal account (CFO + controller). One signature, or the CFO with a stranger's key, reverted on chain; both owners together passed.",
-        "<b>Compliance before a payout</b>: a send-policy contract pays only with Purser's signed screening decision. Eleven attacks reverted on chain. Mandate payments do not pass through it.",
-        "<b>Finality certificates</b> kept as evidence for each payment seen within about 2 hours (the validators' signature is not verified: their testnet keys are not published).",
-        "<b>Clearing under load</b>: 2,000 of 2,000 payments at 4.24 a second, about $0.0007 of RPC per payment (an estimate).",
-        "<b>ISO 20022</b>: the paid invoice as one pacs.008 message linking the SWIFT transfer and the Metal transaction.",
-        "Four eyes, compliance, certificates and clearing: separate test worlds on Metal testnet, 30 October, not in the recorded run. The ISO 20022 message is exported from the recorded run.",
-      ]),
+      points: [
+        "<b>Four eyes</b>: a 2-of-2 account; one signature reverted on chain, both passed.",
+        "<b>Compliance contract</b>: pays only with a signed screening decision; 11 attacks reverted.",
+        "<b>Under load</b>: 2,000 of 2,000 clearing payments, 4.24 a second.",
+      ],
+      extra: `<p class="src">Separate test worlds on Metal testnet, 30 October; not in the recorded run.</p>`,
+      pic: shot(s.enterprise, "The four-eyes, compliance and certificate cards on /metal"),
     },
     {
-      kicker: "Where Claude is used",
-      title: "Claude reads and advises. Code and the CFO decide.",
-      body: `<div class="cols3">
-        <div><h3>Haiku</h3><p>Sorts each incoming document.</p></div>
-        <div><h3>Sonnet</h3><p>Reads invoices and notices into fields that code then checks.</p></div>
-        <div><h3>Opus</h3><p>Reviews a proposal's risk for the CFO; played the attacker in the red team.</p></div>
-      </div>
-      <p>Claude holds no key and approves nothing. In the recorded run: ${f.claude_calls} calls, $${f.claude_per_1000_eur_usd} per €1,000 the agents paid.</p>`,
+      kicker: "The Dispute desk",
+      title: "The seller proves each payment from the chain",
+      points: [
+        `The customer disputed ${f.metal.dispute_orders} orders; each was checked against its signed order and mandate.`,
+        `All were signed and inside the mandate: the claim refunded ${f.metal.dispute_refunded === 0 ? "nothing" : String(f.metal.dispute_refunded)}.`,
+        "Open source for any seller on Metal: <code>examples/metal-dispute-desk</code>.",
+      ],
+      pic: shot(s.disputes, "The Disputes tab of the recorded run"),
+    },
+    {
+      kicker: "Claude reads, code decides",
+      title: "No model can move money",
+      points: [
+        "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO and played the attacker.",
+        `Claude holds no key and approves nothing. ${f.claude_calls} calls, $${f.claude_per_1000_eur_usd} per €1,000 paid.`,
+        `Red team: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,
+      ],
+      pic: shot(s.metal, "How Purser uses Metal: every feature with its proof"),
     },
     {
       kicker: "Proof",
       title: "Every payment has a proof",
-      body: `<p class="note">${esc(f.run)}</p><div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time (about half the simulated customer's)")}${stat(String(f.stopped), "stops by the card, the chain, the fraud checks or the CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}${stat(String(f.face_id), "decisions signed with Face ID")}</div>
-        ${list([
-          `Red team (scripted attacks plus ${rt.documents} documents by Claude as the attacker, against in-memory stand-ins): ${rt.failed} of ${rt.attempts} failed, ${rt.inconclusive} inconclusive; ${rt.before} stopped before succeeding, ${rt.after} found afterwards, not prevented.`,
-          `Scenario Lab: ${f.lab.passed} of ${f.lab.total} stories as expected. Audit log: ${f.audit_rows} rows, hash-chained.`,
-          "All test money: the Airwallex sandbox and Metal testnet. Simulated: merchants' charges, deposits, a transfer's last steps; the customer Summit and the warehouse API Stockline are run by us.",
-        ])}`,
+      extra: `<div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time")}${stat(String(f.stopped), "stops by card, chain, fraud checks or CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}${stat(String(f.face_id), "decisions signed with Face ID")}</div>
+        <p class="src">${esc(f.run)}. Audit log: ${f.audit_rows} rows, hash-chained, checkable offline. Test money only.</p>`,
+      pic: shot(s.books, "The Books: double entry for every payment"),
+    },
+    {
+      kicker: "Business model (plan)",
+      title: "A monthly fee per active agent",
+      points: [
+        "Priced per company and per active agent; no cut of payments.",
+        "Airwallex and Metal keep their own fees; Purser adds the control layer.",
+        "First customers: small cross-border companies on Airwallex that run AI agents.",
+      ],
+      pic: `<div class="diagram"><div class="box">Company on Airwallex<small>cards · FX · payouts</small></div><div class="arrow">↓</div><div class="box accent">Purser<small>limits · approvals · proof</small></div><div class="arrow">↓</div><div class="row"><div class="box">AI agents<small>pay alone inside limits</small></div><div class="box">CFO<small>Face ID for the rest</small></div></div></div>`,
+    },
+    {
+      kicker: "Roadmap",
+      title: "From testnet to production",
+      points: [
+        "<b>Now</b>: Airwallex sandbox and Metal testnet, one company, live runs end to end.",
+        "<b>Next</b>: keys in a KMS, Postgres, a pager on <code>/health</code>, many companies.",
+        "<b>Then</b>: Metal mainnet, four eyes as default, finality proofs verified in full.",
+      ],
+      pic: `<div class="timeline"><div><b>Now</b><span>sandbox + testnet</span></div><div><b>Next</b><span>KMS · Postgres · pager · tenants</span></div><div><b>Then</b><span>mainnet · four eyes default</span></div></div>`,
+    },
+    {
+      kicker: "Team",
+      title: "Max",
+      points: [
+        "Max Geurtsen: product, decisions, and every Face ID in the live runs.",
+        "Built with Claude Code as the developer, reviewed by fresh Claude reviewers.",
+        `${f.lab.passed} of ${f.lab.total} Lab stories as expected, CI on every push.`,
+      ],
+      pic: shot(s.landing, "Purser, built for this hackathon"),
     },
     {
       kicker: "Try it",
-      title: "npm ci && npm run judge",
-      body: `<p class="lead">No keys, no network after install.</p>
-        ${list([
-          "<b>/</b> what each rail did, with its proof",
-          "<b>/?recorded</b> the CFO dashboard at the end of the run",
-          "<b>/metal</b> every Metal feature with its proof",
-          "<b>/live</b> the working day as an animation on the two rails",
-          `<b>/lab</b> ${f.lab.total} stories, from a normal purchase to the emergency stop`,
-        ])}
-        <p class="small">Built with Claude Code. Sources: docs/claims.md.</p>`,
+      title: "Type a task for an agent",
+      extra: `<div class="qr">${qrSvg}<div><p class="lead">${esc(TRY_URL.replace(/^https:\/\//, ""))}</p><p class="small">Or offline, no keys: <code>npm ci &amp;&amp; npm run judge</code></p></div></div>`,
+      pic: shot(s.try, "Try Purser"),
     },
   ];
   const font = asset("inter.woff2").toString("base64");
@@ -119,32 +178,48 @@ export function deckHtml(f: PackFacts): string {
 @page { size: 1280px 720px; margin: 0; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Inter, system-ui, sans-serif; color: #0b1220; background: #ffffff; }
-section { width: 1280px; height: 720px; padding: 64px 80px; display: flex; flex-direction: column; page-break-after: always; break-after: page; position: relative; overflow: hidden; }
+section { width: 1280px; height: 720px; padding: 56px 56px 48px 72px; display: grid; grid-template-columns: 500px 1fr; gap: 44px; page-break-after: always; break-after: page; position: relative; overflow: hidden; }
 section:last-child { page-break-after: auto; break-after: auto; }
 section::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 8px; background: #4f46e5; }
-.kicker { font-size: 18px; font-weight: 600; color: #4f46e5; letter-spacing: .02em; margin: 0 0 14px; }
-h1 { font-size: 46px; line-height: 1.12; margin: 0 0 28px; letter-spacing: -.02em; }
-h3 { font-size: 21px; margin: 0 0 8px; }
-p, li { font-size: 22px; line-height: 1.45; }
-p { margin: 0 0 16px; }
-.lead { font-size: 30px; font-weight: 600; line-height: 1.3; }
-ul { margin: 0; padding-left: 26px; }
-li { margin: 0 0 12px; }
-code { font-size: 18px; background: #eef0ff; padding: 1px 6px; border-radius: 4px; }
-.cols3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-bottom: 20px; }
-.cols3 > div { background: #f6f7f9; border-radius: 12px; padding: 22px; }
-.cols3 p { font-size: 19px; margin: 0; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 26px; }
-.stat { background: #f6f7f9; border-radius: 12px; padding: 20px; }
-.stat b { display: block; font-size: 40px; letter-spacing: -.02em; }
-.stat span { font-size: 16px; color: #4b5563; line-height: 1.35; display: block; margin-top: 6px; }
-.quote { margin-top: auto; font-size: 26px; font-weight: 600; border-left: 4px solid #4f46e5; padding-left: 20px; }
-.quote small { display: block; font-size: 16px; font-weight: 400; color: #4b5563; margin-top: 6px; }
-.logos { margin-top: auto; display: flex; gap: 36px; align-items: center; }
-.small { font-size: 16px; color: #4b5563; margin-top: auto; }
-.note { font-size: 17px; color: #4b5563; margin: -16px 0 18px; }
-.with { font-size: 20px; font-weight: 600; color: #4b5563; }
+.text { display: flex; flex-direction: column; min-height: 0; }
+.kicker { font-size: 17px; font-weight: 600; color: #4f46e5; letter-spacing: .02em; margin: 0 0 12px; }
+h1 { font-size: 42px; line-height: 1.12; margin: 0 0 26px; letter-spacing: -.02em; }
+li { font-size: 22px; line-height: 1.4; margin: 0 0 14px; }
+p { margin: 0 0 14px; }
+.lead { font-size: 28px; font-weight: 600; line-height: 1.3; }
+ul { margin: 0; padding-left: 24px; }
+code { font-size: 17px; background: #eef0ff; padding: 1px 6px; border-radius: 4px; }
+.quote { margin-top: auto; font-size: 22px; font-weight: 600; border-left: 4px solid #4f46e5; padding-left: 18px; line-height: 1.35; }
+.quote small, .src { display: block; font-size: 14px; font-weight: 400; color: #4b5563; margin-top: 8px; line-height: 1.4; }
+.src { margin-top: auto; }
+.logos { margin-top: auto; display: flex; gap: 32px; align-items: center; }
+.with { font-size: 19px; font-weight: 600; color: #4b5563; }
+.small { font-size: 16px; color: #4b5563; }
+.pic { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+figure { margin: 0; width: 100%; }
+figcaption { font-size: 13px; color: #6b7280; margin-top: 10px; text-align: center; }
+.shot img { width: 100%; max-height: 560px; object-fit: cover; object-position: top; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 18px 40px rgba(15, 23, 42, .14); display: block; }
+.phones > div { display: flex; gap: 22px; justify-content: center; }
+.phones img { height: 560px; border-radius: 26px; border: 8px solid #0b1220; box-shadow: 0 18px 40px rgba(15, 23, 42, .18); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.stat { background: #f6f7f9; border-radius: 12px; padding: 16px 18px; }
+.stat b { display: block; font-size: 36px; letter-spacing: -.02em; }
+.stat span { font-size: 15px; color: #4b5563; line-height: 1.3; display: block; margin-top: 4px; }
+.diagram { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.diagram .row { display: flex; gap: 18px; }
+.box { background: #f6f7f9; border: 1px solid #e5e7eb; border-radius: 14px; padding: 18px 26px; font-size: 22px; font-weight: 600; text-align: center; min-width: 260px; }
+.box small { display: block; font-size: 15px; font-weight: 400; color: #4b5563; margin-top: 4px; }
+.box.accent { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+.box.accent small { color: #e0e7ff; }
+.arrow { font-size: 28px; color: #9ca3af; }
+.timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; }
+.timeline div { border-top: 6px solid #4f46e5; background: #f6f7f9; border-radius: 0 0 12px 12px; padding: 18px; }
+.timeline div:nth-child(2) { border-color: #818cf8; } .timeline div:nth-child(3) { border-color: #c7d2fe; }
+.timeline b { display: block; font-size: 24px; } .timeline span { display: block; font-size: 16px; color: #4b5563; margin-top: 6px; }
+.qr { display: flex; gap: 28px; align-items: center; margin-top: 8px; }
+.qr svg { width: 220px; height: 220px; flex: none; }
+.qr .lead { font-size: 22px; white-space: nowrap; } .qr code { white-space: nowrap; }
 </style></head><body>
-${slides.map((s) => `<section><p class="kicker">${esc(s.kicker)}</p><h1>${esc(s.title)}</h1>${s.body}</section>`).join("\n")}
+${slides.map((x) => `<section><div class="text"><p class="kicker">${esc(x.kicker)}</p><h1>${esc(x.title)}</h1>${list(x.points ?? [])}${x.extra ?? ""}</div><div class="pic">${x.pic}</div></section>`).join("\n")}
 </body></html>`;
 }
