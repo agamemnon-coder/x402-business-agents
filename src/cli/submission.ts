@@ -68,6 +68,16 @@ try {
     await page.screenshot({ path: resolve(shots, `${name}.png`), clip, fullPage: true });
     console.log(`screens/${name}.png  ${path} ${sels.join(" ")}`);
   }
+  // Two moments of the film (1920x1080), from the same recorded pages: the card declined then raised, and the
+  // mandate refusing the price rise. Taken here, not from a rendered video, so they always show the pages as they are.
+  const film = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+  for (const [name, t] of [["live-decline", 50], ["live-refuse", 95.5]] as const) {
+    await film.goto(`${judge.url}/film?t=${t}`, { waitUntil: "load" });
+    await film.waitForTimeout(900);
+    await film.screenshot({ path: resolve(shots, `${name}.png`) });
+    console.log(`screens/${name}.png  /film?t=${t}`);
+  }
+  await film.close();
   await page.goto(`${judge.url}/try?q=${encodeURIComponent("Pay our supplier €1,180")}`, { waitUntil: "load" });
   await page.waitForSelector(".outcome.show", { timeout: 15_000 });
   await page.waitForTimeout(800);
@@ -79,7 +89,7 @@ try {
     landing: png("1-landing"), dashboard: png("2-dashboard"), metal: png("3-metal"), live: png("4-live"), disputes: png("5-disputes"), books: png("6-books"),
     rails: png("7-rails"), inspector: png("8-inspector"), fourEyes: png("9-four-eyes"), compliance: png("9-compliance"), try: png("10-try"),
     overview: png("11-overview"), claude: png("12-claude"), result: png("13-result"), dispute: png("14-dispute"),
-    // Frames from the rendered video (npm run video, the recorded pages): committed, since out/ is not.
+    // Moments of the film, taken above.
     refuse: png("live-refuse"), decline: png("live-decline"),
     phoneOptions: png("phone-options"), phoneConfirm: png("phone-confirm"),
     // Max's photo for the team slide, when he has added it (docs/submission/screens/max.jpg); a placeholder until then.
