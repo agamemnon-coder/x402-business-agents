@@ -11,6 +11,7 @@ import { Tools } from "../claude/tools.js";
 import { mandatesNow, priceRiseContext, proposePriceRise, type MandateReplaceTerms } from "../agents/treasury.js";
 import { designPriceRise } from "../agents/treasuryAgent.js";
 import { agentsOn } from "../agents/loop.js";
+import { meetPriceRise } from "../agents/sourcingAgent.js";
 import { RAISED_UPSTREAM_PRICE_CENTS } from "../config/policy.js";
 import { openDb } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
@@ -48,9 +49,33 @@ try {
     console.log(`NEW INFORMATION  ${notice.supplier} raises its price ${notice.old_price} -> ${notice.new_price}; live offer ${fromCents(live.cents)} (${check.ok ? "matches" : check.reason})`);
     if (!check.ok) throw new Error(`escalate: ${check.reason}`);
 
-    const seq = nextSeq();
-    const p = await rt.customer.buy(seq);
-    const refusal = db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' ORDER BY id DESC LIMIT 1").get() as { id: number; refusal_reason: string } | undefined;
+    // The next customer query: Sourcing buys its stock check upstream under the mandate, and Metal decides.
+    let served: { seq: number; p: Awaited<ReturnType<typeof rt.customer.buy>>; refusal: { id: number; refusal_reason: string } | undefined } | null = null;
+    const serveNext = async () => {
+      const seq = nextSeq();
+      const p = await rt.customer.buy(seq);
+      const refusal = db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' ORDER BY id DESC LIMIT 1").get() as { id: number; refusal_reason: string } | undefined;
+      served = { seq, p, refusal };
+      return served;
+    };
+    // With KIT11_AGENTS=on the Sourcing agent meets the price rise itself (src/agents/sourcingAgent.ts).
+    let sourcingMessage = "";
+    if (agentsOn()) {
+      const met = await meetPriceRise(db, { oldCents: toCents(notice.old_price), noticeCents: toCents(notice.new_price) }, {
+        offer: async () => {
+          const m = (await mandatesNow()).get("sourcing")!.now;
+          return { liveCents: (await liveOfferCents(supplierUrl)).cents, capCents: m.capCents, budgetLeftCents: m.budgetCents - m.spentCents };
+        },
+        tryPurchase: async () => {
+          const r = await serveNext();
+          return { seq: r.seq, refused: r.refusal?.refusal_reason ?? null, charged: r.p.charged === true };
+        },
+        notify: (m) => { sourcingMessage = m; },
+      });
+      console.log(`SOURCING AGENT   ${met.source === "claude" ? `${met.run.model}: tried stock check #${met.seq}, ${met.refusal ? "refused by Metal" : "bought"}` : "not available; code serves the next query"}`);
+      if (met.message) console.log(`                 to Treasury: "${met.message}"`);
+    }
+    const { seq, p, refusal } = served ?? (await serveNext());
     console.log(`                 stock check #${seq}: sourcing purchase ${refusal ? `refused: ${refusal.refusal_reason}` : "NOT refused"}`);
     console.log(`                 customer: ${p.outcome.kind === "paid" ? "PAID (unexpected)" : `HTTP ${p.outcome.kind === "in_doubt" || p.outcome.kind === "refused" ? p.outcome.status : "?"}, charged: ${p.charged ? "YES" : "no (not in /settlements)"}`}`);
     if (!refusal || p.charged) throw new Error("expected a refusal and no charge");
@@ -59,7 +84,7 @@ try {
     // Off (KIT11_AGENTS not "on"), code's fixed plan as in every recorded run.
     const sellCents = toCents(sellPrice(db));
     const design = agentsOn() ? await designPriceRise(db, {
-      sellCents, oldUpstreamCents: toCents(notice.old_price), newUpstreamCents: live.cents, refusal: refusal.refusal_reason,
+      sellCents, oldUpstreamCents: toCents(notice.old_price), newUpstreamCents: live.cents, refusal: refusal.refusal_reason, ...(sourcingMessage ? { sourcingMessage } : {}),
       mandates: [...(await mandatesNow()).values()].map((c) => c.now),
     }) : null;
     if (design) {

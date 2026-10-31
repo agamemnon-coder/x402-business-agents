@@ -23,6 +23,8 @@ export interface PricePlanFacts {
   newUpstreamCents: number;
   refusal: string;
   mandates: MandateNow[];
+  /** What the Sourcing agent told Treasury, in its own words (an agent of ours, not an outside party). */
+  sourcingMessage?: string;
 }
 
 export interface PlanOption {
@@ -145,6 +147,7 @@ function prompt(f: PricePlanFacts): string {
     `- Stockline's price per stock check rose from ${fromCents(f.oldUpstreamCents)} to ${fromCents(f.newUpstreamCents)} (its live offer says the same).`,
     `- The next purchase was refused by Metal against the on-chain mandate: ${f.refusal}.`,
     `- Northwind sells a stock check at ${fromCents(f.sellCents)}.`,
+    ...(f.sourcingMessage ? [`- The Sourcing agent told you: "${f.sourcingMessage.replace(/"/g, "'")}"`] : []),
     ...f.mandates.map((m) => `- ${m.agent} mandate now: cap ${fromCents(m.capCents)} a payment, budget ${fromCents(m.budgetCents)}, spent ${fromCents(m.spentCents)}.`),
     `- Rules: total budgets at most ${fromCents(TOTAL_BUDGET_CENTS)}; Support's mandate stays as it is; Treasury keeps at least ${fromCents(TREASURY_SWEEP_ROOM_CENTS)} for the sweep and its cap equals its budget; each budget covers what that agent already spent plus one payment at its cap; each sell price above Stockline's new price.`,
     "Design the plan and submit it.",
