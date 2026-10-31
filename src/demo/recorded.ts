@@ -71,7 +71,7 @@ export function buildRecorded(db: DB, run: string, now = new Date()): Recorded {
   const shown = new Set(snap.feed.map((f) => f.seq));
   const bank = (db.prepare("SELECT seq, ts, actor, event, subject, payload_json, row_hash FROM audit_log WHERE event LIKE 'transfer.%' OR event LIKE 'invoice.%' ORDER BY seq").all() as Parameters<typeof describe>[0][])
     .filter((r) => !shown.has(r.seq))
-    .map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, () => undefined) }));
+    .map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, () => undefined), trace: null }));
   const snapshot: Snapshot = {
     ...snap,
     feed: [...snap.feed, ...bank].sort((a, b) => b.seq - a.seq),

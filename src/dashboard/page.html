@@ -322,6 +322,24 @@ dialog.scrim::backdrop { background: rgba(10,12,17,.5); }
 .dialog .row { display: flex; gap: 10px; margin-top: 18px; }
 .dialog .row .btn { flex: 1; }
 .btn.danger { background: var(--bad); border-color: var(--bad); color: var(--bad-ink); }
+/* 4.1 The agent trace: one decision as a timeline. */
+.feed .proof button.trace-btn { font: inherit; font-size: 12px; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.dialog.trace { max-width: 680px; max-height: min(86vh, 900px); overflow: auto; }
+.trace .sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 12px 0 4px; }
+.trace .sum div { background: var(--sunken); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); }
+.trace .sum b { display: block; color: var(--text); font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.trace ol { list-style: none; margin: 14px 0 0; padding: 0; border-left: 2px solid var(--border); }
+.trace li { position: relative; padding: 0 0 14px 16px; }
+.trace li::before { content: ""; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.trace li.bad::before { background: var(--bad); }
+.trace li.decision::before { background: var(--ok); }
+.trace .k { font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--faint); }
+.trace .x { font-size: 14px; overflow-wrap: anywhere; }
+.trace .c { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.trace li.bad .c { color: var(--bad); }
+.trace .m { font-size: 12px; color: var(--faint); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.trace .m a { color: var(--accent); }
+.trace .said { margin-top: 10px; font-size: 13.5px; color: var(--muted); border-left: 3px solid var(--border); padding-left: 10px; overflow-wrap: anywhere; }
 
 /* The landing page, for guests. */
 .section { max-width: 1200px; margin: 0 auto; padding: 72px 32px; }
@@ -643,6 +661,18 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   </div>
 </dialog>
 
+<dialog class="scrim" id="trace-sheet" aria-labelledby="trace-title">
+  <div class="dialog trace">
+    <h2 id="trace-title">Agent trace</h2>
+    <p id="trace-lead"></p>
+    <div class="sum" id="trace-sum"></div>
+    <div class="said" id="trace-said" hidden></div>
+    <ol id="trace-steps"></ol>
+    <p>Every step is a row of the audit chain; its hash is the row's own. Tokens and cost are what the Claude API reported.</p>
+    <div class="row"><button class="btn" type="button" id="trace-close">Close</button></div>
+  </div>
+</dialog>
+
 <script type="application/json" id="recorded-data">__RECORDED_JSON__</script>
 <script type="application/json" id="agent-names">__AGENTS_JSON__</script>
 <script type="application/json" id="redteam-data">__REDTEAM_JSON__</script>
@@ -878,6 +908,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var k = kindOf(f), refs = [];
     if (f.tx && TX.test(f.tx)) { var a = txt("a", "mono", "Metal tx " + f.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; refs.push(a); }
     if (f.awx_id) refs.push(txt("span", "mono", "Airwallex id " + String(f.awx_id).slice(0, 8) + "…"));
+    if (f.trace !== null && f.trace !== undefined && traceIndex[f.trace]) {
+      var tb = txt("button", "trace-btn", "Trace"); tb.type = "button"; tb.dataset.trace = String(f.trace);
+      tb.setAttribute("aria-label", "Open the agent trace for this decision");
+      refs.push(tb);
+    }
     var when = txt("span", "r num", hm(f.ts)); when.title = "Audit log row #" + f.seq;
     var li = el("li", k.cls + (!first && !seen[f.seq] ? " fresh" : ""), [
       el("span", "ic", [icon(k.icon)]),
@@ -891,7 +926,10 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     seen[f.seq] = true;
     return li;
   }
+  var traceIndex = {};
   function renderFeed(d) {
+    traceIndex = {};
+    (d.traces || []).forEach(function (t) { traceIndex[t.run_seq] = t; });
     var body = document.getElementById("feed"), keep = body.scrollTop, first = !Object.keys(seen).length;
     var biz = d.feed.filter(function (f) { return !isSystem(f); }), sys = d.feed.filter(isSystem);
     set("feed", biz.map(function (f) { return feedRow(f, first); }));
@@ -1382,6 +1420,50 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   document.getElementById("stop-cancel").addEventListener("click", function () { sheet.close(); });
   sheet.addEventListener("click", function (e) { if (e.target === sheet) sheet.close(); });
   sheet.addEventListener("close", function () { document.getElementById("stop").focus(); });
+
+  // 4.1 The agent trace, opened from a feed line. Built from the snapshot's traces, every string as text.
+  var traceSheet = document.getElementById("trace-sheet"), traceFrom = null;
+  var STEP_KIND = { tool: "Tool call", effect: "What it caused", run: "Claude", decision: "Decision" };
+  function usd(micros) { return "$" + (Number(micros || 0) / 1e6).toFixed(4); }
+  function openTrace(seq, from) {
+    var t = traceIndex[seq];
+    if (!t) return;
+    traceFrom = from;
+    document.getElementById("trace-title").textContent = t.agent_name + ": " + String(t.task).replace(/[._]/g, " ");
+    document.getElementById("trace-lead").textContent = "One decision, step by step: what the agent asked Claude, which tools it called, what each call caused, and the check that let it through or stopped it.";
+    var tk = t.tokens, total = tk ? tk.input + tk.output + tk.cache_read + tk.cache_write : null;
+    var cell = function (label, value) { return el("div", "", [label, txt("b", "", value)]); };
+    set("trace-sum", [
+      cell("Model", t.model || "none"),
+      cell("Outcome", t.status + " · " + t.turns + " turn" + (t.turns === 1 ? "" : "s")),
+      cell("Tokens", total === null ? "not recorded" : total + (tk ? " (" + tk.input + " in, " + tk.output + " out)" : "")),
+      cell("Cost", usd(t.cost_usd_micros)),
+      cell("Time", t.latency_ms === null ? "not recorded" : (t.latency_ms / 1000).toFixed(1) + " s"),
+    ]);
+    var said = document.getElementById("trace-said");
+    said.hidden = !t.said; said.textContent = t.said ? "In its own words: " + t.said : "";
+    set("trace-steps", t.steps.map(function (s) {
+      var meta = [txt("span", "mono", "audit #" + s.seq + " · hash " + String(s.hash).slice(0, 12) + "…")];
+      if (s.ms !== null && s.ms !== undefined) meta.push(txt("span", "", (s.ms / 1000).toFixed(2) + " s"));
+      if (s.tx && TX.test(s.tx)) { var a = txt("a", "mono", "Metal tx " + s.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + s.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; meta.push(a); }
+      if (s.awx_id) meta.push(txt("span", "mono", "Airwallex id " + String(s.awx_id).slice(0, 8) + "…"));
+      return el("li", (s.blocked ? "bad " : "") + s.kind, [
+        txt("div", "k", STEP_KIND[s.kind] || s.kind),
+        txt("div", "x", plain(s.text)),
+        s.check ? txt("div", "c", (s.blocked ? "Stopped by: " : "Check: ") + s.check) : null,
+        el("div", "m", meta),
+      ]);
+    }));
+    traceSheet.showModal();
+    document.getElementById("trace-close").focus();
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target && e.target.closest ? e.target.closest("button.trace-btn") : null;
+    if (b) openTrace(Number(b.dataset.trace), b);
+  });
+  document.getElementById("trace-close").addEventListener("click", function () { traceSheet.close(); });
+  traceSheet.addEventListener("click", function (e) { if (e.target === traceSheet) traceSheet.close(); });
+  traceSheet.addEventListener("close", function () { if (traceFrom && traceFrom.isConnected) traceFrom.focus(); });
 })();
 </script>
 </body>

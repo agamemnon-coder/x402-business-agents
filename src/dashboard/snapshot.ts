@@ -2,6 +2,7 @@
 // network call and writes nothing, so it can be served from a read-only handle while the agents run.
 // Every text it returns is plain text; the page renders it with textContent only.
 
+import { agentTraces, type Trace } from "./trace.js";
 import { verifyAuditChain } from "../audit/log.js";
 import { agentName } from "../config/brand.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
@@ -93,6 +94,8 @@ export interface FeedItem {
   model: string | null;
   tx: string | null;
   awx_id: string | null;
+  /** 4.1: the agent run this line belongs to (its trace in `traces`), or null. */
+  trace: number | null;
 }
 
 export interface CardTx {
@@ -168,6 +171,8 @@ export interface Snapshot {
   decisions: Decision[];
   refusals: Refusal[];
   feed: FeedItem[];
+  /** 4.1: one timeline per agent decision, newest first (empty when the agents never ran). */
+  traces: Trace[];
   cards: CardView[];
   clearing: ClearingView | null;
   /** The emergency stop, while it is on: who pulled it, when, and why. */
@@ -555,7 +560,7 @@ const TASK_WORDS: Record<string, string> = {
 const agentWho = (id: string): string => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
 
 /** Plain words for one audit row. Ids and hashes go in their own fields, never into the sentence's links. */
-export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined): Omit<FeedItem, "seq" | "ts" | "actor" | "event"> {
+export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined): Omit<FeedItem, "seq" | "ts" | "actor" | "event" | "trace"> {
   const p = JSON.parse(r.payload_json) as P;
   const tx = TX.test(str(p.tx)) ? str(p.tx) : null;
   const s = str(r.subject);
@@ -987,7 +992,9 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   });
 
   // Bookkeeping of our own (two ids for one card authorisation) stays in the audit log, not in the CFO's feed.
-  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event) && !quietTool(r) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf) }));
+  const traces = agentTraces(db, rows);
+  const traceOf = new Map(traces.flatMap((t) => t.steps.map((s) => [s.seq, t.run_seq] as const)));
+  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event) && !quietTool(r) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf), trace: traceOf.get(r.seq) ?? null }));
 
   return {
     generated_at: now.toISOString(),
@@ -999,6 +1006,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     decisions,
     refusals,
     feed,
+    traces: traces.slice(-20).reverse(),
     cards: cards(db, now),
     clearing: clearingView(db),
     frozen: frozenView(db, rows),

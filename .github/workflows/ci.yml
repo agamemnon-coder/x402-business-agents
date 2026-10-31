@@ -48,6 +48,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Guest pages in Chromium (/, /demo, /month at 390 and 1440 px)
         run: npx tsx test/browser/pages.check.ts test-results/pages
+      - name: Agent trace in Chromium (390 and 1440 px, light and dark)
+        run: npx tsx test/browser/trace.check.ts test-results/trace
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

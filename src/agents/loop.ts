@@ -63,7 +63,11 @@ const short = (s: string, n = 600) => (s.length > n ? `${s.slice(0, n)}…` : s)
 
 export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null = claudeClient(), clock: () => number = Date.now): Promise<AgentRun> {
   const started = clock();
+  // The trace (src/dashboard/trace.ts) shows every audit row after this one that the agent's run caused.
+  const fromSeq = (db.prepare("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log").get() as { n: number }).n;
   const calls: AgentCall[] = [];
+  const tokens = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
+  const claudeMs: number[] = [];
   let turns = 0, costMicros = 0, model: string | null = null, text = "";
   const finish = (status: AgentRun["status"], note?: string): AgentRun => {
     const run: AgentRun = { status, model, calls, text: redactSecrets(text), turns, costMicros, ...(note ? { note: redactSecrets(note) } : {}) };
@@ -71,6 +75,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
       agent: spec.agent, model: model ?? spec.model, status, turns, tools: calls.map((c) => c.tool),
       blocked: calls.filter((c) => c.blocked).map((c) => `${c.tool}: ${c.blocked}`),
       said: short(run.text, 1200), cost_usd_micros: costMicros, latency_ms: clock() - started, ...(note ? { note: run.note! } : {}),
+      from_seq: fromSeq, tokens, claude_ms: claudeMs,
     });
     return run;
   };
@@ -88,6 +93,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
   while (turns < maxTurns) {
     turns++;
     let res: Anthropic.Beta.BetaMessage;
+    const asked = clock();
     try {
       res = await client.beta.messages.create({
         model: spec.model,
@@ -103,9 +109,11 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
       const message = err instanceof Anthropic.APIError ? `API ${err.status ?? ""} ${err.name}` : (err as Error).message;
       return finish("unavailable", `call failed: ${short(message, 200)}`);
     }
+    claudeMs.push(clock() - asked);
     model = res.model;
     const u = res.usage;
     const usage: Usage = { input: u.input_tokens, output: u.output_tokens, cache_read: u.cache_read_input_tokens ?? 0, cache_write: u.cache_creation_input_tokens ?? 0 };
+    tokens.input += usage.input; tokens.output += usage.output; tokens.cache_read += usage.cache_read; tokens.cache_write += usage.cache_write;
     costMicros += callCostMicros(res.model, usage) ?? 0;
     if (res.stop_reason === "refusal") {
       const cat = (res.stop_details as { category?: string } | null | undefined)?.category ?? "no category";
@@ -126,6 +134,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
       const tool = byName.get(use.name);
       let out: ToolResult;
       let error = false;
+      const toolStarted = clock();
       if (!tool) {
         out = { text: `There is no tool called ${use.name}.`, blocked: "unknown tool" };
         error = true;
@@ -147,6 +156,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
       calls.push(call);
       audit(db, spec.agent, "agent.tool", spec.task, {
         agent: spec.agent, model: res.model, tool: use.name, input: call.input as never, result: short(call.text), ...(out.blocked ? { blocked_by: out.blocked } : {}),
+        ms: clock() - toolStarted, turn: turns,
       });
       // What goes back to Claude is redacted too: no tool result may carry a credential to the model.
       results.push({ type: "tool_result", tool_use_id: use.id, content: call.text, ...(error ? { is_error: true } : {}) });
