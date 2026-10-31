@@ -12,7 +12,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { applyPolicyChanges, checkChanges, type PolicyChangeTerms } from "../executors/policyChange.js";
 import { beginExecution, finishExecution } from "./approvals.js";
-import { AGENTS } from "../config/policy.js";
+import { fromCents, toCents } from "../lib/money.js";
 
 export { paused } from "./rules.js";
 
@@ -26,9 +26,6 @@ export interface PauseChain {
   /** `bound: false`: the old mandate was still bound (its revoke never happened), so nothing new was bound. */
   resume(agent: string): Promise<{ tx: string | null; credential_hash: string; spent_before?: string; budget?: string; bound?: boolean }>;
 }
-
-/** Every agent: a rebalance after any resume is refused (a resumed budget on chain hides what was spent before). */
-export const AGENTS_ALL: string[] = [...AGENTS];
 
 /**
  * The mandate a pause revoked, among an agent's credentials: the revoked one bound last. A rebalance revokes its
@@ -124,13 +121,38 @@ export function resumedSince(db: DB, agent: string): boolean {
   return !!db.prepare("SELECT 1 FROM audit_log WHERE event = 'mandate.resumed' AND subject = ?").get(agent);
 }
 
-/**
- * A mandate change (Treasury's rebalance) for an agent that was resumed after a pause is refused, before any credential
- * is issued or signed: the resumed mandate's spend starts at nothing, a replace carries only that, and the new budgets
- * would no longer count what was spent before the pause. Purser's own 20.00 total (src/policy/holds.ts) still holds;
- * this keeps the chain's limit honest too. Lifting it needs the spend before the pause carried into the new budgets.
- */
-export function refuseAfterResume(db: DB, agents: string[]): void {
-  const hit = agents.filter((a) => resumedSince(db, a));
-  if (hit.length) throw new Error(`${hit.join(", ")} was resumed after a pause: its spend on chain started again at nothing, so a mandate change would not count what it spent before. Not supported yet; nothing was issued or signed.`);
+
+// Block 6: a rebalance after a resume. A resume binds a fresh mandate whose spend starts at nothing (Metal cannot
+// replace a revoked one), so what the agent spent before the pause is no longer on chain. The CFO's budgets are lifetime
+// budgets: plans work on chain + carried, and a new credential gets the lifetime target minus what was carried. The
+// 20.00 total then holds over the agent's whole life, as before a pause.
+
+/** What every resume of this agent carried off chain: its spend before each pause, in cents. */
+export function carriedCents(db: DB, agent: string): number {
+  const rows = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'mandate.resumed' AND subject = ?").all(agent) as { payload_json: string }[];
+  return rows.reduce((sum, r) => {
+    const v = (JSON.parse(r.payload_json) as { spent_before?: unknown }).spent_before;
+    if (typeof v !== "string" || !/^\d+\.\d{2}$/.test(v)) throw new Error(`${agent}: a mandate.resumed row has no readable spent_before; a rebalance cannot count it`);
+    return sum + toCents(v);
+  }, 0);
+}
+
+/** An agent's mandate as plans see it: lifetime budget and lifetime spend (chain + carried). */
+export function lifetime<T extends { budgetCents: number; spentCents: number }>(now: T, carried: number): T {
+  return { ...now, budgetCents: now.budgetCents + carried, spentCents: now.spentCents + carried };
+}
+
+/** The budget a new credential gets on chain for a lifetime target; it must stay above what the chain carries over. */
+export function chainBudgetCents(targetCents: number, carried: number, chainSpentCents: number): number {
+  const b = targetCents - carried;
+  if (b <= chainSpentCents) throw new Error(`the budget on chain (${fromCents(b)} = ${fromCents(targetCents)} − ${fromCents(carried)} spent before a pause) must stay above the ${fromCents(chainSpentCents)} spent since`);
+  return b;
+}
+
+/** At execution: no resume may have happened since the proposal, or its chain budgets are wrong. */
+export function checkCarried(db: DB, steps: { agent: string; spent_before_pause?: string }[]): void {
+  for (const s of steps) {
+    const atProposal = s.spent_before_pause ? toCents(s.spent_before_pause) : 0;
+    if (carriedCents(db, s.agent) !== atProposal) throw new Error(`${s.agent} was resumed since this proposal: its budgets on chain would be wrong; a new proposal is needed`);
+  }
 }

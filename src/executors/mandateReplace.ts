@@ -10,7 +10,7 @@ import { publicClient } from "../metal/chain.js";
 import { activeMandate, credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { setSetting } from "../world/settings.js";
-import { AGENTS_ALL, refuseAfterResume } from "../policy/pause.js";
+import { checkCarried } from "../policy/pause.js";
 import type { MandateReplaceTerms } from "../agents/treasury.js";
 import { replaceMandate } from "./ownerSigner.js";
 
@@ -40,7 +40,8 @@ export async function executeMandateReplace(db: DB, proposalId: string, now = ne
 
   const terms = beginExecution<MandateReplaceTerms>(db, proposalId, (t) => {
     if (toCents(t.total_budget) > TOTAL_BUDGET_CENTS) throw new Error(`total ${t.total_budget} exceeds the limit`);
-    refuseAfterResume(db, AGENTS_ALL);
+    // Block 6: the chain budgets were set for the spend carried at proposal; a resume since would make them wrong.
+    checkCarried(db, t.steps);
     for (const step of t.steps) {
       const f = facts.get(step.order)!;
       if (f.activeHash.toLowerCase() !== step.replaces_credential_hash.toLowerCase()) {

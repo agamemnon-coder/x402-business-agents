@@ -10,7 +10,7 @@ import {
 } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { issueReplacementCredential } from "../executors/ownerSigner.js";
-import { AGENTS_ALL, refuseAfterResume } from "../policy/pause.js";
+import { carriedCents, chainBudgetCents, lifetime } from "../policy/pause.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { activeMandate, mandateSpent, type LoadedMandate } from "../metal/mandate.js";
@@ -65,20 +65,26 @@ export interface PriceRiseEvidence {
   refusal: { purchaseId: number; reason: string };
 }
 
-/** Each agent's mandate as the chain has it now: cap, budget and what it already spent. */
-export async function mandatesNow(): Promise<Map<Agent, { m: LoadedMandate; now: MandateNow }>> {
-  const current = new Map<Agent, { m: LoadedMandate; now: MandateNow }>();
+/**
+ * Each agent's mandate: cap, budget and what it already spent. With `db`, lifetime figures (block 6): what the agent
+ * spent before a pause is added back to both budget and spend, since a resume's fresh mandate does not carry it. Without
+ * a pause, carried is 0 and the figures are the chain's own.
+ */
+export async function mandatesNow(db?: DB): Promise<Map<Agent, { m: LoadedMandate; now: MandateNow; chainSpentCents: number; carriedCents: number }>> {
+  const current = new Map<Agent, { m: LoadedMandate; now: MandateNow; chainSpentCents: number; carriedCents: number }>();
   for (const agent of ["sourcing", "support", "treasury"] as const) {
     const m = await activeMandate(agent);
     const t = extractTerms(m.credential);
+    const chainSpentCents = baseUnitsToCents(await mandateSpent(m));
+    const carried = db ? carriedCents(db, agent) : 0;
     current.set(agent, {
-      m,
-      now: {
+      m, chainSpentCents, carriedCents: carried,
+      now: lifetime({
         agent,
         capCents: baseUnitsToCents(t.constraints.perPaymentCap),
         budgetCents: baseUnitsToCents(t.constraints.budget),
-        spentCents: baseUnitsToCents(await mandateSpent(m)),
-      },
+        spentCents: chainSpentCents,
+      }, carried),
     });
   }
   return current;
@@ -89,21 +95,20 @@ export async function mandatesNow(): Promise<Map<Agent, { m: LoadedMandate; now:
  * is the Treasury agent's design once code accepted it (src/agents/treasuryAgent.ts); without it, code's fixed plan.
  */
 export async function proposePriceRise(db: DB, addr: Addresses, sellCents: number, ev: PriceRiseEvidence, now = new Date(), plan?: PricePlan) {
-  const current = await mandatesNow();
+  const current = await mandatesNow(db);
   const design = plan ?? fallbackPricePlan({
     sellCents, oldUpstreamCents: 0, newUpstreamCents: ev.liveOfferCents, refusal: ev.refusal.reason, mandates: [...current.values()].map((c) => c.now),
   });
   const steps = planReplaceSteps([...current.values()].map((c) => c.now), design.targets);
-  // 4.2 After any resume a fresh mandate's spend restarted at nothing, so the budgets on chain no longer add up to what
-  // was spent: no rebalance at all until that is carried (review of 4.2: leaving the resumed agent out still leaked).
-  refuseAfterResume(db, AGENTS_ALL);
   const firstId = nextProposalId(db);
 
   // Credentials are issued before approval (off-chain, no gas), so their hash goes into the terms.
   const stepTerms: ReplaceStepTerms[] = steps.map((s) => {
-    const { m, now: n } = current.get(s.agent)!;
+    const { m, chainSpentCents, carriedCents: carried } = current.get(s.agent)!;
+    // Block 6: the plan's budget is the agent's lifetime budget; on chain it is that minus what a resume carried off.
+    const onChain = chainBudgetCents(s.budgetCents, carried, chainSpentCents);
     const path = issueReplacementCredential(
-      { agent: s.agent, principal: addr.business, capCents: s.capCents, budgetCents: s.budgetCents, payees: [PAYEE[s.agent](addr)], description: `kit11 ${firstId} ${s.agent}` },
+      { agent: s.agent, principal: addr.business, capCents: s.capCents, budgetCents: onChain, payees: [PAYEE[s.agent](addr)], description: `kit11 ${firstId} ${s.agent}` },
       firstId, m.keyFile,
     );
     const next = extractTermsFrom(path);
@@ -113,7 +118,9 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
       payees: [PAYEE[s.agent](addr).address.toLowerCase()].sort(),
       expires_at: new Date(Number(next.constraints.expiry) * 1000).toISOString().replace(".000Z", "Z"),
       credential_hash: next.hash, replaces_credential_hash: m.credentialHash,
-      spent_at_proposal: fromCents(n.spentCents),
+      spent_at_proposal: fromCents(chainSpentCents),
+      // Only after a pause: what the CFO signs shows the budget on chain and the spend before the pause next to it.
+      ...(carried > 0 ? { budget_on_chain: fromCents(onChain), spent_before_pause: fromCents(carried) } : {}),
     };
   });
 

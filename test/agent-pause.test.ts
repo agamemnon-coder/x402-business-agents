@@ -10,7 +10,7 @@ import { capRefusal, loosens, rules } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { fourEyes } from "../src/policy/fourEyes.js";
 import { wantCardStatus } from "../src/policy/cards.js";
-import { executePauseChange, latestRevoked, paused, pausesNotRevoked, resumeExpiresIn, resumedSince, syncPauses, type PauseChain } from "../src/policy/pause.js";
+import { carriedCents, chainBudgetCents, checkCarried, lifetime, executePauseChange, latestRevoked, paused, pausesNotRevoked, resumeExpiresIn, resumedSince, syncPauses, type PauseChain } from "../src/policy/pause.js";
 import { health } from "../src/ops/health.js";
 import { setupCards } from "../src/policy/cards.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
@@ -141,20 +141,6 @@ describe("pause one agent (agents off)", () => {
   });
 });
 
-describe("a mandate change after a resume", () => {
-  // The resumed mandate's spend on chain starts at nothing; a replace would carry only that, so the budgets of a new
-  // plan would no longer count what was spent before the pause. Until that is handled, code refuses it outright.
-  it("is refused before anything is issued or signed", async () => {
-    process.env.KIT11_AGENTS = "on";
-    const db = openDb(":memory:");
-    await pause(db, "sourcing", "on");
-    await pause(db, "sourcing", "off");
-    const { refuseAfterResume } = await import("../src/policy/pause.js");
-    expect(() => refuseAfterResume(db, ["sourcing", "treasury"])).toThrow(/resumed after a pause/);
-    expect(() => refuseAfterResume(db, ["treasury", "support"])).not.toThrow();
-    delete process.env.KIT11_AGENTS;
-  });
-});
 
 describe("review of 4.2 (31 October)", () => {
   beforeEach(() => { process.env.KIT11_AGENTS = "on"; });
@@ -170,13 +156,7 @@ describe("review of 4.2 (31 October)", () => {
     ])?.hash).toBe("0xpaused");
   });
 
-  it("refuses a rebalance after any resume, also one that leaves the resumed agent out", async () => {
-    const db = openDb(":memory:");
-    await pause(db, "sourcing", "on");
-    await pause(db, "sourcing", "off");
-    const { refuseAfterResume, AGENTS_ALL } = await import("../src/policy/pause.js");
-    expect(() => refuseAfterResume(db, AGENTS_ALL)).toThrow(/sourcing was resumed/);
-  });
+
 
   it("raises a health alarm while a paused agent's mandate is not revoked yet", async () => {
     const db = openDb(":memory:");
@@ -209,5 +189,38 @@ describe("review of 4.2 (31 October)", () => {
     delete process.env.KIT11_AGENTS;
     expect(rules(db).some((r) => r.key === "pause.support")).toBe(true);
     expect(rules(db).some((r) => r.key === "pause.sourcing")).toBe(false);
+  });
+});
+
+describe("block 6: a rebalance after a resume counts what was spent before the pause", () => {
+  // After a resume the chain's spend restarted at nothing; the CFO's budgets are lifetime budgets. So the plan works on
+  // lifetime figures (chain + carried), and the credential on chain gets the lifetime target minus what was carried.
+  beforeEach(() => { process.env.KIT11_AGENTS = "on"; });
+  afterEach(() => { delete process.env.KIT11_AGENTS; });
+
+  it("adds up what each resume carried (spent before the pause)", async () => {
+    const db = openDb(":memory:");
+    expect(carriedCents(db, "support")).toBe(0);
+    await pause(db, "support", "on");
+    await pause(db, "support", "off");
+    expect(carriedCents(db, "support")).toBe(15);
+    expect(carriedCents(db, "sourcing")).toBe(0);
+  });
+
+  it("plans on lifetime figures and puts the lifetime target minus the carried spend on chain", () => {
+    const life = lifetime({ agent: "support", capCents: 10, budgetCents: 385, spentCents: 5 }, 15);
+    expect(life).toEqual({ agent: "support", capCents: 10, budgetCents: 400, spentCents: 20 });
+    expect(chainBudgetCents(450, 15, 5)).toBe(435);
+    expect(() => chainBudgetCents(18, 15, 5)).toThrow(/must stay above/);
+  });
+
+  it("refuses a rebalance if another resume happened after it was proposed", async () => {
+    const db = openDb(":memory:");
+    expect(() => checkCarried(db, [{ agent: "support", spent_before_pause: "0.00" }])).not.toThrow();
+    await pause(db, "support", "on");
+    await pause(db, "support", "off");
+    expect(() => checkCarried(db, [{ agent: "support", spent_before_pause: "0.00" }])).toThrow(/resumed since/);
+    expect(() => checkCarried(db, [{ agent: "support", spent_before_pause: "0.15" }])).not.toThrow();
+    expect(() => checkCarried(db, [{ agent: "support" }])).toThrow(/resumed since/);
   });
 });

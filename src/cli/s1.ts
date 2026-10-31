@@ -65,7 +65,7 @@ try {
     if (agentsOn()) {
       const met = await meetPriceRise(db, { oldCents: toCents(notice.old_price), noticeCents: toCents(notice.new_price) }, {
         offer: async () => {
-          const m = (await mandatesNow()).get("sourcing")!.now;
+          const m = (await mandatesNow(db)).get("sourcing")!.now;
           return { liveCents: (await liveOfferCents(supplierUrl)).cents, capCents: m.capCents, budgetLeftCents: m.budgetCents - m.spentCents };
         },
         tryPurchase: async () => {
@@ -89,7 +89,7 @@ try {
     const sellCents = toCents(sellPrice(db));
     const design = agentsOn() ? await designPriceRise(db, {
       sellCents, oldUpstreamCents: toCents(notice.old_price), newUpstreamCents: live.cents, refusal: refusal.refusal_reason, ...(sourcingMessage ? { sourcingMessage } : {}),
-      mandates: [...(await mandatesNow()).values()].map((c) => c.now),
+      mandates: [...(await mandatesNow(db)).values()].map((c) => c.now),
     }) : null;
     if (design) {
       console.log(`TREASURY AGENT   ${design.source === "claude" ? `${design.run.model}: plan accepted by code after ${design.attempts} ${design.attempts === 1 ? "try" : "tries"}` : `code's fixed plan (${design.note})`}`);
