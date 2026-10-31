@@ -16,12 +16,14 @@ const eur = (v: string) => `€${Number(v).toLocaleString("en-GB", { minimumFrac
 export const TRY_URL = "https://kit11.max-31b.workers.dev/try";
 
 /** Screenshots by name (data URIs), as npm run submission takes them. */
-export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "enterprise" | "try" | "max", string>;
+export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max", string>;
 
 interface Slide { kicker: string; title: string; points?: string[]; extra?: string; pic: string }
 
 const list = (items: string[]) => (items.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>` : "");
 const shot = (src: string, caption: string) => `<figure class="shot"><img src="${src}" alt=""><figcaption>${esc(caption)}</figcaption></figure>`;
+const pair = (a: string, b: string, caption: string) =>
+  `<figure class="pair"><div><img src="${a}" alt=""><img src="${b}" alt=""></div><figcaption>${esc(caption)}</figcaption></figure>`;
 const phones = (a: string, b: string, caption: string) =>
   `<figure class="phones"><div><img src="${a}" alt=""><img src="${b}" alt=""></div><figcaption>${esc(caption)}</figcaption></figure>`;
 const stat = (value: string, label: string) => `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`;
@@ -30,7 +32,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const rt = f.redteam;
   const slides: Slide[] = [
     {
-      kicker: "Airwallex Agentic Banking Hackathon · Starter Kit 11 · Metal Award",
+      kicker: "Airwallex Agentic Banking Hackathon · Metal Award",
       title: "Purser",
       extra: `<p class="lead">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
@@ -44,18 +46,18 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "A limit in a prompt can be talked out of. It has to live in the rails and in code.",
       ],
       extra: `<p class="quote">$3,046,598,558 in business email compromise losses, reported by victims to the FBI in 2025.<small>FBI IC3, 2025 Internet Crime Report</small></p>`,
-      pic: shot(s.live, "Purser live: the chain refuses a payment over the mandate"),
+      pic: shot(s.refuse, "Purser live: Metal's facilitator refuses a payment over the on-chain mandate; nothing moved"),
     },
     {
       kicker: "Why now",
       title: "The networks are building rails for agents to pay",
       points: [
-        "<b>Mastercard Agent Pay</b> (April 2025), <b>Visa Intelligent Commerce</b>, <b>Google's AP2</b> (16 September 2025).",
+        "<b>Mastercard Agent Pay</b> (April 2025), <b>Visa Intelligent Commerce</b> and <b>Google's AP2</b> (16 September 2025).",
         "Agents will be able to pay everywhere. Someone still has to set and enforce the limits.",
       ],
       extra: `<p class="quote">AI agents could mediate $3 trillion to $5 trillion of global consumer commerce by 2030.<small>McKinsey, "The agentic commerce opportunity", 17 October 2025</small></p>
         <p class="src">Sources: mastercard.com press release, April 2025 (Agent Pay) · visa.com/en-us/solutions/intelligent-commerce · cloud.google.com/blog, 16 Sep 2025 (AP2) · mckinsey.com/capabilities/quantumblack</p>`,
-      pic: shot(s.try, "Try Purser: a task in plain words becomes a rail and a policy check"),
+      pic: `<div class="rails3"><div class="net">Mastercard<small>Agent Pay · April 2025</small></div><div class="net">Visa<small>Intelligent Commerce</small></div><div class="net">Google<small>Agent Payments Protocol · Sep 2025</small></div><div class="arrow">↓ agents can pay</div><div class="box accent">Who sets and enforces the limits?<small>Purser, on Airwallex and Metal</small></div></div>`,
     },
     {
       kicker: "Why Airwallex customers need this",
@@ -65,7 +67,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "With agents doing that work, each needs its own card and limits, and the CFO one place for exceptions.",
         "Purser adds that control layer on top of the Airwallex account the company already uses.",
       ],
-      pic: shot(s.dashboard, "The CFO dashboard at the end of the recorded run"),
+      pic: shot(s.overview, "The CFO dashboard of the recorded run: what the agents did, and each agent's card"),
     },
     {
       kicker: "How it works",
@@ -85,14 +87,14 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "<b>One Face ID</b> raised the limit; the same charge then went through.",
         "<b>€1,850.00 by SWIFT</b>: only the EUR shortfall converted; the approval's hash rides in the transfer.",
       ],
-      pic: shot(s.rails, "Each step with its Airwallex id or Metal transaction"),
+      pic: shot(s.decline, "Purser live: Airwallex declines €45.00 over the limit; the CFO raises it with Face ID"),
     },
     {
       kicker: "Metal enforces the limits",
       title: "Mandates on chain: Metal holds the limit",
       points: [
         "<b>A mandate per agent</b>: cap per payment, budget, one payee, end date.",
-        "<b>A price rise was refused on chain</b> (<code>mandate_cap_exceeded</code>); nothing moved.",
+        "<b>A price rise was refused against the on-chain mandate</b>: <code>mandate_cap_exceeded</code>; nothing moved.",
         "<b>x402 with signed orders</b>, refunds as mandate pulls, earnings swept once final.",
       ],
       pic: shot(s.inspector, "The mandate inspector on /metal"),
@@ -106,34 +108,34 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "<b>Under load</b>: 2,000 of 2,000 clearing payments, 4.24 a second.",
       ],
       extra: `<p class="src">Separate test worlds on Metal testnet, 30 October; not in the recorded run.</p>`,
-      pic: shot(s.enterprise, "The receive-policy, four-eyes, compliance and certificate cards on /metal"),
+      pic: pair(s.fourEyes, s.compliance, "The four-eyes and compliance cards on /metal"),
     },
     {
       kicker: "The Dispute desk",
       title: "The seller proves each payment from the chain",
       points: [
-        `The customer disputed ${f.metal.dispute_orders} orders; each was checked against its signed order and mandate.`,
-        `All were signed and inside the mandate: the claim refunded ${f.metal.dispute_refunded === 0 ? "nothing" : String(f.metal.dispute_refunded)}.`,
+        `A simulated customer (we filed for it) disputed ${f.metal.dispute_orders} orders; each was checked against its signed order and mandate.`,
+        `All ${f.metal.dispute_orders} were signed and inside the mandate: ${f.metal.dispute_refunded === 0 ? "nothing new refunded" : `${f.metal.dispute_refunded} refunded`} (${f.metal.refunded_before.length} had been refunded earlier for wrong data).`,
         "Open source for any seller on Metal: <code>examples/metal-dispute-desk</code>.",
       ],
-      pic: shot(s.disputes, "The Disputes tab of the recorded run"),
+      pic: shot(s.dispute, "The Disputes tab; the case ran after the recorded run, on a copy of its ledger"),
     },
     {
       kicker: "Claude reads, code decides",
-      title: "No model can move money",
+      title: "No model can raise a limit or move money outside it",
       points: [
         "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO and played the attacker.",
         `Claude holds no key and approves nothing. ${f.claude_calls} calls, $${f.claude_per_1000_eur_usd} per €1,000 paid.`,
-        `Red team: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,
+        `Red team, in a throwaway test world: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,
       ],
-      pic: shot(s.metal, "How Purser uses Metal: every feature with its proof"),
+      pic: shot(s.claude, "The Claude panel of the recorded run: each model, its calls and its cost"),
     },
     {
       kicker: "Proof",
       title: "Every payment has a proof",
-      extra: `<div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time")}${stat(String(f.stopped), "stops by card, chain, fraud checks or CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}${stat(String(f.face_id), "decisions signed with Face ID")}</div>
+      extra: `<div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time (about half by the simulated customer's agent)")}${stat(String(f.stopped), "stops by card, chain, fraud checks or CFO")}${stat(eur(f.kept_out_eur), "kept out for good")}</div>
         <p class="src">${esc(f.run)}. Audit log: ${f.audit_rows} rows, hash-chained, checkable offline. Test money only.</p>`,
-      pic: shot(s.books, "The Books: double entry for every payment"),
+      pic: shot(s.result, "The Books: the result of the run, double entry for every payment"),
     },
     {
       kicker: "Business model (plan)",
@@ -148,11 +150,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
     {
       kicker: "Roadmap",
       title: "From testnet to production",
-      points: [
-        "<b>Now</b>: Airwallex sandbox and Metal testnet, one company, live runs end to end.",
-        "<b>Next</b>: keys in a KMS, Postgres, a pager on <code>/health</code>, many companies.",
-        "<b>Then</b>: Metal mainnet, four eyes as default, finality proofs verified in full.",
-      ],
+      points: ["Live end to end on the Airwallex sandbox and Metal testnet today; three steps to production."],
       pic: `<div class="timeline">
         <div><b>Now</b><span>Airwallex sandbox · Metal testnet</span><ul><li>live runs end to end, every approval with Face ID</li><li>one company per ledger</li><li>tests and checks in CI on every push</li></ul></div>
         <div><b>Next</b><span>production basics</span><ul><li>keys in a KMS, not files</li><li>Postgres with point-in-time recovery</li><li>a pager on <code>/health</code>; many companies</li></ul></div>
@@ -173,7 +171,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Try it",
       title: "Type a task for an agent",
       extra: `<div class="qr">${qrSvg}</div><p class="url">${esc(TRY_URL.replace(/^https:\/\//, ""))}</p><p class="small">Or offline, no keys: <code>npm ci &amp;&amp; npm run judge</code></p>`,
-      pic: shot(s.try, "Try Purser"),
+      pic: shot(s.try, "Type a task; Claude reads it, code picks the rail and checks the CFO policy"),
     },
   ];
   const font = asset("inter.woff2").toString("base64");
@@ -204,8 +202,15 @@ figure { margin: 0; width: 100%; }
 figcaption { font-size: 13px; color: #6b7280; margin-top: 10px; text-align: center; }
 .shot img { width: 100%; max-height: 560px; object-fit: cover; object-position: top; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 18px 40px rgba(15, 23, 42, .14); display: block; }
 .phones > div { display: flex; gap: 22px; justify-content: center; }
+.pair > div { display: flex; gap: 16px; align-items: flex-start; }
+.pair img { width: calc(50% - 8px); border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 12px 30px rgba(15, 23, 42, .12); }
+.rails3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; }
+.rails3 .net { background: #f6f7f9; border: 1px solid #e5e7eb; border-radius: 14px; padding: 22px 16px; font-size: 24px; font-weight: 700; text-align: center; }
+.rails3 .net small { display: block; font-size: 14px; font-weight: 400; color: #4b5563; margin-top: 6px; }
+.rails3 .arrow { grid-column: 1 / -1; text-align: center; font-size: 20px; }
+.rails3 .box { grid-column: 1 / -1; }
 .phones img { height: 560px; border-radius: 26px; border: 8px solid #0b1220; box-shadow: 0 18px 40px rgba(15, 23, 42, .18); }
-.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.stats { display: grid; grid-template-columns: 1fr; gap: 12px; }
 .stat { background: #f6f7f9; border-radius: 12px; padding: 16px 18px; }
 .stat b { display: block; font-size: 36px; letter-spacing: -.02em; }
 .stat span { font-size: 15px; color: #4b5563; line-height: 1.3; display: block; margin-top: 4px; }

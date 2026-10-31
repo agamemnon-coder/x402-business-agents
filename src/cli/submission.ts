@@ -1,7 +1,7 @@
 // npm run submission: the submission pack's files (awards item 6), from the recorded pages and files. Writes
 //   docs/submission/screens/1-6 *.png   six screenshots of the recorded pages at 1440 x 900 (npm run judge serves them)
-//   docs/submission/screens/7-* .. 10-*  close-ups for the deck: the rails, the mandate inspector, the enterprise
-//                                        cards, a Try Purser result
+//   docs/submission/screens/7-* .. 14-*  close-ups for the deck, one panel each (rails, inspector, enterprise cards,
+//                                        Try Purser, overview, Claude, the run's result, the dispute case)
 //   docs/submission/purser-deck.pdf      fifteen slides, one picture each (src/submission/deck.ts); the phone screens
 //                                        (screens/phone-*.png) come from test/browser/approve.check.ts, a dev-test world
 //   out/submission/purser-source.zip     git archive of the current commit: code and docs, no keys, no ledger
@@ -45,10 +45,16 @@ try {
   // The sticky header stays out of close-ups: it would otherwise lie across the element being captured.
   // Set on the elements themselves: the pages' CSP refuses an added stylesheet.
   const unstick = () => page.evaluate(() => document.querySelectorAll<HTMLElement>(".top, header").forEach((e) => e.style.setProperty("position", "static", "important")));
+  // One panel per slide, so its text stays readable at slide size.
   const CLOSEUPS: [string, string, string[]][] = [
-    ["7-rails", "/", ["#rails-sec"]],
+    ["7-rails", "/", [".rail.awx header", "#rail-awx"]],
     ["8-inspector", "/metal", ["#inspector-sec"]],
-    ["9-enterprise", "/metal", ["#card-four-eyes", "#card-compliance", "#card-certificates"]],
+    ["9-four-eyes", "/metal", ["#card-four-eyes"]],
+    ["9-compliance", "/metal", ["#card-compliance"]],
+    ["11-overview", "/?recorded", ["#kpis", "#cards"]],
+    ["12-claude", "/?recorded", ["#claude-panel"]],
+    ["13-result", "/?recorded&books", ["#books .panel.bk"]],
+    ["14-dispute", "/?recorded&disputes", ["#disputes > *"]],
   ];
   for (const [name, path, sels] of CLOSEUPS) {
     await page.goto(`${judge.url}${path}`, { waitUntil: "load" });
@@ -71,7 +77,10 @@ try {
   const png = (name: string) => `data:image/png;base64,${readFileSync(resolve(shots, `${name}.png`)).toString("base64")}`;
   const deckShots: DeckShots = {
     landing: png("1-landing"), dashboard: png("2-dashboard"), metal: png("3-metal"), live: png("4-live"), disputes: png("5-disputes"), books: png("6-books"),
-    rails: png("7-rails"), inspector: png("8-inspector"), enterprise: png("9-enterprise"), try: png("10-try"),
+    rails: png("7-rails"), inspector: png("8-inspector"), fourEyes: png("9-four-eyes"), compliance: png("9-compliance"), try: png("10-try"),
+    overview: png("11-overview"), claude: png("12-claude"), result: png("13-result"), dispute: png("14-dispute"),
+    // Frames from the rendered video (npm run video, the recorded pages): committed, since out/ is not.
+    refuse: png("live-refuse"), decline: png("live-decline"),
     phoneOptions: png("phone-options"), phoneConfirm: png("phone-confirm"),
     // Max's photo for the team slide, when he has added it (docs/submission/screens/max.jpg); a placeholder until then.
     max: existsSync(resolve(shots, "max.jpg")) ? `data:image/jpeg;base64,${readFileSync(resolve(shots, "max.jpg")).toString("base64")}` : "",
