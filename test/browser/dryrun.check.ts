@@ -149,7 +149,7 @@ async function enrol(p: { page: Page }, person: string | null): Promise<void> {
 }
 
 /** Opens a proposal on a phone, picks an option (or the one shown), and signs with the passkey; returns the verdict. */
-async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag: string; reject?: boolean; expectNoVerdict?: boolean }): Promise<string> {
+async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag: string; reject?: boolean; expectNoVerdict?: boolean; beforeConfirm?: () => Promise<void> }): Promise<string> {
   const page = p.page;
   await page.goto(`${url}/approve/${id}`);
   await page.waitForSelector(o.reject ? "button.reject-btn" : "button.option", { timeout: 60_000 });
@@ -159,6 +159,7 @@ async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag:
   await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
   await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 5000 });
   await shot(page, `${o.tag}-confirm`);
+  if (o.beforeConfirm) await o.beforeConfirm();
   await page.click("#sheet button.confirm");
   if (o.expectNoVerdict) {
     // The approval cannot reach the runner (no network, or the passkey refused): give the page time, then report.
@@ -294,8 +295,9 @@ await timed("10 Licence EUR 240.00 (FX + SWIFT); the runner is killed right afte
   const lic = latest("invoice_payment", "status = 'PENDING_APPROVAL'") ?? "";
   check(!!lic, `licence proposal ${lic}`);
   // Network away: the approval cannot be sent; the page says so and nothing is signed on the runner.
-  await cfo.page.route("**/api/**", (r: { abort: () => void }) => r.abort());
-  const offline = await sign(cfo, lic, { tag: "licence-offline", expectNoVerdict: true }).catch((e: Error) => `error: ${e.message.slice(0, 80)}`);
+  // The page is open and the sheet armed; then the network goes, and Face ID is pressed.
+  const offline = await sign(cfo, lic, { tag: "licence-offline", expectNoVerdict: true, beforeConfirm: () => cfo.page.route("**/api/**", (r: { abort: () => void }) => r.abort()) })
+    .catch((e: Error) => `error: ${e.message.slice(0, 80)}`);
   check(status(lic) === "PENDING_APPROVAL", `network away: nothing approved (${offline})`);
   await cfo.page.unroute("**/api/**");
   // The phone locked during Face ID: the passkey refuses, the page says so, nothing is signed.
