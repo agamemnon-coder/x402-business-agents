@@ -3,7 +3,7 @@
 Only measured numbers, from the four agents-on dry runs dry-19 to dry-22 (31 October; fresh worlds, `KIT11_AGENTS=on`,
 the whole draaiboek, 50 customer queries each). Money in the worlds is test USD (*USDZ on Metal testnet) at the brief's
 prices; Claude costs are real USD from the API's reported usage (`cost_usd_micros` in the audit log). Script:
-read-only queries on `data/dry-1{9}…22.sqlite` (`sales`, `upstream_purchases`, `refunds`, `agent.run`, `claude.read`).
+read-only queries on the dry-19 to dry-22 ledgers (`sales`, `upstream_purchases`, `refunds`, `agent.run`, `claude.read`).
 
 ## Per run (average of dry-19 to dry-22)
 
