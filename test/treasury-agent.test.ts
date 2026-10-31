@@ -67,6 +67,11 @@ describe("the Treasury agent's plan, checked by code", () => {
     expect(checkPricePlan(swept, { ...fallbackPricePlan(swept), targets: [{ agent: "sourcing", capCents: 4, budgetCents: 1200 }, { agent: "support", capCents: 10, budgetCents: 400 }, { agent: "treasury", capCents: 400, budgetCents: 400 }] })).toEqual([]);
   });
 
+  it("sets Sourcing's cap at exactly the new price, so the next rise comes back to a person", () => {
+    const p = checkPricePlan(facts, { ...fallbackPricePlan(facts), targets: [{ agent: "sourcing", capCents: 20, budgetCents: 1200 }, { agent: "support", capCents: 10, budgetCents: 400 }, { agent: "treasury", capCents: 400, budgetCents: 400 }] });
+    expect(p.join(" ")).toMatch(/exactly Stockline's new price/);
+  });
+
   it("never shrinks the Sourcing budget: it pays for every query", () => {
     const p = checkPricePlan(facts, { ...fallbackPricePlan(facts), targets: [{ agent: "sourcing", capCents: 4, budgetCents: 100 }, { agent: "support", capCents: 10, budgetCents: 400 }, { agent: "treasury", capCents: 600, budgetCents: 600 }] });
     expect(p.join(" ")).toMatch(/Sourcing's budget may not shrink/);

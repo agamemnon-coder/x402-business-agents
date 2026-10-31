@@ -73,6 +73,7 @@ export function checkPricePlan(f: PricePlanFacts, p: PricePlan): string[] {
   if (total > TOTAL_BUDGET_CENTS) problems.push(`the budgets add up to ${fromCents(total)}, over the ${fromCents(TOTAL_BUDGET_CENTS)} the mandates may bind in total`);
   const src = target.get("sourcing")!;
   if (src.capCents < f.newUpstreamCents) problems.push(`the sourcing cap ${fromCents(src.capCents)} is below Stockline's new price ${fromCents(f.newUpstreamCents)}, so every purchase would still be refused`);
+  else if (src.capCents > f.newUpstreamCents) problems.push(`the sourcing cap must be exactly Stockline's new price ${fromCents(f.newUpstreamCents)}, not ${fromCents(src.capCents)}: with no headroom, any further rise is refused on chain and comes back to a person`);
   for (const t of p.targets) {
     const m = now.get(t.agent)!;
     if (t.capCents <= 0 || t.budgetCents <= 0) problems.push(`${t.agent}'s cap and budget must be above zero`);
@@ -152,7 +153,7 @@ function prompt(f: PricePlanFacts): string {
     `- Northwind sells a stock check at ${fromCents(f.sellCents)}.`,
     ...(f.sourcingMessage ? [`- The Sourcing agent told you: "${f.sourcingMessage.replace(/"/g, "'")}"`] : []),
     ...f.mandates.map((m) => `- ${m.agent} mandate now: cap ${fromCents(m.capCents)} a payment, budget ${fromCents(m.budgetCents)}, spent ${fromCents(m.spentCents)}.`),
-    `- Rules: total budgets at most ${fromCents(TOTAL_BUDGET_CENTS)}; Sourcing's budget does not shrink and covers what it already spent plus one purchase at its cap; Support's mandate stays as it is; Treasury's budget covers what it already swept plus at least ${fromCents(TREASURY_SWEEP_ROOM_CENTS)} for the next sweep (its cap is set to its budget); each sell price above Stockline's new price.`,
+    `- Rules: total budgets at most ${fromCents(TOTAL_BUDGET_CENTS)}; Sourcing's cap is exactly Stockline's new price; Sourcing's budget does not shrink and covers what it already spent plus one purchase at its cap; Support's mandate stays as it is; Treasury's budget covers what it already swept plus at least ${fromCents(TREASURY_SWEEP_ROOM_CENTS)} for the next sweep (its cap is set to its budget); each sell price above Stockline's new price.`,
     "Design the plan and submit it.",
   ].join("\n");
 }
