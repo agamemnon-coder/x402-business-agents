@@ -64,10 +64,25 @@ export function priceRiseTargets(newUpstreamCents: number): MandateTarget[] {
   ];
 }
 
+/** Customers turned away under the buy policy (dry-125): the ledger rows, by id range, hashed as stored. */
+export interface TurnedAway { firstId: number; lastId: number; rowsSha256: string }
+/** Code's evidence that the Sourcing agent is blocked by its mandate (src/autonomy/teamProfiles.ts blockedByMandate). */
+export interface Blocked { id: number; refusal_reason: string; turnedAway?: TurnedAway }
+
 export interface PriceRiseEvidence {
   noticePath: string;
   liveOfferCents: number;
-  refusal: { purchaseId: number; reason: string };
+  refusal: { purchaseId: number; reason: string; turnedAway?: TurnedAway };
+}
+
+/**
+ * The proposal's evidence item for the block: a refused purchase as before, or (dry-125) the buy-policy refusals
+ * themselves, so an auditor finds exactly those rows in the ledger (never a "refusal" that did not happen).
+ */
+export function blockEvidence(r: PriceRiseEvidence["refusal"]): { type: string; ref: string; sha256: string } {
+  return r.turnedAway
+    ? { type: "turned_away", ref: `upstream_purchases:${r.turnedAway.firstId}-${r.turnedAway.lastId}:buy_policy`, sha256: r.turnedAway.rowsSha256 }
+    : { type: "refusal", ref: `upstream_purchase:${r.purchaseId}:${r.reason}`, sha256: sha256Hex(r.reason) };
 }
 
 /**
@@ -113,7 +128,7 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
   const evidence = [
     { type: "supplier_notice", ref: ev.noticePath.split("/").slice(-2).join("/"), sha256: sha256Hex(notice) },
     { type: "live_offer", ref: `upstream price ${fromCents(ev.liveOfferCents)}`, sha256: sha256Hex(fromCents(ev.liveOfferCents)) },
-    { type: "refusal", ref: `upstream_purchase:${ev.refusal.purchaseId}:${ev.refusal.reason}`, sha256: sha256Hex(ev.refusal.reason) },
+    blockEvidence(ev.refusal),
   ];
   const expires = new Date(now.getTime() + MANDATE_PROPOSAL_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z");
   const totalAfter = steps.at(-1)?.totalAfterCents ?? TOTAL_BUDGET_CENTS;
@@ -207,7 +222,7 @@ export async function priceRiseContext(addr: Addresses, sellCents: number, oldUp
     lines.push(`- ${agent}: cap ${fromCents(baseUnitsToCents(t.constraints.perPaymentCap))} per payment, budget ${fromCents(budget)}, spent ${fromCents(baseUnitsToCents(await mandateSpent(m)))}, payee ${PAYEE[agent](addr).name} (${PAYEE[agent](addr).address.toLowerCase()})`);
   }
   return [
-    `Supplier Stockline raised its price from ${oldUpstream} to ${fromCents(liveOfferCents)} per stock check (its notice and the live 402 offer agree). ${blockedWords(refusalReason)}; the customer was not charged.`,
+    `Supplier Stockline raised its price from ${oldUpstream} to ${fromCents(liveOfferCents)} per stock check (its notice and the live 402 offer agree). ${refusalReason.startsWith("mandate_cap_blocks_fresh_data") ? blockedWords(refusalReason) : `The next purchase was refused on chain: ${refusalReason}`}; the customer was not charged.`,
     `Current sell price: ${fromCents(sellCents)}. In the terms, query_price is the sell price this option would set, and margin = query_price - upstream_price. The approver chooses between options (another option keeps the current price; pausing sales means approving nothing).`,
     `Mandates bound now (read from the chain), ${fromCents(total)} of the ${fromCents(TOTAL_BUDGET_CENTS)} total:`,
     ...lines,

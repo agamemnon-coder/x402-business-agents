@@ -165,8 +165,8 @@ const SYSTEM = [
  */
 export function blockedWords(reason: string): string {
   return reason.startsWith("mandate_cap_blocks_fresh_data")
-    ? `The Sourcing agent stopped buying rather than pay over its cap, and code saw customers turned away (no purchase was tried, so none was refused): ${reason}`
-    : `The next purchase was refused on chain: ${reason}`;
+    ? `The Sourcing agent did not buy at the new price, and code saw customers turned away (no purchase was tried, so none was refused): ${reason}`
+    : `The next purchase was refused against the Sourcing mandate's cap: ${reason}`;
 }
 
 function prompt(f: PricePlanFacts): string {

@@ -14,7 +14,8 @@ import { MODELS } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { redactSecrets } from "../lib/redact.js";
-import { mandatesNow, proposePriceRise } from "../agents/treasury.js";
+import { mandatesNow, proposePriceRise, type Blocked } from "../agents/treasury.js";
+import { sha256Hex } from "../lib/terms.js";
 import { designPriceRise } from "../agents/treasuryAgent.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { setSetting } from "../world/settings.js";
@@ -43,23 +44,33 @@ const TURNED_AWAY_WINDOW_MS = 15 * 60_000;
 /**
  * Code's evidence that an agent is blocked by its mandate, from code's own data only (never an agent's words): a
  * purchase refused over a cap; or (dry-125) customers turned away under the Sourcing agent's buy policy in the last
- * 15 minutes while no supplier serves data fresh enough to sell (at most MAX_CACHE_SECONDS old) at or under its cap.
- * In dry-125 the agent stopped buying when the price rose instead of trying and being refused, so the first form never
- * appeared and the shop turned everyone away. The evidence only lets Treasury design options; the CFO decides.
+ * 15 minutes while, by code's reading, no supplier sells data fresh enough (no older than the cache limit) at or under
+ * its cap. In dry-125 the agent stopped buying when the price rose instead of trying and being refused, so the first
+ * form never appeared and the shop turned everyone away. The newer of the two wins. The evidence only lets Treasury
+ * design options; the CFO decides. A mandate that cannot be read proves nothing (undefined).
  */
-export async function blockedByMandate(db: DB, now = new Date()): Promise<{ id: number; refusal_reason: string } | undefined> {
+export async function blockedByMandate(db: DB, now = new Date(), capCents?: number): Promise<Blocked | undefined> {
   const refused = latestRefusal(db);
-  if (refused) return refused;
-  const away = db.prepare("SELECT id FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > ? ORDER BY id DESC")
-    .all(new Date(now.getTime() - TURNED_AWAY_WINDOW_MS).toISOString()) as { id: number }[];
-  if (away.length < TURNED_AWAY_MIN) return undefined;
-  const cap = (await mandatesNow(db)).get("sourcing")?.now.capCents;
-  if (cap === undefined) return undefined;
+  const away = db.prepare("SELECT id, created_at, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > ? ORDER BY id")
+    .all(new Date(now.getTime() - TURNED_AWAY_WINDOW_MS).toISOString()) as { id: number; created_at: string; refusal_reason: string }[];
+  const last = away.at(-1);
+  if (away.length < TURNED_AWAY_MIN || !last || (refused && refused.id > last.id)) return refused;
+  let cap = capCents;
+  if (cap === undefined) {
+    try { cap = (await mandatesNow(db)).get("sourcing")?.now.capCents; } catch { return refused; }
+  }
+  if (cap === undefined) return refused;
   const offers = Object.values(SUPPLIERS).map((x) => ({ x, cents: toCents(supplierPrice(db, x.id)), fresh: x.dataAgeSeconds <= MAX_CACHE_SECONDS }));
-  if (!offers.some((o) => o.fresh) || offers.some((o) => o.fresh && o.cents <= cap)) return undefined;
-  const why = offers.map((o) => (o.fresh ? `${o.x.name} ${fromCents(o.cents)} over the ${fromCents(cap)} cap` : `${o.x.name}'s data is ${Math.round(o.x.dataAgeSeconds / 60)} min old (sold data may be at most ${MAX_CACHE_SECONDS / 60} min old)`));
-  return { id: away[0]!.id, refusal_reason: `mandate_cap_blocks_fresh_data: ${away.length} customer queries turned away in 15 min under the buy policy; no supplier serves fresh data within the cap: ${why.join("; ")}` };
+  if (!offers.some((o) => o.fresh) || offers.some((o) => o.fresh && o.cents <= cap)) return refused;
+  const why = offers.map((o) => (o.fresh ? `${o.x.name} ${fromCents(o.cents)} over the ${fromCents(cap)} cap` : `${o.x.name}'s data is ${Math.round(o.x.dataAgeSeconds / 60)} min old, over code's ${MAX_CACHE_SECONDS / 60} min cache limit`));
+  return {
+    id: last.id,
+    refusal_reason: `mandate_cap_blocks_fresh_data: ${away.length} customer queries turned away in 15 min under the buy policy; no supplier sells data within code's cache limit at or under the cap: ${why.join("; ")}`,
+    // The rows themselves, so the evidence can be checked against the ledger: these ids, hashed as stored.
+    turnedAway: { firstId: away[0]!.id, lastId: last.id, rowsSha256: sha256Hex(JSON.stringify(away)) },
+  };
 }
+
 const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'PENDING_APPROVAL' AND expires_at > ?").all(kind, new Date().toISOString()) as { proposal_id: string }[];
 const lastFrom = (db: DB, from: string) => (db.prepare("SELECT text FROM agent_messages WHERE from_agent = ? AND to_agent = 'treasury' ORDER BY id DESC LIMIT 1").get(from) as { text: string } | undefined)?.text;
 
@@ -69,7 +80,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
   const position = async (db: DB) => {
     const m = [...(await mandatesNow(db)).values()].map((c) => c.now);
     const sell = toCents(sellPrice(db));
-    const r = await blockedByMandate(db);
+    const r = await blockedByMandate(db, new Date(), m.find((x) => x.agent === "sourcing")?.capCents);
     const pend = db.prepare("SELECT proposal_id, kind FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?").all(new Date().toISOString()) as { proposal_id: string; kind: string }[];
     return [
       `Mandates (lifetime): ${m.map((x) => `${x.agent} cap ${fromCents(x.capCents)}, budget ${fromCents(x.budgetCents)}, spent ${fromCents(x.spentCents)}`).join("; ")}. Total budget ${fromCents(m.reduce((s, x) => s + x.budgetCents, 0))} of ${fromCents(TOTAL_BUDGET_CENTS)} allowed.`,
@@ -106,7 +117,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
             sellCents, oldUpstreamCents: 2, newUpstreamCents: live, refusal: r.refusal_reason, mandates: [...(await mandatesNow(db)).values()].map((c) => c.now),
             ...(lastFrom(db, "sourcing") ? { sourcingMessage: `${lastFrom(db, "sourcing")} (Treasury's own reason: ${reason})` } : {}),
           });
-          const props = await proposePriceRise(db, addr, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason } }, new Date(), design.plan);
+          const props = await proposePriceRise(db, addr, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason, ...(r.turnedAway ? { turnedAway: r.turnedAway } : {}) } }, new Date(), design.plan);
           return { text: `${design.source === "claude" ? "Your plan" : "Code's plan"} went to the CFO as ${props.map((p) => p.proposal_id).join(" and ")}: ${design.plan.advice}`, ...(design.source === "claude" ? {} : { blocked: "plan fell back to code" }) };
         },
       },
@@ -134,12 +145,13 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
     ]; },
     // Without Claude: as before the agents, code's fixed plan answers a refusal the Sourcing agent reported.
     fallback: async (db, events, messages) => {
+      if (!messages.some((m) => m.from_agent === "sourcing") || waiting(db, "mandate_replace").length) return "did nothing (nothing code would do here)";
       const r = await blockedByMandate(db);
-      if (!messages.some((m) => m.from_agent === "sourcing") || waiting(db, "mandate_replace").length || !r) return "did nothing (nothing code would do here)";
+      if (!r) return "did nothing (nothing code would do here)";
       const addr = addresses(db);
       const sellCents = toCents(sellPrice(db));
       const live = toCents(supplierPrice(db, "stockline"));
-      const props = await proposePriceRise(db, addr, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason } });
+      const props = await proposePriceRise(db, addr, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason, ...(r.turnedAway ? { turnedAway: r.turnedAway } : {}) } });
       return `code's fixed plan went to the CFO as ${props.map((p) => p.proposal_id).join(" and ")}`;
     },
   };

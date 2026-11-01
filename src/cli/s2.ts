@@ -168,7 +168,7 @@ if (!settledByAgent) {
   const already = db.prepare("SELECT * FROM proposals WHERE kind = 'refund_batch' AND json_extract(terms_json, '$.dispute_id') = ? AND json_extract(terms_json, '$.reason') LIKE 'customer request%'").get(disputeId) as ProposalRow | undefined;
   if (rest.length > 0 && claims.requested_action === "refund_all") {
     const p = already ?? refundProposal(rest, "customer request: refund all; evidence shows the orders were placed and the data correct");
-    console.log(`ESCALATION       "refund all 12": the other ${rest.length} (${fromCents(rest.reduce((s, r) => s + r.amount_cents, 0))}) exceed the automatic limits -> ${p.proposal_id} (${p.status ?? "PENDING_APPROVAL"}), sha256 ${p.terms_sha256}`);
+    console.log(`ESCALATION       "refund all 12": the other ${rest.length} (${fromCents(rest.reduce((s, r) => s + r.amount_cents, 0))}) ${refunds.length ? "exceed the automatic limits" : "have no evidence for a refund"} -> ${p.proposal_id} (${p.status ?? "PENDING_APPROVAL"}), sha256 ${p.terms_sha256}`);
     const verified = orders.filter((o) => o.signed_order && o.within_mandate && o.payer_is_customer).length;
     const r = await attachReview(db, tools, p, [
       `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold}, claims the orders were never placed and the data wrong, and asks for all ${orders.length} to be refunded.`,
