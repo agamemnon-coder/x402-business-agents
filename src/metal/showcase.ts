@@ -54,8 +54,10 @@ export interface MandateView {
 export interface MetalShowcase {
   features: MetalFeature[];
   mandates: MandateView[];
-  /** The Dispute desk's recorded case, whole: every order's evidence as the seller holds it. */
+  /** The Dispute desk's recorded case, whole: every order's evidence as the seller holds it (the newest case). */
   dispute: DisputeCase | null;
+  /** Every case the desk decided, newest first: /metal shows the newest and folds the older ones into an archive. */
+  disputes?: DisputeCase[];
 }
 
 export const METAL_DOCS = {
@@ -316,11 +318,12 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
 
 export function metalShowcase(db: DB): MetalShowcase {
   const mandates = mandateViews(db);
-  let dispute: DisputeCase | null = null;
+  let disputes: DisputeCase[] = [];
   try {
-    dispute = disputeCases(db)[0] ?? null;
+    disputes = disputeCases(db);
   } catch (e) {
     if (!/no such table/.test((e as Error).message)) throw e;
   }
-  return { features: metalFeatures(db, mandates, dispute), mandates, dispute };
+  const dispute = disputes[0] ?? null;
+  return { features: metalFeatures(db, mandates, dispute), mandates, dispute, disputes };
 }

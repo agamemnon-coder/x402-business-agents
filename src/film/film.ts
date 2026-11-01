@@ -6,7 +6,7 @@
 
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
-import { FROM_RUN_LOG, LIVE_RUNS } from "../live/timeline.js";
+import { agentsDecided, FROM_RUN_LOG, LIVE_RUNS } from "../live/timeline.js";
 
 export interface FilmData {
   company: string;
@@ -20,6 +20,8 @@ export interface FilmData {
   ask: typeof LIVE_RUNS.task;
   wall: { held: string; tx: string };
   trust: { attacks: number; blocked: number; scenarios: number; passed: number; per1000: string; auditRows: string; faceIds: number };
+  /** "decided" only for a recording in which the agents decided with Claude; the 30 October one predates them ("read"). */
+  claude: "decided" | "read";
 }
 
 export { FROM_RUN_LOG };
@@ -99,5 +101,6 @@ export function buildFilm(story: Story, recorded: Recorded, reports: { redteam: 
       attacks: reports.redteam.attempts, blocked: reports.redteam.blocked, scenarios: reports.lab.total, passed: reports.lab.passed,
       per1000: per1000 === null ? "" : `$${(per1000 / 1e6).toFixed(2)}`, auditRows: String(snap.audit.rows), faceIds: Number(fact("audit", /Face ID/)),
     },
+    claude: agentsDecided(recorded) ? "decided" : "read",
   };
 }

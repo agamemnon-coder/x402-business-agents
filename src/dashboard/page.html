@@ -317,6 +317,18 @@ details.panel.bk.fold .hint { display: block; margin-top: 8px; }
 }
 /* The Dispute desk tab. */
 .okc { color: var(--ok, #0f7a3d); font-weight: 600; } .badc { color: var(--bad); font-weight: 600; }
+.warnc { color: var(--wait); font-weight: 600; }
+.panel.bk table.wide tr.wrongrow td { background: var(--wait-soft); }
+.panel.bk table.wide tr.wrongrow td:first-child { box-shadow: inset 4px 0 0 var(--wait); }
+.dtally { font-weight: 700; font-size: 15px; margin: 8px 0 2px; }
+.dbubble { max-width: 560px; background: var(--sunken); border: 1px solid var(--border); border-radius: 16px 16px 16px 4px; padding: 10px 14px; margin: 8px 0; font-size: 14px; line-height: 1.45; }
+.dbubble .from { font-size: 12px; font-weight: 600; color: var(--muted); }
+.agentdec { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; padding: 10px 14px; margin: 10px 0; font-size: 14px; }
+.agentdec .who { font-weight: 700; color: var(--accent); }
+ul.said { margin: 4px 0 8px; padding-left: 20px; } ul.said li { margin: 3px 0; }
+.review-box details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.darchive > summary, details.doldcase > summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+details.doldcase { margin-top: 10px; } details.doldcase > summary { font-weight: 500; color: var(--muted); }
 .panel.bk td:first-child { white-space: nowrap; }
 @media (max-width: 560px) { .panel.bk table.wide td { flex-wrap: wrap; } .panel.bk table.wide td .why { flex-basis: 100%; text-align: left; } .panel.bk td:first-child { white-space: normal; } }
 .review-box { background: var(--sunken); border-radius: 12px; padding: 12px 14px; margin-top: 12px; font-size: 14px; }
@@ -1357,30 +1369,66 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var a = el("a", "txl", [(label ? label + " " : "") + tx.slice(0, 8) + "…" + tx.slice(-4) + " ↗"]); a.href = "https://testnet.metalntwx.com/tx/" + tx; a.target = "_blank"; a.rel = "noopener";
     return el("div", "sub", [a]);
   }
+  // Addresses on screen are shortened (0x1234…abcd); the full explanation, as recorded, is folded.
+  function shortHex(s) { return String(s || "").replace(/0x[0-9a-fA-F]{40,64}\b/g, function (m) { return m.slice(0, 6) + "…" + m.slice(-4); }); }
+  // At most three sentences or bullets: bullets as written, else the last three sentences of substance (greetings,
+  // the recap of amounts, the numbered evidence and closing lines left out; they are on the board above).
+  function shortText(t) {
+    t = String(t || "");
+    var bullets = t.split(/\n/).map(function (l) { return l.trim(); }).filter(function (l) { return /^[-*•]\s+/.test(l); }).map(function (l) { return l.replace(/^[-*•]\s+/, "").replace(/\*\*/g, ""); });
+    if (bullets.length) return bullets.slice(0, 3).map(shortHex);
+    var all = t.replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+(?=[A-Z(])/).filter(Boolean);
+    var keep = all.filter(function (s) { return !/^(thank|we reviewed|if you|this explanation|please)\b/i.test(s) && !/^\(\d+\)/.test(s) && !/: \(1\)/.test(s) && !/total refunded/i.test(s); });
+    return (keep.length ? keep.slice(-3) : all.slice(0, 3)).map(shortHex);
+  }
   function renderDisputes(d) {
-    var cs = d.disputes || [];
+    var cs = (d.disputes || []).slice().sort(function (a, b) { return (Date.parse(b.opened_at) || 0) - (Date.parse(a.opened_at) || 0); });
     if (!cs.length) { set("disputes", [el("div", "panel empty", [icon("shield-check"), d.recorded ? "No dispute was opened in this recording." : "No disputes yet. A case opens here when a customer disputes an order."])]); return; }
     var OUT = { rejected: "Not refunded", refund: "Refunded in full", partial_refund: "Partly refunded" };
     var mark = function (ok, yes, no) { return txt("span", ok ? "okc" : "badc", (ok ? "✓ " : "✗ ") + (ok ? yes : no)); };
-    set("disputes", cs.map(function (c) {
-      var head = el("div", "sect flush", [txt("h2", "", c.case_id + ": \u201c" + c.claim.charAt(0).toUpperCase() + c.claim.slice(1) + "\u201d"), txt("span", "pill " + (c.outcome === "rejected" ? "ok" : "wait"), OUT[c.outcome] + " · " + group(c.refund) + " test USD")]);
+    // The customer: named in the case, else the payee of the Support agent's mandate (the customer it refunds).
+    var support = ((d.budgets && d.budgets.agents) || []).filter(function (a) { return a.agent === "support"; })[0];
+    var wrongData = function (x) { return !!x.refunded_before || !!x.data_wrong; };
+    function tallyLine(c) {
+      var n = c.sales.length, wrong = c.sales.filter(wrongData);
+      var valid = c.sales.filter(function (x) { return !wrongData(x) && x.order.indexOf("signed") === 0 && x.chain && x.delivered; }).length;
+      var paid = wrong.filter(function (x) { return x.refunded_before || Number(x.refund) > 0; }).length, other = n - valid - wrong.length;
+      return [n + " disputed", valid + " proven valid"].concat(wrong.length ? [wrong.length + " wrong data, " + (paid === wrong.length ? "refunded" : paid + " refunded")] : [], other ? [other + " not proven"] : []).join(" · ");
+    }
+    function caseView(c) {
+      var name = c.customer_name || (support && support.payee) || null;
+      var agent = c.agent && c.agent.source === "claude" ? c.agent : null;
+      var head = el("div", "sect flush", [txt("h2", "", (name ? name + " · " : "") + c.case_id + ": “" + c.claim.charAt(0).toUpperCase() + c.claim.slice(1) + "”"), txt("span", "pill " + (c.outcome === "rejected" ? "ok" : "wait"), OUT[c.outcome] + " · " + group(c.refund) + " test USD")]);
       var route = c.route === "approval" ? "Above the CFO's automatic limits: " + c.proposal_id + " waits for Face ID." : c.route === "auto" ? "Refunded at once, within the CFO's automatic limits, to the account that paid." : "Nothing to refund.";
       var common = c.sales.every(function (x) { return x.why === c.sales[0].why; }) ? c.sales[0].why : null;
       var rows = c.sales.map(function (x) {
-        var tr = el("tr", "", [
+        var bad = wrongData(x);
+        var delivered = bad
+          ? el("td", "", [txt("span", "warnc", "✗ wrong data · supplier corrected" + (x.refunded_before ? " · refunded " + group(x.refunded_before.amount) : "")), x.refunded_before ? txLink(x.refunded_before.tx, "refund") : null])
+          : el("td", "", [mark(x.delivered, "as recorded", "differs from the record")]);
+        var tr = el("tr", bad ? "wrongrow" : "", [
           el("td", "", [txt("b", "", String(x.sale_id)), el("div", "sub", [x.request])]),
           txt("td", "num", group(x.charged)),
           el("td", "", [mark(x.order.indexOf("signed") === 0, x.order, x.order)]),
           el("td", "", [mark(x.chain, "inside the bound mandate", "outside it"), x.passkey ? el("div", "sub", ["owner confirmed with a passkey"]) : null, txLink(x.tx, "settled")]),
-          el("td", "", [mark(x.delivered, "as recorded", "differs from the record")]),
-          el("td", "", [txt("b", "", group(x.refund)), x.refunded_before ? el("div", "sub", ["already refunded " + group(x.refunded_before.amount) + " earlier (wrong data) ", txLink(x.refunded_before.tx, "")]) : null, common ? null : el("div", "sub why", [x.why])]),
+          delivered,
+          el("td", "", [txt("b", "", group(x.refund)), x.refunded_before ? el("div", "sub", ["already refunded " + group(x.refunded_before.amount) + " earlier (wrong data)"]) : null, common ? null : el("div", "sub why", [x.why])]),
         ]);
         ["Payment", "Charged", "Signed order", "Chain check", "Delivered", "Refund"].forEach(function (l, i) { tr.children[i].setAttribute("data-label", l); });
         return tr;
       });
       var head2 = el("tr", "", ["Payment", "Charged", "Signed order", "Chain check", "Delivered", "Refund"].map(function (h, i) { return txt("th", i === 1 ? "num" : "", h); }));
-      return el("section", "panel bk", [head,
-        c.text ? el("p", "sub", ["The customer wrote: \u201c" + c.text + "\u201d"]) : null,
+      var them = c.customer_agent;
+      var before = c.sales.filter(function (x) { return x.refunded_before; });
+      return [head,
+        txt("p", "dtally", tallyLine(c)),
+        txt("p", "sub", agent ? "The Support agent decided with Claude; code checked every order against Metal." : "Code checks the proof; Claude explains."),
+        c.text ? el("p", "sub", ["The customer wrote: “" + c.text + "”"]) : null,
+        // Agent to agent: the customer's own agent's message, as a chat bubble.
+        them && them.text ? el("div", "dbubble", [txt("div", "from", them.name || ((name ? name + "'s" : "The customer's") + " agent")), shortHex(them.text)]) : null,
+        agent ? el("div", "agentdec", [txt("div", "who", "Support agent · Claude " + modelWord(agent.model) + " decided"),
+          el("ul", "said", shortText(agent.said).map(function (s) { return txt("li", "", s); })),
+          el("div", "sub", [[agent.tools && agent.tools.length ? "tools: " + agent.tools.join(" → ") : null, agent.cost_usd_micros != null ? "Claude cost USD " + (agent.cost_usd_micros / 1e6).toFixed(4) + " (list price)" : null, agent.request_id ? "request " + agent.request_id.slice(0, 6) + "…" + agent.request_id.slice(-4) : null].filter(Boolean).join(" · ")])]) : null,
         txt("p", "", route),
         (function () {
           // The evidence board: each check counted over the disputed payments, then the decision.
@@ -1395,14 +1443,25 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
           ]);
         })(),
         common ? el("p", "sub", [(c.sales.length > 1 ? "For each payment: " : "") + common]) : null,
-        (function () { var n = c.sales.filter(function (x) { return x.refunded_before; }).length; return n ? el("p", "sub", [n + " of these " + c.sales.length + " payments had already been refunded in an earlier case, because the data delivered was wrong (the supplier corrected it). Delivered “as recorded” means the data matches what Northwind recorded when it delivered, not that it was right."]) : null; })(),
+        before.length ? el("p", "sub", [before.length + " of these " + c.sales.length + " payments had already been refunded in an earlier case, because the data delivered was wrong (the supplier corrected it). Delivered “as recorded” means the data matches what Northwind recorded when it delivered, not that it was right."]) : null,
         el("table", "wide", [el("thead", "", [head2]), el("tbody", "", rows)]),
         el("div", "review-box", [
-          (function () { var b = c.sales.filter(function (x) { return x.refunded_before; }); return b.length ? el("p", "", [txt("b", "", "Already refunded before this claim: "), b.length + " of these payments, for wrong data. Where the explanation below says no payment was refunded, it means by this decision. Where it says the data matches the expected hash, it means the hash recorded at delivery, not that the data was right."]) : null; })(),
-          txt("p", "", c.explanation), txt("p", "sub", "Explained by " + c.explained_by + ". The decision and every amount are code's; the explanation is advice."),
+          txt("p", "", agent ? "The reply, in short" : "Claude's explanation, in short"),
+          el("ul", "said", shortText(c.explanation).map(function (s) { return txt("li", "", s); })),
+          before.length ? txt("p", "sub", "About this decision only: payments " + before.map(function (x) { return x.sale_id; }).join(", ") + " had already been refunded for wrong data (above).") : null,
+          txt("p", "sub", agent ? "Written by " + c.explained_by + "; shortened here." : "Explained by " + c.explained_by + "; shortened here. The decision and every amount are code's; the explanation is advice."),
+          el("details", "", [txt("summary", "", "The full explanation, as recorded"),
+            before.length ? el("p", "", [txt("b", "", "Already refunded before this claim: "), before.length + " of these payments, for wrong data. Where the explanation below says no payment was refunded, it means by this decision. Where it says the data matches the expected hash, it means the hash recorded at delivery, not that the data was right."]) : null,
+            txt("p", "", c.explanation)]),
         ]),
-      ]);
-    }));
+      ];
+    }
+    // The newest case in full; older ones (a run adds one) folded into an archive, one line each.
+    var older = cs.slice(1);
+    set("disputes", [el("section", "panel bk", caseView(cs[0])),
+      older.length ? el("details", "panel darchive", [txt("summary", "", "Earlier cases (" + older.length + ")")].concat(older.map(function (c) {
+        return el("details", "doldcase", [txt("summary", "", c.case_id + " · " + day(c.opened_at) + " · " + tallyLine(c)), el("div", "panel bk", caseView(c))]);
+      }))) : null]);
   }
   var wantAgents = /[?&]agents(=|&|$)/.test(location.search);
   var wantBooks = !wantAgents && /[?&]books(=|&|$)/.test(location.search);

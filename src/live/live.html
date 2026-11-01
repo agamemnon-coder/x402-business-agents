@@ -20,7 +20,7 @@ a { color: var(--accent); }
 .count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .wrap { max-width: 1320px; margin: 0 auto; padding: 22px 28px 0; }
 /* The rig: agents on the left, the two rails across, the CFO's phone on the right. */
-.rig { display: grid; grid-template-columns: 190px minmax(0, 1fr) 176px; gap: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 20px; align-items: stretch; }
+.rig { display: grid; grid-template-columns: 214px minmax(0, 1fr) 176px; gap: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 20px; align-items: stretch; }
 .cast { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
 .who { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--sunken); color: var(--muted); font-size: 14px; font-weight: 650; transition: all .35s ease; }
 .who b { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--border); color: var(--surface); font-size: 12px; font-weight: 900; transition: background .35s; }
@@ -37,6 +37,10 @@ a { color: var(--accent); }
 .awx .track { background: repeating-linear-gradient(90deg, var(--awx-soft) 0 22px, transparent 22px 30px), var(--awx-soft); border: 2px solid var(--awx); }
 .mtl .track { background: repeating-linear-gradient(90deg, var(--mtl-soft) 0 22px, transparent 22px 30px), var(--mtl-soft); border: 2px solid var(--mtl); }
 .lane.off .track { border-color: var(--border); }
+.legend { display: flex; flex-direction: column; gap: 14px; }
+.legend .hd { display: flex; align-items: center; gap: 10px; } .legend .hd small { color: var(--muted); font-size: 13px; font-weight: 600; }
+.legend[hidden], .lane[hidden], .dest[hidden] { display: none; }
+.note { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; font-size: 15px; font-weight: 800; padding: 9px 14px; border-radius: 999px; background: var(--accent); color: #fff; white-space: nowrap; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
 .dest { position: absolute; right: 0; top: 0; bottom: 0; width: 15%; min-width: 92px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; z-index: 2; text-align: center; font-size: 13px; font-weight: 750; background: var(--surface); border-left: 1px solid var(--border); padding: 0 6px; line-height: 1.2; }
 .dest b { display: block; } .dest small { display: block; font-size: 11.5px; font-weight: 800; color: var(--ok); opacity: 0; } .dest small.in { color: var(--accent); }
 .gate { position: absolute; left: 58%; top: 0; bottom: 0; width: 8px; opacity: 0; }
@@ -107,6 +111,7 @@ button.ctl, select.ctl { font: inherit; font-size: 14px; font-weight: 600; color
   .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 14px; mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } .top nav a { white-space: nowrap; }
   .wrap { padding: 14px 16px 0; } .bar, .honest { padding-left: 16px; padding-right: 16px; }
   .track { height: 96px; } .tok { font-size: 13px; padding: 6px 10px; top: 34%; } .tok.r2 { top: 20%; } .tok.r3 { top: 48%; }
+  .note { font-size: 13px; padding: 6px 10px; }
   .dest { top: auto; height: 30px; width: 100%; min-width: 0; left: 0; flex-direction: row; flex-wrap: wrap; gap: 2px 10px; border-left: 0; border-top: 1px solid var(--border); font-size: 11.5px; }
   .gate { bottom: 30px; } .gate span { display: none; } .gatecap { display: block; }
   .story h1 { font-size: 26px; } .story .line { font-size: 16px; } .big .v { font-size: 34px; }
@@ -155,8 +160,9 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
   }
 
   // The rig, drawn once; each scene sets who acts, which lane is on, what moves and what the phone shows.
-  var ACTORS = [["Sourcing agent", "So"], ["Support agent", "Su"], ["Treasury agent", "Tr"], ["Summit's agent", "Sm"], ["Unknown sender", "?"]];
-  var ACTOR_OF = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent", customer: "Summit's agent", stranger: "Unknown sender" };
+  // The stranger in plain words (src/live/timeline.ts, STRANGER): an address that is not a customer.
+  var ACTORS = [["Sourcing agent", "So"], ["Support agent", "Su"], ["Treasury agent", "Tr"], ["Summit's agent", "Sm"], ["An unknown address (not a customer)", "?"]];
+  var ACTOR_OF = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent", customer: "Summit's agent", stranger: "An unknown address (not a customer)" };
   var cast = el("aside", "cast", ACTORS.map(function (a) { var n = el("div", "who", [txt("b", "", a[1]), a[0]]); n.dataset.name = a[0]; return n; }));
   function lane(cls, src, alt, w, caption) {
     var im = document.createElement("img"); im.src = src; im.alt = alt; im.width = w; im.height = 18;
@@ -168,9 +174,12 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
     airwallex: lane("awx", "assets/logo-airwallex.png", "Airwallex", 131, "Company cards, FX and SWIFT payouts"),
     metal: lane("mtl", "assets/logo-metal.svg", "Metal", 57, "Mandates, pay per request, receive policy: on chain"),
   };
+  // A scene where nothing happens on either rail names the two rails, without empty boxes.
+  function railName(src, alt, w, caption) { var im = document.createElement("img"); im.src = src; im.alt = alt; im.width = w; im.height = 18; return el("div", "hd", [el("span", "lg", [im]), txt("small", "", caption)]); }
+  var legend = el("div", "legend", [railName("assets/logo-airwallex.png", "Airwallex", 131, "Company cards, FX and SWIFT payouts"), railName("assets/logo-metal.svg", "Metal", 57, "Mandates, pay per request, receive policy: on chain")]);
   var phoneAsk = el("div", "ask", ["", el("b", "", ["Face ID ✓"])]);
   var phone = el("div", "phone", [txt("div", "who-cfo", "CFO's phone"), txt("div", "idle", "Nothing to approve: the agents stay inside their limits."), phoneAsk]);
-  var rig = el("section", "rig", [cast, el("div", "lanes", [L.airwallex.root, L.metal.root]), phone]);
+  var rig = el("section", "rig", [cast, el("div", "lanes", [L.airwallex.root, L.metal.root, legend]), phone]);
   rig.setAttribute("aria-label", "Agents, the Airwallex and Metal rails, and the CFO's phone");
   var story = el("section", "story", []);
   story.setAttribute("aria-live", "polite");
@@ -218,12 +227,20 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
     Array.prototype.forEach.call(cast.children, function (n) { n.classList.toggle("on", !!acting[n.dataset.name] || s.kind === "title"); });
     ticks.forEach(function (t, k) { var bar = t.firstChild; bar.style.transition = "none"; bar.style.width = k < i ? "100%" : "0"; });
     pick.value = String(i);
-    // The lanes: on when the scene happens there; each lane's end names who is paid.
+    // The lanes: a rail is drawn only in a scene where something happens on it (money moves, or a note such as a
+    // mandate replaced on chain); no empty boxes. Each lane's end names who is paid.
+    var notes = s.notes || [];
     ["airwallex", "metal"].forEach(function (name) {
       var mine = s.moves.filter(function (m) { return m.lane === name; });
-      var on = s.rail === name || mine.length > 0 || s.kind === "title";
-      L[name].root.classList.toggle("off", !on);
-      Array.prototype.slice.call(L[name].root.querySelectorAll(".tok, .gate, .gatecap")).forEach(function (n) { n.remove(); });
+      var said = notes.filter(function (n) { return n.lane === name; });
+      L[name].root.hidden = !mine.length && !said.length;
+      L[name].dest.hidden = !mine.length;
+      Array.prototype.slice.call(L[name].root.querySelectorAll(".tok, .gate, .gatecap, .note")).forEach(function (n) { n.remove(); });
+      said.forEach(function (n) {
+        var t = txt("div", "note", n.text);
+        L[name].track.appendChild(t);
+        t.animate([{ opacity: 0, transform: "translate(-50%, -50%) scale(.92)" }, { opacity: 1, transform: "translate(-50%, -50%)" }], { duration: 450, delay: n.at * 1000, fill: "both" });
+      });
       // The far end names the other party; what arrived there (or came from there) is tallied as it lands.
       var others = mine.map(function (m) { return m.outcome === "in" ? m.from : m.to; }).filter(function (v, k, a) { return a.indexOf(v) === k; });
       L[name].dest.replaceChildren(txt("b", "", others.length ? others.join(" · ") : (name === "airwallex" ? "Merchants, banks" : "Suppliers, customers")));
@@ -240,6 +257,7 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
         line.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: t.m.at * 1000 + 1400, fill: "both" });
       });
     });
+    legend.hidden = s.moves.length > 0 || notes.length > 0;
     s.moves.forEach(function (m, k) { moveOn(m, k, s); });
     phone.classList.toggle("on", !!s.phone || s.actor === "cfo");
     phoneAsk.firstChild.textContent = s.phone ? s.phone.text : "";
@@ -258,8 +276,12 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
     })));
     var side = [];
     if (s.big) side.push(el("div", "big fade", [txt("div", "v", s.big.value), txt("div", "l", s.big.label), el("div", "", s.proofs.map(proofChip))]));
-    if (s.kind === "end") side.push(el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), txt("span", "", "Powered by"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "Agents built on Claude (Anthropic API)")]),
-      txt("p", "src", "\"Built on\" and \"Powered by\" name the services Purser uses. They are not an endorsement."));
+    // "Powered by" and "Agents built on Claude" only for a run in which the agents really decided; the 30 October
+    // recording predates the autonomous agents, so there Claude read the documents (T.claude, src/live/timeline.ts).
+    if (s.kind === "end") side.push(T.claude === "decided"
+      ? el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), txt("span", "", "Powered by"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "Agents built on Claude (Anthropic API)")])
+      : el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "Claude read the documents")]),
+      txt("p", "src", T.claude === "decided" ? "\"Built on\" and \"Powered by\" name the services Purser uses. They are not an endorsement." : "\"Built on\" names the services Purser uses; the Claude logo names the model that read the documents. Neither is an endorsement."));
     side.push(txt("p", "src", "Source: " + s.source));
     story.replaceChildren(el("div", "", words), el("div", "", side));
     applyRate();

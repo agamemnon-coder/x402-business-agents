@@ -45,6 +45,8 @@ describe("How Purser uses Metal (/metal)", () => {
     expect(ids).not.toContain("dispute");
     expect(ids).not.toContain("verify");
     expect(s.dispute).toBeNull();
+    // Every case goes along (newest first), so /metal can fold the older ones into an archive.
+    expect(s.disputes).toEqual([]);
     const empty = metalShowcase(openDb(":memory:"));
     expect(empty.mandates).toEqual([]);
     expect(empty.features.map((f) => f.id)).toEqual(["clearing", "receive", "four-eyes", "compliance", "certificates"]);

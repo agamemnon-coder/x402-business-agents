@@ -30,7 +30,7 @@ export function navHtml(current: NavKey | null, id?: string, cls?: string): stri
   return `<nav class="${cls ? `${cls} ` : ""}pnav"${id ? ` id="${id}"` : ""} aria-label="Main">${NAV_MAIN.map((l) => link(l, current)).join("")}<details class="pmore"><summary${inMore ? ' class="on"' : ""}>More</summary><div class="pmenu">${NAV_MORE.map((l) => link(l, current)).join("")}</div></details></nav>`;
 }
 
-export const NAV_CSS = `.pnav { display: flex; align-items: center; gap: 2px; flex-wrap: wrap !important; min-width: 0; max-width: 100%; overflow: visible !important; -webkit-mask-image: none !important; mask-image: none !important; }
+export const NAV_CSS = `.pnav { display: flex; align-items: center; gap: 2px !important; flex-wrap: wrap !important; min-width: 0; max-width: 100%; overflow: visible !important; -webkit-mask-image: none !important; mask-image: none !important; }
 .pnav > a, .pmore > summary { text-decoration: none; color: var(--muted, #667085); font: 500 14px/1.2 Inter, system-ui, sans-serif; padding: 8px 11px; border-radius: 8px; white-space: nowrap; cursor: pointer; }
 .pnav > a:hover, .pmore > summary:hover { color: var(--text, #0b1220); }
 .pnav a.on, .pmore > summary.on { color: var(--text, #0b1220); background: var(--sunken, var(--surface2, rgba(127,127,127,.12))); }
@@ -40,8 +40,12 @@ export const NAV_CSS = `.pnav { display: flex; align-items: center; gap: 2px; fl
 .pmenu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 230px; display: flex; flex-direction: column; padding: 6px; border-radius: 12px; background: var(--surface, var(--panel, #fff)); border: 1px solid var(--border, var(--line, rgba(127,127,127,.25))); box-shadow: 0 12px 32px rgba(0,0,0,.18); }
 .pmenu a { text-decoration: none; color: var(--text, #0b1220); font: 500 14px/1.3 Inter, system-ui, sans-serif; padding: 9px 12px; border-radius: 8px; }
 .pmenu a:hover, .pmenu a.on { background: var(--sunken, var(--surface2, rgba(127,127,127,.12))); }
-/* On a phone the brand already links home, so "Overview" makes room for the other four and "More". */
-@media (max-width: 560px) { .pnav > a, .pmore > summary { padding: 6px 7px; font-size: 13px; } .pnav > a[data-nav="overview"] { display: none; } }
+/* On a phone the brand already links home, so "Overview" makes room for the other four and "More". The gap is the
+   nav's own on every page (a page's ".top nav { gap: 14px }" pushed "More" onto a line of its own at 390 px),
+   and so are its sizes on a phone (".pnav.pnav" outweighs a page's own ".top .nav a"). */
+@media (max-width: 560px) { .pnav.pnav > a, .pnav .pmore > summary { padding: 6px 7px; font-size: 13px; } .pnav > a[data-nav="overview"] { display: none; } }
+@media (max-width: 380px) { .pnav.pnav > a, .pnav .pmore > summary { padding: 6px 5px; font-size: 12.5px; } }
+@media (max-width: 340px) { .pnav.pnav > a, .pnav .pmore > summary { padding: 6px 3px; font-size: 12px; } }
 /* Below laptop width "More" can wrap anywhere in the row, so its menu hangs from the whole nav, not from "More":
    it then always opens on the screen (the site check found it off the left edge at 390 px). */
 @media (max-width: 900px) { .pnav { position: relative; } .pmore { position: static; } .pmenu { right: 0; left: auto; max-width: calc(100vw - 24px); } }`;
