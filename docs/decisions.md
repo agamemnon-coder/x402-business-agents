@@ -270,3 +270,31 @@ the agents' mandates draw on. So the passkeys own a separate, small passkey acco
 owner key (with Purser's four eyes in front of every mandate change). Moving the business account over is one
 owner-change call (`addSigners`/`removeSigners`/`setThreshold`, Metal's docs on smart accounts) once owner signing has a
 page the relay cannot serve.
+
+### D19. Real agents, not a script: plan, estimate, risk (1 November, morning)
+
+Max's call (1 November): the run feels like a script, because it mostly is. The demo plays steps; the agents act at
+three moments; routine is code. **New rule: we change the world, the agents decide.** Everything here sits behind
+`KIT11_AUTONOMY=on` (with `KIT11_AGENTS=on`); the reserve run on Monday stays at `reserve-run-2026-11-02`, agents off.
+Kill rule: not green (three dry runs in a row, 0 unsafe actions, 0 double payments, fallbacks reported and under 10%)
+by Wednesday 4 November 23:00 → Thursday runs the current agents (three exception moments), and the video and deck say
+exactly what the agents do and do not decide.
+
+**What is still script today:** the run's CLI steps decide *when* each agent acts (`s1 raise`, `s2`, `cards scenario`,
+`licence`); each agent runs once per step with a fixed task; nothing wakes an agent but its step; agents talk only
+through code (Sourcing's message is passed to Treasury by `s1.ts`); Sourcing has one supplier, so "switch supplier" is no
+choice; routine (per-query buying) has no strategy the agent sets.
+
+| Order | Block | Estimate | Risk |
+|---|---|---|---|
+| 1 | Proof per decision: API request id, tokens, cache hits, latency, cost in every trace; "decided by Claude" / "fallback (code)" on every decision; fallback share on the dashboard; one retry then a labelled fallback; cost cap per agent per hour and per run (alert at 80%) | 3 h | low |
+| 2 | Runtime: an event bus and agent messages in the ledger; one loop per agent (own process) that wakes on its events or every N minutes, with a goal, its tools and a memory of its last decisions; kill switch and emergency stop checked on every wake | 6 h | medium |
+| 3 | Sourcing with real choices: a second supplier (another x402 seller, other price, freshness, reliability), cache and "don't buy"; the agent sets a buy policy that code executes per query; it can switch supplier, ask Treasury, or propose a price change | 7 h | **high** (bootstrap binds two payees; per-query code path) |
+| 4 | Support and Treasury as event-driven loops: a dispute event wakes Support (tools as today); Treasury acts on messages, refusals, invoices and deposits (plan, sweep, licence timing), within the rules; above the limits it goes to the CFO | 5 h | medium |
+| 5 | The world: `npm run world -- price-rise | dispute | invoice | decline | deposit`; a world draaiboek and an autonomy dry run that checks invariants (no unsafe action, no double payment, fallback share) instead of fixed outcomes | 6 h | medium |
+| 6 | Variation test (10 runs same world, 10 other worlds; real Claude, stand-in rails) and red team on the loop (injection, retry after refusal, agent manipulating agent, runaway cost) → `docs/agents-autonomy.md` | 6 h | medium |
+| 7 | What you see: per agent what it thinks and does, agent-to-agent chat with the model on each message, "Powered by Claude" per agent card, on the dashboard and /live | 6 h | low |
+| 8 | /try: the jury changes the world in a separate demo world | 6 h | high (public, cost) — first to be cut |
+
+About 45 hours against about 85 until the kill rule, beside three dry runs a day and Max's QA, MFA and design asks. Order:
+1–5 Sunday and Monday, 6–7 Tuesday, Wednesday three dry runs. 8 only if 1–7 are green on Tuesday evening.
