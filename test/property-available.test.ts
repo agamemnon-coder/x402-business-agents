@@ -37,7 +37,8 @@ const step = fc.record({
 });
 
 describe("available = limit − paid − pending − held (property)", () => {
-  it("holds the identity after any sequence, and never lets spent plus held pass a budget or the shared total", () => {
+  it("holds the identity after any sequence, and never lets spent plus held pass a budget or the shared total", { timeout: 30_000 }, () => {
+    // 200 runs of up to 40 steps take about 4 s alone; under the full suite's load that passed the default 5 s.
     fc.assert(fc.property(fc.array(step, { maxLength: 40 }), (steps) => {
       const db = world();
       steps.forEach((s, i) => {
