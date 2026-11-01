@@ -73,17 +73,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       pic: phones(s.phoneOptions, s.phoneConfirm, "The approval screens on a phone (a dev-test world, virtual passkey)"),
     },
     {
-      kicker: "Airwallex enforces the limits",
-      title: "A company card per agent, FX and payouts",
-      points: [
-        `<b>Declined by Airwallex itself</b>: €45.00 over the limit, €19.99 at the wrong kind of shop.`,
-        "<b>One Face ID</b> raised the limit; the same charge then went through.",
-        "<b>€1,850.00 by SWIFT</b>: only the EUR shortfall converted; the approval's hash rides in the transfer.",
-      ],
-      pic: shot(s.decline, "Purser live: Airwallex declines €45.00 over the limit; the CFO raises it with Face ID"),
-    },
-    {
-      kicker: "Metal enforces the limits",
+      kicker: "Scene 1 · The price rise · Metal enforces the limits",
       title: "Mandates on chain: Metal holds the limit",
       points: [
         "<b>A mandate per agent</b>: cap per payment, budget, one payee, end date.",
@@ -91,6 +81,26 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "<b>x402 with signed orders</b>, refunds as mandate pulls, earnings swept once final.",
       ],
       pic: shot(s.inspector, "The mandate inspector on /metal"),
+    },
+    {
+      kicker: "Scene 2 · The dispute · the Dispute desk",
+      title: "The seller checks each payment against the chain",
+      points: [
+        `A simulated customer (we filed for it) disputed ${f.metal.dispute_orders} orders; each was checked against its signed order and mandate.`,
+        `All ${f.metal.dispute_orders} were signed and inside the mandate: ${f.metal.dispute_refunded === 0 ? "nothing new refunded" : `${f.metal.dispute_refunded} refunded`} (${f.metal.refunded_before.length} had been refunded earlier for wrong data).`,
+        "Open source for any seller on Metal: <code>examples/metal-dispute-desk</code>.",
+      ],
+      pic: shot(s.dispute, "The Disputes tab; the case ran after the recorded run, on a copy of its ledger"),
+    },
+    {
+      kicker: "Scene 3 · The euro bill · Airwallex pays and enforces",
+      title: "The euro bill, and a company card per agent",
+      points: [
+        "<b>€1,850.00 by SWIFT</b>: only the EUR shortfall converted; the approval's hash rides in the transfer.",
+        `<b>Declined by Airwallex itself</b>: €45.00 over the limit, €19.99 at the wrong kind of shop.`,
+        "<b>One Face ID</b> raised the limit; the same charge then went through.",
+      ],
+      pic: shot(s.decline, "Purser live: Airwallex declines €45.00 over the limit; the CFO raises it with Face ID"),
     },
     {
       kicker: "For a bigger company",
@@ -102,16 +112,6 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       ],
       extra: `<p class="src">Separate test worlds on Metal testnet, 30 October; not in the recorded run.</p>`,
       pic: pair(s.fourEyes, s.compliance, "The four-eyes and compliance cards on /metal"),
-    },
-    {
-      kicker: "The Dispute desk",
-      title: "The seller checks each payment against the chain",
-      points: [
-        `A simulated customer (we filed for it) disputed ${f.metal.dispute_orders} orders; each was checked against its signed order and mandate.`,
-        `All ${f.metal.dispute_orders} were signed and inside the mandate: ${f.metal.dispute_refunded === 0 ? "nothing new refunded" : `${f.metal.dispute_refunded} refunded`} (${f.metal.refunded_before.length} had been refunded earlier for wrong data).`,
-        "Open source for any seller on Metal: <code>examples/metal-dispute-desk</code>.",
-      ],
-      pic: shot(s.dispute, "The Disputes tab; the case ran after the recorded run, on a copy of its ledger"),
     },
     {
       kicker: "Agents built on Claude (Anthropic API), and measured",
