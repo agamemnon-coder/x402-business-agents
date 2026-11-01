@@ -62,6 +62,15 @@ describe("filling a test wallet", () => {
     expect(d.sent).toEqual([]);
   });
 
+  it("moves whole cents only, even when a donor's balance and the shortfall end in fractions of a cent", async () => {
+    const odd = U(15.9) - 1_913n; // a donor after paying gas: 15.899999999999998087 *USDZ
+    const d = deps({ balance: async (a) => (a === A(11) ? odd : a === A(1) ? 12_345n : a === A(21) ? U(99.99) : 0n) });
+    expect(await fundTestWallet(A(1), 2100, { label: "owner-business", deps: d })).toBe("recycled");
+    expect(d.sent.map(([, , a]) => a % 10n ** 16n)).toEqual([0n, 0n]);
+    expect(d.sent.map(([, , a]) => a)).toEqual([U(15.79), U(5.21)]);
+    expect(d.logged.join("\n")).toMatch(/15\.79/);
+  });
+
   it("with recycling off, asks the faucet as before", async () => {
     const d = deps({ recycle: false });
     expect(await fundTestWallet(A(1), 2500, { label: "owner-business", deps: d })).toBe("faucet");

@@ -21,6 +21,10 @@ import { EXPLORER_TX } from "./network.js";
 // stays untouched (only the owner signer and people's own CLIs name it: test/no-owner-key.test.ts).
 const DONOR_FILES = ["owner-customer.key.json"];
 const GAS_RESERVE = centsToBaseUnits(10);
+const CENT = centsToBaseUnits(1);
+/** Whole cents only: a donor's balance after gas can end in fractions of a cent, and a ledger amount never does. */
+const floorCents = (units: bigint) => units - (units % CENT);
+const usdz = (units: bigint) => fromCents(baseUnitsToCents(floorCents(units < 0n ? 0n : units)));
 const FINISHED_AFTER_MS = 60 * 60_000;
 const REPO = resolve(import.meta.dirname, "../..");
 const LOG = join(REPO, "docs/runs/testgeld-recycling.md");
@@ -52,7 +56,9 @@ export async function fundTestWallet(address: Address, minCents: number, opts: {
   const want = centsToBaseUnits(minCents);
   if (have >= want) return "enough";
   if (!d.recycle) { d.faucet(address); return "faucet"; }
+  // Whole cents: the shortfall rounded up to the next cent.
   let need = want - have;
+  if (need % CENT !== 0n) need = floorCents(need) + CENT;
   // Plan first, then send: never half-fill.
   const plan: { world: string; file: string; amount: bigint }[] = [];
   for (const world of donorWorlds(d.worlds(), d.current)) {
@@ -60,7 +66,7 @@ export async function fundTestWallet(address: Address, minCents: number, opts: {
       if (need <= 0n) break;
       const from = d.address(world, file);
       if (!from) continue;
-      const spare = (await d.balance(from)) - GAS_RESERVE;
+      const spare = floorCents((await d.balance(from)) - GAS_RESERVE);
       if (spare <= 0n) continue;
       const amount = spare < need ? spare : need;
       plan.push({ world, file, amount });
@@ -68,10 +74,10 @@ export async function fundTestWallet(address: Address, minCents: number, opts: {
     }
     if (need <= 0n) break;
   }
-  if (need > 0n) throw new Error(`not enough spare test money in finished dry worlds for ${opts.label} (${fromCents(baseUnitsToCents(need))} *USDZ short); ask the faucet or Max`);
+  if (need > 0n) throw new Error(`not enough spare test money in finished dry worlds for ${opts.label} (${usdz(need)} *USDZ short); ask the faucet or Max`);
   for (const p of plan) {
     const tx = await d.transfer(p.world, p.file, address, p.amount);
-    d.log(`| ${new Date().toISOString().slice(0, 16).replace("T", " ")} | ${p.world} · ${p.file.replace(".key.json", "")} | ${d.current} · ${opts.label} \`${address}\` | ${fromCents(baseUnitsToCents(p.amount))} | [${tx.slice(0, 10)}…](${EXPLORER_TX}${tx}) |`);
+    d.log(`| ${new Date().toISOString().slice(0, 16).replace("T", " ")} | ${p.world} · ${p.file.replace(".key.json", "")} | ${d.current} · ${opts.label} \`${address}\` | ${usdz(p.amount)} | [${tx.slice(0, 10)}…](${EXPLORER_TX}${tx}) |`);
   }
   return "recycled";
 }

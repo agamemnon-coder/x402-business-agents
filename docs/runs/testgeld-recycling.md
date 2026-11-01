@@ -2,6 +2,11 @@
 
 Max's rules (1 November): only from finished dry-N worlds, never the reserve world or Thursday's; each transfer with its tx; old ledgers and proofs unchanged; keys stay where they are. Written by `src/metal/testFunds.ts`.
 
+¹ dry-121 row: not written at the time: the log line itself crashed on a sub-cent amount (15.899999999998087030; it topped up to the
+target from a balance with dust). Found afterwards on chain (USDZ Transfer, block 12121635) and added by hand. Fixed:
+transfers are now whole cents, rounded up for the need and down for what a donor can spare (`test/test-funds.test.ts`).
+dry-121 failed on this bug, not on the agents.
+
 | UTC | From (world · wallet) | To (world · wallet, address) | *USDZ | Tx |
 |---|---|---|---|---|
 | 2026-11-01 15:44 | dry-1 · owner-customer | dry-118 · business owner `0xe9bf569F725f3756D73fb4a9c8e90DCCc5Dab6d3` | 21.00 | [0x8d431637…](https://testnet.metalntwx.com/tx/0x8d431637c89484dad2cd5c1ccac82646c10c2b9e3be0f8a62cd19a957a60943c) |
@@ -13,3 +18,5 @@ Max's rules (1 November): only from finished dry-N worlds, never the reserve wor
 | 2026-11-01 16:10 | dry-1 · owner-customer | dry-120 · business owner `0x7bf9a69f392b1ACA7FD9CA3ee2683Ca4e322dBA0` | 21.00 | [0xf411a33a…](https://testnet.metalntwx.com/tx/0xf411a33ae7aa1370608619a9c627fb0ee538e1a27e50682deb98d5c72ac0cb2e) |
 | 2026-11-01 16:10 | dry-1 · owner-customer | dry-120 · customer owner `0xcEe6e38046F42ab3dE6787E134e3f4e1F9C27dAb` | 1.00 | [0x30ae9ff7…](https://testnet.metalntwx.com/tx/0x30ae9ff7b86473d9521df301ab1b9dea2a680e8039e38912ba807af79a58140b) |
 | 2026-11-01 16:10 | dry-1 · owner-customer | dry-120 · customer account `0xb64CCAbdeb9B9442a36A43a4dB28a94804D9F844` | 6.00 | [0x29dd94eb…](https://testnet.metalntwx.com/tx/0x29dd94ebe6ca7670558fe764da7d8ac0ef2e967cd353130f019400087619cda8) |
+| 2026-11-01 16:24 | dry-1 · owner-customer | dry-121 · business owner `0x9ED2244F3458e926f05CBdAb386A81fFE923778f` | 15.89 ¹ | [0x26514786…](https://testnet.metalntwx.com/tx/0x265147864a6175c888f09b3f92b961cdd587c8d0f6c9c1f2c3d3914469911ba1) |
+
