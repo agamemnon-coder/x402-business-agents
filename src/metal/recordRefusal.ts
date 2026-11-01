@@ -6,12 +6,13 @@
 // refuse it, so nothing can be paid by it. The transaction's gas is paid by a gas-only key that owns nothing (Max,
 // 1 November: no agent's path uses an owner key); the payment itself is the agent's own mandate signature.
 
+import { fundTestWallet } from "./testFunds.js";
 import type { Address } from "viem";
 import { extractTerms, readMandateState } from "@metalntwx/metal-pay/mandates";
 import { existsSync } from "node:fs";
 import { privateKeyToAccount } from "viem/accounts";
 import { keyPath, metalAgent } from "./agentCli.js";
-import { publicClient, readKeyFile, usdzBalance } from "./chain.js";
+import { publicClient, readKeyFile } from "./chain.js";
 import type { LoadedMandate } from "./mandate.js";
 import { centsToBaseUnits, fromCents } from "../lib/money.js";
 
@@ -22,7 +23,8 @@ export async function refusalGasKey(): Promise<string> {
   const file = keyPath("gas-sponsor.key.json");
   if (!existsSync(file)) metalAgent(["key", "create", "--out", file]);
   const address = privateKeyToAccount(readKeyFile(file).privateKey).address;
-  if ((await usdzBalance(address)) < centsToBaseUnits(10)) metalAgent(["fund", address]);
+  // The faucet, or with KIT11_RECYCLE=on spare test money from finished dry runs (src/metal/testFunds.ts).
+  await fundTestWallet(address, 10, { label: "gas sponsor (Metal refusal recorder)" });
   return file;
 }
 

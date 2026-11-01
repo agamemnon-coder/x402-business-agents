@@ -3,6 +3,7 @@
 // moves exactly 20.00 *USDZ into B, then issues and binds the four mandates.
 // Keys stay in KIT11_KEYS_DIR; nothing secret is printed.
 
+import { fundTestWallet } from "../metal/testFunds.js";
 import { existsSync } from "node:fs";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
@@ -36,6 +37,13 @@ async function withFaucetRetry(run: () => CliResult): Promise<CliResult> {
 }
 
 async function account(file: string, role: "business" | "customer"): Promise<Address> {
+  // With test money recycled (KIT11_RECYCLE=on), the owner's key is made and filled first, so metal-agent does not ask
+  // the faucet: the business owner moves 20.00 to its account; the customer's owner only pays gas.
+  if (process.env.KIT11_RECYCLE === "on") {
+    if (!existsSync(keyPath(file))) metalAgent(["key", "create", "--out", keyPath(file)]);
+    const how = await fundTestWallet(readKeyFile(keyPath(file)).address, role === "business" ? 2100 : 100, { label: `${role} owner` });
+    say(`${role} owner key: ${how === "enough" ? "holds enough test money" : "filled with recycled test money"}`);
+  }
   const exists = existsSync(keyPath(file));
   const r = await withFaucetRetry(() => metalAgent(["account", "create", exists ? "--key" : "--out", keyPath(file)]));
   const address = field(r, "account") as Address;
@@ -98,8 +106,13 @@ const W = plainKey("sweep.key.json", "sweep");
 
 // C pays for queries from its own balance; the faucet tops it up to 100.
 if ((await usdzBalance(C)) < centsToBaseUnits(CUSTOMER_MANDATE.budgetCents)) {
-  await withFaucetRetry(() => metalAgent(["fund", C]));
-  say(`funded customer account from the faucet`);
+  if (process.env.KIT11_RECYCLE === "on") {
+    await fundTestWallet(C, CUSTOMER_MANDATE.budgetCents + 100, { label: "customer account" });
+    say("filled the customer account with recycled test money");
+  } else {
+    await withFaucetRetry(() => metalAgent(["fund", C]));
+    say(`funded customer account from the faucet`);
+  }
 }
 
 // B holds exactly the 20.00 the mandates may spend in total, moved from its owner's key.

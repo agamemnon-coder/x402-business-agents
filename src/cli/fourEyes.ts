@@ -10,6 +10,7 @@
 // A refused transaction is sent with the gas its two-signature twin needs, so it cannot fail for want of gas.
 // Test money only (*USDZ on testnet); the keys are test keys and never printed. Writes docs/runs/four-eyes.json (RUN_OUT names another run, so earlier records stay).
 
+import { fundTestWallet } from "../metal/testFunds.js";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createWalletClient, custom, encodeFunctionData, erc20Abi, type Address, type Hex } from "viem";
@@ -65,7 +66,7 @@ async function whyRefused(to: Address, data: Hex): Promise<string> {
 }
 
 // 0. Gas for the sponsor (faucet), the 2-of-2 account, and 3.00 test USD in it.
-if ((await usdzBalance(sponsor.address)) < centsToBaseUnits(2000)) { metalAgent(["fund", sponsor.address]); say("sponsor funded from the faucet"); }
+if ((await usdzBalance(sponsor.address)) < centsToBaseUnits(2000)) { const how = await fundTestWallet(sponsor.address, 2000, { label: "four-eyes gas sponsor" }); say(`sponsor funded (${how === "faucet" ? "from the faucet" : "recycled test money"})`); }
 const config = accountConfig([cfo.address, controller.address], 2);
 const account = (await pc.readContract({ address: FACTORY, abi: factoryAbi, functionName: "predictAccount", args: config })) as Address;
 const code = await pc.getCode({ address: account });

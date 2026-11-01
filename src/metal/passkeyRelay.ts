@@ -1,6 +1,7 @@
 // Block 1: the gas sponsor that relays an owners_execute. Its key (passkey-sponsor.key.json in the world's keys dir)
 // pays gas and nothing else: it is no owner of the passkey account, so it cannot move a cent of it.
 
+import { fundTestWallet } from "./testFunds.js";
 import { createWalletClient, custom, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { existsSync } from "node:fs";
@@ -22,6 +23,7 @@ export function passkeySponsor() {
 /** Gas from the faucet when low; a 429 ("retry in N s", the faucet's per-client limit) is waited out, up to 4 times. */
 export async function fundSponsor(): Promise<void> {
   const s = passkeySponsor();
+  if (process.env.KIT11_RECYCLE === "on") { await fundTestWallet(s.address, 500, { label: "passkey owners' gas sponsor" }); return; }
   for (let i = 0; (await usdzBalance(s.address)) < centsToBaseUnits(500); i++) {
     try {
       metalAgent(["fund", s.address]);

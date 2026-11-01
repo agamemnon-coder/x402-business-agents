@@ -6,6 +6,7 @@
 //                                       0.02 *USDZ, so the policy has something to hold (funded from the faucet)
 // Metal testnet (B1). Releasing a held payment is a proposal the CFO approves with Face ID; the runner executes it.
 
+import { fundTestWallet } from "../metal/testFunds.js";
 import { formatUnits, type Address } from "viem";
 import { openDb } from "../db/open.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
@@ -25,6 +26,7 @@ if (!sweep) {
 if (cmd === "setup") {
   // Setting the policy is a transaction from the wallet itself; gas is paid in *USDZ.
   // The faucet allows one grant a minute per client; wait and try again when it says so.
+  if (process.env.KIT11_RECYCLE === "on") await fundTestWallet(sweep, 50, { label: "sweep wallet gas" });
   for (let i = 0; (await usdzBalance(sweep)) === 0n; i++) {
     try {
       metalAgent(["fund", sweep]);
@@ -44,7 +46,7 @@ if (cmd === "setup") {
   const file = keyPath("stranger.key.json");
   if (!existsSync(file)) metalAgent(["key", "create", "--out", file]);
   const { address } = JSON.parse((await import("node:fs")).readFileSync(file, "utf8")) as { address: Address };
-  if ((await usdzBalance(address)) === 0n) { metalAgent(["fund", address]); console.log(`funded the stranger test key ${address} from the faucet`); }
+  if ((await usdzBalance(address)) === 0n) { const how = await fundTestWallet(address, 50, { label: "stranger test key" }); console.log(`funded the stranger test key ${address} (${how === "faucet" ? "from the faucet" : "recycled test money"})`); }
   const tx = await transferUsdz(file, sweep, 2n * 10n ** 16n);
   console.log(`dev test: a stranger paid 0.02 *USDZ to the sweep wallet: https://testnet.metalntwx.com/tx/${tx}; run poll next`);
 } else if (cmd === "poll") {
