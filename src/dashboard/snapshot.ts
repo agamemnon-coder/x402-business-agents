@@ -631,6 +631,14 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     // Block 1: the account's owners are passkeys; the runner only relays.
     case "owners.account_created": return out(`Business account ${short(str(p.account))} created with two owners, ${(Array.isArray(p.owners) ? (p.owners as unknown[]).map(str) : []).join("'s and ")}'s passkeys (threshold 2): no server key can change its mandates`, "ok");
     case "owners.executed": return out(`Both passkeys signed ${s} on chain and the account ran it: ${str((p.action as P | undefined)?.what)} the ${str((p.action as P | undefined)?.agent)} mandate (up to ${str((p.action as P | undefined)?.cap)} a payment, ${str((p.action as P | undefined)?.budget)} in total); the runner only relayed it`, "ok", { tx: /^0x[0-9a-f]{64}$/i.test(str(p.tx)) ? str(p.tx) : null });
+    // Block 5.2: a card decline started the agent whose card it is.
+    case "card.decline_met": {
+      const who = agentWho(str(p.agent));
+      const what = str(p.proposal_id) ? `proposed a higher limit, ${str(p.proposal_id)}, for the CFO's Face ID` : "proposed no raise";
+      return str(p.source) === "claude"
+        ? out(`${capFirst(who)} read Airwallex's decline (${declineWords(str(p.reason))}) and ${what}${str(p.said) ? `: "${str(p.said)}"` : ""}`, "approval", { model: modelName(str(p.model)) })
+        : out(`Code met the decline (${declineWords(str(p.reason))}) and ${what}; the agent did not decide`, "approval");
+    }
     case "purchase.rail_refused": return out(`Code refused the Sourcing agent's payment to ${capFirst(s)}: ${str(p.why)}; nothing was charged`, "refusal");
     case "purchase.rails_chosen": {
       const ps = Array.isArray(p.purchases) ? (p.purchases as P[]) : [];

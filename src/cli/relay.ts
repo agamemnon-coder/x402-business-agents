@@ -34,6 +34,7 @@ import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { existsSync, readFileSync } from "node:fs";
 import { agentsOn } from "../config/agents.js";
+import { meetNewDeclines } from "../agents/declineTrigger.js";
 import { pausedCredential, pausesNotRevoked, syncPauses } from "../policy/pause.js";
 import { LivePauseChain } from "../metal/pauseChain.js";
 
@@ -66,7 +67,16 @@ if (args.includes("--enrol")) {
 // Airwallex's webhooks reach the relay; with the secret here too, the runner checks each one again and records it.
 const hookSecret = existsSync(keyPath(WEBHOOK_SECRET_FILE)) ? readFileSync(keyPath(WEBHOOK_SECRET_FILE), "utf8").trim() : "";
 console.log(`webhooks ${hookSecret ? "on: card transactions arrive from Airwallex as they happen" : "off (npm run cards -- webhook); card transactions come from the poll"}`);
-const onHook = hookSecret ? (h: Parameters<typeof handleAirwallexHook>[1]) => handleAirwallexHook(db, h, hookSecret) : undefined;
+// Block 5.2: with the agents on, a new card decline (from a webhook or the poll) starts the agent whose card it is.
+// One at a time; each decline is claimed once, so the CLI that caused it and this runner never both act on it.
+let declines: Promise<void> = Promise.resolve();
+const meetDeclines = () => {
+  if (!agentsOn()) return;
+  declines = declines.then(async () => {
+    for (const m of await meetNewDeclines(db, { by: "runner" })) console.log(`${stamp()} agent    ${m.source === "claude" ? "card decline met by the agent" : "card decline met by code"}${m.proposal_id ? `: ${m.proposal_id} waits for the CFO` : ": no raise"}`);
+  }).catch((e: Error) => console.log(`${stamp()} agent    card decline: ${redactSecrets(e.message).slice(0, 200)}`));
+};
+const onHook = hookSecret ? (h: Parameters<typeof handleAirwallexHook>[1]) => { const line = handleAirwallexHook(db, h, hookSecret); meetDeclines(); return line; } : undefined;
 // The CFO's policy in plain words from the phone (P2): Opus drafts, code checks, and only tightening can come this way.
 const draftPolicy = async (text: string) => {
   const r = await draftPolicyFromText(db, new Tools(db), text, new Date(), { tightenOnly: true });
@@ -100,6 +110,7 @@ async function cardsTick(): Promise<void> {
     if (synced.length) console.log(`${stamp()} cards    limits updated at Airwallex: ${synced.join(", ")}`);
     const fresh = await pollCardTransactions(db, issuing.rail);
     if (fresh) console.log(`${stamp()} cards    ${fresh} new card transaction(s) from Airwallex`);
+    if (fresh) meetDeclines();
     const orphans = await recoverTaskCards(db, issuing.rail);
     if (orphans) console.log(`${stamp()} cards    ${orphans} unfinished task card(s) frozen at Airwallex`);
     cardsError = "";

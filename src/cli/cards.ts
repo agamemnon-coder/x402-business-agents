@@ -28,8 +28,18 @@ import { keyPath } from "../metal/agentCli.js";
 import { relayConfig } from "../relay/config.js";
 import { agentsOn } from "../config/agents.js";
 import { chooseRails } from "../agents/railChoice.js";
+import { meetNewDeclines } from "../agents/declineTrigger.js";
 import { startRuntime } from "../world/runtime.js";
 import type { CardTransaction, IssuingSim } from "../airwallex/issuing.js";
+
+/** Block 5.2: the declines this command just caused start their agents here (claimed once; the runner skips them). */
+async function meetDeclinesHere(): Promise<void> {
+  for (const m of await meetNewDeclines(db, { by: "cli" })) {
+    const who = m.run.calls.length || m.source === "claude" ? `${m.run.model ?? "Claude"}` : "code";
+    console.log(`DECLINE AGENT    ${m.source === "claude" ? who : "not available; code"}: ${m.proposal_id ? `proposed ${m.proposal_id}` : "no raise"}${m.said ? `: "${m.said}"` : ""}`);
+    if (m.proposal_id) console.log(`                 ${approvalHint(db, m.proposal_id)}`);
+  }
+}
 
 /**
  * Block 5.1: the Sourcing agent's two purchases, each on the rail it picks; code checks the supplier accepts it. The
@@ -157,8 +167,10 @@ if (cmd === "status") {
   console.log(`PLAN             the sourcing agent subscribes to Packwise Starter, 19.99 EUR: ${ok.approved ? "approved by Airwallex" : `DECLINED (${ok.failureReason})`}`);
   const pro = await buyPlan(db, awx.sim, "packwise-pro");
   console.log(`NEW INFORMATION  it needs the Pro plan, 45.00 EUR, on a card that allows ${fromCents(cardRows(db).find((c) => c.agent === "sourcing")!.per_tx_cents)} a purchase: ${pro.approved ? "approved (the limit was already high enough)" : `DECLINED by Airwallex (${pro.failureReason})`}`);
+  // Block 5.2: with the agents on, the decline starts the Sourcing agent (it explains and proposes; code bounds it).
+  if (agentsOn() && !pro.approved) await meetDeclinesHere();
   const open = db.prepare("SELECT proposal_id FROM proposals WHERE kind = 'policy_change' AND status = 'PENDING_APPROVAL' AND created_by = 'sourcing'").get() as { proposal_id: string } | undefined;
-  if (!pro.approved && !open) {
+  if (!pro.approved && !open && !agentsOn()) {
     const p = proposeCardRaise(db, "sourcing", { perTx: "50.00" }, "Packwise's Pro plan costs 45.00 EUR a month; my card allows 30.00 per purchase, so Airwallex declined it. The Pro plan gives the faster prices our customers pay for. Monthly limit stays 100.00.");
     console.log(`REVISED DECISION the agent asks the CFO for 50.00 per purchase: ${p.proposal_id}, hash ${p.terms_sha256.slice(0, 8)}; ${approvalHint(db, p.proposal_id, p.terms_sha256.slice(0, 8))}`);
   }
@@ -166,6 +178,7 @@ if (cmd === "status") {
   // warehouse software on it, whatever its limits.
   const wrong = await buyPlan(db, awx.sim, "packwise-on-support-card");
   console.log(`CONTROL          the support agent's card tries warehouse software (MCC 5734) on a helpdesk-only card (MCC 7372): ${wrong.approved ? "APPROVED (the control did not hold)" : `declined by Airwallex (${wrong.failureReason})`}`);
+  if (agentsOn() && !wrong.approved) await meetDeclinesHere();
 } else if (cmd === "raise") {
   const [, agent, perTx, monthly] = args;
   const at = args.indexOf("--reason");

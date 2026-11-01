@@ -415,6 +415,16 @@ await timed("11 Cards: EUR 19.99 approved, EUR 45.00 declined, raise EUR 30 → 
   }
   raise = latest("policy_change", "status = 'PENDING_APPROVAL'") ?? "";
   check(!!raise, `raise proposal ${raise}`);
+  if (process.env.KIT11_AGENTS === "on") {
+    // Block 5.2: the decline started the agent whose card it is; a limit decline got a raise, the wrong-merchant one none.
+    const met = (db().prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'card.decline_met' AND seq > ? ORDER BY seq").all(railsFrom) as { subject: string; payload_json: string }[])
+      .map((r) => JSON.parse(r.payload_json) as { agent: string; source: string; reason: string; proposal_id: string | null });
+    const limit = met.find((m) => m.agent === "sourcing" && m.reason === "LIMIT_EXCEEDED");
+    check(!!limit && limit.proposal_id === raise, `the Sourcing agent met the limit decline and its raise is ${raise}`);
+    const mcc = met.find((m) => m.agent === "support");
+    check(!!mcc && mcc.proposal_id === null, "the Support agent met the wrong-merchant decline and proposed no raise");
+    say(`DECLINE AGENT ${met.map((m) => `${m.agent} ${m.reason}: ${m.source}${m.proposal_id ? ` → ${m.proposal_id}` : ", no raise"}`).join("; ")}`);
+  }
   await sign(cfo, raise, { tag: "card-raise" });
   await executed(raise);
   cli("cards.ts", "sync");

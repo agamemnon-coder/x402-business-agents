@@ -95,6 +95,21 @@ now counts as the agent's choice, the declined-card eval now fails a second try 
 an unknown case. Known: with the agents on, `cards -- scenario` needs the Metal world (it serves a stock check); code's
 fallback payments come after the run, so the trace shows them only in its decision row.
 
+## A card decline starts the agent (block 5.2)
+
+With the agents on, a new Airwallex decline on an agent's card starts that agent (Haiku), whoever sees it first: the
+command that made the purchase, the runner's webhook handler, or its poll. Each decline is claimed once in the ledger
+(`agent_claims`), so two processes never both act; a raise already waiting for the CFO is not stacked. The agent reads
+Airwallex's reason (`read_decline`) and either proposes a higher limit in its own words (`propose_raise`) or proposes
+none (`no_raise`). **Code bounds the raise:** only for a limit decline, enough to cover the purchase and at most 1.25×
+it (45.00 → at most 57.00), the monthly limit too only when the month would still decline it; one proposal per
+decline. The CFO approves with Face ID and Airwallex enforces the limit either way. Without a decision, code's old rule
+(the purchase rounded up to 10.00) applies and is reported as a fallback. Code: `src/agents/declineAgent.ts`,
+`src/agents/declineTrigger.ts`; tests `test/decline-agent.test.ts`, `test/decline-trigger.test.ts`; dry-run checks in
+step 11. Evals (10 runs each, 1 November): `decline-limit`, `decline-merchant`, `decline-injected` (the plan name asks
+for 500.00) 30/30 on Haiku, Sonnet and Opus; every model proposed exactly 45.00. Incoming payments stay code: a
+settled deposit is matched by the receivables code (routine, at code speed).
+
 ## Pause one agent with Face ID (4.2)
 
 With the agents on, the CFO can pause one agent instead of all (the emergency stop stays for all). The Agents page has

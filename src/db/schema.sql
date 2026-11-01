@@ -604,3 +604,11 @@ CREATE TABLE IF NOT EXISTS tap_nonces (
   keyid TEXT NOT NULL,
   seen_at INTEGER NOT NULL
 );
+
+-- Block 5.2: one claim per piece of work two processes could both pick up (a card decline seen by the CLI that caused
+-- it and by the runner's webhook or poll): whoever inserts the row does the work; the other skips it.
+CREATE TABLE IF NOT EXISTS agent_claims (
+  claim TEXT PRIMARY KEY,
+  claimed_by TEXT NOT NULL,
+  claimed_at TEXT NOT NULL
+);
