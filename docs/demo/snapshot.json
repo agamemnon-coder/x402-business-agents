@@ -2185,6 +2185,185 @@
           "proof": null
         }
       ]
+    },
+    "tower": {
+      "money_in": [
+        {
+          "label": "Stock checks sold",
+          "rail": "metal",
+          "unit": "USDZ",
+          "amount": "2.70",
+          "count": 50,
+          "proof": {
+            "kind": "tx",
+            "ref": "0x2b0231e7af8e59c7a64e072019349872068cc593096ab2b24bcde9b3c473c7ea"
+          },
+          "note": "paid by customers' agents per query, over x402"
+        },
+        {
+          "label": "Booked at Airwallex",
+          "rail": "airwallex",
+          "unit": "USDZ",
+          "amount": "1.35",
+          "count": 1,
+          "proof": {
+            "kind": "awx",
+            "ref": "56366c9d-e537-428f-8681-9c1a8c43c838"
+          },
+          "note": "earnings swept from Metal after finality, booked as a deposit (1 test USD = 1 USD, simulated deposit)"
+        }
+      ],
+      "agents": [
+        {
+          "agent": "sourcing",
+          "status": "active",
+          "mandate": {
+            "cap": "0.04",
+            "budget": "12.00",
+            "spent": "1.20",
+            "pending": "0.00",
+            "remaining": "10.80",
+            "used_pct": 10
+          },
+          "card": {
+            "spent_month": "64.99",
+            "monthly": "100.00",
+            "used_pct": 65,
+            "frozen": false
+          },
+          "last": null
+        },
+        {
+          "agent": "support",
+          "status": "active",
+          "mandate": {
+            "cap": "0.10",
+            "budget": "4.00",
+            "spent": "0.15",
+            "pending": "0.00",
+            "remaining": "3.85",
+            "used_pct": 4
+          },
+          "card": {
+            "spent_month": "0.00",
+            "monthly": "150.00",
+            "used_pct": 0,
+            "frozen": false
+          },
+          "last": null
+        },
+        {
+          "agent": "treasury",
+          "status": "active",
+          "mandate": {
+            "cap": "4.00",
+            "budget": "4.00",
+            "spent": "1.35",
+            "pending": "0.00",
+            "remaining": "2.65",
+            "used_pct": 34
+          },
+          "card": {
+            "spent_month": "0.00",
+            "monthly": "50.00",
+            "used_pct": 0,
+            "frozen": false
+          },
+          "last": null
+        }
+      ],
+      "money_out": [
+        {
+          "label": "Stock data bought",
+          "rail": "metal",
+          "unit": "USDZ",
+          "amount": "1.20",
+          "count": 50,
+          "proof": {
+            "kind": "tx",
+            "ref": "0xf6b06a110202d82ee4554ef78643e157f18285460b3d4065607672ce1915f555"
+          },
+          "note": "from the stock-data suppliers, under the Sourcing mandate"
+        },
+        {
+          "label": "Refunds",
+          "rail": "metal",
+          "unit": "USDZ",
+          "amount": "0.15",
+          "count": 3,
+          "proof": {
+            "kind": "tx",
+            "ref": "0xa0c537b44c103df51ffa07865f6f3d51d4cc12eff5cb4140565e02a0c2d470ad"
+          },
+          "note": "to customers, under the Support mandate"
+        },
+        {
+          "label": "Card spend",
+          "rail": "airwallex",
+          "unit": "EUR",
+          "amount": "64.99",
+          "count": 2,
+          "proof": {
+            "kind": "awx",
+            "ref": "01a18bbb-6607-7000-ac01-0b4d20104e8e"
+          },
+          "note": "software on the agents' company cards"
+        },
+        {
+          "label": "Supplier payouts",
+          "rail": "airwallex",
+          "unit": "EUR",
+          "amount": "1850.00",
+          "count": 1,
+          "proof": {
+            "kind": "awx",
+            "ref": "4d508b0b-ef38-41d3-b96e-f6cc3f5cfeb4"
+          },
+          "note": "SWIFT, after the CFO's Face ID"
+        }
+      ],
+      "pnl": {
+        "usdz": {
+          "sales": "2.70",
+          "upstream": "1.20",
+          "refunds": "0.15",
+          "net": "1.35"
+        },
+        "eur": {
+          "card_spend": "64.99",
+          "payouts": "1850.00",
+          "fees": "0.00",
+          "out": "1914.99"
+        }
+      },
+      "enforced": [
+        {
+          "who": "purser",
+          "count": 0,
+          "last": null
+        },
+        {
+          "who": "metal",
+          "count": 1,
+          "last": {
+            "reason": "mandate_cap_exceeded",
+            "at": "2026-10-30T07:08:31.940Z",
+            "proof": null
+          }
+        },
+        {
+          "who": "airwallex",
+          "count": 2,
+          "last": {
+            "reason": "MERCHANT_CATEGORY_NOT_ALLOWED",
+            "at": "2026-10-30T07:32:24.992Z",
+            "proof": {
+              "kind": "awx",
+              "ref": "01a18bb9-6320-7000-8874-90025a882c13"
+            }
+          }
+        }
+      ]
     }
   },
   "proof": {

@@ -71,6 +71,10 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!(await page.isVisible("text=Judge tour · 3 minutes"))) fail(`/ ${tag}: no "Judge tour" button for a guest`);
     if ((await page.locator("#tour .tsteps > li").count()) !== 5) fail(`/ ${tag}: the judge tour does not have five steps`);
     if (!(await page.isVisible("#kitline"))) fail(`/ ${tag}: no Kit 11 line on the landing`);
+    // Design 4.1: the control tower from the recorded run, with its three agents and who enforced each refusal.
+    if (!(await page.isVisible("#l-tower"))) fail(`/ ${tag}: no control tower on the landing`);
+    if ((await page.locator("#l-t-agents .tagent").count()) !== 3) fail(`/ ${tag}: the control tower does not show three agents`);
+    if ((await page.locator("#l-enforced-body .tenf").count()) !== 3) fail(`/ ${tag}: "Enforced by" does not show Purser, Metal and Airwallex`);
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.

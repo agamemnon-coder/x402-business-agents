@@ -61,4 +61,13 @@ describe("the control tower", () => {
     audit(db, "sourcing", "upstream.refused", "9", { reason: "mandate_cap_exceeded", refused_by: "metal" });
     expect(towerView(db, inputs).enforced[1]!.count).toBe(2);
   });
+
+  it("reads an older row without refused_by: a bare code is Metal's facilitator, Purser's own always has its detail (Metal QA)", () => {
+    const db = world();
+    audit(db, "sourcing", "upstream.refused", "41", { reason: "mandate_cap_exceeded", seq: 41 });
+    audit(db, "sourcing", "upstream.refused", "42", { reason: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", seq: 42 });
+    const e = towerView(db, inputs).enforced;
+    expect(e[1]!.count).toBe(2);
+    expect(e[0]!.count).toBe(2);
+  });
 });
