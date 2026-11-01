@@ -10,7 +10,7 @@ import { capRefusal, loosens, rules } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { fourEyes } from "../src/policy/fourEyes.js";
 import { wantCardStatus } from "../src/policy/cards.js";
-import { carriedCents, chainBudgetCents, checkCarried, lifetime, executePauseChange, latestRevoked, paused, pausesNotRevoked, resumeExpiresIn, resumedSince, syncPauses, type PauseChain } from "../src/policy/pause.js";
+import { carriedCents, chainBudgetCents, checkCarried, lifetime, moveTargets, executePauseChange, latestRevoked, paused, pausesNotRevoked, resumeExpiresIn, resumedSince, syncPauses, type PauseChain } from "../src/policy/pause.js";
 import { health } from "../src/ops/health.js";
 import { setupCards } from "../src/policy/cards.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
@@ -222,5 +222,30 @@ describe("block 6: a rebalance after a resume counts what was spent before the p
     expect(() => checkCarried(db, [{ agent: "support", spent_before_pause: "0.00" }])).toThrow(/resumed since/);
     expect(() => checkCarried(db, [{ agent: "support", spent_before_pause: "0.15" }])).not.toThrow();
     expect(() => checkCarried(db, [{ agent: "support" }])).toThrow(/resumed since/);
+  });
+});
+
+describe("block 6: the rebalance the dry run proposes after a resume", () => {
+  it("moves an amount from one agent's lifetime budget to another's, caps unchanged, others untouched", () => {
+    const current = [
+      { agent: "sourcing" as const, capCents: 4, budgetCents: 1400, spentCents: 120 },
+      { agent: "treasury" as const, capCents: 200, budgetCents: 200, spentCents: 135 },
+      { agent: "support" as const, capCents: 10, budgetCents: 400, spentCents: 15 },
+    ];
+    expect(moveTargets(current, { from: "treasury", to: "support", cents: 50 })).toEqual([
+      { agent: "sourcing", capCents: 4, budgetCents: 1400 },
+      { agent: "treasury", capCents: 200, budgetCents: 150 },
+      { agent: "support", capCents: 10, budgetCents: 450 },
+    ]);
+  });
+
+  it("refuses a move that leaves the giver at or below what it spent, or moves nothing", () => {
+    const current = [
+      { agent: "treasury" as const, capCents: 200, budgetCents: 200, spentCents: 135 },
+      { agent: "support" as const, capCents: 10, budgetCents: 400, spentCents: 15 },
+    ];
+    expect(() => moveTargets(current, { from: "treasury", to: "support", cents: 65 })).toThrow(/above what it spent/);
+    expect(() => moveTargets(current, { from: "treasury", to: "support", cents: 0 })).toThrow(/positive/);
+    expect(() => moveTargets(current, { from: "treasury", to: "treasury", cents: 10 })).toThrow(/two different agents/);
   });
 });

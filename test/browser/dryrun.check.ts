@@ -426,6 +426,26 @@ if (process.env.KIT11_AGENTS === "on") await timed("12b Pause the Support agent 
     `the resumed mandate has what was left of the budget (${budgetOf(before) - spentBefore} of ${budgetOf(before)} base units), so the lifetime limit is unchanged`);
   check(capRefusal(db(), "support", 5) === null, "Purser lets the Support agent pay again");
 });
+// Block 6, agents on: a rebalance right after the resume. The resumed mandate's spend started at nothing on chain; the
+// plan works on lifetime figures, so the new Support mandate gets its old chain budget plus the 0.50 moved, and the
+// spend since the resume carries over in the replace.
+if (process.env.KIT11_AGENTS === "on") await timed("12c Rebalance right after the resume: 0.50 from Treasury to Support, both passkeys", async () => {
+  const before = await activeMandate("support");
+  const budgetOf = (m: typeof before) => extractTerms(m.credential).constraints.budget;
+  const spentBefore = await mandateSpent(before);
+  cli("rebalance.ts", "--from", "treasury", "--to", "support", "--amount", "0.50", "--reason", "dry run: rebalance right after the resume");
+  const r = latest("mandate_replace", "status = 'PENDING_APPROVAL'") ?? "";
+  check(!!r, `rebalance proposal ${r}`);
+  const terms = JSON.parse((db().prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(r) as { terms_json: string }).terms_json) as { steps: { agent: string; budget: string; budget_on_chain?: string; spent_before_pause?: string }[] };
+  const step = terms.steps.find((x) => x.agent === "support");
+  check(!!step?.budget_on_chain && !!step.spent_before_pause, `the signed terms show Support's lifetime budget ${step?.budget}, on chain ${step?.budget_on_chain}, spent before the pause ${step?.spent_before_pause}`);
+  check((await sign(cfo, r, { tag: "rebalance-cfo" })) === "1 of 2 approvals", "rebalance: first passkey 1 of 2 (four eyes)");
+  await sign(controller, r, { tag: "rebalance-controller" });
+  await executed(r);
+  const after = await activeMandate("support");
+  check(budgetOf(after) === budgetOf(before) + 500_000_000_000_000_000n, `the new Support mandate on chain: ${budgetOf(after)} = ${budgetOf(before)} + 0.50 (the spend before the pause still counted)`);
+  check((await mandateSpent(after)) === spentBefore, "the spend since the resume carried over in the replace");
+});
 await timed("13 Bank change for Bergtex in three steps (test identities)", async () => {
   const req = cli("payee.ts", "request", "Bergtex Textil GmbH", "DE02100100100006820101", "PBNKDEFFXXX");
   const id = /(B-\d{4})/.exec(req)?.[1] ?? "";

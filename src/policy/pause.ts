@@ -13,6 +13,7 @@ import type { DB } from "../db/open.js";
 import { applyPolicyChanges, checkChanges, type PolicyChangeTerms } from "../executors/policyChange.js";
 import { beginExecution, finishExecution } from "./approvals.js";
 import { fromCents, toCents } from "../lib/money.js";
+import type { Agent } from "../config/policy.js";
 
 export { paused } from "./rules.js";
 
@@ -155,4 +156,17 @@ export function checkCarried(db: DB, steps: { agent: string; spent_before_pause?
     const atProposal = s.spent_before_pause ? toCents(s.spent_before_pause) : 0;
     if (carriedCents(db, s.agent) !== atProposal) throw new Error(`${s.agent} was resumed since this proposal: its budgets on chain would be wrong; a new proposal is needed`);
   }
+}
+
+/**
+ * The targets for moving an amount of lifetime budget from one agent to another, caps unchanged and the others as they
+ * are (block 6's dry-run step: a rebalance right after a resume). The giver must keep more than it already spent.
+ */
+export function moveTargets(current: { agent: Agent; capCents: number; budgetCents: number; spentCents: number }[], m: { from: Agent; to: Agent; cents: number }): { agent: Agent; capCents: number; budgetCents: number }[] {
+  if (!Number.isSafeInteger(m.cents) || m.cents <= 0) throw new Error("the amount to move must be a positive whole number of cents");
+  if (m.from === m.to) throw new Error("a move needs two different agents");
+  const from = current.find((c) => c.agent === m.from);
+  if (!from || !current.some((c) => c.agent === m.to)) throw new Error(`no mandate for ${!from ? m.from : m.to}`);
+  if (from.budgetCents - m.cents <= from.spentCents) throw new Error(`${m.from} must keep a budget above what it spent (${fromCents(from.spentCents)})`);
+  return current.map((c) => ({ agent: c.agent, capCents: c.capCents, budgetCents: c.budgetCents + (c.agent === m.to ? m.cents : c.agent === m.from ? -m.cents : 0) }));
 }

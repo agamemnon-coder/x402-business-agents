@@ -10,7 +10,7 @@ import {
 } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { issueReplacementCredential } from "../executors/ownerSigner.js";
-import { carriedCents, chainBudgetCents, lifetime } from "../policy/pause.js";
+import { carriedCents, chainBudgetCents, lifetime, moveTargets } from "../policy/pause.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { activeMandate, mandateSpent, type LoadedMandate } from "../metal/mandate.js";
@@ -102,27 +102,7 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
   const steps = planReplaceSteps([...current.values()].map((c) => c.now), design.targets);
   const firstId = nextProposalId(db);
 
-  // Credentials are issued before approval (off-chain, no gas), so their hash goes into the terms.
-  const stepTerms: ReplaceStepTerms[] = steps.map((s) => {
-    const { m, chainSpentCents, carriedCents: carried } = current.get(s.agent)!;
-    // Block 6: the plan's budget is the agent's lifetime budget; on chain it is that minus what a resume carried off.
-    const onChain = chainBudgetCents(s.budgetCents, carried, chainSpentCents);
-    const path = issueReplacementCredential(
-      { agent: s.agent, principal: addr.business, capCents: s.capCents, budgetCents: onChain, payees: [PAYEE[s.agent](addr)], description: `kit11 ${firstId} ${s.agent}` },
-      firstId, m.keyFile,
-    );
-    const next = extractTermsFrom(path);
-    return {
-      order: String(s.order), agent: s.agent, principal: addr.business.toLowerCase(),
-      cap: fromCents(s.capCents), budget: fromCents(s.budgetCents),
-      payees: [PAYEE[s.agent](addr).address.toLowerCase()].sort(),
-      expires_at: new Date(Number(next.constraints.expiry) * 1000).toISOString().replace(".000Z", "Z"),
-      credential_hash: next.hash, replaces_credential_hash: m.credentialHash,
-      spent_at_proposal: fromCents(chainSpentCents),
-      // Only after a pause: what the CFO signs shows the budget on chain and the spend before the pause next to it.
-      ...(carried > 0 ? { budget_on_chain: fromCents(onChain), spent_before_pause: fromCents(carried) } : {}),
-    };
-  });
+  const stepTerms = replaceStepTerms(addr, current, steps, firstId);
 
   const notice = readFileSync(ev.noticePath, "utf8");
   const evidence = [
@@ -149,6 +129,57 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
     })), { id: "C", label: "pause sales", sell: null, margin: null, margin_percent: null }],
   }, now);
   return proposals;
+}
+
+/**
+ * A rebalance the CFO asks for, outside a price rise: move part of one agent's lifetime budget to another (block 6: it
+ * must work after a pause and resume too). One option at the current sell price; mandate changes take four eyes when
+ * that is on, like any. The steps and their credentials are built exactly as for a price rise.
+ */
+export async function proposeRebalance(db: DB, addr: Addresses, move: { from: Agent; to: Agent; cents: number }, reason: string, sellCents: number, upstreamCents: number, now = new Date()) {
+  const current = await mandatesNow(db);
+  const targets = moveTargets([...current.values()].map((c) => c.now), move);
+  const steps = planReplaceSteps([...current.values()].map((c) => c.now), targets);
+  if (steps.length === 0) throw new Error("nothing to change");
+  const id = nextProposalId(db);
+  const stepTerms = replaceStepTerms(addr, current, steps, id);
+  const evidence = [{ type: "cfo_request", ref: reason.slice(0, 200), sha256: sha256Hex(reason) }];
+  const terms: MandateReplaceTerms = {
+    schema: TERMS_SCHEMA, kind: "mandate_replace", proposal_id: id,
+    expires_at: new Date(now.getTime() + MANDATE_PROPOSAL_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    option: "A", query_price: fromCents(sellCents), upstream_price: fromCents(upstreamCents), margin: fromCents(sellCents - upstreamCents),
+    total_budget: fromCents(steps.at(-1)!.totalAfterCents), steps: stepTerms, evidence,
+  };
+  return createProposal(db, { terms, createdBy: "treasury", evidence }, now);
+}
+
+type Current = Awaited<ReturnType<typeof mandatesNow>>;
+
+/**
+ * Each replace step's terms, with its credential issued now (off-chain, no gas) so its hash goes into the terms the CFO
+ * signs. Block 6: a plan's budget is the agent's lifetime budget; on chain it is that minus what a resume carried off.
+ */
+function replaceStepTerms(addr: Addresses, current: Current, steps: ReturnType<typeof planReplaceSteps>, firstId: string): ReplaceStepTerms[] {
+  return steps.map((s) => {
+    const { m, chainSpentCents, carriedCents: carried } = current.get(s.agent)!;
+    // Block 6: the plan's budget is the agent's lifetime budget; on chain it is that minus what a resume carried off.
+    const onChain = chainBudgetCents(s.budgetCents, carried, chainSpentCents);
+    const path = issueReplacementCredential(
+      { agent: s.agent, principal: addr.business, capCents: s.capCents, budgetCents: onChain, payees: [PAYEE[s.agent](addr)], description: `kit11 ${firstId} ${s.agent}` },
+      firstId, m.keyFile,
+    );
+    const next = extractTermsFrom(path);
+    return {
+      order: String(s.order), agent: s.agent, principal: addr.business.toLowerCase(),
+      cap: fromCents(s.capCents), budget: fromCents(s.budgetCents),
+      payees: [PAYEE[s.agent](addr).address.toLowerCase()].sort(),
+      expires_at: new Date(Number(next.constraints.expiry) * 1000).toISOString().replace(".000Z", "Z"),
+      credential_hash: next.hash, replaces_credential_hash: m.credentialHash,
+      spent_at_proposal: fromCents(chainSpentCents),
+      // Only after a pause: what the CFO signs shows the budget on chain and the spend before the pause next to it.
+      ...(carried > 0 ? { budget_on_chain: fromCents(onChain), spent_before_pause: fromCents(carried) } : {}),
+    };
+  });
 }
 
 function extractTermsFrom(path: string) {
