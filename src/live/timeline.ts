@@ -25,6 +25,9 @@ export interface LiveScene {
   rail: "airwallex" | "metal" | null;
   /** Money on the move: along a lane, from an agent (or to it, "in"), approved, or stopped at the lane's gate. */
   moves: LiveMove[];
+  /** What happened on a rail without money moving (a mandate replaced on chain). A rail with neither moves nor notes in
+   *  a scene is not drawn in it: no empty boxes (Max, 1 Nov). */
+  notes?: LiveNote[];
   /** What the CFO's phone shows, and when. */
   phone: { at: number; text: string; faceId: boolean } | null;
   /** The one big number of the scene. */
@@ -45,7 +48,22 @@ export interface LiveMove {
   /** The words on the gate the payment stops at. */
   gate?: string;
 }
-export interface LiveTimeline { company: string; recorded_at: string; run: string; scenes: LiveScene[] }
+export interface LiveNote { lane: "airwallex" | "metal"; text: string; at: number }
+export interface LiveTimeline {
+  company: string; recorded_at: string; run: string; scenes: LiveScene[];
+  /** What Claude did in this recording: "decided" only when the agents really decided (an autonomous run, a decision by
+   *  Claude on record); "read" for the 30 October recording, which predates the autonomous agents. */
+  claude: "decided" | "read";
+}
+
+/** The stranger in the receive-policy scene, in plain words (it was "Unknown sender"). */
+export const STRANGER = "An unknown address (not a customer)";
+
+/** True only for a recording in which an agent's decision by Claude is on record (an autonomous run's agent chat or traces). */
+export function agentsDecided(recorded: Recorded): boolean {
+  const snap = recorded.snapshot as unknown as { agent_chat?: { kind?: string; by?: string }[]; traces?: { model?: string | null; decision_seq?: number | null }[] };
+  return (snap.agent_chat ?? []).some((c) => c.kind === "decision" && c.by === "claude") || (snap.traces ?? []).some((t) => !!t.model && t.decision_seq != null);
+}
 
 /**
  * The moments recorded after Friday run 1, in their own live runs. Kept here, in the run logs' words (their result
@@ -113,6 +131,12 @@ export function buildLiveTimeline(story: Story, recorded: Recorded): LiveTimelin
   const blocked = fact("stopped", /Invoice blocked/).value.match(/EUR ([\d,.]+)/)?.[1];
   if (!blocked) throw new Error("the recorded story lacks the blocked invoice");
   const firstSale = dispute.sales[0] as { tx?: string } | undefined;
+  const replaced = (step("faceid").facts ?? []).filter((f) => /mandate replaced/i.test(f.label)).length;
+  if (!replaced) throw new Error("the recorded story lacks the replaced mandates");
+  // The audit rows are counted once, in the big number; the fact keeps the rest ("chain intact, head …").
+  const auditRows = fact("audit", /Audit rows/);
+  const auditCount = auditRows.value.split(",")[0]!;
+  const auditRest = auditRows.value.slice(auditCount.length).replace(/^,\s*/, "");
   const none = { moves: [] as LiveMove[], phone: null, big: null, proofs: [] as LiveFact[] };
   const company = story.company ?? "Northwind Outdoor";
   const run = "Friday run 1, 30 October 2026 (Metal testnet, Airwallex sandbox)";
@@ -128,7 +152,7 @@ export function buildLiveTimeline(story: Story, recorded: Recorded): LiveTimelin
       models: [{ model: "Haiku", did: "sorted the notice" }, { model: "Sonnet", did: "read the new price" }], source: run, rail: "metal", moves: [{ lane: "metal", from: "Sourcing agent", to: "Stockline", amount: FROM_RUN_LOG_PRICE, outcome: "ok", at: 0.4 }, { lane: "metal", from: "Sourcing agent", to: "Stockline", amount: newPrice, outcome: "refused", at: 2.6, gate: `Metal refuses: over the ${cap} cap on chain` }], phone: null, big: { value: `${newPrice} > ${cap}`, label: "refused by the mandate on chain: nothing moved, the customer was not charged" }, proofs: [{ label: "Refused on chain", value: "mandate_cap_exceeded (no transaction: nothing moved)", href: null }, proof("metal", /A mandate per agent/, "The mandate")] },
     { id: "faceid", kind: "faceid", seconds: 6, actor: "cfo", title: "The CFO decides, with Face ID", line: "The phone shows the exact terms. Face ID signs their hash; the mandates are replaced in a safe order.",
       facts: [{ label: "Approved", value: step("faceid").approval?.proposal ? `${step("faceid").approval!.proposal}: ${step("faceid").approval!.what}` : "", href: null }, fact("faceid", /mandate replaced/i)],
-      models: [{ model: "Opus", did: fact("faceid", /Advice/).value.replace(/^Opus (advised )?/, "") + " (advice)" }], source: run, rail: "metal", moves: [], phone: { at: 0.6, text: `${step("faceid").approval?.proposal ?? ""}: new mandates`, faceId: true }, big: { value: "Face ID", label: "the CFO signs the exact terms; the mandates are replaced on chain" }, proofs: [proof("metal", /Mandate replaced/, "Replaced on chain")] },
+      models: [{ model: "Opus", did: fact("faceid", /Advice/).value.replace(/^Opus (advised )?/, "") + " (advice)" }], source: run, rail: "metal", moves: [], notes: [{ lane: "metal", text: `${replaced} mandate${replaced === 1 ? "" : "s"} replaced on chain ✓`, at: 1.6 }], phone: { at: 0.6, text: `${step("faceid").approval?.proposal ?? ""}: new mandates`, faceId: true }, big: { value: "Face ID", label: "the CFO signs the exact terms; the mandates are replaced on chain" }, proofs: [proof("metal", /Mandate replaced/, "Replaced on chain")] },
     { id: "invoice", kind: "invoice", seconds: 7, actor: "treasury", title: "A fake invoice goes nowhere", line: "An invoice with changed bank details, and a planted instruction in a customer's email: both stopped before any money moves.",
       facts: [fact("stopped", /Invoice blocked/), fact("stopped", /Planted/)],
       models: [{ model: "Haiku", did: "sorted the document" }, { model: "Sonnet", did: "read the invoice" }, { model: "Opus", did: "do not pay (advice)" }], source: run, rail: null, moves: [{ lane: "airwallex", from: "Treasury agent", to: "a changed IBAN", amount: `€${blocked}`, outcome: "blocked", at: 1.2, gate: "Purser blocks it before Airwallex" }], phone: null, big: { value: `€${blocked}`, label: "to changed bank details: blocked before any money moved" }, proofs: [] },
@@ -141,9 +165,9 @@ export function buildLiveTimeline(story: Story, recorded: Recorded): LiveTimelin
     { id: "fx", kind: "fx", seconds: 11, actor: "treasury", title: "The euro bill", line: "Only the euro shortfall is bought, on a checked rate; the SWIFT payment carries the approval's hash.",
       facts: [fact("swift", /Conversion/), fact("swift", /SWIFT/)], models: [], source: run, rail: "airwallex", moves: [{ lane: "airwallex", from: "Treasury agent", to: "EUR account", amount: `USD ${conversion[1]}`, outcome: "ok", at: 0.6 }, { lane: "airwallex", from: "Treasury agent", to: "Supplier (SWIFT)", amount: `€${swiftAmount}`, outcome: "ok", at: 5.4 }], phone: { at: 3.4, text: `${step("swift").approval?.proposal ?? ""}: pay €${swiftAmount} by SWIFT`, faceId: true }, big: { value: `€${swiftAmount}`, label: `paid by SWIFT (marked paid by the sandbox); only the missing €${conversion[2]} converted, because the demo plan sets aside most of the sandbox's test euros; fee €${fee}` }, proofs: [proof("airwallex", /FX conversion/, "Conversion"), proof("airwallex", /SWIFT payout/, "SWIFT payout")] },
     { id: "wall", kind: "wall", seconds: 5, actor: "stranger", title: "Money from a stranger", line: "A payment from an unknown address stops at Metal's receive policy. The CFO decides what happens to it.",
-      facts: [{ label: "Held", value: LIVE_RUNS.quarantine.held, href: null }, { label: "Returned", value: LIVE_RUNS.quarantine.returned, href: `${EXPLORER}${LIVE_RUNS.quarantine.tx}` }], models: [], source: LIVE_RUNS.quarantine.source, rail: "metal", moves: [{ lane: "metal", from: "Unknown sender", to: "Sweep wallet", amount: "0.02", outcome: "held", at: 0.6, gate: "Metal's receive policy holds it" }], phone: { at: 2.6, text: "Return the 0.02 to the sender", faceId: true }, big: { value: "0.02 held", label: "money from a stranger never reaches the books; returned after the CFO's Face ID" }, proofs: [{ label: "Returned on chain", value: `${LIVE_RUNS.quarantine.tx.slice(0, 10)}…${LIVE_RUNS.quarantine.tx.slice(-4)}`, href: `${EXPLORER}${LIVE_RUNS.quarantine.tx}` }] },
-    { id: "end", kind: "end", seconds: 6, actor: null, title: "Every payment has a proof.", line: "The CFO keeps the pen.", facts: [fact("audit", /Audit rows/)], models: [], source: run, rail: null, ...none, big: { value: fact("audit", /Audit rows/).value.split(",")[0]!, label: "audit rows, hash-chained: every euro has a proof" } },
+      facts: [{ label: "Held", value: LIVE_RUNS.quarantine.held, href: null }, { label: "Returned", value: LIVE_RUNS.quarantine.returned, href: `${EXPLORER}${LIVE_RUNS.quarantine.tx}` }], models: [], source: LIVE_RUNS.quarantine.source, rail: "metal", moves: [{ lane: "metal", from: STRANGER, to: "Sweep wallet", amount: "0.02", outcome: "held", at: 0.6, gate: "Metal's receive policy holds it" }], phone: { at: 2.6, text: "Return the 0.02 to the sender", faceId: true }, big: { value: "0.02 held", label: "money from a stranger never reaches the books; returned after the CFO's Face ID" }, proofs: [{ label: "Returned on chain", value: `${LIVE_RUNS.quarantine.tx.slice(0, 10)}…${LIVE_RUNS.quarantine.tx.slice(-4)}`, href: `${EXPLORER}${LIVE_RUNS.quarantine.tx}` }] },
+    { id: "end", kind: "end", seconds: 6, actor: null, title: "Every payment has a proof.", line: "The CFO keeps the pen.", facts: auditRest ? [{ label: "Audit log", value: auditRest.charAt(0).toUpperCase() + auditRest.slice(1), href: null }] : [], models: [], source: run, rail: null, ...none, big: { value: auditCount, label: "audit rows, hash-chained: every euro has a proof" } },
   ];
   for (const s of scenes) for (const f of s.facts) if (!f.value) throw new Error(`scene ${s.id}: empty fact ${f.label}`);
-  return { company, recorded_at: story.recorded_at, run, scenes };
+  return { company, recorded_at: story.recorded_at, run, scenes, claude: agentsDecided(recorded) ? "decided" : "read" };
 }

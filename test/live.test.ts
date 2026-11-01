@@ -43,6 +43,35 @@ describe("the Purser live timeline", () => {
     expect(() => buildLiveTimeline(story, noCase)).toThrow(/no Dispute desk case/);
   });
 
+  // Max, 1 Nov: no empty rail boxes; the audit-row count once; the stranger in plain words; "Powered by Claude" only
+  // for a run in which the agents decided.
+  it("draws a scene's rail only with something on it: money moving or a note", () => {
+    const t = buildLiveTimeline(story, recorded);
+    for (const s of t.scenes) if (s.rail) expect({ scene: s.id, shown: s.moves.some((m) => m.lane === s.rail) || (s.notes ?? []).some((n) => n.lane === s.rail) }).toEqual({ scene: s.id, shown: true });
+    expect(t.scenes.find((s) => s.id === "faceid")!.notes).toEqual([{ lane: "metal", text: "2 mandates replaced on chain ✓", at: 1.6 }]);
+  });
+
+  it("shows the audit-row count once on the whole page", () => {
+    const t = buildLiveTimeline(story, recorded);
+    const rows = String((recorded.snapshot as unknown as { audit: { rows: number } }).audit.rows);
+    const shown = t.scenes.flatMap((s) => [s.title, s.line, s.big?.value ?? "", s.big?.label ?? "", ...s.facts.map((f) => `${f.label} ${f.value}`), ...s.proofs.map((p) => `${p.label} ${p.value}`)]);
+    expect(shown.filter((x) => new RegExp(`\\b${rows}\\b`).test(x))).toEqual([rows]);
+  });
+
+  it("names the stranger in plain words, never \"Unknown sender\"", () => {
+    const html = livePage();
+    expect(html).not.toMatch(/Unknown sender/);
+    expect(buildLiveTimeline(story, recorded).scenes.find((s) => s.id === "wall")!.moves[0]!.from).toBe("An unknown address (not a customer)");
+  });
+
+  it("says Claude read the documents for the 30 October recording, and that the agents decided only when one did", () => {
+    expect(buildLiveTimeline(story, recorded).claude).toBe("read");
+    const decided = { ...recorded, snapshot: { ...recorded.snapshot, agent_chat: [{ kind: "decision", by: "claude", who: "support", text: "settled" }] } } as unknown as Recorded;
+    expect(buildLiveTimeline(story, decided).claude).toBe("decided");
+    const fallback = { ...recorded, snapshot: { ...recorded.snapshot, agent_chat: [{ kind: "decision", by: "fallback", who: "support", text: "code" }] } } as unknown as Recorded;
+    expect(buildLiveTimeline(story, fallback).claude).toBe("read");
+  });
+
   it("serves one page whose only script and style the CSP allows, with the data escaped", () => {
     const html = livePage();
     expect(html).not.toContain("__LIVE_JSON__");

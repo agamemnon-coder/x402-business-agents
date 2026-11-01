@@ -115,6 +115,8 @@ export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readF
 }
 
 /** "Purser live": the animated day, its timeline inside the page (src/live/timeline.ts), built from the recordings. */
+// The banner about the old (30 October) recording stays on /live for now (withNamesNote): Max removes it after
+// Monday's reserve run is recorded, not before. Do not drop it with other /live fixes.
 const LIVE_TEMPLATE = withNav(withNamesNote(readFileSync(new URL("../live/live.html", import.meta.url), "utf8")), "live");
 export const LIVE_CSP = cspFor(LIVE_TEMPLATE);
 export function livePage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
