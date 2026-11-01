@@ -91,6 +91,9 @@ async function pollOnce(): Promise<void> {
     for (const d of r.items) {
       if (d.status !== "SETTLED" || (d.global_account_id && !mine.has(d.global_account_id)) || !["EUR", "GBP"].includes(d.currency)) continue;
       if (db.prepare("SELECT 1 FROM receipts WHERE deposit_id = ?").get(d.id)) continue;
+      // In the autonomous world one retailer pays one invoice: match only that deposit, so other test worlds on the
+      // same sandbox (their own deposits) do not show up here as unmatched money.
+      if (wanted && d.id !== wanted) continue;
       const m = matchReceipt(db, {
         deposit_id: d.id, global_account_id: d.global_account_id ?? null, currency: d.currency, amount_cents: toCents(Number(d.amount).toFixed(2)),
         reference: d.reference ?? null, payer: d.payer_name ?? null, received_at: d.created_at ?? new Date().toISOString(),
