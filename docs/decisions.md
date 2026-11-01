@@ -537,3 +537,27 @@ reference cannot be taken over (language, licence), say why and test against its
 reads "implements Visa's TAP specification, verified against Visa's open-source reference". The claim text is chosen
 only after the interop test, on what is true. Content-Digest binds the body if TAP or web-bot-auth allows it. The
 Packwise checkout is labelled as a merchant we run (simulated). Built Monday after the reserve run.
+
+Found before building (1 November, evening; sources in the research notes, repo state 16d59bd):
+
+- **Licence: Max decides, not Claude.** Visa's reference has no open-source licence. Its LICENSE.md says that using,
+  downloading or installing the code means agreeing to the Visa Developer Center Terms of Use and the TAP Product
+  Terms. Copying any of it into this repo, or running it in CI, is accepting a contract, so it waits for Max: he reads
+  https://developer.visa.com/terms and
+  https://developer.visa.com/capabilities/trusted-agent-protocol/product-terms and says yes or no. Until then no code
+  of the reference enters this repo or CI, and nothing is attributed as "uses Visa's code".
+- **The unmodified reference verifier rejects RFC 9421-correct signatures.** It reads `keyId` (camelCase; the RFC
+  spelling `keyid` fails first, open issue #27), accepts only the label `sig2`, rebuilds only `@authority`, `@path`,
+  `content-type` and `host` (any other covered component is dropped, so the signature fails), and takes `@path` with
+  the query string. An interop test "both ways" against the unmodified reference therefore needs our agent to sign the
+  way the reference reads (`sig2`, `@authority` `@path` only, no query string in checkout URLs) and to state the key
+  id in the spelling it reads; our merchant accepts both spellings and the RFC one is what we document.
+- **Content-Digest is not part of TAP.** The TAP signature covers only `@authority` and `@path`; neither TAP nor the
+  reference binds the body. Following the spec (Max's rule) means `sig2` stays exactly as TAP says. Proposal: the body
+  is bound by a second signature in the same headers (`sig1`, covering `@method`, `@authority`, `@path` and
+  `content-digest` per RFC 9530), checked by our merchant; the reference ignores it. The red-team case "tampered body"
+  is then refused by `sig1`, and the claim never says TAP itself binds the body.
+- The reference ships no test vectors (open issue #23 asks Visa for them). Without the licence, the interop evidence
+  is: TAP's published example headers as test cases, plus a clean-room reading of the reference's verification
+  steps (listed above) as negative and positive cases. The claim would then read "implements Visa's TAP agent
+  recognition signature as specified", not "verified against Visa's open-source reference".
