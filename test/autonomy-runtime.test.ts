@@ -82,6 +82,37 @@ describe("an agent's wake", () => {
     expect((await wake(db, profile, { client: fake([[finish()]]).client, now: T0 }))!.source).toBe("idle");
   });
 
+  it("stops mid-loop: a pause or the emergency stop set during a wake blocks every later tool call, messages included", async () => {
+    for (const key of ["pause.sourcing", "freeze"]) {
+      const db = openDb(":memory:");
+      publish(db, "supplier.notice", { new_price: "0.04" }, "sourcing", "system", T0);
+      looked.length = 0;
+      const stopper: AgentProfile = { ...profile, tools: () => [{ name: "look", description: "d", input: z.strictObject({}), run: async () => {
+        looked.push("x");
+        // The CFO hits the switch while the agent is thinking.
+        db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, 'on', ?)").run(key, T0.toISOString());
+        return { text: "looked" };
+      } }] };
+      const w = await wake(db, stopper, { client: fake([[{ name: "look", input: {} }], [{ name: "look", input: {} }, { name: "send_message", input: { to: "treasury", text: "raise my cap" } }], [finish()]]).client, now: T0 });
+      expect(looked).toEqual(["x"]);
+      expect(db.prepare("SELECT COUNT(*) AS n FROM agent_messages").get()).toEqual({ n: 0 });
+      expect(w!.run!.calls.filter((c) => c.blocked).map((c) => c.blocked)).toEqual([key === "freeze" ? "the emergency stop is on" : "the CFO paused this agent", key === "freeze" ? "the emergency stop is on" : "the CFO paused this agent"]);
+    }
+  });
+
+  it("does not let code's fallback act when the switch went on during the wake", async () => {
+    const db = openDb(":memory:");
+    publish(db, "supplier.notice", { new_price: "0.04" }, "sourcing", "system", T0);
+    let fellBack = false;
+    const p2: AgentProfile = { ...profile,
+      observe: async () => { db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('freeze', 'on', ?)").run(T0.toISOString()); return "x"; },
+      fallback: async () => { fellBack = true; return "code acted"; } };
+    const w = await wake(db, p2, { client: null, now: T0 });
+    expect(fellBack).toBe(false);
+    expect(w).toMatchObject({ source: "idle", summary: "stopped during the wake: the emergency stop is on" });
+    expect(decisions(db).at(-1)).toMatchObject({ source: "idle" });
+  });
+
   it("without a decision, code's fallback decides and the row says so", async () => {
     const db = openDb(":memory:");
     publish(db, "supplier.notice", { new_price: "0.04" }, "sourcing", "system", T0);
