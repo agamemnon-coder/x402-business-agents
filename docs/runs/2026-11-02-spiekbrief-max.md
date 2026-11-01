@@ -38,6 +38,11 @@ bent. Twijfel je? Zeg "stop". Er gaat dan niets weg.
 **Elke keer:** het bedrag, de ontvanger en het begin van de hash moeten gelijk zijn aan wat Claude in de chat noemt.
 Klopt iets niet? Niet tikken. Zeg "stop".
 
+## Zeg dit zo (Metal-QA, 1 november)
+
+- Bij stap 3 (prijs 0,04): **"Purser weigert de aankoop vóór het tekenen, tegen de cap van het mandaat."** Zeg niet
+  "Metal weigert hem op de chain": in deze run komt de betaling niet bij Metal.
+
 ## Als iets misgaat
 
 - **"is not waiting for approval" of een leeg scherm:** de pagina probeert het 90 seconden zelf opnieuw. Wacht, en
