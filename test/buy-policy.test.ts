@@ -38,6 +38,19 @@ describe("code follows the buy policy", () => {
     expect(ev[0]).toMatchObject({ kind: "customers.turned_away", payload: { count: 3, window_minutes: 15 } });
   });
 
+  it("wakes the Treasury agent at most once per window, even when refusals come minutes apart", async () => {
+    const db = openDb(":memory:");
+    set(db, { supplier: "none", max_price: null, cache_seconds: 0 });
+    // three refusals spread over the window, as in a slow shop: the first is 10 minutes old
+    db.prepare("INSERT INTO upstream_purchases (price_cents, outcome, refusal_reason, created_at, supplier) VALUES (0, 'REFUSED', 'buy_policy: earlier', ?, 'none')").run(new Date(Date.now() - 10 * 60_000).toISOString());
+    db.prepare("INSERT INTO upstream_purchases (price_cents, outcome, refusal_reason, created_at, supplier) VALUES (0, 'REFUSED', 'buy_policy: earlier', ?, 'none')").run(new Date(Date.now() - 5 * 60_000).toISOString());
+    // Treasury was already woken 4 minutes ago, when an older refusal (now out of the window) made three
+    db.prepare("INSERT INTO world_events (kind, for_agent, payload_json, created_at) VALUES ('customers.turned_away', 'treasury', '{}', ?)").run(new Date(Date.now() - 4 * 60_000).toISOString());
+    const a = new SourcingAgent(db, "http://127.0.0.1:1", "0x0000000000000000000000000000000000000001");
+    await a.buy(71); // three in the window again
+    expect(db.prepare("SELECT COUNT(*) AS n FROM world_events WHERE kind = 'customers.turned_away'").get()).toEqual({ n: 1 });
+  });
+
   it("refuses before signing when the policy's supplier makes no offer (unavailable)", async () => {
     const db = openDb(":memory:");
     set(db, { supplier: "stockline", max_price: "0.03", cache_seconds: 0 });

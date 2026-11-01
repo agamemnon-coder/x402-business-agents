@@ -74,14 +74,17 @@ export class SourcingAgent {
 
   /**
    * dry-131: the Treasury agent saw customers turned away (code's evidence that Sourcing is blocked by its cap) only at
-   * its next tick. The customer that makes it TURNED_AWAY_MIN in the window wakes Treasury, once per crossing; Treasury
+   * its next tick. At TURNED_AWAY_MIN customers in the window, Treasury is woken, at most once per window; Treasury
    * still reads code's evidence from the ledger (src/autonomy/teamProfiles.ts blockedByMandate), not this event.
    */
   private turnedAway(): void {
     if (!autonomyOn()) return;
     const n = (this.db.prepare("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > ?")
       .get(new Date(Date.now() - TURNED_AWAY_WINDOW_MS).toISOString()) as { n: number }).n;
-    if (n === TURNED_AWAY_MIN) publish(this.db, "customers.turned_away", { count: n, window_minutes: TURNED_AWAY_WINDOW_MS / 60_000 }, "treasury");
+    if (n < TURNED_AWAY_MIN) return;
+    // Once per window (review: a sliding "exactly three" fired on every refusal when they came minutes apart).
+    if (this.db.prepare("SELECT 1 FROM world_events WHERE kind = 'customers.turned_away' AND created_at > ?").get(new Date(Date.now() - TURNED_AWAY_WINDOW_MS).toISOString())) return;
+    publish(this.db, "customers.turned_away", { count: n, window_minutes: TURNED_AWAY_WINDOW_MS / 60_000 }, "treasury");
   }
 
   private async recordOnChain(m: LoadedMandate, seq: number, reason: string): Promise<void> {

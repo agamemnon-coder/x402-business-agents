@@ -20,7 +20,7 @@ import { openDb } from "../db/open.js";
 import { policyVersionChecks } from "../policy/versions.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
 import { credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
-import { proposalCredentialCheck } from "../verify/credentials.js";
+import { proposalCredentialCheck, type CredentialCheck } from "../verify/credentials.js";
 import { readMandateState } from "@metalntwx/metal-pay/mandates";
 import { publicClient } from "../metal/chain.js";
 import { addresses } from "../world/runtime.js";
@@ -59,11 +59,19 @@ const files = new Map<string, { agent: MandateAgent; path: string }>();
 for (const agent of ["sourcing", "support", "treasury", "customer"] as const) {
   for (const path of credentialFiles(agent)) {
     const file = path.split("/").pop()!;
-    // A credential issued for a proposal that was not executed must not be bound (src/verify/credentials.ts).
-    const id = /\.(P-\d{4,})\.credential\.json$/.exec(file)?.[1];
-    const status = id ? (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id) as { status: string } | undefined)?.status : undefined;
     const m = loadCredentialFile(agent, path);
-    const pre = status && status !== "EXECUTED" ? proposalCredentialCheck(file, status, (await readMandateState(publicClient(), m.principal, m.reference)).boundBlock) : ({ kind: "full" } as const);
+    // A credential a rebalance issued is bound only after an approval; by hash over every proposal naming it
+    // (options A and B share credentials): src/verify/credentials.ts.
+    const naming = (db.prepare("SELECT p.proposal_id, p.status, a.decision FROM proposals p LEFT JOIN approvals a ON a.proposal_id = p.proposal_id, json_each(p.terms_json, '$.steps') s WHERE p.kind = 'mandate_replace' AND lower(json_extract(s.value, '$.credential_hash')) = ?")
+      .all(m.credentialHash.toLowerCase()) as { proposal_id: string; status: string; decision: string | null }[]).map((r) => ({ proposal_id: r.proposal_id, status: r.status, approved: r.decision === "APPROVED" }));
+    let pre: CredentialCheck = { kind: "full" };
+    if (naming.length && !naming.some((x) => x.status === "EXECUTED")) {
+      try {
+        pre = proposalCredentialCheck(naming, (await readMandateState(publicClient(), m.principal, m.reference)).boundBlock);
+      } catch (e) {
+        pre = { kind: "done", ok: false, detail: `could not read its state on chain: ${redactSecrets((e as Error).message).slice(0, 200)}` };
+      }
+    }
     const v = pre.kind === "done" ? pre : verifyCredential(agent, path);
     line(v.ok, `mandate ${file}`, v.detail);
     files.set(loadCredentialFile(agent, path).credentialHash.toLowerCase(), { agent, path });
