@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const a = JSON.parse(readFileSync(new URL("../docs/demo/autonomy.json", import.meta.url), "utf8")) as {
-  kind: string; run: string; snapshot: { passkey: { credential: unknown }; agent_chat: { kind: string; by?: string }[]; agent_stats: { agent: string; decisions: number; fallback: number; calls_without_request_id: number }[] };
+  kind: string; run: string; snapshot: { passkey: { credential: unknown }; agent_chat: { kind: string; by?: string }[]; agent_stats: { agent: string; decisions: number; fallback: number; calls_without_request_id: number; cost_last_hour_usd_micros: number }[] };
 };
 
 describe("the recorded autonomous dry run", () => {
@@ -16,6 +16,9 @@ describe("the recorded autonomous dry run", () => {
     expect(a.snapshot.agent_stats.map((s) => s.agent).sort()).toEqual(["sourcing", "support", "treasury"]);
     expect(a.snapshot.agent_stats.every((s) => s.decisions > 0 && s.calls_without_request_id === 0)).toBe(true);
     expect(a.snapshot.agent_chat.filter((c) => c.kind === "decision").length).toBeGreaterThan(5);
+  });
+  it("stands as the dashboard did at the run's end: each agent's Claude cost in its last hour, not zero from a later clock", () => {
+    expect(a.snapshot.agent_stats.every((s) => s.cost_last_hour_usd_micros > 0)).toBe(true);
   });
   it("carries no passkey id", () => {
     expect(a.snapshot.passkey.credential).toBeNull();

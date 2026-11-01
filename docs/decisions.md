@@ -441,3 +441,12 @@ decision; a row missing its amount or currency is left out instead of shown as 0
 and sweeps, and sales through clearing (no tx of their own), are shown for what they are; the page check now reads every
 movement's caption on `/?recorded` (each *USDZ amount beside "stablecoin on chain", never "$", the refusing rail marked).
 `upstream.paid_after_lookup` stays out: its row records no amount.
+
+Second fresh review, all fixed. A refund is now decided by its evidence first (the CFO's executed batch, then code's
+automatic limits); Claude only through the Support agent's own settlement, the innermost run around the refund that
+ends in one, so an outer autonomous wake whose inner settlement fell back to code no longer takes the credit. A card
+charge is the agent's only when its own purchase started in the same run (same card, same amount); a merchant's
+charge that lands while the agent is awake is not. Money that moved inside an agent's run without a Claude credit
+reads "who decided is not recorded", not "code". A single-use card an agent asked for says so. On a live panel a new
+movement is lit, marked and animated as its own; the panel shows again after an empty world. The autonomous recording
+is built as of its last row, so its "Claude cost, last hour" is the run's own.

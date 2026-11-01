@@ -1535,6 +1535,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (!flows || !flows.length) { if (sec) sec.hidden = true; return; }
     var key = JSON.stringify(flows);
     var old = mfState[px];
+    if (sec) sec.hidden = false; // movements again after an empty (fresh) world
     if (sec && old && old.key === key) return; // the same movements: keep playing
     // New movements on the same panel (a live ledger, polled): take them in place, keep the viewer's place and Pause.
     if (sec && old && old.update && old.label === label) { old.update(flows, key); return; }
@@ -1634,15 +1635,24 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     }
     function tick() { if (!st.playing || mfState[px] !== st) return; go(st.i + 1); st.timer = setTimeout(tick, 3400); }
     st.update = function (flows2, key2) {
-      var shown = JSON.stringify(F[st.i]), atEnd = st.i === F.length - 1;
+      var was = F[st.i], shown = JSON.stringify(was), atEnd = st.i === F.length - 1, grew = flows2.length > F.length;
       F = flows2; st.key = key2;
       buildDots(); agentLines();
-      // Keep the movement on screen when it is still there (a folded run grows); a viewer at the newest stays at the newest.
       var same = -1; F.forEach(function (f, k) { if (JSON.stringify(f) === shown) same = k; });
-      var i = atEnd ? F.length - 1 : same >= 0 ? same : Math.min(st.i, F.length - 1);
-      if (same >= 0 && !atEnd) { st.i = i; Array.prototype.forEach.call(dots.children, function (d, k) { d.classList.toggle("on", k === st.i); }); cnt.textContent = (st.i + 1) + " of " + F.length; return; }
-      st.i = i; Array.prototype.forEach.call(dots.children, function (d, k) { d.classList.toggle("on", k === st.i); }); cnt.textContent = (st.i + 1) + " of " + F.length;
-      caption(F[st.i]); // the movement changed (a later decision row, a grown run): its caption follows, no replay
+      // Paused at the newest: a new movement comes in and is shown. Otherwise the viewer keeps the movement they had
+      // (a playing panel reaches the new ones on its next step).
+      var i = !st.playing && atEnd && grew ? F.length - 1 : same >= 0 ? same : Math.min(st.i, F.length - 1);
+      var now = F[i];
+      var sameShape = was && now.kind === was.kind && now.from === was.from && now.to === was.to && (now.refused ? now.refused.by : "") === (was.refused ? was.refused.by : "");
+      if (sameShape) {
+        // The same movement, grown or with its decision recorded since: its caption follows, the picture stays.
+        st.i = i;
+        Array.prototype.forEach.call(dots.children, function (d, k) { d.classList.toggle("on", k === st.i); });
+        cnt.textContent = (st.i + 1) + " of " + F.length;
+        if (JSON.stringify(now) !== shown) caption(now);
+        return;
+      }
+      go(i); // another movement: lit, marked and animated as its own (go keeps Play or Pause as it was)
     };
     prev.addEventListener("click", function () { go(st.i - 1, true); });
     next.addEventListener("click", function () { go(st.i + 1, true); });

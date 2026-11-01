@@ -11,8 +11,9 @@ import { buildRecorded } from "../demo/recorded.js";
 const [ledger, run] = process.argv.slice(2);
 if (!ledger || !run) { console.error('usage: npm run autonomy-record -- <ledger copy> "<run name>"'); process.exit(2); }
 const db = openDb(ledger);
-const rec = buildRecorded(db, run);
 const at = (db.prepare("SELECT MAX(ts) AS t FROM audit_log").get() as { t: string | null }).t;
+// As the dashboard stood at the run's last row: "last hour" costs and ages are the run's own, not the recording's.
+const rec = buildRecorded(db, run, at ? new Date(at) : new Date());
 if (!rec.snapshot.agent_chat.length) { console.error("this ledger has no agent decisions: not an autonomous run"); process.exit(1); }
 const out = { ...rec, recorded_at: at ?? rec.recorded_at, kind: "autonomous dry run" };
 writeFileSync(resolve(import.meta.dirname, "../../docs/demo/autonomy.json"), JSON.stringify(out, null, 2) + "\n");

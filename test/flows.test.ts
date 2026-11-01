@@ -178,7 +178,10 @@ describe("a decision that came after the move did not make it", () => {
 
   it("the agent's own card purchase inside its Claude wake is the agent's", () => {
     const db = fresh();
-    run(db, "sourcing", "claude-haiku-5-5", ["buy_software"], () => audit(db, "sourcing", "card.charge_approved", "awx-tx-10", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", source: "webhook" }, T(1)));
+    run(db, "sourcing", "claude-haiku-5-5", ["buy_software"], () => {
+      audit(db, "sourcing", "card.purchase_started", "plan-1", { agent: "sourcing", last4: "6423", merchant: "Packwise", amount: "45.00", currency: "EUR" }, T(1));
+      audit(db, "sourcing", "card.charge_approved", "awx-tx-10", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", source: "webhook" }, T(1));
+    });
     decision(db, "sourcing", "claude", "claude-haiku-5-5", ["buy_software"], 0);
     expect(flowEvents(db)[0]).toMatchObject({ model: "claude-haiku-5-5", decided: "the Sourcing agent (Claude Haiku) decided" });
   });
@@ -193,6 +196,70 @@ describe("a decision that came after the move did not make it", () => {
     audit(db, "treasury", "licence.timing_advised", "P-2", { proposal_id: "P-2", source: "claude", model: "claude-opus-5-5" }, T(3));
     audit(db, "awx-executor", "transfer.status", "tr-1", { status: "PAID" }, T(4));
     expect(flowEvents(db).at(-1)).toMatchObject({ model: "claude-opus-5-5", decided: "planned by the Treasury agent (Claude Opus), paid after the CFO's Face ID" });
+  });
+});
+
+describe("an agent's run window holds other writers too (second review)", () => {
+  // An autonomous wake calls settle_dispute, which runs its own (inner) agent run; both runs enclose the refunds.
+  function wakeAround(db: DB, inner: () => void) {
+    run(db, "support", "claude-sonnet-5-5", ["settle_dispute", "finish"], inner);
+    decision(db, "support", "claude", "claude-sonnet-5-5", ["settle_dispute", "finish"], 0);
+  }
+  it("the inner settlement fell back to code, which refunded within the automatic limits: code, not the outer wake", () => {
+    const db = fresh();
+    sale(db, 7, 0);
+    wakeAround(db, () => {
+      run(db, "support", "claude-sonnet-5-5", ["verify_order", "check_data"], () => undefined);
+      audit(db, "support", "dispute.settled_by_agent", "DD-1", { source: "fallback", model: "claude-sonnet-5-5", refunded: [], refunded_now: [] }, T(2));
+      audit(db, "support", "refund.auto_approved", "DD-1", { sales: ["7"] }, T(3));
+      refundRow(db, 7, null); paidRefund(db, 7, 4);
+    });
+    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "code refunded it, within the CFO's automatic limits" });
+  });
+
+  it("a refund batch the CFO's Face ID executed while the wake was open is the CFO's", () => {
+    const db = fresh();
+    sale(db, 7, 0);
+    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-9', 'refund_batch', '{}', 'x', 'support', 'EXECUTED', 'z', 'z')").run();
+    wakeAround(db, () => { refundRow(db, 7, "P-9"); paidRefund(db, 7, 2); });
+    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "refunded after the CFO's Face ID" });
+  });
+
+  it("the inner settlement's own refunds, by Claude, inside the wake: Claude", () => {
+    const db = fresh();
+    sale(db, 7, 0);
+    wakeAround(db, () => {
+      run(db, "support", "claude-sonnet-5-5", ["verify_order", "refund"], () => { refundRow(db, 7, null); paidRefund(db, 7, 2); });
+      audit(db, "support", "dispute.settled_by_agent", "DD-1", { source: "claude", model: "claude-sonnet-5-5", refunded: ["#7"] }, T(3));
+    });
+    expect(flowEvents(db)[0]).toMatchObject({ model: "claude-sonnet-5-5" });
+  });
+
+  it("a merchant's own charge that lands during the agent's wake is not the agent's purchase; its own purchase is", () => {
+    const db = fresh();
+    run(db, "sourcing", "claude-haiku-5-5", ["buy_software"], () => {
+      audit(db, "sourcing", "card.purchase_started", "plan-1", { agent: "sourcing", last4: "6423", merchant: "Notion", amount: "12.00", currency: "EUR" }, T(1));
+      audit(db, "sourcing", "card.charge_approved", "awx-1", { agent: "sourcing", amount: "12.00", currency: "EUR", last4: "6423", merchant: "Notion", source: "simulation" }, T(1));
+      audit(db, "sourcing", "card.charge_declined", "awx-2", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", reason: "LIMIT_EXCEEDED", source: "poll" }, T(2));
+    });
+    decision(db, "sourcing", "claude", "claude-haiku-5-5", ["buy_software"], 0);
+    const f = flowEvents(db);
+    expect(f.map((e) => e.model)).toEqual(["claude-haiku-5-5", null]);
+    expect(f[1]!.decided).toBe("a charge on the agent's card");
+  });
+
+  it("money that moved inside the agent's run, but not credited to Claude, is not called code's either", () => {
+    const db = fresh();
+    run(db, "treasury", "claude-opus-5-5", ["sweep_earnings"], () => audit(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", to: "0xb4b0", tx: TX(13) }, T(1)), { blocked: ["sweep_earnings: the sweep did not complete"] });
+    decision(db, "treasury", "claude", "claude-opus-5-5", ["sweep_earnings"], 0);
+    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "who decided is not recorded" });
+  });
+
+  it("a single-use card an agent asked for says so; the CFO approved it", () => {
+    const db = fresh();
+    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-5', 'task_card', ?, 'y', 'treasury', 'EXECUTED', 'z', 'z')").run(JSON.stringify({ asked_by: "agent:sourcing" }));
+    audit(db, "treasury", "card.charge_approved", "awx-3", { agent: "task:P-5", amount: "9.00", currency: "EUR", last4: "1111", merchant: "Datalake", source: "webhook" }, T(1));
+    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "a single-use card the CFO approved, asked for by the Sourcing agent" });
   });
 });
 
