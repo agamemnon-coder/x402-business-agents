@@ -9,6 +9,7 @@ import type { DB } from "../db/open.js";
 import { canonicalTerms, type Terms } from "../lib/terms.js";
 import { openWindow } from "../passkey/ledger.js";
 import { currentPolicy, type PolicyEntry } from "../policy/rules.js";
+import { isoCBOR } from "@simplewebauthn/server/helpers";
 
 export interface RelayProposal {
   proposal_id: string;
@@ -55,7 +56,7 @@ export interface RelayState {
     proposals: RelayProposal[];
     /** Lower-case address to the name the ledger knows it by; shown beside the address, never instead of it. */
     names: Record<string, string>;
-    passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string }[] };
+    passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string; public_key?: { x: string; y: string } }[] };
     /** The CFO policy as it is now, for the phone's editor (it builds changes from these values). */
     policy: PolicyEntry[];
     /** The ledger's last audit row: signed with the rest, so the phone refuses an older set replayed (review N4). */
@@ -87,7 +88,7 @@ function plantedByDocument(db: DB): Map<string, string> {
  */
 export const MAX_RELAY_PROPOSALS = 50;
 
-export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; relayToken: string }, now = new Date()): RelayState {
+export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; relayToken: string; mfa?: boolean }, now = new Date()): RelayState {
   const rows = db.prepare(`SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?
     ORDER BY kind != 'policy_change', created_at, proposal_id LIMIT ${MAX_RELAY_PROPOSALS}`).all(now.toISOString()) as PRow[];
   const planted = plantedByDocument(db);
@@ -144,8 +145,13 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
     const name = PAYEE_NAMES[a.role];
     if (name) names[a.address.toLowerCase()] = name;
   }
-  const credentials = db.prepare("SELECT credential_id AS id, label, enrolled_at FROM passkeys WHERE status = 'ACTIVE' AND rp_id = ? ORDER BY enrolled_at")
-    .all(cfg.rpId) as { id: string; label: string; enrolled_at: string }[];
+  const rowsP = db.prepare("SELECT credential_id AS id, label, enrolled_at, public_key FROM passkeys WHERE status = 'ACTIVE' AND rp_id = ? ORDER BY enrolled_at")
+    .all(cfg.rpId) as { id: string; label: string; enrolled_at: string; public_key: string }[];
+  // D20: with MFA on, each passkey's public key (public, never a secret) so the Worker can verify a sign-in itself.
+  const credentials = rowsP.map(({ public_key, ...c }) => {
+    const xy = cfg.mfa ? es256XY(public_key) : null;
+    return xy ? { ...c, public_key: xy } : c;
+  });
   const w = openWindow(db, now);
   return {
     version: 1,
@@ -167,4 +173,15 @@ export function stateHash(s: RelayState): string {
   const h = s.snapshot.health;
   const health = h ? { ...h, at: null, metrics: { ...h.metrics, reconcile_age_seconds: null } } : h;
   return sha256(JSON.stringify({ ...s, generated_at: null, snapshot: { ...s.snapshot, generated_at: null, health } }));
+}
+
+/** An ES256 passkey's public key (COSE, as stored) as its x and y, base64url; null for any other kind. */
+function es256XY(cose: string): { x: string; y: string } | null {
+  try {
+    const m = isoCBOR.decodeFirst<Map<number, number | Uint8Array>>(Buffer.from(cose, "base64url"));
+    if (m.get(1) !== 2 || m.get(-1) !== 1) return null;
+    return { x: Buffer.from(m.get(-2) as Uint8Array).toString("base64url"), y: Buffer.from(m.get(-3) as Uint8Array).toString("base64url") };
+  } catch {
+    return null;
+  }
 }

@@ -44,7 +44,7 @@ describe("the Worker's passkey check", () => {
     const a = setup(), b = setup();
     expect(await verifyAssertion(b.sign(), a.key, { ...expect_, lastCounter: 0 })).toMatchObject({ ok: false, why: "signature" });
     const s = a.sign();
-    const bad = Buffer.from(s.authenticatorData, "base64url"); bad[36] ^= 1;
+    const bad = Buffer.from(s.authenticatorData, "base64url"); bad[36] = bad[36]! ^ 1;
     expect(await verifyAssertion({ ...s, authenticatorData: bad.toString("base64url") }, a.key, { ...expect_, lastCounter: 0 })).toMatchObject({ ok: false });
   });
 

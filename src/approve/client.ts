@@ -548,7 +548,31 @@ function guestWithoutLink(app: HTMLElement): boolean {
   return true;
 }
 
-async function api(path: string, body?: unknown): Promise<{ status: number; data: Obj }> {
+/** D20: the relay asks for a passkey session before the CFO's actions (policy, policy text, Ask Purser). */
+const SESSION_NEEDED = /^sign in with your passkey first/;
+
+/** D20: signs in with the enrolled passkey (Face ID); the relay sets a session cookie the page itself cannot read. */
+async function passkeySignIn(): Promise<boolean> {
+  const view = { "x-kit11-view": viewKey };
+  const o = await fetch("/api/session/options", { method: "POST", cache: "no-store", headers: { "content-type": "application/json", accept: "application/json", ...view }, body: "{}" }).catch(() => null);
+  if (!o || !o.ok) return false;
+  const opt = (await o.json().catch(() => ({}))) as { challenge?: string; allow?: string[] };
+  if (typeof opt.challenge !== "string") return false;
+  let cred: PublicKeyCredential | null;
+  try {
+    cred = (await navigator.credentials.get({ publicKey: {
+      challenge: b64urlToBytes(opt.challenge), rpId: location.hostname, userVerification: "required", timeout: 60_000,
+      allowCredentials: (opt.allow ?? []).map((id) => ({ type: "public-key" as const, id: b64urlToBytes(id) })),
+    } })) as PublicKeyCredential | null;
+  } catch {
+    return false;
+  }
+  if (!cred) return false;
+  const res = await fetch("/api/session", { method: "POST", cache: "no-store", credentials: "same-origin", headers: { "content-type": "application/json", accept: "application/json", ...view }, body: JSON.stringify({ challenge: opt.challenge, credential: serializeAssertion(cred) }) }).catch(() => null);
+  return !!res && res.status === 200;
+}
+
+async function api(path: string, body?: unknown, retried = false): Promise<{ status: number; data: Obj }> {
   const view = { "x-kit11-view": viewKey };
   const res = await fetch(path, body === undefined
     ? { cache: "no-store", headers: { accept: "application/json", ...view } }
@@ -558,6 +582,10 @@ async function api(path: string, body?: unknown): Promise<{ status: number; data
     data = await res.json();
   } catch {
     data = {};
+  }
+  // D20: a session is needed first: sign in with the passkey once, then send the same request again.
+  if (body !== undefined && !retried && res.status === 401 && isObj(data) && typeof data.error === "string" && SESSION_NEEDED.test(data.error)) {
+    if (await passkeySignIn()) return api(path, body, true);
   }
   return { status: res.status, data: isObj(data) ? data : {} };
 }

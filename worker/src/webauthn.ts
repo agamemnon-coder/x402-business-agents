@@ -52,9 +52,9 @@ export async function verifyAssertion(a: AssertionB64, key: PublicKeyXY, exp: Ex
     if (!(flags & 0x04)) return { ok: false, why: "user verification" };
     const counter = ((authData[33]! << 24) | (authData[34]! << 16) | (authData[35]! << 8) | authData[36]!) >>> 0;
     const pub = await crypto.subtle.importKey("jwk", { kty: "EC", crv: "P-256", x: key.x, y: key.y, ext: true }, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
-    const cdHash = new Uint8Array(await crypto.subtle.digest("SHA-256", clientData));
+    const cdHash = new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(clientData)));
     const signed = new Uint8Array(authData.length + 32); signed.set(authData, 0); signed.set(cdHash, authData.length);
-    const good = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, pub, derToRaw(der), signed);
+    const good = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, pub, new Uint8Array(derToRaw(der)), signed);
     if (!good) return { ok: false, why: "signature" };
     // A counter that is used must move forward (a cloned or replayed authenticator); 0 and 0 means the authenticator
     // keeps no counter (iCloud passkeys), and the one-time challenge stops a replay.

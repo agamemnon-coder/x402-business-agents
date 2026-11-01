@@ -2,7 +2,7 @@
 // the verdicts sent to the phone, and log lines (security review M1). viem, for one, quotes the RPC URL in its
 // errors, and the Metal RPC URL is a credential.
 
-import { relayToken, viewKey } from "../relay/config.js";
+import { relayToken, viewKey, viewKeyWeekly } from "../relay/config.js";
 
 /** Environment values that are credentials. Only values of 8 characters or more are matched. */
 const SECRET_ENV = [
@@ -26,7 +26,8 @@ export function redactSecrets(text: string, env: NodeJS.ProcessEnv = process.env
   // Derived secrets: the relay token (from the Cloudflare token unless set) and the viewer key (review N7).
   // A local relay token kept across restarts (KIT11_LOCAL_RELAY_TOKEN, the dry run) is one too, with its viewer key.
   for (const token of [relayToken(env), env.KIT11_LOCAL_RELAY_TOKEN]) {
-    if (token && token.length >= 8) for (const v of [token, viewKey(token)]) out = out.split(v).join("[redacted]");
+    // D20: the weekly viewer keys too (this week's and last week's).
+    if (token && token.length >= 8) for (const v of [token, viewKey(token), viewKeyWeekly(token), viewKeyWeekly(token, new Date(Date.now() - 7 * 864e5))]) out = out.split(v).join("[redacted]");
   }
   return out
     .replace(/https:\/\/rpc-testnet\.metalntwx\.com\/\S*/g, "[rpc-url]")

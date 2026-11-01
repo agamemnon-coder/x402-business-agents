@@ -32,9 +32,19 @@ export function viewKey(token: string): string {
   return createHmac("sha256", token).update("kit11 view v1").digest("hex").slice(0, 32);
 }
 
+/** D20: the Monday (UTC) that starts d's ISO week (worker/src/core.ts isoWeekStart, the same rule). */
+const isoWeekStart = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7))).toISOString().slice(0, 10);
+
+/** D20: with KIT11_MFA=on the viewer key expires: one per ISO week (the Worker accepts this week's and last week's). */
+export function viewKeyWeekly(token: string, now = new Date()): string {
+  return createHmac("sha256", token).update(`kit11 view v2 ${isoWeekStart(now)}`).digest("hex").slice(0, 32);
+}
+
+export const mfaOn = (env: NodeJS.ProcessEnv = process.env) => env.KIT11_MFA === "on";
+
 /** The link that hands the phone its viewer key and pins the runner's display key (src/relay/sign.ts). */
-export const viewerLink = (cfg: RelayConfig, runnerSpki?: string): string =>
-  `${cfg.url}/#view=${viewKey(cfg.token)}${runnerSpki ? `&runner=${runnerSpki}` : ""}`;
+export const viewerLink = (cfg: RelayConfig, runnerSpki?: string, env: NodeJS.ProcessEnv = process.env, now = new Date()): string =>
+  `${cfg.url}/#view=${mfaOn(env) ? viewKeyWeekly(cfg.token, now) : viewKey(cfg.token)}${runnerSpki ? `&runner=${runnerSpki}` : ""}`;
 
 async function workersDevUrl(env: Env, fetchImpl: typeof fetch): Promise<string> {
   const account = env.CLOUDFLARE_ACCOUNT_ID;

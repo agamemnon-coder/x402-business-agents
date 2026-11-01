@@ -3,6 +3,7 @@
 // (src/passkey/process.ts); an approval then runs its executor while the syncs go on, and its outcome is reported
 // on the same ticket.
 
+import { mfaOn } from "./config.js";
 import { signApprovals, type DisplayKey } from "./sign.js";
 import { redactSecrets } from "../lib/redact.js";
 import type { DB } from "../db/open.js";
@@ -56,7 +57,7 @@ export class RelayRunner {
   async syncOnce(): Promise<{ pushed: boolean; inbox: number }> {
     const { db, cfg } = this.deps;
     expireDue(db, this.now());
-    const state = buildRelayState(db, { rpId: cfg.rpId, label: this.deps.label, relayToken: cfg.token }, this.now());
+    const state = buildRelayState(db, { rpId: cfg.rpId, label: this.deps.label, relayToken: cfg.token, mfa: mfaOn() }, this.now());
     const hash = stateHash(state);
     const push = hash !== this.lastPushed;
     const acks = this.acks.splice(0);

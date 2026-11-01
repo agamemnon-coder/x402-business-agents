@@ -2,6 +2,7 @@
 // http://localhost:<port>. For trying the phone pages on a laptop (localhost counts as a secure context for
 // passkeys), for judges without a Cloudflare account, and for the browser check. The real relay runs on Cloudflare.
 
+import { mfaOn } from "./config.js";
 import Database from "better-sqlite3";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -20,7 +21,7 @@ export function sqlOver(db: Database.Database): Sql {
 }
 
 export async function startLocalRelay(opts: { port: number; token: string }): Promise<{ server: Server; url: string; relay: Relay }> {
-  const relay = new Relay(sqlOver(new Database(":memory:")), { relayToken: opts.token });
+  const relay = new Relay(sqlOver(new Database(":memory:")), { relayToken: opts.token, mfa: mfaOn() });
   const pages = buildPages();
   let base = "";
   const server = createServer((req, res) => {

@@ -20,7 +20,7 @@ import { recoverHolds } from "../policy/holds.js";
 import { resumeInterrupted } from "../policy/saga.js";
 import { health, RECONCILE_EVERY_MS } from "../ops/health.js";
 import { openEnrolment } from "../passkey/ledger.js";
-import { relayConfig, viewerLink, type RelayConfig } from "../relay/config.js";
+import { relayConfig, viewerLink, type RelayConfig, mfaOn } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
 import { Tools } from "../claude/tools.js";
@@ -60,7 +60,7 @@ const label = process.env.KIT11_APPROVER ?? "max";
 const stamp = () => new Date().toISOString().slice(11, 19);
 console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${process.env.KIT11_DB ?? "data/kit11.sqlite"})`);
 const signer = displayKey(keyPath("relay-display-key.pem"));
-console.log(`viewer   ${viewerLink(cfg, signer.publicSpki)}  (open once on each device: it unlocks the dashboard and pins this runner's key; it approves nothing)`);
+console.log(`viewer   ${viewerLink(cfg, signer.publicSpki)}  (open once on each device: it unlocks the dashboard and pins this runner's key; it approves nothing${mfaOn() ? "; with MFA on it reads only and expires after next week: the CFO's actions need a passkey sign-in" : ""})`);
 if (args.includes("--enrol")) {
   const { window, code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin, replace: args.includes("--replace") });
   console.log(`ENROL    on the phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);
