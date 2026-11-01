@@ -298,3 +298,26 @@ choice; routine (per-query buying) has no strategy the agent sets.
 
 About 45 hours against about 85 until the kill rule, beside three dry runs a day and Max's QA, MFA and design asks. Order:
 1–5 Sunday and Monday, 6–7 Tuesday, Wednesday three dry runs. 8 only if 1–7 are green on Tuesday evening.
+
+### D20. Phishing-resistant MFA for the dashboard: passkey sessions, a read-only viewer link that expires (1 November)
+
+Max's priority 5 (after 1–4). Today the hosted relay has one viewer key, derived from the relay token, that never
+expires and also lets its holder post to the CFO's endpoints (policy, policy text, Ask Purser); approvals are signed per
+terms hash with the passkey, so no money moves on the key alone.
+
+Behind `MFA_SESSIONS=on` on the Worker (and `KIT11_MFA=on` on the runner); off, nothing changes (the reserve run):
+1. **A passkey session.** `POST /api/session/options` gives a one-time challenge (two minutes); the phone signs it with
+   its enrolled passkey (user verification required); the Worker verifies the WebAuthn assertion itself against the
+   enrolled credentials' public keys, which the runner syncs (public, not secret). It checks the challenge, origin,
+   RP id hash, the UP and UV flags, the signature counter, and the ES256 signature. It answers with a session cookie
+   (random, stored hashed, 12 hours, `HttpOnly; Secure; SameSite=Strict; Path=/api`).
+2. **The CFO's endpoints need that session:** policy, policy text, Ask Purser. Approvals keep their own per-terms
+   passkey signature (step-up); enrolment keeps its code and the runner's fingerprint confirmation.
+3. **The viewer link is read-only and expires:** the key is derived per ISO week; the Worker accepts this week's and
+   last week's; it never opens a POST.
+4. **Red team** (tests): a stolen cookie (expired, or from another credential once revoked), a replayed assertion, a
+   passkey that is not enrolled, a leaked viewer link posting to the CFO's endpoints, a wrong origin, a missing UV flag.
+
+Estimate 5 hours (Worker verifier 1.5, sessions and gates 1, runner sync and link 1, phone sign-in 0.5, red-team tests
+and a fresh security review 1). Risk: medium (security code, public endpoint) — behind its flag until the review is
+green and Max agrees; the Worker needs a redeploy (Max's go) to take effect on the hosted site.
