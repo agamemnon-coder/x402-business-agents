@@ -19,12 +19,32 @@ Purser gives each AI agent an Airwallex company card and a Metal on-chain mandat
 
 ## Description
 
-**Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
+**Track 1 (Adaptive Treasury Controller), Starter Kit 11 (x402 Business Agents), for the Metal Award. Your AI agents
+spend through Airwallex and Metal. The CFO stays in control.**
 
 Purser is for the CFO or controller of a small company that runs AI agents and wants them to spend company money only
 within limits the CFO sets. The example company is Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query
 (here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. It has Kit 11's three
 agents, the Sourcing, Support and Treasury agent, each with its own card and its own mandate.
+
+### From idea to build
+
+<!-- Max: update the figures after Thursday's main run (5 November); each one has its source in docs/claims.md. -->
+Our idea (submitted 24 October) promised three agents on one Metal account, each under its own on-chain mandate, and
+three moments: a price rise, a dispute and a euro bill. Built as promised, each with its proof in
+[docs/idea-vs-build.md](../idea-vs-build.md):
+- the three mandates (10, 4 and 6 test USD, at most 3 cents a purchase for sourcing), the 20 held in code, and no
+  agent with the owner key;
+- x402 queries at 5 cents with a signed order, upstream data at 2 cents;
+- the price rise to 4 cents refused against the mandate, two priced options, the mandates replaced on chain only after
+  the approval of their exact terms;
+- the dispute settled from signed orders and on-chain payments, refunds only for wrong data, each once;
+- the euro licence invoice paid at Airwallex by SWIFT, FX only for the shortfall, with the fee in the approval.
+
+What got better than the idea: the agents now decide for themselves, as Claude agents with their own tools, inside
+the same limits; the approval is Face ID on the CFO's phone instead of a typed hash; every agent also has an Airwallex
+company card whose limits Airwallex enforces; and Airwallex's own events (a declined card, money paid in) reach the
+agents.
 
 ### How we use Airwallex
 
