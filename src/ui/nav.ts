@@ -46,6 +46,18 @@ export const NAV_CSS = `.pnav { display: flex; align-items: center; gap: 2px; fl
    it then always opens on the screen (the site check found it off the left edge at 390 px). */
 @media (max-width: 900px) { .pnav { position: relative; } .pmore { position: static; } .pmenu { right: 0; left: auto; max-width: calc(100vw - 24px); } }`;
 
+/** Purser's mark (a feather), the same on every page's brand. */
+const MARK = '<span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></span>';
+
+/** One header for every page (design review, 1 Nov): the same height, gutter, brand and order, whatever each page's own
+ *  stylesheet said; it wins by selector weight (header.top), so each page keeps its own extra chips and buttons. */
+export const TOP_CSS = `header.top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; min-height: 64px; height: auto; padding: 10px max(24px, calc((100% - 1200px) / 2)); background: var(--surface, var(--panel, #fff)); border-bottom: 1px solid var(--border, var(--line, rgba(127,127,127,.25))); }
+header.top .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 16px/1 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: var(--text, #0b1220); text-decoration: none; white-space: nowrap; }
+header.top .brand .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent, #4f46e5); color: #fff; display: inline-grid; place-items: center; flex: none; }
+header.top .brand .mark svg { width: 16px; height: 16px; }
+header.top nav.pnav { margin-left: 0; width: auto; }
+@media (max-width: 900px) { header.top { padding: 10px 16px; gap: 6px 10px; } header.top nav.pnav { width: 100%; order: 10; } }`;
+
 /** Replaces a page's own navigation with the shared one and adds its style (before the page's CSP hash is taken). */
 export function withNav(page: string, current: NavKey | null): string {
   const nav = /<nav\b[^>]*>[\s\S]*?<\/nav>/;
@@ -53,5 +65,8 @@ export function withNav(page: string, current: NavKey | null): string {
   // The page's own id and class stay, so its layout rules (a row of its own on phones) still apply.
   const id = /<nav\b[^>]*\bid="([^"]+)"/.exec(page)?.[1];
   const cls = /<nav\b[^>]*\bclass="([^"]+)"/.exec(page)?.[1];
-  return page.replace(nav, () => navHtml(current, id, cls)).replace("</style>", () => `${NAV_CSS}\n</style>`);
+  return page.replace(nav, () => navHtml(current, id, cls))
+    // The same mark in every brand: pages that drew a plain square get the feather.
+    .replace(/(<a class="brand"[^>]*>)<i><\/i>/, (_m, a: string) => `${a}${MARK}`)
+    .replace("</style>", () => `${NAV_CSS}\n${TOP_CSS}\n</style>`);
 }
