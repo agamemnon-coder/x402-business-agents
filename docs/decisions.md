@@ -528,3 +528,12 @@ swap, each refused with its reason; `/visa` browser check; a fresh review of the
 
 Estimate 8 hours (spec and licence check 1, the card path with TAP and provenance 3, red team and tests 2, docs,
 `/visa`, browser check and review 2). Risk: medium, behind its flag; nothing changes for the reserve run.
+
+Max's choices (1 November, late): use Visa's own reference where it can be used (at least the merchant-side
+verification and/or the registry), with its licence respected and credited (LICENSE/NOTICE, README); an interop test
+in CI both ways (our agent's signatures accepted by Visa's reference verifier, the reference's example signatures
+accepted by our merchant) plus the negative cases (replay, expired, wrong tag, other domain) failing in both. If the
+reference cannot be taken over (language, licence), say why and test against its vectors or examples; the claim then
+reads "implements Visa's TAP specification, verified against Visa's open-source reference". The claim text is chosen
+only after the interop test, on what is true. Content-Digest binds the body if TAP or web-bot-auth allows it. The
+Packwise checkout is labelled as a merchant we run (simulated). Built Monday after the reserve run.
