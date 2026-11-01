@@ -33,6 +33,12 @@ describe("the control tower", () => {
     expect(t.money_out.find((f) => f.label === "Card spend")).toMatchObject({ amount: "19.99", unit: "EUR", proof: { kind: "awx", ref: "awx-ok" } });
   });
 
+  it("counts the SWIFT fee as Airwallex stored it (\"EUR 13.41\"), as the books do (design review, 1 Nov)", () => {
+    const db = world();
+    db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, fee_actual, status, approval_sha256, updated_at) VALUES ('t1', 'r1', 'BTX-1', '1850.00', 'EUR', 'SWIFT', '20.00', 'EUR 13.41', 'PAID', 'h', ?)").run(T);
+    expect(towerView(db, inputs).pnl.eur).toEqual({ card_spend: "19.99", payouts: "1850.00", fees: "13.41", out: "1883.40" });
+  });
+
   it("keeps each rail's P&L in its own unit", () => {
     const t = towerView(world(), inputs);
     expect(t.pnl.usdz).toEqual({ sales: "0.10", upstream: "0.03", refunds: "0.00", net: "0.07" });
@@ -53,7 +59,8 @@ describe("the control tower", () => {
     expect(t.enforced.map((e) => [e.who, e.count])).toEqual([["purser", 1], ["metal", 1], ["airwallex", 1]]);
     expect(t.enforced[0]!.last!.reason).toMatch(/^mandate_cap_exceeded/);
     expect(t.enforced[1]!.last!.proof).toEqual({ kind: "tx", ref: "0xrefused" });
-    expect(t.enforced[2]!.last).toMatchObject({ reason: "LIMIT_EXCEEDED", proof: { kind: "awx", ref: "awx-no" } });
+    expect(t.enforced[2]!.last).toMatchObject({ reason: "LIMIT_EXCEEDED", words: "The purchase is over the card's limit", proof: { kind: "awx", ref: "awx-no" } });
+    expect(t.enforced[0]!.last!.words).toBe("Over the mandate's cap per payment");
   });
 
   it("counts a refusal Metal's facilitator gave (refused_by metal) as Metal's", () => {

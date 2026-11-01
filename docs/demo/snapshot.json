@@ -2332,8 +2332,8 @@
         "eur": {
           "card_spend": "64.99",
           "payouts": "1850.00",
-          "fees": "0.00",
-          "out": "1914.99"
+          "fees": "13.41",
+          "out": "1928.40"
         }
       },
       "enforced": [
@@ -2347,6 +2347,7 @@
           "count": 1,
           "last": {
             "reason": "mandate_cap_exceeded",
+            "words": "Over the mandate's cap per payment",
             "at": "2026-10-30T07:08:31.940Z",
             "proof": null
           }
@@ -2356,6 +2357,7 @@
           "count": 2,
           "last": {
             "reason": "MERCHANT_CATEGORY_NOT_ALLOWED",
+            "words": "The card may not pay this kind of merchant",
             "at": "2026-10-30T07:32:24.992Z",
             "proof": {
               "kind": "awx",

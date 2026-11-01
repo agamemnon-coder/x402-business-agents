@@ -34,7 +34,7 @@ export interface DeclineDeps {
 
 export interface DeclineMeeting { source: "claude" | "fallback"; proposal_id: string | null; said: string; run: AgentRun }
 
-const REASON_WORDS: Record<string, string> = {
+export const REASON_WORDS: Record<string, string> = {
   LIMIT_EXCEEDED: "the purchase is over the card's limit",
   MERCHANT_CATEGORY_NOT_ALLOWED: "the card may not pay this kind of merchant",
   CURRENCY_NOT_ALLOWED: "the card may not pay in this currency",

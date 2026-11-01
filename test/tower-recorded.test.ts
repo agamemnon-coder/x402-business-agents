@@ -10,6 +10,9 @@ describe("the recorded control tower", () => {
     const { sales, upstream, refunds, net } = rec.snapshot.treasury.metal;
     expect(rec.snapshot.tower.pnl.usdz).toEqual({ sales, upstream, refunds, net });
   });
+  it("counts the SWIFT fee as the books do: EUR 1,928.40 out", () => {
+    expect((rec.snapshot.tower.pnl as unknown as { eur: Record<string, string> }).eur).toMatchObject({ fees: "13.41", out: "1928.40" });
+  });
   it("shows the recorded run's one Metal refusal (#41) and Airwallex's two card declines", () => {
     expect(rec.snapshot.tower.enforced.map((e) => [e.who, e.count])).toEqual([["purser", 0], ["metal", 1], ["airwallex", 2]]);
   });

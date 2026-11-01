@@ -8,6 +8,21 @@ import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
+import { REASON_WORDS } from "../agents/declineAgent.js";
+
+// A refusal in plain words for the CFO; the code itself stays beside it, small (design review, 1 Nov).
+const MANDATE_WORDS: Record<string, string> = {
+  mandate_cap_exceeded: "Over the mandate's cap per payment",
+  mandate_budget_exceeded: "Over the mandate's total budget",
+  mandate_revoked: "The mandate was replaced",
+  mandate_expired: "The mandate has expired",
+  payee_not_allowed: "Not a payee of the mandate",
+};
+export function refusalWords(reason: string): string {
+  const code = /^([A-Za-z_]+)/.exec(reason)?.[1] ?? "";
+  const w = MANDATE_WORDS[code] ?? REASON_WORDS[code];
+  return w ? w.charAt(0).toUpperCase() + w.slice(1) : reason;
+}
 
 export type Proof = { kind: "tx"; ref: string } | { kind: "awx"; ref: string } | null;
 export interface Flow { label: string; rail: "metal" | "airwallex"; amount: string; unit: "USDZ" | "EUR"; count: number; proof: Proof; note: string }
@@ -18,7 +33,7 @@ export interface TowerAgent {
   card: { spent_month: string; monthly: string; used_pct: number; frozen: boolean } | null;
   last: { by: "claude" | "fallback" | "idle"; text: string; at: string } | null;
 }
-export interface Enforcer { who: "purser" | "metal" | "airwallex"; count: number; last: { reason: string; at: string; proof: Proof } | null }
+export interface Enforcer { who: "purser" | "metal" | "airwallex"; count: number; last: { reason: string; words: string; at: string; proof: Proof } | null }
 export interface Tower {
   money_in: Flow[];
   agents: TowerAgent[];
@@ -61,8 +76,10 @@ export function towerView(db: DB, inp: TowerInputs): Tower {
     flow(db, "Card spend", "airwallex", "EUR", "SELECT SUM(amount_cents) AS s, COUNT(*) AS c FROM card_transactions WHERE approved = 1", "SELECT transaction_id FROM card_transactions WHERE approved = 1 ORDER BY occurred_at DESC LIMIT 1", "awx", "software on the agents' company cards"),
     flow(db, "Supplier payouts", "airwallex", "EUR", "SELECT SUM(CAST(ROUND(CAST(amount AS REAL) * 100) AS INTEGER)) AS s, COUNT(*) AS c FROM transfers WHERE status = 'PAID'", "SELECT transfer_id FROM transfers WHERE status = 'PAID' ORDER BY updated_at DESC LIMIT 1", "awx", "SWIFT, after the CFO's Face ID"),
   ];
-  const feeSql = "SELECT SUM(CAST(ROUND(CAST(fee_actual AS REAL) * 100) AS INTEGER)) AS s FROM transfers WHERE status = 'PAID'";
-  const fees = has(db, feeSql) ? Number(n(db, feeSql)?.s ?? 0) : 0;
+  // Airwallex's fee is stored as it reported it ("EUR 13.41"), the way the books read it (src/accounting/gl.ts).
+  const feeSql = "SELECT fee_actual FROM transfers WHERE status = 'PAID' AND fee_actual IS NOT NULL";
+  const fees = (has(db, feeSql) ? db.prepare(feeSql).all() as { fee_actual: string }[] : [])
+    .map((r) => /^EUR (\d+\.\d{2})$/.exec(r.fee_actual)).reduce((sum, m) => sum + (m ? cents(m[1]!) : 0), 0);
   const v = (f: Flow) => cents(f.amount);
   const [sold] = money_in, [bought, refunded, cardSpend, payouts] = money_out;
 
@@ -88,9 +105,9 @@ export function towerView(db: DB, inp: TowerInputs): Tower {
   const awxSql = "SELECT occurred_at AS ts, failure_reason AS reason, transaction_id AS id FROM card_transactions WHERE approved = 0 ORDER BY occurred_at DESC";
   const awx = (has(db, awxSql) ? db.prepare(awxSql).all() : []) as { ts: string; reason: string; id: string }[];
   const enforced: Enforcer[] = [
-    { who: "purser", count: purser.length, last: purser[0] ? { reason: purser[0].reason, at: purser[0].ts, proof: null } : null },
-    { who: "metal", count: metal.length, last: metal[0] ? { reason: metal[0].reason, at: metal[0].ts, proof: metal[0].tx ? { kind: "tx", ref: metal[0].tx } : null } : null },
-    { who: "airwallex", count: awx.length, last: awx[0] ? { reason: awx[0].reason, at: awx[0].ts, proof: { kind: "awx", ref: awx[0].id } } : null },
+    { who: "purser", count: purser.length, last: purser[0] ? { reason: purser[0].reason, words: refusalWords(purser[0].reason), at: purser[0].ts, proof: null } : null },
+    { who: "metal", count: metal.length, last: metal[0] ? { reason: metal[0].reason, words: refusalWords(metal[0].reason), at: metal[0].ts, proof: metal[0].tx ? { kind: "tx", ref: metal[0].tx } : null } : null },
+    { who: "airwallex", count: awx.length, last: awx[0] ? { reason: awx[0].reason, words: refusalWords(awx[0].reason), at: awx[0].ts, proof: { kind: "awx", ref: awx[0].id } } : null },
   ];
 
   return {

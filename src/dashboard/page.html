@@ -223,7 +223,9 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .claudelogo img { height: 16px; width: auto; display: block; }
 .panel.claude, .panel.ask { margin-top: 20px; }
 /* Design 4.1: the control tower. Money in | the agents | money out, the P&L below; every figure links to its proof. */
-.tower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); gap: 14px; margin: 8px 0 20px; }
+.tower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "agents agents" "in out" "pnl pnl"; gap: 14px; margin: 8px 0 20px; }
+.tower > .tcol.tin { grid-area: in; } .tower > .tcol.tag { grid-area: agents; } .tower > .tcol.tout { grid-area: out; } .tower > .tpnl { grid-area: pnl; }
+[id] { scroll-margin-top: 72px; }
 .tower h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
 .tcol { min-width: 0; }
 .tflow { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; box-shadow: var(--shadow-sm); }
@@ -239,23 +241,25 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .tagent .st { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--ok-soft); color: var(--ok); }
 .tagent .st.paused, .tagent .st.stopped { background: var(--bad-soft); color: var(--bad); }
 .meter { margin-top: 10px; }
-.meter .ml { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); gap: 6px; }
-.meter .bar { height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; margin-top: 4px; }
+.meter .ml { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); gap: 6px; white-space: nowrap; }
+.meter .ml span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.meter .bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--text) 14%, transparent); overflow: hidden; margin-top: 4px; }
 .meter .bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
 .meter.warn .bar i { background: var(--wait); }
 .tagent .last { margin-top: 10px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 8px; }
 .tagent .last b { color: var(--text); font-weight: 600; }
 .tagent .last { display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
 .tflow .mono, .tenf .mono { font-size: 12px; color: var(--faint); }
-.tpnl { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tpnl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .tpnl .pl { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; font-size: 13.5px; }
 .tpnl .pl b { font-size: 16px; }
 .encols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
 .tenf { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
 .tenf .who { font-weight: 700; display: flex; justify-content: space-between; }
 .tenf .when { font-size: 12px; color: var(--faint); }
-.tenf .reason { font-size: 13px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
-@media (max-width: 900px) { .tower { grid-template-columns: minmax(0, 1fr); } .tagents-grid, .encols, .tpnl { grid-template-columns: minmax(0, 1fr); } }
+.tenf .reason { font-size: 13.5px; color: var(--text); margin-top: 4px; overflow-wrap: break-word; }
+.tenf .code { font: 11px var(--mono); color: var(--faint); overflow-wrap: anywhere; margin-top: 2px; }
+@media (max-width: 900px) { .tower { grid-template-columns: minmax(0, 1fr); grid-template-areas: "agents" "in" "out" "pnl"; } .tagents-grid, .encols, .tpnl { grid-template-columns: minmax(0, 1fr); } }
 .agentchat { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
 .agentchat li { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; font-size: 14px; overflow-wrap: anywhere; }
 .agentchat li.world { background: var(--sunken); }
@@ -582,9 +586,9 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <h2 id="h-ltower">The CFO's control tower</h2>
     <p class="lead" id="l-tower-src">Money in, the three agents inside their limits, money out: from the recorded live run, every figure with its proof.</p>
     <div class="tower" id="l-tower" aria-label="Control tower, recorded run">
-      <div class="tcol"><h2>Money in</h2><div id="l-t-in"></div></div>
-      <div class="tcol"><h2>The agents, inside your limits</h2><div class="tagents-grid" id="l-t-agents"></div></div>
-      <div class="tcol"><h2>Money out</h2><div id="l-t-out"></div></div>
+      <div class="tcol tag"><h2>The agents, inside your limits</h2><div class="tagents-grid" id="l-t-agents"></div></div>
+      <div class="tcol tin"><h2>Money in</h2><div id="l-t-in"></div></div>
+      <div class="tcol tout"><h2>Money out</h2><div id="l-t-out"></div></div>
       <div class="tpnl" id="l-t-pnl"></div>
     </div>
     <section class="panel" id="l-enforced" aria-label="Enforced by"><div class="sect flush"><h2>Enforced by</h2><span class="hint">who stopped each payment that went over a limit, with its proof</span></div><div class="encols" id="l-enforced-body"></div></section>
@@ -676,9 +680,9 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <div id="overview">
   <div class="head"><div><h1>Overview</h1><div class="sub">Your AI agents spend through Airwallex and Metal. You stay in control: every limit below is yours.</div></div></div>
   <section class="tower" id="tower" aria-label="Control tower" hidden>
-    <div class="tcol"><h2>Money in</h2><div id="t-in"></div></div>
-    <div class="tcol"><h2>The agents, inside your limits</h2><div class="tagents-grid" id="t-agents"></div></div>
-    <div class="tcol"><h2>Money out</h2><div id="t-out"></div></div>
+    <div class="tcol tag"><h2>The agents, inside your limits</h2><div class="tagents-grid" id="t-agents"></div></div>
+    <div class="tcol tin"><h2>Money in</h2><div id="t-in"></div></div>
+    <div class="tcol tout"><h2>Money out</h2><div id="t-out"></div></div>
     <div class="tpnl" id="t-pnl"></div>
   </section>
   <section class="panel" id="enforced" aria-labelledby="h-enforced" hidden><div class="sect flush"><h2 id="h-enforced">Enforced by</h2><span class="hint">who stopped each payment that went over a limit, with its proof</span></div><div class="encols" id="enforced-body"></div></section>
@@ -1366,13 +1370,17 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     return null;
   }
   function renderTower(d) { renderTowerAt("", d.tower); }
+  // Amounts as a CFO reads them: euros with the sign and thousands, Metal's test dollars with "test USD".
+  var eurFmt = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" });
+  var usdFmt = new Intl.NumberFormat("en-IE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function money(amount, unit) { var n = Number(amount); return isNaN(n) ? String(amount) : unit === "EUR" ? eurFmt.format(n) : usdFmt.format(n) + " test USD"; }
   function renderTowerAt(px, t) {
     var sec = document.getElementById(px + "tower"), enf = document.getElementById(px + "enforced");
     sec.hidden = !t; enf.hidden = !t;
     if (!t) return;
     var flows = function (fs) { return fs.map(function (f) {
       return el("div", "tflow", [el("div", "k", [txt("span", "", f.label), txt("span", "", f.rail === "metal" ? "Metal" : "Airwallex")]),
-        el("div", "v num", [f.amount, txt("small", "", f.unit === "USDZ" ? "test USD" : "EUR")]), txt("div", "n", f.count + " · " + f.note), proofA(f.proof, "Newest")]);
+        el("div", "v num", [money(f.amount, f.unit)]), txt("div", "n", f.count + " · " + f.note), proofA(f.proof, "Newest")]);
     }); };
     set(px + "t-in", flows(t.money_in)); set(px + "t-out", flows(t.money_out));
     var meter = function (label, used, of, pctv, extra) {
@@ -1380,21 +1388,22 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     };
     set(px + "t-agents", t.agents.map(function (a) {
       var kids = [el("div", "nm", [capFirst(a.agent), txt("span", "st " + a.status, a.status === "active" ? "Active" : a.status === "paused" ? "Paused" : "Stopped")])];
-      if (a.mandate) kids.push(meter("Mandate (Metal)", a.mandate.spent, a.mandate.budget, a.mandate.used_pct, " · cap " + a.mandate.cap));
-      if (a.card) kids.push(meter("Card this month (Airwallex)", a.card.spent_month, a.card.monthly, a.card.used_pct, a.card.frozen ? " · frozen" : ""));
-      if (a.last) { var lastEl = el("div", "last", [txt("b", "", a.last.by === "claude" ? "Decided by Claude" : a.last.by === "idle" ? "Stopped" : "Fallback (code)"), " · " + hm(a.last.at) + " · " + a.last.text]); lastEl.title = a.last.text; kids.push(lastEl); }
+      if (a.mandate) kids.push(meter("Metal mandate", a.mandate.spent, a.mandate.budget, a.mandate.used_pct, " · cap " + a.mandate.cap));
+      if (a.card) kids.push(meter("Card this month", "€" + a.card.spent_month, "€" + a.card.monthly, a.card.used_pct, a.card.frozen ? " · frozen" : ""));
+      if (a.last) { var lastEl = el("div", "last", [txt("b", "", a.last.by === "claude" ? "Decided by Claude" : a.last.by === "idle" ? "Stopped" : "Fallback (code)"), " · " + hm(a.last.at) + " · " + a.last.text]); lastEl.title = a.last.text; kids.push(lastEl); if (!px) { var more = txt("a", "", "Read all in the agents' chat →"); more.href = "#claude-panel"; kids.push(more); } }
       return el("div", "tagent", kids);
     }));
     set(px + "t-pnl", [
-      el("div", "pl num", [txt("span", "", "On Metal (test USD)"), txt("span", "", "sales " + t.pnl.usdz.sales), txt("span", "", "− data " + t.pnl.usdz.upstream), txt("span", "", "− refunds " + t.pnl.usdz.refunds), txt("b", "", "= " + t.pnl.usdz.net + " net")]),
-      el("div", "pl num", [txt("span", "", "On Airwallex (EUR)"), txt("span", "", "cards " + t.pnl.eur.card_spend), txt("span", "", "+ payouts " + t.pnl.eur.payouts), txt("span", "", "+ fees " + t.pnl.eur.fees), txt("b", "", "= " + t.pnl.eur.out + " out")]),
+      el("div", "pl num", [txt("span", "", "On Metal (test USD)"), txt("span", "", "sales " + usdFmt.format(+t.pnl.usdz.sales)), txt("span", "", "− data " + usdFmt.format(+t.pnl.usdz.upstream)), txt("span", "", "− refunds " + usdFmt.format(+t.pnl.usdz.refunds)), txt("b", "", "= " + usdFmt.format(+t.pnl.usdz.net) + " net")]),
+      el("div", "pl num", [txt("span", "", "On Airwallex"), txt("span", "", "cards " + eurFmt.format(+t.pnl.eur.card_spend)), txt("span", "", "+ payouts " + eurFmt.format(+t.pnl.eur.payouts)), txt("span", "", "+ fees " + eurFmt.format(+t.pnl.eur.fees)), txt("b", "", "= " + eurFmt.format(+t.pnl.eur.out) + " out")]),
     ]);
     // Metal: "on chain" only where a refusal transaction backs it (Metal QA, 1 Nov); else Metal's facilitator refused it.
     var names = { purser: "Purser, before signing", metal: "Metal's mandate check", airwallex: "Airwallex, at the card" };
     set(px + "enforced-body", t.enforced.map(function (e) {
       return el("div", "tenf", [el("div", "who", [names[e.who], txt("span", "num", String(e.count))]),
         e.last ? txt("div", "when", hm(e.last.at)) : txt("div", "when", "nothing refused yet"),
-        e.last ? txt("div", "reason", e.last.reason + (e.who === "metal" ? (e.last.proof ? " · recorded on chain" : " · refused by Metal's facilitator, no transaction") : "")) : null, e.last ? proofA(e.last.proof, "Refusal tx") : null]);
+        e.last ? txt("div", "reason", (e.last.words || e.last.reason) + (e.who === "metal" ? (e.last.proof ? " · recorded on chain" : " · refused by Metal's facilitator, no transaction") : "")) : null,
+        e.last ? txt("div", "code", e.last.reason) : null, e.last ? proofA(e.last.proof, "Refusal tx") : null]);
     }));
   }
   function render(d) {
