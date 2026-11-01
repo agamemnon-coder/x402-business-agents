@@ -340,3 +340,25 @@ sign-in paths answer 405 to a GET, and tests now cover a cross-origin assertion,
 challenge whose two minutes have passed. Left as is, with the reason: no logout (a session lives 12 hours and dies
 when its passkey is removed); `derToRaw` accepts non-minimal DER (malleability does not matter with one-time
 challenges); enrolment under MFA is still guarded by the code and the runner's fingerprint confirmation, not a session.
+
+### D21. /try: the jury changes the world and the Sourcing agent decides (1 November)
+
+Max's priority 7 (first to drop if time runs short). The autonomy runtime needs the ledger (SQLite on the runner), so it
+cannot run in the Cloudflare Worker that serves the public `/try`. Plan, behind nothing (it moves no money and touches
+no rail; the Worker's change needs Max's redeploy like D20):
+1. **One shared core, no ledger:** the Sourcing agent's brief (what it observes), its goal and rules, the
+   `set_buy_policy` tool's schema and its code check move to a pure module that the real runtime and `/try` both use.
+   The runtime's tests and the variation eval guard that nothing changes for the real agent.
+2. **A world change, picked by the visitor:** five buttons (Stockline raises its price, Ridgeline gets flaky, the CFO
+   raises the cap, Stockline drops back, Ridgeline cheap and fresh), the same worlds as the variation eval. One wake of
+   the Sourcing agent with its real model (Haiku), at most four tool calls; `set_buy_policy` is checked by the same code
+   as in the runtime; a message to the Treasury agent is shown, not sent anywhere.
+3. **The page shows** what the agent saw, each tool call, what code refused and why, the policy it set, and the cost;
+   labelled "demo world · stand-in suppliers · no money moves".
+4. **Limits:** the Try desk's own (per address a minute and a day, all visitors a minute, the daily model budget);
+   past them, code alone answers and the page says so. Locally (no key) it says the hosted page asks Claude.
+5. **Tests:** the shared core equals the runtime's behaviour; the engine with a stand-in model (test only, labelled);
+   red team: a policy over the cap, under the margin, an unknown world id, a model that answers garbage; the page check.
+
+Estimate 5 hours (core 1, engine and Worker route 1.5, page 1, tests and red team 1, review 0.5). Risk: low to medium
+(public endpoint that spends model money, already bounded by the Try desk).
