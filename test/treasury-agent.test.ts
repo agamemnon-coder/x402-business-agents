@@ -144,6 +144,17 @@ describe("designPriceRise", () => {
     expect(checkPricePlan(facts, { ...fallbackPricePlan(facts), recommended: "C" as never }).join(" ")).toMatch(/recommends option C/);
   });
 
+  // dry-34 to dry-37: Opus's first plan labelled its options just "A" and "B" every time (code sent it back). The tool's
+  // schema now says what a label is, with an example, so the first plan can be right.
+  it("tells the model in the tool schema what an option's label is", async () => {
+    const db = openDb(":memory:");
+    const { client, sent } = fake([good]);
+    await designPriceRise(db, facts, client);
+    const tool = JSON.stringify((sent[0] as unknown as { tools: unknown[] }).tools);
+    expect(tool).toMatch(/what this option does, in a few words/);
+    expect(tool).toMatch(/recommended_option/);
+  });
+
   it("falls back to code's fixed plan after three rejected plans", async () => {
     const db = openDb(":memory:");
     const bad = { ...good, sourcing_cap: "0.03" };

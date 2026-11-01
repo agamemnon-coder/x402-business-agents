@@ -117,8 +117,11 @@ export function checkPricePlan(f: PricePlanFacts, p: PricePlan): string[] {
 const Money = z.string();
 const SubmitPlan = z.strictObject({
   sourcing_cap: Money, sourcing_budget: Money, support_budget: Money, treasury_budget: Money,
-  options: z.array(z.strictObject({ label: z.string(), sell_price: Money })),
-  recommended_option: z.enum(["A", "B"]),
+  options: z.array(z.strictObject({
+    label: z.string().describe("what this option does, in a few words, e.g. \"keep the price at 0.05\" (not the letter: code adds A or B)"),
+    sell_price: Money,
+  })).describe("one or two options, from the lowest sell price to the highest"),
+  recommended_option: z.enum(["A", "B"]).describe("the letter of the option you recommend: A is the first (lower) price, B the second"),
   advice: z.string(),
 });
 type Submitted = z.infer<typeof SubmitPlan>;
