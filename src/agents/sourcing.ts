@@ -14,12 +14,70 @@ import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { fromCents, toCents } from "../lib/money.js";
 import { agentsOn } from "../config/agents.js";
 import { recordCapRefusalOnChain } from "../metal/recordRefusal.js";
+import { autonomyOn } from "../config/agents.js";
+import { MAX_CACHE_SECONDS, SUPPLIERS, type SupplierId } from "../config/suppliers.js";
+import { getSetting } from "../world/settings.js";
+import { publish } from "../autonomy/bus.js";
 
+/** A supplier's live offer for one stock check, in cents, from its 402; null when it made none (unavailable). */
+export async function offerCents(url: string): Promise<number | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    const header = res.headers.get("payment-required");
+    if (res.status !== 402 || !header) return null;
+    const offer = decodePaymentRequiredHeader(header).accepts.find((a) => a.scheme === "exact");
+    return offer ? Number(BigInt(offer.amount) / 10n ** 16n) : null;
+  } catch {
+    return null;
+  }
+}
+
+
+export interface BuyPolicy {
+  /** Whom to buy from; "none": serve from the cache only, or refuse (the customer is not charged). */
+  supplier: SupplierId | "none";
+  /** The most to pay per stock check under this policy; null: up to the mandate's cap. */
+  max_price: string | null;
+  /** Serve the last stock check bought for this long instead of buying again (0: always buy). */
+  cache_seconds: number;
+  set_by?: string;
+  reason?: string;
+}
+
+export const DEFAULT_POLICY: BuyPolicy = { supplier: "stockline", max_price: null, cache_seconds: 0 };
+
+/** The Sourcing agent's buy policy as it last set it (D19); Stockline, no cache, before it ever did. */
+export function buyPolicy(db: DB): BuyPolicy {
+  try {
+    const v = getSetting(db, "sourcing.buy_policy", "");
+    return v ? { ...DEFAULT_POLICY, ...(JSON.parse(v) as Partial<BuyPolicy>) } : DEFAULT_POLICY;
+  } catch {
+    return DEFAULT_POLICY;
+  }
+}
 
 export class SourcingAgent {
   private mandate: LoadedMandate | undefined;
+  private cache: { body: unknown; at: number; purchaseId: number; supplier: SupplierId } | null = null;
 
-  constructor(private readonly db: DB, private readonly supplierBase: string, private readonly supplier: Address) {}
+  /**
+   * `ridgeline`: the second supplier (D19, the autonomous agents); without it only Stockline exists and the buy policy
+   * can only choose Stockline, the cache or not buying.
+   */
+  constructor(private readonly db: DB, private readonly supplierBase: string, private readonly supplier: Address, private readonly ridgeline: { base: string; address: Address } | null = null) {}
+
+  /** The supplier a policy points at: its base URL and payee; Stockline when the second supplier is not running. */
+  private target(id: SupplierId | "none"): { id: SupplierId; base: string; address: Address } {
+    if (id === "ridgeline" && this.ridgeline) return { id, ...this.ridgeline };
+    return { id: "stockline", base: this.supplierBase, address: this.supplier };
+  }
+
+  /** Tells the Sourcing agent's loop that a purchase was refused (at most once a minute, so a busy shop does not flood it). */
+  private tell(seq: number, supplier: SupplierId | "none", reason: string, refusedBy: "purser" | "metal"): void {
+    if (!autonomyOn()) return;
+    if (this.db.prepare("SELECT 1 FROM world_events WHERE kind = 'upstream.refused' AND for_agent = 'sourcing' AND created_at > ?").get(new Date(Date.now() - 60_000).toISOString())) return;
+    publish(this.db, "upstream.refused", { seq, supplier, reason, refused_by: refusedBy }, "sourcing");
+  }
 
   private async recordOnChain(m: LoadedMandate, seq: number, reason: string): Promise<void> {
     if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ?").get(m.reference)) return;
@@ -43,7 +101,7 @@ export class SourcingAgent {
    * mandate's cap on chain (as the ledger last saw it bound) and the CFO policy's limit. Null when it would.
    */
   async wouldRefuse(seq: number): Promise<string | null> {
-    const res = await fetch(`${this.supplierBase}${SUPPLIER_ROUTE}?seq=${seq}`, { signal: AbortSignal.timeout(15_000) });
+    const res = await fetch(`${this.target(buyPolicy(this.db).supplier).base}${SUPPLIER_ROUTE}?seq=${seq}`, { signal: AbortSignal.timeout(15_000) });
     const header = res.headers.get("payment-required");
     if (res.status !== 402 || !header) return `the supplier answered ${res.status} without an offer`;
     const offer = decodePaymentRequiredHeader(header).accepts.find((a) => a.scheme === "exact");
@@ -57,6 +115,29 @@ export class SourcingAgent {
   }
 
   async buy(seq: number): Promise<UpstreamResult> {
+    const now0 = new Date().toISOString();
+    const insert = this.db.prepare(
+      "INSERT INTO upstream_purchases (price_cents, nonce, tx_hash, outcome, refusal_reason, created_at, supplier) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    );
+    // D19: the Sourcing agent's buy policy decides, per query, at code speed: the cache, the supplier, the price limit.
+    const policy = autonomyOn() ? buyPolicy(this.db) : DEFAULT_POLICY;
+    if (policy.cache_seconds > 0 && this.cache && Date.now() - this.cache.at <= Math.min(policy.cache_seconds, MAX_CACHE_SECONDS) * 1000) {
+      audit(this.db, "sourcing", "upstream.cached", String(this.cache.purchaseId), { seq, from_purchase: this.cache.purchaseId, supplier: this.cache.supplier, age_seconds: Math.round((Date.now() - this.cache.at) / 1000) });
+      return { ok: true, purchaseId: this.cache.purchaseId, body: this.cache.body };
+    }
+    const policyRefusal = (reason: string, supplier: SupplierId | "none"): UpstreamResult => {
+      const id = Number(insert.run(0, null, null, "REFUSED", reason, now0, supplier).lastInsertRowid);
+      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason, refused_by: "purser", supplier });
+      this.tell(seq, supplier, reason, "purser");
+      return { ok: false, purchaseId: id, reason, inDoubt: false };
+    };
+    if (policy.supplier === "none") return policyRefusal("buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged", "none");
+    const t = this.target(policy.supplier);
+    if (policy.max_price) {
+      const offer = await offerCents(`${t.base}${SUPPLIER_ROUTE}?seq=${seq}`);
+      if (offer === null) return policyRefusal(`supplier_unavailable: ${SUPPLIERS[t.id].name} made no offer for stock check #${seq}`, t.id);
+      if (offer > toCents(policy.max_price)) return policyRefusal(`buy_policy: ${SUPPLIERS[t.id].name} asks ${fromCents(offer)}, over the ${policy.max_price} the Sourcing agent's policy allows`, t.id);
+    }
     this.mandate ??= await activeMandate("sourcing");
     const started = Date.now() - 60_000;
     // The CFO policy's limit and the velocity limits are checked on the offer before anything is signed; the mandate's
@@ -65,26 +146,26 @@ export class SourcingAgent {
     // and the shared total before anything is signed; it is settled, released, or (in doubt) kept until resolved.
     const ref = `upstream:${seq}:${started + 60_000}`;
     let held = false;
-    const out = await payUnderMandate(this.mandate, `${this.supplierBase}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents) => {
+    const out = await payUnderMandate(this.mandate, `${t.base}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents) => {
       const refused = reserveSpend(this.db, { agent: "sourcing", rail: "metal", cents, ref, payee: "supplier" });
       held = refused === null;
       return refused;
     });
     const now = new Date().toISOString();
-    const insert = this.db.prepare(
-      "INSERT INTO upstream_purchases (price_cents, nonce, tx_hash, outcome, refusal_reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    );
 
     if (out.kind === "paid") {
-      const id = Number(insert.run(Number(BigInt(out.amount) / 10n ** 16n), out.nonce, out.tx, "PAID", null, now).lastInsertRowid);
+      const id = Number(insert.run(Number(BigInt(out.amount) / 10n ** 16n), out.nonce, out.tx, "PAID", null, now, t.id).lastInsertRowid);
       if (held) settleHold(this.db, ref);
-      audit(this.db, "sourcing", "upstream.paid", String(id), { seq, tx: out.tx, amount_units: out.amount });
-      return { ok: true, purchaseId: id, body: JSON.parse(out.body) };
+      audit(this.db, "sourcing", "upstream.paid", String(id), { seq, tx: out.tx, amount_units: out.amount, supplier: t.id });
+      const body = JSON.parse(out.body) as unknown;
+      this.cache = { body, at: Date.now(), purchaseId: id, supplier: t.id };
+      return { ok: true, purchaseId: id, body };
     }
     if (out.kind === "refused") {
-      const id = Number(insert.run(0, out.nonce ?? null, null, "REFUSED", out.reason, now).lastInsertRowid);
+      const id = Number(insert.run(0, out.nonce ?? null, null, "REFUSED", out.reason, now, t.id).lastInsertRowid);
       if (held) releaseHold(this.db, ref, out.reason);
-      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason, refused_by: out.status === 0 ? "purser" : "metal" });
+      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason, refused_by: out.status === 0 ? "purser" : "metal", supplier: t.id });
+      this.tell(seq, t.id, out.reason, out.status === 0 ? "purser" : "metal");
       // Metal QA (1 November): Purser's own check refuses an over-cap purchase before signing, so Metal never sees it.
       // With the agents on, the first such refusal under a mandate is also put to Metal, which records its refusal on
       // chain (src/metal/recordRefusal.ts). Best effort: a failure here changes nothing about the refusal itself.
@@ -94,8 +175,8 @@ export class SourcingAgent {
       return { ok: false, purchaseId: id, reason: out.reason, inDoubt: false };
     }
     // In doubt: the purchase may have settled. Look its nonce up before anything else; never pay twice.
-    const found = out.nonce ? await findSettlementByNonce(this.supplier, out.nonce, started) : undefined;
-    const id = Number(insert.run(0, out.nonce, found?.transaction ?? null, found ? "PAID" : "IN_DOUBT", out.reason, now).lastInsertRowid);
+    const found = out.nonce ? await findSettlementByNonce(t.address, out.nonce, started) : undefined;
+    const id = Number(insert.run(0, out.nonce, found?.transaction ?? null, found ? "PAID" : "IN_DOUBT", out.reason, now, t.id).lastInsertRowid);
     // Paid after all: the ledger row counts it. In doubt: the hold keeps counting until the reconciliation resolves it.
     if (held && found) settleHold(this.db, ref);
     audit(this.db, "sourcing", found ? "upstream.paid_after_lookup" : "upstream.in_doubt", String(id), { seq, reason: out.reason, tx: found?.transaction ?? null });

@@ -246,6 +246,7 @@ const sum = (db: DB, sql: string) => (db.prepare(sql).get() as { n: number | nul
 
 export const PAYEE_NAMES: Record<string, string> = {
   supplier: "Stockline",
+  ridgeline: "Ridgeline Data",
   customer: "Summit Outfitters",
   sweep: "Northwind sweep wallet",
   business: "Northwind Outdoor",

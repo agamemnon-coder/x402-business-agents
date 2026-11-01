@@ -14,12 +14,16 @@ import { supplierApp } from "../servers/supplier.js";
 import { getSetting } from "./settings.js";
 import { existsSync } from "node:fs";
 import { WALLET_DIRS, clearingDeployment, openWallet } from "../metal/clearing.js";
+import { SUPPLIERS, type SupplierId } from "../config/suppliers.js";
+import { autonomyOn } from "../config/agents.js";
 
 export interface Addresses {
   business: Address;
   customer: Address;
   supplier: Address;
   sweep: Address;
+  /** D19: the second supplier, when its key exists (the autonomous agents). */
+  ridgeline?: Address;
 }
 
 export function addresses(db: DB): Addresses {
@@ -28,11 +32,14 @@ export function addresses(db: DB): Addresses {
     if (!r) throw new Error(`no ${role} account in the ledger; run npm run bootstrap`);
     return r.address;
   };
-  return { business: row("business"), customer: row("customer"), supplier: readKeyFile(keyPath("supplier.key.json")).address, sweep: readKeyFile(keyPath("sweep.key.json")).address };
+  const ridge = keyPath(SUPPLIERS.ridgeline.keyFile);
+  return { business: row("business"), customer: row("customer"), supplier: readKeyFile(keyPath("supplier.key.json")).address, sweep: readKeyFile(keyPath("sweep.key.json")).address,
+    ...(existsSync(ridge) ? { ridgeline: readKeyFile(ridge).address } : {}) };
 }
 
 export const sellPrice = (db: DB) => getSetting(db, "sell_price", fromCents(SELL_PRICE_CENTS));
 export const upstreamPrice = (db: DB) => getSetting(db, "upstream_price", fromCents(UPSTREAM_PRICE_CENTS));
+export const supplierPrice = (db: DB, id: SupplierId) => getSetting(db, SUPPLIERS[id].priceKey, fromCents(SUPPLIERS[id].defaultPriceCents));
 
 export interface Runtime {
   addr: Addresses;
@@ -65,9 +72,13 @@ export async function startRuntime(db: DB, ports = { supplier: 4101, seller: 410
   const addr = addresses(db);
   const supplierBase = `http://127.0.0.1:${ports.supplier}`;
   const sellerBase = `http://127.0.0.1:${ports.seller}`;
-  const sourcing = new SourcingAgent(db, supplierBase, addr.supplier);
+  const ridgeline = autonomyOn() && addr.ridgeline ? { base: `http://127.0.0.1:${SUPPLIERS.ridgeline.port}`, address: addr.ridgeline } : null;
+  const sourcing = new SourcingAgent(db, supplierBase, addr.supplier, ridgeline);
   const servers = [
     await listen(supplierApp({ payTo: addr.supplier, price: () => upstreamPrice(db) }), ports.supplier),
+    // D19: Ridgeline Data, the second supplier: its own price, older data, sometimes unavailable.
+    ...(ridgeline ? [await listen(supplierApp({ payTo: ridgeline.address, price: () => supplierPrice(db, "ridgeline"), name: SUPPLIERS.ridgeline.name,
+      dataAgeSeconds: SUPPLIERS.ridgeline.dataAgeSeconds, unavailableEvery: SUPPLIERS.ridgeline.unavailableEvery }), SUPPLIERS.ridgeline.port)] : []),
     await listen(sellerApp({
       db, payTo: addr.business, price: () => sellPrice(db), buyUpstream: (seq) => sourcing.buy(seq),
       // The prepaid route (Metal clearing) is offered only when we have a clearing key and Metal offers clearing.

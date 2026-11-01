@@ -12,6 +12,8 @@ import { baseUnitsToCents, centsToBaseUnits, fromCents } from "../lib/money.js";
 import { field, keyPath, metalAgent, type CliResult } from "../metal/agentCli.js";
 import { readKeyFile, transferUsdz, usdzBalance } from "../metal/chain.js";
 import { EXPLORER_TX } from "../metal/network.js";
+import { autonomyOn } from "../config/agents.js";
+import { SUPPLIERS } from "../config/suppliers.js";
 
 const db = openDb();
 const say = (line: string) => console.log(line);
@@ -44,7 +46,7 @@ async function account(file: string, role: "business" | "customer"): Promise<Add
   return address;
 }
 
-function plainKey(file: string, role: "supplier" | "sweep"): Address {
+function plainKey(file: string, role: "supplier" | "sweep" | "ridgeline"): Address {
   if (!existsSync(keyPath(file))) metalAgent(["key", "create", "--out", keyPath(file)]);
   const { address } = readKeyFile(keyPath(file));
   db.prepare("INSERT OR IGNORE INTO metal_accounts (address, role) VALUES (?, ?)").run(address, role);
@@ -60,6 +62,8 @@ interface MandateSpec {
   budgetCents: number;
   payee: Address;
   payeeName: string;
+  /** More payees (D19: with the autonomous agents, the Sourcing mandate may pay Ridgeline Data too). */
+  extra?: { address: Address; name: string }[];
 }
 
 function mandate(spec: MandateSpec): void {
@@ -70,6 +74,7 @@ function mandate(spec: MandateSpec): void {
       "--principal", spec.principal,
       "--cap", fromCents(spec.capCents), "--budget", fromCents(spec.budgetCents),
       "--payee", `${spec.payee},${spec.payeeName}`,
+      ...(spec.extra ?? []).flatMap((p) => ["--payee", `${p.address},${p.name}`]),
       "--expires-in", String(MANDATE_EXPIRES_IN_SECONDS),
       "--description", `kit11 P-0000 initial ${spec.agent}`,
       "--key", keyPath(spec.ownerFile), "--out", cred,
@@ -82,7 +87,7 @@ function mandate(spec: MandateSpec): void {
   }
   const r = metalAgent(["mandate", "bind", "--credential", cred, "--key", keyPath(spec.ownerFile)]);
   const tx = r.fields.get("transaction")?.[0];
-  audit(db, "owner-signer", "mandate.bound", spec.agent, { principal: spec.principal, cap: fromCents(spec.capCents), budget: fromCents(spec.budgetCents), payee: spec.payee, tx: tx ?? null });
+  audit(db, "owner-signer", "mandate.bound", spec.agent, { principal: spec.principal, cap: fromCents(spec.capCents), budget: fromCents(spec.budgetCents), payee: spec.payee, ...(spec.extra?.length ? { also_payees: spec.extra.map((p) => p.address) } : {}), tx: tx ?? null });
   say(`${spec.agent} mandate bound${tx ? `: ${EXPLORER_TX}${tx}` : ""}`);
 }
 
@@ -108,7 +113,9 @@ if (bBalance < target) {
 say(`business account holds ${fromCents(baseUnitsToCents(await usdzBalance(B)))} *USDZ`);
 
 const owner = "owner-business.key.json";
-mandate({ agent: "sourcing", ownerFile: owner, principal: B, ...INITIAL_MANDATES.sourcing, payee: S, payeeName: "Stockline" });
+// D19: with the autonomous agents on, a second supplier, so the Sourcing agent has a real choice of whom to pay.
+const R = autonomyOn() ? plainKey(SUPPLIERS.ridgeline.keyFile, "ridgeline") : null;
+mandate({ agent: "sourcing", ownerFile: owner, principal: B, ...INITIAL_MANDATES.sourcing, payee: S, payeeName: "Stockline", ...(R ? { extra: [{ address: R, name: SUPPLIERS.ridgeline.name }] } : {}) });
 mandate({ agent: "support", ownerFile: owner, principal: B, ...INITIAL_MANDATES.support, payee: C, payeeName: "Summit Outfitters" });
 mandate({ agent: "treasury", ownerFile: owner, principal: B, ...INITIAL_MANDATES.treasury, payee: W, payeeName: "Northwind sweep" });
 mandate({ agent: "customer", ownerFile: "owner-customer.key.json", principal: C, ...CUSTOMER_MANDATE, payee: B, payeeName: "Northwind Outdoor" });

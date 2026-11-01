@@ -12,3 +12,8 @@ export function agentsOn(env: NodeJS.ProcessEnv = process.env): boolean {
 export function passkeyOwnersOn(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.KIT11_PASSKEY_OWNERS === "on";
 }
+
+/** D19: the autonomous agents (their own loops, woken by the world) only when KIT11_AUTONOMY=on, with the agents on. */
+export function autonomyOn(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.KIT11_AUTONOMY === "on" && agentsOn(env);
+}

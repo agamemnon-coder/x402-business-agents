@@ -1,6 +1,7 @@
 // The treasury agent's planning for a supplier price rise (scenario S1). Everything here is code:
 // it reads the chain, prices the options and writes proposals. It moves nothing.
 
+import { autonomyOn } from "../config/agents.js";
 import { readFileSync } from "node:fs";
 import { extractTerms, hashCredential, parseCredential } from "@metalntwx/metal-pay/mandates";
 import type { Address } from "viem";
@@ -49,6 +50,10 @@ const PAYEE: Record<Agent, (a: Addresses) => { address: Address; name: string }>
   support: (a) => ({ address: a.customer, name: "Summit Outfitters" }),
   treasury: (a) => ({ address: a.sweep, name: "Northwind sweep" }),
 };
+/** Every payee an agent's mandate names: D19, with the autonomous agents the Sourcing mandate may pay Ridgeline Data too. */
+function payeesOf(agent: Agent, a: Addresses): { address: Address; name: string }[] {
+  return agent === "sourcing" && autonomyOn() && a.ridgeline ? [PAYEE.sourcing(a), { address: a.ridgeline, name: "Ridgeline Data" }] : [PAYEE[agent](a)];
+}
 
 /** The limits after a price rise: sourcing's cap is exactly the new price, with no headroom. */
 export function priceRiseTargets(newUpstreamCents: number): MandateTarget[] {
@@ -165,14 +170,14 @@ function replaceStepTerms(addr: Addresses, current: Current, steps: ReturnType<t
     // Block 6: the plan's budget is the agent's lifetime budget; on chain it is that minus what a resume carried off.
     const onChain = chainBudgetCents(s.budgetCents, carried, chainSpentCents);
     const path = issueReplacementCredential(
-      { agent: s.agent, principal: addr.business, capCents: s.capCents, budgetCents: onChain, payees: [PAYEE[s.agent](addr)], description: `kit11 ${firstId} ${s.agent}` },
+      { agent: s.agent, principal: addr.business, capCents: s.capCents, budgetCents: onChain, payees: payeesOf(s.agent, addr), description: `kit11 ${firstId} ${s.agent}` },
       firstId, m.keyFile,
     );
     const next = extractTermsFrom(path);
     return {
       order: String(s.order), agent: s.agent, principal: addr.business.toLowerCase(),
       cap: fromCents(s.capCents), budget: fromCents(s.budgetCents),
-      payees: [PAYEE[s.agent](addr).address.toLowerCase()].sort(),
+      payees: payeesOf(s.agent, addr).map((p) => p.address.toLowerCase()).sort(),
       expires_at: new Date(Number(next.constraints.expiry) * 1000).toISOString().replace(".000Z", "Z"),
       credential_hash: next.hash, replaces_credential_hash: m.credentialHash,
       spent_at_proposal: fromCents(chainSpentCents),
