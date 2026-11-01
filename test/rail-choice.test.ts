@@ -120,6 +120,20 @@ describe("the Sourcing agent picks the rail", () => {
     expect(r.purchases.find((p) => p.supplier === "packwise")).toMatchObject({ rail: "airwallex_card", by: "code" });
   });
 
+  it("counts as the agent's choice when it paid both, even if its run then fails (review of 5.1)", async () => {
+    const db = openDb(":memory:");
+    const { d, paid } = deps();
+    let i = 0;
+    const client = { beta: { messages: { create: async () => {
+      if (i++ > 0) throw new Error("overloaded");
+      return { content: [{ type: "tool_use", id: "a", name: "pay", input: { supplier: "stockline", rail: "metal_x402", reason: "x402" } }, { type: "tool_use", id: "b", name: "pay", input: { supplier: "packwise", rail: "airwallex_card", reason: "card" } }], stop_reason: "tool_use", model: "claude-haiku-5-5", usage: { input_tokens: 1, output_tokens: 1 } };
+    } } } } as unknown as Anthropic;
+    const r = await chooseRails(db, d, client);
+    expect(r.run.status).toBe("unavailable");
+    expect(r.source).toBe("claude");
+    expect(paid).toEqual(["stockline", "packwise"]);
+  });
+
   it("without Claude, code pays both on the registry's rails", async () => {
     const db = openDb(":memory:");
     const { d, paid } = deps();

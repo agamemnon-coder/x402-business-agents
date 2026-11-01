@@ -19,6 +19,9 @@ if (!client) { console.error("KIT11_ANTHROPIC_API_KEY is not set"); process.exit
 interface Row { case: string; agent: AgentName; kind: string; model: string; passed: number; runs: number; cost_usd_micros: number; median_ms: number; details: string[] }
 const rows: Row[] = [];
 const onlyCases = args.includes("--case") ? args[args.indexOf("--case") + 1]!.split(",") : null;
+if (onlyCases && args.includes("--agent")) { console.error("use --agent or --case, not both"); process.exit(2); }
+const unknown = onlyCases?.filter((c) => !AGENT_CASES.some((x) => x.id === c)) ?? [];
+if (unknown.length) { console.error(`no such case: ${unknown.join(", ")}`); process.exit(2); }
 // --case runs only the named cases (and merges like --agent).
 const only = args.includes("--agent") ? args[args.indexOf("--agent") + 1] : onlyCases ? "cases" : null;
 for (const c of AGENT_CASES.filter((x) => (onlyCases ? onlyCases.includes(x.id) : !only || x.agent === only))) {

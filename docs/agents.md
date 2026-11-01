@@ -89,7 +89,11 @@ for one-off purchases (Ask Purser).
 
 Code: `src/agents/railChoice.ts`; wired into `npm run cards -- scenario` when `KIT11_AGENTS=on`. Tests:
 `test/rail-choice.test.ts` (fake client). Evals with real models (`sourcing-rails`, `sourcing-rails-declined`, 10 runs
-each): Haiku 20/20, Sonnet 20/20, Opus 20/20, 1 November.
+each): Haiku 20/20, Sonnet 20/20, Opus 20/20, 1 November. Fresh review the same morning: nothing that moves money wrongly; fixed the wording of
+a stopped or in-doubt purchase (never "not charged" when it may have been), a run that fails after the agent paid both
+now counts as the agent's choice, the declined-card eval now fails a second try (re-run 30/30), and `--case` refuses
+an unknown case. Known: with the agents on, `cards -- scenario` needs the Metal world (it serves a stock check); code's
+fallback payments come after the run, so the trace shows them only in its decision row.
 
 ## Pause one agent with Face ID (4.2)
 

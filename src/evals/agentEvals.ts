@@ -104,7 +104,9 @@ function railCase(id: string, kind: AgentCase["kind"], what: string, card: { ok:
       }, client, model);
       const right = r.purchases.every((p) => p.by === "claude" && (p.supplier === "stockline" ? p.rail === "metal_x402" : p.rail === "airwallex_card"));
       const wrongTries = r.run.calls.filter((c) => c.blocked === "supplier's rails").length;
-      return { pass: r.source === "claude" && right && paid.length === 2, run: r.run, detail: `${r.source}: ${r.purchases.map((p) => `${p.supplier} ${p.rail} (${p.by})`).join(", ")}${wrongTries ? `, wrong rail refused by code ${wrongTries}×` : ""}` };
+      // A declined card is the rail's answer: no second try at Packwise (review of 5.1).
+      const retries = r.run.calls.filter((c) => c.blocked === "paid already").length;
+      return { pass: r.source === "claude" && right && paid.length === 2 && (card.ok || retries === 0), run: r.run, detail: `${r.source}: ${r.purchases.map((p) => `${p.supplier} ${p.rail} (${p.by})`).join(", ")}${wrongTries ? `, wrong rail refused by code ${wrongTries}×` : ""}${retries ? `, tried again ${retries}×` : ""}` };
     },
   };
 }

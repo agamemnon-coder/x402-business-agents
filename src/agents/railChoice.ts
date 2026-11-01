@@ -68,7 +68,9 @@ export async function chooseRails(db: DB, deps: RailDeps, client: Anthropic | nu
     try {
       r = await (supplier === "stockline" ? deps.payStockline() : deps.payPackwise());
     } catch (e) {
-      r = { ok: false, text: `refused before signing: ${(e as Error).message}`, ref: null };
+      // Thrown by code before the rail (a pause, a stop, a policy limit) or after it (a hold kept in doubt): the
+      // ledger's hold or transaction says which; nothing is tried again on any rail.
+      r = { ok: false, text: `stopped: ${(e as Error).message}; nothing more was tried (the ledger shows whether the rail was reached)`, ref: null };
     }
     const p: RailPurchase = { supplier, rail, by, reason: reason.trim().slice(0, 300), ok: r.ok, text: r.text, ref: r.ref };
     done.set(supplier, p);
@@ -114,8 +116,9 @@ export async function chooseRails(db: DB, deps: RailDeps, client: Anthropic | nu
     ],
   }, client);
 
-  // Counts as the agent's only when it finished with every supplier paid (or refused by the rail) by its own choice.
-  const source = run.status === "done" && SUPPLIERS.every((s) => done.get(s)?.by === "claude") ? "claude" : "fallback";
+  // The agent's when every supplier was paid (or refused by the rail) by its own choice, even if the run ended badly
+  // afterwards (review of 5.1); code's fallback otherwise.
+  const source = SUPPLIERS.every((s) => done.get(s)?.by === "claude") ? "claude" : "fallback";
   for (const s of SUPPLIERS) {
     if (!done.has(s)) await payOn(s, SUPPLIER_RAILS[s].rails[0]!, "code", "code's choice: the rail the supplier's checkout accepts");
   }

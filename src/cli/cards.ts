@@ -47,20 +47,21 @@ async function railChoice(sim: IssuingSim): Promise<CardTransaction> {
         const p = await rt.customer.buy(seq);
         const u = db.prepare("SELECT price_cents, outcome, tx_hash, refusal_reason FROM upstream_purchases WHERE id > ? ORDER BY id DESC LIMIT 1").get(before) as { price_cents: number; outcome: string; tx_hash: string | null; refusal_reason: string | null } | undefined;
         if (u?.outcome === "PAID") return { ok: true, text: `stock check #${seq} bought from Stockline for ${fromCents(u.price_cents)} under the Sourcing mandate${p.outcome.kind === "paid" ? ", and sold to the customer" : ""}`, ref: u.tx_hash };
-        return { ok: false, text: `stock check #${seq}: ${u ? `Metal refused it (${u.refusal_reason ?? u.outcome})` : `nothing was bought (${p.outcome.kind})`}`, ref: null };
+        if (u?.outcome === "IN_DOUBT") return { ok: false, text: `stock check #${seq}: in doubt, it may have settled; the reconciliation resolves it (never paid twice)`, ref: null };
+        return { ok: false, text: `stock check #${seq}: ${u ? `refused (${u.refusal_reason ?? u.outcome})` : `nothing was bought (${p.outcome.kind})`}`, ref: null };
       },
       payPackwise: async () => {
         card = await buyPlan(db, sim, "packwise-starter");
         return { ok: card.approved, text: card.approved ? "19.99 EUR approved by Airwallex on the agent's card" : `declined by Airwallex (${card.failureReason})`, ref: card.transactionId };
       },
     });
-    console.log(`SOURCING AGENT   ${r.source === "claude" ? `${r.run.model}: picked the rail per purchase` : "not available; code paid on the rail each supplier accepts"}`);
+    console.log(`SOURCING AGENT   ${r.source === "claude" ? `${r.run.model ?? "Claude"}: picked the rail per purchase` : "did not finish; code paid the rest on the rail each supplier accepts"}`);
     for (const p of r.purchases) console.log(`                 ${p.supplier}: ${p.rail} (${p.by}${p.by === "claude" && p.reason ? `: "${p.reason}"` : ""}): ${p.text}`);
     for (const c of r.run.calls.filter((x) => x.blocked === "supplier's rails")) console.log(`                 refused by code: ${c.text.slice(0, 200)}`);
   } finally {
     await rt.close();
   }
-  if (!card) throw new Error("Packwise Starter was not charged");
+  if (!card) throw new Error("Packwise Starter's purchase stopped before Airwallex answered; see npm run cards and the ledger");
   return card;
 }
 
