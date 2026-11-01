@@ -5,6 +5,7 @@
 // "runner offline" and points to the recorded run, so a demo can carry on.
 // Options after -- go to the first start only (e.g. --enrol); restarts never reopen an enrolment window.
 
+import { envWithoutOrigin } from "../provenance/origin.js";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { resolve } from "node:path";
 
@@ -33,7 +34,7 @@ const firstArgs = process.argv.slice(2);
 
 function start(first: boolean): void {
   starts.push(Date.now());
-  child = spawn(tsx, [resolve(root, "src/cli/relay.ts"), ...(first ? firstArgs : [])], { stdio: "inherit", env: process.env, cwd: root });
+  child = spawn(tsx, [resolve(root, "src/cli/relay.ts"), ...(first ? firstArgs : [])], { stdio: "inherit", env: envWithoutOrigin(), cwd: root });
   console.log(`${at()} up       runner started (pid ${child.pid})`);
   child.on("exit", (code, signal) => {
     child = null;

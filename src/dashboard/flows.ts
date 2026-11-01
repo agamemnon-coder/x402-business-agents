@@ -49,7 +49,7 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
   if (!has(db, "audit_log")) return [];
   const rows = db.prepare(`SELECT seq, ts, actor, event, subject, payload_json FROM audit_log WHERE event IN
     ('sale.delivered', 'upstream.paid', 'upstream.refused', 'upstream.refused_on_chain', 'refund.paid', 'sweep.paid', 'credit.deposited',
-     'transfer.created', 'transfer.status', 'card.charge_approved', 'card.charge_declined', 'receivable.matched', 'receivable.escalated',
+     'transfer.created', 'transfer.adopted', 'credit.adopted', 'transfer.status', 'card.charge_approved', 'card.charge_declined', 'receivable.matched', 'receivable.escalated',
      'licence.timing_advised', 'refund.auto_approved', 'refund.refused', 'sweep.refused')
     ORDER BY seq`).all() as Row[];
   const json = (r: Row) => JSON.parse(r.payload_json) as Record<string, unknown>;
@@ -162,10 +162,12 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
         break;
       }
       case "credit.deposited":
+      case "credit.adopted":
         if (!str("amount") || !str("currency")) break;
         push({ at: r.ts, kind: "booked", from: "treasury", to: "airwallex", amount: str("amount")!, unit: str("currency") as FlowEvent["unit"], rail: "airwallex_deposit", agent: "treasury", ...who(p, () => ({ model: null, decided: "booked at Airwallex after finality (sandbox deposit)" })), what: "the sweep, credited at Airwallex", proof: awxProof(str("deposit_id")) });
         break;
       case "transfer.created":
+      case "transfer.adopted":
         if (r.subject) created.set(r.subject, { amount: str("amount") ?? "", sha: str("approval_sha256"), p });
         break;
       case "transfer.status": {

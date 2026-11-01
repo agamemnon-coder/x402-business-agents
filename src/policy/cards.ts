@@ -195,15 +195,18 @@ export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: Iss
 
 export type CardTxSource = "simulation" | "poll" | "webhook";
 
-/** D24: the origin of the purchase this charge answers: the newest purchase started on this card for this amount that no
- *  charge has answered yet, if its own origin was recorded. A merchant's own charge finds none. */
-function purchaseOrigin(db: DB, agent: string, last4: string, amount: string): Origin | null {
+/** D24: the purchase this charge answers, if any: the newest purchase started on this card for this amount within the
+ *  last 15 minutes before the charge that no charge has answered yet. Its origin is the charge's (null when the
+ *  purchase recorded none: a missing origin is not hidden behind the merchant). A merchant's own charge finds none. */
+const ANSWER_WINDOW_MS = 15 * 60_000;
+function purchaseAnswered(db: DB, agent: string, last4: string, amount: string, at: Date): { origin: Origin | null } | undefined {
   const p = db.prepare(`SELECT seq, payload_json FROM audit_log WHERE event = 'card.purchase_started' AND json_extract(payload_json, '$.agent') = ?
-    AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ? ORDER BY seq DESC LIMIT 1`).get(agent, last4, amount) as { seq: number; payload_json: string } | undefined;
-  if (!p) return null;
+    AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ? AND ts >= ? AND ts <= ? ORDER BY seq DESC LIMIT 1`)
+    .get(agent, last4, amount, new Date(at.getTime() - ANSWER_WINDOW_MS).toISOString(), new Date(at.getTime() + 60_000).toISOString()) as { seq: number; payload_json: string } | undefined;
+  if (!p) return undefined;
   const answered = db.prepare(`SELECT 1 FROM audit_log WHERE seq > ? AND event IN ('card.charge_approved', 'card.charge_declined')
     AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ? LIMIT 1`).get(p.seq, last4, amount);
-  return answered ? null : parseOrigin(JSON.stringify((JSON.parse(p.payload_json) as { origin?: unknown }).origin ?? null));
+  return answered ? undefined : { origin: parseOrigin(JSON.stringify((JSON.parse(p.payload_json) as { origin?: unknown }).origin ?? null)) };
 }
 
 /** Records an Airwallex authorisation once. Returns true if it was new. */
@@ -247,8 +250,9 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
     ).run(t.transactionId, t.cardId, card.agent, t.merchant, t.mcc, t.amountCents, t.currency, t.status, t.approved ? 1 : 0, t.failureReason, purpose ?? null, source, t.occurredAt, now.toISOString());
     // Logged under the agent whose card it is; the decision itself is Airwallex's. D24: who started the charge is the
     // purchase's own origin (the agent's run, the CFO's task card), or the merchant charging the card by itself.
-    const chargeOrigin = (source === "simulation" ? currentOrigin() : null) ?? purchaseOrigin(db, card.agent, card.last4, fromCents(t.amountCents))
-      ?? { actor: "external", party: "merchant", name: t.merchant || "a merchant" };
+    const own = source === "simulation" ? currentOrigin() : null;
+    const answers = own ? { origin: own } : purchaseAnswered(db, card.agent, card.last4, fromCents(t.amountCents), Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now);
+    const chargeOrigin: Origin | null = answers ? answers.origin : { actor: "external", party: "merchant", name: t.merchant || "a merchant" };
     audit(db, card.agent as Actor, t.approved ? "card.charge_approved" : "card.charge_declined", t.transactionId, {
       origin: chargeOrigin as never,
       agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency,

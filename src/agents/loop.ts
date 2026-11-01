@@ -13,7 +13,7 @@ import { callCostMicros, type Usage } from "../claude/pricing.js";
 import type { DB } from "../db/open.js";
 import { redactJson, redactSecrets } from "../lib/redact.js";
 import { randomBytes } from "node:crypto";
-import { withOrigin } from "../provenance/origin.js";
+import { parseOrigin, withOrigin } from "../provenance/origin.js";
 import { apiInputSchema } from "./toolSchema.js";
 
 export interface ToolResult {
@@ -209,7 +209,9 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
           error = true;
         } else {
           try {
-            out = await withOrigin({ actor: "agent", agent: spec.agent, model: res.model, request_id: requestId, run_id: runId }, () => tool.run(fits.data));
+            // D24: what the tool moves records this run; an origin that does not validate is left out (counted as missing).
+            const origin = parseOrigin(JSON.stringify({ actor: "agent", agent: spec.agent, model: res.model || spec.model, request_id: requestId, run_id: runId }));
+            out = origin ? await withOrigin(origin, () => tool.run(fits.data)) : await tool.run(fits.data);
           } catch (e) {
             out = { text: `The tool stopped: ${(e as Error).message}. Nothing more was done.`, blocked: "error" };
             error = true;

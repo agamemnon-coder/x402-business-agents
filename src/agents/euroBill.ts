@@ -54,7 +54,7 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
   const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
   if ((await rail.findDepositsByReference(SEED_REFERENCE, since)).length === 0) {
     const d = await sim.simulateDeposit({ globalAccountId: await rail.usdGlobalAccountId(), amountCents: SEED_USD_CENTS, reference: SEED_REFERENCE, payerName: "Seed funding" });
-    audit(db, "awx-executor", "treasury.seeded", d.id, { amount: fromCents(SEED_USD_CENTS), currency: "USD", reference: SEED_REFERENCE });
+    audit(db, "awx-executor", "treasury.seeded", d.id, { amount: fromCents(SEED_USD_CENTS), currency: "USD", reference: SEED_REFERENCE, origin: { actor: "code", rule: "seed the sandbox treasury with test money (once per world)", agent: "treasury" } });
   }
   const b = await snapshot(db, rail, "seed");
   const usd = b.USD?.availableCents ?? 0;

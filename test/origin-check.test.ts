@@ -28,3 +28,13 @@ describe("the origins check", () => {
     expect(originsCheck(db)).toEqual({ recorded: false, movements: 1, missing: [{ seq: 1, event: "sweep.paid", subject: "s-0" }] });
   });
 });
+
+describe("a ledger that began before D24", () => {
+  it("is checked from its first movement with an origin on", () => {
+    const db = openDb(":memory:");
+    db.prepare("INSERT INTO audit_log (seq, ts, actor, event, subject, payload_json, prev_hash, row_hash) VALUES (1, 'z', 'treasury', 'sweep.paid', 's-0', '{\"amount\":\"0.09\"}', 'x', 'y')").run();
+    audit(db, "system", "sale.delivered", "1", { tx: "0xb", origin: { actor: "external", party: "customer" } });
+    audit(db, "treasury", "sweep.paid", "s-1", { amount: "0.09", tx: "0xa" });
+    expect(originsCheck(db)).toEqual({ recorded: true, movements: 2, missing: [{ seq: 3, event: "sweep.paid", subject: "s-1" }] });
+  });
+});

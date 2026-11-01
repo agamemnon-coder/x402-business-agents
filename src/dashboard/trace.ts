@@ -5,6 +5,7 @@
 // run. Every step carries its row's hash, so a reader can check it against the exported audit log. Read-only; with
 // the agents off there are no agent rows, so there are no traces.
 
+import { MONEY_EVENTS } from "../provenance/origin.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { describe as words } from "./snapshot.js";
@@ -105,7 +106,15 @@ export function agentTraces(db: DB, all?: Row[]): Trace[] {
     // Runs recorded before the trace existed have no from_seq: they start at their first tool call.
     const from = num(p.from_seq) ?? ((rows.find((r) => r.seq > prevRun && r.seq < run.seq && r.actor === agent && r.event === "agent.tool")?.seq ?? run.seq) - 1);
     // Tool calls of this run only (same task); what they caused is the agent's other rows in between (review of 4.2).
-    const mine = rows.filter((r) => r.seq > Math.max(from, prevRun) && r.seq <= run.seq && r.actor === agent && r.event !== "agent.run" && (r.event !== "agent.tool" || r.subject === run.subject));
+    // D24: a money movement belongs to this run only when its recorded origin names the run (directly, or as the
+    // decision code followed); a run recorded before origins (no run_id) keeps the rows in between, as it did.
+    const runId = str(p.run_id);
+    const ofRun = (r: Row): boolean => {
+      if (!runId || !MONEY_EVENTS.has(r.event)) return true;
+      const o = (JSON.parse(r.payload_json) as { origin?: { run_id?: string; set_by?: { run_id?: string } } | null }).origin;
+      return o?.run_id === runId || o?.set_by?.run_id === runId;
+    };
+    const mine = rows.filter((r) => r.seq > Math.max(from, prevRun) && r.seq <= run.seq && r.actor === agent && r.event !== "agent.run" && (r.event !== "agent.tool" || r.subject === run.subject) && ofRun(r));
     const decision = rows.find((r) => r.seq > run.seq && r.seq < nextRun && r.actor === agent && r.event === (DECISION_BY_TASK[str(run.subject)] ?? (str(run.subject).startsWith("wake.") ? "agent.decision" : str(run.subject).startsWith("card.decline.") ? "card.decline_met" : str(run.subject).startsWith("licence.timing.") ? "licence.timing_advised" : DECISION[agent]))) ?? null;
 
     const steps: TraceStep[] = [];

@@ -1,7 +1,7 @@
 // The sourcing agent: buys stock checks from the supplier under its own mandate (payee: the supplier only,
 // a per-purchase cap, a budget). It holds its mandate key and nothing else.
 
-import { originJson, parseOrigin, withOrigin, type Origin } from "../provenance/origin.js";
+import { currentOrigin, originJson, parseOrigin, withOrigin, type Origin } from "../provenance/origin.js";
 import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
@@ -110,6 +110,9 @@ export class SourcingAgent {
   /** D24: a purchase per query is code following a buy policy; its origin names the policy and, when the Sourcing
    *  agent's own Claude run set it, that run. It replaces any origin around it: code decides each purchase. */
   async buy(seq: number): Promise<UpstreamResult> {
+    // An agent paying directly through its own tool (the rail choice's pay) is the agent's decision, not the policy's.
+    const direct = currentOrigin();
+    if (direct?.actor === "agent" && direct.agent === "sourcing") return this.buyUnder(seq);
     const set = autonomyOn() ? this.db.prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.policy_set' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined : undefined;
     const by = set ? parseOrigin(JSON.stringify((JSON.parse(set.payload_json) as { origin?: unknown }).origin ?? null)) : null;
     const origin: Origin = set ? { actor: "code", rule: "the Sourcing agent's buy policy", agent: "sourcing", ...(by ? { set_by: by } : {}) } : { actor: "code", rule: "the default buy policy", agent: "sourcing" };

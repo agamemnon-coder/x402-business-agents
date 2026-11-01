@@ -42,7 +42,11 @@ export const MONEY_EVENTS = new Set([
   "refund.paid", "refund.pending", "refund.refused", "refund.held", "sweep.paid", "sweep.pending", "sweep.refused", "sweep.held",
   "credit.deposited", "transfer.created", "fx.converted", "card.purchase_started", "card.charge_approved", "card.charge_declined",
   "card.charge_reversed", "receivable.matched", "receivable.escalated", "mandate.replaced", "clearing.deposited", "clearing.withdrawn",
-  "quarantine.held",
+  "quarantine.held", "quarantine.returned", "quarantine.accepted",
+  // After a crash the action is found at the outside service and adopted, never sent twice: the same money movement.
+  "transfer.adopted", "fx.adopted", "credit.adopted", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
+  // Test money for a fresh world, and the passkey owners' own transfer.
+  "business.funded", "treasury.seeded", "owners.sent",
 ]);
 
 /** Code's own automatic paths, by their rule (D24). */
@@ -84,6 +88,12 @@ export function originJson(): string | null {
 let scriptOrigin: Origin | null = null;
 export function setScriptOrigin(o: Origin): void {
   if (!fromEnv) scriptOrigin = OriginSchema.parse(o);
+}
+
+/** The environment for a long-lived process (an agent, the world) that must start with no origin of its own. */
+export function envWithoutOrigin(): NodeJS.ProcessEnv {
+  const { KIT11_ORIGIN: _drop, ...rest } = process.env;
+  return rest;
 }
 
 /** The environment that passes the origin in force on to a subprocess (nothing when there is none). */

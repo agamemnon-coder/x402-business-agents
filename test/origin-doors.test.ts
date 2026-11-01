@@ -33,6 +33,10 @@ describe("an approved proposal: the CFO's approval", () => {
     db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES ('P-2', 'c1', 'controller', 'dad', 'sha-P-2', 'a', 'y')").run();
     db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES ('P-2', 'APPROVED', 'sha-P-2', 'max', 'passkey', '', 'z')").run();
     expect(approvalOrigin(db, "P-2")).toMatchObject({ approver: "max", cosigner: "dad" });
+    // The real shape after four eyes: the stored approver names both, and the first signer is the cosigner.
+    db.prepare("UPDATE approvals SET approver = 'dad (controller) + max (cfo)' WHERE proposal_id = 'P-2'").run();
+    db.prepare("UPDATE cosignatures SET approver = 'dad (controller)' WHERE proposal_id = 'P-2'").run();
+    expect(approvalOrigin(db, "P-2")).toMatchObject({ approver: "dad (controller) + max (cfo)", cosigner: "dad (controller)" });
   });
 
   it("a rejected or undecided proposal has none, so nothing it could move would be credited to the CFO", () => {
@@ -93,5 +97,55 @@ describe("a card charge: the purchase it answers, or the merchant", () => {
     const first = db.prepare("SELECT amount_cents, card_id FROM card_transactions").get() as { amount_cents: number; card_id: string };
     ingestCardTransaction(db, { transactionId: "t-renew", cardId: first.card_id, amountCents: first.amount_cents, currency: "EUR", status: "APPROVED", approved: true, failureReason: null, merchant: "Packwise", mcc: "5734", type: "AUTHORIZATION", occurredAt: new Date(now.getTime() + 60_000).toISOString() }, "poll", now);
     expect(originOf(db, "card.charge_approved")).toEqual([AGENT, { actor: "external", party: "merchant", name: "Packwise" }]);
+  });
+});
+
+describe("an action resumed or retried keeps the origin it started with; a new attempt records its own (review 2)", () => {
+  const OPUS: Origin = { actor: "agent", agent: "treasury", model: "claude-opus-5-5", request_id: "req_o", run_id: "run-treasury-9-abcdef" };
+  const S3: Origin = { actor: "code", rule: "the sweep of net earnings (npm run s3)", agent: "treasury" };
+  it("a pending sweep finished later, under another origin, still records the one it started with", async () => {
+    const db = openDb(":memory:");
+    const pending = async () => ({ outcome: "PENDING" as const, tx: "0xp", reason: null, already: false });
+    const paid = async () => ({ outcome: "PAID" as const, tx: "0xp", reason: null, already: false });
+    const { executeSweep } = await import("../src/agents/sweep.js");
+    await withOrigin(OPUS, () => executeSweep(db, "sweep-9", 30, "0x00000000000000000000000000000000000000aa", pending));
+    await withOrigin(S3, () => executeSweep(db, "sweep-9", 30, "0x00000000000000000000000000000000000000aa", paid));
+    expect(originOf(db, "sweep.paid")).toEqual([OPUS]);
+  });
+
+  it("a refused sweep tried again later is a new attempt: its row and its event carry the new origin", async () => {
+    const db = openDb(":memory:");
+    const refused = async () => ({ outcome: "REFUSED" as const, tx: null, reason: "x", already: false });
+    const paid = async () => ({ outcome: "PAID" as const, tx: "0xq", reason: null, already: false });
+    const { executeSweep } = await import("../src/agents/sweep.js");
+    await withOrigin(OPUS, () => executeSweep(db, "sweep-8", 30, "0x00000000000000000000000000000000000000aa", refused));
+    await withOrigin(S3, () => executeSweep(db, "sweep-8", 30, "0x00000000000000000000000000000000000000aa", paid));
+    expect(originOf(db, "sweep.paid")).toEqual([S3]);
+    expect(JSON.parse((db.prepare("SELECT origin_json FROM sweeps WHERE payment_id = 'sweep-8'").get() as { origin_json: string }).origin_json)).toEqual(S3);
+  });
+});
+
+describe("a card charge matches only a purchase it can answer (review 2)", () => {
+  it("a purchase that never got its charge does not claim a charge of the same amount much later", async () => {
+    const db = openDb(":memory:");
+    const awx = new FakeIssuing();
+    awx.clock = () => now.getTime();
+    await setupCards(db, awx, now);
+    const card = db.prepare("SELECT card_id, last4 FROM cards WHERE agent = 'sourcing'").get() as { card_id: string; last4: string };
+    withOrigin(AGENT, () => audit(db, "sourcing", "card.purchase_started", "plan-y", { agent: "sourcing", last4: card.last4, merchant: "Packwise", amount: "45.00", currency: "EUR" }, now));
+    const later = new Date(now.getTime() + 30 * 86_400_000);
+    ingestCardTransaction(db, { transactionId: "t-late", cardId: card.card_id, amountCents: 4500, currency: "EUR", status: "APPROVED", approved: true, failureReason: null, merchant: "Packwise", mcc: "5734", type: "AUTHORIZATION", occurredAt: later.toISOString() }, "poll", later);
+    expect(originOf(db, "card.charge_approved")).toEqual([{ actor: "external", party: "merchant", name: "Packwise" }]);
+  });
+
+  it("a charge answering a purchase that recorded no origin records none either: the missing one is not hidden behind the merchant", async () => {
+    const db = openDb(":memory:");
+    const awx = new FakeIssuing();
+    awx.clock = () => now.getTime();
+    await setupCards(db, awx, now);
+    const card = db.prepare("SELECT card_id, last4 FROM cards WHERE agent = 'sourcing'").get() as { card_id: string; last4: string };
+    audit(db, "sourcing", "card.purchase_started", "plan-z", { agent: "sourcing", last4: card.last4, merchant: "Notion", amount: "12.00", currency: "EUR" }, now);
+    ingestCardTransaction(db, { transactionId: "t-z", cardId: card.card_id, amountCents: 1200, currency: "EUR", status: "APPROVED", approved: true, failureReason: null, merchant: "Notion", mcc: "5734", type: "AUTHORIZATION", occurredAt: now.toISOString() }, "poll", now);
+    expect(originOf(db, "card.charge_approved")).toEqual([null]);
   });
 });

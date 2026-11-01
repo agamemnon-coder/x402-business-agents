@@ -107,7 +107,7 @@ const bBalance = await usdzBalance(B);
 const target = centsToBaseUnits(TOTAL_BUDGET_CENTS);
 if (bBalance < target) {
   const tx = await transferUsdz(keyPath("owner-business.key.json"), B, target - bBalance);
-  audit(db, "owner-signer", "business.funded", B, { amount: fromCents(baseUnitsToCents(target - bBalance)), tx });
+  audit(db, "owner-signer", "business.funded", B, { amount: fromCents(baseUnitsToCents(target - bBalance)), tx, origin: { actor: "code", rule: "fund a fresh test world from the Metal testnet faucet (npm run bootstrap)" } });
   say(`moved ${fromCents(baseUnitsToCents(target - bBalance))} *USDZ owner -> business: ${EXPLORER_TX}${tx}`);
 }
 say(`business account holds ${fromCents(baseUnitsToCents(await usdzBalance(B)))} *USDZ`);

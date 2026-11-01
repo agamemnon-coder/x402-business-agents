@@ -115,7 +115,7 @@ describe("who decided: the origin recorded with the movement (D24)", () => {
     const db = fresh();
     log(db, { ...CFO, cosigner: "dad" } as Origin, "awx-executor", "transfer.created", "tr-1", { amount: "EUR 99.00" }, 1);
     audit(db, "awx-executor", "transfer.status", "tr-1", { status: "PAID" }, T(2));
-    expect(flowEvents(db)[0]!.decided).toBe("the CFO approved it with Face ID, with the controller's Face ID too (four eyes)");
+    expect(flowEvents(db)[0]!.decided).toBe("two people approved it, each with their own Face ID (four eyes)");
   });
 
   it("the euro invoice names the Treasury agent's plan when its advice on the same proposal is linked", () => {

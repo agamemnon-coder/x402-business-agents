@@ -113,7 +113,7 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   const made = existing ? await rail.findTransferByRequestId(t.transfer_request_id) : undefined;
   if (made) {
     db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ?").run(made.id, made.status, new Date().toISOString(), t.transfer_request_id);
-    audit(db, "awx-executor", "transfer.adopted", made.id, { request_id: t.transfer_request_id, status: made.status, approval_sha256: sha });
+    audit(db, "awx-executor", "transfer.adopted", made.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, status: made.status, approval_sha256: sha });
     return made;
   }
   if (!existing) {

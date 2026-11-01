@@ -82,6 +82,16 @@ export function nextSweepId(db: DB, now = new Date()): string {
 
 /** Pull under the treasury mandate. A pending or failed run is retried with the same payment id, never a new one. */
 export async function executeSweep(db: DB, paymentId: string, amountCents: number, to: Address, pull: Puller = livePull): Promise<{ outcome: string; tx: string | null; reason: string | null }> {
+  // D24: a sweep already sent (PENDING) or held is the same action, finished under the origin it started with; a
+  // refused one tried again is a new attempt, which records the origin in force now.
+  const before = db.prepare("SELECT outcome, origin_json FROM sweeps WHERE payment_id = ?").get(paymentId) as { outcome: string; origin_json: string | null } | undefined;
+  const stored = before && (before.outcome === "PENDING" || before.outcome === "HELD") ? parseOrigin(before.origin_json) : null;
+  if (stored) return withOrigin(stored, () => sweepUnder(db, paymentId, amountCents, to, pull));
+  if (before && before.outcome === "REFUSED") db.prepare("UPDATE sweeps SET origin_json = ? WHERE payment_id = ?").run(originJson(), paymentId);
+  return sweepUnder(db, paymentId, amountCents, to, pull);
+}
+
+async function sweepUnder(db: DB, paymentId: string, amountCents: number, to: Address, pull: Puller): Promise<{ outcome: string; tx: string | null; reason: string | null }> {
   db.prepare("INSERT OR IGNORE INTO sweeps (payment_id, amount_cents, outcome, created_at, origin_json) VALUES (?, ?, 'PLANNED', ?, ?)").run(paymentId, amountCents, new Date().toISOString(), originJson());
   const row = db.prepare("SELECT amount_cents, outcome FROM sweeps WHERE payment_id = ?").get(paymentId) as { amount_cents: number; outcome: string };
   if (row.amount_cents !== amountCents) throw new Error(`${paymentId} was planned for ${fromCents(row.amount_cents)}; a retry must not change the amount`);

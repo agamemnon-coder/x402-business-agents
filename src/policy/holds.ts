@@ -102,7 +102,8 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
     const ts = now.toISOString();
     // The policy version this reservation was checked against (backend review B4).
     const policy = policyVersion(db, now).version;
-    if (existing) db.prepare("UPDATE holds SET agent = ?, rail = ?, cents = ?, status = 'HELD', reason = NULL, updated_at = ?, policy_version = ? WHERE ref = ?").run(agent, r.rail, r.cents, ts, policy, r.ref);
+    // A released hold reserved again is a new attempt: it records the origin in force now (D24).
+    if (existing) db.prepare("UPDATE holds SET agent = ?, rail = ?, cents = ?, status = 'HELD', reason = NULL, updated_at = ?, policy_version = ?, origin_json = ? WHERE ref = ?").run(agent, r.rail, r.cents, ts, policy, originJson(), r.ref);
     else db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, created_at, updated_at, policy_version, origin_json) VALUES (?, ?, ?, ?, 'HELD', ?, ?, ?, ?)").run(r.ref, agent, r.rail, r.cents, ts, ts, policy, originJson());
     return null;
   }).immediate();

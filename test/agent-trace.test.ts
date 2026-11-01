@@ -3,6 +3,7 @@
 // chain tx or Airwallex id it caused, and each row's hash in the audit chain; opened from the decision's feed line.
 // Breaks if a call's own effect (a refusal on chain) is left out of its step, if a step's hash is not the audit row's,
 // or if the feed line cannot open its trace. Fake client only.
+import { withOrigin } from "../src/provenance/origin.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
@@ -46,6 +47,24 @@ async function world() {
   audit(db, "sourcing", "price_rise.met", "41", { source: "claude", model: run.model, tried: true, message: "I need a cap of 0.04." });
   return db;
 }
+
+describe("the agent trace and money movements (D24)", () => {
+  it("a movement code made while the agent's run was open is not part of the run's trace; the run's own refusal is", async () => {
+    const db = openDb(":memory:");
+    await runAgent(db, {
+      agent: "sourcing", task: "price_rise.meet", model: "claude-haiku-5-5", system: "s", prompt: "p",
+      tools: [{ name: "try_purchase", description: "d", input: z.object({}), run: async () => {
+        // The world's per-query buyer, by code, writes during the run; then the tool's own refusal.
+        withOrigin({ actor: "code", rule: "the default buy policy", agent: "sourcing" }, () => audit(db, "sourcing", "upstream.paid", "50", { seq: 50 }));
+        audit(db, "sourcing", "upstream.refused", "51", { seq: 51, reason: "mandate_cap_exceeded: x", tx: TX });
+        return { text: "refused", blocked: "Metal mandate" };
+      } }],
+    }, fake([[{ name: "try_purchase", input: {} }]]));
+    const effects = agentTraces(db)[0]!.steps.map((s) => s.event);
+    expect(effects).toContain("upstream.refused");
+    expect(effects).not.toContain("upstream.paid");
+  });
+});
 
 describe("the agent trace", () => {
   it("lays out one decision as a timeline: each call with what it caused, then the run, then the decision", async () => {

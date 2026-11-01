@@ -7,6 +7,7 @@
 //   --local    no Cloudflare: serves the same relay on http://localhost:4400 (KIT11_RELAY_PORT) for a laptop
 //   --once     one sync (and the executions it starts), then exit
 
+import { envWithoutOrigin } from "../provenance/origin.js";
 import { displayKey } from "../relay/sign.js";
 import { reconcile } from "../finance/reconcile.js";
 import { certifyPending } from "../metal/finality.js";
@@ -100,7 +101,7 @@ let stopping = false;
 // D19: with the autonomous agents on, each agent runs as its own process beside the runner (npm run agent -- <name>);
 // their lines go to this log, prefixed. They stop with the runner.
 const agentProcs = autonomyOn() ? (["sourcing", "support", "treasury"] as const).map((n) => {
-  const child = spawn("npx", ["tsx", resolve(import.meta.dirname, "agent.ts"), n], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn("npx", ["tsx", resolve(import.meta.dirname, "agent.ts"), n], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"] });
   const out = (b: Buffer) => { for (const l of b.toString().split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) console.log(`agent    ${redactSecrets(l).slice(0, 400)}`); };
   child.stdout.on("data", out);
   child.stderr.on("data", out);

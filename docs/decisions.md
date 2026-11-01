@@ -484,3 +484,16 @@ movement without one, the money flow and the feed reading only the origin. The D
 automatic limits" or "waiting for your Face ID") is the desk's own record made when it decided, so it stays. The two
 recordings were made before D24: their flows are labelled derived and credit no Claude model from a run; the next
 autonomous dry run (after the faucet resets) replaces the `/?autonomy` recording with one that carries origins.
+
+Fresh review of D24, fixed: a card charge answers only a purchase started on the same card for the same amount in the
+15 minutes before it and not answered yet (an unanswered purchase no longer claims a renewal days later), and when that
+purchase recorded no origin the charge records none either (not hidden behind the merchant); the agent trace takes a
+money movement into a run only when its origin names that run (code's purchases during the run stay out); a sweep or
+refund already sent is finished under the origin it started with, while a refused one tried again (or the CFO's batch)
+is a new attempt that records its own, also on its ledger row and a reused hold; the adopted and deferred variants,
+quarantine returns, test-money seeding and the passkey owners' transfer are money events too; an agent's direct pay
+keeps its own origin; the check counts a ledger that began before D24 from its first movement with an origin; agents
+and the relay start without an inherited origin; four eyes reads "two people approved it, each with their own Face
+ID"; an origin that does not validate in the agent loop is left out (counted) instead of failing the tool; an index on
+the audit log's events. Accepted: a writer may state an origin explicitly (the outside doors, code's booking with the
+decision it follows); no writer puts model or outside input into that field, which a stated origin must pass zod.
