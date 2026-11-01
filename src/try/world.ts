@@ -29,15 +29,23 @@ export const START_POLICY: BuyPolicy = { supplier: "stockline", max_price: null,
 export const WORLD_DEMO_LABEL = "Demo world · stand-in suppliers · no money moves · a message to the Treasury agent is shown, not sent";
 const MAX_CALLS = 5;
 const MAX_MESSAGES = 2;
+/** The runtime's reminder (src/autonomy/runtime.ts, `unfinished`). */
+const UNFINISHED = "call finish with what you decided (or that you decided to do nothing) and why.";
 
 type Block = { type: "text"; text: string } | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> };
-type Content = string | (Block | { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean })[];
+type Content = string | unknown[];
 export interface AgentRequest {
   model: string; system: string;
   tools: { name: string; description: string; input_schema: Record<string, unknown> }[];
   messages: { role: "user" | "assistant"; content: Content }[];
 }
-export interface AgentReply { content: Block[]; stop_reason: string; model: string; ms: number; costUsd: number }
+export interface AgentReply {
+  content: Block[]; stop_reason: string; model: string; ms: number; costUsd: number;
+  /** The model's own blocks (thinking included), sent back unchanged as the runtime does. */
+  raw?: unknown[];
+  /** The API's request id: proof per call, as the runtime records it. */
+  requestId?: string | null;
+}
 /** One Messages API call with tools (the real one in src/try/claude.ts; a stand-in in tests). */
 export type AgentAsk = (req: AgentRequest) => Promise<AgentReply>;
 
@@ -56,6 +64,8 @@ export interface WorldResult {
   messages: { to: string; text: string }[];
   summary: string;
   calls: number;
+  /** The API's request id of each call. */
+  request_ids: string[];
   ms: number;
   costUsd: number;
 }
@@ -104,23 +114,28 @@ export async function tryWorld(id: string, ask: AgentAsk | null, now: Date, whyN
     messages: [{ role: "user", content: prompt }],
   };
 
+  const requestIds: string[] = [];
   let calls = 0, ms = 0, costUsd = 0, model: string | null = null, why: string | null = ask ? null : whyNoModel, done = false, nudged = false;
   if (ask) {
     try {
       while (calls < MAX_CALLS && !done) {
-        calls++;
         const r = await ask(req);
+        calls++;
         ms += r.ms; costUsd += r.costUsd; model = r.model;
+        if (r.requestId) requestIds.push(r.requestId.slice(0, 80));
         if (r.stop_reason === "refusal") { why = "the model declined"; break; }
-        req.messages.push({ role: "assistant", content: r.content });
         const uses = r.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use");
-        if (uses.length === 0) {
-          // As the runtime does: one reminder to call finish, then code decides.
+        // As the runtime (src/agents/loop.ts): an answer cut off ends the wake, tool calls in it unrun; no tool call
+        // gets one reminder in the runtime's words, then code's fallback decides.
+        if (r.stop_reason !== "tool_use" || uses.length === 0) {
+          if (r.stop_reason === "max_tokens") { why = "the answer was cut off"; break; }
           if (nudged) break;
           nudged = true;
-          req.messages.push({ role: "user", content: "Call finish with what you decided (or that you decided to do nothing) and why." });
+          req.messages.push({ role: "assistant", content: r.raw ?? r.content });
+          req.messages.push({ role: "user", content: `Not finished: ${UNFINISHED}` });
           continue;
         }
+        req.messages.push({ role: "assistant", content: r.raw ?? r.content });
         const results: { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean }[] = [];
         for (const use of uses) {
           const tool = byName.get(use.name);
@@ -150,12 +165,12 @@ export async function tryWorld(id: string, ask: AgentAsk | null, now: Date, whyN
     // As in the runtime: what the agent already set stays; code's fallback adds its message.
     const f = sourcingFallback([event]);
     summary = f.summary;
-    if (f.message && messages.length < MAX_MESSAGES) messages.push({ to: "treasury", text: f.message });
+    if (f.message) messages.push({ to: "treasury", text: f.message }); // the runtime's fallback sends it whatever Claude sent
   }
   return {
     world: { id: change.id, label: change.label, detail: change.detail }, demo: WORLD_DEMO_LABEL,
     source: claude ? "claude" : "code", why: claude ? null : why, model,
-    saw: prompt, steps, policy_before: policyWords(START_POLICY), policy_after: policyWords(policy), messages, summary, calls, ms, costUsd,
+    saw: prompt, steps, policy_before: policyWords(START_POLICY), policy_after: policyWords(policy), messages, summary, calls, request_ids: requestIds, ms, costUsd,
   };
 }
 

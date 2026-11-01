@@ -110,7 +110,7 @@ export function claudeAgentAsk(apiKey: string, fetcher: typeof fetch = fetch, ti
       }
       const model = j.model ?? req.model;
       const micros = callCostMicros(model, { input: j.usage.input_tokens, output: j.usage.output_tokens, cache_read: j.usage.cache_read_input_tokens ?? 0, cache_write: j.usage.cache_creation_input_tokens ?? 0 }) ?? 0;
-      return { content, stop_reason: j.stop_reason ?? "end_turn", model, ms: Date.now() - started, costUsd: micros / 1e6 };
+      return { content, raw: j.content, requestId: res.headers.get("request-id"), stop_reason: j.stop_reason ?? "end_turn", model, ms: Date.now() - started, costUsd: micros / 1e6 };
     } finally {
       clearTimeout(timer);
     }

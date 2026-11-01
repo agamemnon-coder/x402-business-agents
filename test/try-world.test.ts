@@ -127,3 +127,56 @@ describe("the real call behind it (fetch), checked against a fake fetch (test on
     await expect(claudeAgentAsk("k", down)({ model: "m", system: "S", tools: [], messages: [] })).rejects.toThrow("HTTP 529");
   });
 });
+
+describe("review fixes (1 Nov): /try asks exactly as the runtime does, and stops as it does", () => {
+  it("the runtime's own request for the same world equals /try's: model, system prompt, first message, tools", async () => {
+    const { openDb } = await import("../src/db/open.js");
+    const { publish } = await import("../src/autonomy/bus.js");
+    const { wake } = await import("../src/autonomy/runtime.js");
+    const { sourcingProfile } = await import("../src/autonomy/sourcingProfile.js");
+    const { worldOf } = await import("../src/evals/autonomyVariation.js");
+    const { wakeEventOf } = await import("../src/autonomy/worldSpecs.js");
+    const { MODELS } = await import("../src/claude/reader.js");
+    expect(MODELS.classify).toBe("claude-haiku-5-5");
+    // A stand-in Anthropic client (test only): records the request, answers with finish.
+    let params: Record<string, unknown> = {};
+    const client = { beta: { messages: { create: async (p: Record<string, unknown>) => { params = p; return { model: "stand-in", stop_reason: "tool_use", usage: { input_tokens: 1, output_tokens: 1 }, content: [{ type: "tool_use", id: "f", name: "finish", input: { summary: "ok" } }] }; } } } };
+    const db = openDb(":memory:");
+    const e = wakeEventOf(SAME);
+    publish(db, e.kind, e.payload, "sourcing");
+    await wake(db, sourcingProfile(worldOf(SAME)), { client: client as never, now: NOW });
+    const seen: AgentRequest[] = [];
+    await tryWorld("price-rise", scripted([[finish()]], seen), NOW, "");
+    const mine = seen[0]!;
+    expect(params.model).toBe(mine.model);
+    expect((params.system as { text: string }[])[0]!.text).toBe(mine.system);
+    expect((params.messages as { content: string }[])[0]!.content).toBe(mine.messages[0]!.content);
+    expect((params.tools as { name: string; description: string; input_schema: unknown }[]).map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema }))).toEqual(mine.tools);
+  });
+
+  it("nudges once in the runtime's words; an answer cut off at max_tokens ends the wake, even with a tool call in it", async () => {
+    const seen: AgentRequest[] = [];
+    let n = 0;
+    const ask: AgentAsk = async (req) => { seen.push(structuredClone(req)); n++; return n === 1 ? { content: [{ type: "text", text: "Thinking." }], stop_reason: "end_turn", model: "stand-in", ms: 1, costUsd: 0 } : { content: [{ type: "tool_use", id: "f", name: "finish", input: { summary: "done" } }], stop_reason: "tool_use", model: "stand-in", ms: 1, costUsd: 0 }; };
+    const r = await tryWorld("price-rise", ask, NOW, "");
+    expect(seen[1]!.messages.at(-1)!.content).toBe("Not finished: call finish with what you decided (or that you decided to do nothing) and why.");
+    expect(r.source).toBe("claude");
+    const cut: AgentAsk = async () => ({ content: [{ type: "tool_use", id: "s", name: "set_buy_policy", input: { supplier: "ridgeline", max_price: "0.03", cache_seconds: 0, reason: "x" } }], stop_reason: "max_tokens", model: "stand-in", ms: 1, costUsd: 0 });
+    const c = await tryWorld("price-rise", cut, NOW, "");
+    expect(c).toMatchObject({ source: "code", why: "the answer was cut off", steps: [] });
+    expect(c.policy_after).toBe(c.policy_before);
+  });
+
+  it("sends the model's own blocks back unchanged (thinking included), and the fallback's message even after two of Claude's", async () => {
+    const seen: AgentRequest[] = [];
+    let n = 0;
+    const raw = [{ type: "thinking", thinking: "…", signature: "sig" }, { type: "tool_use", id: "m", name: "market", input: {} }];
+    const ask: AgentAsk = async (req) => { seen.push(structuredClone(req)); n++; return n === 1 ? { content: [{ type: "tool_use", id: "m", name: "market", input: {} }], raw, stop_reason: "tool_use", model: "stand-in", ms: 1, costUsd: 0 } : { content: [], stop_reason: "end_turn", model: "stand-in", ms: 1, costUsd: 0 }; };
+    await tryWorld("price-rise", ask, NOW, "");
+    expect(seen[1]!.messages[1]).toEqual({ role: "assistant", content: raw });
+    const msg = (t: string): Use => ({ name: "send_message", input: { to: "treasury", text: t } });
+    const r = await tryWorld("price-rise", scripted([[msg("a"), msg("b")]]), NOW, "");
+    expect(r.source).toBe("code");
+    expect(r.messages.map((m) => m.text.slice(0, 1))).toEqual(["a", "b", "A"]);
+  });
+});

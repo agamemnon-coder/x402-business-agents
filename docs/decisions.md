@@ -351,7 +351,7 @@ no rail; the Worker's change needs Max's redeploy like D20):
    The runtime's tests and the variation eval guard that nothing changes for the real agent.
 2. **A world change, picked by the visitor:** five buttons (Stockline raises its price, Ridgeline gets flaky, the CFO
    raises the cap, Stockline drops back, Ridgeline cheap and fresh), the same worlds as the variation eval. One wake of
-   the Sourcing agent with its real model (Haiku), at most four tool calls; `set_buy_policy` is checked by the same code
+   the Sourcing agent with its real model (Haiku), at most five model calls; `set_buy_policy` is checked by the same code
    as in the runtime; a message to the Treasury agent is shown, not sent anywhere.
 3. **The page shows** what the agent saw, each tool call, what code refused and why, the policy it set, and the cost;
    labelled "demo world · stand-in suppliers · no money moves".
@@ -362,3 +362,14 @@ no rail; the Worker's change needs Max's redeploy like D20):
 
 Estimate 5 hours (core 1, engine and Worker route 1.5, page 1, tests and red team 1, review 0.5). Risk: low to medium
 (public endpoint that spends model money, already bounded by the Try desk).
+
+**Built (1 November).** Dev run against the real Haiku: 5 of 5 world changes decided by Claude, about 0.0005 USD and
+4 to 5 seconds each (`docs/runs/2026-11-01-try-world-dev.md`). **Fresh review (Opus, read-only):** the refactor is
+faithful (compared character by character), no XSS, no high finding. Fixed, each with a test: a test now runs the
+runtime's own `wake()` on the same world with a stand-in client and requires the same model, system prompt, first
+message and tools as /try's; the reminder uses the runtime's words and an answer cut off at max_tokens ends the wake
+as in the runtime; the model's own blocks go back unchanged; the fallback's message is kept after two of Claude's; the
+Try desk's ceiling a minute counts model calls (a typed task two, a world change five; 30 typed tries a minute as
+before), each call's cost is recorded as it returns and the budget is checked before the next, and no call starts
+after 30 seconds; request ids are shown as proof per call; the page shows the agent's whole prompt and says the match
+is with the variation test (no card tools here), not the live runs.

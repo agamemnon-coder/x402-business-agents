@@ -1,13 +1,13 @@
 // POST /api/try: Try Purser on the relay, for anyone, with no key. It runs in its own Durable Object (its own
 // storage, apart from the approvals) and guards the one thing a public page could cost us, the Claude calls:
 // at most 6 tries a minute and 40 a day from one address, 280 characters a try, only from this site's own page,
-// at most 30 model calls a minute from everyone together, and a budget per UTC day for the models; past either of the
+// at most 60 model calls a minute from everyone together (a typed task counts two, a world change five), and a budget per UTC day for the models; past either of the
 // last two, code alone reads the request and the page says so. A world change (D21) is one try too: one wake of the
 // Sourcing agent, at most five model calls, under the same limits. Nothing
 // here reaches Airwallex, Metal or the runner: the demo world is simulated (src/try/engine.ts).
 
 import { claudeAgentAsk, claudeModels } from "../../src/try/claude.js";
-import { tryWorld, worldChange } from "../../src/try/world.js";
+import { tryWorld, worldChange, type AgentAsk } from "../../src/try/world.js";
 import { TRY_MAX_CHARS, tryPurserSafely } from "../../src/try/engine.js";
 import { rateKey } from "./core.js";
 
@@ -16,7 +16,11 @@ interface Sql { exec(query: string, ...bindings: unknown[]): { toArray(): unknow
 export const TRY_PER_MINUTE = 6;
 export const TRY_PER_DAY = 40;
 /** Model calls a minute for all visitors together: many addresses at once cannot burn the day's budget in minutes. */
-export const TRY_MODEL_PER_MINUTE = 30;
+export const TRY_MODEL_PER_MINUTE = 60;
+/** The model calls a try may make: a typed task two (Haiku sorts, Sonnet reads), a world change up to five (D21). */
+export const TRY_CALLS = { text: 2, world: 5 } as const;
+/** A world change's wake ends after this long: no new model call starts past it. */
+export const TRY_WORLD_DEADLINE_MS = 30_000;
 /** Model spend allowed per UTC day, in US dollars. */
 export const TRY_DAILY_BUDGET_USD = 3;
 
@@ -30,6 +34,7 @@ export class TryDesk {
     this.now = opts.now ?? (() => new Date());
     this.sql.exec("CREATE TABLE IF NOT EXISTS try_hits (ip TEXT NOT NULL, at INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS try_spend (day TEXT PRIMARY KEY, usd REAL NOT NULL, tries INTEGER NOT NULL)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS try_model (at INTEGER NOT NULL, n INTEGER NOT NULL)");
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -67,16 +72,34 @@ export class TryDesk {
     this.sql.exec("INSERT INTO try_hits (ip, at) VALUES (?, ?)", ip, nowMs);
 
     const day = this.now().toISOString().slice(0, 10);
-    const spent = (this.sql.exec("SELECT usd FROM try_spend WHERE day = ?", day).toArray() as { usd: number }[])[0]?.usd ?? 0;
+    const spentToday = () => (this.sql.exec("SELECT usd FROM try_spend WHERE day = ?", day).toArray() as { usd: number }[])[0]?.usd ?? 0;
+    const addSpend = (usd: number, tries: number) => this.sql.exec("INSERT INTO try_spend (day, usd, tries) VALUES (?, ?, ?) ON CONFLICT(day) DO UPDATE SET usd = usd + excluded.usd, tries = tries + excluded.tries", day, usd, tries);
     const budget = this.opts.budgetUsd ?? TRY_DAILY_BUDGET_USD;
-    const [{ n: busy }] = this.sql.exec("SELECT COUNT(*) AS n FROM try_hits WHERE at > ?", nowMs - 60_000).toArray() as [{ n: number }];
-    const crowded = busy > TRY_MODEL_PER_MINUTE;
+    // The ceiling for everyone counts model calls, weighed by what this try may make (review, 1 Nov).
+    const weight = world !== null ? TRY_CALLS.world : TRY_CALLS.text;
+    this.sql.exec("DELETE FROM try_model WHERE at <= ?", nowMs - 60_000);
+    const [{ n: busy }] = this.sql.exec("SELECT COALESCE(SUM(n), 0) AS n FROM try_model WHERE at > ?", nowMs - 60_000).toArray() as [{ n: number }];
+    const crowded = busy + weight > TRY_MODEL_PER_MINUTE;
+    const spent = spentToday();
     const useModels = !!this.opts.anthropicKey && spent < budget && !crowded;
+    if (useModels) this.sql.exec("INSERT INTO try_model (at, n) VALUES (?, ?)", nowMs, weight);
     const why = !this.opts.anthropicKey ? "no model key is set on this relay" : spent >= budget ? "today's budget for model calls is spent" : "many visitors are trying it right now, so the models pause for a minute";
-    const result = world !== null
-      ? await tryWorld(world, useModels ? claudeAgentAsk(this.opts.anthropicKey!, this.opts.fetcher) : null, this.now(), why)
-      : await tryPurserSafely(text, useModels ? claudeModels(this.opts.anthropicKey!, this.opts.fetcher) : null, this.now(), why);
-    this.sql.exec("INSERT INTO try_spend (day, usd, tries) VALUES (?, ?, 1) ON CONFLICT(day) DO UPDATE SET usd = usd + excluded.usd, tries = tries + 1", day, result.costUsd);
+    if (world !== null) {
+      // A wake makes several calls: each one's cost is recorded as it comes back, the budget is checked again before
+      // the next, and no call starts after the deadline (review, 1 Nov).
+      addSpend(0, 1);
+      const base = useModels ? claudeAgentAsk(this.opts.anthropicKey!, this.opts.fetcher) : null;
+      const guarded: AgentAsk | null = base && (async (req) => {
+        if (this.now().getTime() - nowMs > TRY_WORLD_DEADLINE_MS) throw new Error("the agent took longer than 30 seconds");
+        if (spentToday() >= budget) throw new Error("today's budget for model calls is spent");
+        const r = await base(req);
+        addSpend(r.costUsd, 0);
+        return r;
+      });
+      return answer(200, await tryWorld(world, guarded, this.now(), why));
+    }
+    const result = await tryPurserSafely(text, useModels ? claudeModels(this.opts.anthropicKey!, this.opts.fetcher) : null, this.now(), why);
+    addSpend(result.costUsd, 1);
     return answer(200, result);
   }
 }

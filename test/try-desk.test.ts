@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
-import { TRY_MODEL_PER_MINUTE, TRY_PER_DAY, TRY_PER_MINUTE, TryDesk } from "../worker/src/try.js";
+import { TRY_CALLS, TRY_MODEL_PER_MINUTE, TRY_PER_DAY, TRY_PER_MINUTE, TryDesk } from "../worker/src/try.js";
 
 const sql = () => {
   const db = new Database(":memory:");
@@ -41,7 +41,9 @@ describe("Try Purser on the relay", () => {
     let clock = Date.parse("2026-10-30T12:00:00Z");
     const d = new TryDesk(sql(), { anthropicKey: "k", now: () => new Date(clock), fetcher: api([{ kind: "software" }, { item: "Figma", merchant: "Figma", amount: null, currency: null, date: null, payee: null }]) });
     const mode = async (i: number) => (await (await ask(d, "Buy Figma", { "cf-connecting-ip": `198.51.100.${i}` })).json() as { mode: string; steps: { detail: string }[] });
-    for (let i = 1; i <= TRY_MODEL_PER_MINUTE; i++) expect((await mode(i)).mode).toBe("claude");
+    // The ceiling counts model calls: a typed task is two (Haiku sorts, Sonnet reads), so 30 tries a minute as before.
+    expect(TRY_MODEL_PER_MINUTE / TRY_CALLS.text).toBe(30);
+    for (let i = 1; i <= TRY_MODEL_PER_MINUTE / TRY_CALLS.text; i++) expect((await mode(i)).mode).toBe("claude");
     const crowded = await mode(200);
     expect(crowded.mode).toBe("plain");
     expect(crowded.steps[0]!.detail).toContain("many visitors");
@@ -99,5 +101,30 @@ describe("Try Purser on the relay: the visitor changes the world (D21)", () => {
     const busy = new TryDesk(sql(), {});
     for (let i = 0; i < TRY_PER_MINUTE; i++) expect((await world(busy, "price-rise")).status).toBe(200);
     expect((await ask(busy, "Buy a PS5", { "cf-connecting-ip": "203.0.113.8" })).status).toBe(429);
+  });
+});
+
+describe("Try desk review fixes (1 Nov): world tries are weighed by their model calls, spend is counted per call", () => {
+  const world = (d: TryDesk, id: string, ip: string) =>
+    d.fetch(new Request(`${BASE}/api/try`, { method: "POST", body: JSON.stringify({ world: id }), headers: { "content-type": "application/json", origin: BASE, "cf-connecting-ip": ip } }));
+  // Stand-in Messages API (test only): the agent keeps looking at the market and never finishes.
+  const looping = (onCall: () => void = () => {}) => (async () => { onCall(); return new Response(JSON.stringify({ model: "claude-haiku-5-5", stop_reason: "tool_use", usage: { input_tokens: 1000, output_tokens: 100 }, content: [{ type: "tool_use", id: "m", name: "market", input: {} }] }), { status: 200 }); }) as unknown as typeof fetch;
+
+  it("a world try counts as five model calls toward everyone's ceiling a minute", async () => {
+    const d = new TryDesk(sql(), { anthropicKey: "k", fetcher: looping() });
+    expect(TRY_CALLS.world).toBe(5);
+    for (let i = 1; i <= TRY_MODEL_PER_MINUTE / TRY_CALLS.world; i++) expect((await (await world(d, "price-rise", `198.51.100.${i}`)).json() as { calls: number }).calls).toBe(5);
+    expect(await (await world(d, "price-rise", "198.51.100.200")).json()).toMatchObject({ source: "code", calls: 0, why: "many visitors are trying it right now, so the models pause for a minute" });
+  });
+
+  it("records the spend after every call and stops the wake when the day's budget runs out in the middle of it", async () => {
+    const d = new TryDesk(sql(), { anthropicKey: "k", budgetUsd: 0.000001, fetcher: looping() });
+    expect(await (await world(d, "price-rise", "203.0.113.9")).json()).toMatchObject({ source: "code", calls: 1, why: "today's budget for model calls is spent" });
+  });
+
+  it("ends a wake that runs past 30 seconds", async () => {
+    let clock = Date.parse("2026-11-05T10:00:00Z");
+    const d = new TryDesk(sql(), { anthropicKey: "k", now: () => new Date(clock), fetcher: looping(() => { clock += 31_000; }) });
+    expect(await (await world(d, "price-rise", "203.0.113.10")).json()).toMatchObject({ source: "code", calls: 1, why: "the agent took longer than 30 seconds" });
   });
 });
