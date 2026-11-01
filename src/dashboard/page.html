@@ -226,6 +226,13 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .claudelogo { display: inline-flex; align-items: center; background: #191919; border-radius: 999px; padding: 7px 14px; }
 .claudelogo img { height: 16px; width: auto; display: block; }
 .panel.claude, .panel.ask { margin-top: 20px; }
+/* Design 4.3: the Dispute desk as an evidence board, the counts before the rows. */
+.evboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 12px 0 16px; }
+.evboard .ev { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); min-width: 0; }
+.evboard .ev .k { font-size: 12.5px; color: var(--muted); }
+.evboard .ev .v { font-size: 20px; font-weight: 700; margin-top: 2px; }
+.evboard .ev.decision { border-color: var(--accent); background: var(--accent-soft); }
+@media (max-width: 900px) { .evboard { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* Design 4.1: the control tower. Money in | the agents | money out, the P&L below; every figure links to its proof. */
 .tower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "agents agents" "in out" "pnl pnl"; gap: 14px; margin: 8px 0 20px; }
 .tower > .tcol.tin { grid-area: in; } .tower > .tcol.tag { grid-area: agents; } .tower > .tcol.tout { grid-area: out; } .tower > .tpnl { grid-area: pnl; }
@@ -1337,7 +1344,19 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       return el("section", "panel bk", [head,
         c.text ? el("p", "sub", ["The customer wrote: \u201c" + c.text + "\u201d"]) : null,
         txt("p", "", route),
-        common ? el("p", "sub", [(c.sales.length > 1 ? "Every payment: " : "") + common]) : null,
+        (function () {
+          // The evidence board: each check counted over the disputed payments, then the decision.
+          var n = c.sales.length, cnt = function (f) { return c.sales.filter(f).length + " of " + n; };
+          var tile = function (k, v, cls) { return el("div", "ev" + (cls ? " " + cls : ""), [txt("div", "k", k), txt("div", "v num", v)]); };
+          return el("div", "evboard", [
+            tile("Orders signed by the customer's agent", cnt(function (x) { return x.order.indexOf("signed") === 0; })),
+            tile("Paid inside the mandate, checked on chain", cnt(function (x) { return x.chain; })),
+            tile("Delivered as recorded", cnt(function (x) { return x.delivered; })),
+            tile("Refunded earlier for wrong data", cnt(function (x) { return !!x.refunded_before; })),
+            tile("Decision: refund now", group(c.refund) + " test USD", "decision"),
+          ]);
+        })(),
+        common ? el("p", "sub", [(c.sales.length > 1 ? "For each payment: " : "") + common]) : null,
         (function () { var n = c.sales.filter(function (x) { return x.refunded_before; }).length; return n ? el("p", "sub", [n + " of these " + c.sales.length + " payments had already been refunded in an earlier case, because the data delivered was wrong (the supplier corrected it). Delivered “as recorded” means the data matches what Northwind recorded when it delivered, not that it was right."]) : null; })(),
         el("table", "wide", [el("thead", "", [head2]), el("tbody", "", rows)]),
         el("div", "review-box", [
