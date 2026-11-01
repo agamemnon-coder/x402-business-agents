@@ -422,3 +422,22 @@ fallbacks, with the D22 events), so its movements name the Claude model that dec
 *USDZ to be visible; inside the panel a stronger check holds: always "*USDZ" with its star, the words "*USDZ stablecoin
 on chain" present, never "$". Both recordings and the landing have their own money-flow checks (labelled a replay, a
 proof per movement, a Claude model named in the autonomous run).
+
+Fresh review (part 3), all fixed. (1) The landing said the CFO approved the recorded run's three refunds; code made
+them within the automatic limits (and the CFO rejected the only refund batch). "Who decided" now comes from evidence
+only: the refund's executed batch proposal (the CFO's Face ID), the Dispute desk's `refund.auto_approved` row (code),
+the agent's own run, or "who decided is not recorded". (2) Claude was credited by the next decision in time, even one
+that began after the move (a blocked sweep, a merchant's declined charge the agent then heard about). Now a movement is
+Claude's only when its row lies inside the agent's run (`agent.run` records `from_seq`), the run finished with a model,
+used the tool behind the movement without every call of it blocked, and the decision after it says Claude made it.
+(3) A settlement carries the dispute's earlier refunds; it now records `refunded_now`, and only those count. (4) The
+euro invoice names the Treasury agent's plan only for the same proposal (by the transfer's approval hash), by Claude.
+(5) A retailer's bank payment comes from a "Retailers" box, not from Summit's agent. (6) On the live dashboard new
+movements are taken in place: the viewer's place and Pause stay, a changed caption follows without a replay. (7) Timers
+are cleared on Play and on every step, so ticks do not stack and a refusal's red mark never lands on the next movement.
+(8) The refusing rail is marked by name in its own box (Metal on the business account, Airwallex, Purser on the agent),
+also without motion. Also: the agents' boxes name a Claude model only when a movement shown was that agent's own Claude
+decision; a row missing its amount or currency is left out instead of shown as 0.00 or euros; Purser's refused refunds
+and sweeps, and sales through clearing (no tx of their own), are shown for what they are; the page check now reads every
+movement's caption on `/?recorded` (each *USDZ amount beside "stablecoin on chain", never "$", the refusing rail marked).
+`upstream.paid_after_lookup` stays out: its row records no amount.

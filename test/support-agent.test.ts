@@ -133,5 +133,8 @@ describe("the Support agent settles a dispute", () => {
     ]]));
     expect(d.refunded).toEqual([]);
     expect(r.run.calls.map((c) => c.blocked)).toEqual(["automatic limit", "already escalated"]);
+    // The settlement's record tells this run's refunds (none) from the earlier ones it carries (D23 credits only these).
+    const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'dispute.settled_by_agent' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string };
+    expect(JSON.parse(row.payload_json)).toMatchObject({ refunded: ["#10", "#13"], refunded_now: [] });
   });
 });

@@ -3,7 +3,7 @@
   "run": "Autonomous dry run dry-105, 1 November 2026: test passkeys (virtual), test money",
   "company": "Northwind Outdoor",
   "snapshot": {
-    "generated_at": "2026-11-01T10:55:30.830Z",
+    "generated_at": "2026-11-01T11:43:40.160Z",
     "world": {
       "business": "0xC11BE4da97aB4d2258528a9d8bC630f676fb2E01",
       "customer": "0xb75E729c7ef3F2cbD39047907323883870Bb4fd6"
@@ -597,7 +597,7 @@
       {
         "at": "2026-11-01T10:42:26.407Z",
         "kind": "deposit",
-        "from": "customer",
+        "from": "retailer",
         "to": "airwallex",
         "amount": "1000.00",
         "unit": "EUR",
@@ -3931,7 +3931,7 @@
           "cache_write": 2367
         },
         "cost_usd_micros": 5619,
-        "cost_last_hour_usd_micros": 5619,
+        "cost_last_hour_usd_micros": 0,
         "models": [
           "claude-haiku-5-5"
         ]
@@ -3951,7 +3951,7 @@
           "cache_write": 1992
         },
         "cost_usd_micros": 49417,
-        "cost_last_hour_usd_micros": 49417,
+        "cost_last_hour_usd_micros": 0,
         "models": [
           "claude-sonnet-5-5"
         ]
@@ -3971,7 +3971,7 @@
           "cache_write": 3967
         },
         "cost_usd_micros": 141823,
-        "cost_last_hour_usd_micros": 141823,
+        "cost_last_hour_usd_micros": 0,
         "models": [
           "claude-opus-5-5"
         ]
@@ -5205,7 +5205,7 @@
     },
     "health": {
       "status": "ok",
-      "at": "2026-11-01T10:55:30.830Z",
+      "at": "2026-11-01T11:43:40.160Z",
       "alerts": [],
       "metrics": {
         "approvals_waiting": 0,
@@ -5216,7 +5216,7 @@
         "emergency_stop": 0,
         "reconcile_differences": 0,
         "airwallex_disagreements_24h": 0,
-        "reconcile_age_seconds": 1286,
+        "reconcile_age_seconds": 4176,
         "principals_revoked": 0,
         "policy_version": 3,
         "audit_rows": 230,

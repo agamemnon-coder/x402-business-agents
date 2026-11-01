@@ -2476,7 +2476,7 @@
         "rail": "metal",
         "agent": "support",
         "model": null,
-        "decided": "refunded after the CFO's approval",
+        "decided": "code refunded it, within the CFO's automatic limits",
         "what": "refund for order #7",
         "proof": {
           "label": "tx 0xcf11…bed1",
@@ -2494,7 +2494,7 @@
         "rail": "metal",
         "agent": "support",
         "model": null,
-        "decided": "refunded after the CFO's approval",
+        "decided": "code refunded it, within the CFO's automatic limits",
         "what": "refund for order #10",
         "proof": {
           "label": "tx 0x512f…a97b",
@@ -2512,7 +2512,7 @@
         "rail": "metal",
         "agent": "support",
         "model": null,
-        "decided": "refunded after the CFO's approval",
+        "decided": "code refunded it, within the CFO's automatic limits",
         "what": "refund for order #13",
         "proof": {
           "label": "tx 0xa0c5…70ad",

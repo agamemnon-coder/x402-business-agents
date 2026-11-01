@@ -125,12 +125,21 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // The money flow (D23, Max 1 Nov) shows on purpose that Metal payments are the *USDZ stablecoin on chain: there,
     // and only there, "*USDZ" is the unit, always with its star and the word "stablecoin" beside it (checked below).
     const rec = await page.evaluate(() => { let all = document.body.innerText; for (const id of ["claude-panel", "mf"]) { const c = document.getElementById(id); if (c) all = all.replace(c.innerText, ""); } return all; });
-    const mfText = await page.locator("#mf").innerText().catch(() => "");
-    if (!mfText) fail(`/?recorded ${tag}: no money flow`);
-    else {
-      if (/(^|[^*])USDZ/.test(mfText)) fail(`/?recorded ${tag}: the money flow shows USDZ without its star`);
-      if (!/\*USDZ stablecoin on chain/.test(mfText)) fail(`/?recorded ${tag}: the money flow does not say *USDZ is a stablecoin on chain`);
-      if (/\$\s?\d/.test(mfText)) fail(`/?recorded ${tag}: the money flow shows dollars`);
+    // Every movement's caption, one by one: a Metal payment says "*USDZ stablecoin on chain" beside its *USDZ amount,
+    // USDZ never appears without its star, never "$", and a refusal names the rail that refused it and marks that rail.
+    const mfDots = await page.locator("#mf .mf-dots i").count();
+    if (!mfDots) fail(`/?recorded ${tag}: no money flow`);
+    for (let i = 0; i < mfDots; i++) {
+      await page.locator("#mf .mf-dots i").nth(i).click();
+      const c = await page.locator("#mf .mf-cap").innerText();
+      const where = `/?recorded ${tag}: money-flow movement ${i + 1}`;
+      if (/(^|[^*])USDZ/.test(c)) fail(`${where} shows USDZ without its star`);
+      if (/\$\s?\d/.test(c)) fail(`${where} shows dollars`);
+      if (/\*USDZ/.test(c.split("\n")[0] ?? "") && !/\*USDZ stablecoin on chain/.test(c)) fail(`${where}: a *USDZ amount without "stablecoin on chain"`);
+      if (!/Proof: /.test(c)) fail(`${where} has no proof`);
+      const refused = /^Refused by (Metal|Airwallex|Purser)/m.exec(c);
+      // The rail is marked when the money reaches it (about 1.2 s into the movement; at once without motion).
+      if (refused && !(await page.locator(`#mf .mf-n[data-x="${refused[1]} ✕"]`).waitFor({ timeout: 3000 }).then(() => true, () => false))) fail(`${where}: the refusal does not mark ${refused[1]}`);
     }
     for (const want of [/Recorded run · .* · test money/, /On-chain budgets/i, /test USD/, /Company cards/i]) {
       if (!want.test(rec)) fail(`/?recorded ${tag}: missing ${want}`);

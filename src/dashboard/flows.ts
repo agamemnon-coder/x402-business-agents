@@ -1,13 +1,15 @@
 // D23: the money flow for the control tower's animation, read from the ledger's audit log only. Each movement is one
 // recorded event (or a run of sales folded into one) with its own proof: a Metal transaction (a *USDZ stablecoin
-// payment on chain) or an Airwallex id. "Decided" names who made the move: the agent's own Claude decision (its model)
-// only when that decision used the tool behind this movement, the CFO's approval, or code following a policy.
+// payment on chain) or an Airwallex id. "Decided" names who made the move, from evidence in the ledger only: the
+// agent's own Claude run (its model) when the movement happened during that run, through the tool behind it, and the
+// agent's decision after the run says Claude made it; the CFO's Face ID; or code following a policy. When the ledger
+// holds no such evidence it says so rather than naming anyone.
 
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 
 const EXPLORER = "https://testnet.metalntwx.com/tx/";
-export type FlowNode = "customer" | "northwind" | "sourcing" | "support" | "treasury" | "suppliers" | "airwallex" | "payee" | "merchant";
+export type FlowNode = "customer" | "retailer" | "northwind" | "sourcing" | "support" | "treasury" | "suppliers" | "airwallex" | "payee" | "merchant";
 export type FlowRail = "metal" | "purser" | "airwallex_card" | "airwallex_swift" | "airwallex_deposit";
 export interface FlowEvent {
   at: string;
@@ -34,7 +36,7 @@ type Row = { seq: number; ts: string; actor: string; event: string; subject: str
 const MODEL_WORDS: Record<string, string> = { "claude-haiku-5-5": "Claude Haiku", "claude-sonnet-5-5": "Claude Sonnet", "claude-opus-5-5": "Claude Opus" };
 const AGENT_WORDS: Record<string, string> = { sourcing: "the Sourcing agent", support: "the Support agent", treasury: "the Treasury agent" };
 /** The agent's tools behind each kind of movement: a decision that used none of them made no such move. */
-const TOOLS: Partial<Record<FlowEvent["kind"], string[]>> = { refund: ["settle_dispute"], sweep: ["sweep_earnings"], licence: ["plan_invoice"], card: ["buy_software", "buy_report"], upstream: ["set_buy_policy"] };
+const TOOLS: Partial<Record<FlowEvent["kind"], string[]>> = { refund: ["settle_dispute", "refund"], sweep: ["sweep_earnings"], licence: ["plan_invoice"], card: ["buy_software", "buy_report"], upstream: ["set_buy_policy"] };
 const short = (s: string) => (s.length > 14 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s);
 const txProof = (tx: string | undefined | null) => (tx ? { label: `tx ${short(tx)}`, href: `${EXPLORER}${tx}`, full: tx } : { label: "no tx recorded", href: null, full: null });
 const awxProof = (id: string | null | undefined) => (id ? { label: `Airwallex ${id.length > 18 ? `${id.slice(0, 8)}…` : id}`, href: null, full: id } : { label: "no Airwallex id recorded", href: null, full: null });
@@ -45,35 +47,48 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
   const rows = db.prepare(`SELECT seq, ts, actor, event, subject, payload_json FROM audit_log WHERE event IN
     ('sale.delivered', 'upstream.paid', 'upstream.refused', 'upstream.refused_on_chain', 'refund.paid', 'sweep.paid', 'credit.deposited',
      'transfer.created', 'transfer.status', 'card.charge_approved', 'card.charge_declined', 'receivable.matched', 'receivable.escalated', 'agent.decision',
-     'dispute.settled_by_agent', 'sourcing.policy_set', 'licence.timing_advised')
+     'dispute.settled_by_agent', 'sourcing.policy_set', 'licence.timing_advised', 'agent.run', 'refund.auto_approved', 'refund.refused', 'sweep.refused')
     ORDER BY seq`).all() as Row[];
-  const decisions = rows.filter((r) => r.event === "agent.decision").map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, p: JSON.parse(r.payload_json) as { source?: string; model?: string | null; tools?: string[] } }));
-  const settled = rows.filter((r) => r.event === "dispute.settled_by_agent").map((r) => ({ seq: r.seq, ts: r.ts, p: JSON.parse(r.payload_json) as { model?: string; refunded?: string[] } }));
-  // The buy policy in force at a purchase: the last one the Sourcing agent set before it, and the Claude decision that set it.
-  const advised = rows.filter((r) => r.event === "licence.timing_advised").map((r) => ({ seq: r.seq, model: (JSON.parse(r.payload_json) as { model?: string }).model ?? null }));
-  const policies = rows.filter((r) => r.event === "sourcing.policy_set").map((r) => ({ seq: r.seq, ts: r.ts }));
-  const policyAt = (seq: number): string | null => {
-    const set = policies.filter((x) => x.seq < seq).at(-1);
-    return set ? decidedBy("sourcing", set.seq, set.ts, "upstream")?.decided.replace(" decided", "") ?? null : null;
-  };
-  const salePrice = has(db, "sales") ? db.prepare("SELECT price_cents FROM sales WHERE sale_id = ?") : null;
-  const orderOf = has(db, "sales") ? db.prepare("SELECT CAST(json_extract(request_params_json, '$.seq') AS INTEGER) AS seq FROM sales WHERE sale_id = ?") : null;
-  const created = new Map<string, { amount: string }>();
-  const out: FlowEvent[] = [];
+  const json = (r: Row) => JSON.parse(r.payload_json) as Record<string, unknown>;
+  const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+  // An agent's run is written when it ends and records from_seq, the last row before it began: a movement whose row
+  // lies between the two happened during that run.
+  const runs = rows.filter((r) => r.event === "agent.run").map((r) => { const p = json(r); return { seq: r.seq, actor: r.actor, from: Number(p.from_seq ?? r.seq), status: String(p.status ?? ""), model: typeof p.model === "string" ? p.model : null, tools: list(p.tools), blocked: list(p.blocked) }; });
+  // The agent's decision recorded after a run: who made it, Claude or a fallback by code (and, for a dispute, which
+  // refunds that run made itself).
+  const verdicts = rows.filter((r) => r.actor !== "system" && (r.event === "agent.decision" || r.event === "dispute.settled_by_agent")).map((r) => { const p = json(r); return { seq: r.seq, actor: r.actor, source: String(p.source ?? ""), refundedNow: Array.isArray(p.refunded_now) ? list(p.refunded_now) : null }; });
+  const advised = rows.filter((r) => r.event === "licence.timing_advised").map((r) => { const p = json(r); return { seq: r.seq, proposal: typeof p.proposal_id === "string" ? p.proposal_id : null, source: String(p.source ?? ""), model: typeof p.model === "string" ? p.model : null }; });
+  const autoRefunded = rows.filter((r) => r.event === "refund.auto_approved").map((r) => ({ seq: r.seq, sales: list(json(r).sales) }));
+  const policies = rows.filter((r) => r.event === "sourcing.policy_set").map((r) => r.seq);
 
-  // The agent's Claude decision that made this move. A decision row is written when the wake ends (after its tools
-  // ran) but carries the wake's start time, so it is found by order in the log: the agent's first later decision,
-  // within 15 minutes, by Claude, that used a tool behind this kind of movement.
-  const decidedBy = (actor: string, seq: number, ts: string, kind: FlowEvent["kind"]): { model: string | null; decided: string } | null => {
+  /** The agent's own Claude run that made this move, or null: the move lies inside a finished run with a model, which
+   *  used a tool behind this kind of movement (not every call of it blocked), and whose decision says Claude made it. */
+  const claudeMade = (actor: string, seq: number, kind: FlowEvent["kind"], order?: string): { model: string; decided: string } | null => {
     const tools = TOOLS[kind];
     if (!tools || !AGENT_WORDS[actor]) return null;
-    const t = Date.parse(ts);
-    const d = decisions.find((x) => x.actor === actor && x.seq > seq && Math.abs(Date.parse(x.ts) - t) <= 15 * 60_000
-      && x.p.source === "claude" && !!x.p.model && (x.p.tools ?? []).some((y) => tools.includes(y)));
-    if (!d) return null;
-    const model = d.p.model as string;
-    return { model, decided: `${AGENT_WORDS[actor]} (${MODEL_WORDS[model] ?? model}) decided` };
+    for (const r of runs) {
+      if (r.actor !== actor || !(r.from < seq && seq < r.seq) || r.status !== "done" || !r.model) continue;
+      const used = tools.some((t) => r.tools.filter((x) => x === t).length > r.blocked.filter((b) => b.startsWith(`${t}:`)).length);
+      if (!used) continue;
+      const v = verdicts.find((x) => x.actor === actor && x.seq > r.seq);
+      if (!v || v.source !== "claude") continue;
+      if (order && v.refundedNow && !v.refundedNow.includes(order)) continue;
+      return { model: r.model, decided: `${AGENT_WORDS[actor]} (${MODEL_WORDS[r.model] ?? r.model}) decided` };
+    }
+    return null;
   };
+  // The buy policy in force at a purchase: the last one set before it, and the Sourcing agent's Claude run that set it.
+  const policyAt = (seq: number): string | null => {
+    const set = policies.filter((x) => x < seq).at(-1);
+    return set ? claudeMade("sourcing", set, "upstream")?.decided.replace(" decided", "") ?? null : null;
+  };
+  const salePrice = has(db, "sales") ? db.prepare("SELECT price_cents FROM sales WHERE sale_id = ?") : null;
+  const refundRow = has(db, "refunds") ? db.prepare("SELECT r.proposal_id, p.status FROM refunds r LEFT JOIN proposals p ON p.proposal_id = r.proposal_id WHERE r.payment_id = ?") : null;
+  const proposalBySha = has(db, "proposals") ? db.prepare("SELECT proposal_id FROM proposals WHERE terms_sha256 = ?") : null;
+  const orderOf = has(db, "sales") ? db.prepare("SELECT CAST(json_extract(request_params_json, '$.seq') AS INTEGER) AS seq FROM sales WHERE sale_id = ?") : null;
+  const created = new Map<string, { amount: string; sha: string | null }>();
+  const out: FlowEvent[] = [];
+
   // A run of sales, and the purchases that serve them (they alternate: a query sold, its stock check bought), fold
   // into one movement each, with the latest proof; anything else between them ends the run.
   const foldable = (e: FlowEvent) => !e.refused && (e.kind === "sale" || e.kind === "upstream");
@@ -101,7 +116,9 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
       case "sale.delivered": {
         const cents = (salePrice?.get(Number(r.subject)) as { price_cents: number } | undefined)?.price_cents;
         if (cents === undefined) break;
-        push({ at: r.ts, kind: "sale", from: "customer", to: "northwind", amount: fromCents(cents), unit: "*USDZ", rail: "metal", agent: null, model: null, decided: "Summit's agent paid (the simulated customer)", what: "stock checks sold", proof: txProof(str("tx")) });
+        // A sale through clearing (D-clearing) has no transaction of its own: its batch settles later on Metal.
+        const cleared = str("scheme") === "bajillion";
+        push({ at: r.ts, kind: "sale", from: "customer", to: "northwind", amount: fromCents(cents), unit: "*USDZ", rail: "metal", agent: null, model: null, decided: "Summit's agent paid (the simulated customer)", what: cleared ? "stock checks sold, settled later by clearing" : "stock checks sold", proof: cleared ? { label: "settled later in a clearing batch on Metal", href: null, full: null } : txProof(str("tx")) });
         break;
       }
       case "upstream.paid": {
@@ -127,49 +144,70 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
         push({ at: r.ts, kind: "upstream", from: "sourcing", to: "suppliers", amount: str("amount") ?? "0.00", unit: "*USDZ", rail: "metal", agent: "sourcing", model: null, decided: "the same payment put to Metal", what: "Stockline", proof: txProof(str("tx")), refused: { by: "metal", reason: str("metal_reason") ?? "refused against the mandate" } });
         break;
       case "refund.paid": {
-        // The Support agent settled the dispute itself: its dispute agent's row (written after the refunds) names the
-        // model and the orders it refunded, by their order number (the sale's seq), not the sale id the refund names.
-        const saleId = /^refund-(\d+)$/.exec(str("payment_id") ?? "")?.[1] ?? r.subject;
+        const amount = str("amount");
+        if (!amount) break;
+        // Refunds name the sale; the agent's own record names the order (the sale's seq).
+        const paymentId = str("payment_id") ?? "";
+        const saleId = /^refund-(\d+)$/.exec(paymentId)?.[1] ?? r.subject ?? "";
         const order = (orderOf?.get(Number(saleId)) as { seq: number | null } | undefined)?.seq ?? Number(saleId);
-        const t = Date.parse(r.ts);
-        const by = settled.find((x) => x.seq > r.seq && Math.abs(Date.parse(x.ts) - t) <= 15 * 60_000 && (x.p.refunded ?? []).includes(`#${order}`) && x.p.model);
-        const d = by ? { model: by.p.model!, decided: `the Support agent (${MODEL_WORDS[by.p.model!] ?? by.p.model}) decided` } : decidedBy("support", r.seq, r.ts, "refund");
-        push({ at: r.ts, kind: "refund", from: "support", to: "customer", amount: str("amount") ?? "0.00", unit: "*USDZ", rail: "metal", agent: "support", model: d?.model ?? null, decided: d?.decided ?? "refunded after the CFO's approval", what: `refund for order #${order ?? "?"}`, proof: txProof(str("tx")) });
+        const d = claudeMade("support", r.seq, "refund", `#${order}`);
+        const row = refundRow?.get(paymentId) as { proposal_id: string | null; status: string | null } | undefined;
+        const decided = d?.decided
+          ?? (row?.proposal_id && row.status === "EXECUTED" ? "refunded after the CFO's Face ID"
+            : autoRefunded.some((x) => x.seq < r.seq && x.sales.includes(saleId)) ? "code refunded it, within the CFO's automatic limits"
+            : "who decided is not recorded");
+        push({ at: r.ts, kind: "refund", from: "support", to: "customer", amount, unit: "*USDZ", rail: "metal", agent: "support", model: d?.model ?? null, decided, what: `refund for order #${order}`, proof: txProof(str("tx")) });
+        break;
+      }
+      case "refund.refused":
+      case "sweep.refused": {
+        // Purser's own refusal before anything is signed (a budget, a limit, the velocity rule): nothing moved.
+        const amount = str("amount");
+        if (!amount) break;
+        const refund = r.event === "refund.refused";
+        push({ at: r.ts, kind: refund ? "refund" : "sweep", from: refund ? "support" : "treasury", to: refund ? "customer" : "airwallex", amount, unit: "*USDZ", rail: "purser", agent: refund ? "support" : "treasury", model: null, decided: refund ? "the refund was put to Purser" : "the sweep was put to Purser", what: refund ? `refund of sale ${r.subject ?? "?"}` : "net earnings to the sweep wallet", proof: { label: "Purser refused it before signing", href: null, full: null }, refused: { by: "purser", reason: str("reason") ?? "refused" } });
         break;
       }
       case "sweep.paid": {
-        const d = decidedBy("treasury", r.seq, r.ts, "sweep");
-        push({ at: r.ts, kind: "sweep", from: "treasury", to: "airwallex", amount: str("amount") ?? "0.00", unit: "*USDZ", rail: "metal", agent: "treasury", model: d?.model ?? null, decided: d?.decided ?? "code swept the net earnings", what: "net earnings to the sweep wallet", proof: txProof(str("tx")) });
+        const amount = str("amount");
+        if (!amount) break;
+        const d = claudeMade("treasury", r.seq, "sweep");
+        push({ at: r.ts, kind: "sweep", from: "treasury", to: "airwallex", amount, unit: "*USDZ", rail: "metal", agent: "treasury", model: d?.model ?? null, decided: d?.decided ?? "code swept the net earnings", what: "net earnings to the sweep wallet", proof: txProof(str("tx")) });
         break;
       }
       case "credit.deposited":
-        push({ at: r.ts, kind: "booked", from: "treasury", to: "airwallex", amount: str("amount") ?? "0.00", unit: (str("currency") as FlowEvent["unit"]) ?? "USD", rail: "airwallex_deposit", agent: "treasury", model: null, decided: "booked at Airwallex after finality (sandbox deposit)", what: "the sweep, credited at Airwallex", proof: awxProof(str("deposit_id")) });
+        if (!str("amount") || !str("currency")) break;
+        push({ at: r.ts, kind: "booked", from: "treasury", to: "airwallex", amount: str("amount")!, unit: str("currency") as FlowEvent["unit"], rail: "airwallex_deposit", agent: "treasury", model: null, decided: "booked at Airwallex after finality (sandbox deposit)", what: "the sweep, credited at Airwallex", proof: awxProof(str("deposit_id")) });
         break;
       case "transfer.created":
-        if (r.subject) created.set(r.subject, { amount: str("amount") ?? "" });
+        if (r.subject) created.set(r.subject, { amount: str("amount") ?? "", sha: str("approval_sha256") });
         break;
       case "transfer.status": {
         if (str("status") !== "PAID" || !r.subject) break;
         const c = created.get(r.subject);
         const m = /^([A-Z]{3}) (\d+\.\d{2})$/.exec(c?.amount ?? "");
         if (!m) break;
-        // Planned before the CFO's Face ID: the Treasury agent's advice on the invoice (its model), the last one before it.
-        const plan = advised.filter((x) => x.seq < r.seq).at(-1);
-        const d = plan?.model ? { model: plan.model, decided: `the Treasury agent (${MODEL_WORDS[plan.model] ?? plan.model}) decided` } : decidedBy("treasury", r.seq, r.ts, "licence");
+        // Planned before the CFO's Face ID: the Treasury agent's own Claude advice on this transfer's proposal (found
+        // by the approval hash the transfer carries), if there was one.
+        const pid = c?.sha ? (proposalBySha?.get(c.sha) as { proposal_id: string } | undefined)?.proposal_id ?? null : null;
+        const plan = pid ? advised.filter((x) => x.seq < r.seq && x.proposal === pid && x.source === "claude" && x.model).at(-1) : undefined;
+        const d = plan?.model ? { model: plan.model, decided: `the Treasury agent (${MODEL_WORDS[plan.model] ?? plan.model}) decided` } : null;
         push({ at: r.ts, kind: "licence", from: "treasury", to: "payee", amount: m[2]!, unit: m[1] as FlowEvent["unit"], rail: "airwallex_swift", agent: "treasury", model: d?.model ?? null, decided: `${d ? `planned by ${d.decided.replace(" decided", "")}, ` : ""}paid after the CFO's Face ID`, what: "the euro invoice, by SWIFT", proof: awxProof(r.subject) });
         break;
       }
       case "card.charge_approved":
       case "card.charge_declined": {
         const agent = str("agent") ?? r.actor;
-        const d = decidedBy(agent, r.seq, r.ts, "card");
+        if (!str("amount") || !str("currency")) break;
+        const d = claudeMade(agent, r.seq, "card");
         const declined = r.event === "card.charge_declined";
-        push({ at: r.ts, kind: "card", from: (AGENT_WORDS[agent] ? agent : "sourcing") as FlowNode, to: "merchant", amount: str("amount") ?? "0.00", unit: (str("currency") as FlowEvent["unit"]) ?? "EUR", rail: "airwallex_card", agent, model: d?.model ?? null, decided: d?.decided ?? (agent.startsWith("task:") ? "a single-use card the CFO approved" : str("source") === "simulation" ? "a test charge the Airwallex sandbox simulated" : "a charge on the agent's card"), what: `${str("merchant") ?? "a merchant"} on card ····${str("last4") ?? "?"}`, proof: awxProof(r.subject), ...(declined ? { refused: { by: "airwallex" as const, reason: str("reason") ?? "declined" } } : {}) });
+        push({ at: r.ts, kind: "card", from: (AGENT_WORDS[agent] ? agent : "sourcing") as FlowNode, to: "merchant", amount: str("amount")!, unit: str("currency") as FlowEvent["unit"], rail: "airwallex_card", agent, model: d?.model ?? null, decided: d?.decided ?? (agent.startsWith("task:") ? "a single-use card the CFO approved" : str("source") === "simulation" ? "a test charge the Airwallex sandbox simulated" : "a charge on the agent's card"), what: `${str("merchant") ?? "a merchant"} on card ····${str("last4") ?? "?"}`, proof: awxProof(r.subject), ...(declined ? { refused: { by: "airwallex" as const, reason: str("reason") ?? "declined" } } : {}) });
         break;
       }
       case "receivable.matched":
       case "receivable.escalated":
-        push({ at: r.ts, kind: "deposit", from: "customer", to: "airwallex", amount: str("amount") ?? "0.00", unit: (str("currency") as FlowEvent["unit"]) ?? "EUR", rail: "airwallex_deposit", agent: null, model: null, decided: r.event === "receivable.matched" ? "a retailer paid its invoice; code matched it" : "a retailer paid; code held it for the CFO", what: str("invoice_no") ? `invoice ${str("invoice_no")}` : "a payment with no invoice", proof: awxProof(r.subject) });
+        if (!str("amount") || !str("currency")) break;
+        push({ at: r.ts, kind: "deposit", from: "retailer", to: "airwallex", amount: str("amount")!, unit: str("currency") as FlowEvent["unit"], rail: "airwallex_deposit", agent: null, model: null, decided: r.event === "receivable.matched" ? "a retailer paid its invoice; code matched it" : "a retailer paid; code held it for the CFO", what: str("invoice_no") ? `invoice ${str("invoice_no")}` : "a payment with no invoice", proof: awxProof(r.subject) });
         break;
     }
   }

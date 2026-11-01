@@ -73,6 +73,7 @@ export async function settleDispute(db: DB, f: DisputeFacts, deps: SupportDeps, 
   const inDispute = new Set(f.seqs);
   const before = deps.earlier();
   const refunded: number[] = before.refunded.map((x) => x.seq);
+  const earlierSeqs = new Set(refunded);
   let refundedCents = before.refunded.reduce((n, x) => n + x.cents, 0);
   let escalated: Settlement["escalated"] = before.escalated;
   const Seq = z.strictObject({ seq: z.number() });
@@ -154,7 +155,8 @@ export async function settleDispute(db: DB, f: DisputeFacts, deps: SupportDeps, 
     : undecided.length ? `the agent left ${undecided.map((q) => `#${q}`).join(", ")} undecided`
     : unsent.length ? `the agent did not send ${unsent.map((q) => `#${q}`).join(", ")} to the CFO` : undefined;
   audit(db, "support", "dispute.settled_by_agent", f.disputeId, {
-    source, model: run.model, refunded: refunded.map((s) => `#${s}`), escalated: esc ? { proposal: esc.proposalId, sales: esc.seqs.map((s) => `#${s}`) } : null,
+    // refunded_now: the refunds this run made itself; `refunded` also carries the dispute's earlier ones (code's or the CFO's).
+    source, model: run.model, refunded: refunded.map((s) => `#${s}`), refunded_now: refunded.filter((s) => !earlierSeqs.has(s)).map((s) => `#${s}`), escalated: esc ? { proposal: esc.proposalId, sales: esc.seqs.map((s) => `#${s}`) } : null,
     said: run.text.slice(0, 1200), ...(note ? { note } : {}),
   });
   return { source, refunded, escalated: esc, run, ...(note ? { note } : {}) };
