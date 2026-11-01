@@ -46,6 +46,12 @@ function memoryOf(db: DB, agent: AgentName): string {
 const describe = (e: WorldEvent) => `- event #${e.id} ${e.kind}: ${redactSecrets(JSON.stringify(e.payload)).slice(0, 900)}`;
 const NAMES: Record<AgentName, string> = { sourcing: "the Sourcing agent", support: "the Support agent", treasury: "the Treasury agent" };
 
+/** The world is set up once bootstrap bound the three agents' mandates; before that an agent has nothing to read. */
+export function worldReady(db: DB): boolean {
+  const n = (db.prepare("SELECT COUNT(DISTINCT subject) AS n FROM audit_log WHERE event = 'mandate.bound' AND subject IN ('sourcing', 'support', 'treasury')").get() as { n: number }).n;
+  return n === 3;
+}
+
 export async function wake(db: DB, profile: AgentProfile, o: { client?: Anthropic | null; now?: Date; force?: boolean } = {}): Promise<Wake | null> {
   const now = o.now ?? new Date();
   const p = pending(db, profile.name);

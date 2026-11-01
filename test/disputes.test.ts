@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkData, parseCorrectionsFallback, parseDisputeFallback, refundsFor, type SaleRow } from "../src/agents/disputes.js";
+import { checkData, parseCorrectionsFallback, parseDisputeFallback, refundsFor, salesFound, type SaleRow } from "../src/agents/disputes.js";
+import { openDb } from "../src/db/open.js";
 import { servedCheck } from "../src/data/stock.js";
 
 const read = (f: string) => readFileSync(new URL(`../fixtures/${f}`, import.meta.url), "utf8");
@@ -39,5 +40,22 @@ describe("dispute (S2)", () => {
     const sale: SaleRow = { sale_id: 1, seq: 7, price_cents: 5, payer: "0xc", tx_hash: "0x0", signed_offer: "", requirements_json: null,
       body_json: JSON.stringify({ stock: servedCheck(7, true) }) };
     expect(refundsFor([sale], checkData([sale], parseCorrectionsFallback(read("stockline-corrections.txt"))))).toEqual([]);
+  });
+});
+
+describe("salesFound (dry-96: a customer disputes order numbers we never sold)", () => {
+  it("returns the delivered sales and names the numbers with no delivered sale, so nothing is refunded for them", () => {
+    const db = openDb(":memory:");
+    const add = (seq: number, status: string) => db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('/v1/stock', 5, '0x1', '/v1/stock', ?, ?, 'x')").run(JSON.stringify({ seq }), status);
+    add(5, "DELIVERED"); add(6, "ABORTED_NO_CHARGE"); add(7, "DELIVERED");
+    const r = salesFound(db, [5, 6, 7, 8]);
+    expect(r.sales.map((s) => s.seq)).toEqual([5, 7]);
+    expect(r.missing).toEqual([6, 8]);
+  });
+
+  it("still refuses a number sold twice", () => {
+    const db = openDb(":memory:");
+    for (let i = 0; i < 2; i++) db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('/v1/stock', 5, '0x1', '/v1/stock', ?, 'DELIVERED', 'x')").run(JSON.stringify({ seq: 9 }));
+    expect(() => salesFound(db, [9])).toThrow(/found 2/);
   });
 });

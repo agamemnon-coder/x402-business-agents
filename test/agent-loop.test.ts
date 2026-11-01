@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb } from "../src/db/open.js";
-import { agentsOn, runAgent, type AgentTool } from "../src/agents/loop.js";
+import { agentsOn, apiInputSchema, runAgent, type AgentTool } from "../src/agents/loop.js";
 
 type Block = { type: "text"; text: string } | { type: "tool_use"; id: string; name: string; input: unknown };
 type Reply = { content: Block[]; stop_reason: string; stop_details?: unknown };
@@ -156,5 +156,27 @@ describe("the agent loop", () => {
     expect(agentsOn({})).toBe(false);
     expect(agentsOn({ KIT11_AGENTS: "1" })).toBe(false);
     expect(agentsOn({ KIT11_AGENTS: "on" })).toBe(true);
+  });
+});
+
+describe("apiInputSchema (dry-96: Haiku refused a strict tool with integer bounds)", () => {
+  it("drops the number bounds strict tools do not accept, keeps the rest, and says the bounds in words", () => {
+    const s = apiInputSchema(z.strictObject({ n: z.number().int().min(0).max(300), price: z.string().regex(/^\d+\.\d{2}$/).nullable() }));
+    const props = s.properties as Record<string, Record<string, unknown>>;
+    expect(props.n!.minimum).toBeUndefined();
+    expect(props.n!.maximum).toBeUndefined();
+    expect(props.n!.type).toBe("integer");
+    expect(String(props.n!.description)).toMatch(/0.*300/);
+    expect(JSON.stringify(props.price!)).toContain("pattern");
+    expect(s.additionalProperties).toBe(false);
+    expect(JSON.stringify(s)).not.toMatch(/"(minimum|maximum|exclusiveMinimum|exclusiveMaximum|multipleOf)"/);
+  });
+
+  it("keeps a field that happens to be called maximum", () => {
+    const s = apiInputSchema(z.strictObject({ maximum: z.number().max(5) }));
+    const props = s.properties as Record<string, Record<string, unknown>>;
+    expect(props.maximum!.type).toBe("number");
+    expect(props.maximum!.maximum).toBeUndefined();
+    expect(s.required).toEqual(["maximum"]);
   });
 });

@@ -11,7 +11,7 @@
 // Prints one line per check and exits 1 if any fails.
 
 import type { Address } from "viem";
-import { salesBySeq, verifyOrders } from "../agents/disputes.js";
+import { salesFound, verifyOrders } from "../agents/disputes.js";
 import { fromEnv, Airwallex } from "../airwallex/client.js";
 import { getVia, verifyAirwallex } from "../airwallex/verify.js";
 import { checkAnchor, verifyAuditChain, type AuditRowStored } from "../audit/log.js";
@@ -76,9 +76,11 @@ const disputes = db.prepare("SELECT dispute_id, claims_json FROM disputes").all(
 const addr = addresses(db);
 for (const d of disputes) {
   const refs = (JSON.parse(d.claims_json) as { sale_refs: number[] }).sale_refs;
-  const evidence = await verifyOrders(salesBySeq(db, refs), addr.customer as Address);
+  // Numbers the customer named that never sold have no order to check; a refund needs a sale row, so none was paid for them.
+  const found = salesFound(db, refs);
+  const evidence = await verifyOrders(found.sales, addr.customer as Address);
   const good = evidence.filter((e) => e.signed_order && e.within_mandate && e.payer_is_customer).length;
-  line(good === evidence.length, `dispute ${d.dispute_id} orders`, `${good}/${evidence.length} signed by the customer's mandate key, inside its mandate`);
+  line(good === evidence.length, `dispute ${d.dispute_id} orders`, `${good}/${evidence.length} signed by the customer's mandate key, inside its mandate${found.missing.length ? `; ${found.missing.length} named but never sold (#${found.missing.join(", #")})` : ""}`);
 }
 
 // Sales paid by Metal clearing: the buyer's signed payment, checked again with Metal's clearing service.

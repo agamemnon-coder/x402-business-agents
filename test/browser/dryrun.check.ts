@@ -284,6 +284,10 @@ if (process.env.DRYRUN_AUTONOMY) {
   const count = (sql: string, ...a: unknown[]) => (db().prepare(sql).get(...a) as { n: number }).n;
   const decisionsAfter = (agent: string, seq: number) => db().prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.decision' AND actor = ? AND seq > ? ORDER BY seq").all(agent, seq).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { source: string; summary: string });
   const headSeq = () => count("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log");
+  // The agent's decision that took this world event in (not an earlier answer to another agent's message).
+  const lastEvent = (kind: string) => count("SELECT COALESCE(MAX(id), 0) AS n FROM world_events WHERE kind = ?", kind);
+  const decisionOn = (agent: string, eventId: number, seq: number) => db().prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.decision' AND actor = ? AND seq > ? ORDER BY seq").all(agent, seq)
+    .map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { source: string; summary: string; events: number[] }).find((d) => d.events.includes(eventId));
   try {
     await timed("A1 The shop runs: customer queries every 15 s, Sourcing's buy policy applies", async () => {
       await until("three sales", () => count("SELECT COUNT(*) AS n FROM sales") >= 3, 300_000);
@@ -311,9 +315,13 @@ if (process.env.DRYRUN_AUTONOMY) {
       check(count("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'PAID' AND price_cents > 4") === 0, "no upstream purchase above 0.04");
     });
     await timed("A3 World: Summit Outfitters disputes 12 orders (the Support agent decides)", async () => {
+      // A batch of orders to dispute: wait until the shop has run past #16 (the numbers in Summit's email).
+      await until("stock checks up to #16", () => count("SELECT COALESCE(MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)), 0) AS n FROM sales") >= 16, 600_000).catch(() => undefined);
+      check(true, `${count("SELECT COUNT(*) AS n FROM sales WHERE status = 'DELIVERED'")} sales delivered before the dispute`);
       const from = headSeq();
       cli("world.ts", "dispute");
-      const d = await until("the Support agent's decision", () => decisionsAfter("support", from)[0], 900_000);
+      const ev = lastEvent("dispute.opened");
+      const d = await until("the Support agent's decision on the dispute", () => decisionOn("support", ev, from), 900_000);
       say(`SUPPORT DECIDED (${d.source}): ${d.summary}`);
       check(d.source === "claude", "the Support agent decided itself");
       const all = latest("refund_batch", "status = 'PENDING_APPROVAL'");
@@ -325,7 +333,8 @@ if (process.env.DRYRUN_AUTONOMY) {
     await timed("A4 World: the licence invoice arrives (the Treasury agent decides when and how to pay)", async () => {
       const from = headSeq();
       cli("world.ts", "invoice");
-      const d = await until("the Treasury agent's decision", () => decisionsAfter("treasury", from)[0], 900_000);
+      const ev = lastEvent("invoice.received");
+      const d = await until("the Treasury agent's decision on the invoice", () => decisionOn("treasury", ev, from), 900_000);
       say(`TREASURY DECIDED (${d.source}): ${d.summary}`);
       const inv = latest("invoice_payment", "status = 'PENDING_APPROVAL'");
       if (inv) {

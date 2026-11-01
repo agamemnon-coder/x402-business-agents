@@ -67,6 +67,7 @@
     "agent-summary": "tsx src/cli/agentSummary.ts",
     "agent": "tsx src/cli/agent.ts",
     "world": "tsx src/cli/world.ts",
+    "autonomy-variation": "tsx src/cli/autonomyVariation.ts",
     "contracts": "tsx src/compliance/compile.ts",
     "iso20022": "tsx src/cli/iso20022.ts",
     "clearing-load": "tsx src/cli/clearingLoad.ts",

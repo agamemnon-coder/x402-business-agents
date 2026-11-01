@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
-import { checkData, refundsFor, salesBySeq, verifyOrders } from "../agents/disputes.js";
+import { checkData, refundsFor, salesFound, verifyOrders } from "../agents/disputes.js";
 import { attachReview } from "../claude/review.js";
 import { agentsOn } from "../agents/loop.js";
 import { settleDispute } from "../agents/supportAgent.js";
@@ -41,7 +41,14 @@ db.prepare("INSERT OR IGNORE INTO disputes (dispute_id, customer, email_sha256, 
 console.log(`                 read by ${read.source === "claude" ? `${kind.model} (classify) and ${read.model} (extract); the planted instruction is data, not an order` : `the deterministic parser (${read.note})`}`);
 console.log(`NEW INFORMATION  ${claims.customer}: claims ${claims.claims.join(" + ")} on stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}; asks ${claims.requested_action}`);
 
-const sales = salesBySeq(db, claims.sale_refs);
+const { sales, missing } = salesFound(db, claims.sale_refs);
+// A number we never sold (a live world: that query failed, or never ran) was never paid: nothing to refund for it.
+const notSold = missing.length ? ` (${missing.length} of them never sold: #${missing.join(", #")}; nothing was paid for those, so nothing is refunded)` : "";
+if (missing.length) console.log(`NOT SOLD         #${missing.join(", #")}: no delivered sale under that number; nothing was paid, nothing to refund`);
+if (sales.length === 0) {
+  console.log("NOTHING TO SETTLE none of the disputed numbers was sold");
+  process.exit(0);
+}
 const orders = await verifyOrders(sales, addr.customer);
 console.log(`\nEVIDENCE         stock check  signed order  within mandate  payer = Summit  tx`);
 for (const o of orders) {
@@ -86,7 +93,7 @@ function refundProposal(items: typeof refunds, reason: string) {
 let settledByAgent = false;
 if (agentsOn()) {
   const bySeq = new Map(sales.map((s) => [s.seq, s]));
-  const settled = await settleDispute(db, { disputeId, customer: claims.customer, seqs: claims.sale_refs, requested: claims.requested_action, email }, {
+  const settled = await settleDispute(db, { disputeId, customer: claims.customer, seqs: sales.map((x) => x.seq), requested: claims.requested_action, email }, {
     verify: async (seq) => {
       const o = orders.find((x) => x.seq === seq);
       if (!o) throw new Error(`#${seq} was not found on chain`);
@@ -108,7 +115,7 @@ if (agentsOn()) {
         : `customer request: ${claims.requested_action}; code's data check finds these sales' data right`);
       const verified = orders.filter((o) => o.signed_order && o.within_mandate && o.payer_is_customer).length;
       await attachReview(db, tools, p, [
-        `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)} and asks: ${claims.requested_action}.`,
+        `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold} and asks: ${claims.requested_action}.`,
         `Checked by code: ${verified}/${orders.length} payments verified on chain (verifyMandatePayment) as signed by the customer's own mandate key, inside its mandate, paid from its account.`,
         `Checked by code: of the ${items.length} sales in these terms, ${wrongHere.length ? `${wrongHere.map((q) => `#${q}`).join(", ")} carried wrong data` : "none carried wrong data"} according to the supplier's correction.`,
         `The Support agent (a model; its words are advice, not evidence) sent these ${items.length} to a person and wrote: ${advice}`,
@@ -159,7 +166,7 @@ if (!settledByAgent) {
     console.log(`ESCALATION       "refund all 12": the other ${rest.length} (${fromCents(rest.reduce((s, r) => s + r.amount_cents, 0))}) exceed the automatic limits -> ${p.proposal_id} (${p.status ?? "PENDING_APPROVAL"}), sha256 ${p.terms_sha256}`);
     const verified = orders.filter((o) => o.signed_order && o.within_mandate && o.payer_is_customer).length;
     const r = await attachReview(db, tools, p, [
-      `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}, claims the orders were never placed and the data wrong, and asks for all ${orders.length} to be refunded.`,
+      `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold}, claims the orders were never placed and the data wrong, and asks for all ${orders.length} to be refunded.`,
       `Checked by code: ${verified}/${orders.length} payments verified on chain (verifyMandatePayment) as signed by the customer's own mandate key, inside the mandate the customer's owner bound, paid from the customer's account. "Never placed" is contradicted by that evidence.`,
       `Checked by code: every delivered stock check was compared with the supplier's correction notice; ${refunds.length} were wrong (#${refunds.map((x) => x.seq).join(", #")}) and were refunded automatically, ${fromCents(refunds.reduce((a, x) => a + x.amount_cents, 0))} in total, each the price the customer paid for that sale (the automatic limits are at most ${fromCents(REFUND_AUTO_EACH_CENTS)} per refund and ${fromCents(REFUND_AUTO_PER_DISPUTE_CENTS)} per dispute in total). Each amount in these terms is likewise the price paid for that sale, read from the ledger. The ${rest.length} sales in these terms matched the supplier's data.`,
       "This proposal refunds those remaining sales only because the customer asked; the agent found no evidence for it, which is why it waits for a person. The payee is the customer's own account (the only payee the support mandate allows). A planted line in the email asking to refund to another address had no effect.",
@@ -187,7 +194,7 @@ const wrongList = refunds.map((r) => `#${r.seq}`).join(", ");
 const paidList = paid.map((r) => `#${r.seq}`).join(", ") || "none";
 const allPaid = refunds.every((r) => paid.some((x) => x.seq === r.seq));
 const reply = await tools.draftReply(
-  `Customer: Summit Outfitters. All ${orders.length} disputed orders (stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}) were verified on chain: each was signed by the customer's agent's mandate key under the mandate the customer's account bound. Ticks ${wrongList} carried wrong stock levels from our supplier (its correction notice says so). Refunded: ${paidList} (${refundedTotal} *USDZ in total, refund transactions on Metal testnet)${allPaid ? "" : "; the rest of the wrong ones wait for a person"}. The other ${orders.length - refunds.length} stock checks matched the supplier's data.`,
+  `Customer: Summit Outfitters. All ${orders.length} disputed orders we sold (stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold}) were verified on chain: each was signed by the customer's agent's mandate key under the mandate the customer's account bound. Ticks ${wrongList} carried wrong stock levels from our supplier (its correction notice says so). Refunded: ${paidList} (${refundedTotal} *USDZ in total, refund transactions on Metal testnet)${allPaid ? "" : "; the rest of the wrong ones wait for a person"}. The other ${orders.length - refunds.length} stock checks matched the supplier's data.`,
   () => ({ subject: "Your disputed orders", body: `We checked all ${orders.length} orders against the chain: each was signed by your agent's mandate key under the mandate your account bound, so they were placed. Ticks ${wrongList} were wrong at our supplier; refunded: ${paidList} (${refundedTotal})${allPaid ? "" : ", the rest waits for a person"}. The other ${orders.length - refunds.length} were correct.` }),
 );
 console.log(`\nDraft reply to Summit (${reply.source === "claude" ? reply.model : "template"}; a person sends it):\n  Subject: ${reply.value.subject}\n  ${reply.value.body.replace(/\n/g, "\n  ")}`);

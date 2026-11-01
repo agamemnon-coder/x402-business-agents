@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { openDb, type DB } from "../src/db/open.js";
 import { pending, publish, sendMessage } from "../src/autonomy/bus.js";
-import { wake, type AgentProfile } from "../src/autonomy/runtime.js";
+import { wake, worldReady, type AgentProfile } from "../src/autonomy/runtime.js";
+import { audit } from "../src/audit/log.js";
 
 type Call = { name: string; input: unknown };
 function fake(turns: Call[][]): { client: Anthropic; prompts: string[] } {
@@ -91,5 +92,18 @@ describe("an agent's wake", () => {
 
   it("refuses a message to itself", () => {
     expect(() => sendMessage(openDb(":memory:"), "sourcing", "sourcing", "hi")).toThrow(/itself/);
+  });
+});
+
+describe("worldReady (dry-96: the agents woke before bootstrap and logged a failure every 3 s)", () => {
+  it("is false until all three agents' mandates are bound, then true", () => {
+    const db = openDb(":memory:");
+    expect(worldReady(db)).toBe(false);
+    audit(db, "owner-signer", "mandate.bound", "sourcing", {});
+    audit(db, "owner-signer", "mandate.bound", "support", {});
+    audit(db, "owner-signer", "mandate.bound", "customer", {});
+    expect(worldReady(db)).toBe(false);
+    audit(db, "owner-signer", "mandate.bound", "treasury", {});
+    expect(worldReady(db)).toBe(true);
   });
 });
