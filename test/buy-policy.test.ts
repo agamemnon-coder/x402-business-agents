@@ -24,6 +24,20 @@ describe("code follows the buy policy", () => {
     expect(pending(db, "sourcing").events.filter((e) => e.kind === "upstream.refused")).toHaveLength(1);
   });
 
+  // dry-131: the Treasury agent saw the turned-away customers (its evidence of a block) only at its next tick, minutes
+  // later; the rebalance came after the run moved on. The third customer turned away in 15 minutes wakes it, once.
+  it("wakes the Treasury agent once when the third customer in 15 minutes is turned away", async () => {
+    const db = openDb(":memory:");
+    set(db, { supplier: "none", max_price: null, cache_seconds: 0 });
+    const a = new SourcingAgent(db, "http://127.0.0.1:1", "0x0000000000000000000000000000000000000001");
+    for (const seq of [61, 62]) await a.buy(seq);
+    expect(pending(db, "treasury").events).toHaveLength(0);
+    for (const seq of [63, 64, 65]) await a.buy(seq);
+    const ev = pending(db, "treasury").events;
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ kind: "customers.turned_away", payload: { count: 3, window_minutes: 15 } });
+  });
+
   it("refuses before signing when the policy's supplier makes no offer (unavailable)", async () => {
     const db = openDb(":memory:");
     set(db, { supplier: "stockline", max_price: "0.03", cache_seconds: 0 });

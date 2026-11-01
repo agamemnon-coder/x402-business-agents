@@ -20,7 +20,7 @@ import { designPriceRise } from "../agents/treasuryAgent.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { setSetting } from "../world/settings.js";
 import { TOTAL_BUDGET_CENTS } from "../config/policy.js";
-import { MAX_CACHE_SECONDS, SUPPLIERS } from "../config/suppliers.js";
+import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } from "../config/suppliers.js";
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
 import type { AgentProfile } from "./runtime.js";
@@ -37,9 +37,6 @@ export function runFlow(script: string, args: string[] = []): { ok: boolean; tex
 
 const latestRefusal = (db: DB) => db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'mandate_cap_exceeded%' ORDER BY id DESC LIMIT 1").get() as { id: number; refusal_reason: string } | undefined;
 
-/** How many customers turned away recently, and in what window, count as the Sourcing agent being blocked. */
-const TURNED_AWAY_MIN = 3;
-const TURNED_AWAY_WINDOW_MS = 15 * 60_000;
 
 /**
  * Code's evidence that an agent is blocked by its mandate, from code's own data only (never an agent's words): a

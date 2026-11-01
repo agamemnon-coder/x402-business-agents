@@ -28,3 +28,6 @@ export const SUPPLIERS: Record<SupplierId, SupplierSpec> = {
 export const MAX_CACHE_SECONDS = 300;
 /** The Sourcing agent's goal margin per query. */
 export const MIN_MARGIN_CENTS = 1;
+/** Customers turned away under the buy policy that, in this window, count as the Sourcing agent being blocked (dry-125). */
+export const TURNED_AWAY_MIN = 3;
+export const TURNED_AWAY_WINDOW_MS = 15 * 60_000;

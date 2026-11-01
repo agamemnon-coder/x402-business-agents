@@ -20,6 +20,9 @@ import { openDb } from "../db/open.js";
 import { policyVersionChecks } from "../policy/versions.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
 import { credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
+import { proposalCredentialCheck } from "../verify/credentials.js";
+import { readMandateState } from "@metalntwx/metal-pay/mandates";
+import { publicClient } from "../metal/chain.js";
 import { addresses } from "../world/runtime.js";
 import { verifyClearingPayment, type ClearingPaid } from "@metalntwx/metal-pay";
 import type { PaymentRequirements } from "@x402/core/types";
@@ -55,8 +58,14 @@ function verifyCredential(agent: MandateAgent, path: string, tx?: string) {
 const files = new Map<string, { agent: MandateAgent; path: string }>();
 for (const agent of ["sourcing", "support", "treasury", "customer"] as const) {
   for (const path of credentialFiles(agent)) {
-    const v = verifyCredential(agent, path);
-    line(v.ok, `mandate ${path.split("/").pop()}`, v.detail);
+    const file = path.split("/").pop()!;
+    // A credential issued for a proposal that was not executed must not be bound (src/verify/credentials.ts).
+    const id = /\.(P-\d{4,})\.credential\.json$/.exec(file)?.[1];
+    const status = id ? (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id) as { status: string } | undefined)?.status : undefined;
+    const m = loadCredentialFile(agent, path);
+    const pre = status && status !== "EXECUTED" ? proposalCredentialCheck(file, status, (await readMandateState(publicClient(), m.principal, m.reference)).boundBlock) : ({ kind: "full" } as const);
+    const v = pre.kind === "done" ? pre : verifyCredential(agent, path);
+    line(v.ok, `mandate ${file}`, v.detail);
     files.set(loadCredentialFile(agent, path).credentialHash.toLowerCase(), { agent, path });
   }
 }

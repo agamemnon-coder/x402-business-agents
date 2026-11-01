@@ -16,7 +16,7 @@ import { fromCents, toCents } from "../lib/money.js";
 import { agentsOn } from "../config/agents.js";
 import { recordCapRefusalOnChain } from "../metal/recordRefusal.js";
 import { autonomyOn } from "../config/agents.js";
-import { MAX_CACHE_SECONDS, SUPPLIERS, type SupplierId } from "../config/suppliers.js";
+import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS, type SupplierId } from "../config/suppliers.js";
 import { getSetting } from "../world/settings.js";
 import { publish } from "../autonomy/bus.js";
 
@@ -70,6 +70,18 @@ export class SourcingAgent {
     if (!autonomyOn()) return;
     if (this.db.prepare("SELECT 1 FROM world_events WHERE kind = 'upstream.refused' AND for_agent = 'sourcing' AND created_at > ?").get(new Date(Date.now() - 60_000).toISOString())) return;
     publish(this.db, "upstream.refused", { seq, supplier, reason, refused_by: refusedBy }, "sourcing");
+  }
+
+  /**
+   * dry-131: the Treasury agent saw customers turned away (code's evidence that Sourcing is blocked by its cap) only at
+   * its next tick. The customer that makes it TURNED_AWAY_MIN in the window wakes Treasury, once per crossing; Treasury
+   * still reads code's evidence from the ledger (src/autonomy/teamProfiles.ts blockedByMandate), not this event.
+   */
+  private turnedAway(): void {
+    if (!autonomyOn()) return;
+    const n = (this.db.prepare("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > ?")
+      .get(new Date(Date.now() - TURNED_AWAY_WINDOW_MS).toISOString()) as { n: number }).n;
+    if (n === TURNED_AWAY_MIN) publish(this.db, "customers.turned_away", { count: n, window_minutes: TURNED_AWAY_WINDOW_MS / 60_000 }, "treasury");
   }
 
   private async recordOnChain(m: LoadedMandate, seq: number, reason: string): Promise<void> {
@@ -134,6 +146,7 @@ export class SourcingAgent {
       const id = Number(insert.run(0, null, null, "REFUSED", reason, now0, supplier, originJson()).lastInsertRowid);
       audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason, refused_by: "purser", supplier });
       this.tell(seq, supplier, reason, "purser");
+      if (reason.startsWith("buy_policy:")) this.turnedAway();
       return { ok: false, purchaseId: id, reason, inDoubt: false };
     };
     if (policy.supplier === "none") return policyRefusal("buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged", "none");
