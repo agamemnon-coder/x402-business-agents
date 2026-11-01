@@ -397,3 +397,18 @@ on itself, behind `KIT11_AUTONOMY=on` like the rest of D19:
 Each gets a dry-run step and tests; the soak runs all of them. Estimate 7 hours (decline event 1.5, deposit event 1.5,
 report offer and task card 3, dry-run steps and tests 1). Risk: medium (money paths on the sandbox; every limit stays
 where it is: Airwallex's card limits, the mandate cap, the CFO's Face ID for a card).
+
+### D23. The money flow, animated, in the control tower (design 4.1; 1 November, evening)
+
+Max: money moves visibly, customer agents → Northwind → the agents → suppliers, refunds, the sweep to Airwallex, the
+licence in euros; each movement says which agent, which Claude model decided, the amount, the rail (a Metal
+stablecoin payment in *USDZ on chain, or an Airwallex card, deposit or SWIFT transfer) and a clickable proof; a refusal
+visibly hits its rail (Metal or the bank) with the reason. Only real events: `flowEvents(db)` reads them from the
+ledger's audit log (each row's own tx hash or Airwallex id), on the live dashboard, and in the recordings as a replay
+with its label (the recorded run, the autonomous dry run). Nothing is generated. "Decided by" is the agent's own Claude
+decision that led to it (its model), the CFO's Face ID for an approval, or code following a policy, as recorded.
+Works at 390 and 1440 px, light and dark, without motion for `prefers-reduced-motion`, and frames well for the video.
+No new features beyond this.
+
+Estimate 5 hours (flowEvents and tests 1.5, the animated panel 2.5, recordings, page check and review 1). Risk: low
+(read-only, display only).
