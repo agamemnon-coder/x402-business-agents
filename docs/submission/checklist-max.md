@@ -24,11 +24,21 @@ Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal o
 - Draai `npm run relay` en open de nieuwe viewer-link één keer op je telefoon (privé-tabblad in Safari).
 - De oude link werkt daarna niet meer.
 
-## 4. Repo publiek
+## 4. Repo: publiek, of privé met toegang voor de jury
 
+Beide mogen (Airwallex in #help, 1 november: een repo mag privé blijven met toegang voor de jury; een lokaal draaiende
+demo mag ook). Plan: publiek. Kies één van de twee:
+
+**A. Publiek (het plan)**
 - Pas na groen CI op de laatste commit (daar zit gitleaks op de hele geschiedenis in).
 - Claude draait vooraf nog één keer de geheimenscan en `gitleaks` lokaal en meldt het resultaat.
 - Daarna zet jij de repo op publiek (GitHub, Settings, Danger zone). Dit kan niet ongedaan worden voor wie al keek.
+
+**B. Privé, met toegang voor de jury**
+- Dezelfde scan als bij A (een jurylid ziet alles wat erin staat).
+- Jij nodigt de GitHub-accounts uit die de organisatie noemt (Settings, Collaborators, alleen lezen). Vraag in #help
+  welke accounts; nodig niemand anders uit.
+- In het formulier: "private repository, access granted to the judges' accounts", met de link.
 
 ## 5. Video
 

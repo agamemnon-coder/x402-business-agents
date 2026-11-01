@@ -505,3 +505,26 @@ so the purchase read as code's and dropped out of the run's trace; it is now car
 during its pull is finished under the origin it started with; a refused one tried again records the new origin only
 after its checks pass. Card charges answer the purchases of the same card and amount in order. A task card within the
 CFO's policy (no proposal) is code's, asked for by the CFO at the runner.
+
+### D25. The Visa Award: TAP claimed, and in the rail choice (Max, 1 November evening)
+
+Airwallex answered Max in #help: (1) a TAP integration on Visa's open-source reference, with our own agent registry in
+the sandbox, counts as "Visa tooling" for the Visa Award: "Yes"; (2) one project may enter both the Visa Award and the
+Metal Award: "Yes". So TAP moves from "dev test, not claimed" to claimed for the Visa Award, with its honest label: the
+agent registry is self-hosted per Visa's open-source reference, not Visa's production directory; Visa Intelligent
+Commerce is not claimed. The Metal Award stays first, and Thursday's run takes no risk for this.
+
+Plan: (1) claims, matrix, `/visa`, README and the submission text name it claimed, with the #help answer as the
+source; the licence and brand rules of TAP are read again, and the Visa mark is used only where allowed (otherwise
+"Visa's Trusted Agent Protocol"); the code follows the current spec and RFC 9421 (body bound by Content-Digest where a
+request has one). (2) In the rail choice, a purchase from a card-only merchant is signed by the agent with TAP; the
+merchant verifies it against the registry and refuses an unknown, expired, replayed or other-domain request; then the
+agent's own Airwallex Visa card pays inside the CFO's limit (over it, a raise by Face ID). The TAP signature, the
+merchant's verdict and the Airwallex authorisation id travel with the purchase's origin (D24) into the trace and the
+money flow. Behind a flag (`KIT11_TAP_RAIL=on`): it goes into Thursday's run only if Wednesday's three dry runs are
+green on exactly that code; otherwise it joins the short extra run on Monday 9 November (kill rule Tuesday 10 November
+23:00). (3) Red team: replay, expired, wrong keyid, other domain or path, tampered body or digest, unknown agent, tag
+swap, each refused with its reason; `/visa` browser check; a fresh review of the TAP code and the card path.
+
+Estimate 8 hours (spec and licence check 1, the card path with TAP and provenance 3, red team and tests 2, docs,
+`/visa`, browser check and review 2). Risk: medium, behind its flag; nothing changes for the reserve run.
