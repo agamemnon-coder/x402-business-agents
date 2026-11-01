@@ -1,5 +1,6 @@
 // Starts the supplier and seller on localhost and wires the agents to them.
 
+import { originCarrier } from "../provenance/carry.js";
 import type { Server } from "node:http";
 import type { Address } from "viem";
 import { SourcingAgent } from "../agents/sourcing.js";
@@ -46,6 +47,9 @@ export interface Runtime {
   sourcing: SourcingAgent;
   customer: CustomerAgent;
   sellerBase: string;
+  /** D24: the customer buys stock check `seq`, and the upstream purchase behind it records the origin in force here
+   *  (an agent's own tool call): the seller's request handler runs outside this code path, so it is carried by seq. */
+  buyAs(seq: number): ReturnType<CustomerAgent["buy"]>;
   close(): Promise<void>;
 }
 
@@ -74,20 +78,24 @@ export async function startRuntime(db: DB, ports = { supplier: 4101, seller: 410
   const sellerBase = `http://127.0.0.1:${ports.seller}`;
   const ridgeline = autonomyOn() && addr.ridgeline ? { base: `http://127.0.0.1:${SUPPLIERS.ridgeline.port}`, address: addr.ridgeline } : null;
   const sourcing = new SourcingAgent(db, supplierBase, addr.supplier, ridgeline);
+  // An agent's own purchase keeps its origin across the in-process HTTP hop to our seller (D24).
+  const carrier = originCarrier((seq: number) => sourcing.buy(seq));
+  const buyUpstream = carrier.upstream;
   const servers = [
     await listen(supplierApp({ payTo: addr.supplier, price: () => upstreamPrice(db) }), ports.supplier),
     // D19: Ridgeline Data, the second supplier: its own price, older data, sometimes unavailable.
     ...(ridgeline ? [await listen(supplierApp({ payTo: ridgeline.address, price: () => supplierPrice(db, "ridgeline"), name: SUPPLIERS.ridgeline.name,
       dataAgeSeconds: SUPPLIERS.ridgeline.dataAgeSeconds, unavailableEvery: SUPPLIERS.ridgeline.unavailableEvery }), SUPPLIERS.ridgeline.port)] : []),
     await listen(sellerApp({
-      db, payTo: addr.business, price: () => sellPrice(db), buyUpstream: (seq) => sourcing.buy(seq),
+      db, payTo: addr.business, price: () => sellPrice(db), buyUpstream,
       // The prepaid route (Metal clearing) is offered only when we have a clearing key and Metal offers clearing.
       clearing: await sellerClearingKey().then((payTo) => (payTo ? { payTo, preflight: (seq: number) => sourcing.wouldRefuse(seq) } : undefined)),
     }), ports.seller),
   ];
+  const customer = new CustomerAgent(sellerBase, addr.business);
   return {
-    addr, sourcing, sellerBase,
-    customer: new CustomerAgent(sellerBase, addr.business),
+    addr, sourcing, sellerBase, customer,
+    buyAs: (seq) => carrier.send(seq, () => customer.buy(seq)),
     close: async () => {
       await Promise.all(servers.map((s) => new Promise<void>((r) => s.close(() => r()))));
     },

@@ -29,21 +29,20 @@ export async function refundSale(
   r: { sale_id: number; amount_cents: number; to: Address; dispute_id: string; proposal_id?: string },
   opts: { retry?: boolean; pull?: Puller } = {},
 ): Promise<RefundResult> {
-  // D24: a refund already sent (PENDING) or held is the same action, finished under the origin it started with; a
-  // refused one started again (an agent's retry, or the CFO's batch) is a new attempt with the origin in force now.
+  // D24: a refund started and not finished (proposed, or a crash during its pull; sent; held) is the same action,
+  // finished under the origin it started with. A refused one started again (an agent's retry, or the CFO's batch) is
+  // a new attempt: it records the origin in force now, once its checks pass.
   const before = db.prepare("SELECT outcome, origin_json FROM refunds WHERE sale_id = ?").get(r.sale_id) as { outcome: string; origin_json: string | null } | undefined;
-  const stored = before && (before.outcome === "PENDING" || before.outcome === "HELD") ? parseOrigin(before.origin_json) : null;
-  if (stored) return withOrigin(stored, () => refundUnder(db, r, opts));
-  if (before && (before.outcome === "REFUSED" || before.outcome === "PROPOSED") && !opts.retry) {
-    db.prepare("UPDATE refunds SET origin_json = ?, proposal_id = COALESCE(?, proposal_id) WHERE sale_id = ?").run(originJson(), r.proposal_id ?? null, r.sale_id);
-  }
-  return refundUnder(db, r, opts);
+  const stored = before && ["PROPOSED", "PENDING", "HELD"].includes(before.outcome) ? parseOrigin(before.origin_json) : null;
+  if (stored) return withOrigin(stored, () => refundUnder(db, r, opts, false));
+  return refundUnder(db, r, opts, before?.outcome === "REFUSED");
 }
 
 async function refundUnder(
   db: DB,
   r: { sale_id: number; amount_cents: number; to: Address; dispute_id: string; proposal_id?: string },
   opts: { retry?: boolean; pull?: Puller },
+  newAttempt: boolean,
 ): Promise<RefundResult> {
   const paymentId = `refund-${r.sale_id}`;
   const sale = db.prepare("SELECT payer, price_cents FROM sales WHERE sale_id = ? AND status = 'DELIVERED'").get(r.sale_id) as { payer: string; price_cents: number } | undefined;
@@ -63,6 +62,8 @@ async function refundUnder(
     db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, proposal_id, dispute_id, origin_json) VALUES (?, ?, ?, ?, 'PROPOSED', ?, ?, ?)")
       .run(r.sale_id, paymentId, r.amount_cents, r.to, r.proposal_id ?? null, r.dispute_id, originJson());
   }
+
+  if (newAttempt) db.prepare("UPDATE refunds SET origin_json = ?, proposal_id = COALESCE(?, proposal_id) WHERE sale_id = ?").run(originJson(), r.proposal_id ?? null, r.sale_id);
 
   // The CFO policy's limit per refund, the velocity limits, the mandate's budget and the agents' shared total, reserved
   // together before anything is signed (a hold). A pull already sent is counted by its ledger row: its retry only checks.

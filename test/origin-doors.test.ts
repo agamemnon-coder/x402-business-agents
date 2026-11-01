@@ -149,3 +149,36 @@ describe("a card charge matches only a purchase it can answer (review 2)", () =>
     expect(originOf(db, "card.charge_approved")).toEqual([null]);
   });
 });
+
+describe("review 3: a crash mid-action, and charges answering purchases in order", () => {
+  const OPUS: Origin = { actor: "agent", agent: "treasury", model: "claude-opus-5-5", request_id: "req_o2", run_id: "run-treasury-11-abcdef" };
+  const S3: Origin = { actor: "code", rule: "the sweep of net earnings (npm run s3)", agent: "treasury" };
+  it("a sweep whose pull crashed (left PLANNED) is finished under the origin it started with", async () => {
+    const db = openDb(":memory:");
+    const { executeSweep } = await import("../src/agents/sweep.js");
+    const crash = async (): Promise<never> => { throw new Error("killed during the pull"); };
+    await expect(withOrigin(OPUS, () => executeSweep(db, "sweep-7", 30, "0x00000000000000000000000000000000000000aa", crash))).rejects.toThrow();
+    await withOrigin(S3, () => executeSweep(db, "sweep-7", 30, "0x00000000000000000000000000000000000000aa", async () => ({ outcome: "PAID" as const, tx: "0xc", reason: null, already: false })));
+    expect(originOf(db, "sweep.paid")).toEqual([OPUS]);
+  });
+
+  it("a refused sweep tried with a different amount is rejected and keeps its first origin", async () => {
+    const db = openDb(":memory:");
+    const { executeSweep } = await import("../src/agents/sweep.js");
+    await withOrigin(OPUS, () => executeSweep(db, "sweep-6", 30, "0x00000000000000000000000000000000000000aa", async () => ({ outcome: "REFUSED" as const, tx: null, reason: "x", already: false })));
+    await expect(withOrigin(S3, () => executeSweep(db, "sweep-6", 31, "0x00000000000000000000000000000000000000aa", async () => ({ outcome: "PAID" as const, tx: "0xd", reason: null, already: false })))).rejects.toThrow(/must not change the amount/);
+    expect(JSON.parse((db.prepare("SELECT origin_json FROM sweeps WHERE payment_id = 'sweep-6'").get() as { origin_json: string }).origin_json)).toEqual(OPUS);
+  });
+
+  it("two purchases of the same amount: the first charge answers the first purchase, the second the second", async () => {
+    const db = openDb(":memory:");
+    const awx = new FakeIssuing();
+    awx.clock = () => now.getTime();
+    await setupCards(db, awx, now);
+    const card = db.prepare("SELECT card_id, last4 FROM cards WHERE agent = 'sourcing'").get() as { card_id: string; last4: string };
+    const A: Origin = { ...AGENT, run_id: "run-sourcing-1-aaaaaa" }, B: Origin = { ...AGENT, run_id: "run-sourcing-2-bbbbbb" };
+    for (const [o, id] of [[A, "pa"], [B, "pb"]] as const) withOrigin(o, () => audit(db, "sourcing", "card.purchase_started", id, { agent: "sourcing", last4: card.last4, merchant: "Notion", amount: "12.00", currency: "EUR" }, now));
+    for (const [k, id] of ["t-1", "t-2"].entries()) ingestCardTransaction(db, { transactionId: id, cardId: card.card_id, amountCents: 1200, currency: "EUR", status: "APPROVED", approved: true, failureReason: null, merchant: "Notion", mcc: "5734", type: "AUTHORIZATION", occurredAt: new Date(now.getTime() + k * 1000).toISOString() }, "poll", now);
+    expect(originOf(db, "card.charge_approved")).toEqual([A, B]);
+  });
+});

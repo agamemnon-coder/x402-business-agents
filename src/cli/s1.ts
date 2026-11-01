@@ -55,7 +55,7 @@ try {
       const seq = nextSeq();
       // Only a refusal of this purchase counts, never an older one.
       const before = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM upstream_purchases").get() as { n: number }).n;
-      const p = await rt.customer.buy(seq);
+      const p = await rt.buyAs(seq); // the agent's own purchase: it records the agent's origin (D24)
       const refusal = db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' AND id > ? ORDER BY id DESC LIMIT 1").get(before) as { id: number; refusal_reason: string } | undefined;
       served = { seq, p, refusal };
       return served;

@@ -497,3 +497,11 @@ and the relay start without an inherited origin; four eyes reads "two people app
 ID"; an origin that does not validate in the agent loop is left out (counted) instead of failing the tool; an index on
 the audit log's events. Accepted: a writer may state an origin explicitly (the outside doors, code's booking with the
 decision it follows); no writer puts model or outside input into that field, which a stated origin must pass zod.
+
+A second look at those fixes, fixed: an agent's own purchase through our seller (the price-rise try, the rail
+choice's pay) kept no origin across the in-process HTTP hop (the seller's handler runs outside the sender's code path),
+so the purchase read as code's and dropped out of the run's trace; it is now carried by the stock check's number
+(`src/provenance/carry.ts`, tested with a real local server). A sweep or refund left planned or proposed by a crash
+during its pull is finished under the origin it started with; a refused one tried again records the new origin only
+after its checks pass. Card charges answer the purchases of the same card and amount in order. A task card within the
+CFO's policy (no proposal) is code's, asked for by the CFO at the runner.

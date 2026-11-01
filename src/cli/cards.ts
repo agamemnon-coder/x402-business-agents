@@ -55,7 +55,7 @@ async function railChoice(sim: IssuingSim): Promise<CardTransaction> {
       payStockline: async () => {
         const seq = ((db.prepare("SELECT MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)) AS s FROM sales").get() as { s: number | null }).s ?? 0) + 1;
         const before = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM upstream_purchases").get() as { n: number }).n;
-        const p = await rt.customer.buy(seq);
+        const p = await rt.buyAs(seq); // the agent's own purchase: it records the agent's origin (D24)
         const u = db.prepare("SELECT price_cents, outcome, tx_hash, refusal_reason FROM upstream_purchases WHERE id > ? ORDER BY id DESC LIMIT 1").get(before) as { price_cents: number; outcome: string; tx_hash: string | null; refusal_reason: string | null } | undefined;
         if (u?.outcome === "PAID") return { ok: true, text: `stock check #${seq} bought from Stockline for ${fromCents(u.price_cents)} under the Sourcing mandate${p.outcome.kind === "paid" ? ", and sold to the customer" : ""}`, ref: u.tx_hash };
         if (u?.outcome === "IN_DOUBT") return { ok: false, text: `stock check #${seq}: in doubt, it may have settled; the reconciliation resolves it (never paid twice)`, ref: null };

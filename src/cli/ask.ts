@@ -30,8 +30,8 @@ const said = (t: { approved: boolean; failureReason: string | null; amountCents:
 const [cmd, id, amount, ...rest] = args;
 if (cmd === "book" && id && amount) {
   // D24: a purchase on a task card is the card's approval at work (the CFO's Face ID on that proposal).
-  const approved = approvalOrigin(db, id);
-  if (approved) setScriptOrigin(approved);
+  // A task card within the CFO's policy has no proposal: the CFO asked for it at the runner, and code issued it.
+  setScriptOrigin(approvalOrigin(db, id) ?? { actor: "code", rule: "a task card within the CFO's policy, asked for by the CFO at the runner" });
   console.log(said(await bookOnTaskCard(db, sim(), `task:${id}`, { merchant: rest.join(" ") || "Skyline Air", amount }, new Date(), issuingFromEnv()?.rail)));
 } else if (cmd === "show" && id) {
   console.log(`demonstration on task:${id}, labelled as such in the log:`);

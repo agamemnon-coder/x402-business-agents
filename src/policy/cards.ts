@@ -200,13 +200,16 @@ export type CardTxSource = "simulation" | "poll" | "webhook";
  *  purchase recorded none: a missing origin is not hidden behind the merchant). A merchant's own charge finds none. */
 const ANSWER_WINDOW_MS = 15 * 60_000;
 function purchaseAnswered(db: DB, agent: string, last4: string, amount: string, at: Date): { origin: Origin | null } | undefined {
-  const p = db.prepare(`SELECT seq, payload_json FROM audit_log WHERE event = 'card.purchase_started' AND json_extract(payload_json, '$.agent') = ?
-    AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ? AND ts >= ? AND ts <= ? ORDER BY seq DESC LIMIT 1`)
-    .get(agent, last4, amount, new Date(at.getTime() - ANSWER_WINDOW_MS).toISOString(), new Date(at.getTime() + 60_000).toISOString()) as { seq: number; payload_json: string } | undefined;
-  if (!p) return undefined;
-  const answered = db.prepare(`SELECT 1 FROM audit_log WHERE seq > ? AND event IN ('card.charge_approved', 'card.charge_declined')
-    AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ? LIMIT 1`).get(p.seq, last4, amount);
-  return answered ? undefined : { origin: parseOrigin(JSON.stringify((JSON.parse(p.payload_json) as { origin?: unknown }).origin ?? null)) };
+  // Purchases and charges on this card for this amount pair up in order: the charge answers the oldest purchase in
+  // the window that the charges since have not answered yet.
+  const purchases = db.prepare(`SELECT seq, payload_json FROM audit_log WHERE event = 'card.purchase_started' AND json_extract(payload_json, '$.agent') = ?
+    AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ? AND ts >= ? AND ts <= ? ORDER BY seq`)
+    .all(agent, last4, amount, new Date(at.getTime() - ANSWER_WINDOW_MS).toISOString(), new Date(at.getTime() + 60_000).toISOString()) as { seq: number; payload_json: string }[];
+  if (!purchases.length) return undefined;
+  const charges = (db.prepare(`SELECT COUNT(*) AS n FROM audit_log WHERE seq > ? AND event IN ('card.charge_approved', 'card.charge_declined')
+    AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ?`).get(purchases[0]!.seq, last4, amount) as { n: number }).n;
+  const p = purchases[charges];
+  return p ? { origin: parseOrigin(JSON.stringify((JSON.parse(p.payload_json) as { origin?: unknown }).origin ?? null)) } : undefined;
 }
 
 /** Records an Airwallex authorisation once. Returns true if it was new. */
