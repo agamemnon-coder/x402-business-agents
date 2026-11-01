@@ -23,7 +23,7 @@ import { lastReconciliation } from "../finance/reconcile.js";
 import { CARDS, MCC_WORDS, type Agent } from "../config/policy.js";
 import { agentProfiles, type AgentProfile } from "../agents/profiles.js";
 import { booksView, type BooksView } from "../accounting/books.js";
-import { disputeCases } from "../seller/desk.js";
+import { disputeCases, type DisputeCase } from "../seller/desk.js";
 import { CLAIM_WORDS, type DisputeClaim } from "../seller/disputeDesk.js";
 import { eurInFlightCents, mandateAvailability } from "../policy/available.js";
 import { heldCents } from "../policy/holds.js";
@@ -906,6 +906,10 @@ export interface DisputeView {
   sales: { sale_id: number; request: string; charged: string; order: string; chain: boolean; delivered: boolean; tx: string; refund: string; why: string; passkey: boolean;
     /** A refund this sale already had before the case (an earlier claim, e.g. wrong data), with its transaction. */
     refunded_before: { amount: string; tx: string | null } | null }[];
+  /** The Support agent's own decision by Claude, when it decided the case (autonomous runs; src/seller/desk.ts). */
+  agent?: DisputeCase["agent"];
+  /** The customer's own agent's message (agent to agent). */
+  customer_agent?: DisputeCase["customer_agent"];
 }
 
 /** The Dispute desk's cases for the dashboard, from the stored cases only. */
@@ -926,6 +930,8 @@ function disputeViews(db: DB): DisputeView[] {
         refunded_before: before(p.sale_id),
       };
     }),
+    ...(c.agent ? { agent: c.agent } : {}),
+    ...(c.customer_agent ? { customer_agent: c.customer_agent } : {}),
   }));
 }
 
