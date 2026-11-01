@@ -2366,7 +2366,295 @@
           }
         }
       ]
-    }
+    },
+    "flows": [
+      {
+        "at": "2026-10-30T07:08:20.030Z",
+        "kind": "upstream",
+        "from": "sourcing",
+        "to": "suppliers",
+        "amount": "0.80",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": "sourcing",
+        "model": null,
+        "decided": "code, following the buy policy",
+        "what": "Stockline",
+        "proof": {
+          "label": "tx 0x6a6d…ab60",
+          "href": "https://testnet.metalntwx.com/tx/0x6a6d3e45da77b7cba4d98ae1715c140bf10f3887fae207a13f650ab7b0b9ab60",
+          "full": "0x6a6d3e45da77b7cba4d98ae1715c140bf10f3887fae207a13f650ab7b0b9ab60"
+        },
+        "count": 40
+      },
+      {
+        "at": "2026-10-30T07:08:21.040Z",
+        "kind": "sale",
+        "from": "customer",
+        "to": "northwind",
+        "amount": "2.00",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": null,
+        "model": null,
+        "decided": "Summit's agent paid (the simulated customer)",
+        "what": "stock checks sold",
+        "proof": {
+          "label": "tx 0x41e7…9771",
+          "href": "https://testnet.metalntwx.com/tx/0x41e7571d137d6cb750afdab9d9164e6e9d9ef19269371e55f1ac981d70ac9771",
+          "full": "0x41e7571d137d6cb750afdab9d9164e6e9d9ef19269371e55f1ac981d70ac9771"
+        },
+        "count": 40
+      },
+      {
+        "at": "2026-10-30T07:08:31.940Z",
+        "kind": "upstream",
+        "from": "sourcing",
+        "to": "suppliers",
+        "amount": "",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": "sourcing",
+        "model": null,
+        "decided": "code, following the buy policy",
+        "what": "Stockline",
+        "proof": {
+          "label": "Metal's facilitator refused it (a 402: nothing moves, so no transaction)",
+          "href": null,
+          "full": null
+        },
+        "refused": {
+          "by": "metal",
+          "reason": "mandate_cap_exceeded"
+        }
+      },
+      {
+        "at": "2026-10-30T07:20:20.106Z",
+        "kind": "upstream",
+        "from": "sourcing",
+        "to": "suppliers",
+        "amount": "0.40",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": "sourcing",
+        "model": null,
+        "decided": "code, following the buy policy",
+        "what": "Stockline",
+        "proof": {
+          "label": "tx 0xf6b0…f555",
+          "href": "https://testnet.metalntwx.com/tx/0xf6b06a110202d82ee4554ef78643e157f18285460b3d4065607672ce1915f555",
+          "full": "0xf6b06a110202d82ee4554ef78643e157f18285460b3d4065607672ce1915f555"
+        },
+        "count": 10
+      },
+      {
+        "at": "2026-10-30T07:20:21.377Z",
+        "kind": "sale",
+        "from": "customer",
+        "to": "northwind",
+        "amount": "0.70",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": null,
+        "model": null,
+        "decided": "Summit's agent paid (the simulated customer)",
+        "what": "stock checks sold",
+        "proof": {
+          "label": "tx 0x2b02…c7ea",
+          "href": "https://testnet.metalntwx.com/tx/0x2b0231e7af8e59c7a64e072019349872068cc593096ab2b24bcde9b3c473c7ea",
+          "full": "0x2b0231e7af8e59c7a64e072019349872068cc593096ab2b24bcde9b3c473c7ea"
+        },
+        "count": 10
+      },
+      {
+        "at": "2026-10-30T07:21:43.542Z",
+        "kind": "refund",
+        "from": "support",
+        "to": "customer",
+        "amount": "0.05",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": "support",
+        "model": null,
+        "decided": "refunded after the CFO's approval",
+        "what": "refund for order #7",
+        "proof": {
+          "label": "tx 0xcf11…bed1",
+          "href": "https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1",
+          "full": "0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1"
+        }
+      },
+      {
+        "at": "2026-10-30T07:21:47.729Z",
+        "kind": "refund",
+        "from": "support",
+        "to": "customer",
+        "amount": "0.05",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": "support",
+        "model": null,
+        "decided": "refunded after the CFO's approval",
+        "what": "refund for order #10",
+        "proof": {
+          "label": "tx 0x512f…a97b",
+          "href": "https://testnet.metalntwx.com/tx/0x512fdb1d9680e74d8a735d9d9596211d266904018f816104f2a5c13f838fa97b",
+          "full": "0x512fdb1d9680e74d8a735d9d9596211d266904018f816104f2a5c13f838fa97b"
+        }
+      },
+      {
+        "at": "2026-10-30T07:21:53.363Z",
+        "kind": "refund",
+        "from": "support",
+        "to": "customer",
+        "amount": "0.05",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": "support",
+        "model": null,
+        "decided": "refunded after the CFO's approval",
+        "what": "refund for order #13",
+        "proof": {
+          "label": "tx 0xa0c5…70ad",
+          "href": "https://testnet.metalntwx.com/tx/0xa0c537b44c103df51ffa07865f6f3d51d4cc12eff5cb4140565e02a0c2d470ad",
+          "full": "0xa0c537b44c103df51ffa07865f6f3d51d4cc12eff5cb4140565e02a0c2d470ad"
+        }
+      },
+      {
+        "at": "2026-10-30T07:22:19.497Z",
+        "kind": "sweep",
+        "from": "treasury",
+        "to": "airwallex",
+        "amount": "1.35",
+        "unit": "*USDZ",
+        "rail": "metal",
+        "agent": "treasury",
+        "model": null,
+        "decided": "code swept the net earnings",
+        "what": "net earnings to the sweep wallet",
+        "proof": {
+          "label": "tx 0x808f…a94f",
+          "href": "https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f",
+          "full": "0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f"
+        }
+      },
+      {
+        "at": "2026-10-30T07:22:23.608Z",
+        "kind": "booked",
+        "from": "treasury",
+        "to": "airwallex",
+        "amount": "1.35",
+        "unit": "USD",
+        "rail": "airwallex_deposit",
+        "agent": "treasury",
+        "model": null,
+        "decided": "booked at Airwallex after finality (sandbox deposit)",
+        "what": "the sweep, credited at Airwallex",
+        "proof": {
+          "label": "Airwallex 56366c9d…",
+          "href": null,
+          "full": "56366c9d-e537-428f-8681-9c1a8c43c838"
+        }
+      },
+      {
+        "at": "2026-10-30T07:32:05.824Z",
+        "kind": "licence",
+        "from": "treasury",
+        "to": "payee",
+        "amount": "1850.00",
+        "unit": "EUR",
+        "rail": "airwallex_swift",
+        "agent": "treasury",
+        "model": null,
+        "decided": "paid after the CFO's Face ID",
+        "what": "the euro invoice, by SWIFT",
+        "proof": {
+          "label": "Airwallex 4d508b0b…",
+          "href": null,
+          "full": "4d508b0b-ef38-41d3-b96e-f6cc3f5cfeb4"
+        }
+      },
+      {
+        "at": "2026-10-30T07:32:20.118Z",
+        "kind": "card",
+        "from": "sourcing",
+        "to": "merchant",
+        "amount": "19.99",
+        "unit": "EUR",
+        "rail": "airwallex_card",
+        "agent": "sourcing",
+        "model": null,
+        "decided": "a charge on the agent's card",
+        "what": "Packwise on card ····8120",
+        "proof": {
+          "label": "Airwallex 01a18bb9…",
+          "href": null,
+          "full": "01a18bb9-4682-7000-bd95-43a3a930b03b"
+        }
+      },
+      {
+        "at": "2026-10-30T07:32:21.525Z",
+        "kind": "card",
+        "from": "sourcing",
+        "to": "merchant",
+        "amount": "45.00",
+        "unit": "EUR",
+        "rail": "airwallex_card",
+        "agent": "sourcing",
+        "model": null,
+        "decided": "a test charge the Airwallex sandbox simulated",
+        "what": "Packwise on card ····8120",
+        "proof": {
+          "label": "Airwallex 01a18bb9…",
+          "href": null,
+          "full": "01a18bb9-571a-7000-a390-0e6d4b0e3132"
+        },
+        "refused": {
+          "by": "airwallex",
+          "reason": "LIMIT_EXCEEDED"
+        }
+      },
+      {
+        "at": "2026-10-30T07:32:25.287Z",
+        "kind": "card",
+        "from": "support",
+        "to": "merchant",
+        "amount": "19.99",
+        "unit": "EUR",
+        "rail": "airwallex_card",
+        "agent": "support",
+        "model": null,
+        "decided": "a charge on the agent's card",
+        "what": "Packwise on card ····6882",
+        "proof": {
+          "label": "Airwallex 7edb809a…",
+          "href": null,
+          "full": "7edb809a-48d4-440e-ab1f-3805645fd605"
+        },
+        "refused": {
+          "by": "airwallex",
+          "reason": "MERCHANT_CATEGORY_NOT_ALLOWED"
+        }
+      },
+      {
+        "at": "2026-10-30T07:34:35.691Z",
+        "kind": "card",
+        "from": "sourcing",
+        "to": "merchant",
+        "amount": "45.00",
+        "unit": "EUR",
+        "rail": "airwallex_card",
+        "agent": "sourcing",
+        "model": null,
+        "decided": "a test charge the Airwallex sandbox simulated",
+        "what": "Packwise on card ····8120",
+        "proof": {
+          "label": "Airwallex 01a18bbb…",
+          "href": null,
+          "full": "01a18bbb-6607-7000-ac01-0b4d20104e8e"
+        }
+      }
+    ]
   },
   "proof": {
     "alone": 106,

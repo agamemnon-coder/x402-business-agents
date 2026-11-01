@@ -436,6 +436,43 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 /* Every step of the story is on the card from the start (no empty panel); each lights up in turn. */
 @keyframes show { 0% { opacity: .32; } 4%, 88% { opacity: 1; } 96%, 100% { opacity: .32; } }
 .still .flow li, .still .stage .bar i { animation: none; opacity: 1; transform: none; } .still .stage .bar i { width: 100%; }
+/* D23: the money flow, moving. Only events from the ledger (or a labelled replay of one); each with its proof. */
+.mf { margin: 0 0 20px; padding: 16px; }
+.mf-stage { position: relative; display: grid; gap: 10px 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "cust nw src sup" "cust nw spt awx" "cust nw tre mer" "cust nw tre pay"; margin: 6px 0 12px; }
+.mf-n { position: relative; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); min-width: 0; transition: border-color .3s, box-shadow .3s; }
+.mf-n b { display: block; font-size: 13.5px; } .mf-n small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.35; }
+.mf-n.rail-metal { border-left: 4px solid #111827; } .mf-n.rail-awx { border-left: 4px solid #ff4f42; }
+:root[data-theme="dark"] .mf-n.rail-metal { border-left-color: #e9ebf1; } :root[data-theme="dark"] .mf-cap .chip.rail-metal { border-color: #e9ebf1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mf-n.rail-metal { border-left-color: #e9ebf1; } :root:not([data-theme="light"]) .mf-cap .chip.rail-metal { border-color: #e9ebf1; } }
+.mf-n.lit { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.mf-n.hit { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+.mf-n[data-n="customer"] { grid-area: cust; } .mf-n[data-n="northwind"] { grid-area: nw; } .mf-n[data-n="sourcing"] { grid-area: src; } .mf-n[data-n="support"] { grid-area: spt; }
+.mf-n[data-n="treasury"] { grid-area: tre; } .mf-n[data-n="suppliers"] { grid-area: sup; } .mf-n[data-n="airwallex"] { grid-area: awx; } .mf-n[data-n="merchant"] { grid-area: mer; } .mf-n[data-n="payee"] { grid-area: pay; }
+.mf-n[data-n="customer"], .mf-n[data-n="northwind"] { display: flex; flex-direction: column; justify-content: center; }
+.mf-tok { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; font: 700 12px var(--font); padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+  background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow); opacity: 0; }
+.mf-tok.usdz { background: #111827; color: #fff; } .mf-tok.eur { background: #ff4f42; color: #fff; }
+:root[data-theme="dark"] .mf-tok.usdz { background: #e9ebf1; color: #0a0c11; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mf-tok.usdz { background: #e9ebf1; color: #0a0c11; } }
+.mf-tok.bad { background: var(--bad); color: var(--bad-ink); }
+.mf-wall { position: absolute; z-index: 3; width: 6px; border-radius: 3px; background: var(--bad); opacity: 0; pointer-events: none; }
+.mf-wall b { position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); font: 700 11px var(--font); color: var(--bad); white-space: nowrap; background: var(--surface); padding: 0 4px; border-radius: 4px; }
+.mf-cap { border-top: 1px solid var(--border); padding-top: 10px; min-height: 92px; }
+.mf-cap .l1 { font-size: 15px; font-weight: 600; } .mf-cap .l1 .amt { font-variant-numeric: tabular-nums; }
+.mf-cap .l2 { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .mf-cap .chip { display: inline-block; flex: 0 1 auto; max-width: 100%; font-size: 12px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; color: var(--muted); }
+.mf-cap .chip.rail-metal { border-color: #111827; color: var(--text); } .mf-cap .chip.rail-awx { border-color: #ff4f42; color: var(--text); }
+.mf-cap .l3 { font-size: 13.5px; color: var(--muted); } .mf-cap .ref { font-size: 13px; color: var(--bad); font-weight: 600; margin-top: 4px; overflow-wrap: anywhere; }
+.mf-cap .mf-proof { font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; } .mf-cap .mf-proof a { color: var(--accent); }
+.mf-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.mf-ctl button { font: 600 13px var(--font); border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 11px; cursor: pointer; min-height: 34px; }
+.mf-ctl .cnt { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mf-dots { display: flex; gap: 3px; flex-wrap: wrap; flex: 1 1 160px; } .mf-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border); cursor: pointer; }
+.mf-dots i.on { background: var(--accent); } .mf-dots i.bad { box-shadow: inset 0 0 0 2px var(--bad); }
+@media (max-width: 760px) {
+  .mf-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "cust nw" "src sup" "spt awx" "tre mer" ". pay"; }
+}
+@media (prefers-reduced-motion: reduce) { .mf-tok, .mf-wall { display: none; } .mf-n { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .flow li, .stage .bar i, .feed li.fresh { animation: none; opacity: 1; transform: none; } .stage .bar i { width: 100%; } }
 .rails h2 { font-size: 32px; letter-spacing: -.02em; margin: 0 0 10px; }
 .rails .lead { max-width: 760px; }
@@ -786,7 +823,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     return n;
   }
   function txt(tag, cls, s) { return el(tag, cls, [s === null || s === undefined ? "" : String(s)]); }
-  function set(id, nodes) { var n = document.getElementById(id); n.replaceChildren.apply(n, nodes.filter(function (x) { return x != null; })); }
+  function set(id, nodes) { var n = typeof id === "string" ? document.getElementById(id) : id; n.replaceChildren.apply(n, nodes.filter(function (x) { return x != null; })); }
 
   // Money arrives as decimal strings; group without going through floats. Euros and dollars at Airwallex carry their
   // sign; Metal's USDZ are test dollars and say so, never "$" beside "€".
@@ -1393,7 +1430,121 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (p.kind === "awx") return txt("span", "mono", "Airwallex id " + String(p.ref).slice(0, 8) + "…");
     return null;
   }
-  function renderTower(d) { renderTowerAt("", d.tower); }
+  function renderTower(d) {
+    renderTowerAt("", d.tower);
+    var rt = document.getElementById("rec-text");
+    renderFlowAt("", d.flows, d.recorded ? "Replay · " + (rt && rt.textContent ? rt.textContent : "a recorded run · test money") : "Live, from this ledger · test money");
+  }
+  // D23: the money flow, moving. Each movement is a recorded event (never generated) with its proof; a refusal hits
+  // its rail. Without motion (prefers-reduced-motion) it lights the nodes and shows the same caption.
+  var MF_NODES = [["customer", "Customer agents", "Summit's agent pays per query (x402)", ""], ["northwind", "Northwind", "Metal business account · *USDZ stablecoin on chain", "metal"],
+    ["sourcing", "Sourcing agent", "Claude Haiku", ""], ["support", "Support agent", "Claude Sonnet", ""], ["treasury", "Treasury agent", "Claude Opus", ""],
+    ["suppliers", "Suppliers", "Stockline, Ridgeline Data · x402 on Metal", "metal"], ["airwallex", "Airwallex", "USD and EUR accounts, company cards, SWIFT", "awx"],
+    ["merchant", "Card merchants", "software, single-use purchases", ""], ["payee", "EUR payee", "the licence invoice, by SWIFT", ""]];
+  var MF_WORDS = { customer: "Summit's agent", northwind: "Northwind", sourcing: "the Sourcing agent", support: "the Support agent", treasury: "the Treasury agent", suppliers: "the supplier", airwallex: "Airwallex", merchant: "the merchant", payee: "the EUR payee" };
+  var MF_RAIL = { metal: ["metal", "x402 on Metal · *USDZ stablecoin on chain"], purser: ["", "stopped by Purser before signing"], airwallex_card: ["awx", "Airwallex company card"], airwallex_swift: ["awx", "Airwallex · SWIFT transfer"], airwallex_deposit: ["awx", "Airwallex account"] };
+  // The path a movement takes through the nodes (the agent pays from the business account under its mandate).
+  function mfPath(e) {
+    if (e.kind === "sale") return ["customer", "northwind"];
+    if (e.kind === "upstream") return ["northwind", "sourcing", "suppliers"];
+    if (e.kind === "refund") return ["northwind", "support", "customer"];
+    if (e.kind === "sweep") return ["northwind", "treasury", "airwallex"];
+    if (e.kind === "booked") return ["treasury", "airwallex"];
+    if (e.kind === "licence") return ["airwallex", "payee"];
+    if (e.kind === "card") return [e.from in MF_WORDS ? e.from : "sourcing", "airwallex", "merchant"];
+    if (e.kind === "deposit") return ["customer", "airwallex"];
+    return [e.from, e.to];
+  }
+  var mfState = {};
+  function renderFlowAt(px, flows, label) {
+    var anchor = document.getElementById(px + "enforced");
+    if (!anchor) return;
+    var sec = document.getElementById(px + "mf");
+    if (!flows || !flows.length) { if (sec) sec.hidden = true; return; }
+    var key = JSON.stringify(flows.map(function (f) { return f.at + f.kind + f.amount; }));
+    if (sec && mfState[px] && mfState[px].key === key) return; // the same movements: keep playing
+    if (!sec) {
+      sec = el("section", "panel mf"); sec.id = px + "mf"; sec.setAttribute("aria-label", "The money, moving");
+      anchor.parentNode.insertBefore(sec, anchor.nextSibling);
+    }
+    sec.hidden = false;
+    if (mfState[px] && mfState[px].timer) clearTimeout(mfState[px].timer);
+    var stage = el("div", "mf-stage"), nodes = {};
+    MF_NODES.forEach(function (n) { var d = el("div", "mf-n" + (n[3] ? " rail-" + n[3] : ""), [txt("b", "", n[1]), txt("small", "", n[2])]); d.setAttribute("data-n", n[0]); nodes[n[0]] = d; stage.appendChild(d); });
+    var tok = txt("div", "mf-tok", ""), wall = el("div", "mf-wall");
+    stage.appendChild(tok); stage.appendChild(wall);
+    var cap = el("div", "mf-cap"), dots = el("div", "mf-dots"), cnt = txt("span", "cnt", "");
+    var prev = txt("button", "", "‹ Back"), play = txt("button", "", "Pause"), next = txt("button", "", "Next ›");
+    prev.type = play.type = next.type = "button";
+    flows.forEach(function (f, i) { var d = el("i", f.refused ? "bad" : ""); d.title = f.kind + " " + f.amount + " " + f.unit; d.addEventListener("click", function () { go(i, true); }); dots.appendChild(d); });
+    sec.replaceChildren(el("div", "sect flush", [txt("h2", "", "The money, moving"), txt("span", "hint", label + " · every movement from the ledger, with its proof")]), stage, cap, el("div", "mf-ctl", [prev, play, next, cnt, dots]));
+    var st = mfState[px] = { key: key, i: 0, playing: true, timer: 0 };
+    // Where a movement leaves one node and enters the next: the edges that face each other, so the token runs through
+    // the gaps between the boxes and not over their text. Returns [exit of a, entry of b, "h" or "v"].
+    function edges(na, nb) {
+      var s0 = stage.getBoundingClientRect(), A = nodes[na].getBoundingClientRect(), B = nodes[nb].getBoundingClientRect();
+      function r(R) { return { l: R.left - s0.left, r: R.right - s0.left, t: R.top - s0.top, b: R.bottom - s0.top, cx: R.left - s0.left + R.width / 2, cy: R.top - s0.top + R.height / 2 }; }
+      var a = r(A), b = r(B);
+      if (b.l >= a.r - 1) return [[a.r, Math.max(a.t, b.t) + 22], [b.l, Math.max(a.t, b.t) + 22], "h"];
+      if (b.r <= a.l + 1) return [[a.l, Math.max(a.t, b.t) + 22], [b.r, Math.max(a.t, b.t) + 22], "h"];
+      if (b.t >= a.b - 1) return [[b.cx, a.b], [b.cx, b.t], "v"];
+      return [[b.cx, a.t], [b.cx, b.b], "v"];
+    }
+    function caption(e) {
+      var amt = e.amount ? money(e.amount, e.unit === "*USDZ" ? "USDZ" : e.unit).replace(" test USD", "") + (e.unit === "*USDZ" ? " *USDZ" : e.unit === "USD" ? " USD" : "") : "over the cap";
+      var who = e.agent && MF_WORDS[e.agent] ? MF_WORDS[e.agent] : MF_WORDS[e.from] || e.from;
+      var r = MF_RAIL[e.rail] || ["", e.rail];
+      var proof;
+      if (e.proof.href) { proof = txt("a", "", e.proof.label + " ↗"); proof.href = e.proof.href; proof.target = "_blank"; proof.rel = "noopener"; }
+      else { proof = txt("span", "mono", e.proof.full ? e.proof.label.split(" ")[0] + " id " + e.proof.full : e.proof.label); }
+      set(cap, [
+        el("div", "l1", [txt("span", "", capFirst(who) + " → " + (MF_WORDS[e.to] || e.to) + " · "), txt("span", "amt", amt), e.count ? txt("span", "", " · " + e.count + " payments") : null, txt("span", "", " · " + e.what)]),
+        el("div", "l2", [txt("span", "chip" + (r[0] ? " rail-" + r[0] : ""), r[1]), e.model ? txt("span", "chip", "Claude " + (e.model.indexOf("haiku") >= 0 ? "Haiku" : e.model.indexOf("sonnet") >= 0 ? "Sonnet" : e.model.indexOf("opus") >= 0 ? "Opus" : e.model)) : null]),
+        txt("div", "l3", "Decided: " + e.decided),
+        e.refused ? txt("div", "ref", "Refused by " + (e.refused.by === "metal" ? "Metal, against the on-chain mandate" : e.refused.by === "airwallex" ? "Airwallex, at the card" : "Purser, before signing") + ": " + e.refused.reason) : null,
+        el("div", "mf-proof", [txt("span", "", "Proof: "), proof])]);
+    }
+    function go(i, user) {
+      st.i = (i + flows.length) % flows.length;
+      var e = flows[st.i];
+      if (user) { st.playing = false; play.textContent = "Play"; }
+      Array.prototype.forEach.call(dots.children, function (d, k) { d.classList.toggle("on", k === st.i); });
+      cnt.textContent = (st.i + 1) + " of " + flows.length;
+      Object.keys(nodes).forEach(function (k) { nodes[k].classList.remove("lit", "hit"); });
+      var path = mfPath(e).filter(function (n) { return nodes[n]; });
+      if (e.refused && e.refused.by === "airwallex") path = path.slice(0, path.indexOf("airwallex") + 1); // the bank stopped it
+      path.forEach(function (n) { nodes[n].classList.add("lit"); });
+      caption(e);
+      if (reduceMotion || path.length < 2) { if (e.refused) nodes[path[path.length - 1]].classList.add("hit"); return; }
+      tok.getAnimations().forEach(function (x) { x.cancel(); }); wall.getAnimations().forEach(function (x) { x.cancel(); });
+      var legs = [], pts = [];
+      for (var k = 0; k + 1 < path.length; k++) { var g = edges(path[k], path[k + 1]); legs.push(g); pts.push(g[0], g[1]); }
+      // A refusal stops in the gap before the rail that refused it, at a red wall named after that rail, and bounces back.
+      if (e.refused) {
+        var lg = legs[legs.length - 1], from = lg[0], to = lg[1];
+        var stop = [from[0] + (to[0] - from[0]) * 0.35, from[1] + (to[1] - from[1]) * 0.35];
+        pts[pts.length - 1] = stop;
+        if (lg[2] === "h") { wall.style.width = "6px"; wall.style.height = "44px"; wall.style.left = (to[0] - 3) + "px"; wall.style.top = (to[1] - 22) + "px"; }
+        else { wall.style.width = "120px"; wall.style.height = "6px"; wall.style.left = (to[0] - 60) + "px"; wall.style.top = (to[1] - 3) + "px"; }
+        wall.replaceChildren(txt("b", "", (e.refused.by === "metal" ? "Metal" : e.refused.by === "airwallex" ? "Airwallex" : "Purser") + " ✕"));
+        wall.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 800, fill: "forwards" });
+      } else wall.style.opacity = "0";
+      tok.textContent = amt(e); tok.className = "mf-tok " + (e.refused ? "bad" : e.unit === "*USDZ" ? "usdz" : "eur");
+      var tw = tok.offsetWidth / 2, th = tok.offsetHeight / 2;
+      var frames = pts.map(function (p, k) { return { transform: "translate(" + (p[0] - tw) + "px," + (p[1] - th) + "px)", opacity: k === 0 ? 0 : 1, offset: k / (pts.length - 1) }; });
+      if (e.refused) { var dx = pts[pts.length - 1][0] - pts[pts.length - 2][0], dy = pts[pts.length - 1][1] - pts[pts.length - 2][1];
+        frames.push({ transform: frames[frames.length - 1].transform + (Math.abs(dx) >= Math.abs(dy) ? " translateX(" + (dx > 0 ? -12 : 12) + "px)" : " translateY(" + (dy > 0 ? -12 : 12) + "px)"), opacity: 1, offset: 1 }); }
+      if (e.refused) frames[frames.length - 2].offset = 0.85;
+      tok.animate(frames, { duration: 1500, easing: "ease-in-out", fill: "forwards" });
+      if (e.refused) setTimeout(function () { nodes[path[path.length - 1]].classList.add("hit"); }, 1200);
+    }
+    function amt(e) { return e.amount ? (e.unit === "*USDZ" ? e.amount + " *USDZ" : e.unit + " " + e.amount) : "over the cap"; }
+    function tick() { if (!st.playing || mfState[px] !== st) return; go(st.i + 1); st.timer = setTimeout(tick, 3400); }
+    prev.addEventListener("click", function () { go(st.i - 1, true); });
+    next.addEventListener("click", function () { go(st.i + 1, true); });
+    play.addEventListener("click", function () { st.playing = !st.playing; play.textContent = st.playing ? "Pause" : "Play"; if (st.playing) st.timer = setTimeout(tick, 600); });
+    go(0); st.timer = setTimeout(tick, 3400);
+  }
   // Amounts as a CFO reads them: euros with the sign and thousands, Metal's test dollars with "test USD".
   var eurFmt = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" });
   var usdFmt = new Intl.NumberFormat("en-IE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1534,6 +1685,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (AUTONOMY) document.getElementById("autonomy-cta").hidden = false;
     var lt = RECORDED && RECORDED.snapshot && RECORDED.snapshot.tower;
     if (lt) { renderTowerAt("l-", lt); document.getElementById("l-tower-wrap").hidden = false; }
+    if (RECORDED && RECORDED.snapshot && RECORDED.snapshot.flows) renderFlowAt("l-", RECORDED.snapshot.flows, "Replay of the recorded run, " + dayFmt.format(new Date(RECORDED.recorded_at)) + " · test money");
     document.getElementById("landing").hidden = false;
     document.getElementById("signin-link").hidden = false;
   }

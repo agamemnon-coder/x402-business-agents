@@ -113,9 +113,14 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
       }
       case "upstream.refused": {
         const reason = str("reason") ?? "";
-        if (str("refused_by") === "metal" || !/^mandate_/.test(reason)) break;
+        if (!/^mandate_/.test(reason)) break; // an unavailable supplier is not a limit
+        // Who refused: refused_by when recorded; an older row has a bare code from Metal's facilitator (a 402, no
+        // transaction), while Purser's own refusal always carries its detail after a colon (the tower's rule).
+        const metal = str("refused_by") === "metal" || (!str("refused_by") && !reason.includes(":"));
         const m = /(\d+\.\d{2}) is over/.exec(reason);
-        push({ at: r.ts, kind: "upstream", from: "sourcing", to: "suppliers", amount: m?.[1] ?? "0.00", unit: "*USDZ", rail: "purser", agent: "sourcing", model: null, decided: "code, following the buy policy", what: str("supplier") === "ridgeline" ? "Ridgeline Data" : "Stockline", proof: { label: "Purser refused it before signing", href: null, full: null }, refused: { by: "purser", reason } });
+        push({ at: r.ts, kind: "upstream", from: "sourcing", to: "suppliers", amount: m?.[1] ?? "", unit: "*USDZ", rail: metal ? "metal" : "purser", agent: "sourcing", model: null, decided: "code, following the buy policy", what: str("supplier") === "ridgeline" ? "Ridgeline Data" : "Stockline",
+          proof: metal ? { label: "Metal's facilitator refused it (a 402: nothing moves, so no transaction)", href: null, full: null } : { label: "Purser refused it before signing", href: null, full: null },
+          refused: { by: metal ? "metal" : "purser", reason } });
         break;
       }
       case "upstream.refused_on_chain":
@@ -159,7 +164,7 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
         const agent = str("agent") ?? r.actor;
         const d = decidedBy(agent, r.seq, r.ts, "card");
         const declined = r.event === "card.charge_declined";
-        push({ at: r.ts, kind: "card", from: (AGENT_WORDS[agent] ? agent : "sourcing") as FlowNode, to: "merchant", amount: str("amount") ?? "0.00", unit: (str("currency") as FlowEvent["unit"]) ?? "EUR", rail: "airwallex_card", agent, model: d?.model ?? null, decided: d?.decided ?? (agent.startsWith("task:") ? "a single-use card the CFO approved" : str("source") === "simulation" ? "the agent's purchase" : "the merchant's charge"), what: `${str("merchant") ?? "a merchant"} on card ····${str("last4") ?? "?"}`, proof: awxProof(r.subject), ...(declined ? { refused: { by: "airwallex" as const, reason: str("reason") ?? "declined" } } : {}) });
+        push({ at: r.ts, kind: "card", from: (AGENT_WORDS[agent] ? agent : "sourcing") as FlowNode, to: "merchant", amount: str("amount") ?? "0.00", unit: (str("currency") as FlowEvent["unit"]) ?? "EUR", rail: "airwallex_card", agent, model: d?.model ?? null, decided: d?.decided ?? (agent.startsWith("task:") ? "a single-use card the CFO approved" : str("source") === "simulation" ? "a test charge the Airwallex sandbox simulated" : "a charge on the agent's card"), what: `${str("merchant") ?? "a merchant"} on card ····${str("last4") ?? "?"}`, proof: awxProof(r.subject), ...(declined ? { refused: { by: "airwallex" as const, reason: str("reason") ?? "declined" } } : {}) });
         break;
       }
       case "receivable.matched":

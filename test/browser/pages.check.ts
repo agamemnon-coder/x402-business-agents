@@ -76,6 +76,11 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!(await page.isVisible("#autonomy-cta"))) fail(`/ ${tag}: no way to the agents' dry run from the landing`);
     if ((await page.locator("#l-t-agents .tagent").count()) !== 3) fail(`/ ${tag}: the control tower does not show three agents`);
     if ((await page.locator("#l-enforced-body .tenf").count()) !== 3) fail(`/ ${tag}: "Enforced by" does not show Purser, Metal and Airwallex`);
+    // D23: the money, moving, from the recorded run: labelled a replay, each movement with its rail and its proof.
+    if (!(await page.isVisible("#l-mf"))) fail(`/ ${tag}: no money flow on the landing`);
+    if (!/Replay of the recorded run/.test(await page.locator("#l-mf .hint").innerText())) fail(`/ ${tag}: the money flow is not labelled a replay`);
+    if (!/Proof: /.test(await page.locator("#l-mf .mf-cap").innerText())) fail(`/ ${tag}: a money movement without its proof`);
+    if ((await page.locator("#l-mf .mf-dots i").count()) < 5) fail(`/ ${tag}: the money flow shows fewer than five movements`);
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
@@ -105,7 +110,16 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.waitForTimeout(1500);
     await look(page, `/?recorded ${tag}`, w);
     // Claude's costs are real US dollars (list prices); chain money must read "test USD" everywhere else.
-    const rec = await page.evaluate(() => { const c = document.getElementById("claude-panel"); const all = document.body.innerText; return c ? all.replace(c.innerText, "") : all; });
+    // The money flow (D23, Max 1 Nov) shows on purpose that Metal payments are the *USDZ stablecoin on chain: there,
+    // and only there, "*USDZ" is the unit, always with its star and the word "stablecoin" beside it (checked below).
+    const rec = await page.evaluate(() => { let all = document.body.innerText; for (const id of ["claude-panel", "mf"]) { const c = document.getElementById(id); if (c) all = all.replace(c.innerText, ""); } return all; });
+    const mfText = await page.locator("#mf").innerText().catch(() => "");
+    if (!mfText) fail(`/?recorded ${tag}: no money flow`);
+    else {
+      if (/(^|[^*])USDZ/.test(mfText)) fail(`/?recorded ${tag}: the money flow shows USDZ without its star`);
+      if (!/\*USDZ stablecoin on chain/.test(mfText)) fail(`/?recorded ${tag}: the money flow does not say *USDZ is a stablecoin on chain`);
+      if (/\$\s?\d/.test(mfText)) fail(`/?recorded ${tag}: the money flow shows dollars`);
+    }
     for (const want of [/Recorded run · .* · test money/, /On-chain budgets/i, /test USD/, /Company cards/i]) {
       if (!want.test(rec)) fail(`/?recorded ${tag}: missing ${want}`);
     }
@@ -162,6 +176,14 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!/Autonomous dry run · .* · test passkeys and test money · not a live run/.test(au)) fail(`/?autonomy ${tag}: not labelled as a dry run`);
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
     if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
+    if (!(await page.isVisible("#mf"))) fail(`/?autonomy ${tag}: no money flow`);
+    // Somewhere in the run a movement was decided by an agent's own Claude call: its caption names the model.
+    let named = false;
+    for (let i = 0, n = await page.locator("#mf .mf-dots i").count(); i < n && !named; i++) {
+      await page.locator("#mf .mf-dots i").nth(i).click();
+      named = /^Claude (Haiku|Sonnet|Opus)$/m.test(await page.locator("#mf .mf-cap .l2").innerText());
+    }
+    if (!named) fail(`/?autonomy ${tag}: no movement in the money flow names the Claude model that decided it`);
     const wrongly = await page.evaluate(() => Array.from(document.querySelectorAll(".agentchat li")).filter((li) => /Fallback \(code\)/.test(li.textContent ?? "") && /Powered by Claude/.test(li.textContent ?? "")).length);
     if (wrongly) fail(`/?autonomy ${tag}: ${wrongly} code fallback lines say Powered by Claude`);
     await page.screenshot({ path: join(shots, `autonomy-${tag}.png`), fullPage: true });

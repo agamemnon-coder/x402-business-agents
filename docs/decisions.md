@@ -412,3 +412,13 @@ No new features beyond this.
 
 Estimate 5 hours (flowEvents and tests 1.5, the animated panel 2.5, recordings, page check and review 1). Risk: low
 (read-only, display only).
+
+Built (part 2): the token runs through the gaps between the boxes (the edges that face each other), not over their
+text. A refusal stops in the gap before the rail that refused it, at a red wall named after that rail ("Metal ✕",
+"Airwallex ✕", "Purser ✕"); a card that Airwallex declined stops at Airwallex, not at the merchant. A card charge the
+Airwallex sandbox simulated says so. The `/?autonomy` replay is now dry-105 (a `VACUUM INTO` copy; 19 decisions, 0
+fallbacks, with the D22 events), so its movements name the Claude model that decided them. The page check's rule
+"chain money reads test USD, never USDZ" on `/?recorded` now skips the money-flow panel only, where Max asked for
+*USDZ to be visible; inside the panel a stronger check holds: always "*USDZ" with its star, the words "*USDZ stablecoin
+on chain" present, never "$". Both recordings and the landing have their own money-flow checks (labelled a replay, a
+proof per movement, a Claude model named in the autonomous run).

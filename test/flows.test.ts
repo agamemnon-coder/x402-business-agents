@@ -72,6 +72,12 @@ describe("the money flow, from the ledger (D23)", () => {
     expect(r[2]).toMatchObject({ refused: { by: "airwallex", reason: "LIMIT_EXCEEDED" }, proof: { label: "Airwallex awx-tx-9", href: null, full: "awx-tx-9" } });
   });
 
+  it("an older refusal row with a bare code was Metal's facilitator (no tx); its amount, not recorded, is not made up", () => {
+    const db = openDb(":memory:");
+    audit(db, "sourcing", "upstream.refused", "41", { reason: "mandate_cap_exceeded", seq: 41 }, T(1));
+    expect(flowEvents(db)).toEqual([expect.objectContaining({ rail: "metal", amount: "", refused: { by: "metal", reason: "mandate_cap_exceeded" }, proof: expect.objectContaining({ href: null, label: expect.stringMatching(/^Metal's facilitator refused it/) }) })]);
+  });
+
   it("the euro licence is shown once it is PAID at Airwallex, with the transfer id; nothing is shown that the ledger does not hold", () => {
     const f = flowEvents(world());
     expect(f.find((e) => e.kind === "licence")).toMatchObject({ proof: { full: "6b7ebec3-e3c7-4281-aa5b-cde80916c91e" } });

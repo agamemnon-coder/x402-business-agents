@@ -2,6 +2,7 @@
 // network call and writes nothing, so it can be served from a read-only handle while the agents run.
 // Every text it returns is plain text; the page renders it with textContent only.
 
+import { flowEvents, type FlowEvent } from "./flows.js";
 import { agentStats, type AgentStats, agentChat, type ChatLine } from "./agentStats.js";
 import { agentTraces, type Trace } from "./trace.js";
 import { verifyAuditChain } from "../audit/log.js";
@@ -181,6 +182,8 @@ export interface Snapshot {
   agent_chat: ChatLine[];
   /** Design 4.1: the control tower (money in, the agents' live limits, money out, the P&L, who enforced each refusal). */
   tower: Tower;
+  /** D23: the money flow, from the ledger's audit log (each movement with its proof). */
+  flows: FlowEvent[];
   cards: CardView[];
   clearing: ClearingView | null;
   /** The emergency stop, while it is on: who pulled it, when, and why. */
@@ -1059,6 +1062,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     audit: { rows: rows.length, head: rows.at(-1)?.row_hash ?? null, intact: chain.ok },
     budgets: budgetView,
     tower: towerView(db, { budgets: budgetView.agents, cards: cardView }),
+    flows: flowEvents(db),
     treasury: treasury(db),
     pending,
     decisions,
