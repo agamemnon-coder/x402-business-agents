@@ -3,6 +3,7 @@
 // phone submits, and shows the runner's verdict. It holds no key and approves nothing: the runner verifies every
 // signature itself. Its own checks (origin, hash, queue and rate limits, the enrolment code) only refuse early.
 
+import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { normalizeCode } from "../../src/passkey/code.js";
 import { publicHealth, type Health } from "../../src/ops/publicHealth.js";
 
@@ -140,6 +141,21 @@ async function viewKeyOf(token: string): Promise<string> {
   return (await hmacHex(token, "kit11 view v1")).slice(0, 32);
 }
 
+/** D20: the Monday (UTC) that starts d's ISO week, as YYYY-MM-DD. */
+export function isoWeekStart(d: Date): string {
+  const back = (d.getUTCDay() + 6) % 7;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back)).toISOString().slice(0, 10);
+}
+
+/** D20: with MFA on, the viewer key expires: HMAC-SHA256(relay token, "kit11 view v2 <week>"), 32 hex; the runner prints this week's. */
+export async function viewKeyForWeek(token: string, d: Date): Promise<string> {
+  return (await hmacHex(token, `kit11 view v2 ${isoWeekStart(d)}`)).slice(0, 32);
+}
+
+const SESSION_MS = 12 * 3600 * 1000;
+const SESSION_CHALLENGE_MS = 2 * 60 * 1000;
+const randomB64u = (n: number) => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(n)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
 /** Compares secrets through their digests, in constant time. */
 async function sameSecret(given: string, expected: string): Promise<boolean> {
   if (!expected) return false;
@@ -232,7 +248,7 @@ interface StoredState {
   approvals: {
     proposals: { proposal_id: string; terms_sha256: string; expires_at: string; kind?: string; canonical?: string }[];
     names: Record<string, string>;
-    passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string }[] };
+    passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string; public_key?: PublicKeyXY }[] };
   };
   enrolment: null | { window_id: string; challenge: string; user_id: string; user_name: string; code_mac: string; rp_id: string; expires_at: string };
 }
@@ -251,7 +267,7 @@ interface TicketRow {
 export class Relay {
   private readonly now: () => Date;
 
-  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date }) {
+  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean }) {
     this.now = opts.now ?? (() => new Date());
     this.sql.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     this.sql.exec(`CREATE TABLE IF NOT EXISTS inbox (
@@ -259,6 +275,65 @@ export class Relay {
       received_at TEXT NOT NULL, status TEXT NOT NULL, message TEXT, updated_at TEXT NOT NULL)`);
     this.sql.exec("CREATE TABLE IF NOT EXISTS hits (ip TEXT NOT NULL, at INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS hooks (id TEXT PRIMARY KEY, ts TEXT NOT NULL, signature TEXT NOT NULL, body TEXT NOT NULL, received_at TEXT NOT NULL)");
+    // D20: passkey sessions (stored hashed), their one-time challenges, and each credential's last signature counter.
+    this.sql.exec("CREATE TABLE IF NOT EXISTS sessions (id_hash TEXT PRIMARY KEY, credential TEXT NOT NULL, expires INTEGER NOT NULL)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS session_challenges (challenge TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS cred_counters (credential TEXT PRIMARY KEY, counter INTEGER NOT NULL)");
+  }
+
+  /** The viewer key: the fixed one, or with MFA on this week's or last week's (it expires). */
+  private async viewerOk(given: string): Promise<boolean> {
+    if (!this.opts.mfa) return sameSecret(given, await viewKeyOf(this.opts.relayToken));
+    const now = this.now();
+    return (await sameSecret(given, await viewKeyForWeek(this.opts.relayToken, now)))
+      || sameSecret(given, await viewKeyForWeek(this.opts.relayToken, new Date(now.getTime() - 7 * 864e5)));
+  }
+
+  /** A live passkey session: the cookie's hash is stored, unexpired, and its passkey is still enrolled. */
+  private async sessionOk(req: Request): Promise<boolean> {
+    const m = /(?:^|;\s*)kit11_session=([A-Za-z0-9_-]{43})(?:;|$)/.exec(req.headers.get("cookie") ?? "");
+    if (!m) return false;
+    const rows = this.sql.exec("SELECT credential, expires FROM sessions WHERE id_hash = ?", await sha256Hex(m[1]!)).toArray() as { credential: string; expires: number }[];
+    const row = rows[0];
+    if (!row || row.expires <= this.now().getTime()) return false;
+    return (this.state()?.approvals.passkey.credentials ?? []).some((c) => c.id === row.credential);
+  }
+
+  private sessionOptions(): Response {
+    const now = this.now().getTime();
+    this.sql.exec("DELETE FROM session_challenges WHERE expires <= ?", now);
+    const challenge = randomB64u(32);
+    this.sql.exec("INSERT INTO session_challenges (challenge, expires) VALUES (?, ?)", challenge, now + SESSION_CHALLENGE_MS);
+    const s = this.state();
+    return json(200, { challenge, rp_id: s?.approvals.passkey.rp_id ?? null, allow: (s?.approvals.passkey.credentials ?? []).map((c) => c.id), timeout_ms: SESSION_CHALLENGE_MS });
+  }
+
+  private async openSession(req: Request, origin: string): Promise<Response> {
+    const body = await readJson(req, 16_384);
+    if (!body || !isObject(body.value)) return error(400, "malformed sign-in");
+    const { challenge, credential } = body.value as { challenge?: unknown; credential?: unknown };
+    if (typeof challenge !== "string" || !isObject(credential) || typeof credential.id !== "string" || !isObject(credential.response)) return error(400, "malformed sign-in");
+    const now = this.now().getTime();
+    // One use only, whatever happens next: a replayed sign-in finds no challenge.
+    const known = this.sql.exec("SELECT expires FROM session_challenges WHERE challenge = ?", challenge).toArray() as { expires: number }[];
+    this.sql.exec("DELETE FROM session_challenges WHERE challenge = ?", challenge);
+    if (!known[0] || known[0].expires <= now) { this.countFailure(req); return error(401, "this sign-in has expired or was used; start again"); }
+    const s = this.state();
+    const cred = s?.approvals.passkey.credentials.find((c) => c.id === credential.id);
+    if (!s || !cred) return error(403, "this passkey is not enrolled");
+    if (!cred.public_key) return error(403, "this relay has no public key for that passkey yet; restart the runner with KIT11_MFA=on");
+    const r = credential.response as Record<string, unknown>;
+    const last = (this.sql.exec("SELECT counter FROM cred_counters WHERE credential = ?", cred.id).toArray() as { counter: number }[])[0]?.counter ?? 0;
+    const v = await verifyAssertion({ authenticatorData: String(r.authenticatorData ?? ""), clientDataJSON: String(r.clientDataJSON ?? ""), signature: String(r.signature ?? "") }, cred.public_key, { challenge, origin, rpId: s.approvals.passkey.rp_id, lastCounter: last });
+    if (!v.ok) { this.countFailure(req); return error(401, `the passkey sign-in did not verify (${v.why})`); }
+    this.sql.exec("INSERT INTO cred_counters (credential, counter) VALUES (?, ?) ON CONFLICT(credential) DO UPDATE SET counter = excluded.counter", cred.id, v.counter);
+    this.sql.exec("DELETE FROM sessions WHERE expires <= ?", now);
+    const id = randomB64u(32);
+    this.sql.exec("INSERT INTO sessions (id_hash, credential, expires) VALUES (?, ?, ?)", await sha256Hex(id), cred.id, now + SESSION_MS);
+    return new Response(JSON.stringify({ signed_in: true, label: cred.label, expires_at: new Date(now + SESSION_MS).toISOString() }), {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": `kit11_session=${id}; HttpOnly; Secure; SameSite=Strict; Path=/api; Max-Age=${SESSION_MS / 1000}` },
+    });
   }
 
   private get(k: string): string | null {
@@ -332,7 +407,7 @@ export class Relay {
     if (path === "/hooks/airwallex") return req.method === "POST" ? this.hook(req) : error(405, "method not allowed");
     // Everything else under /api/ is the CFO's: the dashboard data, the pending terms, the phone's submissions.
     // Without the viewer key (from the link the runner prints) it answers nothing (security review M2).
-    if (path.startsWith("/api/") && !(await sameSecret(req.headers.get("x-kit11-view") ?? "", await viewKeyOf(this.opts.relayToken)))) {
+    if (path.startsWith("/api/") && !(await this.viewerOk(req.headers.get("x-kit11-view") ?? ""))) {
       this.countFailure(req);
       return error(401, "this relay needs its viewer link: open the link from the runner once on this device");
     }
@@ -340,9 +415,17 @@ export class Relay {
     if (route("GET", "/api/approvals")) return this.approvals();
     if (route("GET", /^\/api\/tickets\/[^/]+$/)) return this.ticket(path.slice("/api/tickets/".length));
     // Everything the phone posts must come from the relay's own pages.
-    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path === "/api/ask" || path.startsWith("/api/enrol"))) {
+    const sessionPath = this.opts.mfa && (path === "/api/session/options" || path === "/api/session");
+    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path === "/api/ask" || path.startsWith("/api/enrol") || sessionPath)) {
       if (req.headers.get("origin") !== url.origin) return error(403, "requests must come from this site's own pages");
       if (!this.underRateLimit(req)) return error(429, "too many requests from this address; wait ten minutes");
+      if (path === "/api/session/options") return this.sessionOptions();
+      if (path === "/api/session") return this.openSession(req, url.origin);
+      // D20: the CFO's endpoints need a passkey session; the viewer link alone only reads. Approvals keep their own
+      // per-terms passkey signature (step-up), enrolment its code and the runner's confirmation.
+      if (this.opts.mfa && (path === "/api/policy" || path === "/api/policy-text" || path === "/api/ask") && !(await this.sessionOk(req))) {
+        return error(401, "sign in with your passkey first (a session for the CFO's actions)");
+      }
       if (path === "/api/assertions") return this.assertion(req);
       if (path === "/api/policy") return this.policyChange(req);
       if (path === "/api/policy-text") return this.policyText(req);

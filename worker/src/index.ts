@@ -10,6 +10,8 @@ export interface Env {
   RELAY: DurableObjectNamespace<RelayObject>;
   /** The runner's bearer token, set with `wrangler secret put RELAY_TOKEN` by npm run relay:deploy. */
   RELAY_TOKEN: string;
+  /** D20: "on" turns on passkey sessions and the weekly viewer key (a plain var in wrangler.toml; off by default). */
+  MFA_SESSIONS?: string;
   /** Airwallex's webhook signing secret, set by npm run cards -- webhook. Without it the webhook route answers 503. */
   AIRWALLEX_WEBHOOK_SECRET?: string;
   /** Claude for Try Purser, set with `wrangler secret put ANTHROPIC_API_KEY`. Without it the page reads by code alone. */
@@ -22,7 +24,7 @@ export class RelayObject extends DurableObject<Env> {
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    this.relay = new Relay(ctx.storage.sql, { relayToken: env.RELAY_TOKEN, webhookSecret: env.AIRWALLEX_WEBHOOK_SECRET });
+    this.relay = new Relay(ctx.storage.sql, { relayToken: env.RELAY_TOKEN, webhookSecret: env.AIRWALLEX_WEBHOOK_SECRET, mfa: env.MFA_SESSIONS === "on" });
     this.tryDesk = new TryDesk(ctx.storage.sql, { anthropicKey: env.ANTHROPIC_API_KEY });
   }
 
