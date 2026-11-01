@@ -222,6 +222,12 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .claudelogo { display: inline-flex; align-items: center; background: #191919; border-radius: 999px; padding: 7px 14px; }
 .claudelogo img { height: 16px; width: auto; display: block; }
 .panel.claude, .panel.ask { margin-top: 20px; }
+.agentchat { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
+.agentchat li { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; font-size: 14px; overflow-wrap: anywhere; }
+.agentchat li.world { background: var(--sunken); }
+.agentchat .who { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); margin-bottom: 2px; }
+.agentchat .by { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--border); }
+.agentchat .by.claude { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 .chat { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .chat li { max-width: 80%; padding: 10px 14px; border-radius: 14px; background: var(--sunken); font-size: 14.5px; }
 .chat li.you { align-self: flex-end; background: var(--accent-soft); }
@@ -1056,11 +1062,16 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   }
 
   // Claude's part: what each model does, how fast, and what it costs (list price); nothing it says moves money.
+  // claude-haiku-5-5 → Haiku 5.5, as in the table above.
+  function modelWord(m) { var r = /^claude-([a-z]+)-(\d+)-(\d+)/.exec(m || ""); return r ? capFirst(r[1]) + " " + r[2] + "." + r[3] : m; }
+  function capFirst(t) { t = String(t || ""); return t.charAt(0).toUpperCase() + t.slice(1); }
   function usdMicros(m) { return "$" + (m / 1e6).toFixed(m >= 10000 ? 2 : 4); }
   function renderClaude(d) {
     var c = d.claude, panel = document.getElementById("claude-panel");
-    panel.hidden = !c;
-    if (!c) return;
+    var agentsOnPage = (d.agent_chat || []).length > 0;
+    panel.hidden = !c && !agentsOnPage;
+    if (!c && !agentsOnPage) return;
+    c = c || { calls: 0, fallbacks: 0, models: [] };
     var nodes = [];
     if (!c.calls) nodes.push(el("div", "empty", [icon("sparkles"), "No Claude calls in this run: the deterministic parsers decided" + (c.fallbacks ? " (" + c.fallbacks + " times)" : "") + "."]));
     else {
@@ -1080,6 +1091,33 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         return tr;
       });
       nodes.push(el("table", "agents", [el("thead", "", [head]), el("tbody", "", body)]));
+    }
+    // D19 block 4: the autonomous agents, what each decided (and who decided: Claude or code's fallback) and their chat.
+    var st = (d.agent_stats || []).filter(function (x) { return x.decisions > 0; }), chat = d.agent_chat || [];
+    if (st.length || chat.length) {
+      nodes.push(txt("h3", "", "The agents decide"));
+      if (st.length) {
+        var al = ["Agent", "Model", "Decisions", "Decided by Claude", "Fallback (code)", "Claude cost, last hour"];
+        var ah = el("tr", "", al.map(function (h) { return txt("th", "", h); }));
+        var ab = st.map(function (x) {
+          var tr = el("tr", "", [
+            el("td", "", [txt("b", "", capFirst(x.agent))]), el("td", "", [x.models.map(modelWord).join(", ") || "—"]), el("td", "num", [String(x.decisions)]),
+            el("td", "num", [String(x.by_claude)]), el("td", "num", [x.fallback + " (" + x.fallback_pct + "%)"]), el("td", "num", [usdMicros(x.cost_last_hour_usd_micros || 0)]),
+          ]);
+          Array.prototype.forEach.call(tr.children, function (td, i) { td.setAttribute("data-label", al[i]); });
+          return tr;
+        });
+        nodes.push(el("table", "agents", [el("thead", "", [ah]), el("tbody", "", ab)]));
+      }
+      if (chat.length) {
+        nodes.push(el("ul", "agentchat", chat.map(function (c) {
+          var head = [txt("span", "", hm(c.ts)), txt("b", "", c.who === "world" ? "The world" : capFirst(c.who))];
+          if (c.to) head.push(txt("span", "", "→ " + capFirst(c.to)));
+          if (c.kind === "decision") head.push(txt("span", "by " + (c.by === "claude" ? "claude" : ""), c.by === "claude" ? "Decided by Claude" + (c.model ? " · " + modelWord(c.model) : "") + " · Powered by Claude" : c.by === "idle" ? "Stopped (CFO's switch)" : "Fallback (code)"));
+          if (c.kind === "message") head.push(txt("span", "by " + (c.by === "claude" ? "claude" : ""), c.by === "claude" ? "Message · Powered by Claude" : c.by === "fallback" ? "Message · Fallback (code)" : "Message"));
+          return el("li", c.kind, [el("div", "who", head), c.text]);
+        })));
+      }
     }
     nodes.push(txt("p", "note", "Claude reads and advises; code checks every answer, and beyond the agents' limits, Purser's runner moves money only after it has verified your Face ID signature on the exact terms. Costs at Anthropic's list prices in US dollars. Built with Claude Code."));
     set("claude", nodes);

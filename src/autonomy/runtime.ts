@@ -78,7 +78,7 @@ export async function wake(db: DB, profile: AgentProfile, o: { client?: Anthropi
       run: async ({ to, text }: { to: AgentName; text: string }) => {
         if (sent >= MAX_MESSAGES_PER_WAKE) return { text: "Not sent: two messages per wake is the limit.", blocked: "message limit" };
         sent++;
-        sendMessage(db, profile.name, to, text, now);
+        sendMessage(db, profile.name, to, text, now, "claude");
         return { text: `Sent to ${NAMES[to]}.` };
       },
     },

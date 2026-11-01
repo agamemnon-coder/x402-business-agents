@@ -21,11 +21,12 @@ export function publish(db: DB, kind: string, payload: Record<string, unknown>, 
 }
 
 /** One agent's message to another, at most 600 characters, redacted; logged in the audit chain as the agent's. */
-export function sendMessage(db: DB, from: AgentName, to: AgentName, text: string, now = new Date()): number {
+/** `by`: who wrote it, Claude (the agent's send_message tool) or code (a fallback); the page labels it so. */
+export function sendMessage(db: DB, from: AgentName, to: AgentName, text: string, now = new Date(), by: "claude" | "code" = "code"): number {
   if (from === to) throw new Error("an agent does not message itself");
   const clean = redactSecrets(text.trim()).slice(0, 600);
   const id = Number(db.prepare("INSERT INTO agent_messages (from_agent, to_agent, text, created_at) VALUES (?, ?, ?, ?)").run(from, to, clean, now.toISOString()).lastInsertRowid);
-  audit(db, from, "agent.message", String(id), { from, to, text: clean }, now);
+  audit(db, from, "agent.message", String(id), { from, to, text: clean, by }, now);
   return id;
 }
 
