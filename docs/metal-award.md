@@ -17,7 +17,7 @@ receive policy did not run in the recorded run, so their cards name the separate
 
 - **Metal is the agents' spending rail, not a demo add-on.** Every agent that pays per request does it under its
   own on-chain mandate: a cap per payment, a total budget, one payee and an end date. When the supplier raised its
-  price, Metal refused the next payment against the on-chain mandate (`mandate_cap_exceeded`) and the customer was not charged.
+  price, the next payment was refused against the on-chain mandate (`mandate_cap_exceeded`) and the customer was not charged: in the recorded run by Metal's facilitator (a 402; it moves nothing, so there is no transaction), and since 1 November Purser refuses it before signing and Metal's own refusal of the same payment is recorded on chain, a `MandateRefused` event from the business account (autonomous dry runs: dry-103 [`0xd24cb5a7…6acc`](https://testnet.metalntwx.com/tx/0xd24cb5a7a8219c69783420d9d14bdbdab188d9e2a46b6aab9aa8798adf496acc), dry-101 [`0x3ea88238…be03`](https://testnet.metalntwx.com/tx/0x3ea88238d02726a8eeb129214b4b57e233fdfec76418e2995d9062a91654be03), dry-100 [`0x88bacab0…ec25`](https://testnet.metalntwx.com/tx/0x88bacab033145185b3d1f671695d569d24035a23de4193c1d08b5a8879d7ec25)).
 - **The CFO changes on-chain limits with Face ID, safely.** A price rise becomes options; the CFO signs the exact
   terms on the phone; mandates are replaced in an order that never exceeds the 20.00 the business allows, and the old
   credential is refused (`mandate_revoked`).
