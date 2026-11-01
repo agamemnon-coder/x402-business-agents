@@ -114,9 +114,10 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       pic: shot(s.dispute, "The Disputes tab; the case ran after the recorded run, on a copy of its ledger"),
     },
     {
-      kicker: "Built with Claude, and measured",
+      kicker: "Agents built on Claude (Anthropic API), and measured",
       title: "No model can raise a limit or move money outside it",
       points: [
+        "With the agents on, each decision is a real Claude call with its request id, tokens and cost; in five autonomous dry runs in a row, 0 decisions fell back to code (not yet in a live run with Max).",
         "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO. On harder documents Haiku alone misread 1 of 15; this split read all 15.",
         `Claude holds no key and approves nothing. ${f.claude_calls} calls, $${f.claude_per_1000_eur_usd} per €1,000 paid.`,
         `Red team, in a throwaway test world: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,

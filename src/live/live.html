@@ -257,7 +257,7 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
     })));
     var side = [];
     if (s.big) side.push(el("div", "big fade", [txt("div", "v", s.big.value), txt("div", "l", s.big.label), el("div", "", s.proofs.map(proofChip))]));
-    if (s.kind === "end") side.push(el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), txt("span", "", "Powered by"), logo("assets/logo-claude.png", "Claude", "dark")]),
+    if (s.kind === "end") side.push(el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), txt("span", "", "Powered by"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "· Agents built on Claude (Anthropic API)")]),
       txt("p", "src", "\"Built on\" and \"Powered by\" name the services Purser uses. They are not an endorsement."));
     side.push(txt("p", "src", "Source: " + s.source));
     story.replaceChildren(el("div", "", words), el("div", "", side));
