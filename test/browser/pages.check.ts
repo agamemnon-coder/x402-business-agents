@@ -105,7 +105,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await look(page, `/?recorded ${tag}`, w);
     // Claude's costs are real US dollars (list prices); chain money must read "test USD" everywhere else.
     const rec = await page.evaluate(() => { const c = document.getElementById("claude-panel"); const all = document.body.innerText; return c ? all.replace(c.innerText, "") : all; });
-    for (const want of [/Recorded run of/, /On-chain budgets/i, /test USD/, /Company cards/i]) {
+    for (const want of [/Recorded run · .* · test money/, /On-chain budgets/i, /test USD/, /Company cards/i]) {
       if (!want.test(rec)) fail(`/?recorded ${tag}: missing ${want}`);
     }
     for (const bad of [/USDZ/, /\$\s?\d/]) {
@@ -180,6 +180,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       if (!(await page.$(`.outcome.o-${outcome}`))) fail(`/try "${q}" ${tag}: expected ${outcome}`);
       await look(page, `/try "${q}" ${tag}`, w);
     }
+    // Let the last outcome's fade-in finish before the picture (the deck uses it).
+    await page.waitForTimeout(800);
     await page.screenshot({ path: join(shots, `try-${tag}.png`), fullPage: true });
 
     // How Purser uses Metal: every agent's mandate in the inspector, the feature cards, the recorded case order by order.

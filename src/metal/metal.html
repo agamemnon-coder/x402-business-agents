@@ -285,14 +285,14 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--f
       el("td", "", [el("b", "", ["Order " + p.sale_id]), el("br"), el("span", "mono", [p.request]), el("br"), el("small", "", [at(p.paid_at)])]),
       el("td", "", [usd((p.charged_cents / 100).toFixed(2))]),
       (function () { var t = el("td", "", [okv(p.order.valid, "signed for " + ((p.order.amount_cents || 0) / 100).toFixed(2), p.order.present ? "does not verify" : "none"), el("br"), el("small", "mono", ["nonce " + (p.order.nonce || "–")])]); t.setAttribute("data-l", "Signed order"); return t; })(),
-      (function () { var t = el("td", "", [okv(p.mandate.within, "inside the bound mandate", p.mandate.detail)]); t.setAttribute("data-l", "verifyMandatePayment"); return t; })(),
+      (function () { var t = el("td", "", [okv(p.mandate.within, "inside the bound mandate", p.mandate.detail)]); t.setAttribute("data-l", "Mandate check"); t.title = "Metal's verifyMandatePayment"; return t; })(),
       (function () { var t = el("td", "", [proof({ label: short(p.settlement.tx || p.tx), href: /^0x[0-9a-fA-F]{64}$/.test(p.settlement.tx || p.tx) ? "https://testnet.metalntwx.com/tx/" + (p.settlement.tx || p.tx) : null })]); t.setAttribute("data-l", "Settlement"); return t; })(),
       (function () { var t = el("td", "", [okv(p.delivery.matches, "as Northwind recorded it", "differs from the record"), el("br"), el("small", "mono", [p.delivery.body_sha256.slice(0, 12) + "…"])]); t.setAttribute("data-l", "Data delivered"); return t; })(),
       (function () { var t = el("td", "", [el("b", "", [usd((d.refund_cents / 100).toFixed(2))]), p.refunded_cents ? el("small", "", [" (" + (p.refunded_cents / 100).toFixed(2) + " refunded earlier)"]) : null]); t.setAttribute("data-l", "Refund"); return t; })(),
     ]);
   });
   box.appendChild(el("div", "tablewrap", [el("table", "orders", [
-    el("thead", "", [el("tr", "", ["Order", "Charged", "Signed order", "verifyMandatePayment", "Settlement", "Data delivered", "Refund"].map(function (h) { return el("th", "", [h]); }))]),
+    el("thead", "", [el("tr", "", ["Order", "Charged", "Signed order", "Mandate check", "Settlement", "Data delivered", "Refund"].map(function (h) { return el("th", "", [h]); }))]),
     el("tbody", "", rows),
   ])]));
   // On a phone the first three orders show; the rest are one tap away (they are all alike, and all on the page).

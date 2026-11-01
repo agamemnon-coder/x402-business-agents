@@ -65,6 +65,8 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .tile .v { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin-top: 2px; }
 .tile .s { color: var(--faint); font-size: 12px; }
 .tile.ok .v { color: var(--ok); } .tile.wait .v { color: var(--warn); } .tile.bad .v { color: var(--bad); }
+/* A block means a control held: ink, with a shield, not the red of money lost (design review). */
+.tile.held .v { color: var(--text); }
 .icon { font-weight: 700; }
 svg { display: block; width: 100%; height: auto; overflow: visible; }
 .axis text { fill: var(--faint); font-size: 11px; }
@@ -91,7 +93,7 @@ td .agent { text-transform: capitalize; font-weight: 600; }
 .ev.approval { background: linear-gradient(90deg, var(--accent-soft), transparent 70%); }
 .chip { display: inline-block; border-radius: 999px; padding: 0 7px; font-size: 11.5px; font-weight: 600; line-height: 18px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); margin-right: 6px; text-transform: capitalize; }
 .chip.cfo { background: var(--warn-soft); color: var(--warn); border-color: transparent; text-transform: none; }
-.chip.blocked { background: var(--bad-soft); color: var(--bad); border-color: transparent; text-transform: none; }
+.chip.blocked { background: var(--sunken); color: var(--text); border-color: var(--border); text-transform: none; }
 .note { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
 details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 @media (max-width: 900px) {
@@ -122,7 +124,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
   <section id="tiles" aria-label="What happened">
     <div class="tile ok"><div class="k"><span class="icon">✓</span>Done by the agents alone</div><div class="v num" id="alone">0</div><div class="s">payments, purchases, refunds and sweeps inside their limits</div></div>
     <div class="tile wait"><div class="k"><span class="icon">⏳</span>Waiting for the CFO</div><div class="v num" id="waiting">0</div><div class="s">proposals the CFO has not decided yet</div></div>
-    <div class="tile bad"><div class="k"><span class="icon">✗</span>Blocked</div><div class="v num" id="blocked">0</div><div class="s">mostly customer queries answered "unavailable" while sales were paused; also refused payments, declined card charges, a fake invoice and a planted instruction</div></div>
+    <div class="tile held"><div class="k"><span class="icon">⛨</span>Blocked</div><div class="v num" id="blocked">0</div><div class="s">mostly customer queries answered "unavailable" while sales were paused; also refused payments, declined card charges, a fake invoice and a planted instruction</div></div>
   </section>
   <section id="chart" aria-labelledby="h-chart"><h2 id="h-chart">Company net, month to date <span class="hint">USD, after costs and bills</span></h2>
     <div class="chartwrap"><svg id="svg" viewBox="0 0 640 240" role="img" aria-label="Company net over the month"></svg><div class="tip num" id="tip"></div></div>

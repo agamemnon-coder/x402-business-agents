@@ -94,7 +94,8 @@ button.ctl, select.ctl { font: inherit; font-size: 14px; font-weight: 600; color
 .fade { animation: up .5s ease both; }
 @media (max-width: 900px) {
   .rig { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 12px; }
-  .cast { flex-direction: row; overflow-x: auto; gap: 6px; justify-content: flex-start; }
+  /* The agents wrap rather than scroll out of view (design review: "Tr…" was cut off at 390 px). */
+  .cast { flex-direction: row; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
   .who { padding: 7px 10px; font-size: 12.5px; white-space: nowrap; }
   .who b { width: 20px; height: 20px; font-size: 10px; }
   .phone { min-height: 0; border-radius: 16px; padding: 10px 12px; flex-direction: row; align-items: center; flex-wrap: wrap; }
@@ -257,7 +258,7 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
     })));
     var side = [];
     if (s.big) side.push(el("div", "big fade", [txt("div", "v", s.big.value), txt("div", "l", s.big.label), el("div", "", s.proofs.map(proofChip))]));
-    if (s.kind === "end") side.push(el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), txt("span", "", "Powered by"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "· Agents built on Claude (Anthropic API)")]),
+    if (s.kind === "end") side.push(el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), txt("span", "", "Powered by"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "Agents built on Claude (Anthropic API)")]),
       txt("p", "src", "\"Built on\" and \"Powered by\" name the services Purser uses. They are not an endorsement."));
     side.push(txt("p", "src", "Source: " + s.source));
     story.replaceChildren(el("div", "", words), el("div", "", side));
