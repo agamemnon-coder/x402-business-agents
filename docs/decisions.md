@@ -241,6 +241,16 @@ Metal CLI reports the mandate bound. Tests: `test/owners-execute.test.ts` (10). 
 be redeployed with this change before Thursday; a real phone (Max) is the last proof; the phone shows the runner's
 words for what the calls do (decoding the call on the phone is the next step).
 
+**Security review of block 1 (1 November, fresh Opus).** No code path lets one person, a stranger or a non-owner
+passkey get a call run. Two design gaps, both acted on: (1) a compromised relay page could have both passkeys sign its
+own digest during routine approvals; written down as an accepted risk with its limit (`docs/security.md`): the passkey
+account is a small demo account, and real funds need a page the relay cannot serve or an on-chain delay; (2) the calls
+were not tied to the words shown; now the runner decodes the call and refuses unless it is one bind or revoke on the
+account itself, no value, with the cap, budget and payee shown, and the phone checks the call's target, value and
+selector, the deadline (within 300 s of the expiry), the nonce lane and the chain. Also fixed: a send whose receipt
+was lost is waited for on retry, never sent again; the switch now gates the runner and the executor too; the account
+must be the one this world created. Tests: `test/owners-execute.test.ts` (13), with a real bind from dry-93 as fixture.
+
 ### D17. The rail choice uses the agent's own card for Packwise (1 November)
 
 Block 5.1 (estimate 6 h, risk medium) was planned with a single-use Airwallex task card for the card-only supplier.

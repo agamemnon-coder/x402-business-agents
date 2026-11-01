@@ -7,3 +7,8 @@
 export function agentsOn(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.KIT11_AGENTS === "on";
 }
+
+/** Block 1: owners_execute (both passkeys sign the account's Execute digest) only when KIT11_PASSKEY_OWNERS=on. */
+export function passkeyOwnersOn(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.KIT11_PASSKEY_OWNERS === "on";
+}

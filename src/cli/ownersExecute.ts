@@ -51,9 +51,8 @@ if (cmd === "setup") {
   const relay = liveRelay();
   let tx: Hex | null = null;
   if (!(await pc.getCode({ address: acct }))) {
-    const r = await relay(ACCOUNT_FACTORY, encodeFunctionData({ abi: factoryAbi, functionName: "createAccount", args: [[...config[0]], [...config[1]], config[2]] }));
-    if (!r.ok) throw new Error(`creating the passkey account reverted (${r.tx})`);
-    tx = r.tx;
+    tx = await relay.send(ACCOUNT_FACTORY, encodeFunctionData({ abi: factoryAbi, functionName: "createAccount", args: [[...config[0]], [...config[1]], config[2]] }));
+    if (!(await relay.wait(tx))) throw new Error(`creating the passkey account reverted (${tx})`);
   }
   if ((await usdzBalance(acct)) < centsToBaseUnits(60)) await transferUsdz(keyPath("passkey-sponsor.key.json"), acct, centsToBaseUnits(60));
   audit(db, "owner-signer", "owners.account_created", acct, { account: acct, owners: o.map((x) => x.label), threshold: "2", verifier: PASSKEY_VERIFIER, tx }, new Date());

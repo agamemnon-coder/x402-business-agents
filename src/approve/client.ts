@@ -150,6 +150,9 @@ function utcMinute(iso: string): string {
   return `${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
 }
 
+/** The account calls an owners_execute may carry (src/metal/ownersExecute.ts OWNER_CALL_SELECTORS; a test keeps them equal). */
+export const OWNER_SELECTORS = { bind: "0x240c29bb", revoke: "0xb75c7dc6" } as const;
+
 export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   const nameOf = (a: string) => names[a.toLowerCase()] ?? null;
   const who = (a: string) => (nameOf(a) ? `${nameOf(a)} ${shortAddr(a)}` : shortAddr(a));
@@ -335,7 +338,20 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   if (kind === "owners_execute") {
     const a = isObj(t.action) ? t.action : {};
     const digest = str(t.onchain_digest);
-    const okDigest = /^0x[0-9a-f]{64}$/.test(digest);
+    const calls = arr(t.calls).filter(isObj);
+    const c = calls[0] ?? {};
+    const exp = Math.floor(Date.parse(str(t.expires_at)) / 1000), until = Number(str(t.valid_until));
+    let laneOk: boolean;
+    try { laneOk = /^\d+$/.test(str(t.nonce)) && (BigInt(str(t.nonce)) >> BigInt(255)) === BigInt(0); } catch { laneOk = false; }
+    // What the page itself can check without decoding the call (the runner decodes it and compares cap, budget, payee).
+    const problems = [
+      ...(/^0x[0-9a-f]{64}$/.test(digest) ? [] : ["The terms carry no valid on-chain digest"]),
+      ...(calls.length === 1 && str(c.target).toLowerCase() === str(t.account).toLowerCase() && str(c.value) === "0" ? [] : ["The call does not go to the account itself with no value"]),
+      ...(str(c.call_data).slice(0, 10) === OWNER_SELECTORS[str(a.what) as keyof typeof OWNER_SELECTORS] ? [] : ["The call is not the mandate change the words name"]),
+      ...(Number.isSafeInteger(until) && until >= exp && until <= exp + 300 ? [] : ["The signed deadline does not end with this proposal"]),
+      ...(laneOk ? [] : ["The nonce is not a two-owner lane"]),
+    ];
+    const okDigest = problems.length === 0;
     const payee = str(a.payee);
     return {
       approvable: okDigest,
@@ -344,7 +360,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       amount: `${str(a.budget)} USDZ in total`, margin: null, recipient: `${str(a.payee_name)} ${shortAddr(payee)}`,
       rows: [["Account", str(t.account)], ["Mandate", str(a.mandate)], ["Per payment", `${str(a.cap)} USDZ`], ["Budget", `${str(a.budget)} USDZ`], ["May pay", whoFull(payee)],
         ["Signed on chain", "the account's Execute digest (what your passkey signs)"], ["Digest", digest], ["Valid until", utcMinute(new Date(Number(str(t.valid_until)) * 1000).toISOString())]],
-      short: "the on-chain mandate change", warnings: okDigest ? [] : ["The terms carry no valid on-chain digest; this cannot be signed"],
+      short: "the on-chain mandate change", warnings: problems.map((w) => `${w}; this cannot be signed`),
       label: "On chain", big: str(a.budget), unit: "USDZ budget",
     };
   }
@@ -757,7 +773,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
         publicKey: {
           // Block 1: an owners_execute approval signs the account's Execute digest from the hashed terms (the runner
           // checks it follows from their calls); a rejection always signs the rejection hash.
-          challenge: hexToBytes(rejecting ? await rejectionHash(o.terms_sha256) : o.kind === "owners_execute" ? str(terms.onchain_digest).slice(2) : o.terms_sha256),
+          challenge: hexToBytes(rejecting ? await rejectionHash(o.terms_sha256) : str(terms.kind) === "owners_execute" ? str(terms.onchain_digest).slice(2) : o.terms_sha256),
           rpId: location.hostname,
           allowCredentials: x.credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })),
           userVerification: "required",

@@ -2,6 +2,7 @@
 // a body is hostile input until parsed, every signature is verified against the pinned public key, and only then
 // does decide() run, in one transaction with the counter update and the stored signature.
 
+import { passkeyOwnersOn } from "../config/agents.js";
 import { approvalHashOf, OWNERS_EXECUTE, ownerSignerOf, type OwnersExecuteTerms } from "../metal/ownersExecute.js";
 import { loosens } from "../policy/rules.js";
 import { z } from "zod";
@@ -126,6 +127,11 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
     return refuseAudited(p.proposal_id, (e as Error).message.slice(0, 240));
   }
   if (p.kind === OWNERS_EXECUTE) {
+    if (!passkeyOwnersOn()) return refuse(p.proposal_id, "on-chain owner signing is off (KIT11_PASSKEY_OWNERS)");
+    // The account in the terms must be the one this world created with the two passkeys, not one a proposer named.
+    const made = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'owners.account_created' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
+    const account = made ? String((JSON.parse(made.payload_json) as { account?: unknown }).account ?? "") : "";
+    if (account.toLowerCase() !== String((JSON.parse(p.terms_json) as { account?: unknown }).account ?? "").toLowerCase()) return refuse(p.proposal_id, "the account in these terms is not the passkey account this world created");
     let owner: string | null;
     try { owner = ownerSignerOf(JSON.parse(p.terms_json) as OwnersExecuteTerms, pk.public_key); } catch { owner = null; }
     if (!owner) return refuse(p.proposal_id, "this passkey is not an owner of the account, so it cannot sign this on chain");

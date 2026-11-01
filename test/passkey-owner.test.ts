@@ -56,3 +56,13 @@ describe("a passkey owner's signature for the WebAuthn verifier", () => {
     expect(() => passkeyQuorum([{ signer: sa, signature: "0x01" }, { signer: sa, signature: "0x02" }])).toThrow(/twice/);
   });
 });
+
+describe("the owner-call selectors", () => {
+  it("are Metal's bind and revoke on the mandate binding ABI", async () => {
+    const { toFunctionSelector } = await import("viem");
+    const { mandateBindingAbi } = await import("@metalntwx/metal-pay/mandates");
+    const { OWNER_CALL_SELECTORS } = await import("../src/metal/ownersExecute.js");
+    const sel = (n: string) => toFunctionSelector(mandateBindingAbi.find((x) => x.type === "function" && x.name === n) as never);
+    expect(OWNER_CALL_SELECTORS).toEqual({ bind: sel("bind"), revoke: sel("revoke") });
+  });
+});

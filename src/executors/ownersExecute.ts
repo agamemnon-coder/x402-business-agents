@@ -9,9 +9,13 @@ import type { DB } from "../db/open.js";
 import { ACCOUNT_BATCH_MODE, accountAbi, executionData } from "../metal/fourEyes.js";
 import { approvalHashOf, OWNERS_EXECUTE, quorumOf, type OwnersExecuteTerms } from "../metal/ownersExecute.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
+import { passkeyOwnersOn } from "../config/agents.js";
 
-/** Sends a transaction to the account and waits for its receipt. */
-export type Relay = (to: Address, data: Hex) => Promise<{ tx: Hex; ok: boolean }>;
+/** Sends a transaction to the account (returns its hash), and waits for a receipt (success or revert). */
+export interface Relay {
+  send(to: Address, data: Hex): Promise<Hex>;
+  wait(tx: Hex): Promise<boolean>;
+}
 
 /** The executeSigned call data for an approved owners_execute, from its stored approvals. */
 export function signedCallOf(db: DB, proposalId: string): { account: Address; data: Hex; terms: OwnersExecuteTerms } {
@@ -32,15 +36,21 @@ export function signedCallOf(db: DB, proposalId: string): { account: Address; da
 export async function executeOwnersExecute(db: DB, proposalId: string, relay: Relay, now = new Date()): Promise<{ tx: Hex }> {
   const terms = beginExecution<OwnersExecuteTerms>(db, proposalId, (t) => {
     if (t.kind !== OWNERS_EXECUTE) throw new Error(`${proposalId} is not an owners_execute`);
+    if (!passkeyOwnersOn()) throw new Error("on-chain owner signing is off (KIT11_PASSKEY_OWNERS)");
     if (BigInt(t.valid_until) * 1000n < BigInt(now.getTime() + 15_000)) throw new Error("the signed deadline has passed (or is too close); a new proposal is needed");
   }, now);
   try {
     const { account, data } = signedCallOf(db, proposalId);
-    const r = await relay(account, data);
-    if (!r.ok) throw Object.assign(new Error(`the account reverted executeSigned (${r.tx})`), { tx: r.tx });
-    audit(db, "owner-signer", "owners.executed", proposalId, { account, tx: r.tx, action: terms.action, note: "signed by the CFO's and the controller's passkeys; the runner only relayed it" }, now);
-    finishExecution(db, proposalId, "EXECUTED", { tx: r.tx }, now);
-    return { tx: r.tx };
+    // A send recorded by an earlier attempt (a crash or a lost receipt) is waited for, never sent again: the nonce
+    // would make a second send revert and the proposal read FAILED although the account ran it (review of block 1).
+    const earlier = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'owners.sent' AND subject = ? ORDER BY seq DESC LIMIT 1").get(proposalId) as { payload_json: string } | undefined;
+    const tx = earlier ? (JSON.parse(earlier.payload_json) as { tx: Hex }).tx : await relay.send(account, data);
+    if (!earlier) audit(db, "owner-signer", "owners.sent", proposalId, { account, tx }, now);
+    const ok = await relay.wait(tx);
+    if (!ok) throw new Error(`the account reverted executeSigned (${tx})`);
+    audit(db, "owner-signer", "owners.executed", proposalId, { account, tx, action: terms.action, note: "signed by the CFO's and the controller's passkeys; the runner only relayed it" }, now);
+    finishExecution(db, proposalId, "EXECUTED", { tx }, now);
+    return { tx };
   } catch (e) {
     finishExecution(db, proposalId, "FAILED", { error: (e as Error).message.slice(0, 300) }, now);
     throw e;

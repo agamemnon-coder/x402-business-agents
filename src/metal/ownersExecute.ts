@@ -8,7 +8,10 @@
 
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
-import type { Address, Hex } from "viem";
+import { decodeFunctionData, type Address, type Hex } from "viem";
+import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";
+import { CHAIN_ID, USDZ } from "./network.js";
+import { centsToBaseUnits, toCents } from "../lib/money.js";
 import { executeDigest, executionData } from "./fourEyes.js";
 import { passkeyQuorum, passkeySigner, webauthnSignature, type Assertion, type P256Key } from "./passkeyOwner.js";
 import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
@@ -43,6 +46,40 @@ export function ownersExecuteTerms(a: Omit<OwnersExecuteTerms, "schema" | "kind"
   return t;
 }
 
+/** The account calls an owners_execute may carry: binding or revoking a mandate on the account itself. */
+export const OWNER_CALL_SELECTORS = { bind: "0x240c29bb", revoke: "0xb75c7dc6" } as const;
+/** How long the signed deadline may outlive the proposal's expiry: enough to relay it, no more. */
+export const DEADLINE_SLACK_S = 300;
+
+/**
+ * The terms describe exactly what the account will run (security review of block 1): one call, to the account itself,
+ * with no value, that binds or revokes a mandate whose cap, budget and payee are the ones the phone shows; the chain
+ * is Metal testnet; the nonce lane is a quorum lane; the deadline ends within minutes of the proposal's expiry.
+ */
+export function checkOwnersTerms(t: OwnersExecuteTerms): void {
+  const bad = (why: string): never => { throw new Error(`these owners_execute terms are refused: ${why}`); };
+  if (t.chain_id !== String(CHAIN_ID)) bad(`chain ${t.chain_id} is not Metal testnet`);
+  if (!Array.isArray(t.calls) || t.calls.length !== 1) bad("exactly one account call");
+  const c = t.calls[0]!;
+  if (c.target.toLowerCase() !== t.account.toLowerCase() || c.value !== "0") bad("the call must go to the account itself, with no value");
+  if ((BigInt(t.nonce) >> 64n) >> 191n !== 0n) bad("the nonce lane has its top bit set (a lane for signatures below the threshold)");
+  const exp = Math.floor(Date.parse(t.expires_at) / 1000), until = Number(t.valid_until);
+  if (!Number.isSafeInteger(until) || until < exp || until > exp + DEADLINE_SLACK_S) bad(`the signed deadline must end within ${DEADLINE_SLACK_S} s after the proposal's expiry`);
+  let d: ReturnType<typeof decodeFunctionData<typeof mandateBindingAbi>>;
+  try { d = decodeFunctionData({ abi: mandateBindingAbi, data: c.call_data }); } catch { return bad("the call is not a mandate call"); }
+  const a = t.action;
+  if (d.functionName === "bind") {
+    if (a.what !== "bind") bad("the call binds, the words say otherwise");
+    const [, , , cons, terms] = d.args as unknown as [Hex, Hex, Hex, { token: Address; perPaymentCap: bigint; budget: bigint }, { payees: readonly { account: Address }[]; openSdHash: Hex }];
+    if (cons.token.toLowerCase() !== USDZ.toLowerCase()) bad("the mandate is not in USDZ");
+    if (cons.perPaymentCap !== centsToBaseUnits(toCents(a.cap))) bad(`the call's cap is not the ${a.cap} shown`);
+    if (cons.budget !== centsToBaseUnits(toCents(a.budget))) bad(`the call's budget is not the ${a.budget} shown`);
+    if (terms.payees.length !== 1 || terms.payees[0]!.account.toLowerCase() !== a.payee.toLowerCase() || !/^0x0{64}$/.test(terms.openSdHash)) bad(`the call's payees are not ${a.payee_name} alone`);
+  } else if (d.functionName === "revoke") {
+    if (a.what !== "revoke" || (d.args as unknown as [Hex])[0].toLowerCase() !== a.mandate.toLowerCase()) bad("the call revokes another mandate than the one shown");
+  } else bad(`${d.functionName} is not allowed here`);
+}
+
 /**
  * What a passkey approval of this proposal signs, as 64 hex characters: the terms hash for every proposal, and the
  * account's Execute digest for an owners_execute, after checking that digest follows from the terms.
@@ -50,6 +87,7 @@ export function ownersExecuteTerms(a: Omit<OwnersExecuteTerms, "schema" | "kind"
 export function approvalHashOf(p: { kind: string; terms_json: string; terms_sha256: string }): string {
   if (p.kind !== OWNERS_EXECUTE) return p.terms_sha256;
   const t = JSON.parse(p.terms_json) as OwnersExecuteTerms;
+  checkOwnersTerms(t);
   if (!HEX32.test(t.onchain_digest) || digestOfTerms(t).toLowerCase() !== t.onchain_digest) throw new Error("the on-chain digest in the terms does not follow from their calls, nonce and deadline");
   return t.onchain_digest.slice(2);
 }

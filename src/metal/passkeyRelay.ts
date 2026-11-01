@@ -38,12 +38,13 @@ export function liveRelay(): Relay {
   const pc = publicClient();
   const sponsor = passkeySponsor();
   const wallet = createWalletClient({ account: sponsor, chain: pc.chain, transport: custom(pc) });
-  return async (to: Address, data: Hex) => {
-    await fundSponsor();
-    let gas: bigint;
-    try { gas = ((await pc.estimateGas({ account: sponsor.address, to, data })) * 6n) / 5n; } catch { gas = 3_000_000n; }
-    const tx = await wallet.sendTransaction({ to, data, gas, maxFeePerGas: 1n, maxPriorityFeePerGas: 1n, chain: pc.chain, account: sponsor });
-    const r = await pc.waitForTransactionReceipt({ hash: tx });
-    return { tx, ok: r.status === "success" };
+  return {
+    send: async (to: Address, data: Hex) => {
+      await fundSponsor();
+      let gas: bigint;
+      try { gas = ((await pc.estimateGas({ account: sponsor.address, to, data })) * 6n) / 5n; } catch { gas = 3_000_000n; }
+      return wallet.sendTransaction({ to, data, gas, maxFeePerGas: 1n, maxPriorityFeePerGas: 1n, chain: pc.chain, account: sponsor });
+    },
+    wait: async (tx: Hex) => (await pc.waitForTransactionReceipt({ hash: tx, timeout: 180_000 })).status === "success",
   };
 }

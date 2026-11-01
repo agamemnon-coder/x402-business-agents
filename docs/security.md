@@ -126,6 +126,16 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
   - the phone can only tighten the CFO policy, and the runner enforces that (any loosening is proposed on the
     runner);
   - every approval is in the audit report.
+  **With passkey owners on (block 1, `KIT11_PASSKEY_OWNERS=on`) this no longer holds for the passkey-owned account**
+  (security review, 1 November). The two passkeys are that account's on-chain owners, and the system prompt for Face
+  ID shows the site, never the challenge. A lying script can wait for any routine approval, ask Face ID to sign its own
+  Execute digest instead (a transfer of the account's balance, a new signer), collect both people's signatures that
+  way and send `executeSigned` itself; the runner would never see it. What limits it today: the passkey account is a
+  separate demo account holding at most 1.00 test USD (`npm run owners -- setup` funds 0.60), the agents' real
+  mandates stay on the business account, and the runner and the phone refuse owner calls other than binding or revoking
+  a mandate on the account itself whose cap, budget and payee match the words shown. **Before real funds** the owner
+  signing needs a page the relay cannot serve (a native app, or a separate origin the relay does not control), or an
+  on-chain delay or guardian on the account; until then the passkey account stays small and labelled as a demo.
 - **Audit anchors are not signed.** Someone who can write the SQLite file can append forged rows after the last
   anchor, including a passkey row, and `verify` still passes. Anchors in committed run records and audit reports
   limit this to rows after the last published anchor.
