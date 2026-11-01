@@ -73,6 +73,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!(await page.isVisible("#kitline"))) fail(`/ ${tag}: no Kit 11 line on the landing`);
     // Design 4.1: the control tower from the recorded run, with its three agents and who enforced each refusal.
     if (!(await page.isVisible("#l-tower"))) fail(`/ ${tag}: no control tower on the landing`);
+    if (!(await page.isVisible("#autonomy-cta"))) fail(`/ ${tag}: no way to the agents' dry run from the landing`);
     if ((await page.locator("#l-t-agents .tagent").count()) !== 3) fail(`/ ${tag}: the control tower does not show three agents`);
     if ((await page.locator("#l-enforced-body .tenf").count()) !== 3) fail(`/ ${tag}: "Enforced by" does not show Purser, Metal and Airwallex`);
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
@@ -151,6 +152,19 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!/Dispute desk/.test(dd) || !(/signed for|does not verify/.test(dd) || /No dispute was opened/.test(dd))) fail(`/?recorded&disputes ${tag}: no cases and no note`);
     if (/USDZ|\$\s?\d/.test(dd)) fail(`/?recorded&disputes ${tag}: shows USDZ or dollars`);
     await page.screenshot({ path: join(shots, `disputes-${tag}.png`), fullPage: true });
+
+    // D19: the agents deciding, from an autonomous dry run: labelled as a dry run, never as live; the chat and the
+    // per-agent table are there, and "Powered by Claude" appears only on Claude's lines.
+    await page.goto(`${base}/?autonomy`, { waitUntil: "load" });
+    await page.waitForTimeout(800);
+    await look(page, `/?autonomy ${tag}`, w);
+    const au = await page.evaluate(() => document.body.innerText);
+    if (!/Autonomous dry run · .* · test passkeys and test money · not a live run/.test(au)) fail(`/?autonomy ${tag}: not labelled as a dry run`);
+    if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
+    if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
+    const wrongly = await page.evaluate(() => Array.from(document.querySelectorAll(".agentchat li")).filter((li) => /Fallback \(code\)/.test(li.textContent ?? "") && /Powered by Claude/.test(li.textContent ?? "")).length);
+    if (wrongly) fail(`/?autonomy ${tag}: ${wrongly} code fallback lines say Powered by Claude`);
+    await page.screenshot({ path: join(shots, `autonomy-${tag}.png`), fullPage: true });
 
     await page.goto(`${base}/demo`, { waitUntil: "load" });
     const steps = await page.locator("#steps button").count();

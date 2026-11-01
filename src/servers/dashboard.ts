@@ -59,6 +59,9 @@ details.names-note summary { cursor: pointer; }
 
 const PAGE_TEMPLATE = withNav(readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8"), "overview");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
+// D19: an autonomous dry run, recorded the same way (npm run autonomy-record), for /?autonomy; absent: the page hides it.
+const AUTONOMY_FILE = new URL("../../docs/demo/autonomy.json", import.meta.url);
+const AUTONOMY_JSON = (() => { try { return readFileSync(AUTONOMY_FILE, "utf8").trim(); } catch { return "null"; } })();
 /** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
 export const FONT = readFileSync(new URL("../ui/inter.woff2", import.meta.url));
 /** The sponsors' official logos (src/ui/logos/README.md), served as /assets/<name> for the landing's "Built on". */
@@ -92,6 +95,7 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
   return PAGE_TEMPLATE
     .replace("__ICONS_JSON__", () => JSON.stringify(ICONS))
     .replace("__RECORDED_JSON__", () => JSON.stringify(NAMES_NOTE ? { ...recorded, names_note: NAMES_NOTE } : recorded).replace(/</g, "\\u003c"))
+    .replace("__AUTONOMY_JSON__", () => AUTONOMY_JSON.replace(/</g, "\\u003c"))
     .replace("__AGENTS_JSON__", AGENTS_JSON)
     .replace("__REDTEAM_JSON__", () => REDTEAM_JSON);
 }

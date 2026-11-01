@@ -575,7 +575,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       <h1>Your AI agents spend through Airwallex and Metal. The CFO stays in control.</h1>
       <p class="lead">Each agent gets its own Airwallex company card and its own Metal mandate. You set the limits once; Airwallex and the chain enforce them. Anything more waits for your Face ID.</p>
       <p class="why"><b>Why Airwallex customers need this:</b> Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, buys software, pays suppliers abroad and sells across currencies. As AI agents take over that work, each needs its own card and limits, and the CFO one place for the exceptions.</p>
-      <div class="ctas"><a class="btn primary" href="#tour"><span data-icon="presentation"></span>Judge tour · 3 minutes</a><a class="btn" href="try"><span data-icon="sparkles"></span>Try it yourself</a><a class="btn" href="film"><span data-icon="play"></span>Watch</a></div>
+      <div class="ctas"><a class="btn primary" href="#tour"><span data-icon="presentation"></span>Judge tour · 3 minutes</a><a class="btn" href="try"><span data-icon="sparkles"></span>Try it yourself</a><a class="btn" href="?autonomy" id="autonomy-cta" hidden><span data-icon="bot"></span>See the agents decide</a><a class="btn" href="film"><span data-icon="play"></span>Watch</a></div>
       <div class="built">Built on <span class="logos"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"><span class="sep"></span><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span></div>
       <p class="withclaude"><b>Agents built on Claude (Anthropic API).</b> Built with Claude, and measured: Haiku sorts, Sonnet reads (on 5 harder documents, 3 runs each, Haiku alone misread 1 of 15 readings), Opus advises. Metal and Airwallex enforce the limits.</p>
     </div>
@@ -747,6 +747,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 </dialog>
 
 <script type="application/json" id="recorded-data">__RECORDED_JSON__</script>
+<script type="application/json" id="autonomy-data">__AUTONOMY_JSON__</script>
 <script type="application/json" id="agent-names">__AGENTS_JSON__</script>
 <script type="application/json" id="redteam-data">__REDTEAM_JSON__</script>
 <script>
@@ -1475,6 +1476,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   var MODE = document.body.getAttribute("data-mode");
   var RECORDED = null;
   try { RECORDED = JSON.parse(document.getElementById("recorded-data").textContent); } catch (e) { RECORDED = null; }
+  var AUTONOMY = null;
+  try { AUTONOMY = JSON.parse(document.getElementById("autonomy-data").textContent); } catch (e) { AUTONOMY = null; }
 
   // On the relay the data needs the viewer key: it arrives once as #view=<key> (never sent to a server) and is kept on
   // this device. The local dashboard needs none.
@@ -1528,6 +1531,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var rv = RECORDED && RECORDED.snapshot && RECORDED.snapshot.rails;
     if (rv && (rv.airwallex.length || rv.metal.length)) { railList("rail-awx", rv.airwallex); railList("rail-mtl", rv.metal); document.getElementById("rails-sec").hidden = false; }
     // Design 4.1: the control tower as the landing's first view, from the recorded run.
+    if (AUTONOMY) document.getElementById("autonomy-cta").hidden = false;
     var lt = RECORDED && RECORDED.snapshot && RECORDED.snapshot.tower;
     if (lt) { renderTowerAt("l-", lt); document.getElementById("l-tower-wrap").hidden = false; }
     document.getElementById("landing").hidden = false;
@@ -1561,10 +1565,24 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often is stopped by code. Red team, in a test world: " + RT.blocked + " of " + RT.attempts + " attacks failed" + (RT.caught_after ? ", " + RT.caught_after + " of them found afterwards, not prevented." : ".");
   } catch (e) {}
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
+  var wantAutonomy = /[?&]autonomy(=|&|$)/.test(location.search);
   var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
   if (wantSignin && !viewKey && MODE !== "local") {
     markNav("dashboard");
     document.getElementById("signin").hidden = false;
+  } else if (wantAutonomy && AUTONOMY) {
+    // D19: the agents deciding, from an autonomous dry run (test passkeys, test money), never shown as a live run.
+    markNav("dashboard");
+    tabs([["The agents decide", "?autonomy", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?autonomy&agents", wantAgents], ["Books", "?autonomy&books", wantBooks], ["Disputes", "?autonomy&disputes", wantDisputes]]);
+    var asnap = AUTONOMY.snapshot; asnap.recorded = true; asnap.relay = null;
+    document.getElementById("recbanner").hidden = false;
+    document.getElementById("rec-text").textContent = "Autonomous dry run · " + dayFmt.format(new Date(AUTONOMY.recorded_at)) + " · test passkeys and test money · not a live run";
+    var aMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", AUTONOMY.run + ". We changed the world (a price rise, a dispute, an invoice, a supplier ending a plan, money coming in); each agent decided with real Claude calls, inside its limits on Metal and Airwallex. Two virtual passkeys stood in for the CFO and the controller.")]);
+    var arb = document.getElementById("recbanner"); if (!arb.querySelector("details")) arb.appendChild(aMore);
+    live("rec", "Dry run");
+    var ast = document.getElementById("stop"); ast.hidden = false; ast.disabled = true; ast.lastChild.textContent = "Emergency stop · live only";
+    showDash(); render(asnap);
+    if (!wantAgents && !wantBooks && !wantDisputes) { var cp = document.getElementById("claude-panel"); if (cp) setTimeout(function () { cp.scrollIntoView({ block: "start" }); }, 50); }
   } else if (wantRecorded && RECORDED) {
     markNav("dashboard");
     tabs([["Overview", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);

@@ -845,7 +845,10 @@ function claudeView(db: DB, rows: AuditRow[]): Snapshot["claude"] {
   return {
     calls, fallbacks,
     models: per.filter((m) => m.calls > 0).map((m) => ({
-      model: m.version ? `${m.name} ${m.version}` : m.name, role: m.role, calls: m.calls,
+      // With the agents on, a model also runs agents: name them beside its reading role.
+      model: m.version ? `${m.name} ${m.version}` : m.name, calls: m.calls,
+      role: ((ag) => (ag.length ? `${m.role}; runs the ${ag.join(" and the ")} agent${ag.length > 1 ? "s" : ""}` : m.role))(
+        [...agentRuns].filter(([, a]) => m.re.test(a.model)).map(([agent]) => capFirst(agentName(agent).replace(/ agent$/i, "")))),
       avg_latency_ms: m.latencies.length ? Math.round(m.latencies.reduce((a, b) => a + b, 0) / m.latencies.length) : null,
       cost_usd_micros: m.cost,
     })),
