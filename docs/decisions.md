@@ -373,3 +373,27 @@ Try desk's ceiling a minute counts model calls (a typed task two, a world change
 before), each call's cost is recorded as it returns and the budget is checked before the next, and no call starts
 after 30 seconds; request ids are shown as proof per call; the page shows the agent's whole prompt and says the match
 is with the variation test (no card tools here), not the live runs.
+
+### D22. The autonomous world gets Airwallex's own events (1 November, afternoon)
+
+Max: "Zonder Airwallex in de autonome wereld is Airwallex weer alleen uitvoerder." Three world events that start at
+Airwallex (or at a supplier that offers both rails), never at an agent, each reaching the agent as an event it decides
+on itself, behind `KIT11_AUTONOMY=on` like the rest of D19:
+1. **A card decline from Airwallex.** Packwise's monthly renewal at the Pro price is charged to the Sourcing agent's
+   card by the merchant (Airwallex's issuing simulation, `npm run world -- packwise-renewal`). Airwallex decides; the
+   decline reaches the runner by webhook (hosted relay) or the poll (local relay), is recorded once, and only then
+   becomes the event `card.declined` for the card's agent, saying which way it came. The agent decides: ask the CFO for
+   a raise (bounded), go back to Starter, or nothing. In autonomy mode the block 5.2 decline agent does not also act.
+2. **Money in at Airwallex.** A customer pays a receivable into Northwind's Global Account (sandbox deposit,
+   `npm run world -- deposit`). Matched by the webhook or the poll as today, it becomes `money.in` (rail Airwallex) for
+   the Treasury agent, with the match result. Its position shows the receipts; with euros in, the licence invoice may
+   need no FX, so it may plan it now, or wait; an unmatched deposit stays in suspense for the CFO (code, as today).
+3. **The rail choice: x402 on Metal or an Airwallex task card.** Ridgeline Data offers a one-off demand report, either
+   over x402 (0.20 test USD, over the Sourcing mandate's cap, so Purser and Metal refuse it) or by card in EUR on a
+   single-use card per order (`npm run world -- report-offer`). The Sourcing agent picks: x402 (refused, with the reason),
+   a single-use task card (a proposal for the CFO's Face ID; once approved and issued, the card is charged by the
+   merchant at its next wake), asking Treasury for a higher cap, or not buying.
+
+Each gets a dry-run step and tests; the soak runs all of them. Estimate 7 hours (decline event 1.5, deposit event 1.5,
+report offer and task card 3, dry-run steps and tests 1). Risk: medium (money paths on the sandbox; every limit stays
+where it is: Airwallex's card limits, the mandate cap, the CFO's Face ID for a card).
