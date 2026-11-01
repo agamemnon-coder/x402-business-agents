@@ -64,6 +64,7 @@
     "four-eyes": "tsx src/cli/fourEyes.ts",
     "passkey-owners": "tsx src/cli/passkeyOwners.ts",
     "owners": "tsx src/cli/ownersExecute.ts",
+    "agent-summary": "tsx src/cli/agentSummary.ts",
     "contracts": "tsx src/compliance/compile.ts",
     "iso20022": "tsx src/cli/iso20022.ts",
     "clearing-load": "tsx src/cli/clearingLoad.ts",

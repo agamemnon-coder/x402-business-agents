@@ -13,6 +13,7 @@ import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { openDb } from "../../src/db/open.js";
 import { redactSecrets } from "../../src/lib/redact.js";
+import { agentStats } from "../../src/dashboard/agentStats.js";
 import { activePasskey, confirmPasskey, openEnrolment, pendingPasskeys } from "../../src/passkey/ledger.js";
 import { FOUR_EYES_KEY } from "../../src/policy/fourEyes.js";
 import { capRefusal, policyValue } from "../../src/policy/rules.js";
@@ -538,6 +539,13 @@ await timed("Verify: chain, ledger, audit log; nothing paid twice", async () => 
 await killRunner("SIGTERM");
 await browser.close();
 check(errors.length === 0, `no page errors${errors.length ? `: ${errors.slice(0, 5).join(" | ")}` : ""}`);
+if (process.env.KIT11_AGENTS === "on") {
+  // D19: every Claude call behind an agent decision carries the API's request id; the summary shows the fallback share.
+  const stats = agentStats(db());
+  const missing = stats.reduce((n, s) => n + s.calls_without_request_id, 0);
+  check(missing === 0 && stats.some((s) => s.claude_calls > 0), `every agent Claude call has an API request id (${stats.reduce((n, s) => n + s.claude_calls, 0)} calls, ${missing} without)`);
+  for (const s of stats) say(`AGENT SUMMARY ${s.agent}: ${s.decisions} decisions, fallback ${s.fallback_pct}%, ${s.claude_calls} calls, ${(s.cost_usd_micros / 1e6).toFixed(4)} USD`);
+}
 const total = Math.round((Date.now() - started) / 60_000);
 writeFileSync(join(out, "timings.json"), JSON.stringify({ total_minutes: total, failures, timings }, null, 2));
 say(`\n${failures === 0 ? "dry run passes" : `${failures} check(s) failed`}: ${total} minutes; timings in ${join(out, "timings.json")}`);

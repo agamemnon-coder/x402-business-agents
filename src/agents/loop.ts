@@ -63,6 +63,30 @@ export interface AgentSpec {
    * ends the run as it is; the caller decides whether the run counts.
    */
   unfinished?: () => string | null;
+  /** Tests set 0; the one retry after a transient API failure waits this long (default 2 s). */
+  retryDelayMs?: number;
+}
+
+/** A failure worth one retry: rate limit, server error, timeout or a dropped connection. */
+function transient(err: unknown): boolean {
+  if (err instanceof Anthropic.APIError) return err.status === undefined || err.status === 429 || err.status >= 500;
+  return /timeout|timed out|ECONNRESET|ENOTFOUND|socket|network/i.test((err as Error)?.message ?? "");
+}
+
+/** Cost caps per agent per hour and per run (the ledger), in micro-USD; an alert row at 80 %. */
+export const AGENT_HOURLY_CAP_MICROS: Record<string, number> = { sourcing: 300_000, support: 600_000, treasury: 1_500_000 };
+export const RUN_CAP_MICROS = 8_000_000;
+function overCap(db: DB, agent: string, nowMs: number): string | null {
+  const since = new Date(nowMs - 3_600_000).toISOString();
+  const sum = (where: string, ...args: string[]) => (db.prepare(`SELECT COALESCE(SUM(json_extract(payload_json, '$.cost_usd_micros')), 0) AS s FROM audit_log WHERE event = 'agent.run' ${where}`).get(...args) as { s: number }).s;
+  const hour = sum("AND actor = ? AND ts > ?", agent, since), run = sum("");
+  const hourCap = AGENT_HOURLY_CAP_MICROS[agent] ?? 500_000;
+  if (hour >= hourCap) return `cost cap: the ${agent} agent spent ${(hour / 1e6).toFixed(4)} USD on Claude in the last hour (cap ${(hourCap / 1e6).toFixed(2)})`;
+  if (run >= RUN_CAP_MICROS) return `cost cap: the agents spent ${(run / 1e6).toFixed(4)} USD on Claude in this world (cap ${(RUN_CAP_MICROS / 1e6).toFixed(2)})`;
+  if (hour >= hourCap * 0.8 && !db.prepare("SELECT 1 FROM audit_log WHERE event = 'agent.cost_warning' AND actor = ? AND ts > ?").get(agent, since)) {
+    audit(db, agent as Actor, "agent.cost_warning", agent, { agent, spent_usd_micros: hour, cap_usd_micros: hourCap, note: "80 % of the hourly Claude budget" });
+  }
+  return null;
 }
 
 const short = (s: string, n = 600) => (s.length > n ? `${s.slice(0, n)}…` : s);
@@ -74,6 +98,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
   const calls: AgentCall[] = [];
   const tokens = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
   const claudeMs: number[] = [];
+  const claudeCalls: { request_id: string | null; model: string; tokens: Usage; ms: number; cost_usd_micros: number; retried?: boolean }[] = [];
   let turns = 0, costMicros = 0, model: string | null = null, text = "";
   const finish = (status: AgentRun["status"], note?: string): AgentRun => {
     const run: AgentRun = { status, model, calls, text: redactSecrets(text), turns, costMicros, ...(note ? { note: redactSecrets(note) } : {}) };
@@ -81,7 +106,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
       agent: spec.agent, model: model ?? spec.model, status, turns, tools: calls.map((c) => c.tool),
       blocked: calls.filter((c) => c.blocked).map((c) => `${c.tool}: ${c.blocked}`),
       said: short(run.text, 1200), cost_usd_micros: costMicros, latency_ms: clock() - started, ...(note ? { note: run.note! } : {}),
-      from_seq: fromSeq, tokens, claude_ms: claudeMs,
+      from_seq: fromSeq, tokens, claude_ms: claudeMs, claude_calls: claudeCalls as never, request_ids: claudeCalls.map((c) => c.request_id),
     });
     return run;
   };
@@ -99,10 +124,16 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
 
   while (turns < maxTurns) {
     turns++;
-    let res: Anthropic.Beta.BetaMessage;
+    // Cost cap (D19): an agent over its hourly or the run's budget makes no call; the caller's fallback decides, labelled.
+    const cap = overCap(db, String(spec.agent), clock());
+    if (cap) return finish("unavailable", cap);
+    let res!: Anthropic.Beta.BetaMessage;
     const asked = clock();
-    try {
-      res = await client.beta.messages.create({
+    let retried = false;
+    // One retry with backoff on a transient failure (429, 5xx, timeout, connection); then the labelled fallback.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        res = await (client.withOptions ? client.withOptions({ maxRetries: 0 }) : client).beta.messages.create({
         model: spec.model,
         max_tokens: 16000,
         system: [{ type: "text", text: spec.system, cache_control: { type: "ephemeral" } }],
@@ -111,17 +142,28 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
         output_config: { effort: spec.effort ?? "medium" },
         // Haiku has no server-side fallback; Sonnet 5.5 and Opus 5.5 take the "default" routing.
         ...(spec.model.startsWith("claude-haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
-      } as Anthropic.Beta.MessageCreateParamsNonStreaming);
-    } catch (err) {
-      const message = err instanceof Anthropic.APIError ? `API ${err.status ?? ""} ${err.name}` : (err as Error).message;
-      return finish("unavailable", `call failed: ${short(message, 200)}`);
+        } as Anthropic.Beta.MessageCreateParamsNonStreaming);
+        break;
+      } catch (err) {
+        if (attempt === 0 && transient(err)) {
+          retried = true;
+          await new Promise((r) => setTimeout(r, spec.retryDelayMs ?? 2000));
+          continue;
+        }
+        const message = err instanceof Anthropic.APIError ? `API ${err.status ?? ""} ${err.name}` : (err as Error).message;
+        return finish("unavailable", `call failed${retried ? " after one retry" : ""}: ${short(message, 200)}`);
+      }
     }
     claudeMs.push(clock() - asked);
     model = res.model;
     const u = res.usage;
     const usage: Usage = { input: u.input_tokens, output: u.output_tokens, cache_read: u.cache_read_input_tokens ?? 0, cache_write: u.cache_creation_input_tokens ?? 0 };
     tokens.input += usage.input; tokens.output += usage.output; tokens.cache_read += usage.cache_read; tokens.cache_write += usage.cache_write;
-    costMicros += callCostMicros(res.model, usage) ?? 0;
+    const callCost = callCostMicros(res.model, usage) ?? 0;
+    costMicros += callCost;
+    // Proof per call (D19): the API's request id, tokens, cache hits, latency and cost, in the run's audit row.
+    const requestId = (res as { _request_id?: string | null })._request_id ?? null;
+    claudeCalls.push({ request_id: requestId, model: res.model, tokens: usage, ms: clock() - asked, cost_usd_micros: callCost, ...(retried ? { retried: true } : {}) });
     if (res.stop_reason === "refusal") {
       const cat = (res.stop_details as { category?: string } | null | undefined)?.category ?? "no category";
       return finish("unavailable", `refused (${cat})`);
@@ -170,7 +212,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
       const call: AgentCall = { tool: use.name, input: redactJson(use.input as never), text: redactSecrets(out.text), ...(out.blocked ? { blocked: out.blocked } : {}) };
       calls.push(call);
       audit(db, spec.agent, "agent.tool", spec.task, {
-        agent: spec.agent, model: res.model, tool: use.name, input: call.input as never, result: short(call.text), ...(out.blocked ? { blocked_by: out.blocked } : {}),
+        agent: spec.agent, model: res.model, request_id: requestId, tool: use.name, input: call.input as never, result: short(call.text), ...(out.blocked ? { blocked_by: out.blocked } : {}),
         ms: clock() - toolStarted, turn: turns,
       });
       // What goes back to Claude is redacted too: no tool result may carry a credential to the model.

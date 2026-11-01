@@ -2,6 +2,7 @@
 // network call and writes nothing, so it can be served from a read-only handle while the agents run.
 // Every text it returns is plain text; the page renders it with textContent only.
 
+import { agentStats, type AgentStats } from "./agentStats.js";
 import { agentTraces, type Trace } from "./trace.js";
 import { verifyAuditChain } from "../audit/log.js";
 import { agentName } from "../config/brand.js";
@@ -173,6 +174,8 @@ export interface Snapshot {
   feed: FeedItem[];
   /** 4.1: one timeline per agent decision, newest first (empty when the agents never ran). */
   traces: Trace[];
+  /** D19: per agent, Claude's decisions and code's fallbacks (labelled), the Claude calls and what they cost. */
+  agent_stats: AgentStats[];
   cards: CardView[];
   clearing: ClearingView | null;
   /** The emergency stop, while it is on: who pulled it, when, and why. */
@@ -1038,6 +1041,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     refusals,
     feed,
     traces: traces.slice(-20).reverse(),
+    agent_stats: agentStats(db),
     cards: cards(db, now),
     clearing: clearingView(db),
     frozen: frozenView(db, rows),
