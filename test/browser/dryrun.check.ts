@@ -372,6 +372,12 @@ await timed("10 Licence EUR 240.00 (FX + SWIFT); the runner is killed right afte
   cli("licence.ts");
   const lic = latest("invoice_payment", "status = 'PENDING_APPROVAL'") ?? "";
   check(!!lic, `licence proposal ${lic}`);
+  if (process.env.KIT11_AGENTS === "on") {
+    // Block 5.3: the Treasury agent's timing advice, beside the proposal (advisory; reported, not required).
+    const adv = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'licence.timing_advised' AND subject = ?").get(lic) as { payload_json: string } | undefined;
+    const a = adv ? (JSON.parse(adv.payload_json) as { timing: string; date: string | null }) : null;
+    say(`TIMING AGENT ${a ? `${a.timing}${a.date ? ` ${a.date}` : ""}` : "no advice (the agent did not decide)"}`);
+  }
   // Network away: the approval cannot be sent; the page says so and nothing is signed on the runner.
   // The page is open and the sheet armed; then the network goes, and Face ID is pressed.
   const offline = await sign(cfo, lic, { tag: "licence-offline", expectNoVerdict: true, beforeConfirm: () => cfo.page.route("**/api/**", (r: { abort: () => void }) => r.abort()) })

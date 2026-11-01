@@ -87,7 +87,21 @@ Alles hierboven blijft gelijk: dezelfde stappen, dezelfde goedkeuringen, dezelfd
   bevroren. Daarna hervatten met beide passkeys (vier ogen); de agent krijgt wat er van zijn budget over was.
 - **Stap 7:** de Support agent (Sonnet) controleert zelf de orders, refundt zelf alleen de foute (#7, #10, #13) en stuurt
   de rest met zijn advies naar Max. Max wijst "alles terug" af, zoals gepland.
-- Proefrun met de agents aan: dry-15, 0 fouten, eindcontrole groen (zie `docs/agents.md`).
+- **Stap 10:** na het plan geeft de Treasury agent (Opus) advies over het moment: nu betalen of wachten tot een datum
+  (adviserend). Op de telefoon staat het bij het voorstel ("advises paying now"). De koers en Face ID blijven de regels;
+  in de evals adviseerde elk model "nu betalen".
+- **Stap 11:** de Sourcing agent kiest zelf het betaalrail per aankoop: de stock check bij Stockline via x402 op Metal,
+  Packwise Starter op zijn Airwallex-kaart. Code weigert een rail dat de leverancier niet accepteert. Als Airwallex
+  €45,00 weigert, leest de agent zelf waarom en stelt een verhoging voor; code begrenst die (dekt de aankoop, hooguit
+  1,25×). **Het bedrag kan dus anders zijn dan €50** (in de evals stelde elk model €45,00 voor). Claude noemt het bedrag in
+  de chat vóór Face ID. De weigering op de Support-kaart (verkeerde winkel) krijgt geen verhoging: de agent legt uit waarom.
+- **Stap 12c (nieuw, alleen als blok 6 woensdag groen is):** direct na het hervatten 0,50 van Treasury naar Support.
+  Beide passkeys (vier ogen).
+- **Stap 12d (nieuw, alleen als `KIT11_PASSKEY_OWNERS` woensdag groen is):** Face ID tekent op de chain. Een apart,
+  klein account heeft als enige eigenaren de passkeys van Max en de controller. Claude stelt een mandaat voor; Max en
+  de controller keuren goed met Face ID, en het account voert het zelf uit. De runner tekent niets. Op de telefoon
+  staat "Bind the sourcing mandate, signed on chain".
+- Proefruns met de agents aan: dry-15 en later (zie `docs/runs/2026-10-31-dry-17-18-agents.md`).
 
 ## Daarna (Claude, automatisch)
 

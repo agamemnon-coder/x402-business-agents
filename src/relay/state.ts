@@ -30,7 +30,7 @@ export interface RelayProposal {
    * With the agents on: the Treasury agent's recommendation for a price-rise option, advisory like the Opus review
    * (code accepted its plan; the CFO decides). Absent when code made the plan.
    */
-  agent_advice?: { agent: string; model: string | null; recommends: boolean; text: string };
+  agent_advice?: { agent: string; model: string | null; recommends: boolean; text: string; verdict?: string };
 }
 
 export interface RelayEnrolment {
@@ -100,6 +100,12 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
     if (!plan || typeof option !== "string") return undefined;
     return { agent: "Treasury agent", model: plan.p.model ?? null, recommends: plan.p.recommended === option, text: String(plan.p.advice ?? "").slice(0, 600) };
   };
+  const timingFor = (id: string): RelayProposal["agent_advice"] => {
+    const r = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'licence.timing_advised' AND subject = ? ORDER BY seq DESC LIMIT 1").get(id) as { payload_json: string } | undefined;
+    if (!r) return undefined;
+    const a = JSON.parse(r.payload_json) as { timing?: string; date?: string | null; reason?: string; model?: string | null };
+    return { agent: "Treasury agent", model: a.model ?? null, recommends: a.timing === "pay_now", text: String(a.reason ?? "").slice(0, 600), verdict: a.timing === "pay_now" ? "advises paying now" : `advises waiting until ${String(a.date ?? "")}` };
+  };
   const proposals: RelayProposal[] = rows.filter((p) => Date.parse(p.expires_at) > now.getTime()).map((p) => {
     let evidence: { sha256?: string }[] = [];
     try {
@@ -119,6 +125,8 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
         group = `mandate_replace:${sha256(JSON.stringify(terms.steps ?? null)).slice(0, 16)}`;
         advice = adviceFor(p.created_at, terms.option);
       }
+      // Block 5.3: the Treasury agent's advice on when to pay this invoice (advisory; the terms are code's).
+      if (p.kind === "invoice_payment") advice = timingFor(p.proposal_id);
     } catch {
       // Unreadable terms go out as stored: the phone's own hash check fails and it refuses to sign them.
     }

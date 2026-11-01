@@ -259,3 +259,14 @@ after its first charge (live, 30 October), so the next month's charge would be d
 carries the CFO's limits at Airwallex (software only, per purchase, per month) and is frozen by a pause or the stop.
 No new card type before Thursday, and Ask Purser's task kinds (flight, hotel, train) stay as they are. Actual time:
 about 2 h. Evals 60/60 over three models; the dry-run checks are in step 11 (`test/browser/dryrun.check.ts`).
+
+### D18. Four eyes on the real business account: not before Thursday (1 November)
+
+Max's block 2 asked for the passkeys as owners of Northwind's own business account. **Not done, on purpose:** the
+security review of block 1 (`docs/security.md`, "The relay serves the phone's script") showed that with passkey owners a
+compromised relay page could collect both Face IDs for a digest of its own, and the business account holds the 20.00
+the agents' mandates draw on. So the passkeys own a separate, small passkey account (`npm run owners -- setup`, at most
+1.00 test USD), where binding and revoking a mandate needs both Face IDs on chain, and the business account keeps its
+owner key (with Purser's four eyes in front of every mandate change). Moving the business account over is one
+owner-change call (`addSigners`/`removeSigners`/`setThreshold`, Metal's docs on smart accounts) once owner signing has a
+page the relay cannot serve.

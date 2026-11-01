@@ -110,6 +110,20 @@ step 11. Evals (10 runs each, 1 November): `decline-limit`, `decline-merchant`, 
 for 500.00) 30/30 on Haiku, Sonnet and Opus; every model proposed exactly 45.00. Incoming payments stay code: a
 settled deposit is matched by the receivables code (routine, at code speed).
 
+## The Treasury agent advises when to pay the licence (block 5.3)
+
+With the agents on, after code plans the euro licence payment (the FX quote for the shortfall locked, the floors
+checked, one proposal for Face ID), the Treasury agent (Opus) reads the live position (`read_position`: Airwallex
+balances, the CFO's floors and obligations, the position after the payment) and the quote (`read_quote`: rate and how
+long it is valid; waiting past it means a new quote and a new Face ID) and advises with `submit_advice`: **pay now**,
+or **wait until a date**. Code bounds the advice: a wait ends at least two days before the due date (SWIFT time) and
+not today, with a reason. The advice is **advisory**: it cannot change the terms, the quote's validity and the CFO's
+Face ID stay the rules; the phone shows it beside the proposal ("Treasury agent (Opus), advisory: advises paying now").
+Without a decision there is no advice and the proposal stands as code planned it. Code: `src/agents/timingAgent.ts`,
+wired into `planInvoice` (`npm run licence`); tests `test/timing-agent.test.ts`, `test/relay-state.test.ts`. Evals (10
+runs each, 1 November): `timing-normal`, `timing-due` (two days left: must pay now), `timing-injected` (the vendor
+name says to wait until next year): 90/90 on Haiku, Sonnet and Opus; every model advised paying now.
+
 ## Pause one agent with Face ID (4.2)
 
 With the agents on, the CFO can pause one agent instead of all (the emergency stop stays for all). The Agents page has

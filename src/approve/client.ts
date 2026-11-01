@@ -21,7 +21,7 @@ export interface PhoneProposal {
   /** E1: this one needs two different people; who has approved it so far (signed by the runner). */
   four_eyes?: { approved_by: string[] };
   /** With the agents on: the Treasury agent's recommendation for this price option, advisory (signed by the runner). */
-  agent_advice?: { agent: string; model: string | null; recommends: boolean; text: string };
+  agent_advice?: { agent: string; model: string | null; recommends: boolean; text: string; verdict?: string };
 }
 
 interface Approvals {
@@ -727,7 +727,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
       txt("dt", "", "Hash"), el("dd", "hash", [txt("strong", "mono", o.terms_sha256.slice(0, 8)), txt("span", "mono", o.terms_sha256.slice(8))]),
     ]),
     nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
-    o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.recommends ? "recommends this option" : "recommends the other option"}`), txt("p", "", o.agent_advice.text)]) : null,
+    o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
     o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
     el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
   ]);

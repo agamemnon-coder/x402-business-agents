@@ -1,5 +1,7 @@
 // The Airwallex side of scenario S3, run by npm run s3 once the sandbox keys are set.
 
+import { agentsOn } from "../config/agents.js";
+import { adviseTiming } from "../agents/timingAgent.js";
 import { approvalHint } from "./hint.js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -60,6 +62,17 @@ export async function planInvoice(db: DB, rest: AirwallexRest, s: Awaited<Return
     console.log(`                 convert only the shortfall: buy EUR ${t.conversion.buy_amount} for USD ${t.conversion.sell_amount} at ${t.conversion.client_rate}, quote ${t.conversion.quote_id} valid to ${t.conversion.valid_to}`);
   }
   console.log(`                 after: EUR free ${t.after.eur_free}, USD ${t.after.usd_available} (floor ${t.floors.usd_floor})`);
+  // Block 5.3: with the agents on, the Treasury agent reads the position and the quote and advises when to pay.
+  if (agentsOn()) {
+    const today = new Date().toISOString().slice(0, 10);
+    const a = await adviseTiming(db, {
+      proposalId: out.proposal.proposal_id, invoiceNo: inv.invoice_no, vendor: inv.vendor, amount: t.amount, dueDate: inv.due_date, today,
+      eurAvailable: t.balances_before.eur_available, eurFloor: t.floors.eur_floor, eurObligations: t.floors.eur_obligations, usdAvailable: t.balances_before.usd_available, usdFloor: t.floors.usd_floor,
+      quote: t.conversion ? { sell: `${t.conversion.sell_currency} ${t.conversion.sell_amount}`, buy: `${t.conversion.buy_currency} ${t.conversion.buy_amount}`, rate: t.conversion.client_rate, validTo: t.conversion.valid_to } : null,
+      after: { eurFree: t.after.eur_free, usdAvailable: t.after.usd_available },
+    });
+    console.log(`TREASURY AGENT   ${a.source === "claude" ? `${a.run.model ?? "Claude"}: advises ${a.timing === "pay_now" ? "paying now" : `waiting until ${a.date}`}: "${a.reason}"` : "no advice (the agent did not decide); the proposal stands as code planned it"}`);
+  }
   const review = await attachReview(db, tools, out.proposal, `Invoice ${inv.invoice_no} matches the allowlisted beneficiary. Free EUR before: ${fromCents(Math.max(0, s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents))}.`);
   console.log(`REVIEW           ${review.recommendation} (${review.source === "claude" ? "Opus, advisory" : "no model"}): ${review.summary}`);
   console.log(`APPROVAL         ${out.proposal.proposal_id} expires ${t.expires_at}, sha256 ${out.proposal.terms_sha256}`);

@@ -50,6 +50,16 @@ describe("the Treasury agent's recommendation on the phone (agents on)", () => {
     expect(ps.find((p) => p.proposal_id === "P-0003")!.agent_advice).toBeUndefined();
   });
 
+  it("block 5.3: carries the Treasury agent's timing advice on the invoice payment it is about", () => {
+    const db = ledger();
+    const inv: Terms = { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: "P-0004", expires_at: "2026-10-30T14:15:00Z", invoice_no: "SLL-2026-11", amount: "1200.00" };
+    createProposal(db, { terms: inv, createdBy: "treasury" }, t0);
+    audit(db, "treasury", "licence.timing_advised", "P-0004", { proposal_id: "P-0004", timing: "wait_until", date: "2026-11-12", reason: "EUR arrives on the 10th.", model: "claude-opus-5-5", source: "claude" }, t0);
+    const ps = buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0).approvals.proposals;
+    expect(ps.find((p) => p.proposal_id === "P-0004")!.agent_advice).toEqual({ agent: "Treasury agent", model: "claude-opus-5-5", recommends: false, text: "EUR arrives on the 10th.", verdict: "advises waiting until 2026-11-12" });
+    expect(ps.find((p) => p.proposal_id === "P-0003")!.agent_advice).toBeUndefined();
+  });
+
   it("carries nothing when code made the plan (agents off, or the agent's plan was not used)", () => {
     const db = ledger();
     audit(db, "treasury", "price_rise.plan", null, { source: "fallback", attempts: 3, advice: "" }, t0);

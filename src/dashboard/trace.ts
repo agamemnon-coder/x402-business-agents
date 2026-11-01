@@ -59,6 +59,9 @@ const TOOL_CHECK: Record<string, string> = {
   verify_order: "read only: the signed order and its payment, from the chain",
   check_data: "read only: code's own check of the delivered data",
   try_purchase: "the Metal mandate on chain (cap per payment, budget)",
+  read_position: "read only: live balances, floors and obligations",
+  read_quote: "read only: the locked FX quote and its validity",
+  submit_advice: "code's bounds on a wait (two days before the due date); advisory, the CFO decides with Face ID",
   read_decline: "read only: Airwallex's decline and the card's limits",
   propose_raise: "code's bounds (covers the purchase, at most 1.25× it, a limit decline only), then the CFO's Face ID",
   no_raise: "proposes nothing; moves no money",
@@ -79,6 +82,7 @@ function decisionCheck(r: Row, p: P): string {
       ? `accepted by code's plan checks after ${str(p.attempts) || "1"} ${str(p.attempts) === "1" ? "try" : "tries"}; the CFO decides with Face ID`
       : "code's fixed plan (the agent's was not used); the CFO decides with Face ID";
   }
+  if (r.event === "licence.timing_advised") return "advisory beside the proposal; the quote's validity and the CFO's Face ID decide";
   if (r.event === "card.decline_met") return str(p.proposal_id) ? `a raise within code's bounds went to the CFO (${str(p.proposal_id)}), who decides with Face ID; Airwallex enforces the limit` : "no raise proposed: the limit did not cause it";
   if (r.event === "purchase.rails_chosen") return str(p.source) === "claude" ? "every supplier paid on a rail it accepts (code's check); Metal and Airwallex enforced the limits" : "code paid on the registry's rails (the agent did not finish)";
   if (r.event === "dispute.settled_by_agent") return "complete: every wrong order refunded, the rest sent to the CFO, who decides with Face ID";
@@ -99,7 +103,7 @@ export function agentTraces(db: DB, all?: Row[]): Trace[] {
     const from = num(p.from_seq) ?? ((rows.find((r) => r.seq > prevRun && r.seq < run.seq && r.actor === agent && r.event === "agent.tool")?.seq ?? run.seq) - 1);
     // Tool calls of this run only (same task); what they caused is the agent's other rows in between (review of 4.2).
     const mine = rows.filter((r) => r.seq > Math.max(from, prevRun) && r.seq <= run.seq && r.actor === agent && r.event !== "agent.run" && (r.event !== "agent.tool" || r.subject === run.subject));
-    const decision = rows.find((r) => r.seq > run.seq && r.seq < nextRun && r.actor === agent && r.event === (DECISION_BY_TASK[str(run.subject)] ?? (str(run.subject).startsWith("card.decline.") ? "card.decline_met" : DECISION[agent]))) ?? null;
+    const decision = rows.find((r) => r.seq > run.seq && r.seq < nextRun && r.actor === agent && r.event === (DECISION_BY_TASK[str(run.subject)] ?? (str(run.subject).startsWith("card.decline.") ? "card.decline_met" : str(run.subject).startsWith("licence.timing.") ? "licence.timing_advised" : DECISION[agent]))) ?? null;
 
     const steps: TraceStep[] = [];
     for (const r of [...mine, run, ...(decision ? [decision] : [])]) {

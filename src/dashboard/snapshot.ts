@@ -639,6 +639,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
         ? out(`${capFirst(who)} read Airwallex's decline (${declineWords(str(p.reason))}) and ${what}${str(p.said) ? `: "${str(p.said)}"` : ""}`, "approval", { model: modelName(str(p.model)) })
         : out(`Code met the decline (${declineWords(str(p.reason))}) and ${what}; the agent did not decide`, "approval");
     }
+    case "licence.timing_advised": return out(`The Treasury agent advised ${str(p.timing) === "pay_now" ? "paying" : `waiting until ${str(p.date)} to pay`} ${str(p.invoice_no)} (${s}), advisory: "${str(p.reason)}"`, "approval", { model: modelName(str(p.model)) });
     case "purchase.rail_refused": return out(`Code refused the Sourcing agent's payment to ${capFirst(s)}: ${str(p.why)}; nothing was charged`, "refusal");
     case "purchase.rails_chosen": {
       const ps = Array.isArray(p.purchases) ? (p.purchases as P[]) : [];
