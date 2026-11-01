@@ -19,7 +19,7 @@ import { sha256Hex, TERMS_SCHEMA } from "../lib/terms.js";
 import { activeMandate, mandateSpent } from "../metal/mandate.js";
 import { EXPLORER_TX } from "../metal/network.js";
 import { createProposal, expireDue, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { routeRefundBatch } from "../policy/refunds.js";
+import { planRefunds } from "../policy/refunds.js";
 import { refundThresholds } from "../policy/rules.js";
 import { addresses } from "../world/runtime.js";
 import { PROPOSAL_TTL_MS } from "../config/policy.js";
@@ -66,7 +66,8 @@ console.log(`\nDATA CHECK       stock check  field  delivered  corrected  delta`
 for (const v of verdicts) console.log(`                 #${String(v.seq).padEnd(4)} ${v.field.padEnd(6)} ${v.delivered}    ${v.corrected}    ${v.delta_units > 0 ? "+" : ""}${(v.delta_units / 100_000).toFixed(5)}${v.refund ? "  -> refund" : ""}`);
 
 const refunds = refundsFor(sales, verdicts);
-const route = routeRefundBatch(refunds.map((r) => r.amount_cents), refundThresholds(db));
+// No delivered sale wrong (dry-125: the corrected numbers were never sold) is a plan of its own: refund nothing.
+const route = planRefunds(refunds.map((r) => r.amount_cents), refundThresholds(db));
 const evidence = [
   { type: "dispute_email", ref: "fixtures/summit-dispute-email.txt", sha256: sha256Hex(email) },
   { type: "supplier_corrections", ref: "fixtures/stockline-corrections.txt", sha256: sha256Hex(correctionText) },
@@ -75,7 +76,7 @@ const evidence = [
 ];
 db.prepare("UPDATE disputes SET evidence_json = ?, verdicts_json = ? WHERE dispute_id = ?").run(JSON.stringify(orders), JSON.stringify(verdicts), disputeId);
 
-console.log(`\nREVISED DECISION refund ${refunds.length} stock checks (${refunds.map((r) => `#${r.seq}`).join(", ")}), ${fromCents(refunds.reduce((s, r) => s + r.amount_cents, 0))} in total: ${route.route === "auto" ? `within the automatic limits (${fromCents(REFUND_AUTO_EACH_CENTS)} each, ${fromCents(REFUND_AUTO_PER_DISPUTE_CENTS)} per dispute)` : route.reason}`);
+console.log(route.route === "none" ? "\nREVISED DECISION refund nothing: code's data check finds no delivered sale wrong" : `\nREVISED DECISION refund ${refunds.length} stock checks (${refunds.map((r) => `#${r.seq}`).join(", ")}), ${fromCents(refunds.reduce((s, r) => s + r.amount_cents, 0))} in total: ${route.route === "auto" ? `within the automatic limits (${fromCents(REFUND_AUTO_EACH_CENTS)} each, ${fromCents(REFUND_AUTO_PER_DISPUTE_CENTS)} per dispute)` : route.reason}`);
 
 function refundProposal(items: typeof refunds, reason: string) {
   const id = nextProposalId(db);
@@ -155,7 +156,7 @@ if (!settledByAgent) {
         console.log(`                 refund #${r.seq} ${res.payment_id}: ${res.already ? "already paid earlier" : res.outcome}${res.tx ? `  ${EXPLORER_TX}${res.tx}` : ""}${res.reason ? `  ${res.reason}` : ""}`);
       }
     });
-  } else {
+  } else if (route.route === "approval") {
     const p = refundProposal(refunds, "wrong data per supplier correction");
     console.log(`                 needs approval: ${p.proposal_id} sha256 ${p.terms_sha256}`);
   }
@@ -172,7 +173,7 @@ if (!settledByAgent) {
     const r = await attachReview(db, tools, p, [
       `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold}, claims the orders were never placed and the data wrong, and asks for all ${orders.length} to be refunded.`,
       `Checked by code: ${verified}/${orders.length} payments verified on chain (verifyMandatePayment) as signed by the customer's own mandate key, inside the mandate the customer's owner bound, paid from the customer's account. "Never placed" is contradicted by that evidence.`,
-      `Checked by code: every delivered stock check was compared with the supplier's correction notice; ${refunds.length} were wrong (#${refunds.map((x) => x.seq).join(", #")}) and were refunded automatically, ${fromCents(refunds.reduce((a, x) => a + x.amount_cents, 0))} in total, each the price the customer paid for that sale (the automatic limits are at most ${fromCents(REFUND_AUTO_EACH_CENTS)} per refund and ${fromCents(REFUND_AUTO_PER_DISPUTE_CENTS)} per dispute in total). Each amount in these terms is likewise the price paid for that sale, read from the ledger. The ${rest.length} sales in these terms matched the supplier's data.`,
+      `Checked by code: every delivered stock check was compared with the supplier's correction notice; ${refunds.length ? `${refunds.length} were wrong (#${refunds.map((x) => x.seq).join(", #")}) and were refunded automatically, ${fromCents(refunds.reduce((a, x) => a + x.amount_cents, 0))} in total, each` : "none was wrong, so nothing was refunded automatically; were a sale wrong, its refund would be"} the price the customer paid for that sale (the automatic limits are at most ${fromCents(REFUND_AUTO_EACH_CENTS)} per refund and ${fromCents(REFUND_AUTO_PER_DISPUTE_CENTS)} per dispute in total). Each amount in these terms is likewise the price paid for that sale, read from the ledger. The ${rest.length} sales in these terms matched the supplier's data.`,
       "This proposal refunds those remaining sales only because the customer asked; the agent found no evidence for it, which is why it waits for a person. The payee is the customer's own account (the only payee the support mandate allows). A planted line in the email asking to refund to another address had no effect.",
     ].join("\n"));
     console.log(`REVIEW           ${p.proposal_id}: ${r.recommendation} (${r.source === "claude" ? "Opus, advisory" : "no model"}): ${r.summary}`);
@@ -198,7 +199,7 @@ const wrongList = refunds.map((r) => `#${r.seq}`).join(", ");
 const paidList = paid.map((r) => `#${r.seq}`).join(", ") || "none";
 const allPaid = refunds.every((r) => paid.some((x) => x.seq === r.seq));
 const reply = await tools.draftReply(
-  `Customer: Summit Outfitters. All ${orders.length} disputed orders we sold (stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold}) were verified on chain: each was signed by the customer's agent's mandate key under the mandate the customer's account bound. Ticks ${wrongList} carried wrong stock levels from our supplier (its correction notice says so). Refunded: ${paidList} (${refundedTotal} *USDZ in total, refund transactions on Metal testnet)${allPaid ? "" : "; the rest of the wrong ones wait for a person"}. The other ${orders.length - refunds.length} stock checks matched the supplier's data.`,
-  () => ({ subject: "Your disputed orders", body: `We checked all ${orders.length} orders against the chain: each was signed by your agent's mandate key under the mandate your account bound, so they were placed. Ticks ${wrongList} were wrong at our supplier; refunded: ${paidList} (${refundedTotal})${allPaid ? "" : ", the rest waits for a person"}. The other ${orders.length - refunds.length} were correct.` }),
+  `Customer: Summit Outfitters. All ${orders.length} disputed orders we sold (stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold}) were verified on chain: each was signed by the customer's agent's mandate key under the mandate the customer's account bound. ${wrongList ? `Ticks ${wrongList} carried wrong stock levels from our supplier (its correction notice says so)` : "None of them carried wrong stock levels per the supplier's correction notice"}. Refunded: ${paidList} (${refundedTotal} *USDZ in total, refund transactions on Metal testnet)${allPaid ? "" : "; the rest of the wrong ones wait for a person"}. The other ${orders.length - refunds.length} stock checks matched the supplier's data.`,
+  () => ({ subject: "Your disputed orders", body: `We checked all ${orders.length} orders against the chain: each was signed by your agent's mandate key under the mandate your account bound, so they were placed. ${wrongList ? `Ticks ${wrongList} were wrong at our supplier` : "None was wrong at our supplier"}; refunded: ${paidList} (${refundedTotal})${allPaid ? "" : ", the rest waits for a person"}. The other ${orders.length - refunds.length} were correct.` }),
 );
 console.log(`\nDraft reply to Summit (${reply.source === "claude" ? reply.model : "template"}; a person sends it):\n  Subject: ${reply.value.subject}\n  ${reply.value.body.replace(/\n/g, "\n  ")}`);

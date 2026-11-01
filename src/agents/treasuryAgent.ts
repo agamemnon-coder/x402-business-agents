@@ -159,11 +159,21 @@ const SYSTEM = [
   "Write your advice for a CFO in two or three plain sentences: which option you recommend and why, in numbers.",
 ].join("\n");
 
+/**
+ * Code's evidence that the Sourcing agent is blocked, in words: a purchase refused over the cap, or (dry-125) customers
+ * turned away because no supplier sells fresh data within the cap. Never says a purchase was refused when none was.
+ */
+export function blockedWords(reason: string): string {
+  return reason.startsWith("mandate_cap_blocks_fresh_data")
+    ? `The Sourcing agent stopped buying rather than pay over its cap, and code saw customers turned away (no purchase was tried, so none was refused): ${reason}`
+    : `The next purchase was refused on chain: ${reason}`;
+}
+
 function prompt(f: PricePlanFacts): string {
   return [
     "Facts checked by code:",
     `- Stockline's price per stock check rose from ${fromCents(f.oldUpstreamCents)} to ${fromCents(f.newUpstreamCents)} (its live offer says the same).`,
-    `- The next purchase was refused against the Sourcing mandate's cap: ${f.refusal}.`,
+    `- ${blockedWords(f.refusal)}.`,
     `- Northwind sells a stock check at ${fromCents(f.sellCents)}.`,
     ...(f.sourcingMessage ? [`- The Sourcing agent told you: "${f.sourcingMessage.replace(/"/g, "'")}"`] : []),
     ...f.mandates.map((m) => `- ${m.agent} mandate now: cap ${fromCents(m.capCents)} a payment, budget ${fromCents(m.budgetCents)}, spent ${fromCents(m.spentCents)}.`),

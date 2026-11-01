@@ -19,6 +19,7 @@ import { designPriceRise } from "../agents/treasuryAgent.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { setSetting } from "../world/settings.js";
 import { TOTAL_BUDGET_CENTS } from "../config/policy.js";
+import { MAX_CACHE_SECONDS, SUPPLIERS } from "../config/suppliers.js";
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
 import type { AgentProfile } from "./runtime.js";
@@ -34,6 +35,31 @@ export function runFlow(script: string, args: string[] = []): { ok: boolean; tex
 }
 
 const latestRefusal = (db: DB) => db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'mandate_cap_exceeded%' ORDER BY id DESC LIMIT 1").get() as { id: number; refusal_reason: string } | undefined;
+
+/** How many customers turned away recently, and in what window, count as the Sourcing agent being blocked. */
+const TURNED_AWAY_MIN = 3;
+const TURNED_AWAY_WINDOW_MS = 15 * 60_000;
+
+/**
+ * Code's evidence that an agent is blocked by its mandate, from code's own data only (never an agent's words): a
+ * purchase refused over a cap; or (dry-125) customers turned away under the Sourcing agent's buy policy in the last
+ * 15 minutes while no supplier serves data fresh enough to sell (at most MAX_CACHE_SECONDS old) at or under its cap.
+ * In dry-125 the agent stopped buying when the price rose instead of trying and being refused, so the first form never
+ * appeared and the shop turned everyone away. The evidence only lets Treasury design options; the CFO decides.
+ */
+export async function blockedByMandate(db: DB, now = new Date()): Promise<{ id: number; refusal_reason: string } | undefined> {
+  const refused = latestRefusal(db);
+  if (refused) return refused;
+  const away = db.prepare("SELECT id FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > ? ORDER BY id DESC")
+    .all(new Date(now.getTime() - TURNED_AWAY_WINDOW_MS).toISOString()) as { id: number }[];
+  if (away.length < TURNED_AWAY_MIN) return undefined;
+  const cap = (await mandatesNow(db)).get("sourcing")?.now.capCents;
+  if (cap === undefined) return undefined;
+  const offers = Object.values(SUPPLIERS).map((x) => ({ x, cents: toCents(supplierPrice(db, x.id)), fresh: x.dataAgeSeconds <= MAX_CACHE_SECONDS }));
+  if (!offers.some((o) => o.fresh) || offers.some((o) => o.fresh && o.cents <= cap)) return undefined;
+  const why = offers.map((o) => (o.fresh ? `${o.x.name} ${fromCents(o.cents)} over the ${fromCents(cap)} cap` : `${o.x.name}'s data is ${Math.round(o.x.dataAgeSeconds / 60)} min old (sold data may be at most ${MAX_CACHE_SECONDS / 60} min old)`));
+  return { id: away[0]!.id, refusal_reason: `mandate_cap_blocks_fresh_data: ${away.length} customer queries turned away in 15 min under the buy policy; no supplier serves fresh data within the cap: ${why.join("; ")}` };
+}
 const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'PENDING_APPROVAL' AND expires_at > ?").all(kind, new Date().toISOString()) as { proposal_id: string }[];
 const lastFrom = (db: DB, from: string) => (db.prepare("SELECT text FROM agent_messages WHERE from_agent = ? AND to_agent = 'treasury' ORDER BY id DESC LIMIT 1").get(from) as { text: string } | undefined)?.text;
 
@@ -43,12 +69,12 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
   const position = async (db: DB) => {
     const m = [...(await mandatesNow(db)).values()].map((c) => c.now);
     const sell = toCents(sellPrice(db));
-    const r = latestRefusal(db);
+    const r = await blockedByMandate(db);
     const pend = db.prepare("SELECT proposal_id, kind FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?").all(new Date().toISOString()) as { proposal_id: string; kind: string }[];
     return [
       `Mandates (lifetime): ${m.map((x) => `${x.agent} cap ${fromCents(x.capCents)}, budget ${fromCents(x.budgetCents)}, spent ${fromCents(x.spentCents)}`).join("; ")}. Total budget ${fromCents(m.reduce((s, x) => s + x.budgetCents, 0))} of ${fromCents(TOTAL_BUDGET_CENTS)} allowed.`,
       `Query price ${fromCents(sell)}; Stockline ${supplierPrice(db, "stockline")}, Ridgeline Data ${supplierPrice(db, "ridgeline")} a stock check.`,
-      r ? `Latest refusal over a cap: ${r.refusal_reason}.` : "No refusal over a cap.",
+      r ? `Code's evidence that an agent is blocked by its mandate: ${r.refusal_reason}.` : "No agent is blocked by its mandate (no refusal over a cap, no customers turned away for lack of fresh data within the cap).",
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
       (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
@@ -71,8 +97,8 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
         run: async ({ reason }: { reason: string }) => {
           const open = waiting(db, "mandate_replace");
           if (open.length) return { text: `Not designed: ${open.map((p) => p.proposal_id).join(", ")} already wait for the CFO.`, blocked: "already waiting" };
-          const r = latestRefusal(db);
-          if (!r) return { text: "Not designed: no purchase was refused over a cap, so no agent is blocked by its mandate.", blocked: "no need" };
+          const r = await blockedByMandate(db);
+          if (!r) return { text: "Not designed: no purchase was refused over a cap and no customers are turned away for lack of fresh data within the cap, so no agent is blocked by its mandate.", blocked: "no need" };
           const addr = addresses(db);
           const sellCents = toCents(sellPrice(db));
           const live = toCents(supplierPrice(db, "stockline"));
@@ -108,8 +134,8 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
     ]; },
     // Without Claude: as before the agents, code's fixed plan answers a refusal the Sourcing agent reported.
     fallback: async (db, events, messages) => {
-      if (!messages.some((m) => m.from_agent === "sourcing") || waiting(db, "mandate_replace").length || !latestRefusal(db)) return "did nothing (nothing code would do here)";
-      const r = latestRefusal(db)!;
+      const r = await blockedByMandate(db);
+      if (!messages.some((m) => m.from_agent === "sourcing") || waiting(db, "mandate_replace").length || !r) return "did nothing (nothing code would do here)";
       const addr = addresses(db);
       const sellCents = toCents(sellPrice(db));
       const live = toCents(supplierPrice(db, "stockline"));

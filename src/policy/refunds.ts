@@ -13,3 +13,11 @@ export function routeRefundBatch(
 ): RefundRoute {
   return route(amountsCents, limits);
 }
+
+/** A dispute's refund plan: none when code's data check finds no delivered sale wrong, else the shared rule's route. */
+export function planRefunds(
+  amountsCents: number[],
+  limits?: { eachCents: number; perDisputeCents: number },
+): RefundRoute | { route: "none" } {
+  return amountsCents.length === 0 ? { route: "none" } : routeRefundBatch(amountsCents, limits);
+}

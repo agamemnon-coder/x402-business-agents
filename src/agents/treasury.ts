@@ -18,7 +18,7 @@ import { activeMandate, mandateSpent, type LoadedMandate } from "../metal/mandat
 import { createProposal, nextProposalId } from "../policy/approvals.js";
 import { planReplaceSteps, type MandateNow, type MandateTarget } from "../policy/mandates.js";
 import type { Addresses } from "../world/runtime.js";
-import { fallbackPricePlan, type PricePlan } from "./treasuryAgent.js";
+import { blockedWords, fallbackPricePlan, type PricePlan } from "./treasuryAgent.js";
 
 export interface ReplaceStepTerms {
   [k: string]: string | string[];
@@ -207,7 +207,7 @@ export async function priceRiseContext(addr: Addresses, sellCents: number, oldUp
     lines.push(`- ${agent}: cap ${fromCents(baseUnitsToCents(t.constraints.perPaymentCap))} per payment, budget ${fromCents(budget)}, spent ${fromCents(baseUnitsToCents(await mandateSpent(m)))}, payee ${PAYEE[agent](addr).name} (${PAYEE[agent](addr).address.toLowerCase()})`);
   }
   return [
-    `Supplier Stockline raised its price from ${oldUpstream} to ${fromCents(liveOfferCents)} per stock check (its notice and the live 402 offer agree). The next purchase was refused on chain: ${refusalReason}; the customer was not charged.`,
+    `Supplier Stockline raised its price from ${oldUpstream} to ${fromCents(liveOfferCents)} per stock check (its notice and the live 402 offer agree). ${blockedWords(refusalReason)}; the customer was not charged.`,
     `Current sell price: ${fromCents(sellCents)}. In the terms, query_price is the sell price this option would set, and margin = query_price - upstream_price. The approver chooses between options (another option keeps the current price; pausing sales means approving nothing).`,
     `Mandates bound now (read from the chain), ${fromCents(total)} of the ${fromCents(TOTAL_BUDGET_CENTS)} total:`,
     ...lines,
