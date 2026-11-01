@@ -69,3 +69,38 @@ describe("the autonomous Sourcing agent", () => {
     expect(buyPolicy(db).set_by).toBeUndefined();
   });
 });
+
+describe("the autonomous Sourcing agent buys its software on the rail it picks (Max, 1 Nov: card decline and rail choice in the world)", () => {
+  const withCard = (approved: boolean) => {
+    const bought: string[] = [];
+    const w: SourcingWorld = { ...world(), card: async () => ({ perTxCents: 3000, monthlyCents: 10000 }), buyPlan: async (plan) => {
+      bought.push(plan);
+      return approved ? { approved: true, text: "approved by Airwallex", ref: "tx_1" } : { approved: false, text: "declined by Airwallex (LIMIT_EXCEEDED); the raise P-0007 waits for the CFO", ref: "tx_2" };
+    } };
+    return { w, bought };
+  };
+  const buy = (plan: string, rail: string) => ({ name: "buy_software", input: { plan, rail, reason: "Packwise ends Starter; Pro keeps the warehouse sync." } });
+
+  it("refuses a rail the supplier does not accept, with the reason, and pays on the card when the agent picks it", async () => {
+    const db = openDb(":memory:");
+    publish(db, "supplier.notice", { supplier: "Packwise", text: "Starter ends; Pro is 45.00 EUR a month." }, "sourcing", "system", T0);
+    const { w, bought } = withCard(true);
+    const r = await wake(db, sourcingProfile(w), { client: fake([[buy("packwise-pro", "metal_x402")], [buy("packwise-pro", "airwallex_card")], [finish]]), now: T0 });
+    expect(r!.run!.calls.map((c) => c.blocked ?? "ok")).toEqual(["supplier's rails", "ok", "ok"]);
+    expect(bought).toEqual(["packwise-pro"]);
+  });
+
+  it("reports Airwallex's decline as it is and does not retry the same plan in that wake", async () => {
+    const db = openDb(":memory:");
+    publish(db, "supplier.notice", { supplier: "Packwise", text: "Starter ends; Pro is 45.00 EUR a month." }, "sourcing", "system", T0);
+    const { w, bought } = withCard(false);
+    const r = await wake(db, sourcingProfile(w), { client: fake([[buy("packwise-pro", "airwallex_card")], [buy("packwise-pro", "airwallex_card")], [finish]]), now: T0 });
+    expect(r!.run!.calls[0]!.text).toMatch(/declined by Airwallex/);
+    expect(r!.run!.calls[1]!.blocked).toBe("already tried");
+    expect(bought).toEqual(["packwise-pro"]);
+  });
+
+  it("has no software tool where the world has no card", () => {
+    expect(sourcingProfile(world()).tools(openDb(":memory:")).map((t) => t.name)).not.toContain("buy_software");
+  });
+});

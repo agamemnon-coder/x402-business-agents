@@ -1,4 +1,5 @@
-// npm run s3: scenario S3, the manufacturer's euro invoice.
+// npm run s3 [-- --sweep-only]: scenario S3, the manufacturer's euro invoice (--sweep-only: the sweep and its booked
+// credit, no invoice; the autonomous Treasury agent's sweep_earnings).
 //   Metal side (live now): sweep net earnings to the sweep wallet, wait for finality, lock the credit.
 //   Airwallex side: book the credit, plan the invoice, quote, approval, conversion, SWIFT, PAID.
 //   Without AIRWALLEX_CLIENT_ID / AIRWALLEX_API_KEY the Airwallex side stops and says so; nothing is faked.
@@ -57,4 +58,4 @@ if (!cfg) {
   console.log("                 The credit stays locked and unbooked; run npm run s3 again once the keys are set.");
   process.exit(0);
 }
-await runAirwallexSide(db, cfg, eventKey);
+await runAirwallexSide(db, cfg, eventKey, { invoice: !process.argv.includes("--sweep-only") });

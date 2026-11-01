@@ -5,6 +5,9 @@
 //   ridgeline-price <0.03>   Ridgeline Data changes its price
 //   dispute                  Summit Outfitters disputes a batch of orders (the email reaches the Support agent)
 //   invoice                  Stockline Data's monthly licence invoice reaches the Treasury agent
+//   packwise-pro             Packwise ends its Starter plan; the warehouse software continues on Pro, 45.00 EUR a month
+//                            (the Sourcing agent decides; its card at Airwallex may decline)
+//   money-in                 the day's sales have settled on Metal; the Treasury agent hears what came in
 // Nothing here decides for an agent.
 
 import { readFileSync } from "node:fs";
@@ -15,6 +18,8 @@ import { setSupplierPrice } from "../autonomy/teamProfiles.js";
 import { startRuntime } from "../world/runtime.js";
 import { redactSecrets } from "../lib/redact.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
+import { netEarnings } from "../agents/sweep.js";
+import { PLANS } from "../config/policy.js";
 
 const [cmd, arg] = process.argv.slice(2);
 const db = openDb();
@@ -55,7 +60,16 @@ if (cmd === "serve") {
 } else if (cmd === "invoice") {
   publish(db, "invoice.received", { vendor: "Stockline Data GmbH", file: "stockline-licence-SLL-2026-11.txt", text: readFileSync(fixture("stockline-licence-SLL-2026-11.txt"), "utf8").slice(0, 1500) }, "treasury");
   console.log("Stockline Data's licence invoice reached the Treasury agent");
+} else if (cmd === "packwise-pro") {
+  const pro = PLANS["packwise-pro"]!;
+  publish(db, "supplier.notice", { supplier: "Packwise", text: `Packwise ends its Starter plan this month. Your warehouse software continues only on the Pro plan, ${fromCents(pro.amountCents)} EUR a month (${pro.label}). Without a plan, warehouse sync stops at the end of the month.` }, "sourcing");
+  console.log("Packwise's notice reached the Sourcing agent: Starter ends, Pro costs 45.00 EUR a month");
+} else if (cmd === "money-in") {
+  const e = netEarnings(db);
+  const sold = (db.prepare("SELECT COUNT(*) AS n FROM sales WHERE status = 'DELIVERED'").get() as { n: number }).n;
+  publish(db, "money.in", { text: `The day's sales have settled on Metal: ${sold} stock checks sold for ${fromCents(e.revenueCents)}; net earnings ${fromCents(Math.max(0, e.netCents))} sit on the business account, not yet swept to Airwallex.` }, "treasury");
+  console.log(`money in: ${sold} sales settled; net earnings ${fromCents(Math.max(0, e.netCents))} on the business account; the Treasury agent was told`);
 } else {
-  console.error("usage: npm run world -- serve [--every 20] | price-rise [0.04] | ridgeline-price <x.xx> | dispute | invoice");
+  console.error("usage: npm run world -- serve [--every 20] | price-rise [0.04] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | money-in");
   process.exit(2);
 }

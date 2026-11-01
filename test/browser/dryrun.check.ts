@@ -277,6 +277,8 @@ if (process.env.DRYRUN_AUTONOMY) {
   // D19: the world draaiboek. We change the world; the agents (each its own process, started by the runner) decide.
   // Checked: invariants, not fixed outcomes. Proposals that reach the phone are approved as the CFO would: the option
   // the Treasury agent recommends, both passkeys where four eyes applies.
+  // The agents' company cards at Airwallex (the Sourcing agent pays its software on its card; Max, 1 Nov: card declines).
+  await timed("A0 Cards: each agent its company card at Airwallex", async () => { cli("cards.ts", "setup"); });
   const world = spawn("npx", ["tsx", "src/cli/world.ts", "serve", "--every", "15"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
   const worldLog = createWriteStream(join(out, "world.log"), { flags: "a" });
   world.stdout!.on("data", (d: Buffer) => worldLog.write(redactSecrets(d.toString())));
@@ -342,6 +344,36 @@ if (process.env.DRYRUN_AUTONOMY) {
         check(v === "Approved" || v === "Done", `the CFO approved the licence payment ${inv} (${v})`);
         await executed(inv);
       } else say("NO INVOICE PAYMENT PROPOSED: the Treasury agent decided otherwise");
+    });
+    await timed("A4b World: Packwise ends Starter; Pro costs EUR 45.00 (the Sourcing agent decides; its card may decline)", async () => {
+      const from = headSeq();
+      cli("world.ts", "packwise-pro");
+      const ev = lastEvent("supplier.notice");
+      const d = await until("the Sourcing agent's decision on Packwise", () => decisionOn("sourcing", ev, from), 600_000);
+      say(`SOURCING DECIDED (${d.source}): ${d.summary}`);
+      const bought = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.software_bought' AND seq > ? ORDER BY seq").all(from).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { plan: string; rail: string; approved: boolean; text: string });
+      check(bought.every((b) => b.rail === "airwallex_card"), "every software purchase went on the card (Packwise takes no x402)");
+      for (const b of bought) say(`SOFTWARE ${b.plan} on ${b.rail}: ${b.text}`);
+      const raise = latest("policy_change", "status = 'PENDING_APPROVAL' AND created_by = 'sourcing'");
+      if (bought.some((b) => !b.approved)) {
+        check(!!raise, `the decline was met with a raise for the CFO (${raise ?? "none"})`);
+        if (raise) {
+          await sign(cfo, raise, { tag: "auto-card-raise" });
+          await executed(raise);
+          cli("cards.ts", "sync");
+          check(true, `the CFO approved the card raise ${raise}; the card's limit at Airwallex follows`);
+        }
+      } else say("NO DECLINE: the agent's choice fitted its card (or it bought nothing)");
+    });
+    await timed("A4c World: money in (the Treasury agent decides whether to sweep to Airwallex)", async () => {
+      const from = headSeq();
+      cli("world.ts", "money-in");
+      const ev = lastEvent("money.in");
+      const d = await until("the Treasury agent's decision on the money in", () => decisionOn("treasury", ev, from), 900_000);
+      say(`TREASURY DECIDED (${d.source}): ${d.summary}`);
+      const sw = db().prepare("SELECT payment_id, amount_cents, outcome FROM sweeps WHERE created_at > ? ORDER BY created_at DESC LIMIT 1").get(new Date(Date.now() - 20 * 60_000).toISOString()) as { payment_id: string; amount_cents: number; outcome: string } | undefined;
+      if (sw) check(sw.outcome === "PAID", `the sweep ${sw.payment_id} of ${(sw.amount_cents / 100).toFixed(2)} is paid on chain (${sw.outcome})`);
+      else say("NO SWEEP: the Treasury agent decided to wait");
     });
     await timed("A5 Invariants: verify, request ids, fallbacks under 10%", async () => {
       const v = cli("verify.ts");

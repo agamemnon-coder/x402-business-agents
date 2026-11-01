@@ -91,6 +91,7 @@ function worldWords(kind: string, pl: Record<string, unknown>, str: (v: unknown)
   if (kind === "dispute.opened") return `${str(pl.customer)} disputes a batch of orders (its email)`;
   if (kind === "invoice.received") return `${str(pl.vendor)}'s invoice arrived${pl.file ? ` (${str(pl.file)})` : ""}`;
   if (kind === "upstream.refused") return `A purchase from ${str(pl.supplier)} was refused before signing: ${str(pl.reason)}`;
+  if (kind === "money.in") return `Money in: ${str(pl.text)}`;
   if (kind === "mandate.replaced") return "A mandate was replaced on chain (the CFO approved it)";
   return kind;
 }

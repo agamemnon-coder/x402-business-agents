@@ -18,6 +18,7 @@ import { designPriceRise } from "../agents/treasuryAgent.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { setSetting } from "../world/settings.js";
 import { TOTAL_BUDGET_CENTS } from "../config/policy.js";
+import { netEarnings } from "../agents/sweep.js";
 import type { AgentProfile } from "./runtime.js";
 
 const repo = resolve(import.meta.dirname, "../..");
@@ -34,7 +35,9 @@ const latestRefusal = (db: DB) => db.prepare("SELECT id, refusal_reason FROM ups
 const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'PENDING_APPROVAL' AND expires_at > ?").all(kind, new Date().toISOString()) as { proposal_id: string }[];
 const lastFrom = (db: DB, from: string) => (db.prepare("SELECT text FROM agent_messages WHERE from_agent = ? AND to_agent = 'treasury' ORDER BY id DESC LIMIT 1").get(from) as { text: string } | undefined)?.text;
 
-export function treasuryProfile(tickMs = 30 * 60_000): AgentProfile {
+export interface FlowDeps { runFlow: typeof runFlow }
+
+export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow }): AgentProfile {
   const position = async (db: DB) => {
     const m = [...(await mandatesNow(db)).values()].map((c) => c.now);
     const sell = toCents(sellPrice(db));
@@ -44,6 +47,7 @@ export function treasuryProfile(tickMs = 30 * 60_000): AgentProfile {
       `Mandates (lifetime): ${m.map((x) => `${x.agent} cap ${fromCents(x.capCents)}, budget ${fromCents(x.budgetCents)}, spent ${fromCents(x.spentCents)}`).join("; ")}. Total budget ${fromCents(m.reduce((s, x) => s + x.budgetCents, 0))} of ${fromCents(TOTAL_BUDGET_CENTS)} allowed.`,
       `Query price ${fromCents(sell)}; Stockline ${supplierPrice(db, "stockline")}, Ridgeline Data ${supplierPrice(db, "ridgeline")} a stock check.`,
       r ? `Latest refusal over a cap: ${r.refusal_reason}.` : "No refusal over a cap.",
+      (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
     ].join("\n");
   };
@@ -51,11 +55,11 @@ export function treasuryProfile(tickMs = 30 * 60_000): AgentProfile {
     name: "treasury", display: "the Treasury agent", model: MODELS.review, tickMs,
     goal: `keep every agent able to do its job inside the CFO's ${fromCents(TOTAL_BUDGET_CENTS)} total, keep a margin on every query, and pay what Northwind owes on time.`,
     rules: [
-      "You may design a rebalance of the agents' mandates with two price options (design_rebalance): code checks the plan (the 20.00 total, caps, budgets, margin) and the CFO decides with Face ID, often with a second person. You may plan a euro invoice (plan_invoice): code locks the FX quote and checks the floors; the CFO approves with Face ID. You cannot move money yourself.",
+      "You may sweep the net earnings from the business account on Metal to Airwallex (sweep_earnings): code keeps what the other mandates may still spend, waits for finality and books the credit. You may design a rebalance of the agents' mandates with two price options (design_rebalance): code checks the plan (the 20.00 total, caps, budgets, margin) and the CFO decides with Face ID, often with a second person. You may plan a euro invoice (plan_invoice): code locks the FX quote and checks the floors; the CFO approves with Face ID. You cannot move money yourself.",
       "When you have nothing to do, finish without acting: proposing nothing is a valid decision.",
     ].join("\n"),
     observe: position,
-    tools: (db) => [
+    tools: (db) => { let swept = false; return [
       { name: "position", description: "The mandates, the prices, the latest refusal and what waits for the CFO.", input: z.strictObject({}), run: async () => ({ text: await position(db) }) },
       {
         name: "design_rebalance", description: "Designs a rebalance of the three mandates with two query-price options and your advice; code checks it and sends the options to the CFO. Only when an agent cannot do its job within its mandate.",
@@ -77,15 +81,27 @@ export function treasuryProfile(tickMs = 30 * 60_000): AgentProfile {
         },
       },
       {
+        name: "sweep_earnings", description: "Sweeps the net earnings from the business account (Metal) to the sweep wallet and books them at Airwallex, after finality. Code plans the amount; it keeps what the other mandates may still spend.",
+        input: z.strictObject({ reason: z.string().describe("Why sweep now") }),
+        run: async () => {
+          if (swept || db.prepare("SELECT 1 FROM sweeps WHERE created_at > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: a sweep ran in the last half hour.", blocked: "already swept" };
+          const e = netEarnings(db);
+          if (e.netCents <= 0) return { text: `Not swept: net earnings are ${fromCents(Math.max(0, e.netCents))}; nothing to move.`, blocked: "nothing to sweep" };
+          swept = true;
+          const r = deps.runFlow("s3.ts", ["--sweep-only"]);
+          return { text: r.text, ...(r.ok ? {} : { blocked: "the sweep did not complete" }) };
+        },
+      },
+      {
         name: "plan_invoice", description: "Plans the euro invoice that came in (the licence): FX only for the shortfall, SWIFT, the fee ceiling, your timing advice; it waits for the CFO's Face ID.",
         input: z.strictObject({}),
         run: async () => {
           if (waiting(db, "invoice_payment").length) return { text: "Not planned: an invoice payment already waits for the CFO.", blocked: "already waiting" };
-          const r = runFlow("licence.ts");
+          const r = deps.runFlow("licence.ts");
           return { text: r.text, ...(r.ok ? {} : { blocked: "the plan did not complete" }) };
         },
       },
-    ],
+    ]; },
     // Without Claude: as before the agents, code's fixed plan answers a refusal the Sourcing agent reported.
     fallback: async (db, events, messages) => {
       if (!messages.some((m) => m.from_agent === "sourcing") || waiting(db, "mandate_replace").length || !latestRefusal(db)) return "did nothing (nothing code would do here)";

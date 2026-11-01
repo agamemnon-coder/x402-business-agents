@@ -49,6 +49,24 @@ describe("the autonomous Treasury agent", () => {
   });
 });
 
+describe("the Treasury agent and money coming in (Max, 1 Nov: money in as a world change)", () => {
+  it("sweeps only when there are net earnings, and only once in half an hour; the sweep runs the tested flow", async () => {
+    const flows: string[][] = [];
+    const run = (script: string, args: string[] = []) => { flows.push([script, ...args]); return { ok: true, text: "SWEEP S-1: 0.40 *USDZ business -> sweep wallet; credit booked at Airwallex" }; };
+    const db = openDb(":memory:");
+    publish(db, "money.in", { text: "Today's sales settled." }, "treasury", "system", T0);
+    const none = await wake(db, treasuryProfile(30 * 60_000, { runFlow: run }), { client: fake([[{ name: "sweep_earnings", input: { reason: "money came in" } }], [finish("Nothing to sweep.")]]), now: T0 });
+    expect(none!.run!.calls[0]).toMatchObject({ blocked: "nothing to sweep" });
+    expect(flows).toEqual([]);
+
+    db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('/v1/stock', 50, '0x1', '/v1/stock', '{}', 'DELIVERED', 'x')").run();
+    publish(db, "money.in", { text: "More sales settled." }, "treasury", "system", T0);
+    const ok = await wake(db, treasuryProfile(30 * 60_000, { runFlow: run }), { client: fake([[{ name: "sweep_earnings", input: { reason: "0.50 earned" } }], [{ name: "sweep_earnings", input: { reason: "again" } }], [finish("Swept 0.50 to Airwallex.")]]), now: T0 });
+    expect(ok!.run!.calls.map((c) => c.blocked ?? "ok")).toEqual(["ok", "already swept", "ok"]);
+    expect(flows).toEqual([["s3.ts", "--sweep-only"]]);
+  });
+});
+
 describe("the autonomous Support agent", () => {
   it("does not settle a dispute twice in half an hour", async () => {
     const db = openDb(":memory:");

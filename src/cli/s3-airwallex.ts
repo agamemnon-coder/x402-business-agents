@@ -15,7 +15,7 @@ import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { expireDue } from "../policy/approvals.js";
 
-export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: string): Promise<void> {
+export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: string, o: { invoice?: boolean } = {}): Promise<void> {
   const rest = new AirwallexRest(new Airwallex(cfg));
   const s = await seedTreasury(db, rest, rest);
   console.log(`TREASURY         EUR ${fromCents(s.eurAvailableCents)} available (floor ${fromCents(s.eurFloorCents)}, committed ${fromCents(s.eurObligationsCents)}); USD ${fromCents(s.usdAvailableCents)} (floor ${fromCents(s.usdFloorCents)})`);
@@ -23,7 +23,8 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
   const credit = await bookCredit(db, rest, rest, eventKey);
   console.log(`CREDIT           ${eventKey} -> Airwallex deposit ${credit.depositId}${credit.adopted ? " (already booked)" : ""}; reference = tx hash; 1 *USDZ = 1 USD (SIMULATED deposit: the sandbox cannot receive stablecoins)`);
 
-  await planInvoice(db, rest, s, "bergtex-invoice-BTX-2026-11.txt");
+  // --sweep-only (the Treasury agent's sweep): the credit is booked; no invoice is planned.
+  if (o.invoice !== false) await planInvoice(db, rest, s, "bergtex-invoice-BTX-2026-11.txt");
 }
 
 /**
