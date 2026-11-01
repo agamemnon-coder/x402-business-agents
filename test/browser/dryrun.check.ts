@@ -345,33 +345,32 @@ if (process.env.DRYRUN_AUTONOMY) {
         await executed(inv);
       } else say("NO INVOICE PAYMENT PROPOSED: the Treasury agent decided otherwise");
     });
-    await timed("A4b World: Packwise ends Starter; Pro costs EUR 45.00 (the Sourcing agent decides; its card may decline)", async () => {
-      const from = headSeq();
-      cli("world.ts", "packwise-pro");
-      const ev = lastEvent("supplier.notice");
-      const d = await until("the Sourcing agent's decision on Packwise", () => decisionOn("sourcing", ev, from), 600_000);
+    await timed("A4b World: Packwise charges its Pro renewal (EUR 45.00) to the Sourcing card; Airwallex decides, its webhook or poll tells the agent", async () => {
+      const from = headSeq(), before = lastEvent("card.declined");
+      say(cli("world.ts", "packwise-renewal").trim());
+      // Airwallex's decision reaches the runner by its webhook (hosted relay) or its poll (here, every few seconds).
+      const ev = await until("Airwallex's decline reaching the agent as an event", () => { const e = lastEvent("card.declined"); return e > before ? e : undefined; }, 180_000);
+      const via = (JSON.parse((db().prepare("SELECT payload_json FROM world_events WHERE id = ?").get(ev) as { payload_json: string }).payload_json) as { via: string }).via;
+      check(/^Airwallex (webhook|poll)$/.test(via), `the decline came from Airwallex itself (${via}), not from an agent's own call`);
+      const d = await until("the Sourcing agent's decision on the decline", () => decisionOn("sourcing", ev, from), 600_000);
       say(`SOURCING DECIDED (${d.source}): ${d.summary}`);
-      const bought = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.software_bought' AND seq > ? ORDER BY seq").all(from).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { plan: string; rail: string; approved: boolean; text: string });
-      check(bought.every((b) => b.rail === "airwallex_card"), "every software purchase went on the card (Packwise takes no x402)");
-      for (const b of bought) say(`SOFTWARE ${b.plan} on ${b.rail}: ${b.text}`);
+      check(count("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'agent.run' AND seq > ? AND subject LIKE 'card.decline.%'", from) === 0, "the block 5.2 decline agent did not also act (the Sourcing agent decides)");
       const raise = latest("policy_change", "status = 'PENDING_APPROVAL' AND created_by = 'sourcing'");
-      if (bought.some((b) => !b.approved)) check(!!raise, `the decline was met with a raise for the CFO (${raise ?? "none"})`);
       if (raise) {
-        // A raise, after a decline or asked for up front: the CFO approves it; the card at Airwallex follows; the agent hears.
-        const before = headSeq();
+        // The agent asked for a raise: the CFO approves it; the card at Airwallex follows; the agent hears and acts.
+        const before2 = headSeq();
         await sign(cfo, raise, { tag: "auto-card-raise" });
         await executed(raise);
         cli("cards.ts", "sync");
         check(true, `the CFO approved the card raise ${raise}; the card's limit at Airwallex follows`);
         const ev2 = lastEvent("card.limit_changed");
         check(ev2 > 0, "the Sourcing agent was told its card changed");
-        const d2 = await until("the Sourcing agent's decision after the raise", () => decisionOn("sourcing", ev2, before), 600_000);
+        const d2 = await until("the Sourcing agent's decision after the raise", () => decisionOn("sourcing", ev2, before2), 600_000);
         say(`SOURCING DECIDED (${d2.source}): ${d2.summary}`);
-        const after = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.software_bought' AND seq > ? ORDER BY seq").all(before).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { plan: string; approved: boolean; text: string });
+        const after = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.software_bought' AND seq > ? ORDER BY seq").all(before2).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { plan: string; approved: boolean; text: string });
         for (const b of after) say(`SOFTWARE ${b.plan}: ${b.text}`);
         check(after.every((b) => b.approved), "every purchase after the raise was approved by Airwallex");
-      } else if (!bought.length) say("NO PURCHASE AND NO RAISE: the agent decided to wait");
-      else say("NO DECLINE: the agent's choice fitted its card");
+      } else say("NO RAISE: the agent decided otherwise (its summary says why)");
     });
     await timed("A4c World: money in (the Treasury agent decides whether to sweep to Airwallex)", async () => {
       const from = headSeq();
@@ -382,6 +381,40 @@ if (process.env.DRYRUN_AUTONOMY) {
       const sw = db().prepare("SELECT payment_id, amount_cents, outcome FROM sweeps WHERE created_at > ? ORDER BY created_at DESC LIMIT 1").get(new Date(Date.now() - 20 * 60_000).toISOString()) as { payment_id: string; amount_cents: number; outcome: string } | undefined;
       if (sw) check(sw.outcome === "PAID", `the sweep ${sw.payment_id} of ${(sw.amount_cents / 100).toFixed(2)} is paid on chain (${sw.outcome})`);
       else say("NO SWEEP: the Treasury agent decided to wait");
+    });
+    await timed("A4d World: a retailer pays its invoice into the Global Account at Airwallex (the Treasury agent hears the money in)", async () => {
+      const from = headSeq(), before = lastEvent("money.in");
+      say(cli("world.ts", "deposit", "short").trim());
+      const ev = await until("the deposit reaching the Treasury agent", () => { const e = lastEvent("money.in"); return e > before ? e : undefined; }, 120_000);
+      const p = JSON.parse((db().prepare("SELECT payload_json FROM world_events WHERE id = ?").get(ev) as { payload_json: string }).payload_json) as { rail: string; via: string; outcome: string };
+      check(p.rail === "airwallex" && /^Airwallex (webhook|poll)$/.test(p.via), `money in at Airwallex, seen by its ${p.via.replace("Airwallex ", "")} (${p.outcome})`);
+      const d = await until("the Treasury agent's decision on the money in", () => decisionOn("treasury", ev, from), 900_000);
+      say(`TREASURY DECIDED (${d.source}): ${d.summary}`);
+      check(count("SELECT COUNT(*) AS n FROM receipts WHERE outcome = 'SHORT'") >= 1, "the short payment waits in suspense for the CFO (code), whatever the agent decided");
+    });
+    await timed("A4e World: Ridgeline offers a one-off report, over x402 (Metal) or on a single-use Airwallex card (the Sourcing agent picks)", async () => {
+      const from = headSeq();
+      say(cli("world.ts", "report-offer").trim());
+      const ev = lastEvent("supplier.offer");
+      const d = await until("the Sourcing agent's decision on the offer", () => decisionOn("sourcing", ev, from), 600_000);
+      say(`SOURCING DECIDED (${d.source}): ${d.summary}`);
+      const blocked = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.tool' AND actor = 'sourcing' AND seq > ? AND json_extract(payload_json, '$.tool') = 'buy_report'").all(from).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { blocked_by?: string; input: { rail: string } });
+      for (const b of blocked) say(`BUY_REPORT on ${b.input.rail}: ${b.blocked_by ?? "done"}`);
+      check(blocked.filter((b) => b.input.rail === "metal_x402").every((b) => b.blocked_by === "over the cap"), "x402 over the cap was refused before anything was signed");
+      const card = latest("task_card", "status = 'PENDING_APPROVAL' AND created_by = 'sourcing'");
+      if (card) {
+        const before2 = headSeq(), evBefore = lastEvent("card.issued");
+        const v = await sign(cfo, card, { tag: "auto-task-card" });
+        check(v === "Approved" || v === "Done", `the CFO approved the single-use card ${card} (${v})`);
+        await executed(card);
+        const ev2 = await until("the issued card reaching the Sourcing agent", () => { const e = lastEvent("card.issued"); return e > evBefore ? e : undefined; }, 120_000);
+        const d2 = await until("the Sourcing agent's decision with its card", () => decisionOn("sourcing", ev2, before2), 600_000);
+        say(`SOURCING DECIDED (${d2.source}): ${d2.summary}`);
+        const bought = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.report_bought' AND seq > ?").all(before2).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { approved: boolean; ref: string });
+        if (bought.length) check(bought.every((b) => b.approved), `the report was paid once on the single-use card (${bought.map((b) => b.ref).join(", ")})`);
+        else say("NOT PAID YET: the agent decided to wait");
+        check(count("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'sourcing.report_bought' AND json_extract(payload_json, '$.approved') = 1") <= 1, "the report was bought at most once");
+      } else say("NO TASK CARD: the agent decided otherwise (its summary says why)");
     });
     await timed("A5 Invariants: verify, request ids, fallbacks under 10%", async () => {
       const v = cli("verify.ts");

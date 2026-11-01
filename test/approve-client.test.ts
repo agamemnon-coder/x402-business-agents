@@ -236,3 +236,12 @@ describe("approving against Opus's advice", () => {
     expect(againstAdvice("APPROVED", null)).toEqual([]);
   });
 });
+
+describe("a task card one of Northwind's own agents asked for (D22)", () => {
+  it("says which agent asked, that it chose the purchase, and that the card pays once at a software or data seller", () => {
+    const d = describeTerms({ schema: "x", kind: "task_card", proposal_id: "P-0009", expires_at: "2026-11-05T11:00:00Z", task: "data", label: "Data purchase", purpose: "Ridgeline Data, one-off regional demand report", merchant_categories: ["5734"], amount: "15.00", currency: "EUR", valid_until: "2026-11-12T10:00:00.000Z", single_use: true, message_sha256: "0".repeat(64), asked_by: "agent:sourcing" }, {});
+    expect(d.rows).toContainEqual(["Asked by", "the Sourcing agent"]);
+    expect(d.recipient).toBe("a software or data seller (merchant category 5734)");
+    expect(d.warnings[0]).toMatch(/^The Sourcing agent chose this purchase and asked for the card; it cannot pay before you approve, and the card pays once\./);
+  });
+});

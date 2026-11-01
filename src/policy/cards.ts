@@ -10,6 +10,8 @@ import type { Card, CardLimits, CardTransaction, IssuingRail, CardControls } fro
 import { cardLimits, frozen, paused } from "./rules.js";
 import { stopped, velocityObserve } from "./velocity.js";
 import { principalActive } from "./principals.js";
+import { autonomyOn } from "../config/agents.js";
+import { AGENT_NAMES, publish, type AgentName } from "../autonomy/bus.js";
 
 export interface CardRow {
   /** An own agent (sourcing, support, treasury) or an outside one (ext:<name>, P1). */
@@ -236,6 +238,14 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
       agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency,
       ...(t.approved ? {} : { reason: t.failureReason ?? t.status }), ...(purpose ? { purpose } : {}), source,
     }, now);
+    // D22: a decline Airwallex made, seen by its webhook or the poll, is news for the agent whose card it is (autonomy
+    // only). Not for the agent's own purchase (it has Airwallex's answer already) nor a task card (not an agent).
+    if (!t.approved && source !== "simulation" && autonomyOn() && (AGENT_NAMES as string[]).includes(card.agent)) {
+      publish(db, "card.declined", {
+        merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, reason: t.failureReason ?? t.status, transaction_id: t.transactionId,
+        last4: card.last4, via: source === "webhook" ? "Airwallex webhook" : "Airwallex poll", decided_by: "Airwallex",
+      }, card.agent as AgentName, "system", now);
+    }
     // Counted against the agent's velocity limits at the moment it happened; a breach stops the agent, and the next
     // card sync (every few seconds on the runner) freezes its card at Airwallex.
     // A refund or reversal from the merchant is money coming back, not spending.

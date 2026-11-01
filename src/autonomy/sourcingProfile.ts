@@ -9,7 +9,8 @@ import { z } from "zod";
 import { audit } from "../audit/log.js";
 import { MODELS } from "../claude/reader.js";
 import { SUPPLIERS, type SupplierId } from "../config/suppliers.js";
-import { PLANS, RAIL_WORDS, type Rail } from "../config/policy.js";
+import { PLANS, RAIL_WORDS, REPORT_OFFER, TASK_KINDS, type Rail } from "../config/policy.js";
+import { bookOnTaskCard, proposeTaskCard } from "../agents/askPurser.js";
 import { checkRail } from "../agents/railChoice.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -20,7 +21,6 @@ import { issuingFromEnv } from "../airwallex/issuing.js";
 import { buyPlan, proposeCardRaise } from "../agents/cardBuyer.js";
 import { maxRaiseCents } from "../agents/declineAgent.js";
 import { cardRows } from "../policy/cards.js";
-import { meetNewDeclines } from "../agents/declineTrigger.js";
 import { setSetting } from "../world/settings.js";
 import { sendMessage } from "./bus.js";
 import type { AgentProfile } from "./runtime.js";
@@ -39,6 +39,8 @@ export interface SourcingWorld {
   card?(): Promise<{ perTxCents: number; monthlyCents: number } | null>;
   /** Charges a software plan to that card at Airwallex; a decline starts the decline agent (block 5.2). */
   buyPlan?(plan: SoftwarePlan): Promise<{ approved: boolean; text: string; ref: string | null }>;
+  /** D22: pays Ridgeline's one-off report on an issued single-use task card (Airwallex decides). */
+  payReportOnTaskCard?(taskId: string): Promise<{ approved: boolean; text: string; ref: string | null }>;
   /** Proposes a higher per-purchase card limit to the CFO (a Face ID proposal); the agent cannot set it. */
   askCardRaise?(perPurchase: string, reason: string): Promise<{ proposal_id: string }>;
 }
@@ -67,14 +69,17 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
     // The company card, where it was issued (npm run cards -- setup) and the sandbox keys are set.
     ...(issuingFromEnv() ? {
       card: async () => { const c = cardRows(db).find((x) => x.agent === "sourcing"); return c ? { perTxCents: c.per_tx_cents, monthlyCents: c.monthly_cents } : null; },
+      payReportOnTaskCard: async (taskId: string) => {
+        const iss = issuingFromEnv()!;
+        const t = await bookOnTaskCard(db, iss.sim, taskId, { merchant: REPORT_OFFER.supplier, amount: fromCents(REPORT_OFFER.cardCents), mcc: REPORT_OFFER.mcc }, new Date(), iss.rail);
+        return { approved: t.approved, text: t.approved ? "approved by Airwallex" : `declined by Airwallex (${t.failureReason ?? t.status})`, ref: t.transactionId };
+      },
       askCardRaise: async (perPurchase: string, reason: string) => ({ proposal_id: proposeCardRaise(db, "sourcing", { perTx: perPurchase }, reason).proposal_id }),
       buyPlan: async (plan: SoftwarePlan) => {
         const t = await buyPlan(db, issuingFromEnv()!.sim, plan);
         if (t.approved) return { approved: true, text: "approved by Airwallex", ref: t.transactionId };
-        // Block 5.2: a decline starts the decline agent here (claimed once, so the runner does not meet it again).
-        const met = await meetNewDeclines(db, { by: "sourcing" });
-        const raise = met.find((x) => x.proposal_id)?.proposal_id ?? null;
-        return { approved: false, text: `declined by Airwallex (${t.failureReason})${raise ? `; the raise ${raise} waits for the CFO's Face ID` : "; no raise was proposed"}`, ref: t.transactionId };
+        // D22: Airwallex's answer is the agent's to act on (ask_card_raise); its webhook or the poll records it too.
+        return { approved: false, text: `declined by Airwallex (${t.failureReason}); your card's limit decides, and only the CFO can raise it: ask with ask_card_raise if you need this plan`, ref: t.transactionId };
       },
     } : {}),
   };
@@ -129,8 +134,38 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
           return { text: `Asked the CFO for ${p.per_purchase} EUR a purchase: ${r.proposal_id} waits for Face ID. Buy the plan once it is approved.` };
         },
       }] : [];
+      // D22: Ridgeline's one-off report, on x402 under the mandate or a single-use Airwallex task card the CFO approves.
+      const report: AgentTool<z.ZodType>[] = world.payReportOnTaskCard ? [{
+        name: "buy_report",
+        description: `Buys ${REPORT_OFFER.supplier}'s ${REPORT_OFFER.item}, if it offered one, on the rail you pick: metal_x402 (${fromCents(REPORT_OFFER.x402Cents)} test USD over x402, paid under your mandate) or airwallex_task_card (${fromCents(REPORT_OFFER.cardCents)} EUR on a single-use Airwallex card for this order only: the CFO approves the card with Face ID first, and once it is issued you call buy_report again to pay on it). Not buying is a valid choice.`,
+        input: z.strictObject({ rail: z.enum(["metal_x402", "airwallex_task_card"]), reason: z.string().describe("One sentence: why this rail now") }),
+        run: async (p: { rail: "metal_x402" | "airwallex_task_card"; reason: string }) => {
+          if (!db.prepare("SELECT 1 FROM world_events WHERE kind = 'supplier.offer' AND for_agent = 'sourcing'").get()) return { text: `Nothing to buy: ${REPORT_OFFER.supplier} has made no offer.`, blocked: "no offer" };
+          if (db.prepare("SELECT 1 FROM audit_log WHERE event = 'sourcing.report_bought' AND json_extract(payload_json, '$.approved') = 1").get()) return { text: "Not again: the report is already bought.", blocked: "already bought" };
+          if (p.rail === "metal_x402") {
+            const m = await world.mandate();
+            if (REPORT_OFFER.x402Cents > m.capCents) return { text: `Not paid: ${fromCents(REPORT_OFFER.x402Cents)} is over your mandate's cap of ${fromCents(m.capCents)} a purchase; Purser refuses it before signing, and Metal would refuse it on chain. Ask the Treasury agent for a higher cap, or use a task card.`, blocked: "over the cap" };
+            return { text: `Not paid: ${REPORT_OFFER.supplier}'s x402 checkout for the report is not part of this world; use a task card or do not buy.`, blocked: "not offered here" };
+          }
+          const issued = db.prepare("SELECT t.task_id FROM task_cards t JOIN proposals p ON p.proposal_id = t.proposal_id WHERE t.kind = 'data' AND t.status = 'ACTIVE' AND p.created_by = 'sourcing' ORDER BY t.created_at DESC").get() as { task_id: string } | undefined;
+          if (issued) {
+            const r = await world.payReportOnTaskCard!(issued.task_id);
+            audit(db, "sourcing", "sourcing.report_bought", issued.task_id, { rail: p.rail, approved: r.approved, ref: r.ref, amount: fromCents(REPORT_OFFER.cardCents), currency: "EUR", reason: p.reason.trim().slice(0, 300), text: r.text.slice(0, 300) });
+            return { text: `${REPORT_OFFER.supplier}'s report, ${fromCents(REPORT_OFFER.cardCents)} EUR on the single-use card: ${r.text}`, ...(r.approved ? {} : { blocked: "declined by Airwallex" }) };
+          }
+          const waiting = db.prepare("SELECT proposal_id FROM proposals WHERE kind = 'task_card' AND status = 'PENDING_APPROVAL' AND created_by = 'sourcing' AND expires_at > ?").get(new Date().toISOString()) as { proposal_id: string } | undefined;
+          if (waiting) return { text: `Not asked again: ${waiting.proposal_id} already waits for the CFO's Face ID.`, blocked: "already waiting" };
+          const now = new Date();
+          const prop = proposeTaskCard(db, {
+            kind: "data", label: TASK_KINDS.data.label, mccs: [...TASK_KINDS.data.mccs], amountCents: REPORT_OFFER.cardCents,
+            validUntil: new Date(now.getTime() + 7 * 86_400_000).toISOString(), purpose: REPORT_OFFER.purpose,
+          }, p.reason.trim().slice(0, 300), now, "sourcing", "agent:sourcing");
+          return { text: `Asked the CFO for a single-use Airwallex card of ${fromCents(REPORT_OFFER.cardCents)} EUR for the report: ${prop.proposal_id} waits for Face ID. Once it is issued, call buy_report again to pay on it.` };
+        },
+      }] : [];
       return [
       ...software,
+      ...report,
       ...raise,
       {
         name: "market", description: MARKET_DESCRIPTION,

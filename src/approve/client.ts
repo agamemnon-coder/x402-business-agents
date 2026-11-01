@@ -304,11 +304,14 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
 
   if (kind === "task_card") {
     const mccs = Array.isArray(t.merchant_categories) ? t.merchant_categories.map(str).join(", ") : "";
-    const where = mccs === "4511" ? "an airline" : mccs === "7011" ? "a hotel" : mccs === "4112" ? "a railway" : "a merchant";
+    const where = mccs === "4511" ? "an airline" : mccs === "7011" ? "a hotel" : mccs === "4112" ? "a railway" : mccs === "5734" ? "a software or data seller" : "a merchant";
     const ends = utcMinute(str(t.valid_until));
     const by = str(t.asked_by);
-    const asked = by === "cfo-at-runner" ? "you, at the runner" : by.startsWith("ext:") ? `outside agent ${by}` : "someone with the dashboard link";
+    // D22: one of Northwind's own agents may ask for a single-use card for a one-off purchase it chose to make.
+    const own = by.startsWith("agent:") ? `the ${by.slice(6).charAt(0).toUpperCase()}${by.slice(7)} agent` : null;
+    const asked = by === "cfo-at-runner" ? "you, at the runner" : own ?? (by.startsWith("ext:") ? `outside agent ${by}` : "someone with the dashboard link");
     const check = by === "cfo-at-runner" ? "Purser read this from your own message."
+      : own ? `${own.charAt(0).toUpperCase()}${own.slice(1)} chose this purchase and asked for the card; it cannot pay before you approve, and the card pays once.`
       : by.startsWith("ext:") ? `An outside agent (${by}) asked for this card, not you. Approve only if you expect it.`
       : "This came from a chat message sent with the dashboard link: your phone, or anyone you gave the viewer link. Approve only if you sent it.";
     return {

@@ -113,7 +113,7 @@ export function checkEvent(db: DB, name: string, o: Record<string, unknown>, now
     if (!id || status !== "SETTLED" || !ga || !knownGlobalAccounts(db).has(ga) || !amount || !currency || !["EUR", "GBP"].includes(currency)) {
       return { object, object_id: id, status, amount_cents: amount, currency, agrees: null, outcome: `deposit ${status}${amount ? ` ${fromCents(amount)} ${currency}` : ""}: recorded; not matched (only settled EUR or GBP deposits into Northwind's Global Accounts are)` };
     }
-    const m = matchReceipt(db, { deposit_id: id, global_account_id: ga, currency, amount_cents: amount, reference: str(o.reference), payer, received_at: str(o.created_at) ?? now.toISOString() }, now);
+    const m = matchReceipt(db, { deposit_id: id, global_account_id: ga, currency, amount_cents: amount, reference: str(o.reference), payer, received_at: str(o.created_at) ?? now.toISOString() }, now, "webhook");
     return { object, object_id: id, status, amount_cents: amount, currency, agrees: null, outcome: `deposit ${fromCents(amount)} ${currency}: ${m.outcome}, ${m.detail}` };
   }
   return { object, object_id: str(o.id), status, amount_cents: null, currency: null, agrees: null, outcome: "not an object Purser acts on; recorded" };

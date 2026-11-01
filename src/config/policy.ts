@@ -134,7 +134,12 @@ export const TASK_KINDS = {
   flight: { label: "Flight", mccs: ["4511"], maxCents: 150_000 },
   hotel: { label: "Hotel", mccs: ["7011"], maxCents: 100_000 },
   train: { label: "Train", mccs: ["4112"], maxCents: 50_000 },
+  // D22: only the Sourcing agent's one-off data purchase (REPORT_OFFER) uses this kind; the chat readers never produce it.
+  data: { label: "Data purchase", mccs: ["5734"], maxCents: 5_000 },
 } as const;
+
+/** D22: Ridgeline Data's one-off demand report, on x402 (Metal, under the mandate) or a single-use Airwallex card. */
+export const REPORT_OFFER = { supplier: "Ridgeline Data", item: "a one-off regional demand report", x402Cents: 20, cardCents: 1500, mcc: "5734", purpose: "Ridgeline Data, one-off regional demand report" } as const;
 /** A task card without a date in the message ends after this many days; a date may be at most TASK_MAX_DAYS ahead. */
 export const TASK_DEFAULT_DAYS = 7;
 export const TASK_MAX_DAYS = 30;

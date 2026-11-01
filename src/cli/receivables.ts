@@ -2,6 +2,7 @@
 //   demo: opens three retailer invoices (EUR, GBP), has the sandbox simulate four incoming payments into Northwind's
 //         Global Accounts (one exact in EUR, one exact in GBP, one short, one with no invoice), then polls and matches.
 //   poll: reads the Global Accounts' deposits since the first open invoice and matches the ones not yet recorded.
+//   customer-pays [short]: one retailer pays one new invoice (D22, the autonomous world), then the poll.
 // Read-only towards Airwallex except the sandbox's own simulation endpoint and, once, creating a GBP Global Account.
 // The ledger is KIT11_DB.
 
@@ -62,6 +63,20 @@ if (mode === "demo") {
   }
 }
 
+// D22, the autonomous world: one retailer pays one new invoice (in full, or short with "short"); the poll below
+// matches it, and with the autonomy on the Treasury agent hears it as money in.
+let wanted: string | null = null;
+if (mode === "customer-pays") {
+  const now = new Date();
+  const n = (db.prepare("SELECT COUNT(*) AS n FROM receivables").get() as { n: number }).n + 201;
+  const inv = { invoice_no: `NW-R-${n}`, customer: "Alpenweg Sport AG", currency: "EUR", amount_cents: 124_000, due_date: new Date(now.getTime() + 30 * 86_400_000).toISOString().slice(0, 10) };
+  openReceivable(db, inv, now);
+  const amount = process.argv[3] === "short" ? "1000.00" : "1240.00";
+  const d = await awx.call<{ id: string; status: string }>("POST", "/simulation/deposit/create", { global_account_id: accounts.EUR, amount: Number(amount), reference: `Invoice ${inv.invoice_no}`, payer_name: inv.customer, status: "SETTLED" });
+  console.log(`${inv.customer} paid ${amount} EUR for ${inv.invoice_no} (1240.00 EUR) into Northwind's EUR Global Account: sandbox deposit ${d.id.slice(0, 8)}… ${d.status}`);
+  wanted = d.id;
+}
+
 // Poll: every deposit into the two Global Accounts since the first open invoice, matched once.
 const first = (db.prepare("SELECT MIN(issued_at) AS t FROM receivables").get() as { t: string | null }).t;
 if (!first) {
@@ -70,17 +85,27 @@ if (!first) {
 }
 const since = new Date(Date.parse(first) - 60_000).toISOString();
 const mine = new Set(Object.values(accounts));
-for (let page = 0; page < 20; page++) {
-  const r = await awx.call<{ has_more: boolean; items: AwxDeposit[] }>("GET", "/deposits", undefined, { from_created_at: since, page_num: String(page), page_size: "100" });
-  for (const d of r.items) {
-    if (d.status !== "SETTLED" || (d.global_account_id && !mine.has(d.global_account_id)) || !["EUR", "GBP"].includes(d.currency)) continue;
-    const m = matchReceipt(db, {
-      deposit_id: d.id, global_account_id: d.global_account_id ?? null, currency: d.currency, amount_cents: toCents(Number(d.amount).toFixed(2)),
-      reference: d.reference ?? null, payer: d.payer_name ?? null, received_at: d.created_at ?? new Date().toISOString(),
-    });
-    console.log(`${m.outcome.padEnd(14)} ${d.id.slice(0, 8)}…  ${redactSecrets(m.detail)}`);
+async function pollOnce(): Promise<void> {
+  for (let page = 0; page < 20; page++) {
+    const r = await awx.call<{ has_more: boolean; items: AwxDeposit[] }>("GET", "/deposits", undefined, { from_created_at: since, page_num: String(page), page_size: "100" });
+    for (const d of r.items) {
+      if (d.status !== "SETTLED" || (d.global_account_id && !mine.has(d.global_account_id)) || !["EUR", "GBP"].includes(d.currency)) continue;
+      if (db.prepare("SELECT 1 FROM receipts WHERE deposit_id = ?").get(d.id)) continue;
+      const m = matchReceipt(db, {
+        deposit_id: d.id, global_account_id: d.global_account_id ?? null, currency: d.currency, amount_cents: toCents(Number(d.amount).toFixed(2)),
+        reference: d.reference ?? null, payer: d.payer_name ?? null, received_at: d.created_at ?? new Date().toISOString(),
+      });
+      console.log(`${m.outcome.padEnd(14)} ${d.id.slice(0, 8)}…  ${redactSecrets(m.detail)}`);
+    }
+    if (!r.has_more) break;
   }
-  if (!r.has_more) break;
 }
+// The deposit just made may take a few seconds to appear in Airwallex's list: look again, up to half a minute.
+for (let i = 0; i < 10; i++) {
+  await pollOnce();
+  if (!wanted || db.prepare("SELECT 1 FROM receipts WHERE deposit_id = ?").get(wanted)) break;
+  await new Promise((r) => setTimeout(r, 3000));
+}
+if (wanted && !db.prepare("SELECT 1 FROM receipts WHERE deposit_id = ?").get(wanted)) console.log(`the deposit ${wanted.slice(0, 8)}… is not in Airwallex's list yet; the webhook or the next poll will match it`);
 const v = receivablesView(db);
 console.log(`\nopen: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; escalated to the CFO: ${v.escalated}`);

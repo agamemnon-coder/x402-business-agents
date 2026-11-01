@@ -18,6 +18,7 @@ import { designPriceRise } from "../agents/treasuryAgent.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { setSetting } from "../world/settings.js";
 import { TOTAL_BUDGET_CENTS } from "../config/policy.js";
+import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
 import type { AgentProfile } from "./runtime.js";
 
@@ -48,6 +49,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
       `Query price ${fromCents(sell)}; Stockline ${supplierPrice(db, "stockline")}, Ridgeline Data ${supplierPrice(db, "ridgeline")} a stock check.`,
       r ? `Latest refusal over a cap: ${r.refusal_reason}.` : "No refusal over a cap.",
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
+      (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
     ].join("\n");
   };
@@ -56,6 +58,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
     goal: `keep every agent able to do its job inside the CFO's ${fromCents(TOTAL_BUDGET_CENTS)} total, keep a margin on every query, and pay what Northwind owes on time.`,
     rules: [
       "You may sweep the net earnings from the business account on Metal to Airwallex (sweep_earnings): code keeps what the other mandates may still spend, waits for finality and books the credit. You may design a rebalance of the agents' mandates with two price options (design_rebalance): code checks the plan (the 20.00 total, caps, budgets, margin) and the CFO decides with Face ID, often with a second person. You may plan a euro invoice (plan_invoice): code locks the FX quote and checks the floors; the CFO approves with Face ID. You cannot move money yourself.",
+      "Money that customers pay into Northwind's Global Accounts at Airwallex is matched to their invoices by code; a short, over, unmatched or wrong-currency payment waits in suspense for the CFO. Euros that came in can pay the licence invoice with less FX (plan_invoice plans FX only for the shortfall).",
       "When you have nothing to do, finish without acting: proposing nothing is a valid decision.",
     ].join("\n"),
     observe: position,

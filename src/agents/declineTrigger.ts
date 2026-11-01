@@ -4,7 +4,7 @@
 // waiting for the CFO is not stacked. Off unless KIT11_AGENTS=on; task cards and outside agents' cards are not ours.
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { agentsOn } from "../config/agents.js";
+import { agentsOn, autonomyOn } from "../config/agents.js";
 import { AGENTS, type Agent } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { cardSpendCents } from "../policy/cards.js";
@@ -19,7 +19,8 @@ export function claim(db: DB, key: string, by: string, now = new Date()): boolea
 }
 
 export async function meetNewDeclines(db: DB, o: { client?: Anthropic | null; now?: Date; env?: NodeJS.ProcessEnv; by: string }): Promise<DeclineMeeting[]> {
-  if (!agentsOn(o.env)) return [];
+  // D22: with the autonomy on, the decline is the event `card.declined` for the agent whose card it is; it decides.
+  if (!agentsOn(o.env) || autonomyOn(o.env)) return [];
   const now = o.now ?? new Date();
   const rows = db.prepare(`SELECT t.transaction_id, t.agent, t.merchant, t.amount_cents, t.failure_reason, t.status, t.purpose, c.per_tx_cents, c.monthly_cents
     FROM card_transactions t JOIN cards c ON c.card_id = t.card_id

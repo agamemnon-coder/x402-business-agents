@@ -4,6 +4,8 @@
 // its invoice exactly (short, over, in another currency, or with no invoice at all) is escalated to the CFO with the
 // difference in words. Nothing here moves money: a refund of an overpayment is a separate decision for the CFO.
 
+import { autonomyOn } from "../config/agents.js";
+import { publish } from "../autonomy/bus.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
@@ -31,7 +33,7 @@ function invoiceIn(db: DB, reference: string | null): Row | undefined {
 }
 
 /** Matches one Airwallex deposit; a deposit already recorded returns its stored result and changes nothing. */
-export function matchReceipt(db: DB, d: Deposit, now = new Date()): { outcome: ReceiptOutcome; invoice_no: string | null; detail: string } {
+export function matchReceipt(db: DB, d: Deposit, now = new Date(), via: "webhook" | "poll" = "poll"): { outcome: ReceiptOutcome; invoice_no: string | null; detail: string } {
   return db.transaction(() => {
     const seen = db.prepare("SELECT outcome, invoice_no, detail FROM receipts WHERE deposit_id = ?").get(d.deposit_id) as { outcome: ReceiptOutcome; invoice_no: string | null; detail: string } | undefined;
     if (seen) return seen;
@@ -58,6 +60,13 @@ export function matchReceipt(db: DB, d: Deposit, now = new Date()): { outcome: R
     db.prepare("INSERT INTO receipts (deposit_id, global_account_id, currency, amount_cents, reference, payer, invoice_no, applied_cents, outcome, detail, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .run(d.deposit_id, d.global_account_id, d.currency, d.amount_cents, d.reference, d.payer, outcome === "UNMATCHED" || outcome === "WRONG_CURRENCY" ? null : inv!.invoice_no, applied, outcome, detail, d.received_at);
     audit(db, "treasury", outcome === "MATCHED" ? "receivable.matched" : "receivable.escalated", d.deposit_id, { outcome, invoice_no: inv?.invoice_no ?? null, amount: fromCents(d.amount_cents), currency: d.currency, detail }, now);
+    // D22: money in at Airwallex is news for the Treasury agent (autonomy only), once per deposit.
+    if (autonomyOn()) {
+      publish(db, "money.in", {
+        rail: "airwallex", via: via === "webhook" ? "Airwallex webhook" : "Airwallex poll", deposit_id: d.deposit_id, amount: fromCents(d.amount_cents), currency: d.currency,
+        payer: d.payer, outcome, invoice_no: outcome === "UNMATCHED" || outcome === "WRONG_CURRENCY" ? null : inv!.invoice_no, detail,
+      }, "treasury", "system", now);
+    }
     return { outcome, invoice_no: inv?.invoice_no ?? null, detail };
   })();
 }

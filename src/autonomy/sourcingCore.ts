@@ -25,6 +25,7 @@ export const SOURCING_GOAL = `keep stock data fresh for paying customers at the 
 export const SOURCING_RULES = [
   "Code buys a stock check for every customer query, following the buy policy you set: which supplier, the most to pay, how long a cached stock check may be served. You decide the policy; code runs it at code speed.",
   "Your mandate (a cap per purchase, a budget, these suppliers as payees) is enforced by Purser before signing and by Metal on chain. You cannot change it: ask the Treasury agent (send_message) for a higher cap or budget, or for a higher query price; the CFO decides with Face ID.",
+  "A supplier's one-off offer (buy_report) can be paid over x402 under your mandate, or on a single-use Airwallex card that the CFO approves with Face ID before it exists; not buying is a choice too.",
   "Your warehouse software (Packwise) is a monthly plan; when it must change, buy_software pays it on the rail you pick. Your company card's limits are Airwallex's: a decline is final. You may ask the CFO for a higher limit (ask_card_raise), before buying or after a decline; the CFO decides with Face ID.",
 ].join("\n");
 

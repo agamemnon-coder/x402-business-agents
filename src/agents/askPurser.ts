@@ -5,6 +5,8 @@
 import type { Card, CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
 import type { Tools } from "../claude/tools.js";
 import { audit } from "../audit/log.js";
+import { autonomyOn } from "../config/agents.js";
+import { AGENT_NAMES, publish, type AgentName } from "../autonomy/bus.js";
 import { ASK_AGENT_PER_HOUR, TASK_DEFAULT_DAYS, TASK_KINDS, TASK_LINK_PENDING_MAX, TASK_MAX_DAYS, TASK_WITHIN_PER_DAY } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -22,7 +24,8 @@ export type TaskKind = keyof typeof TASK_KINDS;
 
 /** What the message says, as read by the model or the plain parser. Nothing here is trusted. */
 export interface TaskReading {
-  kind: TaskKind | "other";
+  /** A chat message asks only for travel: the "data" kind is the Sourcing agent's own (D22), never read from words. */
+  kind: Exclude<TaskKind, "data"> | "other";
   /** The most the CFO allows, as written ("250.00"), or null if the message names none. */
   amount_eur: string | null;
   purpose: string;
@@ -46,7 +49,7 @@ const MONTHS = ["january", "february", "march", "april", "may", "june", "july", 
 const DAY_MS = 86_400_000;
 const group = (cents: number) => fromCents(cents).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-function kindOf(text: string): TaskKind | "other" {
+function kindOf(text: string): TaskReading["kind"] {
   if (/\b(flight|fly|plane|airline|air ticket)s?\b/i.test(text)) return "flight";
   if (/\b(hotel|room|nights?|stay)\b/i.test(text)) return "hotel";
   if (/\b(train|rail)\b/i.test(text)) return "train";
@@ -133,7 +136,7 @@ export type TaskCardTerms = Terms & {
 };
 
 /** Where a chat message came from. Only "cfo-at-runner" can be issued within the CFO policy. */
-export type AskedBy = "cfo-at-runner" | "dashboard-link" | `ext:${string}`;
+export type AskedBy = "cfo-at-runner" | "dashboard-link" | `ext:${string}` | `agent:${string}`;
 
 /** The Treasury agent proposes the card; nothing is issued before the CFO approves it with Face ID. */
 export function proposeTaskCard(db: DB, task: PlannedTask, message: string, now = new Date(), asker?: Actor, askedBy: AskedBy = asker?.startsWith("ext:") ? asker as AskedBy : "dashboard-link"): ProposalRow {
@@ -228,6 +231,10 @@ export async function executeTaskCard(db: DB, rail: IssuingRail, proposalId: str
     reserveTask(db, proposalId, t, now);
     const card = await issueTaskCard(db, rail, proposalId, t, now, { within_policy: false });
     finishExecution(db, proposalId, "EXECUTED", { card_last4: card.last4 }, now);
+    // D22: an agent that asked for the card hears that it was issued (autonomy only), and pays on it at its next wake.
+    if (autonomyOn() && t.asked_by.startsWith("agent:") && (AGENT_NAMES as string[]).includes(t.asked_by.slice(6))) {
+      publish(db, "card.issued", { task_id: `task:${proposalId}`, last4: card.last4, amount: t.amount, currency: t.currency, purpose: t.purpose, valid_until: t.valid_until, single_use: true }, t.asked_by.slice(6) as AgentName, "awx-executor", now);
+    }
   } catch (e) {
     finishExecution(db, proposalId, "FAILED", { error: (e as Error).message.slice(0, 300) }, now);
     throw e;
@@ -238,7 +245,7 @@ export async function executeTaskCard(db: DB, rail: IssuingRail, proposalId: str
 export const ASK_MAX_CHARS = 500;
 
 /** Purser's words for who asked, in the Opus review and on the dashboard. */
-const ASKED_BY_WORDS = (a: AskedBy) => (a === "cfo-at-runner" ? "The CFO, at the runner," : a === "dashboard-link" ? "Someone with the dashboard link (the CFO's phone, or anyone given the viewer link)" : `An outside agent (${a})`);
+const ASKED_BY_WORDS = (a: AskedBy) => (a === "cfo-at-runner" ? "The CFO, at the runner," : a === "dashboard-link" ? "Someone with the dashboard link (the CFO's phone, or anyone given the viewer link)" : a.startsWith("agent:") ? `Northwind's ${a.slice(6)} agent` : `An outside agent (${a})`);
 
 /**
  * One chat message to Purser: screened first (planted words never reach a model), read by Sonnet (or the plain
