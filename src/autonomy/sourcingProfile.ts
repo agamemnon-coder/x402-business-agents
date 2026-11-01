@@ -8,12 +8,12 @@
 import { z } from "zod";
 import { audit } from "../audit/log.js";
 import { MODELS } from "../claude/reader.js";
-import { MAX_CACHE_SECONDS, MIN_MARGIN_CENTS, SUPPLIERS, type SupplierId } from "../config/suppliers.js";
+import { SUPPLIERS, type SupplierId } from "../config/suppliers.js";
 import { PLANS, RAIL_WORDS, type Rail } from "../config/policy.js";
 import { checkRail } from "../agents/railChoice.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
-import { buyPolicy, type BuyPolicy } from "../agents/sourcing.js";
+import { buyPolicy } from "../agents/sourcing.js";
 import { mandatesNow } from "../agents/treasury.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
@@ -25,8 +25,9 @@ import { setSetting } from "../world/settings.js";
 import { sendMessage } from "./bus.js";
 import type { AgentProfile } from "./runtime.js";
 import type { AgentTool } from "../agents/loop.js";
+import { BUY_POLICY_DESCRIPTION, BUY_POLICY_INPUT, checkBuyPolicy, MARKET_DESCRIPTION, policyFrom, policyWords, sourcingBrief, SOURCING_DISPLAY, SOURCING_GOAL, SOURCING_RULES, type BuyPolicyInput, type SupplierView } from "./sourcingCore.js";
 
-export interface SupplierView { id: SupplierId; name: string; price_cents: number; data_age_seconds: number; available: boolean; last20: { paid: number; refused: number; unavailable: number } }
+export type { SupplierView } from "./sourcingCore.js";
 
 export interface SourcingWorld {
   /** Each supplier's live terms (its free /v1/info); unreachable: available false. */
@@ -79,27 +80,15 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
   };
 }
 
-const policyWords = (p: BuyPolicy) => `${p.supplier === "none" ? "do not buy" : `buy from ${SUPPLIERS[p.supplier].name}`}${p.max_price ? ` up to ${p.max_price}` : " up to the mandate's cap"}${p.cache_seconds ? `, serve a cached stock check up to ${p.cache_seconds} s old` : ", no cache"}`;
-
 export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): AgentProfile {
   const describe = async (db: DB) => {
-    const [sup, m, card] = await Promise.all([world.suppliers(), world.mandate(), world.card ? world.card() : Promise.resolve(null)]);
-    const sell = world.sellCents();
-    return [
-      `You sell each stock check to customers for ${fromCents(sell)}. Your mandate: at most ${fromCents(m.capCents)} a purchase, ${fromCents(m.budgetLeftCents)} budget left.`,
-      ...sup.map((s) => `- ${s.name} (${s.id}): ${s.available ? `${fromCents(s.price_cents)} a stock check, data ${s.data_age_seconds < 60 ? `${s.data_age_seconds} s` : `${Math.round(s.data_age_seconds / 60)} min`} old; margin at that price ${fromCents(sell - s.price_cents)}` : "not reachable now"}; last 20 tries: ${s.last20.paid} paid, ${s.last20.refused} refused, ${s.last20.unavailable} unavailable.`),
-      `Your buy policy now: ${policyWords(buyPolicy(db))}.`,
-      ...(card ? [`Your company card (Airwallex, software only): up to ${fromCents(card.perTxCents)} EUR a purchase, ${fromCents(card.monthlyCents)} EUR a month.`] : []),
-    ].join("\n");
+    const [suppliers, m, card] = await Promise.all([world.suppliers(), world.mandate(), world.card ? world.card() : Promise.resolve(null)]);
+    return sourcingBrief({ suppliers, capCents: m.capCents, budgetLeftCents: m.budgetLeftCents, sellCents: world.sellCents(), policy: buyPolicy(db), card });
   };
   return {
-    name: "sourcing", display: "the Sourcing agent", model: MODELS.classify, tickMs,
-    goal: `keep stock data fresh for paying customers at the best price, stay within your mandate, and keep a margin of at least ${fromCents(MIN_MARGIN_CENTS)} per query.`,
-    rules: [
-      "Code buys a stock check for every customer query, following the buy policy you set: which supplier, the most to pay, how long a cached stock check may be served. You decide the policy; code runs it at code speed.",
-      "Your mandate (a cap per purchase, a budget, these suppliers as payees) is enforced by Purser before signing and by Metal on chain. You cannot change it: ask the Treasury agent (send_message) for a higher cap or budget, or for a higher query price; the CFO decides with Face ID.",
-      "Your warehouse software (Packwise) is a monthly plan; when it must change, buy_software pays it on the rail you pick. Your company card's limits are Airwallex's: a decline is final. You may ask the CFO for a higher limit (ask_card_raise), before buying or after a decline; the CFO decides with Face ID.",
-    ].join("\n"),
+    name: "sourcing", display: SOURCING_DISPLAY, model: MODELS.classify, tickMs,
+    goal: SOURCING_GOAL,
+    rules: SOURCING_RULES,
     observe: describe,
     tools: (db) => {
       const tried = new Set<string>();
@@ -144,33 +133,18 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
       ...software,
       ...raise,
       {
-        name: "market", description: "The suppliers now: price, data age, margin at your sell price, and how their last 20 tries went; your mandate and buy policy.",
+        name: "market", description: MARKET_DESCRIPTION,
         input: z.strictObject({}),
         run: async () => ({ text: await describe(db) }),
       },
       {
-        name: "set_buy_policy", description: `Sets the policy code follows on every query. supplier: stockline, ridgeline, or none (serve only from the cache, otherwise refuse the query; the customer is not charged). max_price: the most per stock check, or null for up to your cap. cache_seconds: 0 to ${MAX_CACHE_SECONDS}.`,
-        input: z.strictObject({
-          supplier: z.enum(["stockline", "ridgeline", "none"]),
-          max_price: z.string().regex(/^\d+\.\d{2}$/).nullable(),
-          cache_seconds: z.number().int().min(0).max(MAX_CACHE_SECONDS),
-          reason: z.string().describe("One sentence: why this policy"),
-        }),
-        run: async (p: { supplier: SupplierId | "none"; max_price: string | null; cache_seconds: number; reason: string }) => {
+        name: "set_buy_policy", description: BUY_POLICY_DESCRIPTION,
+        input: BUY_POLICY_INPUT,
+        run: async (p: BuyPolicyInput) => {
           const [sup, m] = await Promise.all([world.suppliers(), world.mandate()]);
-          const sell = world.sellCents();
-          if (p.supplier !== "none") {
-            const s = sup.find((x) => x.id === p.supplier);
-            if (!s) return { text: `Not set: ${SUPPLIERS[p.supplier].name} is not one of your suppliers here.`, blocked: "supplier" };
-            const limit = p.max_price ? toCents(p.max_price) : m.capCents;
-            if (p.max_price && toCents(p.max_price) > m.capCents) return { text: `Not set: ${p.max_price} is over your mandate's cap of ${fromCents(m.capCents)}; purchases over it are refused anyway. Ask the Treasury agent for a higher cap.`, blocked: "over the cap" };
-            // The goal margin: a policy that would buy at a price leaving less than 1¢ is refused (one that only refuses
-            // because the price is over its max_price buys nothing, so it costs no margin).
-            if (s.price_cents <= limit && sell - s.price_cents < MIN_MARGIN_CENTS) {
-              return { text: `Not set: ${s.name} at ${fromCents(s.price_cents)} against a sell price of ${fromCents(sell)} leaves under ${fromCents(MIN_MARGIN_CENTS)} margin. Choose otherwise, or ask the Treasury agent for a higher query price.`, blocked: "margin" };
-            }
-          }
-          const next: BuyPolicy = { supplier: p.supplier, max_price: p.max_price, cache_seconds: p.cache_seconds, set_by: "sourcing", reason: p.reason.trim().slice(0, 300) };
+          const no = checkBuyPolicy(p, sup, m.capCents, world.sellCents());
+          if (no) return no;
+          const next = policyFrom(p);
           setSetting(db, "sourcing", "sourcing.buy_policy", JSON.stringify(next));
           audit(db, "sourcing", "sourcing.policy_set", "buy_policy", { ...next });
           return { text: `Buy policy set: ${policyWords(next)}.` };
