@@ -583,8 +583,11 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       const reason = str(p.reason);
       return reason.startsWith("policy_cap_exceeded")
         ? out(`Purchase of stock check #${str(p.seq)} refused by the CFO policy before signing: ${reason.slice(reason.indexOf(":") + 1).trim().replace(/\b(\d+\.\d{2})\b/g, "$1 USDZ")}`, "refusal")
-        : out(`Purchase of stock check #${str(p.seq)} refused on chain: ${refusalWords(reason)}`, "refusal");
+        : str(p.refused_by) === "purser"
+          ? out(`Purchase of stock check #${str(p.seq)} refused by Purser before signing, against the mandate: ${refusalWords(reason)}`, "refusal")
+          : out(`Purchase of stock check #${str(p.seq)} refused on chain: ${refusalWords(reason)}`, "refusal");
     }
+    case "upstream.refused_on_chain": return out(`Metal's mandate refused the same ${str(p.amount)} USDZ on chain and recorded it: ${str(p.metal_reason)}`, "refusal", { tx: /^0x[0-9a-f]{64}$/i.test(str(p.tx)) ? str(p.tx) : null });
     case "policy.changed": {
       const unit = policyUnit(str(p.key));
       const v = (x: unknown) => (str(x) ? `${str(x)}${unit && /^\d+\.\d{2}$/.test(str(x)) ? ` ${unit}` : ""}` : "no extra limit");
@@ -616,6 +619,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "agent.tool": {
       const who = agentWho(str(p.agent));
       if (str(p.blocked_by) === "Metal mandate") return out(`Metal refused ${who}'s purchase against its on-chain mandate`, "refusal", { model: modelName(str(p.model)) });
+      if (str(p.blocked_by).startsWith("mandate cap")) return out(`${capFirst(who)}'s purchase was refused before signing: over its mandate's cap`, "refusal", { model: modelName(str(p.model)) });
       return out(`Code refused ${who}'s ${str(p.tool).replace(/_/g, " ")}: ${str(p.blocked_by)}`, "refusal", { model: modelName(str(p.model)) });
     }
     case "agent.nudged": return out(`Code sent ${agentWho(str(p.agent))} back, not finished: ${str(p.reason)}`, "info", { model: modelName(str(p.model)) });

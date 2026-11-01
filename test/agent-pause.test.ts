@@ -226,7 +226,7 @@ describe("block 6: a rebalance after a resume counts what was spent before the p
 });
 
 describe("block 6: the rebalance the dry run proposes after a resume", () => {
-  it("moves an amount from one agent's lifetime budget to another's, caps unchanged, others untouched", () => {
+  it("moves an amount from one agent's lifetime budget to another's; the giver's cap comes down to its new budget (dry-95), others untouched", () => {
     const current = [
       { agent: "sourcing" as const, capCents: 4, budgetCents: 1400, spentCents: 120 },
       { agent: "treasury" as const, capCents: 200, budgetCents: 200, spentCents: 135 },
@@ -234,7 +234,7 @@ describe("block 6: the rebalance the dry run proposes after a resume", () => {
     ];
     expect(moveTargets(current, { from: "treasury", to: "support", cents: 50 })).toEqual([
       { agent: "sourcing", capCents: 4, budgetCents: 1400 },
-      { agent: "treasury", capCents: 200, budgetCents: 150 },
+      { agent: "treasury", capCents: 150, budgetCents: 150 },
       { agent: "support", capCents: 10, budgetCents: 450 },
     ]);
   });

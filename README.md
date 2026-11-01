@@ -33,7 +33,7 @@ retailers per query: the kit's data business. Three agents draw on one Metal acc
 |---|---|---|
 | Sourcing agent | buys the upstream data per query; its card pays warehouse and data software | 10.00 → 12.00, cap 0.03 → 0.04 a purchase |
 | Support agent | refunds customers when a dispute holds; its card pays helpdesk software | 4.00 |
-| Treasury agent | designs the rebalance after the price rise (with the agents on, its own split, e.g. 14 / 2 / 4); the sweep to Airwallex and the EUR licence fee (FX and SWIFT, after Face ID) run on its mandate but are code's decisions | 6.00 → 4.00 in the brief |
+| Treasury agent | designs the rebalance after the price rise (with the agents on, its own split, e.g. 14 / 2 / 4); the sweep to Airwallex runs on its mandate; the EUR licence fee is paid through Airwallex (FX and SWIFT, after Face ID), not from a Metal mandate; both are code's decisions (with the agents on, it advises when to pay the licence) | 6.00 → 4.00 in the brief |
 
 20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). Every Kit 11 sentence and where
 it is done: [docs/requirements-matrix.md](docs/requirements-matrix.md) section 4.

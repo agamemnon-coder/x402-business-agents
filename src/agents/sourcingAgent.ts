@@ -16,7 +16,7 @@ export interface SourcingDeps {
   /** Stockline's live offer for one stock check, and the agent's mandate as the chain has it. */
   offer(): Promise<{ liveCents: number; capCents: number; budgetLeftCents: number }>;
   /** Serves the next customer query: the purchase upstream under the mandate, refused or not. */
-  tryPurchase(): Promise<{ seq: number; refused: string | null; charged: boolean }>;
+  tryPurchase(): Promise<{ seq: number; refused: string | null; charged: boolean; refusedBy?: "purser" | "metal"; onChainTx?: string | null }>;
   /** Hands the agent's message to the Treasury agent (and the log). */
   notify(message: string): void;
 }
@@ -64,9 +64,11 @@ export async function meetPriceRise(db: DB, f: { oldCents: number; noticeCents: 
           refusal = p.refused; seq = p.seq;
           return {
             text: p.refused
-              ? `Stock check #${p.seq}: Metal refused the purchase against your mandate (${p.refused}). The customer was ${p.charged ? "CHARGED" : "not charged"}.`
+              ? p.refusedBy === "purser"
+                ? `Stock check #${p.seq}: refused before anything was signed, because it is over your mandate's cap (${p.refused})${p.onChainTx ? `; Metal's mandate refused the same payment on chain too (tx ${p.onChainTx})` : ""}. The customer was ${p.charged ? "CHARGED" : "not charged"}.`
+                : `Stock check #${p.seq}: Metal refused the purchase against your mandate (${p.refused}). The customer was ${p.charged ? "CHARGED" : "not charged"}.`
               : `Stock check #${p.seq}: bought and sold.`,
-            ...(p.refused ? { blocked: "Metal mandate" } : {}),
+            ...(p.refused ? { blocked: p.refusedBy === "purser" ? "mandate cap (Purser, before signing)" : "Metal mandate" } : {}),
           };
         },
       },

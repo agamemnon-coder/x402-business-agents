@@ -159,7 +159,8 @@ export function checkCarried(db: DB, steps: { agent: string; spent_before_pause?
 }
 
 /**
- * The targets for moving an amount of lifetime budget from one agent to another, caps unchanged and the others as they
+ * The targets for moving an amount of lifetime budget from one agent to another, caps unchanged (the giver's at most its
+ * new budget) and the others as they
  * are (block 6's dry-run step: a rebalance right after a resume). The giver must keep more than it already spent.
  */
 export function moveTargets(current: { agent: Agent; capCents: number; budgetCents: number; spentCents: number }[], m: { from: Agent; to: Agent; cents: number }): { agent: Agent; capCents: number; budgetCents: number }[] {
@@ -168,5 +169,10 @@ export function moveTargets(current: { agent: Agent; capCents: number; budgetCen
   const from = current.find((c) => c.agent === m.from);
   if (!from || !current.some((c) => c.agent === m.to)) throw new Error(`no mandate for ${!from ? m.from : m.to}`);
   if (from.budgetCents - m.cents <= from.spentCents) throw new Error(`${m.from} must keep a budget above what it spent (${fromCents(from.spentCents)})`);
-  return current.map((c) => ({ agent: c.agent, capCents: c.capCents, budgetCents: c.budgetCents + (c.agent === m.to ? m.cents : c.agent === m.from ? -m.cents : 0) }));
+  // The giver's cap may not exceed its smaller budget (dry-95: Treasury at cap 4.00 = budget 4.00); it comes down with it,
+  // which only tightens. Everyone else keeps cap and budget.
+  return current.map((c) => {
+    const budgetCents = c.budgetCents + (c.agent === m.to ? m.cents : c.agent === m.from ? -m.cents : 0);
+    return { agent: c.agent, capCents: Math.min(c.capCents, budgetCents), budgetCents };
+  });
 }

@@ -163,7 +163,7 @@ function prompt(f: PricePlanFacts): string {
   return [
     "Facts checked by code:",
     `- Stockline's price per stock check rose from ${fromCents(f.oldUpstreamCents)} to ${fromCents(f.newUpstreamCents)} (its live offer says the same).`,
-    `- The next purchase was refused by Metal against the on-chain mandate: ${f.refusal}.`,
+    `- The next purchase was refused against the Sourcing mandate's cap: ${f.refusal}.`,
     `- Northwind sells a stock check at ${fromCents(f.sellCents)}.`,
     ...(f.sourcingMessage ? [`- The Sourcing agent told you: "${f.sourcingMessage.replace(/"/g, "'")}"`] : []),
     ...f.mandates.map((m) => `- ${m.agent} mandate now: cap ${fromCents(m.capCents)} a payment, budget ${fromCents(m.budgetCents)}, spent ${fromCents(m.spentCents)}.`),

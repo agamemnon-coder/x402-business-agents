@@ -70,13 +70,15 @@ try {
         },
         tryPurchase: async () => {
           const r = await serveNext();
-          return { seq: r.seq, refused: r.refusal?.refusal_reason ?? null, charged: r.p.charged === true };
+          const by = r.refusal ? (db.prepare("SELECT json_extract(payload_json, '$.refused_by') AS b FROM audit_log WHERE event = 'upstream.refused' AND subject = ?").get(String(r.refusal.id)) as { b: string | null } | undefined)?.b : null;
+          const onChain = r.refusal ? (db.prepare("SELECT json_extract(payload_json, '$.tx') AS tx FROM audit_log WHERE event = 'upstream.refused_on_chain' ORDER BY seq DESC LIMIT 1").get() as { tx: string | null } | undefined)?.tx ?? null : null;
+          return { seq: r.seq, refused: r.refusal?.refusal_reason ?? null, charged: r.p.charged === true, ...(by === "purser" || by === "metal" ? { refusedBy: by } : {}), onChainTx: onChain };
         },
         notify: (m) => { sourcingMessage = m; },
       });
       // Its message reaches Treasury only when the agent itself decided (it tried the purchase).
       if (met.source !== "claude") sourcingMessage = "";
-      console.log(`SOURCING AGENT   ${met.source === "claude" ? `${met.run.model}: tried stock check #${met.seq}, ${met.refusal ? "refused by Metal" : "bought"}` : "not available; code serves the next query"}`);
+      console.log(`SOURCING AGENT   ${met.source === "claude" ? `${met.run.model}: tried stock check #${met.seq}, ${met.refusal ? "refused against its mandate" : "bought"}` : "not available; code serves the next query"}`);
       if (met.message) console.log(`                 to Treasury: "${met.message}"`);
     }
     const { seq, p, refusal } = served ?? (await serveNext());

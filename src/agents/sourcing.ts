@@ -12,11 +12,26 @@ import { SUPPLIER_ROUTE } from "../servers/supplier.js";
 import { capRefusal } from "../policy/rules.js";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { fromCents, toCents } from "../lib/money.js";
+import { agentsOn } from "../config/agents.js";
+import { recordCapRefusalOnChain } from "../metal/recordRefusal.js";
+
 
 export class SourcingAgent {
   private mandate: LoadedMandate | undefined;
 
   constructor(private readonly db: DB, private readonly supplierBase: string, private readonly supplier: Address) {}
+
+  private async recordOnChain(m: LoadedMandate, seq: number, reason: string): Promise<void> {
+    if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ?").get(m.reference)) return;
+    const cents = Number(/over the sourcing mandate's|is over/.test(reason) ? toCents((/^mandate_cap_exceeded: (?:the supplier asks )?(\d+\.\d{2})/.exec(reason) ?? [])[1] ?? "0.00") : 0);
+    try {
+      if (!cents) throw new Error("the refused amount is not in the reason");
+      const r = await recordCapRefusalOnChain(m, this.supplier, cents, `refusal-${m.reference.slice(2, 14)}-${seq}`);
+      audit(this.db, "sourcing", "upstream.refused_on_chain", String(seq), { seq, mandate: m.reference, amount: fromCents(cents), tx: r.tx, metal_reason: r.reason });
+    } catch (e) {
+      audit(this.db, "sourcing", "upstream.refusal_not_recorded", String(seq), { seq, mandate: m.reference, error: (e as Error).message.slice(0, 240) });
+    }
+  }
 
   /** Called after a replace: the next purchase signs under the new credential. */
   reload(): void {
@@ -69,7 +84,11 @@ export class SourcingAgent {
     if (out.kind === "refused") {
       const id = Number(insert.run(0, out.nonce ?? null, null, "REFUSED", out.reason, now).lastInsertRowid);
       if (held) releaseHold(this.db, ref, out.reason);
-      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason });
+      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason, refused_by: out.status === 0 ? "purser" : "metal" });
+      // Metal QA (1 November): Purser's own check refuses an over-cap purchase before signing, so Metal never sees it.
+      // With the agents on, the first such refusal under a mandate is also put to Metal, which records its refusal on
+      // chain (src/metal/recordRefusal.ts). Best effort: a failure here changes nothing about the refusal itself.
+      if (agentsOn() && out.status === 0 && out.reason.startsWith("mandate_cap_exceeded") && this.mandate) await this.recordOnChain(this.mandate, seq, out.reason);
       // A revoked mandate (a pause, or a replace) is not used again: the next purchase looks up the bound one.
       if (out.reason.startsWith("mandate_revoked")) this.mandate = undefined;
       return { ok: false, purchaseId: id, reason: out.reason, inDoubt: false };

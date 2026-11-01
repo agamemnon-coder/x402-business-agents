@@ -116,4 +116,15 @@ describe("the Sourcing agent meets the price rise", () => {
     const r = await meetPriceRise(db, { oldCents: 2, noticeCents: 4 }, deps(), fake([[{ name: "check_offer", input: {} }]], "I will wait."));
     expect(r.source).toBe("fallback");
   });
+
+  it("says who refused (Metal QA, 1 November): Purser before signing, and Metal on chain when it recorded the same payment", async () => {
+    const db = openDb(":memory:");
+    const d = { ...deps(), tryPurchase: async () => ({ seq: 41, refused: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", charged: false, refusedBy: "purser" as const, onChainTx: `0x${"ab".repeat(32)}` }) };
+    const r = await meetPriceRise(db, { oldCents: 2, noticeCents: 4 }, d, fake([[{ name: "try_purchase", input: {} }], [{ name: "notify_treasury", input: { message: "0.04 is over my 0.03 cap." } }]]));
+    const call = r.run.calls.find((c) => c.tool === "try_purchase")!;
+    expect(call.text).toMatch(/refused before anything was signed/);
+    expect(call.text).toMatch(/Metal's mandate refused the same payment on chain too \(tx 0xabab/);
+    expect(call.blocked).toBe("mandate cap (Purser, before signing)");
+  });
 });
+

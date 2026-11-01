@@ -152,3 +152,12 @@ When a payment would break them, Metal's facilitator checks it against that on-c
 anything is sent: nothing moves and no transaction reverts (the refusal and its reason, e.g. `mandate_cap_exceeded`,
 come back from Metal). `metal-agent mandate pull --record-refusal` can also record such a refusal on chain; the recorded
 run did not. Pages say "refused on chain" for this; it is the chain's mandate that refuses, checked before sending.
+
+**Since 30 October 12:23 UTC this is no longer the whole story (Metal QA, 1 November).** Friday run 1 (07:05 UTC, the
+recording) predates Purser's spend holds, so its refusal came from Metal. Since the holds (`92408ed`), Purser itself
+refuses a payment over the mandate's cap *before anything is signed* (`src/policy/holds.ts`, using the cap of the
+credential last bound); Metal never sees it. Every dry run since says "refused before signing" now, with
+`refused_by: purser` in its audit row. With the agents on (Thursday), the first such refusal under a mandate is also
+put to Metal with `mandate pull --record-refusal`, which records Metal's own refusal on chain in a transaction
+(`src/metal/recordRefusal.ts`, sent only when the amount is over the cap written in the bound credential, so it cannot
+pay). On-chain refusals already recorded in the four-eyes world: see `docs/runs/2026-10-30-four-eyes.md`.
