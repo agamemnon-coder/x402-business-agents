@@ -37,7 +37,7 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
       const stats = (db.prepare(`SELECT
           SUM(outcome = 'PAID') AS paid, SUM(outcome = 'REFUSED' AND refusal_reason NOT LIKE 'supplier_unavailable%') AS refused, SUM(refusal_reason LIKE 'supplier_unavailable%') AS unavailable
         FROM (SELECT outcome, refusal_reason FROM upstream_purchases WHERE supplier = ? ORDER BY id DESC LIMIT 20)`).get(id) as { paid: number | null; refused: number | null; unavailable: number | null });
-      let info: { price?: string; data_age_seconds?: number } | null = null;
+      let info: { price?: string; data_age_seconds?: number } | null;
       try {
         info = await (await fetch(`http://127.0.0.1:${s.port}/v1/info`, { signal: AbortSignal.timeout(5000) })).json() as { price?: string; data_age_seconds?: number };
       } catch { info = null; }
