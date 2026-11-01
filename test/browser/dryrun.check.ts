@@ -355,15 +355,23 @@ if (process.env.DRYRUN_AUTONOMY) {
       check(bought.every((b) => b.rail === "airwallex_card"), "every software purchase went on the card (Packwise takes no x402)");
       for (const b of bought) say(`SOFTWARE ${b.plan} on ${b.rail}: ${b.text}`);
       const raise = latest("policy_change", "status = 'PENDING_APPROVAL' AND created_by = 'sourcing'");
-      if (bought.some((b) => !b.approved)) {
-        check(!!raise, `the decline was met with a raise for the CFO (${raise ?? "none"})`);
-        if (raise) {
-          await sign(cfo, raise, { tag: "auto-card-raise" });
-          await executed(raise);
-          cli("cards.ts", "sync");
-          check(true, `the CFO approved the card raise ${raise}; the card's limit at Airwallex follows`);
-        }
-      } else say("NO DECLINE: the agent's choice fitted its card (or it bought nothing)");
+      if (bought.some((b) => !b.approved)) check(!!raise, `the decline was met with a raise for the CFO (${raise ?? "none"})`);
+      if (raise) {
+        // A raise, after a decline or asked for up front: the CFO approves it; the card at Airwallex follows; the agent hears.
+        const before = headSeq();
+        await sign(cfo, raise, { tag: "auto-card-raise" });
+        await executed(raise);
+        cli("cards.ts", "sync");
+        check(true, `the CFO approved the card raise ${raise}; the card's limit at Airwallex follows`);
+        const ev2 = lastEvent("card.limit_changed");
+        check(ev2 > 0, "the Sourcing agent was told its card changed");
+        const d2 = await until("the Sourcing agent's decision after the raise", () => decisionOn("sourcing", ev2, before), 600_000);
+        say(`SOURCING DECIDED (${d2.source}): ${d2.summary}`);
+        const after = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.software_bought' AND seq > ? ORDER BY seq").all(before).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { plan: string; approved: boolean; text: string });
+        for (const b of after) say(`SOFTWARE ${b.plan}: ${b.text}`);
+        check(after.every((b) => b.approved), "every purchase after the raise was approved by Airwallex");
+      } else if (!bought.length) say("NO PURCHASE AND NO RAISE: the agent decided to wait");
+      else say("NO DECLINE: the agent's choice fitted its card");
     });
     await timed("A4c World: money in (the Treasury agent decides whether to sweep to Airwallex)", async () => {
       const from = headSeq();

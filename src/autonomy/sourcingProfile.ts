@@ -17,7 +17,8 @@ import { buyPolicy, type BuyPolicy } from "../agents/sourcing.js";
 import { mandatesNow } from "../agents/treasury.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
-import { buyPlan } from "../agents/cardBuyer.js";
+import { buyPlan, proposeCardRaise } from "../agents/cardBuyer.js";
+import { maxRaiseCents } from "../agents/declineAgent.js";
 import { cardRows } from "../policy/cards.js";
 import { meetNewDeclines } from "../agents/declineTrigger.js";
 import { setSetting } from "../world/settings.js";
@@ -37,6 +38,8 @@ export interface SourcingWorld {
   card?(): Promise<{ perTxCents: number; monthlyCents: number } | null>;
   /** Charges a software plan to that card at Airwallex; a decline starts the decline agent (block 5.2). */
   buyPlan?(plan: SoftwarePlan): Promise<{ approved: boolean; text: string; ref: string | null }>;
+  /** Proposes a higher per-purchase card limit to the CFO (a Face ID proposal); the agent cannot set it. */
+  askCardRaise?(perPurchase: string, reason: string): Promise<{ proposal_id: string }>;
 }
 
 export const SOFTWARE_PLANS = ["packwise-starter", "packwise-pro"] as const;
@@ -63,6 +66,7 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
     // The company card, where it was issued (npm run cards -- setup) and the sandbox keys are set.
     ...(issuingFromEnv() ? {
       card: async () => { const c = cardRows(db).find((x) => x.agent === "sourcing"); return c ? { perTxCents: c.per_tx_cents, monthlyCents: c.monthly_cents } : null; },
+      askCardRaise: async (perPurchase: string, reason: string) => ({ proposal_id: proposeCardRaise(db, "sourcing", { perTx: perPurchase }, reason).proposal_id }),
       buyPlan: async (plan: SoftwarePlan) => {
         const t = await buyPlan(db, issuingFromEnv()!.sim, plan);
         if (t.approved) return { approved: true, text: "approved by Airwallex", ref: t.transactionId };
@@ -94,7 +98,7 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
     rules: [
       "Code buys a stock check for every customer query, following the buy policy you set: which supplier, the most to pay, how long a cached stock check may be served. You decide the policy; code runs it at code speed.",
       "Your mandate (a cap per purchase, a budget, these suppliers as payees) is enforced by Purser before signing and by Metal on chain. You cannot change it: ask the Treasury agent (send_message) for a higher cap or budget, or for a higher query price; the CFO decides with Face ID.",
-      "Your warehouse software (Packwise) is a monthly plan; when it must change, buy_software pays it on the rail you pick. Your company card's limits are Airwallex's: a decline is final, and a raise is proposed to the CFO for Face ID.",
+      "Your warehouse software (Packwise) is a monthly plan; when it must change, buy_software pays it on the rail you pick. Your company card's limits are Airwallex's: a decline is final. You may ask the CFO for a higher limit (ask_card_raise), before buying or after a decline; the CFO decides with Face ID.",
     ].join("\n"),
     observe: describe,
     tools: (db) => {
@@ -117,8 +121,28 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
           return { text: `${PLANS[p.plan]!.label}, ${fromCents(PLANS[p.plan]!.amountCents)} EUR on your card: ${r.text}` };
         },
       }] : [];
+      let asked = false;
+      const raise: AgentTool<z.ZodType>[] = world.askCardRaise ? [{
+        name: "ask_card_raise",
+        description: "Asks the CFO for a higher per-purchase limit on your company card, for a plan you need. Code bounds it: at least the plan's price, at most 1.25 times it (rounded up to whole euros). The CFO approves or rejects with Face ID; Airwallex enforces the limit either way.",
+        input: z.strictObject({ plan: z.enum(SOFTWARE_PLANS), per_purchase: z.string().regex(/^\d+\.\d{2}$/), reason: z.string().describe("One sentence for the CFO: why this plan, why now") }),
+        run: async (p: { plan: SoftwarePlan; per_purchase: string; reason: string }) => {
+          const price = PLANS[p.plan]!.amountCents, want = toCents(p.per_purchase), most = maxRaiseCents(price);
+          if (want < price) return { text: `Not asked: ${p.per_purchase} would not cover ${fromCents(price)} EUR.`, blocked: "below the price" };
+          if (want > most) return { text: `Not asked: at most ${fromCents(most)} EUR for a ${fromCents(price)} EUR plan (1.25 times, rounded up).`, blocked: "over 1.25x" };
+          const card = world.card ? await world.card() : null;
+          if (card && want <= card.perTxCents) return { text: `Not asked: your card already allows ${fromCents(card.perTxCents)} EUR a purchase.`, blocked: "no raise needed" };
+          if (asked || db.prepare("SELECT 1 FROM proposals WHERE kind = 'policy_change' AND status = 'PENDING_APPROVAL' AND created_by = 'sourcing' AND expires_at > ?").get(new Date().toISOString())) {
+            return { text: "Not asked again: a card raise already waits for the CFO.", blocked: "already asked" };
+          }
+          asked = true;
+          const r = await world.askCardRaise!(p.per_purchase, p.reason.trim().slice(0, 300));
+          return { text: `Asked the CFO for ${p.per_purchase} EUR a purchase: ${r.proposal_id} waits for Face ID. Buy the plan once it is approved.` };
+        },
+      }] : [];
       return [
       ...software,
+      ...raise,
       {
         name: "market", description: "The suppliers now: price, data age, margin at your sell price, and how their last 20 tries went; your mandate and buy policy.",
         input: z.strictObject({}),

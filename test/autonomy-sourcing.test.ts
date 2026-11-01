@@ -100,7 +100,41 @@ describe("the autonomous Sourcing agent buys its software on the rail it picks (
     expect(bought).toEqual(["packwise-pro"]);
   });
 
+  it("asks the CFO for a card raise before buying: at least the plan's price, at most 1.25x, one at a time", async () => {
+    const db = openDb(":memory:");
+    publish(db, "supplier.notice", { supplier: "Packwise", text: "Starter ends; Pro is 45.00 EUR a month." }, "sourcing", "system", T0);
+    const asked: { per: string; reason: string }[] = [];
+    const w: SourcingWorld = { ...withCard(true).w, askCardRaise: async (per, reason) => { asked.push({ per, reason }); return { proposal_id: `P-000${asked.length}` }; } };
+    const ask = (per: string) => ({ name: "ask_card_raise", input: { plan: "packwise-pro", per_purchase: per, reason: "Pro keeps warehouse sync; 45.00 is over my 30.00 limit." } });
+    const r = await wake(db, sourcingProfile(w), { client: fake([[ask("40.00")], [ask("80.00")], [ask("45.00")], [ask("50.00")], [finish]]), now: T0 });
+    expect(r!.run!.calls.map((c) => c.blocked ?? "ok")).toEqual(["below the price", "over 1.25x", "ok", "already asked", "ok"]);
+    expect(asked).toEqual([{ per: "45.00", reason: "Pro keeps warehouse sync; 45.00 is over my 30.00 limit." }]);
+  });
+
   it("has no software tool where the world has no card", () => {
     expect(sourcingProfile(world()).tools(openDb(":memory:")).map((t) => t.name)).not.toContain("buy_software");
+    expect(sourcingProfile(world()).tools(openDb(":memory:")).map((t) => t.name)).not.toContain("ask_card_raise");
+  });
+});
+
+describe("the agent hears when the CFO changed its card (Max, 1 Nov)", () => {
+  it("an executed card-limit change reaches the agent as an event, only with the autonomous agents on", async () => {
+    const { proposePolicyChange, executePolicyChange } = await import("../src/executors/policyChange.js");
+    const { decide } = await import("../src/policy/approvals.js");
+    const run = (on: boolean) => {
+      const prev = { a: process.env.KIT11_AGENTS, b: process.env.KIT11_AUTONOMY };
+      process.env.KIT11_AGENTS = on ? "on" : "off"; process.env.KIT11_AUTONOMY = on ? "on" : "off";
+      try {
+        const db = openDb(":memory:");
+        const p = proposePolicyChange(db, { changes: [{ key: "card.sourcing.per_tx", to: "45.00" }], reason: "Packwise Pro" }, "sourcing", T0);
+        decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "max", method: "cli" }, T0);
+        executePolicyChange(db, p.proposal_id, T0);
+        return pending(db, "sourcing").events;
+      } finally { process.env.KIT11_AGENTS = prev.a; process.env.KIT11_AUTONOMY = prev.b; }
+    };
+    const on = run(true);
+    expect(on).toHaveLength(1);
+    expect(on[0]).toMatchObject({ kind: "card.limit_changed", payload: { per_purchase: "45.00" } });
+    expect(run(false)).toHaveLength(0);
   });
 });

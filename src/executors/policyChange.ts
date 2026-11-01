@@ -8,6 +8,8 @@ import type { DB } from "../db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { policyValue, rules, validateChange } from "../policy/rules.js";
+import { autonomyOn } from "../config/agents.js";
+import { publish, type AgentName } from "../autonomy/bus.js";
 
 export type PolicyChange = {
   key: string;
@@ -73,4 +75,11 @@ export function applyPolicyChanges(db: DB, proposalId: string, terms: PolicyChan
     }
     finishExecution(db, proposalId, "EXECUTED", { changes: String(terms.changes.length) }, now);
   }).immediate();
+  // D19: with the autonomous agents on, an agent hears that the CFO changed its card's limit (it may now buy).
+  if (autonomyOn()) {
+    for (const c of terms.changes) {
+      const m = /^card\.(sourcing|support|treasury)\.per_tx$/.exec(c.key);
+      if (m) publish(db, "card.limit_changed", { agent: m[1], per_purchase: c.to, was: c.from, proposal_id: proposalId }, m[1] as AgentName, "human", now);
+    }
+  }
 }
