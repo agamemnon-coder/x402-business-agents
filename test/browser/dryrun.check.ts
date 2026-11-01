@@ -273,6 +273,84 @@ if (process.env.DRYRUN_ONLY_ENROL) {
   process.exit(failures === 0 ? 0 : 1);
 }
 await timed("S0 Bootstrap", async () => { cli("bootstrap.ts"); });
+if (process.env.DRYRUN_AUTONOMY) {
+  // D19: the world draaiboek. We change the world; the agents (each its own process, started by the runner) decide.
+  // Checked: invariants, not fixed outcomes. Proposals that reach the phone are approved as the CFO would: the option
+  // the Treasury agent recommends, both passkeys where four eyes applies.
+  const world = spawn("npx", ["tsx", "src/cli/world.ts", "serve", "--every", "15"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+  const worldLog = createWriteStream(join(out, "world.log"), { flags: "a" });
+  world.stdout!.on("data", (d: Buffer) => worldLog.write(redactSecrets(d.toString())));
+  world.stderr!.on("data", (d: Buffer) => worldLog.write(redactSecrets(d.toString())));
+  const count = (sql: string, ...a: unknown[]) => (db().prepare(sql).get(...a) as { n: number }).n;
+  const decisionsAfter = (agent: string, seq: number) => db().prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.decision' AND actor = ? AND seq > ? ORDER BY seq").all(agent, seq).map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { source: string; summary: string });
+  const headSeq = () => count("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log");
+  try {
+    await timed("A1 The shop runs: customer queries every 15 s, Sourcing's buy policy applies", async () => {
+      await until("three sales", () => count("SELECT COUNT(*) AS n FROM sales") >= 3, 300_000);
+      check(true, `${count("SELECT COUNT(*) AS n FROM sales")} sales so far`);
+    });
+    await timed("A2 World: Stockline raises its price to 0.04 (the Sourcing agent decides what to do)", async () => {
+      const from = headSeq();
+      cli("world.ts", "price-rise", "0.04");
+      const d = await until("the Sourcing agent's decision", () => decisionsAfter("sourcing", from)[0], 300_000);
+      say(`SOURCING DECIDED (${d.source}): ${d.summary}`);
+      check(d.source === "claude", "the Sourcing agent decided itself (not code's fallback)");
+      // Treasury may be asked; if it designs a rebalance, the CFO approves the option it recommends.
+      const prop = await until("Treasury's options or its decision", () => latest("mandate_replace", "status = 'PENDING_APPROVAL'") ?? (decisionsAfter("treasury", from)[0] ? "none" : undefined), 420_000).catch(() => "none");
+      const t = decisionsAfter("treasury", from)[0];
+      if (t) say(`TREASURY DECIDED (${t.source}): ${t.summary}`);
+      if (prop !== "none") {
+        const plan = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'price_rise.plan' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
+        const rec = plan ? ((JSON.parse(plan.payload_json) as { recommended?: string }).recommended ?? "B") : "B";
+        const id = latest("mandate_replace", `status = 'PENDING_APPROVAL' AND json_extract(terms_json, '$.option') = '${rec === "A" ? "A" : "B"}'`) ?? prop;
+        await sign(cfo, id, { option: rec === "A" ? "A" : "B", tag: "auto-s1-cfo" });
+        await sign(controller, id, { option: rec === "A" ? "A" : "B", tag: "auto-s1-controller" });
+        await executed(id);
+        check(true, `the CFO and the controller approved option ${rec} (${id}), as the Treasury agent recommended`);
+      } else say("NO REBALANCE: the agents handled the price rise without asking the CFO");
+      check(count("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'PAID' AND price_cents > 4") === 0, "no upstream purchase above 0.04");
+    });
+    await timed("A3 World: Summit Outfitters disputes 12 orders (the Support agent decides)", async () => {
+      const from = headSeq();
+      cli("world.ts", "dispute");
+      const d = await until("the Support agent's decision", () => decisionsAfter("support", from)[0], 900_000);
+      say(`SUPPORT DECIDED (${d.source}): ${d.summary}`);
+      check(d.source === "claude", "the Support agent decided itself");
+      const all = latest("refund_batch", "status = 'PENDING_APPROVAL'");
+      if (all) {
+        const v = await sign(cfo, all, { tag: "auto-refund-all", reject: true });
+        check(v === "Rejected", `the CFO rejected "${all}" with the passkey (${v})`);
+      }
+    });
+    await timed("A4 World: the licence invoice arrives (the Treasury agent decides when and how to pay)", async () => {
+      const from = headSeq();
+      cli("world.ts", "invoice");
+      const d = await until("the Treasury agent's decision", () => decisionsAfter("treasury", from)[0], 900_000);
+      say(`TREASURY DECIDED (${d.source}): ${d.summary}`);
+      const inv = latest("invoice_payment", "status = 'PENDING_APPROVAL'");
+      if (inv) {
+        const v = await sign(cfo, inv, { tag: "auto-licence" });
+        check(v === "Approved" || v === "Done", `the CFO approved the licence payment ${inv} (${v})`);
+        await executed(inv);
+      } else say("NO INVOICE PAYMENT PROPOSED: the Treasury agent decided otherwise");
+    });
+    await timed("A5 Invariants: verify, request ids, fallbacks under 10%", async () => {
+      const v = cli("verify.ts");
+      check(/all checks pass|0 failed|passes/i.test(v), "npm run verify passes (nothing paid twice, every approval by passkey)");
+      const stats = agentStats(db());
+      const decisions = stats.reduce((n, x) => n + x.decisions, 0), fallbacks = stats.reduce((n, x) => n + x.fallback, 0);
+      check(decisions > 0 && fallbacks / decisions < 0.1, `fallbacks ${fallbacks} of ${decisions} decisions (under 10%)`);
+      check(stats.every((x) => x.calls_without_request_id === 0), "every Claude call has an API request id");
+      for (const x of stats) say(`AGENT SUMMARY ${x.agent}: ${x.decisions} decisions, fallback ${x.fallback_pct}%, ${x.claude_calls} calls, ${(x.cost_usd_micros / 1e6).toFixed(4)} USD`);
+    });
+  } finally {
+    try { process.kill(-world.pid!, "SIGTERM"); } catch { /* gone */ }
+  }
+  await killRunner("SIGTERM");
+  await browser.close();
+  say(failures === 0 ? "autonomy run passes" : `${failures} check(s) failed in the autonomy run`);
+  process.exit(failures === 0 ? 0 : 1);
+}
 if (process.env.DRYRUN_ONLY_OWNERS) {
   // Block 1 on its own: enrol, bootstrap, then step 12d (a quick check before the whole draaiboek).
   await timed(OWNERS_STEP, ownersStep);
