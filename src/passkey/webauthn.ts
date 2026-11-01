@@ -2,6 +2,7 @@
 // signs a challenge that is the 32 raw bytes of the proposal's terms hash, so a signature is valid for those exact
 // terms only. Origin and rpId are the relay's host, as pinned when the passkey was enrolled.
 
+import { approvalHashOf } from "../metal/ownersExecute.js";
 import { createHash } from "node:crypto";
 import {
   verifyAuthenticationResponse, verifyRegistrationResponse,
@@ -105,7 +106,14 @@ export async function reverifyPasskeyApprovals(db: DB): Promise<Check[]> {
       if (Date.parse(pk.enrolled_at) > Date.parse(s.verified_at)) return "signed before the passkey was enrolled";
       const response = JSON.parse(s.assertion_json) as AuthenticationResponseJSON;
       if (assertionSha256(response) !== s.assertion_sha256) return "the stored signature was changed";
-      const v = await verifyApprovalSignature(response, a.decision === "APPROVED" ? a.approved_sha256 : rejectionSha256(a.approved_sha256), pk, 0);
+      const prop = db.prepare("SELECT kind, terms_json, terms_sha256 FROM proposals WHERE proposal_id = ?").get(a.proposal_id) as { kind: string; terms_json: string; terms_sha256: string } | undefined;
+      let signed: string;
+      try {
+        signed = a.decision === "APPROVED" ? (prop ? approvalHashOf(prop) : a.approved_sha256) : rejectionSha256(a.approved_sha256);
+      } catch (e) {
+        return (e as Error).message;
+      }
+      const v = await verifyApprovalSignature(response, signed, pk, 0);
       return v.ok ? { label: pk.label, id: pk.credential_id } : v.reason;
     };
     const signers: { label: string; id: string }[] = [];

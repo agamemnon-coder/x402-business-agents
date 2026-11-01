@@ -11,6 +11,8 @@ import { policyValue } from "./rules.js";
 export const FOUR_EYES_KEY = "approval.four_eyes_eur";
 
 export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">): boolean {
+  // Block 1: the account's owners are two passkeys with a threshold of two; Purser asks for both as the chain will.
+  if (p.kind === "owners_execute") return true;
   const v = policyValue(db, FOUR_EYES_KEY);
   if (v === "") return false;
   const threshold = toCents(v);

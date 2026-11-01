@@ -1,6 +1,7 @@
 // Proposal -> approval -> execution (build plan 2.3). A person approves the hash of the exact terms;
 // the executor runs only if the stored terms still hash to what was approved, once.
 
+import { approvalHashOf } from "../metal/ownersExecute.js";
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -137,7 +138,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     if (args.method === "passkey") {
       // An approval signs the terms hash; a rejection signs the hash derived from it, so neither passes as the other.
       if (args.decision === "REJECTED" && args.signedSha256 === p.terms_sha256) throw new Error("a passkey rejection signs the rejection hash, not the terms hash");
-      const expected = args.decision === "APPROVED" ? p.terms_sha256 : rejectionSha256(p.terms_sha256);
+      const expected = args.decision === "APPROVED" ? approvalHashOf(p) : rejectionSha256(p.terms_sha256);
       if (args.signedSha256 !== expected) throw new Error(`the passkey signed other terms than ${p.proposal_id}'s`);
     }
     if (expireIfDue(db, p, now)) {

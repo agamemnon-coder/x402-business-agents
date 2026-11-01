@@ -180,7 +180,13 @@ async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag:
   }
   // A verdict the runner has given: approved (and executing), done, 1 of 2, rejected, refused or too late.
   const FINAL = ["Approved", "Done", "1 of 2 approvals", "Rejected", "Refused", "Too late", "Already decided", "Approved, but execution stopped"];
-  await page.waitForFunction((f: string[]) => f.includes(document.querySelector(".verdict-head")?.textContent ?? ""), FINAL, { timeout: 180_000 });
+  try {
+    await page.waitForFunction((f: string[]) => f.includes(document.querySelector(".verdict-head")?.textContent ?? ""), FINAL, { timeout: 180_000 });
+  } catch (e) {
+    await shot(page, `${o.tag}-no-verdict`);
+    say(`  the phone shows: ${((await page.textContent("body")) ?? "").replace(/\s+/g, " ").slice(-400)}`);
+    throw e;
+  }
   await shot(page, `${o.tag}-verdict`);
   return (await page.textContent(".verdict-head")) ?? "";
 }
@@ -215,6 +221,28 @@ async function linksStep(): Promise<void> {
   await ctx.close();
 }
 
+// Block 1, behind KIT11_PASSKEY_OWNERS=on: an account whose only owners are the two passkeys; a mandate bound with both
+// Face IDs signing the account's Execute digest on the phone. The runner only relays: no server key is an owner.
+const OWNERS_STEP = "12d Face ID signs on chain: a mandate bound by both passkeys, no server key";
+async function ownersStep(): Promise<void> {
+  const setup = cli("ownersExecute.ts", "setup");
+  check(/threshold 2; no server key is an owner/.test(setup), "the passkey account exists: owners the CFO's and the controller's passkeys, threshold 2");
+  cli("ownersExecute.ts", "propose");
+  const id = latest("owners_execute", "status = 'PENDING_APPROVAL'") ?? "";
+  check(!!id, `owners_execute proposal ${id}`);
+  const first = await sign(cfo, id, { tag: "owners-cfo" });
+  check(first === "1 of 2 approvals", `after the CFO's passkey: "${first}"`);
+  const second = await sign(controller, id, { tag: "owners-controller" });
+  check(second === "Done" || second === "Approved", `after the controller's passkey: "${second}"`);
+  await executed(id);
+  const row = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'owners.executed' AND subject = ?").get(id) as { payload_json: string } | undefined;
+  const tx = row ? (JSON.parse(row.payload_json) as { tx: string }).tx : "";
+  check(/^0x[0-9a-f]{64}$/.test(tx), `the account ran it on chain (tx ${tx.slice(0, 12)}…)`);
+  const st = cli("ownersExecute.ts", "status");
+  check(/bound yes; revoked no/.test(st), "the chain has the mandate bound on the passkey account");
+  say(`OWNERS ${st.split("\n").find((l) => l.startsWith("MANDATE")) ?? st.slice(0, 200)}`);
+}
+
 const started = Date.now();
 const cfo = await phone("test-cfo");
 const controller = await phone("test-controller");
@@ -244,6 +272,14 @@ if (process.env.DRYRUN_ONLY_ENROL) {
   process.exit(failures === 0 ? 0 : 1);
 }
 await timed("S0 Bootstrap", async () => { cli("bootstrap.ts"); });
+if (process.env.DRYRUN_ONLY_OWNERS) {
+  // Block 1 on its own: enrol, bootstrap, then step 12d (a quick check before the whole draaiboek).
+  await timed(OWNERS_STEP, ownersStep);
+  await killRunner("SIGTERM");
+  await browser.close();
+  say(failures === 0 ? "owners passes" : "owners failed");
+  process.exit(failures === 0 ? 0 : 1);
+}
 await timed("1 Sales per query (0.05, upstream 0.02): stock checks 1-40", async () => { cli("trade.ts", "1", "40"); });
 let optA = "", optB = "";
 await timed("2-4 Price rise, refusal on chain, two options with Opus's advice", async () => {
@@ -458,6 +494,7 @@ if (process.env.KIT11_AGENTS === "on") await timed("12c Rebalance right after th
   check(budgetOf(after) === budgetOf(before) + 500_000_000_000_000_000n, `the new Support mandate on chain: ${budgetOf(after)} = ${budgetOf(before)} + 0.50 (the spend before the pause still counted)`);
   check((await mandateSpent(after)) === spentBefore, "the spend since the resume carried over in the replace");
 });
+if (process.env.KIT11_PASSKEY_OWNERS === "on") await timed(OWNERS_STEP, ownersStep);
 await timed("13 Bank change for Bergtex in three steps (test identities)", async () => {
   const req = cli("payee.ts", "request", "Bergtex Textil GmbH", "DE02100100100006820101", "PBNKDEFFXXX");
   const id = /(B-\d{4})/.exec(req)?.[1] ?? "";

@@ -2,6 +2,7 @@
 // a body is hostile input until parsed, every signature is verified against the pinned public key, and only then
 // does decide() run, in one transaction with the counter update and the stored signature.
 
+import { approvalHashOf, OWNERS_EXECUTE, ownerSignerOf, type OwnersExecuteTerms } from "../metal/ownersExecute.js";
 import { loosens } from "../policy/rules.js";
 import { z } from "zod";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
@@ -116,7 +117,20 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   const pk = passkeyById(db, response.id);
   if (!pk) return refuse(p.proposal_id, "this passkey is not enrolled");
   if (pk.status !== "ACTIVE") return refuse(p.proposal_id, "this passkey was revoked");
-  const v = await verifyApprovalSignature(response, p.terms_sha256, pk);
+  // Block 1: an owners_execute approval signs the account's Execute digest (checked against the terms), and only an
+  // owner of that account counts; every other proposal signs its terms hash.
+  let signedHash: string;
+  try {
+    signedHash = approvalHashOf(p);
+  } catch (e) {
+    return refuseAudited(p.proposal_id, (e as Error).message.slice(0, 240));
+  }
+  if (p.kind === OWNERS_EXECUTE) {
+    let owner: string | null;
+    try { owner = ownerSignerOf(JSON.parse(p.terms_json) as OwnersExecuteTerms, pk.public_key); } catch { owner = null; }
+    if (!owner) return refuse(p.proposal_id, "this passkey is not an owner of the account, so it cannot sign this on chain");
+  }
+  const v = await verifyApprovalSignature(response, signedHash, pk);
   if (!v.ok) return refuse(p.proposal_id, v.reason);
 
   const approver = `${pk.label} (passkey ${pk.credential_id.slice(0, 8)})`;
@@ -132,7 +146,7 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
           { terms_sha256: p.terms_sha256, approver, method: "passkey", expires_at: p.expires_at, passkey: { credential_id: pk.credential_id, assertion_sha256: sha } }, now);
         result = "EXPIRED";
       } else {
-        const r = decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver, method: "passkey", signedSha256: p.terms_sha256, passkey }, now);
+        const r = decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver, method: "passkey", signedSha256: signedHash, passkey }, now);
         result = r === "APPROVED" ? "APPROVED" : r === "PENDING_APPROVAL" ? "COSIGNED" : "EXPIRED";
       }
       db.prepare(

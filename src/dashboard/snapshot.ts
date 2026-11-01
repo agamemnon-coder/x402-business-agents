@@ -278,6 +278,7 @@ export const refusalWords = (reason: string): string => {
 };
 
 const KIND_TITLES: Record<string, string> = {
+  owners_execute: "Mandate change signed on chain by both passkeys",
   mandate_replace: "Mandate change",
   refund_batch: "Refund batch",
   invoice_payment: "Invoice payment",
@@ -627,6 +628,9 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
         model: null, ...(str(p.rail) === "metal_x402" && /^0x[0-9a-f]{64}$/i.test(ref) ? { tx: ref } : {}), ...(str(p.rail) === "airwallex_card" && ref ? { awx_id: ref } : {}),
       });
     }
+    // Block 1: the account's owners are passkeys; the runner only relays.
+    case "owners.account_created": return out(`Business account ${short(str(p.account))} created with two owners, ${(Array.isArray(p.owners) ? (p.owners as unknown[]).map(str) : []).join("'s and ")}'s passkeys (threshold 2): no server key can change its mandates`, "ok");
+    case "owners.executed": return out(`Both passkeys signed ${s} on chain and the account ran it: ${str((p.action as P | undefined)?.what)} the ${str((p.action as P | undefined)?.agent)} mandate (up to ${str((p.action as P | undefined)?.cap)} a payment, ${str((p.action as P | undefined)?.budget)} in total); the runner only relayed it`, "ok", { tx: /^0x[0-9a-f]{64}$/i.test(str(p.tx)) ? str(p.tx) : null });
     case "purchase.rail_refused": return out(`Code refused the Sourcing agent's payment to ${capFirst(s)}: ${str(p.why)}; nothing was charged`, "refusal");
     case "purchase.rails_chosen": {
       const ps = Array.isArray(p.purchases) ? (p.purchases as P[]) : [];

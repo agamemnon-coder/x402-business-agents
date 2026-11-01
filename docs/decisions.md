@@ -228,6 +228,19 @@ it alone, and both passkeys revoked it. Metal's SDK documents passkey signatures
 (`@metalntwx/metal-pay` README). **Honest limit:** these passkeys are software stand-ins in the WebAuthn format a phone
 produces; the next step has the phone's own passkey sign the Execute digest (virtual authenticator in the dry run).
 
+**With the phone's own passkey (1 November, behind `KIT11_PASSKEY_OWNERS=on`).** New proposal kind `owners_execute`
+(`src/metal/ownersExecute.ts`): the terms carry the exact account calls, nonce, deadline and the account's Execute
+digest; the phone shows them (hash and runner signature checked as for every proposal) and **the passkey signs the
+digest as its WebAuthn challenge**. The runner checks the digest follows from the terms and that the passkey is one of
+the account's owners, verifies both assertions, builds the quorum and relays `executeSigned` from a gas-only sponsor
+(`npm run owners -- setup | propose | status`). The relay (Worker core) accepts the digest as the challenge for this
+kind only. Dry-run step 12d (`DRYRUN_ONLY_OWNERS=1` for the step alone): in test world dry-93, two Chrome virtual
+authenticators (the same WebAuthn a phone uses) enrolled as CFO and controller, the account created with them as its
+only owners, a Sourcing mandate proposed, "1 of 2 approvals", then "Approved", the account ran it on chain, and the
+Metal CLI reports the mandate bound. Tests: `test/owners-execute.test.ts` (10). **Still open:** the deployed Worker must
+be redeployed with this change before Thursday; a real phone (Max) is the last proof; the phone shows the runner's
+words for what the calls do (decoding the call on the phone is the next step).
+
 ### D17. The rail choice uses the agent's own card for Packwise (1 November)
 
 Block 5.1 (estimate 6 h, risk medium) was planned with a single-use Airwallex task card for the card-only supplier.

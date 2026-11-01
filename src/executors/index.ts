@@ -51,6 +51,13 @@ export async function execute(db: DB, proposalId: string): Promise<void> {
     await executeTaskCard(db, issuing.rail, proposalId);
     return;
   }
+  if (row.kind === "owners_execute") {
+    // Block 1: both owners' passkeys signed the account's Execute digest; the sponsor relays it and pays gas.
+    const { executeOwnersExecute } = await import("./ownersExecute.js");
+    const { liveRelay } = await import("../metal/passkeyRelay.js");
+    await executeOwnersExecute(db, proposalId, liveRelay());
+    return;
+  }
   if (row.kind === "agent_onboard") {
     const issuing = issuingFromEnv();
     if (!issuing) throw new Error("Airwallex sandbox keys are not set; the card cannot be issued");

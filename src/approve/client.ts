@@ -330,6 +330,25 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  // Block 1: the approval is the on-chain signature. The passkey signs the account's Execute digest, and the Metal
+  // account checks both Face IDs itself; no server key is an owner.
+  if (kind === "owners_execute") {
+    const a = isObj(t.action) ? t.action : {};
+    const digest = str(t.onchain_digest);
+    const okDigest = /^0x[0-9a-f]{64}$/.test(digest);
+    const payee = str(a.payee);
+    return {
+      approvable: okDigest,
+      title: `${str(a.what) === "revoke" ? "Revoke" : "Bind"} the ${str(a.agent)} mandate, signed on chain`,
+      sentence: `Your Face ID signs this on chain: the business account ${shortAddr(str(t.account))} is owned by two passkeys, the CFO's and the controller's, and runs this only with both. Up to ${str(a.cap)} per payment, ${str(a.budget)} in total, to ${str(a.payee_name)} only.`,
+      amount: `${str(a.budget)} USDZ in total`, margin: null, recipient: `${str(a.payee_name)} ${shortAddr(payee)}`,
+      rows: [["Account", str(t.account)], ["Mandate", str(a.mandate)], ["Per payment", `${str(a.cap)} USDZ`], ["Budget", `${str(a.budget)} USDZ`], ["May pay", whoFull(payee)],
+        ["Signed on chain", "the account's Execute digest (what your passkey signs)"], ["Digest", digest], ["Valid until", utcMinute(new Date(Number(str(t.valid_until)) * 1000).toISOString())]],
+      short: "the on-chain mandate change", warnings: okDigest ? [] : ["The terms carry no valid on-chain digest; this cannot be signed"],
+      label: "On chain", big: str(a.budget), unit: "USDZ budget",
+    };
+  }
+
   if (kind === "dev_test") {
     return {
       approvable: true, title: str(t.label), sentence: `${str(t.purpose)}. Approving it records the approval and moves no money.`,
@@ -736,7 +755,9 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     try {
       cred = (await navigator.credentials.get({
         publicKey: {
-          challenge: hexToBytes(rejecting ? await rejectionHash(o.terms_sha256) : o.terms_sha256),
+          // Block 1: an owners_execute approval signs the account's Execute digest from the hashed terms (the runner
+          // checks it follows from their calls); a rejection always signs the rejection hash.
+          challenge: hexToBytes(rejecting ? await rejectionHash(o.terms_sha256) : o.kind === "owners_execute" ? str(terms.onchain_digest).slice(2) : o.terms_sha256),
           rpId: location.hostname,
           allowCredentials: x.credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })),
           userVerification: "required",

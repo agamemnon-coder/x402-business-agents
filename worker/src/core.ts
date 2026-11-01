@@ -205,6 +205,17 @@ function signedFor(clientDataJSON: unknown, termsSha256: string, origin: string)
   }
 }
 
+/** What an approval signs: the terms hash, or for an owners_execute the on-chain digest in its terms (null if none). */
+function approvalChallenge(p: { kind?: string; canonical?: string; terms_sha256: string }): string | null {
+  if (p.kind !== "owners_execute") return p.terms_sha256;
+  try {
+    const d = (JSON.parse(p.canonical ?? "") as Record<string, unknown>).onchain_digest;
+    return typeof d === "string" && /^0x[0-9a-f]{64}$/.test(d) ? d.slice(2) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The rate-limit key: an IPv4 address as is, an IPv6 address by its /64 (one subscriber gets a whole /64). */
 export function rateKey(ip: string): string {
   if (!ip.includes(":")) return ip;
@@ -219,7 +230,7 @@ interface StoredState {
   generated_at: string;
   snapshot: Record<string, unknown>;
   approvals: {
-    proposals: { proposal_id: string; terms_sha256: string; expires_at: string }[];
+    proposals: { proposal_id: string; terms_sha256: string; expires_at: string; kind?: string; canonical?: string }[];
     names: Record<string, string>;
     passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string }[] };
   };
@@ -450,7 +461,9 @@ export class Relay {
     const credentialId = v.credential.id;
     if (!s.approvals.passkey.credentials.some((c) => c.id === credentialId)) return error(403, "this passkey is not the enrolled one");
     // To reject, the passkey signs the hash derived from the terms hash (src/lib/terms.ts rejectionSha256).
-    const challenge = rejecting ? await sha256Hex(`kit11 reject v1 ${p.terms_sha256}`) : p.terms_sha256;
+    // Block 1: an owners_execute approval signs the account's Execute digest carried in the hashed terms.
+    const challenge = rejecting ? await sha256Hex(`kit11 reject v1 ${p.terms_sha256}`) : approvalChallenge(p);
+    if (challenge === null) return error(400, "these terms carry no valid on-chain digest");
     if (!signedFor((v.credential.response as Record<string, unknown>).clientDataJSON, challenge, new URL(req.url).origin)) {
       return error(400, `this signature is not ${rejecting ? "a rejection of" : "for"} these terms on this site`);
     }

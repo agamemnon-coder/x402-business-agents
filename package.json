@@ -63,6 +63,7 @@
     "submission": "tsx src/cli/submission.ts",
     "four-eyes": "tsx src/cli/fourEyes.ts",
     "passkey-owners": "tsx src/cli/passkeyOwners.ts",
+    "owners": "tsx src/cli/ownersExecute.ts",
     "contracts": "tsx src/compliance/compile.ts",
     "iso20022": "tsx src/cli/iso20022.ts",
     "clearing-load": "tsx src/cli/clearingLoad.ts",
