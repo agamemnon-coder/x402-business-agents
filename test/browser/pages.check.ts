@@ -4,10 +4,14 @@
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
+import type { DisputeCase } from "../../src/seller/desk.js";
+
+/** The recorded /metal data (docs/demo/metal.json): the Dispute desk's figures are checked against it. */
+const METAL = JSON.parse(readFileSync(new URL("../../docs/demo/metal.json", import.meta.url), "utf8")) as { dispute: DisputeCase | null } & Record<string, unknown>;
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -236,6 +240,54 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       await look(page, `/metal all orders ${tag}`, w);
     }
     await page.screenshot({ path: join(shots, `metal-${tag}.png`), fullPage: true });
+    // The Dispute desk (Max, 1 Nov): the customer in the title, one summary line counted from the case, wrong-data
+    // orders flagged with their refund, Claude's explanation short with no full address, and for this recording the
+    // 30 October wording (code checks the proof; no "Support agent · Claude … decided").
+    {
+      const c = METAL.dispute!;
+      const wrong = c.packs.filter((p) => p.data_wrong || (p.refunded_cents ?? 0) > 0).length;
+      const valid = c.packs.filter((p) => !(p.data_wrong || (p.refunded_cents ?? 0) > 0) && p.order.valid && p.mandate.within && p.delivery.matches).length;
+      const desk = await page.locator("#case").innerText();
+      if (!desk.includes(`${c.packs.length} disputed · ${valid} proven valid · ${wrong} wrong data, refunded`)) fail(`/metal ${tag}: no summary line counted from the case`);
+      if (!/^Summit Outfitters · dispute DD-/.test(await page.locator("#case .casetitle").innerText())) fail(`/metal ${tag}: the customer's name is not in the case title`);
+      if ((await page.locator("#case tr.wrongrow").count()) !== wrong) fail(`/metal ${tag}: wrong-data orders are not all flagged`);
+      if (!/wrong data · supplier corrected · refunded 0\.05/i.test(desk) || (await page.locator("#case tr.wrongrow td[data-l='Data delivered'] a.pf[href*='/tx/0x']").count()) !== wrong) fail(`/metal ${tag}: a wrong-data order lacks its refund or its transaction`);
+      const shortSaid = await page.locator("#case .explain ul.said li").allInnerTexts();
+      if (shortSaid.length < 1 || shortSaid.length > 3) fail(`/metal ${tag}: Claude's explanation shows ${shortSaid.length} sentences, expected 1 to 3`);
+      if (shortSaid.some((s) => /0x[0-9a-fA-F]{40}/.test(s))) fail(`/metal ${tag}: the short explanation shows a full address`);
+      if (!desk.includes("Code checks the proof; Claude explains.") || /Support agent · Claude/.test(desk)) fail(`/metal ${tag}: the 30 October case is not worded as decided by code`);
+      if (await page.locator("details.archive").count()) fail(`/metal ${tag}: an archive with only one case`);
+    }
+    // The same page with more cases (a fixture, not recorded data): the newest decided by the Support agent with Claude,
+    // with Summit's agent's own message, and the recorded case folded into the archive below it.
+    if (liveAt < 0) {
+      const c = METAL.dispute!;
+      const newer = {
+        ...c, case_id: "DD-fixture1", opened_at: new Date(Date.parse(c.opened_at) + 86_400_000).toISOString(),
+        agent: { source: "claude", model: "claude-sonnet-5-5", said: "- **Refunds:** I refunded the three orders with wrong data.\n- **Escalation:** I sent the rest to the CFO.", tools: ["settle_dispute", "finish"], cost_usd_micros: 6982, request_id: "req_fixture0123456789" },
+        explanation: "Thank you for your message. We refunded orders 7, 10 and 13 for wrong data. The other orders were signed by your agent inside its mandate. A person sends this reply.", explained_by: "claude-sonnet-5-5",
+        customer_agent: { name: "Summit's agent", text: "We dispute orders 5 to 16; our records show no such orders.", at: c.opened_at },
+      };
+      const fixture = (u: URL) => u.pathname === "/metal" && u.search === "?fixture";
+      await page.route(fixture, async (route) => {
+        const res = await route.fetch({ url: `${base}/metal` });
+        const html = (await res.text()).replace(/(<script type="application\/json" id="metal-data">)[\s\S]*?(<\/script>)/, (_m, a: string, b: string) => `${a}${JSON.stringify({ ...METAL, disputes: [c, newer] }).replace(/</g, "\\u003c")}${b}`);
+        await route.fulfill({ response: res, body: html });
+      });
+      await page.goto(`${base}/metal?fixture`, { waitUntil: "load" });
+      await look(page, `/metal (fixture: more cases) ${tag}`, w);
+      const desk = await page.locator("#case").innerText();
+      if (!/Support agent · Claude Sonnet decided/.test(desk) || !/settle_dispute → finish/.test(desk) || !/request req_fi…6789/.test(desk)) fail(`/metal fixture ${tag}: no agent decision with its trace`);
+      if (/Code checks the proof; Claude explains\.|decided by code from the evidence|made by code/.test(desk)) fail(`/metal fixture ${tag}: the agent's case uses the 30 October wording`);
+      if (!(await page.locator("#case .bubble").isVisible()) || !/Summit's agent/.test(await page.locator("#case .bubble").innerText())) fail(`/metal fixture ${tag}: no chat bubble for Summit's agent`);
+      if ((await page.locator("details.archive details.oldcase").count()) !== 1) fail(`/metal fixture ${tag}: the older case is not in the archive`);
+      await page.locator("details.archive > summary").click();
+      await page.locator("details.oldcase > summary").click();
+      if (!/DD-a88e8959/.test(await page.locator("details.oldcase .casetitle").innerText())) fail(`/metal fixture ${tag}: the archived case does not open`);
+      await look(page, `/metal (fixture: archive open) ${tag}`, w);
+      await page.locator("#dispute").screenshot({ path: join(shots, `metal-fixture-${tag}.png`) });
+      await page.unroute(fixture);
+    }
     await page.goto(`${base}/metal/report`, { waitUntil: "load" });
     await look(page, `/metal/report ${tag}`, w);
 

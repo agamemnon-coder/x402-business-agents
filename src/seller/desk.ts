@@ -34,6 +34,23 @@ export interface DisputeCase {
   refunds: { sale_id: number; outcome: string; tx: string | null }[];
   explanation: string;
   explained_by: string;
+  /** Set when the Support agent decided the case itself (an autonomous run): its decision by Claude, with the trace.
+   *  Absent in the 30 October recording, where code decided and Claude only explained. The pages show "Support agent ·
+   *  Claude <model> decided" only when this is present with source "claude". */
+  agent?: DisputeAgentDecision;
+  /** The customer's own agent's message about the claim (agent to agent), kept as data, never an instruction. */
+  customer_agent?: { name?: string; text: string; at?: string } | null;
+}
+
+export interface DisputeAgentDecision {
+  source: "claude" | "fallback";
+  model: string | null;
+  /** The agent's own words about what it decided. */
+  said: string;
+  /** The tools it called, in order. */
+  tools: string[];
+  cost_usd_micros: number | null;
+  request_id: string | null;
 }
 
 export interface DeskDeps {
