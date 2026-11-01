@@ -572,8 +572,17 @@ async function passkeySignIn(): Promise<boolean> {
   return !!res && res.status === 200;
 }
 
+/** D20: the relay's word (in /api/approvals) that this device has no passkey session yet; null when it said nothing. */
+let sessionMissing: boolean | null = null;
+const SESSION_PATHS = new Set(["/api/policy", "/api/policy-text", "/api/ask"]);
+
 async function api(path: string, body?: unknown, retried = false): Promise<{ status: number; data: Obj }> {
   const view = { "x-kit11-view": viewKey };
+  // D20: sign in first when the relay said this device has no session, so the CFO's action is not refused first.
+  if (body !== undefined && !retried && sessionMissing === true && SESSION_PATHS.has(path)) {
+    if (await passkeySignIn()) sessionMissing = false;
+    else retried = true; // cancelled or refused: one Face ID prompt per action, not a second one on the 401
+  }
   const res = await fetch(path, body === undefined
     ? { cache: "no-store", headers: { accept: "application/json", ...view } }
     : { method: "POST", cache: "no-store", headers: { "content-type": "application/json", accept: "application/json", ...view }, body: JSON.stringify(body) });
@@ -583,7 +592,8 @@ async function api(path: string, body?: unknown, retried = false): Promise<{ sta
   } catch {
     data = {};
   }
-  // D20: a session is needed first: sign in with the passkey once, then send the same request again.
+  if (path === "/api/approvals" && isObj(data) && typeof data.session_active === "boolean") sessionMissing = !data.session_active;
+  // D20: a session is needed first (it lapsed meanwhile): sign in with the passkey once, then send the same request again.
   if (body !== undefined && !retried && res.status === 401 && isObj(data) && typeof data.error === "string" && SESSION_NEEDED.test(data.error)) {
     if (await passkeySignIn()) return api(path, body, true);
   }

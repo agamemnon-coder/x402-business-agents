@@ -321,3 +321,12 @@ Behind `MFA_SESSIONS=on` on the Worker (and `KIT11_MFA=on` on the runner); off, 
 Estimate 5 hours (Worker verifier 1.5, sessions and gates 1, runner sync and link 1, phone sign-in 0.5, red-team tests
 and a fresh security review 1). Risk: medium (security code, public endpoint) — behind its flag until the review is
 green and Max agrees; the Worker needs a redeploy (Max's go) to take effect on the hosted site.
+
+**Built (1 November), all four steps behind the flags.** Two things the end-to-end browser check found, both fixed:
+signing in is two posts, and they counted against the same ten posts an address gets in ten minutes as approvals,
+so after the policy editor and policy-in-words the reject was refused with a 429. Sign-ins now count in their own
+bucket of the same size (the approvals' limit is unchanged, and sign-ins are limited too; test). And the page first
+posted, got a 401 and then signed in; `GET /api/approvals` now says `session_active` under MFA, so the page signs in
+before the CFO's action (the 401-retry stays for a session that lapses meanwhile, with one Face ID prompt per action).
+The phone check (`test/browser/approve.check.ts`) passes with `KIT11_MFA=on` and without it; it needs the rehearsal
+ledger from the other repo, so it runs locally, not in CI. The Worker's tests (red team included) run in CI.

@@ -118,6 +118,28 @@ describe("MFA on the relay (D20)", () => {
     expect((await r.fetch(req("/api/session/options", { method: "POST", view, body: {}, origin: "https://evil.example" }))).status).toBe(403);
   });
 
+  it("the approvals say whether this device has a session, so the page signs in before it posts (no 401 first)", async () => {
+    const { r } = relay(); const pk = softPasskey(); await push(r, state(pk));
+    const view = await viewKeyForWeek(TOKEN, t0);
+    const read = async (cookie?: string) => ((await (await r.fetch(req("/api/approvals", { view, cookie }))).json()) as { session_active?: boolean }).session_active;
+    expect(await read()).toBe(false);
+    const { cookie } = await signIn(r, pk, view);
+    expect(await read(cookie)).toBe(true);
+    const off = relay(false); await push(off.r, state(pk));
+    const plain = (await (await off.r.fetch(req("/api/approvals", { view: viewKey(TOKEN) }))).json()) as Record<string, unknown>;
+    expect("session_active" in plain).toBe(false);
+  });
+
+  it("signing in has its own rate limit: it does not use up the approvals' budget, and is itself limited", async () => {
+    const { r } = relay(); const pk = softPasskey(); await push(r, state(pk));
+    const view = await viewKeyForWeek(TOKEN, t0);
+    // Five sign-ins are ten posts; an approval after them is still heard (it may fail on its body, not on the limit).
+    for (let i = 0; i < 5; i++) expect((await signIn(r, pk, view)).res.status).toBe(200);
+    expect((await r.fetch(req("/api/assertions", { method: "POST", view, body: {} }))).status).not.toBe(429);
+    // The sign-in endpoints themselves stop at the same ten posts an address gets in ten minutes.
+    expect((await r.fetch(req("/api/session/options", { method: "POST", view, body: {} }))).status).toBe(429);
+  });
+
   it("with MFA off nothing changes: the fixed viewer key reads and posts as before", async () => {
     const { r } = relay(false); const pk = softPasskey(); await push(r, state(pk));
     expect((await r.fetch(req("/api/snapshot", { view: viewKey(TOKEN) }))).status).toBe(200);

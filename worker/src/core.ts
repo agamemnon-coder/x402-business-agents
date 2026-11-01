@@ -355,9 +355,9 @@ export class Relay {
     return { synced_at: synced, generated_at: state.generated_at, age_ms: Math.max(0, this.now().getTime() - Date.parse(synced)) };
   }
 
-  /** Counts this request against its address; true while under the limit. */
-  private underRateLimit(req: Request): boolean {
-    const ip = rateKey(req.headers.get("cf-connecting-ip") ?? "unknown");
+  /** Counts this request against its address (in its own bucket: D20 sign-ins have theirs); true while under the limit. */
+  private underRateLimit(req: Request, bucket = ""): boolean {
+    const ip = bucket + rateKey(req.headers.get("cf-connecting-ip") ?? "unknown");
     const now = this.now().getTime();
     this.sql.exec("DELETE FROM hits WHERE at <= ?", now - RATE_WINDOW_MS);
     const [{ n }] = this.sql.exec("SELECT COUNT(*) AS n FROM hits WHERE ip = ?", ip).toArray() as [{ n: number }];
@@ -412,13 +412,14 @@ export class Relay {
       return error(401, "this relay needs its viewer link: open the link from the runner once on this device");
     }
     if (route("GET", "/api/snapshot")) return this.snapshot();
-    if (route("GET", "/api/approvals")) return this.approvals();
+    if (route("GET", "/api/approvals")) return this.approvals(req);
     if (route("GET", /^\/api\/tickets\/[^/]+$/)) return this.ticket(path.slice("/api/tickets/".length));
     // Everything the phone posts must come from the relay's own pages.
     const sessionPath = this.opts.mfa && (path === "/api/session/options" || path === "/api/session");
     if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path === "/api/ask" || path.startsWith("/api/enrol") || sessionPath)) {
       if (req.headers.get("origin") !== url.origin) return error(403, "requests must come from this site's own pages");
-      if (!this.underRateLimit(req)) return error(429, "too many requests from this address; wait ten minutes");
+      // D20: signing in (two posts) counts in its own bucket of the same size, so it never uses up the approvals'.
+      if (!this.underRateLimit(req, sessionPath ? "session:" : "")) return error(429, "too many requests from this address; wait ten minutes");
       if (path === "/api/session/options") return this.sessionOptions();
       if (path === "/api/session") return this.openSession(req, url.origin);
       // D20: the CFO's endpoints need a passkey session; the viewer link alone only reads. Approvals keep their own
@@ -501,11 +502,13 @@ export class Relay {
     return json(200, { ...s.snapshot, relay: this.relayInfo(s) });
   }
 
-  private approvals(): Response {
+  private async approvals(req: Request): Promise<Response> {
     const s = this.state();
     if (!s) return error(503, "the runner has not connected yet");
     const open = s.enrolment !== null && Date.parse(s.enrolment.expires_at) > this.now().getTime();
-    return json(200, { ...s.approvals, generated_at: s.generated_at, relay: this.relayInfo(s), enrolment_open: open });
+    // D20: whether this device has a live passkey session, so the page signs in before the CFO's actions.
+    const session = this.opts.mfa ? { session_active: await this.sessionOk(req) } : {};
+    return json(200, { ...s.approvals, generated_at: s.generated_at, relay: this.relayInfo(s), enrolment_open: open, ...session });
   }
 
   private ticket(id: string): Response {
