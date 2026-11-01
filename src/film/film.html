@@ -276,7 +276,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       };
     },
     trust: function (L) {
-      var k = put(L, E("div", "kicker", "Why you can trust it"), 140, 100), h = put(L, E("div", "h2", "Agents built on Claude (Anthropic API) read, plan and advise. Metal and Airwallex enforce the limits."), 140, 150);
+      var k = put(L, E("div", "kicker", "Why you can trust it"), 140, 100), h = put(L, E("div", "h2", d.claude === "decided" ? "Agents built on Claude (Anthropic API) read, plan and advise. Metal and Airwallex enforce the limits." : "Claude read the documents and advised. Metal and Airwallex enforce the limits."), 140, 150);
       var a = put(L, E("div", "big ok", "0"), 140, 330), al = put(L, E("div", "h3", "of " + d.trust.attacks + " red-team attacks failed · stand-ins, test world"), 150, 530);
       var s = put(L, E("div", "big ok", "0"), 760, 330), sl = put(L, E("div", "h3", "of " + d.trust.scenarios + " scenarios as expected"), 770, 530);
       var stop = put(L, E("div", "stop", "STOP"), 1450, 300);
@@ -295,9 +295,11 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     end: function (L) {
       var p = put(L, E("div", "h1", "Purser"), 140, 220); p.style.fontSize = "150px";
       var s = put(L, E("div", "h2 muted", "Agents move at machine speed. The CFO keeps the pen."), 140, 420); s.style.width = "1500px";
-      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep"), E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])]), 140, 640);
+      // "Powered by Claude" only for a recording in which the agents decided; the 30 October one predates them.
+      var decided = d.claude === "decided";
+      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep")].concat(decided ? [E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])] : [E("span", "cl", null, [(function () { var i = logo("logo-claude.png", 34); i.alt = "Claude"; return i; })()]), E("span", "w", "read the documents")])), 140, 640);
       var e = put(L, E("div", "h2", "Every payment has a proof."), 140, 820); e.style.color = "var(--accent2)";
-      var note = put(L, E("div", "muted", "“Built on” and “Powered by” name the services Purser uses; they are not an endorsement."), 140, 950); note.style.fontSize = "20px";
+      var note = put(L, E("div", "muted", decided ? "“Built on” and “Powered by” name the services Purser uses; they are not an endorsement." : "“Built on” names the services Purser uses; the Claude logo names the model that read the documents. Neither is an endorsement."), 140, 950); note.style.fontSize = "20px";
       return function (t) { rise(p, t, .2); rise(s, t, .8); rise(lg, t, 2); rise(e, t, 3.5); rise(note, t, 4); };
     },
   };
