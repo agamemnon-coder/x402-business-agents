@@ -90,6 +90,13 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 
 - **Agents:** each agent has its own on-chain mandate, with a per-payment cap, a total budget, a single payee and an
   expiry, and holds only its own mandate key. The CFO policy can only be stricter.
+- **No agent has or can use an owner key** (checked 1 November, `test/no-owner-key.test.ts`), also in autonomous mode:
+  the business owner's key file is named only by the owner signer, the pause on chain (both run by the executor after
+  the CFO's Face ID), the one-off bootstrap and two CLIs a person runs; no agent, autonomy, Claude or /try module names
+  it; `mandate replace` is called from the executor only. One nuance, by design: when the Treasury agent proposes new
+  mandates, the owner's issuer signs the replacement credential off chain at proposal time. It moves nothing until
+  `mandate replace` binds it, and the CFO approves exactly that credential (its hash is in the terms). Recording
+  Metal's refusal on chain now pays gas from a gas-only key that owns nothing (it used the owner key before).
 - **Models:** no key, URL, credential or tool. They read text and return typed data that code checks (the test sends
   fake secrets through the environment and asserts that none reaches a request).
 - **Airwallex:** use a *scoped* API key, not an admin key. Airwallex lets each key have Read or Write per resource;
