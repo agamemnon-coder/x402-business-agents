@@ -77,7 +77,7 @@ const addr = addresses(db);
 for (const d of disputes) {
   const refs = (JSON.parse(d.claims_json) as { sale_refs: number[] }).sale_refs;
   // Numbers the customer named that never sold have no order to check; a refund needs a sale row, so none was paid for them.
-  const found = salesFound(db, refs);
+  const found = salesFound(db, refs, addr.customer as string);
   const evidence = await verifyOrders(found.sales, addr.customer as Address);
   const good = evidence.filter((e) => e.signed_order && e.within_mandate && e.payer_is_customer).length;
   line(good === evidence.length, `dispute ${d.dispute_id} orders`, `${good}/${evidence.length} signed by the customer's mandate key, inside its mandate${found.missing.length ? `; ${found.missing.length} named but never sold (#${found.missing.join(", #")})` : ""}`);

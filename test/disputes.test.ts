@@ -53,6 +53,15 @@ describe("salesFound (dry-96: a customer disputes order numbers we never sold)",
     expect(r.missing).toEqual([6, 8]);
   });
 
+  it("counts only sales the disputing customer paid for, each number once (review, 1 Nov)", () => {
+    const db = openDb(":memory:");
+    const add = (seq: number, payer: string) => db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('/v1/stock', 5, ?, '/v1/stock', ?, 'DELIVERED', 'x')").run(payer, JSON.stringify({ seq }));
+    add(5, "0xAbC"); add(6, "0xother");
+    const r = salesFound(db, [5, 5, 6], "0xabc");
+    expect(r.sales.map((s) => s.seq)).toEqual([5]);
+    expect(r.missing).toEqual([6]);
+  });
+
   it("still refuses a number sold twice", () => {
     const db = openDb(":memory:");
     for (let i = 0; i < 2; i++) db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('/v1/stock', 5, '0x1', '/v1/stock', ?, 'DELIVERED', 'x')").run(JSON.stringify({ seq: 9 }));

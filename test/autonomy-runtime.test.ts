@@ -97,6 +97,9 @@ describe("an agent's wake", () => {
       expect(looked).toEqual(["x"]);
       expect(db.prepare("SELECT COUNT(*) AS n FROM agent_messages").get()).toEqual({ n: 0 });
       expect(w!.run!.calls.filter((c) => c.blocked).map((c) => c.blocked)).toEqual([key === "freeze" ? "the emergency stop is on" : "the CFO paused this agent", key === "freeze" ? "the emergency stop is on" : "the CFO paused this agent"]);
+      // Review (1 Nov): the event that woke it stays unread, so the agent meets it again once resumed.
+      expect(w!.source).toBe("idle");
+      expect(pending(db, "sourcing").events).toHaveLength(1);
     }
   });
 
@@ -110,6 +113,7 @@ describe("an agent's wake", () => {
     const w = await wake(db, p2, { client: null, now: T0 });
     expect(fellBack).toBe(false);
     expect(w).toMatchObject({ source: "idle", summary: "stopped during the wake: the emergency stop is on" });
+    expect(pending(db, "sourcing").events).toHaveLength(1);
     expect(decisions(db).at(-1)).toMatchObject({ source: "idle" });
   });
 

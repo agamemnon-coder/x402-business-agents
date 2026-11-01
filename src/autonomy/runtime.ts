@@ -111,9 +111,10 @@ export async function wake(db: DB, profile: AgentProfile, o: { client?: Anthropi
 
   let source: Wake["source"] = run.status === "done" && summary ? "claude" : "fallback";
   const stopNow = stopped();
-  if (source === "fallback" && stopNow) {
-    // Code's fallback does not act either while the switch is on.
-    summary = `stopped during the wake: ${stopNow}`;
+  if (stopNow) {
+    // The switch went on during the wake: code's fallback does not act either, and the events and messages stay
+    // unread, so the agent meets them again once it is resumed (review, 1 Nov: advancing here lost a dispute).
+    summary = `stopped during the wake: ${stopNow}${source === "claude" && summary ? ` (the agent had said: ${summary.slice(0, 300)})` : ""}`;
     source = "idle";
   } else if (source === "fallback") {
     summary = profile.fallback ? await profile.fallback(db, p.events, p.messages) : "no decision: the agent did not decide and code has no fallback for this";
@@ -123,6 +124,6 @@ export async function wake(db: DB, profile: AgentProfile, o: { client?: Anthropi
     agent: profile.name, source, model: run.model, summary, events: p.events.map((e) => e.id), messages: p.messages.map((m) => m.id),
     tools: run.calls.map((c) => c.tool), ...(run.note ? { note: run.note } : {}), tick: p.events.length === 0 && p.messages.length === 0,
   }, now);
-  advance(db, profile.name, ids, now);
+  if (!stopNow) advance(db, profile.name, ids, now);
   return { source, summary, run, events: p.events.map((e) => e.id), messages: p.messages.map((m) => m.id) };
 }

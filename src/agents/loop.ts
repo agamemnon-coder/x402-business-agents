@@ -22,9 +22,10 @@ export interface ToolResult {
   final?: boolean;
 }
 
-// Strict tools do not accept number bounds (dry-96: Haiku answered 400 to an integer with minimum/maximum). The schema
+// Strict tools do not accept number bounds and the like (dry-96: Haiku answered 400 to an integer with minimum/maximum). The schema
 // Claude sees says them in words instead; the tool's own zod schema still checks every input before it runs.
-const NUMBER_BOUNDS = ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"] as const;
+// Review (1 Nov): string and list bounds too, so a future z.string().min() cannot bring the 400 back.
+const NUMBER_BOUNDS = ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "minLength", "maxLength", "minItems", "maxItems"] as const;
 function dropBounds(node: unknown): unknown {
   if (Array.isArray(node)) return node.map(dropBounds);
   if (!node || typeof node !== "object") return node;

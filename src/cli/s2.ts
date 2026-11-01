@@ -41,10 +41,10 @@ db.prepare("INSERT OR IGNORE INTO disputes (dispute_id, customer, email_sha256, 
 console.log(`                 read by ${read.source === "claude" ? `${kind.model} (classify) and ${read.model} (extract); the planted instruction is data, not an order` : `the deterministic parser (${read.note})`}`);
 console.log(`NEW INFORMATION  ${claims.customer}: claims ${claims.claims.join(" + ")} on stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}; asks ${claims.requested_action}`);
 
-const { sales, missing } = salesFound(db, claims.sale_refs);
+const { sales, missing } = salesFound(db, claims.sale_refs, addr.customer);
 // A number we never sold (a live world: that query failed, or never ran) was never paid: nothing to refund for it.
 const notSold = missing.length ? ` (${missing.length} of them never sold: #${missing.join(", #")}; nothing was paid for those, so nothing is refunded)` : "";
-if (missing.length) console.log(`NOT SOLD         #${missing.join(", #")}: no delivered sale under that number; nothing was paid, nothing to refund`);
+if (missing.length) console.log(`NOT SOLD         #${missing.join(", #")}: no delivered sale to this customer under that number; it paid nothing for it, nothing to refund`);
 if (sales.length === 0) {
   console.log("NOTHING TO SETTLE none of the disputed numbers was sold");
   process.exit(0);

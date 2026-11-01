@@ -172,6 +172,11 @@ describe("apiInputSchema (dry-96: Haiku refused a strict tool with integer bound
     expect(JSON.stringify(s)).not.toMatch(/"(minimum|maximum|exclusiveMinimum|exclusiveMaximum|multipleOf)"/);
   });
 
+  it("also drops string and list bounds", () => {
+    const s = apiInputSchema(z.strictObject({ name: z.string().min(1).max(40), tags: z.array(z.string()).min(2).max(5) }));
+    expect(JSON.stringify(s)).not.toMatch(/"(minLength|maxLength|minItems|maxItems)"/);
+  });
+
   it("keeps a field that happens to be called maximum", () => {
     const s = apiInputSchema(z.strictObject({ maximum: z.number().max(5) }));
     const props = s.properties as Record<string, Record<string, unknown>>;

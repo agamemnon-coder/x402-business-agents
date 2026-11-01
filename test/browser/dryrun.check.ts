@@ -316,8 +316,8 @@ if (process.env.DRYRUN_AUTONOMY) {
     });
     await timed("A3 World: Summit Outfitters disputes 12 orders (the Support agent decides)", async () => {
       // A batch of orders to dispute: wait until the shop has run past #16 (the numbers in Summit's email).
-      await until("stock checks up to #16", () => count("SELECT COALESCE(MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)), 0) AS n FROM sales") >= 16, 600_000).catch(() => undefined);
-      check(true, `${count("SELECT COUNT(*) AS n FROM sales WHERE status = 'DELIVERED'")} sales delivered before the dispute`);
+      const reached = await until("stock checks up to #16", () => count("SELECT COALESCE(MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)), 0) AS n FROM sales") >= 16, 600_000).then(() => true, () => false);
+      check(reached, `the shop ran past #16 before the dispute (${count("SELECT COUNT(*) AS n FROM sales WHERE status = 'DELIVERED'")} sales delivered)`);
       const from = headSeq();
       cli("world.ts", "dispute");
       const ev = lastEvent("dispute.opened");

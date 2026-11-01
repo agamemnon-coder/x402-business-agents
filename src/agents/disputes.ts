@@ -59,14 +59,16 @@ export interface SaleRow {
 
 /** The disputed numbers we really sold (delivered), and those with no delivered sale: nothing was paid for those, so
  *  nothing can be refunded for them (dry-96: in a live world a customer can name a number that never sold). */
-export function salesFound(db: DB, seqs: number[]): { sales: SaleRow[]; missing: number[] } {
+export function salesFound(db: DB, seqs: number[], payer?: string): { sales: SaleRow[]; missing: number[] } {
+  // With `payer`: only sales that customer paid for count (review, 1 Nov); a number sold to someone else is "missing" for it.
   const stmt = db.prepare(
-    "SELECT sale_id, CAST(json_extract(request_params_json, '$.seq') AS INTEGER) AS seq, price_cents, payer, tx_hash, signed_offer, body_json, requirements_json FROM sales WHERE status = 'DELIVERED' AND CAST(json_extract(request_params_json, '$.seq') AS INTEGER) = ?",
+    `SELECT sale_id, CAST(json_extract(request_params_json, '$.seq') AS INTEGER) AS seq, price_cents, payer, tx_hash, signed_offer, body_json, requirements_json FROM sales WHERE status = 'DELIVERED' AND CAST(json_extract(request_params_json, '$.seq') AS INTEGER) = ?${payer ? " AND lower(payer) = lower(?)" : ""}`,
   );
   const sales: SaleRow[] = [];
   const missing: number[] = [];
-  for (const s of seqs) {
-    const rows = stmt.all(s) as SaleRow[];
+  // Each number once: a number named twice is one sale, not two.
+  for (const s of [...new Set(seqs)]) {
+    const rows = (payer ? stmt.all(s, payer) : stmt.all(s)) as SaleRow[];
     if (rows.length > 1) throw new Error(`stock check #${s}: expected one delivered sale, found ${rows.length}`);
     if (rows.length === 1) sales.push(rows[0]!); else missing.push(s);
   }

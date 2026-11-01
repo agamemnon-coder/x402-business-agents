@@ -1056,7 +1056,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     refusals,
     feed,
     traces: traces.slice(-20).reverse(),
-    agent_stats: agentStats(db),
+    agent_stats: agentStats(db, now),
     agent_chat: agentChat(db),
     cards: cards(db, now),
     clearing: clearingView(db),
