@@ -272,6 +272,7 @@
         "agent": "sourcing",
         "model": null,
         "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Stockline",
         "proof": {
           "label": "tx 0xedb4…f22e",
@@ -291,6 +292,7 @@
         "agent": null,
         "model": null,
         "decided": "Summit's agent paid (the simulated customer)",
+        "derived": true,
         "what": "stock checks sold",
         "proof": {
           "label": "tx 0xb9bd…4b2a",
@@ -309,7 +311,8 @@
         "rail": "metal",
         "agent": "sourcing",
         "model": null,
-        "decided": "code, following the buy policy the Sourcing agent (Claude Haiku) set",
+        "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Ridgeline Data",
         "proof": {
           "label": "tx 0x6586…e2dc",
@@ -327,8 +330,9 @@
         "unit": "*USDZ",
         "rail": "metal",
         "agent": "support",
-        "model": "claude-sonnet-5-5",
-        "decided": "the Support agent (Claude Sonnet) decided",
+        "model": null,
+        "decided": "who decided is not recorded",
+        "derived": true,
         "what": "refund for order #7",
         "proof": {
           "label": "tx 0xced4…dc4f",
@@ -345,8 +349,9 @@
         "unit": "*USDZ",
         "rail": "metal",
         "agent": "support",
-        "model": "claude-sonnet-5-5",
-        "decided": "the Support agent (Claude Sonnet) decided",
+        "model": null,
+        "decided": "who decided is not recorded",
+        "derived": true,
         "what": "refund for order #10",
         "proof": {
           "label": "tx 0x44b2…1e02",
@@ -364,7 +369,8 @@
         "rail": "metal",
         "agent": "sourcing",
         "model": null,
-        "decided": "code, following the buy policy the Sourcing agent (Claude Haiku) set",
+        "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Ridgeline Data",
         "proof": {
           "label": "tx 0xa43d…0983",
@@ -383,6 +389,7 @@
         "agent": null,
         "model": null,
         "decided": "Summit's agent paid (the simulated customer)",
+        "derived": true,
         "what": "stock checks sold",
         "proof": {
           "label": "tx 0x475b…83ee",
@@ -399,8 +406,9 @@
         "unit": "*USDZ",
         "rail": "metal",
         "agent": "support",
-        "model": "claude-sonnet-5-5",
-        "decided": "the Support agent (Claude Sonnet) decided",
+        "model": null,
+        "decided": "who decided is not recorded",
+        "derived": true,
         "what": "refund for order #13",
         "proof": {
           "label": "tx 0x7b25…c474",
@@ -418,7 +426,8 @@
         "rail": "metal",
         "agent": "sourcing",
         "model": null,
-        "decided": "code, following the buy policy the Sourcing agent (Claude Haiku) set",
+        "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Ridgeline Data",
         "proof": {
           "label": "tx 0x8459…b110",
@@ -438,6 +447,7 @@
         "agent": null,
         "model": null,
         "decided": "Summit's agent paid (the simulated customer)",
+        "derived": true,
         "what": "stock checks sold",
         "proof": {
           "label": "tx 0x2346…c028",
@@ -457,6 +467,7 @@
         "agent": "treasury",
         "model": "claude-opus-5-5",
         "decided": "planned by the Treasury agent (Claude Opus), paid after the CFO's Face ID",
+        "derived": true,
         "what": "the euro invoice, by SWIFT",
         "proof": {
           "label": "Airwallex 95ab4686…",
@@ -475,6 +486,7 @@
         "agent": "sourcing",
         "model": null,
         "decided": "a charge on the agent's card",
+        "derived": true,
         "what": "Packwise on card ····6189",
         "proof": {
           "label": "Airwallex 01a196b3…",
@@ -496,7 +508,8 @@
         "rail": "metal",
         "agent": "sourcing",
         "model": null,
-        "decided": "code, following the buy policy the Sourcing agent (Claude Haiku) set",
+        "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Ridgeline Data",
         "proof": {
           "label": "tx 0x2633…603f",
@@ -515,6 +528,7 @@
         "agent": null,
         "model": null,
         "decided": "Summit's agent paid (the simulated customer)",
+        "derived": true,
         "what": "stock checks sold",
         "proof": {
           "label": "tx 0x5330…2860",
@@ -531,8 +545,9 @@
         "unit": "*USDZ",
         "rail": "metal",
         "agent": "treasury",
-        "model": "claude-opus-5-5",
-        "decided": "the Treasury agent (Claude Opus) decided",
+        "model": null,
+        "decided": "who decided is not recorded",
+        "derived": true,
         "what": "net earnings to the sweep wallet",
         "proof": {
           "label": "tx 0x1ed7…0330",
@@ -551,6 +566,7 @@
         "agent": "treasury",
         "model": null,
         "decided": "booked at Airwallex after finality (sandbox deposit)",
+        "derived": true,
         "what": "the sweep, credited at Airwallex",
         "proof": {
           "label": "Airwallex 281f5ac9…",
@@ -568,7 +584,8 @@
         "rail": "metal",
         "agent": "sourcing",
         "model": null,
-        "decided": "code, following the buy policy the Sourcing agent (Claude Haiku) set",
+        "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Ridgeline Data",
         "proof": {
           "label": "tx 0xbe92…afac",
@@ -587,6 +604,7 @@
         "agent": null,
         "model": null,
         "decided": "Summit's agent paid (the simulated customer)",
+        "derived": true,
         "what": "stock checks sold",
         "proof": {
           "label": "tx 0x3c6e…f923",
@@ -605,6 +623,7 @@
         "agent": null,
         "model": null,
         "decided": "a retailer paid; code held it for the CFO",
+        "derived": true,
         "what": "invoice NW-R-201",
         "proof": {
           "label": "Airwallex 8587599d…",
@@ -622,7 +641,8 @@
         "rail": "metal",
         "agent": "sourcing",
         "model": null,
-        "decided": "code, following the buy policy the Sourcing agent (Claude Haiku) set",
+        "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Ridgeline Data",
         "proof": {
           "label": "tx 0xeedc…2a80",
@@ -642,6 +662,7 @@
         "agent": null,
         "model": null,
         "decided": "Summit's agent paid (the simulated customer)",
+        "derived": true,
         "what": "stock checks sold",
         "proof": {
           "label": "tx 0x49a6…5c53",

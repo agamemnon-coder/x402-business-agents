@@ -473,3 +473,14 @@ flow shows only what an explicit record says (an executed batch, an automatic-li
 Estimate 8 hours (origin module and audit 1, the four doors and the ledger columns 3, readers 2, tests, red team,
 browser check and review 2). Risk: medium; it adds a field and must not change any money path. Built in a separate
 worktree while the soak runs on the current code.
+
+Built (part 1, 1 November afternoon): the origin module (`src/provenance/origin.ts`, validated with zod; a stated
+origin that is not well formed is recorded as missing), the audit writer attaching it to every money event, the four
+doors (agent loop with the run id, the executor with the approval and cosigner, code's automatic refunds and the buy
+policy with the agent run that set it, the outside doors: sales, deposits, card charges matched to the purchase they
+answer or else the merchant), the ledger columns (`origin_json` on holds, refunds, sweeps, upstream purchases,
+transfers and money steps; a resumed sweep keeps its origin), `npm run origins`, the dry-run check failing on any
+movement without one, the money flow and the feed reading only the origin. The Dispute desk's route ("within the
+automatic limits" or "waiting for your Face ID") is the desk's own record made when it decided, so it stays. The two
+recordings were made before D24: their flows are labelled derived and credit no Claude model from a run; the next
+autonomous dry run (after the faucet resets) replaces the `/?autonomy` recording with one that carries origins.

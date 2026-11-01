@@ -2379,6 +2379,7 @@
         "agent": "sourcing",
         "model": null,
         "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Stockline",
         "proof": {
           "label": "tx 0x6a6d…ab60",
@@ -2398,6 +2399,7 @@
         "agent": null,
         "model": null,
         "decided": "Summit's agent paid (the simulated customer)",
+        "derived": true,
         "what": "stock checks sold",
         "proof": {
           "label": "tx 0x41e7…9771",
@@ -2417,6 +2419,7 @@
         "agent": "sourcing",
         "model": null,
         "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Stockline",
         "proof": {
           "label": "Metal's facilitator refused it (a 402: nothing moves, so no transaction)",
@@ -2439,6 +2442,7 @@
         "agent": "sourcing",
         "model": null,
         "decided": "code, following the buy policy",
+        "derived": true,
         "what": "Stockline",
         "proof": {
           "label": "tx 0xf6b0…f555",
@@ -2458,6 +2462,7 @@
         "agent": null,
         "model": null,
         "decided": "Summit's agent paid (the simulated customer)",
+        "derived": true,
         "what": "stock checks sold",
         "proof": {
           "label": "tx 0x2b02…c7ea",
@@ -2477,6 +2482,7 @@
         "agent": "support",
         "model": null,
         "decided": "code refunded it, within the CFO's automatic limits",
+        "derived": true,
         "what": "refund for order #7",
         "proof": {
           "label": "tx 0xcf11…bed1",
@@ -2495,6 +2501,7 @@
         "agent": "support",
         "model": null,
         "decided": "code refunded it, within the CFO's automatic limits",
+        "derived": true,
         "what": "refund for order #10",
         "proof": {
           "label": "tx 0x512f…a97b",
@@ -2513,6 +2520,7 @@
         "agent": "support",
         "model": null,
         "decided": "code refunded it, within the CFO's automatic limits",
+        "derived": true,
         "what": "refund for order #13",
         "proof": {
           "label": "tx 0xa0c5…70ad",
@@ -2531,6 +2539,7 @@
         "agent": "treasury",
         "model": null,
         "decided": "code swept the net earnings",
+        "derived": true,
         "what": "net earnings to the sweep wallet",
         "proof": {
           "label": "tx 0x808f…a94f",
@@ -2549,6 +2558,7 @@
         "agent": "treasury",
         "model": null,
         "decided": "booked at Airwallex after finality (sandbox deposit)",
+        "derived": true,
         "what": "the sweep, credited at Airwallex",
         "proof": {
           "label": "Airwallex 56366c9d…",
@@ -2567,6 +2577,7 @@
         "agent": "treasury",
         "model": null,
         "decided": "paid after the CFO's Face ID",
+        "derived": true,
         "what": "the euro invoice, by SWIFT",
         "proof": {
           "label": "Airwallex 4d508b0b…",
@@ -2585,6 +2596,7 @@
         "agent": "sourcing",
         "model": null,
         "decided": "a charge on the agent's card",
+        "derived": true,
         "what": "Packwise on card ····8120",
         "proof": {
           "label": "Airwallex 01a18bb9…",
@@ -2603,6 +2615,7 @@
         "agent": "sourcing",
         "model": null,
         "decided": "a test charge the Airwallex sandbox simulated",
+        "derived": true,
         "what": "Packwise on card ····8120",
         "proof": {
           "label": "Airwallex 01a18bb9…",
@@ -2625,6 +2638,7 @@
         "agent": "support",
         "model": null,
         "decided": "a charge on the agent's card",
+        "derived": true,
         "what": "Packwise on card ····6882",
         "proof": {
           "label": "Airwallex 7edb809a…",
@@ -2647,6 +2661,7 @@
         "agent": "sourcing",
         "model": null,
         "decided": "a test charge the Airwallex sandbox simulated",
+        "derived": true,
         "what": "Packwise on card ····8120",
         "proof": {
           "label": "Airwallex 01a18bbb…",

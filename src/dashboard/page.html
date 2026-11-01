@@ -1589,7 +1589,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       set(cap, [
         el("div", "l1", [txt("span", "", capFirst(who) + " → " + (MF_WORDS[e.to] || e.to) + " · "), txt("span", "amt", mfAmt(e)), e.count ? txt("span", "", " · " + e.count + " payments") : null, txt("span", "", " · " + e.what)]),
         el("div", "l2", [txt("span", "chip" + (r[0] ? " rail-" + r[0] : ""), r[1]), e.model ? txt("span", "chip", mfModel(e.model)) : null]),
-        el("div", "l3", [txt("span", "", "Decided: " + e.decided), e.request ? txt("span", "mono req", " · request " + e.request) : null, e.derived ? txt("span", "drv", " · from the ledger's records (this recording predates who-decided being recorded at the source)") : null]),
+        el("div", "l3", [txt("span", "", "Decided: " + e.decided), e.request ? txt("span", "mono req", " · request " + e.request) : null, e.derived ? txt("span", "drv", " · derived from the ledger's records (an older recording)") : null]),
         ref ? txt("div", "ref", "Refused by " + ref[2] + ": " + e.refused.reason) : null,
         el("div", "mf-proof", [txt("span", "", "Proof: "), proof])]);
     }
