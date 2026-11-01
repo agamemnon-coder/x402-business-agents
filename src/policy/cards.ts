@@ -2,6 +2,7 @@
 // code makes the card at Airwallex match them, so Airwallex itself declines anything over the limit, whatever the
 // agent does. Every authorisation Airwallex makes on a card is recorded once, from whichever source sees it first.
 
+import { currentOrigin, parseOrigin, type Origin } from "../provenance/origin.js";
 import { AGENTS, CARDS, type Agent, CARD_ACTIVE_DAYS, OUTSIDE_AGENT_MCCS, PLANS } from "../config/policy.js";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -194,6 +195,17 @@ export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: Iss
 
 export type CardTxSource = "simulation" | "poll" | "webhook";
 
+/** D24: the origin of the purchase this charge answers: the newest purchase started on this card for this amount that no
+ *  charge has answered yet, if its own origin was recorded. A merchant's own charge finds none. */
+function purchaseOrigin(db: DB, agent: string, last4: string, amount: string): Origin | null {
+  const p = db.prepare(`SELECT seq, payload_json FROM audit_log WHERE event = 'card.purchase_started' AND json_extract(payload_json, '$.agent') = ?
+    AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ? ORDER BY seq DESC LIMIT 1`).get(agent, last4, amount) as { seq: number; payload_json: string } | undefined;
+  if (!p) return null;
+  const answered = db.prepare(`SELECT 1 FROM audit_log WHERE seq > ? AND event IN ('card.charge_approved', 'card.charge_declined')
+    AND json_extract(payload_json, '$.last4') = ? AND json_extract(payload_json, '$.amount') = ? LIMIT 1`).get(p.seq, last4, amount);
+  return answered ? null : parseOrigin(JSON.stringify((JSON.parse(p.payload_json) as { origin?: unknown }).origin ?? null));
+}
+
 /** Records an Airwallex authorisation once. Returns true if it was new. */
 export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTxSource, now = new Date(), purpose?: string): boolean {
   const card = db.prepare("SELECT agent, last4 FROM cards WHERE card_id = ?").get(t.cardId) as { agent: string; last4: string } | undefined;
@@ -225,7 +237,7 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
       // Later news about the same authorisation (it cleared, or was reversed) updates the row.
       if (old.status !== t.status) db.prepare("UPDATE card_transactions SET status = ?, approved = ? WHERE transaction_id = ?").run(t.status, t.approved ? 1 : 0, t.transactionId);
       if (old.approved === 1 && !t.approved) {
-        audit(db, card.agent as Actor, "card.charge_reversed", t.transactionId, { agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, status: t.status, source }, now);
+        audit(db, card.agent as Actor, "card.charge_reversed", t.transactionId, { origin: { actor: "external", party: "merchant", name: t.merchant || "a merchant" }, agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, status: t.status, source }, now);
       }
       return false;
     }
@@ -233,8 +245,12 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
       `INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, failure_reason, purpose, source, occurred_at, recorded_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(t.transactionId, t.cardId, card.agent, t.merchant, t.mcc, t.amountCents, t.currency, t.status, t.approved ? 1 : 0, t.failureReason, purpose ?? null, source, t.occurredAt, now.toISOString());
-    // Logged under the agent whose card it is; the decision itself is Airwallex's.
+    // Logged under the agent whose card it is; the decision itself is Airwallex's. D24: who started the charge is the
+    // purchase's own origin (the agent's run, the CFO's task card), or the merchant charging the card by itself.
+    const chargeOrigin = (source === "simulation" ? currentOrigin() : null) ?? purchaseOrigin(db, card.agent, card.last4, fromCents(t.amountCents))
+      ?? { actor: "external", party: "merchant", name: t.merchant || "a merchant" };
     audit(db, card.agent as Actor, t.approved ? "card.charge_approved" : "card.charge_declined", t.transactionId, {
+      origin: chargeOrigin as never,
       agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency,
       ...(t.approved ? {} : { reason: t.failureReason ?? t.status }), ...(purpose ? { purpose } : {}), source,
     }, now);

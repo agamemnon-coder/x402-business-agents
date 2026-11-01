@@ -59,7 +59,7 @@ export function matchReceipt(db: DB, d: Deposit, now = new Date(), via: "webhook
     }
     db.prepare("INSERT INTO receipts (deposit_id, global_account_id, currency, amount_cents, reference, payer, invoice_no, applied_cents, outcome, detail, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .run(d.deposit_id, d.global_account_id, d.currency, d.amount_cents, d.reference, d.payer, outcome === "UNMATCHED" || outcome === "WRONG_CURRENCY" ? null : inv!.invoice_no, applied, outcome, detail, d.received_at);
-    audit(db, "treasury", outcome === "MATCHED" ? "receivable.matched" : "receivable.escalated", d.deposit_id, { outcome, invoice_no: inv?.invoice_no ?? null, amount: fromCents(d.amount_cents), currency: d.currency, detail }, now);
+    audit(db, "treasury", outcome === "MATCHED" ? "receivable.matched" : "receivable.escalated", d.deposit_id, { origin: { actor: "external", party: "retailer", ...(inv?.customer ? { name: inv.customer } : {}) }, outcome, invoice_no: inv?.invoice_no ?? null, amount: fromCents(d.amount_cents), currency: d.currency, detail }, now);
     // D22: money in at Airwallex is news for the Treasury agent (autonomy only), once per deposit.
     if (autonomyOn()) {
       publish(db, "money.in", {

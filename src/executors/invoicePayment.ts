@@ -3,6 +3,7 @@
 // Transfer lifecycle: SUBMITTING (row written before the call) -> SENT -> PAID, or FAILED -> CANCELLED.
 // A lost answer is resolved by looking the request_id up, never by a blind resend with a new id.
 
+import { originJson } from "../provenance/origin.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
@@ -117,8 +118,8 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   }
   if (!existing) {
     // Written before the call: the partial unique index allows one live payout per invoice.
-    db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?)")
-      .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString());
+    db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?, ?)")
+      .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString(), originJson());
   }
   const req = { requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR" as const, sourceCurrency: "EUR" as const, reference: t.reference, reason: t.reason, approvalSha256: sha };
   let tr: Transfer;

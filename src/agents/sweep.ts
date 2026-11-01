@@ -3,6 +3,7 @@
 // credit is booked anywhere. The sandbox cannot receive *USDZ, so the credit is a simulated deposit of the
 // same amount whose reference is the transaction hash, booked once per on-chain transfer.
 
+import { originJson, parseOrigin, withOrigin, type Origin } from "../provenance/origin.js";
 import { erc20Abi, parseEventLogs, type Address, type Hash } from "viem";
 import type { AirwallexRail, SandboxSim } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
@@ -81,7 +82,7 @@ export function nextSweepId(db: DB, now = new Date()): string {
 
 /** Pull under the treasury mandate. A pending or failed run is retried with the same payment id, never a new one. */
 export async function executeSweep(db: DB, paymentId: string, amountCents: number, to: Address, pull: Puller = livePull): Promise<{ outcome: string; tx: string | null; reason: string | null }> {
-  db.prepare("INSERT OR IGNORE INTO sweeps (payment_id, amount_cents, outcome, created_at) VALUES (?, ?, 'PLANNED', ?)").run(paymentId, amountCents, new Date().toISOString());
+  db.prepare("INSERT OR IGNORE INTO sweeps (payment_id, amount_cents, outcome, created_at, origin_json) VALUES (?, ?, 'PLANNED', ?, ?)").run(paymentId, amountCents, new Date().toISOString(), originJson());
   const row = db.prepare("SELECT amount_cents, outcome FROM sweeps WHERE payment_id = ?").get(paymentId) as { amount_cents: number; outcome: string };
   if (row.amount_cents !== amountCents) throw new Error(`${paymentId} was planned for ${fromCents(row.amount_cents)}; a retry must not change the amount`);
   // The CFO policy's limit per sweep, the velocity limits, the mandate's budget and the agents' shared total, reserved
@@ -162,6 +163,13 @@ export function lockCredit(db: DB, f: FinalTransfer, from: Address, to: Address,
   }).immediate();
 }
 
+/** The origin of the sweep a credit books: the sweep row the credit's chain transfer paid (its tx), from the ledger. */
+function sweepOrigin(db: DB, reference: string): Origin | null {
+  const tx = (db.prepare("SELECT tx_hash FROM chain_credits WHERE awx_reference = ?").get(reference) as { tx_hash: string | null } | undefined)?.tx_hash;
+  const r = tx ? db.prepare("SELECT payload_json FROM audit_log WHERE event = 'sweep.paid' AND json_extract(payload_json, '$.tx') = ? ORDER BY seq DESC LIMIT 1").get(tx) as { payload_json: string } | undefined : undefined;
+  return r ? parseOrigin(JSON.stringify((JSON.parse(r.payload_json) as { origin?: unknown }).origin ?? null)) : null;
+}
+
 /**
  * Books the locked credit in Airwallex once: if a deposit with this reference already exists (a crash after
  * the deposit call), it is adopted; otherwise one deposit of the same amount is simulated. 1 *USDZ = 1 USD.
@@ -179,7 +187,10 @@ export async function bookCredit(db: DB, rail: AirwallexRail, sim: SandboxSim, e
   // A crash here: the deposit exists, the ledger does not know it. The retry finds it by its reference and adopts it.
   await checkpoint("deposit:after-call");
   db.prepare("UPDATE chain_credits SET awx_deposit_id = ? WHERE event_key = ? AND awx_deposit_id IS NULL").run(deposit.id, eventKey);
-  audit(db, "awx-executor", existing[0] ? "credit.adopted" : "credit.deposited", eventKey, { deposit_id: deposit.id, amount: fromCents(cents), currency: "USD", reference: row.awx_reference });
+  // D24: code books the sweep once Metal's transfer is final; the decision it follows is the sweep's own origin.
+  const sweptBy = sweepOrigin(db, row.awx_reference);
+  audit(db, "awx-executor", existing[0] ? "credit.adopted" : "credit.deposited", eventKey, { deposit_id: deposit.id, amount: fromCents(cents), currency: "USD", reference: row.awx_reference,
+    origin: { actor: "code", rule: "book the sweep at Airwallex after Metal's finality", agent: "treasury", ...(sweptBy ? { set_by: sweptBy } : {}) } });
   return { depositId: deposit.id, adopted: existing[0] !== undefined };
 }
 
@@ -196,14 +207,17 @@ export async function resumeSweep(
   addr: { business: Address; sweep: Address },
   deps: { pull?: Puller; finalize?: typeof awaitFinalTransfer } = {},
 ): Promise<{ paymentId: string; eventKey: string | null; depositId: string | null } | null> {
-  const last = db.prepare("SELECT payment_id, amount_cents, outcome, tx_hash, event_key FROM sweeps WHERE outcome != 'REFUSED' ORDER BY created_at DESC, rowid DESC LIMIT 1").get() as
-    { payment_id: string; amount_cents: number; outcome: string; tx_hash: string | null; event_key: string | null } | undefined;
+  const last = db.prepare("SELECT payment_id, amount_cents, outcome, tx_hash, event_key, origin_json FROM sweeps WHERE outcome != 'REFUSED' ORDER BY created_at DESC, rowid DESC LIMIT 1").get() as
+    { payment_id: string; amount_cents: number; outcome: string; tx_hash: string | null; event_key: string | null; origin_json: string | null } | undefined;
   if (!last) return null;
   const booked = last.event_key ? !!(db.prepare("SELECT awx_deposit_id FROM chain_credits WHERE event_key = ?").get(last.event_key) as { awx_deposit_id: string | null } | undefined)?.awx_deposit_id : false;
   if (booked) return null;
   let { tx_hash: tx, event_key: eventKey } = last;
   if (last.outcome !== "PAID") {
-    const r = await executeSweep(db, last.payment_id, last.amount_cents, addr.sweep, deps.pull);
+    // D24: the resumed sweep is the same action, with the origin it was started under.
+    const stored = parseOrigin(last.origin_json);
+    const pull = () => executeSweep(db, last.payment_id, last.amount_cents, addr.sweep, deps.pull);
+    const r = stored ? await withOrigin(stored, pull) : await pull();
     if (r.outcome !== "PAID") return { paymentId: last.payment_id, eventKey: null, depositId: null };
     tx = r.tx;
   }

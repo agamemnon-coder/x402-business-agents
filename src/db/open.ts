@@ -29,6 +29,8 @@ function migrate(db: DB): void {
   if (!has("upstream_purchases", "supplier")) db.exec("ALTER TABLE upstream_purchases ADD COLUMN supplier TEXT");
   if (!has("transfers", "fee_actual")) db.exec("ALTER TABLE transfers ADD COLUMN fee_actual TEXT");
   if (!has("beneficiaries", "status")) db.exec("ALTER TABLE beneficiaries ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'");
+  // D24: who decided each money action, recorded when it starts (src/provenance/origin.ts).
+  for (const t of ["holds", "refunds", "sweeps", "upstream_purchases", "transfers", "money_steps"]) if (!has(t, "origin_json")) db.exec(`ALTER TABLE ${t} ADD COLUMN origin_json TEXT`);
   if (!has("sales", "scheme")) db.exec("ALTER TABLE sales ADD COLUMN scheme TEXT NOT NULL DEFAULT 'exact'");
   if (!has("sales", "clearing_json")) db.exec("ALTER TABLE sales ADD COLUMN clearing_json TEXT");
   // E1: more than one person may hold an active passkey (one each), and an enrolment window may add a named person.

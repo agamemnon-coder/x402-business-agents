@@ -80,6 +80,7 @@
     "model-bench": "tsx src/cli/modelBench.ts",
     "autonomy-redteam": "tsx src/cli/autonomyRedteam.ts",
     "dashboard-vs-chain": "tsx src/cli/dashboardVsChain.ts",
+    "origins": "tsx src/cli/origins.ts",
     "awx-readback": "tsx src/cli/awxReadback.ts",
     "demo-tower": "tsx src/cli/demoTower.ts",
     "autonomy-record": "tsx src/cli/autonomyRecord.ts"

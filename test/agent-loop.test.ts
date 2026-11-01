@@ -5,7 +5,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { verifyAuditChain } from "../src/audit/log.js";
+import { audit, verifyAuditChain } from "../src/audit/log.js";
 import { openDb } from "../src/db/open.js";
 import { agentsOn, apiInputSchema, runAgent, type AgentTool } from "../src/agents/loop.js";
 
@@ -40,6 +40,30 @@ const spec = (tools: AgentTool<z.ZodType>[], extra: Partial<Parameters<typeof ru
   ({ agent: "treasury" as const, task: "test", model: "claude-test", system: "You add numbers.", prompt: "What is 2 + 3?", tools, ...extra });
 const use = (id: string, name: string, input: unknown): Reply => ({ content: [{ type: "tool_use", id, name, input }], stop_reason: "tool_use" });
 const say = (text: string): Reply => ({ content: [{ type: "text", text }], stop_reason: "end_turn" });
+
+describe("who decided a money movement a tool starts (D24)", () => {
+  it("records the agent, the model, the request that asked for the tool and the run, on the movement itself", async () => {
+    const db = openDb(":memory:");
+    const sweep: AgentTool<z.ZodObject<Record<string, never>>> = {
+      name: "sweep", description: "Sweeps.", input: z.strictObject({}),
+      run: async () => { audit(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", tx: "0xabc" }); return { text: "swept" }; },
+    };
+    const { client } = fake([{ ...use("t1", "sweep", {}), _request_id: "req_42" } as Reply, say("Swept.")]);
+    await runAgent(db, spec([sweep as AgentTool<z.ZodType>]), client);
+    const row = (event: string) => JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = ?").get(event) as { payload_json: string }).payload_json) as Record<string, unknown>;
+    const run = row("agent.run");
+    expect(row("sweep.paid").origin).toEqual({ actor: "agent", agent: "treasury", model: "claude-test", request_id: "req_42", run_id: run.run_id });
+    expect(run.run_id).toMatch(/^run-treasury-\d+-[0-9a-f]{6}$/);
+  });
+
+  it("a movement outside any tool call (code after the run) carries no agent origin", async () => {
+    const db = openDb(":memory:");
+    const { client } = fake([say("Nothing to do.")]);
+    await runAgent(db, spec([add]), client);
+    audit(db, "treasury", "sweep.paid", "sweep-2", { amount: "0.09", tx: "0xabc" });
+    expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'sweep.paid'").get() as { payload_json: string }).payload_json).origin).toBeNull();
+  });
+});
 
 describe("the agent loop", () => {
   it("is unavailable without a client, and runs no tool", async () => {

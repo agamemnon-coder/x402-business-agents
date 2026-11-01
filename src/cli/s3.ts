@@ -4,6 +4,7 @@
 //   Airwallex side: book the credit, plan the invoice, quote, approval, conversion, SWIFT, PAID.
 //   Without AIRWALLEX_CLIENT_ID / AIRWALLEX_API_KEY the Airwallex side stops and says so; nothing is faked.
 
+import { setScriptOrigin } from "../provenance/origin.js";
 import type { Hash } from "viem";
 import { awaitFinalTransfer, executeSweep, lockCredit, netEarnings, nextSweepId, planSweep } from "../agents/sweep.js";
 import { fromEnv } from "../airwallex/client.js";
@@ -15,6 +16,9 @@ import { runAirwallexSide } from "./s3-airwallex.js";
 
 const db = openDb();
 const addr = addresses(db);
+// D24: started by the Treasury agent's sweep_earnings, this script carries the agent's origin (through the environment);
+// run by itself, the sweep is code's: the planned sweep of net earnings above what the mandates may still spend.
+setScriptOrigin({ actor: "code", rule: "the sweep of net earnings (npm run s3)", agent: "treasury" });
 
 console.log("GOAL             move earnings into Airwallex and pay the manufacturer's EUR invoice, without breaking a floor");
 const pending = db.prepare("SELECT payment_id, amount_cents, outcome, tx_hash, event_key FROM sweeps WHERE outcome != 'REFUSED' ORDER BY created_at DESC LIMIT 1").get() as

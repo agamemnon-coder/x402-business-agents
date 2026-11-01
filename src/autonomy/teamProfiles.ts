@@ -7,6 +7,7 @@
 //   It settles a dispute with its dispute tools (signed orders, the data check, refunds inside the limits, the CFO).
 
 import { spawnSync } from "node:child_process";
+import { originEnv } from "../provenance/origin.js";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { MODELS } from "../claude/reader.js";
@@ -27,7 +28,7 @@ const NOTICE = resolve(repo, "fixtures/stockline-price-notice.txt");
 
 /** Runs one of the tested flows as its own process (it prints its own report); returns its last lines, redacted. */
 export function runFlow(script: string, args: string[] = []): { ok: boolean; text: string } {
-  const r = spawnSync("npx", ["tsx", `src/cli/${script}`, ...args], { cwd: repo, env: process.env, encoding: "utf8", timeout: 15 * 60_000 });
+  const r = spawnSync("npx", ["tsx", `src/cli/${script}`, ...args], { cwd: repo, env: { ...process.env, ...originEnv() }, encoding: "utf8", timeout: 15 * 60_000 });
   const lines = redactSecrets(`${r.stdout ?? ""}${r.stderr ?? ""}`).split("\n").filter((l) => l.trim() && !/ExperimentalWarning|trace-warnings/.test(l));
   return { ok: r.status === 0, text: lines.slice(-12).join("\n").slice(0, 1500) };
 }

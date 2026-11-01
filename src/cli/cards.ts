@@ -11,6 +11,7 @@
 //                                                     signing secret goes to the keys dir and the Worker, never the screen
 // Sandbox only. The card number stays at Airwallex; this prints the last four digits.
 
+import { setScriptOrigin } from "../provenance/origin.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { buyPlan, proposeCardRaise } from "../agents/cardBuyer.js";
 import { AGENTS, PLANS, type Agent } from "../config/policy.js";
@@ -77,6 +78,8 @@ async function railChoice(sim: IssuingSim): Promise<CardTransaction> {
 
 const args = process.argv.slice(2);
 const db = openDb();
+// D24: a purchase this script makes is a scripted test purchase, decided by code, not by the agent.
+setScriptOrigin({ actor: "code", rule: "a scripted test purchase (npm run cards)" });
 const need = () => {
   const awx = issuingFromEnv();
   if (!awx) {

@@ -1,68 +1,63 @@
-// D23: the money flow, from the ledger only. Each movement is a recorded event with its own proof (a Metal tx or an
-// Airwallex id), who moved it, who decided (the agent's own Claude run, the CFO's Face ID, or code following a policy),
-// the amount and its rail. A refusal hits its rail with the reason. Breaks if anything is invented, if a stablecoin
-// payment is not marked as *USDZ on Metal, or if a decision is credited to Claude that Claude did not make.
-//
-// How a Claude decision is found: an agent's run (`agent.run`, written when it ends) records `from_seq`, the last log
-// row before it started; a movement whose row falls between the two happened during that run. It is Claude's only if
-// the run finished ("done", with a model), used the tool behind the movement without every call of it being blocked,
-// and the agent's decision recorded after the run says Claude made it (not a fallback by code).
+// D23 + D24: the money flow, from the ledger only. Each movement is a recorded event with its own proof (a Metal tx or
+// an Airwallex id), its amount and rail; a refusal hits its rail with the reason. Who decided it is read from the
+// origin recorded with the movement when it started (D24), and from nothing else: never from timing, never from a
+// decision written nearby. A ledger recorded before origins existed shows only what an explicit record says, marked
+// derived. Breaks if anything is invented, or if Claude is credited with a move its own run did not start.
 import { describe, expect, it } from "vitest";
-import { openDb, type DB } from "../src/db/open.js";
 import { audit, type Actor } from "../src/audit/log.js";
+import { openDb, type DB } from "../src/db/open.js";
 import { flowEvents } from "../src/dashboard/flows.js";
+import { AUTO_REFUND, withOrigin, type Origin } from "../src/provenance/origin.js";
 
 const T = (m: number) => new Date(Date.UTC(2026, 10, 5, 10, m, 0));
 const TX = (n: number) => `0x${String(n).padStart(64, "a")}`;
-const seqNow = (db: DB) => (db.prepare("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log").get() as { n: number }).n;
-/** An agent's run around `inside`, as runAgent records it: from_seq before, the agent.run row after. */
-function run(db: DB, agent: Actor, model: string | null, tools: string[], inside: () => void, opts: { status?: string; blocked?: string[]; at?: number } = {}) {
-  const from = seqNow(db);
-  inside();
-  audit(db, agent, "agent.run", `wake.${agent}`, { agent, model, status: opts.status ?? "done", tools, blocked: opts.blocked ?? [], from_seq: from }, T(opts.at ?? 30));
-}
-const decision = (db: DB, agent: Actor, source: "claude" | "fallback", model: string | null, tools: string[], m = 30) =>
-  audit(db, agent, "agent.decision", `wake.${agent}`, { agent, source, model, summary: "", tools }, T(m));
+const HAIKU: Origin = { actor: "agent", agent: "sourcing", model: "claude-haiku-5-5", request_id: "req_h1", run_id: "run-sourcing-1-aaaaaa" };
+const SONNET: Origin = { actor: "agent", agent: "support", model: "claude-sonnet-5-5", request_id: "req_s1", run_id: "run-support-2-bbbbbb" };
+const OPUS: Origin = { actor: "agent", agent: "treasury", model: "claude-opus-5-5", request_id: "req_o1", run_id: "run-treasury-3-cccccc" };
+const CFO: Origin = { actor: "cfo", proposal_id: "P-7", approval_id: "4", method: "passkey", approver: "max" };
+const CUSTOMER: Origin = { actor: "external", party: "customer" };
+const BUY_POLICY: Origin = { actor: "code", rule: "the Sourcing agent's buy policy", agent: "sourcing", set_by: HAIKU };
+
+const fresh = () => { const db = openDb(":memory:"); db.exec("PRAGMA foreign_keys = OFF"); return db; };
 function sale(db: DB, id: number, m: number, seq = id) {
   db.prepare("INSERT INTO sales (sale_id, route, price_cents, payer, request_url, request_params_json, status, created_at, tx_hash) VALUES (?, '/v1/stock', 5, '0xc', 'u', ?, 'DELIVERED', ?, ?)").run(id, JSON.stringify({ seq }), T(m).toISOString(), TX(id));
 }
-function refundRow(db: DB, saleId: number, proposal: string | null) {
-  db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, proposal_id) VALUES (?, ?, 5, '0xA5A1', 'PAID', ?)").run(saleId, `refund-${saleId}`, proposal);
+const at = (o: Origin | null, f: () => void) => (o ? withOrigin(o, f) : f());
+const log = (db: DB, o: Origin | null, actor: Actor, event: string, subject: string, payload: Record<string, unknown>, m: number) => at(o, () => audit(db, actor, event, subject, payload as never, T(m)));
+/** A row as a ledger from before D24 holds it: no origin field at all. */
+function legacyRow(db: DB, actor: string, event: string, subject: string, payload: Record<string, unknown>, m: number) {
+  const seq = ((db.prepare("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log").get() as { n: number }).n) + 1;
+  db.prepare("INSERT INTO audit_log (seq, ts, actor, event, subject, payload_json, prev_hash, row_hash) VALUES (?, ?, ?, ?, ?, ?, 'x', ?)").run(seq, T(m).toISOString(), actor, event, subject, JSON.stringify(payload), `h${seq}`);
 }
-const paidRefund = (db: DB, saleId: number, m: number) => audit(db, "support", "refund.paid", String(saleId), { amount: "0.05", payment_id: `refund-${saleId}`, to: "0xA5A1", tx: TX(100 + saleId) }, T(m));
-const fresh = () => { const db = openDb(":memory:"); db.exec("PRAGMA foreign_keys = OFF"); return db; };
 
+/** A run with origins recorded: what Thursday's ledger looks like. */
 function world(): DB {
   const db = fresh();
   for (const [id, m] of [[1, 1], [2, 2], [3, 3]] as const) {
     sale(db, id, m);
-    audit(db, "system", "sale.delivered", String(id), { tx: TX(id) }, T(m));
+    log(db, null, "system", "sale.delivered", String(id), { tx: TX(id), origin: CUSTOMER }, m);
   }
-  audit(db, "sourcing", "upstream.paid", "1", { amount_units: "20000000000000000", seq: 1, supplier: "stockline", tx: TX(10) }, T(4));
-  audit(db, "sourcing", "upstream.refused", "4", { reason: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", refused_by: "purser", seq: 4, supplier: "stockline" }, T(5));
-  audit(db, "sourcing", "upstream.refused_on_chain", "4", { amount: "0.04", metal_reason: "mandate_cap_exceeded (the amount is above the mandate's per-payment cap)", seq: 4, tx: TX(11) }, T(6));
-  // The Support agent's own Claude run refunds #7 (sale 7), and its settlement says Claude settled it.
+  log(db, BUY_POLICY, "sourcing", "upstream.paid", "1", { amount_units: "20000000000000000", seq: 1, supplier: "stockline", tx: TX(10) }, 4);
+  log(db, BUY_POLICY, "sourcing", "upstream.refused", "4", { reason: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", refused_by: "purser", seq: 4, supplier: "stockline" }, 5);
+  log(db, BUY_POLICY, "sourcing", "upstream.refused_on_chain", "4", { amount: "0.04", metal_reason: "mandate_cap_exceeded (the amount is above the mandate's per-payment cap)", seq: 4, tx: TX(11) }, 6);
   sale(db, 7, 0);
-  run(db, "support", "claude-sonnet-5-5", ["verify_order", "check_data", "refund"], () => { refundRow(db, 7, null); paidRefund(db, 7, 8); });
-  audit(db, "support", "dispute.settled_by_agent", "DD-1", { source: "claude", model: "claude-sonnet-5-5", refunded: ["#7"], refunded_now: ["#7"] }, T(9));
-  // The Treasury agent's Claude wake sweeps; the Airwallex deposit follows.
-  run(db, "treasury", "claude-opus-5-5", ["sweep_earnings", "finish"], () => audit(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", to: "0xb4b0", tx: TX(13) }, T(10)));
-  decision(db, "treasury", "claude", "claude-opus-5-5", ["sweep_earnings", "finish"], 9);
-  audit(db, "awx-executor", "credit.deposited", "63825:x:1", { amount: "0.09", currency: "USD", deposit_id: "05090865-c8c8-47aa-9097-599cce294d6f" }, T(11));
-  audit(db, "awx-executor", "transfer.created", "6b7ebec3-e3c7-4281-aa5b-cde80916c91e", { amount: "EUR 240.00", approval_sha256: "b".repeat(64), status: "SCHEDULED" }, T(12));
+  log(db, SONNET, "support", "refund.paid", "7", { amount: "0.05", payment_id: "refund-7", to: "0xA5A1", tx: TX(12) }, 8);
+  log(db, OPUS, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", to: "0xb4b0", tx: TX(13) }, 10);
+  log(db, { actor: "code", rule: "book the sweep at Airwallex after Metal's finality", agent: "treasury", set_by: OPUS }, "awx-executor", "credit.deposited", "63825:x:1", { amount: "0.09", currency: "USD", deposit_id: "05090865-c8c8-47aa-9097-599cce294d6f" }, 11);
+  log(db, CFO, "awx-executor", "transfer.created", "6b7ebec3-e3c7-4281-aa5b-cde80916c91e", { amount: "EUR 240.00", approval_sha256: "b".repeat(64), status: "SCHEDULED" }, 12);
   audit(db, "awx-executor", "transfer.status", "6b7ebec3-e3c7-4281-aa5b-cde80916c91e", { status: "PAID" }, T(13));
-  audit(db, "sourcing", "card.charge_declined", "awx-tx-9", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", reason: "LIMIT_EXCEEDED", source: "poll" }, T(14));
-  audit(db, "sourcing", "card.charge_approved", "awx-tx-10", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", source: "simulation" }, T(16));
+  log(db, null, "sourcing", "card.charge_declined", "awx-tx-9", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", reason: "LIMIT_EXCEEDED", source: "poll", origin: { actor: "external", party: "merchant", name: "Packwise" } }, 14);
+  log(db, HAIKU, "sourcing", "card.charge_approved", "awx-tx-10", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", source: "simulation" }, 16);
   return db;
 }
 
-describe("the money flow, from the ledger (D23)", () => {
+describe("the money flow, from the ledger", () => {
   it("folds a run of sales into one movement, customer agents to Northwind, in *USDZ on Metal, with the latest tx", () => {
     const f = flowEvents(world());
     expect(f[0]).toMatchObject({ kind: "sale", from: "customer", to: "northwind", amount: "0.15", unit: "*USDZ", rail: "metal", count: 3, proof: { label: expect.stringMatching(/^tx 0xaaaa/), href: `https://testnet.metalntwx.com/tx/${TX(3)}` } });
   });
 
-  it("each later movement in order, with its agent, who decided, its rail and its proof", () => {
+  it("each later movement in order, with its agent, its rail and its proof", () => {
     const f = flowEvents(world());
     expect(f.map((e) => [e.kind, e.from, e.to, e.amount, e.unit, e.rail])).toEqual([
       ["sale", "customer", "northwind", "0.15", "*USDZ", "metal"],
@@ -78,223 +73,148 @@ describe("the money flow, from the ledger (D23)", () => {
     ]);
   });
 
-  it("credits Claude only where the agent's own Claude run made the move, naming the model", () => {
-    const f = flowEvents(world());
-    expect(f.find((e) => e.kind === "refund")).toMatchObject({ agent: "support", model: "claude-sonnet-5-5", decided: "the Support agent (Claude Sonnet) decided" });
-    expect(f.find((e) => e.kind === "sweep")).toMatchObject({ model: "claude-opus-5-5" });
-    expect(f.find((e) => e.kind === "sale")).toMatchObject({ model: null, decided: "Summit's agent paid (the simulated customer)" });
-    expect(f.filter((e) => e.kind === "card").every((e) => e.model === null)).toBe(true);
-    expect(f.find((e) => e.kind === "card" && !e.refused)!.decided).toBe("a test charge the Airwallex sandbox simulated");
-  });
-
   it("a refusal hits its rail with the reason: Purser before signing, Metal on chain (its tx), Airwallex at the card (its id)", () => {
-    const f = flowEvents(world());
-    const r = f.filter((e) => e.refused);
+    const r = flowEvents(world()).filter((e) => e.refused);
     expect(r.map((e) => [e.refused!.by, e.proof.label.split(" ")[0]])).toEqual([["purser", "Purser"], ["metal", "tx"], ["airwallex", "Airwallex"]]);
     expect(r[1]!.refused!.reason).toMatch(/^mandate_cap_exceeded/);
     expect(r[2]).toMatchObject({ refused: { by: "airwallex", reason: "LIMIT_EXCEEDED" }, proof: { label: "Airwallex awx-tx-9", href: null, full: "awx-tx-9" } });
   });
 
-  it("an older refusal row with a bare code was Metal's facilitator (no tx); its amount, not recorded, is not made up", () => {
-    const db = openDb(":memory:");
-    audit(db, "sourcing", "upstream.refused", "41", { reason: "mandate_cap_exceeded", seq: 41 }, T(1));
-    expect(flowEvents(db)).toEqual([expect.objectContaining({ rail: "metal", amount: "", refused: { by: "metal", reason: "mandate_cap_exceeded" }, proof: expect.objectContaining({ href: null, label: expect.stringMatching(/^Metal's facilitator refused it/) }) })]);
-  });
-
-  it("the euro licence is shown once it is PAID at Airwallex, with the transfer id; nothing is shown that the ledger does not hold", () => {
-    const f = flowEvents(world());
-    expect(f.find((e) => e.kind === "licence")).toMatchObject({ model: null, decided: "paid after the CFO's Face ID", proof: { full: "6b7ebec3-e3c7-4281-aa5b-cde80916c91e" } });
+  it("nothing is shown that the ledger does not hold", () => {
     expect(flowEvents(openDb(":memory:"))).toEqual([]);
   });
 });
 
-describe("who decided a refund, from the evidence in the ledger", () => {
-  it("code within the automatic limits (the Dispute desk's own record), not the CFO", () => {
+describe("who decided: the origin recorded with the movement (D24)", () => {
+  it("an agent's own Claude run: the agent and its model", () => {
+    const f = flowEvents(world());
+    expect(f.find((e) => e.kind === "refund")).toMatchObject({ model: "claude-sonnet-5-5", decided: "the Support agent (Claude Sonnet) decided" });
+    expect(f.find((e) => e.kind === "sweep")).toMatchObject({ model: "claude-opus-5-5", decided: "the Treasury agent (Claude Opus) decided" });
+    expect(f.find((e) => e.kind === "card" && !e.refused)).toMatchObject({ model: "claude-haiku-5-5" });
+    expect(f.every((e) => !e.derived)).toBe(true);
+  });
+
+  it("code following a rule, and the decision it follows; the customer, the merchant and the CFO by name", () => {
+    const f = flowEvents(world());
+    expect(f[1]).toMatchObject({ model: null, decided: "code: the Sourcing agent's buy policy, as the Sourcing agent (Claude Haiku) set it" });
+    expect(f[0]).toMatchObject({ model: null, decided: "Summit's agent paid (the simulated customer)" });
+    expect(f.find((e) => e.kind === "booked")).toMatchObject({ model: null, decided: "code: book the sweep at Airwallex after Metal's finality, as the Treasury agent (Claude Opus) set it" });
+    expect(f.find((e) => e.kind === "card" && e.refused)).toMatchObject({ model: null, decided: "Packwise charged the card" });
+    expect(f.find((e) => e.kind === "licence")).toMatchObject({ model: null, decided: "the CFO approved it with Face ID", proof: { full: "6b7ebec3-e3c7-4281-aa5b-cde80916c91e" } });
+  });
+
+  it("code's automatic refund is code's, whatever ran around it", () => {
     const db = fresh();
     sale(db, 7, 0);
-    audit(db, "support", "refund.auto_approved", "DD-1", { sales: ["7"], rule: "each <= limit and batch <= limit" }, T(1));
-    refundRow(db, 7, null); paidRefund(db, 7, 2);
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "code refunded it, within the CFO's automatic limits" });
+    log(db, SONNET, "support", "noop", "x", {}, 1);
+    withOrigin(SONNET, () => log(db, AUTO_REFUND, "support", "refund.paid", "7", { amount: "0.05", payment_id: "refund-7", tx: TX(1) }, 2));
+    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "code: refund within the CFO's automatic limits" });
   });
 
-  it("the CFO's Face ID when the refund ran from an executed refund batch", () => {
+  it("four eyes names the controller too", () => {
     const db = fresh();
-    sale(db, 7, 0);
-    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-9', 'refund_batch', '{}', 'x', 'support', 'EXECUTED', 'z', 'z')").run();
-    refundRow(db, 7, "P-9"); paidRefund(db, 7, 2);
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "refunded after the CFO's Face ID" });
-  });
-
-  it("says so when the ledger records no decision, instead of naming one", () => {
-    const db = fresh();
-    sale(db, 7, 0); refundRow(db, 7, null); paidRefund(db, 7, 2);
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "who decided is not recorded" });
-  });
-
-  it("an earlier refund a later settlement carries over is not the agent's: only the refunds of its own run count", () => {
-    const db = fresh();
-    sale(db, 7, 0);
-    audit(db, "support", "refund.auto_approved", "DD-1", { sales: ["7"] }, T(1));
-    refundRow(db, 7, null); paidRefund(db, 7, 2);
-    run(db, "support", "claude-sonnet-5-5", ["verify_order", "refund"], () => undefined, { blocked: ["refund: already refunded"] });
-    audit(db, "support", "dispute.settled_by_agent", "DD-1", { source: "claude", model: "claude-sonnet-5-5", refunded: ["#7"], refunded_now: [] }, T(5));
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "code refunded it, within the CFO's automatic limits" });
-  });
-
-  it("a refund made during the agent's run that ended in a fallback by code is not credited to Claude", () => {
-    const db = fresh();
-    sale(db, 7, 0);
-    run(db, "support", "claude-sonnet-5-5", ["refund"], () => { refundRow(db, 7, null); paidRefund(db, 7, 2); });
-    audit(db, "support", "dispute.settled_by_agent", "DD-1", { source: "fallback", model: "claude-sonnet-5-5", refunded: ["#7"], refunded_now: ["#7"] }, T(5));
-    expect(flowEvents(db)[0]!.model).toBeNull();
-  });
-});
-
-describe("a decision that came after the move did not make it", () => {
-  it("code swept, then a Claude wake tried to sweep and was blocked: code swept it", () => {
-    const db = fresh();
-    audit(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", to: "0xb4b0", tx: TX(13) }, T(0));
-    run(db, "treasury", "claude-opus-5-5", ["sweep_earnings"], () => undefined, { blocked: ["sweep_earnings: Not again"] });
-    decision(db, "treasury", "claude", "claude-opus-5-5", ["sweep_earnings"], 2);
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "code swept the net earnings" });
-  });
-
-  it("a sweep inside a wake that fell back to code is not credited to the next Claude wake", () => {
-    const db = fresh();
-    run(db, "treasury", null, [], () => audit(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", to: "0xb4b0", tx: TX(13) }, T(0)), { status: "unavailable" });
-    decision(db, "treasury", "fallback", null, [], 0);
-    run(db, "treasury", "claude-opus-5-5", ["sweep_earnings"], () => undefined);
-    decision(db, "treasury", "claude", "claude-opus-5-5", ["sweep_earnings"], 3);
-    expect(flowEvents(db)[0]!.model).toBeNull();
-  });
-
-  it("a merchant's own charge, declined, before the agent woke on the news, is not the agent's decision", () => {
-    const db = fresh();
-    audit(db, "sourcing", "card.charge_declined", "awx-tx-9", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", reason: "LIMIT_EXCEEDED", source: "poll" }, T(0));
-    run(db, "sourcing", "claude-haiku-5-5", ["buy_software"], () => undefined);
-    decision(db, "sourcing", "claude", "claude-haiku-5-5", ["buy_software"], 1);
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "a charge on the agent's card" });
-  });
-
-  it("the agent's own card purchase inside its Claude wake is the agent's", () => {
-    const db = fresh();
-    run(db, "sourcing", "claude-haiku-5-5", ["buy_software"], () => {
-      audit(db, "sourcing", "card.purchase_started", "plan-1", { agent: "sourcing", last4: "6423", merchant: "Packwise", amount: "45.00", currency: "EUR" }, T(1));
-      audit(db, "sourcing", "card.charge_approved", "awx-tx-10", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", source: "webhook" }, T(1));
-    });
-    decision(db, "sourcing", "claude", "claude-haiku-5-5", ["buy_software"], 0);
-    expect(flowEvents(db)[0]).toMatchObject({ model: "claude-haiku-5-5", decided: "the Sourcing agent (Claude Haiku) decided" });
-  });
-
-  it("the euro licence names the Treasury agent's plan only for the same proposal, by Claude", () => {
-    const db = fresh();
-    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-2', 'invoice_payment', '{}', ?, 'treasury', 'EXECUTED', 'z', 'z')").run("c".repeat(64));
-    audit(db, "treasury", "licence.timing_advised", "OLD-1", { proposal_id: "P-1", source: "claude", model: "claude-opus-5-5" }, T(0));
-    audit(db, "awx-executor", "transfer.created", "tr-1", { amount: "EUR 99.00", approval_sha256: "c".repeat(64) }, T(1));
+    log(db, { ...CFO, cosigner: "dad" } as Origin, "awx-executor", "transfer.created", "tr-1", { amount: "EUR 99.00" }, 1);
     audit(db, "awx-executor", "transfer.status", "tr-1", { status: "PAID" }, T(2));
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "paid after the CFO's Face ID" });
-    audit(db, "treasury", "licence.timing_advised", "P-2", { proposal_id: "P-2", source: "claude", model: "claude-opus-5-5" }, T(3));
-    audit(db, "awx-executor", "transfer.status", "tr-1", { status: "PAID" }, T(4));
-    expect(flowEvents(db).at(-1)).toMatchObject({ model: "claude-opus-5-5", decided: "planned by the Treasury agent (Claude Opus), paid after the CFO's Face ID" });
+    expect(flowEvents(db)[0]!.decided).toBe("the CFO approved it with Face ID, with the controller's Face ID too (four eyes)");
   });
-});
 
-describe("an agent's run window holds other writers too (second review)", () => {
-  // An autonomous wake calls settle_dispute, which runs its own (inner) agent run; both runs enclose the refunds.
-  function wakeAround(db: DB, inner: () => void) {
-    run(db, "support", "claude-sonnet-5-5", ["settle_dispute", "finish"], inner);
-    decision(db, "support", "claude", "claude-sonnet-5-5", ["settle_dispute", "finish"], 0);
-  }
-  it("the inner settlement fell back to code, which refunded within the automatic limits: code, not the outer wake", () => {
+  it("the euro invoice names the Treasury agent's plan when its advice on the same proposal is linked", () => {
     const db = fresh();
-    sale(db, 7, 0);
-    wakeAround(db, () => {
-      run(db, "support", "claude-sonnet-5-5", ["verify_order", "check_data"], () => undefined);
-      audit(db, "support", "dispute.settled_by_agent", "DD-1", { source: "fallback", model: "claude-sonnet-5-5", refunded: [], refunded_now: [] }, T(2));
-      audit(db, "support", "refund.auto_approved", "DD-1", { sales: ["7"] }, T(3));
-      refundRow(db, 7, null); paidRefund(db, 7, 4);
-    });
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "code refunded it, within the CFO's automatic limits" });
+    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-7', 'invoice_payment', '{}', ?, 'treasury', 'EXECUTED', 'z', 'z')").run("c".repeat(64));
+    audit(db, "treasury", "licence.timing_advised", "P-7", { proposal_id: "P-7", source: "claude", model: "claude-opus-5-5" }, T(0));
+    log(db, CFO, "awx-executor", "transfer.created", "tr-1", { amount: "EUR 240.00", approval_sha256: "c".repeat(64) }, 1);
+    audit(db, "awx-executor", "transfer.status", "tr-1", { status: "PAID" }, T(2));
+    expect(flowEvents(db)[0]).toMatchObject({ model: "claude-opus-5-5", decided: "planned by the Treasury agent (Claude Opus), the CFO approved it with Face ID" });
   });
 
-  it("a refund batch the CFO's Face ID executed while the wake was open is the CFO's", () => {
-    const db = fresh();
-    sale(db, 7, 0);
-    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-9', 'refund_batch', '{}', 'x', 'support', 'EXECUTED', 'z', 'z')").run();
-    wakeAround(db, () => { refundRow(db, 7, "P-9"); paidRefund(db, 7, 2); });
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "refunded after the CFO's Face ID" });
+  it("a movement whose origin is missing says so: it is an error, never filled in from timing or a decision nearby", () => {
+    const db = world();
+    // A Claude decision recorded right after, using the very tool: it changes nothing.
+    audit(db, "treasury", "agent.decision", "wake.treasury", { source: "claude", model: "claude-opus-5-5", tools: ["sweep_earnings"] }, T(20));
+    log(db, null, "treasury", "sweep.paid", "sweep-2", { amount: "0.30", tx: TX(30) }, 19);
+    expect(flowEvents(db).at(-1)).toMatchObject({ kind: "sweep", model: null, decided: "who decided is not recorded" });
   });
 
-  it("the inner settlement's own refunds, by Claude, inside the wake: Claude", () => {
-    const db = fresh();
-    sale(db, 7, 0);
-    wakeAround(db, () => {
-      run(db, "support", "claude-sonnet-5-5", ["verify_order", "refund"], () => { refundRow(db, 7, null); paidRefund(db, 7, 2); });
-      audit(db, "support", "dispute.settled_by_agent", "DD-1", { source: "claude", model: "claude-sonnet-5-5", refunded: ["#7"] }, T(3));
-    });
-    expect(flowEvents(db)[0]).toMatchObject({ model: "claude-sonnet-5-5" });
-  });
-
-  it("a merchant's own charge that lands during the agent's wake is not the agent's purchase; its own purchase is", () => {
-    const db = fresh();
-    run(db, "sourcing", "claude-haiku-5-5", ["buy_software"], () => {
-      audit(db, "sourcing", "card.purchase_started", "plan-1", { agent: "sourcing", last4: "6423", merchant: "Notion", amount: "12.00", currency: "EUR" }, T(1));
-      audit(db, "sourcing", "card.charge_approved", "awx-1", { agent: "sourcing", amount: "12.00", currency: "EUR", last4: "6423", merchant: "Notion", source: "simulation" }, T(1));
-      audit(db, "sourcing", "card.charge_declined", "awx-2", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", reason: "LIMIT_EXCEEDED", source: "poll" }, T(2));
-    });
-    decision(db, "sourcing", "claude", "claude-haiku-5-5", ["buy_software"], 0);
-    const f = flowEvents(db);
-    expect(f.map((e) => e.model)).toEqual(["claude-haiku-5-5", null]);
-    expect(f[1]!.decided).toBe("a charge on the agent's card");
-  });
-
-  it("money that moved inside the agent's run, but not credited to Claude, is not called code's either", () => {
-    const db = fresh();
-    run(db, "treasury", "claude-opus-5-5", ["sweep_earnings"], () => audit(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", to: "0xb4b0", tx: TX(13) }, T(1)), { blocked: ["sweep_earnings: the sweep did not complete"] });
-    decision(db, "treasury", "claude", "claude-opus-5-5", ["sweep_earnings"], 0);
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "who decided is not recorded" });
-  });
-
-  it("a single-use card an agent asked for says so; the CFO approved it", () => {
+  it("a single-use card the CFO approved for an agent says who asked", () => {
     const db = fresh();
     db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-5', 'task_card', ?, 'y', 'treasury', 'EXECUTED', 'z', 'z')").run(JSON.stringify({ asked_by: "agent:sourcing" }));
-    audit(db, "treasury", "card.charge_approved", "awx-3", { agent: "task:P-5", amount: "9.00", currency: "EUR", last4: "1111", merchant: "Datalake", source: "webhook" }, T(1));
-    expect(flowEvents(db)[0]).toMatchObject({ model: null, decided: "a single-use card the CFO approved, asked for by the Sourcing agent" });
+    log(db, { ...CFO, proposal_id: "P-5" }, "treasury", "card.charge_approved", "awx-3", { agent: "task:P-5", amount: "9.00", currency: "EUR", last4: "1111", merchant: "Datalake", source: "webhook" }, 1);
+    expect(flowEvents(db)[0]!.decided).toBe("the CFO approved it with Face ID, asked for by the Sourcing agent");
+  });
+
+  it("a retailer's bank payment comes from the retailer, by name, and says what code did with it", () => {
+    const db = fresh();
+    log(db, null, "treasury", "receivable.escalated", "dep-1", { amount: "1000.00", currency: "EUR", invoice_no: "NW-R-201", origin: { actor: "external", party: "retailer", name: "Alpenweg Sport AG" } }, 0);
+    expect(flowEvents(db)[0]).toMatchObject({ kind: "deposit", from: "retailer", agent: null, decided: "Alpenweg Sport AG paid (a retailer); code held it for the CFO" });
   });
 });
 
-describe("movements the first version left out", () => {
-  it("a refund or a sweep Purser refused before signing hits Purser, with its reason and no transaction", () => {
+describe("a ledger recorded before origins existed (the 30 October run, dry-105)", () => {
+  function old(): DB {
     const db = fresh();
     sale(db, 7, 0);
-    audit(db, "support", "refund.refused", "7", { payment_id: "refund-7", amount: "0.05", to: "0xA5A1", tx: null, reason: "budget: the support mandate has 0.00 left" }, T(1));
-    audit(db, "treasury", "sweep.refused", "sweep-2", { amount: "0.40", to: "0xb4b0", tx: null, reason: "velocity: 3 sweeps in an hour" }, T(2));
+    legacyRow(db, "support", "agent.run", "wake.support", { status: "done", model: "claude-sonnet-5-5", tools: ["refund"], from_seq: 0 }, 1);
+    legacyRow(db, "support", "refund.paid", "7", { amount: "0.05", payment_id: "refund-7", tx: TX(1) }, 2);
+    legacyRow(db, "support", "agent.decision", "wake.support", { source: "claude", model: "claude-sonnet-5-5", tools: ["refund"] }, 3);
+    legacyRow(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", tx: TX(2) }, 4);
+    return db;
+  }
+
+  it("credits no Claude model at all: the runs and decisions nearby are not evidence, and each movement is marked derived", () => {
+    const f = flowEvents(old());
+    expect(f.map((e) => [e.kind, e.model, e.decided, e.derived])).toEqual([
+      ["refund", null, "who decided is not recorded", true],
+      ["sweep", null, "who decided is not recorded", true],
+    ]);
+  });
+
+  it("an explicit record still says who: the automatic-limit row (code), an executed batch (the CFO)", () => {
+    const db = fresh();
+    sale(db, 7, 0); sale(db, 8, 0);
+    legacyRow(db, "support", "refund.auto_approved", "DD-1", { sales: ["7"] }, 1);
+    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-9', 'refund_batch', '{}', 'x', 'support', 'EXECUTED', 'z', 'z')").run();
+    db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, proposal_id) VALUES (8, 'refund-8', 5, '0xA5A1', 'PAID', 'P-9')").run();
+    legacyRow(db, "support", "refund.paid", "7", { amount: "0.05", payment_id: "refund-7", tx: TX(1) }, 2);
+    legacyRow(db, "support", "refund.paid", "8", { amount: "0.05", payment_id: "refund-8", tx: TX(2) }, 3);
+    expect(flowEvents(db).map((e) => e.decided)).toEqual(["code refunded it, within the CFO's automatic limits", "refunded after the CFO's Face ID"]);
+  });
+
+  it("a ledger with no agents at all swept by code", () => {
+    const db = fresh();
+    legacyRow(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", tx: TX(2) }, 1);
+    expect(flowEvents(db)[0]).toMatchObject({ decided: "code swept the net earnings", derived: true });
+  });
+
+  it("an older refusal row with a bare code was Metal's facilitator (no tx); its amount, not recorded, is not made up", () => {
+    const db = fresh();
+    legacyRow(db, "sourcing", "upstream.refused", "41", { reason: "mandate_cap_exceeded", seq: 41 }, 1);
+    expect(flowEvents(db)).toEqual([expect.objectContaining({ rail: "metal", amount: "", refused: { by: "metal", reason: "mandate_cap_exceeded" }, proof: expect.objectContaining({ href: null, label: expect.stringMatching(/^Metal's facilitator refused it/) }) })]);
+  });
+});
+
+describe("movements shown for what they are", () => {
+  it("a refund or a sweep Purser refused before signing hits Purser, with its reason and no transaction", () => {
+    const db = fresh();
+    log(db, AUTO_REFUND, "support", "refund.refused", "7", { payment_id: "refund-7", amount: "0.05", to: "0xA5A1", tx: null, reason: "budget: the support mandate has 0.00 left" }, 1);
+    log(db, OPUS, "treasury", "sweep.refused", "sweep-2", { amount: "0.40", to: "0xb4b0", tx: null, reason: "velocity: 3 sweeps in an hour" }, 2);
     expect(flowEvents(db)).toEqual([
       expect.objectContaining({ kind: "refund", agent: "support", amount: "0.05", rail: "purser", refused: { by: "purser", reason: "budget: the support mandate has 0.00 left" }, proof: expect.objectContaining({ href: null, label: "Purser refused it before signing" }) }),
-      expect.objectContaining({ kind: "sweep", agent: "treasury", amount: "0.40", rail: "purser", refused: { by: "purser", reason: "velocity: 3 sweeps in an hour" } }),
+      expect.objectContaining({ kind: "sweep", agent: "treasury", amount: "0.40", rail: "purser", model: "claude-opus-5-5", refused: { by: "purser", reason: "velocity: 3 sweeps in an hour" } }),
     ]);
   });
 
   it("a sale settled through clearing is told apart from a per-request Metal payment, without a tx it does not have", () => {
     const db = fresh();
     sale(db, 1, 0);
-    audit(db, "system", "sale.delivered", "1", { settlement_id: "s-1", scheme: "bajillion", body_sha256: "x" }, T(0));
+    log(db, null, "system", "sale.delivered", "1", { settlement_id: "s-1", scheme: "bajillion", body_sha256: "x", origin: CUSTOMER }, 0);
     expect(flowEvents(db)[0]).toMatchObject({ kind: "sale", what: "stock checks sold, settled later by clearing", proof: { label: "settled later in a clearing batch on Metal", href: null } });
-  });
-});
-
-describe("nothing made up", () => {
-  it("a retailer's bank payment comes from the retailer, not from Summit's agent", () => {
-    const db = fresh();
-    audit(db, "awx-executor", "receivable.matched", "dep-1", { amount: "1000.00", currency: "EUR", invoice_no: "NW-R-201" }, T(0));
-    expect(flowEvents(db)[0]).toMatchObject({ kind: "deposit", from: "retailer", to: "airwallex", agent: null });
   });
 
   it("a row without its amount or currency is left out, not shown as 0.00 or as euros", () => {
     const db = fresh();
-    audit(db, "treasury", "sweep.paid", "sweep-1", { to: "0xb4b0", tx: TX(13) }, T(0));
-    audit(db, "awx-executor", "credit.deposited", "d-1", { amount: "0.09", deposit_id: "x" }, T(1));
-    audit(db, "sourcing", "card.charge_approved", "awx-tx-10", { agent: "sourcing", currency: "EUR", last4: "6423" }, T(2));
+    log(db, OPUS, "treasury", "sweep.paid", "sweep-1", { to: "0xb4b0", tx: TX(13) }, 0);
+    log(db, OPUS, "awx-executor", "credit.deposited", "d-1", { amount: "0.09", deposit_id: "x" }, 1);
+    log(db, HAIKU, "sourcing", "card.charge_approved", "awx-tx-10", { agent: "sourcing", currency: "EUR", last4: "6423" }, 2);
     expect(flowEvents(db)).toEqual([]);
   });
 });

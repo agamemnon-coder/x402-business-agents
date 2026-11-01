@@ -2,6 +2,8 @@
 // network call and writes nothing, so it can be served from a read-only handle while the agents run.
 // Every text it returns is plain text; the page renders it with textContent only.
 
+import { describeOrigin } from "../provenance/describe.js";
+import { MONEY_EVENTS, parseOrigin } from "../provenance/origin.js";
 import { flowEvents, type FlowEvent } from "./flows.js";
 import { agentStats, type AgentStats, agentChat, type ChatLine } from "./agentStats.js";
 import { agentTraces, type Trace } from "./trace.js";
@@ -97,6 +99,8 @@ export interface FeedItem {
   model: string | null;
   tx: string | null;
   awx_id: string | null;
+  /** D24: for a money movement, who decided it, from the origin recorded with it (absent for older ledgers). */
+  decided?: string;
   /** 4.1: the agent run this line belongs to (its trace in `traces`), or null. */
   trace: number | null;
 }
@@ -573,7 +577,17 @@ const TASK_WORDS: Record<string, string> = {
 const agentWho = (id: string): string => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
 
 /** Plain words for one audit row. Ids and hashes go in their own fields, never into the sentence's links. */
+/** A feed line; a money movement also says who decided it, from the origin recorded with it (D24) and nothing else. */
 export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined): Omit<FeedItem, "seq" | "ts" | "actor" | "event" | "trace"> {
+  const d = describeRow(r, saleOf);
+  if (!MONEY_EVENTS.has(r.event)) return d;
+  const p = JSON.parse(r.payload_json) as Record<string, unknown>;
+  if (!("origin" in p)) return d; // a ledger recorded before origins existed: the line stays as it was
+  const w = describeOrigin(parseOrigin(JSON.stringify(p.origin ?? null)));
+  return { ...d, decided: w.decided, model: d.model ?? w.model };
+}
+
+function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined): Omit<FeedItem, "seq" | "ts" | "actor" | "event" | "trace"> {
   const p = JSON.parse(r.payload_json) as P;
   const tx = TX.test(str(p.tx)) ? str(p.tx) : null;
   const s = str(r.subject);

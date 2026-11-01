@@ -12,6 +12,8 @@ import { claudeClient } from "../claude/reader.js";
 import { callCostMicros, type Usage } from "../claude/pricing.js";
 import type { DB } from "../db/open.js";
 import { redactJson, redactSecrets } from "../lib/redact.js";
+import { randomBytes } from "node:crypto";
+import { withOrigin } from "../provenance/origin.js";
 import { apiInputSchema } from "./toolSchema.js";
 
 export interface ToolResult {
@@ -98,6 +100,8 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
   const started = clock();
   // The trace (src/dashboard/trace.ts) shows every audit row after this one that the agent's run caused.
   const fromSeq = (db.prepare("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log").get() as { n: number }).n;
+  // D24: every money movement a tool call starts records this run, the model and the request that asked for the tool.
+  const runId = `run-${spec.agent}-${fromSeq}-${randomBytes(3).toString("hex")}`;
   const calls: AgentCall[] = [];
   const tokens = { input: 0, output: 0, cache_read: 0, cache_write: 0 };
   const claudeMs: number[] = [];
@@ -109,7 +113,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
       agent: spec.agent, model: model ?? spec.model, status, turns, tools: calls.map((c) => c.tool),
       blocked: calls.filter((c) => c.blocked).map((c) => `${c.tool}: ${c.blocked}`),
       said: short(run.text, 1200), cost_usd_micros: costMicros, latency_ms: clock() - started, ...(note ? { note: run.note! } : {}),
-      from_seq: fromSeq, tokens, claude_ms: claudeMs, claude_calls: claudeCalls as never, request_ids: claudeCalls.map((c) => c.request_id),
+      from_seq: fromSeq, run_id: runId, tokens, claude_ms: claudeMs, claude_calls: claudeCalls as never, request_ids: claudeCalls.map((c) => c.request_id),
     });
     return run;
   };
@@ -205,7 +209,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
           error = true;
         } else {
           try {
-            out = await tool.run(fits.data);
+            out = await withOrigin({ actor: "agent", agent: spec.agent, model: res.model, request_id: requestId, run_id: runId }, () => tool.run(fits.data));
           } catch (e) {
             out = { text: `The tool stopped: ${(e as Error).message}. Nothing more was done.`, blocked: "error" };
             error = true;

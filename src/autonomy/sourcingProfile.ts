@@ -5,6 +5,7 @@
 // cached stock check. It can ask the Treasury agent for a higher cap or a price change. It cannot change its mandate:
 // Purser and Metal refuse anything over it, and only the CFO approves a new one.
 
+import { currentOrigin } from "../provenance/origin.js";
 import { z } from "zod";
 import { audit } from "../audit/log.js";
 import { MODELS } from "../claude/reader.js";
@@ -181,7 +182,8 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
           if (no) return no;
           const next = policyFrom(p);
           setSetting(db, "sourcing", "sourcing.buy_policy", JSON.stringify(next));
-          audit(db, "sourcing", "sourcing.policy_set", "buy_policy", { ...next });
+          // D24: who set the policy (the agent's Claude run), so every purchase under it can name that decision.
+          audit(db, "sourcing", "sourcing.policy_set", "buy_policy", { ...next, origin: (currentOrigin() as never) ?? null });
           return { text: `Buy policy set: ${policyWords(next)}.` };
         },
       },

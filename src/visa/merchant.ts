@@ -3,6 +3,7 @@
 // test keys), and only then is the agent's own Airwallex Visa card charged, inside the CFO limit Airwallex enforces
 // (src/agents/cardBuyer.ts). In the sandbox the charge is a simulated card authorisation. Every outcome is audited.
 
+import { withOrigin } from "../provenance/origin.js";
 import { buyPlan } from "../agents/cardBuyer.js";
 import type { IssuingSim } from "../airwallex/issuing.js";
 import { audit } from "../audit/log.js";
@@ -33,7 +34,8 @@ export async function tapCheckout(db: DB, sim: IssuingSim, req: Request, now = n
   // A recognised agent pays only with its own card: the signing agent must be the plan's agent.
   if (p.agent !== v.agent) return { recognised: true, agent: v.agent, approved: false, reason: `${agentName(v.agent)} may not pay with the ${agentName(p.agent)}'s card`, transactionId: null };
   try {
-    const t = await buyPlan(db, sim, plan!, now);
+    // D24: a dev-test purchase, decided by this test's code (a recognised agent's request), not by an agent's Claude run.
+    const t = await withOrigin({ actor: "code", rule: "a Visa agent-recognition dev test" }, () => buyPlan(db, sim, plan!, now));
     return { recognised: true, agent: v.agent, approved: t.approved, reason: t.approved ? null : `declined by Airwallex: ${t.failureReason}`, transactionId: t.transactionId };
   } catch (e) {
     return { recognised: true, agent: v.agent, approved: false, reason: (e as Error).message, transactionId: null };

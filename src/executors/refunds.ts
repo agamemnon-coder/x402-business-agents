@@ -2,6 +2,7 @@
 // Each carries the payment id refund-<sale_id>: the database allows one refund per sale, and metal-agent
 // pays a payment id at most once, so a retry after a crash reports the first outcome instead of paying again.
 
+import { originJson } from "../provenance/origin.js";
 import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
@@ -43,8 +44,8 @@ export async function refundSale(
     return { sale_id: r.sale_id, payment_id: paymentId, outcome: existing.outcome, tx: existing.tx_hash, reason: null, already: true };
   }
   if (!existing) {
-    db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, proposal_id, dispute_id) VALUES (?, ?, ?, ?, 'PROPOSED', ?, ?)")
-      .run(r.sale_id, paymentId, r.amount_cents, r.to, r.proposal_id ?? null, r.dispute_id);
+    db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, proposal_id, dispute_id, origin_json) VALUES (?, ?, ?, ?, 'PROPOSED', ?, ?, ?)")
+      .run(r.sale_id, paymentId, r.amount_cents, r.to, r.proposal_id ?? null, r.dispute_id, originJson());
   }
 
   // The CFO policy's limit per refund, the velocity limits, the mandate's budget and the agents' shared total, reserved

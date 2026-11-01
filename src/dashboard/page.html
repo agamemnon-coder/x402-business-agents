@@ -475,7 +475,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 .mf-cap .l1 { font-size: 15px; font-weight: 600; } .mf-cap .l1 .amt { font-variant-numeric: tabular-nums; }
 .mf-cap .l2 { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .mf-cap .chip { display: inline-block; flex: 0 1 auto; max-width: 100%; font-size: 12px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; color: var(--muted); }
 .mf-cap .chip.rail-metal { border-color: #111827; color: var(--text); } .mf-cap .chip.rail-awx { border-color: #ff4f42; color: var(--text); }
-.mf-cap .l3 { font-size: 13.5px; color: var(--muted); } .mf-cap .ref { font-size: 13px; color: var(--bad); font-weight: 600; margin-top: 4px; overflow-wrap: anywhere; }
+.mf-cap .l3 { font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; } .mf-cap .l3 .req { font-size: 12px; } .mf-cap .l3 .drv { font-size: 12px; font-style: italic; } .mf-cap .ref { font-size: 13px; color: var(--bad); font-weight: 600; margin-top: 4px; overflow-wrap: anywhere; }
 .mf-cap .mf-proof { font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; } .mf-cap .mf-proof a { color: var(--accent); }
 .mf-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .mf-ctl button { font: 600 13px var(--font); border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 11px; cursor: pointer; min-height: 34px; }
@@ -1043,7 +1043,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       el("div", "", [
         k.label ? txt("div", "kind", k.label) : null,
         txt("div", "t", plain(f.text)),
-        el("div", "who", [agentName(f.actor)].concat(refs.length ? [" · ", el("span", "proof", refs)] : [])),
+        el("div", "who", [agentName(f.actor)].concat(f.decided ? [" · Decided: " + f.decided] : []).concat(refs.length ? [" · ", el("span", "proof", refs)] : [])),
       ]),
       when,
     ]);
@@ -1589,7 +1589,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       set(cap, [
         el("div", "l1", [txt("span", "", capFirst(who) + " → " + (MF_WORDS[e.to] || e.to) + " · "), txt("span", "amt", mfAmt(e)), e.count ? txt("span", "", " · " + e.count + " payments") : null, txt("span", "", " · " + e.what)]),
         el("div", "l2", [txt("span", "chip" + (r[0] ? " rail-" + r[0] : ""), r[1]), e.model ? txt("span", "chip", mfModel(e.model)) : null]),
-        txt("div", "l3", "Decided: " + e.decided),
+        el("div", "l3", [txt("span", "", "Decided: " + e.decided), e.request ? txt("span", "mono req", " · request " + e.request) : null, e.derived ? txt("span", "drv", " · from the ledger's records (this recording predates who-decided being recorded at the source)") : null]),
         ref ? txt("div", "ref", "Refused by " + ref[2] + ": " + e.refused.reason) : null,
         el("div", "mf-proof", [txt("span", "", "Proof: "), proof])]);
     }

@@ -70,7 +70,7 @@ export async function pollQuarantine(db: DB, port: ReceivePolicyPort, now = new 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)`).run(q.receiptId, CHAIN_ID, q.tx, q.logIndex, q.block, r.token, getAddress(r.originator), getAddress(r.receiver),
         r.amount.toString(), q.reason, JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? v.toString() : v)), now.toISOString());
       const amount = formatUnits(r.amount, 18);
-      audit(db, "system", "quarantine.held", q.receiptId, { from: getAddress(r.originator), amount, reason: quarantineReason(q.reason), tx: q.tx, log_index: String(q.logIndex) }, now);
+      audit(db, "system", "quarantine.held", q.receiptId, { origin: { actor: "external", party: "sender" }, from: getAddress(r.originator), amount, reason: quarantineReason(q.reason), tx: q.tx, log_index: String(q.logIndex) }, now);
       // One pair of options per sender at a time, and none for dust: a stranger cannot fill the CFO's phone.
       const waiting = db.prepare("SELECT 1 FROM proposals WHERE kind = 'quarantine_release' AND status = 'PENDING_APPROVAL' AND json_extract(terms_json, '$.originator') = ?").get(getAddress(r.originator));
       if (r.amount < DUST_UNITS || waiting) return;

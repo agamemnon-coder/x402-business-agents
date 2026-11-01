@@ -5,6 +5,7 @@ import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
 import type { DB } from "../db/open.js";
 import { redactJson, redactSecrets } from "../lib/redact.js";
 import { sha256Hex } from "../lib/terms.js";
+import { MONEY_EVENTS, currentOrigin, parseOrigin } from "../provenance/origin.js";
 
 export type Actor =
   | "system" | "claude" | "sourcing" | "support" | "treasury" | "customer"
@@ -34,6 +35,13 @@ function hashRow(r: Omit<Row, "row_hash">): string {
 }
 
 export function audit(db: DB, actor: Actor, event: string, subject: string | null, payload: Json, now = new Date()): Row {
+  // D24: a money event records who decided it, as it stood when the action ran: the origin the writer states, else the
+  // one in force on this code path, else null (an error the origins check counts). It is hashed into the chain.
+  if (MONEY_EVENTS.has(event) && payload && typeof payload === "object" && !Array.isArray(payload)) {
+    // A stated origin must be a well-formed one; anything else is recorded as missing (an error), never kept.
+    const stated = "origin" in payload ? parseOrigin(JSON.stringify(payload.origin)) : undefined;
+    payload = { ...payload, origin: ((stated === undefined ? currentOrigin() : stated) as Json | null) ?? null };
+  }
   const append = db.transaction(() => {
     const last = db.prepare("SELECT seq, row_hash FROM audit_log ORDER BY seq DESC LIMIT 1").get() as { seq: number; row_hash: string } | undefined;
     const row: Omit<Row, "row_hash"> = {

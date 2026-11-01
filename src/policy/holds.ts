@@ -9,6 +9,7 @@
 // SETTLED once its payment is in the ledger (then the ledger counts it) or RELEASED when it did not happen. Between
 // the ledger write and the settle a payment counts twice: never less than the truth, so never over a limit.
 
+import { originJson } from "../provenance/origin.js";
 import { audit } from "../audit/log.js";
 import { TOTAL_BUDGET_CENTS, type Agent } from "../config/policy.js";
 import type { DB } from "../db/open.js";
@@ -102,7 +103,7 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
     // The policy version this reservation was checked against (backend review B4).
     const policy = policyVersion(db, now).version;
     if (existing) db.prepare("UPDATE holds SET agent = ?, rail = ?, cents = ?, status = 'HELD', reason = NULL, updated_at = ?, policy_version = ? WHERE ref = ?").run(agent, r.rail, r.cents, ts, policy, r.ref);
-    else db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, created_at, updated_at, policy_version) VALUES (?, ?, ?, ?, 'HELD', ?, ?, ?)").run(r.ref, agent, r.rail, r.cents, ts, ts, policy);
+    else db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, created_at, updated_at, policy_version, origin_json) VALUES (?, ?, ?, ?, 'HELD', ?, ?, ?, ?)").run(r.ref, agent, r.rail, r.cents, ts, ts, policy, originJson());
     return null;
   }).immediate();
 }

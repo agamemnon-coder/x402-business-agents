@@ -1,6 +1,7 @@
 // The sourcing agent: buys stock checks from the supplier under its own mandate (payee: the supplier only,
 // a per-purchase cap, a budget). It holds its mandate key and nothing else.
 
+import { originJson, parseOrigin, withOrigin, type Origin } from "../provenance/origin.js";
 import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
@@ -106,10 +107,19 @@ export class SourcingAgent {
     return capRefusal(this.db, "sourcing", cents);
   }
 
+  /** D24: a purchase per query is code following a buy policy; its origin names the policy and, when the Sourcing
+   *  agent's own Claude run set it, that run. It replaces any origin around it: code decides each purchase. */
   async buy(seq: number): Promise<UpstreamResult> {
+    const set = autonomyOn() ? this.db.prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.policy_set' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined : undefined;
+    const by = set ? parseOrigin(JSON.stringify((JSON.parse(set.payload_json) as { origin?: unknown }).origin ?? null)) : null;
+    const origin: Origin = set ? { actor: "code", rule: "the Sourcing agent's buy policy", agent: "sourcing", ...(by ? { set_by: by } : {}) } : { actor: "code", rule: "the default buy policy", agent: "sourcing" };
+    return withOrigin(origin, () => this.buyUnder(seq));
+  }
+
+  private async buyUnder(seq: number): Promise<UpstreamResult> {
     const now0 = new Date().toISOString();
     const insert = this.db.prepare(
-      "INSERT INTO upstream_purchases (price_cents, nonce, tx_hash, outcome, refusal_reason, created_at, supplier) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO upstream_purchases (price_cents, nonce, tx_hash, outcome, refusal_reason, created_at, supplier, origin_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     );
     // D19: the Sourcing agent's buy policy decides, per query, at code speed: the cache, the supplier, the price limit.
     const policy = autonomyOn() ? buyPolicy(this.db) : DEFAULT_POLICY;
@@ -118,7 +128,7 @@ export class SourcingAgent {
       return { ok: true, purchaseId: this.cache.purchaseId, body: this.cache.body };
     }
     const policyRefusal = (reason: string, supplier: SupplierId | "none"): UpstreamResult => {
-      const id = Number(insert.run(0, null, null, "REFUSED", reason, now0, supplier).lastInsertRowid);
+      const id = Number(insert.run(0, null, null, "REFUSED", reason, now0, supplier, originJson()).lastInsertRowid);
       audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason, refused_by: "purser", supplier });
       this.tell(seq, supplier, reason, "purser");
       return { ok: false, purchaseId: id, reason, inDoubt: false };
@@ -146,7 +156,7 @@ export class SourcingAgent {
     const now = new Date().toISOString();
 
     if (out.kind === "paid") {
-      const id = Number(insert.run(Number(BigInt(out.amount) / 10n ** 16n), out.nonce, out.tx, "PAID", null, now, t.id).lastInsertRowid);
+      const id = Number(insert.run(Number(BigInt(out.amount) / 10n ** 16n), out.nonce, out.tx, "PAID", null, now, t.id, originJson()).lastInsertRowid);
       if (held) settleHold(this.db, ref);
       audit(this.db, "sourcing", "upstream.paid", String(id), { seq, tx: out.tx, amount_units: out.amount, supplier: t.id });
       const body = JSON.parse(out.body) as unknown;
@@ -154,7 +164,7 @@ export class SourcingAgent {
       return { ok: true, purchaseId: id, body };
     }
     if (out.kind === "refused") {
-      const id = Number(insert.run(0, out.nonce ?? null, null, "REFUSED", out.reason, now, t.id).lastInsertRowid);
+      const id = Number(insert.run(0, out.nonce ?? null, null, "REFUSED", out.reason, now, t.id, originJson()).lastInsertRowid);
       if (held) releaseHold(this.db, ref, out.reason);
       audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason, refused_by: out.status === 0 ? "purser" : "metal", supplier: t.id });
       this.tell(seq, t.id, out.reason, out.status === 0 ? "purser" : "metal");
@@ -168,7 +178,7 @@ export class SourcingAgent {
     }
     // In doubt: the purchase may have settled. Look its nonce up before anything else; never pay twice.
     const found = out.nonce ? await findSettlementByNonce(t.address, out.nonce, started) : undefined;
-    const id = Number(insert.run(0, out.nonce, found?.transaction ?? null, found ? "PAID" : "IN_DOUBT", out.reason, now, t.id).lastInsertRowid);
+    const id = Number(insert.run(0, out.nonce, found?.transaction ?? null, found ? "PAID" : "IN_DOUBT", out.reason, now, t.id, originJson()).lastInsertRowid);
     // Paid after all: the ledger row counts it. In doubt: the hold keeps counting until the reconciliation resolves it.
     if (held && found) settleHold(this.db, ref);
     audit(this.db, "sourcing", found ? "upstream.paid_after_lookup" : "upstream.in_doubt", String(id), { seq, reason: out.reason, tx: found?.transaction ?? null });

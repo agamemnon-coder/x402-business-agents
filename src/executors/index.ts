@@ -3,6 +3,7 @@ import { executeQuarantineRelease } from "../policy/quarantine.js";
 import { LiveReceivePolicy } from "../metal/receivePolicy.js";
 import { keyPath } from "../metal/agentCli.js";
 import type { DB } from "../db/open.js";
+import { withOrigin, type Origin } from "../provenance/origin.js";
 import { executeMandateReplace } from "./mandateReplace.js";
 import { executeRefundBatch } from "./refundBatch.js";
 import { executeInvoicePayment } from "./invoicePayment.js";
@@ -16,8 +17,22 @@ import { syncCardsAfterPolicy } from "../policy/cards.js";
 import { executePayeeChange } from "../policy/payeeChange.js";
 import { executeAgentOnboard } from "../platform/externalAgents.js";
 
-/** Runs an approved proposal by its kind. Every executor re-checks the approved hash itself. */
+/** D24: the origin of every money movement an approved proposal makes: its approval, and with four eyes the cosigner. */
+export function approvalOrigin(db: DB, proposalId: string): Origin | null {
+  const a = db.prepare("SELECT approval_id, approver, method FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId) as { approval_id: number; approver: string; method: string } | undefined;
+  if (!a) return null;
+  const co = db.prepare("SELECT approver FROM cosignatures WHERE proposal_id = ? ORDER BY created_at, rowid LIMIT 1").get(proposalId) as { approver: string } | undefined;
+  return { actor: "cfo", proposal_id: proposalId, approval_id: String(a.approval_id), method: a.method, approver: a.approver, ...(co && co.approver !== a.approver ? { cosigner: co.approver } : {}) };
+}
+
+/** Runs an approved proposal by its kind. Every executor re-checks the approved hash itself. Everything it moves
+ *  records the approval as its origin (D24); without an approval the executor refuses on its own check. */
 export async function execute(db: DB, proposalId: string): Promise<void> {
+  const origin = approvalOrigin(db, proposalId);
+  return origin ? withOrigin(origin, () => executeApproved(db, proposalId)) : executeApproved(db, proposalId);
+}
+
+async function executeApproved(db: DB, proposalId: string): Promise<void> {
   const row = db.prepare("SELECT kind FROM proposals WHERE proposal_id = ?").get(proposalId) as { kind: string } | undefined;
   if (!row) throw new Error(`no proposal ${proposalId}`);
   if (row.kind === "dev_test") return executeDevTest(db, proposalId);

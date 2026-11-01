@@ -168,7 +168,7 @@ export async function payWithCard(db: DB, sim: IssuingSim, id: ExternalAgentId, 
   }
   if (amountCents <= 0) throw new Error("the amount must be more than 0.00");
   const purpose = `${merchant}, ${a.description.trim().slice(0, 120)}`;
-  audit(db, id as Actor, "card.purchase_started", id, { agent: id, last4: card.last4, merchant, amount: fromCents(amountCents), currency: "EUR", description: a.description.trim().slice(0, 120) }, now);
+  audit(db, id as Actor, "card.purchase_started", id, { origin: { actor: "external", party: "outside_agent", name: id }, agent: id, last4: card.last4, merchant, amount: fromCents(amountCents), currency: "EUR", description: a.description.trim().slice(0, 120) }, now);
   const t = await chargeUnderHold(db, id, amountCents, now, () => sim.simulateCardCharge({ cardId: card.card_id, amountCents, currency: "EUR", merchant, mcc: MCC }));
   ingestCardTransaction(db, t, "simulation", now, purpose);
   return t;

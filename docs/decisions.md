@@ -450,3 +450,26 @@ charge that lands while the agent is awake is not. Money that moved inside an ag
 reads "who decided is not recorded", not "code". A single-use card an agent asked for says so. On a live panel a new
 movement is lit, marked and animated as its own; the panel shows again after an empty world. The autonomous recording
 is built as of its last row, so its "Claude cost, last hour" is the run's own.
+
+### D24. Who decided, recorded at the source (Max, 2 November)
+
+The fresh reviews of D23 found the same root cause twice: "who decided" a money movement was worked out afterwards
+from timing. Max: record it at the source. Every action that moves money gets an origin when it starts, which never
+changes afterwards: the actor (an agent's Claude decision, the CFO with a passkey, the controller, code within an
+automatic limit or a policy, or an outside party: a customer, supplier, retailer or merchant), with the model and the
+API request id for Claude, the approval id for a Face ID, and the run id. It goes into the audit chain (the money
+events' payload), the ledger rows (holds, refunds, sweeps, upstream purchases, transfers) and the outbox (money steps).
+
+How: an origin is carried by the code path that starts the action (Node's AsyncLocalStorage), set at four doors only:
+the agent loop around each tool call (agent, model, request id, run id), the executor around an approved proposal (the
+approval, the CFO's passkey and, with four eyes, the controller), code's own automatic paths (named by their rule, and
+overriding any agent around them), and the doors where outside money arrives (sales, deposits, card charges). A
+subprocess a tool starts gets it through the environment. Code that moves money without an origin records none, and
+that is counted as an error: `npm run origins -- <ledger>` lists every money movement without one, and a dry run with
+the agents fails if there is any (Thursday's run must have 0). The dashboard, the money flow, the film and the Dispute
+desk read only this field. Ledgers recorded before D24 (the 30 October run, dry-105) carry no origins; for those the
+flow shows only what an explicit record says (an executed batch, an automatic-limit row) and is labelled as derived.
+
+Estimate 8 hours (origin module and audit 1, the four doors and the ledger columns 3, readers 2, tests, red team,
+browser check and review 2). Risk: medium; it adds a field and must not change any money path. Built in a separate
+worktree while the soak runs on the current code.

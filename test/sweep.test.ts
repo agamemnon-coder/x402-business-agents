@@ -2,6 +2,7 @@
 // velocity checked before signing; a retry keeps its payment id and amount; a sent pull is never forgotten), the
 // finality gate before any credit, and one credit per on-chain transfer. The metal-agent CLI, the mandates and the
 // chain are fakes; the ledger is a real in-memory database. No network.
+import { withOrigin } from "../src/provenance/origin.js";
 import { encodeAbiParameters, encodeEventTopics, erc20Abi, type Address, type Hash } from "viem";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CliResult } from "../src/metal/agentCli.js";
@@ -155,12 +156,15 @@ describe("sweep ids", () => {
 
 describe("executing a sweep", () => {
   it("pulls once under the treasury mandate with the payment id and amount, and records PAID with the tx", async () => {
-    const r = await executeSweep(db, "sweep-1", 250, SWEEP);
+    const origin = { actor: "agent" as const, agent: "treasury", model: "claude-opus-5-5", request_id: "req_1", run_id: "run-treasury-1-abcdef" };
+    const r = await withOrigin(origin, () => executeSweep(db, "sweep-1", 250, SWEEP));
     expect(r).toEqual({ outcome: "PAID", tx: "0xt1", reason: null });
+    // D24: who decided it is recorded with the sweep, in its ledger row and its audit event, when it starts.
+    expect(JSON.parse((db.prepare("SELECT origin_json FROM sweeps WHERE payment_id = 'sweep-1'").get() as { origin_json: string }).origin_json)).toEqual(origin);
     // Fails if: the pull is made without the payment id (metal-agent's at-most-once key) or with another amount.
     expect(h.cli).toEqual([["mandate", "pull", "--credential", "/keys/treasury.credential.json", "--mandate-key-file", "/keys/treasury.key.json", "--to", SWEEP, "--amount", "2.50", "--payment-id", "sweep-1"]]);
     expect(sweepRow(db, "sweep-1")).toEqual({ amount_cents: 250, outcome: "PAID", tx_hash: "0xt1" });
-    expect(events(db, "sweep.paid")).toEqual([{ amount: "2.50", to: SWEEP, tx: "0xt1", reason: null }]);
+    expect(events(db, "sweep.paid")).toEqual([{ amount: "2.50", to: SWEEP, tx: "0xt1", reason: null, origin }]);
   });
 
   it("retries a pending pull under the same payment id, and keeps an earlier tx when the retry reports none", async () => {

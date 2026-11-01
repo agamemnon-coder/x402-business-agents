@@ -12,6 +12,7 @@ import { createWriteStream, existsSync, mkdirSync, writeFileSync } from "node:fs
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { openDb } from "../../src/db/open.js";
+import { originsCheck } from "../../src/provenance/check.js";
 import { redactSecrets } from "../../src/lib/redact.js";
 import { agentStats } from "../../src/dashboard/agentStats.js";
 import { activePasskey, confirmPasskey, openEnrolment, pendingPasskeys } from "../../src/passkey/ledger.js";
@@ -428,6 +429,11 @@ if (process.env.DRYRUN_AUTONOMY) {
       check(decisions > 0 && fallbacks / decisions < 0.1, `fallbacks ${fallbacks} of ${decisions} decisions (under 10%)`);
       check(stats.every((x) => x.calls_without_request_id === 0), "every Claude call has an API request id");
       for (const x of stats) say(`AGENT SUMMARY ${x.agent}: ${x.decisions} decisions, fallback ${x.fallback_pct}%, ${x.claude_calls} calls, ${(x.cost_usd_micros / 1e6).toFixed(4)} USD`);
+      // D24: every money movement records who decided it, at the source. One without blocks the run.
+      const o = originsCheck(db());
+      for (const m of o.missing.slice(0, 10)) say(`NO ORIGIN #${m.seq} ${m.event} ${m.subject ?? ""}`);
+      check(o.recorded && o.missing.length === 0, `every money movement has its origin (${o.movements} movements, ${o.missing.length} without)`);
+      say(`ORIGINS ${o.movements} movements, ${o.missing.length} without an origin`);
     });
   } finally {
     try { process.kill(-world.pid!, "SIGTERM"); } catch { /* gone */ }
@@ -714,6 +720,11 @@ if (process.env.KIT11_AGENTS === "on") {
   const missing = stats.reduce((n, s) => n + s.calls_without_request_id, 0);
   check(missing === 0 && stats.some((s) => s.claude_calls > 0), `every agent Claude call has an API request id (${stats.reduce((n, s) => n + s.claude_calls, 0)} calls, ${missing} without)`);
   for (const s of stats) say(`AGENT SUMMARY ${s.agent}: ${s.decisions} decisions, fallback ${s.fallback_pct}%, ${s.claude_calls} calls, ${(s.cost_usd_micros / 1e6).toFixed(4)} USD`);
+  // D24: every money movement records who decided it, at the source. One without blocks the run.
+  const o = originsCheck(db());
+  for (const m of o.missing.slice(0, 10)) say(`NO ORIGIN #${m.seq} ${m.event} ${m.subject ?? ""}`);
+  check(o.recorded && o.missing.length === 0, `every money movement has its origin (${o.movements} movements, ${o.missing.length} without)`);
+  say(`ORIGINS ${o.movements} movements, ${o.missing.length} without an origin`);
 }
 const total = Math.round((Date.now() - started) / 60_000);
 writeFileSync(join(out, "timings.json"), JSON.stringify({ total_minutes: total, failures, timings }, null, 2));

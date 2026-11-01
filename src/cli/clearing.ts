@@ -47,7 +47,7 @@ if (cmd === "status") {
   }
   const r = await depositCustomer(centsToBaseUnits(toCents(amount)));
   db.prepare("INSERT INTO clearing_ops (party, kind, units, tx, detail, created_at) VALUES ('customer', 'deposit', ?, ?, NULL, ?)").run(centsToBaseUnits(toCents(amount)).toString(), r.depositTx, new Date().toISOString());
-  audit(db, "customer", "clearing.deposited", r.account.slice(0, 18), { amount, tx: r.depositTx });
+  audit(db, "customer", "clearing.deposited", r.account.slice(0, 18), { amount, tx: r.depositTx, origin: { actor: "external", party: "customer", name: "Summit's agent (the simulated customer)" } });
   console.log(`Summit deposited ${amount} *USDZ into Metal clearing: ${EXPLORER_TX}${r.depositTx}`);
 } else if (cmd === "buy") {
   const from = Number(args[1] ?? 1);
@@ -78,7 +78,7 @@ if (cmd === "status") {
   if (r.status === "sent") {
     for (const c of r.claimed) {
       db.prepare("INSERT INTO clearing_ops (party, kind, units, tx, detail, created_at) VALUES ('seller', 'withdraw', ?, ?, ?, ?)").run(c.amount.toString(), c.tx, c.deferred ? "deferred" : null, new Date().toISOString());
-      audit(db, "treasury", "clearing.withdrawn", null, { amount: units(c.amount), tx: c.tx, deferred: c.deferred });
+      audit(db, "treasury", "clearing.withdrawn", null, { amount: units(c.amount), tx: c.tx, deferred: c.deferred, origin: { actor: "code", rule: "withdraw the clearing earnings (npm run clearing -- withdraw)", agent: "treasury" } });
       console.log(`claimed ${units(c.amount)} *USDZ to the business account${c.deferred ? " (deferred: the destination must collect it)" : ""}: ${EXPLORER_TX}${c.tx}`);
     }
     if (r.queued) console.log(`queued the rest for withdrawal: ${EXPLORER_TX}${r.queued.tx}; call again once its epoch is final (about 20 minutes)`);

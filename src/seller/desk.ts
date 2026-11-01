@@ -3,6 +3,7 @@
 // limits or proposes the refund for Face ID above them, and Opus explains the decision from the evidence. The case is
 // kept with its evidence, so the report the seller sends can be checked by anyone against the chain.
 
+import { AUTO_REFUND, withOrigin } from "../provenance/origin.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
 import { attachReview } from "../claude/review.js";
@@ -102,10 +103,13 @@ export async function openDisputeCase(
     if (r.route === "auto") {
       route = "auto";
       audit(db, "support", "refund.auto_approved", caseId, { sales: refundsDue.map((s) => String(s.sale_id)), rule: "each <= limit and batch <= limit" }, now);
-      for (const s of refundsDue) {
-        const out: RefundResult = await (deps.refund ?? refundSale)(db, { sale_id: s.sale_id, amount_cents: s.refund_cents, to: decision.refund_to as Address, dispute_id: caseId });
-        refunds.push({ sale_id: s.sale_id, outcome: out.outcome, tx: out.tx });
-      }
+      // D24: code decides these refunds, within the CFO's automatic limits, whatever started the desk.
+      await withOrigin(AUTO_REFUND, async () => {
+        for (const s of refundsDue) {
+          const out: RefundResult = await (deps.refund ?? refundSale)(db, { sale_id: s.sale_id, amount_cents: s.refund_cents, to: decision.refund_to as Address, dispute_id: caseId });
+          refunds.push({ sale_id: s.sale_id, outcome: out.outcome, tx: out.tx });
+        }
+      });
     } else {
       route = "approval";
       const terms: RefundBatchTerms = {

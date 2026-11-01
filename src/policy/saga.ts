@@ -8,6 +8,7 @@
 // executor again; the executor skips DONE steps and resolves a STARTED one by its key at the outside service (a
 // conversion or transfer by its request_id, a Metal pull by its payment id), so nothing is ever done twice.
 
+import { originJson } from "../provenance/origin.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { resuming } from "./approvals.js";
@@ -29,8 +30,8 @@ export function stepDone<T>(db: DB, actionId: string, step: string): T | null {
 }
 
 export function startStep(db: DB, actionId: string, n: number, step: string, key: string, now = new Date()): void {
-  db.prepare("INSERT INTO money_steps (action_id, n, step, key, status, updated_at) VALUES (?, ?, ?, ?, 'STARTED', ?) ON CONFLICT(action_id, step) DO NOTHING")
-    .run(actionId, n, step, key, now.toISOString());
+  db.prepare("INSERT INTO money_steps (action_id, n, step, key, status, updated_at, origin_json) VALUES (?, ?, ?, ?, 'STARTED', ?, ?) ON CONFLICT(action_id, step) DO NOTHING")
+    .run(actionId, n, step, key, now.toISOString(), originJson());
 }
 
 export function finishStep(db: DB, actionId: string, step: string, detail: unknown, now = new Date()): void {

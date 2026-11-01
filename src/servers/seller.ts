@@ -90,7 +90,7 @@ export function sellerApp(opts: SellerOptions) {
         sha256Hex(bodyText), bodyText, Number.isFinite(upstream) ? upstream : null, JSON.stringify(requirements), new Date().toISOString(),
       );
       if (info.changes === 1) {
-        audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });
+        audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { origin: { actor: "external", party: "customer" }, settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });
       }
     }).immediate();
   });
@@ -193,7 +193,7 @@ export function sellerApp(opts: SellerOptions) {
           // The buyer's signed payment (from its header) and the service's receipt, so verify can check it again.
           JSON.stringify({ paid, settled: settled?.receipt ?? null }),
         );
-        if (info.changes === 1) audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { settlement_id: id, scheme: "bajillion", body_sha256: sha256Hex(bodyText) });
+        if (info.changes === 1) audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { origin: { actor: "external", party: "customer" }, settlement_id: id, scheme: "bajillion", body_sha256: sha256Hex(bodyText) });
       }).immediate();
       res.type("application/json").send(bodyText);
     });
