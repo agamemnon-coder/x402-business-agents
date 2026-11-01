@@ -612,3 +612,26 @@ CREATE TABLE IF NOT EXISTS agent_claims (
   claimed_by TEXT NOT NULL,
   claimed_at TEXT NOT NULL
 );
+
+-- D19, the autonomous agents: what changed in the world, the agents' messages to each other, and how far each agent
+-- has read. The world (the demo, a webhook, a refusal) publishes events; an agent's loop wakes on its own.
+CREATE TABLE IF NOT EXISTS world_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  for_agent TEXT,
+  payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS agent_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_agent TEXT NOT NULL,
+  to_agent TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS agent_cursors (
+  agent TEXT PRIMARY KEY,
+  last_event_id INTEGER NOT NULL DEFAULT 0,
+  last_message_id INTEGER NOT NULL DEFAULT 0,
+  last_tick_at TEXT
+);

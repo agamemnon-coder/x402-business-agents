@@ -642,6 +642,14 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
         ? out(`${capFirst(who)} read Airwallex's decline (${declineWords(str(p.reason))}) and ${what}${str(p.said) ? `: "${str(p.said)}"` : ""}`, "approval", { model: modelName(str(p.model)) })
         : out(`Code met the decline (${declineWords(str(p.reason))}) and ${what}; the agent did not decide`, "approval");
     }
+    // D19, the autonomous agents: what changed in the world, what each agent decided, what they told each other.
+    case "world.event": return out(`The world changed: ${str(p.kind).replace(/[._]/g, " ")}${p.for_agent ? ` (for ${agentWho(str(p.for_agent))})` : ""}`, "info");
+    case "agent.decision": return str(p.source) === "claude"
+      ? out(`${capFirst(agentWho(r.actor))} decided${p.tick ? " (routine check)" : ""}: ${str(p.summary)}`, "info", { model: modelName(str(p.model)) })
+      : out(`Fallback (code) for ${agentWho(r.actor)}: ${str(p.summary)}`, "info");
+    case "agent.message": return out(`${capFirst(agentWho(str(p.from)))} → ${agentWho(str(p.to))}: "${str(p.text)}"`, "info");
+    case "agent.idle": return out(`${capFirst(agentWho(str(p.agent)))} does nothing: ${str(p.why)}`, "info");
+    case "agent.cost_warning": return out(`${capFirst(agentWho(str(p.agent)))} has used 80% of its hourly Claude budget (${(Number(p.spent_usd_micros) / 1e6).toFixed(4)} of ${(Number(p.cap_usd_micros) / 1e6).toFixed(2)} USD)`, "refusal");
     case "licence.timing_advised": return out(`The Treasury agent advised ${str(p.timing) === "pay_now" ? "paying" : `waiting until ${str(p.date)} to pay`} ${str(p.invoice_no)} (${s}), advisory: "${str(p.reason)}"`, "approval", { model: modelName(str(p.model)) });
     case "purchase.rail_refused": return out(`Code refused the Sourcing agent's payment to ${capFirst(s)}: ${str(p.why)}; nothing was charged`, "refusal");
     case "purchase.rails_chosen": {
