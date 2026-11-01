@@ -1,0 +1,61 @@
+{
+ "recorded": "2026-11-01",
+ "text": "Book a flight to Berlin, max €250",
+ "note": "A real Claude call (Haiku sorted, Sonnet read), recorded once on 1 November and shown until the visitor runs a try; demo world, no money.",
+ "result": {
+  "outcome": "paid",
+  "headline": "Card issued, within the limit",
+  "detail": "A single-use flight card for at most €250.00, flight merchants only, until 2026-11-08. No one had to approve it: it is inside the CFO policy.",
+  "card": {
+   "label": "Flight · single use",
+   "last4": "7791",
+   "limit": "€250.00",
+   "only": "flight merchants only (MCC 4511)",
+   "until": "2026-11-08"
+  },
+  "steps": [
+   {
+    "by": "code",
+    "title": "Checked for instructions aimed at the AI",
+    "detail": "None found.",
+    "tone": "ok"
+   },
+   {
+    "by": "claude-haiku-5-5",
+    "title": "Sorted the request",
+    "detail": "Kind: a flight.",
+    "ms": 1001,
+    "costUsd": 5.4e-05
+   },
+   {
+    "by": "claude-sonnet-5-5",
+    "title": "Read the request",
+    "detail": "item: flight to Berlin · amount: 250 EUR",
+    "ms": 1202,
+    "costUsd": 0.00234
+   },
+   {
+    "by": "code",
+    "title": "Checked the amount",
+    "detail": "€250.00, as written in the message.",
+    "tone": "ok"
+   },
+   {
+    "by": "code",
+    "title": "Checked the CFO policy",
+    "detail": "Within the policy: up to €300.00 needs no Face ID; flight merchants only; valid until 2026-11-08.",
+    "tone": "ok"
+   },
+   {
+    "by": "demo world",
+    "title": "Issued a single-use card",
+    "detail": "Simulated: in the live system Airwallex Issuing creates it. One purchase up to €250.00 goes through; the card then closes itself.",
+    "tone": "ok"
+   }
+  ],
+  "costUsd": 0.002394,
+  "mode": "claude",
+  "rail": "task_card",
+  "live": "task_card"
+ }
+}

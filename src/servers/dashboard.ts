@@ -135,7 +135,9 @@ export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
 // It carries the recorded run's rails and AI tricks, so each answer can show the same flow as it ran live.
 export const TRY_PAGE = (() => {
   const rec = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as { snapshot?: { rails?: unknown }; proof?: { ai_tricks?: number } };
-  const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null, worlds: WORLD_CHANGES.map(({ id, label, detail }) => ({ id, label, detail })) };
+  // The example shown before a visitor runs a try: one real Claude call, recorded once and labelled (src/try/example.json).
+  const example = JSON.parse(readFileSync(new URL("../try/example.json", import.meta.url), "utf8")) as unknown;
+  const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null, worlds: WORLD_CHANGES.map(({ id, label, detail }) => ({ id, label, detail })), example };
   return withNav(readFileSync(new URL("../try/try.html", import.meta.url), "utf8"), "try").replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
 })();
 export const TRY_CSP = cspFor(TRY_PAGE);
