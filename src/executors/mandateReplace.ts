@@ -1,6 +1,8 @@
 // Executes an approved mandate_replace proposal: one `mandate replace` per step, in the approved order,
 // each under an idempotency key so a re-run after a crash finishes the job instead of repeating it.
 
+import { autonomyOn } from "../config/agents.js";
+import { publish } from "../autonomy/bus.js";
 import { readMandateState } from "@metalntwx/metal-pay/mandates";
 import { audit } from "../audit/log.js";
 import { TOTAL_BUDGET_CENTS } from "../config/policy.js";
@@ -75,6 +77,8 @@ export async function executeMandateReplace(db: DB, proposalId: string, now = ne
     setSetting(db, "treasury", "sell_price", terms.query_price);
     supersedeSiblings(db, proposalId, terms);
     finishExecution(db, proposalId, "EXECUTED", { steps: terms.steps.length, query_price: terms.query_price });
+    // D19: the agents hear of their new mandates (the Sourcing agent may go back to the supplier it prefers).
+    if (autonomyOn()) publish(db, "mandate.replaced", { proposal_id: proposalId, query_price: terms.query_price, steps: terms.steps.map((s) => ({ agent: s.agent, cap: s.cap, budget: s.budget })) }, null, "owner-signer");
   } catch (err) {
     finishExecution(db, proposalId, "FAILED", { error: (err as Error).message });
     throw err;

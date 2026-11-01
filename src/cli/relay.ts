@@ -33,7 +33,9 @@ import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/ca
 import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { existsSync, readFileSync } from "node:fs";
-import { agentsOn } from "../config/agents.js";
+import { agentsOn, autonomyOn } from "../config/agents.js";
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
 import { meetNewDeclines } from "../agents/declineTrigger.js";
 import { pausedCredential, pausesNotRevoked, syncPauses } from "../policy/pause.js";
 import { LivePauseChain } from "../metal/pauseChain.js";
@@ -87,9 +89,19 @@ const draftPolicy = async (text: string) => {
 const ask = (text: string, ticket: string) => relayAsk(db, new Tools(db))(text, ticket);
 const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, ask, log: (line) => console.log(`${stamp()} ${line}`) });
 let stopping = false;
+// D19: with the autonomous agents on, each agent runs as its own process beside the runner (npm run agent -- <name>);
+// their lines go to this log, prefixed. They stop with the runner.
+const agentProcs = autonomyOn() ? (["sourcing", "support", "treasury"] as const).map((n) => {
+  const child = spawn("npx", ["tsx", resolve(import.meta.dirname, "agent.ts"), n], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+  const out = (b: Buffer) => { for (const l of b.toString().split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) console.log(`agent    ${redactSecrets(l).slice(0, 400)}`); };
+  child.stdout.on("data", out);
+  child.stderr.on("data", out);
+  return child;
+}) : [];
 const stop = () => {
   if (stopping) return;
   stopping = true;
+  for (const c of agentProcs) c.kill("SIGTERM");
   console.log(`${stamp()} stopping; waiting for running executions`);
   // Deliver the last verdicts (an execution may just have finished) before leaving.
   void runner.idle().then(() => runner.syncOnce()).catch(() => undefined).then(() => process.exit(0));
