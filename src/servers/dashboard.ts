@@ -48,10 +48,14 @@ const REDTEAM_JSON = (() => {
 const NAMES_NOTE = kit11NamesRecorded() ? null : RECORDING_NAMES_NOTE;
 const withNamesNote = (page: string, where: "top" | "bottom" = "top") => !NAMES_NOTE ? page : page
   .replace("</style>", () => `.names-note { margin: 0; padding: 10px 16px; font: 500 13.5px/1.5 Inter, system-ui, sans-serif; background: #fff7e6; color: #5c3b00; border-bottom: 1px solid #f0d9a8; text-align: center; }
+details.names-note summary { cursor: pointer; }
 .names-note.bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; border-bottom: 0; border-top: 1px solid #f0d9a8; }
 @media (prefers-color-scheme: dark) { .names-note { background: #2a2110; color: #f3dca8; border-color: #4a3a1c; } }
 </style>`)
-  .replace(/<body[^>]*>/, (m) => `${m}\n<p class="names-note${where === "bottom" ? " bottom" : ""}" role="note">${NAMES_NOTE}</p>`);
+  // One line at the top, the full note folded (design review); the film's fixed stage keeps it as one line at the bottom.
+  .replace(/<body[^>]*>/, (m) => where === "bottom"
+    ? `${m}\n<p class="names-note bottom" role="note">${NAMES_NOTE}</p>`
+    : `${m}\n<details class="names-note" role="note"><summary>Recorded 30 October, before the agents took Kit 11's names · details</summary>${NAMES_NOTE}</details>`);
 
 const PAGE_TEMPLATE = withNav(readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8"), "overview");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
