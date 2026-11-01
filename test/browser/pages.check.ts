@@ -1,7 +1,7 @@
 // The guest pages as a juror opens them, with no key: /, /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /demo (every step) and /month (start and end), at phone
 // (390 px) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
-// language, not exactly one h1, a link or button with no name, an image with no alt text).
+// language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { mkdirSync } from "node:fs";
@@ -52,6 +52,14 @@ async function look(page: Page, name: string, width: number): Promise<void> {
     return { left: Math.round(r.left), right: Math.round(r.right) };
   })()`) as { left: number; right: number } | null;
   if (menu && (menu.left < 0 || menu.right > width)) fail(`${name}: the More menu opens off the screen (${menu.left} to ${menu.right} of ${width})`);
+  // The menu is one line at every width: "More" never wraps onto a line of its own (Max, 1 Nov: it did at 390 px).
+  const navRows = await page.evaluate(`(() => {
+    const n = document.querySelector(".pnav");
+    if (!n || !n.offsetParent) return 0;
+    const tops = [...n.querySelectorAll(":scope > a, :scope > details > summary")].filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect().top);
+    return tops.length ? Math.round(Math.max(...tops) - Math.min(...tops)) : 0;
+  })()`) as number;
+  if (navRows > 12) fail(`${name}: the menu wraps onto a second line (${navRows}px between its links)`);
 }
 
 const browser = await chromium.launch();
