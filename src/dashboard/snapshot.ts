@@ -29,6 +29,7 @@ import { eurInFlightCents, mandateAvailability } from "../policy/available.js";
 import { heldCents } from "../policy/holds.js";
 import { health, type Health } from "../ops/health.js";
 import { railsView, type RailsView } from "./rails.js";
+import { towerView, type Tower } from "./tower.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -178,6 +179,8 @@ export interface Snapshot {
   agent_stats: AgentStats[];
   /** The autonomous agents' conversation (D19 block 4): world changes, labelled decisions, their messages. */
   agent_chat: ChatLine[];
+  /** Design 4.1: the control tower (money in, the agents' live limits, money out, the P&L, who enforced each refusal). */
+  tower: Tower;
   cards: CardView[];
   clearing: ClearingView | null;
   /** The emergency stop, while it is on: who pulled it, when, and why. */
@@ -1045,11 +1048,14 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   const traceOf = new Map(traces.flatMap((t) => t.steps.map((s) => [s.seq, t.run_seq] as const)));
   const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event) && !quietTool(r) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf), trace: traceOf.get(r.seq) ?? null }));
 
+  const budgetView = budgets(db, rows, roleOf);
+  const cardView = cards(db, now);
   return {
     generated_at: now.toISOString(),
     world: { business: addressOf("business"), customer: addressOf("customer") },
     audit: { rows: rows.length, head: rows.at(-1)?.row_hash ?? null, intact: chain.ok },
-    budgets: budgets(db, rows, roleOf),
+    budgets: budgetView,
+    tower: towerView(db, { budgets: budgetView.agents, cards: cardView }),
     treasury: treasury(db),
     pending,
     decisions,
@@ -1058,7 +1064,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     traces: traces.slice(-20).reverse(),
     agent_stats: agentStats(db, now),
     agent_chat: agentChat(db),
-    cards: cards(db, now),
+    cards: cardView,
     clearing: clearingView(db),
     frozen: frozenView(db, rows),
     reconciliation: lastReconciliation(db),

@@ -222,6 +222,40 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .claudelogo { display: inline-flex; align-items: center; background: #191919; border-radius: 999px; padding: 7px 14px; }
 .claudelogo img { height: 16px; width: auto; display: block; }
 .panel.claude, .panel.ask { margin-top: 20px; }
+/* Design 4.1: the control tower. Money in | the agents | money out, the P&L below; every figure links to its proof. */
+.tower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr); gap: 14px; margin: 8px 0 20px; }
+.tower h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+.tcol { min-width: 0; }
+.tflow { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; box-shadow: var(--shadow-sm); }
+.tflow .k { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.tflow .v { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.tflow .v small { font-size: 12px; font-weight: 500; color: var(--faint); margin-left: 4px; }
+.tflow .n { font-size: 12px; color: var(--faint); }
+.tflow a, .tagent a, .tenf a { font-size: 12px; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+.tflow a:hover, .tagent a:hover, .tenf a:hover { text-decoration: underline; }
+.tagents-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tagent { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; box-shadow: var(--shadow-sm); min-width: 0; }
+.tagent .nm { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-weight: 700; }
+.tagent .st { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--ok-soft); color: var(--ok); }
+.tagent .st.paused, .tagent .st.stopped { background: var(--bad-soft); color: var(--bad); }
+.meter { margin-top: 10px; }
+.meter .ml { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); gap: 6px; }
+.meter .bar { height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; margin-top: 4px; }
+.meter .bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.meter.warn .bar i { background: var(--wait); }
+.tagent .last { margin-top: 10px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 8px; }
+.tagent .last b { color: var(--text); font-weight: 600; }
+.tagent .last { display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+.tflow .mono, .tenf .mono { font-size: 12px; color: var(--faint); }
+.tpnl { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tpnl .pl { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; font-size: 13.5px; }
+.tpnl .pl b { font-size: 16px; }
+.encols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.tenf { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.tenf .who { font-weight: 700; display: flex; justify-content: space-between; }
+.tenf .when { font-size: 12px; color: var(--faint); }
+.tenf .why { font-size: 13px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .tower { grid-template-columns: minmax(0, 1fr); } .tagents-grid, .encols, .tpnl { grid-template-columns: minmax(0, 1fr); } }
 .agentchat { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
 .agentchat li { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; font-size: 14px; overflow-wrap: anywhere; }
 .agentchat li.world { background: var(--sunken); }
@@ -630,6 +664,13 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   </div>
   <div id="overview">
   <div class="head"><div><h1>Overview</h1><div class="sub">Your AI agents spend through Airwallex and Metal. You stay in control: every limit below is yours.</div></div></div>
+  <section class="tower" id="tower" aria-label="Control tower" hidden>
+    <div class="tcol"><h2>Money in</h2><div id="t-in"></div></div>
+    <div class="tcol"><h2>The agents, inside your limits</h2><div class="tagents-grid" id="t-agents"></div></div>
+    <div class="tcol"><h2>Money out</h2><div id="t-out"></div></div>
+    <div class="tpnl" id="t-pnl"></div>
+  </section>
+  <section class="panel" id="enforced" aria-labelledby="h-enforced" hidden><div class="sect flush"><h2 id="h-enforced">Enforced by</h2><span class="hint">who stopped each payment that went over a limit, with its proof</span></div><div class="encols" id="enforced-body"></div></section>
   <section class="kpis" id="kpis" aria-label="What the agents did, in money"></section>
   <div class="sect"><h2>Company cards <span class="rail">Airwallex</span></h2><span class="hint">Virtual Visa per agent · limits set by your policy</span></div>
   <section class="grid4 swipe" id="cards" aria-label="Company cards"></section>
@@ -1305,7 +1346,46 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     });
     document.getElementById("awx-hooks-body").replaceChildren(head, el("ul", "hooklist", rows));
   }
+  // Design 4.1: the control tower and who enforced each refusal.
+  function proofA(p, word) {
+    if (!p) return null;
+    var a;
+    if (p.kind === "tx" && TX.test(p.ref)) { a = txt("a", "", (word || "Metal tx") + " " + p.ref.slice(0, 8) + "…" + p.ref.slice(-4) + " ↗"); a.href = EXPLORER + p.ref; a.target = "_blank"; a.rel = "noopener noreferrer"; return a; }
+    if (p.kind === "awx") return txt("span", "mono", "Airwallex id " + String(p.ref).slice(0, 8) + "…");
+    return null;
+  }
+  function renderTower(d) {
+    var t = d.tower, sec = document.getElementById("tower"), enf = document.getElementById("enforced");
+    sec.hidden = !t; enf.hidden = !t;
+    if (!t) return;
+    var flows = function (fs) { return fs.map(function (f) {
+      return el("div", "tflow", [el("div", "k", [txt("span", "", f.label), txt("span", "", f.rail === "metal" ? "Metal" : "Airwallex")]),
+        el("div", "v num", [f.amount, txt("small", "", f.unit === "USDZ" ? "*USDZ" : "EUR")]), txt("div", "n", f.count + " · " + f.note), proofA(f.proof, "Newest")]);
+    }); };
+    set("t-in", flows(t.money_in)); set("t-out", flows(t.money_out));
+    var meter = function (label, used, of, pctv, extra) {
+      return el("div", "meter" + (pctv >= 80 ? " warn" : ""), [el("div", "ml", [txt("span", "", label), txt("span", "num", used + " of " + of + (extra || ""))]), el("div", "bar", [(function () { var i = document.createElement("i"); i.style.width = pctv + "%"; return i; })()])]);
+    };
+    set("t-agents", t.agents.map(function (a) {
+      var kids = [el("div", "nm", [capFirst(a.agent), txt("span", "st " + a.status, a.status === "active" ? "Active" : a.status === "paused" ? "Paused" : "Stopped")])];
+      if (a.mandate) kids.push(meter("Mandate (Metal)", a.mandate.spent, a.mandate.budget, a.mandate.used_pct, " · cap " + a.mandate.cap));
+      if (a.card) kids.push(meter("Card this month (Airwallex)", a.card.spent_month, a.card.monthly, a.card.used_pct, a.card.frozen ? " · frozen" : ""));
+      if (a.last) { var lastEl = el("div", "last", [txt("b", "", a.last.by === "claude" ? "Decided by Claude" : a.last.by === "idle" ? "Stopped" : "Fallback (code)"), " · " + hm(a.last.at) + " · " + a.last.text]); lastEl.title = a.last.text; kids.push(lastEl); }
+      return el("div", "tagent", kids);
+    }));
+    set("t-pnl", [
+      el("div", "pl num", [txt("span", "", "On Metal (*USDZ)"), txt("span", "", "sales " + t.pnl.usdz.sales), txt("span", "", "− data " + t.pnl.usdz.upstream), txt("span", "", "− refunds " + t.pnl.usdz.refunds), txt("b", "", "= " + t.pnl.usdz.net + " net")]),
+      el("div", "pl num", [txt("span", "", "On Airwallex (EUR)"), txt("span", "", "cards " + t.pnl.eur.card_spend), txt("span", "", "+ payouts " + t.pnl.eur.payouts), txt("span", "", "+ fees " + t.pnl.eur.fees), txt("b", "", "= " + t.pnl.eur.out + " out")]),
+    ]);
+    var names = { purser: "Purser, before signing", metal: "Metal, on chain", airwallex: "Airwallex, at the card" };
+    set("enforced-body", t.enforced.map(function (e) {
+      return el("div", "tenf", [el("div", "who", [names[e.who], txt("span", "num", String(e.count))]),
+        e.last ? txt("div", "when", hm(e.last.at)) : txt("div", "when", "nothing refused yet"),
+        e.last ? txt("div", "why", e.last.reason) : null, e.last ? proofA(e.last.proof, "Refusal tx") : null]);
+    }));
+  }
   function render(d) {
+    renderTower(d);
     renderAgents(d); renderBooks(d); renderDisputes(d);
     renderKpis(d); renderClaude(d); renderAsk(d); renderCards(d); renderAgentsTable(d);
     renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
