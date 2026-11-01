@@ -580,8 +580,9 @@ async function api(path: string, body?: unknown, retried = false): Promise<{ sta
   const view = { "x-kit11-view": viewKey };
   // D20: sign in first when the relay said this device has no session, so the CFO's action is not refused first.
   if (body !== undefined && !retried && sessionMissing === true && SESSION_PATHS.has(path)) {
+    // One Face ID prompt per action: signed in or not, a 401 that follows does not ask again (security review, 1 Nov).
     if (await passkeySignIn()) sessionMissing = false;
-    else retried = true; // cancelled or refused: one Face ID prompt per action, not a second one on the 401
+    retried = true;
   }
   const res = await fetch(path, body === undefined
     ? { cache: "no-store", headers: { accept: "application/json", ...view } }

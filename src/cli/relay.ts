@@ -61,6 +61,14 @@ const stamp = () => new Date().toISOString().slice(11, 19);
 console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${process.env.KIT11_DB ?? "data/kit11.sqlite"})`);
 const signer = displayKey(keyPath("relay-display-key.pem"));
 console.log(`viewer   ${viewerLink(cfg, signer.publicSpki)}  (open once on each device: it unlocks the dashboard and pins this runner's key; it approves nothing${mfaOn() ? "; with MFA on it reads only and expires after next week: the CFO's actions need a passkey sign-in" : ""})`);
+// D20: under MFA the viewer link changes every Monday; print the new one, so devices can renew without a restart.
+if (mfaOn()) {
+  let shown = viewerLink(cfg, signer.publicSpki);
+  setInterval(() => {
+    const next = viewerLink(cfg, signer.publicSpki);
+    if (next !== shown) { shown = next; console.log(`${stamp()} viewer   a new week, a new link (last week's still works for seven days): ${next}`); }
+  }, 3_600_000).unref();
+}
 if (args.includes("--enrol")) {
   const { window, code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin, replace: args.includes("--replace") });
   console.log(`ENROL    on the phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);

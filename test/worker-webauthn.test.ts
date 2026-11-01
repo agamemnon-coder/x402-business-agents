@@ -67,6 +67,21 @@ describe("the Worker's passkey check", () => {
     expect(await verifyAssertion(a, { x: jwk.x, y: jwk.y }, { ...expect_, lastCounter: 3 })).toMatchObject({ ok: false, why: "counter" });
   });
 
+  it("refuses a cross-origin assertion and one without user presence (security review, 1 Nov)", async () => {
+    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+    const jwk = privateKey.export({ format: "jwk" }) as { x: string; y: string };
+    const raw = (flags: number, client: Record<string, unknown>) => {
+      const authData = Buffer.concat([createHash("sha256").update(RP).digest(), Buffer.from([flags, 0, 0, 0, 1])]);
+      const cd = Buffer.from(JSON.stringify({ type: "webauthn.get", challenge: CHALLENGE, origin: ORIGIN, ...client }));
+      const sig = nodeSign("sha256", Buffer.concat([authData, createHash("sha256").update(cd).digest()]), privateKey);
+      return { authenticatorData: b64u(authData), clientDataJSON: b64u(cd), signature: b64u(sig) };
+    };
+    const key = { x: jwk.x, y: jwk.y };
+    expect(await verifyAssertion(raw(0x05, {}), key, { ...expect_, lastCounter: 0 })).toEqual({ ok: true, counter: 1 });
+    expect(await verifyAssertion(raw(0x05, { crossOrigin: true }), key, { ...expect_, lastCounter: 0 })).toMatchObject({ ok: false, why: "origin" });
+    expect(await verifyAssertion(raw(0x04, {}), key, { ...expect_, lastCounter: 0 })).toMatchObject({ ok: false, why: "user presence" });
+  });
+
   it("refuses garbage without throwing", async () => {
     const { key } = setup();
     expect(await verifyAssertion({ authenticatorData: "x", clientDataJSON: "y", signature: "z" }, key, { ...expect_, lastCounter: 0 })).toMatchObject({ ok: false });

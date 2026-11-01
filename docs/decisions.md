@@ -330,3 +330,13 @@ posted, got a 401 and then signed in; `GET /api/approvals` now says `session_act
 before the CFO's action (the 401-retry stays for a session that lapses meanwhile, with one Face ID prompt per action).
 The phone check (`test/browser/approve.check.ts`) passes with `KIT11_MFA=on` and without it; it needs the rehearsal
 ledger from the other repo, so it runs locally, not in CI. The Worker's tests (red team included) run in CI.
+
+**Fresh security review (1 November, Opus, read-only):** nothing critical, high or medium. Four low findings, all
+fixed with a test each: two sign-ins at once could move the stored counter backwards (it is read again after the
+signature check, with no await before the write); a 401 right after a sign-in could ask for Face ID a second time
+(one prompt per action now); an RSA passkey could not sign in (under MFA enrolment offers ES256 only, and the error
+says why); the weekly viewer link was printed only at start (the runner prints the new one each Monday). Also: the
+sign-in paths answer 405 to a GET, and tests now cover a cross-origin assertion, a missing user-presence flag and a
+challenge whose two minutes have passed. Left as is, with the reason: no logout (a session lives 12 hours and dies
+when its passkey is removed); `derToRaw` accepts non-minimal DER (malleability does not matter with one-time
+challenges); enrolment under MFA is still guarded by the code and the runner's fingerprint confirmation, not a session.

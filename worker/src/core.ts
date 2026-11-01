@@ -321,11 +321,15 @@ export class Relay {
     const s = this.state();
     const cred = s?.approvals.passkey.credentials.find((c) => c.id === credential.id);
     if (!s || !cred) return error(403, "this passkey is not enrolled");
-    if (!cred.public_key) return error(403, "this relay has no public key for that passkey yet; restart the runner with KIT11_MFA=on");
+    if (!cred.public_key) return error(403, "this relay has no public key for that passkey: the runner needs KIT11_MFA=on, and sign-in takes an ES256 passkey (phones and most security keys; enrol one if this is an RSA key)");
     const r = credential.response as Record<string, unknown>;
     const last = (this.sql.exec("SELECT counter FROM cred_counters WHERE credential = ?", cred.id).toArray() as { counter: number }[])[0]?.counter ?? 0;
     const v = await verifyAssertion({ authenticatorData: String(r.authenticatorData ?? ""), clientDataJSON: String(r.clientDataJSON ?? ""), signature: String(r.signature ?? "") }, cred.public_key, { challenge, origin, rpId: s.approvals.passkey.rp_id, lastCounter: last });
     if (!v.ok) { this.countFailure(req); return error(401, `the passkey sign-in did not verify (${v.why})`); }
+    // Read the counter again after the awaits above: another sign-in may have stored a higher one meanwhile. The read
+    // and the write below run with no await between them, so nothing interleaves (security review, 1 Nov).
+    const latest = (this.sql.exec("SELECT counter FROM cred_counters WHERE credential = ?", cred.id).toArray() as { counter: number }[])[0]?.counter ?? 0;
+    if ((v.counter !== 0 || latest !== 0) && v.counter <= latest) { this.countFailure(req); return error(401, "the passkey sign-in did not verify (counter)"); }
     this.sql.exec("INSERT INTO cred_counters (credential, counter) VALUES (?, ?) ON CONFLICT(credential) DO UPDATE SET counter = excluded.counter", cred.id, v.counter);
     this.sql.exec("DELETE FROM sessions WHERE expires <= ?", now);
     const id = randomB64u(32);
@@ -385,7 +389,7 @@ export class Relay {
     const url = new URL(req.url);
     const path = url.pathname;
     const route = (method: string, p: string | RegExp) => (typeof p === "string" ? path === p : p.test(path)) && (req.method === method || (method === "GET" && req.method === "HEAD"));
-    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/ask", "/api/enrol/options", "/api/enrol"];
+    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/ask", "/api/enrol/options", "/api/enrol", ...(this.opts.mfa ? ["/api/session/options", "/api/session"] : [])];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
     // Monitoring (B7), for an uptime monitor and anyone: all well or not, alarm codes only, 503 while anything is wrong
@@ -651,7 +655,8 @@ export class Relay {
       challenge: c.e.challenge,
       rp: { id: c.e.rp_id, name: "Purser for Northwind Outdoor" },
       user: { id: c.e.user_id, name: c.e.user_name, displayName: c.e.user_name },
-      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+      // D20: under MFA only ES256, the one kind the Worker verifies at sign-in (security review, 1 Nov).
+      pubKeyCredParams: this.opts.mfa ? [{ type: "public-key", alg: -7 }] : [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
       timeout: 120_000,
       attestation: "none",
       authenticatorSelection: { residentKey: "preferred", userVerification: "required" },

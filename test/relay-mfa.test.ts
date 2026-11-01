@@ -36,8 +36,9 @@ function state(pk: SoftPasskey, credentials = [{ id: "cred-1", key: pk }]): Rela
 }
 function relay(mfa = true) {
   let clock = t0;
-  const r = new Relay(sqlOver(new Database(":memory:")), { relayToken: TOKEN, now: () => clock, mfa });
-  return { r, at: (d: Date) => { clock = d; } };
+  const db = new Database(":memory:");
+  const r = new Relay(sqlOver(db), { relayToken: TOKEN, now: () => clock, mfa });
+  return { r, db, at: (d: Date) => { clock = d; } };
 }
 const push = (r: Relay, s: RelayState) => r.fetch(new Request(`${BASE}/api/runner/sync`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" }, body: JSON.stringify({ state_hash: stateHash(s), state: s, acks: [] }) }));
 const req = (path: string, o: { method?: string; view?: string; cookie?: string; body?: unknown; origin?: string } = {}) => new Request(`${BASE}${path}`, {
@@ -138,6 +139,50 @@ describe("MFA on the relay (D20)", () => {
     expect((await r.fetch(req("/api/assertions", { method: "POST", view, body: {} }))).status).not.toBe(429);
     // The sign-in endpoints themselves stop at the same ten posts an address gets in ten minutes.
     expect((await r.fetch(req("/api/session/options", { method: "POST", view, body: {} }))).status).toBe(429);
+  });
+
+  it("a sign-in whose two minutes have passed is refused, even unused (security review, 1 Nov)", async () => {
+    const { r, at } = relay(); const pk = softPasskey(); await push(r, state(pk));
+    const view = await viewKeyForWeek(TOKEN, t0);
+    const { challenge } = (await (await r.fetch(req("/api/session/options", { method: "POST", view, body: {} }))).json()) as { challenge: string };
+    const a = pk.assert("0x00", { challenge, origin: BASE, rpId: RP });
+    at(new Date(t0.getTime() + 2 * 60_000 + 1000));
+    const body = { challenge, credential: { id: "cred-1", response: { authenticatorData: b64u(a.authenticatorData), clientDataJSON: b64u(a.clientDataJSON), signature: b64u(a.signature) } } };
+    expect((await r.fetch(req("/api/session", { method: "POST", view, body }))).status).toBe(401);
+  });
+
+  it("two sign-ins at once never move the stored counter backwards (security review, 1 Nov)", async () => {
+    const { r, db } = relay(); const pk = softPasskey(); await push(r, state(pk));
+    const view = await viewKeyForWeek(TOKEN, t0);
+    const prepared = async () => {
+      const { challenge } = (await (await r.fetch(req("/api/session/options", { method: "POST", view, body: {} }))).json()) as { challenge: string };
+      const a = pk.assert("0x00", { challenge, origin: BASE, rpId: RP });
+      return { challenge, credential: { id: "cred-1", response: { authenticatorData: b64u(a.authenticatorData), clientDataJSON: b64u(a.clientDataJSON), signature: b64u(a.signature) } } };
+    };
+    const first = await prepared(), second = await prepared(); // counters 1 and 2
+    await Promise.all([r.fetch(req("/api/session", { method: "POST", view, body: second })), r.fetch(req("/api/session", { method: "POST", view, body: first }))]);
+    expect((db.prepare("SELECT counter FROM cred_counters WHERE credential = 'cred-1'").get() as { counter: number }).counter).toBe(2);
+  });
+
+  it("under MFA a new passkey must be ES256, the only kind the Worker can check at sign-in (security review, 1 Nov)", async () => {
+    const { r } = relay(); const pk = softPasskey();
+    const db = openDb(":memory:");
+    createProposal(db, { terms, createdBy: "support" }, t0);
+    const { code } = openEnrolment(db, { rpId: RP, origin: BASE }, t0);
+    const s = buildRelayState(db, { rpId: RP, relayToken: TOKEN, mfa: true }, t0);
+    await push(r, s);
+    const view = await viewKeyForWeek(TOKEN, t0);
+    const res = await r.fetch(req("/api/enrol/options", { method: "POST", view, body: { code } }));
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { pubKeyCredParams: unknown }).pubKeyCredParams).toEqual([{ type: "public-key", alg: -7 }]);
+    void pk;
+  });
+
+  it("the sign-in paths answer 405, not 404, to a GET", async () => {
+    const { r } = relay(); const pk = softPasskey(); await push(r, state(pk));
+    const view = await viewKeyForWeek(TOKEN, t0);
+    expect((await r.fetch(req("/api/session", { view }))).status).toBe(405);
+    expect((await r.fetch(req("/api/session/options", { view }))).status).toBe(405);
   });
 
   it("with MFA off nothing changes: the fixed viewer key reads and posts as before", async () => {
