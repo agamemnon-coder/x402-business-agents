@@ -19,5 +19,6 @@ dry-121 failed on this bug, not on the agents.
 | 2026-11-01 16:10 | dry-1 · owner-customer | dry-120 · customer owner `0xcEe6e38046F42ab3dE6787E134e3f4e1F9C27dAb` | 1.00 | [0x30ae9ff7…](https://testnet.metalntwx.com/tx/0x30ae9ff7b86473d9521df301ab1b9dea2a680e8039e38912ba807af79a58140b) |
 | 2026-11-01 16:10 | dry-1 · owner-customer | dry-120 · customer account `0xb64CCAbdeb9B9442a36A43a4dB28a94804D9F844` | 6.00 | [0x29dd94eb…](https://testnet.metalntwx.com/tx/0x29dd94ebe6ca7670558fe764da7d8ac0ef2e967cd353130f019400087619cda8) |
 | 2026-11-01 16:24 | dry-1 · owner-customer | dry-121 · business owner `0x9ED2244F3458e926f05CBdAb386A81fFE923778f` | 15.89 ¹ | [0x26514786…](https://testnet.metalntwx.com/tx/0x265147864a6175c888f09b3f92b961cdd587c8d0f6c9c1f2c3d3914469911ba1) |
-
 | 2026-11-01 17:20 | dry-2 · owner-customer | dry-122 · business owner `0xb222A6Ffc52ca5e0fDD55E09a63cEf578f505406` | 21.00 | [0x4b579ebb…](https://testnet.metalntwx.com/tx/0x4b579ebba34b19943185ba7e4fc3d65e27f848672d9c5026c655d06e2fb16b91) |
+| 2026-11-01 17:20 | dry-2 · owner-customer | dry-122 · customer owner `0x45D4bd074b7F921656e5Fda0F33E3e429AdEbEaa` | 1.00 | [0xd2784506…](https://testnet.metalntwx.com/tx/0xd2784506c64489bc3074c0d8b6210e6e01e1fa904ec094c7c3f7c59e2773993f) |
+| 2026-11-01 17:20 | dry-2 · owner-customer | dry-122 · customer account `0xD81EeCa18C4788536a692a7A684a3b38fC06a793` | 6.00 | [0x0e68ad49…](https://testnet.metalntwx.com/tx/0x0e68ad491c982150112426ffacb3810feaee34248a77cfc8a8e8998e803f17e3) |
