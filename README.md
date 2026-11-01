@@ -18,6 +18,9 @@ or offline with `npm ci && npm run judge` (no keys, no network):
    checked against its signed order and the mandate on chain. All 12 hold, so nothing new is refunded. ([the evidence](https://kit11.max-31b.workers.dev/metal#dispute))
 5. **Try it yourself:** type a task for an agent. ([Try it](https://kit11.max-31b.workers.dev/try))
 
+Also: **the agents deciding by themselves** (`/?autonomy`), from an autonomous dry run: we changed the world, each agent
+decided with real Claude calls inside its limits. Test passkeys and test money; not a live run with Max.
+
 <p>
   <img src="docs/media/purser-card.gif" width="49%" alt="Airwallex declines the agent's card over its limit">
   <img src="docs/media/purser-metal.gif" width="49%" alt="Metal refuses a payment over the agent's on-chain mandate">
