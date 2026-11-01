@@ -62,6 +62,7 @@
     "judge": "tsx src/cli/judge.ts",
     "submission": "tsx src/cli/submission.ts",
     "four-eyes": "tsx src/cli/fourEyes.ts",
+    "passkey-owners": "tsx src/cli/passkeyOwners.ts",
     "contracts": "tsx src/compliance/compile.ts",
     "iso20022": "tsx src/cli/iso20022.ts",
     "clearing-load": "tsx src/cli/clearingLoad.ts",
@@ -93,6 +94,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@openzeppelin/contracts": "5.6.1",
     "@types/better-sqlite3": "9.6.0",
     "@types/express": "5.0.6",
     "@types/node": "24.19.2",

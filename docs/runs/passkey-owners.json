@@ -1,0 +1,110 @@
+{
+  "ran_at": "2026-11-01T04:51:45.324Z",
+  "network": "Metal testnet",
+  "stand_in": "software passkeys (src/metal/softPasskey.ts), the WebAuthn format a phone produces; not a phone",
+  "verifier": "0xd4c84c2bea087053691623bc463da61b528755ab",
+  "verifier_artifact": {
+    "openzeppelin": "5.6.1",
+    "compiler": "solc 0.8.36+commit.8a079791.Emscripten.clang",
+    "evm": "cancun",
+    "bytecode_sha256": "dcad730b48b944ad5e8bd3ced1d10fba7a191917a039eac4f6824405b2c19249"
+  },
+  "account": "0x44aF42d8f16981932Aa6CEC7668b8FAeF3f037e8",
+  "threshold": 2,
+  "owners": [
+    "CFO passkey",
+    "controller passkey"
+  ],
+  "steps": [
+    {
+      "step": "deploy OpenZeppelin 5.6.1 ERC7913WebAuthnVerifier (artifact sha256 dcad730b48b9…)",
+      "outcome": "done",
+      "tx": "0x732c0e92568a6578c7179773579a0adfba0d8d80d6387ddd7cd9e39159c3691c",
+      "detail": "verifier 0xd4c84c2bea087053691623bc463da61b528755ab; 1166805 gas"
+    },
+    {
+      "step": "verify a passkey's WebAuthn signature with eth_call",
+      "outcome": "returned",
+      "tx": null,
+      "detail": "valid (verify's selector); estimate 490263 gas incl. Metal's base cost"
+    },
+    {
+      "step": "the same signature over another hash",
+      "outcome": "returned",
+      "tx": null,
+      "detail": "refused (0xffffffff)"
+    },
+    {
+      "step": "create the business account: owners the CFO's and the controller's passkeys, threshold 2, no key on a server",
+      "outcome": "done",
+      "tx": "0xe7c0f5264ae55adad87163e60c7598cb8057faf951d1e9b1073c8c6683d8d15d",
+      "detail": "account 0x44aF42d8f16981932Aa6CEC7668b8FAeF3f037e8"
+    },
+    {
+      "step": "fund the account to 1.00 test USD",
+      "outcome": "done",
+      "tx": "0xa53ec861d63494d8921d530ba37b5c54d930697024163cb4ed568073a5795af4",
+      "detail": ""
+    },
+    {
+      "step": "pay 0.10 from the account, signed by the CFO's passkey alone",
+      "outcome": "reverted",
+      "tx": "0xe31f240c4736ffc998e81f253484181fb446f9cb215c4d85ec8451cd75ea5d90",
+      "detail": "reverted on chain (503728 of 1281344 gas); the account's reason: Execution reverted for an unknown reason."
+    },
+    {
+      "step": "pay 0.10 from the account, signed by the CFO's and a stranger's passkey",
+      "outcome": "reverted",
+      "tx": "0x0be52f71348258fcf3b52fa0986bad594fc39edaa551425c0b171d2a4630204e",
+      "detail": "reverted on chain (63800 of 1281344 gas); the account's reason: Execution reverted for an unknown reason."
+    },
+    {
+      "step": "pay 0.10 from the account, signed by both passkeys, over another challenge",
+      "outcome": "reverted",
+      "tx": "0x9c7370bc6aefa526739f8b381b806e2859c19ab0dacba11e981d7b70527f10fd",
+      "detail": "reverted on chain (70417 of 1281344 gas); the account's reason: Execution reverted for an unknown reason."
+    },
+    {
+      "step": "pay 0.10 from the account, signed by both passkeys, deadline passed",
+      "outcome": "reverted",
+      "tx": "0x619dfffe601e69daa2908d56ff8e3354c1c598c2b621cb2df3730689daa4417a",
+      "detail": "reverted on chain (63830 of 1281344 gas); the account's reason: Execution reverted for an unknown reason."
+    },
+    {
+      "step": "pay 0.10 from the account, signed by both passkeys",
+      "outcome": "done",
+      "tx": "0x8f8cced7b745affe167c1b7dd7bb8a93a8681d6bf73cc38532eddc7d9ea360a9",
+      "detail": "the payee received 0.10; 1048803 gas"
+    },
+    {
+      "step": "send the same signed payment again (replay)",
+      "outcome": "reverted",
+      "tx": "0xf2b9ea01d682f766171b56303264ea2bf7ff9fb730b7db38cd45a1caab152ba2",
+      "detail": "reverted on chain: the nonce is used"
+    },
+    {
+      "step": "bind the agent's mandate with the CFO's passkey alone",
+      "outcome": "reverted",
+      "tx": "0x41a963a9cb765dc98fbc98ed6e78abcb02dc1b341c4e7378dea3c1843acb24de",
+      "detail": "reverted on chain"
+    },
+    {
+      "step": "bind the agent's mandate with both passkeys (Metal's authorizeMandateCall)",
+      "outcome": "done",
+      "tx": "0x96850ad4562ae5abb370aead62e7ccd5d926d7b5d1a61b6a7aabbbbc78f17d5b",
+      "detail": "mandate 0xef6e4407bfb4d304…; cap 0.05, budget 0.50; 1862891 gas"
+    },
+    {
+      "step": "the agent pays 0.05 inside the passkey-approved mandate, no owner signs",
+      "outcome": "done",
+      "tx": "0x81e614ed67a4d0e31e815621d7bc3b52c75bf46aa58f9eb553cd6187d334bce6",
+      "detail": "paid with the mandate key alone"
+    },
+    {
+      "step": "revoke the mandate with both passkeys",
+      "outcome": "done",
+      "tx": "0xc82912c30de9c996cb2b397989c1518e38ff3a32824c2e1a39b2d83d00bdb8cd",
+      "detail": "revoked"
+    }
+  ]
+}

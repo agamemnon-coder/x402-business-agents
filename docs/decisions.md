@@ -216,6 +216,18 @@ changes on chain. RIP-7212 at 0x…0100 works on testnet and predictAccount acce
 MetalAccount validate ERC-7913 signers via `IERC7913SignatureVerifier.verify(key, hash, signature)`, and is there a
 WebAuthn verifier you already deploy or recommend? Thanks!"
 
+**Result on testnet (1 November, `npm run passkey-owners`, `docs/runs/passkey-owners.json`).** It works, first try.
+Metal testnet runs Cancun (MCOPY tested read-only), so OpenZeppelin 5.6.1's `ERC7913WebAuthnVerifier` (committed
+artifact, recompiled in `test/passkey-verifier.test.ts`) deployed at `0xd4c84c2b…755ab`. Its `verify` returned the
+selector for a WebAuthn signature and `0xffffffff` for the same over another hash (estimate 490,263 gas with Metal's base
+cost). A 2-of-2 account whose **only owners are two passkeys** (`0x44aF42d8…037e8`): a payment signed by the CFO's passkey
+alone, by the CFO and a stranger's passkey, by both over another challenge, and by both after the deadline each
+**reverted on chain**; both passkeys: paid (1,048,803 gas); the same signed batch again: reverted (nonce used). A mandate
+**bound with both passkeys through Metal's own `authorizeMandateCall`** (the CFO's alone: reverted), the agent paid inside
+it alone, and both passkeys revoked it. Metal's SDK documents passkey signatures for that callback
+(`@metalntwx/metal-pay` README). **Honest limit:** these passkeys are software stand-ins in the WebAuthn format a phone
+produces; the next step has the phone's own passkey sign the Execute digest (virtual authenticator in the dry run).
+
 ### D17. The rail choice uses the agent's own card for Packwise (1 November)
 
 Block 5.1 (estimate 6 h, risk medium) was planned with a single-use Airwallex task card for the card-only supplier.
