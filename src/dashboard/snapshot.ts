@@ -618,6 +618,23 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
     case "price_rise.met": return str(p.source) === "claude"
       ? out(`The Sourcing agent told the Treasury agent: "${str(p.message)}"`, "info", { model: modelName(str(p.model)) })
       : out("The Sourcing agent's model was not available; code served the next query as before", "info");
+    // Block 5.1: the rail per purchase. The choice is the agent's (or code's fallback); the supplier's rails are code's check.
+    case "purchase.rail_chosen": {
+      const rail = str(p.rail) === "metal_x402" ? "x402 on Metal" : "its Airwallex card";
+      const who = str(p.by) === "claude" ? "The Sourcing agent" : "Code (the agent did not decide)";
+      const ref = str(p.ref);
+      return out(`${who} paid ${capFirst(s)} on ${rail}${str(p.by) === "claude" && str(p.reason) ? ` ("${str(p.reason)}")` : ""}: ${str(p.result)}`, p.ok === false ? "refusal" : "ok", {
+        model: null, ...(str(p.rail) === "metal_x402" && /^0x[0-9a-f]{64}$/i.test(ref) ? { tx: ref } : {}), ...(str(p.rail) === "airwallex_card" && ref ? { awx_id: ref } : {}),
+      });
+    }
+    case "purchase.rail_refused": return out(`Code refused the Sourcing agent's payment to ${capFirst(s)}: ${str(p.why)}; nothing was charged`, "refusal");
+    case "purchase.rails_chosen": {
+      const ps = Array.isArray(p.purchases) ? (p.purchases as P[]) : [];
+      const list = ps.map((x) => `${capFirst(str(x.supplier))} on ${str(x.rail) === "metal_x402" ? "x402 on Metal" : "the card"}`).join(", ");
+      return str(p.source) === "claude"
+        ? out(`The Sourcing agent picked the rail per purchase: ${list}; code checked each supplier accepts it`, "info", { model: modelName(str(p.model)) })
+        : out(`Code paid on the rail each supplier accepts (${list}); the Sourcing agent's choice was not used`, "info");
+    }
     case "price_rise.plan": {
       const budgets = (Array.isArray(p.budgets) ? (p.budgets as unknown[]) : []).map((x) => str(x).replace(/ \(cap [^)]*\)/, "")).join(" / ");
       return str(p.source) === "claude"

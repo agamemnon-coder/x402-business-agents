@@ -26,6 +26,43 @@ import { createWebhook, deleteWebhook, listWebhooks, WEBHOOK_SECRET_FILE } from 
 import { ALL_EVENTS } from "../policy/airwallexEvents.js";
 import { keyPath } from "../metal/agentCli.js";
 import { relayConfig } from "../relay/config.js";
+import { agentsOn } from "../config/agents.js";
+import { chooseRails } from "../agents/railChoice.js";
+import { startRuntime } from "../world/runtime.js";
+import type { CardTransaction, IssuingSim } from "../airwallex/issuing.js";
+
+/**
+ * Block 5.1: the Sourcing agent's two purchases, each on the rail it picks; code checks the supplier accepts it. The
+ * stock check serves the next customer query (bought upstream over x402 under the Sourcing mandate); Packwise Starter is
+ * charged to the agent's card. Returns the Packwise transaction, as the plain purchase would.
+ */
+async function railChoice(sim: IssuingSim): Promise<CardTransaction> {
+  const rt = await startRuntime(db);
+  let card: CardTransaction | null = null;
+  try {
+    const r = await chooseRails(db, {
+      payStockline: async () => {
+        const seq = ((db.prepare("SELECT MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)) AS s FROM sales").get() as { s: number | null }).s ?? 0) + 1;
+        const before = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM upstream_purchases").get() as { n: number }).n;
+        const p = await rt.customer.buy(seq);
+        const u = db.prepare("SELECT price_cents, outcome, tx_hash, refusal_reason FROM upstream_purchases WHERE id > ? ORDER BY id DESC LIMIT 1").get(before) as { price_cents: number; outcome: string; tx_hash: string | null; refusal_reason: string | null } | undefined;
+        if (u?.outcome === "PAID") return { ok: true, text: `stock check #${seq} bought from Stockline for ${fromCents(u.price_cents)} under the Sourcing mandate${p.outcome.kind === "paid" ? ", and sold to the customer" : ""}`, ref: u.tx_hash };
+        return { ok: false, text: `stock check #${seq}: ${u ? `Metal refused it (${u.refusal_reason ?? u.outcome})` : `nothing was bought (${p.outcome.kind})`}`, ref: null };
+      },
+      payPackwise: async () => {
+        card = await buyPlan(db, sim, "packwise-starter");
+        return { ok: card.approved, text: card.approved ? "19.99 EUR approved by Airwallex on the agent's card" : `declined by Airwallex (${card.failureReason})`, ref: card.transactionId };
+      },
+    });
+    console.log(`SOURCING AGENT   ${r.source === "claude" ? `${r.run.model}: picked the rail per purchase` : "not available; code paid on the rail each supplier accepts"}`);
+    for (const p of r.purchases) console.log(`                 ${p.supplier}: ${p.rail} (${p.by}${p.by === "claude" && p.reason ? `: "${p.reason}"` : ""}): ${p.text}`);
+    for (const c of r.run.calls.filter((x) => x.blocked === "supplier's rails")) console.log(`                 refused by code: ${c.text.slice(0, 200)}`);
+  } finally {
+    await rt.close();
+  }
+  if (!card) throw new Error("Packwise Starter was not charged");
+  return card;
+}
 
 const args = process.argv.slice(2);
 const db = openDb();
@@ -113,7 +150,9 @@ if (cmd === "status") {
   console.log("GOAL             every agent its own company card, with the CFO policy's limits on the card itself");
   await setupCards(db, awx.rail);
   status();
-  const ok = await buyPlan(db, awx.sim, "packwise-starter");
+  // With KIT11_AGENTS=on the Sourcing agent picks the rail per purchase (block 5.1): this morning's stock check from
+  // Stockline (x402 on Metal only) and Packwise Starter (card only). Off, code buys Packwise Starter as in every recording.
+  const ok = agentsOn() ? await railChoice(awx.sim) : await buyPlan(db, awx.sim, "packwise-starter");
   console.log(`PLAN             the sourcing agent subscribes to Packwise Starter, 19.99 EUR: ${ok.approved ? "approved by Airwallex" : `DECLINED (${ok.failureReason})`}`);
   const pro = await buyPlan(db, awx.sim, "packwise-pro");
   console.log(`NEW INFORMATION  it needs the Pro plan, 45.00 EUR, on a card that allows ${fromCents(cardRows(db).find((c) => c.agent === "sourcing")!.per_tx_cents)} a purchase: ${pro.approved ? "approved (the limit was already high enough)" : `DECLINED by Airwallex (${pro.failureReason})`}`);

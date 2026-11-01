@@ -215,3 +215,12 @@ ERC-7913 signers (verifier ‖ P-256 key) with threshold 2, so the CFO's and the
 changes on chain. RIP-7212 at 0x…0100 works on testnet and predictAccount accepts the signer bytes. Two questions: does
 MetalAccount validate ERC-7913 signers via `IERC7913SignatureVerifier.verify(key, hash, signature)`, and is there a
 WebAuthn verifier you already deploy or recommend? Thanks!"
+
+### D17. The rail choice uses the agent's own card for Packwise (1 November)
+
+Block 5.1 (estimate 6 h, risk medium) was planned with a single-use Airwallex task card for the card-only supplier.
+Built instead with the Sourcing agent's own card: Packwise is a monthly subscription, and a single-use card is closed
+after its first charge (live, 30 October), so the next month's charge would be declined. The agent's own card already
+carries the CFO's limits at Airwallex (software only, per purchase, per month) and is frozen by a pause or the stop.
+No new card type before Thursday, and Ask Purser's task kinds (flight, hotel, train) stay as they are. Actual time:
+about 2 h. Evals 60/60 over three models; the dry-run checks are in step 11 (`test/browser/dryrun.check.ts`).

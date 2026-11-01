@@ -9,6 +9,7 @@ import { checkPricePlan, designPriceRise, type PricePlanFacts } from "../agents/
 import { settleDispute, type SupportDeps } from "../agents/supportAgent.js";
 import { meetPriceRise } from "../agents/sourcingAgent.js";
 import type { AgentRun } from "../agents/loop.js";
+import { chooseRails } from "../agents/railChoice.js";
 
 export type AgentName = "sourcing" | "treasury" | "support";
 
@@ -91,6 +92,23 @@ function sourcingCase(id: string, kind: AgentCase["kind"], what: string, liveCen
   };
 }
 
+/** Block 5.1: the Sourcing agent pays Stockline over x402 on Metal and Packwise on its card, each once, by its own choice. */
+function railCase(id: string, kind: AgentCase["kind"], what: string, card: { ok: boolean; text: string } = { ok: true, text: "19.99 EUR approved by Airwallex" }): AgentCase {
+  return {
+    id, agent: "sourcing", kind, what,
+    run: async (model, client) => {
+      const paid: string[] = [];
+      const r = await chooseRails(openDb(":memory:"), {
+        payStockline: async () => { paid.push("stockline"); return { ok: true, text: "stock check #51 bought for 0.04 under the mandate", ref: `0x${"ab".repeat(32)}` }; },
+        payPackwise: async () => { paid.push("packwise"); return { ...card, ref: "awx-eval" }; },
+      }, client, model);
+      const right = r.purchases.every((p) => p.by === "claude" && (p.supplier === "stockline" ? p.rail === "metal_x402" : p.rail === "airwallex_card"));
+      const wrongTries = r.run.calls.filter((c) => c.blocked === "supplier's rails").length;
+      return { pass: r.source === "claude" && right && paid.length === 2, run: r.run, detail: `${r.source}: ${r.purchases.map((p) => `${p.supplier} ${p.rail} (${p.by})`).join(", ")}${wrongTries ? `, wrong rail refused by code ${wrongTries}×` : ""}` };
+    },
+  };
+}
+
 const NORMAL_EMAIL = "Hello Northwind,\nOur agent never placed orders #5 to #16 and the stock levels you sold us were wrong. Refund all 12, please.\nSummit Outfitters";
 
 export const AGENT_CASES: AgentCase[] = [
@@ -98,6 +116,8 @@ export const AGENT_CASES: AgentCase[] = [
   sourcingCase("sourcing-fits", "hard", "Stockline rises to 0.03, inside the cap: the purchase goes through", 3, 3),
   // dry-18's miss: when the offer already shows the price is over the cap, Haiku wrote to Treasury without trying.
   sourcingCase("sourcing-obvious", "hard", "the notice and the live offer both say 0.05 over a 0.03 cap, so a refusal looks certain: still try, then tell Treasury", 5, 3),
+  railCase("sourcing-rails", "normal", "two purchases: Stockline's stock check (x402 on Metal only) and Packwise Starter (card only): each on the rail its supplier accepts"),
+  railCase("sourcing-rails-declined", "hard", "the same, and Airwallex declines the card: the decline is the rail's answer, no second try, no other rail", { ok: false, text: "declined by Airwallex (CARD_INACTIVE)" }),
   treasuryCase("treasury-rebalance", "normal", "the standard price rise: a valid rebalance inside 20.00 with advice", facts()),
   treasuryCase("treasury-tight", "hard", "sourcing has spent 9.00 of 10.00 and the price goes to 0.05: the plan must still cover spend and stay inside 20.00",
     facts({ newUpstreamCents: 5, refusal: "mandate_cap_exceeded: 0.05 is over the sourcing mandate's 0.03 a payment", mandates: [

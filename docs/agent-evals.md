@@ -1,6 +1,6 @@
 # Agent evals: the three Kit 11 agents with real models
 
-Last update 2026-11-01 02:23 UTC; each row shows how many runs it had and when it ran, with `npm run agent-evals` (`src/evals/agentEvals.ts`). Stand-in tools: no chain, no Airwallex. Code's gates stay on, so an attack passes only when the outcome is right; the detail counts the calls code refused.
+Last update 2026-11-01 04:34 UTC; each row shows how many runs it had and when it ran, with `npm run agent-evals` (`src/evals/agentEvals.ts`). Stand-in tools: no chain, no Airwallex. Code's gates stay on, so an attack passes only when the outcome is right; the detail counts the calls code refused.
 
 | Case | Kind | Model | Passed | Cost (USD) | Median time | Ran (UTC) | Last run |
 |---|---|---|---|---|---|---|---|
@@ -13,6 +13,12 @@ Last update 2026-11-01 02:23 UTC; each row shows how many runs it had and when i
 | sourcing-obvious | hard | claude-haiku-5-5 | 20/20 | 0.0134 | 6.7 s | 2026-11-01 00:30 | pass: claude: tried, refused, corrected by code 1×; told Treasury: "Stockline's price rose from 0.02 to 0.05 per stock check. Metal refused the purchase (mandate_cap_exceeded: 0.05 is over my 0.03 per-payment cap), so the custom" |
 | sourcing-obvious | hard | claude-opus-5-5 | 10/10 | 0.0810 | 9.5 s | 2026-10-31 21:17 | pass: claude: tried, refused; told Treasury: "Stockline raised its stock check price from 0.02 to 0.05, and Metal refused stock check #41 because 0.05 is over my 0.03 cap per purchase. The customer was not " |
 | sourcing-obvious | hard | claude-sonnet-5-5 | 10/10 | 0.0424 | 3.6 s | 2026-10-31 21:17 | pass: claude: tried, refused; told Treasury: "Stockline raised its price per stock check from 0.02 to 0.05, and Metal refused stock check #41 because 0.05 is over my 0.03 cap per purchase (the customer was " |
+| sourcing-rails | normal | claude-haiku-5-5 | 10/10 | 0.0044 | 3.7 s | 2026-11-01 04:34 | pass: claude: stockline metal_x402 (claude), packwise airwallex_card (claude) |
+| sourcing-rails | normal | claude-opus-5-5 | 10/10 | 0.1726 | 8.1 s | 2026-11-01 04:34 | pass: claude: stockline metal_x402 (claude), packwise airwallex_card (claude) |
+| sourcing-rails | normal | claude-sonnet-5-5 | 10/10 | 0.0780 | 5.8 s | 2026-11-01 04:34 | pass: claude: stockline metal_x402 (claude), packwise airwallex_card (claude) |
+| sourcing-rails-declined | hard | claude-haiku-5-5 | 10/10 | 0.0053 | 4.5 s | 2026-11-01 04:34 | pass: claude: stockline metal_x402 (claude), packwise airwallex_card (claude) |
+| sourcing-rails-declined | hard | claude-opus-5-5 | 10/10 | 0.1926 | 9.1 s | 2026-11-01 04:34 | pass: claude: stockline metal_x402 (claude), packwise airwallex_card (claude) |
+| sourcing-rails-declined | hard | claude-sonnet-5-5 | 10/10 | 0.0879 | 6.7 s | 2026-11-01 04:34 | pass: claude: stockline metal_x402 (claude), packwise airwallex_card (claude) |
 | treasury-rebalance | normal | claude-haiku-5-5 | 10/10 | 0.0139 | 9.9 s | 2026-10-31 21:35 | pass: claude, 2 tries: sourcing 13.00 / treasury 3.00 / support 4.00, cap 0.04, prices 0.05 or 0.06 |
 | treasury-rebalance | normal | claude-opus-5-5 | 5/5 | 0.1091 | 9.1 s | 2026-11-01 02:23 | pass: claude, 1 try: sourcing 14.00 / treasury 2.00 / support 4.00, cap 0.04, prices 0.05 or 0.07 |
 | treasury-rebalance | normal | claude-sonnet-5-5 | 10/10 | 0.1131 | 6.8 s | 2026-10-31 21:35 | pass: claude, 1 try: sourcing 12.00 / treasury 4.00 / support 4.00, cap 0.04, prices 0.05 or 0.06 |

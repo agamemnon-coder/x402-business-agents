@@ -112,6 +112,20 @@ export const PLANS: Record<string, { agent: Agent; merchant: string; label: stri
 };
 
 /**
+ * Block 5.1: which rail each supplier accepts, as its checkout states it. The Sourcing agent picks the rail per purchase;
+ * code refuses a rail the supplier does not accept before anything is paid. Stockline sells stock checks behind an x402
+ * paywall on Metal; Packwise sells a monthly subscription through a card checkout, so the agent's own Airwallex card (a
+ * single-use card would decline the next month's charge).
+ */
+export type Rail = "metal_x402" | "airwallex_card";
+export const RAIL_WORDS: Record<Rail, string> = { metal_x402: "x402 on Metal", airwallex_card: "a card (Airwallex)" };
+export const SUPPLIER_RAILS = {
+  stockline: { name: "Stockline", item: "one live stock check for the next customer query", rails: ["metal_x402"] as Rail[], checkout: "an x402 paywall on Metal testnet, paid under your on-chain mandate; no card checkout" },
+  packwise: { name: "Packwise", item: "the Starter plan of its warehouse software, 19.99 EUR a month", rails: ["airwallex_card"] as Rail[], checkout: "a card checkout for a monthly subscription, charged to your company card (software only, a limit per purchase); no x402" },
+} as const;
+export type Supplier = keyof typeof SUPPLIER_RAILS;
+
+/**
  * Ask Purser (G): what a task card may be for. Each kind is a single-use card for its merchant categories only, at
  * most this amount; anything else is refused. Within the CFO's policy (up to the task-card threshold, asked at the
  * runner) a card is issued at once; anything above it, or asked through the relay, waits for the CFO's Face ID.

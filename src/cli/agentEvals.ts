@@ -1,4 +1,4 @@
-// npm run agent-evals [-- --runs N] [-- --models haiku,sonnet,opus] [-- --agent treasury]: the three Kit 11 agents' evals with real models
+// npm run agent-evals [-- --runs N] [-- --models haiku,sonnet,opus] [-- --agent treasury | --case a,b]: the three Kit 11 agents' evals with real models
 // (src/evals/agentEvals.ts), per model, N runs each. Writes docs/evals/agents.json and docs/agent-evals.md: per case
 // and model, how often it passed, what it cost and how long it took, and per agent the cheapest model that passed
 // every run. Needs KIT11_ANTHROPIC_API_KEY; spends real money (a few cents a run). Never part of npm test.
@@ -18,8 +18,10 @@ if (!client) { console.error("KIT11_ANTHROPIC_API_KEY is not set"); process.exit
 
 interface Row { case: string; agent: AgentName; kind: string; model: string; passed: number; runs: number; cost_usd_micros: number; median_ms: number; details: string[] }
 const rows: Row[] = [];
-const only = args.includes("--agent") ? args[args.indexOf("--agent") + 1] : null;
-for (const c of AGENT_CASES.filter((x) => !only || x.agent === only)) {
+const onlyCases = args.includes("--case") ? args[args.indexOf("--case") + 1]!.split(",") : null;
+// --case runs only the named cases (and merges like --agent).
+const only = args.includes("--agent") ? args[args.indexOf("--agent") + 1] : onlyCases ? "cases" : null;
+for (const c of AGENT_CASES.filter((x) => (onlyCases ? onlyCases.includes(x.id) : !only || x.agent === only))) {
   for (const name of pick) {
     const model = ALL[name];
     const r: Row = { case: c.id, agent: c.agent, kind: c.kind, model, passed: 0, runs, cost_usd_micros: 0, median_ms: 0, details: [] };

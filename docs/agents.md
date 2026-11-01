@@ -69,6 +69,28 @@ let it through or stopped it, tokens, cost and latency, and every step's hash in
 audit rows only (`src/dashboard/trace.ts`), so the trace is as trustworthy as the chain it reads. Test:
 `test/agent-trace.test.ts`; browser check at phone and laptop width, light and dark: `test/browser/trace.check.ts`.
 
+## The agent picks the rail (block 5.1)
+
+With the agents on, the Sourcing agent (Haiku) has two purchases in step 11: the next customer's stock check from
+Stockline and Packwise's Starter plan. It reads each supplier's checkout (`supplier_terms`) and pays each once (`pay`)
+on the rail it picks, with a reason. **Code checks the supplier accepts that rail before anything is paid**
+(`SUPPLIER_RAILS` in `src/config/policy.ts`): Stockline takes only x402 on Metal (paid under the Sourcing mandate on
+chain), Packwise only a card (charged to the Sourcing agent's Airwallex card). A wrong rail is refused with the reason
+("Stockline accepts only x402 on Metal …") and the agent may try again; a second payment to the same supplier is
+refused; a refusal by the rail itself (Metal's mandate, Airwallex's decline) is the rail's answer and is not retried on
+another rail. If the agent stops with a purchase left, code sends it back once; still unfinished, code pays the rest on
+the registry's rail, and the run counts as a fallback. Every choice is a `purchase.rail_chosen` row with the chain tx or
+the Airwallex id, and the run has its own trace.
+
+**Why the agent's own card, not a single-use task card.** Packwise is a monthly subscription: a single-use card would be
+closed after the first charge and decline next month's. The agent's own card is already limited at Airwallex (software
+merchants only, a limit per purchase and per month, frozen by a pause or the emergency stop). Single-use task cards stay
+for one-off purchases (Ask Purser).
+
+Code: `src/agents/railChoice.ts`; wired into `npm run cards -- scenario` when `KIT11_AGENTS=on`. Tests:
+`test/rail-choice.test.ts` (fake client). Evals with real models (`sourcing-rails`, `sourcing-rails-declined`, 10 runs
+each): Haiku 20/20, Sonnet 20/20, Opus 20/20, 1 November.
+
 ## Pause one agent with Face ID (4.2)
 
 With the agents on, the CFO can pause one agent instead of all (the emergency stop stays for all). The Agents page has
@@ -83,9 +105,13 @@ off. Code: `src/policy/pause.ts`, `src/metal/pauseChain.ts`; tests: `test/agent-
 **What Metal allows, found on testnet.** A revoked mandate cannot be replaced ("already revoked; bind the new
 credential"), and a replacement must leave room above what was spent, so a "zero-room" pause is not possible either.
 So resuming binds a fresh mandate with the same cap and **what was left of the budget**: the agent's lifetime limit on
-chain stays what the CFO approved. Because that fresh mandate's spend starts at nothing, a later rebalance would not
-count what was spent before the pause; code therefore **refuses a mandate change for an agent resumed after a pause**
-(`refuseAfterResume`), before anything is issued or signed. In Thursday's run the pause comes after the rebalance.
+chain stays what the CFO approved. That fresh mandate's spend starts at nothing, so **a rebalance after a resume counts
+lifetime figures** (block 6, 1 November): what each resume carried off chain (`spent_before`) is added back, plans work
+on chain + carried, and a new credential gets the lifetime target minus what was carried (`src/policy/pause.ts`:
+`carriedCents`, `lifetime`, `chainBudgetCents`). The executor refuses a change if a resume happened after it was
+proposed (`checkCarried`). So the 20.00 total holds over each agent's whole life, pause or not. Rebalance outside a
+price rise: `npm run rebalance -- --from treasury --to support --amount 0.50 --reason "…"`; dry-run step 12c does
+exactly that right after the resume (`test/agent-pause.test.ts`).
 
 **Fresh review of 4.1 and 4.2 (31 October, evening).** No way was found for a paused agent, or a document it reads, to
 get money moved: every payment path (Metal purchases, refunds, sweeps, card purchases and holds, invoice payments)

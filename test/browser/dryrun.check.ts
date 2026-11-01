@@ -364,7 +364,18 @@ await timed("10 Licence EUR 240.00 (FX + SWIFT); the runner is killed right afte
 let raise = "";
 await timed("11 Cards: EUR 19.99 approved, EUR 45.00 declined, raise EUR 30 → 50", async () => {
   cli("cards.ts", "setup");
-  cli("cards.ts", "scenario");
+  const scen = cli("cards.ts", "scenario");
+  if (process.env.KIT11_AGENTS === "on") {
+    // Block 5.1: the Sourcing agent picked the rail per purchase; code checked each supplier accepts it.
+    const rails = (db().prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'purchase.rail_chosen' ORDER BY seq").all() as { subject: string; payload_json: string }[])
+      .map((r) => ({ supplier: r.subject, ...(JSON.parse(r.payload_json) as { rail: string; by: string; ok: boolean }) }));
+    check(rails.some((r) => r.supplier === "stockline" && r.rail === "metal_x402" && r.ok), "Stockline paid over x402 on Metal (a stock check under the Sourcing mandate)");
+    check(rails.some((r) => r.supplier === "packwise" && r.rail === "airwallex_card" && r.ok), "Packwise Starter paid on the Sourcing agent's Airwallex card");
+    check(rails.length === 2, `each supplier paid once (${rails.length} payments)`);
+    const sum = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'purchase.rails_chosen' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
+    const source = sum ? (JSON.parse(sum.payload_json) as { source: string }).source : "none";
+    say(`RAILS AGENT ${source === "claude" ? "the Sourcing agent's own choice" : "code's fallback (reported, not a failure)"}; ${scen.split("\n").filter((l) => /SOURCING AGENT|refused by code/.test(l)).join(" | ").slice(0, 300)}`);
+  }
   raise = latest("policy_change", "status = 'PENDING_APPROVAL'") ?? "";
   check(!!raise, `raise proposal ${raise}`);
   await sign(cfo, raise, { tag: "card-raise" });

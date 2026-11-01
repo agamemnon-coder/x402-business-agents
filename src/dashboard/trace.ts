@@ -50,6 +50,8 @@ type P = Record<string, unknown>;
 
 /** The decision row code writes after each agent's run. */
 const DECISION: Record<string, string> = { sourcing: "price_rise.met", treasury: "price_rise.plan", support: "dispute.settled_by_agent" };
+/** Where an agent has more than one task, the decision row of each (block 5.1: the Sourcing agent's rail choice). */
+const DECISION_BY_TASK: Record<string, string> = { "purchase.rails": "purchase.rails_chosen", "price_rise.meet": "price_rise.met" };
 
 /** What lets a tool call through when nothing stopped it. */
 const TOOL_CHECK: Record<string, string> = {
@@ -57,6 +59,8 @@ const TOOL_CHECK: Record<string, string> = {
   verify_order: "read only: the signed order and its payment, from the chain",
   check_data: "read only: code's own check of the delivered data",
   try_purchase: "the Metal mandate on chain (cap per payment, budget)",
+  supplier_terms: "read only: the supplier's checkout, from code's registry",
+  pay: "code's check that the supplier accepts the rail, then the rail's own limits (Metal mandate or Airwallex card)",
   notify_treasury: "a message to the Treasury agent, only after Metal answered; it moves no money",
   submit_plan: "code's plan checks (the 20.00 total, caps, budgets, margin)",
   refund: "code's evidence gate and the automatic refund limits, then the Metal mandate",
@@ -72,6 +76,7 @@ function decisionCheck(r: Row, p: P): string {
       ? `accepted by code's plan checks after ${str(p.attempts) || "1"} ${str(p.attempts) === "1" ? "try" : "tries"}; the CFO decides with Face ID`
       : "code's fixed plan (the agent's was not used); the CFO decides with Face ID";
   }
+  if (r.event === "purchase.rails_chosen") return str(p.source) === "claude" ? "every supplier paid on a rail it accepts (code's check); Metal and Airwallex enforced the limits" : "code paid on the registry's rails (the agent did not finish)";
   if (r.event === "dispute.settled_by_agent") return "complete: every wrong order refunded, the rest sent to the CFO, who decides with Face ID";
   if (r.event === "price_rise.met") return str(p.source) === "claude" ? "Metal decided on chain; the agent's message goes to the Treasury agent" : "code decided (the agent did not try)";
   return "";
@@ -90,7 +95,7 @@ export function agentTraces(db: DB, all?: Row[]): Trace[] {
     const from = num(p.from_seq) ?? ((rows.find((r) => r.seq > prevRun && r.seq < run.seq && r.actor === agent && r.event === "agent.tool")?.seq ?? run.seq) - 1);
     // Tool calls of this run only (same task); what they caused is the agent's other rows in between (review of 4.2).
     const mine = rows.filter((r) => r.seq > Math.max(from, prevRun) && r.seq <= run.seq && r.actor === agent && r.event !== "agent.run" && (r.event !== "agent.tool" || r.subject === run.subject));
-    const decision = rows.find((r) => r.seq > run.seq && r.seq < nextRun && r.actor === agent && r.event === DECISION[agent]) ?? null;
+    const decision = rows.find((r) => r.seq > run.seq && r.seq < nextRun && r.actor === agent && r.event === (DECISION_BY_TASK[str(run.subject)] ?? DECISION[agent])) ?? null;
 
     const steps: TraceStep[] = [];
     for (const r of [...mine, run, ...(decision ? [decision] : [])]) {
