@@ -3,7 +3,8 @@
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
 import { visaPage } from "../visa/page.js";
-import { TRY_MAX_CHARS, tryPurserSafely } from "../try/engine.js";
+import { WORLD_CHANGES } from "../try/world.js";
+import { localTryAnswer } from "../try/local.js";
 import { buildFilm } from "../film/film.js";
 import { filmTimeline } from "../film/script.js";
 import { createHash } from "node:crypto";
@@ -134,7 +135,7 @@ export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
 // It carries the recorded run's rails and AI tricks, so each answer can show the same flow as it ran live.
 export const TRY_PAGE = (() => {
   const rec = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as { snapshot?: { rails?: unknown }; proof?: { ai_tricks?: number } };
-  const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null };
+  const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null, worlds: WORLD_CHANGES.map(({ id, label, detail }) => ({ id, label, detail })) };
   return withNav(readFileSync(new URL("../try/try.html", import.meta.url), "utf8"), "try").replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
 })();
 export const TRY_CSP = cspFor(TRY_PAGE);
@@ -222,10 +223,8 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   });
   // Locally Try Purser reads with code alone: no model is asked from this server (the relay asks Claude, with limits).
   app.post("/api/try", express.json({ limit: "2kb" }), async (req, res) => {
-    const text = typeof (req.body as { text?: unknown })?.text === "string" ? ((req.body as { text: string }).text).trim() : "";
-    if (!text) return void res.status(400).json({ error: "type what an agent should do" });
-    if (text.length > TRY_MAX_CHARS) return void res.status(413).json({ error: `at most ${TRY_MAX_CHARS} characters` });
-    res.json(await tryPurserSafely(text, null, new Date(), "this local server asks no model; the hosted page does"));
+    const a = await localTryAnswer(req.body, "this local server asks no model; the hosted page does");
+    res.status(a.status).json(a.json);
   });
 
   app.get("/metal", (_req, res) => {

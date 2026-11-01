@@ -6,6 +6,7 @@
 
 import { callCostMicros } from "../claude/pricing.js";
 import type { Intent, Reading, TryModels } from "./engine.js";
+import type { AgentAsk, AgentReply } from "./world.js";
 
 const HAIKU = "claude-haiku-5-5";
 const SONNET = "claude-sonnet-5-5";
@@ -77,5 +78,41 @@ export function claudeModels(apiKey: string, fetcher: typeof fetch = fetch, time
       };
       return { value, model: SONNET, ms: r.ms, costUsd: r.costUsd };
     },
+  };
+}
+
+/**
+ * D21: one Messages API call with tools, as the autonomy runtime makes it (strict tools, the system prompt cached,
+ * effort medium), over fetch so the relay Worker can run it. Only text and tool calls come back to the engine.
+ */
+export function claudeAgentAsk(apiKey: string, fetcher: typeof fetch = fetch, timeoutMs = 20_000): AgentAsk {
+  return async (req) => {
+    const started = Date.now();
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const res = await fetcher("https://api.anthropic.com/v1/messages", {
+        method: "POST", signal: ctl.signal,
+        headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({
+          model: req.model, max_tokens: 4000,
+          system: [{ type: "text", text: req.system, cache_control: { type: "ephemeral" } }],
+          tools: req.tools.map((t) => ({ ...t, strict: true })),
+          messages: req.messages, output_config: { effort: "medium" },
+        }),
+      });
+      if (!res.ok) throw new Error(`the model answered HTTP ${res.status}`);
+      const j = (await res.json()) as ApiResult & { model?: string };
+      const content: AgentReply["content"] = [];
+      for (const b of j.content as { type: string; text?: string; id?: string; name?: string; input?: unknown }[]) {
+        if (b.type === "text" && typeof b.text === "string") content.push({ type: "text", text: b.text });
+        else if (b.type === "tool_use" && typeof b.id === "string" && typeof b.name === "string") content.push({ type: "tool_use", id: b.id, name: b.name, input: (b.input && typeof b.input === "object" ? b.input : {}) as Record<string, unknown> });
+      }
+      const model = j.model ?? req.model;
+      const micros = callCostMicros(model, { input: j.usage.input_tokens, output: j.usage.output_tokens, cache_read: j.usage.cache_read_input_tokens ?? 0, cache_write: j.usage.cache_creation_input_tokens ?? 0 }) ?? 0;
+      return { content, stop_reason: j.stop_reason ?? "end_turn", model, ms: Date.now() - started, costUsd: micros / 1e6 };
+    } finally {
+      clearTimeout(timer);
+    }
   };
 }

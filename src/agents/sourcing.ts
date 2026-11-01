@@ -33,16 +33,8 @@ export async function offerCents(url: string): Promise<number | null> {
 }
 
 
-export interface BuyPolicy {
-  /** Whom to buy from; "none": serve from the cache only, or refuse (the customer is not charged). */
-  supplier: SupplierId | "none";
-  /** The most to pay per stock check under this policy; null: up to the mandate's cap. */
-  max_price: string | null;
-  /** Serve the last stock check bought for this long instead of buying again (0: always buy). */
-  cache_seconds: number;
-  set_by?: string;
-  reason?: string;
-}
+export type { BuyPolicy } from "./buyPolicy.js";
+import type { BuyPolicy } from "./buyPolicy.js";
 
 export const DEFAULT_POLICY: BuyPolicy = { supplier: "stockline", max_price: null, cache_seconds: 0 };
 

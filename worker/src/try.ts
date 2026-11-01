@@ -2,10 +2,12 @@
 // storage, apart from the approvals) and guards the one thing a public page could cost us, the Claude calls:
 // at most 6 tries a minute and 40 a day from one address, 280 characters a try, only from this site's own page,
 // at most 30 model calls a minute from everyone together, and a budget per UTC day for the models; past either of the
-// last two, code alone reads the request and the page says so. Nothing
+// last two, code alone reads the request and the page says so. A world change (D21) is one try too: one wake of the
+// Sourcing agent, at most five model calls, under the same limits. Nothing
 // here reaches Airwallex, Metal or the runner: the demo world is simulated (src/try/engine.ts).
 
-import { claudeModels } from "../../src/try/claude.js";
+import { claudeAgentAsk, claudeModels } from "../../src/try/claude.js";
+import { tryWorld, worldChange } from "../../src/try/world.js";
 import { TRY_MAX_CHARS, tryPurserSafely } from "../../src/try/engine.js";
 import { rateKey } from "./core.js";
 
@@ -38,15 +40,22 @@ export class TryDesk {
     if ((origin && origin !== url.origin) || req.headers.get("sec-fetch-site") === "cross-site") return answer(403, { error: "ask from the Try Purser page" });
     const raw = await req.text();
     if (raw.length > 2_000) return answer(413, { error: `at most ${TRY_MAX_CHARS} characters` });
-    let text: string;
+    let text = "";
+    let world: string | null = null;
     try {
-      const body = JSON.parse(raw) as { text?: unknown };
-      if (typeof body.text !== "string") throw new Error();
-      text = body.text.trim();
+      const body = JSON.parse(raw) as { text?: unknown; world?: unknown };
+      // D21: a world change instead of a typed task; only the five known ids.
+      if ("world" in body) {
+        if (typeof body.world !== "string" || !worldChange(body.world)) return answer(400, { error: "pick one of the world changes on the page" });
+        world = body.world;
+      } else {
+        if (typeof body.text !== "string") throw new Error();
+        text = body.text.trim();
+      }
     } catch {
       return answer(400, { error: "send {\"text\": \"...\"}" });
     }
-    if (!text) return answer(400, { error: "type what an agent should do" });
+    if (world === null && !text) return answer(400, { error: "type what an agent should do" });
     if (text.length > TRY_MAX_CHARS) return answer(413, { error: `at most ${TRY_MAX_CHARS} characters` });
 
     const ip = rateKey(req.headers.get("cf-connecting-ip") ?? "unknown");
@@ -62,9 +71,11 @@ export class TryDesk {
     const budget = this.opts.budgetUsd ?? TRY_DAILY_BUDGET_USD;
     const [{ n: busy }] = this.sql.exec("SELECT COUNT(*) AS n FROM try_hits WHERE at > ?", nowMs - 60_000).toArray() as [{ n: number }];
     const crowded = busy > TRY_MODEL_PER_MINUTE;
-    const models = this.opts.anthropicKey && spent < budget && !crowded ? claudeModels(this.opts.anthropicKey, this.opts.fetcher) : null;
+    const useModels = !!this.opts.anthropicKey && spent < budget && !crowded;
     const why = !this.opts.anthropicKey ? "no model key is set on this relay" : spent >= budget ? "today's budget for model calls is spent" : "many visitors are trying it right now, so the models pause for a minute";
-    const result = await tryPurserSafely(text, models, this.now(), why);
+    const result = world !== null
+      ? await tryWorld(world, useModels ? claudeAgentAsk(this.opts.anthropicKey!, this.opts.fetcher) : null, this.now(), why)
+      : await tryPurserSafely(text, useModels ? claudeModels(this.opts.anthropicKey!, this.opts.fetcher) : null, this.now(), why);
     this.sql.exec("INSERT INTO try_spend (day, usd, tries) VALUES (?, ?, 1) ON CONFLICT(day) DO UPDATE SET usd = usd + excluded.usd, tries = tries + 1", day, result.costUsd);
     return answer(200, result);
   }

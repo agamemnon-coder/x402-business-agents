@@ -10,7 +10,7 @@ import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
 import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
-import { TRY_MAX_CHARS, tryPurserSafely } from "../try/engine.js";
+import { localTryAnswer } from "../try/local.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
@@ -33,10 +33,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/try", page(TRY_CSP, () => TRY_PAGE));
   // Try Purser without keys: code reads the request; the hosted relay page asks Claude.
   app.post("/api/try", express.json({ limit: "2kb" }), async (req, res) => {
-    const text = typeof (req.body as { text?: unknown })?.text === "string" ? (req.body as { text: string }).text.trim() : "";
-    if (!text) return void res.status(400).json({ error: "type what an agent should do" });
-    if (text.length > TRY_MAX_CHARS) return void res.status(413).json({ error: `at most ${TRY_MAX_CHARS} characters` });
-    res.json(await tryPurserSafely(text, null, new Date(), "this offline copy asks no model; the hosted page does"));
+    const a = await localTryAnswer(req.body, "this offline copy asks no model; the hosted page does");
+    res.status(a.status).json(a.json);
   });
   const lab = labPage();
   app.get("/lab", page(LAB_CSP, () => lab));

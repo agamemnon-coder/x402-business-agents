@@ -25,7 +25,7 @@ import { setSetting } from "../world/settings.js";
 import { sendMessage } from "./bus.js";
 import type { AgentProfile } from "./runtime.js";
 import type { AgentTool } from "../agents/loop.js";
-import { BUY_POLICY_DESCRIPTION, BUY_POLICY_INPUT, checkBuyPolicy, MARKET_DESCRIPTION, policyFrom, policyWords, sourcingBrief, SOURCING_DISPLAY, SOURCING_GOAL, SOURCING_RULES, type BuyPolicyInput, type SupplierView } from "./sourcingCore.js";
+import { BUY_POLICY_DESCRIPTION, BUY_POLICY_INPUT, checkBuyPolicy, MARKET_DESCRIPTION, sourcingFallback, policyFrom, policyWords, sourcingBrief, SOURCING_DISPLAY, SOURCING_GOAL, SOURCING_RULES, type BuyPolicyInput, type SupplierView } from "./sourcingCore.js";
 
 export type { SupplierView } from "./sourcingCore.js";
 
@@ -154,10 +154,9 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
     },
     // Without Claude: the policy stays as it was; a refusal over the cap goes to Treasury in code's words, as before.
     fallback: async (db, events) => {
-      const refused = events.find((e) => e.kind === "upstream.refused" && String(e.payload.reason ?? "").startsWith("mandate_cap_exceeded"));
-      if (!refused) return "kept the buy policy as it was";
-      sendMessage(db, "sourcing", "treasury", `A purchase was refused over my mandate's cap: ${String(refused.payload.reason)}. I need a higher cap to keep buying from Stockline.`);
-      return "kept the buy policy and told the Treasury agent about the refusal (code's message)";
+      const f = sourcingFallback(events);
+      if (f.message) sendMessage(db, "sourcing", "treasury", f.message);
+      return f.summary;
     },
   };
 }

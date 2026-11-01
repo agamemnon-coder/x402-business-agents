@@ -197,6 +197,19 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // Let the last outcome's fade-in finish before the picture (the deck uses it).
     await page.waitForTimeout(800);
     await page.screenshot({ path: join(shots, `try-${tag}.png`), fullPage: true });
+    // D21: change the world. Five buttons; locally no model is asked, so the fallback answers, and the page says so and why.
+    const worldButtons = await page.$$("#worlds button");
+    if (worldButtons.length !== 5) fail(`/try ${tag}: expected 5 world changes, saw ${worldButtons.length}`);
+    if (liveAt < 0 && worldButtons[0]) {
+      await worldButtons[0].click();
+      await page.waitForSelector(".wfinal", { timeout: 15_000 }).catch(() => fail(`/try world ${tag}: no decision shown`));
+      const said = await page.evaluate(() => document.getElementById("world-out")!.innerText);
+      if (!/Fallback \(code\)/.test(said) || !/Why no Claude: this (local server|offline copy) asks no model/.test(said)) fail(`/try world ${tag}: should say the fallback answered, and why`);
+      if (!/Buy policy before: buy from Stockline/.test(said) || !/Message to the Treasury agent \(shown, not sent\)/.test(said)) fail(`/try world ${tag}: policy and message missing`);
+      if (!/no money moves/i.test(said)) fail(`/try world ${tag}: not labelled as a demo world`);
+      await look(page, `/try world ${tag}`, w);
+      await page.locator("#world-out").screenshot({ path: join(shots, `try-world-${tag}.png`) });
+    }
 
     // How Purser uses Metal: every agent's mandate in the inspector, the feature cards, the recorded case order by order.
     await page.goto(`${base}/metal`, { waitUntil: "load" });

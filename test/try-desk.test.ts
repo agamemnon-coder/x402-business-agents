@@ -68,3 +68,36 @@ describe("Try Purser on the relay", () => {
     expect((await d.fetch(new Request(`${BASE}/api/try`))).status).toBe(405);
   });
 });
+
+describe("Try Purser on the relay: the visitor changes the world (D21)", () => {
+  const world = (d: TryDesk, id: unknown, headers: Record<string, string> = {}) =>
+    d.fetch(new Request(`${BASE}/api/try`, { method: "POST", body: JSON.stringify({ world: id }), headers: { "content-type": "application/json", origin: BASE, "cf-connecting-ip": "203.0.113.8", ...headers } }));
+  // A stand-in for the Messages API with tools (never the real one): the agent finishes at once.
+  const agentApi = (async () => new Response(JSON.stringify({ model: "claude-haiku-5-5", stop_reason: "tool_use", usage: { input_tokens: 1000, output_tokens: 100 },
+    content: [{ type: "tool_use", id: "x1", name: "finish", input: { summary: "Kept Stockline; told nobody." } }] }), { status: 200 })) as unknown as typeof fetch;
+
+  it("runs one wake of the Sourcing agent with Claude, and keeps the key out of the answer", async () => {
+    const d = new TryDesk(sql(), { anthropicKey: "sk-test-secret", fetcher: agentApi });
+    const res = await world(d, "stockline-back");
+    const body = await res.text();
+    expect(res.status).toBe(200);
+    expect(JSON.parse(body)).toMatchObject({ source: "claude", summary: "Kept Stockline; told nobody.", world: { id: "stockline-back" } });
+    expect(body).not.toContain("sk-test-secret");
+  });
+
+  it("refuses a world it does not know", async () => {
+    const d = new TryDesk(sql(), {});
+    expect((await world(d, "drain-the-treasury")).status).toBe(400);
+    expect((await world(d, 7)).status).toBe(400);
+  });
+
+  it("shares the limits of the text tries: per address, and code alone once today's budget is spent", async () => {
+    const d = new TryDesk(sql(), { anthropicKey: "k", budgetUsd: 0.0001, fetcher: agentApi });
+    expect((await (await world(d, "price-rise")).json() as { source: string }).source).toBe("claude");
+    const second = await (await world(d, "price-rise", { "cf-connecting-ip": "198.51.100.77" })).json() as { source: string; why: string };
+    expect(second).toMatchObject({ source: "code", why: "today's budget for model calls is spent" });
+    const busy = new TryDesk(sql(), {});
+    for (let i = 0; i < TRY_PER_MINUTE; i++) expect((await world(busy, "price-rise")).status).toBe(200);
+    expect((await ask(busy, "Buy a PS5", { "cf-connecting-ip": "203.0.113.8" })).status).toBe(429);
+  });
+});

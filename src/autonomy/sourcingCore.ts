@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { MAX_CACHE_SECONDS, MIN_MARGIN_CENTS, SUPPLIERS, type SupplierId } from "../config/suppliers.js";
 import { fromCents, toCents } from "../lib/money.js";
-import type { BuyPolicy } from "../agents/sourcing.js";
+import type { BuyPolicy } from "../agents/buyPolicy.js";
 
 /** The Sourcing agent's model (Haiku), as in the runtime (`MODELS.classify`). */
 export const SOURCING_MODEL = "claude-haiku-5-5";
@@ -68,6 +68,16 @@ export function checkBuyPolicy(p: BuyPolicyInput, suppliers: SupplierView[], cap
 
 /** The policy the agent set, as stored. */
 export const policyFrom = (p: BuyPolicyInput): BuyPolicy => ({ supplier: p.supplier, max_price: p.max_price, cache_seconds: p.cache_seconds, set_by: "sourcing", reason: p.reason.trim().slice(0, 300) });
+
+/** Code's decision when Claude does not decide: keep the policy; a refusal over the cap goes to Treasury in code's words. */
+export function sourcingFallback(events: { kind: string; payload: Record<string, unknown> }[]): { summary: string; message: string | null } {
+  const refused = events.find((e) => e.kind === "upstream.refused" && String(e.payload.reason ?? "").startsWith("mandate_cap_exceeded"));
+  if (!refused) return { summary: "kept the buy policy as it was", message: null };
+  return {
+    summary: "kept the buy policy and told the Treasury agent about the refusal (code's message)",
+    message: `A purchase was refused over my mandate's cap: ${String(refused.payload.reason)}. I need a higher cap to keep buying from Stockline.`,
+  };
+}
 
 // The runtime's frame around every agent (src/autonomy/runtime.ts), shared so /try asks in the same words.
 export const SEND_MESSAGE_DESCRIPTION = "A short message to another agent (they read it at their next wake). At most two per wake.";

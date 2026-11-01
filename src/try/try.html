@@ -89,10 +89,23 @@ button.run:disabled { opacity: .5; cursor: wait; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .err { margin-top: 10px; padding: 14px 16px; border-radius: 14px; background: var(--bad-soft); color: var(--bad); font-weight: 600; }
 .idle { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.worlds { margin-top: 56px; padding-top: 36px; border-top: 1px solid var(--border); }
+.worlds h2 { font-size: 32px; line-height: 1.12; letter-spacing: -.02em; margin: 8px 0 10px; max-width: 900px; }
+.worlds .examples button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.wbox { margin-top: 18px; display: grid; gap: 12px; max-width: 900px; }
+.wbox .what { font-size: 15px; line-height: 1.5; color: var(--muted); margin: 0; }
+.wbox .step code { font: 500 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.wfinal { padding: 18px 20px; border-radius: 18px; border: 1px solid var(--accent); background: var(--surface); }
+.wfinal h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
+.wfinal p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; }
+.wfinal .pol { font-variant-numeric: tabular-nums; }
+.wfinal blockquote { margin: 10px 0 0; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--sunken); border-radius: 0 10px 10px 0; font-size: 15px; line-height: 1.5; }
+.wfinal.code { border-color: var(--border); }
 @media (max-width: 960px) {
   .grid { grid-template-columns: 1fr; } .side { position: static; }
 }
 @media (max-width: 640px) {
+  .worlds h2 { font-size: 25px; }
   main { padding: 24px 16px 48px; } h1 { font-size: 31px; } .lead { font-size: 16px; } textarea { font-size: 18px; } .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 14px; mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } .top nav a { white-space: nowrap; }
   .step { grid-template-columns: 1fr; gap: 6px; } .by { justify-self: start; } .meta { text-align: left; }
   .outcome { grid-template-columns: 1fr; } .outcome h3 { font-size: 21px; } .realbox { margin: 12px 16px 0; }
@@ -135,6 +148,13 @@ button.run:disabled { opacity: .5; cursor: wait; }
       <div class="live" id="live" aria-live="polite"></div>
     </aside>
   </div>
+  <section class="worlds" aria-labelledby="w-h">
+    <div class="kicker">Or change the world</div>
+    <h2 id="w-h">Change Northwind's market. The Sourcing agent decides.</h2>
+    <p class="lead">Pick what happens. The Sourcing agent wakes once and decides with Claude Haiku, with the same instructions, tools and code checks it has in the autonomous runs. Code refuses anything over its mandate or under its margin.</p>
+    <div class="examples" id="worlds" role="group" aria-label="World changes"></div>
+    <div id="world-out" aria-live="polite"><p class="idle">Pick a change. On the hosted page Claude decides. Offline no model is asked: the agent's fallback in code answers, labelled as such.</p></div>
+  </section>
 </main>
 <script type="application/json" id="try-data">__TRY_JSON__</script>
 <script>
@@ -236,6 +256,59 @@ button.run:disabled { opacity: .5; cursor: wait; }
       .catch(function () { wrap.replaceChildren(el("div", "err", "The demo cannot be reached right now.")); })
       .then(function () { run.disabled = false; run.textContent = "Run it"; });
   }
+  // D21: change the world; the Sourcing agent decides (one wake, its real model on the hosted page).
+  var worlds = document.getElementById("worlds"), wout = document.getElementById("world-out"), wbusy = false;
+  function wrow(by, model, title, detail, tone) {
+    var li = el("li", "step show " + (tone || "")), mid = el("div");
+    mid.appendChild(el("b", null, title)); if (detail) mid.appendChild(detail);
+    li.appendChild(el("span", "by" + (model ? " model" : ""), by)); li.appendChild(mid); li.appendChild(el("span", "meta", "")); return li;
+  }
+  function wshow(r) {
+    var box = el("div", "wbox");
+    box.appendChild(el("span", "chip", r.demo));
+    box.appendChild(el("p", "what", r.world.label + ": " + r.world.detail));
+    var list = el("ol", "steps");
+    r.steps.forEach(function (s) {
+      if (s.tool === "finish" && !s.blocked) return; // its summary is the decision below
+      var d = el("span", "d"), args = Object.keys(s.input || {}).filter(function (k) { return k !== "reason" && k !== "text"; })
+        .map(function (k) { return k.replace(/_/g, " ") + ": " + (s.input[k] === null ? "none" : String(s.input[k])); });
+      if (args.length) { d.appendChild(el("code", null, args.join(" · "))); d.appendChild(document.createElement("br")); }
+      var said = s.input && (s.input.reason || s.input.text);
+      if (typeof said === "string") { d.appendChild(el("i", null, "“" + said + "”")); d.appendChild(document.createElement("br")); }
+      d.appendChild(document.createTextNode(s.answer));
+      // Tool calls exist only when Claude was asked: each is Claude's, a refused one is code's answer to it.
+      list.appendChild(wrow(s.blocked ? "code refused" : "Claude Haiku", !s.blocked, s.blocked ? "Refused: " + s.blocked : s.tool.replace(/_/g, " "), d, s.blocked ? "bad" : "ok"));
+    });
+    if (list.children.length) box.appendChild(list);
+    var f = el("section", "wfinal" + (r.source === "claude" ? "" : " code"));
+    f.appendChild(el("h3", null, r.source === "claude" ? "Claude decided" : "Fallback (code)"));
+    if (r.source !== "claude" && r.why) f.appendChild(el("p", null, "Why no Claude: " + r.why + "."));
+    f.appendChild(el("p", "pol", "Buy policy before: " + r.policy_before));
+    f.appendChild(el("p", "pol", "Buy policy after: " + r.policy_after + (r.policy_after === r.policy_before ? " (unchanged)" : "")));
+    f.appendChild(el("blockquote", null, r.summary.charAt(0).toUpperCase() + r.summary.slice(1)));
+    r.messages.forEach(function (m) { f.appendChild(el("p", null, "Message to the " + (m.to === "treasury" ? "Treasury" : "Support") + " agent (shown, not sent): " + m.text)); });
+    box.appendChild(f);
+    var sum = el("div", "sum");
+    sum.appendChild(el("span", "chip", r.calls ? r.calls + " model call" + (r.calls === 1 ? "" : "s") + " · " + (r.ms / 1000).toFixed(1) + " s" : "no model call"));
+    sum.appendChild(el("span", "chip", "Model cost of this try: " + usd(r.costUsd)));
+    box.appendChild(sum);
+    wout.replaceChildren(box);
+  }
+  (DATA.worlds || []).forEach(function (w) {
+    var b = el("button"); b.type = "button"; b.setAttribute("aria-pressed", "false"); b.dataset.world = w.id; b.title = w.detail; b.textContent = w.label;
+    b.addEventListener("click", function () {
+      if (wbusy) return; wbusy = true;
+      Array.prototype.forEach.call(worlds.children, function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); x.disabled = true; });
+      var t = el("div", "thinking"); for (var i = 0; i < 3; i++) t.appendChild(el("div"));
+      wout.replaceChildren(el("p", "chip", "The Sourcing agent reads the market and decides…"), t);
+      fetch("/api/try", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ world: w.id }) })
+        .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, j: j }; }); })
+        .then(function (r) { if (r.ok) wshow(r.j); else wout.replaceChildren(el("div", "err", r.j.error || "Something went wrong.")); })
+        .catch(function () { wout.replaceChildren(el("div", "err", "The demo cannot be reached right now.")); })
+        .then(function () { wbusy = false; Array.prototype.forEach.call(worlds.children, function (x) { x.disabled = false; }); });
+    });
+    worlds.appendChild(b);
+  });
   run.addEventListener("click", go);
   var q = new URLSearchParams(location.search).get("q");
   if (q) { task.value = q.slice(0, 280); update(); go(); }
