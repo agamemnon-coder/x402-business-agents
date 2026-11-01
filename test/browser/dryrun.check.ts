@@ -357,6 +357,7 @@ if (process.env.DRYRUN_AUTONOMY) {
   }
   await killRunner("SIGTERM");
   await browser.close();
+  writeFileSync(join(out, "timings.json"), JSON.stringify({ total_minutes: Math.round((Date.now() - started) / 60_000), failures, timings }, null, 2));
   say(failures === 0 ? "autonomy run passes" : `${failures} check(s) failed in the autonomy run`);
   process.exit(failures === 0 ? 0 : 1);
 }
