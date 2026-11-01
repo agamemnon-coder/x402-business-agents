@@ -614,6 +614,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
       if (str(p.blocked_by) === "Metal mandate") return out(`Metal refused ${who}'s purchase against its on-chain mandate`, "refusal", { model: modelName(str(p.model)) });
       return out(`Code refused ${who}'s ${str(p.tool).replace(/_/g, " ")}: ${str(p.blocked_by)}`, "refusal", { model: modelName(str(p.model)) });
     }
+    case "agent.nudged": return out(`Code sent ${agentWho(str(p.agent))} back, not finished: ${str(p.reason)}`, "info", { model: modelName(str(p.model)) });
     case "price_rise.met": return str(p.source) === "claude"
       ? out(`The Sourcing agent told the Treasury agent: "${str(p.message)}"`, "info", { model: modelName(str(p.model)) })
       : out("The Sourcing agent's model was not available; code served the next query as before", "info");

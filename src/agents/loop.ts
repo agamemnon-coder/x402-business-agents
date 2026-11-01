@@ -57,6 +57,12 @@ export interface AgentSpec {
   tools: AgentTool<z.ZodType>[];
   maxTurns?: number;
   effort?: "low" | "medium" | "high";
+  /**
+   * Why the job is not done yet, or null when it is. If Claude stops while this returns a reason, it is sent back once
+   * with that reason (dry-26: Haiku stopped after code refused its message, without trying the purchase). A second stop
+   * ends the run as it is; the caller decides whether the run counts.
+   */
+  unfinished?: () => string | null;
 }
 
 const short = (s: string, n = 600) => (s.length > n ? `${s.slice(0, n)}…` : s);
@@ -89,6 +95,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
   // The prompt carries ledger text (a refusal reason, another agent's message): redacted like everything else.
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: redactSecrets(spec.prompt) }];
   const maxTurns = spec.maxTurns ?? 8;
+  let nudged = false;
 
   while (turns < maxTurns) {
     turns++;
@@ -124,6 +131,14 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
     const uses = res.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
     if (res.stop_reason !== "tool_use" || uses.length === 0) {
       if (res.stop_reason === "max_tokens") return finish("incomplete", "the answer was cut off");
+      const reason = spec.unfinished?.() ?? null;
+      if (reason && !nudged) {
+        nudged = true;
+        audit(db, spec.agent, "agent.nudged", spec.task, { agent: spec.agent, model: res.model, reason });
+        messages.push({ role: "assistant", content: res.content as Anthropic.Beta.BetaContentBlockParam[] });
+        messages.push({ role: "user", content: `Not finished: ${reason}` });
+        continue;
+      }
       return finish("done");
     }
     messages.push({ role: "assistant", content: res.content as Anthropic.Beta.BetaContentBlockParam[] });

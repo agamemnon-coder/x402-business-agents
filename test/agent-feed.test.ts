@@ -57,6 +57,15 @@ describe("the agents in the CFO's feed", () => {
 // dry-14: the refusal reason now carries its detail ("mandate_cap_exceeded: 0.04 is over …"); the recording looked
 // for the bare code and would have left the refusal out of every new recording.
 import { buildStory } from "../src/demo/story.js";
+describe("an agent sent back by code (dry-26)", () => {
+  it("reads in words in the feed, never as a raw event name", () => {
+    const db = openDb(":memory:");
+    audit(db, "sourcing", "agent.nudged", "price_rise.meet", { agent: "sourcing", model: "claude-haiku-5-5", reason: "you have not served the next customer query yet. Call try_purchase first." });
+    const line = buildSnapshot(db).feed.find((f) => f.event === "agent.nudged")!;
+    expect(line.text).toBe("Code sent the Sourcing agent back, not finished: you have not served the next customer query yet. Call try_purchase first.");
+  });
+});
+
 describe("decisions that did not happen", () => {
   it("counts only finished runs as an agent's decisions (no key, a refusal or a failure is not a decision)", () => {
     const db = openDb(":memory:");

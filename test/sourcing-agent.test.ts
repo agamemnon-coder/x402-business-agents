@@ -59,6 +59,42 @@ describe("the Sourcing agent meets the price rise", () => {
     expect(r).toMatchObject({ source: "claude", tried: true });
   });
 
+  // dry-26: Haiku wrote to Treasury, code refused it ("not tried yet"), and Haiku simply stopped. Code now sends it back
+  // once with the reason when it ends unfinished; then it tries and tells.
+  it("is sent back once with the reason when it stops before trying, and then tries and tells", async () => {
+    const db = openDb(":memory:");
+    const d = deps();
+    let i = 0;
+    const prompts: string[] = [];
+    const turns = [
+      [{ name: "check_offer", input: {} }],
+      [{ name: "notify_treasury", input: { message: "Stockline will charge 0.04." } }],
+      null, // stops here, without trying
+      [{ name: "try_purchase", input: {} }],
+      [{ name: "notify_treasury", input: { message: "Metal refused #41 at 0.04 over my 0.03 cap; I need 0.04." } }],
+    ];
+    const client = { beta: { messages: { create: async (p: { messages: { role: string; content: unknown }[] }) => {
+      const last = p.messages.at(-1)!;
+      if (last.role === "user" && typeof last.content === "string") prompts.push(last.content);
+      const t = turns[i++];
+      const usage = { input_tokens: 1, output_tokens: 1 };
+      if (!t) return { content: [{ type: "text", text: "Done." }], stop_reason: "end_turn", model: "claude-haiku-5-5", usage };
+      return { content: t.map((c, k) => ({ type: "tool_use", id: `t${i}-${k}`, name: c.name, input: c.input })), stop_reason: "tool_use", model: "claude-haiku-5-5", usage };
+    } } } } as unknown as Anthropic;
+    const r = await meetPriceRise(db, { oldCents: 2, noticeCents: 4 }, d, client);
+    expect(prompts.some((x) => /not finished/i.test(x) && /try_purchase/.test(x))).toBe(true);
+    expect(r).toMatchObject({ source: "claude", tried: true });
+    expect(d.told).toEqual(["Metal refused #41 at 0.04 over my 0.03 cap; I need 0.04."]);
+  });
+
+  it("is sent back at most once: an agent that stops again falls back to code", async () => {
+    const db = openDb(":memory:");
+    const d = deps();
+    const r = await meetPriceRise(db, { oldCents: 2, noticeCents: 4 }, d, fake([[{ name: "check_offer", input: {} }]]));
+    expect(r.source).toBe("fallback");
+    expect(r.run.turns).toBe(3);
+  });
+
   it("tries the purchase only once", async () => {
     const db = openDb(":memory:");
     const d = deps();

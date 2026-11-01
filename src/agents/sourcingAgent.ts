@@ -42,6 +42,8 @@ export async function meetPriceRise(db: DB, f: { oldCents: number; noticeCents: 
   const None = z.strictObject({});
   const run = await runAgent(db, {
     agent: "sourcing", task: "price_rise.meet", model, system: SYSTEM, maxTurns: 6, effort: "low",
+    unfinished: () => (!tried ? "you have not served the next customer query yet. Call try_purchase first, then tell the Treasury agent with notify_treasury."
+      : !message ? "you tried the purchase but have not told the Treasury agent yet. Call notify_treasury." : null),
     prompt: `Stockline's notice says its price per stock check goes from ${fromCents(f.oldCents)} to ${fromCents(f.noticeCents)}. Code has read the notice and cross-checked it against the live offer.`,
     tools: [
       {
