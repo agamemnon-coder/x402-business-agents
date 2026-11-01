@@ -31,7 +31,7 @@ proposal comes from code's settlement and names only orders in the dispute.
 Treasury agent at once, without serving the next query.
 
 **What stopped it.** Code counted only a run that tried as the agent's decision; this one fell back, and code served the
-query as before: Metal refused the purchase against the on-chain mandate (`mandate_cap_exceeded`), nothing was paid.
+query as before: Purser refused the purchase before signing, against the mandate's cap (`mandate_cap_exceeded`), nothing was paid. (Corrected 1 Nov, Metal QA: this said Metal refused it; Metal never saw the payment.)
 Fixed afterwards in code: the message to Treasury is refused until the purchase was tried.
 
 **What the CFO saw.** The same price-rise options as always, from code's message; the dashboard showed no Sourcing

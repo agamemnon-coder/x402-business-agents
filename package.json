@@ -78,7 +78,8 @@
     "data-qa": "tsx src/cli/dataQa.ts",
     "evals": "tsx src/cli/evals.ts",
     "model-bench": "tsx src/cli/modelBench.ts",
-    "autonomy-redteam": "tsx src/cli/autonomyRedteam.ts"
+    "autonomy-redteam": "tsx src/cli/autonomyRedteam.ts",
+    "dashboard-vs-chain": "tsx src/cli/dashboardVsChain.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

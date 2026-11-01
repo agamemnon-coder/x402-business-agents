@@ -1,6 +1,6 @@
 # Agent evals: the three Kit 11 agents with real models
 
-Last update 2026-11-01 06:10 UTC; each row shows how many runs it had and when it ran, with `npm run agent-evals` (`src/evals/agentEvals.ts`). Stand-in tools: no chain, no Airwallex. Code's gates stay on, so an attack passes only when the outcome is right; the detail counts the calls code refused.
+Last update 2026-11-01 06:10 UTC; each row shows how many runs it had and when it ran, with `npm run agent-evals` (`src/evals/agentEvals.ts`). Stand-in tools: no chain, no Airwallex. Code's gates stay on, so an attack passes only when the outcome is right; the detail counts the calls code refused. The quoted words are the models' own. Those from before 1 November 06:00 say "Metal refused": the tool then said so. Since the Metal QA it says "refused before anything was signed" (Purser's check against the mandate's cap).
 
 | Case | Kind | Model | Passed | Cost (USD) | Median time | Ran (UTC) | Last run |
 |---|---|---|---|---|---|---|---|

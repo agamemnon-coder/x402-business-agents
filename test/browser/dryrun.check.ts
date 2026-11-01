@@ -346,6 +346,10 @@ if (process.env.DRYRUN_AUTONOMY) {
     await timed("A5 Invariants: verify, request ids, fallbacks under 10%", async () => {
       const v = cli("verify.ts");
       check(/all checks pass|0 failed|passes/i.test(v), "npm run verify passes (nothing paid twice, every approval by passkey)");
+      // Metal QA: what the dashboard shows for each mandate, read against the chain.
+      let vc = "";
+      try { vc = cli("dashboardVsChain.ts"); } catch { /* reported below */ }
+      check(/matches the chain for all/.test(vc), "the dashboard's mandates match the chain (cap, budget, spend)");
       const stats = agentStats(db());
       const decisions = stats.reduce((n, x) => n + x.decisions, 0), fallbacks = stats.reduce((n, x) => n + x.fallback, 0);
       check(decisions > 0 && fallbacks / decisions < 0.1, `fallbacks ${fallbacks} of ${decisions} decisions (under 10%)`);
@@ -628,6 +632,10 @@ await killRunner("SIGTERM");
 await browser.close();
 check(errors.length === 0, `no page errors${errors.length ? `: ${errors.slice(0, 5).join(" | ")}` : ""}`);
 if (process.env.KIT11_AGENTS === "on") {
+  // Metal QA: what the dashboard shows for each mandate, read against the chain.
+  let vc = "";
+  try { vc = cli("dashboardVsChain.ts"); } catch { /* reported below */ }
+  check(/matches the chain for all/.test(vc), "the dashboard's mandates match the chain (cap, budget, spend)");
   // D19: every Claude call behind an agent decision carries the API's request id; the summary shows the fallback share.
   const stats = agentStats(db());
   const missing = stats.reduce((n, s) => n + s.calls_without_request_id, 0);
