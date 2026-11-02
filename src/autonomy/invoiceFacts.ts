@@ -43,18 +43,19 @@ const hhmm = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 
 type Received = PlannedInvoice;
 
-// Invoice numbers: 2 to 8 letters or digits, then up to four more groups after "-", "/" or ".", with a digit somewhere,
-// and no group that is a word about status or approval (a number like "SLL-2026-11-PAID" is the invoice talking).
+// Invoice numbers: ASCII only and written as code compares them (no spaces, no line breaks, nothing NFKC or upper
+// case would change but case), 2 to 8 letters or digits, then up to four more groups after "-", "/" or ".", with a
+// digit somewhere. A group may not hold a word about status or approval anywhere inside it ("SLL-2026-11-PAID1",
+// "OKTOPAY-1"), nor be one of a few short ones ("OK-1"): a number like that is the invoice talking (Opus re-review).
 const NO_SHAPE = /^[A-Z0-9]{2,8}(?:[-/.][A-Z0-9]{1,8}){0,4}$/;
-const NO_WORDS = new Set([
-  "PAID", "PAY", "PAYED", "UNPAID", "APPROVE", "APPROVED", "APPROVAL", "CFO", "CEO", "PLAN", "PLANNED", "NOW", "URGENT", "IGNORE",
-  "OK", "OKAY", "DONE", "CLEARED", "SIGNED", "AUTHORISED", "AUTHORIZED", "SETTLED", "EXECUTED", "EXECUTE", "VERIFIED", "SAFE",
-  "SYSTEM", "ADMIN", "OVERRIDE", "RULE", "RULES", "AGENT", "CLAUDE", "TRUSTED", "CONFIRMED", "IMMEDIATE", "IMMEDIATELY",
-]);
+const NO_INSIDE = ["PAID", "PAY", "APPROV", "CFO", "CEO", "IGNOR", "URGENT", "SIGN", "CLEAR", "SETTL", "EXECUT", "VERIF", "OVERRID",
+  "CONFIRM", "AUTHORI", "TRUST", "ADMIN", "SYSTEM", "RULE", "AGENT", "CLAUDE", "SAFE", "IMMEDIAT", "PLAN", "DONE"];
+const NO_GROUP = new Set(["OK", "OKAY", "NOW", "YES", "GO"]);
 /** Whether code repeats this invoice number in the agent's facts. */
 export function vouchedInvoiceNo(no: string): boolean {
-  const k = invoiceKey(no);
-  return k.length <= 40 && NO_SHAPE.test(k) && /\d/.test(k) && !k.split(/[-/.]/).some((g) => NO_WORDS.has(g));
+  if (!/^[A-Za-z0-9./-]{1,40}$/.test(no)) return false;
+  const k = no.toUpperCase();
+  return NO_SHAPE.test(k) && /\d/.test(k) && !k.split(/[-/.]/).some((g) => NO_GROUP.has(g) || NO_INSIDE.some((w) => g.includes(w)));
 }
 const shownNo = (no: string) => (vouchedInvoiceNo(no) ? no : "(a number code does not repeat)");
 
@@ -131,7 +132,8 @@ function moneyFor(db: DB, amount: string, now: Date): { ok: boolean; text: strin
   if (!snap) return unread;
   try {
     const ageMs = now.getTime() - Date.parse(snap.taken_at);
-    if (!Number.isFinite(ageMs)) return { ok: true, text: "the last balance reading has no readable time; code reads the balances when it plans" };
+    // A reading stamped in the future has no age code can trust: no verdict either.
+    if (!Number.isFinite(ageMs) || ageMs < 0) return { ok: true, text: "the last balance reading has no readable time; code reads the balances when it plans" };
     const age = `${Math.max(0, Math.round(ageMs / 60_000))} minutes old`;
     if (ageMs > BALANCE_READING_STALE_MS) return { ok: true, text: `the last balance reading (${hhmm(snap.taken_at)}) is ${age}, stale: it says nothing about the money now; code reads the balances again when it plans` };
     const s = treasuryState(db, JSON.parse(snap.json) as Parameters<typeof treasuryState>[1]);
@@ -185,7 +187,7 @@ export function invoiceFacts(db: DB, now = new Date(), plans: PlannedInvoice | n
       const other = copies.find((c) => !sameInvoice(c, ref));
       const conflict = other ? `a copy that came in differs from ${tool ? "the invoice plan_invoice plans" : "the first copy"} (${diff(other, ref)})` : null;
       return { invoice_no: copies[0]!.invoice_no, vendor: named(ref.vendor), amount: ref.amount, currency: ref.currency, due_date: ref.due_date,
-        handled: invoiceAlreadyHandled(db, ref.invoice_no, now), lastPlan: lastPlanOf(ref.invoice_no), conflict };
+        handled: invoiceAlreadyHandled(db, ref.invoice_no, now, copies[0]!.invoice_no), lastPlan: lastPlanOf(ref.invoice_no), conflict };
     });
 
   const lines: string[] = [];

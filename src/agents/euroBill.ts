@@ -125,21 +125,23 @@ export interface InvoicePaymentTerms extends Terms {
  * and once it was executed (the payment went out; review, 2 November: the Treasury agent's plan and the CFO's own
  * `npm run licence` both pass through this guard).
  */
-export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date()): string | null {
+export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(), label?: string): string | null {
+  // `label`: the number to name the invoice by in the answer (the agent's facts pass a vouched one, never a row's own).
   // The same invoice with a cosmetically different number ("btx-dup ", another dash) is still the same invoice.
   const key = invoiceKey(invoiceNo);
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
     .find((r) => invoiceKey(r.invoice_no) === key);
-  if (t) return t.status === "PAID" ? `invoice ${t.invoice_no} is already paid` : `invoice ${t.invoice_no} already has a payout (${t.status})`;
+  if (t) { const n = label ?? t.invoice_no; return t.status === "PAID" ? `invoice ${n} is already paid` : `invoice ${n} already has a payout (${t.status})`; }
   const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
     AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
     .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
   if (!p) return null;
+  const n = label ?? p.invoice_no;
   switch (p.status) {
-    case "EXECUTED": return `invoice ${p.invoice_no} is already paid (${p.proposal_id} was executed)`;
-    case "EXECUTING": return `invoice ${p.invoice_no} is being paid under ${p.proposal_id} (executing)`;
-    case "APPROVED": return `invoice ${p.invoice_no} is already approved as ${p.proposal_id} and waits to be executed`;
-    default: return `invoice ${p.invoice_no} already waits for approval as ${p.proposal_id}`;
+    case "EXECUTED": return `invoice ${n} is already paid (${p.proposal_id} was executed)`;
+    case "EXECUTING": return `invoice ${n} is being paid under ${p.proposal_id} (executing)`;
+    case "APPROVED": return `invoice ${n} is already approved as ${p.proposal_id} and waits to be executed`;
+    default: return `invoice ${n} already waits for approval as ${p.proposal_id}`;
   }
 }
 

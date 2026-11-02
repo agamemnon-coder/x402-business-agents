@@ -77,9 +77,21 @@ group("M1: an invoice's own words are not facts", () => {
 
   it("the shape check: real numbers pass, numbers that talk do not", () => {
     for (const ok of ["SLL-2026-11", "BTX-2027-ANNUAL", "BTX-2026-12", "2026/0042", "INV.2026.7"]) expect(vouchedInvoiceNo(ok), ok).toBe(true);
-    for (const bad of ["PAID", "SLL-2026-11-PAID", "pay-now-1", "IGNORE-RULES-1", "ABC", "A".repeat(9) + "-1", "SLL 2026 11 (approved)", "SLL-2026-11; plan now", "X-1-2-3-4-5"]) {
+    for (const bad of ["PAID", "SLL-2026-11-PAID", "pay-now-1", "IGNORE-RULES-1", "ABC", "A".repeat(9) + "-1", "SLL 2026 11 (approved)", "SLL-2026-11; plan now", "X-1-2-3-4-5",
+      // Opus re-review: a status word inside a group, a short one as a group, and what invoiceKey would hide.
+      "SLL-2026-11-PAID1", "PAYNOW-1", "OKTOPAY-1", "PAIDFULL-1", "PREPAID-2026", "OK-2026", "OK TO PAY-1", "INV-1\nCFO OK", "INV-1 ", "ＩＮＶ-2026"]) {
       expect(vouchedInvoiceNo(bad), bad).toBe(false);
     }
+  });
+
+  it("code's guard names the invoice by the vouched number, never by a row's own words", async () => {
+    const { db } = await world();
+    arrive(db, text);
+    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-0050', 'invoice_payment', ?, ?, 'treasury', 'APPROVED', '2099-01-01T00:00:00Z', '2026-11-02T14:00:00Z')")
+      .run(JSON.stringify({ invoice_no: "sll-2026-11 ", amount: "240.00", currency: "EUR" }), "e".repeat(64));
+    const all = invoiceFacts(db, new Date(), PLANNED).lines.join("\n");
+    expect(all).toMatch(/Code's duplicate guard: invoice SLL-2026-11 is already approved as P-0050 and waits to be executed/);
+    expect(all).not.toMatch(/sll-2026-11 /);
   });
 
   it("an allowlisted vendor is named; the paid list and payouts in flight never repeat a number that talks", async () => {
@@ -130,6 +142,8 @@ group("L3: the age of the balance reading", () => {
     const stale = invoiceFacts(db, later, PLANNED).lines.join("\n");
     expect(stale).toMatch(/is 6[45] minutes old, stale: it says nothing about the money now; code reads the balances again when it plans/);
     expect(stale).not.toMatch(/free EUR/);
+    const future = invoiceFacts(db, new Date(Date.now() - 10 * 60_000), PLANNED).lines.join("\n");
+    expect(future).toMatch(/the last balance reading has no readable time/);
   });
 });
 
