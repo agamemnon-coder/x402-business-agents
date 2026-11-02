@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
-import { compareMandate, dashboardVsChain, type ChainMandate, type ChainPayment, type ChainReader } from "../src/metal/dashboardVsChain.js";
+import { compareMandate, dashboardVsChain, plain, type ChainMandate, type ChainPayment, type ChainReader } from "../src/metal/dashboardVsChain.js";
 import { centsToBaseUnits as u } from "../src/lib/money.js";
 import type { LedgerPayment } from "../src/policy/available.js";
 
@@ -81,7 +81,7 @@ describe("the dashboard against the chain, payment by payment", () => {
     expect(r1.differences[0]).toMatch(/sale 67: the ledger has it paid \(0\.05, tx 0x0000000000…0043\), but the chain has no such payment under the customer mandate at block 13272000/);
     const wrong = ledger.map((l) => (l.what === "sale 67" ? { ...l, cents: 0 } : l));
     const r2 = compareMandate({ ...cust, spent: "3.30", pending: "0.00" }, custChain(payments), wrong);
-    expect(r2.differences[0]).toMatch(/sale 67: the ledger has 0\.00, the chain paid 0\.05 in tx 0x0000000000…0043/);
+    expect(r2.differences[0]).toMatch(/sale 67: the ledger has 0\.00 \(paid\), the chain paid 0\.05 in tx 0x0000000000…0043/);
   });
 
   it("a settle the ledger has as failed, but which is on chain, fails", () => {
@@ -91,12 +91,47 @@ describe("the dashboard against the chain, payment by payment", () => {
     expect(r.differences[0]).toMatch(/is on chain, but the ledger has a sale being settled as a settle that failed, nothing moved \(payment_failed\)/);
   });
 
-  it("a purchase being made now: its hold, of the same amount, explains it", () => {
-    const pay = [{ tx: tx(1), block: 10n, amount: u(3) }, { tx: tx(2), block: 11n, amount: u(3) }];
-    const ledger: LedgerPayment[] = [{ what: "purchase 1", cents: 3, tx: tx(1), nonce: null, state: "paid" }, { what: "the hold upstream:2", cents: 3, tx: null, nonce: null, state: "held" }];
-    const r = compareMandate({ ...shown, spent: "0.03", held: "0.03" }, { ...chain, spent: u(6), block: 12n, payments: pay }, ledger);
+  it("a purchase being made now: a fresh hold of the same amount, made just before its block, explains it", () => {
+    const now = new Date("2026-11-02T16:10:00Z");
+    const pay = [{ tx: tx(1), block: 10n, amount: u(3) }, { tx: tx(2), block: 11n, amount: u(3), at: "2026-11-02T16:09:58.000Z" }];
+    const hold: LedgerPayment = { what: "the hold upstream:2", cents: 3, tx: null, nonce: null, state: "held", since: "2026-11-02T16:09:57.500Z" };
+    const ledger: LedgerPayment[] = [{ what: "purchase 1", cents: 3, tx: tx(1), nonce: null, state: "paid" }, hold];
+    const r = compareMandate({ ...shown, spent: "0.03", held: "0.03" }, { ...chain, spent: u(6), block: 12n, payments: pay }, ledger, now);
     expect(r.differences).toEqual([]);
-    expect(r.notes[0]).toMatch(/the ledger has the hold upstream:2, held for a payment being made now/);
+    expect(r.notes[0]).toMatch(/the ledger has the hold upstream:2, held for a payment being made now \(shown as held\), on its way since 2026-11-02T16:09:57\.500Z/);
+    // A hold made after the payment, or one left for longer than a payment takes, explains nothing.
+    const later = { ...hold, since: "2026-11-02T16:09:59.500Z" };
+    expect(compareMandate({ ...shown, spent: "0.03", held: "0.03" }, { ...chain, spent: u(6), block: 12n, payments: pay }, [ledger[0]!, later], now).differences[0]).toMatch(/0x0000000000…0002 \(0\.03 in block 11, 2026-11-02T16:09:58\.000Z\) is on chain under the sourcing mandate, but the ledger has no payment for it/);
+    expect(compareMandate({ ...shown, spent: "0.03", held: "0.03" }, { ...chain, spent: u(6), block: 12n, payments: pay }, ledger, new Date("2026-11-02T16:20:00Z")).differences).toHaveLength(1);
+  });
+
+  it("a sale left 'being settled' for longer than a settle takes is named, not passed as on its way", () => {
+    const { payments, ledger } = customer146(66);
+    const settling: LedgerPayment = { what: "a sale being settled", cents: 5, tx: null, nonce: nonce(67), state: "pending", since: "2026-11-02T16:30:43.900Z", detail: "outcome unknown, it may have settled: fetch failed" };
+    const now = new Date("2026-11-02T16:36:00Z");
+    const r = compareMandate({ ...cust, spent: "3.30", pending: "0.05" }, custChain(payments), [...ledger, settling], now);
+    expect(r.differences[0]).toMatch(/is on chain, but the ledger still has a sale being settled on its way \(shown as pending\), on its way since 2026-11-02T16:30:43\.900Z: it was never recorded as paid \(outcome unknown, it may have settled: fetch failed\)/);
+    expect(compareMandate({ ...cust, spent: "3.30", pending: "0.05" }, custChain(payments), [...ledger, settling], new Date("2026-11-02T16:30:50Z")).differences).toEqual([]);
+  });
+
+  it("a payment on its way whose amount differs from the chain's is named", () => {
+    const { payments, ledger } = customer146(66);
+    const settling: LedgerPayment = { what: "a sale being settled", cents: 5, tx: null, nonce: nonce(67), state: "pending" };
+    const big = payments.map((p, i) => (i === 66 ? { ...p, amount: u(50) } : p));
+    expect(compareMandate({ ...cust, spent: "3.30", pending: "0.50" }, custChain(big), [...ledger, settling]).differences[0]).toMatch(/a sale being settled: the ledger has 0\.05 \(pending\), the chain paid 0\.50/);
+  });
+
+  it("a sub-cent payment is named in full, not an error", () => {
+    const { payments, ledger } = customer146(66);
+    const odd = [...payments.slice(0, 66), { ...payments[66]!, amount: 15n * 10n ** 15n }];
+    expect(compareMandate({ ...cust, spent: "3.30", pending: "0.00" }, { ...custChain(odd), spent: u(330) + 15n * 10n ** 15n }, ledger).differences[0]).toMatch(/the chain 3\.315 at block 13272000: tx 0x0000000000…0043 \(0\.015 in block/);
+  });
+
+  it("the bound credential's payments must add up to its running spend", () => {
+    const { payments, ledger } = customer146(67);
+    expect(compareMandate({ ...cust, spent: "3.35", pending: "0.00" }, { ...custChain(payments), currentPaid: u(335), spent: u(340) }, ledger).differences).toEqual([
+      "the chain's own figures disagree: the bound credential's payments add up to 3.35, its running spend says 3.40 at block 13272000",
+    ]);
   });
 
   it("after a replacement compares exactly, over every credential's payments", () => {
@@ -148,6 +183,23 @@ describe("the reading: the ledger, the chain at one block, the ledger again", ()
     const [c] = await dashboardVsChain(db, r);
     expect(c!.ok).toBe(false);
     expect(c!.differences[0]).toMatch(/the chain 3\.35 at block 100: tx 0x0000000000…0043 \(0\.05 in block 99\) is on chain under the customer mandate, but the ledger has no payment for it \(nonce 0x00000000…\)/);
+  });
+
+  it("a chain that cannot be read fails every mandate, in one line and without the node's URL", async () => {
+    const db = world(1);
+    const env = { METAL_RPC_URL: "https://rpc.example.test/v3/k3y-s3cr3t-0123456789?apikey=abcdef123456" };
+    const err = new Error(`HTTP request failed.\n\nURL: ${env.METAL_RPC_URL}\nDetails: 401`);
+    expect(plain(err, env)).toBe("HTTP request failed.");
+    expect(plain(new Error(`invalid project id /v3/k3y-s3cr3t-0123456789 (apikey=abcdef123456)`), env)).toBe("invalid project id [redacted] (apikey=[redacted])");
+    expect(plain(new Error(`request to ${env.METAL_RPC_URL} failed`), env)).not.toMatch(/k3y|abcdef123456/);
+    const r = { block: async () => { throw err; }, mandate: async () => { throw new Error("not reached"); }, detail: async () => ({ nonce: null, at: null }) };
+    const prev = process.env.METAL_RPC_URL;
+    process.env.METAL_RPC_URL = env.METAL_RPC_URL;
+    try {
+      expect(await dashboardVsChain(db, r, 1)).toEqual([{ agent: "customer", ok: false, differences: ["could not read it on chain: HTTP request failed."], notes: [] }]);
+    } finally {
+      if (prev === undefined) delete process.env.METAL_RPC_URL; else process.env.METAL_RPC_URL = prev;
+    }
   });
 
   it("a ledger that never stops moving is compared at the last reading, and says so", async () => {

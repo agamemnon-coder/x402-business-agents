@@ -306,9 +306,9 @@ export class SourcingAgent {
     // In doubt: the purchase may have settled. Look its nonce up before anything else; never pay twice.
     const found = out.nonce ? await findSettlementByNonce(t.address, out.nonce, started) : undefined;
     const id = this.db.transaction(() => {
-      // Paid after all: the row carries what was paid (the hold's amount, the offer signed), so the ledger, the
-      // dashboard and the budget count what Metal counts. Before 2 November it carried 0 and the hold was settled.
-      const paidCents = found ? (this.db.prepare("SELECT cents FROM holds WHERE ref = ?").get(ref) as { cents: number } | undefined)?.cents ?? centsOfSettlement(found.amount) : 0;
+      // Paid after all: the row carries what the facilitator settled (else the hold's amount, the offer signed), so the
+      // ledger, the dashboard and the budget count what Metal counts. Before 2 November it carried 0 and the hold was settled.
+      const paidCents = found ? centsOfSettlement(found.amount) ?? (this.db.prepare("SELECT cents FROM holds WHERE ref = ?").get(ref) as { cents: number } | undefined)?.cents ?? 0 : 0;
       const n = Number(insert.run(paidCents, out.nonce, found?.transaction ?? null, found ? "PAID" : "IN_DOUBT", out.reason, now, t.id, originJson()).lastInsertRowid);
       // Paid after all: the ledger row counts it. In doubt: the hold keeps counting until the reconciliation resolves it.
       if (held && found) settleHold(this.db, ref);
@@ -320,12 +320,12 @@ export class SourcingAgent {
   }
 }
 
-/** A facilitator settlement's amount (base units of *USDZ, 18 decimals) in cents; 0 when it is not a whole number of cents. */
-function centsOfSettlement(amount: string | undefined): number {
+/** A facilitator settlement's amount (base units of *USDZ, 18 decimals) in cents; null when it is not a whole number of cents. */
+function centsOfSettlement(amount: string | undefined): number | null {
   try {
     const u = BigInt(amount ?? "");
-    return u % 10n ** 16n === 0n ? Number(u / 10n ** 16n) : 0;
+    return u > 0n && u % 10n ** 16n === 0n ? Number(u / 10n ** 16n) : null;
   } catch {
-    return 0;
+    return null;
   }
 }

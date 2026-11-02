@@ -435,7 +435,8 @@ const LAST_TX_SQL: Record<DashAgent, string> = {
   sourcing: "SELECT tx_hash AS tx FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY id DESC LIMIT 1",
   support: "SELECT tx_hash AS tx FROM refunds WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY refund_id DESC LIMIT 1",
   treasury: "SELECT tx_hash AS tx FROM sweeps WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY created_at DESC LIMIT 1",
-  customer: "SELECT tx_hash AS tx FROM sales WHERE status = 'DELIVERED' AND scheme = 'exact' AND tx_hash IS NOT NULL ORDER BY sale_id DESC LIMIT 1",
+  // Mandate-route sales only (a clearing sale has no tx); the scheme is not named, so a ledger from before it still reads.
+  customer: "SELECT tx_hash AS tx FROM sales WHERE status = 'DELIVERED' AND tx_hash IS NOT NULL ORDER BY sale_id DESC LIMIT 1",
 };
 function lastTx(db: DB, agent: DashAgent): string | null {
   const r = db.prepare(LAST_TX_SQL[agent]).get() as { tx: string } | undefined;

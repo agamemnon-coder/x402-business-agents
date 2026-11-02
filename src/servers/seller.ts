@@ -25,7 +25,7 @@ import { sha256Hex } from "../lib/terms.js";
 import { FACILITATOR_URL, rpcUrl } from "../metal/network.js";
 import { toCents } from "../lib/money.js";
 import { nothingSettled } from "../metal/pay.js";
-import { settlementDone, settlementFailed, settlementKey, settlementRepeated, settlementStarted, type Authorization } from "../seller/settling.js";
+import { keyOf, settlementDone, settlementFailed, settlementRepeated, settlementStarted, type Authorization } from "../seller/settling.js";
 
 export const SELLER_ROUTE = "/v1/stock";
 export const SELLER_RESOURCE = `GET ${SELLER_ROUTE}`;
@@ -66,13 +66,17 @@ export function sellerApp(opts: SellerOptions) {
   // A mandate payment is written down before Metal's facilitator settles it, so between its block and the sale's row
   // the dashboard shows it as pending, never a spend that differs from the chain without a reason (src/seller/settling.ts).
   // If it cannot be written, the settle does not start: the customer is not charged.
-  server.onBeforeSettle(async ({ paymentPayload }) => {
+  server.onBeforeSettle(async ({ paymentPayload, transportContext }) => {
     if (clearingPaymentOf(paymentPayload)) return;
     const auth = authorizationOf(paymentPayload);
     try {
       settlementStarted(db, auth, floorCentsOfUnits(auth?.value));
     } catch (e) {
-      audit(db, "system", "sale.settle_not_started", null, { reason: `the payment could not be written down before its settle: ${(e as Error).message.slice(0, 200)}` });
+      // An abort here skips the server's settle-failure hooks, so the write-off is recorded the same way they would.
+      const upstream = upstreamOf(transportContext);
+      try {
+        audit(db, "system", "sale.settle_failed", upstream, { error: `the payment could not be written down before its settle, so it was not settled and the customer was not charged: ${(e as Error).message.slice(0, 200)}` });
+      } catch { /* the ledger is unavailable: the refusal below still stands */ }
       return { abort: true, reason: "ledger_unavailable", message: "the seller could not record the payment before settling it; nothing was charged" };
     }
   });
@@ -91,11 +95,8 @@ export function sellerApp(opts: SellerOptions) {
     }
     const settlement = (result.extra as { settlement?: { id: string; first: boolean } } | undefined)?.settlement;
     const auth = authorizationOf(paymentPayload);
-    const key = auth?.from && auth.nonce ? settlementKey(auth.from, auth.nonce) : null;
-    if (!result.success) {
-      settlementFailed(db, key, result.errorReason ?? "settle failed", nothingSettled(result.errorReason));
-      return;
-    }
+    const key = keyOf(auth);
+    // Called on a successful settle only (a failed one goes to onSettleFailure below).
     if (!settlement?.first) {
       settlementRepeated(db, key);
       return;
@@ -126,9 +127,8 @@ export function sellerApp(opts: SellerOptions) {
 
   server.onSettleFailure(async ({ error, paymentPayload, transportContext }) => {
     if (!clearingPaymentOf(paymentPayload)) {
-      const auth = authorizationOf(paymentPayload);
       const reason = (error as { errorReason?: string }).errorReason;
-      settlementFailed(db, auth?.from && auth.nonce ? settlementKey(auth.from, auth.nonce) : null, reason ?? error.message, nothingSettled(reason));
+      settlementFailed(db, keyOf(authorizationOf(paymentPayload)), reason ?? error.message, nothingSettled(reason));
     }
     const ctx = transportContext as HTTPTransportContext | undefined;
     const upstream = Number(ctx?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
@@ -236,6 +236,12 @@ export function sellerApp(opts: SellerOptions) {
     });
   }
   return app;
+}
+
+/** The upstream purchase a response names, as the audit row's subject. */
+function upstreamOf(transportContext: unknown): string | null {
+  const n = Number((transportContext as HTTPTransportContext | undefined)?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
+  return Number.isFinite(n) ? String(n) : null;
 }
 
 /** Whole cents of a payment for the pending line; a sub-cent amount is refused later, when the sale is recorded. */

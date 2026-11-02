@@ -29,7 +29,11 @@ const hasTable = (db: DB, name: string): boolean => !!db.prepare("SELECT 1 FROM 
  * What Summit's buying mandate paid: its sales on the mandate route (scheme 'exact'). A clearing sale ('bajillion') is
  * paid from Summit's clearing deposit, not under the mandate, so Metal's mandate does not count it and neither does this.
  */
-const CUSTOMER_PAID_SQL = "SELECT SUM(price_cents) AS n FROM sales WHERE status = 'DELIVERED' AND scheme = 'exact'";
+const customerSales = (db: DB): string => {
+  // A ledger from before clearing (opened read-only, so not migrated) has no scheme column: every sale was 'exact'.
+  const scheme = (db.prepare("PRAGMA table_info(sales)").all() as { name: string }[]).some((c) => c.name === "scheme");
+  return `FROM sales WHERE status = 'DELIVERED'${scheme ? " AND scheme = 'exact'" : ""}`;
+};
 
 /**
  * One agent's Metal mandate: what its budget still allows. The one source for what a mandate paid: the dashboard, the
@@ -47,7 +51,7 @@ export function mandateAvailability(db: DB, agent: string): MandateAvailability 
     paid = sum(db, "SELECT SUM(amount_cents) AS n FROM sweeps WHERE outcome = 'PAID'");
     pending = sum(db, "SELECT SUM(amount_cents) AS n FROM sweeps WHERE outcome IN ('PENDING', 'HELD')");
   } else if (agent === "customer") {
-    paid = sum(db, CUSTOMER_PAID_SQL);
+    paid = sum(db, `SELECT SUM(price_cents) AS n ${customerSales(db)}`);
     // Sent to Metal's facilitator, its sale not yet recorded (src/seller/settling.ts): the chain may count it already.
     if (hasTable(db, "sale_settlements")) pending = sum(db, "SELECT SUM(price_cents) AS n FROM sale_settlements WHERE status = 'SETTLING'");
   }
@@ -70,6 +74,8 @@ export interface LedgerPayment {
   state: "paid" | "pending" | "held" | "in_doubt" | "failed";
   /** Why it is in that state, when the ledger says. */
   detail?: string;
+  /** Since when it has been on its way (a sale being settled, a hold), for telling one under way from one left behind. */
+  since?: string;
 }
 
 const lower = (s: unknown): string | null => (typeof s === "string" && s ? s.toLowerCase() : null);
@@ -96,18 +102,18 @@ export function mandatePayments(db: DB, agent: string): LedgerPayment[] {
       out.push({ what: String(r.payment_id), cents: Number(r.amount_cents), tx: lower(r.tx_hash), nonce: null, state: r.outcome === "PAID" ? "paid" : "pending" });
     }
   } else if (agent === "customer") {
-    for (const r of rows("SELECT sale_id, price_cents, tx_hash, settlement_id FROM sales WHERE status = 'DELIVERED' AND scheme = 'exact' ORDER BY sale_id")) {
+    for (const r of rows(`SELECT sale_id, price_cents, tx_hash, settlement_id ${customerSales(db)} ORDER BY sale_id`)) {
       out.push({ what: `sale ${String(r.sale_id)}`, cents: Number(r.price_cents), tx: lower(r.tx_hash), nonce: nonceOf(r.settlement_id), state: "paid" });
     }
     if (hasTable(db, "sale_settlements")) {
       for (const r of rows("SELECT key, nonce, price_cents, status, detail, started_at FROM sale_settlements WHERE status IN ('SETTLING', 'FAILED') ORDER BY started_at")) {
-        out.push({ what: `a sale being settled (paid by ${String(r.key).split(":")[0]!.slice(0, 10)}…, since ${String(r.started_at)})`, cents: Number(r.price_cents), tx: null, nonce: lower(r.nonce), state: r.status === "SETTLING" ? "pending" : "failed", detail: typeof r.detail === "string" ? r.detail : undefined });
+        out.push({ what: `a sale being settled (paid by ${String(r.key).split(":")[0]!.slice(0, 10)}…)`, cents: Number(r.price_cents), tx: null, nonce: lower(r.nonce), state: r.status === "SETTLING" ? "pending" : "failed", detail: typeof r.detail === "string" ? r.detail : undefined, since: String(r.started_at) });
       }
     }
   }
   if (hasTable(db, "holds")) {
     for (const r of db.prepare("SELECT ref, cents, created_at FROM holds WHERE status = 'HELD' AND rail = 'metal' AND agent = ? ORDER BY created_at").all(agent) as R[]) {
-      out.push({ what: `the hold ${String(r.ref)} (since ${String(r.created_at)})`, cents: Number(r.cents), tx: null, nonce: null, state: "held" });
+      out.push({ what: `the hold ${String(r.ref)}`, cents: Number(r.cents), tx: null, nonce: null, state: "held", since: String(r.created_at) });
     }
   }
   return out;

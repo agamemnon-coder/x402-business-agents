@@ -85,7 +85,7 @@ describe("a sale between its block and its row (dry-146, 2 November)", () => {
     expect(customer(db)).toMatchObject({ spent: "3.30", pending: "0.05", remaining: "1.65" });
     const [c] = await dashboardVsChain(db, chainWith(67));
     expect(c).toMatchObject({ agent: "customer", ok: true, differences: [] });
-    expect(c!.notes[0]).toMatch(/^tx 0x0000000000…0043 \(0\.05 in block 13271973, 2026-11-02T16:30:44\.000Z\) is on chain; the ledger has a sale being settled \(paid by 0xdeb2b727…, since .+\) on its way \(shown as pending\)$/);
+    expect(c!.notes[0]).toMatch(/^tx 0x0000000000…0043 \(0\.05 in block 13271973, 2026-11-02T16:30:44\.000Z\) is on chain; the ledger has a sale being settled \(paid by 0xdeb2b727…\) on its way \(shown as pending\)$/);
     // The settle answer: the row, and in the same transaction the pending line closes.
     for (const h of hooks.after) await h({ ...ctx(67), ...settled(67) });
     expect(customer(db)).toMatchObject({ spent: "3.35", pending: "0.00", remaining: "1.65" });
@@ -133,7 +133,45 @@ describe("a sale between its block and its row (dry-146, 2 November)", () => {
     db.exec("DROP TABLE sale_settlements");
     const [r] = await Promise.all(hooks.before.map((h) => h(ctx(67))));
     expect(r).toMatchObject({ abort: true, reason: "ledger_unavailable" });
-    expect(db.prepare("SELECT event FROM audit_log WHERE event = 'sale.settle_not_started'").all()).toHaveLength(1);
+    // Recorded as the settle failures are (the server's failure hooks do not run after an abort): the upstream cost is written off.
+    const row = db.prepare("SELECT subject, json_extract(payload_json, '$.error') AS error FROM audit_log WHERE event = 'sale.settle_failed'").get() as { subject: string | null; error: string };
+    expect(row.error).toMatch(/^the payment could not be written down before its settle, so it was not settled and the customer was not charged/);
+    expect(buildSnapshot(db).feed.some((f) => /A sale did not settle; the customer was not charged/.test(f.text))).toBe(true);
+  });
+
+  it("a replay refused while the first settle of the same payment is still waiting leaves it on its way", async () => {
+    const db = world();
+    for (const h of hooks.before) await h(ctx(67)); // the first request's settle is sent
+    for (const h of hooks.before) await h(ctx(67)); // a replay of the same payment
+    for (const h of hooks.failure) await h({ ...ctx(67), error: Object.assign(new Error("nonce"), { errorReason: "payment_failed" }) });
+    expect(db.prepare("SELECT status, inflight FROM sale_settlements").get()).toEqual({ status: "SETTLING", inflight: 1 });
+    for (const h of hooks.after) await h({ ...ctx(67), ...settled(67) });
+    expect(db.prepare("SELECT status, inflight FROM sale_settlements").get()).toEqual({ status: "DONE", inflight: 0 });
+    expect(customer(db)).toMatchObject({ spent: "3.35", pending: "0.00" });
+  });
+
+  it("a ledger from before clearing (no scheme column, opened read-only) still reads the mandate's figures", async () => {
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const Database = (await import("better-sqlite3")).default;
+    const dir = mkdtempSync(join(tmpdir(), "old-ledger-"));
+    try {
+      const path = join(dir, "old.sqlite");
+      const w = openDb(path);
+      audit(w, "owner-signer", "mandate.bound", "customer", { cap: "0.10", budget: "5.00", payee: BUSINESS });
+      w.prepare(`INSERT INTO sales (route, price_cents, payer, tx_hash, request_url, request_params_json, status, created_at) VALUES ('GET /v1/stock', 5, ?, ?, 'u', '{}', 'DELIVERED', 'now')`).run(PAYER, tx(1));
+      w.exec("ALTER TABLE sales DROP COLUMN clearing_json; ALTER TABLE sales DROP COLUMN scheme; DROP TABLE sale_settlements");
+      w.close();
+      const ro = new Database(path, { readonly: true });
+      // The mandate's figures (the rest of the snapshot has its own needs of an old ledger).
+      expect(mandateAvailability(ro, "customer")).toMatchObject({ paidCents: 5, pendingCents: 0 });
+      const { mandatePayments } = await import("../src/policy/available.js");
+      expect(mandatePayments(ro, "customer")).toEqual([{ what: "sale 1", cents: 5, tx: tx(1), nonce: null, state: "paid" }]);
+      ro.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("a clearing sale is not the mandate's: paid from Summit's deposit, Metal's mandate does not count it", () => {
