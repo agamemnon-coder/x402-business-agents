@@ -13,7 +13,7 @@ labelled test passkey in this demo. In production this is a second person."). Co
 | 10:23 | test-controller enrolled (virtual passkey); fingerprint 2741-72EA-90F9-B16A confirmed on Max's message | `03-both-enrolled` |
 | 10:24–10:25 | P-0001, four eyes above EUR 1,000, approved by Max alone with Face ID; `approval.four_eyes_eur` = 1000.00 | `04-four-eyes-on` |
 | 10:25–10:28 | Step 1: 40 sales per query at 0.05 (upstream 0.02), each a Metal testnet payment; exit 0 | — |
-| 10:29 | Max: "stop": no more scripted runs today; an agent run instead. Runner and test-controller stopped cleanly, nothing half-done | `05-stopped-after-step1` |
+| 10:29 | Max: "stop": no more scripted runs today; an agent run instead. Nothing half-done. **Correction:** the stop command reached only the starter processes; the runner and the test-controller kept running until 11:03. From 10:37 the relay refused the runner (401, new relay token), and nothing else happened in live-1; `verify` at 11:05: all checks pass | `05-stopped-after-step1` |
 
 `npm run verify` on live-1 after the stop: **all checks pass** (audit chain 99 rows, four mandates, P-0001 signed by
 Max's passkey, policy v1 → v2, 80 finality certificates; 2 looked up after the node dropped their certificate).
