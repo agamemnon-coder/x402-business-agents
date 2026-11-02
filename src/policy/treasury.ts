@@ -19,6 +19,18 @@ export function freeEurCents(s: TreasuryState): number {
   return s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents - (s.eurInFlightCents ?? 0);
 }
 
+/** The buffer on the highest SWIFT fee Airwallex has charged, so a payment never comes up short (Max, 2 November). */
+export const SWIFT_FEE_BUFFER = 1.25;
+
+/**
+ * What to reserve for the SWIFT fee: the highest fee Airwallex really charged plus 25%, rounded up, and never less
+ * than the ceiling (Airwallex does not quote the fee in advance). Measured in the sandbox: EUR 13.41 to 13.48.
+ */
+export function feeReserveCents(measuredFeesCents: readonly number[]): number {
+  const highest = measuredFeesCents.reduce((m, c) => Math.max(m, c), 0);
+  return Math.max(SWIFT_FEE_MAX_EUR_CENTS, Math.ceil(highest * SWIFT_FEE_BUFFER));
+}
+
 export type InvoicePlan =
   | { kind: "underfunded"; needEurCents: number; freeEurCents: number }
   | { kind: "pay_from_eur"; needEurCents: number; freeEurCents: number }
@@ -29,9 +41,10 @@ export type InvoicePlan =
  * If EUR is already below its floor plus commitments, no plan is made: restoring the reserve is a decision of
  * its own, and a plan that ignored the gap would be refused by the executor's check anyway.
  */
-export function planInvoice(invoiceEurCents: number, s: TreasuryState): InvoicePlan {
+export function planInvoice(invoiceEurCents: number, s: TreasuryState, feeReserve = SWIFT_FEE_MAX_EUR_CENTS): InvoicePlan {
   if (!Number.isSafeInteger(invoiceEurCents) || invoiceEurCents <= 0) throw new Error(`bad invoice amount: ${invoiceEurCents}`);
-  const need = invoiceEurCents + SWIFT_FEE_MAX_EUR_CENTS;
+  if (!Number.isSafeInteger(feeReserve) || feeReserve < SWIFT_FEE_MAX_EUR_CENTS) throw new Error(`bad fee reserve: ${feeReserve}`);
+  const need = invoiceEurCents + feeReserve;
   const free = freeEurCents(s);
   if (free < 0) return { kind: "underfunded", needEurCents: need, freeEurCents: free };
   if (free >= need) return { kind: "pay_from_eur", needEurCents: need, freeEurCents: free };

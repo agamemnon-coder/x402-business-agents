@@ -5,12 +5,12 @@
 import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, Quote, SandboxSim } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
-import { EUR_FLOOR_CENTS, LICENSOR_NAME, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_MAX_EUR_CENTS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
+import { EUR_FLOOR_CENTS, LICENSOR_NAME, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { checkQuoteAgainstFloor, planInvoice, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
+import { checkQuoteAgainstFloor, feeReserveCents, planInvoice, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
 import { getSetting, setSetting } from "../world/settings.js";
 import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
@@ -176,7 +176,9 @@ export async function proposeInvoicePayment(
 
   const b = await snapshot(db, rail, `plan:${inv.invoice_no}`);
   const s = treasuryState(db, b);
-  const plan = planInvoice(check.amountCents, s);
+  // Max, 2 November: the fee reserve follows what Airwallex really charged, plus a buffer, never under the ceiling.
+  const feeReserve = feeReserveCents(measuredSwiftFeesCents(db));
+  const plan = planInvoice(check.amountCents, s, feeReserve);
   if (plan.kind === "underfunded") {
     const reason = `EUR is already ${fromCents(-plan.freeEurCents)} below its floor plus commitments (available ${fromCents(s.eurAvailableCents)}, floor ${fromCents(s.eurFloorCents)}, committed ${fromCents(s.eurObligationsCents)}); options: restore the EUR reserve first, review the commitments, or pay later`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
@@ -214,7 +216,7 @@ export async function proposeInvoicePayment(
   const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
   const terms: InvoicePaymentTerms = {
     schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: id, expires_at: iso(expires),
-    invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: "EUR", fee_max: fromCents(SWIFT_FEE_MAX_EUR_CENTS),
+    invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: "EUR", fee_max: fromCents(feeReserve),
     beneficiary_id: check.beneficiaryId, beneficiary_name: check.name, iban_last4: check.ibanLast4, bic: check.bic, method: "SWIFT",
     reference: inv.reference, reason: "professional_business_services", transfer_request_id: randomUUID(),
     conversion: quote && {
@@ -228,4 +230,10 @@ export async function proposeInvoicePayment(
   };
   const proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence }, now);
   return { kind: "proposed", proposal, terms };
+}
+
+/** The SWIFT fees Airwallex really charged, from the ledger (EUR only; a transfer without a recorded fee is skipped). */
+export function measuredSwiftFeesCents(db: DB): number[] {
+  return (db.prepare("SELECT fee_actual FROM transfers WHERE method = 'SWIFT' AND fee_actual LIKE 'EUR %'").all() as { fee_actual: string }[])
+    .map((r) => toCents(r.fee_actual.slice(4)));
 }
