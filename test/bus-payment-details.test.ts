@@ -20,7 +20,7 @@ describe("payment details between agents", () => {
   });
 
   it("is not fooled by case, zero-width characters, a bare address, a word after the IBAN, or other separators", () => {
-    for (const t of [ADDR.toUpperCase().replace("0X", "0X"), `0x51​00000000000000000000000000000000000503`, ADDR.slice(2), "nl91 abna 0417 1643 00", "NL91-ABNA-0417-1643-00 Cap", "NL91ABNA0417164300Today"]) {
+    for (const t of [ADDR.toUpperCase().replace("0X", "0X"), `0x51\u200b00000000000000000000000000000000000503`, ADDR.slice(2), "nl91 abna 0417 1643 00", "NL91-ABNA-0417-1643-00 Cap", "NL91ABNA0417164300Today"]) {
       const out = w(`pay ${t} now`);
       expect(out.withheld.length, t).toBe(1);
       expect(out.text, t).toMatch(/withheld by code/);
