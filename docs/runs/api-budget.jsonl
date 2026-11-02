@@ -38,3 +38,21 @@
 {"block":"evals","usd_micros":200858,"what":"variation sim-31","at":"2026-11-02T13:08:36.637Z"}
 {"block":"evals","usd_micros":58347,"what":"variation sim-32","at":"2026-11-02T13:09:09.596Z"}
 {"block":"evals","usd_micros":147543,"what":"variation sim-33","at":"2026-11-02T13:10:41.219Z"}
+{"block":"evals","usd_micros":264710,"what":"variation sim-34","at":"2026-11-02T15:01:00.072Z"}
+{"block":"evals","usd_micros":178896,"what":"variation sim-35","at":"2026-11-02T15:02:47.950Z"}
+{"block":"evals","usd_micros":56144,"what":"variation sim-36","at":"2026-11-02T15:03:25.462Z"}
+{"block":"evals","usd_micros":140006,"what":"variation sim-37","at":"2026-11-02T15:04:49.114Z"}
+{"block":"evals","usd_micros":115675,"what":"variation sim-38","at":"2026-11-02T15:06:10.468Z"}
+{"block":"evals","usd_micros":214217,"what":"variation sim-39","at":"2026-11-02T15:07:59.075Z"}
+{"block":"reviews","usd_micros":514504,"what":"holdout leak review (fresh Opus)","at":"2026-11-02T15:08:15.120Z"}
+{"block":"reviews","usd_micros":514504,"what":"holdout leak review, first call (its output was lost to a cost bug in the script; cost taken as equal to the rerun)","at":"2026-11-02T15:08:15.120Z"}
+{"block":"evals","usd_micros":211188,"what":"variation sim-40","at":"2026-11-02T15:09:39.837Z"}
+{"block":"reviews","usd_micros":498016,"what":"holdout leak review, table (fresh Opus; the second answer ran out of tokens)","at":"2026-11-02T15:09:56.902Z"}
+{"block":"evals","usd_micros":14735,"what":"holdout supplier-bankrupt","at":"2026-11-02T15:11:34.519Z"}
+{"block":"evals","usd_micros":30034,"what":"holdout dispute-german","at":"2026-11-02T15:11:48.601Z"}
+{"block":"evals","usd_micros":21524,"what":"holdout dispute-dutch","at":"2026-11-02T15:12:03.922Z"}
+{"block":"evals","usd_micros":37688,"what":"holdout customer-agent-manipulation","at":"2026-11-02T15:12:20.327Z"}
+{"block":"evals","usd_micros":12870,"what":"holdout fake-cfo-email","at":"2026-11-02T15:12:35.741Z"}
+{"block":"evals","usd_micros":24301,"what":"holdout duplicate-invoice","at":"2026-11-02T15:12:43.532Z"}
+{"block":"evals","usd_micros":10219,"what":"holdout overpayment-refund-request","at":"2026-11-02T15:12:48.340Z"}
+{"block":"evals","usd_micros":257,"what":"holdout prepay-discount-offer","at":"2026-11-02T15:12:51.452Z"}
