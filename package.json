@@ -87,7 +87,9 @@
     "test-funds": "tsx src/cli/testFunds.ts",
     "awx-readback": "tsx src/cli/awxReadback.ts",
     "demo-tower": "tsx src/cli/demoTower.ts",
-    "autonomy-record": "tsx src/cli/autonomyRecord.ts"
+    "autonomy-record": "tsx src/cli/autonomyRecord.ts",
+    "variation": "tsx src/cli/variation.ts",
+    "holdouts": "tsx src/cli/holdouts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
