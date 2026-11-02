@@ -60,7 +60,9 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
         FROM (SELECT outcome, refusal_reason FROM upstream_purchases WHERE supplier = ? ORDER BY id DESC LIMIT 20)`).get(id) as { paid: number | null; refused: number | null; unavailable: number | null });
       let info: { price?: string; data_age_seconds?: number } | null;
       try {
-        info = await (await fetch(`http://127.0.0.1:${s.port}/v1/info`, { signal: AbortSignal.timeout(5000) })).json() as { price?: string; data_age_seconds?: number };
+        // A supplier that answers with an error (503 while it is offline for maintenance) is not reachable now.
+        const res = await fetch(`http://127.0.0.1:${s.port}/v1/info`, { signal: AbortSignal.timeout(5000) });
+        info = res.ok ? await res.json() as { price?: string; data_age_seconds?: number } : null;
       } catch { info = null; }
       return { id, name: s.name, price_cents: toCents(info?.price ?? supplierPrice(db, id)), data_age_seconds: info?.data_age_seconds ?? s.dataAgeSeconds, available: info !== null,
         last20: { paid: stats.paid ?? 0, refused: stats.refused ?? 0, unavailable: stats.unavailable ?? 0 } };

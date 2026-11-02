@@ -5,6 +5,9 @@
 // each with its own virtual authenticator, stand in for the two phones: "test-cfo" and "test-controller". They are
 // test identities in a test world, never Max or the controller; nothing here touches another world. Refuses any
 // ledger that is not a dry-* world. Writes a step log with timings to the out dir (default: the scratchpad's qa/).
+// With DRYRUN_AUTONOMY=1 and KIT11_WORLD=thursday, Thursday's world (docs/runs/draaiboek-wereld-donderdag.md): Ridgeline
+// Data offline for maintenance, then Stockline's silent price rise; A2 then requires the Kit 11 core scene (the refusal
+// at Stockline over the cap, recorded on chain, Treasury's options, the replace on chain) and fails without it.
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -21,6 +24,8 @@ import { capRefusal, policyValue } from "../../src/policy/rules.js";
 import { activeMandate, mandateSpent } from "../../src/metal/mandate.js";
 import { publicClient } from "../../src/metal/chain.js";
 import { extractTerms, readMandateState } from "@metalntwx/metal-pay/mandates";
+import { SUPPLIERS } from "../../src/config/suppliers.js";
+import type { SilentRise } from "../../src/world/supplierEvents.js";
 
 const ledger = process.env.KIT11_DB ?? "";
 const keys = process.env.KIT11_KEYS_DIR ?? "";
@@ -291,14 +296,53 @@ if (process.env.DRYRUN_AUTONOMY) {
   const lastEvent = (kind: string) => count("SELECT COALESCE(MAX(id), 0) AS n FROM world_events WHERE kind = ?", kind);
   const decisionOn = (agent: string, eventId: number, seq: number) => db().prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.decision' AND actor = ? AND seq > ? ORDER BY seq").all(agent, seq)
     .map((r) => JSON.parse((r as { payload_json: string }).payload_json) as { source: string; summary: string; events: number[] }).find((d) => d.events.includes(eventId));
+  // Max, 2 November: Thursday's world, opt-in (the default world and the variation eval keep the switch to Ridgeline open).
+  const thursday = process.env.KIT11_WORLD === "thursday";
+  const buyPolicyNow = () => (db().prepare("SELECT value FROM settings WHERE key = 'sourcing.buy_policy'").get() as { value: string } | undefined)?.value ?? "the default (Stockline, up to the mandate's cap, no cache)";
   try {
     await timed("A1 The shop runs: customer queries every 15 s, Sourcing's buy policy applies", async () => {
       await until("three sales", () => count("SELECT COUNT(*) AS n FROM sales") >= 3, 300_000);
       check(true, `${count("SELECT COUNT(*) AS n FROM sales")} sales so far`);
     });
-    await timed("A2 World: Stockline raises its price to 0.04 (the Sourcing agent decides what to do)", async () => {
-      const from = headSeq();
-      cli("world.ts", "price-rise", "0.04");
+    if (thursday) await timed("A1b World (Thursday): Ridgeline Data is offline for maintenance today (its notice tells the Sourcing agent)", async () => {
+      const from = headSeq(), before = lastEvent("supplier.notice");
+      cli("world.ts", "ridgeline-maintenance");
+      const ev = lastEvent("supplier.notice");
+      const notice = ev > before ? JSON.parse((db().prepare("SELECT payload_json FROM world_events WHERE id = ?").get(ev) as { payload_json: string }).payload_json) as { supplier?: string } : null;
+      check(notice?.supplier === "Ridgeline Data", "Ridgeline Data's maintenance notice reached the Sourcing agent (a supplier.notice)");
+      const res = await fetch(`http://127.0.0.1:${SUPPLIERS.ridgeline.port}/v1/stock-check?seq=1`).catch(() => null);
+      check(res?.status === 503 && !res.headers.get("payment-required"), `Ridgeline's server answers ${res?.status ?? "nothing"} with no offer`);
+      // Its decision on the notice comes before the price rise, so the two do not overlap (reported, not required).
+      const d = await until("the Sourcing agent's decision on Ridgeline's notice", () => decisionOn("sourcing", ev, from), 300_000).catch(() => undefined);
+      say(d ? `SOURCING DECIDED (${d.source}): ${d.summary}` : "NO SOURCING DECISION on Ridgeline's notice within 5 minutes");
+    });
+    await timed(thursday ? "A2 World (Thursday): Stockline raises its price to 0.04 without notice; its notice follows the first purchase attempt" : "A2 World: Stockline raises its price to 0.04 (the Sourcing agent decides what to do)", async () => {
+      let from = headSeq();
+      let refusedAt: string | undefined;
+      if (thursday) {
+        // Summit's dispute (A3) names #5 to #16 and opens only once all were sold; queries refused after the rise would
+        // block it, so the rise comes after #16 (the runbook says the same).
+        const sold16 = await until("stock checks up to #16 sold", () => count("SELECT COALESCE(MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)), 0) AS n FROM sales") >= 16, 600_000).then(() => true, () => false);
+        check(sold16, "the shop sold up to #16 before the price rise (Summit's dispute names #5 to #16)");
+        // Decisions from here on are the ones after the rise (routine checks while the shop ran up to #16 are not).
+        from = headSeq();
+        // A max price at or under the cap in the agent's own policy would refuse the purchase before the mandate does.
+        say(`SOURCING POLICY at the rise: ${buyPolicyNow()}`);
+        cli("world.ts", "price-rise", "0.04", "--silent");
+        const riseOf = () => { const v = (db().prepare("SELECT value FROM settings WHERE key = 'stockline_price_rise'").get() as { value: string } | undefined)?.value; return v ? JSON.parse(v) as SilentRise : undefined; };
+        const rise = await until("Stockline's notice after the silent rise", () => (riseOf()?.stage === "noticed" ? riseOf() : undefined), 420_000);
+        const first = db().prepare("SELECT id, supplier, outcome, refusal_reason, created_at FROM upstream_purchases WHERE id > ? ORDER BY id LIMIT 1").get(rise.from_id ?? 0) as { id: number; supplier: string; outcome: string; refusal_reason: string | null; created_at: string } | undefined;
+        say(`FIRST ATTEMPT after the rise: ${first ? `${first.supplier} ${first.outcome}${first.refusal_reason ? ` (${first.refusal_reason.slice(0, 200)})` : ""}` : "none (the notice came by time)"}`);
+        check(!!first && first.supplier === "stockline" && first.outcome === "REFUSED" && /^mandate_cap_exceeded/.test(first.refusal_reason ?? ""), "the first purchase after the rise was refused at Stockline over the mandate's cap (mandate_cap_exceeded)");
+        const seqOf = (event: string, subject: string) => (db().prepare("SELECT MIN(seq) AS n FROM audit_log WHERE event = ? AND subject = ?").get(event, subject) as { n: number | null }).n ?? Infinity;
+        check(!!first && seqOf("upstream.refused", String(first.id)) < seqOf("world.event", String(rise.notice_event)), `that refusal came before Stockline's notice reached the Sourcing agent (the notice came ${rise.notice_after === "first_attempt" ? "after the first attempt" : "by time"})`);
+        refusedAt = first?.supplier === "stockline" && first.outcome === "REFUSED" ? first.created_at : undefined;
+        // Metal records the refusal on chain (src/agents/sourcing.ts recordOnChain): the audit row carries its tx.
+        const rec = first ? await until("the refusal recorded on chain (or not)", () => db().prepare("SELECT event, payload_json FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND seq > ? ORDER BY seq LIMIT 1").get(from) as { event: string; payload_json: string } | undefined, 180_000).catch(() => undefined) : undefined;
+        const p = rec ? JSON.parse(rec.payload_json) as { tx?: string | null; error?: string; metal_reason?: string } : {};
+        if (rec?.event === "upstream.refusal_not_recorded") say(`  not recorded on chain: ${p.error ?? ""}`);
+        check(rec?.event === "upstream.refused_on_chain" && /^0x[0-9a-f]{64}$/i.test(p.tx ?? ""), `Metal recorded the refusal on chain (tx ${p.tx ?? "none"}${p.metal_reason ? `, Metal: ${p.metal_reason}` : ""})`);
+      } else cli("world.ts", "price-rise", "0.04");
       const d = await until("the Sourcing agent's decision", () => decisionsAfter("sourcing", from)[0], 300_000);
       say(`SOURCING DECIDED (${d.source}): ${d.summary}`);
       check(d.source === "claude", "the Sourcing agent decided itself (not code's fallback)");
@@ -307,14 +351,21 @@ if (process.env.DRYRUN_AUTONOMY) {
       // decision ends the wait only while the shop is not turning customers away (Max, 2 November); up to 15 minutes.
       // created_at is JavaScript's ISO form, so the cut-off is written the same way (strftime with T and Z).
       const turningAway = () => count("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-2 minutes')") > 0;
-      const prop = await until("Treasury's options or its decision", () => latest("mandate_replace", "status = 'PENDING_APPROVAL'") ?? (decisionsAfter("treasury", from)[0] && !turningAway() ? "none" : undefined), 900_000).catch(() => "none");
+      // Thursday: the scene needs Treasury's options, so a decision without them does not end the wait (15 minutes).
+      const prop = await until("Treasury's options or its decision", () => latest("mandate_replace", `status = 'PENDING_APPROVAL'${thursday ? " AND created_by = 'treasury'" : ""}`) ?? (!thursday && decisionsAfter("treasury", from)[0] && !turningAway() ? "none" : undefined), 900_000).catch(() => "none");
       // Max, 2 November: how long Treasury takes to propose after customers are turned away (median and maximum over runs).
       const woke = db().prepare("SELECT created_at FROM world_events WHERE kind = 'customers.turned_away' ORDER BY id LIMIT 1").get() as { created_at: string } | undefined;
       const proposed = db().prepare("SELECT created_at FROM proposals WHERE kind = 'mandate_replace' ORDER BY created_at LIMIT 1").get() as { created_at: string } | undefined;
       if (woke && proposed) say(`TREASURY TIMING: options ${Math.round((Date.parse(proposed.created_at) - Date.parse(woke.created_at)) / 1000)} s after the third customer was turned away`);
       else if (woke) say("TREASURY TIMING: customers were turned away and no options came within 15 minutes");
+      if (thursday) say(!refusedAt ? "TREASURY TIMING: no refusal at Stockline to time from" : proposed ? `TREASURY TIMING: options ${Math.round((Date.parse(proposed.created_at) - Date.parse(refusedAt)) / 1000)} s after the refusal at Stockline` : "TREASURY TIMING: no options within 15 minutes of the refusal at Stockline");
       const t = decisionsAfter("treasury", from)[0];
       if (t) say(`TREASURY DECIDED (${t.source}): ${t.summary}`);
+      if (thursday) {
+        // Both options are written one after the other; wait for the second before counting.
+        const options = prop === "none" ? 0 : await until("both of Treasury's options", () => { const n = count("SELECT COUNT(*) AS n FROM proposals WHERE kind = 'mandate_replace' AND created_by = 'treasury'"); return n >= 2 ? n : undefined; }, 30_000).catch(() => 1);
+        check(prop !== "none" && options >= 2, `Treasury proposed a rebalance to the CFO: mandate_replace ${prop === "none" ? "none" : prop} (${options} options)`);
+      }
       if (prop !== "none") {
         const plan = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'price_rise.plan' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
         const rec = plan ? ((JSON.parse(plan.payload_json) as { recommended?: string }).recommended ?? "B") : "B";
@@ -323,7 +374,16 @@ if (process.env.DRYRUN_AUTONOMY) {
         await sign(controller, id, { option: rec === "A" ? "A" : "B", tag: "auto-s1-controller" });
         await executed(id);
         check(true, `the CFO and the controller approved option ${rec} (${id}), as the Treasury agent recommended`);
-      } else say("NO REBALANCE: the agents handled the price rise without asking the CFO");
+        if (thursday) {
+          // The replace executor logs each step it ran on chain (src/executors/mandateReplace.ts): agent, cap, tx.
+          const steps = db().prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'mandate.replaced' AND json_extract(payload_json, '$.proposal_id') = ? ORDER BY seq").all(id)
+            .map((r) => ({ agent: (r as { subject: string }).subject, ...(JSON.parse((r as { payload_json: string }).payload_json) as { cap?: string; tx?: string | null }) }));
+          // A null tx is a step found already bound after a restart (its tx was sent before); every other step has its tx.
+          const hex = (tx?: string | null) => /^0x[0-9a-f]{64}$/i.test(tx ?? "");
+          check(steps.some((s) => hex(s.tx)) && steps.every((s) => s.tx === null || hex(s.tx)), `the mandates were replaced on chain: ${steps.map((s) => `${s.agent} cap ${s.cap} (tx ${(s.tx ?? "already bound").slice(0, 12)}…)`).join("; ") || "no step"}`);
+        }
+      } else if (thursday) check(false, "the mandates were replaced on chain (no proposal to approve)");
+      else say("NO REBALANCE: the agents handled the price rise without asking the CFO");
       check(count("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'PAID' AND price_cents > 4") === 0, "no upstream purchase above 0.04");
     });
     await timed("A3 World: Summit Outfitters disputes 12 orders (the Support agent decides)", async () => {

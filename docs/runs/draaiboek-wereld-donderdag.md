@@ -33,8 +33,9 @@ Stand op 1 november: dry-96 rood (opgelost), dry-97 en dry-98 groen. Stappen 4b 
 | # | Wij doen (Claude typt) | Wie beslist | Waar Max kijkt | Wat er kan gebeuren (geen script) |
 |---|---|---|---|---|
 | 1 | `npm run world -- serve`: elke 15 s een klant-vraag | code volgt het koopbeleid van Sourcing | Dashboard: verkopen lopen op | — |
-| 2 | `npm run world -- price-rise 0.04` | **Sourcing** (Haiku), daarna eventueel **Treasury** (Opus) | Dashboard → "The agents decide": het besluit en het gesprek | Sourcing stapt over naar Ridgeline, cachet, koopt niet, of vraagt Treasury om een hogere cap. Treasury doet niets, legt het uit, of ontwerpt twee opties voor de CFO. **Als er opties komen:** Max kiest met Face ID, en de controller tekent mee. |
-| 3 | Wachten tot er ±16 vragen zijn geweest (±4 min), dan `npm run world -- dispute` | **Support** (Sonnet) | De besluit-regel van Support; de Dispute desk | Support controleert elke order op de chain en tegen de correcties van de leverancier. Foute orders betaalt hij terug binnen zijn limiet. Orders die nooit verkocht zijn, betaalt hij niet. "Alles terug" gaat naar Max (advies: weigeren). |
+| 1b | **Klaarzetten:** `npm run world -- ridgeline-maintenance`: Ridgeline Data is vandaag offline voor onderhoud (12 uur) | **Sourcing** leest het bericht | De besluit-regel van Sourcing | Ridgeline's API antwoordt 503 vóór elk aanbod: niets te kopen, niets betaald. Sourcing krijgt Ridgeline's onderhoudsbericht en blijft meestal bij Stockline (0.02). |
+| 2 | Pas als vraag #16 verkocht is (±4 min na stap 1): `npm run world -- price-rise 0.04 --silent` | **Sourcing** (Haiku), daarna eventueel **Treasury** (Opus) | Dashboard: de geweigerde aankoop met de tx op Metal; dan "The agents decide": het besluit en het gesprek | Stockline verhoogt zonder aankondiging, vanaf de volgende klant-vraag. Die aankoop bij Stockline (0.04) loopt tegen de cap van 0.03: Purser weigert vóór het tekenen, Metal legt de weigering vast op de chain (een tx). De klant betaalt niets en wordt weggestuurd. Pas daarna komt Stockline's prijsbericht (uiterlijk 5 minuten na de verhoging). Sourcing beslist zelf: niet kopen, wachten, of Treasury om een hogere cap vragen. Treasury doet niets, legt het uit, of ontwerpt twee opties voor de CFO. **Als er opties komen:** Max kiest met Face ID, de controller tekent mee, en de mandaten worden op de chain vervangen. |
+| 3 | Na stap 2 (vraag #5 tot #16 zijn dan verkocht): `npm run world -- dispute` | **Support** (Sonnet) | De besluit-regel van Support; de Dispute desk | Support controleert elke order op de chain en tegen de correcties van de leverancier. Foute orders betaalt hij terug binnen zijn limiet. Orders die nooit verkocht zijn, betaalt hij niet. "Alles terug" gaat naar Max (advies: weigeren). |
 | 4 | `npm run world -- invoice` | **Treasury** | De telefoon: een factuurbetaling met timing-advies | Nu betalen, wachten (niet na de vervaldatum min 2 dagen), of eerst wisselen. Max keurt goed of af. |
 | 4b | `npm run world -- packwise-pro`: Packwise stopt met Starter, Pro kost €45 per maand | **Sourcing** | De besluit-regel; bij een weigering de telefoon: een limietverhoging | Sourcing kiest plan én rail. Packwise neemt alleen een kaart, dus x402 weigert de code met de reden. De kaart kan door Airwallex geweigerd worden (limiet €30): dan stelt de agent een begrensde verhoging voor. Max keurt die goed of af. Sourcing kan ook niets kopen. |
 | 4c | `npm run world -- money-in`: de verkopen van vandaag zijn binnen op Metal | **Treasury** | De besluit-regel; bij een sweep het bewijs | Treasury veegt de netto-opbrengst naar Airwallex (na finality, geboekt), of wacht. Code houdt over wat de andere mandaten nog mogen uitgeven. |
@@ -43,7 +44,8 @@ Stand op 1 november: dry-96 rood (opgelost), dry-97 en dry-98 groen. Stappen 4b 
 **Hoe lang Treasury erover doet (gemeten, 2 november).** Vanaf de derde weggestuurde klant tot de twee opties op de
 telefoon: 30 s (dry-138) en 36 s (dry-133), dus mediaan ±33 s en maximum 36 s, uit **maar twee runs** waarin klanten
 werden weggestuurd (in de andere runs stapte Sourcing over op Ridgeline of wachtte, en kwam er geen voorstel; zo ook
-in dry-141). Vóór de fix van 1 november duurde het 415 s (dry-131). In de tussentijd ziet Max op het dashboard de
+in dry-141). Vóór de fix van 1 november duurde het 415 s (dry-131). Met de stille prijsverhoging is de weigering bij
+Stockline zelf al het bewijs voor Treasury; de proefrun meet dan ook de tijd vanaf die weigering (nog niet gemeten). In de tussentijd ziet Max op het dashboard de
 geweigerde aankopen ("buy policy") en de besluit-regels van Sourcing; de telefoon is leeg. **Langer dan 2 minuten
 niets:** niets doen op de telefoon; Claude kijkt naar Treasury's laatste besluit-regel. Na 15 minuten zonder opties
 gaat de run door zonder herverdeling (dat is een geldige uitkomst: de agent besloot het niet te vragen), en Claude
@@ -76,6 +78,19 @@ omdat Support elke order op de chain controleert.
 
 - De klant, de leveranciers en de wereld-events zijn van ons (testgeld, sandbox, testnet). De besluiten van de agents
   zijn echt: echte Claude-calls met request-id, tokens en kosten per besluit.
+- Donderdag zetten wij de wereld zo neer dat de kernscène kan gebeuren. Dat kiezen wij, niet de agent:
+  - Ridgeline is die dag offline voor onderhoud (stap 1b). Zijn data is in elke wereld al 15 minuten oud; de
+    cache-grens van de code is 5 minuten. Daar is niets aan veranderd.
+  - Stockline verhoogt stil (stap 2): de wereld zet de nieuwe prijs vlak vóór de volgende klant-vraag, en stuurt het
+    prijsbericht pas na de eerste aankoop bij Stockline, of uiterlijk 5 minuten later. De volgorde is vast, geen race.
+  - Stap 2 komt pas na vraag #16, omdat de dispute van stap 3 #5 tot #16 noemt en alleen opent als die allemaal
+    verkocht zijn.
+  - Zonder `--silent` en zonder stap 1b is de wereld zoals altijd (ook in de variatietest): daar kan Sourcing gewoon
+    overstappen naar Ridgeline.
+- Wat de agents doen, staat ook donderdag niet vast. Heeft Sourcing vóór stap 2 zelf een maximumprijs van 0.03 of lager
+  gezet (dry-141 deed dat bij een routine-check), dan weigert zijn eigen koopbeleid de aankoop al vóór het mandaat. Dan
+  komt er geen weigering op de chain, en kunnen de opties van Treasury later komen of uitblijven. Claude meldt dat aan
+  Max; we sturen de agent niet bij.
 - De agents gebruiken de geteste flows als tools (bijvoorbeeld de dispute-afhandeling). Ze beslissen óf en wanneer ze die
   gebruiken, en wat ze aan andere agents vragen.
 - In de variatietest kiest Sourcing in dezelfde wereld steeds dezelfde kern (Ridgeline binnen de cap). Het verschil zit
