@@ -3,7 +3,7 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { CORE_SENTENCE, KIT_LINE, VISA_AWARD_ON } from "../config/brand.js";
+import { CORE_SENTENCE, KIT_LINE, VISA_AWARD_ON, VISA_AWARD_STATUS } from "../config/brand.js";
 import { agentRun, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -24,7 +24,7 @@ const CSS = `.hero { padding: 24px 0 44px; }
 .logo { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--border); }
 .logo.dark { background: #191919; border-color: #191919; }
 .logo img { display: block; height: 15px; width: auto; }
-.logo.txt { background: var(--surface); color: var(--text); font-weight: 750; font-size: 14px; }
+.logo.txt { background: var(--surface); color: var(--text); font-weight: 750; font-size: 14px; white-space: nowrap; flex: none; }
 .runlabel { margin-top: 10px; font-size: 14px; color: var(--faint); display: flex; align-items: center; gap: 6px; }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
@@ -51,6 +51,13 @@ section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .m-price .bar b { position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 14px; color: #fff; }
 /* The tags stack in one column, so a tag that wraps on a phone pushes the next one down instead of overlapping it. */
 .m-price .tags { position: absolute; right: 12px; top: 34px; left: 160px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+/* On a phone the card is too narrow for a column beside the chart: the tags go under it, one per line. */
+@media (max-width: 899px) {
+  .mini.m-price { height: 340px; }
+  .m-price .plot { bottom: 150px; }
+  .m-price .tags { left: 12px; right: 12px; top: auto; bottom: 12px; align-items: flex-start; gap: 8px; }
+  .m-price .tag { white-space: nowrap; }
+}
 .m-price .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 750; border-radius: 999px; padding: 4px 10px; opacity: 0; white-space: normal; max-width: 100%; }
 .m-price .t1 { color: var(--bad); background: var(--bad-soft); animation: t1 6s infinite; }
 .m-price .t2 { color: var(--accent); background: var(--accent-soft); animation: t2 6s infinite; }
@@ -79,6 +86,7 @@ section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .partners { display: grid; gap: 12px; margin-top: 18px; }
 @media (min-width: 640px) { .partners { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1100px) { .partners { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.award-note { margin: 12px 0 0; font-size: 15px; color: var(--muted); }
 .partner { display: flex; align-items: center; gap: 14px; padding: 16px 18px; text-decoration: none; font-size: 16px; color: var(--muted); }
 @media (max-width: 899px) {
   .scenes { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 8px; scrollbar-width: none; }
@@ -201,6 +209,7 @@ export function homePage(run: AgentRun = agentRun()): string {
     <a class="partner card" href="proof#claude"><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${esc(run.agents.map((a) => a.family).join(" · "))} decide</a>
     ${VISA_AWARD_ON ? '<a class="partner card" href="visa"><span class="logo txt">Visa TAP</span>Card checkouts signed with TAP</a>' : ""}
   </div>
+  ${VISA_AWARD_ON ? `<p class="award-note">${esc(VISA_AWARD_STATUS)}</p>` : ""}
 </div></section>
 </main>`;
   return page({

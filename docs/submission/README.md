@@ -14,7 +14,7 @@ Purser: company cards and on-chain mandates for AI agents, with the CFO in contr
 ## Synopsis
 
 <!-- synopsis -->
-Purser gives each AI agent an Airwallex company card and a Metal on-chain mandate, within limits the CFO sets. Inside them agents pay on their own; past a limit Airwallex declines or Metal refuses against the mandate, and the agent asks. The CFO approves the exact terms on a phone with Face ID. Claude reads invoices and explains what code flags, but holds no key and approves nothing. Every payment carries its proof: an Airwallex id, a Metal transaction or a signed clearing receipt.
+Purser gives each AI agent an Airwallex card and a Metal on-chain mandate, within limits the CFO sets. Inside them agents pay; past a limit Airwallex declines the card, or Purser refuses against the on-chain mandate before signing and Metal records the refusal on chain; the agent asks. The CFO signs the exact terms with Face ID. Claude reads invoices and explains code's flags; it holds no key and cannot use the CFO's passkey. Each payment has proof: an Airwallex id or a Metal transaction.
 <!-- /synopsis -->
 
 ## Description
@@ -22,9 +22,13 @@ Purser gives each AI agent an Airwallex company card and a Metal on-chain mandat
 **Track 1 (Adaptive Treasury Controller), Starter Kit 11 (x402 Business Agents), for the Metal Award. Your AI agents
 spend through Airwallex and Metal. The CFO stays in control.**
 
+**Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. The TAP run (2 November) was a separate test world, not part of the main flow: Visa's reference registry self-hosted with a test key, and our own TAP merchant. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
+
 Purser is for the CFO or controller of a small company that runs AI agents and wants them to spend company money only
 within limits the CFO sets. The example company is Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query
-(here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. It has Kit 11's three
+(here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. In agent run 1
+(2 November), 44 of the 63 sales resold data from a cache up to 300 s old, as the Sourcing agent's buy policy allowed;
+Thursday's main run is planned with the cache off. It has Kit 11's three
 agents, the Sourcing, Support and Treasury agent, each with its own card and its own mandate.
 
 ### From idea to build
@@ -39,7 +43,11 @@ three moments: a price rise, a dispute and a euro bill. Built as promised, each 
 - the price rise to 4 cents refused against the mandate, two priced options, the mandates replaced on chain only after
   the approval of their exact terms;
 - the dispute settled from signed orders and on-chain payments, refunds only for wrong data, each once;
-- the euro licence invoice paid at Airwallex by SWIFT, FX only for the shortfall, with the fee in the approval.
+- the euro licence invoice paid at Airwallex by SWIFT, with the fee in the approval: in agent run 1 (2 November)
+  EUR 240.00 from the EUR balance, no FX needed (transfer `7bbb3d61…` PAID, fee EUR 13.37; payment started by the CFO
+  with `npm run licence`, the Treasury agent had advised paying later). When euros are short the plan buys only the
+  shortfall on a locked quote; that ran this week in separate runs (30 October end check: EUR 370.00 for an invoice;
+  1 November hosted reserve check: EUR 253.48 for the licence), not in agent run 1.
 
 What got better than the idea: the agents now decide for themselves, as Claude agents with their own tools, inside
 the same limits; the approval is Face ID on the CFO's phone instead of a typed hash; every agent also has an Airwallex
@@ -75,8 +83,10 @@ agents.
 
 - **A mandate per agent.** Each agent that pays per request does it under its own on-chain mandate: a cap per payment,
   a total budget, one payee and an end date.
-- **Metal refused a price rise.** When the warehouse API (a stand-in we run) raised its price above the cap, Metal's facilitator refused the payment
-  against the mandate on chain (`mandate_cap_exceeded`); nothing moved. The Treasury agent proposed options, the CFO
+- **A price rise refused against the mandate (recorded run, 30 October).** When the warehouse API (a stand-in we run)
+  raised its price above the cap, Metal's facilitator refused the payment against the mandate on chain
+  (`mandate_cap_exceeded`); nothing moved. In agent run 1 (2 November) Purser refused before signing; Metal recorded
+  the refusal on chain (tx `0x3ad8de2f…a84d`). The Treasury agent proposed options, the CFO
   signed the new terms with Face ID, and Purser replaced the mandates; the old one is refused (`mandate_revoked`).
 - **x402 with signed orders** for per-request sales, **mandate pulls** for refunds and the earnings sweep, and
   **pay-per-call clearing** for a prepaying customer (separate live run).
@@ -109,8 +119,9 @@ agents.
 ### Where Claude is used
 
 Haiku sorts each incoming document, Sonnet reads it into checked fields, and Opus reviews a proposal's risk for the
-CFO. Claude also played the attacker in the red team. Claude holds no key and cannot approve: code checks every
-payment against the policy, and only the CFO's Face ID moves money beyond the agents' limits. In the recorded run
+CFO. Claude also played the attacker in the red team. Claude holds no key and cannot use the CFO's passkey; in this demo
+the second approver is a labelled test passkey, signed on the CFO's go. In production this is a second person. Code
+checks every payment against the policy, and only the CFO's Face ID moves money beyond the agents' limits. In the recorded run
 Claude cost $0.093 per €1,000 the agents paid.
 
 ### Controls

@@ -15,6 +15,7 @@ import { createWriteStream, existsSync, mkdirSync, writeFileSync } from "node:fs
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { openDb } from "../../src/db/open.js";
+import { lockOf } from "../../src/ops/runnerLock.js";
 import { originsCheck } from "../../src/provenance/check.js";
 import { redactSecrets } from "../../src/lib/redact.js";
 import { agentStats } from "../../src/dashboard/agentStats.js";
@@ -102,7 +103,14 @@ function startRunner(): Promise<void> {
 async function killRunner(signal: NodeJS.Signals): Promise<void> {
   const p = runner;
   if (!p) return;
-  await new Promise<void>((ok) => { p.once("exit", () => ok()); process.kill(-p.pid!, signal); });
+  // The runner is its world's own process group (src/ops/runnerLock.ts), named in the ledger's lock: a crash (SIGKILL)
+  // goes to that group itself; npx's group around it only holds the starter, which passes a SIGTERM on and then exits.
+  const world = lockOf(db())?.pgid;
+  await new Promise<void>((ok) => {
+    p.once("exit", () => ok());
+    if (signal === "SIGKILL" && world && world > 1) process.kill(-world, signal);
+    process.kill(-p.pid!, signal);
+  });
   // The port is free again only once every process of the group is gone.
   await until("the runner's port to be free", () => spawnSync("bash", ["-c", `! (exec 3<>/dev/tcp/127.0.0.1/${PORT}) 2>/dev/null`]).status === 0, 30_000);
   runner = null;

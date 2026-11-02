@@ -55,4 +55,20 @@ describe("agent run 1's record", () => {
     expect(l.disputes).toHaveLength(1);
     expect((l.disputes[0]!.evidence as unknown[]).length).toBe(12);
   });
+
+  it("D1: every Claude run in the record carries its Anthropic request ids, model, tokens, latency and cost", () => {
+    const traces = (JSON.parse(RAW) as { snapshot: { traces: unknown[] } }).snapshot.traces as { task: string; model: string; status: string; request_ids?: string[]; tokens: unknown; latency_ms: number | null; cost_usd_micros: number; claude_ms: number[] }[];
+    expect(traces.length).toBeGreaterThan(30);
+    for (const t of traces) {
+      if (!t.claude_ms.length) continue; // no Claude call (fallback before any call)
+      expect({ task: t.task, n: t.request_ids?.length ?? 0 }).toEqual({ task: t.task, n: t.claude_ms.length });
+      for (const id of t.request_ids!) expect(id).toMatch(/^req_[A-Za-z0-9]{10,}$/);
+      expect(t.model).toMatch(/^claude-(haiku|sonnet|opus)-/);
+      expect(t.tokens).toBeTruthy();
+      expect(t.latency_ms).toBeGreaterThan(0);
+      expect(t.cost_usd_micros).toBeGreaterThan(0);
+    }
+    const all = traces.flatMap((t) => t.request_ids ?? []);
+    expect(new Set(all).size).toBe(all.length);
+  });
 });

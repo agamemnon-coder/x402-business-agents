@@ -9,7 +9,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { localTryAnswer } from "../try/local.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
@@ -50,8 +50,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   if (report) app.get("/metal/report", page(METAL_REPORT_CSP, () => report));
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
   for (const [name, logo] of Object.entries(LOGOS)) app.get(`/assets/${name}`, (_req, res) => { res.type(logo.type).send(logo.body); });
-  // Nothing live here: the start page asks for no data without a viewer key, and nothing else answers.
-  app.use((_req, res) => { res.status(404).type("text/plain").send("not found: this is the recorded demo; try /demo or /month"); });
+  // Nothing live here: anything else is the clean 404 page, with the four tabs.
+  app.use((_req, res) => { res.status(404).setHeader("Content-Security-Policy", NOT_FOUND_CSP); res.type("html").send(NOT_FOUND_PAGE); });
   const server = await new Promise<Server>((resolve, reject) => {
     const s = app.listen(port, "127.0.0.1", () => resolve(s));
     s.once("error", reject);

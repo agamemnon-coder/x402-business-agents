@@ -4,7 +4,7 @@
 // to the three moments; labelled with the run's own name.
 
 import { WORLD_SETUP } from "../config/brand.js";
-import { agentRun, highlights, type AgentRun } from "./run.js";
+import { agentRun, callBadge, callTip, highlights, moments, type AgentRun, type Ev } from "./run.js";
 import { AVATAR, esc, icon, iconSet, page, stageHtml } from "./ui.js";
 
 const CSS = `.watch { padding: 26px 0 24px; }
@@ -46,6 +46,8 @@ ol.log .res { display: inline-flex; font: 650 14px/1.35 Inter, system-ui, sans-s
 ol.log .res.ok { background: var(--ok-soft); color: var(--ok); } ol.log .res.bad { background: var(--bad-soft); color: var(--bad); } ol.log .res.face { background: var(--accent-soft); color: var(--accent); }
 ol.log .pf { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
 ol.log span.pf { color: var(--muted); }
+ol.log p.by { font-size: 14px; color: var(--faint); margin-top: 2px; }
+ol.log .call { margin-top: 6px; }
 @media (max-width: 999px) { .logp { max-height: 560px; } }`;
 
 const JS = `
@@ -83,13 +85,15 @@ const JS = `
       meta.appendChild(el("span", "", e.k === "msg" ? "message" : e.by === "claude" ? "decided by Claude" : "fallback (code)"));
       (e.tools || []).forEach(function (t) { meta.appendChild(el("span", "tool", t)); });
       meta.appendChild(el("span", "", time(e.at)));
-      body.appendChild(meta); said(body, e.text);
+      body.appendChild(meta);
+      if (e.badge) { var cb = el("span", "call", e.badge); cb.title = e.tip || ""; body.appendChild(cb); }
+      said(body, e.text);
     } else if (e.k === "money") {
       var r = e.refused;
       head = el("span", "ic " + (r ? "bad" : e.rail)); head.appendChild(svg(r ? "ban" : e.rail === "metal" ? "zap" : e.via === "card" ? "credit-card" : "landmark"));
       meta.appendChild(el("b", "", (e.rail === "metal" ? "Metal" : "Airwallex") + " · " + e.via));
       var res = !r ? (e.dir === "in" ? "✓ received" : /refund/i.test(e.what) ? "✓ refunded" : "✓ paid")
-        : r.by === "recorded" ? "✕ Refused · recorded on chain" : r.by === "metal" ? "✕ Refused by Metal" : r.by === "airwallex-sandbox" ? "✕ Not paid · fee not priced" : r.by === "airwallex" ? "✕ Declined by Airwallex" : "✕ Refused before signing";
+        : r.by === "recorded" ? "✕ Refused · recorded on chain" : r.by === "metal" ? "✕ Refused by Metal" : r.by === "airwallex-sandbox" ? (e.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced") : r.by === "airwallex" ? "✕ Declined by Airwallex" : "✕ Refused before signing";
       var rp = el("span", "res " + (r ? "bad" : "ok"), res);
       if (r) rp.title = (r.by === "recorded" ? "Purser refused it before signing; Metal recorded the same refusal on chain" : r.reason) + (r.code ? " (" + r.code + ")" : "");
       meta.appendChild(rp);
@@ -100,6 +104,8 @@ const JS = `
       var p = el("p", "", amt + e.what + (e.count > 1 ? " (" + e.count + ")" : "") + (r && r.by !== "recorded" ? ": " + r.reason : r ? ": Purser refused it before signing, and Metal recorded the refusal on chain" : "") + " ");
       var pe = proofEl(e.proof); if (pe) p.appendChild(pe);
       body.appendChild(p);
+      // Who decided it: code (inside the limits) or the agent's Claude model, as the record says.
+      if (e.by) body.appendChild(el("p", "by", "Decided by " + e.by.replace(/^code: /, "code, ")));
     } else if (e.k === "routine") {
       head = el("span", "ic"); head.appendChild(svg("clock"));
       meta.appendChild(el("b", "", "Routine checks")); meta.appendChild(el("span", "", time(e.at)));
@@ -127,6 +133,7 @@ const JS = `
       meta.appendChild(el("b", "", e.k === "shield" ? "Blocked" : "The world changes")); meta.appendChild(el("span", "", time(e.at))); body.appendChild(meta);
       body.appendChild(el("p", "", e.text));
     }
+    if (e.quiet) { var qn = el("p", "by", "after " + e.quiet + " routine check" + (e.quiet > 1 ? "s" : "") + " with nothing to do"); body.appendChild(qn); }
     li.appendChild(head); li.appendChild(body);
     return li;
   }
@@ -172,8 +179,17 @@ const JS = `
   if (still || st.reduce) { setPlay(false); if (startAt < ev.length) { var e0 = ev[startAt]; if (e0) { st.show(e0, { instant: true, sentences: 2 }); log.insertBefore(entry(e0), log.firstChild); i = startAt + 1; mark(); } } } else setPlay(true);
 })();`;
 
+/** Watch's four jumps, the same four moments as Home's animation, each at its anchor event. */
+const JUMPS: [1 | 2 | 3 | 4, string, keyof ReturnType<typeof moments>][] = [[1, "Price rise", "refusal"], [2, "Replan", "replan"], [3, "Dispute", "dispute"], [4, "Euros", "sweep"]];
+
+/** An event as the page's script reads it: a decision carries its Claude call badge (D2). */
+const withBadge = <T extends Ev>(e: T): T & { badge?: string; tip?: string } => (e.k === "say" && e.call ? { ...e, badge: callBadge(e.call), tip: callTip(e.call) } : e);
+
 export function watchPage(run: AgentRun = agentRun()): string {
   const hl = highlights(run);
+  const m = moments(run.events);
+  const full = JUMPS.map(([n, title, k]) => ({ n, title, start: Math.max(0, m[k] as number) }));
+  const hlScenes = full.map((j) => ({ ...j, start: Math.max(0, hl.findIndex((e) => e.at === run.events[j.start]!.at && e.k === run.events[j.start]!.k)) }));
   const s1 = run.scenes.find((s) => s.n === 1);
   const body = `<main class="watch"><div class="wrap">
   <div class="whead"><h1>Watch the agents work</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
@@ -187,7 +203,7 @@ export function watchPage(run: AgentRun = agentRun()): string {
         <span class="count" id="count"></span>
       </div>
       <div class="controls"><div class="seg" id="mode" role="group" aria-label="What to watch"><button type="button" data-mode="hl" class="on" aria-pressed="true">Highlights</button><button type="button" data-mode="full" aria-pressed="false">Full run (${run.events.length} steps)</button></div></div>
-      <div class="controls"><div class="chips" id="scenes" role="group" aria-label="Jump to a moment"><button type="button" data-scene="0">Start</button>${run.scenes.map((s) => `<button type="button" data-scene="${s.n}"><b>${s.n}</b>${esc(s.title)}</button>`).join("")}</div></div>
+      <div class="controls"><div class="chips" id="scenes" role="group" aria-label="Jump to a moment"><button type="button" data-scene="0">Start</button>${full.map((s) => `<button type="button" data-scene="${s.n}"><b>${s.n}</b>${esc(s.title)}</button>`).join("")}</div></div>
       <div class="progress" aria-hidden="true"><i></i></div>
     </div>
     <section class="card logp" aria-labelledby="h-log"><h2 id="h-log">Every step, newest first</h2><ol class="log" id="log" aria-live="polite"></ol></section>
@@ -195,7 +211,7 @@ export function watchPage(run: AgentRun = agentRun()): string {
 </div></main>`;
   return page({
     title: "Watch the agents", description: "A replay of a recorded agent run: each decision in the agent's own words, the money on its rail, the CFO's Face ID.", tab: "watch", css: CSS, body, js: JS,
-    data: { agents: run.agents, events: run.events, scenes: run.scenes.map(({ n, title, start }) => ({ n, title, start })), highlights: hl, hlScenes: run.scenes.map(({ n, title, start }) => ({ n, title, start: Math.max(0, hl.findIndex((e) => e.at >= run.events[start]!.at)) })), icons: { ...iconSet(["ban", "zap", "credit-card", "landmark", "scan-face", "shield-check", "sparkles", "play", "pause", "rotate-ccw", "clock"]), ...Object.fromEntries(Object.entries(AVATAR).map(([id, name]) => [`av-${id}`, icon(name, 18)])) } },
+    data: { agents: run.agents, events: run.events.map(withBadge), scenes: full, highlights: hl.map(withBadge), hlScenes, icons: { ...iconSet(["ban", "zap", "credit-card", "landmark", "scan-face", "shield-check", "sparkles", "play", "pause", "rotate-ccw", "clock"]), ...Object.fromEntries(Object.entries(AVATAR).map(([id, name]) => [`av-${id}`, icon(name, 18)])) } },
     source: `Source: ${run.file} (${run.name}).`,
   });
 }

@@ -8,7 +8,8 @@
 
 import { spawnSync } from "node:child_process";
 import type Anthropic from "@anthropic-ai/sdk";
-import { originEnv } from "../provenance/origin.js";
+import { currentOrigin, originEnv, withOrigin, type Origin } from "../provenance/origin.js";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { MODELS } from "../claude/reader.js";
@@ -22,10 +23,14 @@ import { sha256Hex } from "../lib/terms.js";
 import { designPriceRise } from "../agents/treasuryAgent.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { setSetting } from "../world/settings.js";
-import { TOTAL_BUDGET_CENTS } from "../config/policy.js";
+import { INVOICE_PROPOSAL_TTL_MS, LICENCE_INVOICE_FIXTURE, TOTAL_BUDGET_CENTS } from "../config/policy.js";
+import { agentsOn } from "../config/agents.js";
+import { invoiceAlreadyHandled } from "../agents/euroBill.js";
+import { invoiceFacts, plannedInvoiceOf, plannedMatch, vouchedInvoiceNo } from "./invoiceFacts.js";
 import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } from "../config/suppliers.js";
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
+import { decisionOf, decisionSummary, finished, legacyDecision } from "../agents/disputeDecision.js";
 import type { AgentProfile } from "./runtime.js";
 
 const repo = resolve(import.meta.dirname, "../..");
@@ -96,6 +101,9 @@ export interface TreasurySim {
   sweep(db: DB): Promise<{ ok: boolean; text: string }>;
   /** The invoice plan (live: `licence.ts`). */
   planInvoice(db: DB): Promise<{ ok: boolean; text: string }>;
+  /** The text of the invoice planInvoice plans, when one came in (live: the licence fixture). Optional: without it
+   *  the tool's own duplicate check is skipped, and planInvoice's (proposeInvoicePayment's) still applies. */
+  invoiceText?(): string | null;
 }
 
 /**
@@ -106,6 +114,13 @@ export interface TreasurySim {
 export interface FlowDeps { runFlow: typeof runFlow; sim?: TreasurySim }
 
 const liveMandates = async (db: DB) => [...(await mandatesNow(db)).values()].map((c) => c.now);
+const LICENCE_TEXT = resolve(repo, "fixtures", LICENCE_INVOICE_FIXTURE);
+/** The invoice a text holds, as code reads it whole (with its text, for the gate's bank lines), or null. */
+const invoiceOf = plannedInvoiceOf;
+/** The licence's own file, or null when it cannot be read (the facts then offer no plan; the tool's flow reads it again). */
+const licenceText = (): string | null => { try { return readFileSync(LICENCE_TEXT, "utf8"); } catch { return null; } };
+/** plan_invoice never starts the licence flow without an origin: else the flow would record the CFO's command. */
+const NO_RUN: Origin = { actor: "code", rule: "plan_invoice called outside an agent run", agent: "treasury" };
 // Live, the world's addresses are read first, before anything is designed (as before D26): without them nothing can be filed.
 const livePriceRise = (db: DB) => { const addr = addresses(db); return (d: DB, sellCents: number, ev: PriceRiseEvidence, plan?: PricePlan) => proposePriceRise(d, addr, sellCents, ev, new Date(), plan); };
 
@@ -115,6 +130,8 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
   const filer = (db: DB) => (sim ? sim.proposePriceRise.bind(sim) : livePriceRise(db));
   // On simulated rails, code's evidence reads the cap from the sim's mandates (never from the chain).
   const sourcingCap = async (db: DB) => (sim ? (await mandates(db)).find((x) => x.agent === "sourcing")?.capCents : undefined);
+  // The invoice plan_invoice plans: live, the licence (`npm run licence` reads the same file); on the sim's rails, the sim's.
+  const plannedText = (): string | null => (sim ? sim.invoiceText?.() ?? null : licenceText());
   const position = async (db: DB) => {
     const m = await mandates(db);
     const sell = toCents(sellPrice(db));
@@ -127,6 +144,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
       (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
+      ...invoiceFacts(db, new Date(), invoiceOf(plannedText())).lines,
       ...refusedPayouts(db),
     ].join("\n");
   };
@@ -136,6 +154,8 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
     rules: [
       "You may sweep the net earnings from the business account on Metal to Airwallex (sweep_earnings): code keeps what the other mandates may still spend, waits for finality and books the credit. You may design a rebalance of the agents' mandates with two price options (design_rebalance): code checks the plan (the 20.00 total, caps, budgets, margin) and the CFO decides with Face ID, often with a second person. You may plan a euro invoice (plan_invoice): code locks the FX quote and checks the floors; the CFO approves with Face ID. You cannot move money yourself.",
       "Money that customers pay into Northwind's Global Accounts at Airwallex is matched to their invoices by code; a short, over, unmatched or wrong-currency payment waits in suspense for the CFO. Euros that came in can pay the licence invoice with less FX (plan_invoice plans FX only for the shortfall).",
+      `Planning an invoice (plan_invoice) moves no money: code checks the payee against the allowlist, the amount, the floors and the SWIFT fee ceiling, and puts one payment to the CFO, who decides with Face ID within ${INVOICE_PROPOSAL_TTL_MS / 60_000} minutes (less when an FX quote is locked); unsigned, it expires and nothing is paid.${agentsOn() && !sim ? " Your timing advice (pay now, or wait until a date at least two days before the due date) goes beside it for the CFO." : ""} Code never plans an invoice that is paid, being paid or already has a plan waiting.`,
+      "Your situation is read from the ledger at every wake. Where it differs from your earlier decisions, the ledger is right: an invoice it lists as paid is paid.",
       "When you have nothing to do, finish without acting: proposing nothing is a valid decision.",
     ].join("\n"),
     observe: position,
@@ -174,11 +194,23 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
         },
       },
       {
-        name: "plan_invoice", description: "Plans the euro invoice that came in (the licence): FX only for the shortfall, SWIFT, the fee ceiling, your timing advice; it waits for the CFO's Face ID.",
+        name: "plan_invoice", description: "Plans the euro invoice that came in (the licence): FX only for the shortfall, SWIFT, the fee ceiling, your timing advice; it moves no money and waits for the CFO's Face ID. Code refuses an invoice that is paid or already has a plan waiting, or that has not come in as code reads it.",
         input: z.strictObject({}),
         run: async () => {
           if (waiting(db, "invoice_payment").length) return { text: "Not planned: an invoice payment already waits for the CFO.", blocked: "already waiting" };
-          const r = sim ? await sim.planInvoice(db) : deps.runFlow("licence.ts");
+          // Code's duplicate guard, before anything runs (the flow applies it again): never an invoice that is paid,
+          // being paid, or has a plan waiting, whatever the agent believes (review, 2 November).
+          const planned = invoiceOf(plannedText());
+          const no = planned?.invoice_no ?? null;
+          const handled = no ? invoiceAlreadyHandled(db, no, new Date(), vouchedInvoiceNo(no) ? no : "(the licence)") : null;
+          if (handled) return { text: `Not planned: ${handled}.`, blocked: /already paid/.test(handled) ? "already paid" : "already handled" };
+          // Fail closed (review, 2 November): only the invoice code reads from its own file, and only once it came in
+          // as code would plan it; a copy under its number that asks for something else goes to a person.
+          const match = plannedMatch(db, planned);
+          if (match.status === "unreadable") return { text: "Not planned: code cannot read or vouch for the invoice plan_invoice plans; a person checks it.", blocked: "no invoice" };
+          if (match.status === "not_received") return { text: "Not planned: the invoice plan_invoice plans has not come in.", blocked: "not received" };
+          if (match.status === "differs") return { text: `Not planned: a copy that came in under its number differs from the invoice plan_invoice plans (${match.fields}); a person checks it.`, blocked: "invoice differs" };
+          const r = sim ? await sim.planInvoice(db) : withOrigin(currentOrigin() ?? NO_RUN, () => deps.runFlow("licence.ts"));
           return { text: r.text, ...(r.ok ? {} : { blocked: "the plan did not complete" }) };
         },
       },
@@ -212,16 +244,35 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
     rules: "settle_dispute runs your dispute tools: the signed orders and their payments on chain, the supplier's corrections, refunds inside the CFO's automatic limits (paid under your mandate), and an escalation for the rest. You cannot refund outside those limits; the CFO decides with Face ID.",
     observe: async (db) => {
       const d = open(db);
-      return d.length ? `Disputes on file: ${d.map((x) => `${x.dispute_id} from ${x.customer.slice(0, 10)}… (${x.created_at.slice(11, 16)})`).join(", ")}.` : "No dispute on file.";
+      const left = (id: string) => { const dec = decisionOf(db, id); return dec && !finished(dec) ? ` [decided, not yet carried out (a restart?): settle_dispute finishes it and decides nothing again]` : dec || legacyDecision(db, id) ? " [decided]" : ""; };
+      return d.length ? `Disputes on file: ${d.map((x) => `${x.dispute_id} from ${x.customer.slice(0, 10)}… (${x.created_at.slice(11, 16)})${left(x.dispute_id)}`).join(", ")}.` : "No dispute on file.";
     },
     tools: (db) => [
       {
         name: "settle_dispute", description: "Settles the customer's dispute that came in, from evidence, with your dispute tools.",
         input: z.strictObject({}),
         run: async () => {
-          if (db.prepare("SELECT 1 FROM audit_log WHERE event = 'dispute.settled_by_agent' AND ts > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: this dispute was settled in the last half hour.", blocked: "already settled" };
+          // A dispute is decided once, also after a restart (agent run 1): a decided dispute is never settled again; one
+          // whose decision a restart cut off is carried out (the settlement pays only what that decision left unpaid).
+          const cases = (db.prepare("SELECT dispute_id FROM disputes WHERE dispute_id LIKE 'D-%' ORDER BY created_at DESC").all() as { dispute_id: string }[]).map((x) => x.dispute_id);
+          const state = cases.map((id) => { const d = decisionOf(db, id); return { id, d, legacy: d ? null : legacyDecision(db, id) }; });
+          const open = state.filter((x) => !x.legacy && (!x.d || !finished(x.d)));
+          if (cases.length && open.length === 0) {
+            return { text: `Already decided: ${state.map((x) => `${x.id}: ${x.d ? decisionSummary(x.d) : x.legacy}`).join(" | ")}. Nothing is decided again.`, blocked: "already decided" };
+          }
+          const resuming = open.some((x) => x.d);
+          // A refund refused at payment is tried again at most every half hour (it never becomes a new decision).
+          const recent = open.find((x) => x.d?.attempted_at && Date.now() - Date.parse(x.d.attempted_at) < 30 * 60_000);
+          if (recent?.d) return { text: `Decided already; carried out last at ${recent.d.attempted_at}: ${decisionSummary(recent.d)}. Tried again after half an hour; nothing is decided again.`, blocked: "carried out recently" };
+          if (!resuming && db.prepare("SELECT 1 FROM audit_log WHERE event = 'dispute.settled_by_agent' AND ts > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: this dispute was settled in the last half hour.", blocked: "already settled" };
+          // Night batch, 2 November (live-14, dry-147): on a routine wake with no dispute in the world, the agent ran this
+          // tool and the live settlement (s2) settled the fixture's dispute, refunding 3 orders nobody had disputed. A new
+          // settlement needs a customer's dispute that came in after the last one was settled.
+          const came = (db.prepare("SELECT MAX(created_at) AS t FROM world_events WHERE kind = 'dispute.opened'").get() as { t: string | null }).t;
+          const settledAt = (db.prepare("SELECT MAX(ts) AS t FROM audit_log WHERE event = 'dispute.settled_by_agent'").get() as { t: string | null }).t;
+          if (!resuming && (!came || (settledAt && settledAt >= came))) return { text: "Not settled: no customer dispute has come in since the last one was settled.", blocked: "no dispute" };
           const r = await deps.settle(db, "agent");
-          return { text: r.text, ...(r.ok ? {} : { blocked: "the settlement did not complete" }) };
+          return { text: `${resuming ? "Carried out the dispute's recorded decision (nothing decided again): " : ""}${r.text}`, ...(r.ok ? {} : { blocked: "the settlement did not complete" }) };
         },
       },
     ],

@@ -270,12 +270,14 @@ async function settleSim(ctx: SimCtx, by: "agent" | "code"): Promise<{ ok: boole
     };
     return createProposal(db, { terms, createdBy: "support", evidence: terms.evidence });
   };
-  const refundOne = (seq: number) => refundSale(db, { sale_id: bySeq.get(seq)!.sale_id, amount_cents: bySeq.get(seq)!.price_cents, to: SIM_ADDR.customer, dispute_id: disputeId }, { pull });
+  const refundOne = (seq: number, opts?: { retry?: boolean }) => refundSale(db, { sale_id: bySeq.get(seq)!.sale_id, amount_cents: bySeq.get(seq)!.price_cents, to: SIM_ADDR.customer, dispute_id: disputeId }, { pull, retry: opts?.retry === true });
   if (by === "agent") {
     const deps: DisputeDeps = {
       verify: async (seq) => ({ seq, signed_order: true, within_mandate: true, payer_is_customer: true, tx: simTx(spec.seed, "sale", seq) }),
       data, priceCents: (seq) => bySeq.get(seq)!.price_cents,
-      refund: async (seq) => { const r = await refundOne(seq); return { outcome: r.outcome, ...(r.tx ? { tx: r.tx } : {}), already: r.already, ...(r.reason ? { reason: r.reason } : {}) }; },
+      // As s2 does: a held or pending refund is looked at again (same payment id), not judged again against the limits.
+      state: (seq) => (db.prepare("SELECT outcome FROM refunds WHERE sale_id = ?").get(bySeq.get(seq)?.sale_id ?? -1) as { outcome: string } | undefined)?.outcome ?? null,
+      refund: async (seq, opts) => { const r = await refundOne(seq, opts); return { outcome: r.outcome, ...(r.tx ? { tx: r.tx } : {}), already: r.already, ...(r.reason ? { reason: r.reason } : {}) }; },
       escalate: async (items) => ({ proposalId: proposal(items, `customer request: ${ctx.requested}; code's data check finds ${items.filter((q) => wrong.has(q)).map((q) => `#${q}`).join(", ") || "none"} wrong`).proposal_id }),
       earlier: () => ({
         refunded: (db.prepare("SELECT r.amount_cents AS cents, CAST(json_extract(s.request_params_json, '$.seq') AS INTEGER) AS seq FROM refunds r JOIN sales s ON s.sale_id = r.sale_id WHERE r.dispute_id = ? AND r.outcome IN ('PAID', 'PENDING', 'HELD')").all(disputeId) as { seq: number; cents: number }[]),
@@ -302,7 +304,7 @@ async function settleSim(ctx: SimCtx, by: "agent" | "code"): Promise<{ ok: boole
 export function profilesOf(ctx: SimCtx): Record<AgentName, AgentProfile> {
   // The whole outside of Treasury is the sim's, as one bundle: no flow, no chain read, no owner key is reached.
   const noFlow = (script: string) => ({ ok: false, text: `the sim runs no flow (${script})` });
-  const treasury = treasuryProfile(30 * 60_000, { runFlow: noFlow, sim: { mandates: ledgerMandates, proposePriceRise: simPriceRise, client: ctx.client, sweep: () => sweepSim(ctx), planInvoice: () => planInvoiceSim(ctx) } });
+  const treasury = treasuryProfile(30 * 60_000, { runFlow: noFlow, sim: { mandates: ledgerMandates, proposePriceRise: simPriceRise, client: ctx.client, sweep: () => sweepSim(ctx), planInvoice: () => planInvoiceSim(ctx), invoiceText: () => ctx.invoiceText ?? null } });
   return {
     sourcing: sourcingProfile(sourcingWorld(ctx)),
     treasury,

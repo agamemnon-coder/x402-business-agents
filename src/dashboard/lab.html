@@ -79,7 +79,7 @@ dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
   var live = data.mode === "live";
   function el(tag, cls, kids) { var e = document.createElement(tag); if (cls) e.className = cls; (kids || []).forEach(function (k) { if (k !== null && k !== undefined) e.append(k); }); return e; }
   function txt(tag, cls, t) { var e = el(tag, cls); e.textContent = t; return e; }
-  document.getElementById("honest").textContent = "Each scenario runs in a fresh throwaway world with stand-ins for Airwallex and Metal: no money moves and nothing reaches a phone. The live versions of the same stories are the run logs. " +
+  document.getElementById("honest").textContent = "Each scenario runs in a fresh throwaway world with Airwallex and Metal simulated: no money moves and nothing reaches a phone. The live versions of the same stories are the run logs. " +
     (live ? "Running again starts from a new world (the reset)." : "These results were recorded on the runner, where the Lab runs them again on click.");
   var passed = data.results.filter(function (r) { return r.passed; }).length;
   var count = document.getElementById("count");
@@ -93,7 +93,7 @@ dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
     return el("article", "", [
       el("h2", "", [txt("span", "pill " + (r.passed ? "ok" : "bad"), r.passed ? "as expected" : "NOT as expected"), r.title, again]),
       el("dl", "", [txt("dt", "", "Expected"), txt("dd", "", r.expected), txt("dt", "", "Happened"), txt("dd", "", r.happened),
-        txt("dt", "", "Evidence"), txt("dd", "ev", r.evidence.join(" · ") || "none"), txt("dt", "", "Stand-in"), txt("dd", "ev", r.offline)]),
+        txt("dt", "", "Evidence"), txt("dd", "ev", r.evidence.join(" · ") || "none"), txt("dt", "", "Simulated"), txt("dd", "ev", r.offline)]),
     ]);
   }));
 })();

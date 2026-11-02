@@ -29,6 +29,7 @@ import { currentOrigin, withOrigin, type Origin, type TapEvidence } from "../pro
 import { rawHeadersOf, tapMerchantConfig, verifyTapCheckout, type TapMerchantConfig, type TapMerchantVerdict } from "./tapMerchant.js";
 import type { TapMerchantAnswer } from "./tapServer.js";
 import { newNonce, signTapCheckout, type TapHeaders } from "./tapSig.js";
+import { tapRailInWorld } from "../world/options.js";
 
 /** Packwise's checkout as agents address it in-process: a merchant we run (simulated), its checkout under /product/. */
 export const TAP_RAIL_MERCHANT = { name: "Packwise", authority: "packwise.example", checkoutPath: "/product/checkout" } as const;
@@ -157,12 +158,13 @@ export async function tapCardPurchase(db: DB, sim: IssuingSim, planId: string, s
 }
 
 /**
- * The Sourcing agent's card purchase. With KIT11_TAP_RAIL=on a Packwise plan goes through TAP first; otherwise, and
+ * The Sourcing agent's card purchase. With KIT11_TAP_RAIL=on (or world.tap_rail = on in the world) a Packwise plan goes through TAP first; otherwise, and
  * for every other merchant, exactly the card path as before.
  */
 export async function buySoftwareOnCard(db: DB, sim: IssuingSim, planId: string, o: { env?: Env; signer?: (agent: string) => TapSigner; transport?: TapTransport; now?: Date } = {}): Promise<CardTransaction> {
   const plan = PLANS[planId];
   const env = o.env ?? process.env;
-  if (!tapRailOn(env) || plan?.merchant !== TAP_RAIL_MERCHANT.name) return buyPlan(db, sim, planId, o.now);
+  // On by this process's KIT11_TAP_RAIL=on, or by the world itself (world.tap_rail = on, the main run's world).
+  if (!(tapRailOn(env) || tapRailInWorld(db)) || plan?.merchant !== TAP_RAIL_MERCHANT.name) return buyPlan(db, sim, planId, o.now);
   return tapCardPurchase(db, sim, planId, (o.signer ?? loadTapSigner)(plan.agent), o.now, o.transport ?? transportFromEnv(db, env));
 }

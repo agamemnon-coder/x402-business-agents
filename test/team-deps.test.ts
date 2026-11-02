@@ -5,6 +5,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { audit } from "../src/audit/log.js";
 import { openDb } from "../src/db/open.js";
 import { publish, sendMessage } from "../src/autonomy/bus.js";
 import { wake } from "../src/autonomy/runtime.js";
@@ -88,5 +89,20 @@ describe("the live default path (D26 review)", () => {
     expect(spawned).toHaveLength(1);
     expect(spawned[0]).toMatchObject({ cmd: "npx", args: ["tsx", "src/cli/s2.ts"] });
     expect(existsSync(join(spawned[0]!.cwd, "src/cli/s2.ts"))).toBe(true);
+  });
+});
+
+describe("Support without a dispute (night batch, live-14)", () => {
+  it("settle_dispute refuses on a routine wake when no customer dispute has come in, or none since the last was settled", async () => {
+    const db = openDb(":memory:");
+    const by: string[] = [];
+    const settle = async (_db: unknown, who: "agent" | "code") => { by.push(who); return { ok: true, text: "refunded #7" }; };
+    const w = await wake(db, supportProfile(30 * 60_000, { settle }), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Nothing to do.")]]), now: T0 });
+    expect(w!.run!.calls[0]).toMatchObject({ blocked: "no dispute" });
+    publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", new Date(T0.getTime() - 60 * 60_000));
+    audit(db, "support", "dispute.settled_by_agent", "D-1", { source: "claude" }, new Date(T0.getTime() - 50 * 60_000));
+    const again = await wake(db, supportProfile(30 * 60_000, { settle }), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Nothing to do.")]]), now: T0 });
+    expect(again!.run!.calls[0]).toMatchObject({ blocked: "no dispute" });
+    expect(by).toEqual([]);
   });
 });

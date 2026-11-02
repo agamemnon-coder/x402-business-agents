@@ -635,6 +635,11 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       return out(sale ? `Sold stock check #${sale.seq} to Summit Outfitters for ${fromCents(sale.price)} USDZ${how}` : `Sale ${s} delivered${how}`, "ok");
     }
     case "sale.settle_failed": return out(`A sale did not settle; the customer was not charged (${str(p.error)})`, "refusal");
+    case "sale.refused": return out(`Customer query #${str(p.seq)} answered ${str(p.status)}: the stock check could not be bought, so the middleware did not settle and Summit Outfitters was not charged`, "refusal");
+    case "query.answered": return out(`Customer query #${str(p.seq)}: Summit Outfitters got ${p.status === null ? "no answer" : `HTTP ${str(p.status)}`}; ${p.settled === true ? "its payment settled" : p.settled === false ? "its payment did not settle (not charged)" : "settlement unknown"}`, p.settled === true ? "ok" : "refusal");
+    case "upstream.let_through": return out(`Defense in depth: purchase of stock check #${str(p.seq)} at ${str(p.amount)} USDZ, over the ${str(p.bound_cap)} cap, let through to Metal once (Purser would have refused it before signing)`, "info");
+    case "upstream.let_through_refused": return out(str(p.label), "refusal");
+    case "upstream.let_through_incident": return out(`INCIDENT: ${str(p.what)}; the Sourcing agent is stopped until the CFO lifts it with Face ID`, "refusal");
     // The sandbox starts with millions; the floors calibrated against it are not this business's money, so no numbers.
     case "setting.changed": return CALIBRATION.has(s)
       ? out(`Treasury set the ${CALIBRATION.get(s)} against the Airwallex sandbox balance`)
@@ -712,7 +717,14 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     }
     case "claude.fallback": return out(`Claude was not used for ${s.replace(/_/g, " ")}; the deterministic parser decided (${str(p.note)})`, "info", { model: modelName(str(p.model)) });
     case "claude.rejected": return out(`Claude's answer for ${s.replace(/_/g, " ")} failed the code check and was not used`, "refusal", { model: modelName(str(p.model)) });
-    case "proposal.created": return out(`${r.actor === "human" ? "Max" : r.actor in AGENT_DISPLAY ? `The ${AGENT_DISPLAY[r.actor as keyof typeof AGENT_DISPLAY].name}` : `Agent ${r.actor}`} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()})`, "approval");
+    case "proposal.created": {
+      // Who started it, from the origin recorded on the proposal (review, 2 November): the CFO's own command is the CFO's.
+      const started = "origin" in p ? parseOrigin(JSON.stringify(p.origin)) : null;
+      if (started?.actor === "cfo-command") return out(`Max started ${s} (${kindTitle(str(p.kind)).toLowerCase()}) with ${started.command}`, "approval");
+      // Code's own rule started it (no agent's Claude run, no person): code is named, not the agent that owns the proposal.
+      if (started?.actor === "code") return out(`Code proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()}) by its rule: ${started.rule}`, "approval");
+      return out(`${r.actor === "human" ? "Max" : r.actor in AGENT_DISPLAY ? `The ${AGENT_DISPLAY[r.actor as keyof typeof AGENT_DISPLAY].name}` : `Agent ${r.actor}`} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()})`, "approval");
+    }
     case "price_rise.options": {
       const opts = Array.isArray(p.options) ? (p.options as P[]) : [];
       return out(`Priced the options: ${opts.map((o) => (o.sell === null ? `${str(o.id)} ${str(o.label)}` : `${str(o.id)} sell ${str(o.sell)} (margin ${str(o.margin)})`)).join(", ")}`, "approval");
@@ -742,9 +754,15 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       const then = str(p.route) === "approval" ? `waiting for your Face ID (${str(p.proposal_id)})` : str(p.route) === "auto" ? "within the automatic limits" : "";
       return out(`Dispute ${s} decided by code: refund ${str(p.refund)} test USD${then ? `, ${then}` : ""}`, "ok");
     }
+    case "dispute.decision_recorded": {
+      const list = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map(str).join(", ") : "");
+      const who = str(p.source) === "claude" ? "the Support agent" : "code";
+      return out(`Dispute ${s} decided once, by ${who}, before anything was paid: refund ${list(p.refunds) || "none"}${p.escalate ? `; ${list(p.escalate)} to the CFO` : ""}${p.approval ? `; ${list(p.approval)} above the automatic limits to the CFO` : ""}`, "info");
+    }
     case "refund.auto_approved": return out(`Refunds for sales ${(Array.isArray(p.sales) ? (p.sales as unknown[]) : []).map((x) => `#${str(x)}`).join(", ")} are within the automatic limits`, "ok");
     case "refund.paid": return out(`Refunded ${str(p.amount)} to Summit Outfitters for sale #${s} (${str(p.payment_id)})`, "ok");
     case "refund.already_paid": return out(`Retry of ${str(p.payment_id)}: already paid, nothing sent`, "ok");
+    case "refund.already_held": return out(`Looked again at ${str(p.payment_id)}: sent, still held at Metal; nothing sent again, not refunded yet`, "info");
     case "refund.refused":
     case "refund.held": return out(`Refund ${str(p.payment_id)} ${r.event.split(".")[1]}: ${refusalWords(str(p.reason))}`, "refusal");
     case "sweep.paid": return out(`Swept ${str(p.amount)} USDZ of earnings to the sweep wallet (${s})`, "ok");
@@ -994,7 +1012,7 @@ const askFrom = (actor: string, by: string) => (actor.startsWith("ext:") ? `agen
 
 // policy.version is bookkeeping: each rule change already shows as policy.changed.
 // agent.run: the decision rows below carry the agent's own words; a tool call that simply went through stays quiet.
-const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version", "agent.run"]);
+const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version", "agent.run", "query.answered"]);
 const quietTool = (r: { event: string; payload_json: string }) => r.event === "agent.tool" && !(JSON.parse(r.payload_json) as { blocked_by?: string }).blocked_by;
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */
