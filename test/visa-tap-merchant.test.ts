@@ -181,4 +181,44 @@ describe("the nonce", () => {
     expect(db.prepare("SELECT COUNT(*) AS c FROM tap_rail_nonces WHERE nonce = ?").get(nonce)).toEqual({ c: 0 });
     expect(check(received(headersFor({ nonce })), later)).toMatchObject(refused(/expired/));
   });
+  // Review, 2 November: the retention must cover the latest moment a replay could still be inside its window.
+  it("is kept long enough: accepted at t (created t+30, expires t+510), a replay at t+540 is refused", () => {
+    const t = NOW;
+    const nonce = "edge-nonce-0000000000001";
+    expect(check(received(headersFor({ nonce, created: t + TAP_CLOCK_SKEW_S, expiresIn: 480 })), t).ok).toBe(true);
+    // Another accepted request at t+540 runs the purge first.
+    expect(check(received(headersFor({ created: t + 540 })), t + 540).ok).toBe(true);
+    expect(check(received(headersFor({ nonce, created: t + TAP_CLOCK_SKEW_S, expiresIn: 480 })), t + 540)).toMatchObject(refused(/replay/));
+  });
+  it("is kept for the merchant's own skew when it is configured larger", () => {
+    const wide = tapMerchantConfig({ authority: AUTHORITY, checkoutPath: CHECKOUT, skew: 120 });
+    const t = NOW;
+    const nonce = "wide-skew-nonce-00000001";
+    const replayed = () => received(headersFor({ nonce, created: t + 100, expiresIn: 480 }));
+    expect(verifyTapCheckout(db, replayed(), wide, t).ok).toBe(true);
+    expect(verifyTapCheckout(db, received(headersFor({ created: t + 650 })), wide, t + 650).ok).toBe(true);
+    expect(verifyTapCheckout(db, replayed(), wide, t + 650)).toMatchObject(refused(/replay/));
+  });
+});
+
+describe("review nits", () => {
+  it("takes a key on its end date and refuses it one second later", () => {
+    db.prepare("UPDATE tap_agents SET not_after = ? WHERE keyid = ?").run(NOW + 5, ops.keyId);
+    expect(check(received(headersFor()), NOW + 5).ok).toBe(true);
+    expect(check(received(headersFor()), NOW + 6)).toMatchObject(refused(/end date/));
+  });
+  it("keeps a revocation when the key is registered again", () => {
+    revokeAgent(db, ops.keyId, new Date());
+    pin(ops);
+    expect(check(received(headersFor()))).toMatchObject(refused(/revoked/));
+  });
+  it("never throws: an unreadable pinned row and a closed ledger are refusals", () => {
+    db.prepare("UPDATE tap_agents SET domains_json = 'not json' WHERE keyid = ?").run(ops.keyId);
+    expect(check(received(headersFor()))).toMatchObject(refused(/not readable/));
+    db.close();
+    expect(check(received(headersFor()))).toMatchObject(refused(/could not check/));
+  });
+  it("signs the authority in lower case, as the merchant compares it", () => {
+    expect(check(received(headersFor({ authority: "LocalHost:3001" }))).ok).toBe(true);
+  });
 });

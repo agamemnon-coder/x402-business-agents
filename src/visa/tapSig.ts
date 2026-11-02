@@ -1,8 +1,8 @@
 // D25: the two signatures on an agent's card checkout. Pure: no I/O, no clock, no database (the caller passes the
 // time, the nonce and the key).
 //
-// Signature 1 is Visa's Trusted Agent Protocol signature exactly as the unmodified reference proxy (cdn-proxy/server.js
-// at commit 16d59bd) verifies it: headers Signature-Input and Signature, label sig2, components ("@authority" "@path"),
+// Signature 1 is the Trusted Agent Protocol signature as Visa's reference proxy (cdn-proxy/server.js at commit 16d59bd,
+// github.com/visa/trusted-agent-protocol, unmodified) reads and verifies it: headers Signature-Input and Signature, label sig2, components ("@authority" "@path"),
 // parameters created, expires, keyId (camelCase: the proxy reads keyId, so this is not RFC 9421's keyid and not an RFC
 // 8941 key), alg="ed25519", nonce and tag. The proxy rebuilds the signature base from the header text it received
 // (minus "sig2="), so the signer signs the exact text it sends; it is built by hand because http-message-sig cannot
@@ -28,8 +28,6 @@ export const TAP_MAX_WINDOW_S = 480;
 export const TAP_CLOCK_SKEW_S = 30;
 /** What the signer gives a signature by default: well inside the window. */
 export const TAP_DEFAULT_LIFE_S = 300;
-/** How long a merchant must remember an accepted nonce: after this no signature carrying it can be inside its window. */
-export const TAP_NONCE_KEEP_S = TAP_MAX_WINDOW_S + 2 * TAP_CLOCK_SKEW_S;
 
 const SIG1_LABEL = "sig2";
 const SIG1_COMPONENTS = '("@authority" "@path")';
@@ -159,7 +157,8 @@ export function signTapCheckout(o: TapSignOptions): TapHeaders {
   if (!KEY_ID.test(o.keyId)) throw new Error("the keyId must match the reference proxy's rule (letters, digits, . _ -, at most 100)");
   if (!NONCE.test(o.nonce)) throw new Error("the nonce must be 16 to 200 base64, base64url or UUID characters");
   if (!TAP_TAGS.includes(o.tag)) throw new Error(`unknown tag ${o.tag}`);
-  return signTapCheckoutUnchecked(o);
+  // Hosts are case-insensitive; the merchant compares lower case, so the agent signs (and must send) lower case.
+  return signTapCheckoutUnchecked({ ...o, authority: o.authority.toLowerCase() });
 }
 
 /** For red-team tests only: signs whatever it is given, so the merchant's refusals can be shown. */

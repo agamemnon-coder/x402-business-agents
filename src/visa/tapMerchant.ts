@@ -12,12 +12,12 @@
 //   7. signature 1 verifies over the base the proxy builds (that authority, the request target), signature 2 over its
 //      RFC 9421 base, which covers TAP's two headers as received;
 //   8. only then the nonce is stored, per key; a nonce seen before is a replay.
-// Each refusal names its reason; sig1 and sig2 say how far each signature got. Never throws.
+// Each refusal names its reason; sig1 and sig2 say how far each signature got. Never throws: an error is a refusal.
 
 import { createHash, createPublicKey, timingSafeEqual } from "node:crypto";
 import type { DB } from "../db/open.js";
 import {
-  parseContentDigest, parseSig1, parseSig2, sig1Base, sig2Base, splitTarget, TAP_CLOCK_SKEW_S, TAP_NONCE_KEEP_S, verifyEd25519, windowProblem,
+  parseContentDigest, parseSig1, parseSig2, sig1Base, sig2Base, splitTarget, TAP_CLOCK_SKEW_S, TAP_MAX_WINDOW_S, verifyEd25519, windowProblem,
   type TapTag,
 } from "./tapSig.js";
 
@@ -55,7 +55,21 @@ const REQUIRED = ["signature-input", "signature", "content-digest", "purser-sign
 
 interface PinnedKey { agent: string; public_jwk: string; domains_json: string; not_after: number; revoked_at: string | null }
 
+/** How long a nonce is kept: after this no signature carrying it can be inside its window, with this skew either way. */
+export function nonceKeepSeconds(skew: number): number {
+  return TAP_MAX_WINDOW_S + 2 * skew;
+}
+
 export function verifyTapCheckout(db: DB, req: ReceivedCheckout, cfg: TapMerchantConfig, now = Math.floor(Date.now() / 1000)): TapMerchantVerdict {
+  try {
+    return check(db, req, cfg, now);
+  } catch (e) {
+    // A busy or broken ledger, an unreadable pinned row: refused, never thrown, nothing stored.
+    return { ok: false, reason: `the merchant could not check it: ${(e as Error).message.slice(0, 200)}`, sig1: "not checked", sig2: "not checked" };
+  }
+}
+
+function check(db: DB, req: ReceivedCheckout, cfg: TapMerchantConfig, now: number): TapMerchantVerdict {
   let sig1: SigVerdict = "not checked", sig2: SigVerdict = "not checked";
   let ids: { keyId?: string; nonce?: string } = {};
   const no = (reason: string): TapMerchantVerdict => ({ ok: false, reason, sig1, sig2, ...ids });
@@ -103,7 +117,10 @@ export function verifyTapCheckout(db: DB, req: ReceivedCheckout, cfg: TapMerchan
   if (!row) return no(`unknown key ${a.keyId}: not in our pinned tap_agents list`);
   if (row.revoked_at) return no(`key ${a.keyId} revoked at ${row.revoked_at}`);
   if (row.not_after < now) return no(`key ${a.keyId} is past its end date`);
-  if (!(JSON.parse(row.domains_json) as string[]).includes(cfg.authority)) return no(`key ${a.keyId} is not pinned for ${cfg.authority}`);
+  let domains: unknown;
+  try { domains = JSON.parse(row.domains_json); } catch { domains = null; }
+  if (!Array.isArray(domains)) return no(`key ${a.keyId}: its pinned domains are not readable`);
+  if (!domains.includes(cfg.authority)) return no(`key ${a.keyId} is not pinned for ${cfg.authority}`);
   let publicKey;
   try {
     publicKey = createPublicKey({ key: JSON.parse(row.public_jwk) as import("node:crypto").JsonWebKey, format: "jwk" });
@@ -126,7 +143,9 @@ export function verifyTapCheckout(db: DB, req: ReceivedCheckout, cfg: TapMerchan
 
   // 8. The nonce, last, per key.
   const fresh = db.transaction(() => {
-    db.prepare("DELETE FROM tap_rail_nonces WHERE seen_at < ?").run(now - TAP_NONCE_KEEP_S);
+    // Kept for the window plus this merchant's own skew either way (review, 2 November: a fixed retention with a larger
+    // configured skew let a replay through).
+    db.prepare("DELETE FROM tap_rail_nonces WHERE seen_at < ?").run(now - nonceKeepSeconds(cfg.skew));
     return db.prepare("INSERT OR IGNORE INTO tap_rail_nonces (keyid, nonce, seen_at) VALUES (?, ?, ?)").run(a.keyId, a.nonce, now).changes === 1;
   }).immediate();
   if (!fresh) return no("nonce already accepted for this key: a replay");
