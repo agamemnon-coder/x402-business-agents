@@ -29,6 +29,9 @@ const NOT_ITEMS = /^(seconds|secs|minutes|mins|hours|hrs|days|weeks|months|years
 /** "3 x", "x 2,500", or a number right before a plural ("4 gift cards", "2.500 SKUs", "3 nights"); the number is group 1, 2 or 3. */
 const COUNTED = /(?<![\w.,€$/:-])(\d[\d.,]*\d|\d)\s*(?:x|×)\s|(?:^|[\s(,])(?:x\s+|×\s*)(\d[\d.,]*\d|\d)(?!\w|[.,]\d)|(?<![\w.,€$/:-])(\d[\d.,]*\d|\d)\s+((?:[a-z-]+\s+){0,2}?)([a-z]+s)\b/gi;
 
+/** The most a model's count is taken for, as the model's own schema check (src/try/claude.ts) allows: defence in depth. */
+const MODEL_COUNT_MAX = 10_000;
+
 /** A count the message writes: a whole number, none, or the reason the number written cannot be one ("2,5 checks"). */
 export type Count = { n: number } | { n: null; why: string } | null;
 
@@ -41,7 +44,7 @@ export type Count = { n: number } | { n: null; why: string } | null;
 export function countIn(text: string, modelSays?: number | null): Count {
   const counts = readAllIn(text, "count");
   const notTime = (end: number) => !NOT_ITEMS.test(/^\s*([a-z]+)/i.exec(text.slice(end))?.[1] ?? "");
-  if (typeof modelSays === "number" && Number.isInteger(modelSays) && modelSays > 1 && counts.some((t) => t.currency === null && t.reading.ok && t.reading.value === modelSays && notTime(t.end))) return { n: modelSays };
+  if (typeof modelSays === "number" && Number.isInteger(modelSays) && modelSays > 1 && modelSays < MODEL_COUNT_MAX && counts.some((t) => t.currency === null && t.reading.ok && t.reading.value === modelSays && notTime(t.end))) return { n: modelSays };
   for (const m of text.matchAll(COUNTED)) {
     if (m[5] && NOT_ITEMS.test(m[5])) continue;
     const raw = (m[1] ?? m[2] ?? m[3])!;
@@ -176,6 +179,13 @@ function amountWritten(text: string, written: string): { cents: number } | { why
   return w.ok ? { cents: alone.value } : w.why ? { why: w.why } : null;
 }
 
+const ZERO = "The amount must be more than zero";
+/** An amount read from the message, refused when it is zero: nothing is bought or paid for €0. */
+function amountWrittenAboveZero(text: string, written: string): { cents: number } | { why: string } | null {
+  const r = amountWritten(text, written);
+  return r && "cents" in r && r.cents <= 0 ? { why: `${written} is zero. ${ZERO}` } : r;
+}
+
 /** Handles one request in the demo world. `now` fixes the clock (for dates); `models` are Claude, or code alone. */
 export async function tryPurser(input: string, models: TryModels, now: Date, mode: "claude" | "plain" = "claude"): Promise<TryResult> {
   const whole = input.replace(/\r/g, "").trim().slice(0, TRY_MAX_CHARS);
@@ -211,6 +221,10 @@ export async function tryPurser(input: string, models: TryModels, now: Date, mod
     return done("question", "Which amount?", `${unreadable.reading.why}. Nothing was done.`);
   }
   const amounts = [...new Map(named.map((m) => [m.reading.ok ? m.reading.value : -1, m.currency])).entries()];
+  if (amounts.some(([c]) => c <= 0)) {
+    steps.push({ by: "code", title: "Checked the amount", detail: `The message names an amount of zero. ${ZERO}.`, tone: "bad" });
+    return done("question", "How much may it cost?", `${ZERO}: nothing is bought or paid for ${money(0, amounts.find(([c]) => c <= 0)![1])}. Nothing was done.`);
+  }
   if (amounts.length > 1) {
     const shown = listed(amounts.map(([c, cur]) => money(c, cur)));
     steps.push({ by: "code", title: "Checked the amount", detail: `The message names more than one amount: ${shown}.`, tone: "bad" });
@@ -237,7 +251,7 @@ export async function tryPurser(input: string, models: TryModels, now: Date, mod
 
   // 5. Code checks the amount against the words typed: a model cannot add a number the CFO did not write, and a number
   // is read where it is written, by the one reader (src/lib/numbers.ts).
-  const read = f.amount !== null ? amountWritten(text, f.amount) : null;
+  const read = f.amount !== null ? amountWrittenAboveZero(text, f.amount) : null;
   if (read && "why" in read) {
     steps.push({ by: "code", title: "Checked the amount", detail: `${read.why}.`, tone: "bad" });
     return done("question", "Which amount?", `${read.why}. Nothing was done.`);

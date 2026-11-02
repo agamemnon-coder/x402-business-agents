@@ -4,6 +4,7 @@
 // read; where the field decides, the field decides; what stays ambiguous is refused with a reason, never rounded.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { fromCents, readAmount } from "../src/lib/money.js";
 import { moneyIn, readNumber, type NumberReading } from "../src/lib/numbers.js";
 
 const value = (r: NumberReading) => (r.ok ? r.value : `refused: ${r.why}`);
@@ -136,4 +137,74 @@ describe("round trips (property)", () => {
       if (r.ok) expect(Number.isSafeInteger(r.value) && r.value >= 0).toBe(true);
     }), { numRuns: 1_000 });
   });
+
+  // Review of try-numbers: the property above checks the digits, not where the decimal point went. Here: whatever is
+  // typed, an accepted money reading is exactly the digits read whole (thousands) or with the part after the last mark
+  // as decimals, and only a mark with exactly three digits after it may be read as thousands.
+  it("never rounds or shifts: a money reading is digits × 100, or digits × 100 / 10^(digits after the last mark)", () => {
+    fc.assert(fc.property(fc.stringMatching(/^[0-9][0-9.,]{0,14}$/), (s) => {
+      const r = readNumber(s, "money");
+      if (!r.ok) return;
+      const digits = BigInt(s.replace(/[.,]/g, "")) * 100n;
+      const last = Math.max(s.lastIndexOf("."), s.lastIndexOf(","));
+      const tail = last < 0 ? 0 : s.length - last - 1;
+      const asDecimal = BigInt(r.value) * 10n ** BigInt(tail) === digits;
+      const asThousands = BigInt(r.value) === digits;
+      expect({ s, value: r.value, ok: tail === 3 ? asDecimal || asThousands : asDecimal }).toEqual({ s, value: r.value, ok: true });
+    }), { numRuns: 3_000 });
+  });
+
+  it("magnitude: a whole part in any grouping with 1 to 4 decimals (zeros past cents) reads as exactly its cents", () => {
+    fc.assert(fc.property(fc.integer({ min: 0, max: 9_999_999 }), fc.integer({ min: 0, max: 99 }), fc.constantFrom(1, 2, 3, 4), fc.constantFrom("nl", "en"), fc.boolean(), (whole, cents, places, style, group) => {
+      fc.pre(places !== 1 || cents % 10 === 0);
+      fc.pre(places !== 3 || whole === 0 || whole > 999); // "2.500" alone is thousands by rule 5 (the round trips cover it)
+      const [g, d] = style === "nl" ? [".", ","] : [",", "."];
+      const w = group ? String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, g) : String(whole);
+      const two = String(cents).padStart(2, "0");
+      const dec = places === 1 ? two[0]! : two.padEnd(places, "0");
+      const s = `${w}${d}${dec}`;
+      expect({ s, read: value(readNumber(s, "money")) }).toEqual({ s, read: whole * 100 + cents });
+    }), { numRuns: 2_000 });
+  });
 });
+
+// ── Invoices: the shared reader may only be stricter than the reader it replaced ──
+
+/** readAmount as it was before the shared reader (build/next c69e821, src/lib/money.ts), kept here as the reference. */
+function oldReadAmount(written: string): string | null {
+  const s = written.trim().replace(/^(?:EUR|USD|USDZ|€|\$)\s*/i, "").replace(/\s*(?:EUR|USD|€)$/i, "");
+  let whole: string, cents = "00";
+  let m: RegExpExecArray | null;
+  if ((m = /^(\d+)$/.exec(s))) whole = m[1]!;
+  else if ((m = /^(\d+)[.,](\d{2})$/.exec(s))) [whole, cents] = [m[1]!, m[2]!];
+  else if ((m = /^(\d{1,3})([., \u00a0\u202f])(\d{3}(?:\2\d{3})*)(?:([.,])(\d{2}))?$/.exec(s)) && m[4] !== m[2]) {
+    whole = m[1]! + m[3]!.split(m[2]!).join("");
+    if (m[5]) cents = m[5];
+  } else return null;
+  const total = Number(whole) * 100 + Number(cents);
+  return Number.isSafeInteger(total) ? fromCents(total) : null;
+}
+
+describe("invoices (readAmount) against the reader it replaced (property)", () => {
+  const invoiceText = fc.oneof(
+    fc.stringMatching(/^(EUR |USD |€ ?|\$)?[0-9][0-9., \u00a0\u202f]{0,14}( EUR| €| USD)?$/),
+    fc.tuple(fc.integer({ min: 0, max: 999_999_999 }), fc.nat(), fc.nat()).map(([c, style, sign]) => writeMoney(c, style, sign) ?? fromCents(c)),
+    fc.string({ maxLength: 20 }),
+  );
+  // Breaks if the shared reader accepts an invoice total the old reader refused, or reads one it accepted as another value.
+  it("never accepts what the old reader refused, and never changes a value it accepted", () => {
+    fc.assert(fc.property(invoiceText, (s) => {
+      const now = readAmount(s);
+      if (now !== null) expect({ s, now }).toEqual({ s, now: oldReadAmount(s) });
+    }), { numRuns: 5_000 });
+  });
+
+  it("still reads every total the old reader read in the notations suppliers use", () => {
+    fc.assert(fc.property(fc.integer({ min: 0, max: 999_999_999 }), fc.nat(), fc.nat(), (c, style, sign) => {
+      const w = writeMoney(c, style % 7, sign % 4);
+      fc.pre(w !== null && oldReadAmount(w) !== null && !/^[^0-9]*0[.,]\d{3}/.test(w));
+      expect({ w, read: readAmount(w) }).toEqual({ w, read: oldReadAmount(w) });
+    }), { numRuns: 2_000 });
+  });
+});
+

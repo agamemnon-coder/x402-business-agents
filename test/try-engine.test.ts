@@ -223,4 +223,27 @@ describe("Try Purser reads numbers the way people write them, and never drops a 
     expect(await tryPurser("Pay Stockline 0.10 test USD per stock check", plainModels, now)).toMatchObject({ outcome: "refused", headline: "Refused by the chain" });
     expect(amountStep(await tryPurser("Book a train on 2026-11-20 to Paris, €120", plainModels, now))).toBe("€120.00, as written in the message.");
   });
+
+  // Review of try-numbers, 2 Nov: a zero amount went through ("for €0" was paid as €0.00).
+  it("refuses a zero amount, whoever read it", async () => {
+    for (const r of [
+      await tryPurser("Buy Figma Pro for €0", plainModels, now),
+      await tryPurser("Buy Figma Pro for €0", fake("software", { amount: "0", currency: "EUR" }), now),
+      await tryPurser("Pay Stockline $0.00 each for 25 stock checks", plainModels, now),
+      await tryPurser("Pay Stockline $0.00 each for 25 stock checks", fake("api_data", { merchant: "Stockline", amount: "0.00", currency: "USD", quantity: 25, per_unit: true }), now),
+      await tryPurser("Buy Figma Pro, budget 0", fake("software", { amount: "0", currency: "EUR" }), now),
+    ]) {
+      expect(r.outcome).toBe("question");
+      expect(r.detail).toMatch(/more than zero/);
+      expect(r.steps.some((s) => s.by === "demo world")).toBe(false);
+    }
+  });
+
+  it("takes a model's count only below 10,000 (defence in depth; code's own reading of the words still counts)", async () => {
+    const at = (q: number) => tryPurser(`Pay Stockline for stock checks, total: ${q}`, fake("api_data", { merchant: "Stockline", quantity: q }), now);
+    expect(amountStep(await at(9_000))).toMatch(/^9000 × 0\.04 test USD/);
+    expect(amountStep(await at(12_000))).toBe("0.04 test USD (Stockline's price per request).");
+    expect(amountStep(await tryPurser("Buy 12.000 stock checks from Stockline", fake("api_data", { merchant: "Stockline", quantity: 12_000 }), now))).toMatch(/^12000 × 0\.04 test USD = 480\.00 test USD/);
+  });
 });
+
