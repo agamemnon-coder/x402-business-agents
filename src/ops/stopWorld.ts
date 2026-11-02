@@ -80,7 +80,7 @@ export async function stopWorld(dbPath: string, deps: StopDeps): Promise<StopRes
     };
     const check = (): Proc[] | string => {
       const g = group();
-      const foreign = g.filter((p) => p.token !== lock.token);
+      const foreign = g.filter((p) => p.token !== lock.token || !p.envReadable);
       return foreign.length ? `process group ${lock.pgid} also holds process(es) that are not world ${world}'s run: ${show(foreign)}. Nothing signalled.` : g;
     };
     const first = check();
@@ -124,7 +124,8 @@ export async function stopWorld(dbPath: string, deps: StopDeps): Promise<StopRes
   }
 }
 
-/** Removes exactly this lock (the runner may have given it back already, or a new run taken it meanwhile: then nothing). */
+/** Removes exactly this lock and its run's role rows (a new run's rows, taken meanwhile, are left alone). */
 function removeLock(db: Database.Database, lock: RunnerLock): void {
   db.prepare("DELETE FROM locks WHERE lock_key = 'runner' AND holder = ?").run(JSON.stringify(lock));
+  db.prepare("DELETE FROM locks WHERE lock_key LIKE 'runner.%' AND json_extract(holder, '$.token') = ?").run(lock.token);
 }

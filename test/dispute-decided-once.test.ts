@@ -232,6 +232,27 @@ describe("a dispute is decided once, also after a restart", () => {
     expect(w.sends.size).toBe(0);
   });
 
+  it("the agent's decision through the ledger's proposal transaction: a crash in the review, then a crash after a refund", async () => {
+    const file = ledgerFile();
+    const w = world();
+    const hang = { on: true };
+    const withLedger = (db: DB): SupportDeps => ({ ...w.deps(), ...ledgerProposals(db, hang) });
+    const first = openDb(file);
+    const cut = await Promise.race([settleDispute(first, facts, withLedger(first), agent()).then(() => "finished"), new Promise((ok) => setTimeout(() => ok("crashed"), 300))]);
+    expect(cut).toBe("crashed");
+    // Refunds paid, proposal made and noted in one transaction, review cut off.
+    expect(decisionOf(first, facts.disputeId)).toMatchObject({ status: "DECIDED", paid: [7, 10, 13], escalation_proposal: "P-0009" });
+    hang.on = false;
+    const db = openDb(file);
+    const again = agent();
+    const r = await settleDispute(db, facts, withLedger(db), again);
+    expect(again.asked).toBe(0);
+    expect(r.already).toMatch(/carried out/);
+    expect(db.prepare("SELECT id, seqs, review FROM test_props").all()).toEqual([{ id: "P-0009", seqs: JSON.stringify(RIGHT), review: "advisory" }]);
+    expect([...w.sends.values()]).toEqual([1, 1, 1]);
+    expect(settledRows(db)).toBe(1);
+  });
+
   it("two processes carrying out the same decision at once: one proposal, each refund sent once", async () => {
     const file = ledgerFile();
     const w = world();

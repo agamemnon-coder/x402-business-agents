@@ -92,8 +92,17 @@ CREATE TABLE IF NOT EXISTS dispute_decisions (
   audited INTEGER NOT NULL DEFAULT 0,
   attempts INTEGER NOT NULL DEFAULT 0,
   attempted_at TEXT,
+  -- Refunds of the decision code could not pay (no longer within the automatic limits, or refused for good): they go to
+  -- the CFO as one recorded proposal, never paid around the limits.
+  handover_json TEXT NOT NULL DEFAULT '[]',
+  handover_proposal TEXT,
+  -- The process carrying it out now ({pid, start}): another process leaves it alone while that one lives.
+  carrier TEXT,
   done_at TEXT
 );
+CREATE TRIGGER IF NOT EXISTS dispute_decision_once BEFORE INSERT ON dispute_decisions
+WHEN EXISTS (SELECT 1 FROM dispute_decisions WHERE dispute_id = NEW.dispute_id)
+BEGIN SELECT RAISE(ABORT, 'a dispute decision is decided once'); END;
 CREATE TRIGGER IF NOT EXISTS dispute_decision_fixed BEFORE UPDATE OF dispute_id, source, plan_json, decided_at ON dispute_decisions
 BEGIN SELECT RAISE(ABORT, 'a dispute decision is decided once'); END;
 CREATE TRIGGER IF NOT EXISTS dispute_decision_kept BEFORE DELETE ON dispute_decisions

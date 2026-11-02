@@ -27,7 +27,9 @@ zes uur stil, daarna in twee minuten weer op). Alle programma's stoppen tegelijk
    (dry-6, dry-12; `test/resume-approved.test.ts`). Een geschil dat al besloten was, wordt niet opnieuw besloten: het
    besluit staat in het grootboek vóór er iets betaald wordt, en de Support-agent (of `npm run s2`) betaalt alleen wat
    van dát besluit nog openstond, elke refund één keer (`test/dispute-decided-once.test.ts`). De runner doet dat zelf bij
-   de start (`npm run s2 -- --resume-only`); tot het klaar is staat er een melding op /health.
+   de start (`npm run s2 -- --resume-only`); tot het klaar is staat er een melding op /health. Een refund die niet meer
+   binnen de automatische limieten past of definitief geweigerd wordt, betaalt code niet: die gaat als één voorstel naar
+   de CFO (Face ID).
 3. `npm run verify` op de wereld: niets twee keer betaald, elke goedkeuring met een passkey.
 4. Max laten weten: de laatste stap uit het log, wat er is hervat, en de volgende stap. Max zegt "ok".
 5. Een voorstel dat in de tussentijd verliep: opnieuw voorstellen (een nieuw P-nummer) en opnieuw laten goedkeuren.
@@ -43,6 +45,8 @@ Op 2 november raakte een stopcommando alleen de setsid-starter; de runner van ee
 tot 11:03. Nu is elke wereld één eigen procesgroep met een slot in het eigen grootboek (tabel `locks`, rij `runner`:
 pid, procesgroep, host, starttijd, wereld, run-token). Een tweede runner op hetzelfde grootboek weigert te starten.
 
+- Starten kan alleen met `KIT11_DB` gezet (ook `npm run relay`), zodat elke runner een vindbare wereld heeft. Per wereld
+  draait één `up` en één relay; een tweede weigert, ook binnen dezelfde run.
 - Stoppen: `npm run stop -- <wereld>` (bijvoorbeeld `npm run stop -- live-1`, of het pad naar het grootboek).
   Het stuurt SIGTERM naar de procesgroep uit het slot van díe wereld (runner, `up` en agents samen), wacht (standaard
   90 s, `--grace <s>`; een lopende uitvoering maakt hij eerst af), daarna zo nodig SIGKILL naar dezelfde groep, en

@@ -42,10 +42,16 @@ const KEY = "runner";
 /** The world a ledger is: its file name without .sqlite (data/live-1.sqlite is live-1). */
 export const worldOf = (dbPath: string) => basename(dbPath).replace(/\.sqlite$/, "");
 
+/** The world's runner lock (the run: `up`, or a relay started alone). */
 export function lockOf(db: Database.Database): RunnerLock | null {
+  return rowOf(db, KEY);
+}
+
+/** The lock of one role inside the run ('runner.up', 'runner.relay'): one live process per role, whatever the run. */
+export function rowOf(db: Database.Database, key: string): RunnerLock | null {
   const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'locks'").get();
   if (!has) return null;
-  const r = db.prepare("SELECT holder FROM locks WHERE lock_key = ?").get(KEY) as { holder: string } | undefined;
+  const r = db.prepare("SELECT holder FROM locks WHERE lock_key = ?").get(key) as { holder: string } | undefined;
   if (!r) return null;
   try {
     return JSON.parse(r.holder) as RunnerLock;
@@ -71,11 +77,15 @@ export function acquireRunnerLock(db: DB, dbPath: string, me: Me, table: Process
   const real = realpathSync(dbPath);
   const world = worldOf(real);
   const mine: RunnerLock = { world, db: real, file: fileId(real), host, pid: me.pid, pid_start: me.pid_start, pgid: me.pgid, token: me.token, role: me.role, started_at: now.toISOString() };
+  const roleKey = `${KEY}.${me.role}`;
+  const put = (key: string) => db.prepare("INSERT INTO locks (lock_key, holder, acquired_at, released_at) VALUES (?, ?, ?, NULL) ON CONFLICT (lock_key) DO UPDATE SET holder = excluded.holder, acquired_at = excluded.acquired_at, released_at = NULL")
+    .run(key, JSON.stringify(mine), mine.started_at);
   const take = (note?: string): Acquired => {
-    db.prepare("INSERT INTO locks (lock_key, holder, acquired_at, released_at) VALUES (?, ?, ?, NULL) ON CONFLICT (lock_key) DO UPDATE SET holder = excluded.holder, acquired_at = excluded.acquired_at, released_at = NULL")
-      .run(KEY, JSON.stringify(mine), mine.started_at);
+    put(KEY);
+    put(roleKey);
     return { ok: true, owner: true, lock: mine, ...(note ? { note } : {}) };
   };
+  const alive = (l: RunnerLock) => procs.some((p) => p.pid === l.pid && p.start === l.pid_start && live(p));
   // The process table is read before the write transaction, so other writers of the ledger do not wait on the scan;
   // read again inside it when the lock it judges was taken after that read.
   const scannedAt = new Date().toISOString();
@@ -88,27 +98,44 @@ export function acquireRunnerLock(db: DB, dbPath: string, me: Me, table: Process
     if (held && held.started_at >= scannedAt) procs = table.list();
     const earlier = leftovers().filter((p) => !held || p.token !== held.token);
     if (earlier.length) return { ok: false, message: `${earlier.length} process(es) of an earlier run of world ${world} still use its ledger (pids ${earlier.map((p) => p.pid).join(", ")}, process group ${[...new Set(earlier.map((p) => p.pgid))].join(", ")}). Stop them first (check with ps -o pid,pgid,args).` };
-    if (!held) return take();
+    // One live process per role, also inside one run: `up` restarting its relay while the old relay still runs, or a
+    // second `npm run relay`/`up` started from inside the group (it inherits the token), does not start.
+    const roleBusy = (): Acquired | null => {
+      const role = rowOf(db, roleKey);
+      if (role && role.pid !== me.pid && sameLedger(role, real) && role.host === host && alive(role)) {
+        return { ok: false, message: `world ${world} already has a ${me.role}: ${describe(role)}. A second ${me.role} on the same ledger does not start. Stop the world first: npm run stop -- ${world}` };
+      }
+      return null;
+    };
+    if (!held) return roleBusy() ?? take();
     // A row copied with the ledger (a snapshot, a copy for a new world) is not a lock on this file.
     if (!sameLedger(held, real)) return take(`a lock row copied from ${held.db} was replaced`);
     if (held.host !== host) return { ok: false, message: `world ${world} has a runner lock held on host ${held.host} (${describe(held)}); it cannot be checked from ${host}. Stop it there first; if that host is gone (a new container), npm run stop -- ${world} --forget-other-host clears it once nothing here uses the ledger.` };
     const sameRun = held.token === me.token && held.pgid === me.pgid;
     const holder = procs.find((p) => p.pid === held.pid && p.start === held.pid_start && live(p));
     if (holder) {
-      if (sameRun) return { ok: true, owner: false, lock: held };
+      if (sameRun) {
+        const busy = roleBusy();
+        if (busy) return busy;
+        put(roleKey);
+        return { ok: true, owner: false, lock: held };
+      }
       return { ok: false, message: `world ${world} already has a runner: ${describe(held)}. A second runner on the same ledger does not start. Stop it first: npm run stop -- ${world}` };
     }
-    if (sameRun) return take(`took over from ${describe(held)} of this same run, which has stopped`);
-    const left = procs.filter((p) => p.pgid === held.pgid && p.token === held.token && live(p));
+    if (sameRun) return roleBusy() ?? take(`took over from ${describe(held)} of this same run, which has stopped`);
+    // A process whose environment cannot be read may be of that run: it counts as left, never as gone.
+    const left = procs.filter((p) => p.pgid === held.pgid && live(p) && (p.token === held.token || !p.envReadable));
     if (left.length) return { ok: false, message: `the runner of world ${world} (${describe(held)}) has stopped, but ${left.length} process(es) of its run still run (pids ${left.map((p) => p.pid).join(", ")}). Stop them first: npm run stop -- ${world}` };
     return take(`a stale lock was cleared: ${describe(held)} is gone and nothing of its run is left`);
   }).immediate();
 }
 
-/** Gives the lock back, only if this process still holds it. */
-export function releaseRunnerLock(db: Database.Database, me: Pick<Me, "pid" | "token">): void {
-  const held = lockOf(db);
-  if (held && held.pid === me.pid && held.token === me.token) db.prepare("DELETE FROM locks WHERE lock_key = ? AND holder = ?").run(KEY, JSON.stringify(held));
+/** Gives back what this process holds: its role's row, and the world's lock if it owns it. */
+export function releaseRunnerLock(db: Database.Database, me: Pick<Me, "pid" | "token" | "role">): void {
+  for (const key of [`${KEY}.${me.role}`, KEY]) {
+    const held = rowOf(db, key);
+    if (held && held.pid === me.pid && held.token === me.token) db.prepare("DELETE FROM locks WHERE lock_key = ? AND holder = ?").run(key, JSON.stringify(held));
+  }
 }
 
 /**
@@ -155,5 +182,5 @@ export function holdRunnerLock(db: DB, dbPath: string, role: string, group: { to
   }
   if (r.note) console.log(`lock     ${r.note}`);
   console.log(`lock     world ${r.lock.world}: ${r.owner ? "this process holds" : `this run holds (pid ${r.lock.pid})`} the runner lock; process group ${group.pgid}. Stop with: npm run stop -- ${r.lock.world}`);
-  if (r.owner) process.on("exit", () => { try { releaseRunnerLock(db, me); } catch { /* the stop removes it */ } });
+  process.on("exit", () => { try { releaseRunnerLock(db, me); } catch { /* the stop removes it */ } });
 }

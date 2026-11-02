@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { openDb, type DB } from "../src/db/open.js";
 import type { Proc, ProcessTable } from "../src/ops/processes.js";
-import { acquireRunnerLock, lockOf, releaseRunnerLock, type Me } from "../src/ops/runnerLock.js";
+import { acquireRunnerLock, lockOf, releaseRunnerLock, rowOf, type Me } from "../src/ops/runnerLock.js";
 import { stopWorld, type StopDeps } from "../src/ops/stopWorld.js";
 
 const dirs: string[] = [];
@@ -27,7 +27,7 @@ class FakeTable implements ProcessTable {
   /** ps disagreeing with the table (a process the table did not see). */
   psExtra: number[] = [];
   add(p: Partial<FakeProc> & { pid: number; pgid: number; token: string | null }): void {
-    this.procs.push({ ppid: 1, state: "S", start: `t${p.pid}`, db: null, cmd: `node runner ${p.pid}`, ...p });
+    this.procs.push({ ppid: 1, state: "S", start: `t${p.pid}`, db: null, cmd: `node runner ${p.pid}`, envReadable: true, ...p });
   }
   list(): Proc[] { return this.procs.map((p) => ({ ...p })); }
   signalGroup(pgid: number, signal: NodeJS.Signals): void {
@@ -67,10 +67,48 @@ describe("the runner lock: one runner per world", () => {
     t.add({ pid: 101, pgid: 100, token: "run-a" });
     expect(acquireRunnerLock(a.db, a.path, me(100, 100, "run-a", "up"), t, "box")).toMatchObject({ ok: true, owner: true });
     expect(acquireRunnerLock(a.db, a.path, me(101, 100, "run-a"), t, "box")).toMatchObject({ ok: true, owner: false, lock: { pid: 100, role: "up" } });
-    releaseRunnerLock(a.db, { pid: 101, token: "run-a" });
+    releaseRunnerLock(a.db, { pid: 101, token: "run-a", role: "relay" });
     expect(lockOf(a.db)!.pid).toBe(100);
-    releaseRunnerLock(a.db, { pid: 100, token: "run-a" });
+    expect(rowOf(a.db, "runner.relay")).toBeNull();
+    releaseRunnerLock(a.db, { pid: 100, token: "run-a", role: "up" });
     expect(lockOf(a.db)).toBeNull();
+    expect(rowOf(a.db, "runner.up")).toBeNull();
+  });
+
+  it("one relay per world, also inside one run: up restarting it while the old relay lives on, or a second up, is refused", () => {
+    const a = ledger("world-a");
+    const t = new FakeTable();
+    t.add({ pid: 100, pgid: 100, token: "run-a" });
+    t.add({ pid: 101, pgid: 100, token: "run-a" });
+    expect(acquireRunnerLock(a.db, a.path, me(100, 100, "run-a", "up"), t, "box").ok).toBe(true);
+    expect(acquireRunnerLock(a.db, a.path, me(101, 100, "run-a"), t, "box")).toMatchObject({ ok: true, owner: false });
+    // The old relay still runs: a new relay of the same run (same group, same token) does not start.
+    t.add({ pid: 102, pgid: 100, token: "run-a" });
+    const second = acquireRunnerLock(a.db, a.path, me(102, 100, "run-a"), t, "box");
+    expect(second.ok).toBe(false);
+    if (!second.ok) expect(second.message).toMatch(/already has a relay: pid 101/);
+    // Nor does a second `up` started from inside the group.
+    t.add({ pid: 103, pgid: 100, token: "run-a" });
+    const up2 = acquireRunnerLock(a.db, a.path, me(103, 100, "run-a", "up"), t, "box");
+    expect(up2.ok).toBe(false);
+    if (!up2.ok) expect(up2.message).toMatch(/already has a up: pid 100/);
+    // The old relay died (no exit handler ran): its row is stale, and the restarted relay takes it.
+    t.procs = t.procs.filter((p) => p.pid !== 101);
+    expect(acquireRunnerLock(a.db, a.path, me(102, 100, "run-a"), t, "box")).toMatchObject({ ok: true, owner: false });
+    expect(rowOf(a.db, "runner.relay")!.pid).toBe(102);
+  });
+
+  it("a process of the lock's group whose environment cannot be read counts as still running: no takeover", () => {
+    const a = ledger("world-a");
+    const t = new FakeTable();
+    t.add({ pid: 100, pgid: 100, token: "run-a" });
+    acquireRunnerLock(a.db, a.path, me(100, 100, "run-a"), t, "box");
+    t.procs = [];
+    t.add({ pid: 104, pgid: 100, token: null, envReadable: false });
+    t.add({ pid: 300, pgid: 300, token: "run-new" });
+    const r = acquireRunnerLock(a.db, a.path, me(300, 300, "run-new"), t, "box");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/still run \(pids 104\)/);
   });
 
   it("clears a stale lock (its process is gone, nothing of its run is left), also after pid reuse", () => {

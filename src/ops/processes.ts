@@ -17,6 +17,8 @@ export interface Proc {
   start: string;
   /** KIT11_RUN_TOKEN from the environment it was started with: every process of one world's run carries it. */
   token: string | null;
+  /** Whether its environment could be read at all: an unreadable one may hide a run token, so it is never "not ours". */
+  envReadable: boolean;
   /** KIT11_DB as it was started with, resolved against its working directory. */
   db: string | null;
   cmd: string;
@@ -57,7 +59,7 @@ export function procOf(pid: number): Proc | null {
     }
     let cmd = "";
     try { cmd = readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter(Boolean).join(" ").slice(0, 200); } catch { /* gone */ }
-    return { pid, ppid: Number(f[1]), pgid: Number(f[2]), state: f[0]!, start: f[19]!, token: env?.token ?? null, db, cmd };
+    return { pid, ppid: Number(f[1]), pgid: Number(f[2]), state: f[0]!, start: f[19]!, token: env?.token ?? null, envReadable: env !== null, db, cmd };
   } catch {
     return null;
   }

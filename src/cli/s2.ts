@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Address } from "viem";
 import { checkData, refundsFor, salesFound, verifyOrders, type DataVerdict, type DisputeClaims, type OrderEvidence } from "../agents/disputes.js";
-import { auditSettlement, carryOut, decisionOf, decisionSummary, finished, legacyDecision, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan } from "../agents/disputeDecision.js";
+import { auditSettlement, carryOut, decisionOf, decisionSummary, finished, legacyDecision, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan, type Part } from "../agents/disputeDecision.js";
 import { attachReview } from "../claude/review.js";
 import { agentsOn } from "../agents/loop.js";
 import { settleDispute } from "../agents/supportAgent.js";
@@ -14,7 +14,7 @@ import { REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS } from "../config
 import { openDb } from "../db/open.js";
 import type { RefundBatchTerms } from "../executors/refundBatch.js";
 import { refundSale } from "../executors/refunds.js";
-import { AUTO_REFUND, withOrigin } from "../provenance/origin.js";
+import { AUTO_REFUND, withOrigin, type Origin } from "../provenance/origin.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA } from "../lib/terms.js";
 import { activeMandate, mandateSpent } from "../metal/mandate.js";
@@ -26,7 +26,6 @@ import { addresses } from "../world/runtime.js";
 import { PROPOSAL_TTL_MS } from "../config/policy.js";
 
 const db = openDb();
-const addr = addresses(db);
 const fixture = (f: string) => resolve(import.meta.dirname, "../../fixtures", f);
 const email = readFileSync(fixture("summit-dispute-email.txt"), "utf8");
 const correctionText = readFileSync(fixture("stockline-corrections.txt"), "utf8");
@@ -51,6 +50,7 @@ if (prior && finished(prior)) {
   console.log(`ALREADY DECIDED  ${disputeId}: ${decisionSummary(prior)}. Nothing is decided again.`);
   process.exit(0);
 }
+const addr = addresses(db);
 
 let claims: DisputeClaims;
 let sales: ReturnType<typeof salesFound>["sales"];
@@ -103,7 +103,8 @@ if (prior) {
   console.log(`\nDATA CHECK       stock check  field  delivered  corrected  delta`);
   for (const v of verdicts) console.log(`                 #${String(v.seq).padEnd(4)} ${v.field.padEnd(6)} ${v.delivered}    ${v.corrected}    ${v.delta_units > 0 ? "+" : ""}${(v.delta_units / 100_000).toFixed(5)}${v.refund ? "  -> refund" : ""}`);
   // The evidence the decision is made on, stored before it is made: a restart carries the decision out from this.
-  db.prepare("UPDATE disputes SET evidence_json = ?, verdicts_json = ? WHERE dispute_id = ?").run(JSON.stringify(orders), JSON.stringify(verdicts), disputeId);
+  // Never once a decision was recorded on it (a second s2 running at the same time must not rewrite the winner's evidence).
+  db.prepare("UPDATE disputes SET evidence_json = ?, verdicts_json = ? WHERE dispute_id = ? AND NOT EXISTS (SELECT 1 FROM dispute_decisions WHERE dispute_id = ?)").run(JSON.stringify(orders), JSON.stringify(verdicts), disputeId, disputeId);
 }
 
 const refunds = refundsFor(sales, verdicts);
@@ -133,10 +134,14 @@ function refundProposal(items: typeof refunds, reason: string) {
 const bySeq = new Map(sales.map((s) => [s.seq, s]));
 const itemsOf = (seqs: number[]) => seqs.map((seq) => { const sale = bySeq.get(seq)!; return { sale_id: sale.sale_id, seq, amount_cents: sale.price_cents }; });
 const verified = orders.filter((o) => o.signed_order && o.within_mandate && o.payer_is_customer).length;
+/** D24: code's own rule decided these proposals (the CFO decides them with Face ID). */
+const CODE_PROPOSES: Origin = { actor: "code", rule: "the dispute desk's settlement: what the automatic limits do not cover goes to the CFO", agent: "support" };
 const ESCALATE_REASON = "customer request: refund all; evidence shows the orders were placed and the data correct";
 const APPROVAL_REASON = "wrong data per supplier correction";
 // The proposal for a part of the decision already in the ledger (made before a restart cut off noting it), any status.
-const existing = (part: "escalate" | "approval") => (db.prepare(`SELECT proposal_id FROM proposals WHERE kind = 'refund_batch' AND json_extract(terms_json, '$.dispute_id') = ? AND ${part === "escalate" ? "json_extract(terms_json, '$.reason') LIKE 'customer request%'" : "json_extract(terms_json, '$.reason') = ?"} ORDER BY created_at LIMIT 1`).get(...(part === "escalate" ? [disputeId] : [disputeId, APPROVAL_REASON])) as { proposal_id: string } | undefined)?.proposal_id ?? null;
+const HANDOVER_REASON = "automatic refund not paid";
+const REASON_LIKE: Record<Part, string> = { escalate: "customer request%", approval: APPROVAL_REASON, handover: `${HANDOVER_REASON}%` };
+const existing = (part: Part) => (db.prepare("SELECT proposal_id FROM proposals WHERE kind = 'refund_batch' AND json_extract(terms_json, '$.dispute_id') = ? AND json_extract(terms_json, '$.reason') LIKE ? ORDER BY created_at LIMIT 1").get(disputeId, REASON_LIKE[part]) as { proposal_id: string } | undefined)?.proposal_id ?? null;
 const refundOne = async (seq: number) => {
   const sale = bySeq.get(seq);
   if (!sale) throw new Error(`#${seq} is not a delivered sale to this customer`);
@@ -144,7 +149,8 @@ const refundOne = async (seq: number) => {
   return { outcome: r.outcome, already: r.already, ...(r.tx ? { tx: `${EXPLORER_TX}${r.tx}` } : {}), ...(r.reason ? { reason: r.reason } : {}) };
 };
 
-const reasonFor = (part: "escalate" | "approval", seqs: number[], text: string, source: "claude" | "code") => {
+const reasonFor = (part: Part, seqs: number[], text: string, source: "claude" | "code") => {
+  if (part === "handover") return `${HANDOVER_REASON}: ${text}`.slice(0, 1000);
   if (source === "code") return text;
   // The Support agent's escalation: the reason in the signed terms is code's, from code's own data check; the agent's
   // advice goes to the review only.
@@ -155,17 +161,17 @@ const reasonFor = (part: "escalate" | "approval", seqs: number[], text: string, 
 };
 
 /** The decision's proposal for the CFO, made in the ledger (synchronously: carryOut runs it in one transaction). */
-function createProposalFor(part: "escalate" | "approval", seqs: number[], text: string, source: "claude" | "code"): string {
+function createProposalFor(part: Part, seqs: number[], text: string, source: "claude" | "code"): string {
   const items = itemsOf(seqs);
   const p = refundProposal(items, reasonFor(part, seqs, text, source));
-  if (part === "approval") console.log(`                 needs approval: ${p.proposal_id} sha256 ${p.terms_sha256}`);
+  if (part !== "escalate") console.log(`                 needs approval: ${p.proposal_id} sha256 ${p.terms_sha256}${part === "handover" ? " (refunds code could not pay automatically)" : ""}`);
   else if (source === "code") console.log(`ESCALATION       "refund all 12": the other ${items.length} (${fromCents(items.reduce((s, r) => s + r.amount_cents, 0))}) ${refunds.length ? "exceed the automatic limits" : "have no evidence for a refund"} -> ${p.proposal_id} (${p.status ?? "PENDING_APPROVAL"}), sha256 ${p.terms_sha256}`);
   return p.proposal_id;
 }
 
 /** Opus's advisory review beside the proposal (it never changes the terms); again after a crash if it is missing. */
-async function reviewProposal(part: "escalate" | "approval", proposalId: string, seqs: number[], text: string, source: "claude" | "code"): Promise<void> {
-  if (part === "approval") return;
+async function reviewProposal(part: Part, proposalId: string, seqs: number[], text: string, source: "claude" | "code"): Promise<void> {
+  if (part !== "escalate") return;
   const p = db.prepare("SELECT * FROM proposals WHERE proposal_id = ?").get(proposalId) as ProposalRow;
   const items = itemsOf(seqs);
   if (source === "claude") {
@@ -188,7 +194,7 @@ async function reviewProposal(part: "escalate" | "approval", proposalId: string,
   console.log(`REVIEW           ${p.proposal_id}: ${r.recommendation} (${r.source === "claude" ? "Opus, advisory" : "no model"}): ${r.summary}`);
 }
 // Code's proposal for refunds above the automatic limits takes no review (as before); the CFO's escalation does.
-const reviewed = (part: "escalate" | "approval", proposalId: string) => part === "approval" || !!(db.prepare("SELECT explanation FROM proposals WHERE proposal_id = ?").get(proposalId) as { explanation: string | null } | undefined)?.explanation;
+const reviewed = (part: Part, proposalId: string) => part !== "escalate" || !!(db.prepare("SELECT explanation FROM proposals WHERE proposal_id = ?").get(proposalId) as { explanation: string | null } | undefined)?.explanation;
 const proposals = { create: createProposalFor, review: reviewProposal, reviewed };
 
 /** Code's settlement, as in every recorded run: the wrong sales within the automatic limits, else to the CFO; the rest on request. */
@@ -199,8 +205,8 @@ function codePlan(): { plan: Omit<DecisionPlan, "source" | "model">; audits: Dec
     plan: {
       // D24: code decides these refunds, within the CFO's automatic limits, whatever started this script.
       refunds: route.route === "auto" ? refunds.map((r) => ({ seq: r.seq, cents: r.amount_cents, origin: AUTO_REFUND })) : [],
-      approval: route.route === "approval" ? { seqs: refunds.map((r) => r.seq), text: APPROVAL_REASON, origin: null } : null,
-      escalate: rest.length > 0 && claims.requested_action === "refund_all" ? { seqs: rest, text: ESCALATE_REASON, origin: null } : null,
+      approval: route.route === "approval" ? { seqs: refunds.map((r) => r.seq), text: APPROVAL_REASON, origin: CODE_PROPOSES } : null,
+      escalate: rest.length > 0 && claims.requested_action === "refund_all" ? { seqs: rest, text: ESCALATE_REASON, origin: CODE_PROPOSES } : null,
     },
     audits: route.route === "auto" ? [{ actor: "support", event: "refund.auto_approved", payload: { sales: refunds.map((r) => String(r.sale_id)), rule: "each <= limit and batch <= limit" } }] : [],
   };
@@ -209,6 +215,8 @@ function codePlan(): { plan: Omit<DecisionPlan, "source" | "model">; audits: Dec
 const exec: DecisionExec = {
   refund: refundOne,
   existing,
+  limits: () => refundThresholds(db),
+  refundedCents: (exceptSeq) => (db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS c FROM refunds WHERE dispute_id = ? AND outcome IN ('PAID', 'PENDING', 'HELD') AND sale_id != ?").get(disputeId, bySeq.get(exceptSeq)?.sale_id ?? -1) as { c: number }).c,
   ...proposals,
 };
 const progress = (line: string) => console.log(`                 ${line}`);

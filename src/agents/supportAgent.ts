@@ -15,7 +15,7 @@ import { claudeClient, MODELS } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { currentOrigin } from "../provenance/origin.js";
-import { auditSettlement, carryOut, decisionOf, decisionSummary, legacyDecision, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan } from "./disputeDecision.js";
+import { auditSettlement, carryOut, decisionOf, decisionSummary, legacyDecision, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan, type Part } from "./disputeDecision.js";
 import { runAgent, type AgentRun } from "./loop.js";
 
 export interface OrderCheck {
@@ -45,7 +45,7 @@ export interface SupportDeps {
   earlier(): { refunded: { seq: number; cents: number }[]; escalated: { proposalId: string; seqs: number[] } | null };
   limits: { eachCents: number; perDisputeCents: number };
   /** The CFO proposal already in the ledger for this part of the dispute's decision, if any (a crash after making it). */
-  existing?(part: "escalate" | "approval"): string | null;
+  existing?(part: Part): string | null;
   /**
    * When the agent's run does not count, code decides instead: its plan, recorded as this dispute's one decision and
    * carried out here, with the proposal for the refunds above the automatic limits. Without it the caller settles.
@@ -98,11 +98,14 @@ const NOT_RUN = (note: string): AgentRun => ({ status: "done", model: null, call
 function execOf(deps: SupportDeps): DecisionExec {
   return {
     refund: (seq) => deps.refund(seq),
+    // The automatic limits as they stand when a refund is paid (a later try is checked again), and the dispute's other refunds.
+    limits: () => deps.limits,
+    refundedCents: (exceptSeq) => deps.earlier().refunded.filter((r) => r.seq !== exceptSeq).reduce((n, r) => n + r.cents, 0),
     existing: (part) => deps.existing?.(part) ?? (part === "escalate" ? deps.earlier().escalated?.proposalId ?? null : null),
     ...(deps.proposals ?? {
-      propose: async (part: "escalate" | "approval", seqs: number[], text: string) => {
+      propose: async (part: Part, seqs: number[], text: string) => {
         if (part === "escalate") return (await deps.escalate(seqs, text)).proposalId;
-        throw new Error("no proposal for refunds above the automatic limits without the ledger's proposals");
+        throw new Error("no proposal for refunds code cannot pay automatically without the ledger's proposals");
       },
     }),
   };

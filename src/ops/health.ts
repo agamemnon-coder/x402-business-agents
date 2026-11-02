@@ -7,7 +7,7 @@ import type { DB } from "../db/open.js";
 import { lastReconciliation } from "../finance/reconcile.js";
 import { frozen } from "../policy/rules.js";
 import { pausesNotRevoked } from "../policy/pause.js";
-import { openDecisions } from "../agents/disputeDecision.js";
+import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -38,7 +38,10 @@ export function health(db: DB, now = new Date()): Health {
 
   // A dispute decision not fully carried out (a restart cut it off, or a refund was refused at payment): the runner's
   // start finishes it (npm run s2 -- --resume-only); it is never decided again.
-  for (const d of openDecisions(db)) alerts.push({ code: "dispute_decision_open", severity: "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; the runner's start or npm run s2 -- --resume-only finishes it, without deciding again.` });
+  // Critical once a refund could not be paid (it goes to the CFO as a proposal) or carrying out failed more than once.
+  for (const d of openDecisions(db)) alerts.push({ code: "dispute_decision_open", severity: d.handover.length || d.attempts >= HANDOVER_AFTER - 1 ? "critical" : "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; the runner's start or npm run s2 -- --resume-only finishes it, without deciding again.` });
+  // A dispute settled before decisions were recorded, with refunds left unfinished: it is never decided again, so a person looks.
+  for (const l of legacyUnfinished(db)) alerts.push({ code: "dispute_legacy_unfinished", severity: "warning", since: null, words: `Dispute ${l.dispute_id} was settled before decisions were recorded and has unfinished refunds (${l.refunds.join(", ")}); it is not decided again: check it and propose what is left for Face ID.` });
 
   const stopped = db.prepare("SELECT key, updated_at FROM settings WHERE key LIKE 'stop.%' AND value = 'on' ORDER BY key").all() as { key: string; updated_at: string }[];
   for (const s of stopped) alerts.push({ code: "velocity_stop", severity: "warning", since: s.updated_at, words: `The ${s.key.slice(5)} agent hit a speed limit and was stopped; the CFO lifts it with Face ID.` });

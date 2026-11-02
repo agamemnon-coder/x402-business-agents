@@ -47,6 +47,11 @@ import { openDecisions } from "../agents/disputeDecision.js";
 // One world, one runner, one process group (2 November: a stop reached only a wrapper, another world's runner ran on).
 // Outside a world's group this starts itself again as the leader of a new one; then it takes the ledger's runner lock,
 // so a second runner on the same ledger refuses to start. `npm run stop -- <world>` stops exactly this group.
+// The ledger is always named (as `up` requires): a runner on a default path would be a world nobody can find to stop.
+if (!process.env.KIT11_DB) {
+  console.error("npm run relay needs KIT11_DB (the world's ledger), so the world can be found and stopped (npm run stop -- <world>).");
+  process.exit(2);
+}
 const group = await asWorldGroup();
 const db = openDb();
 holdRunnerLock(db, db.name, "relay", group, osProcesses);
@@ -232,7 +237,17 @@ async function quarantineTick(): Promise<void> {
   }
 }
 
-if (!stopping) agentProcs = startAgents();
+// Agents of this run left behind by a relay that crashed (its exit handler sends them SIGTERM): give them half a minute
+// to go; if any still runs, start none beside it (two Support agents could act on the same dispute) and say so.
+if (!stopping && autonomyOn()) {
+  const leftAgents = () => osProcesses.list().filter((p) => p.token === group.token && p.pid !== process.pid && !p.state.startsWith("Z") && /src\/cli\/agent\.ts/.test(p.cmd));
+  for (let i = 0; i < 30 && leftAgents().length; i++) await new Promise((r) => setTimeout(r, 1000));
+  const left = leftAgents();
+  if (left.length) console.error(`${stamp()} ALARM    agent process(es) of the previous relay still run (pids ${left.map((p) => p.pid).join(", ")}); no new agents started beside them. npm run stop -- <world> stops the whole run.`);
+  else agentProcs = startAgents();
+}
+// The agents stop with this relay however it ends (a crash too), so a restarted relay never runs beside them.
+process.on("exit", () => { for (const c of agentProcs) try { c.kill("SIGTERM"); } catch { /* gone */ } });
 
 // Monitoring (B7): each alarm is logged once when it is raised and once when it clears; the relay's /health shows them.
 let standing = new Set<string>();
