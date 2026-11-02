@@ -53,17 +53,21 @@ export interface DisputeDecision {
   /** Planned refunds code could not pay (limits no longer fit, or refused for good), handed to the CFO as one proposal. */
   handover: number[];
   handover_proposal: string | null;
+  /** Looks at each refund held at Metal, by sale number. */
+  held_looks: Record<string, number>;
+  /** Held at Metal through HANDOVER_AFTER looks: sent, unconfirmed. Never counted as refunded. */
+  sent: number[];
   done_at: string | null;
 }
 
-interface Row { dispute_id: string; plan_json: string; decided_at: string; status: "DECIDED" | "DONE"; paid_json: string; escalation_proposal: string | null; approval_proposal: string | null; last_note: string | null; audited: number; attempts: number; attempted_at: string | null; handover_json: string; handover_proposal: string | null; done_at: string | null }
+interface Row { dispute_id: string; plan_json: string; decided_at: string; status: "DECIDED" | "DONE"; paid_json: string; escalation_proposal: string | null; approval_proposal: string | null; last_note: string | null; audited: number; attempts: number; attempted_at: string | null; handover_json: string; handover_proposal: string | null; held_json: string; sent_json: string; done_at: string | null }
 
 export function decisionOf(db: DB, disputeId: string): DisputeDecision | null {
   const r = db.prepare("SELECT * FROM dispute_decisions WHERE dispute_id = ?").get(disputeId) as Row | undefined;
   if (!r) return null;
   const plan = JSON.parse(r.plan_json) as DecisionPlan;
   for (const x of [...plan.refunds, plan.escalate, plan.approval]) if (x) x.origin = parseOrigin(JSON.stringify(x.origin));
-  return { dispute_id: r.dispute_id, plan, decided_at: r.decided_at, status: r.status, paid: JSON.parse(r.paid_json) as number[], escalation_proposal: r.escalation_proposal, approval_proposal: r.approval_proposal, last_note: r.last_note, audited: r.audited === 1, attempts: r.attempts, attempted_at: r.attempted_at, handover: JSON.parse(r.handover_json) as number[], handover_proposal: r.handover_proposal, done_at: r.done_at };
+  return { dispute_id: r.dispute_id, plan, decided_at: r.decided_at, status: r.status, paid: JSON.parse(r.paid_json) as number[], escalation_proposal: r.escalation_proposal, approval_proposal: r.approval_proposal, last_note: r.last_note, audited: r.audited === 1, attempts: r.attempts, attempted_at: r.attempted_at, handover: JSON.parse(r.handover_json) as number[], handover_proposal: r.handover_proposal, held_looks: JSON.parse(r.held_json) as Record<string, number>, sent: JSON.parse(r.sent_json) as number[], done_at: r.done_at };
 }
 
 /**
@@ -86,13 +90,14 @@ const list = (seqs: number[]) => seqs.map((s) => `#${s}`).join(", ") || "none";
 export function decisionSummary(d: DisputeDecision): string {
   const p = d.plan;
   const who = p.source === "claude" ? `the Support agent (${p.model ?? "Claude"})` : "code";
-  const unpaid = p.refunds.map((r) => r.seq).filter((s) => !d.paid.includes(s) && !d.handover.includes(s));
+  const unpaid = p.refunds.map((r) => r.seq).filter((s) => !d.paid.includes(s) && !d.handover.includes(s) && !d.sent.includes(s));
   const parts = [
     `decided by ${who} at ${d.decided_at}`,
     `refund ${list(p.refunds.map((r) => r.seq))} (${fromCents(p.refunds.reduce((n, r) => n + r.cents, 0))})${p.refunds.length ? `, paid ${list(d.paid)}${unpaid.length ? `, still to pay ${list(unpaid)}` : ""}` : ""}`,
   ];
   if (p.approval) parts.push(`${list(p.approval.seqs)} above the automatic limits to the CFO as ${d.approval_proposal ?? "a proposal not yet made"}`);
   if (p.escalate) parts.push(`${list(p.escalate.seqs)} to the CFO as ${d.escalation_proposal ?? "a proposal not yet made"}`);
+  if (d.sent.length) parts.push(`${list(d.sent)} sent but still held at Metal: unconfirmed, not refunded yet (followed on /health and by the reconciliation)`);
   if (d.handover.length) parts.push(`${list(d.handover)} could not be paid automatically and go${d.handover_proposal ? "" : " (once nothing else is pending)"} to the CFO as ${d.handover_proposal ?? "a proposal not yet made"}`);
   parts.push(d.status === "DONE" ? "carried out" : `not yet carried out${d.last_note ? ` (${d.last_note})` : ""}`);
   return parts.join("; ");
@@ -147,8 +152,10 @@ export interface DecisionExec {
   propose?(part: Part, seqs: number[], text: string, source: DecisionPlan["source"]): Promise<string>;
 }
 
-// PAID is done. A HELD refund (sent, held at Metal) is looked at again with the same payment id; after HANDOVER_AFTER
-// tries it counts as sent, as the CFO's refund batch counts it (src/executors/refundBatch.ts), and reconciliation follows it.
+// PAID is done. A HELD refund (sent, held at Metal) is looked at again with the same payment id, once per carry-out;
+// after HANDOVER_AFTER looks at THAT refund it is "sent, unconfirmed": the decision stops pulling it (as the CFO's refund
+// batch stops at HELD, src/executors/refundBatch.ts), never reports it as refunded, and /health and the reconciliation
+// keep following it until Metal settles or refuses it.
 const FINAL = new Set(["PAID"]);
 /**
  * A refusal that a later try can clear (a speed limit, the network, a server error); any other refusal hands the
@@ -205,7 +212,7 @@ async function carryOutClaimed(db: DB, disputeId: string, d: DisputeDecision, ex
   const notes: string[] = [];
   const now0 = () => decisionOf(db, disputeId)!;
   // Each added in place (another process may be carrying out the same decision): never written from a stale copy.
-  const add = (column: "paid_json" | "handover_json", seq: number) =>
+  const add = (column: "paid_json" | "handover_json" | "sent_json", seq: number) =>
     db.prepare(`UPDATE dispute_decisions SET ${column} = json_insert(${column}, '$[#]', ?) WHERE dispute_id = ? AND NOT EXISTS (SELECT 1 FROM json_each(${column}) WHERE value = ?)`).run(seq, disputeId, seq);
   const handOver = (seq: number, why: string) => {
     add("handover_json", seq);
@@ -214,7 +221,7 @@ async function carryOutClaimed(db: DB, disputeId: string, d: DisputeDecision, ex
   };
   for (const r of d.plan.refunds) {
     const cur = now0();
-    if (cur.paid.includes(r.seq) || cur.handover.includes(r.seq)) continue;
+    if (cur.paid.includes(r.seq) || cur.handover.includes(r.seq) || cur.sent.includes(r.seq)) continue;
     // The automatic limits as they stand now: a refund decided under looser limits is never paid around tighter ones.
     const lim = exec.limits?.();
     // A refund already sent (PENDING) or held is not judged again: its pull may still settle, and refundSale checks it.
@@ -230,9 +237,21 @@ async function carryOutClaimed(db: DB, disputeId: string, d: DisputeDecision, ex
     try {
       const opts = state === "HELD" ? { retry: true } : undefined;
       const res = await (r.origin ? withOrigin(r.origin, () => exec.refund(r.seq, opts)) : exec.refund(r.seq, opts));
-      if (FINAL.has(res.outcome) || (res.outcome === "HELD" && attempt >= HANDOVER_AFTER)) {
+      if (FINAL.has(res.outcome)) {
         add("paid_json", r.seq);
-        log(`refund #${r.seq}: ${res.outcome === "HELD" ? `sent and still held at Metal after ${attempt} looks; counted as sent, as the CFO's refund batch counts it` : res.already ? "already paid earlier, nothing sent" : res.outcome}${res.tx ? ` ${res.tx}` : ""}`);
+        log(`refund #${r.seq}: ${res.already ? "already paid earlier, nothing sent" : res.outcome}${res.tx ? ` ${res.tx}` : ""}`);
+      } else if (res.outcome === "HELD") {
+        // Looks at THIS refund held at Metal, counted in place.
+        db.prepare("UPDATE dispute_decisions SET held_json = json_set(held_json, ?, COALESCE(json_extract(held_json, ?), 0) + 1) WHERE dispute_id = ?").run(`$."${r.seq}"`, `$."${r.seq}"`, disputeId);
+        const looks = now0().held_looks[String(r.seq)] ?? 1;
+        if (looks >= HANDOVER_AFTER) {
+          add("sent_json", r.seq);
+          notes.push(`refund #${r.seq} sent, still held at Metal after ${looks} looks: unconfirmed`);
+          log(`refund #${r.seq}: sent, still held at Metal after ${looks} looks; unconfirmed, not reported as refunded (followed on /health)`);
+        } else {
+          notes.push(`refund #${r.seq} held at Metal (look ${looks})`);
+          log(`refund #${r.seq}: held at Metal (look ${looks}); looked at again when the decision is carried out again`);
+        }
       } else if (res.outcome === "REFUSED" && (!TRANSIENT.test(res.reason ?? "") || attempt >= HANDOVER_AFTER)) {
         handOver(r.seq, `refused${res.reason ? `: ${res.reason}` : ""}${attempt >= HANDOVER_AFTER ? ` (try ${attempt})` : ""}`);
       } else {
@@ -246,7 +265,7 @@ async function carryOutClaimed(db: DB, disputeId: string, d: DisputeDecision, ex
   }
   // Refunds handed over go to the CFO as one proposal, once every other refund is paid (nothing still pending).
   const mid = now0();
-  const handover: PlannedProposal | null = mid.handover.length && d.plan.refunds.every((r) => mid.paid.includes(r.seq) || mid.handover.includes(r.seq))
+  const handover: PlannedProposal | null = mid.handover.length && d.plan.refunds.every((r) => mid.paid.includes(r.seq) || mid.handover.includes(r.seq) || mid.sent.includes(r.seq))
     ? { seqs: [...mid.handover].sort((a, b) => a - b), text: notes.filter((n) => n.includes("goes to the CFO")).join("; ") || "the automatic refunds could not be paid", origin: CODE_HANDS_OVER }
     : null;
   for (const part of ["approval", "escalate", "handover"] as const) {
@@ -286,7 +305,7 @@ async function carryOutClaimed(db: DB, disputeId: string, d: DisputeDecision, ex
   }
   const now = decisionOf(db, disputeId)!;
   const reviewed = (part: Part, id: string) => !exec.review || !exec.reviewed || exec.reviewed(part, id);
-  const done = now.plan.refunds.every((r) => now.paid.includes(r.seq) || now.handover.includes(r.seq))
+  const done = now.plan.refunds.every((r) => now.paid.includes(r.seq) || now.handover.includes(r.seq) || now.sent.includes(r.seq))
     && (!now.handover.length || !!now.handover_proposal)
     && (!now.plan.escalate || (!!now.escalation_proposal && reviewed("escalate", now.escalation_proposal)))
     && (!now.plan.approval || (!!now.approval_proposal && reviewed("approval", now.approval_proposal)));
@@ -335,6 +354,8 @@ export function auditSettlement(db: DB, disputeId: string): void {
       // refunded_now: this decision's refunds that were paid; `refunded` also carries the dispute's earlier ones;
       // decided: every refund the decision holds (one a refusal held back is paid when it is carried out again).
       refunded: [...earlier, ...d.paid].map((s) => `#${s}`), refunded_now: d.paid.map((s) => `#${s}`),
+      // Sent but held at Metal: not refunded until Metal settles it.
+      ...(d.sent.length ? { sent_unconfirmed: d.sent.map((s) => `#${s}`) } : {}),
       decided: p.refunds.map((r) => `#${r.seq}`),
       escalated: p.escalate ? { proposal: d.escalation_proposal, sales: p.escalate.seqs.map((s) => `#${s}`) } : null,
       said: (p.said ?? "").slice(0, 1200), ...(p.agent_note ? { note: p.agent_note } : {}),

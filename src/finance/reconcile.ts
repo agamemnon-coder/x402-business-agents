@@ -41,6 +41,8 @@ export interface Reconciliation {
   /** Areas not checked, and why (no keys, no RPC). */
   skipped: string[];
   differences: Difference[];
+  /** Refunds held at Metal for over two hours, looked up on chain (not differences; not refunded yet). */
+  held?: { ref: string; since: string | null; chain: string }[];
 }
 
 /** Card transactions this fresh may still be on their way into the ledger (the poll waits up to 2 minutes). */
@@ -145,12 +147,41 @@ export async function reconcile(db: DB, src: ReconcileSources, now = new Date())
     }
   } else skipped.push("Metal payments (no RPC)");
 
+  // Refunds sent but held at Metal for over HELD_FOLLOW_MS: looked up on chain by their transaction (read-only). They are
+  // not a difference (Metal holds them on purpose) and never counted as refunded; the result and /health show them.
+  const held: { ref: string; since: string | null; chain: string }[] = [];
+  for (const h of heldRefunds(db, now)) {
+    let chain = "no transaction yet";
+    if (h.tx_hash && h.to_address && src.chainTransfer) {
+      const business = (db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined)?.address;
+      chain = business ? (await src.chainTransfer(h.tx_hash, business, h.to_address, h.amount_cents)) ?? "the transfer is on chain as recorded" : "the ledger does not know the business account";
+    } else if (h.tx_hash) chain = "not looked up (no RPC)";
+    held.push({ ref: h.payment_id, since: h.since, chain });
+  }
+
   const at = now.toISOString();
   db.transaction(() => {
     for (const d of differences) audit(db, "system", "reconcile.difference", d.ref, { ...d }, now);
-    audit(db, "system", "reconcile.done", null, { checked, differences: differences.length, skipped }, now);
+    audit(db, "system", "reconcile.done", null, { checked, differences: differences.length, skipped, ...(held.length ? { held } : {}) }, now);
   }).immediate();
-  return { at, checked, skipped, differences };
+  return { at, checked, skipped, differences, ...(held.length ? { held } : {}) };
+}
+
+/** A refund held at Metal longer than this is followed: on /health and by the reconciliation. */
+export const HELD_FOLLOW_MS = 2 * 60 * 60_000;
+
+/** Refunds still HELD (sent, held at Metal) since longer than HELD_FOLLOW_MS, or since an unknown time. */
+export function heldRefunds(db: DB, now = new Date()): { sale_id: number; payment_id: string; tx_hash: string | null; to_address: string; amount_cents: number; since: string | null }[] {
+  const rows = db.prepare(`SELECT r.sale_id, r.payment_id, r.tx_hash, r.to_address, r.amount_cents,
+      (SELECT MIN(a.ts) FROM audit_log a WHERE a.subject = CAST(r.sale_id AS TEXT) AND a.event IN ('refund.held', 'refund.already_held')) AS since
+    FROM refunds r WHERE r.outcome = 'HELD' ORDER BY r.sale_id`).all() as { sale_id: number; payment_id: string; tx_hash: string | null; to_address: string; amount_cents: number; since: string | null }[];
+  return rows.filter((r) => !r.since || now.getTime() - Date.parse(r.since) > HELD_FOLLOW_MS);
+}
+
+/** Refunds that were held at Metal and later refused: sent, then not paid. Nothing was refunded for them. */
+export function heldThenRefused(db: DB): { sale_id: number; payment_id: string; reason: string | null }[] {
+  return db.prepare(`SELECT r.sale_id, r.payment_id, r.refusal_reason AS reason FROM refunds r WHERE r.outcome = 'REFUSED'
+    AND EXISTS (SELECT 1 FROM audit_log a WHERE a.subject = CAST(r.sale_id AS TEXT) AND a.event IN ('refund.held', 'refund.already_held')) ORDER BY r.sale_id`).all() as { sale_id: number; payment_id: string; reason: string | null }[];
 }
 
 /** The latest reconciliation, for the dashboard, or null if none ran. */

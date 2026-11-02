@@ -96,6 +96,10 @@ CREATE TABLE IF NOT EXISTS dispute_decisions (
   -- the CFO as one recorded proposal, never paid around the limits.
   handover_json TEXT NOT NULL DEFAULT '[]',
   handover_proposal TEXT,
+  -- Refunds held at Metal: how often each was looked at again ({"seq": n}); after HANDOVER_AFTER looks it is "sent,
+  -- unconfirmed" (sent_json): never counted as refunded; /health and the reconciliation keep following it.
+  held_json TEXT NOT NULL DEFAULT '{}',
+  sent_json TEXT NOT NULL DEFAULT '[]',
   -- The process carrying it out now ({pid, start}): another process leaves it alone while that one lives.
   carrier TEXT,
   done_at TEXT

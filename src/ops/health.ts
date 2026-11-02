@@ -4,7 +4,7 @@
 // person. Locally the dashboard server serves the same as /health and as Prometheus metrics on /metrics.
 
 import type { DB } from "../db/open.js";
-import { lastReconciliation } from "../finance/reconcile.js";
+import { heldRefunds, heldThenRefused, lastReconciliation } from "../finance/reconcile.js";
 import { frozen } from "../policy/rules.js";
 import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
@@ -40,6 +40,9 @@ export function health(db: DB, now = new Date()): Health {
   // start finishes it (npm run s2 -- --resume-only); it is never decided again.
   // Critical once a refund could not be paid (it goes to the CFO as a proposal) or carrying out failed more than once.
   for (const d of openDecisions(db)) alerts.push({ code: "dispute_decision_open", severity: d.handover.length || d.attempts >= HANDOVER_AFTER - 1 ? "critical" : "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; the runner's start or npm run s2 -- --resume-only finishes it, without deciding again.` });
+  // A refund sent but held at Metal for over two hours is not refunded yet; one held and then refused was never refunded.
+  for (const h of heldRefunds(db, now)) alerts.push({ code: "refund_held", severity: "warning", since: h.since, words: `Refund ${h.payment_id} (sale ${h.sale_id}) was sent but is held at Metal${h.since ? ` since ${h.since}` : ""}: not refunded yet. The hourly reconciliation looks it up on chain.` });
+  for (const r of heldThenRefused(db)) alerts.push({ code: "refund_held_then_refused", severity: "critical", since: null, words: `Refund ${r.payment_id} (sale ${r.sale_id}) was held at Metal and then refused${r.reason ? ` (${r.reason})` : ""}: nothing was refunded for it.` });
   // A dispute settled before decisions were recorded, with refunds left unfinished: it is never decided again, so a person looks.
   for (const l of legacyUnfinished(db)) alerts.push({ code: "dispute_legacy_unfinished", severity: "warning", since: null, words: `Dispute ${l.dispute_id} was settled before decisions were recorded and has unfinished refunds (${l.refunds.join(", ")}); it is not decided again: check it and propose what is left for Face ID.` });
 

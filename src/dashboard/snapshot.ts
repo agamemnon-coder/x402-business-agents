@@ -750,6 +750,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "refund.auto_approved": return out(`Refunds for sales ${(Array.isArray(p.sales) ? (p.sales as unknown[]) : []).map((x) => `#${str(x)}`).join(", ")} are within the automatic limits`, "ok");
     case "refund.paid": return out(`Refunded ${str(p.amount)} to Summit Outfitters for sale #${s} (${str(p.payment_id)})`, "ok");
     case "refund.already_paid": return out(`Retry of ${str(p.payment_id)}: already paid, nothing sent`, "ok");
+    case "refund.already_held": return out(`Looked again at ${str(p.payment_id)}: sent, still held at Metal; nothing sent again, not refunded yet`, "info");
     case "refund.refused":
     case "refund.held": return out(`Refund ${str(p.payment_id)} ${r.event.split(".")[1]}: ${refusalWords(str(p.reason))}`, "refusal");
     case "sweep.paid": return out(`Swept ${str(p.amount)} USDZ of earnings to the sweep wallet (${s})`, "ok");

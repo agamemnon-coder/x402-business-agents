@@ -57,7 +57,7 @@ export const MONEY_EVENTS = new Set([
   "card.charge_reversed", "receivable.matched", "receivable.escalated", "mandate.replaced", "clearing.deposited", "clearing.withdrawn",
   "quarantine.held", "quarantine.returned", "quarantine.accepted",
   // After a crash the action is found at the outside service and adopted, never sent twice: the same money movement.
-  "transfer.adopted", "fx.adopted", "credit.adopted", "transfer.refused", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
+  "transfer.adopted", "fx.adopted", "credit.adopted", "transfer.refused", "refund.already_paid", "refund.already_held", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
   // A transfer create Airwallex refused for its fee configuration, retried under the same request_id (each attempt).
   "transfer.retry", "transfer.retry_stopped", "transfer.left_open",
   // An alarm on a payout: Airwallex holds a transfer the ledger's row does not show (src/executors/invoicePayment.ts).

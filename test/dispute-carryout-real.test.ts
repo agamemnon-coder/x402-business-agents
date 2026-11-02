@@ -9,7 +9,9 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { carryOut, decisionOf, recordDecision, type Carrier, type DecisionExec } from "../src/agents/disputeDecision.js";
+import { auditSettlement, carryOut, decisionOf, decisionSummary, recordDecision, type Carrier, type DecisionExec } from "../src/agents/disputeDecision.js";
+import { reconcile } from "../src/finance/reconcile.js";
+import { health } from "../src/ops/health.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { refundSale } from "../src/executors/refunds.js";
 import { sha256Hex } from "../src/lib/terms.js";
@@ -31,13 +33,15 @@ function world() {
   for (let i = 0; i < 3; i++) db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('GET /v1/stock', 5, ?, 'u', '{}', 'DELIVERED', 'now')").run(PAYER);
   const pulls = new Map<string, number>();
   /** What Metal answers per payment id, in order (default PAID). */
-  const answers = new Map<string, ("PAID" | "HELD")[]>();
+  const answers = new Map<string, ("PAID" | "HELD" | "REFUSED" | "VELOCITY")[]>();
   const pull: Puller = async ({ paymentId }) => {
     const n = (pulls.get(paymentId) ?? 0) + 1;
     pulls.set(paymentId, n);
     await new Promise((r) => setTimeout(r, 5));
-    const outcome = answers.get(paymentId)?.shift() ?? "PAID";
-    return { outcome, tx: `0x${paymentId}`, reason: null, already: n > 1 };
+    const a = answers.get(paymentId)?.shift() ?? "PAID";
+    if (a === "VELOCITY") return { outcome: "REFUSED", tx: null, reason: "7 payments in a minute, the limit is 6", already: false };
+    if (a === "REFUSED") return { outcome: "REFUSED", tx: null, reason: "refused at Metal: the customer's receive policy rejected it", already: false };
+    return { outcome: a, tx: `0x${paymentId}`, reason: null, already: n > 1 };
   };
   const exec = (conn: DB, crashAfterPaid?: number): DecisionExec => ({
     refund: async (seq, opts) => {
@@ -96,17 +100,54 @@ describe("carrying out a dispute decision with the real refund executor", () => 
     expect([...w.pulls.keys()]).toEqual(["refund-1"]);
   });
 
-  it("a refund held at Metal is looked at again with the same payment id: paid once it settles, counted as sent after three looks", async () => {
+  it("a refund held at Metal is looked at again with the same payment id: paid once it settles; after three looks sent, unconfirmed, never 'refunded'", async () => {
     const w = world();
-    recordDecision(w.db, "D-r", { source: "claude", model: "m", refunds: [1, 2].map((seq) => ({ seq, cents: 5, origin: AGENT })), escalate: null, approval: null });
+    recordDecision(w.db, "D-r", { source: "claude", model: "m", refunds: [1, 2].map((seq) => ({ seq, cents: 5, origin: AGENT })), escalate: null, approval: null, agent_ran: true });
     w.answers.set("refund-1", ["HELD", "PAID"]);
     w.answers.set("refund-2", ["HELD", "HELD", "HELD"]);
     const c = carrier(111, () => false);
-    expect(await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c)).toMatchObject({ status: "DECIDED", paid: [] });
+    expect(await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c)).toMatchObject({ status: "DECIDED", paid: [], held_looks: { 1: 1, 2: 1 } });
     expect(await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c)).toMatchObject({ status: "DECIDED", paid: [1] });
-    expect(await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c)).toMatchObject({ status: "DONE", paid: [1, 2], handover: [] });
+    const d = (await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c))!;
+    expect(d).toMatchObject({ status: "DONE", paid: [1], sent: [2], handover: [] });
+    expect(decisionSummary(d)).toMatch(/#2 sent but still held at Metal: unconfirmed, not refunded/);
+    auditSettlement(w.db, "D-r");
+    const row = JSON.parse((w.db.prepare("SELECT payload_json FROM audit_log WHERE event = 'dispute.settled_by_agent'").get() as { payload_json: string }).payload_json) as Record<string, unknown>;
+    expect(row).toMatchObject({ refunded: ["#1"], refunded_now: ["#1"], sent_unconfirmed: ["#2"] });
     // Each look is a pull of the same payment id (Metal sends nothing twice); no new payment id, no proposal.
     expect([...w.pulls.entries()]).toEqual([["refund-1", 2], ["refund-2", 3]]);
+    expect(w.db.prepare("SELECT event FROM audit_log WHERE subject = '2' AND event LIKE 'refund.%' ORDER BY seq").all()).toEqual([{ event: "refund.held" }, { event: "refund.already_held" }, { event: "refund.already_held" }]);
+    // Followed after two hours: /health warns, the reconciliation looks it up, and it is not reported as refunded.
+    const later = new Date(Date.now() + 3 * 60 * 60_000);
+    expect(health(w.db, later).alerts.find((a) => a.code === "refund_held")!.words).toMatch(/refund-2 \(sale 2\) was sent but is held at Metal/);
+    const rec = await reconcile(w.db, {}, later);
+    expect(rec.held).toEqual([expect.objectContaining({ ref: "refund-2", chain: "not looked up (no RPC)" })]);
+    expect(rec.differences).toEqual([]);
+  });
+
+  it("refused twice for a speed limit and then held once is one look at a hold, not three", async () => {
+    const w = world();
+    recordDecision(w.db, "D-r", { source: "claude", model: "m", refunds: [{ seq: 1, cents: 5, origin: AGENT }], escalate: null, approval: null });
+    w.answers.set("refund-1", ["VELOCITY", "VELOCITY", "HELD"]);
+    const c = carrier(111, () => false);
+    await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c);
+    await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c);
+    const d = await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c);
+    expect(d).toMatchObject({ status: "DECIDED", paid: [], sent: [], handover: [], held_looks: { 1: 1 } });
+  });
+
+  it("a refund held at Metal and then refused there: not refunded, handed to the CFO, critical on /health", async () => {
+    const w = world();
+    recordDecision(w.db, "D-r", { source: "claude", model: "m", refunds: [{ seq: 1, cents: 5, origin: AGENT }], escalate: null, approval: null });
+    w.answers.set("refund-1", ["HELD", "REFUSED"]);
+    const made: number[][] = [];
+    const exec: DecisionExec = { ...w.exec(w.db), create: (_p, seqs) => { made.push(seqs); return "P-0005"; } };
+    const c = carrier(111, () => false);
+    await carryOut(w.db, "D-r", exec, () => undefined, c);
+    const d = await carryOut(w.db, "D-r", exec, () => undefined, c);
+    expect(d).toMatchObject({ status: "DONE", paid: [], sent: [], handover: [1], handover_proposal: "P-0005" });
+    expect(made).toEqual([[1]]);
+    expect(health(w.db).alerts.find((a) => a.code === "refund_held_then_refused")).toMatchObject({ severity: "critical", words: expect.stringMatching(/refund-1 \(sale 1\) was held at Metal and then refused.*nothing was refunded/) });
   });
 
   it("a refund already in flight (PENDING) is not judged again against tighter limits; its pull is finished", async () => {

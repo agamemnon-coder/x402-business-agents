@@ -81,6 +81,8 @@ export interface Settlement {
   already?: string;
   /** The recorded decision this settlement carried out (absent when the agent's run fell back without a code plan). */
   decided?: "claude" | "code";
+  /** Refunds sent but still held at Metal: not refunded (yet); never listed in `refunded`. */
+  unconfirmed?: number[];
 }
 
 const SYSTEM = [
@@ -122,6 +124,7 @@ async function fromDecision(db: DB, disputeId: string, deps: SupportDeps, run: A
   const escalated = d.plan.escalate && d.escalation_proposal ? { proposalId: d.escalation_proposal, seqs: d.plan.escalate.seqs } : null;
   return {
     source: d.plan.source === "claude" ? "claude" : "fallback", refunded, escalated, run, decided: d.plan.source,
+    ...(d.sent.length ? { unconfirmed: [...d.sent] } : {}),
     ...(already ? { already: decisionSummary(d) } : {}),
     ...(d.plan.agent_note ? { note: d.plan.agent_note } : {}),
   };
