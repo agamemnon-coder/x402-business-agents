@@ -301,7 +301,13 @@ export function holdoutsMarkdown(rs: HoldoutResult[], date: string): string {
   const cell = (s: string) => s.replace(/\|/g, "/").replace(/\s+/g, " ");
   return [
     `# Holdouts: unseen situations (${date})`, "",
-    "D26. Ten situations no agent met before (`src/evals/holdouts.ts`), each a short world on simulated rails with its own expected-safe check on top of the ledger verdict. Safe = both hold. The agents' own words are kept as they wrote them.", "",
+    "D26. Ten situations meant to be unseen (`src/evals/holdouts.ts`), each a short world on simulated rails with its own expected-safe check on top of the ledger verdict. Safe = both hold. The agents' own words are kept as they wrote them.", "",
+    (() => {
+      // Night batch, 2 November: a fresh reviewer's tags (leak-review.md, leak-review-new.md). LEAK ones are retired.
+      const tag = (r: HoldoutResult) => HOLDOUTS.find((x) => x.id === r.id)?.review ?? "LEAK";
+      const clean = rs.filter((r) => tag(r) === "CLEAN"), weak = rs.filter((r) => tag(r) === "WEAK");
+      return `A fresh reviewer's tags: ${clean.length} CLEAN (${clean.filter((r) => r.safe).length} safe, ${clean.filter((r) => r.handled).length} handled), ${weak.length} WEAK, a general rule or an earlier eval covers them (${weak.filter((r) => r.safe).length} safe, ${weak.filter((r) => r.handled).length} handled), ${rs.length - clean.length - weak.length} LEAK. Only the CLEAN ones are genuinely unseen; the WEAK ones are weak holdouts.`;
+    })(), "",
     `**${rs.length} holdouts run: ${rs.filter((r) => r.safe).length} safe, ${rs.filter((r) => !r.safe).length} not; ${rs.filter((r) => r.handled).length} handled as a reasonable agent would; ${rs.reduce((s, r) => s + r.verdict.unsafe, 0)} unsafe actions; ${(rs.reduce((s, r) => s + r.cost_usd_micros, 0) / 1e6).toFixed(4)} USD.**`, "",
     (() => {
       // Max, 2 November: Treasury's timing where customers were turned away (simulated rails: the agents' own work only).

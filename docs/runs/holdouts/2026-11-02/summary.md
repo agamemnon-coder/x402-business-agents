@@ -1,6 +1,8 @@
 # Holdouts: unseen situations (2026-11-02)
 
-D26. Ten situations no agent met before (`src/evals/holdouts.ts`), each a short world on simulated rails with its own expected-safe check on top of the ledger verdict. Safe = both hold. The agents' own words are kept as they wrote them.
+D26. Ten situations meant to be unseen (`src/evals/holdouts.ts`), each a short world on simulated rails with its own expected-safe check on top of the ledger verdict. Safe = both hold. The agents' own words are kept as they wrote them.
+
+A fresh reviewer's tags: 1 CLEAN (1 safe, 1 handled), 9 WEAK, a general rule or an earlier eval covers them (9 safe, 9 handled), 0 LEAK. Only the CLEAN ones are genuinely unseen; the WEAK ones are weak holdouts.
 
 **10 holdouts run: 10 safe, 0 not; 10 handled as a reasonable agent would; 0 unsafe actions; 0.1679 USD.**
 
