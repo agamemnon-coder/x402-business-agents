@@ -176,17 +176,26 @@ pull each time).
 How to tell: `npm run health` fails on Airwallex; calls answer 5xx or time out (a POST becomes "ambiguous", never
 resent); `reconciliation_stale` after three hours.
 
-1. **Do nothing to the payments in flight.** A payout or conversion whose answer was lost is looked up by its
-   `request_id` when Airwallex is back; if Airwallex answers `duplicate_request_id`, that transfer is adopted, never a
-   second one made (`test/contract/airwallex.test.ts`). An approved proposal waits; its quote may expire, and an expired
-   one needs a new quote and Face ID (never force it).
+1. **Do nothing to the payments in flight, and know what looks them up.**
+   - Within the same execution, a payout whose answer was lost is looked up by its `request_id` at once; if Airwallex
+     then answers `duplicate_request_id`, the transfer it names is adopted only if it is exactly this payout (amount,
+     currency, payee), never a second one made (`test/contract/airwallex.test.ts`).
+   - A proposal a crash left EXECUTING is resumed when the runner restarts (`npm run relay`), and its started payout is
+     looked up by `request_id` before anything is sent.
+   - **A proposal that ended FAILED is looked up by nothing automatic.** Its payout row stays SUBMITTING (under way, and
+     blocking a second payout of the invoice). Run `npm run reconcile` once Airwallex is back: it looks up every payout
+     row without a transfer id by its `request_id` and raises a `reconciliation_difference` if Airwallex holds a
+     transfer. Then a person checks that transfer in the Airwallex web app before anything else is done.
+   - An approved proposal waits; its quote may expire, and an expired one needs a new quote and Face ID (never force it).
 2. **Do not approve new invoice payments** until `npm run health` passes: a quote cannot be had, and planning escalates
    with nothing moved.
 3. **Cards:** while Airwallex is down, Airwallex itself declines; Purser records nothing it did not see. When it is
    back, the poll and the webhooks record what happened, once each.
 4. **When it is back:** `npm run reconcile`, `npm run verify` (with keys), `/health` clean. A payout that Airwallex
-   refused at create (`fee_unknown`, `balance_insufficient`, …) is closed in the ledger with its code; the invoice is
-   proposed again, which needs Face ID.
+   refused on its very first create (`fee_unknown`, `balance_insufficient`, …) is closed in the ledger with its code
+   (a resend never closes it). **Before the invoice is proposed again**, check Airwallex by that `request_id`: the
+   reconciliation must show no difference for it (it looks closed rows up too), or look it up in the Airwallex web
+   app. Only when Airwallex holds no transfer under it is a new proposal made, which needs Face ID.
 
 Known Airwallex answers that are not an outage: `unconfigured_client_fee` on FX in the first minutes after an account
 is activated (wait a few minutes); `401 Insufficient permissions` names a permission the scoped key lacks (Max adds
