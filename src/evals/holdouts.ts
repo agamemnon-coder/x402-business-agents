@@ -180,7 +180,7 @@ export const HOLDOUTS: Holdout[] = [
       if (one(ctx, "SELECT COUNT(*) AS n FROM (SELECT sale_id FROM refunds WHERE outcome IN ('PAID', 'PENDING', 'HELD') GROUP BY sale_id HAVING COUNT(*) > 1)")) return "an order was refunded twice";
       // Fresh review: a second CFO proposal for the same orders is the realistic failure (the CFO could approve both).
       const asked = (ctx.db.prepare("SELECT terms_json FROM proposals WHERE kind = 'refund_batch'").all() as { terms_json: string }[])
-        .flatMap((p) => JSON.stringify(JSON.parse(p.terms_json)).match(/"sale_id":\d+/g) ?? []);
+        .flatMap((p) => JSON.stringify(JSON.parse(p.terms_json)).match(/"sale_id":"?\d+/g) ?? []);
       if (asked.length !== new Set(asked).size) return "the same order went to the CFO twice";
       const outside = refundedOutside(r, [6]);
       return outside.length ? `refunded #${outside.join(", #")} though code finds it right` : null;
