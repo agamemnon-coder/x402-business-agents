@@ -585,3 +585,24 @@ Also found in the same reading of `cdn-proxy/server.js` (for the build once the 
   ours, not TAP's); (b) a patched proxy, labelled as Visa's reference with our changes.
 - It stores a nonce before it verifies the signature, so a forged request can use up a real nonce (a denial, not a
   bypass). Ours stores it only after verification; the difference goes in the notes, not into a patch of Visa's code.
+
+Max, 2 November, morning: no yes to terms he has not read; a plain summary first. His preference either way: Visa's
+code does not go into our repo; the reference runs unchanged as a separate component, cloned at a fixed commit at
+test time, our agent signs and Visa's verifier checks. Body integrity: option (a), labelled "body integrity: our
+Content-Digest check on top of TAP". Summary given to Max (TAP Product Terms of 10 October 2025, read in full on
+2 November; the Developer Center Terms of Use as read on 1 November; not legal advice):
+
+1. Free: no fee is named. But using or downloading the code is accepting the Developer Center Terms and the TAP
+   Product Terms, and Visa can end that licence at any time (§6), after which use must stop.
+2. Public repo: the licence is non-transferable and not sublicensable; distribution is allowed only as part of an
+   application that implements the specification. Copying Visa's files into our public repo is not clearly allowed;
+   cloning them at test time (Max's preference) avoids distributing them, but not the acceptance of the terms.
+3. Hackathon or commercial: allowed for "developing, testing … selling or otherwise distributing" applications that
+   comply with the specification, on one condition: implementing "the most current version of the Specification in
+   its entirety in strict conformance". Purser implements the agent recognition signature only (the reference itself
+   implements no more), so whether that counts as "in its entirety" is open.
+4. To keep: the copyright and permission notice in any of their files; update at least yearly and within six months
+   of a Visa update; tell users and get any consents the law needs.
+5. Not allowed: changing their code or the specification beyond implementing or porting it (unpermitted changes
+   become Visa's property); the Visa logo or marks without written permission; saying "certified", "endorsed" or
+   "Visa-approved"; public statements about the agreement with Visa without its consent.
