@@ -10,7 +10,7 @@ import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, LICENSOR_NAME, QUOTE_SAFETY_M
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
-import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
+import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
 import { checkQuoteAgainstFloor, feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_RESERVE_CAP_CENTS, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
 import { getSetting, setSetting } from "../world/settings.js";
 import { freeEurTargetCents } from "../world/options.js";
@@ -20,6 +20,8 @@ import { eurInFlightCents } from "../policy/available.js";
 import { checkpoint } from "../policy/saga.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
+/** The proposal number of invoice terms before createProposal assigns the real one (assignId); never stored. */
+export const PROPOSAL_ID_PENDING = "P-PENDING";
 export const SEED_USD_CENTS = 2_500_000;
 /** The USD floor sits this far below the seeded balance. */
 export const USD_HEADROOM_CENTS = 500_000;
@@ -123,18 +125,28 @@ export interface InvoicePaymentTerms extends Terms {
 
 /**
  * Why this invoice may not get another payment proposal, or null. A payout counts unless it was cancelled (the same
- * rule as the one_live_transfer_per_invoice index); a proposal counts while it can still be approved or is running.
+ * rule as the one_live_transfer_per_invoice index); a proposal counts while it can still be approved or is running,
+ * and once it was executed (the payment went out; review, 2 November: the Treasury agent's plan and the CFO's own
+ * `npm run licence` both pass through this guard).
  */
-export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date()): string | null {
+export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(), label?: string): string | null {
+  // `label`: the number to name the invoice by in the answer (the agent's facts pass a vouched one, never a row's own).
   // The same invoice with a cosmetically different number ("btx-dup ", another dash) is still the same invoice.
   const key = invoiceKey(invoiceNo);
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
     .find((r) => invoiceKey(r.invoice_no) === key);
-  if (t) return t.status === "PAID" ? `invoice ${t.invoice_no} is already paid` : `invoice ${t.invoice_no} already has a payout (${t.status})`;
-  const p = (db.prepare(`SELECT proposal_id, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
-    AND (status IN ('APPROVED', 'EXECUTING') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
-    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
-  return p ? `invoice ${p.invoice_no} already waits for approval as ${p.proposal_id}` : null;
+  if (t) { const n = label ?? t.invoice_no; return t.status === "PAID" ? `invoice ${n} is already paid` : `invoice ${n} already has a payout (${t.status})`; }
+  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
+    AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
+    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
+  if (!p) return null;
+  const n = label ?? p.invoice_no;
+  switch (p.status) {
+    case "EXECUTED": return `invoice ${n} is already paid (${p.proposal_id} was executed)`;
+    case "EXECUTING": return `invoice ${n} is being paid under ${p.proposal_id} (executing)`;
+    case "APPROVED": return `invoice ${n} is already approved as ${p.proposal_id} and waits to be executed`;
+    default: return `invoice ${n} already waits for approval as ${p.proposal_id}`;
+  }
 }
 
 /** An invoice number as a duplicate check compares it: Unicode-normalised, upper case, any dash as "-", no spaces around it. */
@@ -253,7 +265,9 @@ export async function proposeInvoicePayment(
       .run(quote.quoteId, "USD/EUR", fromCents(quote.buyAmountCents), fromCents(quote.sellAmountCents), quote.clientRate, quote.validFrom, quote.validTo);
   }
 
-  const id = nextProposalId(db);
+  // No number yet: createProposal takes the real one inside its write lock (assignId), and the terms stored, hashed
+  // and returned carry it (re-review: a count taken here could be stale; a placeholder can never be filed).
+  const id = PROPOSAL_ID_PENDING;
   const expires = proposalExpiry(now.getTime(), INVOICE_PROPOSAL_TTL_MS, quote ? Date.parse(quote.validTo) : undefined, QUOTE_SAFETY_MS);
   const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
   const terms: InvoicePaymentTerms = {
@@ -270,8 +284,18 @@ export async function proposeInvoicePayment(
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
   };
-  const proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence }, now);
-  return { kind: "proposed", proposal, terms };
+  // The duplicate guard again, inside the transaction that files the proposal (Opus review, 2 November): a plan filed by
+  // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.
+  let proposal: ProposalRow;
+  try {
+    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now), assignId: true }, now);
+  } catch (e) {
+    if (!(e instanceof ProposalRefused)) throw e;
+    const reason = `${e.reason}; a second copy is not paid again (another plan was filed while this one was being prepared)`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, ...(quote ? { quote_id: quote.quoteId } : {}) }, now);
+    return { kind: "escalated", reason };
+  }
+  return { kind: "proposed", proposal, terms: { ...terms, proposal_id: proposal.proposal_id } };
 }
 
 /** The SWIFT fees Airwallex really charged, from the ledger (EUR only; a transfer without a recorded fee is skipped). */

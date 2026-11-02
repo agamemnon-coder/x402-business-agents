@@ -302,7 +302,7 @@ async function settleSim(ctx: SimCtx, by: "agent" | "code"): Promise<{ ok: boole
 export function profilesOf(ctx: SimCtx): Record<AgentName, AgentProfile> {
   // The whole outside of Treasury is the sim's, as one bundle: no flow, no chain read, no owner key is reached.
   const noFlow = (script: string) => ({ ok: false, text: `the sim runs no flow (${script})` });
-  const treasury = treasuryProfile(30 * 60_000, { runFlow: noFlow, sim: { mandates: ledgerMandates, proposePriceRise: simPriceRise, client: ctx.client, sweep: () => sweepSim(ctx), planInvoice: () => planInvoiceSim(ctx) } });
+  const treasury = treasuryProfile(30 * 60_000, { runFlow: noFlow, sim: { mandates: ledgerMandates, proposePriceRise: simPriceRise, client: ctx.client, sweep: () => sweepSim(ctx), planInvoice: () => planInvoiceSim(ctx), invoiceText: () => ctx.invoiceText ?? null } });
   return {
     sourcing: sourcingProfile(sourcingWorld(ctx)),
     treasury,

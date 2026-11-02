@@ -67,6 +67,7 @@ const TOOL_CHECK: Record<string, string> = {
   read_position: "read only: live balances, floors and obligations",
   read_quote: "read only: the locked FX quote and its validity",
   submit_advice: "code's bounds on a wait (two days before the due date); advisory, the CFO decides with Face ID",
+  plan_invoice: "code's duplicate guard (never an invoice that is paid or has a plan waiting), the payee allowlist, the floors and the fee ceiling; moves no money, the CFO decides with Face ID",
   read_decline: "read only: Airwallex's decline and the card's limits",
   propose_raise: "code's bounds (covers the purchase, at most 1.25× it, a limit decline only), then the CFO's Face ID",
   no_raise: "proposes nothing; moves no money",
