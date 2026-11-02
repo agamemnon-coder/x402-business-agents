@@ -151,7 +151,10 @@ export function sellerApp(opts: SellerOptions) {
     const up = await opts.buyUpstream(seq);
     res.setHeader(UPSTREAM_HEADER, String(up.purchaseId));
     if (!up.ok) {
-      // Any status of 400 or above cancels the customer's payment: nothing moves.
+      // Any status of 400 or above cancels the customer's payment: nothing moves. The ledger keeps what the customer got
+      // for this query: the status, and that the middleware does not settle (Kit 11: "answer the customer with an error
+      // status: the middleware then doesn't settle"). The world's serve loop adds the customer's side (query.answered).
+      audit(db, "system", "sale.refused", String(seq), { seq, status: 503, settled: false, upstream_purchase_id: up.purchaseId, reason: up.reason.slice(0, 300) });
       res.status(503).json({ error: "upstream purchase refused", reason: up.reason });
       return;
     }

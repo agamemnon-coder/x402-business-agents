@@ -24,6 +24,7 @@ import { buySoftwareOnCard } from "../visa/tapRail.js";
 import { maxRaiseCents } from "../agents/declineAgent.js";
 import { cardRows } from "../policy/cards.js";
 import { setSetting } from "../world/settings.js";
+import { upstreamCacheOff } from "../world/options.js";
 import { sendMessage } from "./bus.js";
 import type { AgentProfile } from "./runtime.js";
 import type { AgentTool } from "../agents/loop.js";
@@ -51,7 +52,9 @@ export const SOFTWARE_PLANS = ["packwise-starter", "packwise-pro"] as const;
 export type SoftwarePlan = (typeof SOFTWARE_PLANS)[number];
 
 /** The live world: the suppliers on localhost, the mandate from the chain, the price from the ledger. */
-export function liveSourcingWorld(db: DB): SourcingWorld {
+export function liveSourcingWorld(db: DB, o: { issuing?: ReturnType<typeof issuingFromEnv> } = {}): SourcingWorld {
+  // Airwallex Issuing from the sandbox keys; a test passes its fake (the live wiring is otherwise the same).
+  const iss = o.issuing === undefined ? issuingFromEnv() : o.issuing;
   const running = (): SupplierId[] => (addresses(db).ridgeline ? ["stockline", "ridgeline"] : ["stockline"]);
   return {
     suppliers: async () => Promise.all(running().map(async (id) => {
@@ -71,17 +74,16 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
     mandate: async () => { const m = (await mandatesNow(db)).get("sourcing")!.now; return { capCents: m.capCents, budgetLeftCents: m.budgetCents - m.spentCents }; },
     sellCents: () => toCents(sellPrice(db)),
     // The company card, where it was issued (npm run cards -- setup) and the sandbox keys are set.
-    ...(issuingFromEnv() ? {
+    ...(iss ? {
       card: async () => { const c = cardRows(db).find((x) => x.agent === "sourcing"); return c ? { perTxCents: c.per_tx_cents, monthlyCents: c.monthly_cents } : null; },
       payReportOnTaskCard: async (taskId: string) => {
-        const iss = issuingFromEnv()!;
         const t = await bookOnTaskCard(db, iss.sim, taskId, { merchant: REPORT_OFFER.supplier, amount: fromCents(REPORT_OFFER.cardCents), mcc: REPORT_OFFER.mcc }, new Date(), iss.rail);
         return { approved: t.approved, text: t.approved ? "approved by Airwallex" : `declined by Airwallex (${t.failureReason ?? t.status})`, ref: t.transactionId };
       },
       askCardRaise: async (perPurchase: string, reason: string) => ({ proposal_id: proposeCardRaise(db, "sourcing", { perTx: perPurchase }, reason).proposal_id }),
       buyPlan: async (plan: SoftwarePlan) => {
         // D25: with KIT11_TAP_RAIL=on the checkout is signed with TAP and checked by the merchant before the card is charged.
-        const t = await buySoftwareOnCard(db, issuingFromEnv()!.sim, plan);
+        const t = await buySoftwareOnCard(db, iss.sim, plan);
         if (t.approved) return { approved: true, text: "approved by Airwallex", ref: t.transactionId };
         // D22: Airwallex's answer is the agent's to act on (ask_card_raise); its webhook or the poll records it too.
         return { approved: false, text: `declined by Airwallex (${t.failureReason}); your card's limit decides, and only the CFO can raise it: ask with ask_card_raise if you need this plan`, ref: t.transactionId };
@@ -93,7 +95,7 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
 export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): AgentProfile {
   const describe = async (db: DB) => {
     const [suppliers, m, card] = await Promise.all([world.suppliers(), world.mandate(), world.card ? world.card() : Promise.resolve(null)]);
-    return sourcingBrief({ suppliers, capCents: m.capCents, budgetLeftCents: m.budgetLeftCents, sellCents: world.sellCents(), policy: buyPolicy(db), card });
+    return sourcingBrief({ suppliers, capCents: m.capCents, budgetLeftCents: m.budgetLeftCents, sellCents: world.sellCents(), policy: buyPolicy(db), card, ...(upstreamCacheOff(db) ? { noCache: true } : {}) });
   };
   return {
     name: "sourcing", display: SOURCING_DISPLAY, model: MODELS.classify, tickMs,
@@ -184,11 +186,13 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
           const [sup, m] = await Promise.all([world.suppliers(), world.mandate()]);
           const no = checkBuyPolicy(p, sup, m.capCents, world.sellCents());
           if (no) return no;
-          const next = policyFrom(p);
+          // A world without a cache (world.upstream_cache = off) stores no cache: the agent cannot turn it back on.
+          const noCache = upstreamCacheOff(db) && p.cache_seconds > 0;
+          const next = policyFrom(noCache ? { ...p, cache_seconds: 0 } : p);
           setSetting(db, "sourcing", "sourcing.buy_policy", JSON.stringify(next));
           // D24: who set the policy (the agent's Claude run), so every purchase under it can name that decision.
-          audit(db, "sourcing", "sourcing.policy_set", "buy_policy", { ...next, origin: (currentOrigin() as never) ?? null });
-          return { text: `Buy policy set: ${policyWords(next)}.` };
+          audit(db, "sourcing", "sourcing.policy_set", "buy_policy", { ...next, ...(noCache ? { cache_refused: p.cache_seconds } : {}), origin: (currentOrigin() as never) ?? null });
+          return { text: `Buy policy set: ${policyWords(next)}.${noCache ? ` Not the ${p.cache_seconds} s cache: this world serves no cached stock check, every query buys upstream once.` : ""}` };
         },
       },
     ];

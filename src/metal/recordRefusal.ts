@@ -33,8 +33,15 @@ export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cen
   if (centsToBaseUnits(cents) <= cap) throw new Error(`${fromCents(cents)} is not over this mandate's cap; Metal would pay it, so nothing is sent`);
   const state = await readMandateState(publicClient(), m.principal, m.reference);
   if (state.boundBlock === 0n || state.revoked) throw new Error("this mandate is not bound (or is revoked); nothing to record against");
-  const r = metalAgent(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(cents),
-    "--payment-id", paymentId, "--record-refusal", "--key", gasKey ?? await refusalGasKey()], [0, 1]);
+  const key = gasKey ?? await refusalGasKey();
+  let r: ReturnType<typeof metalAgent>;
+  try {
+    r = metalAgent(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(cents),
+      "--payment-id", paymentId, "--record-refusal", "--key", key], [0, 1]);
+  } catch (e) {
+    // From here on the pull may have reached Metal: the caller treats this as an incident, not a quiet failure.
+    throw new Error(`pull sent: ${(e as Error).message}`, { cause: e });
+  }
   const reason = r.fields.get("refused")?.[0] ?? r.fields.get("reason")?.[0] ?? "";
   if (!reason) throw new Error(`Metal did not report a refusal (exit ${r.code}); check the pull ${paymentId}`);
   return { tx: r.fields.get("transaction")?.[0] ?? null, reason };

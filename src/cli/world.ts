@@ -18,6 +18,12 @@
 //   report-offer             Ridgeline Data offers a one-off report, over x402 or by single-use card (D22)
 //   deposit [short]          a retailer pays its invoice into Northwind's Global Account at Airwallex; the Treasury
 //                            agent hears it once it is matched (D22)
+//   setup [--upstream-cache off] [--free-eur 150.00] [--tap-rail on]
+//                            the main run's world options, on a fresh world only (src/world/options.ts): no cache (every
+//                            sale buys upstream once), less free EUR (the licence needs FX for its shortfall), the TAP rail
+//   let-one-through          defense in depth, once per world: the next purchase Purser refuses over the cap goes on to
+//                            Metal, which must refuse it itself (src/world/letThrough.ts); waits up to 90 s for the
+//                            outcome and prints it
 // Nothing here decides for an agent.
 
 import { readFileSync } from "node:fs";
@@ -35,6 +41,9 @@ import { PLANS, REPORT_OFFER } from "../config/policy.js";
 import { execFileSync } from "node:child_process";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { cardOf } from "../policy/cards.js";
+import { setupWorld } from "../world/options.js";
+import { claimLetThrough, letThrough, requestLetThrough, LET_THROUGH_LABEL, LET_THROUGH_TTL_MS } from "../world/letThrough.js";
+import { recordQueryAnswer } from "../world/customerAnswer.js";
 
 const [cmd, arg] = process.argv.slice(2);
 const db = openDb();
@@ -52,11 +61,21 @@ if (cmd === "serve") {
   let seq = ((db.prepare("SELECT MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)) AS s FROM sales").get() as { s: number | null }).s ?? 0) + 1;
   while (!stopping) {
     try {
+      // Defense in depth (once per world, when asked): this process's Sourcing agent is armed for one purchase.
+      const claimed = claimLetThrough(db);
+      if (claimed?.armed_at) {
+        rt.sourcing.armLetThrough(claimed.armed_at);
+        console.log(`${stamp()} armed: the next purchase Purser refuses over the cap goes on to Metal, once (lapses in ${LET_THROUGH_TTL_MS / 60_000} min)`);
+      }
       // A silent price rise (Thursday's world) is applied before this query and its notice sent after it, when due.
       const p = await worldQuery(db, seq, () => rt.customer.buy(seq), (line) => console.log(`${stamp()} ${line}`));
-      console.log(`${stamp()} query #${seq}: ${p.outcome.kind === "paid" ? `sold for ${fromCents(baseUnitsToCents(BigInt(p.outcome.amount)))}` : `not sold (${redactSecrets(String((p.outcome as { reason?: string }).reason ?? p.outcome.kind)).slice(0, 160)})`}`);
+      // The customer's side of this query in the ledger: the HTTP status it received, and whether its payment settled.
+      const a = recordQueryAnswer(db, seq, p);
+      console.log(`${stamp()} query #${seq}: ${p.outcome.kind === "paid" ? `sold for ${fromCents(baseUnitsToCents(BigInt(p.outcome.amount)))}` : `not sold (${redactSecrets(String((p.outcome as { reason?: string }).reason ?? p.outcome.kind)).slice(0, 160)})`}; customer got ${a.status ?? "no answer"}, ${a.settled === true ? "settled" : a.settled === false ? "not settled" : "settlement unknown"}`);
     } catch (e) {
-      console.log(`${stamp()} query #${seq} failed: ${redactSecrets((e as Error).message).slice(0, 200)}`);
+      const message = redactSecrets((e as Error).message);
+      recordQueryAnswer(db, seq, { error: message });
+      console.log(`${stamp()} query #${seq} failed: ${message.slice(0, 200)}`);
     }
     seq++;
     for (let t = 0; t < every && !stopping; t += 500) await new Promise((r) => setTimeout(r, 500));
@@ -90,6 +109,34 @@ if (cmd === "serve") {
   console.log(r?.stage === "noticed"
     ? `Stockline's notice reached the Sourcing agent ${r.notice_after === "first_attempt" ? "after that first attempt" : "5 minutes after the rise"}`
     : "Stockline's notice follows the first purchase attempt there, at most 5 minutes after the rise (the serve loop sends it)");
+} else if (cmd === "setup") {
+  // The main run's world options (src/world/options.ts), on a fresh world only. Nothing secret is read or printed.
+  const opt = (name: string) => (process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : undefined);
+  const cache = opt("--upstream-cache"), eur = opt("--free-eur"), tap = opt("--tap-rail");
+  if ((cache !== undefined && cache !== "off") || (tap !== undefined && tap !== "on") || (cache === undefined && eur === undefined && tap === undefined)) {
+    console.error("usage: npm run world -- setup [--upstream-cache off] [--free-eur 150.00] [--tap-rail on]");
+    process.exit(2);
+  }
+  try {
+    for (const line of setupWorld(db, { ...(cache ? { upstreamCache: "off" as const } : {}), ...(eur !== undefined ? { freeEur: eur } : {}), ...(tap ? { tapRail: "on" as const } : {}) })) console.log(line);
+  } catch (e) {
+    console.error((e as Error).message);
+    process.exit(3);
+  }
+} else if (cmd === "let-one-through") {
+  try { requestLetThrough(db); } catch (e) { console.error(`not applied: ${(e as Error).message}; nothing changed`); process.exit(3); }
+  console.log(`let-one-through requested: the world's serve loop arms it before its next query; the next purchase Purser refuses over the cap goes on to Metal, once (lapses ${LET_THROUGH_TTL_MS / 60_000} min after it is armed)`);
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const t0 = Date.now();
+  while (["pending", "armed"].includes(letThrough(db)?.stage ?? "") && Date.now() - t0 < 90_000) await sleep(1000);
+  const lt = letThrough(db);
+  if (lt?.stage === "used") {
+    console.log(lt.outcome === "metal_refused" ? `${LET_THROUGH_LABEL} (Metal answered ${redactSecrets(lt.detail ?? "").slice(0, 120)}; purchase ${lt.purchase_id}, query #${lt.seq})`
+      : lt.outcome === "incident" ? `INCIDENT: ${redactSecrets(lt.detail ?? "")}; the Sourcing agent is stopped until the CFO lifts it with Face ID`
+        : `not let through to Metal (${lt.outcome}: ${redactSecrets(lt.detail ?? "").slice(0, 160)}); Purser refused before signing as usual`);
+  } else {
+    console.log(`still ${lt?.stage ?? "unknown"} after 90 s (no purchase met the cap yet; is npm run world -- serve running?); it lapses by itself`);
+  }
 } else if (cmd === "price-rise") {
   const price = arg && money.test(arg) ? arg : "0.04";
   setSupplierPrice(db, "stockline", price);
@@ -153,6 +200,6 @@ if (cmd === "serve") {
   const out = execFileSync("npx", ["tsx", resolve(import.meta.dirname, "receivables.ts"), "customer-pays", ...(arg === "short" ? ["short"] : [])], { env: process.env, encoding: "utf8" });
   console.log(redactSecrets(out.trim()));
 } else {
-  console.error("usage: npm run world -- serve [--every 20] | price-rise [0.04] [--silent] | ridgeline-maintenance [hours|off] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer");
+  console.error("usage: npm run world -- setup [--upstream-cache off] [--free-eur x.xx] [--tap-rail on] | serve [--every 20] | price-rise [0.04] [--silent] | let-one-through | ridgeline-maintenance [hours|off] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer");
   process.exit(2);
 }
