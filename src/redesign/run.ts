@@ -49,7 +49,7 @@ export type Ev =
   | { k: "world"; at: string; text: string }
   | { k: "say"; at: string; agent: AgentId; model: string | null; by: "claude" | "fallback"; text: string; tools: string[]; call?: Call | null }
   | { k: "msg"; at: string; agent: AgentId; text: string }
-  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string; /** Who decided it: code, or the agent's Claude model (the flow's own "decided"). */ by?: string; /** A failed attempt before the one that paid: nothing paid. */ earlier?: boolean }
+  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string; /** Who decided it: code, or the agent's Claude model (the flow's own "decided"). */ by?: string; /** A failed attempt before the one that paid: nothing paid. */ earlier?: boolean; /** The proposal that paid it later. */ retried?: { id: string; at: string; status: string } }
   | { k: "face"; at: string; id: string; title: string; status: string; signers: string[] }
   | { k: "mandate"; at: string; agent: AgentId; cap: string; budget: string; proposal: string; proof: Proof }
   | { k: "routine"; at: string; count: number; agents: AgentId[]; text: string }
@@ -104,12 +104,25 @@ function applyNotes(r: RunRecord, n: RunNotes): void {
 /** The run's short name: "agent run 1 (rehearsal), 2 Nov" → "agent run 1"; a dry run keeps its name up to the colon. */
 export const runName = (r: RunRecord) => r.run.split(":")[0]!.replace(/\s*\([^)]*\)/g, "").replace(/,\s*\d{1,2} \w+( \d{4})?$/, "").trim();
 
-/** The label every page shows above the run. */
+/**
+ * The run's time span, from its own rows (the first and last event in the record), and whether a later part follows a
+ * long pause (more than an hour without an event: a follow-up, such as agent run 1's licence paid in the afternoon).
+ */
+export function runSpan(r: RunRecord): { from: string; to: string; followUp: boolean } {
+  const ts = [...r.snapshot.agent_chat.map((c) => c.ts), ...r.snapshot.flows.map((f) => f.at), ...(r.ledger?.events.map((e) => e.ts) ?? []),
+    ...r.snapshot.traces.flatMap((t) => t.steps.map((x) => x.ts))].filter(Boolean).sort();
+  const gap = ts.slice(1).reduce((g, t, i) => Math.max(g, Date.parse(t) - Date.parse(ts[i]!)), 0);
+  return { from: ts[0] ?? r.recorded_at, to: ts[ts.length - 1] ?? r.recorded_at, followUp: gap > 60 * 60 * 1000 };
+}
+const hhmm = (iso: string) => iso.slice(11, 16);
+
+/** The label every page shows above the run: its name (and follow-up), its day and time span, test money, who decided. */
 export function runLabel(r: RunRecord): string {
   const s = r.snapshot.agent_stats;
   const decisions = s.reduce((n, a) => n + a.decisions, 0), byClaude = s.reduce((n, a) => n + a.by_claude, 0);
   const claude = decisions && byClaude === decisions ? "real Claude decisions" : `${byClaude} of ${decisions} decisions by Claude`;
-  return `Replay of ${runName(r)} · ${day(r.recorded_at)} · test money · ${claude}`;
+  const span = runSpan(r);
+  return `Replay of ${runName(r)}${span.followUp ? " and its follow-up" : ""}, ${day(span.from)} ${hhmm(span.from)}–${hhmm(span.to)} UTC · test money · ${claude}`;
 }
 
 /** The label of a movement's coin on its rail: "0.05 per query · x402", "€240 · SWIFT". */
@@ -209,7 +222,8 @@ function events(r: RunRecord): Ev[] {
         out.push({ k: "money", at: new Date(Date.parse(row.ts) + 1).toISOString(), agent: "treasury", rail: "airwallex", via: method, dir: "out", what: `${String(terms.vendor ?? "the supplier")}'s invoice ${String(terms.invoice_no ?? "")} (${id})`.replace("  ", " "), amount, unit, count: 1,
           label: amount ? `${unit === "EUR" ? SHORT_EUR(amount) : amount} invoice · ${method}` : method,
           refused: code === "fee_unknown" ? { by: "airwallex-sandbox", reason: "the sandbox could not price the fee; nothing paid", code } : { by: "airwallex", reason: `${code}; nothing paid`, code },
-          proof: { label: `${error} · no transfer made`, href: null }, earlier: r.ledger.proposals.some((p) => p.status === "EXECUTED" && String(p.terms?.invoice_no ?? "") === String(terms.invoice_no ?? "") && p.proposal_id !== id) });
+          proof: { label: `${error} · no transfer made`, href: null }, earlier: r.ledger.proposals.some((p) => p.status === "EXECUTED" && String(p.terms?.invoice_no ?? "") === String(terms.invoice_no ?? "") && p.proposal_id !== id),
+          retried: (() => { const p = r.ledger.proposals.find((x) => x.status === "EXECUTED" && String(x.terms?.invoice_no ?? "") === String(terms.invoice_no ?? "") && x.proposal_id !== id); const done = p && r.ledger.events.find((e) => e.event === "proposal.executed" && e.subject === p.proposal_id); return p && done ? { id: p.proposal_id, at: done.ts, status: String(done.payload.status ?? "") } : undefined; })() });
       }
     }
   } else {
@@ -321,10 +335,12 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
  * at the card's limit, from the TAP run of the same day (labelled so). Not counted, because it is not a limit: an
  * Airwallex sandbox failure such as fee_unknown (`feeUnknown`).
  */
-export function stops(r: RunRecord): { metal: number; airwallex: number; cfo: number; feeUnknown: number } {
+export function stops(r: RunRecord): { metal: number; revoked: number; airwallex: number; cfo: number; feeUnknown: number } {
   const s = r.snapshot;
   return {
-    metal: s.flows.filter((f) => f.refused?.by === "metal").length,
+    // At a limit: over the mandate's cap. Apart: a payment under an old mandate refused because it had just been replaced.
+    metal: s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason)).length,
+    revoked: s.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length,
     airwallex: s.flows.filter((f) => f.refused?.by === "airwallex").length + (tapRun()?.steps.filter((x) => !x.approved && x.reason === "LIMIT_EXCEEDED").length ?? 0),
     cfo: s.decisions.filter((d) => d.status === "REJECTED").length,
     feeUnknown: s.refusals.filter((x) => /fee_unknown/.test(x.reason)).length,
@@ -468,7 +484,7 @@ export function agentRun(): AgentRun {
     {
       value: String(st.metal + st.airwallex + st.cfo), label: "stopped at a limit", href: "proof#stops",
       explain: "Metal and the CFO in this run; Airwallex in the TAP run.",
-      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run; by Airwallex at the card's limit in the TAP run.${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
+      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run; by Airwallex at the card's limit in the TAP run.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
       parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, { value: String(st.airwallex), label: "Airwallex · TAP run" }],
     },
     { value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },

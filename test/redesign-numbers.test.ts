@@ -91,8 +91,12 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
 
   it("counts the Airwallex limit stop from the TAP run, labelled, and keeps fee_unknown apart", () => {
     const t = run.tiles.find((x) => x.label.startsWith("stopped"))!;
-    expect(t.parts).toEqual([{ value: "2", label: "Metal" }, { value: "1", label: "CFO" }, { value: "1", label: "Airwallex · TAP run" }]);
-    expect(t.value).toBe("4");
+    // At a limit: Metal at the cap; the payment refused because its mandate had just been replaced is told apart.
+    const st = stops(record);
+    expect(st.revoked).toBe(record.snapshot.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length);
+    expect(t.parts).toEqual([{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, { value: String(st.airwallex), label: "Airwallex · TAP run" }]);
+    expect(t.value).toBe(String(st.metal + st.cfo + st.airwallex));
+    if (st.revoked) expect(t.tip).toMatch(/mandate had just been replaced/);
     // At most two short lines on the card; the details in its tooltip.
     expect(t.explain.length).toBeLessThanOrEqual(60);
     expect(t.tip).toMatch(/fee_unknown|could not price the fee/);
@@ -137,7 +141,11 @@ describe("the redesigned public pages", () => {
   it("play agent run 1, labelled as Max asked, and never the dry run as a stand-in", () => {
     const run = agentRun();
     expect(file).toBe("docs/demo/agent-run.json");
-    expect(run.label).toBe("Replay of agent run 1 · 2 Nov · test money · real Claude decisions");
+    // Its name, its day and its time span from its own rows (and "and its follow-up" after a pause of over an hour).
+    expect(run.label).toMatch(/^Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions$/);
+    const ts = record.snapshot.agent_chat.map((c) => c.ts).concat(record.snapshot.flows.map((f) => f.at)).sort();
+    expect(run.label).toContain(`${ts[0]!.slice(11, 16)}–`);
+    expect(run.label).toContain(`–${ts[ts.length - 1]!.slice(11, 16)} UTC`);
     for (const html of [homePage(), watchPage(), proofPage()]) {
       expect(html).toContain(run.label);
       expect(html).not.toMatch(/Stand-in|standing in|Replay of Autonomous dry run/);

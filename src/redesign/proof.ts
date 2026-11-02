@@ -73,7 +73,11 @@ export function plain(text: string): string {
 }
 const li = (text: string, tone = "", link?: { label: string; href: string | null } | null, sub?: string) =>
   `<li class="${tone}">${plain(text)}${link ? ` ${link.href ? `<a class="pf" href="${esc(link.href)}" target="_blank" rel="noopener">${esc(link.label)} ↗</a>` : `<small>${plain(link.label)}</small>`}` : ""}${sub ? `<small>${plain(sub)}</small>` : ""}</li>`;
-const money2 = (e: { amount: string; unit: string }) => e.unit === "EUR" ? `EUR ${e.amount}` : `${e.amount} test USD`;
+/** A failed licence attempt and what followed, from the run's ledger: "The first licence transfer (P-0005) was refused …". */
+export function earlierLine(e: Extract<Ev, { k: "money" }>): string {
+  const id = /\((P-\d+)\)/.exec(e.what)?.[1] ?? "";
+  return `The first licence transfer${id ? ` (${id})` : ""} was refused by the sandbox (${e.refused?.code ?? ""}; nothing paid); it is not a limit.${e.retried ? ` It was proposed again as ${e.retried.id}, approved with Face ID and ${e.retried.status || "paid"} at ${e.retried.at.slice(11, 16)} UTC.` : ""}`;
+}
 export const fold = (summary: string, items: string[], open = false) => items.length ? `<details class="fold"${open ? " open" : ""}><summary>${esc(summary)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
 const fact = (v: string, l: string) => `<span class="fact"><b>${esc(v)}</b> ${esc(l)}</span>`;
 export const LOGO = {
@@ -100,7 +104,7 @@ export function partnerProof(run: AgentRun): Record<"metal" | "airwallex" | "vis
     airwallex: [
       ...s.rails.airwallex.map((r) => li(`${r.what}: ${r.detail}`, "", r.proof)),
       ...(tapDecline ? [li(`The limit, enforced by Airwallex (${tap!.label}): EUR ${tapDecline.amount} declined, ${tapDecline.reason ?? ""}`, "no", { label: `Airwallex ${tapDecline.txId.slice(0, 8)}… · read back with GET: ${tapDecline.getStatus}`, href: null })] : []),
-      ...money.filter((e) => e.rail === "airwallex" && e.refused?.by === "airwallex-sandbox").map((e) => li(`Earlier attempt, nothing paid: ${money2(e)} ${e.what} was approved with Face ID, but ${e.refused!.reason} (${e.refused!.code ?? ""}). The licence was paid later by SWIFT`, "no", null)),
+      ...money.filter((e) => e.rail === "airwallex" && e.refused?.by === "airwallex-sandbox").map((e) => li(`${earlierLine(e)}`, "no", null)),
     ],
     visa: tap ? tap.steps.map((x) => li(
       `${x.model ? `The Sourcing agent (${family(x.model)}) picked the card rail` : "Code tried one purchase over the card's limit"}: Visa's reference proxy answered ${x.proxyStatus}, our layer verified both signatures (${x.sig1}, ${x.sig2}); the Airwallex card (brand as Airwallex returns it: ${x.brand}) was ${x.approved ? "approved" : `declined by Airwallex (${x.reason})`}, EUR ${x.amount}`,
@@ -119,7 +123,7 @@ function partnerCards(run: AgentRun): string {
   const card = (id: string, logo: string, name: string, what: string, facts: string, items: string[], extra = "") =>
     `<article class="pcard card" id="${id}"><div class="ph">${logo}<h3>${esc(name)}</h3><a class="open" href="${id}">More ${icon("arrow-right", 14)}</a></div><p class="what">${esc(what)}</p><div class="facts">${facts}</div>${extra}${fold("Show the live proof", items)}</article>`;
   return `<div class="partners">
-${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal") + fact(String(mandates), "mandates replaced"), p.metal)}
+${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the cap") + (st.revoked ? fact(String(st.revoked), "refused by Metal: mandate just replaced") : "") + fact(String(mandates), "mandates replaced"), p.metal)}
 ${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + fact(String(st.airwallex), "card decline at the limit (TAP run)"), p.airwallex)}
 ${tap ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit"), p.visa, `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`) : ""}
 ${card("claude", LOGO.claude, "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls, each with a request id"), p.claude)}
@@ -134,7 +138,7 @@ function moreCards(run: AgentRun): string {
   const st = stops(r);
   const stopItems = [
     ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`By Metal: ${e.amount} test USD over the mandate's cap; Purser refused it before signing and Metal recorded the same refusal on chain`, "no", e.proof)),
-    ...money.filter((e) => e.refused?.by === "metal").map((e) => li(`By Metal: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", e.proof.href ? e.proof : null)),
+    ...money.filter((e) => e.refused?.by === "metal" && e.refused.code !== "mandate_revoked").map((e) => li(`By Metal: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", e.proof.href ? e.proof : null)),
     ...faces.filter((f) => f.status === "REJECTED").map((f) => li(`By the CFO with Face ID: ${f.id} · ${f.title} rejected`, "no")),
     ...(tap?.steps.filter((x) => !x.approved).map((x) => li(`By Airwallex, ${tap.label}: EUR ${x.amount} over the card's limit (${x.reason ?? ""})`, "no")) ?? []),
   ];
@@ -155,9 +159,9 @@ function moreCards(run: AgentRun): string {
     `<li><a class="pf" href="film">The film</a></li>`, `<li><a class="pf" href="month">A month in 90 seconds (simulated)</a></li>`, `<li><a class="pf" href="lab">The Scenario Lab</a></li>`,
   ];
   return `<div class="more">
-${box("stops", "ban", "stopped at a limit", String(st.metal + st.airwallex + st.cfo), `Metal and the CFO in ${runName(r)}; Airwallex at the card's limit in the TAP run.`, fold("Show each one", stopItems))}
+${box("stops", "ban", "stopped at a limit", String(st.metal + st.airwallex + st.cfo), `${st.metal} Metal · ${st.cfo} CFO · ${st.airwallex} Airwallex (TAP run).${st.revoked ? ` ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}`, fold("Show each one", [...stopItems, ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`Not counted, not a limit: ${e.what}, refused by Metal because its mandate had just been replaced`, "", e.proof.href ? e.proof : null))]))}
 ${box("faceid", "scan-face", "Face ID decisions", String(faceIdDecisions(r)), `Proposals the CFO decided on his phone${faces.some((f) => f.status === "COSIGNED") ? "; the mandate change needed a second signature too" : ""}. ${SECOND_APPROVER}`, fold(`Show the ${faces.length} signatures: ${faceIdDecisions(r)} decisions + ${faces.length - faceIdDecisions(r)} co-signature${faces.length - faceIdDecisions(r) === 1 ? "" : "s"}`, faceItems))}
-${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), `The licence's first SWIFT attempt: the Airwallex sandbox could not price the fee (fee_unknown). Not a limit. Paid later by SWIFT after a new Face ID.`, fold("Show it", earlier.map((e) => li(`${money2(e)} · ${e.what}: ${e.refused?.reason ?? ""}`, "no", { label: e.proof.label, href: null })))) : ""}
+${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), "The sandbox could not price the fee: nothing paid, not a limit.", fold("Show what followed", earlier.map((e) => li(earlierLine(e), "no", { label: e.proof.label, href: null })))) : ""}
 ${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=3"])}
 ${box("variation", "sparkles", "variation runs by Claude", `${v.summary.by_claude}/${v.summary.runs}`, `${v.summary.distinct_choices_same_world} different choices in the same world (simulated rails, real Claude Haiku, ${d(v.ran_at)}). Safety count under review: one action in the 2 November batch is being checked.`, "")}
 ${box("redteam", "shield-check", "attacks failed", `${red.blocked}/${red.attempts}`, `${d(red.ran_at)}, test world${red.caught_after ? `; ${red.caught_after} found afterwards, not prevented` : ""}. Against the agent loop: ${rt.summary.held} of ${rt.summary.runs} held (${d(rt.ran_at)}).`, "")}
