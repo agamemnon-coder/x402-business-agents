@@ -45,7 +45,12 @@ describe("agent run 1's record", () => {
     expect(ev("upstream.refused_on_chain")[0]!.payload.tx).toBe("0x3ad8de2f1a4896567f089786438418f0bf3be0d2c61807a9f157b89ed7d9a84d");
     expect(ev("refund.paid")).toHaveLength(3);
     expect(ev("proposal.failed", "P-0005")[0]!.payload.error).toMatch(/400 fee_unknown/);
-    expect(l.proposals.map((p) => p.proposal_id)).toEqual(["P-0001", "P-0002", "P-0003", "P-0004", "P-0005"]);
+    expect(l.proposals.map((p) => p.proposal_id)).toEqual(["P-0001", "P-0002", "P-0003", "P-0004", "P-0005", "P-0006", "P-0007"]);
+    // The licence after the run: P-0006 expired unsigned; P-0007 approved with Face ID and paid by SWIFT (fee EUR 13.37).
+    expect(l.proposals.find((p) => p.proposal_id === "P-0006")!.status).toBe("EXPIRED");
+    expect(ev("proposal.approved", "P-0007")[0]!.payload).toMatchObject({ approver: "max" });
+    expect(ev("proposal.executed", "P-0007")).toHaveLength(1);
+    expect(l.events.some((r) => r.event === "transfer.fee" && JSON.stringify(r.payload).includes("13.37"))).toBe(true);
     expect(l.proposals.find((p) => p.proposal_id === "P-0005")!.terms).toMatchObject({ amount: "240.00", currency: "EUR", vendor: "Stockline Data GmbH", method: "SWIFT" });
     expect(l.disputes).toHaveLength(1);
     expect((l.disputes[0]!.evidence as unknown[]).length).toBe(12);

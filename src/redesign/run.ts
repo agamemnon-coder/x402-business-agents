@@ -260,18 +260,25 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
   const i3 = moneyIn >= 0 ? moneyIn : firstIdx(ev, (e) => e.k === "world" && /invoice/i.test(e.text));
   if (i3 >= 0) {
     const booked = ev.find((e): e is Extract<Ev, { k: "money" }> => isMoney(e) && e.via === "deposit" && e.dir === "in");
-    const bill = ev.find((e): e is Extract<Ev, { k: "money" }> => isMoney(e) && e.via === "SWIFT");
-    const face = bill ? ev.find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && bill.what.includes(e.id)) ?? ev.find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && /invoice/i.test(e.title)) : undefined;
+    // The licence's end point: the SWIFT payout that was paid, when the run has one (Max, 2 Nov: a failed attempt before
+    // it, such as fee_unknown, stays honest proof on Watch and Proof, not the end point here); else the first attempt.
+    const bills = ev.filter((e): e is Extract<Ev, { k: "money" }> => isMoney(e) && e.via === "SWIFT");
+    const bill = bills.find((e) => !e.refused) ?? bills[0];
+    const face = bill ? ev.find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && bill.what.includes(e.id))
+      ?? ev.filter((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && /invoice/i.test(e.title) && e.status === "APPROVED" && e.at <= bill.at).pop() : undefined;
     const steps: Step[] = [];
     if (sweep) steps.push({ icon: "wallet", text: `${money(sweep.amount, sweep.unit)} swept after finality`, tone: "ok", proof: sweep.proof });
     if (booked) steps.push({ icon: "landmark", text: `${money(booked.amount, booked.unit)} booked at Airwallex`, tone: "ok" });
-    if (bill && face) steps.push({ icon: "scan-face", text: `${money(bill.amount, bill.unit)} licence: Face ID approved`, tone: "face" });
-    if (bill) steps.push({ icon: bill.refused ? "ban" : "circle-check", text: bill.refused ? (bill.refused.by === "airwallex-sandbox" ? `Airwallex: ${bill.refused.reason}` : `Airwallex refused: ${bill.refused.reason}`) : "Paid by SWIFT", tone: bill.refused ? "bad" : "ok" });
+    if (bill && !bill.refused && face) steps.push({ icon: "circle-check", text: `${bill.unit === "EUR" ? SHORT_EUR(bill.amount) : money(bill.amount, bill.unit)} licence paid by SWIFT · Face ID`, tone: "ok" });
+    else {
+      if (bill && face) steps.push({ icon: "scan-face", text: `${money(bill.amount, bill.unit)} licence: Face ID approved`, tone: "face" });
+      if (bill) steps.push({ icon: bill.refused ? "ban" : "circle-check", text: bill.refused ? (bill.refused.by === "airwallex-sandbox" ? `Airwallex: ${bill.refused.reason}` : `Airwallex refused: ${bill.refused.reason}`) : "Paid by SWIFT", tone: bill.refused ? "bad" : "ok" });
+    }
     // The card-only buy signed with Visa TAP comes from the separate TAP run of the same day, under its own label.
     const tap = tapRun();
     const tapBuy = tap?.steps.find((x) => x.approved && x.model);
     if (tapBuy) steps.push({ icon: "credit-card", text: `TAP run: ${SHORT_EUR(tapBuy.amount)} card buy, Visa TAP`, tone: "ok" });
-    const parts = [sweep ? "Earnings swept after finality" : "", bill && face ? "licence approved with Face ID" : "", bill ? (bill.refused ? (bill.refused.by === "airwallex-sandbox" ? "Airwallex's sandbox could not price the fee, nothing paid" : "Airwallex refused it, nothing paid") : "paid by SWIFT") : "", tapBuy ? "a card buy signed with Visa TAP (TAP run)" : ""].filter(Boolean);
+    const parts = [sweep ? "Earnings swept after finality" : "", bill && !bill.refused && face ? "licence paid by SWIFT after Face ID" : "", bill && (bill.refused || !face) && face ? "licence approved with Face ID" : "", bill && (bill.refused || !face) ? (bill.refused ? (bill.refused.by === "airwallex-sandbox" ? "Airwallex's sandbox could not price the fee, nothing paid" : "Airwallex refused it, nothing paid") : "paid by SWIFT") : "", tapBuy ? "a card buy signed with Visa TAP (TAP run)" : ""].filter(Boolean);
     out.push({ n: 3, title: "Earnings and euros", start: i3, steps, sentence: `${parts.join(" → ")}.`, mini: steps.length ? { kind: "flow", rows: steps.filter((x) => x.icon !== "landmark").map((x) => ({ icon: x.icon, text: x.text, tone: x.tone === "info" ? "ok" : x.tone })) } : null });
   }
   return out;

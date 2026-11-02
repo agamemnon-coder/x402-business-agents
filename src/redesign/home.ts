@@ -49,10 +49,12 @@ section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 @keyframes bar { 0%, 10% { height: calc(var(--h0) * 1%); background: var(--ok); } 26%, 70% { height: calc(var(--h1) * 1%); background: var(--bad); } 80%, 100% { height: calc(var(--h1) * 1%); background: var(--ok); } }
 .m-price .bar em { position: absolute; bottom: -26px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 14px; font-weight: 650; color: var(--muted); white-space: nowrap; }
 .m-price .bar b { position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 14px; color: #fff; }
-.m-price .tag { position: absolute; right: 12px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 750; border-radius: 999px; padding: 4px 10px; opacity: 0; white-space: normal; max-width: calc(100% - 160px); }
-.m-price .t1 { top: 34px; color: var(--bad); background: var(--bad-soft); animation: t1 6s infinite; }
-.m-price .t2 { top: 80px; color: var(--accent); background: var(--accent-soft); animation: t2 6s infinite; }
-.m-price .t3 { top: 126px; color: var(--ok); background: var(--ok-soft); animation: t3 6s infinite; }
+/* The tags stack in one column, so a tag that wraps on a phone pushes the next one down instead of overlapping it. */
+.m-price .tags { position: absolute; right: 12px; top: 34px; left: 160px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.m-price .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 750; border-radius: 999px; padding: 4px 10px; opacity: 0; white-space: normal; max-width: 100%; }
+.m-price .t1 { color: var(--bad); background: var(--bad-soft); animation: t1 6s infinite; }
+.m-price .t2 { color: var(--accent); background: var(--accent-soft); animation: t2 6s infinite; }
+.m-price .t3 { color: var(--ok); background: var(--ok-soft); animation: t3 6s infinite; }
 @keyframes t1 { 0%, 24% { opacity: 0; } 30%, 100% { opacity: 1; } }
 @keyframes t2 { 0%, 44% { opacity: 0; } 50%, 100% { opacity: 1; } }
 @keyframes t3 { 0%, 76% { opacity: 0; } 82%, 100% { opacity: 1; } }
@@ -75,7 +77,8 @@ section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 @media (min-width: 1000px) { .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; } }
 .tile .v { font-size: clamp(32px, 2.8vw, 42px) !important; }
 .partners { display: grid; gap: 12px; margin-top: 18px; }
-@media (min-width: 760px) { .partners { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 640px) { .partners { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .partners { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .partner { display: flex; align-items: center; gap: 14px; padding: 16px 18px; text-decoration: none; font-size: 16px; color: var(--muted); }
 @media (max-width: 899px) {
   .scenes { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 8px; scrollbar-width: none; }
@@ -128,9 +131,9 @@ function mini(m: Mini | null): string {
     return `<div class="mini m-price" aria-hidden="true"><div class="plot">
 <div class="cap" data-vars="--c0:${pct(m.cap)};--c1:${pct(m.newCap ?? m.cap)}"><span data-a="cap ${esc(m.cap)}" data-b="cap ${esc(m.newCap ?? m.cap)}"></span></div>
 <div class="bar" data-vars="--h0:${pct(m.old ?? m.cap)};--h1:${pct(m.price)}"><b>${esc(m.price)}</b><em>${esc(m.from)}</em></div></div>
-${m.tx ? `<span class="tag t1">${icon("ban", 14)} Refused · recorded on chain</span>` : ""}
+<div class="tags">${m.tx ? `<span class="tag t1">${icon("ban", 14)} Refused · recorded on chain</span>` : ""}
 ${m.signers > 1 ? `<span class="tag t2">${icon("scan-face", 14)} ${m.signers} of ${m.signers} signatures</span>` : ""}
-${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.price)}</span>` : ""}</div>`;
+${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.price)}</span>` : ""}</div></div>`;
   }
   if (m.kind === "orders") {
     return `<div class="mini m-orders" aria-hidden="true">${m.orders.map((o, i) => `<span class="${m.refunded.includes(o) ? "wrong" : ""}" data-vars="--d:${i * 90}">#${esc(o)}</span>`).join("")}<div class="legend"><i></i>signed, valid<i class="rf"></i>wrong data, refunded</div></div>`;
@@ -196,6 +199,7 @@ export function homePage(run: AgentRun = agentRun()): string {
     <a class="partner card" href="proof#metal"><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>Mandates and refusals on chain</a>
     <a class="partner card" href="proof#airwallex"><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>Cards, FX and SWIFT</a>
     <a class="partner card" href="proof#claude"><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${esc(run.agents.map((a) => a.family).join(" · "))} decide</a>
+    ${VISA_AWARD_ON ? '<a class="partner card" href="visa"><span class="logo txt">Visa TAP</span>Card checkouts signed with TAP</a>' : ""}
   </div>
 </div></section>
 </main>`;

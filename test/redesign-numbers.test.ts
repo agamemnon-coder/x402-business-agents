@@ -63,7 +63,19 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(fee.refused!.reason).toBe("the sandbox could not price the fee; nothing paid");
     expect(fee.amount).toBe("240.00");
     for (const html of [homePage(), watchPage(), proofPage()]) expect(html).not.toMatch(/says no on its own|as it did to the licence/);
-    expect(run.scenes[2]!.steps.map((s) => s.text).join(" ")).toMatch(/sandbox could not price the fee; nothing paid/);
+    // Max, 2 Nov: the failed attempt is honest proof on Watch and Proof, not scene 3's end point on Home.
+    expect(watchPage()).toMatch(/could not price the fee/);
+    expect(proofPage()).toMatch(/fee_unknown|could not price the fee/);
+    expect(run.scenes[2]!.steps.map((s) => s.text).join(" ")).not.toMatch(/could not price/);
+    expect(run.scenes[2]!.sentence).not.toMatch(/could not price/);
+  });
+
+  it("scene 3 ends with the licence paid by SWIFT after the CFO's Face ID (P-0007)", () => {
+    const steps = run.scenes[2]!.steps.map((s) => s.text);
+    expect(steps).toContain("€240 licence paid by SWIFT · Face ID");
+    expect(steps.filter((t) => /licence/.test(t))).toHaveLength(1);
+    expect(run.scenes[2]!.sentence).toMatch(/licence paid by SWIFT after Face ID/);
+    expect(homePage()).toContain("€240 licence paid by SWIFT · Face ID");
   });
 
   it("counts the Airwallex limit stop from the TAP run, labelled, and keeps fee_unknown apart", () => {
@@ -140,7 +152,17 @@ describe("the redesigned Home and Watch", () => {
     expect(JSON.stringify(run.scenes).includes("Refused · recorded on chain")).toBe(chain);
     expect(homePage().includes("refused, and recorded on chain")).toBe(chain);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
-    expect(run.scenes[2]!.steps.map((s) => s.text).join(" ")).toMatch(/Airwallex: the sandbox could not price the fee; nothing paid/);
+    expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence paid by SWIFT · Face ID");
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
+  });
+
+  it("Home's partner row has a fourth card, Visa TAP as text (no logo), linking to /visa (Max, 2 Nov)", () => {
+    expect(homePage()).toMatch(/<a class="partner card" href="visa"><span class="logo txt">Visa TAP<\/span>Card checkouts signed with TAP<\/a>/);
+    expect(homePage()).not.toMatch(/<img[^>]*visa/i);
+  });
+
+  it("the price card's tags stack in one column, so they cannot overlap on a phone (Max, 2 Nov)", () => {
+    expect(homePage()).toMatch(/<div class="tags"><span class="tag t1">[\s\S]*?<\/span>\s*<span class="tag t2">/);
+    expect(homePage()).not.toMatch(/\.m-price \.t[12] \{ top:/);
   });
 });
