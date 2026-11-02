@@ -21,7 +21,7 @@ export interface Layout {
   w: number; h: number; r: number; agents: [number, number][];
   metal: { x1: number; x2: number; y: number; ly: number }; awx: { x1: number; x2: number; y: number; ly: number };
   supplier: Box; licence: Box; gate: { x: number; y1: number; y2: number; ty: number }; refused: Box;
-  tiles: { x: number; y: number; dx: number; dy: number; w: number; h: number; ly: number }; bubble: Box; tap: Box; sweepX: number;
+  tiles: { x: number; y: number; dx: number; dy: number; w: number; h: number; ly: number }; bubble: Box; tap: Box; sweepX: number; awxLabel?: string;
   phone: Box & { ring: [number, number]; t1: [number, number]; t2: [number, number]; anchor: "middle" | "start" };
 }
 export const WIDE: Layout = {
@@ -37,7 +37,7 @@ export const PHONE: Layout = {
   metal: { x1: 16, x2: 244, y: 170, ly: 138 }, awx: { x1: 16, x2: 244, y: 378, ly: 346 },
   supplier: { x: 254, y: 134, w: 98, h: 72 }, licence: { x: 254, y: 342, w: 98, h: 72 },
   gate: { x: 170, y1: 150, y2: 190, ty: 210 }, refused: { x: 40, y: 222, w: 190, h: 34 },
-  tiles: { x: 26, y: 248, dx: 50, dy: 34, w: 42, h: 26, ly: 238 }, bubble: { x: 16, y: 270, w: 228, h: 36 }, tap: { x: 30, y: 394, w: 214, h: 32 }, sweepX: 200,
+  tiles: { x: 26, y: 248, dx: 50, dy: 34, w: 42, h: 26, ly: 238 }, bubble: { x: 16, y: 270, w: 228, h: 36 }, tap: { x: 30, y: 394, w: 214, h: 32 }, sweepX: 222, awxLabel: "Airwallex · FX · SWIFT",
   phone: { x: 16, y: 444, w: 328, h: 84, ring: [56, 486], t1: [92, 478], t2: [92, 504], anchor: "start" },
 };
 
@@ -58,7 +58,7 @@ function drawing(run: AgentRun, f: HomeFilm, L: Layout, cls: string): string {
   const P = L.phone;
   return `<svg class="film-svg ${cls}" viewBox="0 0 ${L.w} ${L.h}" role="img" aria-label="${esc(`The four moments of ${run.name}, replayed from its record`)}" data-l='${JSON.stringify(L)}'>
 <line x1="${L.metal.x1}" y1="${L.metal.y}" x2="${L.metal.x2}" y2="${L.metal.y}" class="rail metal"/>${t(L.metal.x1, L.metal.ly, "Metal · per query · on chain", "rl metal", "start")}
-<line x1="${L.awx.x1}" y1="${L.awx.y}" x2="${L.awx.x2}" y2="${L.awx.y}" class="rail awx"/>${t(L.awx.x1, L.awx.ly, "Airwallex · cards · FX · SWIFT", "rl awx", "start")}
+<line x1="${L.awx.x1}" y1="${L.awx.y}" x2="${L.awx.x2}" y2="${L.awx.y}" class="rail awx"/>${t(L.awx.x1, L.awx.ly, L.awxLabel ?? "Airwallex · cards · FX · SWIFT", "rl awx", "start")}
 ${agents}
 <g class="box">${rect(L.supplier, "bx")}${t(L.supplier.x + L.supplier.w / 2, L.supplier.y + 28, f.supplier, "lbl")}<text x="${L.supplier.x + L.supplier.w / 2}" y="${L.supplier.y + 60}" text-anchor="middle" class="num price">${esc(f.old)}</text></g>
 <g class="box">${rect(L.licence, "bx")}${t(L.licence.x + L.licence.w / 2, L.licence.y + 28, "Licence", "lbl")}<text x="${L.licence.x + L.licence.w / 2}" y="${L.licence.y + 60}" text-anchor="middle" class="num eur">${esc(f.licence)}</text></g>
