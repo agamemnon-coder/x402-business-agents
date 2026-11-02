@@ -80,11 +80,11 @@ describe("the Treasury agent's position names whether each supplier answers (age
     expect(seen).toMatch(/Query price 0\.05\. Suppliers now, by code's price check of each: Stockline 0\.04 a stock check, answering; Ridgeline Data \(0\.03 a stock check when it answers\) not reachable now \(answered HTTP 503\)\./);
   });
 
-  it("without a check (or when it cannot run), the prices as before", async () => {
+  it("without a check, the prices as before; a check that cannot run says the answer is unknown", async () => {
     const db = openDb(":memory:");
     expect(await treasuryProfile(30 * 60_000, { runFlow: noFlow, sim }).observe(db)).toMatch(/Query price 0\.05; Stockline 0\.02, Ridgeline Data 0\.03 a stock check\./);
     const broken = await treasuryProfile(30 * 60_000, { runFlow: noFlow, sim, suppliers: async () => { throw new Error("no addresses"); } }).observe(db);
-    expect(broken).toMatch(/Query price 0\.05; Stockline 0\.02, Ridgeline Data 0\.03 a stock check\./);
+    expect(broken).toMatch(/Query price 0\.05; Stockline 0\.02, Ridgeline Data 0\.03 a stock check\. Whether each supplier answers now is unknown: code's price check did not run\./);
   });
 });
 

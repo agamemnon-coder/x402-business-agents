@@ -28,7 +28,10 @@ if (unknown.length) { console.error(`no such case: ${unknown.join(", ")}`); proc
 // --case runs only the named cases (and merges like --agent).
 const only = args.includes("--agent") ? args[args.indexOf("--agent") + 1] : onlyCases ? "cases" : null;
 for (const c of AGENT_CASES.filter((x) => (onlyCases ? onlyCases.includes(x.id) : !only || x.agent === only))) {
-  for (const name of pick) {
+  // A case that rebuilds a run's moment runs on that run's model only (src/evals/agentFacts.ts).
+  for (const name of pick.filter((n) => !c.model || n === c.model)) {
+    // Checked before every case and model, so a long run stops at the block's end (each row's spend is recorded below).
+    if (budgetStatus(SPEND).blocks.evals.over) { console.error("the evals block of the API budget is spent; stopping (npm run budget)"); process.exit(2); }
     const model = ALL[name];
     const r: Row = { case: c.id, agent: c.agent, kind: c.kind, model, passed: 0, runs, cost_usd_micros: 0, median_ms: 0, details: [] };
     const times: number[] = [];
@@ -60,9 +63,10 @@ if (only && existsSync(outPath)) {
   rows.unshift(...old.filter((r) => !fresh.has(`${r.case}|${r.model}`) && AGENT_CASES.some((c) => c.id === r.case)));
   rows.sort((a, b) => AGENT_CASES.findIndex((c) => c.id === a.case) - AGENT_CASES.findIndex((c) => c.id === b.case) || a.model.localeCompare(b.model));
 }
-// The cheapest model that passed every run of every case of an agent (a model must have run all of its cases).
+// The cheapest model that passed every run of every case of an agent (a model must have run all of its cases); the cases
+// fixed to one run's model are not part of it.
 const cheapest = Object.fromEntries(agents.map((a) => {
-  const cases = AGENT_CASES.filter((c) => c.agent === a).map((c) => c.id);
+  const cases = AGENT_CASES.filter((c) => c.agent === a && !c.model).map((c) => c.id);
   const ok = [...new Set(rows.filter((r) => r.agent === a).map((r) => r.model))]
     .filter((m) => cases.every((c) => rows.some((r) => r.case === c && r.model === m && r.passed === r.runs)));
   ok.sort((x, y) => (PRICES[x]!.standard.output - PRICES[y]!.standard.output));
@@ -84,6 +88,8 @@ const md = [
   "## Cheapest model that passed every run",
   "",
   ...agents.map((a) => `- ${a}: ${cheapest[a] ?? "none of the models tried"}`),
+  "",
+  `Not in this comparison: the cases that rebuild a run's moment on that run's model only (${AGENT_CASES.filter((c) => c.model).map((c) => `${c.id} on ${c.model}`).join(", ")}).`,
   "",
 ].join("\n");
 writeFileSync(resolve(import.meta.dirname, "../../docs/agent-evals.md"), md);

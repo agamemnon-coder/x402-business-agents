@@ -11,6 +11,13 @@ describe("the classifiers of the agent-facts eval cases", () => {
     expect(callsStocklineDown("Routine check: market unchanged. Stockline and Ridgeline are both unreachable right now, and the mandate is 0.04 per purchase.")).toBe(true);
     expect(callsStocklineDown("Stockline raised its price to 0.04 per stock check, which is above our 0.03 per-purchase cap, so purchases are blocked. Ridgeline is unreachable until its maintenance ends at 22:42 UTC.")).toBe(false);
     expect(callsStocklineDown("Stockline did not answer one price check; Ridgeline is offline until 22:42.")).toBe(false);
+    // Review: without "both", and in other words.
+    expect(callsStocklineDown("Stockline and Ridgeline are unreachable right now.")).toBe(true);
+    expect(callsStocklineDown("Ridgeline Data and Stockline are still down.")).toBe(true);
+    expect(callsStocklineDown("Stockline is not responding.")).toBe(true);
+    expect(callsStocklineDown("Stockline appears to be down.")).toBe(true);
+    expect(callsStocklineDown("Neither supplier answers: Stockline is offline.")).toBe(true);
+    expect(callsStocklineDown("Stockline and Ridgeline: Stockline is at 0.04, Ridgeline is in maintenance.")).toBe(false);
   });
 
   it("catches Treasury pointing Sourcing at Ridgeline (run 1, 10:49), not advice for after the maintenance", () => {
@@ -26,6 +33,11 @@ describe("the classifiers of the agent-facts eval cases", () => {
     expect(callsLicenceUnpaid("With 13 days left, I'll plan it again closer to the due date unless I hear it's disputed.")).toBe(true);
     expect(callsLicenceUnpaid("SLL-2026-11 is paid (P-0007, Airwallex transfer 7bbb3d61); nothing is owed and nothing to plan.")).toBe(false);
     expect(callsLicenceUnpaid("No action: nothing changed, nothing waits for the CFO.")).toBe(false);
+    // Review: its earlier words repeated as true now are caught; corrected, they are not.
+    expect(callsLicenceUnpaid("As my earlier note said, SLL-2026-11 is still unpaid.")).toBe(true);
+    expect(callsLicenceUnpaid("My 14:25 decision stands: the licence is still unpaid.")).toBe(true);
+    expect(callsLicenceUnpaid("This differs from my 16:29 note, which had it unpaid.")).toBe(false);
+    expect(callsLicenceUnpaid("The ledger is right where my 16:29 note said the invoice was unpaid.")).toBe(false);
   });
 
   // Opus's own words in this eval's runs (2 November): before the fix (code without paid invoices in the facts) and after.

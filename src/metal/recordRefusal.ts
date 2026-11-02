@@ -11,7 +11,7 @@ import type { Address } from "viem";
 import { extractTerms, readMandateState } from "@metalntwx/metal-pay/mandates";
 import { existsSync } from "node:fs";
 import { privateKeyToAccount } from "viem/accounts";
-import { keyPath, metalAgent, metalAgentAsync } from "./agentCli.js";
+import { keyPath, metalAgentAsync } from "./agentCli.js";
 import { publicClient, readKeyFile } from "./chain.js";
 import type { LoadedMandate } from "./mandate.js";
 import { centsToBaseUnits, fromCents } from "../lib/money.js";
@@ -21,7 +21,7 @@ export interface RecordedRefusal { tx: string | null; reason: string }
 /** The gas-only key (created once per world, topped up from the faucet when low): it pays gas, it owns nothing. */
 export async function refusalGasKey(): Promise<string> {
   const file = keyPath("gas-sponsor.key.json");
-  if (!existsSync(file)) metalAgent(["key", "create", "--out", file]);
+  if (!existsSync(file)) await metalAgentAsync(["key", "create", "--out", file]);
   const address = privateKeyToAccount(readKeyFile(file).privateKey).address;
   // The faucet, or with KIT11_RECYCLE=on spare test money from finished dry runs (src/metal/testFunds.ts).
   await fundTestWallet(address, 10, { label: "gas sponsor (Metal refusal recorder)" });

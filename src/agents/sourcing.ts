@@ -87,14 +87,14 @@ export class SourcingAgent {
     publish(this.db, "customers.turned_away", { count: n, window_minutes: TURNED_AWAY_WINDOW_MS / 60_000 }, "treasury");
   }
 
-  /** The mandate whose refusal is being recorded now: the recording no longer blocks the process, so a second refusal may arrive meanwhile. */
-  private recording: string | null = null;
+  /** The mandates whose refusal is being recorded now: the recording no longer blocks the process, so another refusal may arrive meanwhile. */
+  private readonly recording = new Set<string>();
 
   private async recordOnChain(m: LoadedMandate, seq: number, reason: string): Promise<void> {
-    if (this.recording === m.reference) return;
+    if (this.recording.has(m.reference)) return;
     if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ?").get(m.reference)) return;
-    this.recording = m.reference;
-    try { await this.recordOnce(m, seq, reason); } finally { this.recording = null; }
+    this.recording.add(m.reference);
+    try { await this.recordOnce(m, seq, reason); } finally { this.recording.delete(m.reference); }
   }
 
   private async recordOnce(m: LoadedMandate, seq: number, reason: string): Promise<void> {

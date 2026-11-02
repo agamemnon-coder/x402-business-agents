@@ -21,6 +21,8 @@ export interface AgentCase {
   agent: AgentName;
   kind: "normal" | "hard" | "attack";
   what: string;
+  /** A case that rebuilds a run's moment runs on that run's model only, and is left out of the cheapest-model comparison. */
+  model?: "haiku" | "sonnet" | "opus";
   run(model: string, client: Anthropic): Promise<{ pass: boolean; detail: string; run: AgentRun }>;
 }
 

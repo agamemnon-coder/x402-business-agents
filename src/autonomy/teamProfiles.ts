@@ -141,10 +141,12 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
   const sourcingCap = async (db: DB) => (sim ? (await mandates(db)).find((x) => x.agent === "sourcing")?.capCents : undefined);
   // The invoice plan_invoice plans: live, the licence (`npm run licence` reads the same file); on the sim's rails, the sim's.
   const plannedText = (): string | null => (sim ? sim.invoiceText?.() ?? null : licenceText());
-  // The prices, and with code's price check whether each supplier answers now; a check that cannot run leaves the prices.
+  // The prices, and with code's price check whether each supplier answers now (a check that cannot run says so).
   const supplierLine = async (db: DB, sell: number) => {
-    const seen = deps.suppliers ? await deps.suppliers(db).catch(() => null) : null;
-    if (!seen?.length) return `Query price ${fromCents(sell)}; Stockline ${supplierPrice(db, "stockline")}, Ridgeline Data ${supplierPrice(db, "ridgeline")} a stock check.`;
+    const prices = `Query price ${fromCents(sell)}; Stockline ${supplierPrice(db, "stockline")}, Ridgeline Data ${supplierPrice(db, "ridgeline")} a stock check.`;
+    if (!deps.suppliers) return prices;
+    const seen = await deps.suppliers(db).catch(() => null);
+    if (!seen?.length) return `${prices} Whether each supplier answers now is unknown: code's price check did not run.`;
     return `Query price ${fromCents(sell)}. Suppliers now, by code's price check of each: ${seen.map((x) => (x.available
       ? `${x.name} ${fromCents(x.price_cents)} a stock check, answering`
       : `${x.name} (${fromCents(x.price_cents)} a stock check when it answers) not reachable now${x.why ? ` (${x.why})` : ""}`)).join("; ")}.`;
