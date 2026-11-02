@@ -81,8 +81,10 @@ describe("the Support agent settles a dispute", () => {
     const d = { ...deps(), limits: { eachCents: 10, perDisputeCents: 10 } };
     const refunded = d.refunded;
     const r = await settleDispute(db, facts, d, fake([[7, 10, 13].map((seq) => ({ name: "refund", input: { seq, reason: "wrong data" } }))]));
-    expect(refunded).toEqual([7, 10]);
-    expect(r.run.calls[2]).toMatchObject({ blocked: "automatic limit" });
+    expect(r.run.calls.map((c) => c.blocked ?? "ok")).toEqual(["ok", "ok", "automatic limit"]);
+    // #13 was left undecided, so the agent's settlement does not count: nothing of it is paid; code settles.
+    expect(r.source).toBe("fallback");
+    expect(refunded).toEqual([]);
   });
 
   it("does not escalate a sale it already refunded, and escalates once", async () => {
@@ -94,7 +96,17 @@ describe("the Support agent settles a dispute", () => {
       [{ name: "escalate_to_cfo", input: { seqs: [8], advice: "Reject." } }, { name: "escalate_to_cfo", input: { seqs: [9], advice: "again" } }],
     ]));
     expect(r.run.calls.map((c) => c.blocked ?? "ok")).toEqual(["ok", "already refunded", "ok", "already escalated"]);
-    expect(d.escalated).toEqual([{ seqs: [8], advice: "Reject." }]);
+    // #10 and #13 were left undecided: the settlement does not count, so nothing was proposed or paid.
+    expect(r.source).toBe("fallback");
+    expect(d.escalated).toEqual([]);
+    const done = deps();
+    const full = await settleDispute(openDb(":memory:"), facts, done, fake([
+      [7, 10, 13].map((seq) => ({ name: "refund", input: { seq, reason: "wrong data" } })),
+      [{ name: "escalate_to_cfo", input: { seqs: [7, 8], advice: "x" } }],
+      [{ name: "escalate_to_cfo", input: { seqs: SEQS.filter((s) => !WRONG.has(s)), advice: "Reject." } }, { name: "escalate_to_cfo", input: { seqs: [9], advice: "again" } }],
+    ]));
+    expect(full.source).toBe("claude");
+    expect(done.escalated).toEqual([{ seqs: [5, 6, 8, 9, 11, 12, 14, 15, 16], advice: "Reject." }]);
   });
 
   it("hands the dispute back to code when the agent is not there", async () => {
@@ -120,21 +132,35 @@ describe("the Support agent settles a dispute", () => {
     const db = openDb(":memory:");
     const nothing = await settleDispute(db, facts, deps(), fake([]));
     expect(nothing).toMatchObject({ source: "fallback", note: expect.stringMatching(/left .*#7/) });
-    const half = await settleDispute(db, facts, deps(), fake([[7, 10, 13].map((seq) => ({ name: "refund", input: { seq, reason: "wrong" } }))]));
+    const half = await settleDispute(openDb(":memory:"), facts, deps(), fake([[7, 10, 13].map((seq) => ({ name: "refund", input: { seq, reason: "wrong" } }))]));
     expect(half).toMatchObject({ source: "fallback", note: expect.stringMatching(/did not send .* to the CFO/) });
   });
 
-  it("counts refunds and an escalation from earlier runs of the same dispute: the limit and 'once' hold across runs", async () => {
+  it("counts refunds from earlier runs of the same dispute: the limit per dispute holds across runs", async () => {
     const db = openDb(":memory:");
-    const d = { ...deps(), limits: { eachCents: 10, perDisputeCents: 10 }, earlier: () => ({ refunded: [{ seq: 10, cents: 5 }, { seq: 13, cents: 5 }], escalated: { proposalId: "P-0004", seqs: [5, 6] } }) };
+    const d = { ...deps(), limits: { eachCents: 10, perDisputeCents: 10 }, earlier: () => ({ refunded: [{ seq: 10, cents: 5 }, { seq: 13, cents: 5 }], escalated: null }) };
     const r = await settleDispute(db, facts, d, fake([[
       { name: "refund", input: { seq: 7, reason: "wrong data" } },
-      { name: "escalate_to_cfo", input: { seqs: [8], advice: "x" } },
+      { name: "refund", input: { seq: 10, reason: "wrong data" } },
     ]]));
     expect(d.refunded).toEqual([]);
-    expect(r.run.calls.map((c) => c.blocked)).toEqual(["automatic limit", "already escalated"]);
+    expect(r.run.calls.map((c) => c.blocked ?? "ok")).toEqual(["automatic limit", "ok"]);
+    expect(r.run.calls[1]!.text).toMatch(/refunded already/);
     // The settlement's record tells this run's refunds (none) from the earlier ones it carries (D23 credits only these).
     const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'dispute.settled_by_agent' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string };
     expect(JSON.parse(row.payload_json)).toMatchObject({ refunded: ["#10", "#13"], refunded_now: [] });
+  });
+
+  it("an escalation to the CFO from an earlier run means the dispute was decided: the agent does not run again", async () => {
+    const db = openDb(":memory:");
+    const d = { ...deps(), earlier: () => ({ refunded: [{ seq: 7, cents: 5 }], escalated: { proposalId: "P-0004", seqs: [5, 6] } }) };
+    let asked = 0;
+    const client = { beta: { messages: { create: async () => { asked++; throw new Error("not to be called"); } } } } as unknown as Anthropic;
+    const r = await settleDispute(db, facts, d, client);
+    expect(asked).toBe(0);
+    expect(r.already).toMatch(/P-0004/);
+    expect(d.refunded).toEqual([]);
+    expect(d.escalated).toEqual([]);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM audit_log").get() as { n: number }).n).toBe(0);
   });
 });

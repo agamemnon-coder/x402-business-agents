@@ -76,6 +76,42 @@ CREATE TABLE IF NOT EXISTS disputes (
   created_at TEXT NOT NULL
 );
 
+-- A dispute is decided once (agent run 1: a restart decided one twice). The decision is written before any refund is
+-- paid or any proposal made; a restart carries out the rest of that decision and never decides again. The decision
+-- itself cannot change or be deleted; only its progress (what is paid, which proposal) is filled in.
+CREATE TABLE IF NOT EXISTS dispute_decisions (
+  dispute_id TEXT PRIMARY KEY,
+  source TEXT NOT NULL CHECK (source IN ('claude', 'code')),
+  plan_json TEXT NOT NULL,
+  decided_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('DECIDED', 'DONE')),
+  paid_json TEXT NOT NULL DEFAULT '[]',
+  escalation_proposal TEXT,
+  approval_proposal TEXT,
+  last_note TEXT,
+  audited INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  attempted_at TEXT,
+  -- Refunds of the decision code could not pay (no longer within the automatic limits, or refused for good): they go to
+  -- the CFO as one recorded proposal, never paid around the limits.
+  handover_json TEXT NOT NULL DEFAULT '[]',
+  handover_proposal TEXT,
+  -- Refunds held at Metal: how often each was looked at again ({"seq": n}); after HANDOVER_AFTER looks it is "sent,
+  -- unconfirmed" (sent_json): never counted as refunded; /health and the reconciliation keep following it.
+  held_json TEXT NOT NULL DEFAULT '{}',
+  sent_json TEXT NOT NULL DEFAULT '[]',
+  -- The process carrying it out now ({pid, start}): another process leaves it alone while that one lives.
+  carrier TEXT,
+  done_at TEXT
+);
+CREATE TRIGGER IF NOT EXISTS dispute_decision_once BEFORE INSERT ON dispute_decisions
+WHEN EXISTS (SELECT 1 FROM dispute_decisions WHERE dispute_id = NEW.dispute_id)
+BEGIN SELECT RAISE(ABORT, 'a dispute decision is decided once'); END;
+CREATE TRIGGER IF NOT EXISTS dispute_decision_fixed BEFORE UPDATE OF dispute_id, source, plan_json, decided_at ON dispute_decisions
+BEGIN SELECT RAISE(ABORT, 'a dispute decision is decided once'); END;
+CREATE TRIGGER IF NOT EXISTS dispute_decision_kept BEFORE DELETE ON dispute_decisions
+BEGIN SELECT RAISE(ABORT, 'a dispute decision is kept'); END;
+
 CREATE TABLE IF NOT EXISTS proposals (
   proposal_id TEXT PRIMARY KEY,
   kind TEXT NOT NULL,
