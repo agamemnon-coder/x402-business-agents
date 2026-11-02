@@ -1,5 +1,7 @@
 # Wereld-draaiboek donderdag: wij veranderen de wereld, de agents beslissen
 
+**Herstart van de container midden in de run:** volg [het herstelplan](herstelplan-herstart.md). Max en de controller doen niets en tikken niet opnieuw; Claude start de runner opnieuw, controleert met `verify` en meldt de volgende stap.
+
 Dit is het draaiboek voor de run met de autonome agents (`KIT11_AGENTS=on`, `KIT11_AUTONOMY=on`). Het verschil met
 [draaiboek-live-run.md](draaiboek-live-run.md): daar volgt elke stap een vast script. Hier veranderen wij alleen de
 wereld. Wat de agents daarop doen, staat **niet** vast. Er staan dus geen vaste bedragen of uitkomsten in dit draaiboek,
