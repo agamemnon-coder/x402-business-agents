@@ -7,21 +7,23 @@ supplier costs rise — plus Airwallex for cards, FX and the euro licence fee. E
 
 **Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
 
-**Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/#tour))
-or offline with `npm ci && npm run judge` (no keys, no network):
+**Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/))
+or offline with `npm ci && npm run judge` (no keys, no network). Steps 2 and 3 are from the recorded run of 30 October
+(test money):
 
 1. **The problem:** AI agents are starting to spend company money; one shared card or wallet gives no limit per agent
    and no one place for the exceptions. ([Watch](https://kit11.max-31b.workers.dev/film))
-2. **Airwallex declines the card** above its limit; after the CFO's Face ID the limit follows and the same purchase
-   is paid. ([the Airwallex ids](https://kit11.max-31b.workers.dev/demo?step=1))
-3. **Metal refuses the higher price** against the on-chain mandate, and the CFO moves budget between the mandates within the same 20.00 with
-   Face ID. ([the transactions](https://kit11.max-31b.workers.dev/demo?step=3))
+2. **Airwallex declines the card** above its limit (`LIMIT_EXCEEDED`, €45.00 on a €30.00 card); after the CFO's Face
+   ID the limit follows (€30 → €50) and the same purchase is paid. ([the Airwallex ids](https://kit11.max-31b.workers.dev/airwallex))
+3. **Metal refuses the higher price** against the on-chain mandate (`mandate_cap_exceeded`), and the CFO moves budget
+   between the mandates within the same 20.00 with Face ID. ([the recorded run's dashboard](https://kit11.max-31b.workers.dev/?recorded))
 4. **The Dispute desk checks every order:** a simulated customer (we filed for it) disputes 12 orders; each is
    checked against its signed order and the mandate on chain. All 12 hold, so nothing new is refunded. ([the evidence](https://kit11.max-31b.workers.dev/metal#dispute))
 5. **Try it yourself:** type a task for an agent. ([Try it](https://kit11.max-31b.workers.dev/try))
 
-Also: **the agents deciding by themselves** (`/?autonomy`), from an autonomous dry run: we changed the world, each agent
-decided with real Claude calls inside its limits. Test passkeys and test money; not a live run with Max.
+Also: **the agents deciding by themselves** (`/?autonomy`), from agent run 1 (a rehearsal, 2 November): we changed the
+world, each agent decided with real Claude calls inside its limits (38 of 38 decisions by Claude). Max's real Face ID;
+the second approver is a labelled test passkey (in production a second person); test money only.
 
 <p>
   <img src="docs/media/purser-card.gif" width="49%" alt="Airwallex declines the agent's card over its limit">
@@ -29,16 +31,18 @@ decided with real Claude calls inside its limits. Test passkeys and test money; 
 </p>
 
 *Left: Airwallex itself declines the agent's card over its limit. Right: Metal refuses a payment over the agent's
-on-chain mandate. Both from the recorded live run (test money).*
+on-chain mandate. Both from the recorded run of 30 October (test money).*
 
 **Kit 11 (x402 Business Agents), as built.** Northwind Outdoor, an outdoor wholesaler that sells live stock data to
-retailers per query: the kit's data business. Three agents draw on one Metal account, each under its own mandate:
+retailers per query: the kit's data business. (In agent run 1, 44 of the 63 sales resold data from a cache up to
+300 s old, as the Sourcing agent's buy policy allowed; Thursday's main run is planned with the cache off.) Three agents
+draw on one Metal account, each under its own mandate:
 
 | Kit 11 agent | Its job in the brief | Budget when bound → after the CFO's Face ID |
 |---|---|---|
 | Sourcing agent | buys the upstream data per query; its card pays warehouse and data software | 10.00 → 12.00, cap 0.03 → 0.04 a purchase |
 | Support agent | refunds customers when a dispute holds; its card pays helpdesk software | 4.00 |
-| Treasury agent | designs the rebalance after the price rise (with the agents on, its own split, e.g. 14 / 2 / 4); the sweep to Airwallex runs on its mandate; the EUR licence fee is paid through Airwallex (FX and SWIFT, after Face ID), not from a Metal mandate; both are code's decisions (with the agents on, it advises when to pay the licence) | 6.00 → 4.00 in the brief |
+| Treasury agent | designs the rebalance after the price rise (with the agents on, its own split, e.g. 14 / 2 / 4); the sweep to Airwallex runs on its mandate; the EUR licence fee is paid through Airwallex (FX and SWIFT, after Face ID), not from a Metal mandate. With the agents off, both are code's decisions; with the agents on, the Treasury agent decides the sweep and advises when to pay the licence. | 6.00 → 4.00 in the brief |
 
 20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). Every Kit 11 sentence and where
 it is done: [docs/requirements-matrix.md](docs/requirements-matrix.md) section 4.
@@ -49,7 +53,7 @@ the CFO signs the new terms with Face ID. When an agent needs more, it stops and
 **Who it is for:** the CFO (or controller) of a small company that runs AI agents and wants them to spend company
 money only within limits the CFO sets.
 
-**Built for the rules, not certified:** Airwallex is the regulated provider (accounts, card issuing, payouts; its KYB,
+**Designed with these principles, not certified:** Airwallex is the regulated provider (accounts, card issuing, payouts; its KYB,
 KYC and screening are its own, not shown in this repo), Metal enforces the limits on chain, and Purser holds no funds of
 its own (they stay in the business's Airwallex and Metal accounts), logs every model call its agents make and keeps a
 person in charge
