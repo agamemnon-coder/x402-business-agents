@@ -3,7 +3,7 @@
 // page's CSP hash is taken; "More" is a <details> element, so it needs no script. Colours come from the page's own
 // tokens, with fallbacks for pages that name them differently.
 
-export type NavKey = "overview" | "try" | "metal" | "dashboard" | "watch" | "live" | "demo" | "month" | "lab" | "visa";
+export type NavKey = "overview" | "try" | "metal" | "dashboard" | "watch" | "live" | "demo" | "month" | "lab" | "visa" | "airwallex" | "claude";
 
 export const NAV_MAIN: [NavKey, string, string][] = [
   ["overview", "Overview", "./"],
@@ -14,6 +14,8 @@ export const NAV_MAIN: [NavKey, string, string][] = [
 ];
 
 export const NAV_MORE: [NavKey, string, string][] = [
+  ["airwallex", "Airwallex", "airwallex"],
+  ["claude", "Claude", "claude"],
   ["live", "Live", "live"],
   ["demo", "Recorded run", "demo"],
   ["month", "A month", "month"],

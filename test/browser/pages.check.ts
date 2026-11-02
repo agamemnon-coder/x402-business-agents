@@ -331,6 +331,33 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       await page.screenshot({ path: join(shots, `visa-${tag}.png`), fullPage: true });
     }
 
+    // The partner pages: the same five parts on each (in our story, what we use with the proof and the docs, why an
+    // agent needs it, what we do not do), every run labelled, the dry run never called live, and no Visa logo.
+    for (const [path, docs] of [["/airwallex", "airwallex.com/docs/"], ["/claude", "platform.claude.com/docs/"]] as const) {
+      await page.goto(`${base}${path}`, { waitUntil: "load" });
+      await look(page, `${path} ${tag}`, w);
+      const pt = await page.evaluate(() => document.body.innerText);
+      for (const part of ["In our story", "What we use, and the proof", "Why an agent needs it", "What we do not do, or only simulate"]) if (!pt.includes(part)) fail(`${path} ${tag}: no "${part}"`);
+      if (!/Autonomous dry run · .* · test passkeys and test money · not a live run/.test(pt)) fail(`${path} ${tag}: the dry run is not labelled`);
+      if (!/Recorded run · .* · test money/.test(pt)) fail(`${path} ${tag}: the recorded run is not labelled`);
+      if (/live with Max/i.test(pt)) fail(`${path} ${tag}: says live with Max`);
+      if ((await page.locator(`#features .card .docs a[href*="${docs}"]`).count()) < 4) fail(`${path} ${tag}: fewer than four features linked to the docs`);
+      if ((await page.locator("#features .card .pf").count()) < 3) fail(`${path} ${tag}: fewer than three proofs`);
+      if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
+      if (path === "/claude") {
+        if ((await page.locator(".agent").count()) !== 3) fail(`/claude ${tag}: not three agents`);
+        const ag = await page.locator(".agents").innerText();
+        for (const want of [/Sourcing agent[\s\S]*Claude Haiku/, /Support agent[\s\S]*Claude Sonnet/, /Treasury agent[\s\S]*Claude Opus/, /decided by Claude/, /fallback \(code\)/, /request req_/]) if (!want.test(ag)) fail(`/claude ${tag}: the agents miss ${want}`);
+        await page.locator("details.all > summary").click();
+        if ((await page.locator("ol.dec li").count()) < 5) fail(`/claude ${tag}: the decisions list is short`);
+        await look(page, `/claude decisions open ${tag}`, w);
+      } else {
+        if (!/LIMIT_EXCEEDED|over the card's limit/.test(pt)) fail(`/airwallex ${tag}: no decline by Airwallex`);
+        if ((await page.locator("#features .card .pf[title*='read back']").count()) < 1) fail(`/airwallex ${tag}: no id marked as read back`);
+      }
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+    }
+
     // The film: a moment from each scene draws without an error and without spilling over (it scales to fit).
     for (const t of [3, 18, 30, 50, 70, 95, 120, 140, 155, 168]) {
       await page.goto(`${base}/film?t=${t}`, { waitUntil: "load" });
@@ -353,4 +380,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /metal (every mandate), /metal/report, /visa, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /metal (every mandate), /metal/report, /visa, /airwallex, /claude, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);
