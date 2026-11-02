@@ -47,6 +47,33 @@ export const LICENSOR = {
   address: { street: "Datenallee 12", city: "Berlin", postcode: "10115", countryCode: "DE" as const },
 };
 
+/**
+ * The payees code allowlists, and the only ones: seedTreasury creates each once at Airwallex and records it in the
+ * ledger's beneficiaries. Neither an agent nor an invoice adds to it; a supplier's new account replaces its entry only
+ * through a person's verified payee change (src/policy/payeeChange.ts).
+ */
+export const ALLOWLISTED_PAYEES = [MANUFACTURER, LICENSOR] as const;
+
+/** A payee on the allowlist as code compares an invoice with it: the name, the IBAN's hash, the BIC. */
+export interface AllowlistedPayee { name: string; ibanSha256: string; bic: string }
+
+/**
+ * The allowlist as it stands, for the agents' facts: the ledger's active beneficiaries, and each code payee
+ * (ALLOWLISTED_PAYEES) whose account the ledger does not hold yet, exactly as seedTreasury will record it (holdout H6,
+ * dry-177: before the first Treasury flow ran, the facts called the licensor "an unlisted vendor"). A code payee whose
+ * account the ledger holds as REPLACED (a person changed it) is not added back. It reads only; it never writes a payee,
+ * and paying still checks the ledger's own beneficiaries (checkInvoice).
+ */
+export function payeeAllowlist(db: DB): AllowlistedPayee[] {
+  const rows = db.prepare("SELECT name, iban_sha256, bic, status FROM beneficiaries").all() as { name: string; iban_sha256: string; bic: string; status: string }[];
+  const out: AllowlistedPayee[] = rows.filter((r) => r.status === "ACTIVE").map((r) => ({ name: r.name.trim(), ibanSha256: r.iban_sha256, bic: r.bic }));
+  for (const p of ALLOWLISTED_PAYEES) {
+    const sha = ibanSha(p.iban);
+    if (!rows.some((r) => r.iban_sha256 === sha)) out.push({ name: p.name, ibanSha256: sha, bic: p.bic });
+  }
+  return out;
+}
+
 export async function snapshot(db: DB, rail: AirwallexRail, label: string) {
   const b = await rail.balances();
   db.prepare("INSERT INTO balance_snapshots (taken_at, label, json) VALUES (?, ?, ?)").run(new Date().toISOString(), label, JSON.stringify(b));
@@ -71,7 +98,7 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
   }
 
   // The allowlisted payees: the manufacturer and Kit 11's licensor, each created once at Airwallex.
-  for (const payee of [MANUFACTURER, LICENSOR]) {
+  for (const payee of ALLOWLISTED_PAYEES) {
     let ben = await rail.findBeneficiaryByIban(payee.iban);
     ben ??= await rail.createBeneficiary(payee);
     db.prepare("INSERT OR IGNORE INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES (?, ?, ?, ?, ?, 'EUR', 'SWIFT')")

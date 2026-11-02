@@ -9,9 +9,14 @@
 // An invoice's own words are not facts (Opus review, 2 November): its number passes a strict shape check or is not
 // repeated, its vendor is named only when the name is on the payee allowlist, and every line built from an invoice
 // says it is what the invoice states, unverified.
+//
+// The allowlist is code's own (holdout H6, dry-177): the payees seedTreasury records and the ledger's active
+// beneficiaries (payeeAllowlist), so a fresh world's first wake, before any Treasury flow ran, does not call the
+// licensor "an unlisted vendor". An invoice under an allowlisted name whose IBAN or BIC is not the one on file for
+// that name is flagged and not offered for planning; its own bank details are never repeated.
 
-import { invoiceAlreadyHandled, invoiceKey, measuredSwiftFeesCents, treasuryState } from "../agents/euroBill.js";
-import { parseInvoiceFallback } from "../agents/invoice.js";
+import { ALLOWLISTED_PAYEES, invoiceAlreadyHandled, invoiceKey, measuredSwiftFeesCents, payeeAllowlist, treasuryState, type AllowlistedPayee } from "../agents/euroBill.js";
+import { ibanSha, parseInvoiceFallback } from "../agents/invoice.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { feeReserveCents, feeReserveOverCap, planInvoice } from "../policy/treasury.js";
@@ -19,7 +24,8 @@ import { feeReserveCents, feeReserveOverCap, planInvoice } from "../policy/treas
 export interface PaidInvoice { invoice_no: string; amount: string; currency: string; paid_at: string; transfer_id: string | null; proposal_id: string | null }
 export interface OpenInvoice {
   invoice_no: string;
-  /** The vendor as the invoice states it when that name is on the payee allowlist, else "an unlisted vendor". */
+  /** The vendor as the invoice states it when that name is on the payee allowlist, else "an unlisted vendor". An
+   *  allowlisted name with bank details not on file for it is a conflict (the invoice is not offered for planning). */
   vendor: string;
   amount: string;
   currency: string;
@@ -52,6 +58,7 @@ export const BALANCE_READING_STALE_MS = 60 * 60_000;
 const has = (db: DB, table: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
 const hhmm = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 
+/** A copy that came in: a world event's (with its text) or a planned invoice's row (no text). */
 type Received = PlannedInvoice;
 
 // Invoice numbers: ASCII only and written as code compares them (no spaces, no line breaks, nothing NFKC or upper
@@ -70,9 +77,9 @@ export function vouchedInvoiceNo(no: string): boolean {
 }
 const shownNo = (no: string) => (vouchedInvoiceNo(no) ? no : "(a number code does not repeat)");
 
-/** The names on the payee allowlist (active beneficiaries). */
-const allowlisted = (db: DB): Set<string> =>
-  new Set(has(db, "beneficiaries") ? (db.prepare("SELECT name FROM beneficiaries WHERE status = 'ACTIVE'").all() as { name: string }[]).map((r) => r.name.trim()) : []);
+/** The payee allowlist: code's payees and the ledger's active beneficiaries (payeeAllowlist; it writes nothing). */
+const allowlist = (db: DB): AllowlistedPayee[] =>
+  has(db, "beneficiaries") ? payeeAllowlist(db) : ALLOWLISTED_PAYEES.map((p) => ({ name: p.name, ibanSha256: ibanSha(p.iban), bic: p.bic }));
 
 const wellFormed = (r: Received) => /^\d+\.\d{2}$/.test(r.amount) && /^\d{4}-\d{2}-\d{2}$/.test(r.due_date) && /^[A-Z]{3}$/.test(r.currency);
 
@@ -96,7 +103,7 @@ function received(db: DB): { byKey: Map<string, Received[]>; unreadable: number 
       if (typeof text !== "string") { unreadable++; continue; }
       try {
         const inv = parseInvoiceFallback(text);
-        add({ invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: inv.currency, due_date: inv.due_date, iban: inv.iban, bic: inv.bic });
+        add({ invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: inv.currency, due_date: inv.due_date, iban: inv.iban, bic: inv.bic, text });
       } catch { unreadable++; /* an invoice code cannot read whole is not listed as a fact; planning it escalates to a person */ }
     }
   }
@@ -122,6 +129,13 @@ function bankLines(text: string, label: "IBAN" | "BIC"): string[] {
 }
 /** The one valid line a text holds for a label, or null (none, several, or one that is not clean). */
 const oneLine = (text: string, label: "IBAN" | "BIC") => { const l = bankLines(text, label); return l.length === 1 && l[0] !== "INVALID" ? l[0]! : null; };
+
+/** A text's bank details as code reads them, the whole lines (exactly one clean IBAN and BIC), or null. */
+function bankOf(text: string): { ibanSha256: string; bic: string } | null {
+  const iban = oneLine(text, "IBAN");
+  const bic = oneLine(text, "BIC");
+  return iban && bic ? { ibanSha256: ibanSha(iban), bic } : null;
+}
 
 export type PlannedMatch = { status: "arrived" } | { status: "unreadable" } | { status: "not_received" } | { status: "differs"; fields: string };
 
@@ -246,8 +260,16 @@ export function invoiceFacts(db: DB, now = new Date(), plans: PlannedInvoice | n
     const expired = r.status === "EXPIRED" || r.status === "PENDING_APPROVAL";
     return { proposal_id: r.proposal_id, status: expired ? (r.approved ? "expired after approval, unexecuted," : "expired unsigned") : r.status.toLowerCase().replace(/_/g, " "), at: expired ? r.expires_at : r.created_at };
   };
-  const names = allowlisted(db);
-  const named = (vendor: string) => (names.has(vendor.trim()) ? vendor.trim() : "an unlisted vendor");
+  const payees = allowlist(db);
+  const named = (vendor: string) => (payees.some((p) => p.name === vendor.trim()) ? vendor.trim() : "an unlisted vendor");
+  /** An allowlisted name whose bank details are not the ones on file for it (or cannot be read): a person checks it.
+   *  Only texts that came in are read (a planned invoice's row is a model's reading, and passed checkInvoice). */
+  const offFile = (r: Received): string | null => {
+    const mine = payees.filter((p) => p.name === r.vendor.trim());
+    if (!mine.length || !r.text) return null;
+    const bank = bankOf(r.text);
+    return bank && mine.some((p) => p.ibanSha256 === bank.ibanSha256 && p.bic === bank.bic) ? null : `its IBAN or BIC is not the one on file for ${r.vendor.trim()}`;
+  };
   const planKey = plans && vouchedInvoiceNo(plans.invoice_no) && wellFormed(plans) ? invoiceKey(plans.invoice_no) : null;
   const match = planKey ? plannedMatch(db, plans) : null;
   const { byKey, unreadable } = received(db);
@@ -262,7 +284,7 @@ export function invoiceFacts(db: DB, now = new Date(), plans: PlannedInvoice | n
       const gate = tool ? match : null;
       const conflict = gate?.status === "differs" ? `a copy that came in differs from the invoice plan_invoice plans (${gate.fields})`
         : gate && gate.status !== "arrived" ? "code cannot read or vouch for the invoice plan_invoice plans"
-        : other ? `a copy that came in differs from the first copy (${diff(other, ref)})` : null;
+        : other ? `a copy that came in differs from the first copy (${diff(other, ref)})` : [ref, ...copies].map(offFile).find((x) => x) ?? null;
       return { invoice_no: copies[0]!.invoice_no, vendor: named(ref.vendor), amount: ref.amount, currency: ref.currency, due_date: ref.due_date,
         handled: invoiceAlreadyHandled(db, ref.invoice_no, now, copies[0]!.invoice_no), lastPlan: lastPlanOf(ref.invoice_no), conflict };
     });
