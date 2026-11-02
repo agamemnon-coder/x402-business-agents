@@ -6,6 +6,7 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { AGENT_DISPLAY } from "../config/brand.js";
+import type { RunLedger } from "../demo/runLedger.js";
 
 /** Agent run 1's record (the same form `npm run autonomy-record` writes). */
 export const AGENT_RUN_FILE = "docs/demo/agent-run.json";
@@ -31,15 +32,24 @@ export interface RunRecord {
     rails: { metal: { what: string; detail: string; proof: { label: string; href: string | null } | null }[]; airwallex: { what: string; detail: string; proof: { label: string; href: string | null } | null }[] };
   };
   proof: { face_id: number; chain_refusals: number; card_declines: number; ai_tricks: number };
+  /** The run's ledger rows in full (src/demo/runLedger.ts); absent in records made before it. */
+  ledger?: RunLedger;
 }
 
 export interface Proof { label: string; href: string | null }
+/**
+ * Who said no, in one vocabulary: "recorded" is Purser refusing before signing with Metal recording the same refusal on
+ * chain; "metal" is Metal's facilitator; "airwallex" is an Airwallex limit; "airwallex-sandbox" is the sandbox failing
+ * to do something (not a limit); "purser" is Purser alone. The raw code stays in `code` for a tooltip.
+ */
+export interface Refused { by: "recorded" | "metal" | "airwallex" | "airwallex-sandbox" | "purser"; reason: string; code?: string }
 export type Ev =
   | { k: "world"; at: string; text: string }
   | { k: "say"; at: string; agent: AgentId; model: string | null; by: "claude" | "fallback"; text: string; tools: string[] }
   | { k: "msg"; at: string; agent: AgentId; text: string }
-  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: { by: string; reason: string } | null; proof: Proof }
+  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof }
   | { k: "face"; at: string; id: string; title: string; status: string; signers: string[] }
+  | { k: "mandate"; at: string; agent: AgentId; cap: string; budget: string; proposal: string; proof: Proof }
   | { k: "shield"; at: string; text: string };
 
 export type Mini =
@@ -86,12 +96,17 @@ export function runLabel(r: RunRecord): string {
 }
 
 /** The label of a movement's coin on its rail: "0.05 per query · x402", "€240 · SWIFT". */
+/** The label of a movement's coin on its rail, in plain words: "0.05 per query · x402", "sweep 1.97 → Airwallex". */
 function coinLabel(f: { amount: string; unit: string; count: number; via: string; kind: string }): string {
-  if (!f.amount) return f.via;
+  if (!f.amount) return f.kind === "upstream" ? "stock check · x402" : f.via;
+  if (f.kind === "booked") return `${f.unit === "EUR" ? SHORT_EUR(f.amount) : f.amount} booked at Airwallex`;
+  if (f.kind === "deposit") return `${f.unit === "EUR" ? SHORT_EUR(f.amount) : f.amount} paid in`;
+  if (f.via === "card") return `${SHORT_EUR(f.amount)} card buy`;
   if (f.unit === "EUR") return `${SHORT_EUR(f.amount)} · ${f.via}`;
-  if (f.unit === "USD") return `USD ${f.amount} · ${f.via}`;
   if (f.kind === "sale" || f.kind === "upstream") return `${(Number(f.amount) / f.count).toFixed(2)} per query · x402`;
-  return `${f.amount} · ${f.kind === "refund" ? "refund" : f.kind === "sweep" ? "sweep" : "x402"}`;
+  if (f.kind === "sweep") return `sweep ${f.amount} → Airwallex`;
+  if (f.kind === "refund") return `refund ${f.amount}`;
+  return `${f.amount} · x402`;
 }
 
 const VIA: Record<string, string> = { metal: "x402", purser: "x402", airwallex_swift: "SWIFT", airwallex_card: "card", airwallex_deposit: "deposit", airwallex_fx: "FX" };
@@ -116,26 +131,58 @@ function events(r: RunRecord): Ev[] {
       out.push({ k: "msg", at: c.ts, agent: c.who, text: c.text });
     }
   }
-  for (const f of s.flows) {
+  const flows = [...s.flows].sort((x, y) => x.at.localeCompare(y.at));
+  const merged = new Set<Flow>();
+  for (const f of flows) {
+    if (merged.has(f)) continue;
     const rail = f.rail === "metal" || f.rail === "purser" ? "metal" : f.rail.startsWith("airwallex") ? "airwallex" : null;
     if (!rail) continue;
     const via = VIA[f.rail] ?? "Airwallex";
     const count = f.count ?? 1;
-    out.push({ k: "money", at: f.at, agent: isAgent(f.agent) ? f.agent : null, rail, via, dir: ["sale", "deposit", "booked"].includes(f.kind) ? "in" : "out", what: f.what, amount: f.amount, unit: f.unit, count, label: coinLabel({ ...f, count, via }), refused: f.refused ?? null, proof: { label: f.proof.label, href: f.proof.href } });
-  }
-  for (const d of s.decisions) {
-    if (!d.by) continue; // superseded: nobody signed it
-    out.push({ k: "face", at: d.at, id: d.proposal_id, title: d.title, status: d.status, signers: d.by.replace(/\s*·\s*Face ID$/, "").split(/\s*&\s*/) });
-    // An approved proposal the rail then refused: the refusal is the rail's own, with nothing paid.
-    if (d.status === "FAILED") {
-      const why = s.refusals.find((x) => x.reason.startsWith(`${d.proposal_id} failed`));
-      const awx = why && /Airwallex/i.test(why.reason);
-      if (why && awx) {
-        const plan = s.agent_chat.find((c) => c.who === "treasury" && c.text.includes(d.proposal_id) && /EUR [\d,]+\.\d{2}/.test(c.text));
-        const amount = plan ? /EUR ([\d,]+\.\d{2})/.exec(plan.text)![1]! : "";
-        const code = /-> \d{3} ([a-z_]+)/.exec(why.reason)?.[1] ?? why.reason;
-        out.push({ k: "money", at: new Date(Math.max(Date.parse(d.at), Date.parse(why.ts)) + 1).toISOString(), agent: "treasury", rail: "airwallex", via: "SWIFT", dir: "out", what: `the EUR invoice (${d.proposal_id})`, amount, unit: "EUR", count: 1, label: amount ? `${SHORT_EUR(amount)} · SWIFT` : "SWIFT", refused: { by: "airwallex", reason: `${code}: nothing paid` }, proof: { label: `${why.reason.replace(/^P-\d+ failed: /, "")} · no transfer made`, href: null } });
+    let refused: Refused | null = f.refused ? { by: (["metal", "airwallex", "purser"].includes(f.refused.by) ? f.refused.by : "purser") as Refused["by"], reason: f.refused.reason, code: /^([a-z_]+)/.exec(f.refused.reason)?.[1] } : null;
+    let proof: Proof = { label: f.proof.label, href: f.proof.href };
+    // One attempt, one step: Purser refused it before signing, and Metal then recorded the same refusal on chain.
+    if (f.refused?.by === "purser") {
+      const onChain = flows.find((g) => g !== f && g.refused?.by === "metal" && g.proof.href && g.amount === f.amount && g.agent === f.agent && Date.parse(g.at) >= Date.parse(f.at) && Date.parse(g.at) - Date.parse(f.at) < 15_000);
+      if (onChain) {
+        merged.add(onChain);
+        refused = { by: "recorded", reason: "Purser refused it before signing; Metal recorded the same refusal on chain", code: refused?.code };
+        proof = { label: onChain.proof.label, href: onChain.proof.href };
       }
+    }
+    if (refused && refused.by === "metal" && /mandate_revoked/.test(f.refused!.reason)) refused = { by: "metal", reason: "the old mandate was revoked by its replacement", code: "mandate_revoked" };
+    out.push({ k: "money", at: f.at, agent: isAgent(f.agent) ? f.agent : null, rail, via, dir: ["sale", "deposit", "booked"].includes(f.kind) ? "in" : "out", what: f.what, amount: f.amount, unit: f.unit, count, label: coinLabel({ ...f, count, via }), refused, proof });
+  }
+  const titleOf = (id: string) => s.decisions.find((d) => d.proposal_id === id)?.title ?? r.ledger?.proposals.find((p) => p.proposal_id === id)?.kind.replace(/_/g, " ") ?? id;
+  const person = (who: string) => who.trim().replace(/\s*\(.*\)$/, "").replace(/^./, (c) => c.toUpperCase());
+  if (r.ledger) {
+    // From the run's own rows: each signature when it was given (four eyes: 1 of 2, then 2 of 2), and what followed.
+    for (const row of r.ledger.events) {
+      const id = row.subject ?? "";
+      const approver = String(row.payload.approver ?? "");
+      if (row.event === "proposal.cosigned") out.push({ k: "face", at: row.ts, id, title: titleOf(id), status: "COSIGNED", signers: [person(approver)] });
+      else if (row.event === "proposal.approved") out.push({ k: "face", at: row.ts, id, title: titleOf(id), status: "APPROVED", signers: approver.split(/\s*\+\s*/).map(person) });
+      else if (row.event === "proposal.rejected") out.push({ k: "face", at: row.ts, id, title: titleOf(id), status: "REJECTED", signers: approver.split(/\s*\+\s*/).map(person) });
+      else if (row.event === "mandate.replaced" && isAgent(row.subject)) {
+        const tx = String(row.payload.tx ?? "");
+        out.push({ k: "mandate", at: row.ts, agent: row.subject, cap: String(row.payload.cap ?? ""), budget: String(row.payload.budget ?? ""), proposal: String(row.payload.proposal_id ?? ""), proof: { label: `tx ${tx.slice(0, 6)}…${tx.slice(-4)}`, href: `https://testnet.metalntwx.com/tx/${tx}` } });
+      } else if (row.event === "proposal.failed") {
+        const terms = r.ledger.proposals.find((p) => p.proposal_id === id)?.terms ?? {};
+        const error = String(row.payload.error ?? "");
+        const code = /-> \d{3} ([a-z_]+)/.exec(error)?.[1] ?? "failed";
+        const amount = String(terms.amount ?? ""), unit = String(terms.currency ?? "EUR"), method = String(terms.method ?? "transfer");
+        const awx = /Airwallex/i.test(error);
+        if (!awx) continue;
+        out.push({ k: "money", at: new Date(Date.parse(row.ts) + 1).toISOString(), agent: "treasury", rail: "airwallex", via: method, dir: "out", what: `${String(terms.vendor ?? "the supplier")}'s invoice ${String(terms.invoice_no ?? "")} (${id})`.replace("  ", " "), amount, unit, count: 1,
+          label: amount ? `${unit === "EUR" ? SHORT_EUR(amount) : amount} invoice · ${method}` : method,
+          refused: code === "fee_unknown" ? { by: "airwallex-sandbox", reason: "the sandbox could not price the fee; nothing paid", code } : { by: "airwallex", reason: `${code}; nothing paid`, code },
+          proof: { label: `${error} · no transfer made`, href: null } });
+      }
+    }
+  } else {
+    for (const d of s.decisions) {
+      if (!d.by) continue; // superseded: nobody signed it
+      out.push({ k: "face", at: d.at, id: d.proposal_id, title: d.title, status: d.status, signers: d.by.replace(/\s*·\s*Face ID$/, "").split(/\s*&\s*/) });
     }
   }
   for (const x of s.refusals) if (/planted instruction/i.test(x.what)) out.push({ k: "shield", at: x.ts, text: x.what });
@@ -166,27 +213,27 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
   const nameOf = (a: AgentId) => AGENT_DISPLAY[a].name.replace(/ agent$/, "");
 
   // 1. The price rise, from the first refusal over the mandate's cap (or the supplier's notice) to the replaced mandate.
-  const capRefusal = ev.findIndex((e) => isMoney(e) && !!e.refused && /mandate_cap|over the mandate/.test(e.refused.reason));
+  const capRefusal = ev.findIndex((e) => isMoney(e) && !!e.refused && (e.refused.code === "mandate_cap_exceeded" || /mandate_cap|over the mandate/.test(e.refused.reason)));
   const notice = firstIdx(ev, (e) => e.k === "world" && /asks \d/i.test(e.text));
   const i1 = [capRefusal, notice].filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? -1;
   if (i1 >= 0) {
     const w = notice >= 0 ? ev[notice] as Extract<Ev, { k: "world" }> : null;
     const price = /(\d+\.\d{2})/.exec(w?.text ?? "")?.[1] ?? (capRefusal >= 0 ? (ev[capRefusal] as Extract<Ev, { k: "money" }>).amount : "");
     const supplier = /^(\S+)/.exec(w?.text ?? "")?.[1] ?? (capRefusal >= 0 ? (ev[capRefusal] as Extract<Ev, { k: "money" }>).what : "");
-    const chain = ev.slice(i1).find((e): e is Extract<Ev, { k: "money" }> => isMoney(e) && e.refused?.by === "metal" && !!e.proof.href);
-    const capWas = /mandate's (\d+\.\d{2})/.exec(ev.slice(i1).filter(isMoney).find((e) => e.refused)?.refused?.reason ?? "")?.[1] ?? s.tower.agents.find((a) => a.agent === "sourcing")?.mandate?.cap ?? "";
+    const chain = ev.slice(i1).find((e): e is Extract<Ev, { k: "money" }> => isMoney(e) && (e.refused?.by === "recorded" || e.refused?.by === "metal") && !!e.proof.href);
+    const capWas = s.flows.map((f) => /mandate's (\d+\.\d{2})/.exec(f.refused?.reason ?? "")?.[1]).find(Boolean) ?? s.tower.agents.find((a) => a.agent === "sourcing")?.mandate?.cap ?? "";
     const replan = ev.slice(i1).find((e): e is Extract<Ev, { k: "say" }> => e.k === "say" && e.agent === "treasury" && e.tools.some((t) => /rebalance|plan/.test(t)));
-    const signed = ev.slice(i1).find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && /mandate/i.test(e.title) && e.status === "EXECUTED");
-    const replaced = ev.slice(i1).find((e) => e.k === "world" && /mandate was replaced/i.test(e.text));
+    const signed = ev.slice(i1).find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && /mandate/i.test(e.title) && (e.status === "EXECUTED" || e.status === "APPROVED"));
+    const replaced = ev.slice(i1).find((e) => e.k === "mandate" || (e.k === "world" && /mandate was replaced/i.test(e.text)));
     const newCap = signed ? s.tower.agents.find((a) => a.agent === "sourcing")?.mandate?.cap ?? null : null;
     const before = s.flows.find((f) => f.kind === "upstream" && f.what === supplier && !f.refused && Date.parse(f.at) < Date.parse(ev[i1]!.at));
     const old = before ? (Number(before.amount) / (before.count ?? 1)).toFixed(2) : null;
     const steps: Step[] = [{ icon: "trending-up", text: `${supplier} ${old ? `${old} → ` : ""}${price}`, tone: "info" }];
-    if (chain) steps.push({ icon: "ban", text: "Refused on chain", tone: "bad", proof: chain.proof });
+    if (chain) steps.push({ icon: "ban", text: "Refused · recorded on chain", tone: "bad", proof: chain.proof });
     if (replan) steps.push({ icon: "bot", text: `${nameOf("treasury")} · ${family(replan.model)} replans`, tone: "ok" });
     if (signed) steps.push({ icon: "scan-face", text: `${signed.signers.length} of ${signed.signers.length} signatures`, tone: "face" });
     if (replaced && newCap) steps.push({ icon: "circle-check", text: `Mandate replaced: cap ${newCap}`, tone: "ok" });
-    const parts = [`${supplier} raises its price to ${price}`, chain ? "Metal refuses it on chain" : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
+    const parts = [`${supplier} raises its price to ${price}`, chain ? "refused, and recorded on chain" : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
     out.push({ n: 1, title: "The price rise", start: i1, steps, sentence: `${parts.join(" → ")}.`, mini: price && capWas ? { kind: "price", from: supplier, old, price, cap: capWas, newCap, tx: chain?.proof ?? null, signers: signed?.signers.length ?? 0 } : null });
   }
 
@@ -218,24 +265,29 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     if (sweep) steps.push({ icon: "wallet", text: `${money(sweep.amount, sweep.unit)} swept after finality`, tone: "ok", proof: sweep.proof });
     if (booked) steps.push({ icon: "landmark", text: `${money(booked.amount, booked.unit)} booked at Airwallex`, tone: "ok" });
     if (bill && face) steps.push({ icon: "scan-face", text: `${money(bill.amount, bill.unit)} licence: Face ID approved`, tone: "face" });
-    if (bill) steps.push({ icon: bill.refused ? "ban" : "circle-check", text: bill.refused ? `Airwallex refused: ${bill.refused.reason.replace(":", ",")}` : "Paid by SWIFT", tone: bill.refused ? "bad" : "ok" });
+    if (bill) steps.push({ icon: bill.refused ? "ban" : "circle-check", text: bill.refused ? (bill.refused.by === "airwallex-sandbox" ? `Airwallex: ${bill.refused.reason}` : `Airwallex refused: ${bill.refused.reason}`) : "Paid by SWIFT", tone: bill.refused ? "bad" : "ok" });
     // The card-only buy signed with Visa TAP comes from the separate TAP run of the same day, under its own label.
     const tap = tapRun();
     const tapBuy = tap?.steps.find((x) => x.approved && x.model);
     if (tapBuy) steps.push({ icon: "credit-card", text: `TAP run: ${SHORT_EUR(tapBuy.amount)} card buy, Visa TAP`, tone: "ok" });
-    const parts = [sweep ? "Earnings swept after finality" : "", bill && face ? "licence approved with Face ID" : "", bill ? (bill.refused ? "Airwallex refused it, nothing paid" : "paid by SWIFT") : "", tapBuy ? "a card buy signed with Visa TAP (TAP run)" : ""].filter(Boolean);
+    const parts = [sweep ? "Earnings swept after finality" : "", bill && face ? "licence approved with Face ID" : "", bill ? (bill.refused ? (bill.refused.by === "airwallex-sandbox" ? "Airwallex's sandbox could not price the fee, nothing paid" : "Airwallex refused it, nothing paid") : "paid by SWIFT") : "", tapBuy ? "a card buy signed with Visa TAP (TAP run)" : ""].filter(Boolean);
     out.push({ n: 3, title: "Earnings and euros", start: i3, steps, sentence: `${parts.join(" → ")}.`, mini: steps.length ? { kind: "flow", rows: steps.filter((x) => x.icon !== "landmark").map((x) => ({ icon: x.icon, text: x.text, tone: x.tone === "info" ? "ok" : x.tone })) } : null });
   }
   return out;
 }
 
-/** Who stopped what: Metal (against the on-chain mandate), Airwallex (a card or a transfer), the CFO (a rejection). */
-export function stops(r: RunRecord): { metal: number; airwallex: number; cfo: number } {
+/**
+ * Who stopped a payment at a limit: Metal against the on-chain mandate and the CFO with Face ID, in this run; Airwallex
+ * at the card's limit, from the TAP run of the same day (labelled so). Not counted, because it is not a limit: an
+ * Airwallex sandbox failure such as fee_unknown (`feeUnknown`).
+ */
+export function stops(r: RunRecord): { metal: number; airwallex: number; cfo: number; feeUnknown: number } {
   const s = r.snapshot;
   return {
     metal: s.flows.filter((f) => f.refused?.by === "metal").length,
-    airwallex: s.flows.filter((f) => f.refused?.by === "airwallex").length + s.decisions.filter((d) => d.status === "FAILED" && s.refusals.some((x) => x.reason.startsWith(`${d.proposal_id} failed`) && /Airwallex/i.test(x.reason))).length,
+    airwallex: s.flows.filter((f) => f.refused?.by === "airwallex").length + (tapRun()?.steps.filter((x) => !x.approved && x.reason === "LIMIT_EXCEEDED").length ?? 0),
     cfo: s.decisions.filter((d) => d.status === "REJECTED").length,
+    feeUnknown: s.refusals.filter((x) => /fee_unknown/.test(x.reason)).length,
   };
 }
 
@@ -260,11 +312,12 @@ export function agentRun(): AgentRun {
     { value: `${byClaude}/${decisions}`, label: "decisions made by Claude", explain: `Every time an agent decided something, it was a Claude call. ${fallbacks} fell back to code.`, href: "proof#claude" },
     { value: String(s.counts.alone), label: "payments inside the limits", explain: `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
-      value: String(st.metal + st.airwallex + st.cfo), label: "stopped", explain: "Who said no: Metal against the on-chain mandate, Airwallex at the bank, the CFO with Face ID.", href: "proof#stops",
-      parts: [{ value: String(st.metal), label: "on chain" }, { value: String(st.airwallex), label: "by Airwallex" }, { value: String(st.cfo), label: "by the CFO" }],
+      value: String(st.metal + st.airwallex + st.cfo), label: "stopped at a limit", href: "proof#stops",
+      explain: `Metal and the CFO in this run; Airwallex at the card's limit in the TAP run.${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
+      parts: [{ value: String(st.metal), label: "by Metal" }, { value: String(st.cfo), label: "by the CFO" }, { value: String(st.airwallex), label: "by Airwallex · TAP run" }],
     },
     { value: String(r.proof.face_id), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
-    { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices.", href: "proof#claude" },
+    { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices; each decision may be several calls.", href: "proof#claude" },
   ];
   return {
     file, standIn, name, recordedAt: r.recorded_at, kind: r.kind ?? "", record: r,

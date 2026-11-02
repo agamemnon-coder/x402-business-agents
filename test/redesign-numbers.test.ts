@@ -43,6 +43,51 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));
 
+describe("honest wording on the four tabs (review, 2 Nov)", () => {
+  const run = agentRun();
+  const money = run.events.filter((e): e is Extract<typeof e, { k: "money" }> => e.k === "money");
+
+  it("one refusal, one term: Purser refuses before signing and Metal records the same refusal on chain", () => {
+    const rec = money.filter((e) => e.refused?.by === "recorded");
+    expect(rec).toHaveLength(1);
+    expect(rec[0]!.proof.href).toMatch(/0x3ad8de2f1a4896567f089786438418f0bf3be0d2c61807a9f157b89ed7d9a84d$/);
+    // The two rows of the same attempt (Purser's, then Metal's record) are one step, not two.
+    expect(money.filter((e) => e.refused && e.amount === "0.04" && Math.abs(Date.parse(e.at) - Date.parse(rec[0]!.at)) < 15_000)).toHaveLength(1);
+    expect(run.scenes[0]!.steps.map((s) => s.text)).toContain("Refused · recorded on chain");
+    for (const html of [homePage(), watchPage()]) expect(html).not.toMatch(/Metal refuses it on chain|Metal refused/);
+  });
+
+  it("fee_unknown is not an Airwallex limit: the sandbox could not price the fee, nothing paid", () => {
+    const fee = money.find((e) => e.refused?.code === "fee_unknown")!;
+    expect(fee.refused!.by).toBe("airwallex-sandbox");
+    expect(fee.refused!.reason).toBe("the sandbox could not price the fee; nothing paid");
+    expect(fee.amount).toBe("240.00");
+    for (const html of [homePage(), watchPage(), proofPage()]) expect(html).not.toMatch(/says no on its own|as it did to the licence/);
+    expect(run.scenes[2]!.steps.map((s) => s.text).join(" ")).toMatch(/sandbox could not price the fee; nothing paid/);
+  });
+
+  it("counts the Airwallex limit stop from the TAP run, labelled, and keeps fee_unknown apart", () => {
+    const t = run.tiles.find((x) => x.label.startsWith("stopped"))!;
+    expect(t.parts).toEqual([{ value: "2", label: "by Metal" }, { value: "1", label: "by the CFO" }, { value: "1", label: "by Airwallex · TAP run" }]);
+    expect(t.value).toBe("4");
+    expect(t.explain).toMatch(/fee_unknown|could not price the fee/);
+    expect(t.explain).toMatch(/not a limit/);
+  });
+
+  it("says a decision may be several Claude calls, beside the cost per decision", () => {
+    expect(run.tiles.find((x) => /cost per decision/.test(x.label))!.explain).toMatch(/several calls/);
+  });
+
+  it("plays the four eyes as it happened: Max's signature first (1 of 2), then the test passkey's (2 of 2), then both replacements on chain", () => {
+    const faces = run.events.filter((e): e is Extract<typeof e, { k: "face" }> => e.k === "face" && e.id === "P-0003");
+    expect(faces.map((f) => [f.status, f.signers])).toEqual([["COSIGNED", ["Max"]], ["APPROVED", ["Max", "Test-controller"]]]);
+    expect(Date.parse(faces[0]!.at)).toBeLessThan(Date.parse(faces[1]!.at));
+    const rep = run.events.filter((e): e is Extract<typeof e, { k: "mandate" }> => e.k === "mandate");
+    expect(rep.map((r) => r.agent)).toEqual(["treasury", "sourcing"]);
+    expect(rep.every((r) => /^https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/.test(r.proof.href ?? ""))).toBe(true);
+  });
+});
+
 describe("the redesigned Home and Watch", () => {
   it("show no number that is not in the run's record", () => {
     for (const [name, html] of [["home", homePage()], ["watch", watchPage()], ["proof", proofPage()]] as const) expect({ name, unknown: unknownNumbers(html) }).toEqual({ name, unknown: [] });
@@ -74,9 +119,11 @@ describe("the redesigned Home and Watch", () => {
 
   it("carry the Kit line with the Visa Award, the core sentence, and Visa only as text", () => {
     expect(VISA_AWARD_ON).toBe(true);
-    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · Metal Award + Visa Award");
+    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award");
     const home = homePage();
-    expect(home).toContain(KIT_LINE);
+    // Two pills, each on one line: the kit, and the awards entered (never read as already won).
+    expect(home).toContain(">Kit 11 · x402 Business Agents<");
+    expect(home).toContain(">entered for the Metal Award + Visa Award<");
     expect(home).toContain(CORE_SENTENCE.replace(/'/g, "&#39;").replace(/'/g, "'"));
     expect(home).toMatch(/Visa TAP/);
     for (const [name, body] of Object.entries(buildPages())) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
@@ -88,10 +135,10 @@ describe("the redesigned Home and Watch", () => {
     const run = agentRun();
     // No refusal on chain is claimed unless the record has one with its tx; scene 3 says what Airwallex did to the licence.
     const chain = record.snapshot.flows.some((f) => f.refused?.by === "metal" && f.proof.href);
-    expect(JSON.stringify(run.scenes).includes("Refused on chain")).toBe(chain);
-    expect(homePage().includes("Metal refuses it on chain")).toBe(chain);
+    expect(JSON.stringify(run.scenes).includes("Refused · recorded on chain")).toBe(chain);
+    expect(homePage().includes("refused, and recorded on chain")).toBe(chain);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
-    expect(run.scenes[2]!.steps.map((s) => s.text).join(" ")).toMatch(/Airwallex refused: fee_unknown, nothing paid/);
+    expect(run.scenes[2]!.steps.map((s) => s.text).join(" ")).toMatch(/Airwallex: the sandbox could not price the fee; nothing paid/);
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 });

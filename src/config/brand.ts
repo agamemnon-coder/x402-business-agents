@@ -12,7 +12,7 @@ export const VISA_AWARD_ON = true;
 /** The Visa claim, word for word (Max, 2 Nov); nothing stronger anywhere. */
 export const VISA_CLAIM = "Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top.";
 /** The big line under the heading: the kit, the track and the awards entered. */
-export const KIT_LINE = `Kit 11 · x402 Business Agents · Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""}`;
+export const KIT_LINE = `Kit 11 · x402 Business Agents · entered for the Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""}`;
 /** The core sentence (Max, 2 Nov), word for word, wherever the story is told in one line. */
 export const CORE_SENTENCE = "Claude agents handle the exceptions — price shocks, disputes, rebalancing. Routine runs at code speed. Metal and Airwallex enforce every limit; the CFO approves anything beyond them.";
 /** Who the second approver is, said wherever four eyes appears (Max, 2 Nov: he does everything alone). */
