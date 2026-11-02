@@ -200,7 +200,7 @@ all failed, two found only afterwards.
 
 51
 00:02:36,343 --> 00:02:39,980
-Optional four eyes, an emergency stop tested on stand-ins,
+Four eyes, an emergency stop tested on stand-ins,
 
 52
 00:02:40,030 --> 00:02:42,650

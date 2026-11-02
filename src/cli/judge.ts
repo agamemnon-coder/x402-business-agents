@@ -9,7 +9,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { localTryAnswer } from "../try/local.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
@@ -24,6 +24,10 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   const demo = demoPage();
   const month = monthPage();
   app.get("/", page(CSP, () => PAGE));
+  app.get("/home", page(HOME_CSP, () => HOME_PAGE));
+  app.get("/watch", page(WATCH_CSP, () => WATCH_PAGE));
+  app.get("/proof", page(PROOF_CSP, () => PROOF_PAGE));
+  for (const [from, to] of Object.entries(REDIRECTS)) app.get(from, (_req, res) => { res.redirect(302, to); });
   app.get("/demo", page(DEMO_CSP, () => demo));
   app.get("/month", page(MONTH_CSP, () => month));
   const live = livePage();
@@ -70,7 +74,7 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
   const { server, url } = await startJudge(Number(process.env.PORT ?? 4311));
   if (args.includes("--check")) {
     let ok = true;
-    for (const path of ["/", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
+    for (const path of ["/", "/home", "/watch", "/proof", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
       const res = await fetch(`${url}${path}`);
       const body = await res.text();
       const good = res.status === 200 && body.length > 1000;

@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { MODELS } from "../claude/reader.js";
 import { SOURCING_MODEL } from "../autonomy/sourcingCore.js";
+import { loadRecord, runLabel, type RunRecord } from "../redesign/run.js";
 
 type AgentId = keyof typeof AGENT_DISPLAY;
 const AGENTS: AgentId[] = ["sourcing", "support", "treasury"];
@@ -32,13 +33,15 @@ const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", 
 const shortId = (id: string) => `${id.slice(0, 8)}…`;
 const shortTx = (tx: string) => `${tx.slice(0, 6)}…${tx.slice(-4)}`;
 
-/** The labels of the two recordings, as the dashboard writes them. */
+/** The labels of the two recordings: the agent run (the main source, src/redesign/run.ts) and the 30 October archive. */
 export function runLabels(rec: Recording, auto: Recording): { recorded: string; autonomy: string } {
   return {
-    recorded: `Recorded run · ${day(rec.recorded_at)} · test money`,
-    autonomy: `Autonomous dry run · ${day(auto.recorded_at)} · test passkeys and test money · not a live run`,
+    recorded: `Archive: recorded run · ${day(rec.recorded_at)} · test money`,
+    autonomy: runLabel(auto as unknown as RunRecord),
   };
 }
+/** The agent run's record: agent run 1 when it is in the repo. */
+const agentRecord = <T>() => loadRecord().record as unknown as T;
 
 /** The Airwallex ids read back from the sandbox with GET only (npm run awx-readback). */
 function readBack(): { at: string; found: Map<string, string> } {
@@ -99,10 +102,10 @@ function airwallexStats(rec: Recording, auto: Recording, back: ReturnType<typeof
 
 export function airwallexData(): AirwallexData {
   const rec = readJson<Recording>("docs/demo/snapshot.json");
-  const auto = readJson<Recording>("docs/demo/autonomy.json");
+  const auto = agentRecord<Recording>();
   const back = readBack();
   const L = runLabels(rec, auto);
-  const both = (f: (s: Snap) => ProofLine[]) => keep([{ run: L.recorded, lines: f(rec.snapshot) }, { run: L.autonomy, lines: f(auto.snapshot) }]);
+  const both = (f: (s: Snap) => ProofLine[]) => keep([{ run: L.autonomy, lines: f(auto.snapshot) }, { run: L.recorded, lines: f(rec.snapshot) }]);
   const features: Feature[] = [
     {
       id: "cards", title: "A company card per agent",
@@ -162,7 +165,7 @@ export function airwallexData(): AirwallexData {
 
 interface AgentStat { agent: string; decisions: number; by_claude: number; fallback: number; fallback_pct: number; claude_calls: number; calls_without_request_id: number; cost_usd_micros: number; models: string[] }
 interface TraceRow { agent: string; task: string; model: string; status: string; said: string; note: string | null; steps: { ts: string; kind: string; tool: string | null; input: unknown; text: string }[] }
-interface AutoSnap extends Snap { agent_stats: AgentStat[]; traces: TraceRow[]; claude: { calls: number; fallbacks: number; cost_usd_micros: number; agents: { agent: string; median_latency_ms: number }[] } }
+interface AutoSnap extends Snap { agent_stats: AgentStat[]; traces: TraceRow[]; agent_chat: { ts: string; kind: string; who: string; by: string | null; model: string | null; text: string }[]; claude: { calls: number; fallbacks: number; cost_usd_micros: number; agents: { agent: string; median_latency_ms: number }[] } }
 interface RecClaude { calls: number; cost_usd_micros: number; per_1000_eur_usd_micros: number; eur_paid: string; models: { model: string; role: string; calls: number; cost_usd_micros: number }[] }
 
 export interface ClaudeAgentRow {
@@ -194,17 +197,20 @@ function tryRequests(): { file: string; requests: string[] } {
 
 export function claudeData(): ClaudeData {
   const rec = readJson<Recording & { snapshot: Snap & { claude: RecClaude } }>("docs/demo/snapshot.json");
-  const auto = readJson<Recording & { snapshot: AutoSnap }>("docs/demo/autonomy.json");
+  const auto = agentRecord<Recording & { snapshot: AutoSnap }>();
   const L = runLabels(rec, auto);
   const s = auto.snapshot;
   // One line per agent run (its trace): "done" is the agent's own Claude loop, anything else fell back to code.
-  const chat = s.traces.map((t) => {
+  // Every decision: the agents' own words for each wake (agent_chat, in full; the trace list is capped), plus the
+  // decisions made on a task rather than a wake (the price-rise plan, the dispute, the licence timing), from their traces.
+  const wakes = s.agent_chat.filter((c) => c.kind === "decision").map((c) => ({ at: c.ts, agent: c.who, by: (c.by === "claude" ? "claude" : "fallback") as "claude" | "fallback", model: c.model, text: c.text }));
+  const chat = [...wakes, ...s.traces.filter((t) => !t.task.startsWith("wake.")).map((t) => {
     const last = t.steps[t.steps.length - 1];
     const fin = t.steps.find((x) => x.tool === "finish")?.input as { summary?: string } | undefined;
     const decided = t.steps.find((x) => x.kind === "decision")?.text;
     const text = firstPara(t.said) || fin?.summary || decided || t.note || t.task;
     return { at: last?.ts ?? "", agent: t.agent, by: (t.status === "done" ? "claude" : "fallback") as "claude" | "fallback", model: t.model || null, text };
-  }).filter((c) => c.at).sort((a, b) => a.at.localeCompare(b.at));
+  })].filter((c) => c.at).sort((a, b) => a.at.localeCompare(b.at));
   const agents = AGENTS.map((id): ClaudeAgentRow => {
     const st = s.agent_stats.find((a) => a.agent === id);
     const lat = s.claude.agents.find((a) => a.agent === id)?.median_latency_ms;

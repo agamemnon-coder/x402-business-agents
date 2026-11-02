@@ -5,6 +5,7 @@
 // Built from src/partners/data.ts (recorded files and code only); every sentence has its row in docs/claims.md.
 
 import { readFileSync } from "node:fs";
+import { CORE_SENTENCE, SECOND_APPROVER } from "../config/brand.js";
 import { airwallexData, claudeData, type ClaudeAgentRow, type Feature, type Proof } from "./data.js";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -51,7 +52,7 @@ function proofHtml(p: Proof): string {
 
 function featureCard(f: Feature, docsName: string): string {
   const runs = f.runs.map((r) => {
-    const dry = /^Autonomous dry run/.test(r.run);
+    const dry = /^Archive/.test(r.run);
     return `<div class="runl${dry ? " dry" : ""}">${esc(r.run)}</div><ul class="pl">${r.lines.map((l) => `<li${/declined|escalated|refused/i.test(l.text) ? ' class="no"' : ""}>${esc(l.text)}${l.proofs.length ? `<br>${l.proofs.map(proofHtml).join("")}` : ""}</li>`).join("")}</ul>`;
   }).join("");
   return `<article class="card" id="card-${esc(f.id)}"><div class="hd"><h3>${esc(f.title)}</h3></div>
@@ -80,7 +81,7 @@ ${style}
   <h1>${esc(s.h1)}</h1>
   <p class="part">In our story</p>
   <p class="lead">${esc(s.lead)}</p>
-  <div class="runs">${s.runs.map((r) => `<span class="runtag${/^Autonomous dry run/.test(r) ? " dry" : ""}">${esc(r)}</span>`).join("")}</div>
+  <div class="runs">${s.runs.map((r) => `<span class="runtag${/^Archive/.test(r) ? " dry" : ""}">${esc(r)}</span>`).join("")}</div>
   ${s.built}
   <div class="stats">${s.stats.map(([v, l]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join("")}</div>
 ${s.body}
@@ -120,10 +121,11 @@ export function airwallexPage(): string {
         ["PAID is the sandbox's.", "A SWIFT transfer's PAID status is set by the sandbox's simulation."],
         ["Placeholder cardholders.", "The agents' cardholders carry placeholder details in the sandbox. Airwallex's KYC and screening are its own and are not shown here."],
         ["Not yet run live.", "The emergency stop that freezes every card is tested against stand-ins only. Payout, conversion and card status webhooks are subscribed but were not yet caused live. In the autonomous dry runs a decline reaches the agent by poll; the webhook path is the hosted relay's."],
+        ["The licence transfer in agent run 1: refused.", "After the CFO's Face ID, Airwallex refused the EUR 240.00 SWIFT transfer (400 fee_unknown): nothing was paid, and a read-only lookup by request_id finds no transfer. It is to be retried in that world."],
         ["The task card, not chosen.", "In 19 autonomous dry runs the Sourcing agent never chose the single-use task card (0 of 19); that path is proven by tests and the 29 October card runs, not by an autonomous run."],
       ])),
     ].join("\n"),
-    footer: `Test money only: the Airwallex sandbox and Metal testnet. The Airwallex logo is its owner's; shown as "built on", not as an endorsement. Sources: docs/demo/snapshot.json (the recorded run), docs/demo/autonomy.json (the autonomous dry run), docs/runs/airwallex-readback.json (read back ${d.readBackAt.slice(0, 10)}), docs/airwallex.md.`,
+    footer: `Test money only: the Airwallex sandbox and Metal testnet. The Airwallex logo is its owner's; shown as "built on", not as an endorsement. Sources: docs/demo/agent-run.json (agent run 1), docs/demo/snapshot.json (the 30 October run, archive), docs/runs/airwallex-readback.json (read back ${d.readBackAt.slice(0, 10)}), docs/airwallex.md.`,
   });
 }
 
@@ -189,13 +191,13 @@ export function claudePage(): string {
   return shell({
     title: "Purser on Claude",
     chip: "How Purser uses Claude",
-    kicker: "Claude agents read, plan and advise; Metal and Airwallex enforce the limits.",
+    kicker: CORE_SENTENCE,
     h1: "How Purser uses Claude",
     lead: "Claude is how Purser's agents read the world and decide what to do inside their limits: the Sourcing agent runs on Haiku, the Support agent on Sonnet, the Treasury agent on Opus, and code checks every decision before money moves.",
     built: '<span class="built dark">Powered by <img src="assets/logo-claude.png" alt="Claude" width="73" height="16"></span>',
     runs: [d.label, rec.label],
     stats: [
-      [String(decisions), `agent decisions in the autonomous dry run${/dry-\d+/.exec(d.runName) ? ` (${/dry-\d+/.exec(d.runName)![0]})` : ""}`],
+      [String(decisions), `agent decisions in ${d.label.replace(/^Replay of /, "").split(" · ")[0]}`],
       [`${byClaude} of ${decisions}`, `decided by Claude; ${decisions - byClaude} fallback (code)`],
       [String(calls), `agents' Claude calls, ${without} without a request id`],
       [`USD ${cost.toFixed(2)}`, "the agents' measured Claude cost in that run, at list prices"],
@@ -210,13 +212,13 @@ export function claudePage(): string {
         ["No keys, no card numbers.", "No agent holds a key or sees a card number; every tool call passes code's checks and the rail's own limits (the Metal mandate or the Airwallex card), and anything beyond them waits for the CFO's Face ID."],
       ])),
       section("honest", "What we do not do, or only simulate", "What is not shown here", "Said here so nobody has to find it.", points("honest", [
-        ["A dry run, not yet a live run.", "The agents deciding is shown from an autonomous dry run with test passkeys and test money, not yet a live run with Max."],
-        ["In the recorded run, code decided.", "In the 30 October recorded run, code made the decisions; Claude read the documents and explained. The agents' own decisions come from the dry run."],
+        ["A rehearsal, with test money.", "The agents deciding is shown from agent run 1 (rehearsal, 2 November): real Claude decisions and Max's Face ID, on Metal testnet and the Airwallex sandbox. " + SECOND_APPROVER],
+        ["In the archived run, code decided.", "In the 30 October recorded run, code made the decisions; Claude read the documents and explained. The agents' own decisions come from agent run 1."],
         ["Narrow tests.", "The variation test and the red team against the agent loop used stand-in rails and the Sourcing agent (Haiku) only."],
         ["List prices, not a bill.", "Costs are computed from each call's token usage at Anthropic's published list prices."],
         [`Request ids: ${d.tryRun.requests.length ? "where recorded" : "in the ledger"}.`, `The recording keeps an Anthropic request id on each money movement Claude decided; every agent call in the run has one in the ledger. The /try dev run's ids are in its run log (${d.tryRun.file}${d.tryRun.requests[0] ? `, for example ${d.tryRun.requests[0]}` : ""}).`],
       ])),
     ].join("\n"),
-    footer: "Test money only: Metal testnet *USDZ and the Airwallex sandbox. The Claude logo is Anthropic's; shown as \"Powered by Claude\", not as an endorsement. Sources: docs/demo/autonomy.json (the autonomous dry run), docs/demo/snapshot.json (the recorded run), src/claude/reader.ts and src/autonomy/ (the models), src/claude/pricing.ts (list prices).",
+    footer: "Test money only: Metal testnet *USDZ and the Airwallex sandbox. The Claude logo is Anthropic's; shown as \"Powered by Claude\", not as an endorsement. Sources: docs/demo/agent-run.json (agent run 1), docs/demo/snapshot.json (the recorded run), src/claude/reader.ts and src/autonomy/ (the models), src/claude/pricing.ts (list prices).",
   });
 }

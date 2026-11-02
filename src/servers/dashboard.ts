@@ -21,8 +21,12 @@ import { runAll, runScenario, SCENARIOS, type ScenarioResult } from "../lab/scen
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
-import { AGENT_DISPLAY, RECORDING_NAMES_NOTE } from "../config/brand.js";
-import { kit11NamesRecorded } from "../demo/oldNames.js";
+import { AGENT_DISPLAY, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { loadRecord, runLabel } from "../redesign/run.js";
+import { homePage } from "../redesign/home.js";
+import { watchPage } from "../redesign/watch.js";
+import { proofPage } from "../redesign/proof.js";
+import { restyle } from "../redesign/ui.js";
 import { withNav } from "../ui/nav.js";
 import { buildLiveTimeline } from "../live/timeline.js";
 import { health, prometheus } from "../ops/health.js";
@@ -44,28 +48,16 @@ const REDTEAM_JSON = (() => {
   }
 })();
 
-/**
- * Until the live run with the Kit 11 names is recorded, every page that plays the 30 October recording says, at the
- * top, that it was made before the rename (src/config/brand.ts). The dashboard shows it in its recorded-run lines; the
- * film, a fixed 1920x1080 stage, at the bottom. Added before each page's CSP hash is taken.
- */
-const NAMES_NOTE = kit11NamesRecorded() ? null : RECORDING_NAMES_NOTE;
-const withNamesNote = (page: string, where: "top" | "bottom" = "top") => !NAMES_NOTE ? page : page
-  .replace("</style>", () => `.names-note { margin: 0; padding: 10px 16px; font: 500 13.5px/1.5 Inter, system-ui, sans-serif; background: #fff7e6; color: #5c3b00; border-bottom: 1px solid #f0d9a8; text-align: center; }
-details.names-note summary { cursor: pointer; }
-.names-note.bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; border-bottom: 0; border-top: 1px solid #f0d9a8; }
-@media (prefers-color-scheme: dark) { .names-note { background: #2a2110; color: #f3dca8; border-color: #4a3a1c; } }
-</style>`)
-  // One line at the top, the full note folded (design review); the film's fixed stage keeps it as one line at the bottom.
-  .replace(/<body[^>]*>/, (m) => where === "bottom"
-    ? `${m}\n<p class="names-note bottom" role="note">${NAMES_NOTE}</p>`
-    : `${m}\n<details class="names-note" role="note"><summary>Recorded 30 October, before the agents took Kit 11's names · details</summary>${NAMES_NOTE}</details>`);
-
 const PAGE_TEMPLATE = withNav(readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8"), "overview");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
-// D19: an autonomous dry run, recorded the same way (npm run autonomy-record), for /?autonomy; absent: the page hides it.
-const AUTONOMY_FILE = new URL("../../docs/demo/autonomy.json", import.meta.url);
-const AUTONOMY_JSON = (() => { try { return readFileSync(AUTONOMY_FILE, "utf8").trim(); } catch { return "null"; } })();
+// The agent run (agent run 1, 2 Nov; src/redesign/run.ts), recorded with npm run autonomy-record, for /?autonomy, with
+// its label, the world set-up and who the second approver was.
+const AUTONOMY_JSON = (() => {
+  try {
+    const { record, standIn } = loadRecord();
+    return JSON.stringify({ ...record, label: runLabel(record), about: standIn ? "" : `${WORLD_SETUP} ${SECOND_APPROVER}` });
+  } catch { return "null"; }
+})();
 /** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
 export const FONT = readFileSync(new URL("../ui/inter.woff2", import.meta.url));
 /** The sponsors' official logos (src/ui/logos/README.md), served as /assets/<name> for the landing's "Built on". */
@@ -75,7 +67,7 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-claude.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/claude.png", import.meta.url)) },
 };
 const MONTH_TEMPLATE = withNav(readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8"), "month");
-const DEMO_TEMPLATE = withNav(withNamesNote(readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8")), "demo");
+const DEMO_TEMPLATE = withNav(readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8"), "demo");
 const LAB_TEMPLATE = withNav(readFileSync(new URL("../dashboard/lab.html", import.meta.url), "utf8"), "lab");
 const LAB_FILE = new URL("../../docs/lab/results.json", import.meta.url);
 const STORY_FILE = new URL("../../docs/demo/story.json", import.meta.url);
@@ -98,7 +90,7 @@ const cspFor = (page: string) => [
 export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
   return PAGE_TEMPLATE
     .replace("__ICONS_JSON__", () => JSON.stringify(ICONS))
-    .replace("__RECORDED_JSON__", () => JSON.stringify(NAMES_NOTE ? { ...recorded, names_note: NAMES_NOTE } : recorded).replace(/</g, "\\u003c"))
+    .replace("__RECORDED_JSON__", () => JSON.stringify(recorded).replace(/</g, "\\u003c"))
     .replace("__AUTONOMY_JSON__", () => AUTONOMY_JSON.replace(/</g, "\\u003c"))
     .replace("__AGENTS_JSON__", AGENTS_JSON)
     .replace("__REDTEAM_JSON__", () => REDTEAM_JSON);
@@ -118,15 +110,13 @@ export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readF
 }
 
 /** "Purser live": the animated day, its timeline inside the page (src/live/timeline.ts), built from the recordings. */
-// The banner about the old (30 October) recording stays on /live for now (withNamesNote): Max removes it after
-// Monday's reserve run is recorded, not before. Do not drop it with other /live fixes.
-const LIVE_TEMPLATE = withNav(withNamesNote(readFileSync(new URL("../live/live.html", import.meta.url), "utf8")), "live");
+const LIVE_TEMPLATE = withNav(readFileSync(new URL("../live/live.html", import.meta.url), "utf8"), "live");
 export const LIVE_CSP = cspFor(LIVE_TEMPLATE);
 export function livePage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
   return LIVE_TEMPLATE.replace("__LIVE_JSON__", () => JSON.stringify(buildLiveTimeline(story, recorded)).replace(/</g, "\\u003c"));
 }
 
-const FILM_TEMPLATE = withNamesNote(readFileSync(new URL("../film/film.html", import.meta.url), "utf8"), "bottom");
+const FILM_TEMPLATE = readFileSync(new URL("../film/film.html", import.meta.url), "utf8");
 export const FILM_CSP = cspFor(FILM_TEMPLATE);
 /** The film (src/film/): its facts from the recordings and the latest red team and Lab reports, its scenes timed. */
 export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
@@ -143,25 +133,34 @@ export const TRY_PAGE = (() => {
   // The example shown before a visitor runs a try: one real Claude call, recorded once and labelled (src/try/example.json).
   const example = JSON.parse(readFileSync(new URL("../try/example.json", import.meta.url), "utf8")) as unknown;
   const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null, worlds: WORLD_CHANGES.map(({ id, label, detail }) => ({ id, label, detail })), example };
-  return withNav(readFileSync(new URL("../try/try.html", import.meta.url), "utf8"), "try").replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
+  return restyle(withNav(readFileSync(new URL("../try/try.html", import.meta.url), "utf8"), "try")).replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
 })();
 export const TRY_CSP = cspFor(TRY_PAGE);
 
 /** "How Purser uses Metal" (src/metal/): the features, mandates and Dispute desk case recorded in docs/demo/metal.json. */
 const METAL_FILE = new URL("../../docs/demo/metal.json", import.meta.url);
 const metalData = () => JSON.parse(readFileSync(METAL_FILE, "utf8")) as { dispute: DisputeCase | null };
-export const METAL_PAGE = withNav(withNamesNote(readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8")), "metal").replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
+export const METAL_PAGE = withNav(readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8"), "metal").replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
 export const METAL_CSP = cspFor(METAL_PAGE);
 /** /visa: agent recognition, then the agent's own Airwallex Visa card (src/visa/page.ts). */
 export const VISA_PAGE = withNav(visaPage(), "visa");
 // No script on /visa: a style-only policy, as for the evidence report.
 export const VISA_CSP = ["default-src 'none'", `style-src ${inlineHash(VISA_PAGE, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 /** The partner pages (src/partners/): Airwallex shows the 30 October recording too, so it carries the names note. No script. */
-export const AIRWALLEX_PAGE = withNav(withNamesNote(airwallexPage()), "airwallex");
-export const CLAUDE_PAGE = withNav(withNamesNote(claudePage()), "claude");
+export const AIRWALLEX_PAGE = withNav(airwallexPage(), "airwallex");
+export const CLAUDE_PAGE = withNav(claudePage(), "claude");
 const styleOnlyCsp = (page: string) => ["default-src 'none'", `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 export const AIRWALLEX_CSP = styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
+/** The public pages of the redesign (src/redesign/): Home, Watch and Proof, from the recorded agent run. */
+export const HOME_PAGE = homePage();
+export const WATCH_PAGE = watchPage();
+export const PROOF_PAGE = proofPage();
+export const HOME_CSP = cspFor(HOME_PAGE);
+export const WATCH_CSP = cspFor(WATCH_PAGE);
+export const PROOF_CSP = cspFor(PROOF_PAGE);
+/** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
+export const REDIRECTS: Record<string, string> = { "/live": "/watch", "/demo": "/watch", "/overview": "/home" };
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
 export const METAL_REPORT = (() => {
   const c = metalData().dispute;

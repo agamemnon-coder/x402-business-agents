@@ -8,7 +8,7 @@ import { AGENT_DISPLAY, NORTHWIND_LINE, RECORDING_NAMES_NOTE } from "../src/conf
 import { deckHtml } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
 import { CARDS, INITIAL_MANDATES, PLANS, TOTAL_BUDGET_CENTS } from "../src/config/policy.js";
-import { kit11NamesRecorded, PRE_KIT11_NAMES, preKit11NamesIn } from "../src/demo/oldNames.js";
+import { PRE_KIT11_NAMES, preKit11NamesIn } from "../src/demo/oldNames.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -67,7 +67,7 @@ describe("Kit 11's agent names, word for word", () => {
   it("describes Northwind in one sentence everywhere a juror meets it", () => {
     const pages = buildPages();
     const flat = (t: string) => t.replace(/\s+/g, " ");
-    for (const [where, text] of [["landing", pages.dashboard], ["metal", pages.metal], ["README", read("README.md")], ["form text", read("docs/submission/README.md")], ["deck", deckHtml(packFacts(), {} as never, "")]] as const) {
+    for (const [where, text] of [["home", pages.home!], ["metal", pages.metal], ["README", read("README.md")], ["form text", read("docs/submission/README.md")], ["deck", deckHtml(packFacts(), {} as never, "")]] as const) {
       expect({ where, has: flat(text as string).includes(NORTHWIND_LINE) }).toEqual({ where, has: true });
     }
   });
@@ -98,12 +98,8 @@ describe("Kit 11's agent names, word for word", () => {
     expect(INITIAL_MANDATES.sourcing.capCents).toBe(3);
   });
 
-  // Breaks if the 30 October recording is shown without saying it predates the Kit 11 names.
-  it("labels the recording made before the rename on every page that shows it", () => {
-    if (kit11NamesRecorded()) return;
-    const pages = buildPages();
-    for (const name of ["dashboard", "demo", "live", "film", "metal"] as const) {
-      expect({ page: name, labelled: (pages[name] as string).includes(RECORDING_NAMES_NOTE) }).toEqual({ page: name, labelled: true });
-    }
+  // The 30 October banner is gone (Max, 2 Nov): the pages play agent run 1, recorded with the Kit 11 names.
+  it("shows no banner about the 30 October recording", () => {
+    for (const [name, body] of Object.entries(buildPages())) if (typeof body === "string") expect({ name, banner: body.includes(RECORDING_NAMES_NOTE) }).toEqual({ name, banner: false });
   });
 });
