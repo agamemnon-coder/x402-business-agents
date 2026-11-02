@@ -14,8 +14,9 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { audit } from "../src/audit/log.js";
 import { decisionOf, recordDecision } from "../src/agents/disputeDecision.js";
-import { decideNothingNew, disputeKey, escalatedUndecided, handledElsewhere, openedDispute } from "../src/agents/disputeSource.js";
+import { autoRefundedElsewhereCents, decideNothingNew, disputeKey, disputeLimits, escalatedUndecided, handledElsewhere, openedDispute } from "../src/agents/disputeSource.js";
 import { settleDispute, type SupportDeps as DecisionDeps } from "../src/agents/supportAgent.js";
 import { publish } from "../src/autonomy/bus.js";
 import { wake } from "../src/autonomy/runtime.js";
@@ -176,6 +177,16 @@ describe("H9: a new dispute that opened in this world is settled, once", () => {
     expect(spawned.calls).toEqual([["tsx", "src/cli/s2.ts", "--dispute", H9_ID]]);
   });
 
+  it("a newer dispute already with the CFO does not hold up an older one (review): the older one is settled", async () => {
+    const db = openDb(":memory:");
+    publish(db, "dispute.opened", { customer: "Summit Outfitters", email: H9 }, "support", "system", T0);
+    publish(db, "dispute.opened", { customer: "Summit Outfitters", email: FIXTURE }, "support", "system", new Date(T0.getTime() + 1));
+    audit(db, "support", "dispute.escalated", disputeKey(FIXTURE), { customer: "Summit Outfitters", reason: "the settlement did not complete", origin: { actor: "code", rule: "r", agent: "support" } }, T0);
+    spawned.calls.length = 0;
+    await settleOnce(db, undefined);
+    expect(spawned.calls).toEqual([["tsx", "src/cli/s2.ts", "--dispute", H9_ID]]);
+  });
+
   it("the newest dispute decided, an older one not: the older one is settled (none is skipped)", async () => {
     const db = openDb(":memory:");
     publish(db, "dispute.opened", { customer: "Summit Outfitters", email: H9 }, "support", "system", T0);
@@ -199,13 +210,17 @@ describe("H9: a dispute that never opened stays refused (live-14)", () => {
     expect(health(db).alerts.map((a) => a.code)).not.toContain("dispute_with_cfo");
   });
 
-  it("a dispute.opened with no email names no dispute: nothing is settled", async () => {
+  it("a dispute.opened with no email names no dispute: nothing is settled, and it goes to the CFO as D-ev<event> (review)", async () => {
     const db = openDb(":memory:");
-    publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", T0);
+    const ev = publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", T0);
     spawned.calls.length = 0;
     const w = await settleOnce(db, undefined);
     expect(tool(w)).toMatchObject({ blocked: "no dispute" });
+    expect(String(tool(w).text)).toMatch(new RegExp(`A dispute came in without an email code can read \\(D-ev${ev}\\): with the CFO, never settled by code`));
     expect(spawned.calls).toEqual([]);
+    expect(escalatedUndecided(db).map((x) => x.id)).toEqual([`D-ev${ev}`]);
+    await settleOnce(db, undefined);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'dispute.escalated'").get() as { n: number }).n).toBe(1);
   });
 
   describe("s2 itself, as a real process (early paths only: no Claude, no chain, no key)", () => {
@@ -336,5 +351,28 @@ describe("one order, once, across disputes (an angrier second email is a new dis
     await decideNothingNew(db, "D-22222222");
     expect(decisionOf(db, "D-22222222")).toMatchObject({ status: "DONE", plan: { refunds: [], escalate: null, approval: null } });
     expect((db.prepare("SELECT COUNT(*) AS n FROM proposals").get() as { n: number }).n).toBe(1);
+  });
+});
+
+describe("the automatic per-dispute limit is shared by the customer's disputes (review: no splitting a complaint)", () => {
+  it("what other disputes refunded without the CFO comes off this dispute's limit; CFO-approved refunds and other payers do not", () => {
+    const db = openDb(":memory:");
+    for (let i = 0; i < 6; i++) db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('/v1/stock', 5, ?, 'u', '{}', 'DELIVERED', 'now')").run(i < 5 ? PAYER : "0x00000000000000000000000000000000000000c2");
+    for (const id of ["D-11111111", "D-22222222"]) db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES (?, ?, 'h', 'now')").run(id, PAYER);
+    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-0001', 'refund_batch', '{}', ?, 'support', 'EXECUTED', '2099-01-01T00:00:00Z', 'now')").run("b".repeat(64));
+    const refund = (sale: number, dispute: string, outcome = "PAID", proposal: string | null = null, to = PAYER) =>
+      db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, proposal_id, dispute_id) VALUES (?, ?, 5, ?, ?, ?, ?)").run(sale, `refund-${sale}`, to, outcome, proposal, dispute);
+    refund(1, "D-11111111");
+    refund(2, "D-11111111", "HELD");
+    refund(3, "D-11111111", "REFUSED");
+    refund(4, "D-11111111", "PAID", "P-0001");
+    refund(6, "D-11111111", "PAID", null, "0x00000000000000000000000000000000000000c2");
+    expect(autoRefundedElsewhereCents(db, PAYER.toUpperCase().replace("0X", "0x"), "D-22222222")).toBe(10);
+    expect(disputeLimits({ eachCents: 10, perDisputeCents: 20 }, db, PAYER, "D-22222222")).toEqual({ eachCents: 10, perDisputeCents: 10 });
+    // Its own refunds are counted by the dispute itself, not here.
+    expect(disputeLimits({ eachCents: 10, perDisputeCents: 20 }, db, PAYER, "D-11111111")).toEqual({ eachCents: 10, perDisputeCents: 20 });
+    // Never below zero, never above the policy.
+    refund(5, "D-11111111");
+    expect(disputeLimits({ eachCents: 10, perDisputeCents: 10 }, db, PAYER, "D-22222222").perDisputeCents).toBe(0);
   });
 });

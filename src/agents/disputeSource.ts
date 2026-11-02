@@ -108,8 +108,39 @@ export function handledElsewhere(db: DB, saleIds: number[], disputeId: string): 
   return out;
 }
 
-/** A dispute whose orders earlier disputes all handled: decided once, by code, with nothing new (no refund, no proposal). */
-export async function decideNothingNew(db: DB, disputeId: string): Promise<void> {
-  recordDecision(db, disputeId, { source: "code", model: null, refunds: [], escalate: null, approval: null, agent_note: "every order in it was handled by an earlier dispute" });
+/** A dispute with nothing to decide (its orders were all handled by earlier disputes, or none was sold): decided once,
+ *  by code, with nothing new (no refund, no proposal), so it is never settled again nor blocks the disputes after it. */
+export async function decideNothingNew(db: DB, disputeId: string, note = "every order in it was handled by an earlier dispute"): Promise<void> {
+  recordDecision(db, disputeId, { source: "code", model: null, refunds: [], escalate: null, approval: null, agent_note: note });
   await carryOut(db, disputeId, { refund: async () => { throw new Error("nothing to refund"); }, existing: () => null });
+}
+
+/**
+ * What this customer was refunded without the CFO under its other disputes (paid, pending or held; a refund the CFO
+ * approved is not counted). The automatic limit per dispute is shared by the customer's disputes (review of H9: else
+ * splitting one complaint into several emails would refund past the per-dispute limit without the CFO).
+ */
+export function autoRefundedElsewhereCents(db: DB, customer: string, disputeId: string): number {
+  return (db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS c FROM refunds WHERE lower(to_address) = lower(?) AND dispute_id IS NOT NULL AND dispute_id <> ? AND proposal_id IS NULL AND outcome IN ('PAID', 'PENDING', 'HELD')")
+    .get(customer, disputeId) as { c: number }).c;
+}
+
+/** The automatic refund limits for this dispute: each refund as the policy says; per dispute, what the customer's
+ *  other disputes left of it (never more than the policy's own limit). */
+export function disputeLimits(base: { eachCents: number; perDisputeCents: number }, db: DB, customer: string, disputeId: string): { eachCents: number; perDisputeCents: number } {
+  return { eachCents: base.eachCents, perDisputeCents: Math.max(0, base.perDisputeCents - autoRefundedElsewhereCents(db, customer, disputeId)) };
+}
+
+/** dispute.opened events code cannot key (no email text): each is a dispute that came in, handed to the CFO as
+ *  D-ev<event id>, never settled. `idOf` decides what is keyable. */
+export function unreadableOpened(db: DB, idOf: (email: string) => string | null): { id: string; customer: string; email: string; eventId: number }[] {
+  const rows = db.prepare("SELECT id, payload_json FROM world_events WHERE kind = 'dispute.opened' ORDER BY id").all() as { id: number; payload_json: string }[];
+  const out: { id: string; customer: string; email: string; eventId: number }[] = [];
+  for (const r of rows) {
+    let p: Record<string, unknown> | null = null;
+    try { const v: unknown = JSON.parse(r.payload_json); p = v && typeof v === "object" ? v as Record<string, unknown> : null; } catch { /* unreadable */ }
+    if (p && asOpened(p, idOf)) continue;
+    out.push({ id: `D-ev${r.id}`, customer: p && typeof p.customer === "string" ? p.customer.slice(0, 80) : "a customer", email: "", eventId: r.id });
+  }
+  return out;
 }

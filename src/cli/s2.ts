@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 import type { Address } from "viem";
 import { checkData, refundsFor, salesFound, verifyOrders, type DataVerdict, type DisputeClaims, type OrderEvidence } from "../agents/disputes.js";
 import { auditSettlement, carryOut, decisionOf, decisionSummary, finished, legacyDecision, openDecisions, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan, type Part } from "../agents/disputeDecision.js";
-import { decideNothingNew, disputeKey, handledElsewhere, openedDispute } from "../agents/disputeSource.js";
+import { decideNothingNew, disputeKey, disputeLimits, handledElsewhere, openedDispute } from "../agents/disputeSource.js";
 import { attachReview } from "../claude/review.js";
 import { agentsOn } from "../agents/loop.js";
 import { settleDispute } from "../agents/supportAgent.js";
@@ -55,7 +55,8 @@ function which(): { disputeId: string; email: string; ref: string } {
   }
   if (process.argv.includes("--resume-only")) {
     // The newest decision a restart cut off, whichever dispute it is; else the fixture's (nothing to carry out).
-    const undone = openDecisions(db).sort((a, b) => b.decided_at.localeCompare(a.decided_at))[0];
+    // A decision with refunds or proposals left (DECIDED) before one only waiting for its settlement row.
+    const undone = openDecisions(db).sort((a, b) => (a.status === b.status ? b.decided_at.localeCompare(a.decided_at) : a.status === "DECIDED" ? -1 : 1))[0];
     if (undone) return source(undone.dispute_id) ?? { disputeId: undone.dispute_id, email: "", ref: "the dispute's stored record" };
   }
   return { disputeId: disputeKey(fixtureEmail), email: fixtureEmail, ref: FIXTURE_REF };
@@ -84,6 +85,8 @@ if (prior && finished(prior)) {
   process.exit(0);
 }
 const addr = addresses(db);
+// The automatic limits: per refund as the policy says; per dispute, shared with this customer's other disputes.
+const limitsNow = () => disputeLimits(refundThresholds(db), db, addr.customer, disputeId);
 
 let claims: DisputeClaims;
 let sales: ReturnType<typeof salesFound>["sales"];
@@ -130,6 +133,8 @@ if (prior) {
   }
   if (sales.length === 0) {
     console.log("NOTHING TO SETTLE none of the disputed numbers was sold");
+    // Decided once, with nothing to refund: never settled again, and the disputes after it are not held up.
+    await decideNothingNew(db, disputeId, "none of the disputed numbers was sold to this customer");
     process.exit(0);
   }
   orders = await verifyOrders(sales, addr.customer);
@@ -153,7 +158,7 @@ if (prior) {
 
 const refunds = refundsFor(sales, verdicts);
 // No delivered sale wrong (dry-125: the corrected numbers were never sold) is a plan of its own: refund nothing.
-const route = planRefunds(refunds.map((r) => r.amount_cents), refundThresholds(db));
+const route = planRefunds(refunds.map((r) => r.amount_cents), limitsNow());
 const evidence = [
   { type: "dispute_email", ref: emailRef, sha256: emailSha },
   { type: "supplier_corrections", ref: "fixtures/stockline-corrections.txt", sha256: sha256Hex(correctionText) },
@@ -260,7 +265,7 @@ const exec: DecisionExec = {
   refund: refundOne,
   state: (seq) => (db.prepare("SELECT outcome FROM refunds WHERE sale_id = ?").get(bySeq.get(seq)?.sale_id ?? -1) as { outcome: string } | undefined)?.outcome ?? null,
   existing,
-  limits: () => refundThresholds(db),
+  limits: limitsNow,
   refundedCents: (exceptSeq) => (db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS c FROM refunds WHERE dispute_id = ? AND outcome IN ('PAID', 'PENDING', 'HELD') AND sale_id != ?").get(disputeId, bySeq.get(exceptSeq)?.sale_id ?? -1) as { c: number }).c,
   ...proposals,
 };
@@ -300,7 +305,7 @@ if (agentsOn()) {
       const beforeSeqs = before ? (JSON.parse(before.terms_json) as RefundBatchTerms).refunds.map((r) => seqOf.get(Number(r.sale_id))).filter((q): q is number => q !== undefined) : [];
       return { refunded: refundedBefore, escalated: before ? { proposalId: before.proposal_id, seqs: beforeSeqs } : null };
     },
-    limits: refundThresholds(db),
+    limits: limitsNow(),
     existing,
     fallback: {
       plan: codePlan,

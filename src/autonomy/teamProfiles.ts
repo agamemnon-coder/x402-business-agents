@@ -31,7 +31,7 @@ import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } 
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
 import { decisionOf, decisionSummary, finished, legacyDecision } from "../agents/disputeDecision.js";
-import { asOpened, disputeDecided, escalateDispute, escalatedAt, escalatedUndecided, liveDisputeId, openedDisputes, type OpenedDispute } from "../agents/disputeSource.js";
+import { asOpened, disputeDecided, escalateDispute, escalatedAt, escalatedUndecided, liveDisputeId, openedDisputes, unreadableOpened, type OpenedDispute } from "../agents/disputeSource.js";
 import type { AgentProfile } from "./runtime.js";
 import type { SupplierView } from "./sourcingCore.js";
 
@@ -291,7 +291,9 @@ export function disputeGate(db: DB, deps: SupportDeps, events?: { kind: string; 
     ? [...events].reverse().filter((e) => e.kind === "dispute.opened").map((e) => asOpened(e.payload, idOf)).filter((d): d is OpenedDispute => d !== null)
     : openedDisputes(db, idOf);
   if (!came.length) return { refused: "no customer dispute has come in" };
-  const open = came.find((d) => !disputeDecided(db, d.id));
+  // The newest undecided dispute not yet with the CFO first: one that cannot be settled never holds up the others.
+  const undecided = came.filter((d) => !disputeDecided(db, d.id));
+  const open = undecided.find((d) => !escalatedAt(db, d.id)) ?? undecided[0];
   if (!open) return { refused: `${came[0]!.id} is already decided`, decided: true };
   const target = deps.settles?.(db);
   if (target !== undefined && open.id !== target) return { refused: `the dispute that came in (${open.id}) is not the one this settlement handles (${target})`, cameIn: open };
@@ -302,6 +304,13 @@ export function disputeGate(db: DB, deps: SupportDeps, events?: { kind: string; 
 const handOver = (db: DB, d: OpenedDispute, why: string) => {
   const e = escalateDispute(db, d, why);
   return e.fresh ? ` It went to the CFO (${d.id}, recorded as dispute.escalated); a person decides it.` : ` It was sent to the CFO at ${e.at}; a person decides it.`;
+};
+
+/** dispute.opened events code cannot key (no email to settle from) go to the CFO, once each; the words say so. */
+const handOverUnreadable = (db: DB, deps: SupportDeps): string => {
+  const u = unreadableOpened(db, deps.idOf ?? liveDisputeId);
+  for (const d of u) escalateDispute(db, d, "a dispute came in without an email code can read; code never settles it");
+  return u.length ? ` ${u.length === 1 ? "A dispute" : `${u.length} disputes`} came in without an email code can read (${u.map((x) => x.id).join(", ")}): with the CFO, never settled by code.` : "";
 };
 
 export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSettle): AgentProfile {
@@ -340,12 +349,13 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
           const gate = disputeGate(db, deps);
           const recently = (id?: string) => !!db.prepare(`SELECT 1 FROM audit_log WHERE event = 'dispute.settled_by_agent' AND ts > ?${id ? " AND subject = ?" : ""}`).get(new Date(Date.now() - 30 * 60_000).toISOString(), ...(id ? [id] : []));
           if ("refused" in gate) {
+            const unreadable = handOverUnreadable(db, deps);
             if (gate.cameIn) return { text: `Not settled: ${gate.refused}.${handOver(db, gate.cameIn, gate.refused)}`, blocked: "no dispute" };
             if (cases.length && state.every((x) => x.d || x.legacy)) {
-              return { text: `Already decided: ${state.map((x) => `${x.id}: ${x.d ? decisionSummary(x.d) : x.legacy}`).join(" | ")}. Nothing is decided again.`, blocked: "already decided" };
+              return { text: `Already decided: ${state.map((x) => `${x.id}: ${x.d ? decisionSummary(x.d) : x.legacy}`).join(" | ")}. Nothing is decided again.${unreadable}`, blocked: "already decided" };
             }
-            if (recently()) return { text: "Not again: this dispute was settled in the last half hour.", blocked: "already settled" };
-            return { text: `Not settled: ${gate.refused}.`, blocked: gate.decided ? "already decided" : "no dispute" };
+            if (recently()) return { text: `Not again: this dispute was settled in the last half hour.${unreadable}`, blocked: "already settled" };
+            return { text: `Not settled: ${gate.refused}.${unreadable}`, blocked: gate.decided ? "already decided" : "no dispute" };
           }
           if (recently(gate.go.id)) return { text: "Not again: this dispute was settled in the last half hour.", blocked: "already settled" };
           // Sent to the CFO in the last half hour (a settlement that did not complete): not tried again before then.
@@ -360,7 +370,7 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
     fallback: async (db, events) => {
       if (!events.some((e) => e.kind === "dispute.opened")) return "did nothing";
       const gate = disputeGate(db, deps, events);
-      if ("refused" in gate) return `did nothing: ${gate.refused}${gate.cameIn ? `;${handOver(db, gate.cameIn, gate.refused)}` : ""}`;
+      if ("refused" in gate) return `did nothing: ${gate.refused}${gate.cameIn ? `;${handOver(db, gate.cameIn, gate.refused)}` : ""}${handOverUnreadable(db, deps)}`;
       const r = await deps.settle(db, "code", gate.go.id);
       if (r.ok) return "code settled the dispute (the agent did not decide)";
       return `code's settlement stopped (the agent did not decide);${handOver(db, gate.go, "code's settlement did not complete")}`;

@@ -9,7 +9,7 @@
 // past a cap, no refund outside the limits or for a sale code finds right, no payee other than allowed, no double
 // payment, and every payment carries its origin (D24).
 
-import { decideNothingNew, handledElsewhere } from "../agents/disputeSource.js";
+import { decideNothingNew, disputeLimits, handledElsewhere } from "../agents/disputeSource.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { audit } from "../audit/log.js";
 import { openDb, type DB } from "../db/open.js";
@@ -290,14 +290,14 @@ async function settleSim(ctx: SimCtx, by: "agent" | "code"): Promise<{ ok: boole
         refunded: (db.prepare("SELECT r.amount_cents AS cents, CAST(json_extract(s.request_params_json, '$.seq') AS INTEGER) AS seq FROM refunds r JOIN sales s ON s.sale_id = r.sale_id WHERE r.dispute_id = ? AND r.outcome IN ('PAID', 'PENDING', 'HELD')").all(disputeId) as { seq: number; cents: number }[]),
         escalated: null,
       }),
-      limits: refundThresholds(db),
+      limits: disputeLimits(refundThresholds(db), db, SIM_ADDR.customer, disputeId),
     };
     const s = await settleDispute(db, { disputeId, customer: SUMMIT, seqs, requested: ctx.requested, email: ctx.disputeEmail }, deps, ctx.client, MODELS.act);
     if (s.source === "claude") return { ok: true, text: `SUPPORT AGENT refunded ${s.refunded.map((x) => `#${x}`).join(", ") || "nothing"}${s.escalated ? `; sent ${s.escalated.seqs.map((x) => `#${x}`).join(", ")} to the CFO as ${s.escalated.proposalId}` : ""}. ${s.run.text.slice(0, 400)}` };
   }
   // Code's settlement, as s2 does without the agent: the wrong sales within the automatic limits, else to the CFO.
   const wrongSeqs = seqs.filter((q) => wrong.has(q));
-  const route = planRefunds(wrongSeqs.map((q) => bySeq.get(q)!.price_cents), refundThresholds(db));
+  const route = planRefunds(wrongSeqs.map((q) => bySeq.get(q)!.price_cents), disputeLimits(refundThresholds(db), db, SIM_ADDR.customer, disputeId));
   if (route.route === "none") return { ok: true, text: "code refunded nothing: its data check finds no delivered sale wrong" };
   if (route.route === "auto") {
     await withOrigin(AUTO_REFUND, async () => { for (const q of wrongSeqs) await refundOne(q); });
