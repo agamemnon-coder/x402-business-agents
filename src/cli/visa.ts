@@ -16,6 +16,7 @@ import { openDb } from "../db/open.js";
 import { keyPath } from "../metal/agentCli.js";
 import { tapCheckout, TAP_MERCHANT } from "../visa/merchant.js";
 import { newAgentKey, registerAgent, revokeAgent, signTapRequest, type TapAgentKey } from "../visa/tap.js";
+import { TAP_RAIL_MERCHANT } from "../visa/tapRail.js";
 
 const cmd = process.argv[2] ?? "run";
 const PORT = Number(process.env.TAP_MERCHANT_PORT ?? 4410);
@@ -40,8 +41,9 @@ if (cmd === "setup") {
       writeFileSync(keyFile(agent), JSON.stringify({ keyid: k.keyid, privateJwk, publicJwk: k.publicJwk }), { mode: 0o600 });
     }
     const k = await loadKey(agent);
-    registerAgent(db, { agent, keyid: k.keyid, publicJwk: k.publicJwk, domains: [AUTHORITY], notAfter: Math.floor(Date.now() / 1000) + 30 * 86_400 });
-    console.log(`registered ${agent}: key ${k.keyid} for ${AUTHORITY} (self-hosted registry, test key)`);
+    // D25: the same key is pinned for Packwise's TAP card rail (KIT11_TAP_RAIL=on), the merchant we run.
+    registerAgent(db, { agent, keyid: k.keyid, publicJwk: k.publicJwk, domains: [AUTHORITY, TAP_RAIL_MERCHANT.authority], notAfter: Math.floor(Date.now() / 1000) + 30 * 86_400 });
+    console.log(`registered ${agent}: key ${k.keyid} for ${AUTHORITY} and ${TAP_RAIL_MERCHANT.authority} (self-hosted registry, test key)`);
   }
   process.exit(0);
 }

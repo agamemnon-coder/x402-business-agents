@@ -2,7 +2,10 @@
 
 The system lets AI agents buy, sell, refund and pay bills on their own, within limits, and asks a person for
 everything else. This page lists what we protect, who might attack it and how, what stops each attack, and what is
-out of scope. It covers our own system only. Every claim below points to code or to a test.
+out of scope. It covers our own system only. Every claim below points to code or to a test. Updated on 2 November for
+what was added since 30 October: the autonomous agents, D24 origins, MFA sessions, the TAP plan and test-money
+recycling (rows 31 to 38), and the headers and rate limits as the code serves them. The controls in SOC 2 form, with
+their evidence and what is not in place: [controls.md](controls.md).
 
 ## What we protect
 
@@ -64,6 +67,44 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 | 29 | Anyone with the viewer link who types on the phone, an outside agent, or a model steered by the message (Ask Purser) | Get a card without Face ID, a bigger or reusable card than the CFO wrote, a card for something else, or flood the phone with requests | A message with planted instructions or hidden characters is refused before any model reads it; the amount must be written in the message and be under the kind's cap (flight, hotel, train); through the relay or from an agent the result is only a proposal for Face ID, with who asked in the signed terms; only the CFO at the runner gets a card within the policy (at most the threshold and the four-eyes threshold, 3 a day, amount next to €); one waiting request per agent, three from the dashboard link, at most 50 proposals sent to the phone, policy changes first; the card Airwallex issues is single-use, for the task's merchant categories, until the task's date, and is read back and frozen if it differs | `test/ask-purser*.test.ts`, `test/relay-ask.test.ts`, red team `ask-*` and `task-card-second-use`, `test/review-oct30.test.ts` |
 | 30 | A customer (or its agent) disputing purchases, or a planted line in the dispute (Dispute desk) | Get refunds for orders its agent signed, refunds sent to another address, or the same sale refunded twice | The desk decides from evidence in code: the signed order, `verifyMandatePayment` against the bound mandate, the delivery hash; the claim text is data; a refund goes only to the payer, never above what was paid and never twice; above the CFO's limits it is a proposal for Face ID | `test/dispute-desk.test.ts`, `test/dispute-case.test.ts`, red team `dispute-refund-elsewhere` |
 | 31 | Someone with a leaked viewer link, a stolen session cookie, a replayed sign-in, a passkey that is not enrolled, or another site (D20, **behind `MFA_SESSIONS=on` / `KIT11_MFA=on`; not yet on the hosted relay, which needs Max's redeploy**) | Change the policy, send policy-in-words or Ask Purser as the CFO | The viewer link only reads and its key changes every ISO week (this and last week's work). The CFO's endpoints need a passkey session: a one-time challenge (2 minutes), a WebAuthn assertion the Worker verifies itself (challenge, origin, RP id hash, UP and UV flags, counter, ES256 signature) against an enrolled credential's public key; the cookie is random, stored hashed, 12 hours, `HttpOnly; Secure; SameSite=Strict; Path=/api`, and dies when its passkey is no longer enrolled. Sign-ins have their own rate limit. Money approvals still need their own per-terms passkey signature | `worker/src/webauthn.ts`, `test/worker-webauthn.test.ts`, `test/relay-mfa.test.ts`, `test/relay-mfa-runner.test.ts`, `test/browser/approve.check.ts` with `KIT11_MFA=on` |
+
+### Added since 30 October
+
+Rows 32 to 38 cover what was built after the 30 October review: the autonomous agents (D19, D22), origins (D24), the
+TAP plan (D25), test-money recycling, and the contract and header checks of 2 November. Row 31 (MFA sessions, D20) is
+above.
+
+| # | Attacker | Attack | What stops it | Proof |
+|---|---|---|---|---|
+| 32 | A world event or another agent's message that carries instructions (autonomous agents, D19 and D22) | Steer an agent into paying, raising its own limit, or skipping a check | An agent acts only through its tools, and each tool runs code's checks and then the rail's own limit (the mandate on chain, the card at Airwallex); messages between agents move no money (at most two per wake); a raise is a proposal for Face ID; the prompt and every tool result are redacted; the CFO's pause or idle switch stops the rest of a wake (finish aside) | `src/agents/loop.ts`, `src/autonomy/runtime.ts`, `test/autonomy-runtime.test.ts`, `test/autonomy-blocked.test.ts`, [agents-autonomy-redteam.md](agents-autonomy-redteam.md) |
+| 33 | A runaway agent loop, or an agent that burns the model budget | Many payments, or a large Claude bill | Velocity limits (row 24); a Claude cost cap per agent per hour and per run, with an 80% warning (`agent.cost_warning`): over the cap the agent makes no call and code's labelled fallback decides; a pause per agent revokes its mandate on chain (`npm run pause`; the `pause_not_revoked` alarm stands until the chain agrees); the emergency stop (row 19); System health shows fallbacks, refused tool calls and latency per agent | `src/agents/loop.ts` (`overCap`), `src/policy/pause.ts`, `src/metal/pauseChain.ts`, `test/agent-pause.test.ts`, `test/claude-cost.test.ts`, `src/dashboard/health.ts`, `test/system-health.test.ts` |
+| 34 | Anyone, or a bug, that makes a money movement nobody can attribute (repudiation) | Pay with no recorded decider, or claim later that someone else decided | D24: every money event records its origin when the action starts (the agent's run with its model and API request id, the CFO's approval and passkey, a named code rule, or the outside party), hashed into the audit chain; a missing origin is an error the origins check counts, and a run with one is blocked; System health holds "0 missing origin" | `src/provenance/origin.ts`, `src/provenance/check.ts`, `test/origin-doors.test.ts`, `test/origin-check.test.ts`, `npm run origins`, [dry-118](runs/2026-11-01-dry-118-origins.md) |
+| 35 | Someone who forges, replays or re-targets an agent's TAP signature at a card-only merchant (D25; **behind `KIT11_TAP_RAIL=on`, a dev test until the interop test is green; claims follow that test**) | Buy as our agent, or replay its purchase | The merchant verifies the RFC 9421 signatures against the agent registry and refuses an unknown key, an expired or replayed signature (nonces kept in `tap_nonces`), another domain or path, and a tampered body (our second signature over `Content-Digest`; TAP itself does not bind the body); the card still pays only within Airwallex's limits; no code of Visa's reference is in the repo until Max accepts its terms | `src/visa/*`, `test/visa-tap.test.ts`, `test/visa-merchant.test.ts`, [decisions.md D25](decisions.md) |
+| 36 | A mistake in the test-money recycling (`KIT11_RECYCLE=on`) | Move funds out of the reserve world, Thursday's world or an owner's key | Off by default; only from finished `dry-N` worlds (ledger unchanged for an hour), never the world being filled; only the customer owner's plain wallet, keeping 0.10 for gas; whole cents; every transfer is appended with its tx to [testgeld-recycling.md](runs/testgeld-recycling.md); test funds only | `src/metal/testFunds.ts`, `test/test-funds.test.ts` |
+| 37 | Airwallex or Metal answering with a documented error our code did not expect | Leave a payout half-booked, or license a second payment | Contract tests per call against the documented shapes and error codes. Found and fixed on 2 November: a payout Airwallex refused at create (`fee_unknown`, `balance_insufficient`, the other documented 400s) stayed "under way" and blocked its invoice; `duplicate_request_id` after a lost answer failed the payment while Airwallex had paid it (now adopted by its id, same `request_id` only); an FX rate or quote refusal (`unconfigured_client_fee`) crashed planning (now an escalation). Every facilitator reason that may have moved money is "in doubt", never "refused" | `test/contract/airwallex.test.ts`, `test/contract/metal-facilitator.test.ts`, `test/contract/metal-cli.test.ts` |
+| 38 | A browser on a network that strips HTTPS, or a page that frames ours | Read or change what the CFO sees | HSTS, `nosniff`, `no-referrer` and `no-store` on every relay answer (on 2 November `/health`, the passkey sign-in, `/api/try` and the 404 lacked HSTS and `no-referrer`: fixed in code, live after Max redeploys the relay); every page a CSP with `default-src 'none'`, hashes instead of `'unsafe-inline'` and `frame-ancestors 'none'`; the local servers answer loopback Hosts only | `test/security-headers.test.ts`; below |
+
+## Security headers and rate limits (checked 2 November)
+
+Read from the code that serves each answer and asserted in `test/security-headers.test.ts`.
+
+| Where | Headers | Finding |
+|---|---|---|
+| Relay Worker pages (`worker/src/core.ts` `pageResponse`) | A CSP per page from `src/relay/assets.ts` (`default-src 'none'`, script and style by hash or `'self'`, `frame-ancestors 'none'`, `base-uri 'none'`), HSTS, `nosniff`, `no-referrer`, `no-store`, `cross-origin-opener-policy: same-origin`, a permissions policy (passkeys for this site only; no camera, microphone or location), `x-robots-tag` | none |
+| Relay Worker JSON | `COMMON_HEADERS` | `/health`, the passkey sign-in, `/api/try` and the Worker's 404 built their own headers without HSTS and `no-referrer`; fixed (they now use `COMMON_HEADERS`). **Live only after `npm run relay:deploy` (Max).** |
+| Local dashboard (`src/servers/dashboard.ts`) | Loopback Host only (DNS rebinding), `nosniff`, `no-referrer`, `no-store`, no `x-powered-by`; a strict CSP per page, `/system-health` style-only | No HSTS: plain HTTP on loopback, where it does not apply |
+| Local approvals page (`src/servers/approvals.ts`) | Loopback Host and same-origin posts only, a one-time form token, `frame-ancestors 'none'`, `form-action 'self'`, `nosniff`, `no-store`; `no-referrer` added on 2 November | 🟠 Its CSP still allows `'unsafe-inline'` script and style (its markup escapes every ledger value; hashes would remove the risk) |
+
+Rate limits, where the docs say them (each asserted in the same test or the test named):
+
+| Limit | Where | Docs |
+|---|---|---|
+| 10 submissions per address (IPv6 /64) per 10 minutes; sign-ins in their own bucket | relay | row 12, row 31 |
+| 20 failed viewer-key or webhook-signature attempts per address per 10 minutes, then 429 | relay | HF1 |
+| One policy text and one Ask Purser message waiting at a time; five tries per enrolment code | relay (`test/relay-worker.test.ts`) | rows 13b, 21, 29 |
+| Try Purser: 6 tries a minute and 40 a day per address; 60 model calls a minute for everyone (a typed task counts two) | relay | HF13 says 30: D21 raised it to 60 with the weighting; the hardening log is the record of 30 October |
+| An outside agent 5 asks an hour; 3 waiting requests from the dashboard link; 3 cards a day within the policy | runner (`src/config/policy.ts`) | R1, R2 |
+| Airwallex: one call per 200 ms (half the sandbox's 10 per second per endpoint), backoff on 429 | runner (`src/airwallex/client.ts`) | [airwallex.md](airwallex.md) |
 
 ## Limits on every external call
 
@@ -174,5 +215,9 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 - `npm run verify`: re-checks the chain, the mandates, the Airwallex records and every passkey signature, offline
   where it can.
 - `npm run verify-log -- --anchor <seq>:<hash>`: proves the log still contains a row printed earlier.
+- `test/contract/*.test.ts` (2 November): every Airwallex and Metal call against its documented request, response and
+  error codes, offline; `test/security-headers.test.ts`: the headers and rate limits above.
+- System health (`/system-health` on the local dashboard, `src/dashboard/health.ts`): per run and per agent, and the
+  service levels (decisions under 10 s, 0 double payments, 0 missing origin, fallbacks under 10%), from the ledger.
 - Before each commit, the real secret values are searched for in the diff. On 2026-10-29 the full history of the
   code, plan and keys repos was searched for every secret value. Nothing was found.

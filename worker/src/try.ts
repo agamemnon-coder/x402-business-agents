@@ -9,7 +9,7 @@
 import { claudeAgentAsk, claudeModels } from "../../src/try/claude.js";
 import { tryWorld, worldChange, type AgentAsk } from "../../src/try/world.js";
 import { TRY_MAX_CHARS, tryPurserSafely } from "../../src/try/engine.js";
-import { rateKey } from "./core.js";
+import { COMMON_HEADERS, rateKey } from "./core.js";
 
 interface Sql { exec(query: string, ...bindings: unknown[]): { toArray(): unknown[] } }
 
@@ -24,7 +24,8 @@ export const TRY_WORLD_DEADLINE_MS = 30_000;
 /** Model spend allowed per UTC day, in US dollars. */
 export const TRY_DAILY_BUDGET_USD = 3;
 
-const headers = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" };
+// The relay's common headers (HSTS, nosniff, no-store, no-referrer) on every answer, as on the rest of the Worker (HF2).
+const headers = { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" };
 const answer = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers });
 
 export class TryDesk {

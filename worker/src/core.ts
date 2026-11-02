@@ -74,7 +74,7 @@ const MAX_POLICY_TEXT = 2000;
 /** A chat message to Purser (Ask Purser): the runner reads it and proposes a task card for Face ID. */
 const MAX_ASK_TEXT = 500;
 
-const COMMON_HEADERS: Record<string, string> = {
+export const COMMON_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
@@ -341,7 +341,7 @@ export class Relay {
     this.sql.exec("INSERT INTO sessions (id_hash, credential, expires) VALUES (?, ?, ?)", await sha256Hex(id), cred.id, now + SESSION_MS);
     return new Response(JSON.stringify({ signed_in: true, label: cred.label, expires_at: new Date(now + SESSION_MS).toISOString() }), {
       status: 200,
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": `kit11_session=${id}; HttpOnly; Secure; SameSite=Strict; Path=/api; Max-Age=${SESSION_MS / 1000}` },
+      headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8", "set-cookie": `kit11_session=${id}; HttpOnly; Secure; SameSite=Strict; Path=/api; Max-Age=${SESSION_MS / 1000}` },
     });
   }
 
@@ -405,7 +405,7 @@ export class Relay {
       // A runner too old to send health is "unknown", never "ok".
       const ok = raw && typeof raw.at === "string" && Array.isArray(raw.alerts) ? raw : null;
       const h = publicHealth(ok, state ? this.relayInfo(state).age_ms : null);
-      return new Response(JSON.stringify(h.body), { status: h.status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+      return new Response(JSON.stringify(h.body), { status: h.status, headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
     }
     // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,
     // so guessing is slowed and shows up (HF1). The runner's route has its own token and is not counted.

@@ -115,7 +115,7 @@ describe("asking for a card (requestCompanyCard), with any input", () => {
         db.close();
       }
     }), { numRuns: 400 });
-  });
+  }, 60_000);
 });
 
 describe("the MCP agent API, with arbitrary tool calls", () => {

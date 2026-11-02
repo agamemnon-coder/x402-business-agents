@@ -15,15 +15,22 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { z } from "zod";
 
 const Id = z.string().min(1).max(200);
-const AgentOrigin = z.strictObject({ actor: z.literal("agent"), agent: Id, model: Id, request_id: Id.nullable(), run_id: Id });
+/** D25: a card checkout signed with TAP and checked by our merchant layer (src/visa/tapRail.ts): the agent's TAP key id
+ *  and nonce, Visa's reference proxy's HTTP status when the checkout went through it, our verdicts on signature 1
+ *  (TAP) and signature 2 (body), and, on the charge itself, Airwallex's transaction id for the authorisation (its card
+ *  transaction id, as the simulation returns it). */
+const TapEvidence = z.strictObject({ key_id: Id, nonce: Id, sig1: Id, sig2: Id, proxy_status: z.number().int().optional(), awx_transaction_id: Id.optional() });
+export type TapEvidence = z.infer<typeof TapEvidence>;
+const AgentOrigin = z.strictObject({ actor: z.literal("agent"), agent: Id, model: Id, request_id: Id.nullable(), run_id: Id, tap: TapEvidence.optional() });
 const CfoOrigin = z.strictObject({
   actor: z.literal("cfo"), proposal_id: Id, approval_id: Id, method: Id, approver: Id,
   /** With four eyes: the other person who signed the same terms with their own passkey first (the controller). */
   cosigner: Id.optional(),
+  tap: TapEvidence.optional(),
 });
-type Code = { actor: "code"; rule: string; agent?: string; set_by?: Origin };
+type Code = { actor: "code"; rule: string; agent?: string; set_by?: Origin; tap?: TapEvidence };
 const CodeOrigin: z.ZodType<Code> = z.strictObject({
-  actor: z.literal("code"), rule: Id, agent: Id.optional(),
+  actor: z.literal("code"), rule: Id, agent: Id.optional(), tap: TapEvidence.optional(),
   /** The decision code follows, when someone set it: the buy policy an agent's Claude run set, for one. */
   set_by: z.lazy(() => OriginSchema).optional(),
 });
@@ -44,7 +51,7 @@ export const MONEY_EVENTS = new Set([
   "card.charge_reversed", "receivable.matched", "receivable.escalated", "mandate.replaced", "clearing.deposited", "clearing.withdrawn",
   "quarantine.held", "quarantine.returned", "quarantine.accepted",
   // After a crash the action is found at the outside service and adopted, never sent twice: the same money movement.
-  "transfer.adopted", "fx.adopted", "credit.adopted", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
+  "transfer.adopted", "fx.adopted", "credit.adopted", "transfer.refused", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
   // Test money for a fresh world, and the passkey owners' own transfer.
   "business.funded", "treasury.seeded", "owners.sent",
 ]);

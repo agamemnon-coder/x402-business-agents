@@ -62,6 +62,8 @@ export interface Transfer {
   failureReason?: string | null;
   /** What Airwallex charged, once it says; null before. */
   fee?: { cents: number; currency: string } | null;
+  /** The payee, as Airwallex holds it (checked before a transfer found by request_id is adopted). */
+  beneficiaryId?: string | null;
 }
 
 export interface NewBeneficiary {
