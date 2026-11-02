@@ -145,8 +145,8 @@ export function cardNickname(db: DB, agent: Agent): string {
 }
 
 /** Issues each agent's card, or adopts the one already there, and syncs its limits. Safe to run again. */
-export async function setupCards(db: DB, rail: IssuingRail, now = new Date()): Promise<CardRow[]> {
-  for (const agent of AGENTS) {
+export async function setupCards(db: DB, rail: IssuingRail, now = new Date(), o: { agents?: readonly Agent[]; nicknameSuffix?: string } = {}): Promise<CardRow[]> {
+  for (const agent of o.agents ?? AGENTS) {
     const known = cardOf(db, agent);
     if (known) {
       await syncOne(db, rail, agent, await rail.getCard(known.card_id), now);
@@ -154,7 +154,9 @@ export async function setupCards(db: DB, rail: IssuingRail, now = new Date()): P
     }
     const c = CARDS[agent];
     const holder = (await rail.findCardholderByEmail(c.email)) ?? (await rail.createCardholder({ email: c.email, firstName: c.firstName, lastName: "Agent" }));
-    const nickname = cardNickname(db, agent);
+    // D25 review B1: a world without a business account of its own (the live TAP run) names its cards itself, so it
+    // never adopts another world's card with the plain name.
+    const nickname = o.nicknameSuffix ? `${c.nickname} (${o.nicknameSuffix})` : cardNickname(db, agent);
     const found = await rail.findCard(holder.id, nickname);
     const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: cardLimits(db, agent), controls: cardControls(agent, now) }));
     // An adopted card is recorded with the limits it has; syncOne then logs any change it makes to them.

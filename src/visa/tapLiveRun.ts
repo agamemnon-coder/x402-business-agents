@@ -43,6 +43,38 @@ export function freshWorldProblem(dbPath: string | undefined, exists: boolean): 
   return null;
 }
 
+export const REF_COMMIT = "16d59bdf3f8a542bc538d0962edbb80ea30a02af";
+
+export interface PreflightIo {
+  exists(path: string): boolean;
+  /** git with an argument array (no shell), in the given directory. */
+  git(dir: string, args: string[]): { status: number | null; stdout: string };
+  today(): string;
+}
+
+/**
+ * Everything npm run visa:tap-live checks before it touches anything: a fresh test world; the Airwallex sandbox keys
+ * and the Anthropic key present (the agent picks the rail with Claude); the reference clone at 16d59bd with its tracked
+ * files unchanged (untracked files are allowed: the proxy's node_modules); a run record that does not exist yet.
+ */
+export function liveRunPreflight(env: Record<string, string | undefined>, io: PreflightIo): { problem: string } | { dbPath: string; refDir: string; refCommit: string; out: string } {
+  const dbPath = env.KIT11_DB;
+  const fresh = freshWorldProblem(dbPath, !!dbPath && io.exists(dbPath));
+  if (fresh) return { problem: fresh };
+  if (!env.AIRWALLEX_CLIENT_ID || !env.AIRWALLEX_API_KEY) return { problem: "the Airwallex sandbox keys are not set" };
+  if (!env.KIT11_ANTHROPIC_API_KEY) return { problem: "the Anthropic key is not set: the Sourcing agent picks the rail itself, with Claude" };
+  const refDir = env.TAP_REF_DIR;
+  if (!refDir) return { problem: "TAP_REF_DIR must name the clone of github.com/visa/trusted-agent-protocol the proxy and registry run from" };
+  const head = io.git(refDir, ["rev-parse", "HEAD"]);
+  const commit = head.status === 0 ? head.stdout.trim() : null;
+  if (commit !== REF_COMMIT) return { problem: `the reference in TAP_REF_DIR must be a clone at 16d59bd, tracked files unchanged: it is at ${commit ?? "no commit (not a git clone?)"}` };
+  const status = io.git(refDir, ["status", "--porcelain", "--untracked-files=no"]);
+  if (status.status !== 0 || status.stdout.trim() !== "") return { problem: "the reference in TAP_REF_DIR must be a clone at 16d59bd, tracked files unchanged: git status shows changes" };
+  const out = env.RUN_OUT ?? `docs/runs/visa-tap-live-${io.today()}.json`;
+  if (io.exists(out)) return { problem: `${out} exists already: a run record is never overwritten (set RUN_OUT to a new path)` };
+  return { dbPath: dbPath!, refDir, refCommit: commit, out };
+}
+
 /** Read-only GETs at Airwallex, to confirm what the ledger says. */
 export interface ReadBack {
   /** GET /issuing/cards/{id}, as returned. */
@@ -69,6 +101,8 @@ export interface LiveRunDeps {
   /** Waits between read-back tries (Airwallex's list can lag a fresh authorisation). */
   sleep?: (ms: number) => Promise<void>;
   readBackTries?: number;
+  /** The card nickname's suffix for this run (default tap-<MMDD>-<4 hex>); tests fix it. */
+  cardSuffix?: string;
 }
 
 type Row = { seq: number; event: string; subject: string; payload_json: string };
@@ -95,13 +129,18 @@ export interface LiveRecord {
   reference: { repo: string; commit: string | null; proxy: string; registry: string };
   merchant: { name: string; checkout: string };
   key_id: string;
-  card: { agent: string; last4: string; brand_as_returned: Record<string, unknown> | string; per_purchase_limit: string | null } | null;
+  card: { agent: string; last4: string; nickname: string; brand_as_returned: Record<string, unknown> | string; other_fields_as_returned: Record<string, unknown>; per_purchase_limit: string | null } | null;
   steps: LiveStep[];
   labels: string[];
   ok: boolean;
 }
 
-const BRAND_FIELDS = ["brand", "card_brand", "network", "card_network", "scheme", "card_scheme", "card_type", "form_factor"];
+/** Fields that name the card's network, recorded exactly as Airwallex returns them (never assumed). */
+const BRAND_FIELDS = ["brand", "card_brand", "network", "card_network", "scheme", "card_scheme"];
+/** Recorded apart, not as the brand. */
+const OTHER_CARD_FIELDS = ["form_factor", "type", "card_type"];
+/** Airwallex's reason for a charge over a card's limit, as live Airwallex returned it (docs/runs/2026-10-30-friday-1.md). */
+export const PER_TX_LIMIT_REASON = "LIMIT_EXCEEDED";
 
 /** Steps 1 and 2, then the read-backs; never throws for a refused or declined step (the record says what happened). */
 export async function runTapLive(d: LiveRunDeps): Promise<LiveRecord> {
@@ -110,6 +149,8 @@ export async function runTapLive(d: LiveRunDeps): Promise<LiveRecord> {
   const db = d.db;
   const transport: TapTransport = proxyTransport(d.proxyUrl);
   const authority = transport.config.authority;
+  const reg0 = new URL(d.registryUrl);
+  if (reg0.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(reg0.hostname)) throw new Error("the reference registry must be on this machine (loopback), e.g. http://127.0.0.1:9002");
 
   // 0. The reference must be up: the proxy and the registry, both on this machine.
   for (const [what, url] of [["the reference proxy", `${d.proxyUrl.replace(/\/$/, "")}/test-proxy`], ["the reference registry", `${d.registryUrl.replace(/\/$/, "")}/`]] as const) {
@@ -117,10 +158,18 @@ export async function runTapLive(d: LiveRunDeps): Promise<LiveRecord> {
     if (!ok) throw new Error(`${what} is not running at ${url}; start Visa's reference (unchanged, at 16d59bd) first`);
   }
 
-  // The agents' cards in this fresh world (Airwallex sandbox), and the Sourcing agent's TAP test key.
-  await setupCards(db, d.issuing.rail);
+  // The Sourcing agent's card only, issued fresh for this run under its own nickname (review B1: a fresh ledger has no
+  // business account, so the plain nickname would adopt, and change, another world's card). Any adoption stops the run
+  // before anything is charged.
+  const suffix = d.cardSuffix ?? `tap-${new Date().toISOString().slice(5, 10).replace("-", "")}-${randomBytes(2).toString("hex")}`;
+  const before0 = lastSeq(db);
+  await setupCards(db, d.issuing.rail, new Date(), { agents: ["sourcing"], nicknameSuffix: suffix });
   const card = cardOf(db, "sourcing");
   if (!card) throw new Error("the Sourcing agent has no card after setup");
+  const issued = rowsAfter(db, before0, ["card.issued", "card.adopted"]);
+  if (issued.some((r) => r.event === "card.adopted") || !issued.some((r) => r.event === "card.issued" && r.subject === "sourcing") || cardRows(db).length !== 1) {
+    throw new Error(`the Sourcing agent's card was not issued fresh for this run (${issued.map((r) => r.event).join(", ") || "no card event"}); nothing was charged`);
+  }
   const seed = randomBytes(32);
   const k = ed25519FromSeed(seed);
   const signer: TapSigner = { agent: "sourcing", keyId: `purser-sourcing-live-${randomBytes(6).toString("hex")}`, privateKey: k.privateKey };
@@ -160,7 +209,7 @@ export async function runTapLive(d: LiveRunDeps): Promise<LiveRecord> {
       by: w?.run?.model ? `the Sourcing agent (${w.run.model})` : "the Sourcing agent (Claude did not run)",
       rail: buys.find((c) => !c.blocked) ? String((buys.find((c) => !c.blocked)!.input as { rail?: string }).rail) : null,
       note: picked.length ? `its buy_software calls: ${picked.join("; ")}` : `it made no purchase (${w?.run?.status ?? "no wake"}${w?.run?.note ? `: ${w.run.note}` : ""})`,
-      expectApproved: true,
+      expect: { approved: true },
     }, sleep));
 
     // 2. Over the card's per-purchase limit, by code, on the same rail: Airwallex declines it itself.
@@ -168,17 +217,19 @@ export async function runTapLive(d: LiveRunDeps): Promise<LiveRecord> {
     const over: Origin = { actor: "code", rule: "live TAP run: one attempt over the card's per-purchase limit, to show Airwallex's own decline", agent: "sourcing" };
     let err: string | null = null;
     await withOrigin(over, () => buy("packwise-pro")).catch((e: Error) => { err = e.message; });
-    steps.push(await describeStep(db, d, before2, { step: "code tries Packwise Pro, over the card's per-purchase limit", by: "code", rail: "airwallex_card", note: err ?? "", expectApproved: false }, sleep));
+    steps.push(await describeStep(db, d, before2, { step: "code tries Packwise Pro, over the card's per-purchase limit", by: "code", rail: "airwallex_card", note: err ?? "", expect: { approved: false, reason: PER_TX_LIMIT_REASON } }, sleep));
   } finally {
     await merchant.close();
   }
 
   // The card, as Airwallex's GET returns it: the brand fields verbatim (not assumed), last 4 digits only.
   let brand: Record<string, unknown> | string;
+  let other: Record<string, unknown> = {};
   try {
     const raw = await d.readBack.card(card.card_id);
     const found = Object.fromEntries(BRAND_FIELDS.filter((x) => x in raw).map((x) => [x, raw[x]]));
     brand = Object.keys(found).length ? found : `no brand field in Airwallex's card GET (fields: ${Object.keys(raw).sort().join(", ")})`;
+    other = Object.fromEntries(OTHER_CARD_FIELDS.filter((x) => x in raw).map((x) => [x, raw[x]]));
   } catch (e) {
     brand = `the card GET failed: ${(e as Error).message.slice(0, 120)}`;
   }
@@ -189,14 +240,15 @@ export async function runTapLive(d: LiveRunDeps): Promise<LiveRecord> {
     reference: { repo: "github.com/visa/trusted-agent-protocol", commit: d.refCommit, proxy: d.proxyUrl, registry: d.registryUrl },
     merchant: { name: "Packwise (a merchant we run, simulated)", checkout: `${authority}${transport.config.checkoutPath}` },
     key_id: signer.keyId,
-    card: { agent: "sourcing", last4: card.last4, brand_as_returned: brand, per_purchase_limit: row ? (row.per_tx_cents / 100).toFixed(2) : null },
+    card: { agent: "sourcing", last4: card.last4, nickname: card.nickname, brand_as_returned: brand, other_fields_as_returned: other, per_purchase_limit: row ? (row.per_tx_cents / 100).toFixed(2) : null },
     steps,
     labels: LIVE_LABELS,
     ok: steps.length === 2 && steps.every((s) => s.ok),
   };
 }
 
-async function describeStep(db: DB, d: LiveRunDeps, from: number, s: { step: string; by: string; rail: string | null; note: string; expectApproved: boolean }, sleep: (ms: number) => Promise<void>): Promise<LiveStep> {
+/** One step's record from the ledger after `from`, with the read-back; ok only when everything below holds. */
+export async function describeStep(db: DB, d: Pick<LiveRunDeps, "readBack" | "readBackTries">, from: number, s: { step: string; by: string; rail: string | null; note: string; expect: { approved: boolean; reason?: string } }, sleep: (ms: number) => Promise<void>): Promise<LiveStep> {
   const tapRow = rowsAfter(db, from, ["tap.checkout_verified", "tap.checkout_refused"]).at(-1);
   const charge = rowsAfter(db, from, ["card.charge_approved", "card.charge_declined"]).at(-1);
   const started = rowsAfter(db, from, ["card.purchase_started"]).at(-1);
@@ -221,10 +273,17 @@ async function describeStep(db: DB, d: LiveRunDeps, from: number, s: { step: str
   }
   const originRow = charge ?? started;
   const origin = (originRow?.payload.origin ?? null) as Origin | null;
+  const plan = started?.subject ?? null;
+  const planned = plan && PLANS[plan] ? (PLANS[plan]!.amountCents / 100).toFixed(2) : null;
   const tapOk = !!tap && tap.merchant === "accepted" && tap.proxy_status === 200 && tap.sig1 === "verified" && tap.sig2 === "verified";
-  // Holds when TAP passed through the proxy and our layer, Airwallex answered as expected (its own decline for step 2,
-  // whatever reason it gives, recorded as given), a read-only GET confirms it, and the charge's origin names its id.
-  const ok = tapOk && !!airwallex && airwallex.approved === s.expectApproved && !!airwallex.confirmed_by_get && airwallex.confirmed_by_get.approved === s.expectApproved
+  // Holds when TAP passed through the proxy and our layer; Airwallex answered as expected (for a decline: its
+  // per-purchase-limit reason, any other decline is recorded as it is and is not ok); a read-only GET confirms the
+  // outcome, the reason and the planned amount; and the charge's origin names Airwallex's transaction id.
+  const g = airwallex?.confirmed_by_get;
+  const ok = tapOk && !!airwallex && !!g && planned !== null
+    && airwallex.approved === s.expect.approved && g.approved === s.expect.approved
+    && (s.expect.reason === undefined || (airwallex.failure_reason === s.expect.reason && g.failure_reason === s.expect.reason))
+    && g.amount === planned && g.currency === "EUR"
     && (origin as { tap?: { awx_transaction_id?: string } } | null)?.tap?.awx_transaction_id === airwallex.transaction_id;
-  return { step: s.step, by: s.by, plan: started?.subject ?? null, rail: s.rail, tap, airwallex, origin, ok, note: s.note };
+  return { step: s.step, by: s.by, plan, rail: s.rail, tap, airwallex, origin, ok, note: s.note };
 }
