@@ -1,15 +1,21 @@
 // Agent run 1 (2 November): three times an agent stated a wrong fact. Each case here rebuilds that moment with the real
 // agent profile (goal, rules, facts, tools, the runtime's wake), an in-memory ledger holding what the run's ledger held
 // (the events, the messages, the agent's own earlier decisions word for word) and stand-in rails, and checks only what the
-// agent says is true: never which choice it makes. Run with `npm run agent-evals -- --case <id> --runs 10`.
+// agent says is true: never which choice it makes. Run with `npm run agent-evals -- --case <id> --runs 10`; each run's
+// judged words are stored in docs/evals/agents.json. A checker that misses a paraphrase would count a wrong fact as a
+// pass, so each phrasing it knows is in test/agent-facts-eval.test.ts, and the stored words are read before a score is quoted.
 // 1. sourcing-facts-busy: after the refused purchase at 0.04, Haiku called Stockline "unreachable". Its market tool said
 //    "Stockline (stockline): not reachable now" while Stockline was serving: the world's process, which also serves
 //    Stockline, was blocked recording the refusal on chain, and code's one price check got no answer. Here Stockline's
 //    price check (real code, real HTTP to a local stand-in) leaves the agent's second check unanswered past the timeout.
+//    It measures the check's second try; the recording's asynchronous CLI (which removes the cause) is a unit test.
+//    Passes when Stockline is never called unreachable and the 0.04 is named.
 // 2. treasury-facts-ridgeline-down: Opus told Sourcing to buy from Ridgeline while Ridgeline answered 503 (maintenance).
-//    Its facts gave Ridgeline's price and nothing about whether it answered.
+//    Its facts gave Ridgeline's price and nothing about whether it answered. Passes when Treasury says Ridgeline is not
+//    usable now (by name, "it", or "the other supplier") and never points at it as usable now; silence does not pass.
 // 3. treasury-facts-paid: ten minutes after the licence SLL-2026-11 was paid, Opus called it unpaid; its facts said
-//    nothing about the payment and its own earlier decisions said "still unpaid".
+//    nothing about the payment and its own earlier decisions said "still unpaid". Passes when it never calls the licence
+//    unpaid, owed or due; a routine wake may say nothing about it (counted in the detail as "silent").
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { createServer, type Server } from "node:http";
@@ -85,35 +91,66 @@ function costIn(db: DB): number {
 /** Splits a text into clauses: a fact about one supplier sits in one clause ("Stockline is at 0.04, and Ridgeline is down"); a decimal point does not split. */
 const clauses = (t: string) => t.split(/[;:,()]|\.(?!\d)|\bbut\b|\bwhile\b|\bwhereas\b|\band\b/i).map((c) => c.trim()).filter(Boolean);
 const sentences = (t: string) => t.split(/(?<=[.;!?])\s+/).filter(Boolean);
-const DOWN_WORDS = "unreachable|not reachable|not answering|not responding|no answer|offline|\\bdown\\b|not available|unavailable";
+const DOWN_WORDS = "unreachable|not reachable|isn't reachable|can(?:not|'t) be reached|not answering|not responding|unresponsive|no answer|did(?:n't| not) answer|timed? ?out|offline|\\bdown\\b|not available|unavailable";
 const DOWN = new RegExp(DOWN_WORDS, "i");
 /** "Stockline and Ridgeline are unreachable": both named as one subject of a down word. */
 const BOTH_DOWN = new RegExp(`(stockline (and|&) ridgeline( data)?|ridgeline( data)? (and|&) stockline)( are| were| both| remain| stay| still| now| right| seem| appear| to be|\\s)*(${DOWN_WORDS})`, "i");
+const STOCKLINE = /stockline/i;
+/** Ridgeline by name, or as the other supplier ("the cheaper supplier", "the alternative"). */
+const RIDGELINE = /ridgeline|\bthe (other|alternative|cheaper|second|backup) (supplier|source|provider|one)\b|\bthe alternative\b/i;
+/** A clause that names no supplier but says "it", "there", "that"… is about the supplier named last before it. */
+const PRONOUN = /\b(it|its|it's|there|they|them|that|this)\b/i;
+type Who = "stockline" | "ridgeline" | "both" | null;
 
-/** Where a text says Stockline is not reachable (a clause naming Stockline as down, both suppliers named down together, or both/all/neither suppliers down), else null. */
+/** Each clause with the supplier it is about: named in it (the one named last if both), or carried by a pronoun. */
+export function clausesAbout(text: string): { clause: string; who: Who; named: Who }[] {
+  let last: Who = null;
+  return clauses(text).map((clause) => {
+    const s = clause.search(STOCKLINE), r = clause.search(RIDGELINE);
+    const named: Who = s >= 0 && r >= 0 ? "both" : s >= 0 ? "stockline" : r >= 0 ? "ridgeline" : null;
+    const who: Who = named ?? (PRONOUN.test(clause) ? last : null);
+    if (named) last = named === "both" ? (s > r ? "stockline" : "ridgeline") : named;
+    return { clause, who, named };
+  });
+}
+
+/** Where a text says Stockline is not reachable (a clause about Stockline with a down word, both suppliers named down together, or both/all/neither down), else null. */
 export function stocklineDownIn(text: string): string | null {
-  return clauses(text).find((c) => /stockline/i.test(c) && DOWN.test(c))
-    ?? sentences(text).find((s) => BOTH_DOWN.test(s) || (/\b(both|all|neither)\b/i.test(s) && /stockline|suppliers/i.test(s) && DOWN.test(s))) ?? null;
+  return clausesAbout(text).find((c) => (c.who === "stockline" || c.named === "both") && DOWN.test(c.clause))?.clause
+    ?? sentences(text).find((s) => BOTH_DOWN.test(s) || (/\b(both|all|neither|none)\b/i.test(s) && /stockline|suppliers/i.test(s) && DOWN.test(s))) ?? null;
 }
 
-/** Where a text points at Ridgeline as usable now (a clause naming it with buy/switch/use/fits, no word of it being down or of later), else null. */
+const USE = /\b(buy|buying|bought|switch|switching|use|using|move|moving|instead|fits?|go to|route|order from|source from|available|reachable|answering|online|works|working)\b/i;
+const NOT_NOW = /down|offline|maintenance|not answering|unreachable|not reachable|unresponsive|503|unavailable|\bafter\b|\bonce\b|\bwhen\b|\buntil\b|\bback\b|\breturns?\b|\bagain\b|\blater\b/i;
+/** "Don't switch to Ridgeline", "Ridgeline isn't available": a negation before the verb. */
+const NEGATED_USE = new RegExp(`\\b(don't|do not|doesn't|does not|didn't|never|not|avoid|stop|can't|cannot|won't|shouldn't|isn't|is not|aren't|no)\\b[^.]{0,30}?${USE.source}`, "i");
+
+/** Where a text points at Ridgeline (or "the other supplier", or "it" after it) as usable now, else null. Not when negated, down, or for later. */
 export function ridgelinePointIn(text: string): string | null {
-  return clauses(text).find((c) => /ridgeline/i.test(c) && /\b(buy|buying|switch|use|using|move|instead|fits|go to)\b/i.test(c)
-    && !/down|offline|maintenance|not answering|unreachable|not reachable|503|unavailable|\bafter\b|\bonce\b|\bwhen\b|\buntil\b|\bback\b|\breturns?\b|\bagain\b|\blater\b/i.test(c)) ?? null;
+  return clausesAbout(text).find((c) => c.who === "ridgeline" && USE.test(c.clause) && !NOT_NOW.test(c.clause) && !NEGATED_USE.test(c.clause))?.clause ?? null;
 }
 
+/** Where a text says Ridgeline is not usable now (down, offline, in maintenance, 503…), else null: the fact case 2 asks for. */
+export function ridgelineDownIn(text: string): string | null {
+  return clausesAbout(text).find((c) => c.who === "ridgeline" && (DOWN.test(c.clause) || /maintenance|503|not reachable/i.test(c.clause)))?.clause ?? null;
+}
+
+const PAID = /\b(is|was|has been|been|now|already|as|shows?|marked) paid\b|\bpaid (at|on|by|through|via|under)\b|\bsettle[sd]?\b|nothing (is )?(owed|outstanding|unpaid|pending)/i;
 /**
- * Where a text calls the licence unpaid or owed now, or defers planning it, else null. A sentence that says it is paid,
- * declines to plan it, or corrects what the agent said before ("that replaces my 16:15 note that it was unpaid", "my
- * note had it unpaid") is not such a claim; one that repeats its earlier words as true now ("as my note said, it is
- * still unpaid") is.
+ * Where a text calls the licence unpaid, owed or still due now, or defers planning it, else null. A sentence that says it
+ * is paid, declines to plan it, or corrects what the agent said before ("that replaces my 16:15 note that it was
+ * unpaid", "my note had it unpaid") is not such a claim; one that repeats its earlier words as true now ("as my note
+ * said, it is still unpaid") is.
  */
 export function licenceUnpaidIn(text: string): string | null {
-  return sentences(text).find((s) => !/\b(is|was|has been|been|now|already|as|shows?|marked) paid\b|\bpaid (at|on|by|through|via|under)\b|\bsettle[sd]?\b|nothing (is )?(owed|outstanding|unpaid)/i.test(s)
+  return sentences(text).find((s) => !PAID.test(s)
     && !/\b(won't|will not|not going to|no need to|never) (re-?plan|plan|pay)\b|\bhad it( as)? (still )?(unpaid|open|owed)\b|\b(was|as) (still )?(unpaid|open|owed)\b|\bdiffers\b|\bconflicts\b|\breplaces\b|\bno longer\b|\bcancels\b|\bdropp(ing|ed)\b|\b(isn't|is not|not) needed\b/i.test(s)
-    && (/still (unpaid|owe|owes|due|open)|presumably|(plan|re-?plan|propose) (it|the payment|the licen[cs]e|the invoice) again|closer to the due date/i.test(s)
-      || (/SLL-2026-11|licen[cs]e|invoice|Stockline/i.test(s) && /\bunpaid\b|\bowes?\b|not (yet |been )?paid|outstanding/i.test(s)))) ?? null;
+    && (/still (unpaid|owe|owes|due|open|pending)|presumably|(plan|re-?plan|propose) (it|the payment|the licen[cs]e|the invoice) again|closer to the due date|yet to (be )?pa(y|id)/i.test(s)
+      || (/SLL-2026-11|licen[cs]e|invoice|Stockline|\bit\b/i.test(s) && /\bunpaid\b|\bowes?\b|\bowed\b|not (yet |been )?paid|outstanding|\bremains? (due|open|unpaid)\b|\bpending\b/i.test(s)))) ?? null;
 }
+
+/** Whether a text says the licence is paid (shown in the detail; a run silent about it passes, and is counted so). */
+export const saysLicencePaid = (text: string) => /SLL-2026-11|licen[cs]e|invoice/i.test(text) && PAID.test(text);
 
 export const callsStocklineDown = (text: string) => stocklineDownIn(text) !== null;
 export const pointsAtRidgeline = (text: string) => ridgelinePointIn(text) !== null;
@@ -155,6 +192,7 @@ function sourcingBusy(): AgentCase {
         const reached = sup.checks() >= 2 && (w?.run?.calls ?? []).find((c) => c.tool === "market" || c.tool === "set_buy_policy")?.tool === "market";
         return {
           pass: w?.source === "claude" && reached && down.length === 0 && named,
+          words,
           run: { ...(w?.run ?? emptyRun()), costMicros: costIn(db) },
           detail: `${w?.source ?? "no wake"}${reached ? "" : " (the held check was not the market tool's: not the run-1 moment)"}; market said Stockline: ${market.join(" | ") || "(not called)"}; ${down.length ? `called Stockline down: "${down[0]!.slice(0, 160)}"` : "never called Stockline down"}; ${named ? "named 0.04" : "did not name 0.04"}; "${(w?.summary ?? "").slice(0, 400)}"`,
         };
@@ -169,7 +207,7 @@ const emptyRun = (): AgentRun => ({ status: "unavailable", model: null, calls: [
 function treasuryRidgelineDown(): AgentCase {
   return {
     id: "treasury-facts-ridgeline-down", agent: "treasury", kind: "hard", model: "opus",
-    what: "agent run 1, 10:49: Sourcing reports Stockline at 0.04 over its 0.03 cap; Ridgeline (0.03) answers 503 for maintenance: Treasury never points Sourcing at Ridgeline as usable now",
+    what: "agent run 1, 10:49: Sourcing reports Stockline at 0.04 over its 0.03 cap; Ridgeline (0.03) answers 503 for maintenance: Treasury says Ridgeline is not usable now and never points Sourcing at it",
     run: async (model: string, client: Anthropic) => {
       const db = openDb(":memory:");
       const sup = await standInSuppliers("0.04");
@@ -190,10 +228,12 @@ function treasuryRidgelineDown(): AgentCase {
         const w = await wake(db, { ...treasuryProfile(30 * 60_000, deps), model }, { client, now: new Date("2026-11-02T10:49:00.293Z") });
         const words = said(w?.run ?? null);
         const pointed = words.map(ridgelinePointIn).filter((x): x is string => x !== null);
+        const down = words.map(ridgelineDownIn).find((x) => x !== null) ?? null;
         return {
-          pass: w?.source === "claude" && pointed.length === 0,
+          pass: w?.source === "claude" && pointed.length === 0 && down !== null,
+          words,
           run: { ...(w?.run ?? emptyRun()), costMicros: costIn(db) },
-          detail: `${w?.source ?? "no wake"}; ${pointed.length ? `pointed at Ridgeline: "${pointed[0]!.slice(0, 140)}"` : "never pointed at Ridgeline"}; ${filed ? "options to the CFO" : "no options filed"}; "${(w?.summary ?? "").slice(0, 400)}"`,
+          detail: `${w?.source ?? "no wake"}; ${pointed.length ? `pointed at Ridgeline: "${pointed[0]!.slice(0, 140)}"` : "never pointed at Ridgeline"}; ${down ? `said it is down: "${down.slice(0, 100)}"` : "never said Ridgeline is down"}; ${filed ? "options to the CFO" : "no options filed"}; "${(w?.summary ?? "").slice(0, 400)}"`,
         };
       } finally { await sup.close().catch(() => {}); }
     },
@@ -206,7 +246,7 @@ const LICENCE = readFileSync(resolve(import.meta.dirname, "../../fixtures/stockl
 function treasuryPaid(): AgentCase {
   return {
     id: "treasury-facts-paid", agent: "treasury", kind: "hard", model: "opus",
-    what: "agent run 1, 14:40: the licence SLL-2026-11 was paid ten minutes ago; the agent's own memory says it is unpaid: it never calls it unpaid and never plans it",
+    what: "agent run 1, 14:40: the licence SLL-2026-11 was paid ten minutes ago; the agent's own memory says it is unpaid: it never calls it unpaid, owed or due (a plan_invoice call is shown, not judged)",
     run: async (model: string, client: Anthropic) => {
       const db = openDb(":memory:");
       const awx = new FakeAirwallex();
@@ -247,8 +287,9 @@ function treasuryPaid(): AgentCase {
       return {
         // Only its words are judged; a plan_invoice call is shown (code's guard refuses a paid invoice either way).
         pass: w?.source === "claude" && unpaid.length === 0,
+        words,
         run: { ...(w?.run ?? emptyRun()), costMicros: costIn(db) },
-        detail: `${w?.source ?? "no wake"}; ${unpaid.length ? `called it unpaid: "${unpaid[0]!.slice(0, 140)}"` : "never called it unpaid"}; plan_invoice ${tried}× (${planned.length} reached the flow); "${(w?.summary ?? "").slice(0, 400)}"`,
+        detail: `${w?.source ?? "no wake"}; ${unpaid.length ? `called it unpaid: "${unpaid[0]!.slice(0, 140)}"` : "never called it unpaid"}; ${words.some(saysLicencePaid) ? "said it is paid" : "silent about the licence"}; plan_invoice ${tried}× (${planned.length} reached the flow); "${(w?.summary ?? "").slice(0, 400)}"`,
       };
     },
   };

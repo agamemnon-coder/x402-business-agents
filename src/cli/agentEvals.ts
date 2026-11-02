@@ -3,6 +3,7 @@
 // and model, how often it passed, what it cost and how long it took, and per agent the cheapest model that passed
 // every run. Needs KIT11_ANTHROPIC_API_KEY; spends real money (a few cents a run). Never part of npm test.
 
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { claudeClient } from "../claude/reader.js";
@@ -19,7 +20,12 @@ if (!client) { console.error("KIT11_ANTHROPIC_API_KEY is not set"); process.exit
 const SPEND = resolve(import.meta.dirname, "../../docs/runs/api-budget.jsonl");
 if (budgetStatus(SPEND).blocks.evals.over) { console.error("the evals block of the API budget is spent (npm run budget)"); process.exit(2); }
 
-interface Row { case: string; agent: AgentName; kind: string; model: string; passed: number; runs: number; cost_usd_micros: number; median_ms: number; details: string[] }
+// The code each row ran: the commit, and whether the checkout had changes outside this report's own files.
+const git = (a: string[]) => { try { return execFileSync("git", a, { cwd: resolve(import.meta.dirname, "../.."), encoding: "utf8" }).trim(); } catch { return ""; } };
+const COMMIT = git(["rev-parse", "--short=12", "HEAD"]) || "unknown";
+const DIRTY = git(["status", "--porcelain", "--", ".", ":!docs/evals/agents.json", ":!docs/agent-evals.md", ":!docs/runs/api-budget.jsonl"]) !== "";
+
+interface Row { case: string; agent: AgentName; kind: string; model: string; passed: number; runs: number; cost_usd_micros: number; median_ms: number; details: string[]; commit?: string; dirty?: boolean; words?: string[][] }
 const rows: Row[] = [];
 const onlyCases = args.includes("--case") ? args[args.indexOf("--case") + 1]!.split(",") : null;
 if (onlyCases && args.includes("--agent")) { console.error("use --agent or --case, not both"); process.exit(2); }
@@ -33,11 +39,12 @@ for (const c of AGENT_CASES.filter((x) => (onlyCases ? onlyCases.includes(x.id) 
     // Checked before every case and model, so a long run stops at the block's end (each row's spend is recorded below).
     if (budgetStatus(SPEND).blocks.evals.over) { console.error("the evals block of the API budget is spent; stopping (npm run budget)"); process.exit(2); }
     const model = ALL[name];
-    const r: Row = { case: c.id, agent: c.agent, kind: c.kind, model, passed: 0, runs, cost_usd_micros: 0, median_ms: 0, details: [] };
+    const r: Row = { case: c.id, agent: c.agent, kind: c.kind, model, passed: 0, runs, cost_usd_micros: 0, median_ms: 0, details: [], commit: COMMIT, dirty: DIRTY };
     const times: number[] = [];
     for (let i = 0; i < runs; i++) {
       const t0 = Date.now();
-      const out = await c.run(model, client).catch((e: Error) => ({ pass: false, detail: `error: ${e.message.slice(0, 160)}`, run: { costMicros: 0 } }));
+      const out: { pass: boolean; detail: string; run: { costMicros: number }; words?: string[] } = await c.run(model, client).catch((e: Error) => ({ pass: false, detail: `error: ${e.message.slice(0, 160)}`, run: { costMicros: 0 } }));
+      if (out.words) (r.words ??= []).push(out.words);
       times.push(Date.now() - t0);
       if (out.pass) r.passed++;
       r.cost_usd_micros += out.run.costMicros;
@@ -81,9 +88,9 @@ const md = [
   "",
   `Last update ${out.ran_at.slice(0, 16).replace("T", " ")} UTC; each row shows how many runs it had and when it ran, with \`npm run agent-evals\` (\`src/evals/agentEvals.ts\`). Stand-in tools: no chain, no Airwallex. Code's gates stay on, so an attack passes only when the outcome is right; the detail counts the calls code refused. The quoted words are the models' own. Those from before 1 November 06:00 say "Metal refused": the tool then said so. Since the Metal QA it says "refused before anything was signed" (Purser's check against the mandate's cap).`,
   "",
-  "| Case | Kind | Model | Passed | Cost (USD) | Median time | Ran (UTC) | Last run |",
-  "|---|---|---|---|---|---|---|---|",
-  ...rows.map((r) => `| ${r.case} | ${r.kind} | ${r.model} | ${r.passed}/${r.runs} | ${(r.cost_usd_micros / 1e6).toFixed(4)} | ${(r.median_ms / 1000).toFixed(1)} s | ${((r as Row & { ran_at?: string }).ran_at ?? "").slice(0, 16).replace("T", " ")} | ${r.details.at(-1)!.replace(/\|/g, "/")} |`),
+  "| Case | Kind | Model | Passed | Cost (USD) | Median time | Ran (UTC) | Commit | Last run |",
+  "|---|---|---|---|---|---|---|---|---|",
+  ...rows.map((r) => `| ${r.case} | ${r.kind} | ${r.model} | ${r.passed}/${r.runs} | ${(r.cost_usd_micros / 1e6).toFixed(4)} | ${(r.median_ms / 1000).toFixed(1)} s | ${((r as Row & { ran_at?: string }).ran_at ?? "").slice(0, 16).replace("T", " ")} | ${r.commit ? `${r.commit}${r.dirty ? " (dirty)" : ""}` : "not recorded"} | ${r.details.at(-1)!.replace(/\|/g, "/")} |`),
   "",
   "## Cheapest model that passed every run",
   "",

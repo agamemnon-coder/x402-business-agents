@@ -2,7 +2,7 @@
 // classifiers. Here they read the run's own words (from data/agent-1.sqlite's agent.decision and agent.message rows) and
 // the corrected ones: a classifier that missed the run's wrong words would let a wrong fact pass the eval. No Claude.
 import { describe, expect, it } from "vitest";
-import { callsLicenceUnpaid, callsStocklineDown, pointsAtRidgeline } from "../src/evals/agentFacts.js";
+import { callsLicenceUnpaid, callsStocklineDown, pointsAtRidgeline, ridgelineDownIn, saysLicencePaid } from "../src/evals/agentFacts.js";
 
 describe("the classifiers of the agent-facts eval cases", () => {
   it("catches Sourcing calling Stockline unreachable (run 1, 10:48 and 12:58), not a clause about Ridgeline alone", () => {
@@ -10,7 +10,14 @@ describe("the classifiers of the agent-facts eval cases", () => {
     expect(callsStocklineDown("Market now shows both suppliers unreachable (Stockline was 0.02 earlier; Ridgeline in maintenance until 22:42 UTC).")).toBe(true);
     expect(callsStocklineDown("Routine check: market unchanged. Stockline and Ridgeline are both unreachable right now, and the mandate is 0.04 per purchase.")).toBe(true);
     expect(callsStocklineDown("Stockline raised its price to 0.04 per stock check, which is above our 0.03 per-purchase cap, so purchases are blocked. Ridgeline is unreachable until its maintenance ends at 22:42 UTC.")).toBe(false);
-    expect(callsStocklineDown("Stockline did not answer one price check; Ridgeline is offline until 22:42.")).toBe(false);
+    // Second review: a missed paraphrase would count as a pass, so each of these is the wrong fact.
+    for (const t of [
+      "Stockline did not answer one price check; Ridgeline is offline until 22:42.",
+      "Stockline didn't answer.", "Stockline cannot be reached.", "Stockline can't be reached right now.",
+      "Stockline isn't reachable.", "Stockline is unresponsive.", "Stockline timed out.", "The Stockline check time out again.",
+      "Stockline was 0.02 earlier, but it is unreachable now.", "I checked Stockline. It did not answer.",
+      "Stockline and Ridgeline: both are down.",
+    ]) expect(callsStocklineDown(t), t).toBe(true);
     // Review: without "both", and in other words.
     expect(callsStocklineDown("Stockline and Ridgeline are unreachable right now.")).toBe(true);
     expect(callsStocklineDown("Ridgeline Data and Stockline are still down.")).toBe(true);
@@ -26,6 +33,24 @@ describe("the classifiers of the agent-facts eval cases", () => {
     expect(pointsAtRidgeline("No rebalance. Stockline's 0.04 is over the 0.03 sourcing cap, but Ridgeline Data at 0.03 fits the cap and keeps a 0.02 margin on the 0.05 query price.")).toBe(true);
     expect(pointsAtRidgeline("Treasury: I take back my earlier advice to switch to Ridgeline, because it is down until 22:42 UTC. After 22:42, go back to Ridgeline at 0.03.")).toBe(false);
     expect(pointsAtRidgeline("Sourcing is blocked until 22:42 UTC: Ridgeline is down for maintenance, and Stockline at 0.04 is over the 0.03 cap.")).toBe(false);
+    // Second review: "it"/"there" carried to Ridgeline, the other supplier by description; negated imperatives are not.
+    for (const t of [
+      "Ridgeline Data sells a stock check at 0.03. Buy from it instead.", "Ridgeline charges 0.03, so switch there.",
+      "Use the cheaper supplier for now.", "Switch to the other supplier.", "Ridgeline is available at 0.03.",
+      "Ridgeline Data sells a stock check for 0.03. That fits your 0.03 cap.",
+    ]) expect(pointsAtRidgeline(t), t).toBe(true);
+    for (const t of [
+      "Don't switch to Ridgeline.", "Do not buy from Ridgeline: it answers 503.", "Ridgeline isn't available now.",
+      "Avoid Ridgeline.", "Never route to the other supplier.", "Stockline at 0.04 fits the new cap.",
+    ]) expect(pointsAtRidgeline(t), t).toBe(false);
+  });
+
+  it("case 2 asks for the fact itself: Ridgeline said to be down, by name or by \"it\" (a run silent about it does not pass)", () => {
+    expect(ridgelineDownIn("Sourcing is blocked: Stockline now costs 0.04, over its 0.03 cap, and Ridgeline is down.")).not.toBeNull();
+    expect(ridgelineDownIn("Ridgeline Data would fit, but it answers 503 for maintenance.")).not.toBeNull();
+    expect(ridgelineDownIn("Ridgeline cannot be reached until 22:42.")).not.toBeNull();
+    expect(ridgelineDownIn("I sent the CFO a rebalance with two options.")).toBeNull();
+    expect(ridgelineDownIn("Stockline is down; Ridgeline sells at 0.03.")).toBeNull();
   });
 
   it("catches Treasury calling the paid licence unpaid (run 1, 14:40), not a sentence that says it is paid", () => {
@@ -38,6 +63,15 @@ describe("the classifiers of the agent-facts eval cases", () => {
     expect(callsLicenceUnpaid("My 14:25 decision stands: the licence is still unpaid.")).toBe(true);
     expect(callsLicenceUnpaid("This differs from my 16:29 note, which had it unpaid.")).toBe(false);
     expect(callsLicenceUnpaid("The ledger is right where my 16:29 note said the invoice was unpaid.")).toBe(false);
+    // Second review: other words for unpaid.
+    for (const t of [
+      "SLL-2026-11 remains due on 15 Nov.", "We are yet to pay the licence.", "The licence payment is pending.",
+      "The invoice is still pending.", "Northwind still owes Stockline EUR 240.00.", "The licence is still open.",
+      "SLL-2026-11 (EUR 240.00) is owed by 15 Nov.",
+    ]) expect(callsLicenceUnpaid(t), t).toBe(true);
+    for (const t of ["SLL-2026-11 is paid; nothing is pending.", "The licence was paid at 14:30 UTC."]) expect(callsLicenceUnpaid(t), t).toBe(false);
+    expect(saysLicencePaid("The ledger shows SLL-2026-11 as paid at 14:30 UTC.")).toBe(true);
+    expect(saysLicencePaid("No action: nothing changed.")).toBe(false);
   });
 
   // Opus's own words in this eval's runs (2 November): before the fix (code without paid invoices in the facts) and after.

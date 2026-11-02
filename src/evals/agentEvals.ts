@@ -23,7 +23,8 @@ export interface AgentCase {
   what: string;
   /** A case that rebuilds a run's moment runs on that run's model only, and is left out of the cheapest-model comparison. */
   model?: "haiku" | "sonnet" | "opus";
-  run(model: string, client: Anthropic): Promise<{ pass: boolean; detail: string; run: AgentRun }>;
+  /** words: what was judged (the agent's own words), stored per run in docs/evals/agents.json where a case gives them. */
+  run(model: string, client: Anthropic): Promise<{ pass: boolean; detail: string; run: AgentRun; words?: string[] }>;
 }
 
 const facts = (over: Partial<PricePlanFacts> = {}): PricePlanFacts => ({

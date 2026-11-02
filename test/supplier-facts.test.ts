@@ -10,7 +10,7 @@ import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { checkSupplier, supplierView } from "../src/autonomy/sourcingProfile.js";
 import { sourcingBrief } from "../src/autonomy/sourcingCore.js";
 import { treasuryProfile, type TreasurySim } from "../src/autonomy/teamProfiles.js";
@@ -43,6 +43,19 @@ describe("code's price check of a supplier (agent run 1, 10:48)", () => {
     const s = await stand(() => [503, { error: "offline for planned maintenance" }]);
     expect(await checkSupplier(s.base, FAST)).toEqual({ why: "answered HTTP 503", answered: true });
     expect(s.asked()).toBe(1);
+  });
+
+  it("a 200 whose body cannot be read (not JSON, or null) is the supplier's answer, said as such, not a failed connection", async () => {
+    for (const body of ["not json", null]) {
+      let n = 0;
+      const s = await new Promise<string>((ok) => {
+        const srv = createServer((_req, res) => { n++; res.writeHead(200, { "content-type": "application/json" }).end(body === null ? "null" : body); });
+        servers.push(srv);
+        srv.listen(0, "127.0.0.1", () => ok(`http://127.0.0.1:${(srv.address() as AddressInfo).port}`));
+      });
+      expect(await checkSupplier(s, FAST)).toEqual({ why: "answered 200 with an unreadable body", answered: true });
+      expect(n).toBe(1);
+    }
   });
 
   it("says when nothing answered twice, and how", async () => {
@@ -90,7 +103,8 @@ describe("the Treasury agent's position names whether each supplier answers (age
 
 describe("metalAgentAsync: the CLI runs without blocking the process (the world keeps serving)", () => {
   const dir = mkdtempSync(join(tmpdir(), "metal-async-"));
-  vi.stubEnv("KIT11_KEYS_DIR", join(dir, "keys"));
+  beforeAll(() => { vi.stubEnv("KIT11_KEYS_DIR", join(dir, "keys")); });
+  afterAll(() => { vi.unstubAllEnvs(); });
   const script = (name: string, body: string) => { const p = join(dir, name); writeFileSync(p, `#!/bin/sh\n${body}\n`); chmodSync(p, 0o755); return p; };
 
   it("parses the CLI's lines and its exit code, while timers keep firing", async () => {
