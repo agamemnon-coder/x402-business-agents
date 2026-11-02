@@ -561,3 +561,27 @@ Found before building (1 November, evening; sources in the research notes, repo 
   is: TAP's published example headers as test cases, plus a clean-room reading of the reference's verification
   steps (listed above) as negative and positive cases. The claim would then read "implements Visa's TAP agent
   recognition signature as specified", not "verified against Visa's open-source reference".
+
+Max, 2 November: "JA, gebruiken", reading the code's licence as MIT-like, on the condition that Claude reads
+LICENSE.md itself and reports first if it differs. It does (read again 2 November, 00:20 UTC):
+
+- The source files carry an MIT-style notice: `cdn-proxy/server.js` opens with "© 2025 Visa. Permission is hereby
+  granted, free of charge, … The above copyright notice and this permission notice shall be included …".
+- The repository's LICENSE.md still says, in full: "By using, downloading, or installing this code, you agree to the
+  terms and conditions contained in the Visa Developer Center Terms of Use (including the related Visa Trusted Agent
+  Protocol Product Terms). If you do not agree to such terms, do not download, use or install this code."
+- So the two texts differ. Reported to Max before any code is taken over; nothing from the reference is in this repo
+  or CI until he answers.
+
+Also found in the same reading of `cdn-proxy/server.js` (for the build once the licence is settled):
+
+- It verifies Ed25519 (registry `public_key` = the raw 32-byte key in base64, `alg="ed25519"`) as well as
+  RSA-PSS-SHA256 (PEM). Our agent's Ed25519 keys therefore need no RSA-PSS for the proxy; `merchant-backend` is read
+  before deciding whether RSA-PSS is needed there.
+- A second signature in the same headers breaks the unmodified proxy: it takes everything after `sig2=(…);` as
+  attributes (a later `keyId`, `nonce`, `created` would override sig2's) and uses the whole Signature-Input value as
+  `@signature-params`. So the `sig1` body binding proposed above cannot share the headers when the unmodified proxy
+  verifies. Options for Max: (a) the body is bound by our merchant's own Content-Digest check outside TAP (stated as
+  ours, not TAP's); (b) a patched proxy, labelled as Visa's reference with our changes.
+- It stores a nonce before it verifies the signature, so a forged request can use up a real nonce (a denial, not a
+  bypass). Ours stores it only after verification; the difference goes in the notes, not into a patch of Visa's code.
