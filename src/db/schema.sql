@@ -604,6 +604,14 @@ CREATE TABLE IF NOT EXISTS tap_nonces (
   keyid TEXT NOT NULL,
   seen_at INTEGER NOT NULL
 );
+-- D25: nonces our merchant layer accepted on the TAP card rail (src/visa/tapMerchant.ts), per key, stored only after
+-- every check passed, and kept for the window plus the skew either way (after that no signature carrying one can be valid).
+CREATE TABLE IF NOT EXISTS tap_rail_nonces (
+  keyid TEXT NOT NULL,
+  nonce TEXT NOT NULL,
+  seen_at INTEGER NOT NULL,
+  PRIMARY KEY (keyid, nonce)
+);
 
 -- Block 5.2: one claim per piece of work two processes could both pick up (a card decline seen by the CLI that caused
 -- it and by the runner's webhook or poll): whoever inserts the row does the work; the other skips it.
