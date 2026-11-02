@@ -1,8 +1,11 @@
 // Executes an approved invoice_payment: the conversion (if any) on the approved quote, then the SWIFT
 // transfer, both carrying the approval hash in metadata and built only from the approved terms.
 // Transfer lifecycle: SUBMITTING (row written before the call) -> SENT -> PAID, or FAILED -> CANCELLED; or
-// SUBMITTING -> CANCELLED when Airwallex refuses the very first create outright (a documented 400: no transfer exists).
-// A resend under the same request_id never closes the row: Airwallex may hold the first send, whatever it answers.
+// SUBMITTING -> CANCELLED when Airwallex refuses the first create outright (a documented 400: no transfer exists).
+// A resend under the same request_id never closes the row on Airwallex's answer alone: Airwallex may hold an earlier
+// send, whatever it answers. The fee retry's attempts 2 to 6 are such resends, so after them the row is closed only when
+// a strict look-up by request_id finds nothing; a transfer found is adopted (if it is this payout), and a look-up that
+// fails leaves the row SUBMITTING (transfer.left_open). A resend from a later run (a re-run, a resume) never closes it.
 // A lost answer is resolved by looking the request_id up, never by a blind resend with a new id; a transfer found that
 // way, or named by duplicate_request_id, is adopted only if it is exactly this payout (amount, currency, payee).
 
@@ -165,11 +168,16 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   try {
     ({ transfer: tr, adopted } = await createWithFeeRetry(db, rail, t, sha, create, now, feeRetry, () => attempts++));
   } catch (err) {
-    if (firstSend && err instanceof AirwallexError && err.status === 400 && REFUSED_AT_CREATE.has(err.code ?? "")) {
-      // Airwallex refused the very first create outright (contract tests): no transfer exists, so the row is closed,
-      // not left SUBMITTING, where it would count as money under way and block the invoice for ever. On a resend the
-      // row stays SUBMITTING whatever the answer (Airwallex may hold the first send; review of 2 November), and the
-      // reconciliation looks such rows up by request_id.
+    const refused = firstSend && err instanceof AirwallexError && err.status === 400 && REFUSED_AT_CREATE.has(err.code ?? "");
+    // After the fee retry's resends (attempts > 1), Airwallex's refusal alone does not show that nothing exists.
+    const afterResends = refused && attempts > 1 ? await lookUpAfterResends(db, rail, t, create, attempts, err) : null;
+    if (afterResends) {
+      ({ transfer: tr, adopted } = { transfer: afterResends, adopted: true });
+    } else if (refused && err instanceof AirwallexError) {
+      // Airwallex refused the first create outright (contract tests), and any retries too, with nothing found under the
+      // request_id: no transfer exists, so the row is closed, not left SUBMITTING, where it would count as money under
+      // way and block the invoice for ever. On a resend from a later run the row stays SUBMITTING whatever the answer
+      // (Airwallex may hold the first send; review of 2 November), and the reconciliation looks such rows up.
       const at = new Date().toISOString();
       db.transaction(() => {
         const closed = db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
@@ -181,14 +189,15 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
         });
       }).immediate();
       throw err;
+    } else {
+      if (!(err instanceof AirwallexAmbiguous)) throw err;
+      const listed = await rail.findTransferByRequestId(t.transfer_request_id);
+      const found = listed && await withPayee(rail, listed);
+      if (found && !sameTransfer(found, create)) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`, { cause: err });
+      if (found) ({ transfer: tr, adopted } = { transfer: found, adopted: true });
+      else ({ transfer: tr, adopted } = await createOrAdopt(rail, create));
+      audit(db, "awx-executor", "transfer.ambiguous", t.transfer_request_id, { resolved: adopted ? "adopted" : "resent with the same request_id" });
     }
-    if (!(err instanceof AirwallexAmbiguous)) throw err;
-    const listed = await rail.findTransferByRequestId(t.transfer_request_id);
-    const found = listed && await withPayee(rail, listed);
-    if (found && !sameTransfer(found, create)) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`, { cause: err });
-    if (found) ({ transfer: tr, adopted } = { transfer: found, adopted: true });
-    else ({ transfer: tr, adopted } = await createOrAdopt(rail, create));
-    audit(db, "awx-executor", "transfer.ambiguous", t.transfer_request_id, { resolved: adopted ? "adopted" : "resent with the same request_id" });
   }
   // A crash here: Airwallex has the payout, the ledger only its SUBMITTING row. The retry adopts it by request_id.
   await checkpoint("transfer:after-create");
@@ -198,6 +207,27 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
     ...(adopted ? { payee_confirmed: tr.beneficiaryId != null } : {}),
   });
   return tr;
+}
+
+/**
+ * After a refusal that followed resends under the same request_id: a strict look-up by it. A transfer there that is this
+ * payout is returned (adopted); one that is not is an error for a person; nothing there returns null (the row may be
+ * closed). A failed look-up leaves the row SUBMITTING, under way, and records why (transfer.left_open), then rethrows.
+ */
+async function lookUpAfterResends(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms, want: NewTransfer, attempts: number, refusal: unknown): Promise<Transfer | null> {
+  let held: Transfer | undefined;
+  try {
+    held = await rail.findTransferByRequestIdStrict(t.transfer_request_id);
+  } catch (e) {
+    audit(db, "awx-executor", "transfer.left_open", t.transfer_request_id, {
+      request_id: t.transfer_request_id, attempts, amount: `EUR ${t.amount}`, reason: `the look-up by request_id after ${attempts} attempts failed: ${(e as Error).message}`,
+    });
+    throw refusal;
+  }
+  if (!held) return null;
+  const mine = await withPayee(rail, held);
+  if (!sameTransfer(mine, want)) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`, { cause: refusal });
+  return mine;
 }
 
 /** What Airwallex said, for the audit and the CFO: its code, trace and request ids, and its own words (none on our side). */

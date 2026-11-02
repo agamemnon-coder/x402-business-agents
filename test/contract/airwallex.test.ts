@@ -334,6 +334,14 @@ class ErringAirwallex extends FakeAirwallex {
     const t = await super.getTransfer(id);
     return { ...t, beneficiaryId: this.payeeIn.get ? (this.payeeOnGet ?? t.beneficiaryId) : null };
   }
+  /** Strict look-ups asked, and whether they fail (no answer, or an unfiltered list). */
+  strictCalls = 0;
+  strictFails = false;
+  override async findTransferByRequestIdStrict(requestId: string) {
+    this.strictCalls++;
+    if (this.strictFails) throw new Error("Airwallex's transfer list was not filtered by the request_id");
+    return super.findTransferByRequestIdStrict(requestId);
+  }
   override async findTransferByRequestId(requestId: string) {
     if (this.listLag > 0) { this.listLag--; return undefined; }
     const t = await super.findTransferByRequestId(requestId);
@@ -779,6 +787,64 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
       awx.feeCents = 2_500;
       await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast());
       expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.fee_over_ceiling'").get() as { payload_json: string }).payload_json)).toMatchObject({ fee: "EUR 25.00" });
+    });
+
+    describe("after resends (attempts 2 to 6 reuse the request_id), a refusal closes the row only once a strict look-up finds nothing", () => {
+      it("nothing under the request_id: closed, after exactly one strict look-up; a refusal on the very first and only attempt needs none", async () => {
+        const { db, awx } = await world();
+        const out = await approved(db, awx);
+        awx.fail.createTransfer = persistently("fee_unknown");
+        await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast())).rejects.toMatchObject({ code: "fee_unknown" });
+        expect(awx.strictCalls).toBe(1);
+        expect(transferRows(db)[0]!.status).toBe("CANCELLED");
+        const one = await world();
+        const p1 = await approved(one.db, one.awx);
+        one.awx.fail.createTransfer = awxError(400, "balance_insufficient", "/transfers/create");
+        await expect(executeInvoicePayment(one.db, one.awx, one.awx, p1.proposal.proposal_id, undefined, fast())).rejects.toMatchObject({ code: "balance_insufficient" });
+        expect(one.awx.strictCalls).toBe(0);
+        expect(transferRows(one.db)[0]!.status).toBe("CANCELLED");
+      });
+
+      it("a resend made the transfer though Airwallex answered fee_unknown: found by the look-up and adopted, never closed (so never paid twice)", async () => {
+        const { db, awx } = await world();
+        const out = await approved(db, awx);
+        awx.fail.createTransfer = persistently("fee_unknown");
+        let n = 0;
+        awx.onCreate = (t) => {
+          if (++n === 2) awx.transfers.push({ id: randomUUID(), requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR", metadata: t.approvalSha256, beneficiaryId: t.beneficiaryId, fee: { cents: 1347, currency: "EUR" } });
+        };
+        const r = await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast());
+        expect(r.transfer.id).toBe(awx.transfers[0]!.id);
+        expect(awx.transfers).toHaveLength(1);
+        expect(transferRows(db)).toEqual([{ transfer_id: awx.transfers[0]!.id, status: "PAID", failure_type: null }]);
+        expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'transfer.refused'").get()).toEqual({ n: 0 });
+        expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'transfer.adopted'").get()).toEqual({ n: 1 });
+      });
+
+      it("the look-up fails: the row stays SUBMITTING (under way), recorded as left open; never closed", async () => {
+        const { db, awx } = await world();
+        const out = await approved(db, awx);
+        awx.fail.createTransfer = persistently("fee_unknown");
+        awx.strictFails = true;
+        await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast())).rejects.toMatchObject({ code: "fee_unknown" });
+        expect(transferRows(db)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+        expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.left_open'").get() as { payload_json: string }).payload_json))
+          .toMatchObject({ request_id: out.terms.transfer_request_id, attempts: 6, reason: expect.stringMatching(/not filtered/) });
+        expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'transfer.refused'").get()).toEqual({ n: 0 });
+      });
+
+      it("the look-up finds a transfer that is not this payout: never adopted, never closed", async () => {
+        const { db, awx } = await world();
+        const out = await approved(db, awx);
+        awx.fail.createTransfer = persistently("fee_unknown");
+        let n = 0;
+        awx.onCreate = (t) => {
+          if (++n === 2) awx.transfers.push({ id: randomUUID(), requestId: t.requestId, status: "PROCESSING", amountCents: 1, currency: "EUR", metadata: "x", beneficiaryId: t.beneficiaryId });
+        };
+        await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast())).rejects.toThrow(/not this payout/);
+        expect(transferRows(db)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+        expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event IN ('transfer.adopted', 'transfer.refused')").get()).toEqual({ n: 0 });
+      });
     });
 
     it("a resend (the row written by an earlier run that crashed before its first create) is retried too, and stays open: never closed", async () => {
