@@ -11,6 +11,11 @@ export const TAGLINE = "Give every AI agent its own company card, with limits th
 export const VISA_AWARD_ON = true;
 /** The Visa claim, word for word (Max, 2 Nov); nothing stronger anywhere. */
 export const VISA_CLAIM = "Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top.";
+/**
+ * The Visa Award's status, word for word (Max, 2 Nov evening): Airwallex changed answer (1) to "TBD" and added Visa;
+ * answer (2) stays "Yes". Never "organisers confirmed TAP counts".
+ */
+export const VISA_AWARD_STATUS = "Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).";
 /** The big line under the heading: the kit, the track and the awards entered. */
 export const KIT_LINE = `Kit 11 · x402 Business Agents · entered for the Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""}`;
 /** Home's badge (Max's mega-prompt v4, C2), word for word: the kit, the awards entered, what it is built on. Visa TAP is a separate text badge, never a logo. */

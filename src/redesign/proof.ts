@@ -4,7 +4,7 @@
 // licence attempt that paid nothing, the checks, and a folded, labelled Archive. Nothing typed in by hand.
 
 import { readFileSync } from "node:fs";
-import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM } from "../config/brand.js";
+import { SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
 import { agentRun, faceIdDecisions, family, runName, split, stops, tapRun, type AgentRun, type Ev, type Tile } from "./run.js";
 import { esc, icon, page } from "./ui.js";
 
@@ -121,7 +121,7 @@ function partnerCards(run: AgentRun): string {
   return `<div class="partners">
 ${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal") + fact(String(mandates), "mandates replaced"), p.metal)}
 ${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + fact(String(st.airwallex), "card decline at the limit (TAP run)"), p.airwallex)}
-${tap ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit"), p.visa, `<p class="claim">${esc(VISA_CLAIM)}</p>`) : ""}
+${tap ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit"), p.visa, `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`) : ""}
 ${card("claude", LOGO.claude, "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls, each with a request id"), p.claude)}
 </div>`;
 }
@@ -141,7 +141,7 @@ function moreCards(run: AgentRun): string {
   // One Face ID number from one source (faceIdDecisions): the proposals the CFO decided with his passkey, from the run's ledger.
   const faceItems = faces.map((f) => li(`${f.id} · ${f.title}: ${f.status === "COSIGNED" ? `1 of 2 signatures, by ${f.signers[0]}` : `${f.status === "REJECTED" ? "rejected" : "approved"} by ${f.signers.join(" and ")}${f.signers.length > 1 ? ` (${f.signers.length} of ${f.signers.length} signatures)` : ""}`}`, "face", null, f.signers.length > 1 ? SECOND_APPROVER : undefined));
   const earlier = money.filter((e) => e.earlier);
-  const v = readJson<{ ran_at: string; summary: { runs: number; by_claude: number; unsafe: number; distinct_choices_same_world: number } }>("docs/evals/autonomy-variation.json");
+  const v = readJson<{ ran_at: string; summary: { runs: number; by_claude: number; distinct_choices_same_world: number } }>("docs/evals/autonomy-variation.json");
   const rt = readJson<{ ran_at: string; summary: { runs: number; held: number } }>("docs/evals/autonomy-redteam.json");
   const red = readJson<{ ran_at: string; attempts: number; blocked: number; caught_after?: number }>("docs/redteam/report.json");
   const t = s.traces.find((x) => x.agent === "support" && x.task.startsWith("dispute"));
@@ -159,7 +159,7 @@ ${box("stops", "ban", "stopped at a limit", String(st.metal + st.airwallex + st.
 ${box("faceid", "scan-face", "Face ID decisions", String(faceIdDecisions(r)), `Proposals the CFO decided on his phone${faces.some((f) => f.status === "COSIGNED") ? "; the mandate change needed a second signature too" : ""}. ${SECOND_APPROVER}`, fold("Show each signature", faceItems))}
 ${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), `The licence's first SWIFT attempt: the Airwallex sandbox could not price the fee (fee_unknown). Not a limit. Paid later by SWIFT after a new Face ID.`, fold("Show it", earlier.map((e) => li(`${money2(e)} · ${e.what}: ${e.refused?.reason ?? ""}`, "no", { label: e.proof.label, href: null })))) : ""}
 ${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=3"])}
-${box("variation", "sparkles", "variation runs by Claude", `${v.summary.by_claude}/${v.summary.runs}`, `${v.summary.unsafe} unsafe, ${v.summary.distinct_choices_same_world} different choices in the same world (simulated rails, real Claude Haiku, ${d(v.ran_at)}).`, "")}
+${box("variation", "sparkles", "variation runs by Claude", `${v.summary.by_claude}/${v.summary.runs}`, `${v.summary.distinct_choices_same_world} different choices in the same world (simulated rails, real Claude Haiku, ${d(v.ran_at)}). Safety count under review: one action in the 2 November batch is being checked.`, "")}
 ${box("redteam", "shield-check", "attacks failed", `${red.blocked}/${red.attempts}`, `${d(red.ran_at)}, test world${red.caught_after ? `; ${red.caught_after} found afterwards, not prevented` : ""}. Against the agent loop: ${rt.summary.held} of ${rt.summary.runs} held (${d(rt.ran_at)}).`, "")}
 ${box("health", "database", "audit rows", String(s.audit.rows), `Hash chain ${s.audit.intact ? "intact" : "broken"} (${runName(r)}).`, "", ["Open the CFO dashboard", "./?autonomy"])}
 ${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they were.", fold("Show the archive", archive))}

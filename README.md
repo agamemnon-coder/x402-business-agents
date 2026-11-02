@@ -3,7 +3,9 @@
 **Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
 
 Kit 11 · x402 Business Agents: three agents (Sourcing, Support, Treasury) on one Metal account, rebalancing when
-supplier costs rise — plus Airwallex for cards, FX and the euro licence fee.
+supplier costs rise — plus Airwallex for cards, FX and the euro licence fee. Entered for the Metal Award.
+
+**Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
 
 **Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/#tour))
 or offline with `npm ci && npm run judge` (no keys, no network):

@@ -7,7 +7,7 @@ import { agentRun, loadRecord, stops, tapRun, type RunRecord } from "../src/rede
 import { homePage } from "../src/redesign/home.js";
 import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { CORE_SENTENCE, KIT_LINE, VISA_AWARD_ON, VISA_CLAIM } from "../src/config/brand.js";
+import { CORE_SENTENCE, KIT_LINE, VISA_AWARD_ON, VISA_AWARD_STATUS, VISA_CLAIM } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const { file, record } = loadRecord();
@@ -164,5 +164,25 @@ describe("the redesigned Home and Watch", () => {
   it("the price card's tags stack in one column, so they cannot overlap on a phone (Max, 2 Nov)", () => {
     expect(homePage()).toMatch(/<div class="tags"><span class="tag t1">[\s\S]*?<\/span>\s*<span class="tag t2">/);
     expect(homePage()).not.toMatch(/\.m-price \.t[12] \{ top:/);
+  });
+
+  it("the Visa Award status is Max's sentence on Home, Proof and /visa, and no page says TAP was confirmed (2 Nov evening)", () => {
+    const pages = buildPages() as unknown as Record<string, unknown>;
+    for (const name of ["home", "proof", "visa"]) {
+      const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
+      expect({ name, has: html.includes(VISA_AWARD_STATUS) }).toEqual({ name, has: true });
+    }
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling/i.test(body.replace(VISA_AWARD_STATUS, "")) }).toEqual({ name, bad: false });
+  });
+
+  it("labels the licence payment honestly: started by the CFO, Treasury had advised paying later (Max, 2 Nov)", () => {
+    const label = "payment started by the CFO (npm run licence); Treasury had advised paying later";
+    expect(watchPage()).toContain(label);
+    const f = loadRecord().record.snapshot.flows.find((x) => (x as { proof?: { full?: string } }).proof?.full === "7bbb3d61-d9f3-4b8e-81cc-cc7cceb9c1df")!;
+    expect(f.decided).toBe(label);
+  });
+
+  it("claims no '0 unsafe' anywhere until sim-31 is checked (Max, 2 Nov)", () => {
+    for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, zero: /\b0 unsafe\b/i.test(body.replace(/<[^>]+>/g, " ")) }).toEqual({ name, zero: false });
   });
 });

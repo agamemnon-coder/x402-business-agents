@@ -22,6 +22,8 @@ Purser gives each AI agent an Airwallex company card and a Metal on-chain mandat
 **Track 1 (Adaptive Treasury Controller), Starter Kit 11 (x402 Business Agents), for the Metal Award. Your AI agents
 spend through Airwallex and Metal. The CFO stays in control.**
 
+**Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
+
 Purser is for the CFO or controller of a small company that runs AI agents and wants them to spend company money only
 within limits the CFO sets. The example company is Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query
 (here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. It has Kit 11's three

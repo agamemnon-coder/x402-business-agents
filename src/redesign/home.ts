@@ -7,7 +7,7 @@
 // library; two drawings of the same scene (wide and phone), so text stays at least 14 px; prefers-reduced-motion shows
 // each scene's end state, still. Then three buttons. About 60 words besides the header and footer.
 
-import { HOME_BADGE, VISA_AWARD_ON } from "../config/brand.js";
+import { HOME_BADGE, VISA_AWARD_ON, VISA_AWARD_STATUS } from "../config/brand.js";
 import { agentRun, callBadge, callTip, homeFilm, type AgentRun, type HomeFilm } from "./run.js";
 import { HEADLINE, esc, icon, page } from "./ui.js";
 
@@ -78,6 +78,7 @@ const CSS = `.hero { padding: 20px 0 36px; }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; }
 .badge { display: inline-flex; align-items: center; gap: 6px; font: 650 14px/1.35 Inter, system-ui, sans-serif; padding: 5px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text); }
 .badge.tap { white-space: nowrap; }
+.award-note { margin: -4px 0 0; font-size: 14px; color: var(--muted); max-width: 52em; }
 .h-hero { font-size: clamp(40px, 6.4vw, 72px); font-weight: 800; letter-spacing: -.035em; line-height: 1; }
 .h-hero span { color: var(--metal); }
 .film { padding: 0; overflow: hidden; }
@@ -220,6 +221,7 @@ export function homePage(run: AgentRun = agentRun()): string {
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="badges"><span class="badge">${esc(HOME_BADGE)}</span>${VISA_AWARD_ON ? `<span class="badge tap">${icon("credit-card", 15)}Visa TAP</span>` : ""}</div>
+  ${VISA_AWARD_ON ? `<p class="award-note">${esc(VISA_AWARD_STATUS)}</p>` : ""}
   <h1 class="h-hero">${esc(words.slice(0, 2).join(" "))} <span>${esc(words.slice(2).join(" "))}</span></h1>
   <div class="film card">${drawing(run, f, WIDE, "wide-l")}${drawing(run, f, PHONE, "phone-l")}</div>
   <div class="sub" aria-live="polite"><p class="line" id="line">${esc(first.line)} ${first.proof?.href ? `<a href="${esc(first.proof.href)}" target="_blank" rel="noopener">${esc(first.proof.label)} ↗</a>` : ""}</p><span class="call" id="call" title="${esc(first.tip)}">${esc(first.badge)}</span></div>
