@@ -109,6 +109,26 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
   }).immediate();
 }
 
+/**
+ * Defense in depth, one purchase (src/world/letThrough.ts): the one Sourcing purchase let past the cap checks to Metal,
+ * which must refuse it, is still held while it is in flight, so an unexpected acceptance or a lost answer is counted
+ * like any payment. Every other check still applies here: the agent's identity, the CFO's emergency stop, its pause and
+ * its velocity stop. Null when held; otherwise why not (then nothing is sent).
+ */
+export function holdBeyondCap(db: DB, r: { agent: "sourcing"; cents: number; ref: string; payee: Payee; now?: Date }): string | null {
+  const now = r.now ?? new Date();
+  if (!Number.isInteger(r.cents) || r.cents <= 0) return `invalid_amount: ${r.cents}`;
+  return db.transaction((): string | null => {
+    if (db.prepare("SELECT 1 FROM holds WHERE ref = ?").get(r.ref)) return `hold_conflict: ${r.ref} is already held`;
+    const denied = authorize(db, r.agent, { rail: "metal", currency: "USDZ", payee: r.payee }, now) ?? capRefusal(db, r.agent, 0);
+    if (denied) return denied;
+    const ts = now.toISOString();
+    db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, created_at, updated_at, policy_version, origin_json) VALUES (?, ?, 'metal', ?, 'HELD', ?, ?, ?, ?)")
+      .run(r.ref, r.agent, r.cents, ts, ts, policyVersion(db, now).version, originJson());
+    return null;
+  }).immediate();
+}
+
 /** The payment is in its ledger now; the ledger counts it from here. */
 export function settleHold(db: DB, ref: string, now = new Date()): void {
   db.prepare("UPDATE holds SET status = 'SETTLED', updated_at = ? WHERE ref = ? AND status = 'HELD'").run(now.toISOString(), ref);
