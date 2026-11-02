@@ -34,6 +34,14 @@ zes uur stil, daarna in twee minuten weer op). Alle programma's stoppen tegelijk
    sleutelbestanden horen in de keys-repo), dus deze wereld kan niet verder. Keuze voor Max: een verse wereld (ongeveer
    15 minuten voorbereiden, opnieuw passkeys koppelen) en opnieuw beginnen, of de run verzetten.
 
+## Snapshots van het grootboek
+
+Na elke stap maakt Claude een consistente kopie van het grootboek (SQLite online backup), lokaal in
+`data/snapshots/<wereld>/<stap>.sqlite` (niet in git). Een beschadigd grootboek is daarmee binnen dezelfde container te
+herstellen. Een kopie buiten de container (Max, 2 november) staat nog open: het pushen naar de private keys-repo werd door
+het veiligheidsfilter van deze omgeving geweigerd, en de keys-repo is volgens Max' regel voor testnet-sleutels. Max
+beslist waar de kopie heen mag.
+
 ## Om de kans te verkleinen
 
 - Tijdens de run draait er niets anders: geen soak, geen dry runs, geen testgeld-recycling. Alleen de runner draait
