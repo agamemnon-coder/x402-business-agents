@@ -201,6 +201,31 @@ describe("the nonce", () => {
   });
 });
 
+describe("review S4: the payment check, on the signed body", () => {
+  const shop = tapMerchantConfig({ authority: AUTHORITY, checkoutPath: CHECKOUT, merchantName: "Packwise" });
+  const order = (o: Record<string, unknown>) => JSON.stringify(o);
+  const buyWith = (body: string) => verifyTapCheckout(db, received(headersFor({ body }), { body }), shop, NOW + 5);
+  it("accepts an order for one of its plans at its price, and names it in the verdict", () => {
+    expect(buyWith(order({ plan: "packwise-starter", amount: "19.99", currency: "EUR" }))).toMatchObject({ ok: true, order: { plan: "packwise-starter", amount: "19.99", currency: "EUR", amountCents: 1999 } });
+  });
+  const refusedOrders: [string, string, RegExp][] = [
+    ["another amount", order({ plan: "packwise-starter", amount: "1.00", currency: "EUR" }), /amount 1\.00 is not 19\.99/],
+    ["another currency", order({ plan: "packwise-starter", amount: "19.99", currency: "USD" }), /currency USD/],
+    ["another merchant's plan", order({ plan: "replyhub-starter", amount: "38.00", currency: "EUR" }), /sells no plan replyhub-starter/],
+    ["an unknown plan", order({ plan: "packwise-gold", amount: "1.00", currency: "EUR" }), /sells no plan/],
+    ["a field more", order({ plan: "packwise-starter", amount: "19.99", currency: "EUR", quantity: 9 }), /exactly plan, amount and currency/],
+    ["no amount", order({ plan: "packwise-starter", currency: "EUR" }), /exactly plan, amount and currency/],
+    ["a number for the amount", order({ plan: "packwise-starter", amount: 19.99, currency: "EUR" }), /amount must be a decimal string/],
+    ["no order at all", "not json", /not an order/],
+  ];
+  for (const [what, body, why] of refusedOrders) {
+    it(`refuses ${what}, signed or not, and burns no nonce`, () => {
+      expect(buyWith(body)).toMatchObject(refused(new RegExp(`payment check: .*${why.source}`)));
+      expect(db.prepare("SELECT COUNT(*) AS c FROM tap_rail_nonces").get()).toEqual({ c: 0 });
+    });
+  }
+});
+
 describe("review nits", () => {
   it("takes a key on its end date and refuses it one second later", () => {
     db.prepare("UPDATE tap_agents SET not_after = ? WHERE keyid = ?").run(NOW + 5, ops.keyId);

@@ -22,7 +22,7 @@ export async function startTapMerchant(db: DB, cfg: TapMerchantConfig, o: { port
     o.onReceived?.({ method: req.method ?? "", url: req.url ?? "", rawHeaders: [...req.rawHeaders], body, verdict });
     return { status: verdict.ok ? 200 : 422, answer: { accepted: verdict.ok, verdict } };
   };
-  const listen = (host: string) => new Promise<Server | null>((ok) => {
+  const listen = (host: string) => new Promise<Server | string>((ok) => {
     const server = createServer((req, res) => {
       const chunks: Buffer[] = [];
       let size = 0;
@@ -32,7 +32,7 @@ export async function startTapMerchant(db: DB, cfg: TapMerchantConfig, o: { port
         res.writeHead(r.status, { "content-type": "application/json" }).end(JSON.stringify(r.answer));
       });
     });
-    server.once("error", () => ok(null));
+    server.once("error", (e: NodeJS.ErrnoException) => ok(e.code ?? "error"));
     server.listen(o.port, host, () => ok(server));
   });
   const wanted = o.hosts ?? ["127.0.0.1", "::1"];
@@ -40,7 +40,15 @@ export async function startTapMerchant(db: DB, cfg: TapMerchantConfig, o: { port
   const hosts: string[] = [];
   for (const h of wanted) {
     const s = await listen(h);
-    if (s) { servers.push(s); hosts.push(h); }
+    // An address family this machine does not have (no ::1): nothing else can listen there either, so it is skipped.
+    if (s === "EADDRNOTAVAIL" || s === "EAFNOSUPPORT") continue;
+    if (typeof s === "string") {
+      // Review, 2 November: every address that exists must bind, or the proxy may reach something else on the port.
+      await Promise.all(servers.map((x) => new Promise<void>((ok) => x.close(() => ok()))));
+      throw new Error(`Packwise's checkout could not listen on ${h} port ${o.port} (${s})`);
+    }
+    servers.push(s);
+    hosts.push(h);
   }
   if (!servers.length) throw new Error(`Packwise's checkout could not listen on port ${o.port}`);
   const addr = servers[0]!.address();
