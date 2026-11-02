@@ -613,7 +613,8 @@ About $280 of Anthropic API credit is left for the product's own Claude calls. P
 Thursday, the extra run and /try while the jury looks: evals and variation about $80, red team with Opus as the
 attacker about $60, soak and dry runs about $50, Claude reviews of documents and claims about $30, /try day budget
 during judging about $30. A cost counter per block (from the cost already recorded per call), a warning at 80%, and
-spend per block in each evening report. Per task the cheapest model that passes its eval.
+spend per block in each evening report. Built: `src/claude/budget.ts` (blocks evals 80, redteam 60, soak 50, reviews 30, try 30; an unknown block is
+refused), the spend log `docs/runs/api-budget.jsonl`, and `npm run budget` (`test/api-budget.test.ts`). Per task the cheapest model that passes its eval.
 
 Variation (Max's choices): 40 worlds with simulated rails and 10 live worlds (Metal testnet and the Airwallex sandbox,
 random parameters, about 280 *USDZ from recycling and about 2 hours). Simulated-rail worlds run the same code paths

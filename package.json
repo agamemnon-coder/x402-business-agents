@@ -47,6 +47,7 @@
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
+    "budget": "tsx src/cli/budget.ts",
     "receivables": "tsx src/cli/receivables.ts",
     "receive-policy": "tsx src/cli/receivePolicy.ts",
     "clearing": "tsx src/cli/clearing.ts",
