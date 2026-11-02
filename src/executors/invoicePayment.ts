@@ -38,7 +38,7 @@ export interface FeeRetry {
 
 /**
  * Live: 15, 30, 60, 90 and 120 s, 5 min 15 s in all. Airwallex staff advised a retry with some backoff on these codes
- * (Slack, 2 November); the delays they measured before it worked were 33 s to 3.2 min. A proposal lives 10 minutes.
+ * (Slack, 2 November); the delays they measured before it worked were 33 s to 3.2 min. An invoice payment proposal lives 20 minutes (INVOICE_PROPOSAL_TTL_MS).
  */
 export const FEE_RETRY: FeeRetry = { delaysMs: [15_000, 30_000, 60_000, 90_000, 120_000], sleep: (ms) => new Promise((r) => setTimeout(r, ms)) };
 

@@ -40,6 +40,11 @@ export const REFUND_AUTO_PER_DISPUTE_CENTS = 20;
 /** A proposal lives 10 minutes, and never past its FX quote's expiry minus 30 seconds. */
 export const PROPOSAL_TTL_MS = 10 * 60 * 1000;
 export const QUOTE_SAFETY_MS = 30 * 1000;
+/**
+ * An invoice payment (the licence) waits 20 minutes for the CFO's Face ID (Max, 2 Nov: P-0006 expired at 10). An FX
+ * quote still caps it at the quote's expiry minus 30 seconds; other proposals keep PROPOSAL_TTL_MS.
+ */
+export const INVOICE_PROPOSAL_TTL_MS = 20 * 60 * 1000;
 
 /**
  * Ceiling for the Airwallex SWIFT payout fee, reserved before converting. Airwallex does not quote the fee
