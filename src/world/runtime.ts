@@ -13,6 +13,7 @@ import { keyPath } from "../metal/agentCli.js";
 import { sellerApp } from "../servers/seller.js";
 import { supplierApp } from "../servers/supplier.js";
 import { getSetting } from "./settings.js";
+import { ridgelineDown } from "./supplierEvents.js";
 import { existsSync } from "node:fs";
 import { WALLET_DIRS, clearingDeployment, openWallet } from "../metal/clearing.js";
 import { SUPPLIERS, type SupplierId } from "../config/suppliers.js";
@@ -83,9 +84,10 @@ export async function startRuntime(db: DB, ports = { supplier: 4101, seller: 410
   const buyUpstream = carrier.upstream;
   const servers = [
     await listen(supplierApp({ payTo: addr.supplier, price: () => upstreamPrice(db) }), ports.supplier),
-    // D19: Ridgeline Data, the second supplier: its own price, older data, sometimes unavailable.
+    // D19: Ridgeline Data, the second supplier: its own price, older data, sometimes unavailable; offline altogether
+    // while the world has it in maintenance (npm run world -- ridgeline-maintenance; off unless asked).
     ...(ridgeline ? [await listen(supplierApp({ payTo: ridgeline.address, price: () => supplierPrice(db, "ridgeline"), name: SUPPLIERS.ridgeline.name,
-      dataAgeSeconds: SUPPLIERS.ridgeline.dataAgeSeconds, unavailableEvery: SUPPLIERS.ridgeline.unavailableEvery }), SUPPLIERS.ridgeline.port)] : []),
+      dataAgeSeconds: SUPPLIERS.ridgeline.dataAgeSeconds, unavailableEvery: SUPPLIERS.ridgeline.unavailableEvery, down: () => ridgelineDown(db) }), SUPPLIERS.ridgeline.port)] : []),
     await listen(sellerApp({
       db, payTo: addr.business, price: () => sellPrice(db), buyUpstream,
       // The prepaid route (Metal clearing) is offered only when we have a clearing key and Metal offers clearing.

@@ -2,6 +2,11 @@
 //   serve [--every 20]       the shop runs: the suppliers (Stockline, Ridgeline Data) and the seller on localhost, and a
 //                            customer agent that buys one stock check every N seconds (Sourcing's buy policy applies)
 //   price-rise [0.04]        Stockline raises its price and sends its notice to the Sourcing agent
+//   price-rise 0.04 --silent Thursday's world: Stockline raises its price without warning, from the serve loop's next
+//                            query; its notice follows the first purchase attempt there (at most 5 min later). Waits
+//                            until the serve loop applied it (src/world/supplierEvents.ts)
+//   ridgeline-maintenance [hours|off]  Thursday's world: Ridgeline Data is offline for maintenance (default 12 h): its
+//                            API answers 503 before any offer; its notice tells the Sourcing agent
 //   ridgeline-price <0.03>   Ridgeline Data changes its price
 //   dispute                  Summit Outfitters disputes a batch of orders (the email reaches the Support agent)
 //   invoice                  Stockline Data's monthly licence invoice reaches the Treasury agent
@@ -21,6 +26,7 @@ import { openDb } from "../db/open.js";
 import { publish } from "../autonomy/bus.js";
 import { disputeReady } from "../agents/disputes.js";
 import { setSupplierPrice } from "../autonomy/teamProfiles.js";
+import { cancelSilentRise, ridgelineMaintenance, scheduleSilentRise, silentRise, stocklineNotice, worldQuery } from "../world/supplierEvents.js";
 import { addresses, startRuntime } from "../world/runtime.js";
 import { redactSecrets } from "../lib/redact.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
@@ -46,7 +52,8 @@ if (cmd === "serve") {
   let seq = ((db.prepare("SELECT MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)) AS s FROM sales").get() as { s: number | null }).s ?? 0) + 1;
   while (!stopping) {
     try {
-      const p = await rt.customer.buy(seq);
+      // A silent price rise (Thursday's world) is applied before this query and its notice sent after it, when due.
+      const p = await worldQuery(db, seq, () => rt.customer.buy(seq), (line) => console.log(`${stamp()} ${line}`));
       console.log(`${stamp()} query #${seq}: ${p.outcome.kind === "paid" ? `sold for ${fromCents(baseUnitsToCents(BigInt(p.outcome.amount)))}` : `not sold (${redactSecrets(String((p.outcome as { reason?: string }).reason ?? p.outcome.kind)).slice(0, 160)})`}`);
     } catch (e) {
       console.log(`${stamp()} query #${seq} failed: ${redactSecrets((e as Error).message).slice(0, 200)}`);
@@ -55,11 +62,50 @@ if (cmd === "serve") {
     for (let t = 0; t < every && !stopping; t += 500) await new Promise((r) => setTimeout(r, 500));
   }
   await rt.close();
+} else if (cmd === "price-rise" && process.argv.includes("--silent")) {
+  // Thursday's world (Max, 2 November): the first contact with the new price is a purchase attempt, then the notice.
+  const price = arg && money.test(arg) ? arg : "0.04";
+  scheduleSilentRise(db, price);
+  console.log(`Stockline will ask ${price} a stock check from the next customer query, without notice; waiting for the world's serve loop`);
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const t0 = Date.now();
+  while (silentRise(db)?.stage === "pending" && Date.now() - t0 < 90_000) await sleep(1000);
+  if (silentRise(db)?.stage === "pending" && cancelSilentRise(db)) {
+    console.error("not applied: the world's serve loop did not pick up the rise within 90 s (is npm run world -- serve running?); withdrawn, nothing changed");
+    process.exit(3);
+  }
+  console.log(`Stockline now asks ${price} a stock check, from query #${silentRise(db)?.seq}; no notice sent`);
+  // The first attempt is usually that same query; its refusal may be recorded on chain first, so allow some time.
+  const t1 = Date.now();
+  while (silentRise(db)?.stage === "applied" && Date.now() - t1 < 120_000) await sleep(1000);
+  const r = silentRise(db);
+  const first = db.prepare("SELECT id, outcome, refusal_reason FROM upstream_purchases WHERE id > ? AND supplier = 'stockline' ORDER BY id LIMIT 1").get(r?.from_id ?? 0) as { id: number; outcome: string; refusal_reason: string | null } | undefined;
+  if (first) console.log(`first purchase attempt at Stockline after the rise: ${first.outcome}${first.refusal_reason ? ` (${redactSecrets(first.refusal_reason).slice(0, 160)})` : ""}`);
+  const chain = first ? db.prepare(`SELECT event, payload_json FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded')
+    AND seq > (SELECT COALESCE(MIN(seq), 0) FROM audit_log WHERE event = 'upstream.refused' AND subject = ?) ORDER BY seq LIMIT 1`).get(String(first.id)) as { event: string; payload_json: string } | undefined : undefined;
+  if (chain) {
+    const p = JSON.parse(chain.payload_json) as { tx?: string | null; error?: string };
+    console.log(chain.event === "upstream.refused_on_chain" ? `Metal recorded the refusal on chain (tx ${p.tx ?? "none reported"})` : `the refusal was not recorded on chain: ${redactSecrets(p.error ?? "").slice(0, 160)}`);
+  }
+  console.log(r?.stage === "noticed"
+    ? `Stockline's notice reached the Sourcing agent ${r.notice_after === "first_attempt" ? "after that first attempt" : "5 minutes after the rise"}`
+    : "Stockline's notice follows the first purchase attempt there, at most 5 minutes after the rise (the serve loop sends it)");
 } else if (cmd === "price-rise") {
   const price = arg && money.test(arg) ? arg : "0.04";
   setSupplierPrice(db, "stockline", price);
-  publish(db, "supplier.notice", { supplier: "Stockline", new_price: price, notice: readFileSync(fixture("stockline-price-notice.txt"), "utf8").slice(0, 1500) }, "sourcing");
+  stocklineNotice(db, price);
   console.log(`Stockline now asks ${price} a stock check; its notice reached the Sourcing agent`);
+} else if (cmd === "ridgeline-maintenance") {
+  if (arg === "off") {
+    ridgelineMaintenance(db, null);
+    console.log("Ridgeline Data is online again; its notice reached the Sourcing agent");
+  } else {
+    const hours = arg === undefined ? 12 : Number(arg);
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 24) { console.error("usage: npm run world -- ridgeline-maintenance [hours, up to 24; default 12 | off]"); process.exit(2); }
+    const until = new Date(Date.now() + hours * 3_600_000);
+    ridgelineMaintenance(db, until);
+    console.log(`Ridgeline Data is offline for maintenance until ${until.toISOString().slice(11, 16)} UTC: its API answers 503 before any offer; its notice reached the Sourcing agent`);
+  }
 } else if (cmd === "ridgeline-price" && arg && money.test(arg)) {
   setSupplierPrice(db, "ridgeline", arg);
   console.log(`Ridgeline Data now asks ${arg} a stock check`);
@@ -107,6 +153,6 @@ if (cmd === "serve") {
   const out = execFileSync("npx", ["tsx", resolve(import.meta.dirname, "receivables.ts"), "customer-pays", ...(arg === "short" ? ["short"] : [])], { env: process.env, encoding: "utf8" });
   console.log(redactSecrets(out.trim()));
 } else {
-  console.error("usage: npm run world -- serve [--every 20] | price-rise [0.04] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer");
+  console.error("usage: npm run world -- serve [--every 20] | price-rise [0.04] [--silent] | ridgeline-maintenance [hours|off] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer");
   process.exit(2);
 }
