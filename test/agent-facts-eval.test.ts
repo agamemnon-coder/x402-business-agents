@@ -49,6 +49,9 @@ describe("the classifiers of the agent-facts eval cases", () => {
     expect(ridgelineDownIn("Sourcing is blocked: Stockline now costs 0.04, over its 0.03 cap, and Ridgeline is down.")).not.toBeNull();
     expect(ridgelineDownIn("Ridgeline Data would fit, but it answers 503 for maintenance.")).not.toBeNull();
     expect(ridgelineDownIn("Ridgeline cannot be reached until 22:42.")).not.toBeNull();
+    // Opus, in this case's run on 6fe04d3: a parenthesis must not cut the subject off.
+    expect(ridgelineDownIn("Sourcing is blocked: Stockline now charges 0.04 a stock check, over Sourcing's 0.03 cap per payment, and Ridgeline (0.03) is down with HTTP 503.")).not.toBeNull();
+    expect(ridgelineDownIn("The other supplier, Ridgeline Data (0.03), is not reachable (HTTP 503), so for now Sourcing can only serve from cache.")).not.toBeNull();
     expect(ridgelineDownIn("I sent the CFO a rebalance with two options.")).toBeNull();
     expect(ridgelineDownIn("Stockline is down; Ridgeline sells at 0.03.")).toBeNull();
   });
@@ -70,6 +73,14 @@ describe("the classifiers of the agent-facts eval cases", () => {
       "SLL-2026-11 (EUR 240.00) is owed by 15 Nov.",
     ]) expect(callsLicenceUnpaid(t), t).toBe(true);
     for (const t of ["SLL-2026-11 is paid; nothing is pending.", "The licence was paid at 14:30 UTC."]) expect(callsLicenceUnpaid(t), t).toBe(false);
+    // Opus on the code before the fix (this case's run on 2ce1362): a deferred plan is the wrong fact; a question is not.
+    expect(callsLicenceUnpaid("Position no longer shows the Stockline invoice (SLL-2026-11, EUR 240, due 15 Nov) as open; the earlier payout was closed and P-0006 lapsed. I'll re-plan it before 15 Nov unless told it's paid or disputed.")).toBe(true);
+    expect(callsLicenceUnpaid("The position no longer shows the Stockline invoice SLL-2026-11 as unpaid. I'll confirm whether it was settled or withdrawn before planning it again.")).toBe(false);
+    expect(saysLicencePaid("I'll confirm whether it was settled or withdrawn before planning it again.")).toBe(false);
+    expect(callsLicenceUnpaid("I left the Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) alone, since this check doesn't show whether it's still owed.")).toBe(false);
+    expect(callsLicenceUnpaid("If it is, I'll plan it again closer to the due date unless I'm told it's disputed.")).toBe(false);
+    // Opus after the fix (6fe04d3): its earlier plan, cancelled, is not the claim.
+    expect(callsLicenceUnpaid("My 17:29 plan to re-plan it nearer the due date is cancelled.")).toBe(false);
     expect(saysLicencePaid("The ledger shows SLL-2026-11 as paid at 14:30 UTC.")).toBe(true);
     expect(saysLicencePaid("No action: nothing changed.")).toBe(false);
   });
