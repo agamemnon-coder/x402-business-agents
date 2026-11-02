@@ -9,6 +9,7 @@ import type { DB } from "../db/open.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { MANDATE_EXPIRES_IN_SECONDS } from "../config/policy.js";
 import { fromCents, toCents } from "../lib/money.js";
+import { mandateAvailability } from "../policy/available.js";
 import { disputeCases, type DisputeCase } from "../seller/desk.js";
 import { EXPLORER_TX } from "./network.js";
 
@@ -39,7 +40,10 @@ export interface MandateView {
   payee: { name: string; address: string };
   cap: string;
   budget: string;
+  /** Paid under it, as the dashboard counts it (src/policy/available.ts); after a replacement, over all its credentials. */
   used: string;
+  /** Sent and not final, or held for a payment being made now: the chain may count some of it already. */
+  pending: string;
   left: string;
   expires_at: string;
   /** Bind and replace, oldest first. */
@@ -163,14 +167,17 @@ export function mandateViews(db: DB): MandateView[] {
     const last = reps.at(-1) ?? b;
     const paid = paidUnder(db, role);
     // Replacing carries the spend so far into the new budget (Metal docs, "Binding, replacing and revoking").
-    const usedCents = paid.reduce((s, p) => s + p.cents, 0);
+    // What was used and what is left come from the one source the dashboard and the check against the chain read.
+    const av = mandateAvailability(db, role);
+    const usedCents = av.paidCents;
     const budget = money(last.p.budget);
     const refusal = role === "sourcing" ? refusals.find((r) => String(r.p.reason ?? "").startsWith("mandate_")) : undefined;
     const display = role === "customer" ? { name: "Summit's buying agent", job: "Summit Outfitters, a simulated customer, buys Northwind's stock checks under a mandate its own owner bound" } : AGENT_DISPLAY[role];
     out.push({
       role, agent: display.name, job: display.job, account: String(b.p.principal ?? ""),
       payee: { name: payeeName(db, String(b.p.payee ?? "")), address: String(b.p.payee ?? "") },
-      cap: money(last.p.cap), budget, used: fromCents(usedCents), left: fromCents(Math.max(0, toCents(budget) - usedCents)),
+      cap: money(last.p.cap), budget, used: fromCents(usedCents), pending: fromCents(av.pendingCents + av.heldCents),
+      left: fromCents(Math.max(0, toCents(budget) - usedCents - av.pendingCents - av.heldCents)),
       expires_at: new Date(Date.parse(last.ts) + MANDATE_EXPIRES_IN_SECONDS * 1000).toISOString(),
       history: [
         { at: b.ts, what: role === "customer" ? "Bound by Summit's owner" : "Bound by Northwind's owner", cap: money(b.p.cap), budget: money(b.p.budget), tx: tx(b.p.tx) },

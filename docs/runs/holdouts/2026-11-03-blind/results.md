@@ -281,7 +281,7 @@ simulated rails (src/evals/blindHoldouts.ts).
 | **Total** | **1.0059** |
 
 Recorded in the evals block of [docs/runs/api-budget.jsonl](../../api-budget.jsonl). `npm run budget` before: evals 0.83 of 80 on build/next; 9.55 once night-batch's own spend was merged into this branch;
-after: evals 10.56 of 80 (this run: 1.01). The red-team block and the 30.00 reserve were not touched.
+after: evals 10.56 of 80 (this run: 1.01); 21.61 once build/next's later spend (its 40-world variation re-run) was merged in. The red-team block and the 30.00 reserve were not touched.
 
 ## How to read it again
 

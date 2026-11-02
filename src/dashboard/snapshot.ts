@@ -51,8 +51,13 @@ export interface Budget {
   remaining: string;
   /** Day the bound credential expires (bind time + the mandate term; exact to the day). */
   expires_on: string | null;
-  /** Credentials this agent has held; spend carries over on replacement. */
+  /** Credentials this agent has held (bound, replaced, resumed after a pause); spend carries over on replacement. */
   credentials: number;
+  /**
+   * The bound credential's own budget, when it is not the mandate's budget above: after a resume Metal binds a fresh
+   * credential with what was left (budget − spent), so the lifetime figures above stay what the CFO approved.
+   */
+  chain_budget: string | null;
   /** The CFO policy's limit per payment, inside the mandate's cap; null when only the mandate's cap applies. */
   policy_cap: string | null;
   /** The newest payment made under this mandate, as proof on the explorer; null before the first one. */
@@ -390,36 +395,38 @@ export function parseReview(explanation: string | null): Pending["review"] {
   return { model: m[1] === "no model" ? null : m[1]!, recommendation: m[2]!.toLowerCase(), text: m[3]!.trim() };
 }
 
+const MANDATE_AGENTS: readonly DashAgent[] = ["sourcing", "support", "treasury", "customer"];
+
 function budgets(db: DB, rows: AuditRow[], roleOf: (address: string) => string | undefined) {
-  const spentCents: Record<DashAgent, number> = {
-    sourcing: sum(db, "SELECT SUM(price_cents) AS n FROM upstream_purchases WHERE outcome = 'PAID'"),
-    support: sum(db, "SELECT SUM(amount_cents) AS n FROM refunds WHERE outcome = 'PAID'"),
-    treasury: sum(db, "SELECT SUM(amount_cents) AS n FROM sweeps WHERE outcome = 'PAID'"),
-    customer: sum(db, "SELECT SUM(price_cents) AS n FROM sales WHERE status = 'DELIVERED'"),
-  };
-  const current = new Map<DashAgent, { cap: string; budget: string; payee: string; at: string; credentials: number }>();
+  const current = new Map<DashAgent, { cap: string; budget: string; payee: string; at: string; credentials: number; chainBudget: string | null }>();
   for (const r of rows) {
-    if (r.event !== "mandate.bound" && r.event !== "mandate.replaced") continue;
+    if (r.event !== "mandate.bound" && r.event !== "mandate.replaced" && r.event !== "mandate.resumed") continue;
     const agent = r.subject as DashAgent;
-    if (!(agent in spentCents)) continue;
+    if (!MANDATE_AGENTS.includes(agent)) continue;
     const p = JSON.parse(r.payload_json) as P;
     const prev = current.get(agent);
+    if (r.event === "mandate.resumed") {
+      // A fresh credential with the paused one's cap and payees, what was left of its budget, and its expiry.
+      if (prev) current.set(agent, { ...prev, credentials: prev.credentials + 1, chainBudget: str(p.budget) || null });
+      continue;
+    }
     const payeeAddr = str(p.payee);
     const payee = payeeAddr ? PAYEE_NAMES[roleOf(payeeAddr) ?? ""] ?? short(payeeAddr) : prev?.payee ?? "";
-    current.set(agent, { cap: str(p.cap), budget: str(p.budget), payee, at: r.ts, credentials: (prev?.credentials ?? 0) + 1 });
+    current.set(agent, { cap: str(p.cap), budget: str(p.budget), payee, at: r.ts, credentials: (prev?.credentials ?? 0) + 1, chainBudget: null });
   }
   const one = (agent: DashAgent): Budget | null => {
     const m = current.get(agent);
     if (!m) return null;
-    const spent = spentCents[agent];
+    // Paid, pending and held from one place (src/policy/available.ts), the same the check against the chain reads.
     const av = mandateAvailability(db, agent);
+    const spent = av.paidCents;
     const day = new Date(Date.parse(m.at) + MANDATE_EXPIRES_IN_SECONDS * 1000);
     return {
       agent, payee: m.payee, cap: m.cap, budget: m.budget, spent: fromCents(spent),
       // Available the same way everywhere: budget less paid, less sent-but-not-final, less held right now.
       pending: fromCents(av.pendingCents), held: fromCents(av.heldCents),
       remaining: signed(safeCents(m.budget) - spent - av.pendingCents - av.heldCents), expires_on: isNaN(day.getTime()) ? null : day.toISOString().slice(0, 10),
-      credentials: m.credentials,
+      credentials: m.credentials, chain_budget: m.chainBudget,
       policy_cap: agent === "customer" ? null : policyValue(db, `cap.${agent}`) || null,
       last_tx: lastTx(db, agent),
     };
@@ -438,7 +445,8 @@ const LAST_TX_SQL: Record<DashAgent, string> = {
   sourcing: "SELECT tx_hash AS tx FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY id DESC LIMIT 1",
   support: "SELECT tx_hash AS tx FROM refunds WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY refund_id DESC LIMIT 1",
   treasury: "SELECT tx_hash AS tx FROM sweeps WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY created_at DESC LIMIT 1",
-  customer: "SELECT tx_hash AS tx FROM sales WHERE tx_hash IS NOT NULL ORDER BY sale_id DESC LIMIT 1",
+  // Mandate-route sales only (a clearing sale has no tx); the scheme is not named, so a ledger from before it still reads.
+  customer: "SELECT tx_hash AS tx FROM sales WHERE status = 'DELIVERED' AND tx_hash IS NOT NULL ORDER BY sale_id DESC LIMIT 1",
 };
 function lastTx(db: DB, agent: DashAgent): string | null {
   const r = db.prepare(LAST_TX_SQL[agent]).get() as { tx: string } | undefined;
@@ -634,6 +642,10 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       const how = str(p.scheme) === "bajillion" ? " by Metal clearing (a receipt, no transaction)" : "";
       return out(sale ? `Sold stock check #${sale.seq} to Summit Outfitters for ${fromCents(sale.price)} USDZ${how}` : `Sale ${s} delivered${how}`, "ok");
     }
+    case "sale.settlement_resolved": return str(p.outcome) === "CHARGED"
+      ? out(`A customer payment of ${str(p.amount)} USDZ was charged with no delivery recorded (${str(p.tx) ? `tx ${str(p.tx).slice(0, 10)}…` : "no tx"}): owed back unless a person finds it was delivered`, "refusal")
+      : out(str(p.outcome) === "DONE" ? `A sale's settlement was closed by the reconciliation (sale ${str(p.sale_id)})` : `A customer payment left being settled did not move: ${str(p.detail)}`);
+    case "sale.settlement_left_open": return out(`Sale ${s} is recorded; its settlement row is left for the reconciliation to close (${str(p.error)})`);
     case "sale.settle_failed": return out(`A sale did not settle; the customer was not charged (${str(p.error)})`, "refusal");
     case "sale.refused": return out(`Customer query #${str(p.seq)} answered ${str(p.status)}: the stock check could not be bought, so the middleware did not settle and Summit Outfitters was not charged`, "refusal");
     case "query.answered": return out(`Customer query #${str(p.seq)}: Summit Outfitters got ${p.status === null ? "no answer" : `HTTP ${str(p.status)}`}; ${p.settled === true ? "its payment settled" : p.settled === false ? "its payment did not settle (not charged)" : "settlement unknown"}`, p.settled === true ? "ok" : "refusal");

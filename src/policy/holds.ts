@@ -66,6 +66,7 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
     if (existing && existing.status !== "RELEASED") {
       // The one let-through's hold was made past the cap checks (holdBeyondCap): it never stands for a normal payment.
       if (existing.reason === LET_THROUGH_HOLD) return `hold_conflict: ${r.ref} is the let-through's hold`;
+      if (existing.reason === RECORD_PULL_HOLD) return `hold_conflict: ${r.ref} is a record pull's hold`;
       return existing.agent === r.agent && existing.cents === r.cents ? null : `hold_conflict: ${r.ref} is held for another payment`;
     }
     const agent = r.agent;
@@ -121,6 +122,12 @@ function budgetAndVelocity(db: DB, agent: string, cents: number, ref: string, no
 
 /** The reason a let-through's hold carries, so it is never taken for a normal payment's. */
 export const LET_THROUGH_HOLD = "let_through";
+/**
+ * The reason the hold of a pull recording Metal's refusal carries (src/agents/sourcing.ts). Like the let-through's, it is
+ * held past the cap checks with every other check applied; it also counts in the velocity limits as a Metal payment of
+ * the Sourcing agent (a velocity event), which is the conservative side: it is an over-cap payment sent to Metal.
+ */
+export const RECORD_PULL_HOLD = "record_pull";
 
 /**
  * Defense in depth, one purchase (src/world/letThrough.ts): the one Sourcing purchase let past the cap checks to Metal,
@@ -129,7 +136,7 @@ export const LET_THROUGH_HOLD = "let_through";
  * CFO's emergency stop, its pause and its velocity stop, the mandate's budget, the shared total and the velocity limits.
  * Null when held; otherwise why not (then nothing is sent).
  */
-export function holdBeyondCap(db: DB, r: { agent: "sourcing"; cents: number; ref: string; payee: Payee; now?: Date }): string | null {
+export function holdBeyondCap(db: DB, r: { agent: "sourcing"; cents: number; ref: string; payee: Payee; now?: Date; reason?: typeof LET_THROUGH_HOLD | typeof RECORD_PULL_HOLD }): string | null {
   const now = r.now ?? new Date();
   if (!Number.isInteger(r.cents) || r.cents <= 0) return `invalid_amount: ${r.cents}`;
   return db.transaction((): string | null => {
@@ -139,7 +146,7 @@ export function holdBeyondCap(db: DB, r: { agent: "sourcing"; cents: number; ref
     if (denied) return denied;
     const ts = now.toISOString();
     db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, reason, created_at, updated_at, policy_version, origin_json) VALUES (?, ?, 'metal', ?, 'HELD', ?, ?, ?, ?, ?)")
-      .run(r.ref, r.agent, r.cents, LET_THROUGH_HOLD, ts, ts, policyVersion(db, now).version, originJson());
+      .run(r.ref, r.agent, r.cents, r.reason ?? LET_THROUGH_HOLD, ts, ts, policyVersion(db, now).version, originJson());
     return null;
   }).immediate();
 }

@@ -10,13 +10,30 @@ const SCHEMA = readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
 export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
-  db.pragma("journal_mode = WAL");
   // The runner, the agent API and the CLIs share one ledger: a writer waits for another instead of failing at once.
+  // Set first, so that switching a new ledger to WAL, which needs a lock too, also waits for another opener.
   db.pragma("busy_timeout = 5000");
+  db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
-  db.exec(SCHEMA);
-  migrate(db);
+  prepare(db);
   return db;
+}
+
+/**
+ * The schema and the migrations, safe for several processes opening one ledger at once (the runner and the world start
+ * together; review of 5e27de0: two openers both added a missing column, "duplicate column name"). Every check-then-
+ * change runs inside one IMMEDIATE transaction, so a second opener waits for the first and then finds nothing to do; a
+ * crash rolls it back. (Better-sqlite3 transactions are synchronous, so no writer holds the lock for long.) The two
+ * table swaps that need foreign keys off, which SQLite ignores inside a transaction, re-check inside their own
+ * IMMEDIATE transactions. Every step is idempotent.
+ */
+function prepare(db: DB): void {
+  db.transaction(() => {
+    db.exec(SCHEMA);
+    migrate(db);
+  }).immediate();
+  allowPasskeyApprovals(db);
+  allowPasskeyRejections(db);
 }
 
 /** Columns added after a ledger was first created. Each runs once; CREATE TABLE covers new ledgers. */
@@ -71,8 +88,48 @@ function migrate(db: DB): void {
       INSERT INTO finality_evidence SELECT tx, block_hash, CASE status WHEN 'CERTIFIED' THEN 'REPORTED' ELSE status END, recorded_at FROM finality_evidence_old;
       DROP TABLE finality_evidence_old;`);
   }
-  allowPasskeyApprovals(db);
-  allowPasskeyRejections(db);
+  settlementsTable(db);
+}
+
+const SETTLEMENT_COLUMNS = "key, payer, nonce, price_cents, status, sale_id, tx_hash, detail, started_at, updated_at";
+
+/**
+ * Ledgers from the first sale_settlements (2 November): the CHARGED state came with the reconciliation of rows left
+ * SETTLING, and valid_before with its check on chain. Nothing references this table, so it is rebuilt with its rows, in
+ * one IMMEDIATE transaction (SQLite rolls DDL back): a crash leaves the old table whole, and a second process opening
+ * the ledger at the same moment waits, then finds it done. Rows stranded by a rebuild without that transaction (in
+ * sale_settlements_old, beside an empty new table) are brought back.
+ */
+export function settlementsTable(db: DB): void {
+  const sqlOf = (name: string) => (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(name) as { sql: string } | undefined)?.sql;
+  const due = () => {
+    const sql = sqlOf("sale_settlements");
+    return !!sqlOf("sale_settlements_old") || (!!sql && (!sql.includes("'CHARGED'") || !sql.includes("valid_before")));
+  };
+  if (!due()) return;
+  db.transaction(() => {
+    if (!due()) return; // another process did it while this one waited for the lock
+    const cols = (name: string) => (db.prepare(`PRAGMA table_info(${name})`).all() as { name: string }[]).map((c) => c.name);
+    const copy = (from: string) => {
+      const have = new Set(cols(from));
+      const list = [...SETTLEMENT_COLUMNS.split(", "), "valid_before"].filter((c) => have.has(c)).join(", ");
+      // The newest copy of a row wins: the current table is copied first, the stranded one only fills in. Plain INSERT
+      // (not OR IGNORE, which would also drop a row the new table refuses): any refusal rolls the whole rebuild back.
+      db.exec(`INSERT INTO sale_settlements_v2 (${list}) SELECT ${list} FROM ${from} WHERE key NOT IN (SELECT key FROM sale_settlements_v2)`);
+    };
+    db.exec(`DROP TABLE IF EXISTS sale_settlements_v2;
+      CREATE TABLE sale_settlements_v2 (key TEXT PRIMARY KEY, payer TEXT NOT NULL, nonce TEXT NOT NULL, price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
+        status TEXT NOT NULL CHECK (status IN ('SETTLING', 'DONE', 'FAILED', 'CHARGED')), sale_id INTEGER REFERENCES sales(sale_id), tx_hash TEXT, detail TEXT,
+        valid_before INTEGER, started_at TEXT NOT NULL, updated_at TEXT NOT NULL);`);
+    for (const t of ["sale_settlements", "sale_settlements_old"]) {
+      if (!sqlOf(t)) continue;
+      copy(t);
+      db.exec(`DROP TABLE ${t}`);
+    }
+    db.exec(`ALTER TABLE sale_settlements_v2 RENAME TO sale_settlements;
+      DROP INDEX IF EXISTS sale_settlements_open;
+      CREATE INDEX sale_settlements_open ON sale_settlements (status);`);
+  }).immediate();
 }
 
 /** Ledgers from before passkey approvals: SQLite cannot change a CHECK, so the approvals table is rebuilt once. */
@@ -87,6 +144,8 @@ function allowPasskeyApprovals(db: DB): void {
   db.pragma("foreign_keys = OFF");
   try {
     db.transaction(() => {
+      // Another process may have done it while this one waited for the lock.
+      if (((db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'approvals'").get() as { sql: string }).sql).includes("'passkey'")) return;
       db.exec(ddl);
       db.exec("INSERT INTO approvals_v2 SELECT * FROM approvals");
       db.exec("DROP TABLE approvals");
@@ -110,6 +169,7 @@ function allowPasskeyRejections(db: DB): void {
   db.pragma("foreign_keys = OFF");
   try {
     db.transaction(() => {
+      if (((db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'passkey_assertions'").get() as { sql: string }).sql).includes("'REJECTED'")) return;
       db.exec(ddl);
       db.exec("INSERT INTO passkey_assertions_v2 SELECT * FROM passkey_assertions");
       db.exec("DROP TABLE passkey_assertions");
@@ -121,3 +181,4 @@ function allowPasskeyRejections(db: DB): void {
     db.pragma("foreign_keys = ON");
   }
 }
+

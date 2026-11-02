@@ -65,7 +65,7 @@ export function claudeModels(apiKey: string, fetcher: typeof fetch = fetch, time
           currency: { anyOf: [{ type: "string", enum: ["EUR", "USD", "OTHER"] }, { type: "null" }] },
           date: { type: ["string", "null"], description: "The day it is for, as YYYY-MM-DD, or null." },
           payee: { type: ["string", "null"], description: "Who is paid, if the request names them." },
-          quantity: { type: ["integer", "null"], description: "How many items, seats, nights or tickets, if the request says; null if it does not." },
+          quantity: { type: ["integer", "null"], description: "How many items, seats, nights, tickets or requests, if the request says (\"2.500 SKUs\" and \"2,500 SKUs\" are 2500); null if it does not." },
           per_unit: { type: ["boolean", "null"], description: "true if the amount is the price of each item (\"€40 each\", \"per seat\"); false if it is the total; null if the request does not say." },
         }, required: ["item", "merchant", "amount", "currency", "date", "payee", "quantity", "per_unit"],
       }, `This request was sorted as: ${intent}. Read it into fields. Copy amounts exactly as written; use null for anything the request does not say. Never estimate a price.\n${wrap(text)}`);

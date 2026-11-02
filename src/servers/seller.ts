@@ -24,6 +24,8 @@ import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
 import { FACILITATOR_URL, rpcUrl } from "../metal/network.js";
 import { toCents } from "../lib/money.js";
+import { nothingSettled } from "../metal/pay.js";
+import { keyOf, settlementDone, settlementFailed, settlementRepeated, settlementStarted, type Authorization } from "../seller/settling.js";
 
 export const SELLER_ROUTE = "/v1/stock";
 export const SELLER_RESOURCE = `GET ${SELLER_ROUTE}`;
@@ -59,6 +61,25 @@ export function sellerApp(opts: SellerOptions) {
   const server = requireSignedOffer(registerMetalScheme(new x402ResourceServer(facilitator), { networks: ["testnet"] }), { rpcUrl: rpcUrl() });
   if (opts.clearing) server.register("eip155:63825", new ClearingServerScheme("eip155:63825"));
   const clearingSettled = new Map<string, ClearingSettled>();
+  const authorizationOf = (paymentPayload: { payload: unknown }) => (paymentPayload.payload as { authorization?: Authorization }).authorization;
+
+  // A mandate payment is written down before Metal's facilitator settles it, so between its block and the sale's row
+  // the dashboard shows it as pending, never a spend that differs from the chain without a reason (src/seller/settling.ts).
+  // If it cannot be written, the settle does not start: the customer is not charged.
+  server.onBeforeSettle(async ({ paymentPayload, transportContext }) => {
+    if (clearingPaymentOf(paymentPayload)) return;
+    const auth = authorizationOf(paymentPayload);
+    try {
+      settlementStarted(db, auth, floorCentsOfUnits(auth?.value));
+    } catch (e) {
+      // An abort here skips the server's settle-failure hooks, so the write-off is recorded the same way they would.
+      const upstream = upstreamOf(transportContext);
+      try {
+        audit(db, "system", "sale.settle_failed", upstream, { error: `the payment could not be written down before its settle, so it was not settled and the customer was not charged: ${(e as Error).message.slice(0, 200)}` });
+      } catch { /* the ledger is unavailable: the refusal below still stands */ }
+      return { abort: true, reason: "ledger_unavailable", message: "the seller could not record the payment before settling it; nothing was charged" };
+    }
+  });
 
   server.onAfterSettle(async ({ paymentPayload, requirements, result, transportContext }) => {
     const paid = clearingPaymentOf(paymentPayload);
@@ -73,13 +94,18 @@ export function sellerApp(opts: SellerOptions) {
       return;
     }
     const settlement = (result.extra as { settlement?: { id: string; first: boolean } } | undefined)?.settlement;
-    if (!result.success || !settlement?.first) return;
+    const auth = authorizationOf(paymentPayload);
+    const key = keyOf(auth);
+    // Called on a successful settle only (a failed one goes to onSettleFailure below).
+    if (!settlement?.first) {
+      settlementRepeated(db, key);
+      return;
+    }
     const ctx = transportContext as HTTPTransportContext | undefined;
     const bodyText = ctx?.responseBody?.toString("utf8") ?? "";
     const url = ctx?.request.adapter.getUrl() ?? "";
-    const upstream = Number(ctx?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
-    const auth = (paymentPayload.payload as { authorization?: { from?: string; value?: string } }).authorization;
-    db.transaction(() => {
+    const upstream = upstreamOf(ctx);
+    const saleId = db.transaction((): number | null => {
       const info = db.prepare(
         `INSERT OR IGNORE INTO sales (route, price_cents, payer, customer_mandate_ref, signed_offer, settlement_id, tx_hash, request_url,
            request_params_json, body_sha256, body_json, upstream_purchase_id, requirements_json, status, created_at)
@@ -87,19 +113,32 @@ export function sellerApp(opts: SellerOptions) {
       ).run(
         SELLER_RESOURCE, centsOfUnits(auth?.value), auth?.from ?? result.payer ?? "", mandateRefOf(paymentPayload), signedOfferOf(paymentPayload),
         settlement.id, result.transaction, url, JSON.stringify(Object.fromEntries(new URL(url || "http://x/").searchParams)),
-        sha256Hex(bodyText), bodyText, Number.isFinite(upstream) ? upstream : null, JSON.stringify(requirements), new Date().toISOString(),
+        sha256Hex(bodyText), bodyText, upstream === null ? null : Number(upstream), JSON.stringify(requirements), new Date().toISOString(),
       );
-      if (info.changes === 1) {
-        audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { origin: { actor: "external", party: "customer" }, settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });
-      }
+      if (info.changes !== 1) return null;
+      audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { origin: { actor: "external", party: "customer" }, settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });
+      return Number(info.lastInsertRowid);
     }).immediate();
+    // After the sale's own transaction, so closing the pending line can never undo a sale the customer paid for and got.
+    // From the sale's row on, the ledger counts the payment once even if this write fails (available.ts reads a
+    // settlement with a recorded sale as that sale), and the reconciliation closes the row later.
+    try {
+      if (saleId === null) settlementRepeated(db, key);
+      else settlementDone(db, key, saleId, result.transaction);
+    } catch (e) {
+      try {
+        audit(db, "system", "sale.settlement_left_open", saleId === null ? null : String(saleId), { error: (e as Error).message.slice(0, 200), note: "the sale is recorded; the reconciliation closes its settlement row" });
+      } catch { /* the ledger is unavailable: the sale's row stands */ }
+    }
   });
 
-  server.onSettleFailure(async ({ error, transportContext }) => {
-    const ctx = transportContext as HTTPTransportContext | undefined;
-    const upstream = Number(ctx?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
+  server.onSettleFailure(async ({ error, paymentPayload, transportContext }) => {
+    if (!clearingPaymentOf(paymentPayload)) {
+      const reason = (error as { errorReason?: string }).errorReason;
+      settlementFailed(db, keyOf(authorizationOf(paymentPayload)), reason ?? error.message, nothingSettled(reason));
+    }
     // The supplier was already paid; the customer was not charged. The upstream cost is written off.
-    audit(db, "system", "sale.settle_failed", Number.isFinite(upstream) ? String(upstream) : null, { error: error.message });
+    audit(db, "system", "sale.settle_failed", upstreamOf(transportContext), { error: error.message });
   });
 
   const app = express();
@@ -202,6 +241,21 @@ export function sellerApp(opts: SellerOptions) {
     });
   }
   return app;
+}
+
+/** The upstream purchase a response names, as the audit row's subject. */
+function upstreamOf(transportContext: unknown): string | null {
+  const n = Number((transportContext as HTTPTransportContext | undefined)?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
+  return Number.isFinite(n) ? String(n) : null;
+}
+
+/** Whole cents of a payment for the pending line; a sub-cent amount is refused later, when the sale is recorded. */
+function floorCentsOfUnits(units: string | undefined): number {
+  try {
+    return units ? Number(BigInt(units) / 10n ** 16n) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 function centsOfUnits(units: string | undefined): number {

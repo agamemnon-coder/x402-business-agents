@@ -3,8 +3,18 @@
 import { AirwallexAmbiguous } from "../airwallex/client.js";
 import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer, MarketRate } from "../airwallex/port.js";
 
-/** What the real sandbox charged for a EUR SWIFT payout on 2026-10-29. */
-export const SANDBOX_SWIFT_FEE_CENTS = 1347;
+/**
+ * The stand-in's SWIFT fee for a EUR payout: the one constant every simulated rail charges (FakeAirwallex here, the
+ * sim worlds' ledger in src/evals/simRails.ts, the month in src/sim/month.ts). It matches what the live sandbox charged
+ * this week, not the EUR 13.47 of 2026-10-29 (docs/runs/2026-10-29-s3.md), which the stand-in used until 2 November:
+ *   - 2026-11-02 night-batch calibration, 14 dry runs: EUR 13.39 and 13.40 (branch night-batch,
+ *     docs/runs/variation/2026-11-02/live-logs/dry-142.txt to dry-155.txt; docs/runs/2026-11-02-night-batch.md)
+ *   - 2026-11-02 dry-141: EUR 13.36; agent run 1, P-0007: EUR 13.37 (night-batch, docs/runs/2026-11-02-agent-run-1.md)
+ *   - 2026-10-30 endcheck, P-0005: EUR 13.40 (night-batch, docs/runs/2026-10-30-endcheck.md)
+ * The fee reserve (feeReserveCents, src/policy/treasury.ts: the highest measured fee + 25%, at least EUR 20.00, at most
+ * EUR 60.00) reads measured fees from the ledger; its rule is not changed by this value (13.40 + 25% is under 20.00).
+ */
+export const SANDBOX_SWIFT_FEE_CENTS = 1340;
 
 export class FakeAirwallex implements AirwallexRail, SandboxSim {
   bal: Record<Currency, Balance> = { USD: { availableCents: 0, pendingCents: 0, reservedCents: 0 }, EUR: { availableCents: 3_500_000, pendingCents: 0, reservedCents: 0 } };
