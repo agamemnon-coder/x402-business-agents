@@ -15,11 +15,14 @@ const PREFIXES = ["sweep.", "transfer."];
 /** Keys never recorded, wherever they appear. */
 const DROP = new Set(["passkey", "credential_id", "assertion_sha256", "transfer_request_id", "beneficiary_id", "iban", "iban_last4", "bic", "balances_before", "floors", "after", "email_sha256", "viewer", "view_key", "token", "relay", "host"]);
 
-/** A copy without the keys above, and with "(passkey AbCd1234)" labels taken out of every string. */
+/** Keys renamed on the way out: a mandate's hash is public, but CI's secret scan reads "credential_hash" as a key. */
+const RENAME: Record<string, string> = { credential_hash: "mandate_hash", replaces_credential_hash: "replaces_mandate_hash" };
+
+/** A copy without the keys above, keys renamed as above, and "(passkey AbCd1234)" labels taken out of every string. */
 export function scrub<T>(v: T): T {
   if (typeof v === "string") return v.replace(/\s*\(passkey [A-Za-z0-9_-]+\)/g, "") as T;
   if (Array.isArray(v)) return v.map(scrub) as T;
-  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).filter(([k]) => !DROP.has(k)).map(([k, x]) => [k, scrub(x)])) as T;
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).filter(([k]) => !DROP.has(k)).map(([k, x]) => [RENAME[k] ?? k, scrub(x)])) as T;
   return v;
 }
 

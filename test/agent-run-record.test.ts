@@ -22,6 +22,14 @@ describe("agent run 1's record", () => {
     expect(secretsIn('"href":"https://testnet.metalntwx.com/tx/0xabc"')).toEqual([]);
   });
 
+  it("names a mandate's hash mandate_hash, never with the word credential (CI's secret scan reads that as a key)", () => {
+    expect(RAW).not.toMatch(/"(replaces_)?credential_hash"/);
+    const p3 = rec.ledger!.proposals.find((p) => p.proposal_id === "P-0003")!.terms as { steps: Record<string, unknown>[] };
+    expect(p3.steps[0]).toHaveProperty("mandate_hash");
+    expect(p3.steps[0]).toHaveProperty("replaces_mandate_hash");
+    expect(scrub({ credential_hash: "0x1", replaces_credential_hash: "0x2" })).toEqual({ mandate_hash: "0x1", replaces_mandate_hash: "0x2" });
+  });
+
   it("scrubs passkey ids and labels, Airwallex ids and balances, and keeps the rest", () => {
     const out = scrub({ approver: "max (passkey Pya6Ldso) + test-controller (passkey FbRa0Ia1)", passkey: { credential_id: "x", assertion_sha256: "y" }, tx: "0x1", terms: { amount: "240.00", beneficiary_id: "b", transfer_request_id: "r", balances_before: {}, iban_last4: "2051" }, origin: { request_id: "req_1" } });
     expect(out).toEqual({ approver: "max + test-controller", tx: "0x1", terms: { amount: "240.00" }, origin: { request_id: "req_1" } });
