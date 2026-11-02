@@ -24,6 +24,8 @@ import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
 import { FACILITATOR_URL, rpcUrl } from "../metal/network.js";
 import { toCents } from "../lib/money.js";
+import { nothingSettled } from "../metal/pay.js";
+import { settlementDone, settlementFailed, settlementKey, settlementRepeated, settlementStarted, type Authorization } from "../seller/settling.js";
 
 export const SELLER_ROUTE = "/v1/stock";
 export const SELLER_RESOURCE = `GET ${SELLER_ROUTE}`;
@@ -59,6 +61,21 @@ export function sellerApp(opts: SellerOptions) {
   const server = requireSignedOffer(registerMetalScheme(new x402ResourceServer(facilitator), { networks: ["testnet"] }), { rpcUrl: rpcUrl() });
   if (opts.clearing) server.register("eip155:63825", new ClearingServerScheme("eip155:63825"));
   const clearingSettled = new Map<string, ClearingSettled>();
+  const authorizationOf = (paymentPayload: { payload: unknown }) => (paymentPayload.payload as { authorization?: Authorization }).authorization;
+
+  // A mandate payment is written down before Metal's facilitator settles it, so between its block and the sale's row
+  // the dashboard shows it as pending, never a spend that differs from the chain without a reason (src/seller/settling.ts).
+  // If it cannot be written, the settle does not start: the customer is not charged.
+  server.onBeforeSettle(async ({ paymentPayload }) => {
+    if (clearingPaymentOf(paymentPayload)) return;
+    const auth = authorizationOf(paymentPayload);
+    try {
+      settlementStarted(db, auth, floorCentsOfUnits(auth?.value));
+    } catch (e) {
+      audit(db, "system", "sale.settle_not_started", null, { reason: `the payment could not be written down before its settle: ${(e as Error).message.slice(0, 200)}` });
+      return { abort: true, reason: "ledger_unavailable", message: "the seller could not record the payment before settling it; nothing was charged" };
+    }
+  });
 
   server.onAfterSettle(async ({ paymentPayload, requirements, result, transportContext }) => {
     const paid = clearingPaymentOf(paymentPayload);
@@ -73,12 +90,20 @@ export function sellerApp(opts: SellerOptions) {
       return;
     }
     const settlement = (result.extra as { settlement?: { id: string; first: boolean } } | undefined)?.settlement;
-    if (!result.success || !settlement?.first) return;
+    const auth = authorizationOf(paymentPayload);
+    const key = auth?.from && auth.nonce ? settlementKey(auth.from, auth.nonce) : null;
+    if (!result.success) {
+      settlementFailed(db, key, result.errorReason ?? "settle failed", nothingSettled(result.errorReason));
+      return;
+    }
+    if (!settlement?.first) {
+      settlementRepeated(db, key);
+      return;
+    }
     const ctx = transportContext as HTTPTransportContext | undefined;
     const bodyText = ctx?.responseBody?.toString("utf8") ?? "";
     const url = ctx?.request.adapter.getUrl() ?? "";
     const upstream = Number(ctx?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
-    const auth = (paymentPayload.payload as { authorization?: { from?: string; value?: string } }).authorization;
     db.transaction(() => {
       const info = db.prepare(
         `INSERT OR IGNORE INTO sales (route, price_cents, payer, customer_mandate_ref, signed_offer, settlement_id, tx_hash, request_url,
@@ -91,11 +116,20 @@ export function sellerApp(opts: SellerOptions) {
       );
       if (info.changes === 1) {
         audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { origin: { actor: "external", party: "customer" }, settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });
+        // In the same transaction: from here the sale's row counts the payment, and the pending line no longer does.
+        settlementDone(db, key, Number(info.lastInsertRowid), result.transaction);
+      } else {
+        settlementRepeated(db, key);
       }
     }).immediate();
   });
 
-  server.onSettleFailure(async ({ error, transportContext }) => {
+  server.onSettleFailure(async ({ error, paymentPayload, transportContext }) => {
+    if (!clearingPaymentOf(paymentPayload)) {
+      const auth = authorizationOf(paymentPayload);
+      const reason = (error as { errorReason?: string }).errorReason;
+      settlementFailed(db, auth?.from && auth.nonce ? settlementKey(auth.from, auth.nonce) : null, reason ?? error.message, nothingSettled(reason));
+    }
     const ctx = transportContext as HTTPTransportContext | undefined;
     const upstream = Number(ctx?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
     // The supplier was already paid; the customer was not charged. The upstream cost is written off.
@@ -202,6 +236,15 @@ export function sellerApp(opts: SellerOptions) {
     });
   }
   return app;
+}
+
+/** Whole cents of a payment for the pending line; a sub-cent amount is refused later, when the sale is recorded. */
+function floorCentsOfUnits(units: string | undefined): number {
+  try {
+    return units ? Number(BigInt(units) / 10n ** 16n) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 function centsOfUnits(units: string | undefined): number {

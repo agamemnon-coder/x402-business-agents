@@ -390,18 +390,14 @@ export function parseReview(explanation: string | null): Pending["review"] {
   return { model: m[1] === "no model" ? null : m[1]!, recommendation: m[2]!.toLowerCase(), text: m[3]!.trim() };
 }
 
+const MANDATE_AGENTS: readonly DashAgent[] = ["sourcing", "support", "treasury", "customer"];
+
 function budgets(db: DB, rows: AuditRow[], roleOf: (address: string) => string | undefined) {
-  const spentCents: Record<DashAgent, number> = {
-    sourcing: sum(db, "SELECT SUM(price_cents) AS n FROM upstream_purchases WHERE outcome = 'PAID'"),
-    support: sum(db, "SELECT SUM(amount_cents) AS n FROM refunds WHERE outcome = 'PAID'"),
-    treasury: sum(db, "SELECT SUM(amount_cents) AS n FROM sweeps WHERE outcome = 'PAID'"),
-    customer: sum(db, "SELECT SUM(price_cents) AS n FROM sales WHERE status = 'DELIVERED'"),
-  };
   const current = new Map<DashAgent, { cap: string; budget: string; payee: string; at: string; credentials: number }>();
   for (const r of rows) {
     if (r.event !== "mandate.bound" && r.event !== "mandate.replaced") continue;
     const agent = r.subject as DashAgent;
-    if (!(agent in spentCents)) continue;
+    if (!MANDATE_AGENTS.includes(agent)) continue;
     const p = JSON.parse(r.payload_json) as P;
     const prev = current.get(agent);
     const payeeAddr = str(p.payee);
@@ -411,8 +407,9 @@ function budgets(db: DB, rows: AuditRow[], roleOf: (address: string) => string |
   const one = (agent: DashAgent): Budget | null => {
     const m = current.get(agent);
     if (!m) return null;
-    const spent = spentCents[agent];
+    // Paid, pending and held from one place (src/policy/available.ts), the same the check against the chain reads.
     const av = mandateAvailability(db, agent);
+    const spent = av.paidCents;
     const day = new Date(Date.parse(m.at) + MANDATE_EXPIRES_IN_SECONDS * 1000);
     return {
       agent, payee: m.payee, cap: m.cap, budget: m.budget, spent: fromCents(spent),
@@ -438,7 +435,7 @@ const LAST_TX_SQL: Record<DashAgent, string> = {
   sourcing: "SELECT tx_hash AS tx FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY id DESC LIMIT 1",
   support: "SELECT tx_hash AS tx FROM refunds WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY refund_id DESC LIMIT 1",
   treasury: "SELECT tx_hash AS tx FROM sweeps WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY created_at DESC LIMIT 1",
-  customer: "SELECT tx_hash AS tx FROM sales WHERE tx_hash IS NOT NULL ORDER BY sale_id DESC LIMIT 1",
+  customer: "SELECT tx_hash AS tx FROM sales WHERE status = 'DELIVERED' AND scheme = 'exact' AND tx_hash IS NOT NULL ORDER BY sale_id DESC LIMIT 1",
 };
 function lastTx(db: DB, agent: DashAgent): string | null {
   const r = db.prepare(LAST_TX_SQL[agent]).get() as { tx: string } | undefined;
