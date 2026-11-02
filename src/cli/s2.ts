@@ -142,10 +142,10 @@ const APPROVAL_REASON = "wrong data per supplier correction";
 const HANDOVER_REASON = "automatic refund not paid";
 const REASON_LIKE: Record<Part, string> = { escalate: "customer request%", approval: APPROVAL_REASON, handover: `${HANDOVER_REASON}%` };
 const existing = (part: Part) => (db.prepare("SELECT proposal_id FROM proposals WHERE kind = 'refund_batch' AND json_extract(terms_json, '$.dispute_id') = ? AND json_extract(terms_json, '$.reason') LIKE ? ORDER BY created_at LIMIT 1").get(disputeId, REASON_LIKE[part]) as { proposal_id: string } | undefined)?.proposal_id ?? null;
-const refundOne = async (seq: number) => {
+const refundOne = async (seq: number, opts?: { retry?: boolean }) => {
   const sale = bySeq.get(seq);
   if (!sale) throw new Error(`#${seq} is not a delivered sale to this customer`);
-  const r = await refundSale(db, { sale_id: sale.sale_id, amount_cents: sale.price_cents, to: addr.customer as Address, dispute_id: disputeId });
+  const r = await refundSale(db, { sale_id: sale.sale_id, amount_cents: sale.price_cents, to: addr.customer as Address, dispute_id: disputeId }, { retry: opts?.retry === true });
   return { outcome: r.outcome, already: r.already, ...(r.tx ? { tx: `${EXPLORER_TX}${r.tx}` } : {}), ...(r.reason ? { reason: r.reason } : {}) };
 };
 
@@ -214,6 +214,7 @@ function codePlan(): { plan: Omit<DecisionPlan, "source" | "model">; audits: Dec
 
 const exec: DecisionExec = {
   refund: refundOne,
+  state: (seq) => (db.prepare("SELECT outcome FROM refunds WHERE sale_id = ?").get(bySeq.get(seq)?.sale_id ?? -1) as { outcome: string } | undefined)?.outcome ?? null,
   existing,
   limits: () => refundThresholds(db),
   refundedCents: (exceptSeq) => (db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS c FROM refunds WHERE dispute_id = ? AND outcome IN ('PAID', 'PENDING', 'HELD') AND sale_id != ?").get(disputeId, bySeq.get(exceptSeq)?.sale_id ?? -1) as { c: number }).c,
@@ -242,6 +243,7 @@ if (agentsOn()) {
     data: (seq) => verdicts.filter((v) => v.seq === seq).map((v) => ({ seq, field: v.field, delivered: Number(v.delivered), corrected: Number(v.corrected), refund: v.refund })),
     priceCents: (seq) => bySeq.get(seq)!.price_cents,
     refund: refundOne,
+    state: exec.state,
     // Not used: the decision's proposals go through `proposals` (one transaction with the decision's note).
     escalate: async () => { throw new Error("escalations are made through the decision's proposals"); },
     // What earlier runs of this dispute did, from the ledger: the limit per dispute and "escalate once" hold across runs.

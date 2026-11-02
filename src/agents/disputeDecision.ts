@@ -125,7 +125,10 @@ export type Part = "escalate" | "approval" | "handover";
 
 export interface DecisionExec {
   /** Refunds one sale of the dispute to the customer (keyed by the sale: a second call reports the first outcome). */
-  refund(seq: number): Promise<{ outcome: string; tx?: string | null; already?: boolean; reason?: string | null }>;
+  /** retry: look again at a refund already sent and held at Metal (the same payment id; nothing is sent twice). */
+  refund(seq: number, opts?: { retry?: boolean }): Promise<{ outcome: string; tx?: string | null; already?: boolean; reason?: string | null }>;
+  /** The refund's state in the ledger (PROPOSED, PENDING, PAID, HELD, REFUSED), or null when it has none. */
+  state?(seq: number): string | null;
   /** The proposal for this part already in the ledger (made before a crash cut off noting it here), or null. */
   existing(part: Part): string | null;
   /**
@@ -144,10 +147,17 @@ export interface DecisionExec {
   propose?(part: Part, seqs: number[], text: string, source: DecisionPlan["source"]): Promise<string>;
 }
 
-// Only PAID is done: a HELD refund (held on chain) may still be refused there, so it is looked at again.
+// PAID is done. A HELD refund (sent, held at Metal) is looked at again with the same payment id; after HANDOVER_AFTER
+// tries it counts as sent, as the CFO's refund batch counts it (src/executors/refundBatch.ts), and reconciliation follows it.
 const FINAL = new Set(["PAID"]);
-/** A refusal that a later try can clear (a speed limit, the network); any other refusal hands the refund to the CFO. */
-const TRANSIENT = /velocity|in a minute|in an hour|speed|timeout|timed out|network|ECONN|ETIMEDOUT|fetch failed|\b5\d\d\b/i;
+/**
+ * A refusal that a later try can clear (a speed limit, the network, a server error); any other refusal hands the
+ * refund to the CFO. A CFO freeze or pause (frozen_by_cfo, paused_by_cfo) counts as lasting on purpose: the refund then
+ * waits for the CFO as a proposal, the CFO's own decision, rather than being paid by code once the freeze lifts.
+ */
+const TRANSIENT = /velocity|in a minute|in an hour|speed|timeout|timed out|network|ECONN|ETIMEDOUT|fetch failed|(?:HTTP|status)\s*5\d\d\b|\b5\d\d (?:Internal Server Error|Bad Gateway|Service Unavailable|Gateway Timeout)/i;
+/** D24: when a refund cannot be paid automatically, code's own rule sends it to the CFO. */
+export const CODE_HANDS_OVER: Origin = { actor: "code", rule: "carrying out a dispute decision: a refund code cannot pay automatically goes to the CFO", agent: "support" };
 /** After this many carry-outs a refund still refused goes to the CFO whatever the reason. */
 export const HANDOVER_AFTER = 3;
 
@@ -158,6 +168,8 @@ export const HANDOVER_AFTER = 3;
  */
 /** Who carries a decision out: this process, and how to tell whether another carrier still lives. */
 export interface Carrier { pid: number; start: string; alive(pid: number, start: string): boolean }
+// The claim names a process by pid and start time from /proc (Linux, where the runners run). Without /proc the start time
+// is empty and another live carrier is not recognised: there, refunds still rely on their own keys (refund-<sale>).
 const thisProcess = (): Carrier => ({
   pid: process.pid, start: procOf(process.pid)?.start ?? "",
   // Another process that still runs (same pid and start time, not a zombie). This process's own earlier call never blocks it.
@@ -205,7 +217,10 @@ async function carryOutClaimed(db: DB, disputeId: string, d: DisputeDecision, ex
     if (cur.paid.includes(r.seq) || cur.handover.includes(r.seq)) continue;
     // The automatic limits as they stand now: a refund decided under looser limits is never paid around tighter ones.
     const lim = exec.limits?.();
-    if (lim) {
+    // A refund already sent (PENDING) or held is not judged again: its pull may still settle, and refundSale checks it.
+    const state = exec.state?.(r.seq) ?? null;
+    const inFlight = state === "PENDING" || state === "HELD";
+    if (lim && !inFlight) {
       const other = exec.refundedCents?.(r.seq) ?? 0;
       if (r.cents > lim.eachCents || other + r.cents > lim.perDisputeCents) {
         handOver(r.seq, `no longer within the automatic limits (${fromCents(lim.eachCents)} each, ${fromCents(lim.perDisputeCents)} per dispute; ${fromCents(other)} refunded besides)`);
@@ -213,10 +228,11 @@ async function carryOutClaimed(db: DB, disputeId: string, d: DisputeDecision, ex
       }
     }
     try {
-      const res = await (r.origin ? withOrigin(r.origin, () => exec.refund(r.seq)) : exec.refund(r.seq));
-      if (FINAL.has(res.outcome)) {
+      const opts = state === "HELD" ? { retry: true } : undefined;
+      const res = await (r.origin ? withOrigin(r.origin, () => exec.refund(r.seq, opts)) : exec.refund(r.seq, opts));
+      if (FINAL.has(res.outcome) || (res.outcome === "HELD" && attempt >= HANDOVER_AFTER)) {
         add("paid_json", r.seq);
-        log(`refund #${r.seq}: ${res.already ? "already paid earlier, nothing sent" : res.outcome}${res.tx ? ` ${res.tx}` : ""}`);
+        log(`refund #${r.seq}: ${res.outcome === "HELD" ? `sent and still held at Metal after ${attempt} looks; counted as sent, as the CFO's refund batch counts it` : res.already ? "already paid earlier, nothing sent" : res.outcome}${res.tx ? ` ${res.tx}` : ""}`);
       } else if (res.outcome === "REFUSED" && (!TRANSIENT.test(res.reason ?? "") || attempt >= HANDOVER_AFTER)) {
         handOver(r.seq, `refused${res.reason ? `: ${res.reason}` : ""}${attempt >= HANDOVER_AFTER ? ` (try ${attempt})` : ""}`);
       } else {
@@ -231,7 +247,7 @@ async function carryOutClaimed(db: DB, disputeId: string, d: DisputeDecision, ex
   // Refunds handed over go to the CFO as one proposal, once every other refund is paid (nothing still pending).
   const mid = now0();
   const handover: PlannedProposal | null = mid.handover.length && d.plan.refunds.every((r) => mid.paid.includes(r.seq) || mid.handover.includes(r.seq))
-    ? { seqs: [...mid.handover].sort((a, b) => a - b), text: notes.filter((n) => n.includes("goes to the CFO")).join("; ") || "the automatic refunds could not be paid", origin: d.plan.refunds.find((r) => mid.handover.includes(r.seq))?.origin ?? null }
+    ? { seqs: [...mid.handover].sort((a, b) => a - b), text: notes.filter((n) => n.includes("goes to the CFO")).join("; ") || "the automatic refunds could not be paid", origin: CODE_HANDS_OVER }
     : null;
   for (const part of ["approval", "escalate", "handover"] as const) {
     const p = part === "handover" ? (mid.handover_proposal ? null : handover) : d.plan[part];

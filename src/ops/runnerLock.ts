@@ -102,6 +102,7 @@ export function acquireRunnerLock(db: DB, dbPath: string, me: Me, table: Process
     // second `npm run relay`/`up` started from inside the group (it inherits the token), does not start.
     const roleBusy = (): Acquired | null => {
       const role = rowOf(db, roleKey);
+      if (role && role.started_at >= scannedAt) procs = table.list();
       if (role && role.pid !== me.pid && sameLedger(role, real) && role.host === host && alive(role)) {
         return { ok: false, message: `world ${world} already has a ${me.role}: ${describe(role)}. A second ${me.role} on the same ledger does not start. Stop the world first: npm run stop -- ${world}` };
       }

@@ -53,6 +53,10 @@ function migrate(db: DB): void {
         status TEXT NOT NULL CHECK (status IN ('PENDING', 'ACTIVE', 'USED', 'FAILED')), created_at TEXT NOT NULL);
       INSERT INTO task_cards SELECT * FROM task_cards_old; DROP TABLE task_cards_old;`);
   }
+  // Dispute decisions (decided once): columns added while the table was being built, for a ledger made in between.
+  for (const [column, ddl] of [["audited", "INTEGER NOT NULL DEFAULT 0"], ["attempts", "INTEGER NOT NULL DEFAULT 0"], ["attempted_at", "TEXT"], ["handover_json", "TEXT NOT NULL DEFAULT '[]'"], ["handover_proposal", "TEXT"], ["carrier", "TEXT"]] as const) {
+    if (!has("dispute_decisions", column)) db.exec(`ALTER TABLE dispute_decisions ADD COLUMN ${column} ${ddl}`);
+  }
   // Velocity limits: a Metal payment's id, so a retry under it is counted once.
   if (!has("velocity_events", "payment_id")) {
     db.exec("ALTER TABLE velocity_events ADD COLUMN payment_id TEXT");

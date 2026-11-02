@@ -39,7 +39,9 @@ export interface SupportDeps {
   verify(seq: number): Promise<OrderCheck>;
   data(seq: number): DataCheck[];
   priceCents(seq: number): number;
-  refund(seq: number): Promise<{ outcome: string; tx?: string; already?: boolean; reason?: string }>;
+  refund(seq: number, opts?: { retry?: boolean }): Promise<{ outcome: string; tx?: string; already?: boolean; reason?: string }>;
+  /** The refund's state in the ledger, if known (a held or pending one is looked at again, not judged again). */
+  state?(seq: number): string | null;
   escalate(seqs: number[], advice: string): Promise<{ proposalId: string }>;
   /** What earlier runs of this dispute already did (the ledger), so the limit per dispute and "once" hold across runs. */
   earlier(): { refunded: { seq: number; cents: number }[]; escalated: { proposalId: string; seqs: number[] } | null };
@@ -97,7 +99,8 @@ const NOT_RUN = (note: string): AgentRun => ({ status: "done", model: null, call
 /** The world's side of carrying out a decision: the agent's own deps, and code's proposal when code decided. */
 function execOf(deps: SupportDeps): DecisionExec {
   return {
-    refund: (seq) => deps.refund(seq),
+    refund: (seq, opts) => deps.refund(seq, opts),
+    ...(deps.state ? { state: deps.state } : {}),
     // The automatic limits as they stand when a refund is paid (a later try is checked again), and the dispute's other refunds.
     limits: () => deps.limits,
     refundedCents: (exceptSeq) => deps.earlier().refunded.filter((r) => r.seq !== exceptSeq).reduce((n, r) => n + r.cents, 0),

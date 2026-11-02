@@ -4,6 +4,7 @@
 // paths as a real process: --resume-only with nothing to resume, and a decision already carried out, end without
 // reading Claude, the chain or any key. No network.
 import { spawnSync } from "node:child_process";
+import Database from "better-sqlite3";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -29,21 +30,25 @@ function world() {
   db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES ('D-r', 'Summit Outfitters', 'x', 'now')").run();
   for (let i = 0; i < 3; i++) db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('GET /v1/stock', 5, ?, 'u', '{}', 'DELIVERED', 'now')").run(PAYER);
   const pulls = new Map<string, number>();
+  /** What Metal answers per payment id, in order (default PAID). */
+  const answers = new Map<string, ("PAID" | "HELD")[]>();
   const pull: Puller = async ({ paymentId }) => {
     const n = (pulls.get(paymentId) ?? 0) + 1;
     pulls.set(paymentId, n);
     await new Promise((r) => setTimeout(r, 5));
-    return { outcome: "PAID", tx: `0x${paymentId}`, reason: null, already: n > 1 };
+    const outcome = answers.get(paymentId)?.shift() ?? "PAID";
+    return { outcome, tx: `0x${paymentId}`, reason: null, already: n > 1 };
   };
   const exec = (conn: DB, crashAfterPaid?: number): DecisionExec => ({
-    refund: async (seq) => {
-      const r = await refundSale(conn, { sale_id: seq, amount_cents: 5, to: PAYER, dispute_id: "D-r" }, { pull });
+    refund: async (seq, opts) => {
+      const r = await refundSale(conn, { sale_id: seq, amount_cents: 5, to: PAYER, dispute_id: "D-r" }, { pull, retry: opts?.retry === true });
       if (crashAfterPaid === seq) return never();
       return r;
     },
+    state: (seq) => (conn.prepare("SELECT outcome FROM refunds WHERE sale_id = ?").get(seq) as { outcome: string } | undefined)?.outcome ?? null,
     existing: () => null,
   });
-  return { file, db, pulls, exec };
+  return { file, db, pulls, answers, exec };
 }
 const carrier = (pid: number, alive: () => boolean): Carrier => ({ pid, start: `s${pid}`, alive });
 
@@ -89,6 +94,51 @@ describe("carrying out a dispute decision with the real refund executor", () => 
     expect(d).toMatchObject({ status: "DONE", paid: [1], handover: [2], handover_proposal: "P-0007" });
     expect(made).toEqual([[2]]);
     expect([...w.pulls.keys()]).toEqual(["refund-1"]);
+  });
+
+  it("a refund held at Metal is looked at again with the same payment id: paid once it settles, counted as sent after three looks", async () => {
+    const w = world();
+    recordDecision(w.db, "D-r", { source: "claude", model: "m", refunds: [1, 2].map((seq) => ({ seq, cents: 5, origin: AGENT })), escalate: null, approval: null });
+    w.answers.set("refund-1", ["HELD", "PAID"]);
+    w.answers.set("refund-2", ["HELD", "HELD", "HELD"]);
+    const c = carrier(111, () => false);
+    expect(await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c)).toMatchObject({ status: "DECIDED", paid: [] });
+    expect(await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c)).toMatchObject({ status: "DECIDED", paid: [1] });
+    expect(await carryOut(w.db, "D-r", w.exec(w.db), () => undefined, c)).toMatchObject({ status: "DONE", paid: [1, 2], handover: [] });
+    // Each look is a pull of the same payment id (Metal sends nothing twice); no new payment id, no proposal.
+    expect([...w.pulls.entries()]).toEqual([["refund-1", 2], ["refund-2", 3]]);
+  });
+
+  it("a refund already in flight (PENDING) is not judged again against tighter limits; its pull is finished", async () => {
+    const w = world();
+    recordDecision(w.db, "D-r", { source: "claude", model: "m", refunds: [{ seq: 1, cents: 5, origin: AGENT }], escalate: null, approval: null });
+    w.db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, dispute_id, origin_json) VALUES (1, 'refund-1', 5, ?, 'PENDING', 'D-r', ?)").run(PAYER, JSON.stringify(AGENT));
+    const made: number[][] = [];
+    const exec: DecisionExec = { ...w.exec(w.db), limits: () => ({ eachCents: 1, perDisputeCents: 1 }), refundedCents: () => 0, create: (_p, seqs) => { made.push(seqs); return "P-0001"; } };
+    const d = await carryOut(w.db, "D-r", exec, () => undefined, carrier(111, () => false));
+    expect(d).toMatchObject({ status: "DONE", paid: [1], handover: [] });
+    expect(made).toEqual([]);
+    expect([...w.pulls.entries()]).toEqual([["refund-1", 1]]);
+  });
+
+  it("a ledger whose dispute_decisions table was made by an earlier build of this branch is brought up to date", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "kit11-old-"));
+    dirs.push(dir);
+    const file = join(dir, "old.sqlite");
+    const raw = new Database(file);
+    raw.exec(`CREATE TABLE dispute_decisions (dispute_id TEXT PRIMARY KEY, source TEXT NOT NULL CHECK (source IN ('claude', 'code')), plan_json TEXT NOT NULL,
+      decided_at TEXT NOT NULL, status TEXT NOT NULL CHECK (status IN ('DECIDED', 'DONE')), paid_json TEXT NOT NULL DEFAULT '[]', escalation_proposal TEXT,
+      approval_proposal TEXT, last_note TEXT, audited INTEGER NOT NULL DEFAULT 0, done_at TEXT)`);
+    raw.prepare("INSERT INTO dispute_decisions (dispute_id, source, plan_json, decided_at, status) VALUES ('D-r', 'code', ?, 'then', 'DECIDED')").run(JSON.stringify({ source: "code", model: null, refunds: [{ seq: 1, cents: 5, origin: null }], escalate: null, approval: null }));
+    raw.close();
+    const db = openDb(file);
+    db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES ('D-r', 'Summit Outfitters', 'x', 'now')").run();
+    db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('GET /v1/stock', 5, ?, 'u', '{}', 'DELIVERED', 'now')").run(PAYER);
+    expect(decisionOf(db, "D-r")).toMatchObject({ attempts: 0, handover: [], handover_proposal: null });
+    const pulls: string[] = [];
+    const d = await carryOut(db, "D-r", { refund: (seq) => refundSale(db, { sale_id: seq, amount_cents: 5, to: PAYER, dispute_id: "D-r" }, { pull: async ({ paymentId }) => { pulls.push(paymentId); return { outcome: "PAID", tx: "0x1", reason: null, already: false }; } }), existing: () => null }, () => undefined, carrier(111, () => false));
+    expect(d).toMatchObject({ status: "DONE", paid: [1] });
+    expect(pulls).toEqual(["refund-1"]);
   });
 
   it("a refund refused for good goes to the CFO; a speed-limit refusal is tried again later", async () => {
