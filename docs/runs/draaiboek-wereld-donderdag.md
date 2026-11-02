@@ -39,7 +39,11 @@ fallbacks onder 10%). Anders draaien we de hoofdrun met het gewone draaiboek.
 6. **Niets anders op de Airwallex-sandbox tot de licentie betaald is:** geen `npm run licence`, geen
    `npm run world -- deposit`, geen andere runs. De sandbox is gedeeld; inkomende euro's maken de vrije EUR groter
    (dan is er geen FX), uitgaande kleiner (dan weigert de uitvoering, er gaat niets weg).
-7. De runner start de drie agents (met de relay-token, zie het herstelplan). Ze wachten tot de mandaten op de chain staan.
+7. **Eerst de leveranciers, dan de agents.** Start stap 1 (`npm run world -- serve --every 15`) en controleer dat
+   Stockline en Ridgeline allebei antwoorden met 402 en een x402-aanbod; draai dan stap 1b (ridgeline-maintenance).
+   Pas daarna start de runner de drie agents (met de relay-token, zie het herstelplan). Ze wachten tot de mandaten op
+   de chain staan. (In dry-179 en holdout dry-171 startten de agents eerst: Sourcing zag geen leverancier, zette zijn
+   koopbeleid op "niets" en vraag 1 werd geweigerd. De driver `docs/runs/driver/thursday-dry.ts` volgt deze volgorde.)
 8. Max en de tweede goedkeurder zetten hun passkeys. Max zegt in de chat: "Bevestig passkey &lt;vingerafdruk&gt;".
 9. Max zet vier ogen aan (P-0001, Face ID).
 
