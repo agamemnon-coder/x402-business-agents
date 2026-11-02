@@ -6,6 +6,7 @@
 import { createHash } from "node:crypto";
 import type { AirwallexRail, Balance, MarketRate, Quote } from "../airwallex/port.js";
 import type { Puller } from "../metal/pull.js";
+import { SANDBOX_SWIFT_FEE_CENTS } from "../redteam/airwallex.js";
 import { PLANS } from "../config/policy.js";
 
 /** A deterministic stand-in transaction hash (never a real one): `0x` + 64 hex, from what it pays. */
@@ -36,7 +37,7 @@ export const RAIL_SOURCES: RailSource[] = [
   { what: "Metal: the business account's balance (read by planSweep)", answer: "20.00 moved in at bootstrap, plus sales, less upstream purchases, refunds and sweeps", source: "src/cli/bootstrap.ts (the business owner moves 20.00 to its account); the ledger's own rows" },
   { what: "Metal: the Treasury sweep", answer: "paid to the sweep wallet after finality, the credit booked at Airwallex", source: "docs/runs/2026-11-01-autonomy-dry-96-97.md (dry-100: Treasury swept 0.09, final, booked)" },
   { what: "Airwallex: Packwise Pro, 45.00 EUR on a card with a 30.00 EUR per-purchase limit", answer: "declined, `LIMIT_EXCEEDED`; approved once the limit is 50.00", source: "docs/runs/2026-10-29-cards.md (15:54 declined LIMIT_EXCEEDED; 17:31:58 approved at 50.00)" },
-  { what: "Airwallex: SWIFT fee on a EUR payout", answer: "EUR 13.47 charged (a PAID transfer on record), the ceiling stays 20.00", source: "docs/runs/2026-10-29-s3.md, docs/runs/2026-10-29-rehearsal-1.md, docs/runs/2026-10-29-rehearsal-2.md" },
+  { what: "Airwallex: SWIFT fee on a EUR payout", answer: `EUR ${(SANDBOX_SWIFT_FEE_CENTS / 100).toFixed(2)} charged (a PAID transfer on record), the ceiling stays 20.00`, source: "the live sandbox this week (branch night-batch): 13.39 to 13.40 in the 2026-11-02 calibration (docs/runs/variation/2026-11-02/live-logs/dry-142.txt to dry-155.txt), 13.36 in dry-141, 13.37 in agent run 1 (P-0007, docs/runs/2026-11-02-agent-run-1.md); 13.47 on 2026-10-29 (docs/runs/2026-10-29-s3.md) was the stand-in's value before" },
   { what: "Airwallex: FX quote USD to EUR", answer: "370.00 EUR for 416.92 USD (client rate 1.126811)", source: "docs/runs/airwallex-readback.json (conversion 0650049f…, SETTLED)" },
   { what: "Airwallex: a retailer's deposit into the EUR Global Account", answer: "exact: MATCHED; short: SHORT by the difference, the rest stays open; no invoice in the reference: UNMATCHED, held in suspense", source: "docs/runs/2026-10-30-receivables.md (NW-R-101 matched, nw-r-103 short by 10.00, \"Payment\" unmatched)" },
 ];
@@ -57,8 +58,8 @@ export function simCardCharge(amountCents: number, card: { perTxCents: number; m
 }
 export const PRO_PLAN_CENTS = PLANS["packwise-pro"]!.amountCents;
 
-/** The measured SWIFT fee (docs/runs/2026-10-29-s3.md): written into the sim's ledger as an earlier PAID transfer. */
-export const SWIFT_FEE_EUR = "13.47";
+/** The stand-in's SWIFT fee (SANDBOX_SWIFT_FEE_CENTS, sources there): written into the sim's ledger as an earlier PAID transfer. */
+export const SWIFT_FEE_EUR = (SANDBOX_SWIFT_FEE_CENTS / 100).toFixed(2);
 /** The real conversion's rate (docs/runs/airwallex-readback.json: 370 EUR for 416.92 USD). */
 const RATE = 416.92 / 370;
 
