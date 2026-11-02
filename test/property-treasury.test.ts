@@ -3,19 +3,21 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { SWIFT_FEE_MAX_EUR_CENTS, TOTAL_BUDGET_CENTS } from "../src/config/policy.js";
-import { feeReserveCents, planInvoice, SWIFT_FEE_BUFFER } from "../src/policy/treasury.js";
+import { feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_BUFFER, SWIFT_FEE_RESERVE_CAP_CENTS } from "../src/policy/treasury.js";
 import { planReplaceSteps, type MandateNow } from "../src/policy/mandates.js";
 
 const cents = (max: number) => fc.integer({ min: 1, max });
 const fees = fc.array(fc.integer({ min: 0, max: 50_000 }), { maxLength: 20 });
 
 describe("the SWIFT fee reserve, for any fees Airwallex charged", () => {
-  it("is never under the ceiling, and always covers the highest fee plus the buffer", () => {
+  it("is never under the ceiling nor over the cap, and covers the highest fee plus the buffer unless the plan escalates", () => {
     fc.assert(fc.property(fees, (f) => {
       const r = feeReserveCents(f);
       expect(r).toBeGreaterThanOrEqual(SWIFT_FEE_MAX_EUR_CENTS);
-      expect(r).toBeGreaterThanOrEqual(Math.max(0, ...f) * SWIFT_FEE_BUFFER);
+      expect(r).toBeLessThanOrEqual(SWIFT_FEE_RESERVE_CAP_CENTS);
       expect(Number.isSafeInteger(r)).toBe(true);
+      // either the reserve covers the highest fee plus the buffer, or the plan goes to a person (euroBill)
+      expect(r >= Math.max(0, ...f) * SWIFT_FEE_BUFFER || feeReserveOverCap(f)).toBe(true);
     }));
   });
   it("never falls when a new fee is recorded", () => {
@@ -57,19 +59,30 @@ describe("the invoice plan, for any invoice, balances and fee reserve", () => {
 
 describe("mandate replaces, for any current mandates and targets", () => {
   const agents = ["sourcing", "support", "treasury"] as const;
-  it("never bind more than the 20.00 total after any single step, or are refused", () => {
+  // Review (2 November): the rule that matters is that shrinking budgets go first, so a plan whose start and end both
+  // fit the 20.00 total is never refused. Generated so that most cases are feasible, and counted.
+  it("never refuse a feasible plan, never bind more than 20.00 after any step, and run on real cases", () => {
+    let ran = 0;
     fc.assert(fc.property(
-      fc.tuple(cents(1000), cents(1000), cents(1000)), fc.tuple(fc.nat(500), fc.nat(500), fc.nat(500)),
-      fc.tuple(cents(1500), cents(1500), cents(1500)), fc.tuple(cents(100), cents(100), cents(100)),
+      fc.tuple(cents(800), cents(800), cents(400)), fc.tuple(fc.nat(100), fc.nat(100), fc.nat(100)),
+      fc.tuple(cents(900), cents(900), cents(900)), fc.tuple(cents(5), cents(5), cents(5)),
       (budgets, spent, newBudgets, caps) => {
         const current: MandateNow[] = agents.map((a, i) => ({ agent: a, capCents: 3, budgetCents: budgets[i]!, spentCents: Math.min(spent[i]!, budgets[i]! - 1) }));
         const targets = agents.map((a, i) => ({ agent: a, capCents: Math.min(caps[i]!, newBudgets[i]!), budgetCents: newBudgets[i]! }));
-        let steps;
-        try { steps = planReplaceSteps(current, targets); } catch { return; }
-        for (const s of steps) expect(s.totalAfterCents).toBeLessThanOrEqual(TOTAL_BUDGET_CENTS);
-        // each new budget exceeds what the agent already spent (a replace carries spend over)
-        for (const s of steps) expect(s.budgetCents).toBeGreaterThan(current.find((c) => c.agent === s.agent)!.spentCents);
+        const start = current.reduce((t, m) => t + m.budgetCents, 0);
+        const end = targets.reduce((t, m) => t + m.budgetCents, 0);
+        const valid = targets.every((t, i) => t.budgetCents > current[i]!.spentCents);
+        if (!valid || start > TOTAL_BUDGET_CENTS) {
+          expect(() => planReplaceSteps(current, targets)).toThrow();
+          return;
+        }
+        if (end > TOTAL_BUDGET_CENTS) { expect(() => planReplaceSteps(current, targets)).toThrow(/over the/); return; }
+        const steps = planReplaceSteps(current, targets); // a feasible plan: must not throw
+        ran++;
+        for (const st of steps) expect(st.totalAfterCents).toBeLessThanOrEqual(TOTAL_BUDGET_CENTS);
+        expect(steps.at(-1)?.totalAfterCents ?? start).toBe(end);
       },
-    ));
+    ), { numRuns: 300 });
+    expect(ran).toBeGreaterThan(100);
   });
 });

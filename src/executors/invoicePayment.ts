@@ -3,6 +3,7 @@
 // Transfer lifecycle: SUBMITTING (row written before the call) -> SENT -> PAID, or FAILED -> CANCELLED.
 // A lost answer is resolved by looking the request_id up, never by a blind resend with a new id.
 
+import { SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
 import { originJson } from "../provenance/origin.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
@@ -138,12 +139,20 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   return tr;
 }
 
+/**
+ * A fee is within the ceiling only in EUR and at most both the fee the CFO's terms reserved and the EUR 20.00 policy
+ * ceiling (review, 2 November: when the reserve rises after a high fee, the alarm must not rise with it).
+ */
+export function feeWithinCeiling(fee: { currency: string; cents: number }, feeMax: string): boolean {
+  return fee.currency === "EUR" && fee.cents <= Math.min(toCents(feeMax), SWIFT_FEE_MAX_EUR_CENTS);
+}
+
 /** The fee is only known once Airwallex charges it: record it, and flag it if it broke the approved ceiling. */
 function recordFee(db: DB, tr: Transfer, t: InvoicePaymentTerms, sha: string): void {
   if (!tr.fee) return;
   const actual = `${tr.fee.currency} ${fromCents(tr.fee.cents)}`;
   db.prepare("UPDATE transfers SET fee_actual = ? WHERE transfer_id = ?").run(actual, tr.id);
-  const withinMax = tr.fee.currency === "EUR" && tr.fee.cents <= toCents(t.fee_max);
+  const withinMax = feeWithinCeiling(tr.fee, t.fee_max);
   audit(db, "awx-executor", withinMax ? "transfer.fee" : "transfer.fee_over_ceiling", tr.id, { fee: actual, fee_max: `EUR ${t.fee_max}`, approval_sha256: sha });
 }
 

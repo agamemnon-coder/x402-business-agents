@@ -10,7 +10,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { checkQuoteAgainstFloor, feeReserveCents, planInvoice, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
+import { checkQuoteAgainstFloor, feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_RESERVE_CAP_CENTS, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
 import { getSetting, setSetting } from "../world/settings.js";
 import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
@@ -177,7 +177,13 @@ export async function proposeInvoicePayment(
   const b = await snapshot(db, rail, `plan:${inv.invoice_no}`);
   const s = treasuryState(db, b);
   // Max, 2 November: the fee reserve follows what Airwallex really charged, plus a buffer, never under the ceiling.
-  const feeReserve = feeReserveCents(measuredSwiftFeesCents(db));
+  const fees = measuredSwiftFeesCents(db);
+  if (feeReserveOverCap(fees)) {
+    const reason = `a SWIFT fee of EUR ${fromCents(Math.max(...fees))} is on record, far above the usual; a person checks it before the reserve for the next fee is set (it would be over EUR ${fromCents(SWIFT_FEE_RESERVE_CAP_CENTS)})`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+    return { kind: "escalated", reason };
+  }
+  const feeReserve = feeReserveCents(fees);
   const plan = planInvoice(check.amountCents, s, feeReserve);
   if (plan.kind === "underfunded") {
     const reason = `EUR is already ${fromCents(-plan.freeEurCents)} below its floor plus commitments (available ${fromCents(s.eurAvailableCents)}, floor ${fromCents(s.eurFloorCents)}, committed ${fromCents(s.eurObligationsCents)}); options: restore the EUR reserve first, review the commitments, or pay later`;
@@ -234,6 +240,7 @@ export async function proposeInvoicePayment(
 
 /** The SWIFT fees Airwallex really charged, from the ledger (EUR only; a transfer without a recorded fee is skipped). */
 export function measuredSwiftFeesCents(db: DB): number[] {
-  return (db.prepare("SELECT fee_actual FROM transfers WHERE method = 'SWIFT' AND fee_actual LIKE 'EUR %'").all() as { fee_actual: string }[])
-    .map((r) => toCents(r.fee_actual.slice(4)));
+  // Only PAID transfers (review: a failed one's fee says less about the next), and a malformed row is skipped, not fatal.
+  return (db.prepare("SELECT fee_actual FROM transfers WHERE method = 'SWIFT' AND status = 'PAID' AND fee_actual LIKE 'EUR %'").all() as { fee_actual: string }[])
+    .flatMap((r) => { try { return [toCents(r.fee_actual.slice(4))]; } catch { return []; } });
 }

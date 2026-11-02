@@ -27,9 +27,18 @@ export const SWIFT_FEE_BUFFER = 1.25;
  * than the ceiling (Airwallex does not quote the fee in advance). Measured in the sandbox: EUR 13.41 to 13.48.
  */
 export function feeReserveCents(measuredFeesCents: readonly number[]): number {
-  const highest = measuredFeesCents.reduce((m, c) => Math.max(m, c), 0);
-  return Math.max(SWIFT_FEE_MAX_EUR_CENTS, Math.ceil(highest * SWIFT_FEE_BUFFER));
+  return Math.min(SWIFT_FEE_RESERVE_CAP_CENTS, Math.max(SWIFT_FEE_MAX_EUR_CENTS, Math.ceil(highestFee(measuredFeesCents) * SWIFT_FEE_BUFFER)));
 }
+
+/** The most the reserve may rise to on its own (review): above it, one recorded fee is a person's question. */
+export const SWIFT_FEE_RESERVE_CAP_CENTS = 3 * SWIFT_FEE_MAX_EUR_CENTS;
+
+/** True when the highest recorded fee plus the buffer is over the cap: the plan escalates instead (euroBill). */
+export function feeReserveOverCap(measuredFeesCents: readonly number[]): boolean {
+  return Math.ceil(highestFee(measuredFeesCents) * SWIFT_FEE_BUFFER) > SWIFT_FEE_RESERVE_CAP_CENTS;
+}
+
+const highestFee = (fees: readonly number[]) => fees.reduce((m, c) => Math.max(m, c), 0);
 
 export type InvoicePlan =
   | { kind: "underfunded"; needEurCents: number; freeEurCents: number }
