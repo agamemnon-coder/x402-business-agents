@@ -7,6 +7,7 @@
 //   It settles a dispute with its dispute tools (signed orders, the data check, refunds inside the limits, the CFO).
 
 import { spawnSync } from "node:child_process";
+import type Anthropic from "@anthropic-ai/sdk";
 import { originEnv } from "../provenance/origin.js";
 import { resolve } from "node:path";
 import { z } from "zod";
@@ -14,7 +15,9 @@ import { MODELS } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { redactSecrets } from "../lib/redact.js";
-import { mandatesNow, proposePriceRise, type Blocked } from "../agents/treasury.js";
+import { mandatesNow, proposePriceRise, type Blocked, type PriceRiseEvidence } from "../agents/treasury.js";
+import type { MandateNow } from "../policy/mandates.js";
+import type { PricePlan } from "../agents/treasuryAgent.js";
 import { sha256Hex } from "../lib/terms.js";
 import { designPriceRise } from "../agents/treasuryAgent.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
@@ -71,11 +74,32 @@ export async function blockedByMandate(db: DB, now = new Date(), capCents?: numb
 const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'PENDING_APPROVAL' AND expires_at > ?").all(kind, new Date().toISOString()) as { proposal_id: string }[];
 const lastFrom = (db: DB, from: string) => (db.prepare("SELECT text FROM agent_messages WHERE from_agent = ? AND to_agent = 'treasury' ORDER BY id DESC LIMIT 1").get(from) as { text: string } | undefined)?.text;
 
-export interface FlowDeps { runFlow: typeof runFlow }
+/**
+ * What the Treasury agent's tools reach outside the ledger. Live: the tested flows as child processes, the mandates on
+ * Metal testnet, the price-rise proposals (replacement credentials signed with the owner key) and the env's Claude.
+ * D26: the variation test passes stand-ins for these, so every check of code still runs on simulated rails.
+ */
+export interface FlowDeps {
+  runFlow: typeof runFlow;
+  /** Each agent's mandate now (default: read from Metal testnet). */
+  mandates?: (db: DB) => Promise<MandateNow[]>;
+  /** Files the price-rise options for the CFO (default: proposePriceRise with the world's addresses). */
+  proposePriceRise?: (db: DB, sellCents: number, ev: PriceRiseEvidence, plan?: PricePlan) => Promise<{ proposal_id: string }[]>;
+  /** The Claude client of the rebalance design (default: the env's). */
+  client?: Anthropic | null;
+}
+
+const liveMandates = async (db: DB) => [...(await mandatesNow(db)).values()].map((c) => c.now);
+// Live, the world's addresses are read first, before anything is designed (as before D26): without them nothing can be filed.
+const livePriceRise = (db: DB) => { const addr = addresses(db); return (d: DB, sellCents: number, ev: PriceRiseEvidence, plan?: PricePlan) => proposePriceRise(d, addr, sellCents, ev, new Date(), plan); };
 
 export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow }): AgentProfile {
+  const mandates = deps.mandates ?? liveMandates;
+  const filer = (db: DB) => deps.proposePriceRise ?? livePriceRise(db);
+  // With stand-in mandates, code's evidence reads the cap from them (never from the chain).
+  const sourcingCap = async (db: DB) => (deps.mandates ? (await mandates(db)).find((x) => x.agent === "sourcing")?.capCents : undefined);
   const position = async (db: DB) => {
-    const m = [...(await mandatesNow(db)).values()].map((c) => c.now);
+    const m = await mandates(db);
     const sell = toCents(sellPrice(db));
     const r = await blockedByMandate(db, new Date(), m.find((x) => x.agent === "sourcing")?.capCents);
     const pend = db.prepare("SELECT proposal_id, kind FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?").all(new Date().toISOString()) as { proposal_id: string; kind: string }[];
@@ -105,16 +129,17 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
         run: async ({ reason }: { reason: string }) => {
           const open = waiting(db, "mandate_replace");
           if (open.length) return { text: `Not designed: ${open.map((p) => p.proposal_id).join(", ")} already wait for the CFO.`, blocked: "already waiting" };
-          const r = await blockedByMandate(db);
+          const r = await blockedByMandate(db, new Date(), await sourcingCap(db));
           if (!r) return { text: "Not designed: no purchase was refused over a cap and no customers are turned away for lack of fresh data within the cap, so no agent is blocked by its mandate.", blocked: "no need" };
-          const addr = addresses(db);
+          const fileRise = filer(db);
           const sellCents = toCents(sellPrice(db));
           const live = toCents(supplierPrice(db, "stockline"));
-          const design = await designPriceRise(db, {
-            sellCents, oldUpstreamCents: 2, newUpstreamCents: live, refusal: r.refusal_reason, mandates: [...(await mandatesNow(db)).values()].map((c) => c.now),
+          const facts = {
+            sellCents, oldUpstreamCents: 2, newUpstreamCents: live, refusal: r.refusal_reason, mandates: await mandates(db),
             ...(lastFrom(db, "sourcing") ? { sourcingMessage: `${lastFrom(db, "sourcing")} (Treasury's own reason: ${reason})` } : {}),
-          });
-          const props = await proposePriceRise(db, addr, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason, ...(r.turnedAway ? { turnedAway: r.turnedAway } : {}) } }, new Date(), design.plan);
+          };
+          const design = deps.client === undefined ? await designPriceRise(db, facts) : await designPriceRise(db, facts, deps.client);
+          const props = await fileRise(db, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason, ...(r.turnedAway ? { turnedAway: r.turnedAway } : {}) } }, design.plan);
           return { text: `${design.source === "claude" ? "Your plan" : "Code's plan"} went to the CFO as ${props.map((p) => p.proposal_id).join(" and ")}: ${design.plan.advice}`, ...(design.source === "claude" ? {} : { blocked: "plan fell back to code" }) };
         },
       },
@@ -143,18 +168,25 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
     // Without Claude: as before the agents, code's fixed plan answers a refusal the Sourcing agent reported.
     fallback: async (db, events, messages) => {
       if (!messages.some((m) => m.from_agent === "sourcing") || waiting(db, "mandate_replace").length) return "did nothing (nothing code would do here)";
-      const r = await blockedByMandate(db);
+      const r = await blockedByMandate(db, new Date(), await sourcingCap(db));
       if (!r) return "did nothing (nothing code would do here)";
-      const addr = addresses(db);
+      const fileRise = filer(db);
       const sellCents = toCents(sellPrice(db));
       const live = toCents(supplierPrice(db, "stockline"));
-      const props = await proposePriceRise(db, addr, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason, ...(r.turnedAway ? { turnedAway: r.turnedAway } : {}) } });
+      const props = await fileRise(db, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason, ...(r.turnedAway ? { turnedAway: r.turnedAway } : {}) } });
       return `code's fixed plan went to the CFO as ${props.map((p) => p.proposal_id).join(" and ")}`;
     },
   };
 }
 
-export function supportProfile(tickMs = 30 * 60_000): AgentProfile {
+/**
+ * How a dispute gets settled. Live: the tested flow (src/cli/s2.ts) as a child process, which lets the agent settle it
+ * (settleDispute) and settles it by code otherwise. D26: the variation test passes its own, on simulated rails.
+ */
+export interface SupportDeps { settle(db: DB, by: "agent" | "code"): Promise<{ ok: boolean; text: string }> }
+const liveSettle: SupportDeps = { settle: async () => runFlow("s2.ts") };
+
+export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSettle): AgentProfile {
   const open = (db: DB) => db.prepare("SELECT dispute_id, customer, created_at FROM disputes ORDER BY created_at DESC LIMIT 5").all() as { dispute_id: string; customer: string; created_at: string }[];
   return {
     name: "support", display: "the Support agent", model: MODELS.act, tickMs,
@@ -170,12 +202,12 @@ export function supportProfile(tickMs = 30 * 60_000): AgentProfile {
         input: z.strictObject({}),
         run: async () => {
           if (db.prepare("SELECT 1 FROM audit_log WHERE event = 'dispute.settled_by_agent' AND ts > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: this dispute was settled in the last half hour.", blocked: "already settled" };
-          const r = runFlow("s2.ts");
+          const r = await deps.settle(db, "agent");
           return { text: r.text, ...(r.ok ? {} : { blocked: "the settlement did not complete" }) };
         },
       },
     ],
-    fallback: async (db, events) => (events.some((e) => e.kind === "dispute.opened") ? `${runFlow("s2.ts").ok ? "code settled the dispute" : "code's settlement stopped"} (the agent did not decide)` : "did nothing"),
+    fallback: async (db, events) => (events.some((e) => e.kind === "dispute.opened") ? `${(await deps.settle(db, "code")).ok ? "code settled the dispute" : "code's settlement stopped"} (the agent did not decide)` : "did nothing"),
   };
 }
 
