@@ -76,8 +76,6 @@ CREATE TABLE IF NOT EXISTS sale_settlements (
   nonce TEXT NOT NULL,
   price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
   status TEXT NOT NULL CHECK (status IN ('SETTLING', 'DONE', 'FAILED')),
-  -- Settle requests for this payment still waiting for their answer (a replay can overlap the first).
-  inflight INTEGER NOT NULL DEFAULT 0,
   sale_id INTEGER REFERENCES sales(sale_id),
   tx_hash TEXT,
   detail TEXT,

@@ -23,26 +23,26 @@ export const settlementKey = (payer: string, nonce: string): string => `${payer.
 export const keyOf = (auth: Authorization | undefined): string | null => (auth?.from && auth.nonce ? settlementKey(auth.from, auth.nonce) : null);
 
 /**
- * Before the facilitator settles: the payment is on its way. The same payment again (a retry after a refused settle,
- * or a replay) opens it again and counts one more settle waiting; one already recorded stays DONE.
+ * Before the facilitator settles: the payment is on its way. The same payment again (a retry after a refused settle)
+ * opens it again; one already recorded stays DONE.
  */
 export function settlementStarted(db: DB, auth: Authorization | undefined, cents: number, now = new Date()): string | null {
   const key = keyOf(auth);
   if (!key) return null;
   const ts = now.toISOString();
-  db.prepare(`INSERT INTO sale_settlements (key, payer, nonce, price_cents, status, inflight, started_at, updated_at) VALUES (?, ?, ?, ?, 'SETTLING', 1, ?, ?)
-              ON CONFLICT (key) DO UPDATE SET inflight = sale_settlements.inflight + 1, updated_at = excluded.updated_at,
-                status = CASE sale_settlements.status WHEN 'FAILED' THEN 'SETTLING' ELSE sale_settlements.status END,
-                detail = CASE sale_settlements.status WHEN 'FAILED' THEN NULL ELSE sale_settlements.detail END,
-                started_at = CASE sale_settlements.status WHEN 'FAILED' THEN excluded.started_at ELSE sale_settlements.started_at END`)
-    .run(key, auth!.from!.toLowerCase(), auth!.nonce!.toLowerCase(), cents, ts, ts);
+  db.prepare(`INSERT INTO sale_settlements (key, payer, nonce, price_cents, status, started_at, updated_at) VALUES (?, ?, ?, ?, 'SETTLING', ?, ?)
+              ON CONFLICT (key) DO UPDATE SET status = 'SETTLING', detail = NULL, started_at = excluded.started_at, updated_at = excluded.updated_at
+              WHERE sale_settlements.status = 'FAILED'`).run(key, auth!.from!.toLowerCase(), auth!.nonce!.toLowerCase(), cents, ts, ts);
   return key;
 }
 
-/** Settled and recorded: call inside the sale row's transaction, so the ledger never counts it twice or not at all. */
+/**
+ * Settled and recorded: call inside the sale row's transaction, so the ledger never counts it twice or not at all.
+ * Whatever the row said before (a replay of the same payment may have been refused meanwhile), the sale decides.
+ */
 export function settlementDone(db: DB, key: string | null, saleId: number, tx: string | null, now = new Date()): void {
   if (!key) return;
-  db.prepare("UPDATE sale_settlements SET status = 'DONE', inflight = MAX(inflight - 1, 0), sale_id = ?, tx_hash = ?, detail = NULL, updated_at = ? WHERE key = ?").run(saleId, tx, now.toISOString(), key);
+  db.prepare("UPDATE sale_settlements SET status = 'DONE', sale_id = ?, tx_hash = ?, detail = NULL, updated_at = ? WHERE key = ?").run(saleId, tx, now.toISOString(), key);
 }
 
 /**
@@ -55,18 +55,17 @@ export function settlementRepeated(db: DB, key: string | null, now = new Date())
   const nonce = key.split(":").at(-1)!;
   const sale = db.prepare("SELECT sale_id, tx_hash FROM sales WHERE lower(settlement_id) LIKE ? ORDER BY sale_id LIMIT 1").get(`%:${nonce}`) as { sale_id: number; tx_hash: string | null } | undefined;
   if (sale) settlementDone(db, key, sale.sale_id, sale.tx_hash, now);
-  else db.prepare("UPDATE sale_settlements SET inflight = MAX(inflight - 1, 0), detail = ?, updated_at = ? WHERE key = ? AND status = 'SETTLING'").run("the facilitator reported this payment settled by an earlier answer; no sale is recorded for it", now.toISOString(), key);
+  else db.prepare("UPDATE sale_settlements SET detail = ?, updated_at = ? WHERE key = ? AND status IN ('SETTLING', 'FAILED')").run("the facilitator reported this payment settled by an earlier answer; no sale is recorded for it", now.toISOString(), key);
 }
 
 /**
- * The settle failed. When the facilitator's reason says nothing moved (the buyer side's own rule, nothingSettled) and
- * no other settle of the same payment is still waiting, the row is FAILED. Otherwise (a lost answer, an error with no
- * such reason, a replay still in flight) the payment may be on chain: the row stays SETTLING, with the reason.
+ * The settle failed. When the facilitator's reason says nothing moved (the buyer side's own rule, nothingSettled), the
+ * row is FAILED, with the reason. Otherwise (a lost answer, an error with no such reason) the payment may be on chain:
+ * the row stays SETTLING, with the reason. A FAILED payment that is on chain after all (a replay refused while the
+ * first settle went through) is closed by that settle's sale, or named by the chain check.
  */
 export function settlementFailed(db: DB, key: string | null, reason: string, nothingMoved: boolean, now = new Date()): void {
   if (!key) return;
-  const ts = now.toISOString();
-  db.prepare("UPDATE sale_settlements SET inflight = MAX(inflight - 1, 0), updated_at = ? WHERE key = ? AND status = 'SETTLING'").run(ts, key);
-  if (nothingMoved) db.prepare("UPDATE sale_settlements SET status = 'FAILED', detail = ? WHERE key = ? AND status = 'SETTLING' AND inflight = 0").run(reason.slice(0, 300), key);
-  else db.prepare("UPDATE sale_settlements SET detail = ? WHERE key = ? AND status = 'SETTLING'").run(`outcome unknown, it may have settled: ${reason}`.slice(0, 300), key);
+  if (nothingMoved) db.prepare("UPDATE sale_settlements SET status = 'FAILED', detail = ?, updated_at = ? WHERE key = ? AND status = 'SETTLING'").run(reason.slice(0, 300), now.toISOString(), key);
+  else db.prepare("UPDATE sale_settlements SET detail = ?, updated_at = ? WHERE key = ? AND status = 'SETTLING'").run(`outcome unknown, it may have settled: ${reason}`.slice(0, 300), now.toISOString(), key);
 }

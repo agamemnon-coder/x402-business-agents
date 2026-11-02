@@ -104,7 +104,7 @@ export function sellerApp(opts: SellerOptions) {
     const ctx = transportContext as HTTPTransportContext | undefined;
     const bodyText = ctx?.responseBody?.toString("utf8") ?? "";
     const url = ctx?.request.adapter.getUrl() ?? "";
-    const upstream = Number(ctx?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
+    const upstream = upstreamOf(ctx);
     db.transaction(() => {
       const info = db.prepare(
         `INSERT OR IGNORE INTO sales (route, price_cents, payer, customer_mandate_ref, signed_offer, settlement_id, tx_hash, request_url,
@@ -113,7 +113,7 @@ export function sellerApp(opts: SellerOptions) {
       ).run(
         SELLER_RESOURCE, centsOfUnits(auth?.value), auth?.from ?? result.payer ?? "", mandateRefOf(paymentPayload), signedOfferOf(paymentPayload),
         settlement.id, result.transaction, url, JSON.stringify(Object.fromEntries(new URL(url || "http://x/").searchParams)),
-        sha256Hex(bodyText), bodyText, Number.isFinite(upstream) ? upstream : null, JSON.stringify(requirements), new Date().toISOString(),
+        sha256Hex(bodyText), bodyText, upstream === null ? null : Number(upstream), JSON.stringify(requirements), new Date().toISOString(),
       );
       if (info.changes === 1) {
         audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { origin: { actor: "external", party: "customer" }, settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });
@@ -130,10 +130,8 @@ export function sellerApp(opts: SellerOptions) {
       const reason = (error as { errorReason?: string }).errorReason;
       settlementFailed(db, keyOf(authorizationOf(paymentPayload)), reason ?? error.message, nothingSettled(reason));
     }
-    const ctx = transportContext as HTTPTransportContext | undefined;
-    const upstream = Number(ctx?.responseHeaders?.[UPSTREAM_HEADER] ?? NaN);
     // The supplier was already paid; the customer was not charged. The upstream cost is written off.
-    audit(db, "system", "sale.settle_failed", Number.isFinite(upstream) ? String(upstream) : null, { error: error.message });
+    audit(db, "system", "sale.settle_failed", upstreamOf(transportContext), { error: error.message });
   });
 
   const app = express();

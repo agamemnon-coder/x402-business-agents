@@ -139,15 +139,29 @@ describe("a sale between its block and its row (dry-146, 2 November)", () => {
     expect(buildSnapshot(db).feed.some((f) => /A sale did not settle; the customer was not charged/.test(f.text))).toBe(true);
   });
 
-  it("a replay refused while the first settle of the same payment is still waiting leaves it on its way", async () => {
+  it("a replay refused while the first settle of the same payment is still waiting: the first settle's sale decides", async () => {
     const db = world();
     for (const h of hooks.before) await h(ctx(67)); // the first request's settle is sent
     for (const h of hooks.before) await h(ctx(67)); // a replay of the same payment
-    for (const h of hooks.failure) await h({ ...ctx(67), error: Object.assign(new Error("nonce"), { errorReason: "payment_failed" }) });
-    expect(db.prepare("SELECT status, inflight FROM sale_settlements").get()).toEqual({ status: "SETTLING", inflight: 1 });
+    for (const h of hooks.failure) await h({ ...ctx(67), error: Object.assign(new Error("refused"), { errorReason: "payment_failed" }) });
+    expect(db.prepare("SELECT status, detail FROM sale_settlements").get()).toEqual({ status: "FAILED", detail: "payment_failed" });
+    // Were the chain read now, with the first settle in its block: named, not passed (a failed settle that moved).
+    const [c] = await dashboardVsChain(db, chainWith(67));
+    expect(c!.differences[0]).toMatch(/is on chain, but the ledger has a sale being settled \(paid by 0xdeb2b727…\) as a settle that failed, nothing moved \(payment_failed\)/);
     for (const h of hooks.after) await h({ ...ctx(67), ...settled(67) });
-    expect(db.prepare("SELECT status, inflight FROM sale_settlements").get()).toEqual({ status: "DONE", inflight: 0 });
+    expect(db.prepare("SELECT status, detail FROM sale_settlements").get()).toEqual({ status: "DONE", detail: null });
     expect(customer(db)).toMatchObject({ spent: "3.35", pending: "0.00" });
+    expect(await dashboardVsChain(db, chainWith(67))).toEqual([{ agent: "customer", ok: true, differences: [], notes: [] }]);
+  });
+
+  it("a sale left being settled, not on chain, is named once it is older than a settle takes", async () => {
+    const db = world();
+    for (const h of hooks.before) await h(ctx(67));
+    for (const h of hooks.failure) await h({ ...ctx(67), error: new Error("fetch failed") });
+    db.prepare("UPDATE sale_settlements SET started_at = ?").run(new Date(Date.now() - 10 * 60_000).toISOString());
+    const [c] = await dashboardVsChain(db, chainWith(66));
+    expect(c!.ok).toBe(false);
+    expect(c!.differences[0]).toMatch(/a sale being settled \(paid by 0xdeb2b727…\): shown as pending \(0\.05\), on its way since .+, but not on chain at block 13271980: its settle never closed \(outcome unknown, it may have settled: fetch failed\)/);
   });
 
   it("a ledger from before clearing (no scheme column, opened read-only) still reads the mandate's figures", async () => {

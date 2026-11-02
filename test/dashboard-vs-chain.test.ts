@@ -190,7 +190,7 @@ describe("the reading: the ledger, the chain at one block, the ledger again", ()
     const env = { METAL_RPC_URL: "https://rpc.example.test/v3/k3y-s3cr3t-0123456789?apikey=abcdef123456" };
     const err = new Error(`HTTP request failed.\n\nURL: ${env.METAL_RPC_URL}\nDetails: 401`);
     expect(plain(err, env)).toBe("HTTP request failed.");
-    expect(plain(new Error(`invalid project id /v3/k3y-s3cr3t-0123456789 (apikey=abcdef123456)`), env)).toBe("invalid project id [redacted] (apikey=[redacted])");
+    expect(plain(new Error(`invalid project id /v3/k3y-s3cr3t-0123456789 (apikey=abcdef123456)`), env)).toBe("invalid project id /v3/[redacted] (apikey=[redacted])");
     expect(plain(new Error(`request to ${env.METAL_RPC_URL} failed`), env)).not.toMatch(/k3y|abcdef123456/);
     const r = { block: async () => { throw err; }, mandate: async () => { throw new Error("not reached"); }, detail: async () => ({ nonce: null, at: null }) };
     const prev = process.env.METAL_RPC_URL;

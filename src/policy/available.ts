@@ -29,9 +29,14 @@ const hasTable = (db: DB, name: string): boolean => !!db.prepare("SELECT 1 FROM 
  * What Summit's buying mandate paid: its sales on the mandate route (scheme 'exact'). A clearing sale ('bajillion') is
  * paid from Summit's clearing deposit, not under the mandate, so Metal's mandate does not count it and neither does this.
  */
+const hasScheme = new WeakMap<DB, boolean>();
 const customerSales = (db: DB): string => {
   // A ledger from before clearing (opened read-only, so not migrated) has no scheme column: every sale was 'exact'.
-  const scheme = (db.prepare("PRAGMA table_info(sales)").all() as { name: string }[]).some((c) => c.name === "scheme");
+  let scheme = hasScheme.get(db);
+  if (scheme === undefined) {
+    scheme = (db.prepare("PRAGMA table_info(sales)").all() as { name: string }[]).some((c) => c.name === "scheme");
+    hasScheme.set(db, scheme);
+  }
   return `FROM sales WHERE status = 'DELIVERED'${scheme ? " AND scheme = 'exact'" : ""}`;
 };
 

@@ -12,7 +12,7 @@
 // again; a reading during which the ledger moved is taken again. (On 2 November the dashboard was read before a sale's
 // row and the chain after its block: 0.05–0.06 apart in 2 of 10 live worlds, the last sale of each.)
 
-import { extractTerms, mandateBindingAbi, readMandateState, redactUrls } from "@metalntwx/metal-pay/mandates";
+import { extractTerms, mandateBindingAbi, publicMessage, readMandateState } from "@metalntwx/metal-pay/mandates";
 import { formatUnits, getAbiItem, toEventSelector, type Hex } from "viem";
 import type { DB } from "../db/open.js";
 import { buildSnapshot } from "../dashboard/snapshot.js";
@@ -27,18 +27,23 @@ const shortTx = (tx: string) => `${tx.slice(0, 12)}…${tx.slice(-4)}`;
 
 /**
  * An error in one line, with nothing of the node's URL: METAL_RPC_URL is a credential, and a provider can echo its key
- * in a path or a query. Every URL is cut to its host, and every part of the configured URL is blanked out.
+ * in a path or a query. The SDK's own one-liner (viem's short message, every URL cut to its host), then every part of
+ * the configured URL that could be a key blanked out: its path, query and credentials, raw, decoded and encoded.
  */
 export function plain(e: unknown, env = process.env): string {
-  let text = redactUrls(String((e as Error)?.message ?? e).split("\n")[0]!);
+  let text = publicMessage(e);
   const secret = env.METAL_RPC_URL;
   if (secret) {
     let parts: string[] = [secret];
     try {
       const u = new URL(secret);
-      parts = [secret, u.host + u.pathname, u.pathname, u.search, u.username, u.password, ...u.pathname.split("/"), ...[...u.searchParams.values()]];
+      const query = u.search.slice(1).split("&").flatMap((kv) => kv.split("=").slice(1));
+      // A path word with no digit and under 8 letters ("testnet", "rpc", "v1") is not a key; anything else may be.
+      const segments = u.pathname.split("/").filter((x) => x.length >= 8 || (x.length >= 4 && /\d/.test(x)));
+      parts = [secret, u.host + u.pathname + u.search, u.pathname + u.search, u.search, u.username, u.password, ...segments, ...query];
+      parts = parts.flatMap((x) => { try { return [x, decodeURIComponent(x), encodeURIComponent(x)]; } catch { return [x]; } });
     } catch { /* not a URL: the whole string only */ }
-    for (const p of parts.filter((x) => x.length >= 6).sort((a, b) => b.length - a.length)) text = text.split(p).join("[redacted]");
+    for (const p of [...new Set(parts)].filter((x) => x.length >= 4 && x !== "/").sort((a, b) => b.length - a.length)) text = text.split(p).join("[redacted]");
   }
   return text.slice(0, 160);
 }
@@ -62,6 +67,8 @@ export interface ChainMandate {
   payments?: ChainPayment[] | null;
   /** Of those, what the bound credential's own payments add up to (its running spend must say the same). */
   currentPaid?: bigint;
+  /** How many credentials the payments were listed under. */
+  credentialsRead?: number;
   listError?: string;
 }
 
@@ -107,7 +114,8 @@ export function compareMandate(shown: ShownMandate, chain: ChainMandate, ledger:
   }
 
   const total = chain.payments.reduce((s, p) => s + p.amount, 0n);
-  if (chain.currentPaid !== undefined && shown.credentials <= 1 && chain.currentPaid !== chain.spent) {
+  // With one credential only: a replace or a resume carries the spend so far into the new mandate's running spend.
+  if (chain.currentPaid !== undefined && (chain.credentialsRead ?? shown.credentials) <= 1 && chain.currentPaid !== chain.spent) {
     differences.push(`the chain's own figures disagree: the bound credential's payments add up to ${words(chain.currentPaid)}, its running spend says ${words(chain.spent)}${at}`);
   }
   const fresh = (l: LedgerPayment) => !l.since || now.getTime() - Date.parse(l.since) <= ON_ITS_WAY_MS;
@@ -152,11 +160,17 @@ export function compareMandate(shown: ShownMandate, chain: ChainMandate, ledger:
     named.push(`${payment(p)} is on chain under the ${shown.agent} mandate, but the ledger has no payment for it${p.nonce ? ` (nonce ${p.nonce.slice(0, 10)}…)` : ""}`);
   }
   for (const l of ledger) {
+    // Shown as pending for longer than a payment takes, and not on chain: the budget left differs from Metal's for it.
+    if (l.state === "pending" && l.since && !matched.has(l) && !fresh(l)) {
+      named.push(`${l.what}: shown as pending (${fromCents(l.cents)})${age(l)}, but not on chain${at}: its settle never closed${l.detail ? ` (${l.detail})` : ""}`);
+      continue;
+    }
     if (l.state !== "paid" || matched.has(l)) continue;
     named.push(`${l.what}: the ledger has it paid (${fromCents(l.cents)}${l.tx ? `, tx ${shortTx(l.tx)}` : ", no tx"}), but the chain has no such payment under the ${shown.agent} mandate${shown.credentials > 1 ? "s" : ""}${at}`);
   }
   const paidOnChain = total - explainedOnItsWay;
   if (named.length || paidOnChain !== paid || total > paid + onItsWay) {
+    // (A stale pending line alone leaves spent equal to the chain; it is named because the budget left is not.)
     differences.push(`spent: ${showing}, the chain ${words(total)}${at}${named.length ? `: ${named.join("; ")}` : ""}`);
     if (!named.length) differences.push(`no single payment explains the ${words(total > paid ? total - paid : paid - total)}: the ledger's paid payments and the chain's agree one by one, but not their totals`);
   }
@@ -166,15 +180,20 @@ export function compareMandate(shown: ShownMandate, chain: ChainMandate, ledger:
 export interface MandateCheck { agent: string; ok: boolean; differences: string[]; notes: string[] }
 
 /** What the ledger shows at one moment: the dashboard's mandates, every payment under them, and their bind transactions. */
-interface LedgerReading { shown: ShownMandate[]; payments: Record<string, LedgerPayment[]>; binds: Record<string, string[]>; key: string }
+interface LedgerReading { shown: ShownMandate[]; payments: Record<string, LedgerPayment[]>; binds: Record<string, Bind[]>; key: string }
+
+/** A credential this ledger bound (bootstrap, replace, resume), as its audit row records it. */
+export interface Bind { tx: string | null; credentialHash: string | null; principal: string | null }
 
 function readLedger(db: DB): LedgerReading {
   const b = buildSnapshot(db).budgets;
   const shown: ShownMandate[] = [...b.agents, ...(b.counterparty ? [b.counterparty] : [])]
     .map((m) => ({ agent: m.agent, cap: m.cap, budget: m.budget, spent: m.spent, pending: m.pending, held: m.held, credentials: m.credentials }));
   const payments = Object.fromEntries(shown.map((s) => [s.agent, mandatePayments(db, s.agent)]));
-  const binds = Object.fromEntries(shown.map((s) => [s.agent, (db.prepare("SELECT json_extract(payload_json, '$.tx') AS tx FROM audit_log WHERE event IN ('mandate.bound', 'mandate.replaced') AND subject = ? ORDER BY seq").all(s.agent) as { tx: unknown }[])
-    .map((r) => r.tx).filter((t): t is string => typeof t === "string" && /^0x[0-9a-fA-F]{64}$/.test(t))]));
+  const hex = (v: unknown, n: number) => (typeof v === "string" && new RegExp(`^0x[0-9a-fA-F]{${n}}$`).test(v) ? v.toLowerCase() : null);
+  const binds = Object.fromEntries(shown.map((s) => [s.agent, (db.prepare(`SELECT json_extract(payload_json, '$.tx') AS tx, json_extract(payload_json, '$.credential_hash') AS hash,
+      json_extract(payload_json, '$.principal') AS principal FROM audit_log WHERE event IN ('mandate.bound', 'mandate.replaced', 'mandate.resumed') AND subject = ? ORDER BY seq`).all(s.agent) as { tx: unknown; hash: unknown; principal: unknown }[])
+    .map((r): Bind => ({ tx: hex(r.tx, 64), credentialHash: hex(r.hash, 64), principal: hex(r.principal, 40) }))]));
   return { shown, payments, binds, key: JSON.stringify({ shown, payments }) };
 }
 
@@ -182,9 +201,9 @@ export interface ChainReader {
   block(): Promise<bigint>;
   /**
    * The agent's bound mandate at `block`, with every payment up to it under each credential the ledger bound (`binds`:
-   * the bind and replace transactions it recorded; empty for a ledger that recorded none).
+   * its bind, replace and resume rows; empty for a ledger that recorded none).
    */
-  mandate(agent: MandateAgent, block: bigint, binds: string[]): Promise<ChainMandate>;
+  mandate(agent: MandateAgent, block: bigint, binds: Bind[]): Promise<ChainMandate>;
   /** A payment's ERC-3009 nonce and block time, for one the ledger has under no tx. */
   detail(tx: string): Promise<{ nonce: string | null; at: string | null }>;
 }
@@ -280,11 +299,27 @@ export function metalReader(): ChainReader {
     async mandate(agent, block, binds) {
       const all = credentialFiles(agent).map((f) => loadCredentialFile(agent, f));
       const allStates = await Promise.all(all.map((m) => readMandateState(pc, m.principal, m.reference, block)));
+      const creds = all.map((m, i) => ({ m, s: allStates[i]! })).filter(({ s }) => s.boundBlock > 0n);
       // Only the credentials this ledger bound: a shared keys directory can hold another world's, and a bootstrap can
-      // have overwritten one of this world's.
-      for (const t of binds) if (!bindBlocks.has(t)) bindBlocks.set(t, (await pc.getTransactionReceipt({ hash: t as Hex })).blockNumber);
-      const blocks = new Set(binds.map((t) => bindBlocks.get(t)!));
-      const ours = all.map((m, i) => ({ m, s: allStates[i]! })).filter(({ s }) => s.boundBlock > 0n && (blocks.size === 0 || blocks.has(s.boundBlock)));
+      // have overwritten one of this world's. A row names its credential by hash, else by its transaction's block and
+      // the account it binds on. A ledger with a row that names neither is read with every credential, as before.
+      const identifiable = binds.length > 0 && binds.every((b) => b.credentialHash || b.tx);
+      let ours = creds;
+      let found = binds.length;
+      if (identifiable) {
+        const hit = new Set<(typeof creds)[number]>();
+        found = 0;
+        for (const b of binds) {
+          let c = b.credentialHash ? creds.find((x) => x.m.credentialHash.toLowerCase() === b.credentialHash) : undefined;
+          if (!c && b.tx) {
+            if (!bindBlocks.has(b.tx)) bindBlocks.set(b.tx, (await pc.getTransactionReceipt({ hash: b.tx as Hex })).blockNumber);
+            const at = bindBlocks.get(b.tx)!;
+            c = creds.find((x) => x.s.boundBlock === at && (!b.principal || x.m.principal.toLowerCase() === b.principal));
+          }
+          if (c) { hit.add(c); found++; }
+        }
+        ours = creds.filter((x) => hit.has(x));
+      }
       const live = ours.filter(({ s }) => !s.revoked);
       if (live.length !== 1) throw new Error(`${agent}: expected one bound mandate of this ledger's at block ${block}, found ${live.length}`);
       const { m, s: state } = live[0]!;
@@ -292,9 +327,9 @@ export function metalReader(): ChainReader {
       let payments: ChainPayment[] | null = [];
       let currentPaid: bigint | undefined;
       let listError: string | undefined;
-      if (blocks.size > 0 && ours.length < binds.length) {
+      if (found < binds.length) {
         payments = null;
-        listError = `the keys directory holds ${ours.length} of the ${binds.length} credentials this ledger bound`;
+        listError = `the keys directory holds ${found} of the ${binds.length} credentials this ledger bound`;
       } else {
         try {
           for (const c of ours) {
@@ -308,7 +343,7 @@ export function metalReader(): ChainReader {
           listError = plain(e);
         }
       }
-      return { perPaymentCap: terms.perPaymentCap, budget: terms.budget, spent: state.spent, revoked: state.revoked, bound: state.boundBlock > 0n, block, payments, currentPaid, listError };
+      return { perPaymentCap: terms.perPaymentCap, budget: terms.budget, spent: state.spent, revoked: state.revoked, bound: state.boundBlock > 0n, block, payments, currentPaid, credentialsRead: ours.length, listError };
     },
     async detail(tx) {
       const r = await pc.getTransactionReceipt({ hash: tx as Hex });
