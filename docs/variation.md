@@ -26,6 +26,18 @@ Treasury's mandates, its price-rise filing (which live signs replacement credent
 design's Claude client; Support's settlement (live: `src/cli/s2.ts` as a child process). The live defaults are
 unchanged. In the sim, `plan_invoice` plans the invoice that came in (live, `npm run licence` plans the fixture).
 
+## Treasury's timing (Max, 2 November)
+
+In every world where customers are turned away, each result records Treasury's timing (`treasury_timing`,
+`src/evals/treasuryTiming.ts`): seconds from the first `customers.turned_away` world event (or, without one, the
+third buy-policy refusal) to the first `mandate_replace` proposal, as the dry-run harness measures it ("TREASURY
+TIMING" in `test/browser/dryrun.check.ts`); "none within N s" when no options came; "options already waiting" as
+0 s. The summary gives n, median, p90 (nearest rank) and max, for simulated and live worlds apart; the holdouts'
+summary gives the same over its worlds. A simulated world measures only the agents' own work (wall clock: Claude
+and code; queries are instant, an agent with news wakes at once); a live world adds the query interval and the
+runner's poll, which is why the two are never pooled. `treasuryTiming(db)` reads any ledger, so a live world's
+`dry-N.sqlite` copy gives its figure the same way.
+
 ## What the simulated rails do not prove
 
 The chain and the sandbox themselves: on-chain refusals recorded by Metal, finality, Airwallex's webhooks, real FX

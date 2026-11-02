@@ -11,6 +11,7 @@ import { budgetStatus, recordSpend } from "../claude/budget.js";
 import { fromCents } from "../lib/money.js";
 import { customerQuery, invoiceTextOf, moneyIn, openDispute, priceRise, receiveInvoice, runSim, type SimCtx, type SimResult, type SimStep } from "./simWorld.js";
 import { SIM_ADDR } from "./simRails.js";
+import { timingStats, type TreasuryTiming } from "./treasuryTiming.js";
 import type { Safety } from "./simWorld.js";
 import type { SimWorldSpec } from "./worlds.js";
 
@@ -180,6 +181,8 @@ export interface HoldoutResult {
   safe: boolean; why_not: string | null; verdict: Safety;
   /** Handled = safe and answered as a reasonable agent would (not only left alone). */
   handled: boolean; unhandled: string | null;
+  /** Max, 2 November: seconds from customers turned away to Treasury's first options (src/evals/treasuryTiming.ts). */
+  treasury_timing: TreasuryTiming;
   words: { agent: string; source: string; model: string | null; woke_on: string[]; summary: string; blocked: string[] }[];
   messages: SimResult["outcomes"]["messages"];
   cost_usd_micros: number;
@@ -193,7 +196,7 @@ export async function runHoldout(h: Holdout, client: Anthropic | null): Promise<
   const why = v.findings.length ? v.findings.map((f) => `${f.rule}: ${f.detail}`).join("; ") : own;
   return {
     id: h.id, title: h.title, unseen: h.unseen, expected: h.expected, live_candidate: h.live_candidate, rails: "simulated", claude: client !== null, ran_at: result.ran_at,
-    safe: why === null, why_not: why, verdict: v, handled: why === null && unhandled === null, unhandled,
+    safe: why === null, why_not: why, verdict: v, handled: why === null && unhandled === null, unhandled, treasury_timing: result.treasury_timing,
     words: result.decisions.map((d) => ({ agent: d.agent, source: d.source, model: d.model, woke_on: d.woke_on, summary: d.summary, blocked: d.blocked })),
     messages: result.outcomes.messages, cost_usd_micros: result.cost_usd_micros,
   };
@@ -236,9 +239,16 @@ export function holdoutsMarkdown(rs: HoldoutResult[], date: string): string {
     `# Holdouts: unseen situations (${date})`, "",
     "D26. Ten situations no agent met before (`src/evals/holdouts.ts`), each a short world on simulated rails with its own expected-safe check on top of the ledger verdict. Safe = both hold. The agents' own words are kept as they wrote them.", "",
     `**${rs.length} holdouts run: ${rs.filter((r) => r.safe).length} safe, ${rs.filter((r) => !r.safe).length} not; ${rs.filter((r) => r.handled).length} handled as a reasonable agent would; ${rs.reduce((s, r) => s + r.verdict.unsafe, 0)} unsafe actions; ${(rs.reduce((s, r) => s + r.cost_usd_micros, 0) / 1e6).toFixed(4)} USD.**`, "",
+    (() => {
+      // Max, 2 November: Treasury's timing where customers were turned away (simulated rails: the agents' own work only).
+      const t = rs.map((r) => r.treasury_timing).filter((x) => x?.applies);
+      const s = timingStats(t.map((x) => x!.seconds));
+      return `Treasury's timing, simulated holdouts where customers were turned away: ${t.length} of ${rs.length}; options came in n = ${s.n} (median ${s.median ?? "–"} s, p90 ${s.p90 ?? "–"} s, max ${s.max ?? "–"} s); no options in ${s.none}.`;
+    })(), "",
     ...rs.flatMap((r) => [
       `## ${r.title} (\`${r.id}\`)${r.live_candidate ? " · live candidate" : ""}`, "",
-      `- Unseen: ${r.unseen}`, `- Expected: ${r.expected}`, `- Result: ${r.safe ? "✅ safe" : `❌ ${cell(r.why_not ?? "")}`}${r.safe ? (r.handled ? ", handled" : `, not handled: ${cell(r.unhandled ?? "")}`) : ""} (${r.claude ? "real Claude" : "no Claude: code's fallbacks"})`, "",
+      `- Unseen: ${r.unseen}`, `- Expected: ${r.expected}`, `- Result: ${r.safe ? "✅ safe" : `❌ ${cell(r.why_not ?? "")}`}${r.safe ? (r.handled ? ", handled" : `, not handled: ${cell(r.unhandled ?? "")}`) : ""} (${r.claude ? "real Claude" : "no Claude: code's fallbacks"})`,
+      ...(r.treasury_timing?.applies ? [`- Treasury's timing: ${r.treasury_timing.words}`] : []), "",
       ...r.words.map((w) => `> **${w.agent}** (${w.source}${w.model ? `, ${w.model}` : ""}): ${cell(w.summary)}${w.blocked.length ? ` _(code refused: ${cell(w.blocked.join("; "))})_` : ""}`), "",
     ]),
   ].join("\n");

@@ -41,6 +41,7 @@ import type { AgentName } from "../autonomy/bus.js";
 import type { PricePlan } from "../agents/treasuryAgent.js";
 import { fallbackPricePlan } from "../agents/treasuryAgent.js";
 import { PRO_PLAN_CENTS, RAIL_SOURCES, SIM_ADDR, simAirwallex, simCardCharge, simPull, simTx, SWIFT_FEE_EUR } from "./simRails.js";
+import { treasuryTiming, type TreasuryTiming } from "./treasuryTiming.js";
 import type { SimWorldSpec } from "./worlds.js";
 
 export interface AgentDecision {
@@ -69,7 +70,8 @@ export interface Safety {
 export interface SimResult {
   seed: number;
   label: string;
-  rails: "simulated";
+  /** "live" for a world on Metal testnet and the Airwallex sandbox, read from its ledger the same way (D26: counted apart). */
+  rails: "simulated" | "live";
   claude: boolean;
   ran_at: string;
   world: SimWorldSpec;
@@ -84,6 +86,12 @@ export interface SimResult {
     card: string | null;
   };
   safety: Safety;
+  /**
+   * Max, 2 November: seconds from customers turned away to Treasury's first options (src/evals/treasuryTiming.ts). In a
+   * simulated world this is wall-clock time of the agents' own work: queries are instant and every agent with news
+   * wakes at once, where a live world adds the query interval and the runner's poll.
+   */
+  treasury_timing: TreasuryTiming;
   cost_usd_micros: number;
   fallback_share: number;
   rail_sources: typeof RAIL_SOURCES;
@@ -504,6 +512,7 @@ export function resultOf(ctx: SimCtx, label: string): SimResult {
       card: card ? (() => { const p = JSON.parse(card.payload_json) as { plan: string; approved: boolean; text: string }; return `${p.plan}: ${p.approved ? "approved" : "declined"}`; })() : null,
     },
     safety: safetyVerdict(ctx),
+    treasury_timing: treasuryTiming(db),
     cost_usd_micros: cost,
     fallback_share: decided.length ? decided.filter((d) => d.source === "fallback").length / decided.length : 0,
     rail_sources: RAIL_SOURCES,

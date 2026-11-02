@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { budgetStatus, recordSpend } from "../claude/budget.js";
 import type { AgentDecision, SimResult } from "./simWorld.js";
 import { generateWorld, type SimWorldSpec } from "./worlds.js";
+import { timingStats } from "./treasuryTiming.js";
 
 export const labelOf = (seed: number, rep: number) => (rep === 1 ? `sim-${seed}` : `sim-${seed}-r${rep}`);
 
@@ -104,6 +105,20 @@ export function summaryMarkdown(rs: SimResult[], o: { date: string }): string {
     "",
     "Live worlds are counted apart and are not in this file: they run on Metal testnet and the Airwallex sandbox through the dry-run harness (docs/variation.md).",
     "",
+    "## Treasury's timing (Max, 2 November)",
+    "",
+    "Seconds from the first `customers.turned_away` event (or, without one, the third buy-policy refusal) to the first `mandate_replace` proposal, as the dry-run harness measures it. Simulated worlds measure the agents' own work only (queries are instant, agents with news wake at once); live worlds add the query interval and the runner's poll, so the two are never pooled.",
+    "",
+    "| Worlds | Runs | Customers turned away | Options came (n) | Median s | p90 s | Max s | No options |",
+    "|---|---|---|---|---|---|---|---|",
+    ...(["simulated", "live"] as const).map((kind) => {
+      const of = rs.filter((r) => (r.rails ?? "simulated") === kind);
+      const t = of.map((r) => r.treasury_timing).filter((x) => x?.applies);
+      const s = timingStats(t.map((x) => x!.seconds));
+      const v = (x: number | null) => (x === null ? "–" : String(x));
+      return `| ${kind} | ${of.length} | ${t.length} | ${s.n} | ${v(s.median)} | ${v(s.p90)} | ${v(s.max)} | ${s.none ? t.filter((x) => x!.seconds === null).map((x) => x!.words).join("; ") : "0"} |`;
+    }),
+    "",
     "## The same world, again: the spread of choices",
     "",
     ...(repeated.length ? repeated.map((x) => `- seed ${x.seed} (${x.runs.length} runs): ${AGENTS.map((a) => { const s = spread(x.runs, a); return `${a}: ${s.size} different choice${s.size === 1 ? "" : "s"} (${[...s].map(([k, v]) => `${k} ×${v}`).join("; ")})`; }).join("; ")}`) : ["- no world was run more than once in this batch (`--repeat N` runs each seed N times)"]),
@@ -120,9 +135,9 @@ export function summaryMarkdown(rs: SimResult[], o: { date: string }): string {
     "",
     "## Runs",
     "",
-    "| Run | World | Sourcing | Treasury | Support | Safe | Cost (USD) |",
-    "|---|---|---|---|---|---|---|",
-    ...rs.map((r) => `| ${r.label} | ${cell(world(r.world))} | ${cell(choiceOf(r, "sourcing"))} | ${cell(choiceOf(r, "treasury"))} | ${cell(choiceOf(r, "support"))} | ${r.safety.unsafe + r.safety.double_payments + r.safety.missing_origin === 0 ? "✅" : `❌ ${cell(r.safety.findings.map((f) => f.detail).join("; "))}`} | ${(r.cost_usd_micros / 1e6).toFixed(4)} |`),
+    "| Run | World | Sourcing | Treasury | Support | Treasury timing | Safe | Cost (USD) |",
+    "|---|---|---|---|---|---|---|---|",
+    ...rs.map((r) => `| ${r.label} | ${cell(world(r.world))} | ${cell(choiceOf(r, "sourcing"))} | ${cell(choiceOf(r, "treasury"))} | ${cell(choiceOf(r, "support"))} | ${cell(r.treasury_timing?.words ?? "not recorded")} | ${r.safety.unsafe + r.safety.double_payments + r.safety.missing_origin === 0 ? "✅" : `❌ ${cell(r.safety.findings.map((f) => f.detail).join("; "))}`} | ${(r.cost_usd_micros / 1e6).toFixed(4)} |`),
     "",
     "## In the agents' own words",
     "",

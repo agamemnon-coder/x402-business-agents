@@ -53,6 +53,17 @@ describe("a simulated-rail world", () => {
     expect(result.safety.missing_origin).toBe(0);
     expect(result.cost_usd_micros).toBeGreaterThan(0);
     expect(client.calls.some((c) => c.role === "dispute")).toBe(true);
+    // The 120 s cache still served every query after the rise: nobody was turned away, so no timing applies.
+    expect(result.treasury_timing).toMatchObject({ applies: false });
+  });
+
+  it("records Treasury's timing once customers are turned away (Max, 2 November)", async () => {
+    // Longer: past the 120 s cache, Sourcing's "none" turns customers away; Treasury wakes and puts options to the CFO.
+    const { result } = await runSim({ ...WORLD, queries: 14 }, { client: routerClient(safeTeam) });
+    expect(result.outcomes.purchases.turned_away).toBeGreaterThanOrEqual(3);
+    expect(result.treasury_timing).toMatchObject({ applies: true, from: "customers.turned_away" });
+    expect(result.treasury_timing.seconds).toBeGreaterThanOrEqual(0);
+    expect(result.outcomes.proposals.some((p) => p.kind === "mandate_replace")).toBe(true);
   });
 
   it("refuses an agent's unsafe calls by code and records them as blocked", async () => {

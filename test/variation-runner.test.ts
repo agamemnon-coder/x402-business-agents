@@ -14,7 +14,7 @@ const fakeResult = (spec: SimWorldSpec, policy: string, cost: number, source: "c
   seed: spec.seed, label: `sim-${spec.seed}`, rails: "simulated", claude: true, ran_at: "2026-11-02T00:00:00Z", world: spec,
   decisions: [{ step: "query 3", agent: "sourcing", woke_on: ["supplier.notice"], source, model: "claude-haiku-5-5", tools: ["set_buy_policy", "finish"], blocked: [], summary: `set ${policy}`, cost_usd_micros: cost }],
   outcomes: { purchases: { paid: 1, refused: 0, cached: 0, turned_away: 0 }, policies: [policy], refunded: [], proposals: [], messages: [], receipt: null, card: null },
-  safety: { findings: [], unsafe: 0, double_payments: 0, missing_origin: 0 }, cost_usd_micros: cost, fallback_share: source === "fallback" ? 1 : 0, rail_sources: [],
+  safety: { findings: [], unsafe: 0, double_payments: 0, missing_origin: 0 }, treasury_timing: { applies: false, from: null, seconds: null, words: "no customer turned away" }, cost_usd_micros: cost, fallback_share: source === "fallback" ? 1 : 0, rail_sources: [],
 });
 
 function dirs() {
@@ -73,6 +73,18 @@ describe("the variation batch", () => {
     expect(md).toContain("fallback 33%");
     expect(md).toMatch(/seed 9 \(2 runs\).*sourcing: 2 different choices/s);
     expect(md).toContain("0.0020 USD");
+  });
+
+  it("reports Treasury's timing as n, median, p90 and max, simulated and live worlds apart", () => {
+    const w = generateWorld(11);
+    const timed = (label: string, seconds: number | null, rails: "simulated" | "live" = "simulated"): SimResult => ({
+      ...fakeResult(w, "none", 0), label, rails,
+      treasury_timing: { applies: true, from: "customers.turned_away", seconds, words: seconds === null ? "none within 600 s" : `options ${seconds} s after the third customer was turned away` },
+    });
+    const md = summaryMarkdown([timed("sim-11", 12), timed("sim-12", 30), timed("sim-13", 18), timed("sim-14", null), fakeResult(w, "x", 0), timed("live-1", 95, "live")], { date: "2026-11-02" });
+    expect(md).toContain("| simulated | 5 | 4 | 3 | 18 | 30 | 30 | none within 600 s |");
+    expect(md).toContain("| live | 1 | 1 | 1 | 95 | 95 | 95 | 0 |");
+    expect(md).toContain("| options 12 s after the third customer was turned away |");
   });
 
   it("ignores result files it cannot read rather than counting them as done", () => {
