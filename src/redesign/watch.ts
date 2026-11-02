@@ -5,7 +5,7 @@
 
 import { WORLD_SETUP } from "../config/brand.js";
 import { agentRun, type AgentRun } from "./run.js";
-import { esc, icon, iconSet, page, stageHtml } from "./ui.js";
+import { AVATAR, esc, icon, iconSet, page, stageHtml } from "./ui.js";
 
 const CSS = `.watch { padding: 26px 0 24px; }
 .whead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 8px; }
@@ -42,7 +42,7 @@ ol.log .meta b { color: var(--text); font-size: 15.5px; }
 ol.log p { margin: 4px 0 0; font-size: 16px; line-height: 1.45; overflow-wrap: anywhere; }
 ol.log p.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 ol.log button.more { border: 0; background: none; padding: 2px 0; font: 650 14px/1.4 Inter, system-ui, sans-serif; color: var(--accent); cursor: pointer; }
-ol.log .res { display: inline-flex; font-size: 14px; font-weight: 750; border-radius: 999px; padding: 2px 9px; }
+ol.log .res { display: inline-flex; font: 650 14px/1.35 Inter, system-ui, sans-serif; border-radius: 999px; padding: 3px 10px; }
 ol.log .res.ok { background: var(--ok-soft); color: var(--ok); } ol.log .res.bad { background: var(--bad-soft); color: var(--bad); } ol.log .res.face { background: var(--accent-soft); color: var(--accent); }
 ol.log .pf { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
 ol.log span.pf { color: var(--muted); }
@@ -74,7 +74,7 @@ const JS = `
     var li = el("li"), head, body = el("div"), meta = el("div", "meta");
     if (e.k === "say" || e.k === "msg") {
       var a = names[e.agent] || { short: e.agent, family: "" };
-      head = el("span", "av " + e.agent, a.short.slice(0, 2));
+      head = el("span", "av " + e.agent); head.appendChild(svg("av-" + e.agent));
       meta.appendChild(el("b", "", a.short));
       if (e.k === "say" && e.model) meta.appendChild(el("span", "model", a.family));
       meta.appendChild(el("span", "", e.k === "msg" ? "message" : e.by === "claude" ? "decided by Claude" : "fallback (code)"));
@@ -82,24 +82,38 @@ const JS = `
       meta.appendChild(el("span", "", time(e.at)));
       body.appendChild(meta); said(body, e.text);
     } else if (e.k === "money") {
-      head = el("span", "ic " + (e.refused ? "bad" : e.rail)); head.appendChild(svg(e.refused ? "ban" : e.rail === "metal" ? "zap" : e.via === "card" ? "credit-card" : "landmark"));
+      var r = e.refused;
+      head = el("span", "ic " + (r ? "bad" : e.rail)); head.appendChild(svg(r ? "ban" : e.rail === "metal" ? "zap" : e.via === "card" ? "credit-card" : "landmark"));
       meta.appendChild(el("b", "", (e.rail === "metal" ? "Metal" : "Airwallex") + " · " + e.via));
-      var res = e.refused ? (e.refused.by === "metal" ? "✕ refused on chain" : e.refused.by === "airwallex" ? "✕ refused by Airwallex: " + e.refused.reason : "✕ refused before signing (Purser)") : e.dir === "in" ? "✓ received" : /refund/i.test(e.what) ? "✓ refunded" : "✓ paid";
-      meta.appendChild(el("span", "res " + (e.refused ? "bad" : "ok"), res));
+      var res = !r ? (e.dir === "in" ? "✓ received" : /refund/i.test(e.what) ? "✓ refunded" : "✓ paid")
+        : r.by === "recorded" ? "✕ Refused · recorded on chain" : r.by === "metal" ? "✕ Refused by Metal" : r.by === "airwallex-sandbox" ? "✕ Not paid · fee not priced" : r.by === "airwallex" ? "✕ Declined by Airwallex" : "✕ Refused before signing";
+      var rp = el("span", "res " + (r ? "bad" : "ok"), res);
+      if (r) rp.title = (r.by === "recorded" ? "Purser refused it before signing; Metal recorded the same refusal on chain" : r.reason) + (r.code ? " (" + r.code + ")" : "");
+      meta.appendChild(rp);
       meta.appendChild(el("span", "", time(e.at)));
       body.appendChild(meta);
       var amt = e.amount ? (e.unit === "EUR" ? "EUR " + e.amount : e.unit === "USD" ? "USD " + e.amount : e.amount + " test USD") + " · " : "";
-      var p = el("p", "", amt + e.what + (e.count > 1 ? " (" + e.count + ")" : "") + " ");
+      var p = el("p", "", amt + e.what + (e.count > 1 ? " (" + e.count + ")" : "") + (r && r.by !== "recorded" ? ": " + r.reason : r ? ": Purser refused it before signing, and Metal recorded the refusal on chain" : "") + " ");
       var pe = proofEl(e.proof); if (pe) p.appendChild(pe);
       body.appendChild(p);
-    } else if (e.k === "face") {
-      var ok = e.status !== "REJECTED";
-      head = el("span", "ic " + (ok ? "face" : "bad")); head.appendChild(svg("scan-face"));
-      meta.appendChild(el("b", "", "CFO · Face ID"));
-      if (e.signers.length > 1) meta.appendChild(el("span", "res face", "1 of " + e.signers.length + " → " + e.signers.length + " of " + e.signers.length + " signatures"));
+    } else if (e.k === "mandate") {
+      head = el("span", "ic metal"); head.appendChild(svg("zap"));
+      meta.appendChild(el("b", "", "Metal · new mandate"));
+      meta.appendChild(el("span", "res ok", "✓ replaced on chain"));
       meta.appendChild(el("span", "", time(e.at)));
       body.appendChild(meta);
-      body.appendChild(el("p", "", (ok ? "Approved " : "Rejected ") + e.id + " · " + e.title + " · signed by " + e.signers.join(" and ") + (e.signers.length > 1 ? " (second approver: labelled test passkey)" : "")));
+      var mp = el("p", "", (names[e.agent] ? names[e.agent].short : e.agent) + " agent: cap " + e.cap + ", budget " + e.budget + " ");
+      mp.appendChild(proofEl(e.proof)); body.appendChild(mp);
+    } else if (e.k === "face") {
+      var rej = e.status === "REJECTED", n = e.signers.length;
+      head = el("span", "ic " + (rej ? "bad" : "face")); head.appendChild(svg("scan-face"));
+      meta.appendChild(el("b", "", "CFO · Face ID"));
+      if (e.status === "COSIGNED") meta.appendChild(el("span", "res face", "1 of 2 signatures"));
+      else if (n > 1) meta.appendChild(el("span", "res face", n + " of " + n + " signatures"));
+      meta.appendChild(el("span", "", time(e.at)));
+      body.appendChild(meta);
+      var fp = el("p", "", e.status === "COSIGNED" ? e.signers[0] + " signed " + e.title.toLowerCase() + "; it waits for the second approver." : (rej ? "Rejected" : "Approved") + " " + e.title.toLowerCase() + " · signed by " + e.signers.join(" and ") + (n > 1 ? " (second approver: labelled test passkey)" : ""));
+      fp.title = e.id; body.appendChild(fp);
     } else {
       head = el("span", "ic " + (e.k === "shield" ? "shield" : "")); head.appendChild(svg(e.k === "shield" ? "shield-check" : "sparkles"));
       meta.appendChild(el("b", "", e.k === "shield" ? "Blocked" : "The world changes")); meta.appendChild(el("span", "", time(e.at))); body.appendChild(meta);
@@ -162,7 +176,7 @@ export function watchPage(run: AgentRun = agentRun()): string {
 </div></main>`;
   return page({
     title: "Watch the agents", description: "A replay of a recorded agent run: each decision in the agent's own words, the money on its rail, the CFO's Face ID.", tab: "watch", css: CSS, body, js: JS,
-    data: { agents: run.agents, events: run.events, scenes: run.scenes.map(({ n, title, start }) => ({ n, title, start })), icons: iconSet(["ban", "zap", "credit-card", "landmark", "scan-face", "shield-check", "sparkles", "play", "pause", "rotate-ccw"]) },
+    data: { agents: run.agents, events: run.events, scenes: run.scenes.map(({ n, title, start }) => ({ n, title, start })), icons: { ...iconSet(["ban", "zap", "credit-card", "landmark", "scan-face", "shield-check", "sparkles", "play", "pause", "rotate-ccw"]), ...Object.fromEntries(Object.entries(AVATAR).map(([id, name]) => [`av-${id}`, icon(name, 18)])) } },
     source: `Source: ${run.file} (${run.name}).`,
   });
 }

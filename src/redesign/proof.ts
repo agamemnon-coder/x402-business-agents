@@ -38,6 +38,7 @@ ul.pl { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; 
 ul.pl li { font-size: 15.5px; line-height: 1.45; border-left: 3px solid var(--border); padding-left: 11px; overflow-wrap: anywhere; }
 ul.pl li.no { border-left-color: var(--bad); } ul.pl li.ok { border-left-color: var(--ok); } ul.pl li.face { border-left-color: var(--accent); }
 ul.pl small { display: block; color: var(--faint); font-size: 14px; }
+abbr[title] { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 14.5px; }
 .claim { margin: 0; font-size: 16px; line-height: 1.5; border-left: 4px solid var(--accent); padding: 4px 0 4px 12px; }
 .open { font-size: 15px; font-weight: 650; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-top: auto; }
@@ -50,22 +51,44 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 
 const JS = `(function () { var h = location.hash.slice(1); if (!h) return; var t = document.getElementById(h); if (!t) return; t.querySelectorAll("details").forEach(function (d) { d.open = true; }); })();`;
 
+/** Plain words, with the raw code (a refusal code, a proposal id, a run id) kept in a tooltip. */
+const CODES: [RegExp, (m: RegExpExecArray) => string][] = [
+  [/\bmandate_cap_exceeded\b:?/, () => "over the mandate's cap"], [/\bmandate_revoked\b/, () => "old mandate revoked"], [/\bfee_unknown\b/, () => "fee could not be priced"],
+  [/\bLIMIT_EXCEEDED\b/, () => "over the card's limit"], [/\bMERCHANT_CATEGORY_NOT_ALLOWED\b/, () => "wrong kind of shop"], [/\bP-0*(\d+)\b/, (m) => `proposal ${m[1]}`], [/\bAutonomous dry run dry-\d+\b|\bdry-\d+\b/, () => "an earlier dry run"],
+];
+export function plain(text: string): string {
+  let out = "", rest = text;
+  for (;;) {
+    let best: { i: number; m: RegExpExecArray; f: (m: RegExpExecArray) => string } | null = null;
+    for (const [re, f] of CODES) { const m = re.exec(rest); if (m && (!best || m.index < best.i)) best = { i: m.index, m, f }; }
+    if (!best) return out + esc(rest);
+    out += `${esc(rest.slice(0, best.i))}<abbr title="${esc(best.m[0].replace(/:$/, ""))}">${esc(best.f(best.m))}</abbr>`;
+    rest = rest.slice(best.i + best.m[0].length);
+  }
+}
 const li = (text: string, tone = "", link?: { label: string; href: string | null } | null, sub?: string) =>
-  `<li class="${tone}">${esc(text)}${link ? ` ${link.href ? `<a class="pf" href="${esc(link.href)}" target="_blank" rel="noopener">${esc(link.label)} ↗</a>` : `<small>${esc(link.label)}</small>`}` : ""}${sub ? `<small>${esc(sub)}</small>` : ""}</li>`;
+  `<li class="${tone}">${plain(text)}${link ? ` ${link.href ? `<a class="pf" href="${esc(link.href)}" target="_blank" rel="noopener">${esc(link.label)} ↗</a>` : `<small>${plain(link.label)}</small>`}` : ""}${sub ? `<small>${plain(sub)}</small>` : ""}</li>`;
+const money2 = (e: { amount: string; unit: string }) => e.unit === "EUR" ? `EUR ${e.amount}` : `${e.amount} test USD`;
 const fold = (summary: string, items: string[], open = false) => items.length ? `<details class="fold"${open ? " open" : ""}><summary>${esc(summary)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
 
 function partnerCards(run: AgentRun): string {
   const s = run.record.snapshot;
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
+  const tap = tapRun();
+  const mandates = run.events.filter((e): e is Extract<Ev, { k: "mandate" }> => e.k === "mandate");
   const metal = [
-    ...money.filter((e) => e.refused?.by === "metal").map((e) => li(`Refused on chain: ${e.label} (${e.refused!.reason})`, "no", e.proof)),
-    ...s.rails.metal.map((r) => li(`${r.what}: ${r.detail}`, "", r.proof)),
+    ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`Refused · recorded on chain: ${e.amount} test USD to ${e.what}, ${e.refused!.code ?? ""}. Purser refused it before signing; Metal recorded the same refusal on chain`, "no", e.proof)),
+    ...money.filter((e) => e.refused?.by === "metal").map((e) => li(`Refused by Metal: ${e.what}, ${e.refused!.reason}; nothing moved`, "no", e.proof.href ? e.proof : null)),
+    ...mandates.map((m) => li(`New mandate on chain after two signatures: ${m.agent[0]!.toUpperCase()}${m.agent.slice(1)} agent, cap ${m.cap}, budget ${m.budget}`, "ok", m.proof)),
+    // The dashboard's own "refused" line counts Purser's buy-policy holds with the cap refusals; the line above is exact.
+    ...s.rails.metal.filter((r) => !/^Refused|^Mandate replaced/.test(r.what)).map((r) => li(`${r.what}: ${r.detail}`, "", r.proof)),
   ];
+  const tapDecline = tap?.steps.find((x) => !x.approved);
   const awx = [
     ...s.rails.airwallex.map((r) => li(`${r.what}: ${r.detail}`, "", r.proof)),
-    ...money.filter((e) => e.rail === "airwallex" && e.refused).map((e) => li(`${e.label}: Airwallex refused (${e.refused!.reason})`, "no", e.proof)),
+    ...(tapDecline ? [li(`The limit, enforced by Airwallex (${tap!.label}): EUR ${tapDecline.amount} declined, ${tapDecline.reason ?? ""}`, "no", { label: `Airwallex ${tapDecline.txId.slice(0, 8)}… · read back with GET: ${tapDecline.getStatus}`, href: null })] : []),
+    ...money.filter((e) => e.rail === "airwallex" && e.refused?.by === "airwallex-sandbox").map((e) => li(`Not a limit: ${money2(e)} ${e.what} was approved with Face ID, but ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", null)),
   ];
-  const tap = tapRun();
   const visa = tap ? tap.steps.map((x) => li(
     `${x.model ? `The Sourcing agent (${family(x.model)}) picked the card rail` : "Code tried one purchase over the card's limit"}: Visa's reference proxy answered ${x.proxyStatus}, our layer verified both signatures (${x.sig1}, ${x.sig2}); the Airwallex card (brand as Airwallex returns it: ${x.brand}) was ${x.approved ? "approved" : `declined by Airwallex (${x.reason})`}, EUR ${x.amount}`,
     x.approved ? "ok" : "no", { label: `Airwallex ${x.txId.slice(0, 8)}… · read back with GET: ${x.getStatus}`, href: null })) : [];
@@ -74,7 +97,7 @@ function partnerCards(run: AgentRun): string {
     `<article class="pcard card" id="${id}"><div class="ph">${logo}<h3>${esc(name)}</h3></div><p class="what">${esc(what)}</p><p class="why">${esc(why)}</p>${extra}<div class="lbl">${esc(label)}</div>${fold("Show the live proof", items)}<a class="open" href="${esc(open)}">Open proof ${icon("arrow-right", 14)}</a></article>`;
   return `<div class="partners">
 ${card("metal", '<span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>', "Metal", "Each agent's limits are a mandate on chain; payments per query over x402; refusals recorded on chain.", "A limit the agent cannot talk past: Metal checks every payment against the mandate.", run.label, metal, "metal")}
-${card("airwallex", '<span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>', "Airwallex", "A company card per agent with its limits on the card; FX; SWIFT; earnings booked once final.", "The bank enforces the card's limits and says no on its own, as it did to the licence transfer.", run.label, awx, "airwallex")}
+${card("airwallex", '<span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>', "Airwallex", "A company card per agent with its limits on the card; FX; SWIFT; earnings booked once final.", "The bank enforces each card's limits itself: over a limit, Airwallex declines, whatever the agent does.", run.label, awx, "airwallex")}
 ${tap ? card("visa", '<span class="logo txt">Visa TAP</span>', "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex Visa card pays.", "The merchant knows which agent is paying, and the card's limits still hold.", tap.label, visa, "visa", `<p class="claim">${esc(VISA_CLAIM)}</p>`) : ""}
 ${card("claude", '<span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>', "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, "The world changes in words; Claude reads it and decides inside the limits, and says why.", run.label, claude, "claude")}
 </div>`;
@@ -85,12 +108,15 @@ function moreCards(run: AgentRun): string {
   const s = r.snapshot;
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
   const faces = run.events.filter((e): e is Extract<Ev, { k: "face" }> => e.k === "face");
+  const tap = tapRun();
   const stopItems = [
-    ...money.filter((e) => e.refused?.by === "metal").map((e) => li(`On chain (Metal): ${e.refused!.reason}`, "no", e.proof)),
-    ...money.filter((e) => e.refused?.by === "airwallex").map((e) => li(`By Airwallex: ${e.what}, ${e.refused!.reason}`, "no", e.proof)),
+    ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`By Metal: ${e.amount} test USD over the mandate's cap; Purser refused it before signing and Metal recorded the same refusal on chain`, "no", e.proof)),
+    ...money.filter((e) => e.refused?.by === "metal").map((e) => li(`By Metal: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", e.proof.href ? e.proof : null)),
     ...faces.filter((f) => f.status === "REJECTED").map((f) => li(`By the CFO with Face ID: ${f.id} · ${f.title} rejected`, "no")),
+    ...(tap?.steps.filter((x) => !x.approved).map((x) => li(`By Airwallex, ${tap.label}: EUR ${x.amount} over the card's limit (${x.reason ?? ""})`, "no")) ?? []),
+    ...money.filter((e) => e.refused?.by === "airwallex-sandbox").map((e) => li(`Not counted, not a limit: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "")),
   ];
-  const faceItems = faces.map((f) => li(`${f.id} · ${f.title}: ${f.status === "REJECTED" ? "rejected" : "approved"} by ${f.signers.join(" and ")}${f.status === "FAILED" ? " (then refused by Airwallex: nothing paid)" : ""}`, "face", null, f.signers.length > 1 ? SECOND_APPROVER : undefined));
+  const faceItems = faces.map((f) => li(`${f.id} · ${f.title}: ${f.status === "COSIGNED" ? `1 of 2 signatures, by ${f.signers[0]}` : `${f.status === "REJECTED" ? "rejected" : "approved"} by ${f.signers.join(" and ")}${f.signers.length > 1 ? ` (${f.signers.length} of ${f.signers.length} signatures)` : ""}`}`, "face", null, f.signers.length > 1 ? SECOND_APPROVER : undefined));
   // The variation test (stand-in rails, Haiku) and the switch the Sourcing agent chose in a world where Ridgeline was online.
   const v = readJson<{ ran_at: string; summary: { runs: number; by_claude: number; unsafe: number; distinct_choices_same_world: number } }>("docs/evals/autonomy-variation.json");
   const rt = readJson<{ ran_at: string; summary: { runs: number; held: number } }>("docs/evals/autonomy-redteam.json");
@@ -101,12 +127,12 @@ function moreCards(run: AgentRun): string {
   const checked = t ? new Set(t.steps.filter((x) => x.tool === "verify_order").map((x) => JSON.stringify(x.input))).size : 0;
   const refunded = money.filter((e) => e.agent === "support" && /refund/i.test(e.what) && !e.refused).length;
   const d = (iso: string) => iso.slice(0, 10);
-  const box = (id: string, h: string, p: string, inner: string, link?: [string, string]) => `<div class="card" id="${id}"><h3>${esc(h)}</h3><p>${esc(p)}</p>${inner}${link ? `<a class="open" href="${esc(link[1])}">${esc(link[0])} ${icon("arrow-right", 14)}</a>` : ""}</div>`;
+  const box = (id: string, h: string, p: string, inner: string, link?: [string, string]) => `<div class="card" id="${id}"><h3>${esc(h)}</h3><p>${plain(p)}</p>${inner}${link ? `<a class="open" href="${esc(link[1])}">${esc(link[0])} ${icon("arrow-right", 14)}</a>` : ""}</div>`;
   return `<div class="more">
-${box("stops", "Who stopped what", `${run.label}.`, fold("Show each one", stopItems, false))}
+${box("stops", "Who stopped what", `At a limit: Metal and the CFO in ${runName(r)}; Airwallex at the card's limit in the TAP run. The licence's fee_unknown is not a limit and is not counted.`, fold("Show each one", stopItems, false))}
 ${box("faceid", "Face ID decisions", `${faces.length} decisions signed on the CFO's phone. ${SECOND_APPROVER}`, fold("Show each one", faceItems))}
 ${box("dispute", "Dispute desk", `${checked} disputed · ${checked - refunded} proven valid · ${refunded} wrong data, refunded (${runName(r)}).`, "", ["Watch the dispute", "watch?scene=2"])}
-${box("variation", "Variation test: real choices", `${v.summary.by_claude} of ${v.summary.runs} decided by Claude, ${v.summary.unsafe} unsafe, ${v.summary.distinct_choices_same_world} different choices in the same world (stand-in rails, Haiku, ${d(v.ran_at)}).`, sw ? fold(`Another world: ${runName(dry)}, Ridgeline online`, [li(sw.text, "ok", null, `${runName(dry)}, ${d(dry.recorded_at)}: the Sourcing agent switched supplier instead`)]) : "")}
+${box("variation", "Variation test: real choices", `${v.summary.by_claude} of ${v.summary.runs} decided by Claude, ${v.summary.unsafe} unsafe, ${v.summary.distinct_choices_same_world} different choices in the same world (stand-in rails, Haiku, ${d(v.ran_at)}).`, sw ? fold(`Another world, Ridgeline online: ${runName(dry)}`, [li(sw.text, "ok", null, `${runName(dry)}, ${d(dry.recorded_at)}: the Sourcing agent switched supplier instead`)]) : "")}
 ${box("redteam", "Red team", `${red.blocked} of ${red.attempts} attacks failed (${d(red.ran_at)}, test world${red.caught_after ? `; ${red.caught_after} found afterwards, not prevented` : ""}). Against the agent loop: ${rt.summary.held} of ${rt.summary.runs} held (${d(rt.ran_at)}).`, "")}
 ${box("health", "System health", `${s.audit.rows} audit rows in ${runName(r)}, hash chain ${s.audit.intact ? "intact" : "broken"}.`, "")}
 ${box("dashboard", "The CFO dashboard of the run", "As the CFO saw it at the end of the run, with Books and the agents' limits.", "", ["Open the dashboard", "./?autonomy"])}

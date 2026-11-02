@@ -12,7 +12,10 @@ const CSS = `.hero { padding: 24px 0 44px; }
 .hero .copy { grid-area: copy; } .hero .show { grid-area: stage; min-width: 0; } .hero .act { grid-area: act; }
 @media (min-width: 980px) { .hero { padding: 60px 0 76px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 600px); grid-template-areas: "copy stage" "act stage"; gap: 0 52px; align-items: center; } .hero .copy { align-self: end; } .hero .act { align-self: start; } }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-.badges .pill.kit { background: var(--text); color: var(--bg); font-size: 14px; white-space: normal; }
+.badges .pill.kit { background: var(--text); color: var(--bg); white-space: nowrap; }
+.badges .pill.kit.award { background: var(--accent-soft); color: var(--accent); }
+.swipe { display: none; font-size: 15px; color: var(--muted); margin: -12px 0 14px; align-items: center; gap: 6px; }
+@media (max-width: 899px) { .swipe { display: flex; } }
 .hero .lead { margin-top: 16px; max-width: 34em; }
 .ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
 .ctas .btn { height: 52px; }
@@ -46,7 +49,7 @@ section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 @keyframes bar { 0%, 10% { height: calc(var(--h0) * 1%); background: var(--ok); } 26%, 70% { height: calc(var(--h1) * 1%); background: var(--bad); } 80%, 100% { height: calc(var(--h1) * 1%); background: var(--ok); } }
 .m-price .bar em { position: absolute; bottom: -26px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 14px; font-weight: 650; color: var(--muted); white-space: nowrap; }
 .m-price .bar b { position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 14px; color: #fff; }
-.m-price .tag { position: absolute; right: 12px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 750; border-radius: 999px; padding: 4px 10px; opacity: 0; white-space: nowrap; }
+.m-price .tag { position: absolute; right: 12px; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 750; border-radius: 999px; padding: 4px 10px; opacity: 0; white-space: normal; max-width: calc(100% - 160px); }
 .m-price .t1 { top: 34px; color: var(--bad); background: var(--bad-soft); animation: t1 6s infinite; }
 .m-price .t2 { top: 80px; color: var(--accent); background: var(--accent-soft); animation: t2 6s infinite; }
 .m-price .t3 { top: 126px; color: var(--ok); background: var(--ok-soft); animation: t3 6s infinite; }
@@ -93,21 +96,24 @@ export function heroMoments(run: AgentRun): number[] {
   const out: number[] = [];
   const add = (i: number) => { if (i >= 0 && !out.includes(i)) out.push(i); };
   if (s1) {
-    const chain = ev.findIndex((e, i) => i >= s1.start && e.k === "money" && e.refused?.by === "metal" && !!e.proof.href);
+    const chain = ev.findIndex((e, i) => i >= s1.start && e.k === "money" && (e.refused?.by === "recorded" || e.refused?.by === "metal") && !!e.proof.href);
     add(chain);
     add(ev.findIndex((e, i) => i > chain && e.k === "world" && /asks \d/.test(e.text)));
     add(ev.findIndex((e, i) => i > chain && e.k === "msg" && e.agent === "sourcing"));
     add(ev.findIndex((e, i) => i > chain && e.k === "say" && e.agent === "treasury" && e.tools.some((t) => /rebalance/.test(t))));
+    // Four eyes as it happened: the first signature (1 of 2), the second (2 of 2), then the mandates replaced on chain.
+    add(ev.findIndex((e, i) => i > chain && e.k === "face" && e.status === "COSIGNED"));
     const sig = ev.findIndex((e, i) => i > chain && e.k === "face" && e.signers.length > 1);
     add(sig);
-    add(ev.findIndex((e, i) => i > sig && e.k === "world" && /replaced/.test(e.text)));
+    const rep = ev.findIndex((e, i) => i > sig && e.k === "mandate" && e.agent === "sourcing");
+    add(rep >= 0 ? rep : ev.findIndex((e, i) => i > sig && e.k === "world" && /replaced/.test(e.text)));
     add(ev.findIndex((e, i) => i > sig && e.k === "money" && e.agent === "sourcing" && !e.refused));
   }
   for (const s of run.scenes.filter((x) => x.n !== 1)) {
     const end = run.scenes.find((x) => x.n === s.n + 1)?.start ?? ev.length;
     ev.forEach((e, i) => {
       if (i < s.start || i >= end) return;
-      const key = e.k === "world" || e.k === "face" || e.k === "shield" || (e.k === "say" && e.tools.some((t) => /settle|sweep|plan_invoice/.test(t))) || (e.k === "money" && e.agent !== null);
+      const key = e.k === "world" || e.k === "face" || e.k === "shield" || e.k === "mandate" || (e.k === "say" && e.tools.some((t) => /settle|sweep|plan_invoice/.test(t))) || (e.k === "money" && e.agent !== null);
       if (key && !(e.k === "money" && e.agent === "support" && out.some((j) => { const p = ev[j]!; return p.k === "money" && p.agent === "support"; }))) add(i);
     });
   }
@@ -122,7 +128,7 @@ function mini(m: Mini | null): string {
     return `<div class="mini m-price" aria-hidden="true"><div class="plot">
 <div class="cap" data-vars="--c0:${pct(m.cap)};--c1:${pct(m.newCap ?? m.cap)}"><span data-a="cap ${esc(m.cap)}" data-b="cap ${esc(m.newCap ?? m.cap)}"></span></div>
 <div class="bar" data-vars="--h0:${pct(m.old ?? m.cap)};--h1:${pct(m.price)}"><b>${esc(m.price)}</b><em>${esc(m.from)}</em></div></div>
-${m.tx ? `<span class="tag t1">${icon("ban", 14)} Refused on chain</span>` : ""}
+${m.tx ? `<span class="tag t1">${icon("ban", 14)} Refused · recorded on chain</span>` : ""}
 ${m.signers > 1 ? `<span class="tag t2">${icon("scan-face", 14)} ${m.signers} of ${m.signers} signatures</span>` : ""}
 ${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.price)}</span>` : ""}</div>`;
   }
@@ -168,7 +174,7 @@ export function homePage(run: AgentRun = agentRun()): string {
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="copy">
-    <div class="badges"><span class="pill kit">${esc(KIT_LINE)}</span></div>
+    <div class="badges">${KIT_LINE.split(/ · (?=entered for)/).map((x, i) => `<span class="pill kit${i ? " award" : ""}">${esc(x)}</span>`).join("")}</div>
     <h1 class="h-hero">AI agents that run a business. Limits they can't break.</h1>
     <p class="lead">${esc(CORE_SENTENCE)}</p>
   </div>
@@ -180,6 +186,7 @@ export function homePage(run: AgentRun = agentRun()): string {
 </div></section>
 <section class="band" aria-labelledby="h-scenes"><div class="wrap">
   <div class="sechead"><h2 class="h-sec" id="h-scenes">Three moments from the run</h2></div>
+  <p class="swipe" aria-hidden="true">Swipe for all three ${icon("arrow-right", 15)}</p>
   <div class="scenes">${run.scenes.map(sceneCard).join("")}</div>
 </div></section>
 <section class="band" aria-labelledby="h-proof"><div class="wrap">

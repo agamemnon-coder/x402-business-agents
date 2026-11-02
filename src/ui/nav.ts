@@ -34,9 +34,9 @@ const MARK = '<span class="mark"><svg viewBox="0 0 24 24" width="16" height="16"
 
 /** One header for every page (design review, 1 Nov): the same height, gutter, brand and order, whatever each page's own
  *  stylesheet said; it wins by selector weight (header.top), so each page keeps its own extra chips and buttons. */
-export const TOP_CSS = `header.top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; min-height: 64px; height: auto; padding: 10px max(24px, calc((100% - 1200px) / 2)); background: var(--surface, var(--panel, #fff)); border-bottom: 1px solid var(--border, var(--line, rgba(127,127,127,.25))); }
-header.top .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 16px/1 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: var(--text, #0b1220); text-decoration: none; white-space: nowrap; }
-header.top .brand .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent, #4f46e5); color: #fff; display: inline-grid; place-items: center; flex: none; }
+export const TOP_CSS = `header.top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; min-height: 64px; height: auto; padding: 10px max(32px, calc((100% - 1200px) / 2 + 32px)); background: var(--bg, var(--surface, #fff)); border-bottom: 1px solid var(--border, var(--line, rgba(127,127,127,.25))); }
+header.top .brand { display: inline-flex; align-items: center; gap: 9px; font: 750 18px/1 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: var(--text, #0b1220); text-decoration: none; white-space: nowrap; }
+header.top .brand .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--text, #0b1220); color: var(--bg, #fff); display: inline-grid; place-items: center; flex: none; }
 header.top .brand .mark svg { width: 16px; height: 16px; }
 header.top nav.pnav { margin-left: auto; width: auto; }
 @media (max-width: 900px) { header.top { padding: 10px 16px; gap: 6px 10px; } }`;

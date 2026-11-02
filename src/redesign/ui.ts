@@ -11,6 +11,8 @@ const EXTRA: Record<string, Icon> = {
   mail: [["rect", { width: "20", height: "16", x: "2", y: "4", rx: "2" }], ["path", { d: "m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" }]],
   coins: [["circle", { cx: "8", cy: "8", r: "6" }], ["path", { d: "M18.09 10.37A6 6 0 1 1 10.34 18" }], ["path", { d: "M7 6h1v4" }]],
   pause: [["rect", { x: "14", y: "4", width: "4", height: "16", rx: "1" }], ["rect", { x: "6", y: "4", width: "4", height: "16", rx: "1" }]],
+  package: [["path", { d: "M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" }], ["path", { d: "M12 22V12" }], ["path", { d: "m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7" }]],
+  headphones: [["path", { d: "M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" }]],
   "rotate-ccw": [["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }], ["path", { d: "M3 3v5h5" }]],
 };
 
@@ -80,78 +82,79 @@ h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .btn { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 999px; font: 650 16px/1 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; }
 .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
 .btn:focus-visible, a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 650; padding: 5px 11px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
 .pill.run { background: var(--accent-soft); color: var(--accent); white-space: normal; }
-.model { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 700; color: var(--claude); background: var(--claude-soft); border-radius: 999px; padding: 2px 8px; }
-.model::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--claude); }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
 /* Agent avatar. */
-.av { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 750; font-size: 15px; flex: none; }
+.av { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none; }
+.av .i { width: 22px; height: 22px; }
 .av.sourcing { background: var(--a-sourcing); } .av.support { background: var(--a-support); } .av.treasury { background: var(--a-treasury); }
-/* The stage: three agents, two rails, the CFO's phone. Text at least 14 px, so it reads in a 1080p video. */
-.stage { position: relative; padding: 18px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 128px; grid-template-areas: "world world" "agents agents" "bubble bubble" "rails phone"; overflow: hidden; }
-.st-world { grid-area: world; display: flex; align-items: center; gap: 8px; min-height: 34px; font-size: 15.5px; font-weight: 600; color: var(--muted); min-width: 0; }
-.st-world .tag { font-size: 14px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; background: var(--sunken); color: var(--faint); border-radius: 6px; padding: 3px 8px; flex: none; }
-.st-world .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.st-world.shield .tag { background: var(--ok-soft); color: var(--ok); }
+/* The stage: three agents, two rails, the CFO's phone, all showing the same step. Text at least 14 px (1080p video). */
+.stage { position: relative; padding: 18px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 132px; grid-template-areas: "world world" "agents agents" "bubble bubble" "rails phone"; overflow: hidden; }
+.st-world { grid-area: world; display: flex; align-items: flex-start; gap: 8px; min-height: 34px; font-size: 15.5px; font-weight: 600; color: var(--muted); min-width: 0; }
+.st-world .tag { flex: none; }
+.st-world .txt { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding-top: 2px; }
 .st-agents { grid-area: agents; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.ag { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 10px 4px; border-radius: 16px; transition: background .3s, transform .3s; }
+.ag { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 10px 4px; border-radius: 16px; transition: background .3s, transform .3s, opacity .3s; }
 .ag .nm { font-weight: 700; font-size: 15.5px; line-height: 1.2; }
 .ag.on { background: var(--sunken); transform: translateY(-2px); }
-.ag.on .av { box-shadow: 0 0 0 4px var(--surface), 0 0 0 7px color-mix(in srgb, var(--claude) 55%, transparent); }
+.stage.focus .ag:not(.on) { opacity: .55; }
+.ag.on .av { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text); }
 .st-bubble { grid-area: bubble; position: relative; min-height: 104px; background: var(--sunken); border-radius: 16px; padding: 12px 14px; font-size: 16.5px; line-height: 1.45; --cx: 50%; }
-.st-bubble::before { content: ""; position: absolute; top: -8px; left: calc(var(--cx) - 8px); border: 8px solid transparent; border-top: 0; border-bottom-color: var(--sunken); transition: left .35s; }
+.st-bubble::before { content: ""; position: absolute; top: -8px; left: calc(var(--cx) - 8px); border: 8px solid transparent; border-top: 0; border-bottom-color: var(--sunken); transition: left .35s, opacity .2s; }
+.st-bubble.noone::before { opacity: 0; }
 .st-bubble .who { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
-.tool { font: 600 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0 6px; }
 .st-bubble .say { margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.st-bubble .say::before { content: "“"; } .st-bubble .say::after { content: "”"; }
-.st-bubble.idle .say::before, .st-bubble.idle .say::after { content: none; }
+.st-bubble.quote .say::before { content: "“"; } .st-bubble.quote .say::after { content: "”"; }
 .st-bubble.idle { color: var(--faint); }
 .dots { display: inline-flex; gap: 4px; } .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); animation: blink 1s infinite; } .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes blink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 .st-rails { grid-area: rails; display: grid; gap: 14px; align-content: center; min-width: 0; }
-.lane { display: grid; gap: 6px; }
-.lane .ln { display: flex; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 750; min-height: 22px; }
-.lane .ln small { font-weight: 550; color: var(--faint); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lane { display: grid; gap: 6px; transition: opacity .3s; }
+.lane.past { opacity: .4; }
+.lane .ln { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 750; min-height: 26px; min-width: 0; }
+.lane .ln small { font-weight: 550; color: var(--faint); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .lane.metal .ln { color: var(--metal); } .lane.awx .ln { color: var(--awx); }
+.lane .verdict { margin-left: auto; flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+.lane .verdict:empty { display: none; }
 .track { position: relative; height: 40px; border-radius: 999px; background: var(--sunken); }
 .track::before { content: ""; position: absolute; left: 14px; right: 14px; top: 50%; height: 2px; margin-top: -1px; background-image: linear-gradient(90deg, color-mix(in srgb, var(--text) 18%, transparent) 50%, transparent 0); background-size: 10px 2px; }
 .lane.metal .track { background: var(--metal-soft); } .lane.awx .track { background: var(--awx-soft); }
-.coin { position: absolute; top: 6px; left: 6px; height: 28px; min-width: 28px; padding: 0 11px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font: 750 14px/1 Inter, system-ui, sans-serif; color: #fff; white-space: nowrap; box-shadow: 0 4px 10px -2px rgba(0,0,0,.25); }
+.coin { position: absolute; top: 6px; left: 6px; height: 28px; min-width: 28px; padding: 0 11px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font: 700 14px/1 Inter, system-ui, sans-serif; color: #fff; white-space: nowrap; box-shadow: 0 3px 8px -2px rgba(0,0,0,.25); }
 .lane.metal .coin { background: var(--metal); } .lane.awx .coin { background: var(--awx); }
-.lane.metal .coin { color: #fff; } :root[data-theme="dark"] .lane .coin, .dk .lane .coin { color: #0b1220; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lane .coin { color: #04130f; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lane .coin { color: #06121a; } }
+:root[data-theme="dark"] .lane .coin { color: #06121a; }
 .coin.bad { background: var(--bad) !important; color: #fff !important; }
-.coin.ghost { opacity: .55; }
-.wall { position: absolute; top: -5px; bottom: -5px; left: 50%; width: 5px; border-radius: 4px; background: var(--bad); opacity: 0; transition: opacity .2s; }
-.wall.on { opacity: 1; box-shadow: 0 0 0 4px color-mix(in srgb, var(--bad) 22%, transparent); }
-.verdict { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 750; padding: 3px 10px; border-radius: 999px; opacity: 0; transition: opacity .25s; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
-.verdict.ok { background: var(--ok-soft); color: var(--ok); opacity: 1; }
-.verdict.bad { background: var(--bad-soft); color: var(--bad); opacity: 1; left: calc(50% + 12px); right: auto; max-width: calc(50% - 18px); }
-.verdict.next { background: var(--surface); color: var(--faint); opacity: 1; }
+.coin.ghost { opacity: .5; }
+.wall { position: absolute; top: -5px; bottom: -5px; left: 58%; width: 5px; border-radius: 4px; background: var(--bad); opacity: 0; transition: opacity .2s; }
+.wall.on { opacity: 1; }
+/* One pill style everywhere: rounded, 14 px, a soft ground and its own colour. */
+.pill, .model, .tool, .verdict, .tag, .sig { display: inline-flex; align-items: center; gap: 5px; font: 650 14px/1.35 Inter, system-ui, sans-serif; padding: 3px 10px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
+.model { color: var(--claude); background: var(--claude-soft); }
+.tool { background: var(--surface); border: 1px solid var(--border); padding: 2px 9px; }
+.tag { text-transform: none; letter-spacing: 0; color: var(--faint); }
+.verdict.ok { background: var(--ok-soft); color: var(--ok); } .verdict.bad { background: var(--bad-soft); color: var(--bad); } .verdict.next { background: var(--surface); color: var(--faint); }
 a.verdict:hover { text-decoration: underline; }
-.st-phone { grid-area: phone; align-self: end; justify-self: end; width: 124px; height: auto; min-height: 210px; border-radius: 24px; border: 3px solid var(--text); background: var(--surface); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center; padding: 18px 7px 10px; transition: box-shadow .3s; }
-.st-phone::before { content: ""; position: absolute; top: 7px; width: 30px; height: 5px; border-radius: 5px; background: var(--text); opacity: .8; }
-.st-phone .fid { color: var(--faint); transition: color .3s, transform .3s; }
-.st-phone b { font-size: 14.5px; line-height: 1.2; }
+.st-world.shield .tag { background: var(--ok-soft); color: var(--ok); }
+/* The CFO's phone: a light frame that lights only for its own step. */
+.st-phone { grid-area: phone; align-self: end; justify-self: end; width: 128px; min-height: 212px; border-radius: 26px; border: 2px solid var(--border); background: var(--surface); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 20px 8px 12px; transition: border-color .3s, background .3s; }
+.st-phone::before { content: ""; position: absolute; top: 8px; width: 30px; height: 5px; border-radius: 5px; background: var(--border); }
+.st-phone .fid { color: var(--faint); transition: color .3s; }
+.st-phone b { font-size: 15px; line-height: 1.2; }
 .st-phone small { font-size: 14px; color: var(--muted); line-height: 1.25; }
-.st-phone .sig { display: none; font-size: 14px; font-weight: 750; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; }
-.st-phone .sig.on { display: inline-block; }
-.st-phone .who2 { display: none; font-size: 14px; color: var(--faint); line-height: 1.2; }
+.st-phone .sig { display: none; background: var(--accent-soft); color: var(--accent); white-space: normal; text-align: center; justify-content: center; }
+.st-phone .sig.on { display: inline-flex; }
+.st-phone .who2 { display: none; font-size: 14px; color: var(--faint); line-height: 1.25; }
 .st-phone .who2.on { display: block; }
-.st-phone.lit { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 35%, transparent), 0 10px 30px -6px color-mix(in srgb, var(--accent) 60%, transparent); }
-.st-phone.lit .fid { color: var(--accent); transform: scale(1.12); }
-.st-phone.lit.no .fid { color: var(--bad); }
-.stage .note4 { grid-column: 1 / -1; font-size: 14px; color: var(--faint); margin: -4px 0 0; }
+.st-phone.lit { border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
+.st-phone.lit .fid { color: var(--accent); }
+.st-phone.lit.no { border-color: var(--bad); } .st-phone.lit.no .fid { color: var(--bad); }
 @media (max-width: 640px) {
   .stage { padding: 14px; gap: 12px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "world" "agents" "bubble" "rails" "phone"; }
-  .st-phone { width: 100%; min-height: 0; height: auto; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 6px 10px; padding: 10px 14px; border-radius: 16px; border-width: 2px; text-align: left; }
+  .st-phone { width: 100%; min-height: 0; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 6px 10px; padding: 10px 14px; border-radius: 16px; text-align: left; }
   .st-phone::before { display: none; }
-  .st-phone .fid { width: 26px; height: 26px; }
-  .ag { padding: 8px 2px; } .ag .nm { font-size: 14.5px; } .av { width: 40px; height: 40px; font-size: 14px; }
+  .ag { padding: 8px 2px; } .ag .nm { font-size: 14.5px; } .av { width: 40px; height: 40px; }
   .st-bubble { font-size: 15.5px; min-height: 112px; }
   .lane .ln small { display: none; }
-  .verdict.bad { top: -27px; left: auto; right: 0; transform: none; max-width: 70%; }
 }
 /* Number tile. */
 .tile { display: flex; flex-direction: column; gap: 4px; padding: 22px; text-decoration: none; transition: transform .2s, border-color .2s; }
@@ -167,7 +170,8 @@ footer.foot { padding: 40px 0 56px; color: var(--faint); font-size: 14.5px; }
 footer.foot .wrap { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
 details.real { position: relative; }
 details.real > summary { list-style: none; cursor: pointer; } details.real > summary::-webkit-details-marker { display: none; }
-details.real .pop { position: absolute; bottom: calc(100% + 10px); left: 0; width: min(420px, calc(100vw - 32px)); padding: 16px 18px; font-size: 15px; color: var(--text); z-index: 30; }
+details.real { flex-basis: 100%; }
+details.real .pop { margin-top: 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
 
@@ -186,24 +190,28 @@ export function footer(source: string): string {
 <li>${esc(source)}</li></ul></div></details><span>Built for the Airwallex Agentic Banking Hackathon</span></div></footer>`;
 }
 
+/** Each agent's avatar: an icon for its job (Sourcing buys, Support answers, Treasury holds the money). */
+export const AVATAR: Record<string, string> = { sourcing: "package", support: "headphones", treasury: "landmark" };
+export const avatarHtml = (id: string, size = 22) => `<span class="av ${esc(id)}" aria-hidden="true">${icon(AVATAR[id] ?? "bot", size)}</span>`;
+
 /** The stage's markup; the script below plays events on it. */
 export function stageHtml(agents: { id: string; short: string; family: string }[], start: string): string {
-  const initials = (s: string) => s.slice(0, 2);
   return `<div class="stage card" data-stage role="group" aria-label="The agents at work, replayed from the recorded run">
 <div class="st-world" aria-live="polite"><span class="tag">World</span><span class="txt">${esc(start)}</span></div>
-<div class="st-agents">${agents.map((a) => `<div class="ag" data-agent="${esc(a.id)}"><span class="av ${esc(a.id)}" aria-hidden="true">${esc(initials(a.short))}</span><span class="nm">${esc(a.short)}</span><span class="model">${esc(a.family)}</span></div>`).join("")}</div>
-<div class="st-bubble idle" aria-live="polite"><div class="who"></div><p class="say">The agents wait for the world to change.</p></div>
+<div class="st-agents">${agents.map((a) => `<div class="ag" data-agent="${esc(a.id)}">${avatarHtml(a.id)}<span class="nm">${esc(a.short)}</span><span class="model">${esc(a.family)}</span></div>`).join("")}</div>
+<div class="st-bubble idle noone" aria-live="polite"><div class="who"></div><p class="say">The agents wait for the world to change.</p></div>
 <div class="st-rails">
-  <div class="lane metal"><div class="ln">Metal <small>stablecoin per query · x402</small></div><div class="track"><i class="wall"></i><span class="verdict"></span></div></div>
-  <div class="lane awx"><div class="ln">Airwallex <small>card · FX · SWIFT</small></div><div class="track"><i class="wall"></i><span class="verdict"></span></div></div>
+  <div class="lane metal"><div class="ln">Metal <small>stablecoin per query · x402</small><span class="verdict"></span></div><div class="track"><i class="wall"></i></div></div>
+  <div class="lane awx"><div class="ln">Airwallex <small>card · FX · SWIFT</small><span class="verdict"></span></div><div class="track"><i class="wall"></i></div></div>
 </div>
-<div class="st-phone" role="img" aria-label="The CFO's phone">${icon("scan-face", 32).replace('class="i"', 'class="i fid"')}<b>CFO</b><small>Face ID</small><span class="sig"></span><span class="who2">second approver: labelled test passkey</span></div>
+<div class="st-phone" role="img" aria-label="The CFO's phone">${icon("scan-face", 30).replace('class="i"', 'class="i fid"')}<b>CFO</b><small>Face ID</small><span class="sig"></span><span class="who2"></span></div>
 </div>`;
 }
 
 /**
- * The stage player, shared by Home (the key moments on a loop) and Watch (the whole run with controls). It reads the
- * run from the page's data block and sets only textContent and attributes, so nothing from the record becomes markup.
+ * The stage player, shared by Home (the key moments on a loop) and Watch (the whole run with controls). Every part of
+ * the stage shows the same step: the message, the lane of the money and the phone. It reads the run from the page's
+ * data block and sets only textContent and attributes, so nothing from the record becomes markup.
  */
 export const STAGE_JS = `
 function Stage(root, run) {
@@ -218,8 +226,35 @@ function Stage(root, run) {
   function first(t, n) { var s = String(t).replace(/\\s+/g, " ").trim().split(/(?<=[.!?])\\s+(?=[A-Z"(])/); return s.slice(0, n).join(" "); }
   function setWorld(text, shield) { world.classList.toggle("shield", !!shield); world.querySelector(".tag").textContent = shield ? "Blocked" : "World"; world.querySelector(".txt").textContent = text; }
   function focus(agent) {
+    root.classList.toggle("focus", !!agent);
     root.querySelectorAll(".ag").forEach(function (el) { el.classList.toggle("on", el.getAttribute("data-agent") === agent); });
+    bubble.classList.toggle("noone", !(agent && names[agent]));
     if (agent && names[agent]) bubble.style.setProperty("--cx", (names[agent].i * 2 + 1) / 6 * 100 + "%");
+  }
+  function amount(ev) { return !ev.amount ? "" : ev.unit === "EUR" ? "EUR " + ev.amount : ev.unit === "USD" ? "USD " + ev.amount : ev.amount + " test USD"; }
+  /** What happened to a payment, in plain words; the raw code goes into the tooltip. */
+  function result(ev) {
+    var r = ev.refused;
+    if (!r) return ev.dir === "in" ? "received" : /refund/i.test(ev.what) ? "refunded" : "paid";
+    if (r.by === "recorded") return "refused before signing, and recorded on chain";
+    if (r.by === "metal") return "refused by Metal: " + r.reason;
+    if (r.by === "airwallex-sandbox") return "not paid: Airwallex's sandbox could not price the fee (not a limit)";
+    if (r.by === "airwallex") return "declined by Airwallex: " + r.reason;
+    return "refused before signing";
+  }
+  function verdictText(ev) {
+    var r = ev.refused;
+    if (!r) return "✓ " + result(ev);
+    if (r.by === "recorded") return "✕ Refused · recorded on chain" + (ev.proof && ev.proof.href ? " ↗" : "");
+    if (r.by === "metal") return "✕ Refused by Metal";
+    if (r.by === "airwallex-sandbox") return "✕ Not paid · fee not priced";
+    if (r.by === "airwallex") return "✕ Declined by Airwallex";
+    return "✕ Refused before signing";
+  }
+  function tooltip(ev) {
+    var r = ev.refused;
+    if (!r) return ev.proof && ev.proof.label || "";
+    return (r.by === "recorded" ? "Purser refused it before signing; Metal recorded the same refusal on chain" : r.reason) + (r.code ? " (" + r.code + ")" : "");
   }
   function speak(ev, sentences, instant) {
     focus(ev.agent);
@@ -228,81 +263,103 @@ function Stage(root, run) {
     var n = names[ev.agent] || { short: ev.agent };
     var b = document.createElement("span"); b.textContent = n.short + (ev.k === "msg" ? " · message" : ev.by === "claude" ? " · decided by Claude" : " · fallback (code)"); who.appendChild(b);
     (ev.tools || []).slice(0, 3).forEach(function (t) { var c = document.createElement("span"); c.className = "tool"; c.textContent = t; who.appendChild(c); });
-    bubble.classList.remove("idle");
+    bubble.classList.remove("idle"); bubble.classList.add("quote");
     var text = first(ev.text, sentences);
     if (instant || reduce) { say.textContent = text; return; }
     say.textContent = ""; var d = document.createElement("span"); d.className = "dots"; d.appendChild(document.createElement("i")); d.appendChild(document.createElement("i")); d.appendChild(document.createElement("i")); say.appendChild(d);
     later(function () { say.textContent = text; }, 650);
   }
-  function verdictText(ev) {
-    if (!ev.refused) return "✓ " + (ev.dir === "in" ? "received" : /refund/i.test(ev.what) ? "refunded" : "paid");
-    if (ev.refused.by === "metal") return "✕ Refused on chain" + (ev.proof && ev.proof.href ? " ↗" : "");
-    if (ev.refused.by === "airwallex") return "✕ Airwallex: " + ev.refused.reason.split(":")[0];
-    return "✕ Refused before signing";
+  /** The same step, said in the bubble when no agent speaks: what moved, who signed, what changed. */
+  function caption(label, text, agent) {
+    focus(agent || null);
+    bubble.classList.remove("idle", "quote");
+    var who = bubble.querySelector(".who"); who.textContent = "";
+    var b = document.createElement("span"); b.textContent = label; who.appendChild(b);
+    bubble.querySelector(".say").textContent = text;
   }
-  function setVerdict(lane, ev, cls, coinW) {
-    var old = lane.querySelector(".verdict"), v = document.createElement(ev && ev.refused && ev.proof && ev.proof.href ? "a" : "span");
+  function setVerdict(lane, ev, cls, href, title, text) {
+    var old = lane.querySelector(".verdict"), v = document.createElement(href ? "a" : "span");
     v.className = "verdict" + (cls ? " " + cls : "");
-    if (v.tagName === "A") { v.href = ev.proof.href; v.target = "_blank"; v.rel = "noopener"; v.title = "The refusal, recorded on Metal testnet"; }
+    if (href) { v.href = href; v.target = "_blank"; v.rel = "noopener"; }
+    if (title) v.title = title;
+    v.textContent = text || "";
     old.replaceWith(v);
-    if (!ev) return v;
-    v.textContent = cls === "next" ? "next in the run" : verdictText(ev);
-    if (cls === "ok" || cls === "next") v.style.cssText = ev.dir === "in" ? "right:auto;left:" + (coinW + 16) + "px" : "right:" + (coinW + 16) + "px";
-    return v;
   }
   function move(ev, instant, ghost) {
-    var lane = lanes[ev.rail]; if (!lane) return;
+    var lane = lanes[ev.rail || "metal"]; if (!lane) return;
     var track = lane.querySelector(".track"), wall = lane.querySelector(".wall");
     track.querySelectorAll(".coin").forEach(function (c) { c.remove(); });
-    wall.classList.remove("on"); setVerdict(lane, null, "", 0);
+    wall.classList.remove("on"); setVerdict(lane, null, "", null, "", "");
     var coin = document.createElement("span"); coin.className = "coin" + (ghost ? " ghost" : ""); coin.textContent = ev.label;
     track.appendChild(coin);
     var w = Math.max(0, track.clientWidth - coin.offsetWidth - 12);
-    var stop = ev.refused ? Math.max(0, track.clientWidth * 0.5 - coin.offsetWidth - 8) : w;
+    var stop = ev.refused ? Math.max(0, track.clientWidth * 0.58 - coin.offsetWidth - 8) : w;
     var from = ev.dir === "in" ? w : 0, to = ev.dir === "in" ? 0 : stop;
     function done() {
       coin.style.transform = "translateX(" + to + "px)";
-      if (ghost) { setVerdict(lane, ev, "next", coin.offsetWidth); return; }
-      if (ev.refused) { wall.classList.add("on"); coin.classList.add("bad"); setVerdict(lane, ev, "bad", coin.offsetWidth); }
-      else setVerdict(lane, ev, "ok", coin.offsetWidth);
+      if (ghost) { setVerdict(lane, ev, "next", null, "", "later in this run"); return; }
+      if (ev.k === "mandate") { setVerdict(lane, ev, "ok", ev.proof.href, "The new mandate, bound on chain", "✓ Replaced on chain ↗"); return; }
+      if (ev.refused) { wall.classList.add("on"); coin.classList.add("bad"); }
+      setVerdict(lane, ev, ev.refused ? "bad" : "ok", ev.refused && ev.proof && ev.proof.href ? ev.proof.href : null, tooltip(ev), verdictText(ev));
     }
     if (instant || ghost || reduce || !coin.animate) { done(); return; }
     var a = coin.animate([{ transform: "translateX(" + from + "px)" }, { transform: "translateX(" + to + "px)" }], { duration: 1150, easing: "cubic-bezier(.45,0,.2,1)", fill: "forwards" });
     a.onfinish = done;
-    if (ev.refused) later(function () { coin.animate([{ transform: "translateX(" + to + "px)" }, { transform: "translateX(" + (to - 8) + "px)" }, { transform: "translateX(" + to + "px)" }], { duration: 260 }); }, 1200);
   }
-  function setPhone(head, sub, sig, two) {
+  function lanesFor(ev) {
+    var active = ev.k === "money" ? ev.rail : ev.k === "mandate" ? "metal" : null;
+    ["metal", "airwallex"].forEach(function (k) { lanes[k].classList.toggle("past", k !== active); });
+  }
+  function setPhone(head, sub, sig, who2) {
     phone.querySelector("b").textContent = head; phone.querySelector("small").textContent = sub;
     var s = phone.querySelector(".sig"); s.textContent = sig || ""; s.classList.toggle("on", !!sig);
-    phone.querySelector(".who2").classList.toggle("on", !!two);
+    var w = phone.querySelector(".who2"); w.textContent = who2 || ""; w.classList.toggle("on", !!who2);
   }
-  function face(ev, instant) {
-    var ok = ev.status !== "REJECTED", head = ok ? "Approved" : "Rejected", n = ev.signers.length;
-    phone.classList.add("lit"); phone.classList.toggle("no", !ok);
-    if (n > 1 && !instant && !reduce) {
-      setPhone(ev.signers[0], ev.id + " · " + ev.title, "1 of " + n + " signatures", false);
-      later(function () { setPhone(head, ev.id + " · " + ev.title, n + " of " + n + " signatures", true); }, 1500);
-    } else setPhone(head, ev.id + " · " + ev.title, n > 1 ? n + " of " + n + " signatures" : "", n > 1);
-    if (!instant) later(function () { phone.classList.remove("lit"); }, n > 1 ? 3600 : 2400);
+  function phoneIdle() { phone.classList.remove("lit", "no"); setPhone("CFO", "Face ID", "", ""); }
+  function face(ev) {
+    var n = ev.signers.length, rej = ev.status === "REJECTED", sub = ev.id + " · " + ev.title;
+    phone.classList.add("lit"); phone.classList.toggle("no", rej);
+    if (ev.status === "COSIGNED") {
+      setPhone("Signed", sub, "1 of 2 signatures", "waiting for the second approver");
+      caption("CFO · Face ID", ev.signers[0] + " signed " + ev.title.toLowerCase() + " with Face ID: 1 of 2 signatures. It waits for the second approver.");
+    } else if (n > 1) {
+      setPhone(rej ? "Rejected" : "Approved", sub, n + " of " + n + " signatures", "second approver: labelled test passkey");
+      caption("CFO · Face ID", (rej ? "Rejected" : "Approved") + " by " + ev.signers.join(" and ") + ": " + n + " of " + n + " signatures. The second approver is a labelled test passkey in this demo.");
+    } else {
+      setPhone(rej ? "Rejected" : "Approved", sub, "", "");
+      caption("CFO · Face ID", ev.signers.join(" and ") + (rej ? " rejected " : " approved ") + ev.title.toLowerCase() + " with Face ID.");
+    }
   }
   function show(ev, opts) {
     var instant = opts && opts.instant, sentences = (opts && opts.sentences) || 1;
-    if (ev.k === "world") { setWorld(ev.text); return 2600; }
-    if (ev.k === "shield") { setWorld(ev.text, true); return 2400; }
+    if (ev.k !== "face") phoneIdle();
+    lanesFor(ev);
+    if (ev.k === "world") { setWorld(ev.text); caption("The world changes", ev.text, null); return 2600; }
+    if (ev.k === "shield") { setWorld(ev.text, true); caption("Blocked", ev.text, null); return 2400; }
     if (ev.k === "say" || ev.k === "msg") { speak(ev, sentences, instant); return Math.min(6500, 2600 + first(ev.text, sentences).length * 22); }
-    if (ev.k === "money") { move(ev, instant); return ev.refused ? 3200 : 2000; }
-    if (ev.k === "face") { face(ev, instant); return ev.signers.length > 1 ? 4200 : 2800; }
+    if (ev.k === "money") {
+      var rail = ev.rail === "metal" ? "Metal · " + ev.via : "Airwallex · " + ev.via;
+      caption(rail, (amount(ev) ? amount(ev) + " · " : "") + ev.what + ": " + result(ev) + ".", ev.agent);
+      move(ev, instant); return ev.refused ? 3200 : 2200;
+    }
+    if (ev.k === "mandate") {
+      caption("Metal · new mandate", "Mandate replaced on chain: " + (names[ev.agent] ? names[ev.agent].short : ev.agent) + " agent, cap " + ev.cap + ", budget " + ev.budget + ".", ev.agent);
+      move({ k: "mandate", rail: "metal", dir: "out", label: (names[ev.agent] ? names[ev.agent].short : ev.agent) + " cap " + ev.cap, refused: null, proof: ev.proof, what: "" }, instant);
+      return 2400;
+    }
+    if (ev.k === "face") { face(ev); return 3000; }
     return 1000;
   }
-  /** Never an empty rail: each lane shows its latest movement before this point, or else the next one, marked as next. */
+  /** Never an empty rail: each lane shows its latest movement before this point, or else the next one, marked as later. */
   function prime(events, at) {
     ["metal", "airwallex"].forEach(function (rail) {
       var past = null, next = null;
       for (var i = 0; i < events.length; i++) { var e = events[i]; if (e.k !== "money" || e.rail !== rail) continue; if (i < at) past = e; else if (!next) next = e; }
       if (past) move(past, true); else if (next) move(next, true, true);
+      lanes[rail].classList.add("past");
     });
   }
-  function reset() { clear(); focus(null); phone.classList.remove("lit", "no"); setPhone("CFO", "Face ID", "", false); setWorld(world.getAttribute("data-start")); bubble.classList.add("idle"); bubble.querySelector(".who").textContent = ""; bubble.querySelector(".say").textContent = "The agents wait for the world to change."; }
+  function reset() { clear(); focus(null); phoneIdle(); setWorld(world.getAttribute("data-start")); bubble.classList.add("idle"); bubble.classList.remove("quote"); bubble.querySelector(".who").textContent = ""; bubble.querySelector(".say").textContent = "The agents wait for the world to change."; }
   world.setAttribute("data-start", world.querySelector(".txt").textContent);
   return { show: show, reset: reset, clear: clear, prime: prime, reduce: reduce };
 }`;
@@ -314,6 +371,11 @@ body { font-size: 17px; }
 .lead { font-size: 19px !important; }
 .chip, .count, .meta, .step span.d, .node small, .by, .examples button, .flow h2, .kicker { font-size: 14px !important; }
 .step b, .node b { font-size: 16px !important; }
+main { max-width: 1200px !important; padding: 28px max(16px, min(32px, 4vw)) 64px !important; }
+.step:not(.show) { display: none !important; }
+.worlds { margin-top: 40px !important; padding-top: 28px !important; }
+button.run { background: var(--text) !important; color: var(--bg) !important; }
+.kicker { color: var(--muted) !important; }
 </style>`);
 }
 

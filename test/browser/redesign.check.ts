@@ -73,7 +73,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/`, { waitUntil: "load" });
     await page.waitForURL(/\/home$/);
     await page.waitForTimeout(300);
-    if (!/Refused on chain/.test(await page.locator("[data-stage]").innerText())) fail(`/home ${tag}: the first frame does not show the refusal on chain`);
+    if (!/Refused · recorded on chain/.test(await page.locator("[data-stage]").innerText())) fail(`/home ${tag}: the first frame does not show the refusal recorded on chain`);
     await page.screenshot({ path: join(shots, `home-first-${tag}.png`) });
     await page.waitForTimeout(9000);
     await look(page, `/home ${tag}`, w);
