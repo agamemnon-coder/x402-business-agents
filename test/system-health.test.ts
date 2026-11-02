@@ -76,7 +76,7 @@ describe("system health from the ledger", () => {
     const slo = Object.fromEntries(h.slos.map((s) => [s.id, s]));
     // 5 of 6 under 10 s is 83.3%: missed.
     expect(slo.decision_latency).toMatchObject({ met: false, actual: "83.3% under 10 s (5 of 6)" });
-    expect(slo.double_payments).toMatchObject({ met: true, actual: "0" });
+    expect(slo.double_payments).toMatchObject({ met: null, actual: "no payments yet" }); // no payment at all: no data, not "met"
     expect(slo.missing_origin).toMatchObject({ met: null }); // no money moved: nothing to check
     expect(slo.fallbacks).toMatchObject({ met: false, actual: "16.7% (1 of 6)" });
     expect(slo.audit_chain).toMatchObject({ met: true });

@@ -104,7 +104,28 @@ export function doublePayments(db: DB): string[] {
       out.push(`nonce ${r.nonce}: paid ${r.n} times`);
     }
   }
+  // A payout row with no transfer id (closed as refused at create, or never answered) that Airwallex holds after all:
+  // a transfer recorded under its request_id, or the reconciliation finding one there. With another live payout for
+  // the same invoice, the invoice is paid twice (review of 2 November).
+  if (has(db, "transfers")) {
+    const live = db.prepare("SELECT request_id, invoice_no FROM transfers WHERE status NOT IN ('CANCELLED', 'FAILED')").all() as { request_id: string; invoice_no: string }[];
+    const recorded = db.prepare("SELECT 1 FROM audit_log WHERE event IN ('transfer.created', 'transfer.adopted') AND json_extract(payload_json, '$.request_id') = ? LIMIT 1");
+    const foundOutside = db.prepare("SELECT 1 FROM audit_log WHERE event = 'reconcile.difference' AND subject = ? LIMIT 1");
+    for (const r of db.prepare("SELECT request_id, invoice_no, status FROM transfers WHERE transfer_id IS NULL").all() as { request_id: string; invoice_no: string; status: string }[]) {
+      const cancelled = r.status === "CANCELLED";
+      if (cancelled && recorded.get(r.request_id)) { out.push(`request_id ${r.request_id}: closed as refused, yet a transfer was recorded under it`); continue; }
+      if (!foundOutside.get(r.request_id)) continue;
+      const other = live.find((x) => x.request_id !== r.request_id && invoiceKey(x.invoice_no) === invoiceKey(r.invoice_no));
+      if (other) out.push(`invoice ${r.invoice_no}: Airwallex holds a transfer under request_id ${r.request_id} (${cancelled ? "closed as refused" : "never answered"} in the ledger) and the invoice has another payout, ${other.request_id}`);
+    }
+  }
   return out;
+}
+
+/** How many payments the ledger holds at all: with none, "0 double payments" is no data, not met. */
+function payments(db: DB): number {
+  const count = (table: string, where = "") => (has(db, table) ? (db.prepare(`SELECT COUNT(*) AS n FROM ${table} ${where}`).get() as { n: number }).n : 0);
+  return count("transfers") + count("fx_conversions") + count("upstream_purchases", "WHERE outcome = 'PAID'") + count("sales") + count("refunds", "WHERE outcome = 'PAID'") + count("sweeps", "WHERE outcome = 'PAID'");
 }
 
 export function systemHealth(db: DB, now = new Date()): SystemHealth {
@@ -159,7 +180,11 @@ export function systemHealth(db: DB, now = new Date()): SystemHealth {
   });
   // 2. Double payments.
   const doubles = doublePayments(db);
-  slos.push({ id: "double_payments", objective: "0 double payments", met: doubles.length === 0, actual: String(doubles.length), detail: doubles.join("; ") });
+  const paid = payments(db);
+  slos.push({
+    id: "double_payments", objective: "0 double payments", met: doubles.length ? false : paid ? true : null,
+    actual: doubles.length || paid ? String(doubles.length) : "no payments yet", detail: doubles.join("; "),
+  });
   // 3. Origins (D24): a ledger from before origins has none to check.
   const o = originsCheck(db);
   slos.push({
