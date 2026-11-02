@@ -92,7 +92,8 @@
     "variation": "tsx src/cli/variation.ts",
     "variation-live": "tsx src/cli/variationLive.ts",
     "redteam-night": "tsx src/cli/redteamNight.ts",
-    "holdouts": "tsx src/cli/holdouts.ts"
+    "holdouts": "tsx src/cli/holdouts.ts",
+    "blind-holdouts": "tsx src/cli/blindHoldouts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

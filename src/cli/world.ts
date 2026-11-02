@@ -17,6 +17,8 @@
 //                            webhook (or the runner's poll) tells the agent (D22)
 //   report-offer             Ridgeline Data offers a one-off report, over x402 or by single-use card (D22)
 //   holdout <id>             a holdout's world event, live (supplier-bankrupt, fake-cfo-email, prepay-discount-offer)
+//   inject <channel> <file> --from <name>  a text from a file on an existing channel (supplier.notice,
+//                            invoice.received, dispute.opened), shaped as the world's own command (src/world/inject.ts)
 //   deposit [short]          a retailer pays its invoice into Northwind's Global Account at Airwallex; the Treasury
 //                            agent hears it once it is matched (D22)
 //   setup [--upstream-cache off] [--free-eur 150.00] [--tap-rail on]
@@ -37,7 +39,6 @@ import { cancelSilentRise, ridgelineMaintenance, scheduleSilentRise, silentRise,
 import { addresses, startRuntime } from "../world/runtime.js";
 import { redactSecrets } from "../lib/redact.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
-import { netEarnings } from "../agents/sweep.js";
 import { PLANS, REPORT_OFFER } from "../config/policy.js";
 import { execFileSync } from "node:child_process";
 import { issuingFromEnv } from "../airwallex/issuing.js";
@@ -46,6 +47,8 @@ import { HOLDOUT_LIVE_EVENTS } from "../evals/holdouts.js";
 import { setupWorld } from "../world/options.js";
 import { claimLetThrough, letThrough, requestLetThrough, LET_THROUGH_LABEL, LET_THROUGH_TTL_MS } from "../world/letThrough.js";
 import { recordQueryAnswer } from "../world/customerAnswer.js";
+import { injectedEvent } from "../world/inject.js";
+import { metalMoneyIn } from "../world/moneyIn.js";
 
 const [cmd, arg] = process.argv.slice(2);
 const db = openDb();
@@ -175,10 +178,9 @@ if (cmd === "serve") {
   publish(db, "supplier.notice", { supplier: "Packwise", text: `Packwise ends its Starter plan this month. Your warehouse software continues only on the Pro plan, ${fromCents(pro.amountCents)} EUR a month (${pro.label}). Without a plan, warehouse sync stops at the end of the month.` }, "sourcing");
   console.log("Packwise's notice reached the Sourcing agent: Starter ends, Pro costs 45.00 EUR a month");
 } else if (cmd === "money-in") {
-  const e = netEarnings(db);
-  const sold = (db.prepare("SELECT COUNT(*) AS n FROM sales WHERE status = 'DELIVERED'").get() as { n: number }).n;
-  publish(db, "money.in", { text: `The day's sales have settled on Metal: ${sold} stock checks sold for ${fromCents(e.revenueCents)}; net earnings ${fromCents(Math.max(0, e.netCents))} sit on the business account, not yet swept to Airwallex.` }, "treasury");
-  console.log(`money in: ${sold} sales settled; net earnings ${fromCents(Math.max(0, e.netCents))} on the business account; the Treasury agent was told`);
+  const m = metalMoneyIn(db);
+  publish(db, "money.in", m.payload, "treasury");
+  console.log(`money in: ${m.sold} sales settled; net earnings ${fromCents(m.netCents)} on the business account; the Treasury agent was told`);
 } else if (cmd === "packwise-renewal") {
   // D22: the merchant charges the renewal at the Pro price to the Sourcing agent's card; Airwallex decides. Nothing is
   // recorded here: the webhook (hosted relay) or the runner's poll records it, and only then does the agent hear it.
@@ -201,12 +203,24 @@ if (cmd === "serve") {
   const e = HOLDOUT_LIVE_EVENTS[arg]!;
   publish(db, e.kind, e.payload, e.agent);
   console.log(`holdout ${arg}: its ${e.kind} reached the ${e.agent} agent`);
+} else if (cmd === "inject" && arg) {
+  // Blind holdouts (3 November): a text from a file on one of the world's own channels; nothing else changes.
+  const file = process.argv[4] ?? "";
+  const from = process.argv.includes("--from") ? process.argv[process.argv.indexOf("--from") + 1] ?? "" : "";
+  try {
+    const e = injectedEvent(arg, { from, file, text: file ? readFileSync(resolve(file), "utf8") : "" });
+    const id = publish(db, e.kind, e.payload, e.agent);
+    console.log(`injected: a ${e.kind} from ${from} (${file.split(/[\\/]/).pop()}) reached the ${e.agent} agent (world event ${id})`);
+  } catch (e) {
+    console.error(`not injected: ${(e as Error).message}; usage: npm run world -- inject <supplier.notice|invoice.received|dispute.opened> <file> --from <name>`);
+    process.exit(2);
+  }
 } else if (cmd === "deposit") {
   // D22: a retailer pays its invoice into Northwind's EUR Global Account (the sandbox's deposit simulation), in full
   // or short; the poll here (the webhook on the hosted relay) matches it, and the Treasury agent hears it as money in.
   const out = execFileSync("npx", ["tsx", resolve(import.meta.dirname, "receivables.ts"), "customer-pays", ...(arg === "short" ? ["short"] : [])], { env: process.env, encoding: "utf8" });
   console.log(redactSecrets(out.trim()));
 } else {
-  console.error("usage: npm run world -- setup [--upstream-cache off] [--free-eur x.xx] [--tap-rail on] | serve [--every 20] | price-rise [0.04] [--silent] | let-one-through | ridgeline-maintenance [hours|off] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer | holdout <" + Object.keys(HOLDOUT_LIVE_EVENTS).join("|") + ">");
+  console.error("usage: npm run world -- setup [--upstream-cache off] [--free-eur x.xx] [--tap-rail on] | serve [--every 20] | price-rise [0.04] [--silent] | let-one-through | ridgeline-maintenance [hours|off] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer | inject <channel> <file> --from <name> | holdout <" + Object.keys(HOLDOUT_LIVE_EVENTS).join("|") + ">");
   process.exit(2);
 }

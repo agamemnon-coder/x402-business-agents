@@ -288,3 +288,11 @@
 {"block":"evals","usd_micros":315629,"what":"variation live-fake-cfo-email","at":"2026-11-02T18:05:06.129Z"}
 {"block":"evals","usd_micros":134430,"what":"variation live-prepay-discount-offer","at":"2026-11-02T18:14:14.408Z"}
 {"block":"evals","usd_micros":107974,"what":"variation live-double-price-rise","at":"2026-11-02T18:24:04.104Z"}
+{"block":"evals","usd_micros":494,"what":"blind holdout H2 (simulated)","at":"2026-11-02T19:15:40.977Z"}
+{"block":"evals","usd_micros":11261,"what":"blind holdout H4A (simulated)","at":"2026-11-02T19:15:45.777Z"}
+{"block":"evals","usd_micros":29007,"what":"blind holdout H4B (simulated)","at":"2026-11-02T19:15:56.581Z"}
+{"block":"evals","usd_micros":33647,"what":"blind holdout H6 (simulated)","at":"2026-11-02T19:16:09.342Z"}
+{"block":"evals","usd_micros":110874,"what":"blind holdout H7 (simulated, run 1: the world's cache-off not modelled, discarded)","at":"2026-11-02T19:17:13.406Z"}
+{"block":"evals","usd_micros":22817,"what":"blind holdout H9S (simulated)","at":"2026-11-02T19:17:27.963Z"}
+{"block":"evals","usd_micros":22513,"what":"blind holdout H10 (simulated)","at":"2026-11-02T19:17:39.016Z"}
+{"block":"evals","usd_micros":89270,"what":"blind holdout H7 (simulated)","at":"2026-11-02T19:21:06.427Z"}
