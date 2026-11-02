@@ -788,6 +788,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "receivable.escalated": return out(`Global Account, to the CFO: ${str(p.detail)}`, "refusal", { awx_id: s || null });
     case "treasury.seeded": return out(`Airwallex sandbox seeded with ${str(p.currency)} ${str(p.amount)}`);
     case "invoice.escalated": return out(`Invoice ${s} escalated to a person: ${str(p.reason)}`, "refusal");
+    case "dispute.escalated": return out(`Dispute ${s} from ${str(p.customer)} sent to the CFO: code could not settle it (${str(p.reason)}); nothing was refunded for it`, "refusal");
     case "document.injection_flagged": {
       const found = Array.isArray(p.findings) ? (p.findings as P[]) : [];
       const n = found.length;
@@ -1045,7 +1046,7 @@ function counts(db: DB, rows: AuditRow[], waiting: number): Snapshot["counts"] {
 export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
-  "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
+  "sweep.held", "invoice.escalated", "dispute.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
   "transfer.refused", "transfer.retry_stopped", "transfer.row_conflict", "transfer.found_after_close", "transfer.payee_unconfirmed", "transfer.left_open",
   "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered", "velocity.tripped", "reconcile.difference",
 ]);
@@ -1067,6 +1068,7 @@ export const REFUSAL_WHAT: Record<string, string> = {
   "sweep.refused": "Sweep refused",
   "sweep.held": "Sweep held",
   "invoice.escalated": "Invoice escalated",
+  "dispute.escalated": "Dispute sent to the CFO",
   "invoice.fraud_suspected": "Invoice blocked: possible fraud",
   "document.injection_flagged": "Planted instruction ignored",
   "transfer.fee_over_ceiling": "Fee above ceiling",
