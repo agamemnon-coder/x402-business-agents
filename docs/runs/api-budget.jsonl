@@ -2,3 +2,8 @@
 {"block":"evals","usd_micros":113959,"what":"variation sim-2","at":"2026-11-02T09:43:23.660Z"}
 {"block":"evals","usd_micros":27126,"what":"holdout invoice-bank-change","at":"2026-11-02T09:43:48.772Z"}
 {"block":"evals","usd_micros":21074,"what":"holdout invoice-bank-change","at":"2026-11-02T09:44:59.445Z"}
+{"block":"evals","usd_micros":155949,"what":"variation sim-1","at":"2026-11-02T09:53:40.336Z"}
+{"block":"evals","usd_micros":83625,"what":"variation sim-2","at":"2026-11-02T09:54:39.362Z"}
+{"block":"evals","usd_micros":18011,"what":"holdout double-price-rise","at":"2026-11-02T09:55:02.989Z"}
+{"block":"evals","usd_micros":185898,"what":"variation sim-1","at":"2026-11-02T09:58:40.491Z"}
+{"block":"evals","usd_micros":76855,"what":"variation sim-2","at":"2026-11-02T09:59:37.050Z"}
