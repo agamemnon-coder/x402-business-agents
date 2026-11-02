@@ -10,13 +10,13 @@ import { AGENT_NAMES, publish, type AgentName } from "../autonomy/bus.js";
 import { ASK_AGENT_PER_HOUR, TASK_DEFAULT_DAYS, TASK_KINDS, TASK_LINK_PENDING_MAX, TASK_MAX_DAYS, TASK_WITHIN_PER_DAY } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
+import { moneyIn, writtenAmount } from "../lib/numbers.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { cardOf, ingestCardTransaction, storeCard } from "../policy/cards.js";
 import { frozen, policyValue } from "../policy/rules.js";
 import { attachReview } from "../claude/review.js";
 import type { Actor } from "../audit/log.js";
-import { amountsIn } from "../policy/fromText.js";
 import { findInjections } from "../policy/injection.js";
 import { chargeUnderHold } from "../policy/holds.js";
 
@@ -71,11 +71,11 @@ function dateOf(text: string, now: Date): string | null {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-// An amount next to a euro sign or the word EUR/euro; a bare number could be a date, a room or a flight number.
-const EURO = /€\s*(\d[\d.,]*\d|\d)|(\d[\d.,]*\d|\d)\s*(?:€|eur\b|euros?\b)/gi;
+// An amount next to a euro sign or the word EUR/euro; a bare number could be a date, a room or a flight number. Read
+// by the one reader for typed numbers (src/lib/numbers.ts).
 /** Every amount the message marks as euros, in cents. */
 function euroAmountsIn(text: string): number[] {
-  return [...text.matchAll(EURO)].flatMap((m) => amountsIn(m[1] ?? m[2] ?? "").slice(0, 1));
+  return moneyIn(text).flatMap((m) => (m.currency === "EUR" && m.reading.ok ? [m.reading.value] : []));
 }
 
 /** The plain parser: what Purser reads without a model, and the fallback when the model fails. */
@@ -98,9 +98,10 @@ export function planTask(text: string, reading: TaskReading, now: Date): TaskPla
   if (reading.kind === "other" || !(reading.kind in TASK_KINDS)) return no("I can only make task cards for flights, hotels and trains. For anything else, ask the CFO for a change to the policy.");
   const kind = TASK_KINDS[reading.kind];
   if (reading.amount_eur === null) return no(`How much may it cost at most? Write the amount in your message, for example "at most €250".`);
-  if (!/^\d+\.\d{2}$/.test(reading.amount_eur)) return no(`${reading.amount_eur} is not an amount in euros.`);
-  const cents = Math.round(Number(reading.amount_eur) * 100);
-  if (!amountsIn(text).includes(cents)) return no(`${group(cents)} is not an amount in your message, so I did not use it. Write the most it may cost.`);
+  if (!/^(0|[1-9]\d*)\.\d{2}$/.test(reading.amount_eur)) return no(`${reading.amount_eur} is not an amount in euros.`);
+  const cents = toCents(reading.amount_eur);
+  const written = writtenAmount(text, cents);
+  if (!written.ok) return no(written.why ? `${written.why}.` : `${group(cents)} is not an amount in your message, so I did not use it. Write the most it may cost.`);
   if (cents <= 0) return no("The amount must be more than zero.");
   if (cents > kind.maxCents) return no(`A ${kind.label.toLowerCase()} card may be at most ${group(kind.maxCents)} EUR under the CFO policy.`);
   let validUntil: string;
