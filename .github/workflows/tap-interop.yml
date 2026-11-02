@@ -1,17 +1,18 @@
-# D25 interop test: our agent's TAP checkout against Visa's open-source reference, run unchanged at a pinned commit.
-# Visa's code is never copied into this repo: it is cloned at test time into the runner's temp directory, outside the
-# checkout, and its agent registry (FastAPI) and CDN proxy (Express) run as they are, with their own requirements. The
-# registry listens on 127.0.0.1:9002 with a fresh database (DATABASE_URL), the proxy on 3001; the proxy forwards
-# /product/* to port 3000, where test/interop/tap-interop.ts runs our merchant (127.0.0.1 and ::1 only). The script
-# registers a fresh test key through the registry's API and runs the cases listed in it: our signatures through the
-# proxy, the proxy's own refusals, our merchant's refusals, and the reference agent's own Ed25519 signer (called
-# headless) against our verifier. No secrets: the test key is made per run and never printed.
+# D25 interop test: our agent's TAP checkout against Visa's public TAP reference (github.com/visa/trusted-agent-protocol),
+# run unchanged at a pinned commit. Visa's code is never copied into this repo: it is cloned at test time into the
+# runner's temp directory, outside the checkout, and its agent registry (FastAPI) and CDN proxy (Express) run as they
+# are. The registry listens on 127.0.0.1:9002 with a fresh database (DATABASE_URL), the proxy on 3001; the proxy forwards
+# /product/* to port 3000, where test/interop/tap-interop.ts runs our merchant (src/visa/tapServer.ts, loopback only).
+# The script registers a fresh test key through the registry's API and runs the cases listed in it: our signatures
+# through the proxy, the proxy's own refusals, our merchant's refusals, the reference agent's own Ed25519 signer
+# (called headless) against our verifier, and our card rail through the proxy. No secrets: the test key is made per
+# run and never printed.
 name: tap-interop
 on:
   push:
-    paths: ["src/visa/**", "src/db/**", "test/interop/**", ".github/workflows/tap-interop.yml", "package.json", "package-lock.json"]
+    paths: ["src/visa/**", "src/db/**", "src/provenance/**", "src/agents/cardBuyer.ts", "test/interop/**", ".github/workflows/tap-interop.yml", "package.json", "package-lock.json"]
   pull_request:
-    paths: ["src/visa/**", "src/db/**", "test/interop/**", ".github/workflows/tap-interop.yml", "package.json", "package-lock.json"]
+    paths: ["src/visa/**", "src/db/**", "src/provenance/**", "src/agents/cardBuyer.ts", "test/interop/**", ".github/workflows/tap-interop.yml", "package.json", "package-lock.json"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,10 +27,12 @@ jobs:
       TAP_REF_NPM_BEFORE: "2026-10-19"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # No npm cache: the reference's own npm install below would write into it.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.22.0
-          cache: npm
       - run: npm ci
       - name: Clone Visa's reference at the pinned commit, outside the repo
         run: |
@@ -43,11 +46,13 @@ jobs:
         run: |
           cd "$TAP_REF_DIR/cdn-proxy"
           npm install --omit=dev --no-audit --no-fund --ignore-scripts --before="$TAP_REF_NPM_BEFORE"
-      - name: Install the registry's and the reference agent's Python requirements (their files as they are)
-        # Python 3.12: pydantic 2.5.0 (pinned by the reference) has no wheels for 3.13.
+      - name: Install what the registry and the reference signer import (hashed, wheels only)
+        # Not the reference's requirements files (unpinned, sdists allowed, a UI stack the test does not run): only the
+        # registry's and create_ed25519_signature's imports, at the versions the reference pins, from a committed
+        # hashed file (test/interop/tap-ref-requirements.txt). Python 3.12: pydantic 2.5.0 has no wheels for 3.13.
         run: |
           python3.12 -m venv "$RUNNER_TEMP/tap-venv"
-          "$RUNNER_TEMP/tap-venv/bin/pip" install --quiet -r "$TAP_REF_DIR/agent-registry/requirements.txt" -r "$TAP_REF_DIR/tap-agent/requirements.txt"
+          "$RUNNER_TEMP/tap-venv/bin/pip" install --quiet --require-hashes --only-binary :all: -r test/interop/tap-ref-requirements.txt
           echo "TAP_REF_PYTHON=$RUNNER_TEMP/tap-venv/bin/python" >> "$GITHUB_ENV"
       - name: Start the registry (127.0.0.1:9002, fresh database) and the proxy (3001), unchanged
         run: |

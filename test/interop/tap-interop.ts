@@ -58,10 +58,14 @@ const received: Received[] = [];
 
 // ---- HTTP to the proxy and the registry -----------------------------------------------------------------------------
 
-function send(o: { path: string; headers: Record<string, string>; body: string; method?: string }): Promise<{ status: number; text: string }> {
+/** Straight to our merchant, bypassing the proxy, with the Host the agent would have sent the proxy. */
+const sendDirect = (o: { headers: Record<string, string>; body: string }) =>
+  send({ path: CHECKOUT, ...o, to: { host: "127.0.0.1", port: MERCHANT_PORT }, headers: { host: AUTHORITY, ...o.headers } });
+
+function send(o: { path: string; headers: Record<string, string>; body: string; method?: string; to?: { host: string; port: number } }): Promise<{ status: number; text: string }> {
   return new Promise((ok, fail) => {
     const body = Buffer.from(o.body);
-    const r = request({ ...PROXY, method: o.method ?? "POST", path: o.path, headers: { "content-type": "application/json", "content-length": String(body.length), ...o.headers } }, (res) => {
+    const r = request({ ...(o.to ?? PROXY), method: o.method ?? "POST", path: o.path, headers: { "content-type": "application/json", "content-length": String(body.length), ...o.headers } }, (res) => {
       const chunks: Buffer[] = [];
       res.on("data", (c: Buffer) => chunks.push(c));
       res.on("end", () => ok({ status: res.statusCode ?? 0, text: Buffer.concat(chunks).toString("utf8") }));
@@ -153,9 +157,21 @@ async function main(): Promise<void> {
   const tampered = '{"plan":"packwise-pro"}';
   await merchantRefuses("recomputed digest", /signature 2 does not verify/, { headers: { ...asRecord(sign()), "content-digest": contentDigest(tampered) }, body: tampered });
   const a = sign(), b = sign({ body: tampered });
-  await merchantRefuses("signature 2 moved under another TAP request", /nonces of signature 1 and signature 2 differ/, {
+  await merchantRefuses("signature 2 moved under another TAP request (other nonce)", /nonces of signature 1 and signature 2 differ/, {
     headers: { ...asRecord(b), "content-digest": a["content-digest"], "purser-signature-input": a["purser-signature-input"], "purser-signature": a["purser-signature"] },
   });
+  // The same with an equal nonce: only the signature over TAP's own headers tells the two requests apart.
+  const a2 = sign();
+  const b2 = sign({ nonce: /nonce="([^"]+)"/.exec(a2["signature-input"])![1]!, created: now() - 1 });
+  await merchantRefuses("signature 2 moved under another TAP request (same nonce)", /signature 2 does not verify/, {
+    headers: { ...asRecord(b2), "content-digest": a2["content-digest"], "purser-signature-input": a2["purser-signature-input"], "purser-signature": a2["purser-signature"] },
+  });
+  // A replay that bypasses the proxy (straight to our merchant on :3000): our own nonce store refuses it.
+  const direct = await sendDirect({ headers: asRecord(good), body: BODY });
+  const replayed = received[received.length - 1];
+  record("c merchant refuses", "replay of the accepted checkout, straight to our merchant (no proxy)",
+    direct.status === 422 && !!replayed && !replayed.verdict.ok && /replay/.test(replayed.verdict.reason) && !!db.prepare("SELECT 1 FROM tap_rail_nonces WHERE keyid = ?").get(key.keyId),
+    `status ${direct.status}${replayed && !replayed.verdict.ok ? `, reason: ${replayed.verdict.reason}` : ""}`);
 
   // d. Visa's signer -> our verifier.
   await referenceSigner();
@@ -173,9 +189,15 @@ async function main(): Promise<void> {
 /** The reference agent's own create_ed25519_signature (tap-agent/agent_app.py), called headless with our test key. */
 function referenceSign(a: { authority: string; path: string; keyId: string; nonce: string; created: number; expires: number; tag: string }): { signatureInput: string; signature: string } {
   const dir = process.env.TAP_REF_DIR, python = process.env.TAP_REF_PYTHON;
-  if (!dir || !python) throw new Error("TAP_REF_DIR and TAP_REF_PYTHON must name the reference clone and a Python with its tap-agent requirements");
+  if (!dir || !python) throw new Error("TAP_REF_DIR and TAP_REF_PYTHON must name the reference clone and a Python with test/interop/tap-ref-requirements.txt installed");
+  // agent_app.py imports streamlit at the top (it is a Streamlit app); create_ed25519_signature uses it only to show an
+  // error. A do-nothing stand-in module is put in its place so the UI library need not be installed; the reference's
+  // file itself runs unchanged.
   const code = [
-    "import json, os, sys",
+    "import json, os, sys, types",
+    "st = types.ModuleType('streamlit')",
+    "st.error = st.warning = st.info = st.success = lambda *a, **k: None",
+    "sys.modules.setdefault('streamlit', st)",
     "sys.path.insert(0, os.getcwd())",
     "import agent_app",
     "a = json.loads(sys.argv[1])",
