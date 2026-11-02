@@ -606,3 +606,23 @@ Content-Digest check on top of TAP". Summary given to Max (TAP Product Terms of 
 5. Not allowed: changing their code or the specification beyond implementing or porting it (unpermitted changes
    become Visa's property); the Visa logo or marks without written permission; saying "certified", "endorsed" or
    "Visa-approved"; public statements about the agreement with Visa without its consent.
+
+### D26. Proof with the API budget: variation, holdouts, red team (Max, 2 November; starts after the reserve run)
+
+About $280 of Anthropic API credit is left for the product's own Claude calls. Plan for about $250, keeping $30 for
+Thursday, the extra run and /try while the jury looks: evals and variation about $80, red team with Opus as the
+attacker about $60, soak and dry runs about $50, Claude reviews of documents and claims about $30, /try day budget
+during judging about $30. A cost counter per block (from the cost already recorded per call), a warning at 80%, and
+spend per block in each evening report. Per task the cheapest model that passes its eval.
+
+Variation (Max's choices): 40 worlds with simulated rails and 10 live worlds (Metal testnet and the Airwallex sandbox,
+random parameters, about 280 *USDZ from recycling and about 2 hours). Simulated-rail worlds run the same code paths
+and checks as live; only the Metal and Airwallex calls are replaced by a stand-in built from real responses of earlier
+runs. Calibration: 3 seeds run both simulated and live, decisions and outcomes compared (error codes, refusals, fees),
+and any difference reported. The report and the site show both counts apart ("40 simulated-rail worlds + 10 live
+worlds, 0 unsafe actions"). Holdouts: 10 unseen situations, at least 3 of them live, the clearest, for the "Claude
+agents" theme video.
+
+Order after the reserve run: the dry-138 points first (the dispute names only sold orders, Treasury's timing measured
+and in the draaiboek, the eval case, a fresh dry run); then the budget counters, variation, holdouts and the red team
+at night; QA and enterprise items by day. Nothing here touches Thursday's code after Wednesday 23:00.
