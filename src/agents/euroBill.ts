@@ -10,7 +10,7 @@ import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, LICENSOR_NAME, QUOTE_SAFETY_M
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
-import { createProposal, nextProposalId, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
+import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
 import { checkQuoteAgainstFloor, feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_RESERVE_CAP_CENTS, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
 import { getSetting, setSetting } from "../world/settings.js";
 import type { FraudFinding } from "../policy/fraud.js";
@@ -19,6 +19,8 @@ import { eurInFlightCents } from "../policy/available.js";
 import { checkpoint } from "../policy/saga.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
+/** The proposal number of invoice terms before createProposal assigns the real one (assignId); never stored. */
+export const PROPOSAL_ID_PENDING = "P-PENDING";
 export const SEED_USD_CENTS = 2_500_000;
 /** The USD floor sits this far below the seeded balance. */
 export const USD_HEADROOM_CENTS = 500_000;
@@ -261,9 +263,9 @@ export async function proposeInvoicePayment(
       .run(quote.quoteId, "USD/EUR", fromCents(quote.buyAmountCents), fromCents(quote.sellAmountCents), quote.clientRate, quote.validFrom, quote.validTo);
   }
 
-  // A provisional number: createProposal takes the real one inside its write lock (assignId), and the terms returned
-  // carry it (another process may file a proposal between this count and that lock).
-  const id = nextProposalId(db);
+  // No number yet: createProposal takes the real one inside its write lock (assignId), and the terms stored, hashed
+  // and returned carry it (re-review: a count taken here could be stale; a placeholder can never be filed).
+  const id = PROPOSAL_ID_PENDING;
   const expires = proposalExpiry(now.getTime(), INVOICE_PROPOSAL_TTL_MS, quote ? Date.parse(quote.validTo) : undefined, QUOTE_SAFETY_MS);
   const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
   const terms: InvoicePaymentTerms = {

@@ -26,8 +26,7 @@ import { setSetting } from "../world/settings.js";
 import { INVOICE_PROPOSAL_TTL_MS, LICENCE_INVOICE_FIXTURE, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import { agentsOn } from "../config/agents.js";
 import { invoiceAlreadyHandled } from "../agents/euroBill.js";
-import { parseInvoiceFallback } from "../agents/invoice.js";
-import { invoiceFacts, plannedMatch, vouchedInvoiceNo, type PlannedInvoice } from "./invoiceFacts.js";
+import { invoiceFacts, plannedInvoiceOf, plannedMatch, vouchedInvoiceNo } from "./invoiceFacts.js";
 import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } from "../config/suppliers.js";
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
@@ -115,11 +114,8 @@ export interface FlowDeps { runFlow: typeof runFlow; sim?: TreasurySim }
 
 const liveMandates = async (db: DB) => [...(await mandatesNow(db)).values()].map((c) => c.now);
 const LICENCE_TEXT = resolve(repo, "fixtures", LICENCE_INVOICE_FIXTURE);
-/** The invoice a text holds, as code reads it whole, or null when it cannot. */
-const invoiceOf = (text: string | null): PlannedInvoice | null => {
-  if (!text) return null;
-  try { const i = parseInvoiceFallback(text); return { invoice_no: i.invoice_no, vendor: i.vendor, amount: i.amount, currency: i.currency, due_date: i.due_date, iban: i.iban, bic: i.bic }; } catch { return null; }
-};
+/** The invoice a text holds, as code reads it whole (with its text, for the gate's bank lines), or null. */
+const invoiceOf = plannedInvoiceOf;
 /** The licence's own file, or null when it cannot be read (the facts then offer no plan; the tool's flow reads it again). */
 const licenceText = (): string | null => { try { return readFileSync(LICENCE_TEXT, "utf8"); } catch { return null; } };
 /** plan_invoice never starts the licence flow without an origin: else the flow would record the CFO's command. */
@@ -197,7 +193,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
         },
       },
       {
-        name: "plan_invoice", description: "Plans the euro invoice that came in (the licence): FX only for the shortfall, SWIFT, the fee ceiling, your timing advice; it moves no money and waits for the CFO's Face ID. Code refuses an invoice that is paid or already has a plan waiting.",
+        name: "plan_invoice", description: "Plans the euro invoice that came in (the licence): FX only for the shortfall, SWIFT, the fee ceiling, your timing advice; it moves no money and waits for the CFO's Face ID. Code refuses an invoice that is paid or already has a plan waiting, or that has not come in as code reads it.",
         input: z.strictObject({}),
         run: async () => {
           if (waiting(db, "invoice_payment").length) return { text: "Not planned: an invoice payment already waits for the CFO.", blocked: "already waiting" };

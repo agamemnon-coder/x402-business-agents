@@ -12,18 +12,19 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { invoiceAlreadyHandled, LICENSOR, proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
+import { invoiceAlreadyHandled, LICENSOR, PROPOSAL_ID_PENDING, proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
 import { parseInvoiceFallback } from "../src/agents/invoice.js";
 import { audit } from "../src/audit/log.js";
 import { publish } from "../src/autonomy/bus.js";
-import { invoiceFacts, plannedMatch } from "../src/autonomy/invoiceFacts.js";
+import { invoiceFacts, plannedInvoiceOf, plannedMatch } from "../src/autonomy/invoiceFacts.js";
 import { wake } from "../src/autonomy/runtime.js";
 import { treasuryProfile, type TreasurySim } from "../src/autonomy/teamProfiles.js";
 import { flowEvents } from "../src/dashboard/flows.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { approvalOrigin } from "../src/executors/index.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
-import { decide, expireDue } from "../src/policy/approvals.js";
+import { createProposal, decide, expireDue } from "../src/policy/approvals.js";
+import { TERMS_SCHEMA, termsHash } from "../src/lib/terms.js";
 import { currentOrigin, LICENCE_COMMAND, parseOrigin, withOrigin, type Origin } from "../src/provenance/origin.js";
 import { FakeAirwallex } from "../src/redteam/airwallex.js";
 
@@ -344,7 +345,7 @@ describe("scene 3: the real licence as the main run's world event passes the gat
     const awx = new FakeAirwallex();
     await seedTreasury(db, awx, awx);
     publish(db, "invoice.received", { vendor: "Stockline Data GmbH", file: "stockline-licence-SLL-2026-11.txt", text: readFileSync(new URL("../fixtures/stockline-licence-SLL-2026-11.txt", import.meta.url), "utf8").slice(0, 1500) }, "treasury");
-    expect(plannedMatch(db, parseInvoiceFallback(text))).toEqual({ status: "arrived" });
+    expect(plannedMatch(db, plannedInvoiceOf(text))).toEqual({ status: "arrived" });
 
     // The live path first (it only starts the flow): the gate passes.
     const flows: string[] = [];
@@ -360,5 +361,78 @@ describe("scene 3: the real licence as the main run's world event passes the gat
     expect(planned).toEqual(["plan"]);
     const p = db.prepare("SELECT status, json_extract(terms_json, '$.invoice_no') AS no, json_extract(terms_json, '$.amount') AS amount, json_extract(terms_json, '$.beneficiary_name') AS payee, json_extract(terms_json, '$.iban_last4') AS last4, json_extract(terms_json, '$.bic') AS bic FROM proposals").all();
     expect(p).toEqual([{ status: "PENDING_APPROVAL", no: "SLL-2026-11", amount: "240.00", payee: "Stockline Data GmbH", last4: LICENSOR.iban.slice(-4), bic: LICENSOR.bic }]);
+  });
+});
+
+// Re-review of 64ebdc0 (2 November): the gate read only copies code could parse and vouch for, and compared the IBAN
+// and BIC as the parser captured them, which stops at the first odd character. Each probe that passed is pinned here:
+// it now differs, the facts do not offer plan_invoice, and the tool refuses on the live path (no flow starts). The
+// real licence (scene 3, above) still passes. A planned invoice's row, written from a model's reading, is not compared.
+describe("the gate compares every received copy under the licence's number, and its whole bank lines", () => {
+  const IBAN_LINE = "IBAN: DE02 1203 0000 0000 2020 51";
+  const probes: [string, (t: string) => string, RegExp][] = [
+    ["a Greek capital Nu leading the IBAN", (t) => t.replace(IBAN_LINE, "IBAN: \u039DE02 1203 0000 0000 2020 51"), /IBAN/],
+    ["a lower-case IBAN", (t) => t.replace(IBAN_LINE, IBAN_LINE.toLowerCase().replace("iban:", "IBAN:")), /IBAN/],
+    ["no IBAN line", (t) => t.replace(`${IBAN_LINE}\n`, ""), /a copy code cannot read whole/],
+    ["en dashes in the number, and another IBAN", (t) => t.replace("INVOICE SLL-2026-11", "INVOICE SLL\u20132026\u201311").replace(IBAN_LINE, "IBAN: NL91 ABNA 0417 1643 00"), /its number as written/],
+    ["a suffix after the IBAN", (t) => t.replace(IBAN_LINE, `${IBAN_LINE}-9999`), /IBAN/],
+    ["a suffix after the BIC", (t) => t.replace("BIC: BYLADEM1001", "BIC: BYLADEM1001x"), /BIC/],
+  ];
+  for (const [name, change, field] of probes) {
+    it(`${name}: differs, not offered, and plan_invoice refuses`, async () => {
+      const db = openDb(":memory:");
+      const awx = new FakeAirwallex();
+      await seedTreasury(db, awx, awx);
+      const copy = change(text);
+      expect(copy).not.toBe(text);
+      publish(db, "invoice.received", { vendor: "Stockline Data GmbH", file: "stockline-licence-SLL-2026-11.txt", text: text.slice(0, 1500) }, "treasury");
+      publish(db, "invoice.received", { vendor: "Stockline Data GmbH", file: "stockline-licence-SLL-2026-11.txt", text: copy.slice(0, 1500) }, "treasury");
+      const m = plannedMatch(db, plannedInvoiceOf(text));
+      expect(m.status).toBe("differs");
+      expect(m.status === "differs" && m.fields).toMatch(field);
+      expect(invoiceFacts(db, new Date(), plannedInvoiceOf(text)).lines.join("\n")).not.toMatch(/may plan it now/);
+      const flows: string[] = [];
+      const live = treasuryProfile(30 * 60_000, { runFlow: (s: string) => { flows.push(s); return { ok: true, text: "planned" }; } });
+      expect(await live.tools(db).find((t) => t.name === "plan_invoice")!.run({} as never)).toMatchObject({ blocked: "invoice differs" });
+      expect([flows, proposals(db)]).toEqual([[], 0]);
+    });
+  }
+
+  it("a planned invoice's row with a misread due date does not block the licence (only world events are compared)", async () => {
+    const db = openDb(":memory:");
+    const awx = new FakeAirwallex();
+    await seedTreasury(db, awx, awx);
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    if (out.kind !== "proposed") throw new Error(out.reason);
+    db.prepare("UPDATE proposals SET status = 'EXPIRED'").run();
+    db.prepare("UPDATE invoices SET due_date = '2026-11-16', bic = 'XXXXXX', iban_sha256 = ? WHERE invoice_no = 'SLL-2026-11'").run("0".repeat(64));
+    publish(db, "invoice.received", { vendor: "Stockline Data GmbH", file: "stockline-licence-SLL-2026-11.txt", text: text.slice(0, 1500) }, "treasury");
+    expect(plannedMatch(db, plannedInvoiceOf(text))).toEqual({ status: "arrived" });
+    expect(invoiceFacts(db, new Date(), plannedInvoiceOf(text)).lines.join("\n")).toMatch(/plan_invoice may plan it now/);
+  });
+
+  it("a planned invoice without its own clean text is no plan at all", () => {
+    const db = openDb(":memory:");
+    publish(db, "invoice.received", { text }, "treasury");
+    const bare = parseInvoiceFallback(text);
+    expect(plannedMatch(db, bare)).toEqual({ status: "unreadable" });
+    expect(plannedMatch(db, plannedInvoiceOf(text.replace("BIC: BYLADEM1001", "BIC: BYLADEM1001\nBIC: COBADEFFXXX")))).toEqual({ status: "unreadable" });
+    expect(plannedMatch(db, plannedInvoiceOf(text))).toEqual({ status: "arrived" });
+  });
+
+  it("an invoice proposal's number is taken inside the write lock: the stored terms, their hash and the returned terms agree", async () => {
+    const db = openDb(":memory:");
+    const awx = new FakeAirwallex();
+    await seedTreasury(db, awx, awx);
+    // Another kind of proposal filed first, as another process would: the invoice takes the next free number.
+    createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "mandate_replace", proposal_id: "P-0001", expires_at: "2099-01-01T00:00:00Z" }, createdBy: "treasury" });
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    if (out.kind !== "proposed") throw new Error(out.reason);
+    const row = db.prepare("SELECT proposal_id, terms_json, terms_sha256 FROM proposals WHERE kind = 'invoice_payment'").get() as { proposal_id: string; terms_json: string; terms_sha256: string };
+    const stored = JSON.parse(row.terms_json) as { proposal_id: string };
+    expect([row.proposal_id, stored.proposal_id, out.terms.proposal_id, out.proposal.proposal_id]).toEqual(["P-0002", "P-0002", "P-0002", "P-0002"]);
+    expect(termsHash(stored as never)).toBe(row.terms_sha256);
+    expect(out.proposal.terms_sha256).toBe(row.terms_sha256);
+    expect(row.terms_json).not.toContain(PROPOSAL_ID_PENDING);
   });
 });

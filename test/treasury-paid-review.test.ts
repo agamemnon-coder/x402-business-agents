@@ -17,7 +17,7 @@ import { describe as group, expect, it } from "vitest";
 import { invoiceAlreadyHandled, proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
 import { parseInvoiceFallback } from "../src/agents/invoice.js";
 import { publish } from "../src/autonomy/bus.js";
-import { BALANCE_READING_STALE_MS, invoiceFacts, vouchedInvoiceNo } from "../src/autonomy/invoiceFacts.js";
+import { BALANCE_READING_STALE_MS, invoiceFacts, plannedInvoiceOf, vouchedInvoiceNo } from "../src/autonomy/invoiceFacts.js";
 import { describe as describeAudit } from "../src/dashboard/snapshot.js";
 import { flowEvents } from "../src/dashboard/flows.js";
 import { openDb, type DB } from "../src/db/open.js";
@@ -29,7 +29,7 @@ import { TERMS_SCHEMA, termsHash } from "../src/lib/terms.js";
 import { FakeAirwallex } from "../src/redteam/airwallex.js";
 
 const text = readFileSync(new URL("../fixtures/stockline-licence-SLL-2026-11.txt", import.meta.url), "utf8");
-const PLANNED = { invoice_no: "SLL-2026-11", vendor: "Stockline Data GmbH", amount: "240.00", currency: "EUR", due_date: "2026-11-15" };
+const PLANNED = plannedInvoiceOf(text)!;
 const FAST = { delaysMs: [15_000, 30_000, 60_000, 90_000, 120_000], sleep: async () => {} };
 
 /** The licence's text with its first line (the vendor), its number or its total replaced. */
