@@ -38,9 +38,8 @@ zes uur stil, daarna in twee minuten weer op). Alle programma's stoppen tegelijk
 
 Na elke stap maakt Claude een consistente kopie van het grootboek (SQLite online backup), lokaal in
 `data/snapshots/<wereld>/<stap>.sqlite` (niet in git). Een beschadigd grootboek is daarmee binnen dezelfde container te
-herstellen. Een kopie buiten de container (Max, 2 november) staat nog open: het pushen naar de private keys-repo werd door
-het veiligheidsfilter van deze omgeving geweigerd, en de keys-repo is volgens Max' regel voor testnet-sleutels. Max
-beslist waar de kopie heen mag.
+herstellen. Max besliste op 2 november: alleen lokaal, ook donderdag. Bij een volledig nieuwe container (grootboek weg)
+stopt de run en kiest Max: een verse wereld of opschuiven (stap 7 hierboven).
 
 ## Om de kans te verkleinen
 
