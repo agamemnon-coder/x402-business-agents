@@ -21,7 +21,7 @@ function fake(turns: Call[][]): Anthropic {
 const F: TimingFacts = {
   proposalId: "P-0009", invoiceNo: "SLL-2026-11", vendor: "Stockline Data GmbH", amount: "1200.00", dueDate: "2026-11-15", today: "2026-11-05",
   eurAvailable: "800.00", eurFloor: "500.00", eurObligations: "0.00", usdAvailable: "40000.00", usdFloor: "10000.00",
-  quote: { sell: "USD 1006.21", buy: "EUR 920.00", rate: "0.9143", validTo: "2026-11-05T10:20:00Z" }, after: { eurFree: "0.00", usdAvailable: "38993.79" },
+  quote: { sell: "USD 1006.21", buy: "EUR 920.00", rate: "0.9143", validTo: "2026-11-05T10:20:00Z" }, after: { eurFree: "0.00", usdAvailable: "38993.79" }, feeMax: "20.00",
 };
 const advise = (timing: string, date: string | null, reason = "The quote is fresh and the floors hold; paying now removes the FX risk before the due date.") => ({ name: "submit_advice", input: { timing, date, reason } });
 

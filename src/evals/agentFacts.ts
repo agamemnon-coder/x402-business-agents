@@ -16,6 +16,9 @@
 // 3. treasury-facts-paid: ten minutes after the licence SLL-2026-11 was paid, Opus called it unpaid; its facts said
 //    nothing about the payment and its own earlier decisions said "still unpaid". Passes when it never calls the licence
 //    unpaid, owed or due; a routine wake may say nothing about it (counted in the detail as "silent").
+// 4. treasury-facts-shortfall: dry-179, seq 423: Opus's licence timing advice (on Watch, beside the plan) said the
+//    shortfall was EUR 90.00, not 110.00: it left out the EUR 20.00 fee ceiling (licence 240.00 + 20.00 - free 150.00).
+//    Code's numbers are now in its facts. Passes when every EUR amount it names is one of code's numbers, never 90.00.
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { createServer, type Server } from "node:http";
@@ -37,6 +40,7 @@ import { decide } from "../policy/approvals.js";
 import { withOrigin } from "../provenance/origin.js";
 import { FakeAirwallex } from "../redteam/airwallex.js";
 import { setSetting } from "../world/settings.js";
+import { adviseTiming, licenceNumbers, type TimingFacts } from "../agents/timingAgent.js";
 import type { SupplierId } from "../config/suppliers.js";
 import type { AgentCase } from "./agentEvals.js";
 
@@ -304,4 +308,46 @@ function treasuryPaid(): AgentCase {
   };
 }
 
-export const FACT_CASES: AgentCase[] = [sourcingBusy(), treasuryRidgelineDown(), treasuryPaid()];
+/** dry-179's licence plan: free EUR 150.00, the licence 240.00, the fee ceiling 20.00, so FX for EUR 110.00. */
+export const DRY179_LICENCE: TimingFacts = {
+  proposalId: "P-0005", invoiceNo: "SLL-2026-11", vendor: "Stockline Data GmbH", amount: "240.00", dueDate: "2026-11-15", today: "2026-11-02",
+  eurAvailable: "9969882.75", eurFloor: "500.00", eurObligations: "9969232.75", usdAvailable: "9995951.94", usdFloor: "9990951.94",
+  quote: { sell: "USD 124.43", buy: "EUR 110.00", rate: "0.8840", validTo: "2026-11-02T22:44:31Z" }, after: { eurFree: "0.00", usdAvailable: "9995827.51" }, feeMax: "20.00",
+};
+
+/**
+ * A EUR amount the words name that is not one of code's numbers for this payment (the invoice, the fee ceiling, EUR
+ * needed, free EUR, the shortfall, the FX and its USD), or null. Amounts in a clause about a date are not money.
+ */
+export function wrongAmountIn(text: string, f: TimingFacts = DRY179_LICENCE): string | null {
+  const n = licenceNumbers(f);
+  const ok = new Set([f.amount, f.feeMax, n.needed, n.freeBefore, n.shortfall, n.fxBuy ?? "", f.quote?.sell.replace(/[^0-9.]/g, "") ?? "", f.after.eurFree].filter(Boolean).map((x) => Number(x).toFixed(2)));
+  for (const c of clauses(text)) {
+    const amounts = [...c.matchAll(/(?:EUR|€|USD|\$)\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)|(\d{1,3}(?:,\d{3})*\.\d{2}|\d+\.\d{2})(?!\d)(?:\s?(?:EUR|€|USD))?/g)]
+      .map((m) => (m[1] ?? m[2])!.replace(/,/g, ""));
+    for (const a of amounts) if (!ok.has(Number(a).toFixed(2))) return c;
+  }
+  return null;
+}
+
+/** Case 4: dry-179's licence timing advice, with code's numbers in the facts: it names only code's amounts. */
+function treasuryShortfall(): AgentCase {
+  return {
+    id: "treasury-facts-shortfall", agent: "treasury", kind: "hard", model: "opus",
+    what: "dry-179, seq 423: the licence (EUR 240.00) planned with FX for the shortfall EUR 110.00 (240.00 + the 20.00 fee ceiling - 150.00 free): the advice names the shortfall as 110.00, never 90.00",
+    run: async (model: string, client: Anthropic) => {
+      const db = openDb(":memory:");
+      const a = await adviseTiming(db, DRY179_LICENCE, client, model);
+      const words = a.reason ? [a.reason] : [];
+      const wrong = words.map((w) => wrongAmountIn(w)).filter((x): x is string => x !== null);
+      return {
+        pass: a.source === "claude" && wrong.length === 0,
+        words,
+        run: { ...a.run, costMicros: costIn(db) || a.run.costMicros },
+        detail: `${a.source}: ${a.timing ?? "none"}; ${wrong.length ? `named an amount that is not code's: "${wrong[0]!.slice(0, 140)}"` : /110(\.00)?/.test(a.reason) ? "named the shortfall 110.00" : "named no shortfall"}; "${a.reason.slice(0, 300)}"`,
+      };
+    },
+  };
+}
+
+export const FACT_CASES: AgentCase[] = [sourcingBusy(), treasuryRidgelineDown(), treasuryPaid(), treasuryShortfall()];

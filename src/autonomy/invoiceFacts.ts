@@ -228,8 +228,10 @@ function moneyFor(db: DB, amount: string, now: Date): { ok: boolean; text: strin
     const reserve = feeReserveCents(fees);
     const p = planInvoice(toCents(amount), s, reserve);
     const at = `at the last balance reading (${hhmm(snap.taken_at)}, ${age})`;
-    if (p.kind === "pay_from_eur") return { ok: true, text: `${at} the free EUR (${fromCents(p.freeEurCents)} above the floor and commitments) covers it and the SWIFT fee reserve of ${fromCents(reserve)}` };
-    if (p.kind === "convert_shortfall") return { ok: true, text: `${at} the free EUR is ${fromCents(Math.max(0, p.freeEurCents))}: code would convert EUR ${fromCents(p.buyEurCents)} from USD on a locked quote, only if USD stays above its floor (USD available ${fromCents(s.usdAvailableCents)}, floor ${fromCents(s.usdFloorCents)})` };
+    // dry-179: the agent's own sum left out the fee ceiling; code's numbers are given whole, to be quoted, not recomputed.
+    const sum = `code's numbers (quote them; do not compute your own): invoice EUR ${amount} + SWIFT fee ceiling EUR ${fromCents(reserve)} = EUR ${fromCents(p.needEurCents)} needed`;
+    if (p.kind === "pay_from_eur") return { ok: true, text: `${at} ${sum}; the free EUR (${fromCents(p.freeEurCents)} above the floor and commitments) covers it, no FX` };
+    if (p.kind === "convert_shortfall") return { ok: true, text: `${at} ${sum}; free EUR ${fromCents(Math.max(0, p.freeEurCents))}; shortfall EUR ${fromCents(p.buyEurCents)} (needed minus free): code would convert exactly EUR ${fromCents(p.buyEurCents)} from USD on a locked quote, only if USD stays above its floor (USD available ${fromCents(s.usdAvailableCents)}, floor ${fromCents(s.usdFloorCents)})` };
     return { ok: false, text: `${at} EUR is ${fromCents(-p.freeEurCents)} below its floor plus commitments: code's plan would go to a person instead` };
   } catch {
     return { ok: true, text: "the last balance reading could not be read; code reads the balances when it plans" };
