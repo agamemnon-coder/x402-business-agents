@@ -97,6 +97,18 @@ export class SourcingAgent {
    * when it ended in an incident: a pull that may have reached Metal and was not reported refused (Sourcing is stopped).
    */
   private async recordOnChain(m: LoadedMandate, seq: number, reason: string, refusedCents?: number, letThrough = false): Promise<boolean> {
+    // The recording no longer blocks the process (agent run 1), so another refusal may arrive while it runs: one at a
+    // time per mandate and kind. This guard is per process; across processes the ledger row below is the guard.
+    const key = `${m.reference}|${letThrough ? "let_through" : "first"}`;
+    if (this.recording.has(key)) return false;
+    this.recording.add(key);
+    try { return await this.recordOnce(m, seq, reason, refusedCents, letThrough); } finally { this.recording.delete(key); }
+  }
+
+  /** The recordings in flight in this process, by mandate and kind. */
+  private readonly recording = new Set<string>();
+
+  private async recordOnce(m: LoadedMandate, seq: number, reason: string, refusedCents: number | undefined, letThrough: boolean): Promise<boolean> {
     if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ? AND COALESCE(json_extract(payload_json, '$.let_through'), 0) = ?")
       .get(m.reference, letThrough ? 1 : 0)) return false;
     const cents = refusedCents ?? Number(/over the sourcing mandate's|is over/.test(reason) ? toCents((/^mandate_cap_exceeded: (?:the supplier asks )?(\d+\.\d{2})/.exec(reason) ?? [])[1] ?? "0.00") : 0);

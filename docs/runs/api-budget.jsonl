@@ -7,3 +7,36 @@
 {"block":"evals","usd_micros":18011,"what":"holdout double-price-rise","at":"2026-11-02T09:55:02.989Z"}
 {"block":"evals","usd_micros":185898,"what":"variation sim-1","at":"2026-11-02T09:58:40.491Z"}
 {"block":"evals","usd_micros":76855,"what":"variation sim-2","at":"2026-11-02T09:59:37.050Z"}
+{"block":"evals","usd_micros":216616,"what":"agent-evals treasury-facts-ridgeline-down opus ×10","at":"2026-11-02T16:26:50.441Z"}
+{"block":"evals","usd_micros":141410,"what":"agent-evals treasury-facts-paid opus ×10","at":"2026-11-02T16:31:13.570Z"}
+{"block":"evals","usd_micros":5776,"what":"agent-evals sourcing-facts-busy haiku \u00d710 (before the fix)","at":"2026-11-02T16:19:30.000Z"}
+{"block":"evals","usd_micros":242491,"what":"agent-evals treasury-facts-ridgeline-down opus \u00d710 (before the fix; first classifier)","at":"2026-11-02T16:21:30.000Z"}
+{"block":"evals","usd_micros":170433,"what":"agent-evals treasury-facts-paid opus \u00d710 (before the fix, on 2ce1362)","at":"2026-11-02T16:28:18.232Z"}
+{"block":"evals","usd_micros":157235,"what":"agent-evals treasury-facts-paid opus \u00d710 (before the fix, on 2ce1362)","at":"2026-11-02T16:30:13.468Z"}
+{"block":"evals","usd_micros":9198,"what":"agent-evals sourcing-facts-busy haiku ×10","at":"2026-11-02T16:39:14.623Z"}
+{"block":"evals","usd_micros":670419,"what":"agent-evals treasury-facts-ridgeline-down opus ×10","at":"2026-11-02T16:43:59.347Z"}
+{"block":"evals","usd_micros":138670,"what":"agent-evals treasury-facts-paid opus ×10","at":"2026-11-02T16:44:50.170Z"}
+{"block":"evals","usd_micros":133510,"what":"agent-evals treasury-facts-paid opus ×10","at":"2026-11-02T16:45:59.747Z"}
+{"block":"evals","usd_micros":138917,"what":"agent-evals treasury-facts-paid opus ×10","at":"2026-11-02T16:54:28.356Z"}
+{"block":"evals","usd_micros":9615,"what":"agent-evals sourcing-facts-busy haiku ×10","at":"2026-11-02T17:06:59.849Z"}
+{"block":"evals","usd_micros":148017,"what":"agent-evals treasury-facts-paid opus ×10","at":"2026-11-02T17:07:51.441Z"}
+{"block":"evals","usd_micros":6057,"what":"agent-evals sourcing-facts-busy haiku \u00d710 (before the fix, on 2ce1362, final classifier)","at":"2026-11-02T17:03:29.842Z"}
+{"block":"evals","usd_micros":187279,"what":"agent-evals treasury-facts-paid opus \u00d710 (before the fix, on 2ce1362, final classifier)","at":"2026-11-02T17:04:28.154Z"}
+{"block":"evals","usd_micros":10140,"what":"agent-evals sourcing-facts-busy haiku ×10","at":"2026-11-02T17:38:23.679Z"}
+{"block":"evals","usd_micros":666785,"what":"agent-evals treasury-facts-ridgeline-down opus ×10","at":"2026-11-02T17:43:50.442Z"}
+{"block":"evals","usd_micros":138490,"what":"agent-evals treasury-facts-paid opus ×10","at":"2026-11-02T17:44:42.784Z"}
+{"block":"evals","usd_micros":9654,"what":"agent-evals sourcing-facts-busy haiku ×10","at":"2026-11-02T17:49:48.548Z"}
+{"block":"evals","usd_micros":684467,"what":"agent-evals treasury-facts-ridgeline-down opus ×10","at":"2026-11-02T17:55:06.714Z"}
+{"block":"evals","usd_micros":125950,"what":"agent-evals treasury-facts-paid opus ×10","at":"2026-11-02T17:55:53.811Z"}
+{"block":"evals","usd_micros":9575,"what":"agent-evals sourcing-facts-busy haiku ×10","at":"2026-11-02T18:00:23.879Z"}
+{"block":"evals","usd_micros":647156,"what":"agent-evals treasury-facts-ridgeline-down opus ×10","at":"2026-11-02T18:05:34.910Z"}
+{"block":"evals","usd_micros":129690,"what":"agent-evals treasury-facts-paid opus ×10","at":"2026-11-02T18:06:17.168Z"}
+{"block":"evals","usd_micros":5607,"what":"agent-evals sourcing-facts-busy haiku ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T17:37:47.813Z"}
+{"block":"evals","usd_micros":208636,"what":"agent-evals treasury-facts-ridgeline-down opus ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T17:39:19.045Z"}
+{"block":"evals","usd_micros":162994,"what":"agent-evals treasury-facts-paid opus ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T17:40:18.797Z"}
+{"block":"evals","usd_micros":6127,"what":"agent-evals sourcing-facts-busy haiku ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T17:49:21.347Z"}
+{"block":"evals","usd_micros":189962,"what":"agent-evals treasury-facts-ridgeline-down opus ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T17:50:38.726Z"}
+{"block":"evals","usd_micros":168721,"what":"agent-evals treasury-facts-paid opus ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T17:51:43.164Z"}
+{"block":"evals","usd_micros":6317,"what":"agent-evals sourcing-facts-busy haiku ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T17:59:51.858Z"}
+{"block":"evals","usd_micros":210100,"what":"agent-evals treasury-facts-ridgeline-down opus ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T18:01:23.255Z"}
+{"block":"evals","usd_micros":153375,"what":"agent-evals treasury-facts-paid opus ×10 (before the fix, on 2ce1362 + the eval files)","at":"2026-11-02T18:02:19.454Z"}
