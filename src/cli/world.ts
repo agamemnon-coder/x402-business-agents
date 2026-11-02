@@ -62,8 +62,9 @@ if (cmd === "serve") {
   while (!stopping) {
     try {
       // Defense in depth (once per world, when asked): this process's Sourcing agent is armed for one purchase.
-      if (claimLetThrough(db)) {
-        rt.sourcing.armLetThrough();
+      const claimed = claimLetThrough(db);
+      if (claimed?.armed_at) {
+        rt.sourcing.armLetThrough(claimed.armed_at);
         console.log(`${stamp()} armed: the next purchase Purser refuses over the cap goes on to Metal, once (lapses in ${LET_THROUGH_TTL_MS / 60_000} min)`);
       }
       // A silent price rise (Thursday's world) is applied before this query and its notice sent after it, when due.

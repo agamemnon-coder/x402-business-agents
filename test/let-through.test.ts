@@ -9,7 +9,7 @@ import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DB } from "../src/db/open.js";
 
-const state = vi.hoisted(() => ({ db: null as DB | null, signed: [] as number[], metal: "refuse" as "refuse" | "accept" | "lost", onChain: [] as number[] }));
+const state = vi.hoisted(() => ({ db: null as DB | null, signed: [] as number[], metal: "refuse" as "refuse" | "accept" | "lost" | "rate_limited", recordRefuses: true, onChain: [] as number[] }));
 
 vi.mock("../src/metal/mandate.js", async (orig) => ({
   ...(await orig<object>()),
@@ -29,12 +29,17 @@ vi.mock("../src/metal/pay.js", async (orig) => ({
     const nonce = `0x${String(state.signed.length).padStart(64, "0")}`;
     const paid = { kind: "paid", status: 200, body: JSON.stringify({ supplier: "Stockline", stock: {} }), tx: `0x${"ab".repeat(32)}`, nonce, signedOffer: "", amount: String(BigInt(cents) * 10n ** 16n), payTo: "0x0000000000000000000000000000000000000001" };
     if (cents <= 3 || state.metal === "accept") return paid;
+    if (state.metal === "rate_limited") return { kind: "refused", reason: "rate_limited", status: 402, body: "", nonce };
     if (state.metal === "lost") return { kind: "in_doubt", reason: "seller answered 502 without a settlement", status: 502, body: "", nonce };
     return { kind: "refused", reason: "mandate_cap_exceeded", status: 402, body: "", nonce };
   },
   findSettlementByNonce: async () => undefined,
 }));
-vi.mock("../src/metal/recordRefusal.js", () => ({ recordCapRefusalOnChain: async (_m: unknown, _to: unknown, cents: number) => { state.onChain.push(cents); return { tx: `0x${"cd".repeat(32)}`, reason: "mandate_cap_exceeded" }; } }));
+vi.mock("../src/metal/recordRefusal.js", () => ({ recordCapRefusalOnChain: async (_m: unknown, _to: unknown, cents: number) => {
+  state.onChain.push(cents);
+  if (!state.recordRefuses) throw new Error("Metal did not report a refusal (exit 0); check the pull refusal-x");
+  return { tx: `0x${"cd".repeat(32)}`, reason: "mandate_cap_exceeded" };
+} }));
 // The x402 middleware stands aside here: the seller's own answer (and its ledger row) is what is tested.
 vi.mock("@x402/express", () => ({ paymentMiddleware: () => (_req: unknown, _res: unknown, next: () => void) => next() }));
 
@@ -42,12 +47,12 @@ const { openDb } = await import("../src/db/open.js");
 const { audit } = await import("../src/audit/log.js");
 const { SourcingAgent } = await import("../src/agents/sourcing.js");
 const { claimLetThrough, letThrough, requestLetThrough, LET_THROUGH_LABEL, LET_THROUGH_TTL_MS } = await import("../src/world/letThrough.js");
-const { reserveSpend } = await import("../src/policy/holds.js");
+const { holdBeyondCap, reserveSpend } = await import("../src/policy/holds.js");
 const { stopped, stopReason } = await import("../src/policy/velocity.js");
 const { sellerApp, SELLER_ROUTE } = await import("../src/servers/seller.js");
 
 const env = { ...process.env };
-beforeEach(() => { process.env.KIT11_AGENTS = "on"; process.env.KIT11_AUTONOMY = "on"; state.signed = []; state.metal = "refuse"; state.onChain = []; });
+beforeEach(() => { process.env.KIT11_AGENTS = "on"; process.env.KIT11_AUTONOMY = "on"; state.signed = []; state.metal = "refuse"; state.onChain = []; state.recordRefuses = true; });
 afterEach(() => { process.env = { ...env }; vi.unstubAllEnvs(); });
 
 const SUPPLIER = "0x0000000000000000000000000000000000000001" as const;
@@ -65,8 +70,9 @@ const events = (db: DB, e: string) => n(db, `SELECT COUNT(*) AS n FROM audit_log
 function armed(db: DB): InstanceType<typeof SourcingAgent> {
   const a = new SourcingAgent(db, "http://127.0.0.1:1", SUPPLIER);
   requestLetThrough(db);
-  expect(claimLetThrough(db)).toMatchObject({ stage: "armed" });
-  a.armLetThrough();
+  const c = claimLetThrough(db);
+  expect(c).toMatchObject({ stage: "armed" });
+  a.armLetThrough(c!.armed_at!);
   return a;
 }
 
@@ -112,7 +118,7 @@ describe("(b) the arm applies to exactly one purchase, and nowhere else", () => 
     expect(r).toMatchObject({ ok: false, reason: expect.stringMatching(/^(policy|mandate)_cap_exceeded:/) });
     expect(state.signed).toEqual([4]);
     expect(events(db, "upstream.let_through")).toBe(1);
-    expect(() => requestLetThrough(db)).toThrow(/already let its one purchase through/);
+    expect(() => requestLetThrough(db)).toThrow(/already used its one let-through \(metal_refused\)/);
   });
 
   it("the main run's order: Purser refuses the first over-cap purchase before signing (recorded on chain), then the one let-through meets Metal (recorded too)", async () => {
@@ -122,8 +128,7 @@ describe("(b) the arm applies to exactly one purchase, and nowhere else", () => 
     expect(await a.buy(18)).toMatchObject({ ok: false, reason: expect.stringMatching(/cap_exceeded:/) });
     expect(state.signed).toEqual([]);
     requestLetThrough(db);
-    claimLetThrough(db);
-    a.armLetThrough();
+    a.armLetThrough(claimLetThrough(db)!.armed_at!);
     expect(await a.buy(19)).toMatchObject({ ok: false, reason: "mandate_cap_exceeded" });
     expect(state.signed).toEqual([4]);
     await a.buy(20); // Purser again, before signing; nothing recorded a third time
@@ -163,12 +168,69 @@ describe("(b) the arm applies to exactly one purchase, and nowhere else", () => 
     expect(letThrough(other)).toBeNull();
   });
 
-  it("not to other agents: their over-cap payments are refused by Purser as before", () => {
+  it("not to other agents or other code paths: the arm lives in one SourcingAgent's purchase, nowhere else", async () => {
     const db = world();
     armed(db);
+    // Refunds (Support), sweeps (Treasury) and any other Sourcing path reserve through Purser as always: refused over a cap.
     set(db, "cap.support", "0.15");
-    expect(reserveSpend(db, { agent: "support", rail: "metal", cents: 500, ref: "refund:x", payee: "customer" })).toMatch(/cap_exceeded|budget|exceeded/);
+    expect(reserveSpend(db, { agent: "support", rail: "metal", cents: 500, ref: "refund:x", payee: "customer" })).toMatch(/^policy_cap_exceeded/);
+    expect(reserveSpend(db, { agent: "sourcing", rail: "metal", cents: 4, ref: "other:x", payee: "supplier" })).toMatch(/cap_exceeded:/);
     expect(n(db, "SELECT COUNT(*) AS n FROM holds")).toBe(0);
+    // Another SourcingAgent (another process, or the runner's) is not armed, and the ledger's arm is untouched by them.
+    const other = new SourcingAgent(db, "http://127.0.0.1:1", SUPPLIER);
+    price(db, "0.04");
+    await other.buy(18);
+    expect(state.signed).toEqual([]);
+    expect(letThrough(db)).toMatchObject({ stage: "armed" });
+  });
+
+  it("two purchases at once: exactly one goes to Metal", async () => {
+    const db = world();
+    const a = armed(db);
+    price(db, "0.04");
+    await Promise.all([a.buy(18), a.buy(19), a.buy(20)]);
+    expect(state.signed).toEqual([4]);
+    expect(events(db, "upstream.let_through")).toBe(1);
+  });
+
+  it("an arm left in another process's memory cannot use a later claim", async () => {
+    const db = world();
+    const stale = armed(db);
+    // That claim lapses unused; a new request is claimed by another serve loop.
+    expect(claimLetThrough(db, new Date(Date.now() + LET_THROUGH_TTL_MS + 1000))).toBeNull();
+    requestLetThrough(db, new Date(Date.now() + LET_THROUGH_TTL_MS + 2000));
+    const fresh = new SourcingAgent(db, "http://127.0.0.1:1", SUPPLIER);
+    fresh.armLetThrough(claimLetThrough(db, new Date(Date.now() + LET_THROUGH_TTL_MS + 3000))!.armed_at!);
+    price(db, "0.04");
+    await stale.buy(18);
+    expect(state.signed).toEqual([]);
+  });
+
+  it("not with the mandate's budget or the shared total used up: those checks still apply", async () => {
+    const db = world();
+    const a = armed(db);
+    // The Sourcing budget (10.00) is spent in the ledger.
+    db.prepare("INSERT INTO upstream_purchases (price_cents, nonce, tx_hash, outcome, created_at, supplier) VALUES (1000, '0x9', '0x9', 'PAID', ?, 'stockline')").run(new Date().toISOString());
+    price(db, "0.04");
+    await a.buy(18);
+    expect(state.signed).toEqual([]);
+    expect(letThrough(db)).toMatchObject({ stage: "used", outcome: "not_let_through", detail: expect.stringMatching(/budget_exceeded/) });
+    expect(n(db, "SELECT COUNT(*) AS n FROM holds")).toBe(0);
+  });
+
+  it("not for a large ask: at most 0.02 over the bound cap", async () => {
+    const db = world();
+    const a = armed(db);
+    price(db, "0.50");
+    await a.buy(18);
+    expect(state.signed).toEqual([]);
+    expect(letThrough(db)).toMatchObject({ outcome: "not_let_through", detail: expect.stringMatching(/more than 0\.02 over the cap/) });
+  });
+
+  it("a let-through's hold is never taken for a normal payment with the same ref", () => {
+    const db = world();
+    expect(holdBeyondCap(db, { agent: "sourcing", cents: 4, ref: "upstream:1:1", payee: "supplier" })).toBeNull();
+    expect(reserveSpend(db, { agent: "sourcing", rail: "metal", cents: 4, ref: "upstream:1:1", payee: "supplier" })).toMatch(/let-through's hold/);
   });
 
   it("not while the CFO's emergency stop or a pause is on: nothing is signed, and the arm still waits for a cap refusal", async () => {
@@ -197,15 +259,15 @@ describe("(b) the arm applies to exactly one purchase, and nowhere else", () => 
   it("not after it lapsed", async () => {
     const db = world();
     const a = new SourcingAgent(db, "http://127.0.0.1:1", SUPPLIER);
-    requestLetThrough(db);
-    claimLetThrough(db);
-    a.armLetThrough(Date.now() - LET_THROUGH_TTL_MS - 1000);
+    requestLetThrough(db, new Date(Date.now() - LET_THROUGH_TTL_MS - 5000));
+    // Claimed (armed) more than the TTL ago: the ledger's arm has lapsed, so the purchase cannot take it.
+    a.armLetThrough(claimLetThrough(db, new Date(Date.now() - LET_THROUGH_TTL_MS - 1000))!.armed_at!);
     price(db, "0.04");
     await a.buy(18);
     expect(state.signed).toEqual([]);
-    // The ledger's request lapses too, and a pending one that was never claimed in time.
-    expect(claimLetThrough(db, new Date(Date.now() + LET_THROUGH_TTL_MS + 1000))).toBeNull();
     expect(letThrough(db)).toMatchObject({ stage: "expired" });
+    // A request that lapsed unused may be asked again.
+    expect(requestLetThrough(db)).toMatchObject({ stage: "pending" });
     const other = world();
     requestLetThrough(other, new Date(Date.now() - LET_THROUGH_TTL_MS - 1000));
     expect(claimLetThrough(other)).toBeNull();
@@ -215,6 +277,22 @@ describe("(b) the arm applies to exactly one purchase, and nowhere else", () => 
     const db = world();
     requestLetThrough(db);
     expect(() => requestLetThrough(db)).toThrow(/already pending/);
+  });
+});
+
+describe("a refusal that is not Metal's on the cap", () => {
+  it("is inconclusive: nothing settled, no label, nothing recorded on chain, and not repeated", async () => {
+    const db = world();
+    const a = armed(db);
+    state.metal = "rate_limited";
+    price(db, "0.04");
+    await a.buy(18);
+    expect(state.signed).toEqual([4]);
+    expect(letThrough(db)).toMatchObject({ stage: "used", outcome: "inconclusive" });
+    expect(events(db, "upstream.let_through_refused")).toBe(0);
+    expect(state.onChain).toEqual([]);
+    expect(db.prepare("SELECT status FROM holds").all()).toEqual([{ status: "RELEASED" }]);
+    expect(() => requestLetThrough(db)).toThrow(/already used its one let-through \(inconclusive\)/);
   });
 });
 
@@ -235,6 +313,17 @@ describe("(c) Metal accepts it anyway: an incident", () => {
     price(db, "0.02");
     expect(await a.buy(19)).toMatchObject({ ok: false, reason: expect.stringMatching(/^stopped_by_velocity/) });
     expect(state.signed).toEqual([4]);
+  });
+
+  it("a record-refusal pull that Metal does not report refusing is an incident too: the Sourcing agent is stopped", async () => {
+    const db = world();
+    const a = armed(db);
+    state.recordRefuses = false;
+    price(db, "0.04");
+    await a.buy(18);
+    expect(events(db, "upstream.refusal_not_recorded")).toBe(1);
+    expect(events(db, "upstream.let_through_incident")).toBe(1);
+    expect(stopped(db, "sourcing")).toBe(true);
   });
 
   it("a lost answer is an incident too: the hold stays HELD until the reconciliation resolves it", async () => {
