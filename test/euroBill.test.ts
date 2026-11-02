@@ -8,7 +8,7 @@ import { openDb } from "../src/db/open.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
 import { decide } from "../src/policy/approvals.js";
 import { setSetting } from "../src/world/settings.js";
-import { FakeAirwallex } from "./fakes/airwallex.js";
+import { FakeAirwallex, SANDBOX_SWIFT_FEE_CENTS } from "./fakes/airwallex.js";
 
 const text = readFileSync(new URL("../fixtures/bergtex-invoice-BTX-2026-11.txt", import.meta.url), "utf8");
 
@@ -69,9 +69,9 @@ describe("euro bill (S3) against the Airwallex port", () => {
     expect(r.transfer.status).toBe("PAID");
     expect(awx.transfers[0]!.metadata).toBe(out.proposal.terms_sha256);
     // The floor and the committed obligations stay whole; what is left is the unused part of the fee ceiling.
-    expect(awx.bal.EUR.availableCents).toBe(2_500_000 + 850_000 + 2000 - 1347);
+    expect(awx.bal.EUR.availableCents).toBe(2_500_000 + 850_000 + 2000 - SANDBOX_SWIFT_FEE_CENTS);
     const { fee_actual } = db.prepare("SELECT fee_actual FROM transfers WHERE transfer_id = ?").get(r.transfer.id) as { fee_actual: string };
-    expect(fee_actual).toBe("EUR 13.47");
+    expect(fee_actual).toBe("EUR 13.40");
     expect(awx.bal.USD.availableCents).toBeGreaterThanOrEqual(2_000_000);
     expect(verifyAuditChain(db).ok).toBe(true);
   });

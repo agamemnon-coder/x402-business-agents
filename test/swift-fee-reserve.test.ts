@@ -7,6 +7,9 @@ import { openDb } from "../src/db/open.js";
 import { SWIFT_FEE_MAX_EUR_CENTS } from "../src/config/policy.js";
 import { feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_RESERVE_CAP_CENTS } from "../src/policy/treasury.js";
 import { measuredSwiftFeesCents } from "../src/agents/euroBill.js";
+import { SANDBOX_SWIFT_FEE_CENTS } from "../src/redteam/airwallex.js";
+import { SWIFT_FEE_EUR } from "../src/evals/simRails.js";
+import { SWIFT_FEE_EUR_CENTS } from "../src/sim/month.js";
 
 const state = { eurAvailableCents: 124_000, eurFloorCents: 0, eurObligationsCents: 0, usdAvailableCents: 1_000_000, usdFloorCents: 0 };
 
@@ -14,6 +17,12 @@ describe("the SWIFT fee reserve", () => {
   it("is the ceiling when nothing was measured, or every measured fee plus 25% fits under it", () => {
     expect(feeReserveCents([])).toBe(SWIFT_FEE_MAX_EUR_CENTS);
     expect(feeReserveCents([1341, 1347, 1348])).toBe(SWIFT_FEE_MAX_EUR_CENTS);
+  });
+  it("the stand-in charges what the live sandbox charged this week (13.36 to 13.40), from one constant, and the reserve for it is the ceiling", () => {
+    expect(SANDBOX_SWIFT_FEE_CENTS).toBe(1340);
+    expect(SWIFT_FEE_EUR).toBe("13.40");
+    expect(SWIFT_FEE_EUR_CENTS).toBe(SANDBOX_SWIFT_FEE_CENTS);
+    expect(feeReserveCents([SANDBOX_SWIFT_FEE_CENTS])).toBe(SWIFT_FEE_MAX_EUR_CENTS);
   });
   it("rises above the ceiling after a higher fee than expected: the highest measured plus 25%, rounded up", () => {
     expect(feeReserveCents([1347, 2130])).toBe(2663);

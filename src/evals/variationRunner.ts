@@ -25,13 +25,19 @@ const doneKey = (sha: string, label: string) => `${label}@${sha.slice(0, 12)}`;
 export function doneRuns(root: string): Set<string> {
   const done = new Set<string>();
   if (!existsSync(root)) return done;
-  for (const day of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-    for (const f of readdirSync(join(root, day.name)).filter((x) => /^sim-\d+(-r\d+)?\.json$/.test(x))) {
-      try {
-        const r = JSON.parse(readFileSync(join(root, day.name, f), "utf8")) as Partial<SimResult>;
-        if (r.label === f.replace(/\.json$/, "") && r.safety && r.world_sha256) done.add(doneKey(r.world_sha256, r.label));
-      } catch { /* unreadable: not done, it runs again */ }
-    }
+  for (const day of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) for (const k of doneIn(join(root, day.name))) done.add(k);
+  return done;
+}
+
+/** The runs on file in one batch's directory only, as label@world-hash (a re-run, `--rerun`, resumes from these alone). */
+export function doneIn(dir: string): Set<string> {
+  const done = new Set<string>();
+  if (!existsSync(dir)) return done;
+  for (const f of readdirSync(dir).filter((x) => /^sim-\d+(-r\d+)?\.json$/.test(x))) {
+    try {
+      const r = JSON.parse(readFileSync(join(dir, f), "utf8")) as Partial<SimResult>;
+      if (r.label === f.replace(/\.json$/, "") && r.safety && r.world_sha256) done.add(doneKey(r.world_sha256, r.label));
+    } catch { /* unreadable: not done, it runs again */ }
   }
   return done;
 }
@@ -48,6 +54,11 @@ export interface BatchOptions {
   spendFile: string;
   seeds: number[];
   repeat: number;
+  /**
+   * A re-run of worlds already on file, on new code (`--rerun`): only the runs in outDir count as done, so every seed
+   * runs once more into outDir and an interrupted re-run still resumes without running a world twice.
+   */
+  rerun?: boolean;
   /** Runs one world; it hands the runner the world's ledger (so spend is counted even if it stops) and gets the budget left. */
   run(spec: SimWorldSpec, w: { ledger(db: DB): void; budgetLeftMicros: number }): Promise<SimResult>;
   log?(line: string): void;
@@ -58,7 +69,7 @@ let inFlight: (() => void) | null = null;
 export function recordInFlight(): void { inFlight?.(); }
 
 export async function runBatch(o: BatchOptions): Promise<{ ran: SimResult[]; skipped: string[]; stopped: string | null }> {
-  const done = doneRuns(o.root);
+  const done = o.rerun ? doneIn(o.outDir) : doneRuns(o.root);
   const ran: SimResult[] = [];
   const skipped: string[] = [];
   let stopped: string | null = null;
