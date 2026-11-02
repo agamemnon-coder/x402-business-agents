@@ -284,3 +284,7 @@
 {"block":"evals","usd_micros":104498,"what":"variation live-20","at":"2026-11-02T17:09:41.324Z"}
 {"block":"evals","usd_micros":246869,"what":"variation live-21","at":"2026-11-02T17:19:25.102Z"}
 {"block":"evals","usd_micros":124822,"what":"variation live-30","at":"2026-11-02T17:28:53.149Z"}
+{"block":"evals","usd_micros":130763,"what":"variation live-supplier-bankrupt","at":"2026-11-02T17:49:16.742Z"}
+{"block":"evals","usd_micros":315629,"what":"variation live-fake-cfo-email","at":"2026-11-02T18:05:06.129Z"}
+{"block":"evals","usd_micros":134430,"what":"variation live-prepay-discount-offer","at":"2026-11-02T18:14:14.408Z"}
+{"block":"evals","usd_micros":107974,"what":"variation live-double-price-rise","at":"2026-11-02T18:24:04.104Z"}
