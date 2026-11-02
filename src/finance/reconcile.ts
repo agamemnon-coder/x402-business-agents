@@ -71,7 +71,14 @@ export async function reconcile(db: DB, src: ReconcileSources, now = new Date())
         .filter((r) => r.status === "SUBMITTING" || Date.parse(r.updated_at) >= Date.parse(since));
       for (const r of open) {
         checked++;
-        const t = await src.transferByRequestId(r.request_id);
+        let t: Awaited<ReturnType<NonNullable<ReconcileSources["transferByRequestId"]>>>;
+        try {
+          t = await src.transferByRequestId(r.request_id);
+        } catch (e) {
+          // A look-up that cannot be confirmed (an unfiltered list, has_more, an error) is never read as "no transfer".
+          differences.push({ area: "airwallex transfer", ref: r.request_id, ledger: `no transfer for invoice ${r.invoice_no} (EUR ${r.amount}, ${r.status})`, outside: `the look-up by request_id could not be confirmed: ${(e as Error).message.slice(0, 160)}` });
+          continue;
+        }
         if (t) {
           differences.push({
             area: "airwallex transfer", ref: r.request_id,
