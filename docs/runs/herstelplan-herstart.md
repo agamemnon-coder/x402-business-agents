@@ -46,3 +46,11 @@ stopt de run en kiest Max: een verse wereld of opschuiven (stap 7 hierboven).
 - Tijdens de run draait er niets anders: geen soak, geen dry runs, geen testgeld-recycling. Alleen de runner draait
   op de achtergrond; elke stap is één los commando dat Claude zelf start en afwacht.
 - Een stap die halverwege stopte, wordt nooit blind herhaald: eerst `verify` en het grootboek lezen, dan pas verder.
+
+## Relay token (2 November)
+
+Since 2 November the relay token is a random secret, no longer derived from the Cloudflare key. It was renewed after
+agent run 1, because an old viewer link appeared in a screen recording and in chat. It lives outside git, in
+`/home/user/.kit11/relay-token`, and is never printed. Every runner start and every `npm run relay:deploy` needs
+`KIT11_RELAY_TOKEN=$(cat /home/user/.kit11/relay-token)`. Without it the runner gets 401 from the relay. **This file is
+lost with the container.** In a completely new container the relay is redeployed with a new token, and Max gets new links.
