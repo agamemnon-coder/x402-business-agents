@@ -16,9 +16,9 @@ import { z } from "zod";
 
 const Id = z.string().min(1).max(200);
 /** D25: a card checkout signed with TAP and checked by our merchant layer (src/visa/tapRail.ts): the agent's TAP key id
- *  and nonce, our verdicts on signature 1 (TAP) and signature 2 (body), and, on the charge itself, Airwallex's
- *  authorisation id. */
-const TapEvidence = z.strictObject({ key_id: Id, nonce: Id, sig1: Id, sig2: Id, authorization_id: Id.optional() });
+ *  and nonce, Visa's reference proxy's HTTP status when the checkout went through it, our verdicts on signature 1
+ *  (TAP) and signature 2 (body), and, on the charge itself, Airwallex's authorisation id. */
+const TapEvidence = z.strictObject({ key_id: Id, nonce: Id, sig1: Id, sig2: Id, proxy_status: z.number().int().optional(), authorization_id: Id.optional() });
 export type TapEvidence = z.infer<typeof TapEvidence>;
 const AgentOrigin = z.strictObject({ actor: z.literal("agent"), agent: Id, model: Id, request_id: Id.nullable(), run_id: Id, tap: TapEvidence.optional() });
 const CfoOrigin = z.strictObject({

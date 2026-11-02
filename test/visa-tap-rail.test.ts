@@ -5,13 +5,16 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { createServer, request, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openDb, type DB } from "../src/db/open.js";
 import { setupCards } from "../src/policy/cards.js";
 import { parseOrigin, withOrigin, type Origin } from "../src/provenance/origin.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
 import { registerAgent, revokeAgent } from "../src/visa/tap.js";
-import { buySoftwareOnCard, loadTapSigner, TAP_RAIL_MERCHANT, tapRailOn, type TapSigner } from "../src/visa/tapRail.js";
+import { buySoftwareOnCard, loadTapSigner, proxyTransport, TAP_RAIL_MERCHANT, tapRailOn, transportFromEnv, type TapSigner } from "../src/visa/tapRail.js";
+import { startTapMerchant, type TapMerchantServer } from "../src/visa/tapServer.js";
 import { ed25519FromSeed } from "../src/visa/tapSig.js";
 
 const now = new Date("2026-11-02T10:00:00Z");
@@ -120,5 +123,69 @@ describe("D24 origin with TAP evidence", () => {
     expect(parseOrigin(JSON.stringify({ actor: "code", rule: "r", tap }))).toEqual({ actor: "code", rule: "r", tap });
     expect(parseOrigin(JSON.stringify({ ...agentOrigin, tap: { ...tap, proxy: "200" } }))).toBeNull();
     expect(parseOrigin(JSON.stringify({ actor: "external", party: "merchant", tap }))).toBeNull();
+  });
+});
+
+describe("through the reference proxy (KIT11_TAP_PROXY), with a pass-through stand-in for the proxy and our real merchant server", () => {
+  let proxy: Server, merchant: TapMerchantServer, refuseWith: string | null, proxyUrl: string;
+  beforeEach(async () => {
+    refuseWith = null;
+    let target = 0;
+    proxy = createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        // The reference proxy answers 403 itself when it refuses; otherwise it forwards with Host rewritten (changeOrigin).
+        if (refuseWith) return void res.writeHead(403, { "content-type": "text/html" }).end(`<html><head><title>${refuseWith}</title></head></html>`);
+        const f = request({ host: "127.0.0.1", port: target, method: req.method, path: req.url, headers: { ...req.headers, host: `localhost:${target}` } }, (r) => {
+          res.writeHead(r.statusCode ?? 502, r.headers);
+          r.pipe(res);
+        });
+        f.end(Buffer.concat(chunks));
+      });
+    });
+    await new Promise<void>((ok) => proxy.listen(0, "127.0.0.1", () => ok()));
+    const port = (proxy.address() as AddressInfo).port;
+    proxyUrl = `http://127.0.0.1:${port}`;
+    const t = proxyTransport(proxyUrl);
+    merchant = await startTapMerchant(db, t.config, { port: 0, hosts: ["127.0.0.1"], now: () => NOW_S + 1 });
+    target = merchant.port;
+    db.prepare("UPDATE tap_agents SET domains_json = ?").run(JSON.stringify([TAP_RAIL_MERCHANT.authority, `127.0.0.1:${port}`]));
+  });
+  afterEach(async () => {
+    await merchant.close();
+    await new Promise<void>((ok) => proxy.close(() => ok()));
+  });
+
+  it("only takes a loopback proxy", () => {
+    expect(() => proxyTransport("http://proxy.example:3001")).toThrow(/this machine/);
+    expect(() => proxyTransport("https://localhost:3001")).toThrow(/this machine/);
+    expect(transportFromEnv(db, {}).kind).toBe("in-process");
+    expect(transportFromEnv(db, { KIT11_TAP_PROXY: "http://localhost:3001" }).kind).toBe("reference-proxy");
+  });
+
+  it("charges after the proxy passed it and our merchant accepted it; the origin records the proxy's 200", async () => {
+    const t = await withOrigin(agentOrigin, () => buySoftwareOnCard(db, awx, "packwise-starter", { env: { ...ON, KIT11_TAP_PROXY: proxyUrl }, now, signer: () => sourcing }));
+    expect(t.approved).toBe(true);
+    expect(parseOrigin(originOf("card.charge_approved")!.o)).toMatchObject({ actor: "agent", tap: { key_id: sourcing.keyId, proxy_status: 200, sig1: "verified", sig2: "verified", authorization_id: t.transactionId } });
+  });
+
+  it("charges nothing when the proxy itself refuses (403), and says so", async () => {
+    refuseWith = "Key Not Found";
+    await expect(buySoftwareOnCard(db, awx, "packwise-starter", { env: { ...ON, KIT11_TAP_PROXY: proxyUrl }, now, signer: () => sourcing })).rejects.toThrow(/reference proxy answered 403 \(Key Not Found\).*nothing was charged/);
+    expect(awx.calls).not.toContain("charge");
+    const row = db.prepare("SELECT json_extract(payload_json, '$.proxy_status') AS s FROM audit_log WHERE event = 'tap.checkout_refused'").get() as { s: number };
+    expect(row.s).toBe(403);
+  });
+
+  it("charges nothing when the proxy passes it and our merchant refuses it (key not pinned for this authority)", async () => {
+    db.prepare("UPDATE tap_agents SET domains_json = ?").run(JSON.stringify([TAP_RAIL_MERCHANT.authority]));
+    await expect(buySoftwareOnCard(db, awx, "packwise-starter", { env: { ...ON, KIT11_TAP_PROXY: proxyUrl }, now, signer: () => sourcing })).rejects.toThrow(/not pinned for 127\.0\.0\.1/);
+    expect(awx.calls).not.toContain("charge");
+  });
+
+  it("charges nothing when the proxy is not running", async () => {
+    await expect(buySoftwareOnCard(db, awx, "packwise-starter", { env: { ...ON, KIT11_TAP_PROXY: "http://127.0.0.1:9" }, now, signer: () => sourcing })).rejects.toThrow(/not reached/);
+    expect(awx.calls).not.toContain("charge");
   });
 });
