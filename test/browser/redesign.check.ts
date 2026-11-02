@@ -82,7 +82,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // The stylesheet parsed to the end (a stray brace once dropped the tiles' style).
     if (await page.locator(".tiles .tile").first().evaluate((e) => getComputedStyle(e).display) !== "flex") fail(`/home ${tag}: the proof tiles lost their style`);
     if ((await page.locator("nav.tabs a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
-    if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
+    if (!/Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
     // The rail's line is said in full (Max, 2 Nov: it was cut off).
     for (const s of await page.locator("[data-stage] .lane .ln small").all()) if (await s.evaluate((e) => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).display === "none")) fail(`/home ${tag}: a rail line is cut off or hidden`);
     await page.screenshot({ path: join(shots, `home-${tag}.png`) });
@@ -99,7 +99,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/watch`, { waitUntil: "load" });
     await page.waitForTimeout(5000);
     await look(page, `/watch ${tag}`, w);
-    if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(await page.locator(".pill.run").innerText())) fail(`/watch ${tag}: no run label`);
+    if (!/Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.locator(".pill.run").innerText())) fail(`/watch ${tag}: no run label`);
     if (!/^Highlights$/.test(await page.locator('#mode button[aria-pressed="true"]').innerText())) fail(`/watch ${tag}: not on the highlights by default`);
     if (!/^Full run \(\d+ steps\)$/.test(await page.locator('#mode button[data-mode="full"]').innerText())) fail(`/watch ${tag}: no full-run button with its steps`);
     await page.screenshot({ path: join(shots, `watch-${tag}.png`) });
@@ -107,7 +107,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       await page.goto(`${base}/watch?scene=${n}&autoplay=0`, { waitUntil: "load" });
       await page.waitForTimeout(500);
       await look(page, `/watch scene ${n} ${tag}`, w);
-      if ((await page.locator("ol.log li").count()) < 2) fail(`/watch scene ${n} ${tag}: nothing before the jump`);
+      if ((await page.locator("ol.log li").count()) < (n === 1 ? 1 : 2)) fail(`/watch scene ${n} ${tag}: nothing before the jump`);
       await page.screenshot({ path: join(shots, `watch-scene${n}-${tag}.png`) });
     }
     await page.screenshot({ path: join(shots, `watch-full-${tag}.png`), fullPage: true });
@@ -119,7 +119,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/try`, { waitUntil: "load" });
     await page.waitForTimeout(600);
     if ((await page.locator("nav a").count()) !== 4) fail(`/try ${tag}: not the four tabs`);
-    if (!(await page.isVisible("#q-price")) || !(await page.isVisible("text=Open a dispute"))) fail(`/try ${tag}: no quick world buttons`);
+    if (!(await page.isVisible("#q-price")) || (await page.locator("text=Open a dispute").count())) fail(`/try ${tag}: "Raise the supplier price" missing, or a live dispute offered`);
     if ((await page.locator("#examples i").count()) > 0) fail(`/try ${tag}: dots without a legend`);
     await page.screenshot({ path: join(shots, `try-${tag}.png`) });
     await page.screenshot({ path: join(shots, `try-full-${tag}.png`), fullPage: true });

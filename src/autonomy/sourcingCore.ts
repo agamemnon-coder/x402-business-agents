@@ -24,6 +24,8 @@ export interface SourcingView {
   sellCents: number;
   policy: BuyPolicy;
   card: { perTxCents: number; monthlyCents: number } | null;
+  /** This world serves no cached stock check (world.upstream_cache = off): every query buys upstream once. */
+  noCache?: boolean;
 }
 
 export const SOURCING_GOAL = `keep stock data fresh for paying customers at the best price, stay within your mandate, and keep a margin of at least ${fromCents(MIN_MARGIN_CENTS)} per query.`;
@@ -46,6 +48,7 @@ export function sourcingBrief(v: SourcingView): string {
     `You sell each stock check to customers for ${fromCents(sell)}. Your mandate: at most ${fromCents(v.capCents)} a purchase, ${fromCents(v.budgetLeftCents)} budget left.`,
     ...v.suppliers.map((s) => `- ${s.name} (${s.id}): ${s.available ? `${fromCents(s.price_cents)} a stock check, data ${s.data_age_seconds < 60 ? `${s.data_age_seconds} s` : `${Math.round(s.data_age_seconds / 60)} min`} old; margin at that price ${marginWords(sell - s.price_cents)}` : `not reachable now${s.why ? ` (code's price check: ${s.why})` : ""}`}; last 20 tries: ${s.last20.paid} paid, ${s.last20.refused} refused, ${s.last20.unavailable} unavailable.`),
     `Your buy policy now: ${policyWords(v.policy)}.`,
+    ...(v.noCache ? ["In this world code serves no cached stock check: every customer query buys its stock check upstream once, so a policy's cache_seconds has no effect here."] : []),
     ...(v.card ? [`Your company card (Airwallex, software only): up to ${fromCents(v.card.perTxCents)} EUR a purchase, ${fromCents(v.card.monthlyCents)} EUR a month.`] : []),
   ].join("\n");
 }

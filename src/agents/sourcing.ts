@@ -2,22 +2,25 @@
 // a per-purchase cap, a budget). It holds its mandate key and nothing else.
 
 import { currentOrigin, originJson, parseOrigin, withOrigin, type Origin } from "../provenance/origin.js";
-import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
+import { holdBeyondCap, releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
-import { activeMandate, type LoadedMandate } from "../metal/mandate.js";
+import { activeMandate, boundCapUnits, type LoadedMandate } from "../metal/mandate.js";
 import { findSettlementByNonce, payUnderMandate } from "../metal/pay.js";
 import type { UpstreamResult } from "../servers/seller.js";
 import { SUPPLIER_ROUTE } from "../servers/supplier.js";
 import { capRefusal } from "../policy/rules.js";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
-import { fromCents, toCents } from "../lib/money.js";
+import { centsToBaseUnits, fromCents, toCents } from "../lib/money.js";
 import { agentsOn } from "../config/agents.js";
 import { recordCapRefusalOnChain } from "../metal/recordRefusal.js";
 import { autonomyOn } from "../config/agents.js";
 import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS, type SupplierId } from "../config/suppliers.js";
 import { getSetting } from "../world/settings.js";
+import { upstreamCacheOff } from "../world/options.js";
+import { consumeLetThrough, finishLetThrough, LET_THROUGH_LABEL, LET_THROUGH_MAX_OVER_CENTS } from "../world/letThrough.js";
+import { refusalOf } from "@metalntwx/metal-pay/mandates";
 import { publish } from "../autonomy/bus.js";
 
 /** A supplier's live offer for one stock check, in cents, from its 402; null when it made none (unavailable). */
@@ -52,6 +55,8 @@ export function buyPolicy(db: DB): BuyPolicy {
 export class SourcingAgent {
   private mandate: LoadedMandate | undefined;
   private cache: { body: unknown; at: number; purchaseId: number; supplier: SupplierId } | null = null;
+  /** Defense in depth (src/world/letThrough.ts): armed in this process's memory only, for one purchase, tied to the claim. */
+  private letThroughArmedAt: string | null = null;
 
   /**
    * `ridgeline`: the second supplier (D19, the autonomous agents); without it only Stockline exists and the buy policy
@@ -87,25 +92,89 @@ export class SourcingAgent {
     publish(this.db, "customers.turned_away", { count: n, window_minutes: TURNED_AWAY_WINDOW_MS / 60_000 }, "treasury");
   }
 
-  /** The mandates whose refusal is being recorded now: the recording no longer blocks the process, so another refusal may arrive meanwhile. */
-  private readonly recording = new Set<string>();
-
-  private async recordOnChain(m: LoadedMandate, seq: number, reason: string): Promise<void> {
-    if (this.recording.has(m.reference)) return;
-    if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ?").get(m.reference)) return;
-    this.recording.add(m.reference);
-    try { await this.recordOnce(m, seq, reason); } finally { this.recording.delete(m.reference); }
+  /**
+   * Once per mandate for Purser's first cap refusal, and once more for the one let-through (`letThrough`), if any. True
+   * when it ended in an incident: a pull that may have reached Metal and was not reported refused (Sourcing is stopped).
+   */
+  private async recordOnChain(m: LoadedMandate, seq: number, reason: string, refusedCents?: number, letThrough = false): Promise<boolean> {
+    // The recording no longer blocks the process (agent run 1), so another refusal may arrive while it runs: one at a
+    // time per mandate and kind. This guard is per process; across processes the ledger row below is the guard.
+    const key = `${m.reference}|${letThrough ? "let_through" : "first"}`;
+    if (this.recording.has(key)) return false;
+    this.recording.add(key);
+    try { return await this.recordOnce(m, seq, reason, refusedCents, letThrough); } finally { this.recording.delete(key); }
   }
 
-  private async recordOnce(m: LoadedMandate, seq: number, reason: string): Promise<void> {
-    const cents = Number(/over the sourcing mandate's|is over/.test(reason) ? toCents((/^mandate_cap_exceeded: (?:the supplier asks )?(\d+\.\d{2})/.exec(reason) ?? [])[1] ?? "0.00") : 0);
+  /** The recordings in flight in this process, by mandate and kind. */
+  private readonly recording = new Set<string>();
+
+  private async recordOnce(m: LoadedMandate, seq: number, reason: string, refusedCents: number | undefined, letThrough: boolean): Promise<boolean> {
+    if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ? AND COALESCE(json_extract(payload_json, '$.let_through'), 0) = ?")
+      .get(m.reference, letThrough ? 1 : 0)) return false;
+    const cents = refusedCents ?? Number(/over the sourcing mandate's|is over/.test(reason) ? toCents((/^mandate_cap_exceeded: (?:the supplier asks )?(\d+\.\d{2})/.exec(reason) ?? [])[1] ?? "0.00") : 0);
     try {
       if (!cents) throw new Error("the refused amount is not in the reason");
+      // The record pull is an over-cap payment sent to Metal too: never more than a small rise over the bound cap.
+      let cap: bigint | null = null;
+      try { cap = boundCapUnits(m); } catch { cap = null; }
+      if (cap !== null && centsToBaseUnits(cents) > cap + centsToBaseUnits(LET_THROUGH_MAX_OVER_CENTS)) throw new Error(`${fromCents(cents)} is more than ${fromCents(LET_THROUGH_MAX_OVER_CENTS)} over the cap; no pull is sent to record it`);
       const r = await recordCapRefusalOnChain(m, this.supplier, cents, `refusal-${m.reference.slice(2, 14)}-${seq}`);
-      audit(this.db, "sourcing", "upstream.refused_on_chain", String(seq), { seq, mandate: m.reference, amount: fromCents(cents), tx: r.tx, metal_reason: r.reason });
+      audit(this.db, "sourcing", "upstream.refused_on_chain", String(seq), { seq, mandate: m.reference, amount: fromCents(cents), tx: r.tx, metal_reason: r.reason, ...(letThrough ? { let_through: true } : {}) });
+      return false;
     } catch (e) {
-      audit(this.db, "sourcing", "upstream.refusal_not_recorded", String(seq), { seq, mandate: m.reference, error: (e as Error).message.slice(0, 240) });
+      const error = (e as Error).message;
+      audit(this.db, "sourcing", "upstream.refusal_not_recorded", String(seq), { seq, mandate: m.reference, error: error.slice(0, 240), ...(letThrough ? { let_through: true } : {}) });
+      // A pull that may have reached Metal and was not reported refused may have paid: an incident.
+      if (!/^pull sent: |did not report a refusal/.test(error)) return false;
+      this.letThroughIncident(seq, null, `the ${fromCents(cents)} over-cap pull sent to record Metal's refusal was not reported refused (${error.slice(0, 120)})`, "record_pull");
+      return true;
     }
+  }
+
+  /**
+   * Arms the one let-through (the world's serve loop calls this once it claimed the world's request). The first purchase
+   * Purser refuses over a cap uses it, whatever happens next; it lapses after LET_THROUGH_TTL_MS.
+   */
+  armLetThrough(armedAt: string): void {
+    this.letThroughArmedAt = armedAt;
+  }
+
+  /** Takes the arm (it is used once): true only when the ledger's request is still armed by this claim, not lapsed. */
+  private takeLetThrough(): boolean {
+    const at = this.letThroughArmedAt;
+    this.letThroughArmedAt = null;
+    return at !== null && consumeLetThrough(this.db, at);
+  }
+
+  /**
+   * Whether a purchase Purser refused over a cap may go on to Metal as the one let-through: null when it may, else why
+   * not. Only a cap refusal, only to the supplier the policy targets, and only for an amount over the cap in the bound
+   * credential, which Metal's Mandate Binding checks on every payment, so Metal must refuse it.
+   */
+  private letThroughProblem(m: LoadedMandate, purser: string, cents: number, payTo: string, supplier: Address): string | null {
+    if (!/^(mandate_cap_exceeded|policy_cap_exceeded):/.test(purser)) return `Purser's refusal is not over a cap (${purser.slice(0, 80)})`;
+    if (payTo.toLowerCase() !== supplier.toLowerCase()) return "the offer pays someone other than the supplier the policy targets";
+    let cap: bigint;
+    try { cap = boundCapUnits(m); } catch (e) { return `the bound credential's cap could not be read (${(e as Error).message.slice(0, 80)})`; }
+    // cents is the offer rounded up to whole cents: the offer is over (cents - 1) cents, so this means "over the cap".
+    if (centsToBaseUnits(cents - 1) < cap) return `${fromCents(cents)} is not over the cap in the bound credential; Metal could pay it`;
+    // A price rise of a cent or two, never an arbitrary ask: the most an unexpected acceptance could move stays small.
+    if (centsToBaseUnits(cents) > cap + centsToBaseUnits(LET_THROUGH_MAX_OVER_CENTS)) return `${fromCents(cents)} is more than ${fromCents(LET_THROUGH_MAX_OVER_CENTS)} over the cap; only a small rise is let through`;
+    return null;
+  }
+
+  /**
+   * Metal did not cleanly refuse the let-through (it paid, or the outcome is unknown): an incident. The Sourcing agent is
+   * stopped (stop.sourcing: every purchase refused before signing until the CFO lifts it with Face ID) and an alarm row
+   * is written. The payment, if any, is in the ledger like any other; it was inside the mandate's on-chain budget.
+   */
+  private letThroughIncident(seq: number, purchaseId: number | null, what: string, kind: "let_through" | "record_pull" = "let_through"): void {
+    this.db.transaction(() => {
+      const at = new Date().toISOString();
+      this.db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('stop.sourcing', 'on', ?) ON CONFLICT(key) DO UPDATE SET value = 'on', updated_at = excluded.updated_at").run(at);
+      audit(this.db, "system", "upstream.let_through_incident", purchaseId === null ? String(seq) : String(purchaseId), { seq, purchase_id: purchaseId, kind, what, stopped: "sourcing", lift: "an approved policy change (Face ID) setting the Sourcing agent's stop to off" });
+      if (purchaseId !== null) finishLetThrough(this.db, { outcome: "incident", purchase_id: purchaseId, seq, detail: what });
+    }).immediate();
   }
 
   /** Called after a replace: the next purchase signs under the new credential. */
@@ -150,7 +219,8 @@ export class SourcingAgent {
     );
     // D19: the Sourcing agent's buy policy decides, per query, at code speed: the cache, the supplier, the price limit.
     const policy = autonomyOn() ? buyPolicy(this.db) : DEFAULT_POLICY;
-    if (policy.cache_seconds > 0 && this.cache && Date.now() - this.cache.at <= Math.min(policy.cache_seconds, MAX_CACHE_SECONDS) * 1000) {
+    // The main run's world serves no cache (world.upstream_cache = off): every sale buys upstream once, whatever the policy says.
+    if (policy.cache_seconds > 0 && !upstreamCacheOff(this.db) && this.cache && Date.now() - this.cache.at <= Math.min(policy.cache_seconds, MAX_CACHE_SECONDS) * 1000) {
       audit(this.db, "sourcing", "upstream.cached", String(this.cache.purchaseId), { seq, from_purchase: this.cache.purchaseId, supplier: this.cache.supplier, age_seconds: Math.round((Date.now() - this.cache.at) / 1000) });
       return { ok: true, purchaseId: this.cache.purchaseId, body: this.cache.body };
     }
@@ -176,17 +246,39 @@ export class SourcingAgent {
     // and the shared total before anything is signed; it is settled, released, or (in doubt) kept until resolved.
     const ref = `upstream:${seq}:${started + 60_000}`;
     let held = false;
-    const out = await payUnderMandate(this.mandate, `${t.base}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents) => {
+    // Defense in depth (src/world/letThrough.ts): set when this purchase is the one let past Purser's cap check to Metal.
+    let letThrough: { cents: number; purser: string } | null = null;
+    let notLetThrough: string | null = null;
+    const m = this.mandate;
+    const out = await payUnderMandate(m, `${t.base}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents, payTo) => {
       const refused = reserveSpend(this.db, { agent: "sourcing", rail: "metal", cents, ref, payee: "supplier" });
       held = refused === null;
+      // Armed, and Purser refused over a cap: the arm is used now, by this attempt, whatever comes of it.
+      if (refused && /^(mandate_cap_exceeded|policy_cap_exceeded):/.test(refused) && this.takeLetThrough()) {
+        const problem = this.letThroughProblem(m, refused, cents, payTo, t.address) ?? holdBeyondCap(this.db, { agent: "sourcing", cents, ref, payee: "supplier" });
+        if (problem) {
+          notLetThrough = problem;
+          return refused;
+        }
+        held = true;
+        letThrough = { cents, purser: refused };
+        audit(this.db, "sourcing", "upstream.let_through", String(seq), { seq, supplier: t.id, amount: fromCents(cents), purser_would_refuse: refused, bound_cap: fromCents(Number(boundCapUnits(m) / 10n ** 16n)), mandate: m.reference });
+        return null;
+      }
       return refused;
     });
     const now = new Date().toISOString();
+    const lt = letThrough as { cents: number; purser: string } | null;
 
     if (out.kind === "paid") {
-      const id = Number(insert.run(Number(BigInt(out.amount) / 10n ** 16n), out.nonce, out.tx, "PAID", null, now, t.id, originJson()).lastInsertRowid);
-      if (held) settleHold(this.db, ref);
-      audit(this.db, "sourcing", "upstream.paid", String(id), { seq, tx: out.tx, amount_units: out.amount, supplier: t.id });
+      // Paid, its hold settled and (for the let-through, an incident) the Sourcing agent stopped, in one transaction.
+      const id = this.db.transaction(() => {
+        const n = Number(insert.run(Number(BigInt(out.amount) / 10n ** 16n), out.nonce, out.tx, "PAID", null, now, t.id, originJson()).lastInsertRowid);
+        if (held) settleHold(this.db, ref);
+        audit(this.db, "sourcing", "upstream.paid", String(n), { seq, tx: out.tx, amount_units: out.amount, supplier: t.id });
+        if (lt) this.letThroughIncident(seq, n, `Metal accepted the over-cap purchase it should have refused (tx ${out.tx})`);
+        return n;
+      }).immediate();
       const body = JSON.parse(out.body) as unknown;
       this.cache = { body, at: Date.now(), purchaseId: id, supplier: t.id };
       return { ok: true, purchaseId: id, body };
@@ -196,6 +288,25 @@ export class SourcingAgent {
       if (held) releaseHold(this.db, ref, out.reason);
       audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason, refused_by: out.status === 0 ? "purser" : "metal", supplier: t.id });
       this.tell(seq, t.id, out.reason, out.status === 0 ? "purser" : "metal");
+      if (notLetThrough) finishLetThrough(this.db, { outcome: "not_let_through", purchase_id: id, seq, detail: notLetThrough });
+      if (lt) {
+        if (out.status === 0) {
+          finishLetThrough(this.db, { outcome: "not_sent", purchase_id: id, seq, detail: out.reason });
+        } else if (refusalOf(out.reason) === "OverPerPaymentCap") {
+          // Metal refused it itself, on the cap: nothing moved. Its refusal is then recorded on chain; only if that record
+          // ends well does the purchase get its label (a record pull not reported refused is an incident instead).
+          const incident = agentsOn() ? await this.recordOnChain(m, seq, out.reason, lt.cents, true) : false;
+          if (incident) {
+            finishLetThrough(this.db, { outcome: "incident", purchase_id: id, seq, detail: "Metal refused the purchase, but the pull recording its refusal was not reported refused" });
+          } else {
+            audit(this.db, "sourcing", "upstream.let_through_refused", String(id), { seq, purchase_id: id, metal_status: out.status, metal_reason: out.reason.slice(0, 200), amount: fromCents(lt.cents), label: LET_THROUGH_LABEL });
+            finishLetThrough(this.db, { outcome: "metal_refused", purchase_id: id, seq, detail: `${out.status} ${out.reason}` });
+          }
+        } else {
+          // Refused, nothing settled, but not by Metal on the cap (a rate limit, an outage): no label, no record; not repeated.
+          finishLetThrough(this.db, { outcome: "inconclusive", purchase_id: id, seq, detail: `${out.status} ${out.reason}` });
+        }
+      }
       // Metal QA (1 November): Purser's own check refuses an over-cap purchase before signing, so Metal never sees it.
       // With the agents on, the first such refusal under a mandate is also put to Metal, which records its refusal on
       // chain (src/metal/recordRefusal.ts). Best effort: a failure here changes nothing about the refusal itself.
@@ -206,10 +317,14 @@ export class SourcingAgent {
     }
     // In doubt: the purchase may have settled. Look its nonce up before anything else; never pay twice.
     const found = out.nonce ? await findSettlementByNonce(t.address, out.nonce, started) : undefined;
-    const id = Number(insert.run(0, out.nonce, found?.transaction ?? null, found ? "PAID" : "IN_DOUBT", out.reason, now, t.id, originJson()).lastInsertRowid);
-    // Paid after all: the ledger row counts it. In doubt: the hold keeps counting until the reconciliation resolves it.
-    if (held && found) settleHold(this.db, ref);
-    audit(this.db, "sourcing", found ? "upstream.paid_after_lookup" : "upstream.in_doubt", String(id), { seq, reason: out.reason, tx: found?.transaction ?? null });
+    const id = this.db.transaction(() => {
+      const n = Number(insert.run(0, out.nonce, found?.transaction ?? null, found ? "PAID" : "IN_DOUBT", out.reason, now, t.id, originJson()).lastInsertRowid);
+      // Paid after all: the ledger row counts it. In doubt: the hold keeps counting until the reconciliation resolves it.
+      if (held && found) settleHold(this.db, ref);
+      audit(this.db, "sourcing", found ? "upstream.paid_after_lookup" : "upstream.in_doubt", String(n), { seq, reason: out.reason, tx: found?.transaction ?? null });
+      if (lt) this.letThroughIncident(seq, n, found ? `Metal settled the over-cap purchase it should have refused (tx ${found.transaction})` : `the over-cap purchase's outcome is unknown (${out.reason.slice(0, 120)}); its hold stays until the reconciliation resolves it`);
+      return n;
+    }).immediate();
     return { ok: false, purchaseId: id, reason: found ? "paid but no stock check delivered" : out.reason, inDoubt: !found };
   }
 }

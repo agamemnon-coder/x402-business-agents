@@ -2,8 +2,7 @@
 // so it holds no key and cannot approve or move money. "Review: approve or reject" hands over to the approval page.
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
-import { visaPage } from "../visa/page.js";
-import { airwallexPage, claudePage } from "../partners/page.js";
+import { airwallexPage, claudePage, metalPage, notFoundPage, visaPage } from "../redesign/partners.js";
 import { WORLD_CHANGES } from "../try/world.js";
 import { localTryAnswer } from "../try/local.js";
 import { buildFilm } from "../film/film.js";
@@ -65,6 +64,9 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex.png", import.meta.url)) },
   "logo-metal.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/metal.svg", import.meta.url)) },
   "logo-claude.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/claude.png", import.meta.url)) },
+  // Purser's own mark and its link preview (src/ui/brand/), for every public page's favicon and Open Graph image.
+  "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
+  "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
 };
 const MONTH_TEMPLATE = withNav(readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8"), "month");
 const DEMO_TEMPLATE = withNav(readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8"), "demo");
@@ -95,7 +97,16 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
     .replace("__AGENTS_JSON__", AGENTS_JSON)
     .replace("__REDTEAM_JSON__", () => REDTEAM_JSON);
 }
-export const PAGE = dashboardPage();
+/**
+ * Words the public pages no longer use (Max, v4): older records and Lab results still carry them in their text, so the
+ * pages that show those records say them in today's words. Display only; the records stay as they were written.
+ */
+const PUBLIC_WORDS: [RegExp, string][] = [
+  [/warehouse software/g, "warehouse data"], [/\bare stand-ins\b/g, "are simulated"], [/\bis a stand-in\b/g, "is simulated"],
+  [/\ba stand-in passkey\b/g, "a test passkey"], [/\bstand-ins\b/g, "simulations"], [/\bstand-in\b/g, "simulated"],
+];
+export const publicWords = (text: string) => PUBLIC_WORDS.reduce((t, [re, to]) => t.replace(re, to), text);
+export const PAGE = publicWords(dashboardPage());
 // Only the page's own script and style may run; data arrives over fetch from this origin only.
 export const CSP = cspFor(PAGE);
 /** The month replay carries its data inside the page, so it needs no request at all once loaded. */
@@ -106,7 +117,7 @@ export const LAB_CSP = cspFor(LAB_TEMPLATE);
 export interface LabData { mode: "live" | "recorded"; at: string; results: ScenarioResult[] }
 /** The Lab page: results run now (on the runner) or the ones recorded by npm run lab (docs/lab/results.json). */
 export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readFileSync(LAB_FILE, "utf8")) as Omit<LabData, "mode">) }): string {
-  return LAB_TEMPLATE.replace("__LAB_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
+  return LAB_TEMPLATE.replace("__LAB_JSON__", () => publicWords(JSON.stringify(data)).replace(/</g, "\\u003c"));
 }
 
 /** "Purser live": the animated day, its timeline inside the page (src/live/timeline.ts), built from the recordings. */
@@ -137,21 +148,22 @@ export const TRY_PAGE = (() => {
 })();
 export const TRY_CSP = cspFor(TRY_PAGE);
 
-/** "How Purser uses Metal" (src/metal/): the features, mandates and Dispute desk case recorded in docs/demo/metal.json. */
+/** The recorded Dispute desk case of 30 October (docs/demo/metal.json), for its evidence report in the Archive. */
 const METAL_FILE = new URL("../../docs/demo/metal.json", import.meta.url);
 const metalData = () => JSON.parse(readFileSync(METAL_FILE, "utf8")) as { dispute: DisputeCase | null };
-export const METAL_PAGE = withNav(readFileSync(new URL("../metal/metal.html", import.meta.url), "utf8"), "metal").replace("__METAL_JSON__", () => JSON.stringify(metalData()).replace(/</g, "\\u003c"));
-export const METAL_CSP = cspFor(METAL_PAGE);
-/** /visa: agent recognition, then the agent's own Airwallex Visa card (src/visa/page.ts). */
-export const VISA_PAGE = withNav(visaPage(), "visa");
-// No script on /visa: a style-only policy, as for the evidence report.
-export const VISA_CSP = ["default-src 'none'", `style-src ${inlineHash(VISA_PAGE, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
-/** The partner pages (src/partners/): Airwallex shows the 30 October recording too, so it carries the names note. No script. */
-export const AIRWALLEX_PAGE = withNav(airwallexPage(), "airwallex");
-export const CLAUDE_PAGE = withNav(claudePage(), "claude");
+// The partner pages (src/redesign/partners.ts): short, picture first, the details folded; no script, so a style-only policy.
 const styleOnlyCsp = (page: string) => ["default-src 'none'", `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
+export const METAL_PAGE = metalPage();
+export const METAL_CSP = styleOnlyCsp(METAL_PAGE);
+export const VISA_PAGE = visaPage();
+export const VISA_CSP = styleOnlyCsp(VISA_PAGE);
+export const AIRWALLEX_PAGE = airwallexPage();
+export const CLAUDE_PAGE = claudePage();
 export const AIRWALLEX_CSP = styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
+/** The clean 404, for any address that is not a page; its links and assets absolute, since it answers at any depth. */
+export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
+export const NOT_FOUND_CSP = styleOnlyCsp(NOT_FOUND_PAGE);
 /** The public pages of the redesign (src/redesign/): Home, Watch and Proof, from the recorded agent run. */
 export const HOME_PAGE = homePage();
 export const WATCH_PAGE = watchPage();
@@ -161,10 +173,14 @@ export const WATCH_CSP = cspFor(WATCH_PAGE);
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
 export const REDIRECTS: Record<string, string> = { "/live": "/watch", "/demo": "/watch", "/overview": "/home" };
+/** The label on the public evidence report: the customer in the 30 October case is simulated. */
+export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
 export const METAL_REPORT = (() => {
   const c = metalData().dispute;
-  return c ? disputeReportHtml(c) : null;
+  // On the public page the report says who the customer is: simulated, its claim filed by us (the report a customer
+  // receives is built by disputeReportHtml alone).
+  return c ? disputeReportHtml(c).replace(/(<\/h1>)/, `$1\n<p><strong>${SIMULATED_CUSTOMER}</strong></p>`) : null;
 })();
 export const METAL_REPORT_CSP = METAL_REPORT ? [
   "default-src 'none'", `style-src ${inlineHash(METAL_REPORT, "style")}`, "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",

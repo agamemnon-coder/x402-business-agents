@@ -635,6 +635,11 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       return out(sale ? `Sold stock check #${sale.seq} to Summit Outfitters for ${fromCents(sale.price)} USDZ${how}` : `Sale ${s} delivered${how}`, "ok");
     }
     case "sale.settle_failed": return out(`A sale did not settle; the customer was not charged (${str(p.error)})`, "refusal");
+    case "sale.refused": return out(`Customer query #${str(p.seq)} answered ${str(p.status)}: the stock check could not be bought, so the middleware did not settle and Summit Outfitters was not charged`, "refusal");
+    case "query.answered": return out(`Customer query #${str(p.seq)}: Summit Outfitters got ${p.status === null ? "no answer" : `HTTP ${str(p.status)}`}; ${p.settled === true ? "its payment settled" : p.settled === false ? "its payment did not settle (not charged)" : "settlement unknown"}`, p.settled === true ? "ok" : "refusal");
+    case "upstream.let_through": return out(`Defense in depth: purchase of stock check #${str(p.seq)} at ${str(p.amount)} USDZ, over the ${str(p.bound_cap)} cap, let through to Metal once (Purser would have refused it before signing)`, "info");
+    case "upstream.let_through_refused": return out(str(p.label), "refusal");
+    case "upstream.let_through_incident": return out(`INCIDENT: ${str(p.what)}; the Sourcing agent is stopped until the CFO lifts it with Face ID`, "refusal");
     // The sandbox starts with millions; the floors calibrated against it are not this business's money, so no numbers.
     case "setting.changed": return CALIBRATION.has(s)
       ? out(`Treasury set the ${CALIBRATION.get(s)} against the Airwallex sandbox balance`)
@@ -1001,7 +1006,7 @@ const askFrom = (actor: string, by: string) => (actor.startsWith("ext:") ? `agen
 
 // policy.version is bookkeeping: each rule change already shows as policy.changed.
 // agent.run: the decision rows below carry the agent's own words; a tool call that simply went through stays quiet.
-const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version", "agent.run"]);
+const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version", "agent.run", "query.answered"]);
 const quietTool = (r: { event: string; payload_json: string }) => r.event === "agent.tool" && !(JSON.parse(r.payload_json) as { blocked_by?: string }).blocked_by;
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */

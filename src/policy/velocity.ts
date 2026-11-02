@@ -28,8 +28,9 @@ export function stopped(db: DB, agent: string): boolean {
 /** Why this agent is stopped, from the audit log, or null. */
 export function stopReason(db: DB, agent: string): { since: string; reason: string } | null {
   if (!stopped(db, agent)) return null;
-  const r = db.prepare("SELECT ts, payload_json FROM audit_log WHERE event = 'velocity.tripped' AND subject = ? ORDER BY seq DESC LIMIT 1").get(agent) as { ts: string; payload_json: string } | undefined;
-  return r ? { since: r.ts, reason: String((JSON.parse(r.payload_json) as { reason?: unknown }).reason ?? "") } : { since: "", reason: "stopped by the CFO" };
+  const r = db.prepare("SELECT ts, payload_json FROM audit_log WHERE (event = 'velocity.tripped' AND subject = ?) OR (event = 'upstream.let_through_incident' AND json_extract(payload_json, '$.stopped') = ?) ORDER BY seq DESC LIMIT 1").get(agent, agent) as { ts: string; payload_json: string } | undefined;
+  const p = r ? JSON.parse(r.payload_json) as { reason?: unknown; what?: unknown } : null;
+  return r ? { since: r.ts, reason: String(p?.reason ?? (p?.what ? `incident: ${String(p.what)}` : "")) } : { since: "", reason: "stopped by the CFO" };
 }
 
 /** When this agent's stop was last lifted (ms), or 0: a lifted agent starts with a clean window. */
