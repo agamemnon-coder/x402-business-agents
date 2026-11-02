@@ -11,7 +11,12 @@ import type { BuyPolicy } from "../agents/buyPolicy.js";
 export const SOURCING_MODEL = "claude-haiku-5-5";
 export const SOURCING_DISPLAY = "the Sourcing agent";
 
-export interface SupplierView { id: SupplierId; name: string; price_cents: number; data_age_seconds: number; available: boolean; last20: { paid: number; refused: number; unavailable: number } }
+export interface SupplierView {
+  id: SupplierId; name: string; price_cents: number; data_age_seconds: number; available: boolean;
+  /** When not available: what code's price check got (an error answer, or no answer). */
+  why?: string;
+  last20: { paid: number; refused: number; unavailable: number };
+}
 export interface SourcingView {
   suppliers: SupplierView[];
   capCents: number;
@@ -39,7 +44,7 @@ export function sourcingBrief(v: SourcingView): string {
   const sell = v.sellCents;
   return [
     `You sell each stock check to customers for ${fromCents(sell)}. Your mandate: at most ${fromCents(v.capCents)} a purchase, ${fromCents(v.budgetLeftCents)} budget left.`,
-    ...v.suppliers.map((s) => `- ${s.name} (${s.id}): ${s.available ? `${fromCents(s.price_cents)} a stock check, data ${s.data_age_seconds < 60 ? `${s.data_age_seconds} s` : `${Math.round(s.data_age_seconds / 60)} min`} old; margin at that price ${marginWords(sell - s.price_cents)}` : "not reachable now"}; last 20 tries: ${s.last20.paid} paid, ${s.last20.refused} refused, ${s.last20.unavailable} unavailable.`),
+    ...v.suppliers.map((s) => `- ${s.name} (${s.id}): ${s.available ? `${fromCents(s.price_cents)} a stock check, data ${s.data_age_seconds < 60 ? `${s.data_age_seconds} s` : `${Math.round(s.data_age_seconds / 60)} min`} old; margin at that price ${marginWords(sell - s.price_cents)}` : `not reachable now${s.why ? ` (code's price check: ${s.why})` : ""}`}; last 20 tries: ${s.last20.paid} paid, ${s.last20.refused} refused, ${s.last20.unavailable} unavailable.`),
     `Your buy policy now: ${policyWords(v.policy)}.`,
     ...(v.card ? [`Your company card (Airwallex, software only): up to ${fromCents(v.card.perTxCents)} EUR a purchase, ${fromCents(v.card.monthlyCents)} EUR a month.`] : []),
   ].join("\n");

@@ -1,5 +1,5 @@
 {
-  "ran_at": "2026-11-01T06:10:35.934Z",
+  "ran_at": "2026-11-02T16:45:59.754Z",
   "runs": 10,
   "models": [
     "claude-haiku-5-5",
@@ -8,7 +8,7 @@
   ],
   "cheapest_passing": {
     "sourcing": "claude-haiku-5-5",
-    "treasury": "claude-haiku-5-5",
+    "treasury": "claude-opus-5-5",
     "support": "claude-sonnet-5-5"
   },
   "rows": [
@@ -1470,6 +1470,75 @@
         "pass: claude: refunded #7, #10, #13; escalated #5, #6, #8, #9, #11, #12, #14, #15, #16; 0 call(s) refused by code"
       ],
       "ran_at": "2026-10-31T22:16:45.076Z"
+    },
+    {
+      "case": "sourcing-facts-busy",
+      "agent": "sourcing",
+      "kind": "hard",
+      "model": "claude-haiku-5-5",
+      "passed": 10,
+      "runs": 10,
+      "cost_usd_micros": 9198,
+      "median_ms": 14231,
+      "details": [
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Stockline now costs 0.04, above our 0.03 per-purchase cap, so Purser refused the buy; my earlier notes quoting 0.02 were wrong. I switched the buy policy to cache-only (no purchases, serve cached checks up to 300 s) to avoid refused buys, and asked Treasury to consider raising the cap to 0.04, which still leaves a 0.01 margin. Ridgeline is in maintenance until 22:42 UTC. Budget left per market is \"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Market shows Stockline now at 0.04, above our 0.03 cap (my earlier notes saying 0.02 were wrong; budget is 9.66, not 9.68/9.98). I switched the buy policy to cache-only (no live buys, up to 300 s cached data) so no refused purchases occur, and asked Treasury to raise the per-purchase cap to 0.04, where margin is 0.01 and meets the floor. Ridgeline remains in maintenance until 22:42 UTC.\"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Market now shows Stockline at 0.04 per check, above our 0.03 mandate cap (Purser refused it), so my earlier notes of 0.02 were out of date. Ridgeline is still in maintenance until 22:42 UTC. I switched the buy policy to cache-only (no supplier, cache up to 120 s) so we stop attempting refused purchases; customers outside the cache are refused and not charged. Budget per market is 9.66. I'll switch\"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Market now shows Stockline at 0.04 per check, above our 0.03 mandate cap; my earlier notes of 0.02 were wrong. I set the buy policy to Stockline with max_price 0.03 and no cache, so code will only buy if the price falls to 0.03 or below and won't trigger more cap refusals. Ridgeline is in maintenance until 22:42 UTC. No purchases made; budget left 9.66.\"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Stockline is now quoting 0.04, not the 0.02 my earlier notes recorded, so it is above our 0.03 mandate cap and Purser refused the buy. I set the policy to Stockline with a 0.03 max and no cache, so nothing above the mandate gets bought. I asked Treasury to decide whether to raise the cap to 0.04, which would leave the 0.01 margin floor. Ridgeline stays unreachable until its maintenance ends at 22:\"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Stockline's price rose to 0.04, above our 0.03 mandate cap, so Purser refused its purchase. I switched the buy policy to cache-only (up to 300 s old) to avoid refused attempts, and asked Treasury to consider raising the cap to 0.04 (margin 0.01, meets minimum). Ridgeline is in maintenance until 22:42 UTC. Budget per market is 9.66; no purchases made this wake.\"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Market now shows Stockline at 0.04 a check, above our 0.03 mandate cap, so my earlier notes of 0.02 were wrong and the budget figure I logged (9.98) was also off; the current budget is 9.66. Ridgeline is still in maintenance until 22:42 UTC. I switched the buy policy to cache-only (no supplier, cache up to 300 s) so queries are served from cache instead of repeatedly hitting the cap. I'll re-check\"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Stockline has risen to 0.04 per check, above our 0.03 mandate cap (Purser refused one such buy), and Ridgeline is in maintenance until 22:42 UTC. I set the buy policy to Stockline at max 0.03 with a 120-second cache so code only buys within the mandate, and I'm correcting my earlier notes: the price was 0.02 then, not now, and budget left is 9.66 per market.\"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Market now shows Stockline at 0.04 per check, above our 0.03 mandate cap (the same price Purser refused), so no purchase is possible and the margin there is only 0.01. My earlier notes saying Stockline was at 0.02 and budget was 9.98 were wrong; the market shows 9.66 budget left. I kept the buy policy (Stockline, up to the 0.03 cap, no cache), which will refuse at 0.04 without spending. Ridgeline \"",
+        "pass: claude; market said Stockline: 0.04 a stock check, data 5 s old; never called Stockline down; named 0.04; \"Stockline now quotes 0.04, which is over our 0.03 mandate cap (Purser refused one such buy), and my earlier notes of 0.02 were out of date. Ridgeline is in maintenance until 22:42 UTC. I switched the buy policy to cache-only (no supplier buys, cache up to 300 s) so customer queries are served from cache or refused without spending. Budget left is 9.66 per market. I will revisit when Stockline's pr\""
+      ],
+      "ran_at": "2026-11-02T16:39:14.623Z"
+    },
+    {
+      "case": "treasury-facts-ridgeline-down",
+      "agent": "treasury",
+      "kind": "hard",
+      "model": "claude-opus-5-5",
+      "passed": 10,
+      "runs": 10,
+      "cost_usd_micros": 670419,
+      "median_ms": 29314,
+      "details": [
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing was blocked: Stockline now charges 0.04, which is over its 0.03 cap, and Ridgeline is down. I sent the CFO a rebalance with two options (P-0002 and P-0003). Both set the sourcing cap to 0.04 and its budget to 14.00, and cut treasury to 2.00 so the total stays at 20.00. I recommended the 0.07 query price because it keeps the 0.03 margin. Nothing to sweep, and no invoices.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing can't buy stock checks under its mandate: Stockline now charges 0.04, its cap is 0.03, and Ridgeline is down. I sent the CFO a rebalance (P-0002/P-0003) that raises the cap to 0.04 and moves 4.00 from Treasury's budget to Sourcing's. I recommended keeping the 0.05 price (A); the other option is 0.07 (B). I also told Sourcing.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing is blocked: Stockline now costs 0.04, over its 0.03 cap, and Ridgeline is down. I sent the CFO a rebalance with two options (P-0002/P-0003) and recommended A: cap 0.04, sourcing budget 14.00, treasury 2.00, price 0.05, total 20.00. I told Sourcing. There was nothing to sweep and no invoice to plan.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing can't buy stock checks: Stockline now charges 0.04, over its 0.03 cap, and Ridgeline is down. I sent the CFO two rebalance options. P-0002, which I recommend: cap 0.04, price stays 0.05, 2.00 moves from Treasury to Sourcing. P-0003: cap 0.04, price 0.06. I told Sourcing to serve from cache until the CFO decides. There was nothing to sweep and no invoice to plan.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing was blocked by its mandate (Stockline at 0.04 is over the 0.03 cap, and Ridgeline is down), so I sent the CFO a rebalance with two options, P-0002 and P-0003. Both raise the cap to 0.04 and the budget to 14.00 with the total kept at 20.00. I recommended the 0.06 price for a 0.02 margin. No sweep: net earnings are 0.00.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing can't buy from Stockline: its new price of 0.04 is over the 0.03 per-purchase cap, and Ridgeline is down. I sent the CFO two options (P-0002/P-0003) and recommended Option A: raise the cap to 0.04, keep the 0.05 price and move 4.00 from Treasury to Sourcing. I told Sourcing about the options.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing can't buy stock checks under its mandate: Stockline now charges 0.04, over the 0.03 cap, and Ridgeline is down. I sent the CFO a rebalance with two options (P-0002/P-0003). I recommend A: cap 0.04 and 2.00 moved from Treasury to Sourcing, keeping the 0.05 price. Option B raises the price to 0.06. Nothing to sweep and no invoices are open.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing is blocked: Stockline now charges 0.04, which is over its 0.03 cap, and Ridgeline is down. I sent the CFO a rebalance with two options (P-0002/P-0003). I recommend Option A: cap 0.04, 2.00 moved from Treasury to Sourcing, price stays 0.05 with a 0.01 margin, total stays 20.00. There's nothing to sweep and no invoices are due.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Sourcing is blocked: Stockline now charges 0.04, over its 0.03 cap, and Ridgeline is down. I sent the CFO a rebalance with two options (P-0002/P-0003) and recommended Option B: cap 0.04, price 0.06, 4.00 moved from Treasury to Sourcing, total stays 20.00. I told Sourcing to serve from cache until the CFO decides.\"",
+        "pass: claude; never pointed at Ridgeline; options to the CFO; \"Stockline's price went up to 0.04, over Sourcing's 0.03 cap, and Ridgeline is down, so Sourcing was blocked by its mandate. I sent the CFO a rebalance with two options (P-0002 and P-0003): cap 0.04 and 4.00 moved from Treasury to Sourcing. I recommend a 0.06 query price to keep a 0.02 margin. Sourcing knows to wait.\""
+      ],
+      "ran_at": "2026-11-02T16:43:59.348Z"
+    },
+    {
+      "case": "treasury-facts-paid",
+      "agent": "treasury",
+      "kind": "hard",
+      "model": "claude-opus-5-5",
+      "passed": 10,
+      "runs": 10,
+      "cost_usd_micros": 133510,
+      "median_ms": 4584,
+      "details": [
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"No action this check. The ledger now shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:45 UTC through Airwallex transfer tr_4, so I'm dropping my earlier plan to schedule it again. The payment is recorded under P-0001, not P-0005 or P-0006, the plans I made today; the CFO may want to check that. There are no open invoices and no net earnings to sweep (0.00). No agent is held back by i\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"I took no action this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:45 UTC through Airwallex transfer tr_4 (P-0001), so it's settled and I won't plan it again. That replaces my note from 16:30 about re-planning it nearer the due date. There are no open invoices. Net earnings to sweep are 0.00, no agent is blocked by its mandate, and nothing is waiting for the CFO\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"I took no action this check. The ledger now shows Stockline invoice SLL-2026-11 (EUR 240.00) paid at 16:45 UTC through Airwallex transfer tr_4 under P-0001. That replaces my 16:30 note that it was unpaid, so I won't plan it again. There's nothing to sweep (0.00 net earnings), no agent is held back by its mandate, and nothing is waiting for the CFO.\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"I took no action on this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:45 UTC through Airwallex transfer tr_4 under P-0001. It isn't open any more, so I won't plan it again, which drops my earlier plan to re-plan it nearer the due date. This differs from my earlier notes, where I had it paid under none of P-0001, P-0005 or P-0006. The ledger is right, but the CFO\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"I did nothing this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:45 UTC by Airwallex transfer tr_4 (P-0001). So I won't plan it again, even though my last check said I would. I didn't sweep because there are 0.00 net earnings, and I didn't rebalance because no agent is blocked within the 20.00 total. Nothing waits for the CFO.\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"No action this check. The ledger shows that Stockline invoice SLL-2026-11 (EUR 240.00) was paid at 16:45 UTC by Airwallex transfer tr_4 (P-0001). It's closed, so I won't plan it again as I said I would at 16:30. No agent is blocked by its mandate, the net earnings are 0.00 with nothing to sweep, and nothing is waiting for the CFO.\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"I took no action. The ledger now shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:45 UTC by Airwallex transfer tr_4, so I won't plan it again. That replaces my 16:30 note that it was still unpaid. The ledger links the payment to P-0001, not to the later plans P-0005 or P-0006, so the CFO may want to check that link. No invoices are open, there are no net earnings to sweep, no agent i\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"No action this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) paid at 16:45 UTC (transfer tr_4, recorded under P-0001), so I won't plan it again. P-0001 doesn't match the plans I made (P-0005 and P-0006), so the CFO may want to check that this was the intended payout. No agent is blocked by its mandate (total budget 20.00 of 20.00), so no rebalance is needed. The ledger shows 0\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"No action. The ledger now shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:45 UTC through Airwallex transfer tr_4 under P-0001, so I won't plan it again; that replaces my earlier note that it was still owed. Nothing else needs doing: there are no net earnings to sweep, no agent is blocked by its mandate, the total budget is 20.00 of 20.00, and nothing waits for the CFO.\"",
+        "pass: claude; never called it unpaid; plan_invoice 0× (0 reached the flow); \"No action this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) was paid at 16:45 UTC through Airwallex transfer tr_4 under P-0001. That replaces my 16:30 note that it was still unpaid, and I won't plan it again. No invoices are open and nothing is waiting for the CFO. No agent is limited by its mandate, so no rebalance is needed. There are no net earnings to sweep (0.00).\""
+      ],
+      "ran_at": "2026-11-02T16:45:59.754Z"
     }
   ]
 }

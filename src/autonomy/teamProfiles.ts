@@ -31,6 +31,7 @@ import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } 
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
 import type { AgentProfile } from "./runtime.js";
+import type { SupplierView } from "./sourcingCore.js";
 
 const repo = resolve(import.meta.dirname, "../..");
 const NOTICE = resolve(repo, "fixtures/stockline-price-notice.txt");
@@ -110,7 +111,16 @@ export interface TreasurySim {
  * may pass their own), the mandates on Metal testnet, the price-rise filing with the owner key and the env's Claude.
  * With `sim`, all of it is the sim's, and nothing live is reached.
  */
-export interface FlowDeps { runFlow: typeof runFlow; sim?: TreasurySim }
+export interface FlowDeps {
+  runFlow: typeof runFlow;
+  sim?: TreasurySim;
+  /**
+   * Code's price check of each supplier (live: liveSuppliers, the Sourcing agent's own check). Agent run 1: without it
+   * the position gave Ridgeline's price and not that it answered 503, and the agent pointed Sourcing at it. Absent, the
+   * position gives the ledger's prices only.
+   */
+  suppliers?(db: DB): Promise<SupplierView[]>;
+}
 
 const liveMandates = async (db: DB) => [...(await mandatesNow(db)).values()].map((c) => c.now);
 const LICENCE_TEXT = resolve(repo, "fixtures", LICENCE_INVOICE_FIXTURE);
@@ -131,6 +141,14 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
   const sourcingCap = async (db: DB) => (sim ? (await mandates(db)).find((x) => x.agent === "sourcing")?.capCents : undefined);
   // The invoice plan_invoice plans: live, the licence (`npm run licence` reads the same file); on the sim's rails, the sim's.
   const plannedText = (): string | null => (sim ? sim.invoiceText?.() ?? null : licenceText());
+  // The prices, and with code's price check whether each supplier answers now; a check that cannot run leaves the prices.
+  const supplierLine = async (db: DB, sell: number) => {
+    const seen = deps.suppliers ? await deps.suppliers(db).catch(() => null) : null;
+    if (!seen?.length) return `Query price ${fromCents(sell)}; Stockline ${supplierPrice(db, "stockline")}, Ridgeline Data ${supplierPrice(db, "ridgeline")} a stock check.`;
+    return `Query price ${fromCents(sell)}. Suppliers now, by code's price check of each: ${seen.map((x) => (x.available
+      ? `${x.name} ${fromCents(x.price_cents)} a stock check, answering`
+      : `${x.name} (${fromCents(x.price_cents)} a stock check when it answers) not reachable now${x.why ? ` (${x.why})` : ""}`)).join("; ")}.`;
+  };
   const position = async (db: DB) => {
     const m = await mandates(db);
     const sell = toCents(sellPrice(db));
@@ -138,7 +156,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
     const pend = db.prepare("SELECT proposal_id, kind FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?").all(new Date().toISOString()) as { proposal_id: string; kind: string }[];
     return [
       `Mandates (lifetime): ${m.map((x) => `${x.agent} cap ${fromCents(x.capCents)}, budget ${fromCents(x.budgetCents)}, spent ${fromCents(x.spentCents)}`).join("; ")}. Total budget ${fromCents(m.reduce((s, x) => s + x.budgetCents, 0))} of ${fromCents(TOTAL_BUDGET_CENTS)} allowed.`,
-      `Query price ${fromCents(sell)}; Stockline ${supplierPrice(db, "stockline")}, Ridgeline Data ${supplierPrice(db, "ridgeline")} a stock check.`,
+      await supplierLine(db, sell),
       r ? `Code's evidence that an agent is blocked by its mandate: ${r.refusal_reason}.` : "No agent is blocked by its mandate (no refusal over a cap, no customers turned away for lack of fresh data within the cap).",
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
       (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),

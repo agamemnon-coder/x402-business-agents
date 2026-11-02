@@ -6,8 +6,8 @@
 import { openDb } from "../db/open.js";
 import { autonomyOn } from "../config/agents.js";
 import { wake, worldReady, type AgentProfile } from "../autonomy/runtime.js";
-import { liveSourcingWorld, sourcingProfile } from "../autonomy/sourcingProfile.js";
-import { supportProfile, treasuryProfile } from "../autonomy/teamProfiles.js";
+import { liveSourcingWorld, liveSuppliers, sourcingProfile } from "../autonomy/sourcingProfile.js";
+import { runFlow, supportProfile, treasuryProfile } from "../autonomy/teamProfiles.js";
 import { redactSecrets } from "../lib/redact.js";
 import type { AgentName } from "../autonomy/bus.js";
 
@@ -17,7 +17,7 @@ if (!["sourcing", "support", "treasury"].includes(name)) { console.error("usage:
 if (!autonomyOn()) { console.error("the autonomous agents are off: set KIT11_AUTONOMY=on and KIT11_AGENTS=on"); process.exit(2); }
 const db = openDb();
 const tick = Number(process.env.KIT11_AGENT_TICK_MIN ?? "10") * 60_000;
-const profile: AgentProfile = name === "sourcing" ? sourcingProfile(liveSourcingWorld(db), tick) : name === "treasury" ? treasuryProfile(tick * 3) : supportProfile(tick * 3);
+const profile: AgentProfile = name === "sourcing" ? sourcingProfile(liveSourcingWorld(db), tick) : name === "treasury" ? treasuryProfile(tick * 3, { runFlow, suppliers: liveSuppliers }) : supportProfile(tick * 3);
 const stamp = () => new Date().toISOString().slice(11, 19);
 let stopping = false;
 process.on("SIGTERM", () => { stopping = true; });

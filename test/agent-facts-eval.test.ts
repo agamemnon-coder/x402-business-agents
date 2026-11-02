@@ -27,4 +27,22 @@ describe("the classifiers of the agent-facts eval cases", () => {
     expect(callsLicenceUnpaid("SLL-2026-11 is paid (P-0007, Airwallex transfer 7bbb3d61); nothing is owed and nothing to plan.")).toBe(false);
     expect(callsLicenceUnpaid("No action: nothing changed, nothing waits for the CFO.")).toBe(false);
   });
+
+  // Opus's own words in this eval's runs (2 November): before the fix (code without paid invoices in the facts) and after.
+  it("reads Opus's words in the eval's runs as they are: unpaid before the fix, paid after it", () => {
+    for (const before of [
+      "I took no action on this routine check. No agent is blocked by its mandate. There are no net earnings to sweep, no customer payments have come in and nothing is waiting for the CFO. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid: the CFO closed or let lapse both payouts I planned today. With 13 days left, I'll plan it again closer to the due date unless I hear the invoice i",
+      "No action this check. No agent is limited by its mandate, there are no net earnings to sweep, and nothing waits for the CFO. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid. As decided at 16:14, I'll plan it again closer to the d",
+      "I took no action on this routine check. No agent is blocked by its mandate. The total stays at 20.00, and the 0.06 query price still keeps a margin over the 0.04 and 0.03 stock-check costs. Net earnings waiting to be swept are 0.00, and nothing waits for the CFO. The Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is presumably still unpaid. I'll plan it again closer to the due date unless ",
+      "No action this check: no agent is blocked, net earnings are 0.00, nothing waits for the CFO. Stockline SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after the CFO closed or let two plans lapse, and I'll plan it again closer to the due date unless told it is disputed.",
+    ]) expect(callsLicenceUnpaid(before)).toBe(true);
+    for (const after of [
+      "No action. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:30 UTC through Airwallex transfer tr_4 under P-0001, so I'm dropping my earlier plan to plan it again before 15 Nov. No other invoices are open.",
+      "I took no action this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:30 UTC through Airwallex transfer tr_4 (P-0001). That settles it, so I won't plan it again, even though my 16:15 note still had it as unpaid.",
+      "No action. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) paid at 16:30 UTC via Airwallex transfer tr_4 under P-0001. That replaces my 16:15 note that it was still unpaid, so I won't plan it again.",
+      "No action this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) as paid at 16:30 UTC through Airwallex transfer tr_4 under P-0001. I won't plan it again, and this replaces my 16:15 note that it was still open.",
+      "No action this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) paid at 16:31 UTC through Airwallex transfer tr_4 under P-0001, so I won't plan it again, which I had said I would do closer to the due date.",
+      "No action this check. The ledger shows Stockline invoice SLL-2026-11 (EUR 240.00) was paid at 16:44 UTC by Airwallex transfer tr_4, under payment P-0001 rather than my later plans P-0005 and P-0006. So I'm dropping my plan to plan it again before 15 Nov, and nothing else is open.",
+    ]) expect(callsLicenceUnpaid(after)).toBe(false);
+  });
 });

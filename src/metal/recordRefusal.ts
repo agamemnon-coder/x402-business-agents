@@ -11,7 +11,7 @@ import type { Address } from "viem";
 import { extractTerms, readMandateState } from "@metalntwx/metal-pay/mandates";
 import { existsSync } from "node:fs";
 import { privateKeyToAccount } from "viem/accounts";
-import { keyPath, metalAgent } from "./agentCli.js";
+import { keyPath, metalAgent, metalAgentAsync } from "./agentCli.js";
 import { publicClient, readKeyFile } from "./chain.js";
 import type { LoadedMandate } from "./mandate.js";
 import { centsToBaseUnits, fromCents } from "../lib/money.js";
@@ -33,7 +33,8 @@ export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cen
   if (centsToBaseUnits(cents) <= cap) throw new Error(`${fromCents(cents)} is not over this mandate's cap; Metal would pay it, so nothing is sent`);
   const state = await readMandateState(publicClient(), m.principal, m.reference);
   if (state.boundBlock === 0n || state.revoked) throw new Error("this mandate is not bound (or is revoked); nothing to record against");
-  const r = metalAgent(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(cents),
+  // Asynchronous: the world's process keeps serving the suppliers and the seller while Metal records it (agent run 1).
+  const r = await metalAgentAsync(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(cents),
     "--payment-id", paymentId, "--record-refusal", "--key", gasKey ?? await refusalGasKey()], [0, 1]);
   const reason = r.fields.get("refused")?.[0] ?? r.fields.get("reason")?.[0] ?? "";
   if (!reason) throw new Error(`Metal did not report a refusal (exit ${r.code}); check the pull ${paymentId}`);

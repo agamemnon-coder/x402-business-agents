@@ -87,8 +87,17 @@ export class SourcingAgent {
     publish(this.db, "customers.turned_away", { count: n, window_minutes: TURNED_AWAY_WINDOW_MS / 60_000 }, "treasury");
   }
 
+  /** The mandate whose refusal is being recorded now: the recording no longer blocks the process, so a second refusal may arrive meanwhile. */
+  private recording: string | null = null;
+
   private async recordOnChain(m: LoadedMandate, seq: number, reason: string): Promise<void> {
+    if (this.recording === m.reference) return;
     if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ?").get(m.reference)) return;
+    this.recording = m.reference;
+    try { await this.recordOnce(m, seq, reason); } finally { this.recording = null; }
+  }
+
+  private async recordOnce(m: LoadedMandate, seq: number, reason: string): Promise<void> {
     const cents = Number(/over the sourcing mandate's|is over/.test(reason) ? toCents((/^mandate_cap_exceeded: (?:the supplier asks )?(\d+\.\d{2})/.exec(reason) ?? [])[1] ?? "0.00") : 0);
     try {
       if (!cents) throw new Error("the refused amount is not in the reason");

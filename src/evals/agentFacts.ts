@@ -99,10 +99,15 @@ export function ridgelinePointIn(text: string): string | null {
     && !/down|offline|maintenance|not answering|unreachable|not reachable|503|unavailable|\bafter\b|\bonce\b|\bwhen\b|\buntil\b|\bback\b|\breturns?\b|\bagain\b|\blater\b/i.test(c)) ?? null;
 }
 
-/** Where a text calls the licence unpaid or owed, or defers planning it (a sentence that does not also say it is paid), else null. */
+/**
+ * Where a text calls the licence unpaid or owed now, or defers planning it, else null. A sentence that says it is paid,
+ * declines to plan it, or corrects the agent's own earlier note ("that replaces my 16:15 note that it was unpaid") is
+ * not such a claim.
+ */
 export function licenceUnpaidIn(text: string): string | null {
-  return sentences(text).find((s) => !/\b(is|was|has been|been|now|already) paid\b|nothing (is )?(owed|outstanding|unpaid)/i.test(s)
-    && (/still (unpaid|owe|owes|due|open)|(plan|re-?plan|propose) (it|the payment|the licen[cs]e|the invoice) again|closer to the due date/i.test(s)
+  return sentences(text).find((s) => !/\b(is|was|has been|been|now|already|as|shows?|marked) paid\b|\bpaid (at|on|by|through|via|under)\b|\bsettle[sd]?\b|nothing (is )?(owed|outstanding|unpaid)/i.test(s)
+    && !/\b(won't|will not|not going to|no need to|never) (re-?plan|plan|pay)\b|\bmy (earlier |previous |\d\d:\d\d )?(note|decision|words)\b|\breplaces\b|\bno longer\b|\bcancels\b|\bdropp(ing|ed)\b|\b(isn't|is not|not) needed\b/i.test(s)
+    && (/still (unpaid|owe|owes|due|open)|presumably|(plan|re-?plan|propose) (it|the payment|the licen[cs]e|the invoice) again|closer to the due date/i.test(s)
       || (/SLL-2026-11|licen[cs]e|invoice|Stockline/i.test(s) && /\bunpaid\b|\bowes?\b|not (yet |been )?paid|outstanding/i.test(s)))) ?? null;
 }
 
@@ -174,8 +179,8 @@ function treasuryRidgelineDown(): AgentCase {
           proposePriceRise: async () => { filed++; return [{ proposal_id: "P-0002" }, { proposal_id: "P-0003" }]; },
           client, sweep: async () => ({ ok: false, text: "No sweep in this eval." }), planInvoice: async () => ({ ok: false, text: "No invoice in this eval." }),
         };
-        const deps = { runFlow: () => ({ ok: false, text: "no flow runs in this eval" }), sim,
-          suppliers: (d: DB) => Promise.all([supplierView(d, "stockline", sup.base.stockline), supplierView(d, "ridgeline", sup.base.ridgeline)]) } as FlowDeps;
+        const deps: FlowDeps = { runFlow: () => ({ ok: false, text: "no flow runs in this eval" }), sim,
+          suppliers: (d: DB) => Promise.all([supplierView(d, "stockline", sup.base.stockline), supplierView(d, "ridgeline", sup.base.ridgeline)]) };
         const w = await wake(db, { ...treasuryProfile(30 * 60_000, deps), model }, { client, now: new Date("2026-11-02T10:49:00.293Z") });
         const words = said(w?.run ?? null);
         const pointed = words.map(ridgelinePointIn).filter((x): x is string => x !== null);
