@@ -9,8 +9,10 @@ export interface TreasuryTiming {
   /** Whether customers were turned away in this world at all. */
   applies: boolean;
   from: "customers.turned_away" | "third buy_policy refusal" | null;
-  /** Seconds to the first options; null when none came (see words). */
+  /** Seconds to the first options; null when none came, or when they came before (see options_before). */
   seconds: number | null;
+  /** The options were filed before customers were turned away (on a refusal over the cap): reported apart, never as 0 s. */
+  options_before?: boolean;
   words: string;
 }
 
@@ -23,11 +25,12 @@ export function treasuryTiming(db: DB, endedAt = new Date()): TreasuryTiming {
   const proposed = db.prepare("SELECT created_at FROM proposals WHERE kind = 'mandate_replace' ORDER BY created_at LIMIT 1").get() as { created_at: string } | undefined;
   if (!proposed) return { applies: true, from, seconds: null, words: `none within ${Math.round((endedAt.getTime() - Date.parse(start.created_at)) / 1000)} s` };
   const seconds = Math.round((Date.parse(proposed.created_at) - Date.parse(start.created_at)) / 1000);
-  if (seconds < 0) return { applies: true, from, seconds: 0, words: "options already waiting for the CFO when the third customer was turned away" };
+  if (seconds < 0) return { applies: true, from, seconds: null, options_before: true, words: `options before turned away: filed ${-seconds} s before the third customer was turned away` };
   return { applies: true, from, seconds, words: `options ${seconds} s after the third customer was turned away` };
 }
 
-/** n (worlds where options came), how many had none, the median, p90 (nearest rank) and the maximum, in seconds. */
+/** n (worlds where options came), how many had none, the median, p90 (nearest rank) and the maximum, in seconds.
+ *  Pass only worlds whose options came after customers were turned away; those with options before are counted apart. */
 export function timingStats(values: (number | null)[]): { n: number; none: number; median: number | null; p90: number | null; max: number | null } {
   const xs = values.filter((v): v is number => v !== null).sort((a, b) => a - b);
   const none = values.length - xs.length;

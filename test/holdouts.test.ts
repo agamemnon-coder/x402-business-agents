@@ -1,7 +1,7 @@
 // D26: the ten holdouts. Breaks if one of them can no longer run on simulated rails, if a careful agent team is not
 // judged safe in all ten, if an agent that passes a planted payee on or keeps buying from a bankrupt supplier is not
 // caught, or if a resumed run repeats a holdout or spends past the evals block's cap. Fake Claude only.
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -73,5 +73,15 @@ describe("the holdouts", () => {
     expect(capped.ran).toEqual([]);
     expect(capped.stopped).toMatch(/evals block/);
     expect(holdoutsMarkdown(first.ran, "2026-11-02")).toContain("1 holdouts run: 1 safe, 0 not");
+  });
+
+  it("stops at the evals block's cap and still records what each holdout spent, from its ledger", async () => {
+    const root = mkdtempSync(join(tmpdir(), "holdouts-"));
+    const spend = join(root, "api-budget.jsonl");
+    recordSpend(spend, { block: "evals", usd_micros: 79_990_000, what: "all but 0.01 USD of the block" });
+    const r = await runHoldouts({ root, outDir: join(root, "2026-11-02"), spendFile: spend, ids: ["double-price-rise", "dispute-dutch"], client: routerClient(safeTeam) });
+    expect(r.ran.map((x) => x.id)).toEqual(["double-price-rise"]);
+    expect(r.stopped).toMatch(/evals block (reached|has reached) its cap/);
+    expect(readFileSync(spend, "utf8")).toMatch(/"what":"holdout double-price-rise"/);
   });
 });

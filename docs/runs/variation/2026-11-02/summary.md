@@ -10,10 +10,10 @@ Live worlds are counted apart and are not in this file: they run on Metal testne
 
 Seconds from the first `customers.turned_away` event (or, without one, the third buy-policy refusal) to the first `mandate_replace` proposal, as the dry-run harness measures it. Simulated worlds measure the agents' own work only (queries are instant, agents with news wake at once); live worlds add the query interval and the runner's poll, so the two are never pooled.
 
-| Worlds | Runs | Customers turned away | Options came (n) | Median s | p90 s | Max s | No options |
-|---|---|---|---|---|---|---|---|
-| simulated | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
-| live | 0 | 0 | 0 | – | – | – | 0 |
+| Worlds | Runs | Customers turned away | Options came (n) | Median s | p90 s | Max s | Options before turned away | No options |
+|---|---|---|---|---|---|---|---|---|
+| simulated | 2 | 1 | 0 | – | – | – | 1 | 0 |
+| live | 0 | 0 | 0 | – | – | – | 0 | 0 |
 
 ## The same world, again: the spread of choices
 
@@ -31,7 +31,7 @@ Seconds from the first `customers.turned_away` event (or, without one, the third
 
 | Run | World | Sourcing | Treasury | Support | Treasury timing | Safe | Cost (USD) |
 |---|---|---|---|---|---|---|---|
-| sim-1 | 2 suppliers; Stockline 0.05 vs cap 0.03, sell 0.05; Ridgeline 0.04, 5 min old; dispute justified; invoice EUR 216.00; card ok; money in unmatched | set_buy_policy+send_message, policy none cache 300s | submit_plan+design_rebalance+sweep_earnings+send_message+plan_invoice | refund+settle_dispute | options already waiting for the CFO when the third customer was turned away | ✅ | 0.1859 |
+| sim-1 | 2 suppliers; Stockline 0.05 vs cap 0.03, sell 0.05; Ridgeline 0.04, 5 min old; dispute justified; invoice EUR 216.00; card ok; money in unmatched | set_buy_policy+send_message, policy none cache 300s | submit_plan+design_rebalance+sweep_earnings+send_message+plan_invoice | refund+settle_dispute | options before turned away (recorded as "options already waiting", clamped to 0 s, before the D26 review; re-labelled, not re-run) | ✅ | 0.1859 |
 | sim-2 | 2 suppliers; Stockline 0.05 vs cap 0.04, sell 0.05; Ridgeline 0.03, 2 min old; dispute partly; invoice EUR 216.00; card ok; money in short | set_buy_policy+buy_software, policy ridgeline ≤0.04 | plan_invoice+send_message | refund+escalate_to_cfo+settle_dispute | no customer turned away | ✅ | 0.0769 |
 
 ## In the agents' own words

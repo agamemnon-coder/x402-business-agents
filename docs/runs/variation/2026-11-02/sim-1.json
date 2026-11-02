@@ -317,8 +317,9 @@
   "treasury_timing": {
     "applies": true,
     "from": "customers.turned_away",
-    "seconds": 0,
-    "words": "options already waiting for the CFO when the third customer was turned away"
+    "seconds": null,
+    "options_before": true,
+    "words": "options before turned away (recorded as \"options already waiting\", clamped to 0 s, before the D26 review; re-labelled, not re-run)"
   },
   "cost_usd_micros": 185898,
   "fallback_share": 0,
@@ -368,5 +369,6 @@
       "answer": "exact: MATCHED; short: SHORT by the difference, the rest stays open; no invoice in the reference: UNMATCHED, held in suspense",
       "source": "docs/runs/2026-10-30-receivables.md (NW-R-101 matched, nw-r-103 short by 10.00, \"Payment\" unmatched)"
     }
-  ]
+  ],
+  "world_sha256": "5a4745fb39d7e40ebee94c35e8dce392255195af79ac1a025225b2c7bc368d98"
 }

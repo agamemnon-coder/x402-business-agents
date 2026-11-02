@@ -39,11 +39,11 @@ describe("Treasury's timing", () => {
     expect(treasuryTiming(db, at(331))).toMatchObject({ seconds: 9 });
   });
 
-  it("reads options already waiting before customers were turned away as 0 s", () => {
+  it("reports options filed before customers were turned away apart, not as 0 s", () => {
     const db = openDb(":memory:");
     propose(db, 0, "P-0001");
     for (const s of [10, 20, 30]) refuse(db, s);
-    expect(treasuryTiming(db, at(60))).toMatchObject({ seconds: 0, words: "options already waiting for the CFO when the third customer was turned away" });
+    expect(treasuryTiming(db, at(60))).toEqual({ applies: true, from: "third buy_policy refusal", seconds: null, options_before: true, words: "options before turned away: filed 30 s before the third customer was turned away" });
   });
 
   it("gives n, median, p90 and max, with the worlds where no options came counted apart", () => {
