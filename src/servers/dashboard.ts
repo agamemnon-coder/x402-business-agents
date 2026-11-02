@@ -173,10 +173,14 @@ export const WATCH_CSP = cspFor(WATCH_PAGE);
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
 export const REDIRECTS: Record<string, string> = { "/live": "/watch", "/demo": "/watch", "/overview": "/home" };
+/** The label on the public evidence report: the customer in the 30 October case is simulated. */
+export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
 export const METAL_REPORT = (() => {
   const c = metalData().dispute;
-  return c ? disputeReportHtml(c) : null;
+  // On the public page the report says who the customer is: simulated, its claim filed by us (the report a customer
+  // receives is built by disputeReportHtml alone).
+  return c ? disputeReportHtml(c).replace(/(<\/h1>)/, `$1\n<p><strong>${SIMULATED_CUSTOMER}</strong></p>`) : null;
 })();
 export const METAL_REPORT_CSP = METAL_REPORT ? [
   "default-src 'none'", `style-src ${inlineHash(METAL_REPORT, "style")}`, "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",

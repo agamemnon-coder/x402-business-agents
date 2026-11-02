@@ -79,7 +79,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!/^(Sourcing|Support|Treasury) · Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_\w+…$/.test(await page.locator("#call").innerText())) fail(`/home ${tag}: no Claude call badge`);
     if ((await page.locator("nav.tabs a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
     if ((await page.locator(".ctas a.btn").count()) !== 3) fail(`/home ${tag}: not three buttons`);
-    if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
+    if (!/Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
     // On a phone the animation sits right under the headline.
     const gap = await page.evaluate(() => { const h = document.querySelector("h1")!.getBoundingClientRect(), f = document.querySelector(".film")!.getBoundingClientRect(); return Math.round(f.top - h.bottom); });
     if (gap > 40) fail(`/home ${tag}: ${gap}px between the headline and the animation`);
@@ -110,7 +110,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/watch`, { waitUntil: "load" });
     await page.waitForTimeout(5000);
     await look(page, `/watch ${tag}`, w);
-    if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(await page.locator(".pill.run").innerText())) fail(`/watch ${tag}: no run label`);
+    if (!/Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.locator(".pill.run").innerText())) fail(`/watch ${tag}: no run label`);
     if (!/^Highlights$/.test(await page.locator('#mode button[aria-pressed="true"]').innerText())) fail(`/watch ${tag}: not on the highlights by default`);
     if (!/^Full run \(\d+ steps\)$/.test(await page.locator('#mode button[data-mode="full"]').innerText())) fail(`/watch ${tag}: no full-run button with its steps`);
     await page.screenshot({ path: join(shots, `watch-${tag}.png`) });

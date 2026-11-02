@@ -32,7 +32,9 @@ function expected(): Record<string, string | string[]> {
   const n = (f: { count?: number }) => f.count ?? 1;
   const faceIds = new Set(ev.filter((e) => /^proposal\.(approved|rejected)$/.test(e.event) && /\bmax\b/i.test(String(e.payload.approver ?? ""))).map((e) => e.subject)).size;
   const signatures = ev.filter((e) => /^proposal\.(approved|rejected|cosigned)$/.test(e.event)).length;
-  const metalRefusals = s.flows.filter((f) => f.refused?.by === "metal").length;
+  // At the cap; a refusal because the mandate had just been replaced is shown apart, not as a limit.
+  const metalRefusals = s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason)).length;
+  const revoked = s.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length;
   const tapDeclines = TAP.steps.filter((x) => !x.airwallex.approved && x.airwallex.failure_reason === "LIMIT_EXCEEDED").length;
   const rejected = s.decisions.filter((d) => d.status === "REJECTED").length;
   const dispute = s.traces.find((t) => t.agent === "support" && t.task.startsWith("dispute"))!;
@@ -49,7 +51,8 @@ function expected(): Record<string, string | string[]> {
     "stopped at a limit": String(metalRefusals + rejected + tapDeclines),
     "Claude cost per decision": `$${(sum((a) => a.cost_usd_micros) / decisions / 1e6).toFixed(4)}`,
     "payments on chain": String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
-    "refused by Metal": String(metalRefusals),
+    "refused by Metal at the cap": String(metalRefusals),
+    "refused by Metal: mandate just replaced": String(revoked),
     "mandates replaced": String(ev.filter((e) => e.event === "mandate.replaced").length),
     "movements at Airwallex": String(s.flows.filter((f) => f.rail.startsWith("airwallex") && !f.refused).length),
     "card decline at the limit (TAP run)": String(tapDeclines),

@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, faceIdDecisions, family, split, stops, tapRun, type AgentRun, type Ev } from "./run.js";
-import { LOGO, fold, partnerProof } from "./proof.js";
+import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { esc, icon, page } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
@@ -89,7 +89,7 @@ export function metalPage(run: AgentRun = agentRun()): string {
       node("shield-check", price ? `Mandate cap ${price.cap}` : "Mandate", "per payment, on chain", "metal"), arrow,
       node("ban", price ? `${price.price} refused` : "Over the cap: refused", refusal ? `recorded on chain · ${refusal.proof.label}` : "nothing settles", "bad"), arrow,
       node("scan-face", price?.newCap ? `New cap ${price.newCap}` : "New mandate", "after Face ID 1 of 2 → 2 of 2", "ok")].join(""),
-    nums: nums([[String(onChain), "payments on chain"], [String(st.metal), "refused by Metal"], [String(mandates.length), "mandates replaced"], [sweep ? sweep.amount : "0", "test USD swept after finality"]]),
+    nums: nums([[String(onChain), "payments on chain"], [String(st.metal), "refused by Metal at the cap"], [String(mandates.length), "mandates replaced"], [sweep ? sweep.amount : "0", "test USD swept after finality"]]),
     line: "Each agent pays from the company's Metal account under its own mandate; a payment over the cap does not settle.",
     folds: fold("The live proof, with every tx", p.metal) + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
       + fold("What is simulated", [plainLi("Test money on Metal testnet only."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions.")])
@@ -112,7 +112,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], [String(st.airwallex), "card decline at the limit (TAP run)"], [String(earlier), "earlier attempt, nothing paid"]]),
     line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
     folds: fold("The live proof, with every Airwallex id", p.airwallex) + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
-      + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."), plainLi("The earlier licence attempt failed because the sandbox could not price the SWIFT fee (fee_unknown); it is not a limit, and nothing was paid.")]),
+      + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."), ...money.filter((e) => e.earlier).map((e) => plainLi(earlierLine(e)))]),
   });
 }
 
