@@ -17,6 +17,15 @@ const MANDATE_WORDS: Record<string, string> = {
   mandate_revoked: "The mandate was replaced",
   mandate_expired: "The mandate has expired",
   payee_not_allowed: "Not a payee of the mandate",
+  // Metal's own names for the rest (@metalntwx/metal-pay REFUSALS; test/contract/metal-facilitator.test.ts).
+  mandate_budget_spent: "Over the mandate's total budget",
+  mandate_payee_not_listed: "Not a payee of the mandate",
+  mandate_not_bound: "No such mandate is bound on the account",
+  mandate_bad_signature: "Not signed by the mandate key",
+  mandate_nonce_used: "This payment was already made or refused",
+  mandate_outside_window: "Outside the payment's validity window",
+  mandate_outside_recurrence: "The mandate has not started yet, or its dates have ended",
+  mandate_occurrences_used: "The mandate's payment count is used up",
 };
 export function refusalWords(reason: string): string {
   const code = /^([A-Za-z_]+)/.exec(reason)?.[1] ?? "";

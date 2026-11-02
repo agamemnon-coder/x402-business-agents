@@ -8,7 +8,7 @@ import { originJson } from "../provenance/origin.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
-import type { AirwallexRail, SandboxSim, Transfer } from "../airwallex/port.js";
+import type { AirwallexRail, NewTransfer, SandboxSim, Transfer } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -125,18 +125,58 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   const req = { requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR" as const, sourceCurrency: "EUR" as const, reference: t.reference, reason: t.reason, approvalSha256: sha };
   let tr: Transfer;
   try {
-    tr = await rail.createTransfer(req);
+    tr = await createOrAdopt(rail, req);
   } catch (err) {
+    if (err instanceof AirwallexError && err.status === 400 && REFUSED_AT_CREATE.has(err.code ?? "")) {
+      // Airwallex refused the create outright (contract tests): no transfer exists, so the row is closed, not left
+      // SUBMITTING, where it would count as money under way and block the invoice forever. A new proposal pays it.
+      db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
+        .run(err.code, `refused by Airwallex at create: ${err.code}`, new Date().toISOString(), t.transfer_request_id);
+      audit(db, "awx-executor", "transfer.refused", t.transfer_request_id, { code: err.code ?? null, status: err.status, amount: `EUR ${t.amount}`, approval_sha256: sha });
+      throw err;
+    }
     if (!(err instanceof AirwallexAmbiguous)) throw err;
     const found = await rail.findTransferByRequestId(t.transfer_request_id);
     audit(db, "awx-executor", "transfer.ambiguous", t.transfer_request_id, { resolved: found ? "adopted" : "resent with the same request_id" });
-    tr = found ?? (await rail.createTransfer(req));
+    tr = found ?? (await createOrAdopt(rail, req));
   }
   // A crash here: Airwallex has the payout, the ledger only its SUBMITTING row. The retry adopts it by request_id.
   await checkpoint("transfer:after-create");
   db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ?").run(tr.id, tr.status, new Date().toISOString(), t.transfer_request_id);
   audit(db, "awx-executor", "transfer.created", tr.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha });
   return tr;
+}
+
+/**
+ * The create errors Airwallex documents for POST /transfers/create that mean no transfer was made
+ * (https://www.airwallex.com/docs/payouts/errors/transfer-error-codes). Not here: duplicate_request_id (one exists) and
+ * service_unavailable (the outcome is not stated); those keep the payout open as under way.
+ */
+export const REFUSED_AT_CREATE = new Set([
+  "validation_failed", "amount_above_transfer_method_limit", "amount_below_transfer_method_limit", "amount_beneficiary_receives_below_limit",
+  "amount_beneficiary_receives_above_cumulative_limit", "balance_insufficient", "beneficiary_type_unsupported", "currency_pair_invalid", "fee_unknown",
+  "open_position_limit_exceeded", "transfer_currency_unsupported", "transfer_amount_above_account_limit", "transfer_amount_below_account_limit",
+  "transfer_method_unsupported", "source_amount_above_account_limit", "source_amount_below_account_limit", "source_currency_unsupported",
+  "quote_expired", "quote_id_invalid", "quote_id_required", "workflow_invalid", "transfer_date_invalid", "payer_unsupported",
+  // The builder guide: FX on a newly activated account (https://airwallexdev.com/guide).
+  "unconfigured_client_fee",
+]);
+
+/**
+ * Creates the transfer; if Airwallex answers that this request_id already made one (duplicate_request_id, or the
+ * legacy request_id_duplicate, with the transfer's id in details), that transfer is adopted, never a second one made.
+ */
+async function createOrAdopt(rail: AirwallexRail, req: NewTransfer): Promise<Transfer> {
+  try {
+    return await rail.createTransfer(req);
+  } catch (err) {
+    if (!(err instanceof AirwallexError) || (err.code !== "duplicate_request_id" && err.code !== "request_id_duplicate")) throw err;
+    const id = (err.body as { details?: { id?: unknown } } | null)?.details?.id;
+    const existing = typeof id === "string" && id ? await rail.getTransfer(id) : await rail.findTransferByRequestId(req.requestId);
+    // Adopted only when it is this payout's own request_id; anything else stays an error (the payout stays open).
+    if (!existing || existing.requestId !== req.requestId) throw err;
+    return existing;
+  }
 }
 
 /**
