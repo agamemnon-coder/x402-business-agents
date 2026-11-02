@@ -135,6 +135,24 @@ function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | null {
   return denied ? `${denied}; nothing is paid` : null;
 }
 
+/** The approved payee must still be the supplier's active account (a bank-detail change applied meanwhile replaces it). */
+function payeeReason(db: DB, t: InvoicePaymentTerms): string | null {
+  const b = db.prepare("SELECT status FROM beneficiaries WHERE beneficiary_id = ?").get(t.beneficiary_id) as { status: string } | undefined;
+  return b?.status === "ACTIVE" ? null : `the approved payee ${t.beneficiary_id} is no longer the active account of ${t.beneficiary_name} (${b?.status ?? "missing"}); nothing is paid, a new proposal is needed`;
+}
+
+/** The EUR floor, commitments and other payouts under way, on a fresh balance (as on a resume after the conversion). */
+async function floorReason(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms): Promise<string | null> {
+  let s: ReturnType<typeof treasuryState>;
+  try {
+    s = treasuryState(db, await snapshot(db, rail, `retry:${t.proposal_id}`));
+  } catch (e) {
+    return `the EUR balance could not be read (${(e as Error).message}); no attempt without the floor check`;
+  }
+  return s.eurAvailableCents - toCents(t.amount) - toCents(t.fee_max) < s.eurFloorCents + s.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id)
+    ? "EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed" : null;
+}
+
 async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms, sha: string, now: () => Date, feeRetry: FeeRetry): Promise<Transfer> {
   const existing = db.prepare("SELECT transfer_id, status FROM transfers WHERE request_id = ?").get(t.transfer_request_id) as { transfer_id: string | null; status: string } | undefined;
   if (existing?.transfer_id) return rail.getTransfer(existing.transfer_id);
@@ -350,9 +368,10 @@ async function createWithFeeRetry(db: DB, rail: AirwallexRail, t: InvoicePayment
       if (stopped !== null || wait === undefined) { log({ next_attempt_in_s: null, stopped }); throw err; }
       log({ next_attempt_in_s: wait / 1000, stopped: null });
       await retry.sleep(wait);
-      // After the wait: still before the expiry, and no hold set meanwhile (the emergency stop, a pause, a blocked payee).
+      // After the wait: still before the expiry, no hold set meanwhile (the emergency stop, a pause, a blocked payee),
+      // the approved payee still the supplier's active account, and the EUR floor still kept on a fresh balance.
       const late = now().getTime() >= expires ? `the approved terms expired at ${t.expires_at} during the wait` : null;
-      const held = late ?? holdReason(db, t, now());
+      const held = late ?? holdReason(db, t, now()) ?? payeeReason(db, t) ?? await floorReason(db, rail, t);
       if (held) {
         audit(db, "awx-executor", "transfer.retry_stopped", t.transfer_request_id, { after_attempt: attempt, reason: held, request_id: t.transfer_request_id, approval_sha256: sha });
         throw err;

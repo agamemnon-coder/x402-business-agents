@@ -822,6 +822,39 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
       expect(transferRows(db)[0]!.status).toBe("CANCELLED");
     });
 
+    it("a wait that overshoots the expiry (the process slept longer than asked): no attempt after it", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      const expires = Date.parse(out.terms.expires_at);
+      let t = expires - 20_000;
+      awx.fail.createTransfer = persistently("fee_unknown");
+      // Asked to wait 15 s (which would land before the expiry), it wakes 30 s later, after it.
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, () => new Date(t), { delaysMs: [15_000, 30_000], sleep: async () => { t += 30_000; } }))
+        .rejects.toMatchObject({ code: "fee_unknown" });
+      expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toHaveLength(1);
+      expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.retry_stopped'").get() as { payload_json: string }).payload_json)).toMatchObject({ after_attempt: 1, reason: expect.stringMatching(/expired .*during the wait/) });
+    });
+
+    it("after each wait the EUR floor is checked again on a fresh balance: no attempt that would now break it", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      awx.fail.createTransfer = persistently("fee_unknown");
+      const sleep = async () => { awx.bal.EUR.availableCents = 0; };
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, { delaysMs: [15_000, 30_000], sleep })).rejects.toMatchObject({ code: "fee_unknown" });
+      expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toHaveLength(1);
+      expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.retry_stopped'").get() as { payload_json: string }).payload_json)).toMatchObject({ reason: expect.stringMatching(/EUR would now drop under its floor/) });
+    });
+
+    it("after each wait the payee is checked again: a payee replaced meanwhile (a bank-detail change applied) gets no further attempt", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      awx.fail.createTransfer = persistently("fee_unknown");
+      const sleep = async () => { db.prepare("UPDATE beneficiaries SET status = 'REPLACED' WHERE beneficiary_id = ?").run(out.terms.beneficiary_id); };
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, { delaysMs: [15_000, 30_000], sleep })).rejects.toMatchObject({ code: "fee_unknown" });
+      expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toHaveLength(1);
+      expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.retry_stopped'").get() as { payload_json: string }).payload_json)).toMatchObject({ reason: expect.stringMatching(/payee .*no longer the active/) });
+    });
+
     it("the SWIFT fee ceiling still applies to what is finally paid after a retry", async () => {
       const { db, awx } = await world();
       const out = await approved(db, awx);
