@@ -265,6 +265,12 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
           const recent = open.find((x) => x.d?.attempted_at && Date.now() - Date.parse(x.d.attempted_at) < 30 * 60_000);
           if (recent?.d) return { text: `Decided already; carried out last at ${recent.d.attempted_at}: ${decisionSummary(recent.d)}. Tried again after half an hour; nothing is decided again.`, blocked: "carried out recently" };
           if (!resuming && db.prepare("SELECT 1 FROM audit_log WHERE event = 'dispute.settled_by_agent' AND ts > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: this dispute was settled in the last half hour.", blocked: "already settled" };
+          // Night batch, 2 November (live-14, dry-147): on a routine wake with no dispute in the world, the agent ran this
+          // tool and the live settlement (s2) settled the fixture's dispute, refunding 3 orders nobody had disputed. A new
+          // settlement needs a customer's dispute that came in after the last one was settled.
+          const came = (db.prepare("SELECT MAX(created_at) AS t FROM world_events WHERE kind = 'dispute.opened'").get() as { t: string | null }).t;
+          const settledAt = (db.prepare("SELECT MAX(ts) AS t FROM audit_log WHERE event = 'dispute.settled_by_agent'").get() as { t: string | null }).t;
+          if (!resuming && (!came || (settledAt && settledAt >= came))) return { text: "Not settled: no customer dispute has come in since the last one was settled.", blocked: "no dispute" };
           const r = await deps.settle(db, "agent");
           return { text: `${resuming ? "Carried out the dispute's recorded decision (nothing decided again): " : ""}${r.text}`, ...(r.ok ? {} : { blocked: "the settlement did not complete" }) };
         },
