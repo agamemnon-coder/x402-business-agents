@@ -25,10 +25,18 @@ class FeeUnknownAirwallex extends FakeAirwallex {
     if (this.refuse > 0) { this.refuse--; throw new AirwallexError(400, "fee_unknown", { code: "fee_unknown", message: "fee configuration" }, "/transfers/create"); }
     return super.createTransfer(t);
   }
+  /** Airwallex's list ignoring the request_id filter: page one is other transfers, so a lenient look-up sees nothing. */
+  listIgnoresFilter = false;
   override async findTransferByRequestId(requestId: string) {
     this.calls.push(`findTransferByRequestId:${requestId}`);
     if (this.lookupFails) throw new Error("socket hang up");
+    if (this.listIgnoresFilter) return undefined;
     return super.findTransferByRequestId(requestId);
+  }
+  override async findTransferByRequestIdStrict(requestId: string) {
+    this.calls.push(`findTransferByRequestIdStrict:${requestId}`);
+    if (this.listIgnoresFilter) throw new Error("Airwallex's transfer list was not filtered by the request_id");
+    return super.findTransferByRequestIdStrict(requestId);
   }
 }
 
@@ -59,7 +67,7 @@ describe("the licence after Airwallex refused its payout", () => {
     expect(again.proposal.terms_sha256).not.toBe(first.proposal.terms_sha256);
     expect(again.proposal.status).toBe("PENDING_APPROVAL");
     // Airwallex was asked by the closed payout's request_id before the new plan.
-    expect(awx.calls).toContain(`findTransferByRequestId:${first.terms.transfer_request_id}`);
+    expect(awx.calls).toContain(`findTransferByRequestIdStrict:${first.terms.transfer_request_id}`);
     // Nothing runs without the new Face ID; the old approval does not carry over.
     await expect(executeInvoicePayment(db, awx, awx, again.proposal.proposal_id, undefined, FAST)).rejects.toThrow(/not approved/);
     expect(awx.transfers).toHaveLength(0);
@@ -85,6 +93,16 @@ describe("the licence after Airwallex refused its payout", () => {
     const alarm = db.prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'transfer.found_after_close'").get() as { subject: string; payload_json: string } | undefined;
     expect(alarm?.subject).toBe(id);
     expect(JSON.parse(alarm!.payload_json)).toMatchObject({ request_id: first.terms.transfer_request_id, invoice_no: "SLL-2026-11", status: "PAID" });
+  });
+
+  it("is not planned again when Airwallex's list ignores the request_id filter: the strict look-up refuses to call that 'nothing' (else the invoice is paid twice)", async () => {
+    const { db, awx, first } = await refusedLicence();
+    // The closed payout hides a transfer after all, and the list's first page does not show it.
+    awx.transfers.push({ id: randomUUID(), requestId: first.terms.transfer_request_id, status: "PAID", amountCents: 24_000, currency: "EUR", metadata: "x", beneficiaryId: first.terms.beneficiary_id });
+    awx.listIgnoresFilter = true;
+    const out = await proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text);
+    expect(out).toMatchObject({ kind: "escalated", reason: expect.stringMatching(/could not be asked.*not filtered/) });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 1 });
   });
 
   it("is not planned again while Airwallex cannot be asked: no proposal until the look-up answers", async () => {

@@ -178,9 +178,10 @@ export async function proposeInvoicePayment(
   const closed = (db.prepare("SELECT request_id, invoice_no FROM transfers WHERE status = 'CANCELLED' AND transfer_id IS NULL").all() as { request_id: string; invoice_no: string }[])
     .filter((r) => invoiceKey(r.invoice_no) === invoiceKey(inv.invoice_no));
   for (const c of closed) {
-    let held: Awaited<ReturnType<AirwallexRail["findTransferByRequestId"]>>;
+    let held: Awaited<ReturnType<AirwallexRail["findTransferByRequestIdStrict"]>>;
     try {
-      held = await rail.findTransferByRequestId(c.request_id);
+      // Strict: a list that ignored the filter is an error here, never "nothing" (else the invoice could be paid twice).
+      held = await rail.findTransferByRequestIdStrict(c.request_id);
     } catch (e) {
       const reason = `Airwallex could not be asked whether the closed payout ${c.request_id} of invoice ${c.invoice_no} exists after all (${(e as Error).message}); nothing is planned until it answers`;
       audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);

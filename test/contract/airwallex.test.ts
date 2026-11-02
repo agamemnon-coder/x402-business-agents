@@ -197,6 +197,24 @@ describe("contract: Airwallex request and response shapes", () => {
     expect(t).toMatchObject({ id: "t-1", status: "FAILED", failureType: "BENEFICIARY_BANK_RETURNED", failureReason: "returned by the bank" });
   });
 
+  it("GET /transfers?request_id=… strict: the one transfer under it, or nothing; an unfiltered list or more pages is an error, never 'nothing'", async () => {
+    const item = { id: "t-1", request_id: "req-1", status: "PAID", transfer_amount: 10, transfer_currency: "EUR" };
+    const { api, seen } = http({ ...LOGIN, "GET /transfers": [
+      { status: 200, body: { items: [item] } },
+      { status: 200, body: { items: [] } },
+      { status: 200, body: { items: [{ ...item, id: "t-9", request_id: "other" }] } },
+      { status: 200, body: { items: [], has_more: true } },
+      { status: 200, body: { items: [item, { ...item, id: "t-2" }] } },
+    ] });
+    const rest = new AirwallexRest(api);
+    expect(await rest.findTransferByRequestIdStrict("req-1")).toMatchObject({ id: "t-1", requestId: "req-1", amountCents: 1000 });
+    expect(seen[1]!.query).toEqual({ request_id: "req-1" });
+    expect(await rest.findTransferByRequestIdStrict("req-1")).toBeUndefined();
+    await expect(rest.findTransferByRequestIdStrict("req-1")).rejects.toThrow(/not filtered/);
+    await expect(rest.findTransferByRequestIdStrict("req-1")).rejects.toThrow(/not filtered/);
+    await expect(rest.findTransferByRequestIdStrict("req-1")).rejects.toThrow(/more than one/);
+  });
+
   it("refuses an amount finer than a cent or negative at the boundary, so no rounding moves money [API: amounts in major units]", async () => {
     const { api } = http({ ...LOGIN, "GET /transfers/x": { status: 200, body: { id: "x", request_id: "r", status: "PAID", transfer_amount: 10.005, transfer_currency: "EUR" } } });
     await expect(new AirwallexRest(api).getTransfer("x")).rejects.toThrow(/finer than a cent/);

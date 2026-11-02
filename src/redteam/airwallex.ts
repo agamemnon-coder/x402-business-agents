@@ -80,6 +80,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     return { ...tr };
   }
   async findTransferByRequestId(requestId: string) { const t = this.transfers.find((x) => x.requestId === requestId); return t && { ...t }; }
+  async findTransferByRequestIdStrict(requestId: string) { return this.findTransferByRequestId(requestId); }
   async getTransfer(id: string) { return { ...this.transfers.find((x) => x.id === id)! }; }
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {
     this.calls.push(`transition:${to}`);

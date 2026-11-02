@@ -17,6 +17,7 @@
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import type { Origin } from "../provenance/origin.js";
+import { onlyRequestId } from "../airwallex/adapter.js";
 
 export const CLOSE_UNSENT_MIN_AGE_MINUTES = 30;
 
@@ -97,9 +98,7 @@ export async function closeUnsent(
 export function strictTransferLookup(get: (path: string, query?: Record<string, string>) => Promise<unknown>) {
   return async (requestId: string): Promise<{ id: string; status: string } | undefined> => {
     const r = (await get("/transfers", { request_id: requestId })) as { items?: { id?: unknown; request_id?: unknown; status?: unknown }[]; has_more?: unknown };
-    if (!r || !Array.isArray(r.items)) throw new Error("Airwallex's transfer list came without items");
-    if (r.has_more === true || r.items.some((x) => x.request_id !== requestId)) throw new Error("Airwallex's transfer list was not filtered by the request_id");
-    const hit = r.items[0];
+    const hit = onlyRequestId(r, requestId);
     return hit ? { id: String(hit.id), status: String(hit.status) } : undefined;
   };
 }
