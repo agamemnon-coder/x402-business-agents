@@ -1,7 +1,7 @@
 // Light hourly reconciliation (finance item 5): every money movement in the ledger is checked against the system that
 // moved it, by id and amount. Sandbox balances are millions of test money, so totals say nothing; the flows do.
 //   Airwallex transfers: Airwallex's status and amount for each transfer the ledger holds; and each payout row with no
-//   transfer id (still SUBMITTING, or closed as refused at create) looked up by its request_id: a transfer there is a
+//   transfer id (still SUBMITTING, closed as refused at create, or closed by the CFO's --close-unsent) looked up by its request_id: a transfer there is a
 //   difference (Airwallex may hold a payout the ledger thinks was never made; review of 2 November).
 //   Card transactions: both ways, approved at Airwallex but missing here, or approved here but not at Airwallex.
 //   Metal: each sale, supplier purchase, refund and sweep the ledger calls paid has a receipt with exactly that *USDZ
@@ -61,14 +61,15 @@ export async function reconcile(db: DB, src: ReconcileSources, now = new Date())
       }
     }
     if (src.transferByRequestId) {
-      const open = db.prepare("SELECT request_id, invoice_no, amount, status FROM transfers WHERE transfer_id IS NULL AND (status = 'SUBMITTING' OR failure_reason LIKE 'refused by Airwallex at create%')").all() as { request_id: string; invoice_no: string; amount: string; status: string }[];
+      // Every row without a transfer id: SUBMITTING, closed as refused at create, or closed by the CFO's --close-unsent.
+      const open = db.prepare("SELECT request_id, invoice_no, amount, status, failure_type FROM transfers WHERE transfer_id IS NULL AND status IN ('SUBMITTING', 'CANCELLED')").all() as { request_id: string; invoice_no: string; amount: string; status: string; failure_type: string | null }[];
       for (const r of open) {
         checked++;
         const t = await src.transferByRequestId(r.request_id);
         if (t) {
           differences.push({
             area: "airwallex transfer", ref: r.request_id,
-            ledger: `no transfer for invoice ${r.invoice_no} (EUR ${r.amount}, ${r.status === "SUBMITTING" ? "never answered" : "closed as refused at create"})`,
+            ledger: `no transfer for invoice ${r.invoice_no} (EUR ${r.amount}, ${r.status === "SUBMITTING" ? "never answered" : r.failure_type === "closed_unsent" ? "closed by the CFO as never sent" : "closed as refused at create"})`,
             outside: `transfer ${t.id}: ${t.currency} ${fromCents(t.amountCents)}, ${t.status}`,
           });
         }

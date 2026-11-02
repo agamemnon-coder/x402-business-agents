@@ -54,6 +54,8 @@ export const MONEY_EVENTS = new Set([
   "transfer.adopted", "fx.adopted", "credit.adopted", "transfer.refused", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
   // A transfer create Airwallex refused for its fee configuration, retried under the same request_id (each attempt).
   "transfer.retry",
+  // A payout row with no transfer behind it, closed by the CFO's command after a look-up (src/finance/closeUnsent.ts).
+  "transfer.closed_unsent",
   // Test money for a fresh world, and the passkey owners' own transfer.
   "business.funded", "treasury.seeded", "owners.sent",
 ]);
