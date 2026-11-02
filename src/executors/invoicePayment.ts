@@ -13,7 +13,7 @@ import { SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
 import { originJson } from "../provenance/origin.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
-import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
+import { AIRWALLEX_FEE_CODES, AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import type { AirwallexRail, NewTransfer, SandboxSim, Transfer } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -43,7 +43,7 @@ export interface FeeRetry {
 export const FEE_RETRY: FeeRetry = { delaysMs: [15_000, 30_000, 60_000, 90_000, 120_000], sleep: (ms) => new Promise((r) => setTimeout(r, ms)) };
 
 /** Airwallex's fee configuration on its side, transient (agent run 1: the same payout paid 5 times that day). */
-export const FEE_RETRY_CODES = new Set(["fee_unknown", "unconfigured_client_fee"]);
+export const FEE_RETRY_CODES = AIRWALLEX_FEE_CODES;
 
 export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: SandboxSim | null, proposalId: string, now = () => new Date(), feeRetry: FeeRetry = FEE_RETRY): Promise<InvoicePaymentResult> {
   const pre = treasuryState(db, await snapshot(db, rail, `pre-exec:${proposalId}`));

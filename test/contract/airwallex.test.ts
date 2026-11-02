@@ -91,6 +91,29 @@ describe("contract: Airwallex authentication and the client", () => {
     expect(e.message).toContain("transfer fee configuration");
   });
 
+  it("keeps Airwallex's free text only for the fee codes, and redacted; for any other code only the code and the ids (they feed the dashboard and the public relay)", async () => {
+    const before = process.env.AIRWALLEX_API_KEY;
+    process.env.AIRWALLEX_API_KEY = "awx-key-0123456789";
+    try {
+      const other = { code: "validation_failed", message: "beneficiary Hans Muster, IBAN DE89370400440532013000, is invalid" };
+      const fee = { code: "fee_unknown", message: "fee configuration for awx-key-0123456789; Bearer abc.def.ghi" };
+      const { api } = http({ ...LOGIN, "POST /transfers/create": [
+        { status: 400, body: other, headers: { "x-b3-traceid": "trace-1" } },
+        { status: 400, body: fee, headers: { "x-b3-traceid": "trace-2" } },
+      ] });
+      const e1 = await api.call("POST", "/transfers/create", {}).catch((x: unknown) => x) as AirwallexError;
+      expect(e1).toMatchObject({ code: "validation_failed", traceId: "trace-1", awxMessage: null });
+      expect(e1.message).not.toMatch(/Hans|DE89/);
+      expect(e1.message).toContain("trace-1");
+      const e2 = await api.call("POST", "/transfers/create", {}).catch((x: unknown) => x) as AirwallexError;
+      expect(e2.awxMessage).toContain("fee configuration");
+      expect(e2.awxMessage).not.toMatch(/awx-key-0123456789|abc\.def\.ghi/);
+      expect(e2.message).not.toMatch(/awx-key-0123456789|abc\.def\.ghi/);
+    } finally {
+      if (before === undefined) delete process.env.AIRWALLEX_API_KEY; else process.env.AIRWALLEX_API_KEY = before;
+    }
+  });
+
   it("drops a trace header that is not a plain id (nothing from a header is written to a log as it came)", async () => {
     const { api } = http({ ...LOGIN, "POST /transfers/create": { status: 400, body: { code: "fee_unknown", message: "m" }, headers: { "x-b3-traceid": "abc def<script>", "request-id": "r-1" } } });
     const e = await api.call("POST", "/transfers/create", { request_id: "r" }).catch((x: unknown) => x) as AirwallexError;
