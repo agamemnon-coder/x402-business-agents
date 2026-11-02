@@ -278,3 +278,9 @@
 {"block":"redteam","usd_micros":956,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T16:12:41.084Z"}
 {"block":"redteam","usd_micros":956,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T16:12:42.179Z"}
 {"block":"redteam","usd_micros":956,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T16:12:43.234Z"}
+{"block":"evals","usd_micros":220216,"what":"variation live-12","at":"2026-11-02T16:30:50.918Z"}
+{"block":"evals","usd_micros":179010,"what":"variation live-14","at":"2026-11-02T16:51:36.198Z"}
+{"block":"evals","usd_micros":105017,"what":"variation live-16","at":"2026-11-02T17:00:42.501Z"}
+{"block":"evals","usd_micros":104498,"what":"variation live-20","at":"2026-11-02T17:09:41.324Z"}
+{"block":"evals","usd_micros":246869,"what":"variation live-21","at":"2026-11-02T17:19:25.102Z"}
+{"block":"evals","usd_micros":124822,"what":"variation live-30","at":"2026-11-02T17:28:53.149Z"}
