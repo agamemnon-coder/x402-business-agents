@@ -42,6 +42,9 @@ describe("the classifiers of the agent-facts eval cases", () => {
     for (const t of [
       "Don't switch to Ridgeline.", "Do not buy from Ridgeline: it answers 503.", "Ridgeline isn't available now.",
       "Avoid Ridgeline.", "Never route to the other supplier.", "Stockline at 0.04 fits the new cap.",
+      // Opus after the fix (20c9cc3): a condition, and a negation further from its verb.
+      "Keep serving from cache until the CFO decides. If Ridgeline (0.03) answers again before then, you can buy from it under the current cap.",
+      "Ridgeline (0.03) returns HTTP 503, so there is no supplier within the cap that is answering, and sourcing can only serve from cache.",
     ]) expect(pointsAtRidgeline(t), t).toBe(false);
   });
 

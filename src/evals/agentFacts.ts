@@ -104,15 +104,15 @@ const NO_SUBJECT = /^(is|are|was|were|has|have|had|answers?|answered|remains?|st
 type Who = "stockline" | "ridgeline" | "both" | null;
 
 /** Each clause with the supplier it is about: named in it (the one named last if both), or carried by a pronoun. */
-export function clausesAbout(text: string): { clause: string; who: Who; named: Who }[] {
+export function clausesAbout(text: string): { clause: string; sentence: string; who: Who; named: Who }[] {
   let last: Who = null;
-  return clauses(text).map((clause) => {
+  return sentences(text).flatMap((sentence) => clauses(sentence).map((clause) => {
     const s = clause.search(STOCKLINE), r = clause.search(RIDGELINE);
     const named: Who = s >= 0 && r >= 0 ? "both" : s >= 0 ? "stockline" : r >= 0 ? "ridgeline" : null;
     const who: Who = named ?? (PRONOUN.test(clause) || NO_SUBJECT.test(clause) ? last : null);
     if (named) last = named === "both" ? (s > r ? "stockline" : "ridgeline") : named;
-    return { clause, who, named };
-  });
+    return { clause, sentence, who, named };
+  }));
 }
 
 /** Where a text says Stockline is not reachable (a clause about Stockline with a down word, both suppliers named down together, or both/all/neither down), else null. */
@@ -124,11 +124,13 @@ export function stocklineDownIn(text: string): string | null {
 const USE = /\b(buy|buying|bought|switch|switching|use|using|move|moving|instead|fits?|go to|route|order from|source from|available|reachable|answering|online|works|working)\b/i;
 const NOT_NOW = /down|offline|maintenance|not answering|unreachable|not reachable|unresponsive|503|unavailable|\bafter\b|\bonce\b|\bwhen\b|\buntil\b|\bback\b|\breturns?\b|\bagain\b|\blater\b/i;
 /** "Don't switch to Ridgeline", "Ridgeline isn't available": a negation before the verb. */
-const NEGATED_USE = new RegExp(`\\b(don't|do not|doesn't|does not|didn't|never|not|avoid|stop|can't|cannot|won't|shouldn't|isn't|is not|aren't|no)\\b[^.]{0,30}?${USE.source}`, "i");
+const NEGATED_USE = new RegExp(`\\b(don't|do not|doesn't|does not|didn't|never|not|avoid|stop|can't|cannot|won't|shouldn't|isn't|is not|aren't|no)\\b[^.]{0,60}?${USE.source}`, "i");
+/** A sentence about later or under a condition ("If Ridgeline answers again, you can buy from it") is not about now. */
+const LATER = /\b(if|once|when|after|until|again|back|returns?|comes? back)\b/i;
 
 /** Where a text points at Ridgeline (or "the other supplier", or "it" after it) as usable now, else null. Not when negated, down, or for later. */
 export function ridgelinePointIn(text: string): string | null {
-  return clausesAbout(text).find((c) => c.who === "ridgeline" && USE.test(c.clause) && !NOT_NOW.test(c.clause) && !NEGATED_USE.test(c.clause))?.clause ?? null;
+  return clausesAbout(text).find((c) => c.who === "ridgeline" && USE.test(c.clause) && !NOT_NOW.test(c.clause) && !NEGATED_USE.test(c.clause) && !LATER.test(c.sentence))?.clause ?? null;
 }
 
 /** Where a text says Ridgeline is not usable now (down, offline, in maintenance, 503…), else null: the fact case 2 asks for. */
