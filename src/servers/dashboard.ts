@@ -13,6 +13,8 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import type { DB } from "../db/open.js";
 import { buildSnapshot } from "../dashboard/snapshot.js";
+import { systemHealth, systemHealthPage, SYSTEM_HEALTH_CSP } from "../dashboard/health.js";
+import { agentTraces } from "../dashboard/trace.js";
 import { simulateMonth, type MonthReport } from "../sim/month.js";
 import { runAll, runScenario, SCENARIOS, type ScenarioResult } from "../lab/scenarios.js";
 import type { Story } from "../demo/story.js";
@@ -281,6 +283,28 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   });
   app.get("/metrics", (_req, res) => {
     res.type("text/plain; version=0.0.4").set("cache-control", "no-store").send(prometheus(health(db, opts.now?.() ?? new Date())));
+  });
+
+  // System health (src/dashboard/health.ts): runs, agents, SLOs and a trace per run, read from the ledger; loopback only.
+  app.get("/system-health", (_req, res) => {
+    res.setHeader("Content-Security-Policy", SYSTEM_HEALTH_CSP);
+    res.type("html").send(systemHealthPage(systemHealth(db, opts.now?.() ?? new Date())));
+  });
+  app.get("/api/system-health", (_req, res) => {
+    res.json(systemHealth(db, opts.now?.() ?? new Date()));
+  });
+  app.get("/api/trace/:seq", (req, res) => {
+    const seq = String(req.params.seq);
+    if (!/^\d{1,12}$/.test(seq)) {
+      res.status(400).type("text/plain").send("bad run");
+      return;
+    }
+    const trace = agentTraces(db).find((t) => t.run_seq === Number(seq));
+    if (!trace) {
+      res.status(404).type("text/plain").send("no such run");
+      return;
+    }
+    res.json(trace);
   });
 
   app.get("/approve/:id", (req, res) => {
