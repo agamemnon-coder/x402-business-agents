@@ -20,7 +20,7 @@ Eén stap per regel; zeg "ok" als je klaar bent. Twijfel? Zeg "stop".
 
 | Stap | Wat je ziet | Wat jij doet |
 |---|---|---|
-| 6 | Twee opties. **Optie A is altijd de laagste prijs, B de hoogste.** De bedragen kiest de Treasury agent zelf (in de dry runs meestal 14 / 2 / 4 en 0,05 of 0,07). | Eén optie heeft het label **"Treasury agent recommends this"**; in het bevestigingsscherm staat zijn advies. Kies die optie → **Confirm with Face ID**. Daarna je vader. |
+| 6 | Twee opties, meestal **±30–40 s** na de derde weggestuurde klant (gemeten in 2 runs). Is er na 2 minuten niets: gewoon wachten, Claude kijkt. **Optie A is altijd de laagste prijs, B de hoogste.** De bedragen kiest de Treasury agent zelf (in de dry runs meestal 14 / 2 / 4 en 0,05 of 0,07). | Eén optie heeft het label **"Treasury agent recommends this"**; in het bevestigingsscherm staat zijn advies. Kies die optie → **Confirm with Face ID**. Daarna je vader. |
 | 7 | Summit: "refund all 12". De **Support agent** heeft #7, #10, #13 al zelf terugbetaald; de rest vraagt jouw besluit. | **Reject** → **Reject with Face ID** |
 | 9 | Factuur Bergtex **€1.850,00** | Tik de kaart → **Confirm with Face ID**; daarna je vader |
 | 10 | Licentie Stockline **EUR 240,00** | Tik de kaart → **Confirm with Face ID** |

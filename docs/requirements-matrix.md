@@ -128,7 +128,7 @@ Source: the [hackathon site](https://airwallex.hackerearth.com/), sections "Priz
 
 | Id | Requirement | Where Purser does it | Evidence | Status |
 |---|---|---|---|---|
-| V1 | "Visa Award $15,000 Requires use of Visa and Airwallex tooling" | Not claimed until the organisers confirm (Max asks in Slack: `docs/submission/slack-max.md`). Built: agent recognition per the agent-recognition profile of Visa's TAP spec, then the agent's own Airwallex-issued Visa card inside the CFO limit (`/visa`). | `docs/runs/2026-10-31-visa-tap-dev.md` (dev test, live in the Airwallex sandbox); `test/visa-tap.test.ts`, `test/visa-merchant.test.ts`. | 🟠 |
+| V1 | "Visa Award $15,000 Requires use of Visa and Airwallex tooling" | Organisers confirmed (Max, from Airwallex in #help, 1 November 2026; screenshot not yet in `docs/evidence/`); the claim follows the interop test and the live TAP run (D25). Built so far: agent recognition per the agent-recognition profile of Visa's TAP spec, then the agent's own Airwallex-issued Visa card inside the CFO limit (`/visa`). | `docs/runs/2026-10-31-visa-tap-dev.md` (dev test, live in the Airwallex sandbox); `test/visa-tap.test.ts`, `test/visa-merchant.test.ts`. | 🟠 |
 | V2 | "Visa --> Trusted Access Protocol (TAP), Visa Intelligence Commerce (VIC) + Slack support" (the page's only definition of Visa tooling) | TAP: the agent-recognition signature only (RFC 9421 over `@authority` and `@path`, tags `agent-browser-auth` / `agent-payer-auth`, 8-minute window, nonce replay block), our own code (`src/visa/tap.ts`, http-message-sig 0.3.0), a self-hosted registry with test keys. Not done, and not claimed: Visa's key directory, the Visa ID token (consumer recognition), the payment container, and VIC. Visa's reference code is not used (its licence is not open source). | `/visa`; `docs/runs/2026-10-31-visa-tap-dev.md`. | 🟠 |
 
 ## 7. Backend review: agentic banking (Max, 30 October)
@@ -175,4 +175,4 @@ Metal's docs and a live test on testnet. Risks, controls and tests: [docs/contro
 | One customer, landscape, pitch | J6.1 | Name the customer in the README and deck, write `docs/landscape.md`, finish the deck. |
 | Scoped Airwallex key | G3b | Max creates the key from the list in `docs/airwallex.md`, we swap it in and rerun `npm run health`. |
 | Money leaving without a person | G8 | Say in the README and the video that cards and small refunds run inside CFO limits, and that every Airwallex conversion and transfer waits for Face ID. |
-| Visa Award | V1, V2 | Nothing. Not claimed. Revisit only if Max decides to research TAP or VIC. |
+| Visa Award | V1, V2 | Not claimed yet. Organisers confirmed TAP on Visa's reference counts; the claim follows the D25 interop test and the live TAP run. TAP yes, VIC not claimed. |
