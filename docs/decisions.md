@@ -627,3 +627,14 @@ agents" theme video.
 Order after the reserve run: the dry-138 points first (the dispute names only sold orders, Treasury's timing measured
 and in the draaiboek, the eval case, a fresh dry run); then the budget counters, variation, holdouts and the red team
 at night; QA and enterprise items by day. Nothing here touches Thursday's code after Wednesday 23:00.
+
+Max, 2 November, 10:15 NL:
+- **Test worlds (D26):** explicit permission to run dry runs, the soak, the variation test (10 live worlds), the
+  holdouts and the calibration in test worlds on Metal testnet and the Airwallex sandbox, including moving test money
+  (recycling from finished dry worlds and the faucet). Never live-1, the reserve worktree, the hosted relay or
+  Thursday's world; testnet and sandbox only, never real money; every transfer in the recycling log.
+- **TAP claim (D25), only after a green interop test:** "Our agents sign every card checkout with Visa's Trusted Agent
+  Protocol. Their signatures are accepted by Visa's open-source TAP reference verifier (pinned commit 16d59bd). Body
+  integrity, tag and payment checks are our own layer on top." No "certified", "endorsed" or "Visa-approved", no
+  Visa logo. The review's design fixes are approved (checkout under /product/, the merchant re-verifies signature 1,
+  the registry on localhost with our pinned keys, duplicate headers refused, signature 2 covers the query, one skew).
