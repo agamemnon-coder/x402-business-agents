@@ -10,7 +10,7 @@ import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { publicClient } from "../metal/chain.js";
 import { activeMandate, credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
-import { beginExecution, finishExecution } from "../policy/approvals.js";
+import { beginExecution, finishExecution, resuming } from "../policy/approvals.js";
 import { setSetting } from "../world/settings.js";
 import { checkCarried } from "../policy/pause.js";
 import type { MandateReplaceTerms } from "../agents/treasury.js";
@@ -24,23 +24,31 @@ function byHash(agent: MandateAgent, hash: string) {
   throw new Error(`${agent}: no credential file with hash ${hash}`);
 }
 
-/** The audit event of a replace whose execution stopped before it began (its proposal stays APPROVED until it expires). */
+/** The audit event of a replace whose execution guard refused it (its proposal stays APPROVED, or EXECUTING on a resume). */
 export const EXECUTION_STOPPED = "proposal.execution_stopped";
 
 export async function executeMandateReplace(db: DB, proposalId: string, now = new Date()): Promise<void> {
-  const terms = await begin(db, proposalId, now).catch((err: unknown) => {
-    // A check before the first step refused it (dry-179: "spent moved … a new one is needed"): the guard's transaction
-    // rolled back, so the proposal is still APPROVED. Recorded, so the hold on the agents' spending (src/policy/
-    // replaceHold.ts) lifts now instead of at its expiry. Only for an approved one: the row always follows its approval.
+  // A chain read that fails (a network blip) throws here with nothing recorded: the replace can still run.
+  const facts = await chainFacts(db, proposalId);
+  let terms: MandateReplaceTerms;
+  try {
+    terms = guard(db, proposalId, facts, now);
+  } catch (err) {
+    // The guard refused it (dry-179: "spent moved … a new one is needed"). Its transaction rolled back, so the proposal
+    // is still APPROVED until it expires (or still EXECUTING, on a restart's resume). Recorded, so the hold on the
+    // agents' spending (src/policy/replaceHold.ts) lifts now; a later attempt holds again. Not for a second call while
+    // another run is executing it (that run keeps the hold), nor for one not approved (the row follows its approval).
     const status = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string } | undefined)?.status;
-    if (status === "APPROVED") audit(db, "system", EXECUTION_STOPPED, proposalId, { error: (err as Error).message.slice(0, 300) });
+    if (status === "APPROVED" || (status === "EXECUTING" && resuming.has(proposalId))) audit(db, "system", EXECUTION_STOPPED, proposalId, { error: (err as Error).message.slice(0, 300) });
     throw err;
-  });
+  }
   await run(db, proposalId, terms);
 }
 
-/** Reads the chain, then the execution guard (beginExecution): from here the proposal is EXECUTING. */
-async function begin(db: DB, proposalId: string, now: Date): Promise<MandateReplaceTerms> {
+type Facts = Map<string, { activeHash: string; spentCents: number }>;
+
+/** What the chain says now, for each step: the bound mandate and what it spent. */
+async function chainFacts(db: DB, proposalId: string): Promise<Facts> {
   const draft = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_json: string }).terms_json) as MandateReplaceTerms;
 
   // Read the chain first (async); the guard below re-checks it against the approved terms.
@@ -55,7 +63,11 @@ async function begin(db: DB, proposalId: string, now: Date): Promise<MandateRepl
       ...(done ? { activeHash: step.replaces_credential_hash } : {}),
     });
   }
+  return facts;
+}
 
+/** The execution guard (beginExecution) against the chain facts: from here the proposal is EXECUTING. */
+function guard(db: DB, proposalId: string, facts: Facts, now: Date): MandateReplaceTerms {
   return beginExecution<MandateReplaceTerms>(db, proposalId, (t) => {
     if (toCents(t.total_budget) > TOTAL_BUDGET_CENTS) throw new Error(`total ${t.total_budget} exceeds the limit`);
     // Block 6: the chain budgets were set for the spend carried at proposal; a resume since would make them wrong.

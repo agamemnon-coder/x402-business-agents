@@ -156,6 +156,20 @@ describe("dry-179: Purser's mandate-cap pre-check before the Sourcing agent's ow
     expect(n(other, "SELECT COUNT(*) AS n FROM holds WHERE status = 'HELD'")).toBe(0);
   });
 
+  it("a CFO policy limit under the mandate's cap does not use up the let-through: within the mandate's cap, the buy policy refuses as before", async () => {
+    const db = world({ supplier: "stockline", max_price: "0.02" });
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('cap.sourcing', '0.02', 'now')").run();
+    const a = armed(db);
+    price(db, "0.03");
+    expect(await a.buy(17)).toMatchObject({ ok: false, reason: expect.stringMatching(/^buy_policy: Stockline asks 0\.03/) });
+    expect(state.signed).toEqual([]);
+    expect(letThrough(db)).toMatchObject({ stage: "armed" });
+    // Over the mandate's cap as well: Purser's refusal is recorded (its CFO limit first, as reserveSpend orders them).
+    price(db, "0.04");
+    expect(await a.buy(18)).toMatchObject({ ok: false });
+    expect(refusedRows(db).at(-1)).toMatchObject({ refused_by: expect.stringMatching(/^(purser|metal)$/) });
+  });
+
   it("within the policy and the cap: paid as before", async () => {
     const db = world({ supplier: "stockline", max_price: "0.03" });
     price(db, "0.02");

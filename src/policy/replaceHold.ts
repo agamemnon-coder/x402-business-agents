@@ -5,11 +5,14 @@
 // P-0002/P-0003; the CFO and the second approver then approved P-0002, and it failed on that check. The check stays as
 // strict as it is; this hold keeps the agent from moving its own spend while the CFO decides.
 //
-// Open: waiting for approval (also with 1 of 2 signatures), approved and not yet run, or being run, and within its
-// time. The hold lifts by itself when the proposal is executed, rejected, superseded, expires, or fails. A replace whose
-// execution stopped never keeps it: FAILED, and also APPROVED with a recorded stop (proposal.execution_stopped: a check
-// before its first step refused it, as in dry-179, and the guard's rolled-back transaction left it APPROVED until its
-// expiry). If such a replace is run again later (a restart), it holds again while EXECUTING, and its guard checks again.
+// Open: waiting for approval (also with 1 of 2 signatures) or approved and not yet run, within its time; or being run
+// (EXECUTING), whatever its time: a restart resumes a replace a crash cut off without looking at its expiry, so the hold
+// stays until it is finished (or a person resolves it). The hold lifts by itself when the proposal is executed,
+// rejected, superseded, expires, or fails. A replace whose execution guard refused it never keeps it: FAILED, and also
+// APPROVED (or EXECUTING on a resume) with a stop recorded since its last attempt (proposal.execution_stopped: in
+// dry-179 the guard's rolled-back transaction left P-0002 APPROVED until its expiry). A later attempt (a restart's
+// proposal.resumed, or proposal.executing) holds again, and the guard checks again. A chain read that failed before the
+// guard records no stop: that replace can still run, so the hold stays (until its expiry while APPROVED).
 // Purser checks it before signing on every Metal path of the three agents (src/policy/holds.ts): Sourcing's purchases,
 // the record pull and the one let-through, Support's refunds, Treasury's sweeps. Card purchases at Airwallex do not
 // spend from the Metal mandate and are not held.
@@ -36,15 +39,17 @@ function agentsOf(termsJson: string): string[] | "all" {
 export function openReplacesFor(db: DB, agent: string, now = new Date()): OpenReplace[] {
   // A ledger from before proposals (opened read-only by an old page) has none.
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'proposals'").get()) return [];
+  // Stopped: a stop recorded after the last attempt began (the attempt's row, or none for a first run).
   const rows = db.prepare(`SELECT p.proposal_id, p.status, p.expires_at, p.terms_json,
-      EXISTS (SELECT 1 FROM audit_log a WHERE a.event = 'proposal.execution_stopped' AND a.subject = p.proposal_id) AS stopped
+      COALESCE((SELECT MAX(a.seq) FROM audit_log a WHERE a.event = 'proposal.execution_stopped' AND a.subject = p.proposal_id), 0)
+        > COALESCE((SELECT MAX(a.seq) FROM audit_log a WHERE a.event IN ('proposal.executing', 'proposal.resumed') AND a.subject = p.proposal_id), 0) AS stopped
     FROM proposals p WHERE p.kind = 'mandate_replace' AND p.status IN (${OPEN_STATUSES.map(() => "?").join(", ")}) ORDER BY p.created_at, p.proposal_id`)
     .all(...OPEN_STATUSES) as { proposal_id: string; status: OpenStatus; expires_at: string; terms_json: string; stopped: number }[];
   return rows
     // Compared as instants, as the approvals do (src/policy/approvals.ts expireIfDue: an unreadable time is expired there,
     // so such a proposal can never be approved or run, and holds nothing here).
-    .filter((r) => Date.parse(r.expires_at) > now.getTime())
-    .filter((r) => !(r.status === "APPROVED" && r.stopped))
+    .filter((r) => r.status === "EXECUTING" || Date.parse(r.expires_at) > now.getTime())
+    .filter((r) => !((r.status === "APPROVED" || r.status === "EXECUTING") && r.stopped))
     .filter((r) => { const a = agentsOf(r.terms_json); return a === "all" || a.includes(agent); })
     .map(({ proposal_id, status, expires_at }) => ({ proposal_id, status, expires_at }));
 }

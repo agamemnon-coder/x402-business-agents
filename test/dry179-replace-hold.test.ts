@@ -227,7 +227,7 @@ describe("the agents' own tools and situation", () => {
     const id = replace(db, ["support", "treasury"]);
     let settled = 0;
     const prof = supportProfile(30 * 60_000, { settle: async () => { settled++; return { ok: true, text: "settled" }; }, idOf: () => "D-1", settles: () => "D-1" });
-    expect(await prof.observe(db)).toMatch(new RegExp(`Your mandate is on hold: mandate replace ${id}.*each refund waits and is tried again`, "s"));
+    expect(await prof.observe(db)).toMatch(new RegExp(`Your mandate is on hold: mandate replace ${id}.*each refund it holds back is tried again`, "s"));
     expect(await prof.tools(db)[0]!.run({} as never)).toMatchObject({ text: "settled" });
     expect(settled).toBe(1);
     setStatus(db, id, "REJECTED");

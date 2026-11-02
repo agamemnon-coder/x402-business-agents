@@ -322,7 +322,7 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
       return [d.length ? `Disputes on file: ${d.map((x) => `${x.dispute_id} from ${x.customer.slice(0, 10)}… (${x.created_at.slice(11, 16)})${left(x.dispute_id)}`).join(", ")}.` : "No dispute on file.",
         // The decision and any escalation to the CFO go ahead; a refund is refused before signing until then, and is
         // tried again when the decision is carried out again (code's rule, not a lasting refusal).
-        ...(held ? [`${held} Refunds are paid under it: settle_dispute still decides and escalates, but each refund waits and is tried again when the decision is carried out again.`] : [])].join("\n");
+        ...(held ? [`${held} Your refunds come from this mandate, so none is paid meanwhile: settle_dispute still decides and escalates, and each refund it holds back is tried again when the decision is carried out again.`] : [])].join("\n");
     },
     tools: (db) => [
       {

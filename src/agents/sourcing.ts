@@ -2,7 +2,7 @@
 // a per-purchase cap, a budget). It holds its mandate key and nothing else.
 
 import { currentOrigin, originJson, parseOrigin, withOrigin, type Origin } from "../provenance/origin.js";
-import { holdBeyondCap, purserRefusal, RECORD_PULL_HOLD, releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
+import { holdBeyondCap, purserRefusal, RECORD_PULL_HOLD, releaseHold, reserveSpend, settleHold, spendLimits } from "../policy/holds.js";
 import { replaceHoldRefusal } from "../policy/replaceHold.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
@@ -357,11 +357,20 @@ export class SourcingAgent {
     // (over the mandate's cap, a stop, a pause, an open replace) goes on to Purser, whose refusal is the one recorded:
     // mandate_cap_exceeded, Metal's record of it on chain, and (armed) the one let-through to Metal.
     const maxCents = policy.max_price ? toCents(policy.max_price) : null;
+    // Purser refuses it anyway, so its refusal goes first. Except a CFO policy limit under the mandate's cap alone, for an
+    // amount within the mandate's cap: that is no mandate refusal to record, and the buy policy refuses it as before
+    // (else it would reach Purser and use up the armed let-through, which only an amount over the mandate's cap may take).
+    const purserFirst = (cents: number) => {
+      const r = purserRefusal(this.db, "sourcing", cents);
+      if (!r) return false;
+      const cap = spendLimits(this.db, "sourcing").capCents;
+      return !(r.startsWith("policy_cap_exceeded") && (cap === null || cents <= cap));
+    };
     const overPolicy = (cents: number) => `buy_policy: ${SUPPLIERS[t.id].name} asks ${fromCents(cents)}, over the ${policy.max_price} the Sourcing agent's policy allows`;
     if (maxCents !== null) {
       const offer = await offerCents(`${t.base}${SUPPLIER_ROUTE}?seq=${seq}`);
       if (offer === null) return policyRefusal(`supplier_unavailable: ${SUPPLIERS[t.id].name} made no offer for stock check #${seq}`, t.id);
-      if (offer > maxCents && !purserRefusal(this.db, "sourcing", offer)) return policyRefusal(overPolicy(offer), t.id);
+      if (offer > maxCents && !purserFirst(offer)) return policyRefusal(overPolicy(offer), t.id);
     }
     this.mandate ??= await activeMandate("sourcing");
     const started = Date.now() - 60_000;
@@ -381,7 +390,7 @@ export class SourcingAgent {
       // The buy policy's max_price, on the amount actually signed (the offer may differ from the check above), unless
       // Purser refuses it anyway: then Purser's refusal is the one recorded. Nothing is reserved for a policy refusal.
       alsoOverPolicy = maxCents !== null && cents > maxCents;
-      if (alsoOverPolicy && !purserRefusal(this.db, "sourcing", cents)) return overPolicy(cents);
+      if (alsoOverPolicy && !purserFirst(cents)) return overPolicy(cents);
       const refused = reserveSpend(this.db, { agent: "sourcing", rail: "metal", cents, ref, payee: "supplier" });
       held = refused === null;
       // Armed, and Purser refused over a cap: the arm is used now, by this attempt, whatever comes of it.

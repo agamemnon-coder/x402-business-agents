@@ -12,7 +12,7 @@ import type { Puller } from "../src/metal/pull.js";
 
 type Cred = { agent: string; path: string; hash: string; reference: string; principal: string };
 type State = { boundBlock: bigint; revoked: boolean; spent: bigint };
-const h = vi.hoisted(() => ({ dir: "", creds: [] as Cred[], chain: new Map<string, State>(), cli: [] as string[][] }));
+const h = vi.hoisted(() => ({ dir: "", creds: [] as Cred[], chain: new Map<string, State>(), cli: [] as string[][], heldAtStep: [] as (string | null)[], onReplace: null as null | (() => string | null), readFails: 0 }));
 
 const cliOut = (lines: string[]): CliResult => {
   const fields = new Map<string, string[]>();
@@ -25,6 +25,7 @@ vi.mock("../src/metal/agentCli.js", () => ({
     h.cli.push(args);
     const arg = (k: string) => args[args.indexOf(k) + 1]!;
     if (args[1] === "replace") {
+      h.heldAtStep.push(h.onReplace?.() ?? null);
       const next = h.creds.find((c) => c.path === arg("--credential"))!;
       const old = h.creds.find((c) => c.path === arg("--replaces"))!;
       const o = h.chain.get(old.reference)!;
@@ -38,7 +39,10 @@ vi.mock("../src/metal/agentCli.js", () => ({
 vi.mock("../src/metal/chain.js", () => ({ publicClient: () => ({}) }));
 vi.mock("@metalntwx/metal-pay/mandates", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@metalntwx/metal-pay/mandates")>()),
-  readMandateState: async (_pc: unknown, _principal: string, reference: string) => h.chain.get(reference) ?? { boundBlock: 0n, revoked: false, spent: 0n },
+  readMandateState: async (_pc: unknown, _principal: string, reference: string) => {
+    if (h.readFails > 0) { h.readFails--; throw new Error("fetch failed: ECONNRESET (the RPC)"); }
+    return h.chain.get(reference) ?? { boundBlock: 0n, revoked: false, spent: 0n };
+  },
 }));
 vi.mock("../src/metal/mandate.js", () => {
   const load = (agent: string, path: string) => {
@@ -86,7 +90,10 @@ beforeEach(() => {
   h.creds = [];
   h.chain = new Map();
   h.cli = [];
+  h.heldAtStep = [];
+  h.readFails = 0;
   db = openDb(":memory:");
+  h.onReplace = () => replaceHoldRefusal(db, "treasury");
   // Four eyes on, as in the dry run: a mandate change takes two different people's passkeys.
   db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('approval.four_eyes_eur', '1000.00', 'now')").run();
   audit(db, "owner-signer", "mandate.bound", "treasury", { cap: "6.00", budget: "6.00" });
@@ -143,6 +150,8 @@ describe("dry-179's order of events, with the replace hold", () => {
     expect(status(db, p2!.id)).toBe("EXECUTED");
     expect(status(db, p3!.id)).toBe("SUPERSEDED");
     expect(h.cli.filter((a) => a[1] === "replace")).toHaveLength(2);
+    // Held while it ran: each step was signed with the treasury mandate still on hold.
+    expect(h.heldAtStep).toEqual([expect.stringMatching(/^replace_pending: mandate replace P-0002/), expect.stringMatching(/^replace_pending: mandate replace P-0002/)]);
     // The hold lifts: the same sweep now goes through, under the new treasury mandate.
     expect(replaceHoldRefusal(db, "treasury")).toBeNull();
     expect(await executeSweep(db, "sweep-20261102-1", 45, SWEEP, sweepPull(sent))).toMatchObject({ outcome: "PAID" });
@@ -179,9 +188,13 @@ describe("a replace whose execution stopped holds nothing, without waiting for i
     await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/spent moved/);
     expect(replaceHoldRefusal(db, "treasury")).toBeNull();
     expect(replaceHoldRefusal(db, "sourcing")).toBeNull();
-    // Being run again (a restart re-runs approved proposals): it holds while EXECUTING, whatever stopped it before.
-    db.prepare("UPDATE proposals SET status = 'EXECUTING' WHERE proposal_id = ?").run(p2!.id);
-    expect(replaceHoldRefusal(db, "treasury")).toMatch(/^replace_pending: mandate replace P-0002 pending/);
+    // Run again by a restart (resumeInterrupted re-runs approved proposals): held again from the attempt on, and it
+    // stops again on the same guard, lifting the hold again.
+    const { resumeInterrupted } = await import("../src/policy/saga.js");
+    const seen: (string | null)[] = [];
+    await resumeInterrupted(db, async (d, id) => { seen.push(replaceHoldRefusal(d, "treasury")); await executeMandateReplace(d, id); });
+    expect(seen).toEqual([expect.stringMatching(/^replace_pending: mandate replace P-0002 pending/)]);
+    expect(replaceHoldRefusal(db, "treasury")).toBeNull();
   });
 
   it("a proposal not yet approved records no stop when someone tries to run it, so its later approval still holds", async () => {
@@ -192,5 +205,68 @@ describe("a replace whose execution stopped holds nothing, without waiting for i
     approveBy(p2!, "test-cfo");
     approveBy(p2!, "test-controller");
     expect(replaceHoldRefusal(db, "treasury")).toMatch(/^replace_pending: mandate replace P-0002 pending/);
+  });
+});
+
+describe("review of fix-dry179: what lifts the hold, and what does not", () => {
+  it("a chain-read error before the guard (a network blip) records no stop: the hold stays until the replace runs or closes", async () => {
+    const [p2, p3] = propose();
+    db.prepare("UPDATE proposals SET status = 'REJECTED' WHERE proposal_id = ?").run(p3!.id);
+    approveBy(p2!, "test-cfo");
+    approveBy(p2!, "test-controller");
+    h.readFails = 1;
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/ECONNRESET/);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'proposal.execution_stopped'").get()).toEqual({ n: 0 });
+    expect(replaceHoldRefusal(db, "treasury")).toMatch(/^replace_pending: mandate replace P-0002 pending/);
+    // Run again, it executes: nothing moved meanwhile.
+    await executeMandateReplace(db, p2!.id);
+    expect(status(db, p2!.id)).toBe("EXECUTED");
+  });
+
+  it("a replace left EXECUTING by a crash holds past its expiry until it is resumed and finished", async () => {
+    const [p2, p3] = propose();
+    db.prepare("UPDATE proposals SET status = 'REJECTED' WHERE proposal_id = ?").run(p3!.id);
+    approveBy(p2!, "test-cfo");
+    approveBy(p2!, "test-controller");
+    // The crash: the first step's CLI call never returns, the proposal is left EXECUTING.
+    h.onReplace = () => { throw new Error("process killed"); };
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/process killed/);
+    db.prepare("UPDATE proposals SET status = 'EXECUTING' WHERE proposal_id = ?").run(p2!.id);
+    expect(replaceHoldRefusal(db, "treasury", new Date(Date.now() + 2 * 3_600_000))).toMatch(/^replace_pending: mandate replace P-0002 pending/);
+    // The restart resumes it from its last finished step; then the hold lifts.
+    h.onReplace = () => replaceHoldRefusal(db, "treasury");
+    const { resumeInterrupted } = await import("../src/policy/saga.js");
+    await resumeInterrupted(db, (d, id) => executeMandateReplace(d, id));
+    expect(status(db, p2!.id)).toBe("EXECUTED");
+    expect(replaceHoldRefusal(db, "treasury", new Date(Date.now() + 2 * 3_600_000))).toBeNull();
+  });
+
+  it("a resumed replace that its guard stops again records the stop, so an EXECUTING leftover does not hold for ever", async () => {
+    const [p2, p3] = propose();
+    db.prepare("UPDATE proposals SET status = 'REJECTED' WHERE proposal_id = ?").run(p3!.id);
+    approveBy(p2!, "test-cfo");
+    approveBy(p2!, "test-controller");
+    h.onReplace = () => { throw new Error("process killed"); };
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/process killed/);
+    db.prepare("UPDATE proposals SET status = 'EXECUTING' WHERE proposal_id = ?").run(p2!.id);
+    // Meanwhile the treasury spend moved on chain: the resume's guard refuses, as strict as ever.
+    h.chain.set(T0.reference, { ...h.chain.get(T0.reference)!, spent: units(45) });
+    h.onReplace = () => null;
+    const { resumeInterrupted } = await import("../src/policy/saga.js");
+    const out = await resumeInterrupted(db, (d, id) => executeMandateReplace(d, id));
+    expect(out).toEqual([{ id: "P-0002", outcome: expect.stringMatching(/spent moved from 0\.00 to 0\.45/) }]);
+    expect(status(db, p2!.id)).toBe("EXECUTING");
+    expect(replaceHoldRefusal(db, "treasury")).toBeNull();
+  });
+
+  it("a second run of a replace that is already running records no stop (the first run keeps the hold)", async () => {
+    const [p2, p3] = propose();
+    db.prepare("UPDATE proposals SET status = 'REJECTED' WHERE proposal_id = ?").run(p3!.id);
+    approveBy(p2!, "test-cfo");
+    approveBy(p2!, "test-controller");
+    db.prepare("UPDATE proposals SET status = 'EXECUTING' WHERE proposal_id = ?").run(p2!.id);
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/is EXECUTING, not approved/);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'proposal.execution_stopped'").get()).toEqual({ n: 0 });
+    expect(replaceHoldRefusal(db, "treasury")).toMatch(/^replace_pending: /);
   });
 });

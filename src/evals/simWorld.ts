@@ -353,7 +353,9 @@ export async function customerQuery(ctx: SimCtx): Promise<"paid" | "cached" | "r
     const down = id === "stockline" ? ctx.stocklineDown : (seq * 7 + spec.seed) % 20 < spec.ridgeline!.unavailableOf20;
     if (down) return refuse(`supplier_unavailable: ${SUPPLIERS[id].name} made no offer for stock check #${seq}`, id);
     // dry-179, as SourcingAgent: Purser's pre-check before the agent's own max_price; when both refuse, Purser's is recorded.
-    if (policy.max_price && price > toCents(policy.max_price) && !purserRefusal(db, "sourcing", price)) return refuse(`buy_policy: ${SUPPLIERS[id].name} asks ${fromCents(price)}, over the ${policy.max_price} the Sourcing agent's policy allows`, id);
+    const purser = policy.max_price && price > toCents(policy.max_price) ? purserRefusal(db, "sourcing", price) : null;
+    const purserFirst = !!purser && !(purser.startsWith("policy_cap_exceeded") && (spendLimits(db, "sourcing").capCents ?? Infinity) >= price);
+    if (policy.max_price && price > toCents(policy.max_price) && !purserFirst) return refuse(`buy_policy: ${SUPPLIERS[id].name} asks ${fromCents(price)}, over the ${policy.max_price} the Sourcing agent's policy allows`, id);
     // Purser before signing: the CFO policy, velocity, the mandate's cap and budget, the shared total (one hold).
     const ref = `upstream:${spec.seed}:${seq}`;
     const refused = reserveSpend(db, { agent: "sourcing", rail: "metal", cents: price, ref, payee: "supplier" });
