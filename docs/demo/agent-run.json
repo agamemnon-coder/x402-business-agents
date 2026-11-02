@@ -5712,8 +5712,16 @@
           }
         },
         {
-          "what": "Refused against the on-chain mandate",
-          "detail": "7 payments over the mandate's cap, checked by Metal's facilitator against the mandate on chain (mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment): nothing moved; the Treasury agent proposed options to the CFO",
+          "what": "Refused over the mandate's cap",
+          "detail": "1 refused by Purser before signing, 1 recorded by Metal on chain (mandate_cap_exceeded): nothing moved",
+          "proof": {
+            "label": "0x3ad8de2f…a84d",
+            "href": "https://testnet.metalntwx.com/tx/0x3ad8de2f1a4896567f089786438418f0bf3be0d2c61807a9f157b89ed7d9a84d"
+          }
+        },
+        {
+          "what": "Refused under a revoked mandate",
+          "detail": "1 payment refused by Metal's facilitator: the old mandate was revoked by its replacement (a 402, nothing moved)",
           "proof": null
         },
         {
@@ -5794,6 +5802,24 @@
         }
       },
       {
+        "seq": 80,
+        "ts": "2026-11-02T10:48:34.251Z",
+        "actor": "sourcing",
+        "event": "upstream.refused",
+        "subject": "18",
+        "payload": {
+          "origin": {
+            "actor": "code",
+            "agent": "sourcing",
+            "rule": "the default buy policy"
+          },
+          "reason": "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment",
+          "refused_by": "purser",
+          "seq": 18,
+          "supplier": "stockline"
+        }
+      },
+      {
         "seq": 82,
         "ts": "2026-11-02T10:48:40.980Z",
         "actor": "sourcing",
@@ -5837,6 +5863,81 @@
         }
       },
       {
+        "seq": 160,
+        "ts": "2026-11-02T10:53:23.679Z",
+        "actor": "sourcing",
+        "event": "upstream.refused",
+        "subject": "19",
+        "payload": {
+          "origin": {
+            "actor": "code",
+            "agent": "sourcing",
+            "rule": "the Sourcing agent's buy policy",
+            "set_by": {
+              "actor": "agent",
+              "agent": "sourcing",
+              "model": "claude-haiku-5-5",
+              "request_id": "req_011CgdyFPYiGb2jzJCMwADkd",
+              "run_id": "run-sourcing-91-26be70"
+            }
+          },
+          "reason": "buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged",
+          "refused_by": "purser",
+          "seq": 34,
+          "supplier": "none"
+        }
+      },
+      {
+        "seq": 166,
+        "ts": "2026-11-02T10:53:40.410Z",
+        "actor": "sourcing",
+        "event": "upstream.refused",
+        "subject": "20",
+        "payload": {
+          "origin": {
+            "actor": "code",
+            "agent": "sourcing",
+            "rule": "the Sourcing agent's buy policy",
+            "set_by": {
+              "actor": "agent",
+              "agent": "sourcing",
+              "model": "claude-haiku-5-5",
+              "request_id": "req_011CgdyFPYiGb2jzJCMwADkd",
+              "run_id": "run-sourcing-91-26be70"
+            }
+          },
+          "reason": "buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged",
+          "refused_by": "purser",
+          "seq": 35,
+          "supplier": "none"
+        }
+      },
+      {
+        "seq": 167,
+        "ts": "2026-11-02T10:53:56.797Z",
+        "actor": "sourcing",
+        "event": "upstream.refused",
+        "subject": "21",
+        "payload": {
+          "origin": {
+            "actor": "code",
+            "agent": "sourcing",
+            "rule": "the Sourcing agent's buy policy",
+            "set_by": {
+              "actor": "agent",
+              "agent": "sourcing",
+              "model": "claude-haiku-5-5",
+              "request_id": "req_011CgdyFPYiGb2jzJCMwADkd",
+              "run_id": "run-sourcing-91-26be70"
+            }
+          },
+          "reason": "buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged",
+          "refused_by": "purser",
+          "seq": 36,
+          "supplier": "none"
+        }
+      },
+      {
         "seq": 172,
         "ts": "2026-11-02T10:54:03.506Z",
         "actor": "human",
@@ -5848,6 +5949,31 @@
           "of": "1 of 2",
           "person": "max",
           "terms_sha256": "487a52e8147ed79c8462470d96ef0ca9974eb21c169cbde365b0004fb934f2b2"
+        }
+      },
+      {
+        "seq": 177,
+        "ts": "2026-11-02T10:54:13.408Z",
+        "actor": "sourcing",
+        "event": "upstream.refused",
+        "subject": "22",
+        "payload": {
+          "origin": {
+            "actor": "code",
+            "agent": "sourcing",
+            "rule": "the Sourcing agent's buy policy",
+            "set_by": {
+              "actor": "agent",
+              "agent": "sourcing",
+              "model": "claude-haiku-5-5",
+              "request_id": "req_011CgdyFPYiGb2jzJCMwADkd",
+              "run_id": "run-sourcing-91-26be70"
+            }
+          },
+          "reason": "buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged",
+          "refused_by": "purser",
+          "seq": 37,
+          "supplier": "none"
         }
       },
       {
@@ -5885,6 +6011,31 @@
           "proposal_id": "P-0003",
           "step": "1",
           "tx": "0x563d4fff7bb58072ae0dbea4a6593c86af7020038286b44a31aeb875d297b152"
+        }
+      },
+      {
+        "seq": 181,
+        "ts": "2026-11-02T10:54:30.513Z",
+        "actor": "sourcing",
+        "event": "upstream.refused",
+        "subject": "23",
+        "payload": {
+          "origin": {
+            "actor": "code",
+            "agent": "sourcing",
+            "rule": "the Sourcing agent's buy policy",
+            "set_by": {
+              "actor": "agent",
+              "agent": "sourcing",
+              "model": "claude-haiku-5-5",
+              "request_id": "req_011CgdyFPYiGb2jzJCMwADkd",
+              "run_id": "run-sourcing-91-26be70"
+            }
+          },
+          "reason": "buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged",
+          "refused_by": "purser",
+          "seq": 38,
+          "supplier": "none"
         }
       },
       {
@@ -5929,6 +6080,31 @@
         "payload": {
           "query_price": "0.06",
           "steps": 2
+        }
+      },
+      {
+        "seq": 201,
+        "ts": "2026-11-02T10:54:47.000Z",
+        "actor": "sourcing",
+        "event": "upstream.refused",
+        "subject": "24",
+        "payload": {
+          "origin": {
+            "actor": "code",
+            "agent": "sourcing",
+            "rule": "the Sourcing agent's buy policy",
+            "set_by": {
+              "actor": "agent",
+              "agent": "sourcing",
+              "model": "claude-haiku-5-5",
+              "request_id": "req_011CgdyghZdaAps52wKzu9hV",
+              "run_id": "run-sourcing-182-7f8293"
+            }
+          },
+          "reason": "mandate_revoked",
+          "refused_by": "metal",
+          "seq": 39,
+          "supplier": "stockline"
         }
       },
       {

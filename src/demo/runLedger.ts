@@ -8,7 +8,7 @@ import type { DB } from "../db/open.js";
 /** The audit events recorded in full for the pages. */
 export const LEDGER_EVENTS = [
   "proposal.created", "proposal.cosigned", "proposal.approved", "proposal.rejected", "proposal.failed", "proposal.superseded", "proposal.executed",
-  "mandate.replaced", "refund.paid", "upstream.refused_on_chain", "credit.locked", "credit.deposited",
+  "mandate.replaced", "refund.paid", "upstream.refused", "upstream.refused_on_chain", "credit.locked", "credit.deposited",
 ] as const;
 const PREFIXES = ["sweep.", "transfer."];
 
