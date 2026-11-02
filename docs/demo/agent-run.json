@@ -273,7 +273,7 @@
         "decided": "code: the default buy policy",
         "what": "Stockline",
         "proof": {
-          "label": "tx 0x3e6a\u20266b05",
+          "label": "tx 0x3e6a…6b05",
           "href": "https://testnet.metalntwx.com/tx/0x3e6ac5a9ed534295baa7f709c61288b6c0c4e2ad99233b9071240bf0e66e6b05",
           "full": "0x3e6ac5a9ed534295baa7f709c61288b6c0c4e2ad99233b9071240bf0e66e6b05"
         },
@@ -292,7 +292,7 @@
         "decided": "Summit's agent paid (the simulated customer)",
         "what": "stock checks sold",
         "proof": {
-          "label": "tx 0x1f71\u20263608",
+          "label": "tx 0x1f71…3608",
           "href": "https://testnet.metalntwx.com/tx/0x1f715b3de18815db623f0d84532cfdb1cc40248e2f85df52796f3b77d4ee3608",
           "full": "0x1f715b3de18815db623f0d84532cfdb1cc40248e2f85df52796f3b77d4ee3608"
         },
@@ -333,7 +333,7 @@
         "decided": "code: the default buy policy",
         "what": "Stockline",
         "proof": {
-          "label": "tx 0x3ad8\u2026a84d",
+          "label": "tx 0x3ad8…a84d",
           "href": "https://testnet.metalntwx.com/tx/0x3ad8de2f1a4896567f089786438418f0bf3be0d2c61807a9f157b89ed7d9a84d",
           "full": "0x3ad8de2f1a4896567f089786438418f0bf3be0d2c61807a9f157b89ed7d9a84d"
         },
@@ -355,7 +355,7 @@
         "decided": "Summit's agent paid (the simulated customer)",
         "what": "stock checks sold",
         "proof": {
-          "label": "tx 0x2ae6\u2026d5d8",
+          "label": "tx 0x2ae6…d5d8",
           "href": "https://testnet.metalntwx.com/tx/0x2ae6d35c076c2522f714ae9013865a915647e328870861e224825ac41e5fd5d8",
           "full": "0x2ae6d35c076c2522f714ae9013865a915647e328870861e224825ac41e5fd5d8"
         },
@@ -396,7 +396,7 @@
         "decided": "code: the Sourcing agent's buy policy, as the Sourcing agent (Claude Haiku) set it",
         "what": "Stockline",
         "proof": {
-          "label": "tx 0xa3ee\u2026f776",
+          "label": "tx 0xa3ee…f776",
           "href": "https://testnet.metalntwx.com/tx/0xa3ee391356bd0a9adf203b6f28ebdec5353838f77994fda3836c9fd00b42f776",
           "full": "0xa3ee391356bd0a9adf203b6f28ebdec5353838f77994fda3836c9fd00b42f776"
         }
@@ -414,7 +414,7 @@
         "decided": "Summit's agent paid (the simulated customer)",
         "what": "stock checks sold",
         "proof": {
-          "label": "tx 0x77e2\u2026449e",
+          "label": "tx 0x77e2…449e",
           "href": "https://testnet.metalntwx.com/tx/0x77e20dd3b30780f7d14d063f18c611bf67d5014b9d5213e9e8a603330373449e",
           "full": "0x77e20dd3b30780f7d14d063f18c611bf67d5014b9d5213e9e8a603330373449e"
         },
@@ -434,7 +434,7 @@
         "request": "req_011CgdypNe4Pua3cLhBqs6hD",
         "what": "refund for order #7",
         "proof": {
-          "label": "tx 0x7028\u20264fa6",
+          "label": "tx 0x7028…4fa6",
           "href": "https://testnet.metalntwx.com/tx/0x7028a928edca831cf0eeff46332b27dcc78cbeb96b0a272702a29ee3bc5c4fa6",
           "full": "0x7028a928edca831cf0eeff46332b27dcc78cbeb96b0a272702a29ee3bc5c4fa6"
         }
@@ -453,7 +453,7 @@
         "request": "req_011CgdypNe4Pua3cLhBqs6hD",
         "what": "refund for order #10",
         "proof": {
-          "label": "tx 0xf764\u2026ec14",
+          "label": "tx 0xf764…ec14",
           "href": "https://testnet.metalntwx.com/tx/0xf764b92ed7fbee28279afe9f7fe79aced7ec2e815b3bc5f216003cb23424ec14",
           "full": "0xf764b92ed7fbee28279afe9f7fe79aced7ec2e815b3bc5f216003cb23424ec14"
         }
@@ -471,7 +471,7 @@
         "decided": "Summit's agent paid (the simulated customer)",
         "what": "stock checks sold",
         "proof": {
-          "label": "tx 0x9960\u20264548",
+          "label": "tx 0x9960…4548",
           "href": "https://testnet.metalntwx.com/tx/0x996005d2468764a355237bd0d178942f706fdb32a740e8e9adc437b22de34548",
           "full": "0x996005d2468764a355237bd0d178942f706fdb32a740e8e9adc437b22de34548"
         }
@@ -490,7 +490,7 @@
         "request": "req_011CgdypNe4Pua3cLhBqs6hD",
         "what": "refund for order #13",
         "proof": {
-          "label": "tx 0x217c\u2026a2d4",
+          "label": "tx 0x217c…a2d4",
           "href": "https://testnet.metalntwx.com/tx/0x217c56a73557fb7fcc568a8351acf0f3877398d3bee7f6dc6c5d678c2231a2d4",
           "full": "0x217c56a73557fb7fcc568a8351acf0f3877398d3bee7f6dc6c5d678c2231a2d4"
         }
@@ -508,7 +508,7 @@
         "decided": "Summit's agent paid (the simulated customer)",
         "what": "stock checks sold",
         "proof": {
-          "label": "tx 0x3256\u2026e0b9",
+          "label": "tx 0x3256…e0b9",
           "href": "https://testnet.metalntwx.com/tx/0x3256c809caf08cd95cb5ec24a3300508cc8a188a8ea6620086588a5bbadee0b9",
           "full": "0x3256c809caf08cd95cb5ec24a3300508cc8a188a8ea6620086588a5bbadee0b9"
         },
@@ -528,7 +528,7 @@
         "request": "req_011Cgdz3eJzsCLcbxKpRNwbd",
         "what": "net earnings to the sweep wallet",
         "proof": {
-          "label": "tx 0x659c\u2026e2b2",
+          "label": "tx 0x659c…e2b2",
           "href": "https://testnet.metalntwx.com/tx/0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2",
           "full": "0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2"
         }
@@ -546,7 +546,7 @@
         "decided": "code: book the sweep at Airwallex after Metal's finality, as the Treasury agent (Claude Opus) set it",
         "what": "the sweep, credited at Airwallex",
         "proof": {
-          "label": "Airwallex e80c3809\u2026",
+          "label": "Airwallex e80c3809…",
           "href": null,
           "full": "e80c3809-626f-43ac-b688-658aab624a7c"
         }
@@ -564,7 +564,7 @@
         "decided": "Summit's agent paid (the simulated customer)",
         "what": "stock checks sold",
         "proof": {
-          "label": "tx 0xcab6\u2026be3c",
+          "label": "tx 0xcab6…be3c",
           "href": "https://testnet.metalntwx.com/tx/0xcab6f2f08231a7eeb7139bd4e1cd8e0d4529482adf207169625954284bb2be3c",
           "full": "0xcab6f2f08231a7eeb7139bd4e1cd8e0d4529482adf207169625954284bb2be3c"
         },
@@ -583,7 +583,7 @@
         "decided": "code: the Sourcing agent's buy policy, as the Sourcing agent (Claude Haiku) set it",
         "what": "Stockline",
         "proof": {
-          "label": "tx 0x4632\u20264a69",
+          "label": "tx 0x4632…4a69",
           "href": "https://testnet.metalntwx.com/tx/0x463231daf50a4261c9334b7ce7b72c89ab3779eb819428b2cc51038090034a69",
           "full": "0x463231daf50a4261c9334b7ce7b72c89ab3779eb819428b2cc51038090034a69"
         }
@@ -623,21 +623,21 @@
         "proposal_id": "P-0005",
         "title": "Invoice payment",
         "status": "FAILED",
-        "by": "Max \u00b7 Face ID",
+        "by": "Max · Face ID",
         "at": "2026-11-02T11:01:41.985Z"
       },
       {
         "proposal_id": "P-0004",
         "title": "Refund batch",
         "status": "REJECTED",
-        "by": "Max \u00b7 Face ID",
+        "by": "Max · Face ID",
         "at": "2026-11-02T10:58:51.599Z"
       },
       {
         "proposal_id": "P-0003",
         "title": "Mandate change",
         "status": "EXECUTED",
-        "by": "Max & Test-controller \u00b7 Face ID",
+        "by": "Max & Test-controller · Face ID",
         "at": "2026-11-02T10:54:34.879Z"
       },
       {
@@ -651,7 +651,7 @@
         "proposal_id": "P-0001",
         "title": "Policy change",
         "status": "EXECUTED",
-        "by": "Max \u00b7 Face ID",
+        "by": "Max · Face ID",
         "at": "2026-11-02T10:42:33.168Z"
       }
     ],
@@ -668,7 +668,7 @@
         "ts": "2026-11-02T10:58:51.599Z",
         "agent": "human",
         "what": "Proposal rejected",
-        "reason": "Max \u00b7 Face ID rejected P-0004"
+        "reason": "Max · Face ID rejected P-0004"
       },
       {
         "seq": 219,
@@ -935,7 +935,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Max \u00b7 Face ID approved P-0005",
+        "text": "Max · Face ID approved P-0005",
         "tone": "approval",
         "trace": null
       },
@@ -1392,7 +1392,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Max \u00b7 Face ID rejected P-0004",
+        "text": "Max · Face ID rejected P-0004",
         "tone": "refusal",
         "trace": null
       },
@@ -1521,8 +1521,8 @@
             "kind": "tool",
             "tool": "plan_invoice",
             "input": {},
-            "result": "GOAL             pay Stockline Data GmbH's monthly data licence, EUR 240.00 in code, without breaking a floor\n                 read by claude-haiku-5-5 (classify) and claude-sonnet-5-5 (extract)\nNEW INFORMATION  invoice SLL-2026-11 from Stockline Data GmbH: EUR 240.00, due 2026-11-15\nPLAN             EUR needed 260.00 (invoice 240.00 + SWIFT fee at most 20.00); free EUR 1500.00\n                 after: EUR free 1240.00, USD 9995942.10 (floor 9990940.13)\nTREASURY AGENT   claude-opus-5-5: advises paying now: \"The existing EUR balance covers the EUR 240.00 invoice and its fee, so there's no conver\u2026",
-            "text": "plan_invoice: GOAL             pay Stockline Data GmbH's monthly data licence, EUR 240.00 in code, without breaking a floor\n                 read by claude-haiku-5-5 (classify) and claude-sonnet-5-5 (extract)\nNEW INFORMATION  invoice SLL-2026-11 from Stockline Data GmbH: EUR 240.00, due 2026-11-15\nPLAN             EUR needed 260.00 (invoice 240.00 + SWIFT fee at most 20.00); free EUR 1500.00\n                 after: EUR free 1240.00, USD 9995942.10 (floor 9990940.13)\nTREASURY AGENT   claude-opus-5-5: advises paying now: \"The existing EUR balance covers the EUR 240.00 invoice and its fee, so there's no conver\u2026",
+            "result": "GOAL             pay Stockline Data GmbH's monthly data licence, EUR 240.00 in code, without breaking a floor\n                 read by claude-haiku-5-5 (classify) and claude-sonnet-5-5 (extract)\nNEW INFORMATION  invoice SLL-2026-11 from Stockline Data GmbH: EUR 240.00, due 2026-11-15\nPLAN             EUR needed 260.00 (invoice 240.00 + SWIFT fee at most 20.00); free EUR 1500.00\n                 after: EUR free 1240.00, USD 9995942.10 (floor 9990940.13)\nTREASURY AGENT   claude-opus-5-5: advises paying now: \"The existing EUR balance covers the EUR 240.00 invoice and its fee, so there's no conver…",
+            "text": "plan_invoice: GOAL             pay Stockline Data GmbH's monthly data licence, EUR 240.00 in code, without breaking a floor\n                 read by claude-haiku-5-5 (classify) and claude-sonnet-5-5 (extract)\nNEW INFORMATION  invoice SLL-2026-11 from Stockline Data GmbH: EUR 240.00, due 2026-11-15\nPLAN             EUR needed 260.00 (invoice 240.00 + SWIFT fee at most 20.00); free EUR 1500.00\n                 after: EUR free 1240.00, USD 9995942.10 (floor 9990940.13)\nTREASURY AGENT   claude-opus-5-5: advises paying now: \"The existing EUR balance covers the EUR 240.00 invoice and its fee, so there's no conver…",
             "blocked": false,
             "check": "code ran it",
             "ms": 27177,
@@ -1930,8 +1930,8 @@
             "input": {
               "reason": "The day's sales have settled on Metal (event #9). Net earnings are 1.97 (sales 2.50, minus 0.38 upstream and 0.15 refunds), none swept yet. End of day is the natural point to book them at Airwallex. Code keeps back what the mandates may still spend."
             },
-            "result": "GOAL             move earnings into Airwallex and pay the manufacturer's EUR invoice, without breaking a floor\nPLAN             net earnings 1.97 = sales 2.50 - upstream 0.38 - refunds 0.15 - swept 0.00\n                 business account 21.97 -> 20.00, still >= 15.47 the other mandates may spend\nSWEEP            sweep-20261102-1: 1.97 *USDZ business -> sweep wallet  https://testnet.metalntwx.com/tx/0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2\nFINALITY         block 13009654 <= finalized 13009663, canonical; credit locked as 63825:0x659c5ac2a379764a53743060f130067df101f39d\u2026",
-            "text": "sweep_earnings: GOAL             move earnings into Airwallex and pay the manufacturer's EUR invoice, without breaking a floor\nPLAN             net earnings 1.97 = sales 2.50 - upstream 0.38 - refunds 0.15 - swept 0.00\n                 business account 21.97 -> 20.00, still >= 15.47 the other mandates may spend\nSWEEP            sweep-20261102-1: 1.97 *USDZ business -> sweep wallet  https://testnet.metalntwx.com/tx/0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2\nFINALITY         block 13009654 <= finalized 13009663, canonical; credit locked as 63825:0x659c5ac2a379764a53743060f130067df101f39d\u2026",
+            "result": "GOAL             move earnings into Airwallex and pay the manufacturer's EUR invoice, without breaking a floor\nPLAN             net earnings 1.97 = sales 2.50 - upstream 0.38 - refunds 0.15 - swept 0.00\n                 business account 21.97 -> 20.00, still >= 15.47 the other mandates may spend\nSWEEP            sweep-20261102-1: 1.97 *USDZ business -> sweep wallet  https://testnet.metalntwx.com/tx/0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2\nFINALITY         block 13009654 <= finalized 13009663, canonical; credit locked as 63825:0x659c5ac2a379764a53743060f130067df101f39d…",
+            "text": "sweep_earnings: GOAL             move earnings into Airwallex and pay the manufacturer's EUR invoice, without breaking a floor\nPLAN             net earnings 1.97 = sales 2.50 - upstream 0.38 - refunds 0.15 - swept 0.00\n                 business account 21.97 -> 20.00, still >= 15.47 the other mandates may spend\nSWEEP            sweep-20261102-1: 1.97 *USDZ business -> sweep wallet  https://testnet.metalntwx.com/tx/0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2\nFINALITY         block 13009654 <= finalized 13009663, canonical; credit locked as 63825:0x659c5ac2a379764a53743060f130067df101f39d…",
             "blocked": false,
             "check": "code ran it",
             "ms": 13999,
@@ -2054,8 +2054,8 @@
             "kind": "tool",
             "tool": "settle_dispute",
             "input": {},
-            "result": "RETRY            refund #7 again with refund-7: already paid, nothing sent\nRESULT           support mandate spent 0.15 of 4.00\nDraft reply to Summit (claude-sonnet-5-5; a person sends it):\n  Subject: Your disputed stock checks #5-#16 - review outcome and refunds\n  Dear Summit Outfitters team,\n  Thank you for contacting Northwind Outdoor about your disputed stock checks #5-#16. We have completed our review of all 12 orders.\n  We verified on chain that each of the 12 orders was signed by your agent's mandate key under the mandate bound to your account.\n  Stock checks #7, #10 and #13 carried inco\u2026",
-            "text": "settle_dispute: RETRY            refund #7 again with refund-7: already paid, nothing sent\nRESULT           support mandate spent 0.15 of 4.00\nDraft reply to Summit (claude-sonnet-5-5; a person sends it):\n  Subject: Your disputed stock checks #5-#16 - review outcome and refunds\n  Dear Summit Outfitters team,\n  Thank you for contacting Northwind Outdoor about your disputed stock checks #5-#16. We have completed our review of all 12 orders.\n  We verified on chain that each of the 12 orders was signed by your agent's mandate key under the mandate bound to your account.\n  Stock checks #7, #10 and #13 carried inco\u2026",
+            "result": "RETRY            refund #7 again with refund-7: already paid, nothing sent\nRESULT           support mandate spent 0.15 of 4.00\nDraft reply to Summit (claude-sonnet-5-5; a person sends it):\n  Subject: Your disputed stock checks #5-#16 - review outcome and refunds\n  Dear Summit Outfitters team,\n  Thank you for contacting Northwind Outdoor about your disputed stock checks #5-#16. We have completed our review of all 12 orders.\n  We verified on chain that each of the 12 orders was signed by your agent's mandate key under the mandate bound to your account.\n  Stock checks #7, #10 and #13 carried inco…",
+            "text": "settle_dispute: RETRY            refund #7 again with refund-7: already paid, nothing sent\nRESULT           support mandate spent 0.15 of 4.00\nDraft reply to Summit (claude-sonnet-5-5; a person sends it):\n  Subject: Your disputed stock checks #5-#16 - review outcome and refunds\n  Dear Summit Outfitters team,\n  Thank you for contacting Northwind Outdoor about your disputed stock checks #5-#16. We have completed our review of all 12 orders.\n  We verified on chain that each of the 12 orders was signed by your agent's mandate key under the mandate bound to your account.\n  Stock checks #7, #10 and #13 carried inco…",
             "blocked": false,
             "check": "code ran it",
             "ms": 76714,
@@ -2990,7 +2990,7 @@
             "tool": null,
             "input": null,
             "result": null,
-            "text": "The Treasury agent \u2192 the Sourcing agent: \"The CFO approved P-0003. Your cap is now 0.04 a payment and your budget is 12.00 (0.34 spent). The query price is 0.06. You can use Stockline at 0.04 now, which leaves a 0.02 margin. When Ridgeline is back after its maintenance (around 22:42 UTC), switch back to it: at 0.03 it leaves a 0.03 margin.\"",
+            "text": "The Treasury agent → the Sourcing agent: \"The CFO approved P-0003. Your cap is now 0.04 a payment and your budget is 12.00 (0.34 spent). The query price is 0.06. You can use Stockline at 0.04 now, which leaves a 0.02 margin. When Ridgeline is back after its maintenance (around 22:42 UTC), switch back to it: at 0.03 it leaves a 0.03 margin.\"",
             "blocked": false,
             "check": "",
             "ms": null,
@@ -3321,8 +3321,8 @@
             "kind": "tool",
             "tool": "position",
             "input": {},
-            "result": "Mandates (lifetime): sourcing cap 0.03, budget 10.00, spent 0.34; support cap 0.10, budget 4.00, spent 0.00; treasury cap 6.00, budget 6.00, spent 0.00. Total budget 20.00 of 20.00 allowed.\nQuery price 0.05; Stockline 0.04, Ridgeline Data 0.03 a stock check.\nCode's evidence that an agent is blocked by its mandate: mandate_cap_blocks_fresh_data: 3 customer queries turned away in 15 min under the buy policy; no supplier sells data within code's cache limit at or under the cap: Stockline 0.04 over the 0.03 cap; Ridgeline Data's data is 15 min old, over code's 5 min cache limit.\nNet earnings on th\u2026",
-            "text": "position: Mandates (lifetime): sourcing cap 0.03, budget 10.00, spent 0.34; support cap 0.10, budget 4.00, spent 0.00; treasury cap 6.00, budget 6.00, spent 0.00. Total budget 20.00 of 20.00 allowed.\nQuery price 0.05; Stockline 0.04, Ridgeline Data 0.03 a stock check.\nCode's evidence that an agent is blocked by its mandate: mandate_cap_blocks_fresh_data: 3 customer queries turned away in 15 min under the buy policy; no supplier sells data within code's cache limit at or under the cap: Stockline 0.04 over the 0.03 cap; Ridgeline Data's data is 15 min old, over code's 5 min cache limit.\nNet earnings on th\u2026",
+            "result": "Mandates (lifetime): sourcing cap 0.03, budget 10.00, spent 0.34; support cap 0.10, budget 4.00, spent 0.00; treasury cap 6.00, budget 6.00, spent 0.00. Total budget 20.00 of 20.00 allowed.\nQuery price 0.05; Stockline 0.04, Ridgeline Data 0.03 a stock check.\nCode's evidence that an agent is blocked by its mandate: mandate_cap_blocks_fresh_data: 3 customer queries turned away in 15 min under the buy policy; no supplier sells data within code's cache limit at or under the cap: Stockline 0.04 over the 0.03 cap; Ridgeline Data's data is 15 min old, over code's 5 min cache limit.\nNet earnings on th…",
+            "text": "position: Mandates (lifetime): sourcing cap 0.03, budget 10.00, spent 0.34; support cap 0.10, budget 4.00, spent 0.00; treasury cap 6.00, budget 6.00, spent 0.00. Total budget 20.00 of 20.00 allowed.\nQuery price 0.05; Stockline 0.04, Ridgeline Data 0.03 a stock check.\nCode's evidence that an agent is blocked by its mandate: mandate_cap_blocks_fresh_data: 3 customer queries turned away in 15 min under the buy policy; no supplier sells data within code's cache limit at or under the cap: Stockline 0.04 over the 0.03 cap; Ridgeline Data's data is 15 min old, over code's 5 min cache limit.\nNet earnings on th…",
             "blocked": false,
             "check": "code ran it",
             "ms": 1661,
@@ -3757,7 +3757,7 @@
             "tool": null,
             "input": null,
             "result": null,
-            "text": "The Treasury agent \u2192 the Sourcing agent: \"Treasury: I take back my earlier advice to switch to Ridgeline, because it is down until 22:42 UTC. I sent the CFO a rebalance (P-0002/P-0003): your cap goes to 0.04 and your budget to 12.00, which leaves 11.66. I recommended Option A, keeping the 0.05 price, which leaves a 0.01 margin on Stockline. Until the CFO approves, keep serving from cache and keep refusing uncached queries. After 22:42, go back to Ridgeline at 0.03.\"",
+            "text": "The Treasury agent → the Sourcing agent: \"Treasury: I take back my earlier advice to switch to Ridgeline, because it is down until 22:42 UTC. I sent the CFO a rebalance (P-0002/P-0003): your cap goes to 0.04 and your budget to 12.00, which leaves 11.66. I recommended Option A, keeping the 0.05 price, which leaves a 0.01 margin on Stockline. Until the CFO approves, keep serving from cache and keep refusing uncached queries. After 22:42, go back to Ridgeline at 0.03.\"",
             "blocked": false,
             "check": "",
             "ms": null,
@@ -3974,7 +3974,7 @@
             "tool": null,
             "input": null,
             "result": null,
-            "text": "The Sourcing agent \u2192 the Treasury agent: \"Sourcing: Ridgeline is not reachable now (planned maintenance until 22:42 UTC), so I cannot buy from it at 0.03. Stockline is at 0.04, above our 0.03 cap. I'm keeping cache-only (300 s) and refusing uncached queries without charging customers. Budget stays at 9.66. I'll retry Ridgeline after 22:42 UTC.\"",
+            "text": "The Sourcing agent → the Treasury agent: \"Sourcing: Ridgeline is not reachable now (planned maintenance until 22:42 UTC), so I cannot buy from it at 0.03. Stockline is at 0.04, above our 0.03 cap. I'm keeping cache-only (300 s) and refusing uncached queries without charging customers. Budget stays at 9.66. I'll retry Ridgeline after 22:42 UTC.\"",
             "blocked": false,
             "check": "",
             "ms": null,
@@ -4101,7 +4101,7 @@
             "tool": null,
             "input": null,
             "result": null,
-            "text": "The Treasury agent \u2192 the Sourcing agent: \"Thanks. Stockline at 0.04 is over your 0.03 cap, but Ridgeline Data sells a stock check at 0.03. That fits your cap and leaves a 0.02 margin on the 0.05 price, compared with 0.01 at Stockline. Please buy stock checks from Ridgeline instead of serving only from cache. You are not blocked, so I'm not sending a rebalance to the CFO. If Ridgeline goes above 0.03 or stops working, tell me and I'll look at it again.\"",
+            "text": "The Treasury agent → the Sourcing agent: \"Thanks. Stockline at 0.04 is over your 0.03 cap, but Ridgeline Data sells a stock check at 0.03. That fits your cap and leaves a 0.02 margin on the 0.05 price, compared with 0.01 at Stockline. Please buy stock checks from Ridgeline instead of serving only from cache. You are not blocked, so I'm not sending a rebalance to the CFO. If Ridgeline goes above 0.03 or stops working, tell me and I'll look at it again.\"",
             "blocked": false,
             "check": "",
             "ms": null,
@@ -4245,7 +4245,7 @@
             "tool": null,
             "input": null,
             "result": null,
-            "text": "The Sourcing agent \u2192 the Treasury agent: \"Stockline raised its stock check price from 0.02 to 0.04 as of 10:48 UTC. That is above our 0.03 per-purchase cap, so Stockline purchases are blocked. At 0.04 our margin on the 0.05 sell price is 0.01, which meets the floor. If you want stock checks to keep flowing, a cap of 0.04 would allow it (margin stays at 0.01). Otherwise I'll keep serving from cache only. No change is needed for now; this is for the CFO's decision.\"",
+            "text": "The Sourcing agent → the Treasury agent: \"Stockline raised its stock check price from 0.02 to 0.04 as of 10:48 UTC. That is above our 0.03 per-purchase cap, so Stockline purchases are blocked. At 0.04 our margin on the 0.05 sell price is 0.01, which meets the floor. If you want stock checks to keep flowing, a cap of 0.04 would allow it (margin stays at 0.01). Otherwise I'll keep serving from cache only. No change is needed for now; this is for the CFO's decision.\"",
             "blocked": false,
             "check": "",
             "ms": null,
@@ -4746,7 +4746,7 @@
         "left_month": "100.00",
         "in_sync": true,
         "frozen": false,
-        "only": "Software (MCC 5734) \u00b7 EUR only \u00b7 until 2027-01-31",
+        "only": "Software (MCC 5734) · EUR only · until 2027-01-31",
         "single_use": false,
         "recent": []
       },
@@ -4761,7 +4761,7 @@
         "left_month": "150.00",
         "in_sync": true,
         "frozen": false,
-        "only": "Software services (MCC 7372) \u00b7 EUR only \u00b7 until 2027-01-31",
+        "only": "Software services (MCC 7372) · EUR only · until 2027-01-31",
         "single_use": false,
         "recent": []
       },
@@ -4776,7 +4776,7 @@
         "left_month": "50.00",
         "in_sync": true,
         "frozen": false,
-        "only": "Software (MCC 5734) \u00b7 EUR only \u00b7 until 2027-01-31",
+        "only": "Software (MCC 5734) · EUR only · until 2027-01-31",
         "single_use": false,
         "recent": []
       }
@@ -5672,7 +5672,7 @@
           "what": "A company card per agent (Issuing)",
           "detail": "3 virtual Visa cards; each card's limits, merchant categories and currency sit on the card at Airwallex",
           "proof": {
-            "label": "\u2022\u2022\u2022\u2022 9017 \u00b7 \u2022\u2022\u2022\u2022 3697 \u00b7 \u2022\u2022\u2022\u2022 2870",
+            "label": "•••• 9017 · •••• 3697 · •••• 2870",
             "href": null
           }
         },
@@ -5680,7 +5680,7 @@
           "what": "Metal earnings booked at Airwallex",
           "detail": "USD 1.97 booked once as a simulated sandbox deposit that names the sweep's testnet transaction (no test USD reached Airwallex)",
           "proof": {
-            "label": "Airwallex id e80c3809-6\u20264a7c",
+            "label": "Airwallex id e80c3809-6…4a7c",
             "href": null
           },
           "simulated": true
@@ -5691,7 +5691,7 @@
           "what": "A mandate per agent, on chain",
           "detail": "Sourcing agent: 0.04 a payment, 12.00 in total, one payee; Support agent: 0.10 a payment, 4.00 in total, one payee; Treasury agent: 4.00 a payment, 4.00 in total, one payee",
           "proof": {
-            "label": "0x725f7174\u202608dc",
+            "label": "0x725f7174…08dc",
             "href": "https://testnet.metalntwx.com/tx/0x725f71742736943389535be0c4dc64edc5fffa29514905bbfc90777dc93e08dc"
           }
         },
@@ -5699,7 +5699,7 @@
           "what": "Paid per request (x402), with a signed order",
           "detail": "62 stock checks sold, each paid under the customer's mandate and settled by Metal's facilitator",
           "proof": {
-            "label": "0x4a490510\u2026f37c",
+            "label": "0x4a490510…f37c",
             "href": "https://testnet.metalntwx.com/tx/0x4a490510ff2f8044cfc6ce80e4c56cf6a611b5a3682f1e13bdc97dc8eb6af37c"
           }
         },
@@ -5707,7 +5707,7 @@
           "what": "The agent buys from its supplier",
           "detail": "19 purchases, each under the Sourcing agent's mandate",
           "proof": {
-            "label": "0xa9347ec0\u20268844",
+            "label": "0xa9347ec0…8844",
             "href": "https://testnet.metalntwx.com/tx/0xa9347ec0623b880a44d1ecd3cab01542c37cc29e3430d22dfdfea0ce479d8844"
           }
         },
@@ -5720,7 +5720,7 @@
           "what": "Mandate replaced after Face ID",
           "detail": "2 replacements approved by the CFO's passkey; the old mandate is revoked on chain",
           "proof": {
-            "label": "0x563d4fff\u2026b152",
+            "label": "0x563d4fff…b152",
             "href": "https://testnet.metalntwx.com/tx/0x563d4fff7bb58072ae0dbea4a6593c86af7020038286b44a31aeb875d297b152"
           }
         },
@@ -5728,7 +5728,7 @@
           "what": "Refunds as mandate pulls",
           "detail": "3 refunds, 0.15 test USD, back to the paying account only, each under its own payment id",
           "proof": {
-            "label": "0x7028a928\u20264fa6",
+            "label": "0x7028a928…4fa6",
             "href": "https://testnet.metalntwx.com/tx/0x7028a928edca831cf0eeff46332b27dcc78cbeb96b0a272702a29ee3bc5c4fa6"
           }
         },
@@ -5736,7 +5736,7 @@
           "what": "Sweep, after finality",
           "detail": "earnings moved once their block (13009654) was finalized (13009663); booked at Airwallex exactly once",
           "proof": {
-            "label": "0x659c5ac2\u2026e2b2",
+            "label": "0x659c5ac2…e2b2",
             "href": "https://testnet.metalntwx.com/tx/0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2"
           }
         }
@@ -5754,5 +5754,878 @@
     "chain_refusals": 2,
     "clearing_receipts": 0
   },
-  "kind": "agent run (rehearsal): real Claude agents, Max's Face ID, a labelled test passkey as second approver, test money"
+  "kind": "agent run (rehearsal): real Claude agents, Max's Face ID, a labelled test passkey as second approver, test money",
+  "ledger": {
+    "events": [
+      {
+        "seq": 27,
+        "ts": "2026-11-02T10:41:50.027Z",
+        "actor": "human",
+        "event": "proposal.created",
+        "subject": "P-0001",
+        "payload": {
+          "kind": "policy_change",
+          "policy_version": 1,
+          "terms_sha256": "1034e1abb4b84cf35d49725394f952b81600216898bab27f86148a3a212e0c32"
+        }
+      },
+      {
+        "seq": 28,
+        "ts": "2026-11-02T10:42:33.151Z",
+        "actor": "human",
+        "event": "proposal.approved",
+        "subject": "P-0001",
+        "payload": {
+          "approver": "max",
+          "method": "passkey",
+          "note": null,
+          "policy_version": 1,
+          "terms_sha256": "1034e1abb4b84cf35d49725394f952b81600216898bab27f86148a3a212e0c32"
+        }
+      },
+      {
+        "seq": 31,
+        "ts": "2026-11-02T10:42:33.168Z",
+        "actor": "system",
+        "event": "proposal.executed",
+        "subject": "P-0001",
+        "payload": {
+          "changes": "1"
+        }
+      },
+      {
+        "seq": 82,
+        "ts": "2026-11-02T10:48:40.980Z",
+        "actor": "sourcing",
+        "event": "upstream.refused_on_chain",
+        "subject": "18",
+        "payload": {
+          "amount": "0.04",
+          "mandate": "0x0d183fad40564b66b4a5c432b11204b1e1ee09f8b2944134b63f1d4279024033",
+          "metal_reason": "mandate_cap_exceeded (the amount is above the mandate's per-payment cap)",
+          "origin": {
+            "actor": "code",
+            "agent": "sourcing",
+            "rule": "the default buy policy"
+          },
+          "seq": 18,
+          "tx": "0x3ad8de2f1a4896567f089786438418f0bf3be0d2c61807a9f157b89ed7d9a84d"
+        }
+      },
+      {
+        "seq": 124,
+        "ts": "2026-11-02T10:49:49.865Z",
+        "actor": "treasury",
+        "event": "proposal.created",
+        "subject": "P-0002",
+        "payload": {
+          "kind": "mandate_replace",
+          "policy_version": 2,
+          "terms_sha256": "d6281b791ac25f149d6a9c30f68effe42096ba2c7213dd18f2c4b20c9efb1a41"
+        }
+      },
+      {
+        "seq": 125,
+        "ts": "2026-11-02T10:49:49.865Z",
+        "actor": "treasury",
+        "event": "proposal.created",
+        "subject": "P-0003",
+        "payload": {
+          "kind": "mandate_replace",
+          "policy_version": 2,
+          "terms_sha256": "487a52e8147ed79c8462470d96ef0ca9974eb21c169cbde365b0004fb934f2b2"
+        }
+      },
+      {
+        "seq": 172,
+        "ts": "2026-11-02T10:54:03.506Z",
+        "actor": "human",
+        "event": "proposal.cosigned",
+        "subject": "P-0003",
+        "payload": {
+          "approver": "max",
+          "method": "passkey",
+          "of": "1 of 2",
+          "person": "max",
+          "terms_sha256": "487a52e8147ed79c8462470d96ef0ca9974eb21c169cbde365b0004fb934f2b2"
+        }
+      },
+      {
+        "seq": 178,
+        "ts": "2026-11-02T10:54:22.756Z",
+        "actor": "human",
+        "event": "proposal.approved",
+        "subject": "P-0003",
+        "payload": {
+          "approver": "max + test-controller",
+          "method": "passkey",
+          "note": null,
+          "policy_version": 2,
+          "terms_sha256": "487a52e8147ed79c8462470d96ef0ca9974eb21c169cbde365b0004fb934f2b2"
+        }
+      },
+      {
+        "seq": 180,
+        "ts": "2026-11-02T10:54:30.277Z",
+        "actor": "owner-signer",
+        "event": "mandate.replaced",
+        "subject": "treasury",
+        "payload": {
+          "budget": "4.00",
+          "cap": "4.00",
+          "credential_hash": "0x60043091204a806cb6e2cd4e501af206c8bdc3101174a1630c6c846dc37ba7fe",
+          "origin": {
+            "actor": "cfo",
+            "approval_id": "2",
+            "approver": "max + test-controller",
+            "cosigner": "max",
+            "method": "passkey",
+            "proposal_id": "P-0003"
+          },
+          "proposal_id": "P-0003",
+          "step": "1",
+          "tx": "0x563d4fff7bb58072ae0dbea4a6593c86af7020038286b44a31aeb875d297b152"
+        }
+      },
+      {
+        "seq": 183,
+        "ts": "2026-11-02T10:54:34.876Z",
+        "actor": "owner-signer",
+        "event": "mandate.replaced",
+        "subject": "sourcing",
+        "payload": {
+          "budget": "12.00",
+          "cap": "0.04",
+          "credential_hash": "0xcbe1ab1d3d01b7e00122a26d4bbff7673e6e758f0f7271051b6b1c21835fdae5",
+          "origin": {
+            "actor": "cfo",
+            "approval_id": "2",
+            "approver": "max + test-controller",
+            "cosigner": "max",
+            "method": "passkey",
+            "proposal_id": "P-0003"
+          },
+          "proposal_id": "P-0003",
+          "step": "2",
+          "tx": "0x0e7f9d0a21b1a687fe13502981e4e2f01574949aa33001a8a99a802499ba2d8e"
+        }
+      },
+      {
+        "seq": 185,
+        "ts": "2026-11-02T10:54:34.879Z",
+        "actor": "system",
+        "event": "proposal.superseded",
+        "subject": "P-0002",
+        "payload": {
+          "by": "P-0003"
+        }
+      },
+      {
+        "seq": 186,
+        "ts": "2026-11-02T10:54:34.879Z",
+        "actor": "system",
+        "event": "proposal.executed",
+        "subject": "P-0003",
+        "payload": {
+          "query_price": "0.06",
+          "steps": 2
+        }
+      },
+      {
+        "seq": 252,
+        "ts": "2026-11-02T10:56:27.528Z",
+        "actor": "support",
+        "event": "refund.paid",
+        "subject": "7",
+        "payload": {
+          "amount": "0.05",
+          "origin": {
+            "actor": "agent",
+            "agent": "support",
+            "model": "claude-sonnet-5-5",
+            "request_id": "req_011CgdypNe4Pua3cLhBqs6hD",
+            "run_id": "run-support-225-3bd795"
+          },
+          "payment_id": "refund-7",
+          "reason": null,
+          "to": "0xfAEB65940e2CB5FaD4177E1EdCDCbB97fb7540D7",
+          "tx": "0x7028a928edca831cf0eeff46332b27dcc78cbeb96b0a272702a29ee3bc5c4fa6"
+        }
+      },
+      {
+        "seq": 254,
+        "ts": "2026-11-02T10:56:32.097Z",
+        "actor": "support",
+        "event": "refund.paid",
+        "subject": "10",
+        "payload": {
+          "amount": "0.05",
+          "origin": {
+            "actor": "agent",
+            "agent": "support",
+            "model": "claude-sonnet-5-5",
+            "request_id": "req_011CgdypNe4Pua3cLhBqs6hD",
+            "run_id": "run-support-225-3bd795"
+          },
+          "payment_id": "refund-10",
+          "reason": null,
+          "to": "0xfAEB65940e2CB5FaD4177E1EdCDCbB97fb7540D7",
+          "tx": "0xf764b92ed7fbee28279afe9f7fe79aced7ec2e815b3bc5f216003cb23424ec14"
+        }
+      },
+      {
+        "seq": 258,
+        "ts": "2026-11-02T10:56:35.836Z",
+        "actor": "support",
+        "event": "refund.paid",
+        "subject": "13",
+        "payload": {
+          "amount": "0.05",
+          "origin": {
+            "actor": "agent",
+            "agent": "support",
+            "model": "claude-sonnet-5-5",
+            "request_id": "req_011CgdypNe4Pua3cLhBqs6hD",
+            "run_id": "run-support-225-3bd795"
+          },
+          "payment_id": "refund-13",
+          "reason": null,
+          "to": "0xfAEB65940e2CB5FaD4177E1EdCDCbB97fb7540D7",
+          "tx": "0x217c56a73557fb7fcc568a8351acf0f3877398d3bee7f6dc6c5d678c2231a2d4"
+        }
+      },
+      {
+        "seq": 260,
+        "ts": "2026-11-02T10:56:38.127Z",
+        "actor": "support",
+        "event": "proposal.created",
+        "subject": "P-0004",
+        "payload": {
+          "kind": "refund_batch",
+          "policy_version": 2,
+          "terms_sha256": "7a1b09e187786504ef348b91990b25b61092e1da3b9e019820ce5a120a0e2b52"
+        }
+      },
+      {
+        "seq": 285,
+        "ts": "2026-11-02T10:58:51.599Z",
+        "actor": "human",
+        "event": "proposal.rejected",
+        "subject": "P-0004",
+        "payload": {
+          "approver": "max",
+          "method": "passkey",
+          "note": null,
+          "policy_version": 2,
+          "terms_sha256": "7a1b09e187786504ef348b91990b25b61092e1da3b9e019820ce5a120a0e2b52"
+        }
+      },
+      {
+        "seq": 294,
+        "ts": "2026-11-02T10:59:31.925Z",
+        "actor": "treasury",
+        "event": "sweep.paid",
+        "subject": "sweep-20261102-1",
+        "payload": {
+          "amount": "1.97",
+          "origin": {
+            "actor": "agent",
+            "agent": "treasury",
+            "model": "claude-opus-5-5",
+            "request_id": "req_011Cgdz3eJzsCLcbxKpRNwbd",
+            "run_id": "run-treasury-290-72f20a"
+          },
+          "reason": null,
+          "to": "0x0030f9A562955534A0A82bE70d08DDECEDDB7075",
+          "tx": "0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2"
+        }
+      },
+      {
+        "seq": 295,
+        "ts": "2026-11-02T10:59:32.573Z",
+        "actor": "treasury",
+        "event": "credit.locked",
+        "subject": "63825:0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2:1",
+        "payload": {
+          "amount_units": "1970000000000000000",
+          "block": 13009654,
+          "finalized_block": 13009663,
+          "tx": "0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2"
+        }
+      },
+      {
+        "seq": 299,
+        "ts": "2026-11-02T10:59:37.351Z",
+        "actor": "awx-executor",
+        "event": "credit.deposited",
+        "subject": "63825:0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2:1",
+        "payload": {
+          "amount": "1.97",
+          "currency": "USD",
+          "deposit_id": "e80c3809-626f-43ac-b688-658aab624a7c",
+          "origin": {
+            "actor": "code",
+            "agent": "treasury",
+            "rule": "book the sweep at Airwallex after Metal's finality",
+            "set_by": {
+              "actor": "agent",
+              "agent": "treasury",
+              "model": "claude-opus-5-5",
+              "request_id": "req_011Cgdz3eJzsCLcbxKpRNwbd",
+              "run_id": "run-treasury-290-72f20a"
+            }
+          },
+          "reference": "0x659c5ac2a379764a53743060f130067df101f39d94b9df241607c1bfb5ece2b2"
+        }
+      },
+      {
+        "seq": 318,
+        "ts": "2026-11-02T11:00:35.678Z",
+        "actor": "treasury",
+        "event": "proposal.created",
+        "subject": "P-0005",
+        "payload": {
+          "kind": "invoice_payment",
+          "policy_version": 3,
+          "terms_sha256": "93d4d49320d63ae7f126f29c96247187f41eab2e239f9d257ee26c788131a279"
+        }
+      },
+      {
+        "seq": 337,
+        "ts": "2026-11-02T11:01:40.163Z",
+        "actor": "human",
+        "event": "proposal.approved",
+        "subject": "P-0005",
+        "payload": {
+          "approver": "max",
+          "method": "passkey",
+          "note": null,
+          "policy_version": 3,
+          "terms_sha256": "93d4d49320d63ae7f126f29c96247187f41eab2e239f9d257ee26c788131a279"
+        }
+      },
+      {
+        "seq": 339,
+        "ts": "2026-11-02T11:01:41.985Z",
+        "actor": "system",
+        "event": "proposal.failed",
+        "subject": "P-0005",
+        "payload": {
+          "error": "Airwallex /transfers/create -> 400 fee_unknown"
+        }
+      }
+    ],
+    "proposals": [
+      {
+        "proposal_id": "P-0001",
+        "kind": "policy_change",
+        "status": "EXECUTED",
+        "created_by": "human",
+        "created_at": "2026-11-02T10:41:50.027Z",
+        "terms": {
+          "schema": "kit11.approval-terms/v1",
+          "kind": "policy_change",
+          "proposal_id": "P-0001",
+          "expires_at": "2026-11-02T10:51:50Z",
+          "changes": [
+            {
+              "key": "approval.four_eyes_eur",
+              "label": "Payments above this need two people (four eyes)",
+              "from": "",
+              "to": "1000.00"
+            }
+          ],
+          "reason": "agent run 1: four eyes above EUR 1,000 (second approver: a labelled test passkey in this demo; in production a second person)"
+        }
+      },
+      {
+        "proposal_id": "P-0002",
+        "kind": "mandate_replace",
+        "status": "SUPERSEDED",
+        "created_by": "treasury",
+        "created_at": "2026-11-02T10:49:49.865Z",
+        "terms": {
+          "schema": "kit11.approval-terms/v1",
+          "kind": "mandate_replace",
+          "proposal_id": "P-0002",
+          "expires_at": "2026-11-02T11:49:49Z",
+          "option": "A",
+          "query_price": "0.05",
+          "upstream_price": "0.04",
+          "margin": "0.01",
+          "total_budget": "20.00",
+          "steps": [
+            {
+              "order": "1",
+              "agent": "treasury",
+              "principal": "0xe714a62fadb2bc20a7bd1635467a4cf52005120b",
+              "cap": "4.00",
+              "budget": "4.00",
+              "payees": [
+                "0x0030f9a562955534a0a82be70d08ddeceddb7075"
+              ],
+              "expires_at": "2026-12-12T10:49:53Z",
+              "credential_hash": "0x60043091204a806cb6e2cd4e501af206c8bdc3101174a1630c6c846dc37ba7fe",
+              "replaces_credential_hash": "0x0869e33fd23f442104f934951b496eda85b82eecc59ea9e0f30c6c06bc377672",
+              "spent_at_proposal": "0.00"
+            },
+            {
+              "order": "2",
+              "agent": "sourcing",
+              "principal": "0xe714a62fadb2bc20a7bd1635467a4cf52005120b",
+              "cap": "0.04",
+              "budget": "12.00",
+              "payees": [
+                "0xeba9ab5365bff82757e2a315b6903f6c55781608",
+                "0xf0bb549d71285498a16e7ac0b18b00c9f9b6ab35"
+              ],
+              "expires_at": "2026-12-12T10:49:54Z",
+              "credential_hash": "0xcbe1ab1d3d01b7e00122a26d4bbff7673e6e758f0f7271051b6b1c21835fdae5",
+              "replaces_credential_hash": "0x97a81558b8a9be1ef9caacffb7c8eda254092e8183e6d5e49c84ab055cad0b80",
+              "spent_at_proposal": "0.34"
+            }
+          ],
+          "evidence": [
+            {
+              "type": "supplier_notice",
+              "ref": "fixtures/stockline-price-notice.txt",
+              "sha256": "1af22da269de574933134be7fd31f74f304c7b9df12c3947e8ea85b44e59a5e5"
+            },
+            {
+              "type": "live_offer",
+              "ref": "upstream price 0.04",
+              "sha256": "a888fe9e2469182b8e3e3bca241d3189dc144349bc2d0ac64c56c444276e9763"
+            },
+            {
+              "type": "refusal",
+              "ref": "upstream_purchase:18:mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment",
+              "sha256": "73e3b96d2981da04adcebb385016730e2abe3e5353e76328202d71ead3ffeabe"
+            }
+          ]
+        }
+      },
+      {
+        "proposal_id": "P-0003",
+        "kind": "mandate_replace",
+        "status": "EXECUTED",
+        "created_by": "treasury",
+        "created_at": "2026-11-02T10:49:49.865Z",
+        "terms": {
+          "schema": "kit11.approval-terms/v1",
+          "kind": "mandate_replace",
+          "proposal_id": "P-0003",
+          "expires_at": "2026-11-02T11:49:49Z",
+          "option": "B",
+          "query_price": "0.06",
+          "upstream_price": "0.04",
+          "margin": "0.02",
+          "total_budget": "20.00",
+          "steps": [
+            {
+              "order": "1",
+              "agent": "treasury",
+              "principal": "0xe714a62fadb2bc20a7bd1635467a4cf52005120b",
+              "cap": "4.00",
+              "budget": "4.00",
+              "payees": [
+                "0x0030f9a562955534a0a82be70d08ddeceddb7075"
+              ],
+              "expires_at": "2026-12-12T10:49:53Z",
+              "credential_hash": "0x60043091204a806cb6e2cd4e501af206c8bdc3101174a1630c6c846dc37ba7fe",
+              "replaces_credential_hash": "0x0869e33fd23f442104f934951b496eda85b82eecc59ea9e0f30c6c06bc377672",
+              "spent_at_proposal": "0.00"
+            },
+            {
+              "order": "2",
+              "agent": "sourcing",
+              "principal": "0xe714a62fadb2bc20a7bd1635467a4cf52005120b",
+              "cap": "0.04",
+              "budget": "12.00",
+              "payees": [
+                "0xeba9ab5365bff82757e2a315b6903f6c55781608",
+                "0xf0bb549d71285498a16e7ac0b18b00c9f9b6ab35"
+              ],
+              "expires_at": "2026-12-12T10:49:54Z",
+              "credential_hash": "0xcbe1ab1d3d01b7e00122a26d4bbff7673e6e758f0f7271051b6b1c21835fdae5",
+              "replaces_credential_hash": "0x97a81558b8a9be1ef9caacffb7c8eda254092e8183e6d5e49c84ab055cad0b80",
+              "spent_at_proposal": "0.34"
+            }
+          ],
+          "evidence": [
+            {
+              "type": "supplier_notice",
+              "ref": "fixtures/stockline-price-notice.txt",
+              "sha256": "1af22da269de574933134be7fd31f74f304c7b9df12c3947e8ea85b44e59a5e5"
+            },
+            {
+              "type": "live_offer",
+              "ref": "upstream price 0.04",
+              "sha256": "a888fe9e2469182b8e3e3bca241d3189dc144349bc2d0ac64c56c444276e9763"
+            },
+            {
+              "type": "refusal",
+              "ref": "upstream_purchase:18:mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment",
+              "sha256": "73e3b96d2981da04adcebb385016730e2abe3e5353e76328202d71ead3ffeabe"
+            }
+          ]
+        }
+      },
+      {
+        "proposal_id": "P-0004",
+        "kind": "refund_batch",
+        "status": "REJECTED",
+        "created_by": "support",
+        "created_at": "2026-11-02T10:56:38.127Z",
+        "terms": {
+          "schema": "kit11.approval-terms/v1",
+          "kind": "refund_batch",
+          "proposal_id": "P-0004",
+          "expires_at": "2026-11-02T11:56:38Z",
+          "dispute_id": "D-2f8a03a4",
+          "customer": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+          "refunds": [
+            {
+              "sale_id": "5",
+              "payment_id": "refund-5",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            },
+            {
+              "sale_id": "6",
+              "payment_id": "refund-6",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            },
+            {
+              "sale_id": "8",
+              "payment_id": "refund-8",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            },
+            {
+              "sale_id": "9",
+              "payment_id": "refund-9",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            },
+            {
+              "sale_id": "11",
+              "payment_id": "refund-11",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            },
+            {
+              "sale_id": "12",
+              "payment_id": "refund-12",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            },
+            {
+              "sale_id": "14",
+              "payment_id": "refund-14",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            },
+            {
+              "sale_id": "15",
+              "payment_id": "refund-15",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            },
+            {
+              "sale_id": "16",
+              "payment_id": "refund-16",
+              "to": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+              "amount": "0.05"
+            }
+          ],
+          "total": "0.45",
+          "reason": "customer request: refund_all; code's data check finds these sales' data right",
+          "evidence": [
+            {
+              "type": "dispute_email",
+              "ref": "fixtures/summit-dispute-email.txt",
+              "sha256": "2f8a03a49ccdd798ea4ae9cefcd0ab1ee349f6d2913ce780c3713e7047797f86"
+            },
+            {
+              "type": "supplier_corrections",
+              "ref": "fixtures/stockline-corrections.txt",
+              "sha256": "171ebe911c6619eda382fb823e0f02a908f644fc27955a2da72808a3b67385d3"
+            },
+            {
+              "type": "order_verification",
+              "ref": "12 orders, verifyMandatePayment",
+              "sha256": "970bf539492705b8d5e4f35a4e75a3c8774279d58492fe3b0001c7f7ea5a72e7"
+            },
+            {
+              "type": "data_check",
+              "ref": "6 fields compared",
+              "sha256": "b27cce0871192221fcfa6e8de339dc5675959f168729d296ddfbc073e1a2f639"
+            }
+          ]
+        }
+      },
+      {
+        "proposal_id": "P-0005",
+        "kind": "invoice_payment",
+        "status": "FAILED",
+        "created_by": "treasury",
+        "created_at": "2026-11-02T11:00:35.678Z",
+        "terms": {
+          "schema": "kit11.approval-terms/v1",
+          "kind": "invoice_payment",
+          "proposal_id": "P-0005",
+          "expires_at": "2026-11-02T11:10:35Z",
+          "invoice_no": "SLL-2026-11",
+          "vendor": "Stockline Data GmbH",
+          "amount": "240.00",
+          "currency": "EUR",
+          "fee_max": "20.00",
+          "beneficiary_name": "Stockline Data GmbH",
+          "method": "SWIFT",
+          "reference": "SLL-2026-11",
+          "reason": "professional_business_services",
+          "conversion": null,
+          "evidence": [
+            {
+              "type": "invoice",
+              "ref": "SLL-2026-11",
+              "sha256": "004ee3b21920ab1cce16af31e383be6225310efb9f61132f9449fc9117a909f9"
+            }
+          ]
+        }
+      }
+    ],
+    "disputes": [
+      {
+        "dispute_id": "D-2f8a03a4",
+        "customer": "0xfAEB65940e2CB5FaD4177E1EdCDCbB97fb7540D7",
+        "created_at": "2026-11-02T10:55:43.876Z",
+        "claims": {
+          "customer": "Summit Outfitters",
+          "sale_refs": [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "claims": [
+            "never_placed",
+            "wrong_data"
+          ],
+          "requested_action": "refund_all",
+          "excerpts": [
+            "Our agent never placed orders #5 to #16",
+            "We did not authorise these purchases.",
+            "three of the stock checks we received were wrong: they showed parkas that were not in stock",
+            "Please refund all 12 orders to our account."
+          ]
+        },
+        "evidence": [
+          {
+            "sale_id": 5,
+            "seq": 5,
+            "tx": "0xc2e8ec36ee415ca38097054d3ad78c0ab6867fe23f9898df3501fb40169e1540",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 6,
+            "seq": 6,
+            "tx": "0x4dbbc41f1dd86fe9769842cb74f884fc7693a1043c39fc7a9ee0970c99abc10d",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 7,
+            "seq": 7,
+            "tx": "0x8dbef53e4aebc86dccb68d317db073581555302c9325621a11afa0decfecebe5",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 8,
+            "seq": 8,
+            "tx": "0x5e975ed5963109aa37e55d97775443dc45d537816f04dc6dfbf11ef5b4463e18",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 9,
+            "seq": 9,
+            "tx": "0xbffc108d4ecc89a40a633baa6a05759e7f954c1c638480a0137cbc6899a9f252",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 10,
+            "seq": 10,
+            "tx": "0xfe6cda011eb454075c69debf16d0f46205866257c97a2cd013865122784432cb",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 11,
+            "seq": 11,
+            "tx": "0xc81373c13e2d870d56c1b0ed82558ff5365974344ab7fbb672044bf07847c973",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 12,
+            "seq": 12,
+            "tx": "0xf3c996bac23a214e79540d6b8b21f643115434ffae80eb7aac0edd3956f7b953",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 13,
+            "seq": 13,
+            "tx": "0x3cb810facefc8a3dfd929c8d5b4be8ac14f8c147588fc81cd3d1d2c9a24f938c",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 14,
+            "seq": 14,
+            "tx": "0xbb377a9b7096ec57bd6448a445110a777f4186475979e60dad94224c035a407b",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 15,
+            "seq": 15,
+            "tx": "0x573517e15ab57186399a2d2cfadcd11e3e6830b18a682f1a58ce86f06494378c",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          },
+          {
+            "sale_id": 16,
+            "seq": 16,
+            "tx": "0x4d65d282c3c4024ccdac5949a475fdd0b339dd75fefca5818d2e58640b537b0f",
+            "payer_is_customer": true,
+            "signed_order": true,
+            "within_mandate": true,
+            "mandate_principal": "0xfaeb65940e2cb5fad4177e1edcdcbb97fb7540d7",
+            "mandate_bound_tx": "0xa34819237f18dcf773a4fbf79fd5b64bb474327392ea0e08133d6b8e1e8a6263",
+            "detail": "all steps pass"
+          }
+        ],
+        "verdicts": [
+          {
+            "sale_id": 7,
+            "seq": 7,
+            "field": "on_hand",
+            "delivered": 343,
+            "corrected": 93,
+            "delta_units": 250,
+            "refund": true,
+            "excerpt": "check 7:  on hand 93, reserved 11"
+          },
+          {
+            "sale_id": 7,
+            "seq": 7,
+            "field": "reserved",
+            "delivered": 11,
+            "corrected": 11,
+            "delta_units": 0,
+            "refund": false,
+            "excerpt": "check 7:  on hand 93, reserved 11"
+          },
+          {
+            "sale_id": 10,
+            "seq": 10,
+            "field": "on_hand",
+            "delivered": 347,
+            "corrected": 97,
+            "delta_units": 250,
+            "refund": true,
+            "excerpt": "check 10: on hand 97, reserved 12"
+          },
+          {
+            "sale_id": 10,
+            "seq": 10,
+            "field": "reserved",
+            "delivered": 12,
+            "corrected": 12,
+            "delta_units": 0,
+            "refund": false,
+            "excerpt": "check 10: on hand 97, reserved 12"
+          },
+          {
+            "sale_id": 13,
+            "seq": 13,
+            "field": "on_hand",
+            "delivered": 349,
+            "corrected": 99,
+            "delta_units": 250,
+            "refund": true,
+            "excerpt": "check 13: on hand 99, reserved 12"
+          },
+          {
+            "sale_id": 13,
+            "seq": 13,
+            "field": "reserved",
+            "delivered": 12,
+            "corrected": 12,
+            "delta_units": 0,
+            "refund": false,
+            "excerpt": "check 13: on hand 99, reserved 12"
+          }
+        ]
+      }
+    ]
+  }
 }
