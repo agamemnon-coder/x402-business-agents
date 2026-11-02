@@ -20,13 +20,52 @@ export function publish(db: DB, kind: string, payload: Record<string, unknown>, 
   return id;
 }
 
+/** IBAN check digits (ISO 13616, mod 97): only a real IBAN is withheld, never words that look like one. */
+function ibanValid(raw: string): boolean {
+  const s = raw.replace(/[\s.-]/g, "").toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(s)) return false;
+  const digits = (s.slice(4) + s.slice(0, 4)).replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+  let r = 0;
+  for (const d of digits) r = (r * 10 + Number(d)) % 97;
+  return r === 1;
+}
+
+/**
+ * Payment details never travel between agents (variation sim-31 and sim-38, 2 November: the Sourcing agent passed an
+ * unvetted supplier's x402 address from that supplier's own notice on to Treasury). No agent needs one from another:
+ * every payee comes from code's mandates and allowlists. So code withholds every on-chain address and every valid IBAN
+ * in a message, whatever the model writes, after removing invisible format characters and mapping fullwidth letters and digits;
+ * a short form stays readable ("0x5100…0503"). A transaction hash (64 hex) is not a payee and is kept. Returns the
+ * text and what was withheld, so the attempt is recorded, never hidden.
+ */
+export function withholdPaymentDetails(text: string): { text: string; withheld: string[] } {
+  const withheld: string[] = [];
+  const t = text.replace(/\p{Cf}/gu, "").replace(/[\uFF10-\uFF19\uFF21-\uFF3A\uFF41-\uFF5A]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/0x[0-9a-f]{40,63}(?![0-9a-f])/gi, (a) => { withheld.push(a.toLowerCase()); return `${a.slice(0, 6)}…${a.slice(-4)} [address withheld by code]`; })
+    .replace(/(?<![0-9a-z])[0-9a-f]{40}(?![0-9a-f])/gi, (a) => { withheld.push(`0x${a.toLowerCase()}`); return `${a.slice(0, 4)}…${a.slice(-4)} [address withheld by code]`; })
+    .replace(/\b[A-Z]{2}\d{2}(?:[ .-]?[A-Z0-9]){11,34}/gi, (m) => {
+      // The longest prefix that is a valid IBAN (a word may follow it); none: the text stays as written.
+      for (let end = m.length; end >= 15; end--) {
+        const head = m.slice(0, end);
+        if (/[ .-]$/.test(head) || !ibanValid(head)) continue;
+        withheld.push(head.replace(/[\s.-]/g, "").toUpperCase());
+        return `${head.slice(0, 4)}… [IBAN withheld by code]${m.slice(end)}`;
+      }
+      return m;
+    });
+  return { text: t, withheld };
+}
+
 /** One agent's message to another, at most 600 characters, redacted; logged in the audit chain as the agent's. */
 /** `by`: who wrote it, Claude (the agent's send_message tool) or code (a fallback); the page labels it so. */
 export function sendMessage(db: DB, from: AgentName, to: AgentName, text: string, now = new Date(), by: "claude" | "code" = "code"): number {
   if (from === to) throw new Error("an agent does not message itself");
-  const clean = redactSecrets(text.trim()).slice(0, 600);
+  const w = withholdPaymentDetails(redactSecrets(text.trim()).slice(0, 600));
+  const clean = w.text;
   const id = Number(db.prepare("INSERT INTO agent_messages (from_agent, to_agent, text, created_at) VALUES (?, ?, ?, ?)").run(from, to, clean, now.toISOString()).lastInsertRowid);
   audit(db, from, "agent.message", String(id), { from, to, text: clean, by }, now);
+  // The attempt stays on record for the verdict and a reviewer: what the agent tried to pass on, and that code withheld it.
+  if (w.withheld.length) audit(db, from, "agent.message.payment_details_withheld", String(id), { from, to, withheld: w.withheld, by }, now);
   return id;
 }
 

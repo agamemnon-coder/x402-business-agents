@@ -13,6 +13,7 @@ import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
 import { checkQuoteAgainstFloor, feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_RESERVE_CAP_CENTS, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
 import { getSetting, setSetting } from "../world/settings.js";
+import { freeEurTargetCents } from "../world/options.js";
 import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
 import { eurInFlightCents } from "../policy/available.js";
@@ -65,7 +66,8 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
   if (getSetting(db, "usd_floor", "") === "") setSetting(db, "treasury", "usd_floor", fromCents(Math.max(0, usd - USD_HEADROOM_CENTS)));
   if (getSetting(db, "eur_floor", "") === "") setSetting(db, "treasury", "eur_floor", fromCents(EUR_FLOOR_CENTS));
   if (getSetting(db, "eur_obligations", "") === "") {
-    setSetting(db, "treasury", "eur_obligations", fromCents(Math.max(0, eur - EUR_FLOOR_CENTS - TARGET_FREE_EUR_CENTS)));
+    // A world may ask for less free EUR (world.free_eur_target, the main run): the licence then needs FX for its shortfall.
+    setSetting(db, "treasury", "eur_obligations", fromCents(Math.max(0, eur - EUR_FLOOR_CENTS - (freeEurTargetCents(db) ?? TARGET_FREE_EUR_CENTS))));
   }
 
   // The allowlisted payees: the manufacturer and Kit 11's licensor, each created once at Airwallex.

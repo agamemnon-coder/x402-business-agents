@@ -38,6 +38,8 @@ export interface Pages {
   home?: string;
   watch?: string;
   proof?: string;
+  /** The clean 404 page (no script); absent in a bundle built before it. */
+  notFound?: string;
   /** Old public addresses folded into the four tabs, and where they now go. */
   redirects?: Record<string, string>;
   approve: string;
@@ -51,7 +53,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; notFound?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -139,6 +141,12 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   }
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });
   return null;
+}
+
+/** Any other address: the clean 404 page when the bundle has one, else plain text. */
+export function notFoundResponse(pages: Pages): Response {
+  if (pages.notFound && pages.csp.notFound) return new Response(pages.notFound, { status: 404, headers: { ...COMMON_HEADERS, "content-type": "text/html; charset=utf-8", "content-security-policy": pages.csp.notFound } });
+  return new Response("not found", { status: 404, headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
 }
 
 async function sha256Hex(text: string): Promise<string> {

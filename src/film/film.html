@@ -276,8 +276,8 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       };
     },
     trust: function (L) {
-      var k = put(L, E("div", "kicker", "Why you can trust it"), 140, 100), h = put(L, E("div", "h2", d.claude === "decided" ? "Agents built on Claude (Anthropic API) read, plan and advise. Metal and Airwallex enforce the limits." : "Claude read the documents and advised. Metal and Airwallex enforce the limits."), 140, 150);
-      var a = put(L, E("div", "big ok", "0"), 140, 330), al = put(L, E("div", "h3", "of " + d.trust.attacks + " red-team attacks failed · stand-ins, test world"), 150, 530);
+      var k = put(L, E("div", "kicker", "Why you can trust it"), 140, 100), h = put(L, E("div", "h2", d.claude === "decided" ? "Claude agents handle the exceptions. Metal and Airwallex enforce the limits." : "Claude read the documents and advised. Metal and Airwallex enforce the limits."), 140, 150);
+      var a = put(L, E("div", "big ok", "0"), 140, 330), al = put(L, E("div", "h3", "of " + d.trust.attacks + " red-team attacks failed · simulated rails, test world"), 150, 530);
       var s = put(L, E("div", "big ok", "0"), 760, 330), sl = put(L, E("div", "h3", "of " + d.trust.scenarios + " scenarios as expected"), 770, 530);
       var stop = put(L, E("div", "stop", "STOP"), 1450, 300);
       var minis = d.cards.map(function (c, i) { return put(L, E("div", "mini", null, [E("div", "t", c.name), E("div", "n", "•••• " + c.last4), E("div", "l", "")]), 140 + i * 340, 660); });
@@ -288,7 +288,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
         rise(k, t, .1); rise(h, t, .3);
         a.textContent = count(t, 1, 3.5, 0, d.trust.blocked); s.textContent = count(t, 3, 5.5, 0, d.trust.passed); rise(a, t, 1); rise(al, t, 1.2); rise(s, t, 3); rise(sl, t, 3.2);
         pop(stop, t, 6.5); var pressed = prog(t, 8, 8.3); stop.style.transform += " scale(" + (1 - .12 * Math.sin(pressed * Math.PI)) + ")";
-        minis.forEach(function (m, i) { rise(m, t, 6.8 + i * .2); var f = prog(t, 8.3 + i * .15, 8.8 + i * .15); m.style.filter = "grayscale(" + f + ")"; m.querySelector(".l").textContent = f > .5 ? "Frozen (tested on stand-ins)" : "Active"; m.querySelector(".l").style.color = f > .5 ? "var(--bad)" : ""; });
+        minis.forEach(function (m, i) { rise(m, t, 6.8 + i * .2); var f = prog(t, 8.3 + i * .15, 8.8 + i * .15); m.style.filter = "grayscale(" + f + ")"; m.querySelector(".l").textContent = f > .5 ? "Frozen (tested on simulated rails)" : "Active"; m.querySelector(".l").style.color = f > .5 ? "var(--bad)" : ""; });
         rise(eyes, t, 10.5); rise(cost, t, 12); rise(books, t, 13.5);
       };
     },
