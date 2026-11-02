@@ -194,26 +194,31 @@ describe("ledgers from the first sale_settlements: the rebuild is one transactio
     }
   });
 
-  it("two processes opening the same old ledger at once: both open, the rows are there once", async () => {
-    const { dir, path } = ledger(`${OLD}; INSERT INTO sale_settlements VALUES ('a', 'p', 'n1', 5, 'SETTLING', NULL, NULL, NULL, 't', 't');`);
-    try {
-      const script = join(dir, "open.mts");
-      writeFileSync(script, `import { openDb } from ${JSON.stringify(resolve("src/db/open.ts"))};\nopenDb(process.argv[2]).close();\nconsole.log("opened");\n`);
-      const run = () => new Promise<{ code: number | null; out: string }>((done) => {
-        const c = spawn(process.execPath, ["--import", "tsx", script, path], { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
-        let out = "";
-        c.stdout.on("data", (d: Buffer) => (out += d.toString()));
-        c.stderr.on("data", (d: Buffer) => (out += d.toString()));
-        c.on("close", (code) => done({ code, out }));
-      });
-      const [a, b] = await Promise.all([run(), run()]);
-      expect([a.code, b.code], `${a.out}\n${b.out}`).toEqual([0, 0]);
-      expect(tables(path)).toEqual(["sale_settlements"]);
-      expect(rowsOf(path)).toEqual([{ key: "a", status: "SETTLING" }]);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
+  it("several processes opening the same old ledger at the same moment: all open, the rows are there once (5 rounds)", async () => {
+    // Review of 5e27de0: two openers both saw a column missing and both added it ("duplicate column name"). Each child
+    // imports first, then waits for one shared start time, so the openings really overlap.
+    for (let round = 0; round < 5; round++) {
+      const { dir, path } = ledger(`${OLD}; INSERT INTO sale_settlements VALUES ('a', 'p', 'n1', 5, 'SETTLING', NULL, NULL, NULL, 't', 't');`);
+      try {
+        const script = join(dir, "open.mts");
+        writeFileSync(script, `import { openDb } from ${JSON.stringify(resolve("src/db/open.ts"))};\nconst at = Number(process.argv[3]);\nwhile (Date.now() < at) { /* the shared start */ }\nopenDb(process.argv[2]).close();\nconsole.log("opened");\n`);
+        const startAt = Date.now() + 2500;
+        const run = () => new Promise<{ code: number | null; out: string }>((done) => {
+          const c = spawn(process.execPath, ["--import", "tsx", script, path, String(startAt)], { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
+          let out = "";
+          c.stdout.on("data", (d: Buffer) => (out += d.toString()));
+          c.stderr.on("data", (d: Buffer) => (out += d.toString()));
+          c.on("close", (code) => done({ code, out }));
+        });
+        const all = await Promise.all([run(), run(), run(), run()]);
+        expect(all.map((r) => r.code), all.map((r) => r.out).join("\n")).toEqual([0, 0, 0, 0]);
+        expect(tables(path)).toEqual(["sale_settlements"]);
+        expect(rowsOf(path)).toEqual([{ key: "a", status: "SETTLING" }]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     }
-  }, 30_000);
+  }, 90_000);
 });
 
 describe("ledgers from the first sale_settlements", () => {

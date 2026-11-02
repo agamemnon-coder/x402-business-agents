@@ -10,13 +10,30 @@ const SCHEMA = readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
 export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
-  db.pragma("journal_mode = WAL");
   // The runner, the agent API and the CLIs share one ledger: a writer waits for another instead of failing at once.
+  // Set first, so that switching a new ledger to WAL, which needs a lock too, also waits for another opener.
   db.pragma("busy_timeout = 5000");
+  db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
-  db.exec(SCHEMA);
-  migrate(db);
+  prepare(db);
   return db;
+}
+
+/**
+ * The schema and the migrations, safe for several processes opening one ledger at once (the runner and the world start
+ * together; review of 5e27de0: two openers both added a missing column, "duplicate column name"). Every check-then-
+ * change runs inside one IMMEDIATE transaction, so a second opener waits for the first and then finds nothing to do; a
+ * crash rolls it back. (Better-sqlite3 transactions are synchronous, so no writer holds the lock for long.) The two
+ * table swaps that need foreign keys off, which SQLite ignores inside a transaction, re-check inside their own
+ * IMMEDIATE transactions. Every step is idempotent.
+ */
+function prepare(db: DB): void {
+  db.transaction(() => {
+    db.exec(SCHEMA);
+    migrate(db);
+  }).immediate();
+  allowPasskeyApprovals(db);
+  allowPasskeyRejections(db);
 }
 
 /** Columns added after a ledger was first created. Each runs once; CREATE TABLE covers new ledgers. */
@@ -72,8 +89,6 @@ function migrate(db: DB): void {
       DROP TABLE finality_evidence_old;`);
   }
   settlementsTable(db);
-  allowPasskeyApprovals(db);
-  allowPasskeyRejections(db);
 }
 
 const SETTLEMENT_COLUMNS = "key, payer, nonce, price_cents, status, sale_id, tx_hash, detail, started_at, updated_at";
@@ -129,6 +144,8 @@ function allowPasskeyApprovals(db: DB): void {
   db.pragma("foreign_keys = OFF");
   try {
     db.transaction(() => {
+      // Another process may have done it while this one waited for the lock.
+      if (((db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'approvals'").get() as { sql: string }).sql).includes("'passkey'")) return;
       db.exec(ddl);
       db.exec("INSERT INTO approvals_v2 SELECT * FROM approvals");
       db.exec("DROP TABLE approvals");
@@ -152,6 +169,7 @@ function allowPasskeyRejections(db: DB): void {
   db.pragma("foreign_keys = OFF");
   try {
     db.transaction(() => {
+      if (((db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'passkey_assertions'").get() as { sql: string }).sql).includes("'REJECTED'")) return;
       db.exec(ddl);
       db.exec("INSERT INTO passkey_assertions_v2 SELECT * FROM passkey_assertions");
       db.exec("DROP TABLE passkey_assertions");
@@ -163,3 +181,4 @@ function allowPasskeyRejections(db: DB): void {
     db.pragma("foreign_keys = ON");
   }
 }
+
