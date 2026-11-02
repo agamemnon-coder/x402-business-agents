@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { decisionOf, recordDecision } from "../src/agents/disputeDecision.js";
-import { disputeKey, escalatedUndecided, openedDispute } from "../src/agents/disputeSource.js";
+import { decideNothingNew, disputeKey, escalatedUndecided, handledElsewhere, openedDispute } from "../src/agents/disputeSource.js";
 import { settleDispute, type SupportDeps as DecisionDeps } from "../src/agents/supportAgent.js";
 import { publish } from "../src/autonomy/bus.js";
 import { wake } from "../src/autonomy/runtime.js";
@@ -318,5 +318,23 @@ describe("refund limits are unchanged", () => {
     const r = await settleDispute(db, { disputeId: H9_ID, customer: "Summit Outfitters", seqs: [5, 6, 7, 8, 9], requested: "refund_all", email: H9 }, deps, client);
     expect(r.run.calls.filter((c) => c.blocked === "automatic limit").map((c) => (c.input as { seq: number }).seq)).toEqual([9]);
     expect(sends).toEqual([5, 6, 7, 8]);
+  });
+});
+
+describe("one order, once, across disputes (an angrier second email is a new dispute id)", () => {
+  it("orders an earlier dispute refunded or put to the CFO are handled elsewhere; a dispute of only those is decided with nothing new", async () => {
+    const db = openDb(":memory:");
+    for (let i = 0; i < 4; i++) db.prepare("INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at) VALUES ('/v1/stock', 5, ?, 'u', '{}', 'DELIVERED', 'now')").run(PAYER);
+    db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES ('D-11111111', ?, 'h', 'now')").run(PAYER);
+    db.prepare("INSERT INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, dispute_id) VALUES (1, 'refund-1', 5, ?, 'PAID', 'D-11111111')").run(PAYER);
+    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-0001', 'refund_batch', ?, ?, 'support', 'REJECTED', '2099-01-01T00:00:00Z', 'now')")
+      .run(JSON.stringify({ dispute_id: "D-11111111", refunds: [{ sale_id: "2" }, { sale_id: "3" }] }), "a".repeat(64));
+    const h = handledElsewhere(db, [1, 2, 3, 4], "D-22222222");
+    expect([...h.entries()]).toEqual([[1, "refunded under D-11111111"], [2, "sent to the CFO as P-0001"], [3, "sent to the CFO as P-0001"]]);
+    // The earlier dispute's own orders are not "elsewhere" for itself (its restart carries them out).
+    expect(handledElsewhere(db, [1, 2, 3], "D-11111111").size).toBe(0);
+    await decideNothingNew(db, "D-22222222");
+    expect(decisionOf(db, "D-22222222")).toMatchObject({ status: "DONE", plan: { refunds: [], escalate: null, approval: null } });
+    expect((db.prepare("SELECT COUNT(*) AS n FROM proposals").get() as { n: number }).n).toBe(1);
   });
 });

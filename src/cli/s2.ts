@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 import type { Address } from "viem";
 import { checkData, refundsFor, salesFound, verifyOrders, type DataVerdict, type DisputeClaims, type OrderEvidence } from "../agents/disputes.js";
 import { auditSettlement, carryOut, decisionOf, decisionSummary, finished, legacyDecision, openDecisions, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan, type Part } from "../agents/disputeDecision.js";
-import { disputeKey, openedDispute } from "../agents/disputeSource.js";
+import { decideNothingNew, disputeKey, handledElsewhere, openedDispute } from "../agents/disputeSource.js";
 import { attachReview } from "../claude/review.js";
 import { agentsOn } from "../agents/loop.js";
 import { settleDispute } from "../agents/supportAgent.js";
@@ -117,6 +117,17 @@ if (prior) {
   // A number we never sold (a live world: that query failed, or never ran) was never paid: nothing to refund for it.
   notSold = missing.length ? ` (${missing.length} of them never sold: #${missing.join(", #")}; nothing was paid for those, so nothing is refunded)` : "";
   if (missing.length) console.log(`NOT SOLD         #${missing.join(", #")}: no delivered sale to this customer under that number; it paid nothing for it, nothing to refund`);
+  // An order an earlier dispute already refunded or put to the CFO is not decided again (one order, once).
+  const elsewhere = handledElsewhere(db, sales.map((x) => x.sale_id), disputeId);
+  if (elsewhere.size) {
+    console.log(`HANDLED BEFORE   ${sales.filter((x) => elsewhere.has(x.sale_id)).map((x) => `#${x.seq} (${elsewhere.get(x.sale_id)})`).join(", ")}: not decided again`);
+    sales = sales.filter((x) => !elsewhere.has(x.sale_id));
+    if (sales.length === 0) {
+      await decideNothingNew(db, disputeId);
+      console.log(`DECIDED          ${disputeId}: every order in it was handled by an earlier dispute; nothing new is refunded or sent to the CFO`);
+      process.exit(0);
+    }
+  }
   if (sales.length === 0) {
     console.log("NOTHING TO SETTLE none of the disputed numbers was sold");
     process.exit(0);

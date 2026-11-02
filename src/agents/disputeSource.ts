@@ -10,7 +10,7 @@
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
-import { decisionOf, finished, legacyDecision } from "./disputeDecision.js";
+import { carryOut, decisionOf, finished, legacyDecision, recordDecision } from "./disputeDecision.js";
 
 /** A dispute's id, from its email as received: D- and the first 8 hex of the email's sha256 (as s2 has always keyed it). */
 export const disputeKey = (email: string): string => `D-${sha256Hex(email).slice(0, 8)}`;
@@ -85,4 +85,31 @@ export function escalatedUndecided(db: DB): { id: string; at: string; reason: st
     out.push({ id: r.subject, at: r.ts, reason });
   }
   return out;
+}
+
+/**
+ * Sales another dispute already handled (holdouts, dispute-repeated: an angrier second email about the same orders is
+ * a new dispute id): refunded or being refunded, or named in a refund proposal for the CFO, any status. One order is
+ * refunded, or put to the CFO, once across disputes; a new dispute decides only the orders no earlier one handled.
+ * Returns each such sale with the dispute or proposal that handled it.
+ */
+export function handledElsewhere(db: DB, saleIds: number[], disputeId: string): Map<number, string> {
+  const want = new Set(saleIds);
+  const out = new Map<number, string>();
+  for (const r of db.prepare("SELECT sale_id, dispute_id, proposal_id FROM refunds WHERE dispute_id IS NULL OR dispute_id <> ?").all(disputeId) as { sale_id: number; dispute_id: string | null; proposal_id: string | null }[]) {
+    if (want.has(r.sale_id)) out.set(r.sale_id, r.dispute_id ? `refunded under ${r.dispute_id}` : `refunded under ${r.proposal_id ?? "an earlier refund"}`);
+  }
+  const props = db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE kind = 'refund_batch' AND COALESCE(json_extract(terms_json, '$.dispute_id'), '') <> ?").all(disputeId) as { proposal_id: string; terms_json: string }[];
+  for (const p of props) {
+    let refunds: { sale_id?: unknown }[];
+    try { refunds = (JSON.parse(p.terms_json) as { refunds?: { sale_id?: unknown }[] }).refunds ?? []; } catch { continue; }
+    for (const r of refunds) { const id = Number(r.sale_id); if (want.has(id) && !out.has(id)) out.set(id, `sent to the CFO as ${p.proposal_id}`); }
+  }
+  return out;
+}
+
+/** A dispute whose orders earlier disputes all handled: decided once, by code, with nothing new (no refund, no proposal). */
+export async function decideNothingNew(db: DB, disputeId: string): Promise<void> {
+  recordDecision(db, disputeId, { source: "code", model: null, refunds: [], escalate: null, approval: null, agent_note: "every order in it was handled by an earlier dispute" });
+  await carryOut(db, disputeId, { refund: async () => { throw new Error("nothing to refund"); }, existing: () => null });
 }
