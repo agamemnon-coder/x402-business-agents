@@ -4,14 +4,10 @@
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
-import type { DisputeCase } from "../../src/seller/desk.js";
-
-/** The recorded /metal data (docs/demo/metal.json): the Dispute desk's figures are checked against it. */
-const METAL = JSON.parse(readFileSync(new URL("../../docs/demo/metal.json", import.meta.url), "utf8")) as { dispute: DisputeCase | null } & Record<string, unknown>;
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -225,107 +221,36 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       await page.locator("#world-out").screenshot({ path: join(shots, `try-world-${tag}.png`) });
     }
 
-    // How Purser uses Metal: every agent's mandate in the inspector, the feature cards, the recorded case order by order.
-    await page.goto(`${base}/metal`, { waitUntil: "load" });
-    await look(page, `/metal ${tag}`, w);
-    const tabs = await page.locator("#tabs button").count();
-    if (tabs < 3) fail(`/metal ${tag}: only ${tabs} mandates in the inspector`);
-    for (let i = 0; i < tabs; i++) {
-      await page.locator("#tabs button").nth(i).click();
-      if (!/test USD cap per payment/.test(await page.locator("#inspector").innerText())) fail(`/metal ${tag}: mandate ${i + 1} shows no cap`);
-      await look(page, `/metal mandate ${i + 1} ${tag}`, w);
-    }
-    if ((await page.locator("#cards article").count()) < 8) fail(`/metal ${tag}: fewer than 8 Metal features`);
-    if ((await page.locator(".orders tbody tr").count()) < 1) fail(`/metal ${tag}: the Dispute desk shows no orders`);
-    if (await page.locator(".allbtn").isVisible()) {
-      await page.click(".allbtn");
-      await look(page, `/metal all orders ${tag}`, w);
-    }
-    await page.screenshot({ path: join(shots, `metal-${tag}.png`), fullPage: true });
-    // The Dispute desk (Max, 1 Nov): the customer in the title, one summary line counted from the case, wrong-data
-    // orders flagged with their refund, Claude's explanation short with no full address, and for this recording the
-    // 30 October wording (code checks the proof; no "Support agent · Claude … decided").
-    {
-      const c = METAL.dispute!;
-      const wrong = c.packs.filter((p) => p.data_wrong || (p.refunded_cents ?? 0) > 0).length;
-      const valid = c.packs.filter((p) => !(p.data_wrong || (p.refunded_cents ?? 0) > 0) && p.order.valid && p.mandate.within && p.delivery.matches).length;
-      const desk = await page.locator("#case").innerText();
-      if (!desk.includes(`${c.packs.length} disputed · ${valid} proven valid · ${wrong} wrong data, refunded`)) fail(`/metal ${tag}: no summary line counted from the case`);
-      if (!/^Summit Outfitters · dispute DD-/.test(await page.locator("#case .casetitle").innerText())) fail(`/metal ${tag}: the customer's name is not in the case title`);
-      if ((await page.locator("#case tr.wrongrow").count()) !== wrong) fail(`/metal ${tag}: wrong-data orders are not all flagged`);
-      if (!/wrong data · supplier corrected · refunded 0\.05/i.test(desk) || (await page.locator("#case tr.wrongrow td[data-l='Data delivered'] a.pf[href*='/tx/0x']").count()) !== wrong) fail(`/metal ${tag}: a wrong-data order lacks its refund or its transaction`);
-      const shortSaid = await page.locator("#case .explain ul.said li").allInnerTexts();
-      if (shortSaid.length < 1 || shortSaid.length > 3) fail(`/metal ${tag}: Claude's explanation shows ${shortSaid.length} sentences, expected 1 to 3`);
-      if (shortSaid.some((s) => /0x[0-9a-fA-F]{40}/.test(s))) fail(`/metal ${tag}: the short explanation shows a full address`);
-      if (!desk.includes("Code checks the proof; Claude explains.") || /Support agent · Claude/.test(desk)) fail(`/metal ${tag}: the 30 October case is not worded as decided by code`);
-      if (await page.locator("details.archive").count()) fail(`/metal ${tag}: an archive with only one case`);
-    }
-    // The same page with more cases (a fixture, not recorded data): the newest decided by the Support agent with Claude,
-    // with Summit's agent's own message, and the recorded case folded into the archive below it.
-    if (liveAt < 0) {
-      const c = METAL.dispute!;
-      const newer = {
-        ...c, case_id: "DD-fixture1", opened_at: new Date(Date.parse(c.opened_at) + 86_400_000).toISOString(),
-        agent: { source: "claude", model: "claude-sonnet-5-5", said: "- **Refunds:** I refunded the three orders with wrong data.\n- **Escalation:** I sent the rest to the CFO.", tools: ["settle_dispute", "finish"], cost_usd_micros: 6982, request_id: "req_fixture0123456789" },
-        explanation: "Thank you for your message. We refunded orders 7, 10 and 13 for wrong data. The other orders were signed by your agent inside its mandate. A person sends this reply.", explained_by: "claude-sonnet-5-5",
-        customer_agent: { name: "Summit's agent", text: "We dispute orders 5 to 16; our records show no such orders.", at: c.opened_at },
-      };
-      const fixture = (u: URL) => u.pathname === "/metal" && u.search === "?fixture";
-      await page.route(fixture, async (route) => {
-        const res = await route.fetch({ url: `${base}/metal` });
-        const html = (await res.text()).replace(/(<script type="application\/json" id="metal-data">)[\s\S]*?(<\/script>)/, (_m, a: string, b: string) => `${a}${JSON.stringify({ ...METAL, disputes: [c, newer] }).replace(/</g, "\\u003c")}${b}`);
-        await route.fulfill({ response: res, body: html });
-      });
-      await page.goto(`${base}/metal?fixture`, { waitUntil: "load" });
-      await look(page, `/metal (fixture: more cases) ${tag}`, w);
-      const desk = await page.locator("#case").innerText();
-      if (!/Support agent · Claude Sonnet decided/.test(desk) || !/settle_dispute → finish/.test(desk) || !/request req_fi…6789/.test(desk)) fail(`/metal fixture ${tag}: no agent decision with its trace`);
-      if (/Code checks the proof; Claude explains\.|decided by code from the evidence|made by code/.test(desk)) fail(`/metal fixture ${tag}: the agent's case uses the 30 October wording`);
-      if (!(await page.locator("#case .bubble").isVisible()) || !/Summit's agent/.test(await page.locator("#case .bubble").innerText())) fail(`/metal fixture ${tag}: no chat bubble for Summit's agent`);
-      if ((await page.locator("details.archive details.oldcase").count()) !== 1) fail(`/metal fixture ${tag}: the older case is not in the archive`);
-      await page.locator("details.archive > summary").click();
-      await page.locator("details.oldcase > summary").click();
-      if (!/DD-a88e8959/.test(await page.locator("details.oldcase .casetitle").innerText())) fail(`/metal fixture ${tag}: the archived case does not open`);
-      await look(page, `/metal (fixture: archive open) ${tag}`, w);
-      await page.locator("#dispute").screenshot({ path: join(shots, `metal-fixture-${tag}.png`) });
-      await page.unroute(fixture);
-    }
-    await page.goto(`${base}/metal/report`, { waitUntil: "load" });
-    await look(page, `/metal/report ${tag}`, w);
-
-    // /visa: agent recognition, then the Airwallex card; it must carry its honest label in full.
-    if ((await fetch(`${base}/visa`)).status === 200) {
-      await page.goto(`${base}/visa`, { waitUntil: "load" });
-      await look(page, `/visa ${tag}`, w);
-      const vt = await page.evaluate(() => document.body.innerText);
-      if (!/Their signatures are accepted by Visa's public TAP reference verifier \(pinned commit 16d59bd\)/.test(vt) || !/simulated authorisations/.test(vt) || /Dev test/.test(vt)) fail(`/visa ${tag}: the claim or the honest label is wrong`);
-      await page.screenshot({ path: join(shots, `visa-${tag}.png`), fullPage: true });
-    }
-
-    // The partner pages: the same five parts on each (in our story, what we use with the proof and the docs, why an
-    // agent needs it, what we do not do), every run labelled, the dry run never called live, and no Visa logo.
-    for (const [path, docs] of [["/airwallex", "airwallex.com/docs/"], ["/claude", "platform.claude.com/docs/"]] as const) {
+    // The partner pages (v4, C1): short (at most 150 words before anything is opened), the flow first, the run
+    // labelled, the details folded and every fold readable once open, no Visa logo; /visa carries the claim and the
+    // Visa Award status word for word, and its honest labels in a fold.
+    for (const path of ["/metal", "/airwallex", "/visa", "/claude"]) {
       await page.goto(`${base}${path}`, { waitUntil: "load" });
       await look(page, `${path} ${tag}`, w);
       const pt = await page.evaluate(() => document.body.innerText);
-      for (const part of ["In our story", "What we use, and the proof", "Why an agent needs it", "What we do not do, or only simulate"]) if (!pt.includes(part)) fail(`${path} ${tag}: no "${part}"`);
+      const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
+      if (words > 175) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget 150 plus the frame`);
       if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: agent run 1 is not labelled`);
-      if (!/Archive: recorded run · .* · test money/.test(pt)) fail(`${path} ${tag}: the archived run is not labelled`);
-      if ((await page.locator(`#features .card .docs a[href*="${docs}"]`).count()) < 4) fail(`${path} ${tag}: fewer than four features linked to the docs`);
-      if ((await page.locator("#features .card .pf").count()) < 3) fail(`${path} ${tag}: fewer than three proofs`);
+      if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
       if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
-      if (path === "/claude") {
-        if ((await page.locator(".agent").count()) !== 3) fail(`/claude ${tag}: not three agents`);
-        const ag = await page.locator(".agents").innerText();
-        for (const want of [/Sourcing agent[\s\S]*Claude Haiku/, /Support agent[\s\S]*Claude Sonnet/, /Treasury agent[\s\S]*Claude Opus/, /decided by Claude/i, /fallback \(code\)/, /request req_/]) if (!want.test(ag)) fail(`/claude ${tag}: the agents miss ${want}`);
-        await page.locator("details.all > summary").click();
-        if ((await page.locator("ol.dec li").count()) < 5) fail(`/claude ${tag}: the decisions list is short`);
-        await look(page, `/claude decisions open ${tag}`, w);
-      } else {
-        if (!/LIMIT_EXCEEDED|over the card's limit/.test(pt)) fail(`/airwallex ${tag}: no decline by Airwallex`);
-        if ((await page.locator("#features .card .pf[title*='read back']").count()) < 1) fail(`/airwallex ${tag}: no id marked as read back`);
-      }
+      await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+      await look(page, `${path} folds open ${tag}`, w);
+      const open = await page.evaluate(() => document.body.innerText);
+      if (path === "/visa" && (!/Their signatures are accepted by Visa's public TAP reference verifier \(pinned commit 16d59bd\)/.test(open) || !/simulated authorisations/.test(open) || !/Entered for the Visa Award/.test(open) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
+      if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
+      if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
+      if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+    }
+    await page.goto(`${base}/metal/report`, { waitUntil: "load" });
+    await look(page, `/metal/report ${tag}`, w);
+    // Any other address: the clean 404 page, with the four tabs.
+    {
+      const res = await page.goto(`${base}/no/such/page`, { waitUntil: "load" });
+      if (res?.status() !== 404) fail(`/no/such/page ${tag}: answered ${res?.status()}, not 404`);
+      await look(page, `404 ${tag}`, w);
+      if ((await page.locator("main a.btn").count()) !== 4) fail(`404 ${tag}: not the four tabs`);
     }
 
     // The film: a moment from each scene draws without an error and without spilling over (it scales to fit).
@@ -350,4 +275,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal (every mandate), /metal/report, /visa, /airwallex, /claude, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);

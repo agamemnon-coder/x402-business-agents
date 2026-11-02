@@ -2,7 +2,7 @@
 // that holds the relay's state (the runner's last push, the queue, the tickets), so all of them see it in order.
 
 import { DurableObject } from "cloudflare:workers";
-import { COMMON_HEADERS, pageResponse, Relay } from "./core.js";
+import { notFoundResponse, pageResponse, Relay } from "./core.js";
 import { TryDesk } from "./try.js";
 import { PAGES } from "./pages.gen.js";
 
@@ -42,6 +42,6 @@ export default {
     if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
     // /health is the relay's too: it knows when the runner last synced (B7).
     if (path.startsWith("/api/") || path === "/hooks/airwallex" || path === "/health") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
-    return new Response("not found", { status: 404, headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
+    return notFoundResponse(PAGES);
   },
 } satisfies ExportedHandler<Env>;

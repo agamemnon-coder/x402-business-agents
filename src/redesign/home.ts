@@ -33,7 +33,7 @@ export const WIDE: Layout = {
   phone: { x: 886, y: 132, w: 108, h: 196, ring: [940, 200], t1: [940, 256], t2: [940, 282], anchor: "middle" },
 };
 export const PHONE: Layout = {
-  w: 360, h: 540, r: 24, agents: [[60, 40], [180, 40], [300, 40]],
+  w: 360, h: 540, r: 24, agents: [[60, 34], [180, 34], [300, 34]],
   metal: { x1: 16, x2: 244, y: 170, ly: 138 }, awx: { x1: 16, x2: 244, y: 378, ly: 346 },
   supplier: { x: 254, y: 134, w: 98, h: 72 }, licence: { x: 254, y: 342, w: 98, h: 72 },
   gate: { x: 170, y1: 150, y2: 190, ty: 210 }, refused: { x: 40, y: 222, w: 190, h: 34 },
@@ -51,7 +51,7 @@ function drawing(run: AgentRun, f: HomeFilm, L: Layout, cls: string): string {
   const agents = AG.map((id, i) => {
     const a = run.agents.find((x) => x.id === id)!;
     const [x, y] = L.agents[i]!;
-    return `<g class="ag" data-agent="${id}"><circle cx="${x}" cy="${y}" r="${L.r}" class="av-${id}"/><svg x="${x - 12}" y="${y - 12}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="glyph">${inner(icon(id === "sourcing" ? "package" : id === "support" ? "headphones" : "landmark", 24))}</svg>${t(x, y + L.r + 22, `${a.short} · ${a.family}`, "lbl")}</g>`;
+    return `<g class="ag" data-agent="${id}"><circle cx="${x}" cy="${y}" r="${L.r}" class="av-${id}"/><svg x="${x - 12}" y="${y - 12}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="glyph">${inner(icon(id === "sourcing" ? "package" : id === "support" ? "headphones" : "landmark", 24))}</svg>${t(x, y + L.r + 20, a.short, "lbl")}${t(x, y + L.r + 39, a.family, "fam")}</g>`;
   }).join("");
   const tx = (i: number) => L.tiles.x + (i % 6) * L.tiles.dx, ty = (i: number) => L.tiles.y + Math.floor(i / 6) * L.tiles.dy;
   const tiles = f.orders.map((o, i) => `<g class="tile"${f.refunded.includes(o) ? ' data-wrong="1"' : ""}>${rect({ x: tx(i), y: ty(i), w: L.tiles.w, h: L.tiles.h }, "tl", 6)}${t(tx(i) + L.tiles.w / 2, ty(i) + L.tiles.h / 2 + 5, `#${o}`, "tn")}</g>`).join("");
@@ -66,19 +66,19 @@ ${agents}
 <a class="refused" href="${esc(f.refusedTx.href ?? "proof#metal")}" target="_blank" rel="noopener" aria-label="Refused on chain: the transaction on Metal's testnet explorer">${rect(L.refused, "rf", L.refused.h / 2)}${t(L.refused.x + L.refused.w / 2, L.refused.y + L.refused.h / 2 + 5, "Refused on chain ↗", "rft")}</a>
 <g class="tiles">${t(L.tiles.x, L.tiles.ly, `${f.orders.length} orders disputed`, "lbl", "start")}${tiles}</g>
 <g class="bubble">${rect(L.bubble, "bb", 12)}${t(L.bubble.x + L.bubble.w / 2, L.bubble.y + L.bubble.h / 2 + 5, "Treasury replans the limits", "bt")}</g>
-${f.tapAmount ? `<g class="tap">${rect(L.tap, "tp", L.tap.h / 2)}${t(L.tap.x + L.tap.w / 2, L.tap.y + L.tap.h / 2 + 5, `Visa TAP ✓ ${f.tapAmount} card buy`, "tpt")}</g>` : ""}
+${f.tapAmount ? `<g class="tap">${rect(L.tap, "tp", L.tap.h / 2)}${t(L.tap.x + L.tap.w / 2, L.tap.y + L.tap.h / 2 + 5, `Visa TAP ✓ ${f.tapAmount} · TAP run`, "tpt")}</g>` : ""}
 <g class="phone">${rect(P, "ph", 18)}<circle cx="${P.ring[0]}" cy="${P.ring[1]}" r="20" class="ring"/><svg x="${P.ring[0] - 11}" y="${P.ring[1] - 11}" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="fid">${inner(icon("scan-face", 22))}</svg>${t(P.t1[0], P.t1[1], "CFO", "pt1", P.anchor)}${t(P.t2[0], P.t2[1], "Face ID", "pt2", P.anchor)}</g>
 <g class="coins"></g>
 </svg>`;
 }
 
 const CSS = `.hero { padding: 20px 0 36px; }
-.hero .wrap { max-width: 1120px; display: grid; gap: 14px; }
+.hero .wrap { max-width: 1000px; display: grid; gap: 14px; }
 @media (min-width: 980px) { .hero { padding: 30px 0 52px; } }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; }
 .badge { display: inline-flex; align-items: center; gap: 6px; font: 650 14px/1.35 Inter, system-ui, sans-serif; padding: 5px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text); }
 .badge.tap { white-space: nowrap; }
-.award-note { margin: -4px 0 0; font-size: 14px; color: var(--muted); max-width: 52em; }
+.award-note { margin: 0; font-size: 14px; color: var(--muted); max-width: 60em; }
 .h-hero { font-size: clamp(40px, 6.4vw, 72px); font-weight: 800; letter-spacing: -.035em; line-height: 1; }
 .h-hero span { color: var(--metal); }
 .film { padding: 0; overflow: hidden; }
@@ -87,7 +87,7 @@ const CSS = `.hero { padding: 20px 0 36px; }
 @media (max-width: 979px) { .film-svg.wide-l { display: none; } .film-svg.phone-l { display: block; } }
 .film text { font-family: Inter, system-ui, sans-serif; font-size: 16px; fill: var(--text); }
 .film .phone-l text { font-size: 14px; }
-.film .lbl { fill: var(--muted); font-weight: 600; }
+.film .lbl { fill: var(--muted); font-weight: 600; } .film .fam { fill: var(--claude); font-weight: 650; }
 .film .rl { font-weight: 700; } .film .rl.metal { fill: var(--metal); } .film .rl.awx { fill: var(--awx); }
 .film .rail { stroke-width: 10; stroke-linecap: round; opacity: .28; } .film .rail.metal { stroke: var(--metal); } .film .rail.awx { stroke: var(--awx); }
 .film .av-sourcing { fill: var(--a-sourcing); } .film .av-support { fill: var(--a-support); } .film .av-treasury { fill: var(--a-treasury); }
@@ -221,12 +221,12 @@ export function homePage(run: AgentRun = agentRun()): string {
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="badges"><span class="badge">${esc(HOME_BADGE)}</span>${VISA_AWARD_ON ? `<span class="badge tap">${icon("credit-card", 15)}Visa TAP</span>` : ""}</div>
-  ${VISA_AWARD_ON ? `<p class="award-note">${esc(VISA_AWARD_STATUS)}</p>` : ""}
   <h1 class="h-hero">${esc(words.slice(0, 2).join(" "))} <span>${esc(words.slice(2).join(" "))}</span></h1>
   <div class="film card">${drawing(run, f, WIDE, "wide-l")}${drawing(run, f, PHONE, "phone-l")}</div>
   <div class="sub" aria-live="polite"><p class="line" id="line">${esc(first.line)} ${first.proof?.href ? `<a href="${esc(first.proof.href)}" target="_blank" rel="noopener">${esc(first.proof.label)} ↗</a>` : ""}</p><span class="call" id="call" title="${esc(first.tip)}">${esc(first.badge)}</span></div>
   <div class="bar"><button id="play" type="button" aria-label="Pause">${icon("pause", 18)}</button>${scenes.map((s, i) => `<button type="button" data-s="${i}" aria-pressed="${i === 0}"><b>${s.n}</b>${esc(s.title)}</button>`).join("")}<div class="prog" aria-hidden="true"><i></i></div></div>
   <div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div>
+  ${VISA_AWARD_ON ? `<p class="award-note">${esc(VISA_AWARD_STATUS)}</p>` : ""}
   <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the run</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div>
 </div></section>
 </main>`;

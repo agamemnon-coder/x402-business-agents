@@ -426,7 +426,7 @@ export function homeFilm(run: AgentRun): HomeFilm | null {
     { n: 1, title: "Price rise", agent: "sourcing", call: say(m.sourcingSay)?.call ?? null, proof: ref.proof, line: `${s1.from} raises its price ${s1.old} → ${s1.price}. Refused on chain.` },
     { n: 2, title: "Replan", agent: "treasury", call: say(m.replan)?.call ?? null, proof: null, line: `Treasury replans. Face ID 1 of 2 → 2 of 2. New cap ${s1.newCap}.` },
     { n: 3, title: "Dispute", agent: "support", call: say(m.settle)?.call ?? null, proof: null, line: `${s2.orders.length} orders disputed: ${valid} valid, ${s2.refunded.length} refunded.` },
-    { n: 4, title: "Euros", agent: "treasury", call: say(m.sweepSay)?.call ?? null, proof: null, line: `${swp.amount} swept · ${licence} licence paid by SWIFT · Face ID${buy ? " · Visa TAP ✓" : ""}` },
+    { n: 4, title: "Euros", agent: "treasury", call: say(m.sweepSay)?.call ?? null, proof: null, line: `${swp.amount} swept · ${licence} licence paid by SWIFT · Face ID${buy ? " · Visa TAP ✓ (TAP run)" : ""}` },
   ];
   return { scenes, supplier: s1.from, old: s1.old, price: s1.price, cap: s1.cap, newCap: s1.newCap, refusedTx: ref.proof, orders: s2.orders, refunded: s2.refunded, refundEach,
     sweep: swp.amount, licence, licenceUnit: lic.unit, tapAmount: buy ? SHORT_EUR(buy.amount) : null, tapRun: tap?.label ?? null };

@@ -1,5 +1,5 @@
 // The partner pages (/airwallex, /claude): every id, tx and figure on them comes from the recorded files, every
-// agent's model from code; the five parts are on each; the nav keeps five main links with both pages under "More".
+// agent's model from code; each is short with its details folded; the nav keeps the four tabs.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AGENT_MODELS, airwallexData, claudeData } from "../src/partners/data.js";
@@ -45,11 +45,10 @@ describe("the partner pages", () => {
     for (const r of reqs) expect(CLAUDE_PAGE).toContain(r);
   });
 
-  it("carry the five parts, label every run, link the partner's docs, and show no Visa logo", () => {
+  it("are short, label the run, link the partner's docs (folded), and show no Visa logo and no script", () => {
     for (const [page, docs] of [[AIRWALLEX_PAGE, "https://www.airwallex.com/docs/"], [CLAUDE_PAGE, "https://platform.claude.com/docs/"]] as const) {
-      for (const part of ["In our story", "What we use, and the proof", "Why an agent needs it", "What we do not do, or only simulate"]) expect(page).toContain(part);
       expect(page).toMatch(/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/);
-      expect(page).toMatch(/Archive: recorded run · .* · test money/);
+      expect(page).toMatch(/<details class="fold"><summary>The (Airwallex|Claude) [^<]*docs/);
       expect(page.split(docs).length - 1).toBeGreaterThanOrEqual(4);
       expect(page).not.toMatch(/<img[^>]*visa/i);
       expect(page).not.toMatch(/\b(null|undefined|NaN)\b/);

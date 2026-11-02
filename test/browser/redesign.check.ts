@@ -69,31 +69,42 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
     page.on("requestfailed", (r) => { if (!/testnet\.metalntwx\.com/.test(r.url())) fail(`${tag} ${page.url()}: request failed: ${r.url()}`); });
 
-    // "/" sends a guest to Home. The first frame already shows the refusal on chain; then it plays.
+    // "/" sends a guest to Home: the headline, then the animation (v4, C2), its first scene's line with the tx.
     await page.goto(`${base}/`, { waitUntil: "load" });
     await page.waitForURL(/\/home$/);
-    await page.waitForTimeout(300);
-    if (!/Refused · recorded on chain/.test(await page.locator("[data-stage]").innerText())) fail(`/home ${tag}: the first frame does not show the refusal recorded on chain`);
-    await page.screenshot({ path: join(shots, `home-first-${tag}.png`) });
-    await page.waitForTimeout(9000);
+    await page.waitForTimeout(1500);
     await look(page, `/home ${tag}`, w);
-    if ((await page.locator(".scene").count()) !== 3) fail(`/home ${tag}: not three moments`);
-    if ((await page.locator(".tiles .tile").count()) !== 5) fail(`/home ${tag}: not five proof numbers`);
-    // The stylesheet parsed to the end (a stray brace once dropped the tiles' style).
-    if (await page.locator(".tiles .tile").first().evaluate((e) => getComputedStyle(e).display) !== "flex") fail(`/home ${tag}: the proof tiles lost their style`);
+    if (!/Refused on chain/.test(await page.locator("#line").innerText())) fail(`/home ${tag}: the first scene's line does not say "Refused on chain"`);
+    if ((await page.locator("#line a[href*='testnet.metalntwx.com/tx/0x']").count()) !== 1) fail(`/home ${tag}: no tx link on the first scene`);
+    if (!/^(Sourcing|Support|Treasury) · Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_\w+…$/.test(await page.locator("#call").innerText())) fail(`/home ${tag}: no Claude call badge`);
     if ((await page.locator("nav.tabs a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
+    if ((await page.locator(".ctas a.btn").count()) !== 3) fail(`/home ${tag}: not three buttons`);
     if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
-    // The rail's line is said in full (Max, 2 Nov: it was cut off).
-    for (const s of await page.locator("[data-stage] .lane .ln small").all()) if (await s.evaluate((e) => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).display === "none")) fail(`/home ${tag}: a rail line is cut off or hidden`);
+    // On a phone the animation sits right under the headline.
+    const gap = await page.evaluate(() => { const h = document.querySelector("h1")!.getBoundingClientRect(), f = document.querySelector(".film")!.getBoundingClientRect(); return Math.round(f.top - h.bottom); });
+    if (gap > 40) fail(`/home ${tag}: ${gap}px between the headline and the animation`);
     await page.screenshot({ path: join(shots, `home-${tag}.png`) });
-    await page.screenshot({ path: join(shots, `home-full-${tag}.png`), fullPage: true });
-    // The four-eyes moment, still: 2 of 2 signatures and who the second approver is.
-    const sig = await page.evaluate(() => (JSON.parse(document.getElementById("run-data")!.textContent!) as { events: { k: string; signers?: string[] }[]; moments: number[] }).moments.findIndex((i, _n, all) => { const d = JSON.parse(document.getElementById("run-data")!.textContent!) as { events: { k: string; signers?: string[] }[] }; void all; return d.events[i]!.k === "face" && (d.events[i]!.signers ?? []).length > 1; }));
-    await page.goto(`${base}/home?frame=${sig}`, { waitUntil: "load" });
-    await page.waitForTimeout(300);
-    const stage = await page.locator("[data-stage]").innerText();
-    if (!/2 of 2 signatures/.test(stage) || !/second approver: labelled test passkey/.test(stage)) fail(`/home ${tag}: the four-eyes frame lacks "2 of 2 signatures" or its label`);
-    await page.locator("[data-stage]").screenshot({ path: join(shots, `home-stage-foureyes-${tag}.png`) });
+    // Each scene, still (as with reduced motion): what it must show, all of it visible, and nothing on top of anything else.
+    const wants = [/Refused on chain/, /Face ID 1 of 2 → 2 of 2/, /12 orders disputed: 9 valid, 3 refunded/, /€240 licence paid by SWIFT · Face ID/];
+    for (const n of [1, 2, 3, 4]) {
+      await page.goto(`${base}/home?scene=${n}`, { waitUntil: "load" });
+      await page.waitForTimeout(500);
+      if (!wants[n - 1]!.test(await page.locator("#line").innerText())) fail(`/home scene ${n} ${tag}: the line does not say ${wants[n - 1]}`);
+      if ((await page.locator(`[data-s="${n - 1}"][aria-pressed="true"]`).count()) !== 1) fail(`/home scene ${n} ${tag}: its button is not pressed`);
+      const clash = await page.evaluate(`(() => {
+        const svg = [...document.querySelectorAll(".film-svg")].find((e) => e.getBoundingClientRect().width > 0);
+        const shown = [...svg.querySelectorAll(".refused, .bubble, .tap, .phone, .tiles, .box, .gate text")].filter((e) => getComputedStyle(e).opacity !== "0" && !(e.closest(".refused, .bubble, .tap, .tiles") && getComputedStyle(e.closest(".refused, .bubble, .tap, .tiles")).opacity === "0"));
+        const r = shown.map((e) => [e.getAttribute("class"), e.getBoundingClientRect()]);
+        const out = [];
+        for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) { const a = r[i][1], b = r[j][1]; if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) out.push(r[i][0] + " / " + r[j][0]); }
+        return out;
+      })()`) as string[];
+      for (const c of clash) fail(`/home scene ${n} ${tag}: overlap ${c}`);
+      await page.locator(".film").screenshot({ path: join(shots, `home-scene${n}-${tag}.png`) });
+    }
+    await page.goto(`${base}/home?scene=2`, { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    if (!/2 of 2/.test(await page.evaluate(() => [...document.querySelectorAll(".film-svg")].find((e) => e.getBoundingClientRect().width > 0)!.querySelector(".pt2")!.textContent!))) fail(`/home ${tag}: the four-eyes scene lacks "2 of 2"`);
 
     // Watch: the start, then each moment by its jump.
     await page.goto(`${base}/watch`, { waitUntil: "load" });
@@ -103,11 +114,13 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!/^Highlights$/.test(await page.locator('#mode button[aria-pressed="true"]').innerText())) fail(`/watch ${tag}: not on the highlights by default`);
     if (!/^Full run \(\d+ steps\)$/.test(await page.locator('#mode button[data-mode="full"]').innerText())) fail(`/watch ${tag}: no full-run button with its steps`);
     await page.screenshot({ path: join(shots, `watch-${tag}.png`) });
-    for (const n of [1, 2, 3]) {
+    for (const n of [1, 2, 3, 4]) {
       await page.goto(`${base}/watch?scene=${n}&autoplay=0`, { waitUntil: "load" });
       await page.waitForTimeout(500);
       await look(page, `/watch scene ${n} ${tag}`, w);
-      if ((await page.locator("ol.log li").count()) < 2) fail(`/watch scene ${n} ${tag}: nothing before the jump`);
+      if ((await page.locator("ol.log li").count()) < (n === 1 ? 1 : 2)) fail(`/watch scene ${n} ${tag}: nothing before the jump`);
+      // The Metal lane in full, never cut off (v4, C6).
+      for (const v of await page.locator("[data-stage] .lane .verdict").all()) if (await v.evaluate((e) => e.textContent!.trim() !== "" && e.scrollWidth > e.clientWidth + 1)) fail(`/watch scene ${n} ${tag}: a rail's result is cut off`);
       await page.screenshot({ path: join(shots, `watch-scene${n}-${tag}.png`) });
     }
     await page.screenshot({ path: join(shots, `watch-full-${tag}.png`), fullPage: true });
@@ -119,7 +132,10 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/try`, { waitUntil: "load" });
     await page.waitForTimeout(600);
     if ((await page.locator("nav a").count()) !== 4) fail(`/try ${tag}: not the four tabs`);
-    if (!(await page.isVisible("#q-price")) || !(await page.isVisible("text=Open a dispute"))) fail(`/try ${tag}: no quick world buttons`);
+    if (!(await page.isVisible("#q-price")) || (await page.locator("text=Open a dispute").count())) fail(`/try ${tag}: "Raise the supplier price" missing, or a live dispute offered`);
+    // The menu on one line (v4, C4).
+    const rows = await page.evaluate(() => { const t = [...document.querySelectorAll("header.top > *")].filter((e) => (e as HTMLElement).offsetParent).map((e) => Math.round(e.getBoundingClientRect().top)); return Math.max(...t) - Math.min(...t); });
+    if (rows > 12) fail(`/try ${tag}: the menu wraps (${rows}px)`);
     if ((await page.locator("#examples i").count()) > 0) fail(`/try ${tag}: dots without a legend`);
     await page.screenshot({ path: join(shots, `try-${tag}.png`) });
     await page.screenshot({ path: join(shots, `try-full-${tag}.png`), fullPage: true });
@@ -127,6 +143,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/proof`, { waitUntil: "load" });
     await look(page, `/proof ${tag}`, w);
     if ((await page.locator(".pcard").count()) !== 4) fail(`/proof ${tag}: not four partner cards`);
+    if (!/decisions by Claude \(0 fallbacks\)/.test(await page.locator(".nums").innerText()) || !/routine payments by code/.test(await page.locator(".nums").innerText())) fail(`/proof ${tag}: no split between Claude and code`);
     await page.screenshot({ path: join(shots, `proof-${tag}.png`) });
     await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
     await look(page, `/proof open ${tag}`, w);

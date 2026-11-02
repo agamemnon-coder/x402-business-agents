@@ -244,7 +244,7 @@ function Stage(root, run) {
     if (!r) return ev.dir === "in" ? "received" : /refund/i.test(ev.what) ? "refunded" : "paid";
     if (r.by === "recorded") return "refused before signing, and recorded on chain";
     if (r.by === "metal") return "refused by Metal: " + r.reason;
-    if (r.by === "airwallex-sandbox") return "not paid: Airwallex's sandbox could not price the fee (not a limit)";
+    if (r.by === "airwallex-sandbox") return (ev.earlier ? "earlier attempt, nothing paid: " : "not paid: ") + "Airwallex's sandbox could not price the fee (not a limit)";
     if (r.by === "airwallex") return "declined by Airwallex: " + r.reason;
     return "refused before signing";
   }
@@ -253,7 +253,7 @@ function Stage(root, run) {
     if (!r) return "✓ " + result(ev);
     if (r.by === "recorded") return "✕ Refused · recorded on chain" + (ev.proof && ev.proof.href ? " ↗" : "");
     if (r.by === "metal") return "✕ Refused by Metal";
-    if (r.by === "airwallex-sandbox") return "✕ Not paid · fee not priced";
+    if (r.by === "airwallex-sandbox") return ev.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced";
     if (r.by === "airwallex") return "✕ Declined by Airwallex";
     return "✕ Refused before signing";
   }
@@ -269,6 +269,7 @@ function Stage(root, run) {
     var n = names[ev.agent] || { short: ev.agent };
     var b = document.createElement("span"); b.textContent = n.short + (ev.k === "msg" ? " · message" : ev.by === "claude" ? " · decided by Claude" : " · fallback (code)"); who.appendChild(b);
     (ev.tools || []).slice(0, 3).forEach(function (t) { var c = document.createElement("span"); c.className = "tool"; c.textContent = t; who.appendChild(c); });
+    if (ev.badge) { var k = document.createElement("span"); k.className = "call"; k.textContent = ev.badge; k.title = ev.tip || ""; who.appendChild(k); }
     bubble.classList.remove("idle"); bubble.classList.add("quote");
     var text = first(ev.text, sentences);
     if (instant || reduce) { say.textContent = text; return; }
