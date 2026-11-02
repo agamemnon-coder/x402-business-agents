@@ -15,9 +15,9 @@ Rules we followed:
 - "Simulated" means the Airwallex sandbox or our own code simulates that step. We say so in each row where it applies.
 - Run logs are in `docs/runs/`. Metal transaction links are in `docs/metal-award.md`.
 
-## 1. Hackathon deliverables and the four "demonstrate" points
+## 1. Hackathon deliverables, and the four "demonstrate" points as we read the brief
 
-Sources: the [hackathon site](https://airwallex.hackerearth.com/) (H rows), the [HackerEarth challenge page](https://www.hackerearth.com/community/challenges/hackathon/agentic-banking-hackathon/) (H12 to H14, a generic FAQ) and Dan Kim's X article "Introducing the Airwallex Agentic Banking Hackathon" (J rows, [link](https://x.com/dankimxyz/article/2107199865004634605)). We could not fetch the X article in full. Its quotes come from a search excerpt and must be checked against the live article.
+Sources: the [hackathon site](https://airwallex.hackerearth.com/) (H rows), the [HackerEarth challenge page](https://www.hackerearth.com/community/challenges/hackathon/agentic-banking-hackathon/) (H12 to H14, a generic FAQ) and Dan Kim's X article "Introducing the Airwallex Agentic Banking Hackathon" (J rows, [link](https://x.com/dankimxyz/article/2107199865004634605)). We could not fetch the X article in full. Its quotes come from a search excerpt and must be checked against the live article. The J rows are not on the official site (airwallex.hackerearth.com publishes no judging criteria); they are our reading of the brief from that article (`docs/rules.md`, unverified), not official criteria.
 
 | Id | Requirement | Where Purser does it | Evidence | Status |
 |---|---|---|---|---|
@@ -32,9 +32,9 @@ Sources: the [hackathon site](https://airwallex.hackerearth.com/) (H rows), the 
 | J5.3 | "3. Financial context influencing what the agent decides to do." | The Treasury agent reads balances, the EUR and USD reserve floors and a live FX quote. It converts only the shortfall, fee included, and escalates when the USD floor would break. `src/agents/euroBill.ts`, `src/policy/treasury.ts`. | `docs/runs/2026-10-29-s3.md` † (EUR 362.85 shortfall of EUR 1,862.85 needed); `docs/runs/2026-10-29-f4.md` † (EUR 7,500 invoice escalated, nothing moved); `test/euroBill.test.ts`. | ✅ |
 | J5.4 | "4. Clear controls showing what the agent can do, what requires approval, and how it handles an exception." | CFO policy (`src/policy/rules.ts`, `src/config/policy.ts`), hash-bound Face ID approvals, on-chain mandates, card limits at Airwallex, refusals and escalations on the dashboard. | `docs/runs/2026-10-29-rehearsal-3.md` † (policy refusal `policy_cap_exceeded`); `docs/runs/2026-10-29-fraud.md` †; `docs/runs/2026-10-29-injection.md` †; `test/adversarial.test.ts`; `docs/security.md`. | ✅ |
 
-## 2. Judging criteria
+## 2. How we read the brief: the judging areas (not official)
 
-Source: Dan Kim's X article ([link](https://x.com/dankimxyz/article/2107199865004634605)), section "How we'll judge the projects". No weights are published. The same caveat as above applies to these quotes.
+Source: Dan Kim's X article ([link](https://x.com/dankimxyz/article/2107199865004634605)), section "How we'll judge the projects", as quoted in `docs/rules.md` (unverified). These areas are not on the official site (airwallex.hackerearth.com); they are our reading of the brief, not official judging criteria. No weights are published. The same caveat as above applies to these quotes. Our reading, area by area: [docs/judging-map.md](judging-map.md).
 
 | Id | Requirement | Where Purser does it | Evidence | Status |
 |---|---|---|---|---|
