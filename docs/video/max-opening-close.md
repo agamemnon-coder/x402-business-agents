@@ -6,8 +6,12 @@ jury is internationaal. Ongeveer 140 woorden per minuut.
 ## Opening (20 s, ±47 woorden)
 
 > Hi, I'm Max Geurtsen. This is Purser — Starter Kit 11, for the Metal and Visa Awards.
-> Most treasury agents just move money. Our Claude agents handle the exceptions: price shocks, disputes, rebalancing.
-> Routine runs at code speed. Metal and Airwallex enforce every limit; I approve anything beyond them.
+> Most treasury agents just move money. Mine run a business, and Claude handles only the exceptions: a price shock,
+> a dispute, a euro bill. Routine payments run as plain code. Metal and Airwallex enforce the limits; I approve
+> anything beyond them.
+
+(Jury-review, 2 november: "the limits", niet "every limit": de refund- en FX-drempels bewaakt Purser's eigen code. De
+drie uitzonderingen zijn nu precies de drie scènes.)
 
 Waarom zo: de jury ziet in de eerste 30 seconden Kit 11, beide awards en het verschil met pure treasury-agents (in
 Track 1 zitten er meer, zoals "Ballast").
@@ -16,6 +20,9 @@ Track 1 zitten er meer, zoals "Ballast").
 
 > Three moments: a price rise, a dispute, a euro bill. Claude decided, the rails held the limits, and I signed only
 > what went beyond them. Purser — Starter Kit 11, for the Metal and Visa Awards.
+
+Is de TAP-interop-test niet groen vóór de opname, dan wordt het slot "… for the Metal Award" en staat Visa alleen in
+de beschrijving (jury-review, 2 november).
 
 Let op: "for the Visa Award" is een inzending, geen technische claim. Over TAP zelf zeggen we in de video alleen wat
 na de groene interop-test in `docs/claims.md` staat.
