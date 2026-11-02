@@ -22,9 +22,19 @@ const NOTICE = resolve(import.meta.dirname, "../../fixtures/stockline-price-noti
 /** When no purchase reaches Stockline after a silent rise, its notice still comes this long after it. */
 export const NOTICE_AT_LATEST_MS = 5 * 60_000;
 
-/** Stockline's price notice to the Sourcing agent (the same event `price-rise` sends at once). */
-export function stocklineNotice(db: DB, price: string, now = new Date()): number {
-  return publish(db, "supplier.notice", { supplier: "Stockline", new_price: price, notice: readFileSync(NOTICE, "utf8").slice(0, 1500) }, "sourcing", "system", now);
+/** Stockline's price notice to the Sourcing agent (the same event `price-rise` sends at once). Review, 2 November: the
+ *  notice carries the real date it is sent, the moment the price changed and the price passed, never the fixture's
+ *  30 October or a fixed 0.04, so a silent rise is not told to the agent as if it had been announced days ahead. */
+export function noticeText(price: string, sentAt: Date, effectiveAt: Date): string {
+  const when = `${effectiveAt.toISOString().slice(0, 10)}, ${effectiveAt.toISOString().slice(11, 16)} UTC`;
+  return readFileSync(NOTICE, "utf8")
+    .replace(/^Date: .*$/m, `Date: ${sentAt.toUTCString().replace("GMT", "+0000")}`)
+    .replace(/From [^,]+, \d{2}:\d{2} UTC/, `From ${when}`)
+    .replace(/costs [0-9.]+ \*USDZ instead/, `costs ${price} *USDZ instead`)
+    .slice(0, 1500);
+}
+export function stocklineNotice(db: DB, price: string, now = new Date(), effectiveAt = now): number {
+  return publish(db, "supplier.notice", { supplier: "Stockline", new_price: price, notice: noticeText(price, now, effectiveAt) }, "sourcing", "system", now);
 }
 
 /** A silent price rise as the ledger keeps it: waiting for the next query, applied, or its notice sent. */
@@ -90,7 +100,7 @@ export function noticeIfDue(db: DB, now = new Date()): SilentRise | null {
     if (r?.stage !== "applied") return null;
     const first = db.prepare("SELECT id FROM upstream_purchases WHERE id > ? AND supplier = 'stockline' ORDER BY id LIMIT 1").get(r.from_id ?? 0) as { id: number } | undefined;
     if (!first && now.getTime() - Date.parse(r.applied_at ?? r.scheduled_at) < NOTICE_AT_LATEST_MS) return null;
-    const ev = stocklineNotice(db, r.price, now);
+    const ev = stocklineNotice(db, r.price, now, new Date(r.applied_at ?? r.scheduled_at));
     const next: SilentRise = { ...r, stage: "noticed", notice_event: ev, notice_after: first ? "first_attempt" : "time", ...(first ? { first_attempt_id: first.id } : {}) };
     save(db, next, now);
     return next;

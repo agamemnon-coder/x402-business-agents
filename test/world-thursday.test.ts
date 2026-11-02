@@ -163,3 +163,14 @@ describe("(b) Ridgeline Data offline for maintenance", () => {
     expect(w.ridgelineDown(db, new Date("2026-11-05T20:00:01Z"))).toBeNull();
   });
 });
+
+describe("Stockline's notice text (review, 2 November)", () => {
+  it("carries the real send date, the moment of the rise and the price passed", async () => {
+    const { noticeText } = await import("../src/world/supplierEvents.js");
+    const t = noticeText("0.05", new Date("2026-11-05T14:07:00Z"), new Date("2026-11-05T14:02:30Z"));
+    expect(t).toContain("Date: Thu, 05 Nov 2026 14:07:00 +0000");
+    expect(t).toContain("From 2026-11-05, 14:02 UTC");
+    expect(t).toContain("costs 0.05 *USDZ instead of 0.02");
+    expect(t).not.toContain("30 Oct");
+  });
+});
