@@ -12,8 +12,9 @@
 // (`npm run relay -- --local`, real executors, phone pages on localhost).
 //
 // Order (runbook "Vooraf", then the table): health, bootstrap, cards setup, visa setup, world setup (cache off, free EUR
-// 150.00, TAP rail on), runner with the agents, both passkeys, four eyes (P-0001, test-cfo alone); then 1 serve every
-// 15 s, 1b ridgeline-maintenance, 2 price-rise 0.04 --silent once #16 is sold, 2b let-one-through right after, 3
+// 150.00, TAP rail on); then 1 serve every 15 s (both suppliers checked to answer) and 1b ridgeline-maintenance BEFORE
+// the runner with the agents (after dry-179: agents started before the suppliers saw none and set "buy nothing"), both
+// passkeys, four eyes (P-0001, test-cfo alone); then 2 price-rise 0.04 --silent once #16 is sold, 2b let-one-through right after, 3
 // Treasury's options (test-cfo then test-controller, the option Treasury recommends), 4 dispute ("refund all" rejected
 // as advised), 5 money-in, 6 invoice (Treasury plans; test-cfo approves), 7 packwise-pro (a card raise the Sourcing
 // agent asks for is approved); a private-tab check of the viewer link. Then 8: the customer (world serve) stops, the
@@ -244,6 +245,31 @@ try {
     cli("world.ts", "setup", "--upstream-cache", "off", "--free-eur", "150.00", "--tap-rail", "on");
     check(setting("world.upstream_cache") === "off" && setting("world.free_eur_target") === "150.00" && setting("world.tap_rail") === "on", "world options written: cache off, free EUR 150.00, TAP rail on");
   });
+  // ---- 1, 1b first (dry-179, holdouts point a): the shop and its suppliers run before the agents start; then the runner ----
+  let noticeEvent = 0, noticeFrom = 0;
+  await timed("S1 world serve --every 15", async () => {
+    serve = spawn("npx", ["tsx", "src/cli/world.ts", "serve", "--every", "15"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    const wl = createWriteStream(join(out, "world.log"), { flags: "a" });
+    serve.stdout!.on("data", (d: Buffer) => wl.write(clean(d.toString())));
+    serve.stderr!.on("data", (d: Buffer) => wl.write(clean(d.toString())));
+    await until("the world serving", () => count("SELECT COUNT(*) AS n FROM sales") + count("SELECT COUNT(*) AS n FROM upstream_purchases") > 0 || undefined, 180_000);
+    // dry-179 / holdouts (a): the agents' first look at the market must find the suppliers up, so both answer before
+    // the runner starts (an offer, nothing paid).
+    for (const [name, port] of [["Stockline", 4101], ["Ridgeline Data", 4103]] as const) {
+      const res = await fetch(`http://127.0.0.1:${port}/v1/stock-check?seq=1`).catch(() => null);
+      check(res?.status === 402 && !!res.headers.get("payment-required"), `${name} answers before the agents start (${res?.status ?? "nothing"} with an x402 offer)`);
+    }
+  });
+  await timed("S1b world ridgeline-maintenance", async () => {
+    const from = headSeq(), before = lastEvent("supplier.notice");
+    cli("world.ts", "ridgeline-maintenance");
+    const ev = lastEvent("supplier.notice");
+    check(ev > before, "Ridgeline Data's maintenance notice reached the Sourcing agent");
+    const res = await fetch("http://127.0.0.1:4103/v1/stock-check?seq=1").catch(() => null);
+    check(res?.status === 503 && !res.headers.get("payment-required"), `Ridgeline answers ${res?.status ?? "nothing"} with no offer`);
+    noticeEvent = ev; noticeFrom = from;
+  });
+
   await timed("V6 Runner (local relay, real executors, the three agents)", startRunner);
   await timed("V7 Passkeys: test-cfo and test-controller (virtual, labelled test identities)", async () => {
     facts.fp_cfo = await enrol(cfo, null);
@@ -260,26 +286,12 @@ try {
       await until("the four-eyes policy in force", () => policyValue(db(), FOUR_EYES_KEY) === "1000.00", 60_000).catch(() => undefined);
     }
     check(policyValue(db(), FOUR_EYES_KEY) === "1000.00", "four eyes is on above EUR 1,000");
-    await until("the agents' mandates on chain", () => count("SELECT COUNT(*) AS n FROM mandates") >= 3 || undefined, 120_000).catch(() => undefined);
   });
 
-  // ---- 1, 1b ----
-  await timed("S1 world serve --every 15", async () => {
-    serve = spawn("npx", ["tsx", "src/cli/world.ts", "serve", "--every", "15"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
-    const wl = createWriteStream(join(out, "world.log"), { flags: "a" });
-    serve.stdout!.on("data", (d: Buffer) => wl.write(clean(d.toString())));
-    serve.stderr!.on("data", (d: Buffer) => wl.write(clean(d.toString())));
-    await until("the world serving", () => count("SELECT COUNT(*) AS n FROM sales") + count("SELECT COUNT(*) AS n FROM upstream_purchases") > 0 || undefined, 180_000);
-  });
-  await timed("S1b world ridgeline-maintenance", async () => {
-    const from = headSeq(), before = lastEvent("supplier.notice");
-    cli("world.ts", "ridgeline-maintenance");
-    const ev = lastEvent("supplier.notice");
-    check(ev > before, "Ridgeline Data's maintenance notice reached the Sourcing agent");
-    const res = await fetch("http://127.0.0.1:4103/v1/stock-check?seq=1").catch(() => null);
-    check(res?.status === 503 && !res.headers.get("payment-required"), `Ridgeline answers ${res?.status ?? "nothing"} with no offer`);
-    const d = await until("Sourcing's decision on Ridgeline's notice", () => decisionOn("sourcing", ev, from), 300_000).catch(() => undefined);
+  await timed("S1c Sourcing's decision on Ridgeline's notice", async () => {
+    const d = await until("Sourcing's decision on Ridgeline's notice", () => decisionOn("sourcing", noticeEvent, noticeFrom), 300_000).catch(() => undefined);
     say(d ? `SOURCING DECIDED (${d.source}): ${d.summary}` : "NO SOURCING DECISION on Ridgeline's notice within 5 minutes");
+    say(`SOURCING POLICY after its first look: ${setting("sourcing.buy_policy") ?? "the default"}`);
   });
 
   // ---- 2, 2b ----
@@ -291,12 +303,18 @@ try {
     facts.rise_at = riseAt;
     cli("world.ts", "price-rise", "0.04", "--silent");
   });
-  await timed("S2b world let-one-through", async () => {
+  // 2b right after 2. The command waits up to 90 s for its outcome; the runbook goes on meanwhile (Treasury's options may
+  // come at once), so it runs beside step 3 and its output is read at the end.
+  let letThroughDone: Promise<void> = Promise.resolve();
+  await timed("S2b world let-one-through (started; runs beside step 3)", async () => {
     facts.let_through_requested_at = new Date().toISOString();
-    cli("world.ts", "let-one-through");
-    // The runbook goes on at once (Treasury's options may come meanwhile); the final state is read again at the end.
-    facts.let_through = setting("world.let_one_through");
-    say(`LET-THROUGH after the command: ${facts.let_through}`);
+    letThroughDone = new Promise<void>((done) => {
+      const p = spawn("npx", ["tsx", "src/cli/world.ts", "let-one-through"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"] });
+      let text = "";
+      p.stdout!.on("data", (d: Buffer) => { text += d.toString(); });
+      p.stderr!.on("data", (d: Buffer) => { text += d.toString(); });
+      p.on("exit", (code) => { for (const l of text.split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) say(`  let-one-through: ${l}`); say(`  let-one-through exited ${code}`); facts.let_through = setting("world.let_one_through"); done(); });
+    });
   });
 
   // ---- 3 ----
@@ -384,6 +402,7 @@ try {
     for (const r of db().prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.software_bought' AND seq > ? ORDER BY seq").all(from)) say(`SOFTWARE ${(r as { payload_json: string }).payload_json.slice(0, 400)}`);
   });
 
+  await letThroughDone;
   await timed("L Links: the viewer in one private tab, twice; the second-approver label", linksStep);
   const pending = db().prepare("SELECT proposal_id, kind, created_by FROM proposals WHERE status = 'PENDING_APPROVAL'").all();
   say(`PENDING at the end: ${JSON.stringify(pending)}`);
