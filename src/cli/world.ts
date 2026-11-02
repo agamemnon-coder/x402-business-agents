@@ -19,8 +19,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { openDb } from "../db/open.js";
 import { publish } from "../autonomy/bus.js";
+import { disputeReady } from "../agents/disputes.js";
 import { setSupplierPrice } from "../autonomy/teamProfiles.js";
-import { startRuntime } from "../world/runtime.js";
+import { addresses, startRuntime } from "../world/runtime.js";
 import { redactSecrets } from "../lib/redact.js";
 import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { netEarnings } from "../agents/sweep.js";
@@ -63,6 +64,12 @@ if (cmd === "serve") {
   setSupplierPrice(db, "ridgeline", arg);
   console.log(`Ridgeline Data now asks ${arg} a stock check`);
 } else if (cmd === "dispute") {
+  // Max, 2 November: the dispute names #5 to #16; it opens only once all 12 were delivered to Summit.
+  const ready = disputeReady(db, addresses(db).customer);
+  if (!ready.ready) {
+    console.error(`not yet: Summit's dispute names #5 to #16, and #${ready.missing.join(", #")} ${ready.missing.length === 1 ? "was" : "were"} not delivered to Summit; the dispute waits`);
+    process.exit(3);
+  }
   publish(db, "dispute.opened", { customer: "Summit Outfitters", email: readFileSync(fixture("summit-dispute-email.txt"), "utf8").slice(0, 2000) }, "support");
   console.log("Summit Outfitters' dispute email reached the Support agent");
 } else if (cmd === "invoice") {

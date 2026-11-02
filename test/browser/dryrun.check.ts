@@ -303,7 +303,16 @@ if (process.env.DRYRUN_AUTONOMY) {
       say(`SOURCING DECIDED (${d.source}): ${d.summary}`);
       check(d.source === "claude", "the Sourcing agent decided itself (not code's fallback)");
       // Treasury may be asked; if it designs a rebalance, the CFO approves the option it recommends.
-      const prop = await until("Treasury's options or its decision", () => latest("mandate_replace", "status = 'PENDING_APPROVAL'") ?? (decisionsAfter("treasury", from)[0] ? "none" : undefined), 420_000).catch(() => "none");
+      // dry-138: Treasury may decide "no rebalance" before any customer is turned away, then propose once they are. So a
+      // decision ends the wait only while the shop is not turning customers away (Max, 2 November); up to 15 minutes.
+      // created_at is JavaScript's ISO form, so the cut-off is written the same way (strftime with T and Z).
+      const turningAway = () => count("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-2 minutes')") > 0;
+      const prop = await until("Treasury's options or its decision", () => latest("mandate_replace", "status = 'PENDING_APPROVAL'") ?? (decisionsAfter("treasury", from)[0] && !turningAway() ? "none" : undefined), 900_000).catch(() => "none");
+      // Max, 2 November: how long Treasury takes to propose after customers are turned away (median and maximum over runs).
+      const woke = db().prepare("SELECT created_at FROM world_events WHERE kind = 'customers.turned_away' ORDER BY id LIMIT 1").get() as { created_at: string } | undefined;
+      const proposed = db().prepare("SELECT created_at FROM proposals WHERE kind = 'mandate_replace' ORDER BY created_at LIMIT 1").get() as { created_at: string } | undefined;
+      if (woke && proposed) say(`TREASURY TIMING: options ${Math.round((Date.parse(proposed.created_at) - Date.parse(woke.created_at)) / 1000)} s after the third customer was turned away`);
+      else if (woke) say("TREASURY TIMING: customers were turned away and no options came within 15 minutes");
       const t = decisionsAfter("treasury", from)[0];
       if (t) say(`TREASURY DECIDED (${t.source}): ${t.summary}`);
       if (prop !== "none") {
@@ -321,6 +330,8 @@ if (process.env.DRYRUN_AUTONOMY) {
       // A batch of orders to dispute: wait until the shop has run past #16 (the numbers in Summit's email).
       const reached = await until("stock checks up to #16", () => count("SELECT COALESCE(MAX(CAST(json_extract(request_params_json, '$.seq') AS INTEGER)), 0) AS n FROM sales") >= 16, 600_000).then(() => true, () => false);
       check(reached, `the shop ran past #16 before the dispute (${count("SELECT COUNT(*) AS n FROM sales WHERE status = 'DELIVERED'")} sales delivered)`);
+      // Max, 2 November: the world never opens a dispute about orders that were not sold (it refuses; see world.ts).
+      if (!reached) { say("NO DISPUTE: the orders it names were not all sold, so the world did not open it"); return; }
       const from = headSeq();
       cli("world.ts", "dispute");
       const ev = lastEvent("dispute.opened");

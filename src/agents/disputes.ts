@@ -161,3 +161,15 @@ export function refundsFor(sales: SaleRow[], verdicts: DataVerdict[]): { sale_id
   const wrong = new Set(verdicts.filter((v) => v.refund).map((v) => v.sale_id));
   return sales.filter((s) => wrong.has(s.sale_id)).map((s) => ({ sale_id: s.sale_id, seq: s.seq, amount_cents: s.price_cents }));
 }
+
+/** The orders Summit's dispute names (fixtures/summit-dispute-email.txt): the Kit 11 scene's 12, #5 to #16. */
+export const SUMMIT_DISPUTE_SEQS: readonly number[] = Array.from({ length: 12 }, (_, i) => i + 5);
+
+/**
+ * Max, 2 November (dry-125, dry-131, dry-138): the world opens Summit's dispute only once every order it names was
+ * delivered to Summit, so the Support agent is never asked about an order that does not exist.
+ */
+export function disputeReady(db: DB, summit: string, seqs: readonly number[] = SUMMIT_DISPUTE_SEQS): { ready: boolean; missing: number[] } {
+  const { missing } = salesFound(db, [...seqs], summit);
+  return { ready: missing.length === 0, missing };
+}
