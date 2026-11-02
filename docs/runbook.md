@@ -213,14 +213,21 @@ advise a retry with some backoff on `fee_unknown` and `unconfigured_client_fee` 
 **What code does by itself** (`src/executors/invoicePayment.ts`, `createWithFeeRetry`; `test/contract/airwallex.test.ts`):
 
 - It sends the very same create again, under the **same `request_id`**, after 15, 30, 60, 90 and 120 s (5 min 15 s
-  in all). Airwallex keeps one transfer per `request_id`: a second create under it is answered `duplicate_request_id`,
-  never paid twice, and that answer goes through the adoption checks (this payout's amount, currency, payee, live).
+  in all). Airwallex documents `duplicate_request_id` for a second create under a `request_id` that already made a
+  transfer; that answer goes through the adoption checks (this payout's request_id, amount, currency, a payee that is
+  ours, live). An adoption whose payee Airwallex did not state raises an alarm (`transfer.payee_unconfirmed`, red on
+  the dashboard, a missed objective in System health): check the payee in the Airwallex web app.
 - Each refused attempt is an audit row `transfer.retry` with Airwallex's code, **trace id** (`x-b3-traceid`), request id
-  and message, and when the next attempt goes. The dashboard feed shows it: "Airwallex refused attempt 1 of the EUR
+  and message (Airwallex's free text is kept only for these two fee codes, redacted), and when the next attempt goes. The dashboard feed shows it: "Airwallex refused attempt 1 of the EUR
   240.00 payout (fee_unknown, trace …). Retried in 15 s under the same request_id; Airwallex refused each attempt so
   far".
 - It stops at once on any other answer; never makes an attempt at or after the approved terms' expiry (a proposal
-  lives 10 minutes); and stops if a hold is set during a wait (emergency stop, pause, velocity stop, blocked payee).
+  lives 10 minutes); and after each wait stops if a hold is set (emergency stop, pause, velocity stop, blocked payee),
+  the approved payee is no longer the supplier's active account, or EUR would now drop under its floor
+  (`transfer.retry_stopped`).
+- Attempts 2 to 6 are resends under the same `request_id`. After them, a refusal closes the row only when a strict
+  look-up by `request_id` finds nothing; a transfer found is adopted if it is this payout. If the look-up fails, the
+  row stays SUBMITTING (`transfer.left_open`, red): see step 3.
 - If an attempt goes through, it is a normal payout: settled, the fee recorded and judged against the SWIFT ceiling.
 
 **What a person does:**
