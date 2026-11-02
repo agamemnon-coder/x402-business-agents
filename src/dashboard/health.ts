@@ -55,7 +55,7 @@ export interface AgentHealth {
 }
 
 export interface Slo {
-  id: "decision_latency" | "double_payments" | "missing_origin" | "fallbacks" | "audit_chain" | "finality";
+  id: "decision_latency" | "double_payments" | "missing_origin" | "fallbacks" | "audit_chain" | "finality" | "payee_confirmed";
   objective: string;
   /** True met, false missed, null no data to judge it by. */
   met: boolean | null;
@@ -197,6 +197,14 @@ export function systemHealth(db: DB, now = new Date()): SystemHealth {
     id: "fallbacks", objective: "fallbacks under 10% of decisions", met: decisions ? fallbacks / decisions < FALLBACK_SLO_SHARE : null,
     actual: decisions ? `${pct(fallbacks, decisions).toFixed(1)}% (${fallbacks} of ${decisions})` : "no decisions yet",
     detail: agents.filter((a) => a.fallback_pct > 0).map((a) => `${a.agent} ${a.fallback_pct}%`).join(", "),
+  });
+  // 4b. Every adopted payout's payee confirmed by Airwallex: one adopted on request_id, amount and currency alone
+  // (Airwallex's answer did not state the payee) is an alarm until a person checks it (src/executors/invoicePayment.ts).
+  const adoptedN = rows.filter((r) => r.event === "transfer.adopted").length;
+  const unconfirmed = rows.filter((r) => r.event === "transfer.payee_unconfirmed");
+  slos.push({
+    id: "payee_confirmed", objective: "every adopted payout's payee confirmed by Airwallex", met: unconfirmed.length ? false : adoptedN ? true : null,
+    actual: adoptedN ? `${unconfirmed.length} of ${adoptedN} not confirmed` : "no adopted payouts", detail: unconfirmed.map((r) => `transfer ${r.subject ?? "?"}`).join(", "),
   });
   // 5. Verify, offline: the audit chain and the stored finality certificates (npm run verify runs these and more).
   const chain = verifyAuditChain(db);

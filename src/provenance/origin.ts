@@ -1,13 +1,16 @@
 // D24: who decided a money movement, recorded when the action starts and never worked out afterwards.
 //
 // An origin travels with the code path that starts a money action (Node's AsyncLocalStorage), and into a subprocess
-// that a tool starts through the environment (KIT11_ORIGIN). It is set at four doors only:
+// that a tool starts through the environment (KIT11_ORIGIN). It is set at five doors only:
 // - the agent loop, around each tool call: the agent, the Claude model, the API request id of the answer that asked
 //   for the tool, and the run id (src/agents/loop.ts);
 // - the executor, around an approved proposal: the approval and the CFO's passkey, and the controller's with four eyes;
 // - code's own automatic paths, named by their rule (a refund within the automatic limits, a purchase under the buy
 //   policy), which replace any agent origin around them;
-// - the doors where outside money arrives: a customer's payment, a retailer's deposit, a merchant's card charge.
+// - the doors where outside money arrives: a customer's payment, a retailer's deposit, a merchant's card charge;
+// - the CFO's own commands that change the ledger's money state without moving money, named by the command
+//   (`npm run reconcile -- --close-unsent`, src/finance/closeUnsent.ts: it closes a payout row Airwallex holds nothing
+//   under; it moves no money, and a new proposal for that invoice still needs Face ID).
 // Every money event in the audit chain records the origin in force when it is written (src/audit/log.ts), or null:
 // a null is an error the origins check counts (src/provenance/check.ts), never a guess.
 
@@ -34,13 +37,16 @@ const CodeOrigin: z.ZodType<Code> = z.strictObject({
   /** The decision code follows, when someone set it: the buy policy an agent's Claude run set, for one. */
   set_by: z.lazy(() => OriginSchema).optional(),
 });
+/** The CFO's own command (the fifth door): it moves no money, and says so. */
+const CfoCommandOrigin = z.strictObject({ actor: z.literal("cfo-command"), command: Id, moves_money: z.literal(false) });
 const ExternalOrigin = z.strictObject({ actor: z.literal("external"), party: z.enum(["customer", "supplier", "retailer", "merchant", "sender", "outside_agent"]), name: Id.optional() });
-const OriginSchema: z.ZodType<Origin> = z.union([AgentOrigin, CfoOrigin, CodeOrigin, ExternalOrigin]) as never;
+const OriginSchema: z.ZodType<Origin> = z.union([AgentOrigin, CfoOrigin, CodeOrigin, CfoCommandOrigin, ExternalOrigin]) as never;
 
 export type Origin =
   | z.infer<typeof AgentOrigin>
   | z.infer<typeof CfoOrigin>
   | Code
+  | z.infer<typeof CfoCommandOrigin>
   | z.infer<typeof ExternalOrigin>;
 
 /** The events that move money (or refuse to): each records its origin. The money flow shows exactly these. */
@@ -52,6 +58,12 @@ export const MONEY_EVENTS = new Set([
   "quarantine.held", "quarantine.returned", "quarantine.accepted",
   // After a crash the action is found at the outside service and adopted, never sent twice: the same money movement.
   "transfer.adopted", "fx.adopted", "credit.adopted", "transfer.refused", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
+  // A transfer create Airwallex refused for its fee configuration, retried under the same request_id (each attempt).
+  "transfer.retry", "transfer.retry_stopped", "transfer.left_open",
+  // An alarm on a payout: Airwallex holds a transfer the ledger's row does not show (src/executors/invoicePayment.ts).
+  "transfer.row_conflict",
+  // A payout row with no transfer behind it, closed by the CFO's command after a look-up (src/finance/closeUnsent.ts).
+  "transfer.closed_unsent",
   // Test money for a fresh world, and the passkey owners' own transfer.
   "business.funded", "treasury.seeded", "owners.sent",
 ]);

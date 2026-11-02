@@ -71,6 +71,13 @@ export async function blockedByMandate(db: DB, now = new Date(), capCents?: numb
   };
 }
 
+/** Facts: the latest euro payouts Airwallex refused or that were closed with nothing paid, whose invoice is still unpaid. */
+function refusedPayouts(db: DB): string[] {
+  const rows = db.prepare(`SELECT t.invoice_no, t.amount, t.currency, t.failure_type, t.updated_at FROM transfers t WHERE t.status = 'CANCELLED' AND t.transfer_id IS NULL
+    AND NOT EXISTS (SELECT 1 FROM transfers o WHERE o.invoice_no = t.invoice_no AND o.status <> 'CANCELLED') ORDER BY t.updated_at DESC LIMIT 3`).all() as { invoice_no: string; amount: string; currency: string; failure_type: string | null; updated_at: string }[];
+  return rows.map((r) => `Payout of invoice ${r.invoice_no} (${r.currency} ${r.amount}) ${r.failure_type === "closed_unsent" ? "closed by the CFO as never sent" : `refused by Airwallex (${r.failure_type ?? "no code"})`} at ${r.updated_at.slice(11, 16)} UTC; nothing was paid and that payout is closed.`);
+}
+
 const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'PENDING_APPROVAL' AND expires_at > ?").all(kind, new Date().toISOString()) as { proposal_id: string }[];
 const lastFrom = (db: DB, from: string) => (db.prepare("SELECT text FROM agent_messages WHERE from_agent = ? AND to_agent = 'treasury' ORDER BY id DESC LIMIT 1").get(from) as { text: string } | undefined)?.text;
 
@@ -120,6 +127,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
       (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
+      ...refusedPayouts(db),
     ].join("\n");
   };
   return {

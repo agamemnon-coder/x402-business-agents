@@ -113,7 +113,8 @@ export function transportFromEnv(db: DB, env: Env = process.env): TapTransport {
 
 /** The origin in force with the TAP evidence added (code's own, naming the rail, when nothing decided around it). */
 function withTap(base: Origin | null, agent: string, tap: TapEvidence): Origin {
-  if (base && base.actor !== "external") return { ...base, tap };
+  // A CFO command moves no money, so it never stands behind a purchase: code's own origin then, as with none.
+  if (base && base.actor !== "external" && base.actor !== "cfo-command") return { ...base, tap };
   return { actor: "code", rule: RULE, agent, tap };
 }
 

@@ -73,6 +73,18 @@ omdat Support elke order op de chain controleert.
 - **Iets lijkt niet goed.** Max drukt op de noodstop (Face ID). Alle agents stoppen direct. Daarna gaan we verder met het
   gewone draaiboek.
 - **Claude API weg.** Eén nieuwe poging, daarna beslist de code met een label. De run gaat door.
+- **Airwallex weigert de factuurbetaling met `fee_unknown`** (zoals de licentie in agent-run 1). Dat ligt aan
+  Airwallex' sandbox, niet aan ons. Wat Max ziet terwijl de code opnieuw probeert:
+  - De telefoon zegt "approved"; het voorstel staat op "executing", tot ongeveer 5 minuten.
+  - Op het dashboard per poging een regel: "Airwallex refused attempt 1 of the EUR 240.00 payout (fee_unknown, trace …).
+    Retried in 15 s under the same request_id; Airwallex refused each attempt so far". Daarna 30, 60, 90 en 120 s.
+  - Lukt een poging: de gewone regels "SWIFT transfer … created" en "Transfer PAID". Klaar.
+  - Lukt geen enkele: "Execution stopped" met de code, het trace-id en de tekst van Airwallex, en "Payout refused by
+    Airwallex … the payout is closed". Er is niets betaald.
+
+  Max tikt niet opnieuw en keurt geen tweede voorstel goed zolang het loopt. Dezelfde request_id kan niet twee keer
+  betalen. Na een weigering mag Treasury de factuur opnieuw voorstellen: een nieuw voorstel, een nieuwe Face ID. Claude
+  stuurt de trace-id's naar Airwallex. Zie [../runbook.md](../runbook.md), "`fee_unknown` on a payout".
 
 ## Eerlijk erbij zeggen
 

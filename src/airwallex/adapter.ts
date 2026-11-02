@@ -49,6 +49,17 @@ function toTransfer(t: AwxTransfer): Transfer {
   };
 }
 
+/**
+ * The one item of a GET /transfers?request_id=… answer, or undefined for an empty list. Throws when the list was not
+ * filtered by the request_id (another request_id in it, or more pages) or holds two: never read as "nothing".
+ */
+export function onlyRequestId<T extends { request_id?: unknown }>(r: { items?: T[]; has_more?: unknown } | null | undefined, requestId: string): T | undefined {
+  if (!r || !Array.isArray(r.items)) throw new Error("Airwallex's transfer list came without items");
+  if (r.has_more === true || r.items.some((x) => x.request_id !== requestId)) throw new Error("Airwallex's transfer list was not filtered by the request_id");
+  if (r.items.length > 1) throw new Error(`Airwallex lists more than one transfer under request_id ${requestId}`);
+  return r.items[0];
+}
+
 export class AirwallexRest implements AirwallexRail, SandboxSim {
   private usdAccount: string | undefined;
 
@@ -190,6 +201,12 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
   async findTransferByRequestId(requestId: string): Promise<Transfer | undefined> {
     const r = await this.api.call<{ items: AwxTransfer[] }>("GET", "/transfers", undefined, { request_id: requestId });
     const hit = r.items.find((t) => t.request_id === requestId);
+    return hit && toTransfer(hit);
+  }
+
+  async findTransferByRequestIdStrict(requestId: string): Promise<Transfer | undefined> {
+    const r = await this.api.call<{ items?: AwxTransfer[]; has_more?: unknown }>("GET", "/transfers", undefined, { request_id: requestId });
+    const hit = onlyRequestId(r, requestId);
     return hit && toTransfer(hit);
   }
 

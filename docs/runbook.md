@@ -185,21 +185,76 @@ resent); `reconciliation_stale` after three hours.
    - **A proposal that ended FAILED is looked up by nothing automatic.** Its payout row stays SUBMITTING (under way, and
      blocking a second payout of the invoice). Run `npm run reconcile` once Airwallex is back: it looks up every payout
      row without a transfer id by its `request_id` and raises a `reconciliation_difference` if Airwallex holds a
-     transfer. Then a person checks that transfer in the Airwallex web app before anything else is done.
+     transfer. Then a person checks that transfer in the Airwallex web app before anything else is done. If Airwallex
+     holds nothing, the row is closed with `npm run reconcile -- --close-unsent <request_id>` (below).
    - An approved proposal waits; its quote may expire, and an expired one needs a new quote and Face ID (never force it).
 2. **Do not approve new invoice payments** until `npm run health` passes: a quote cannot be had, and planning escalates
    with nothing moved.
 3. **Cards:** while Airwallex is down, Airwallex itself declines; Purser records nothing it did not see. When it is
    back, the poll and the webhooks record what happened, once each.
 4. **When it is back:** `npm run reconcile`, `npm run verify` (with keys), `/health` clean. A payout that Airwallex
-   refused on its very first create (`fee_unknown`, `balance_insufficient`, …) is closed in the ledger with its code
-   (a resend never closes it). **Before the invoice is proposed again**, check Airwallex by that `request_id`: the
-   reconciliation must show no difference for it (it looks closed rows up too), or look it up in the Airwallex web
-   app. Only when Airwallex holds no transfer under it is a new proposal made, which needs Face ID.
+   refused on its very first create (`fee_unknown` after its retries, `balance_insufficient`, …) is closed in the
+   ledger with its code (a resend never closes it). **Before the invoice is proposed again**, the plan itself asks
+   Airwallex by that `request_id` (since 2 November): a transfer there stops the plan with an alarm
+   (`transfer.found_after_close`), and no answer stops it too. The reconciliation looks closed rows up for 7 days after their close. A new
+   proposal needs Face ID.
 
 Known Airwallex answers that are not an outage: `unconfigured_client_fee` on FX in the first minutes after an account
 is activated (wait a few minutes); `401 Insufficient permissions` names a permission the scoped key lacks (Max adds
-it in the web app).
+it in the web app); `fee_unknown` on a payout (next section).
+
+#### `fee_unknown` on a payout during a live run (added 2 November, after agent run 1)
+
+Agent run 1, 11:01 UTC: Max approved P-0005 (the EUR 240.00 licence, EUR balance, no FX) and Airwallex answered
+`400 fee_unknown` ("There is a problem with your transfer fee configuration…"). Nothing was made. The same payout had
+been paid 5 times that day, so the cause is Airwallex's sandbox fee configuration, and it is transient. Airwallex staff
+advise a retry with some backoff on `fee_unknown` and `unconfigured_client_fee` (they measured 33 s to 3.2 min).
+
+**What code does by itself** (`src/executors/invoicePayment.ts`, `createWithFeeRetry`; `test/contract/airwallex.test.ts`):
+
+- It sends the very same create again, under the **same `request_id`**, after 15, 30, 60, 90 and 120 s (5 min 15 s
+  in all). Airwallex documents `duplicate_request_id` for a second create under a `request_id` that already made a
+  transfer; that answer goes through the adoption checks (this payout's request_id, amount, currency, a payee that is
+  ours, live). An adoption whose payee Airwallex did not state raises an alarm (`transfer.payee_unconfirmed`, red on
+  the dashboard, a missed objective in System health): check the payee in the Airwallex web app.
+- Each refused attempt is an audit row `transfer.retry` with Airwallex's code, **trace id** (`x-b3-traceid`), request id
+  and message (Airwallex's free text is kept only for these two fee codes, redacted), and when the next attempt goes. The dashboard feed shows it: "Airwallex refused attempt 1 of the EUR
+  240.00 payout (fee_unknown, trace …). Retried in 15 s under the same request_id; Airwallex refused each attempt so
+  far".
+- It stops at once on any other answer; never makes an attempt at or after the approved terms' expiry (a proposal
+  lives 10 minutes); and after each wait stops if a hold is set (emergency stop, pause, velocity stop, blocked payee),
+  the approved payee is no longer the supplier's active account, or EUR would now drop under its floor
+  (`transfer.retry_stopped`).
+- Attempts 2 to 6 are resends under the same `request_id`. After them, a refusal closes the row only when a strict
+  look-up by `request_id` finds nothing; a transfer found is adopted if it is this payout. If the look-up fails, the
+  row stays SUBMITTING (`transfer.left_open`, red): see step 3.
+- If an attempt goes through, it is a normal payout: settled, the fee recorded and judged against the SWIFT ceiling.
+
+**What a person does:**
+
+1. **Nothing while it retries.** Max does not tap again and approves no second proposal for the invoice. The proposal
+   shows as executing for up to about 5 minutes. The emergency stop is safe (nothing is paid by a refused attempt;
+   the retries stop), but only pull it for another reason.
+2. **If every attempt is refused:** the proposal ends FAILED with the code, trace id and Airwallex's message
+   (`proposal.failed`), and the payout row is closed (`transfer.refused`, CANCELLED). Send Airwallex the trace ids from
+   the `transfer.retry` and `transfer.refused` rows (and the time, UTC). Then the invoice can be planned again
+   (Treasury's `plan_invoice`, or `npm run licence`): the plan first asks Airwallex by the closed `request_id`, and the
+   new proposal needs a new Face ID.
+3. **If the payout row stays SUBMITTING** with nothing behind it: a resend was refused (a resend never closes the row),
+   or the process died between writing the row and the first send (re-review, 2 November), or the row predates
+   78a761b (agent run 1's `bc1aca54-1629-401d-8693-e460d5a5c9ff` in `data/agent-1.sqlite`). It blocks the invoice
+   until it is closed by the CFO's command:
+
+   ```
+   KIT11_DB=data/agent-1.sqlite npm run reconcile -- --close-unsent bc1aca54-1629-401d-8693-e460d5a5c9ff
+   ```
+
+   It reads Airwallex (with the sandbox keys) and never writes to it. It closes the row (CANCELLED, `closed_unsent`,
+   audited as `transfer.closed_unsent` with the command as origin) only when: the row is SUBMITTING with no transfer
+   id; its proposal is not approved or executing and is past its expiry; the row and proposal were quiet for 30
+   minutes; a look-up by `request_id` finds no transfer (a list that was not filtered, or no answer, is a refusal); and
+   nothing changed while Airwallex was asked. Any other case: `REFUSED` with the reason, nothing changed. After a close,
+   `npm run reconcile` looks the row up for 7 more days; then the invoice is planned again as in step 2.
 
 #### A Metal outage: what to do (added 2 November)
 

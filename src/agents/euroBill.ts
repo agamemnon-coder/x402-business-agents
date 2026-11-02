@@ -172,6 +172,28 @@ export async function proposeInvoicePayment(
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
     return { kind: "escalated", reason };
   }
+  // An earlier payout of this invoice closed with no transfer id (refused at its first create, or closed by the CFO's
+  // --close-unsent): before it is planned again, Airwallex is asked by that request_id (re-review, 2 November). A
+  // transfer there means money may have left: no plan, an alarm. No answer: no plan either, until Airwallex answers.
+  const closed = (db.prepare("SELECT request_id, invoice_no FROM transfers WHERE status = 'CANCELLED' AND transfer_id IS NULL").all() as { request_id: string; invoice_no: string }[])
+    .filter((r) => invoiceKey(r.invoice_no) === invoiceKey(inv.invoice_no));
+  for (const c of closed) {
+    let held: Awaited<ReturnType<AirwallexRail["findTransferByRequestIdStrict"]>>;
+    try {
+      // Strict: a list that ignored the filter is an error here, never "nothing" (else the invoice could be paid twice).
+      held = await rail.findTransferByRequestIdStrict(c.request_id);
+    } catch (e) {
+      const reason = `Airwallex could not be asked whether the closed payout ${c.request_id} of invoice ${c.invoice_no} exists after all (${(e as Error).message}); nothing is planned until it answers`;
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+      return { kind: "escalated", reason };
+    }
+    if (held) {
+      audit(db, "treasury", "transfer.found_after_close", held.id, { request_id: c.request_id, invoice_no: c.invoice_no, status: held.status, amount: `${held.currency} ${fromCents(held.amountCents)}` }, now);
+      const reason = `Airwallex holds transfer ${held.id} (${held.currency} ${fromCents(held.amountCents)}, ${held.status}) under the payout ${c.request_id} that the ledger closed for invoice ${c.invoice_no}; it is not planned again. A person checks it now (npm run reconcile)`;
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+      return { kind: "escalated", reason };
+    }
+  }
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ibanSha(inv.iban), inv.bic, check.beneficiaryId, sha256Hex(invoiceText), JSON.stringify(inv));
 

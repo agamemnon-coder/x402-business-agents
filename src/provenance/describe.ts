@@ -12,6 +12,7 @@ export function describeOrigin(o: Origin | null): { model: string | null; decide
   switch (o.actor) {
     case "agent": return { model: o.model, decided: `${AGENT_WORDS[o.agent] ?? o.agent} (${MODEL_WORDS[o.model] ?? o.model}) decided`, ...(o.request_id ? { request: o.request_id } : {}) };
     case "cfo": return { model: null, decided: o.cosigner ? "two people approved it, each with their own Face ID (four eyes)" : `the CFO approved it with ${o.method === "passkey" ? "Face ID" : `a ${o.method} approval`}` };
+    case "cfo-command": return { model: null, decided: `the CFO ran ${o.command} (it moves no money)` };
     case "code": return { model: null, decided: `code: ${o.rule}${o.set_by ? `, as ${describeOrigin(o.set_by).decided.replace(/ decided$/, "")} set it` : ""}` };
     case "external": return { model: null, decided: o.party === "customer" ? "Summit's agent paid (the simulated customer)" : o.party === "retailer" ? `${o.name ?? "a retailer"} paid (a retailer)` : o.party === "merchant" ? `${o.name ?? "the merchant"} charged the card` : o.party === "outside_agent" ? `${o.name ?? "an outside agent"} paid (an outside agent)` : o.party === "supplier" ? `${o.name ?? "a supplier"} paid` : "an outside sender paid in" };
   }

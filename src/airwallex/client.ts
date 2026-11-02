@@ -2,7 +2,16 @@
 // Calls run one at a time, at most 5 per second, with backoff on 429. Money-moving creates always
 // carry a caller-chosen request_id, so a retry after a timeout cannot create a second payment.
 
+import { redactSecrets } from "../lib/redact.js";
+
 export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
+
+/**
+ * Airwallex's answers about its own fee configuration (agent run 1). Only for these is its free-text message kept
+ * (redacted): it is what Airwallex support asks for. Any other error keeps only its code and the trace and request ids,
+ * since the message can name a payee or bank details, and audit fields feed the dashboard and the public relay.
+ */
+export const AIRWALLEX_FEE_CODES: ReadonlySet<string> = new Set(["fee_unknown", "unconfigured_client_fee"]);
 
 export interface AirwallexConfig {
   clientId: string;
@@ -17,14 +26,45 @@ export interface AirwallexConfig {
   timeoutMs?: number;
 }
 
+/** What Airwallex needs to find one request in its own logs: the response's trace and request ids. */
+export interface AirwallexTrace {
+  traceId?: string | null;
+  requestId?: string | null;
+}
+
+/** A header value kept only when it is a plain id: nothing from a header goes into a log as it came. */
+const plainId = (v: string | null | undefined): string | null => (v && /^[A-Za-z0-9._:-]{1,128}$/.test(v) ? v : null);
+
+/** The trace headers of an Airwallex answer (x-b3-traceid; x-request-id or request-id), if present. */
+export function traceOf(headers: Headers): AirwallexTrace {
+  return { traceId: plainId(headers.get("x-b3-traceid")), requestId: plainId(headers.get("x-request-id") ?? headers.get("request-id")) };
+}
+
 export class AirwallexError extends Error {
+  /** The error body, redacted (never a key or token, even one Airwallex echoes back). */
+  readonly body: unknown;
+  /** Airwallex's x-b3-traceid for this answer, so the request can be shown to Airwallex (agent run 1, 2 November). */
+  readonly traceId: string | null;
+  /** Airwallex's request id header for this answer (not our request_id), if it sent one. */
+  readonly awxRequestId: string | null;
+  /** Airwallex's own words, for the fee codes only (AIRWALLEX_FEE_CODES), redacted, at most 300 characters; else null. */
+  readonly awxMessage: string | null;
+
   constructor(
     readonly status: number,
     readonly code: string | undefined,
-    readonly body: unknown,
+    body: unknown,
     readonly path: string,
+    trace: AirwallexTrace = {},
   ) {
-    super(`Airwallex ${path} -> ${status}${code ? ` ${code}` : ""}`);
+    const message = (body as { message?: unknown } | null)?.message;
+    const awxMessage = AIRWALLEX_FEE_CODES.has(code ?? "") && typeof message === "string" && message.trim() ? redactSecrets(message.trim()).slice(0, 300) : null;
+    const traceId = plainId(trace.traceId);
+    super(`Airwallex ${path} -> ${status}${code ? ` ${code}` : ""}${awxMessage ? `: ${awxMessage}` : ""}${traceId ? ` (trace ${traceId})` : ""}`);
+    this.body = redact(body);
+    this.traceId = traceId;
+    this.awxRequestId = plainId(trace.requestId);
+    this.awxMessage = awxMessage;
   }
 }
 
@@ -85,7 +125,7 @@ export class Airwallex {
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     const body = (await res.json().catch(() => ({}))) as { token?: string; code?: string };
-    if (!res.ok || !body.token) throw new AirwallexError(res.status, body.code, redact(body), "/authentication/login");
+    if (!res.ok || !body.token) throw new AirwallexError(res.status, body.code, body, "/authentication/login", traceOf(res.headers));
     this.token = { value: body.token, expiresAt: this.now() + TOKEN_LIFETIME_MS };
     return body.token;
   }
@@ -125,10 +165,10 @@ export class Airwallex {
           continue;
         }
         const json = (await res.json().catch(() => null)) as unknown;
-        if (res.status >= 500 && method === "POST") throw new AirwallexAmbiguous(path, new AirwallexError(res.status, undefined, json, path));
+        if (res.status >= 500 && method === "POST") throw new AirwallexAmbiguous(path, new AirwallexError(res.status, undefined, json, path, traceOf(res.headers)));
         if (!res.ok) {
           const code = (json as { code?: string } | null)?.code;
-          throw new AirwallexError(res.status, code, json, path);
+          throw new AirwallexError(res.status, code, json, path, traceOf(res.headers));
         }
         return json as T;
       }
