@@ -48,7 +48,7 @@ describe("relay Worker: security headers on every answer", () => {
   const page = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages)!;
 
   it("every page: its own strict CSP, HSTS, nosniff, no-referrer, same-origin opener, passkeys for this site only", () => {
-    for (const path of ["/", "/month", "/demo", "/live", "/film", "/try", "/lab", "/metal", "/visa", "/metal/report", "/approve/P-0001", "/enrol", "/policy"]) {
+    for (const path of ["/", "/home", "/watch", "/proof", "/month", "/film", "/try", "/lab", "/metal", "/visa", "/airwallex", "/claude", "/metal/report", "/approve/P-0001", "/enrol", "/policy"]) {
       const res = page(path);
       expect(res, path).not.toBeNull();
       expectCommon(res, path);
@@ -56,6 +56,15 @@ describe("relay Worker: security headers on every answer", () => {
       expect(res.headers.get("cross-origin-opener-policy"), path).toBe("same-origin");
       expect(res.headers.get("permissions-policy"), path).toMatch(/publickey-credentials-get=\(self\).*camera=\(\)/);
       expect(res.headers.get("x-robots-tag"), path).toBe("noindex, nofollow");
+    }
+  });
+
+  it("old public addresses redirect to the four tabs, with the common headers", () => {
+    for (const [from, to] of [["/live", "/watch"], ["/demo", "/watch"]] as const) {
+      const res = page(from);
+      expect(res.status, from).toBe(302);
+      expect(res.headers.get("location"), from).toBe(to);
+      expectCommon(res, from);
     }
   });
 

@@ -1,4 +1,4 @@
-// The guest pages as a juror opens them, with no key: /, /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /demo (every step) and /month (start and end), at phone
+// The guest pages as a juror opens them, with no key: / (to /home), /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirects), /month (start and end), at phone
 // (390 px) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
@@ -76,30 +76,15 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
     page.on("requestfailed", (r) => fail(`${tag} ${page.url()}: request failed: ${r.url()}`));
 
+    // A guest who opens "/" is sent to Home (the four tabs are checked in test/browser/redesign.check.ts).
     await page.goto(`${base}/`, { waitUntil: "load" });
-    // Long enough for a page that polls to show it (it must not, without a key).
-    await page.waitForTimeout(2500);
-    await look(page, `/ ${tag}`, w);
-    if (!(await page.isVisible("text=Judge tour · 3 minutes"))) fail(`/ ${tag}: no "Judge tour" button for a guest`);
-    if ((await page.locator("#tour .tsteps > li").count()) !== 5) fail(`/ ${tag}: the judge tour does not have five steps`);
-    if (!(await page.isVisible("#kitline"))) fail(`/ ${tag}: no Kit 11 line on the landing`);
-    // Design 4.1: the control tower from the recorded run, with its three agents and who enforced each refusal.
-    if (!(await page.isVisible("#l-tower"))) fail(`/ ${tag}: no control tower on the landing`);
-    if (!(await page.isVisible("#autonomy-cta"))) fail(`/ ${tag}: no way to the agents' dry run from the landing`);
-    if ((await page.locator("#l-t-agents .tagent").count()) !== 3) fail(`/ ${tag}: the control tower does not show three agents`);
-    if ((await page.locator("#l-enforced-body .tenf").count()) !== 3) fail(`/ ${tag}: "Enforced by" does not show Purser, Metal and Airwallex`);
-    // D23: the money, moving, from the recorded run: labelled a replay, each movement with its rail and its proof.
-    if (!(await page.isVisible("#l-mf"))) fail(`/ ${tag}: no money flow on the landing`);
-    if (!/Replay of the recorded run/.test(await page.locator("#l-mf .hint").innerText())) fail(`/ ${tag}: the money flow is not labelled a replay`);
-    if (!/Proof: /.test(await page.locator("#l-mf .mf-cap").innerText())) fail(`/ ${tag}: a money movement without its proof`);
-    if ((await page.locator("#l-mf .mf-dots i").count()) < 5) fail(`/ ${tag}: the money flow shows fewer than five movements`);
+    await page.waitForURL(/\/home$/).catch(() => fail(`/ ${tag}: a guest is not sent to /home`));
+    await page.waitForTimeout(1500);
+    await look(page, `/home ${tag}`, w);
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
-    if (w >= 500) {
-      await page.click("#signin-link");
-      await page.waitForURL(/[?&]signin/);
-    } else await page.goto(`${base}/?signin`, { waitUntil: "load" });
+    await page.goto(`${base}/?signin`, { waitUntil: "load" });
     await page.waitForTimeout(500);
     await look(page, `/?signin ${tag}`, w);
     if (!(await page.isVisible("text=How the CFO signs in"))) fail(`/?signin ${tag}: no explanation`);
@@ -168,16 +153,11 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (/USDZ|\$\s?\d/.test(bk)) fail(`/?recorded&books ${tag}: shows USDZ or dollars`);
     await page.screenshot({ path: join(shots, `books-${tag}.png`), fullPage: true });
 
-    // "Purser live": each scene, opened paused, shows its finished picture; nothing undefined, nothing too wide.
-    for (const id of ["title", "coins", "card", "refuse", "faceid", "invoice", "dispute", "ask", "fx", "wall", "end"]) {
-      await page.goto(`${base}/live?scene=${id}&autoplay=0`, { waitUntil: "load" });
-      await page.waitForTimeout(400);
-      await look(page, `/live ${id} ${tag}`, w);
-      const lv = await page.evaluate(() => document.body.innerText);
-      if (!/Recorded runs/.test(lv) || !/Source:/.test(lv)) fail(`/live ${id} ${tag}: no source or no honest label`);
-      if (/USDZ|\$\s?\d/.test(lv)) fail(`/live ${id} ${tag}: shows USDZ or dollars`);
+    // The old run replays redirect to Watch.
+    for (const path of ["/live", "/demo"]) {
+      await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!/\/watch$/.test(page.url())) fail(`${path} ${tag}: does not redirect to /watch`);
     }
-    await page.screenshot({ path: join(shots, `live-${tag}.png`), fullPage: true });
 
     // The Dispute desk of the recording: a case with its evidence, or a plain note.
     await page.goto(`${base}/?recorded&disputes`, { waitUntil: "load" });
@@ -194,7 +174,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.waitForTimeout(800);
     await look(page, `/?autonomy ${tag}`, w);
     const au = await page.evaluate(() => document.body.innerText);
-    if (!/Autonomous dry run · .* · test passkeys and test money · not a live run/.test(au)) fail(`/?autonomy ${tag}: not labelled as a dry run`);
+    if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(au)) fail(`/?autonomy ${tag}: not labelled as agent run 1`);
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
     if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
     if (!(await page.isVisible("#mf"))) fail(`/?autonomy ${tag}: no money flow`);
@@ -208,15 +188,6 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     const wrongly = await page.evaluate(() => Array.from(document.querySelectorAll(".agentchat li")).filter((li) => /Fallback \(code\)/.test(li.textContent ?? "") && /Powered by Claude/.test(li.textContent ?? "")).length);
     if (wrongly) fail(`/?autonomy ${tag}: ${wrongly} code fallback lines say Powered by Claude`);
     await page.screenshot({ path: join(shots, `autonomy-${tag}.png`), fullPage: true });
-
-    await page.goto(`${base}/demo`, { waitUntil: "load" });
-    const steps = await page.locator("#steps button").count();
-    if (steps < 5) fail(`/demo ${tag}: only ${steps} steps`);
-    for (let i = 0; i < steps; i++) {
-      await look(page, `/demo step ${i + 1} ${tag}`, w);
-      if (i === 0) await page.screenshot({ path: join(shots, `demo-${tag}.png`), fullPage: true });
-      if (i < steps - 1) await page.click("#next");
-    }
 
     for (const q of ["", "?at=end"]) {
       await page.goto(`${base}/month${q}`, { waitUntil: "load" });
@@ -327,7 +298,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       await page.goto(`${base}/visa`, { waitUntil: "load" });
       await look(page, `/visa ${tag}`, w);
       const vt = await page.evaluate(() => document.body.innerText);
-      if (!/not Visa-approved agents/.test(vt) || !/simulated authorisations/.test(vt)) fail(`/visa ${tag}: the honest label is missing`);
+      if (!/Their signatures are accepted by Visa's public TAP reference verifier \(pinned commit 16d59bd\)/.test(vt) || !/simulated authorisations/.test(vt) || /Dev test/.test(vt)) fail(`/visa ${tag}: the claim or the honest label is wrong`);
       await page.screenshot({ path: join(shots, `visa-${tag}.png`), fullPage: true });
     }
 
@@ -338,16 +309,15 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       await look(page, `${path} ${tag}`, w);
       const pt = await page.evaluate(() => document.body.innerText);
       for (const part of ["In our story", "What we use, and the proof", "Why an agent needs it", "What we do not do, or only simulate"]) if (!pt.includes(part)) fail(`${path} ${tag}: no "${part}"`);
-      if (!/Autonomous dry run · .* · test passkeys and test money · not a live run/.test(pt)) fail(`${path} ${tag}: the dry run is not labelled`);
-      if (!/Recorded run · .* · test money/.test(pt)) fail(`${path} ${tag}: the recorded run is not labelled`);
-      if (/live with Max/i.test(pt)) fail(`${path} ${tag}: says live with Max`);
+      if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: agent run 1 is not labelled`);
+      if (!/Archive: recorded run · .* · test money/.test(pt)) fail(`${path} ${tag}: the archived run is not labelled`);
       if ((await page.locator(`#features .card .docs a[href*="${docs}"]`).count()) < 4) fail(`${path} ${tag}: fewer than four features linked to the docs`);
       if ((await page.locator("#features .card .pf").count()) < 3) fail(`${path} ${tag}: fewer than three proofs`);
       if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
       if (path === "/claude") {
         if ((await page.locator(".agent").count()) !== 3) fail(`/claude ${tag}: not three agents`);
         const ag = await page.locator(".agents").innerText();
-        for (const want of [/Sourcing agent[\s\S]*Claude Haiku/, /Support agent[\s\S]*Claude Sonnet/, /Treasury agent[\s\S]*Claude Opus/, /decided by Claude/, /fallback \(code\)/, /request req_/]) if (!want.test(ag)) fail(`/claude ${tag}: the agents miss ${want}`);
+        for (const want of [/Sourcing agent[\s\S]*Claude Haiku/, /Support agent[\s\S]*Claude Sonnet/, /Treasury agent[\s\S]*Claude Opus/, /decided by Claude/i, /fallback \(code\)/, /request req_/]) if (!want.test(ag)) fail(`/claude ${tag}: the agents miss ${want}`);
         await page.locator("details.all > summary").click();
         if ((await page.locator("ol.dec li").count()) < 5) fail(`/claude ${tag}: the decisions list is short`);
         await look(page, `/claude decisions open ${tag}`, w);
@@ -380,4 +350,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live (every scene), /metal (every mandate), /metal/report, /visa, /airwallex, /claude, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /demo (every step), /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal (every mandate), /metal/report, /visa, /airwallex, /claude, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"} at 390 and 1440 px, light and dark (screenshots in ${shots})`);

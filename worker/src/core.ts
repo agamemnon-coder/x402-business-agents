@@ -34,6 +34,12 @@ export interface Pages {
   /** The partner pages (src/partners/), no script; absent in a bundle built before them. */
   airwallex?: string;
   claude?: string;
+  /** The redesign's public pages (Home, Watch, Proof), no key needed; absent in a bundle built before them. */
+  home?: string;
+  watch?: string;
+  proof?: string;
+  /** Old public addresses folded into the four tabs, and where they now go. */
+  redirects?: Record<string, string>;
   approve: string;
   enrol: string;
   /** The CFO policy editor. */
@@ -45,7 +51,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -100,6 +106,11 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
     },
   });
   if (path === "/") return page(pages.dashboard, pages.csp.dashboard);
+  if (path === "/home" && pages.home && pages.csp.home) return page(pages.home, pages.csp.home);
+  if (path === "/watch" && pages.watch && pages.csp.watch) return page(pages.watch, pages.csp.watch);
+  if (path === "/proof" && pages.proof && pages.csp.proof) return page(pages.proof, pages.csp.proof);
+  const moved = pages.redirects && Object.hasOwn(pages.redirects, path) ? pages.redirects[path] : undefined;
+  if (moved) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: moved } });
   if (path === "/month") return page(pages.month, pages.csp.month);
   if (path === "/demo") return page(pages.demo, pages.csp.demo);
   if (path === "/live") return page(pages.live, pages.csp.live);

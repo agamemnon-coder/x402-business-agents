@@ -165,7 +165,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       };
     },
     card: function (L) {
-      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Sourcing agent"), E("span", null, "Virtual")]), E("div", "n", "•••• " + d.card.last4), E("div", "b", null, [E("span", null, "Warehouse software"), E("span", "visa", "virtual Visa")])]), 140, 170);
+      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Sourcing agent"), E("span", null, "Virtual")]), E("div", "n", "•••• " + d.card.last4), E("div", "b", null, [E("span", null, "Card-only supplier"), E("span", "visa", "virtual Visa")])]), 140, 170);
       var lim = put(L, E("div", "h3", ""), 140, 520), bar = put(L, E("div", "bar"), 140, 580), bi = E("i"); bar.appendChild(bi);
       var t1 = put(L, toast("ok", d.card.merchant + " Starter", "approved by Airwallex", "€" + d.card.small), 760, 170);
       var t2 = put(L, toast("bad", d.card.merchant + " Pro", "declined by Airwallex: over the €" + d.card.from + " limit", "€" + d.card.big), 760, 300);
@@ -281,7 +281,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var s = put(L, E("div", "big ok", "0"), 760, 330), sl = put(L, E("div", "h3", "of " + d.trust.scenarios + " scenarios as expected"), 770, 530);
       var stop = put(L, E("div", "stop", "STOP"), 1450, 300);
       var minis = d.cards.map(function (c, i) { return put(L, E("div", "mini", null, [E("div", "t", c.name), E("div", "n", "•••• " + c.last4), E("div", "l", "")]), 140 + i * 340, 660); });
-      var eyes = put(L, E("div", "pill", "Optional: two people approve above a threshold"), 1180, 620);
+      var eyes = put(L, E("div", "pill", "Four eyes on chain: two signatures (second: a labelled test passkey)"), 1180, 620);
       var cost = put(L, E("div", "pill ai", "AI cost: " + d.trust.per1000 + " per €1,000 paid"), 1180, 720);
       var books = put(L, E("div", "pill", "Double-entry books, balanced"), 1180, 820);
       return function (t) {

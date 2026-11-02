@@ -56,7 +56,7 @@ displays was not checked.
 | Tests | 1074 in 136 files (31 Oct, evening) | `npx vitest run` | |
 | Speed limit (Sourcing agent) | 30 payments a minute, 4.00 test USD an hour | `src/config/policy.ts` `VELOCITY` | Kept on purpose, above the busiest minute of the recorded run (18). |
 | Hidden card payment | Found by the reconciliation within the hour, not prevented | `src/ops/health.ts` `RECONCILE_EVERY_MS`; red team `hidden-payment` | Was daily. The runner now reconciles every hour, and an alarm fires after three missed rounds. |
-| Four eyes | Optional, off in the recorded run | `src/policy/fourEyes.ts` | Was "Above your threshold, two different people approve". |
+| Four eyes | "Four eyes on chain: two signatures required (second approver = a labelled test passkey in this demo)". In agent run 1 (2 Nov) the mandate change P-0003 was signed by Max with Face ID and then by the test-controller, a labelled test passkey (`docs/demo/agent-run.json` `decisions[].by`); P-0001 set four eyes above EUR 1,000. Second approver: a labelled test passkey in this demo. In production this is a second person. | `src/policy/fourEyes.ts`, `docs/runs/2026-11-02-agent-run-1.md` | Was "Optional, off in the recorded run" (2 Nov). |
 | Four eyes on chain | A 2-of-2 Metal account (CFO + controller): the CFO's signature alone reverted on chain twice (a payment, a mandate revoke), and so did the CFO with a stranger's key; the CFO and the controller together passed. In a separate test world; Northwind's recorded account is one-owner | `docs/runs/2026-10-30-four-eyes.md`; `test/four-eyes-onchain.test.ts` | New (30 Oct). |
 | Emergency stop | Stops every agent payment and freezes every card at Airwallex | `test/freeze.test.ts`; Lab scenario | Now says it is tested against stand-ins and not yet run live. |
 | Airwallex webhooks | Subscribed to 23 events since 30 October (Max's go): card transactions, cards, payouts, conversions (not `conversion.overdue`: no permission) and deposits. Shown live: two deposits matched or escalated by the webhook alone, and a card transaction. Payout, conversion and card status events: subscribed, not yet caused live; covered by tests | `docs/runs/2026-10-30-webhooks.md`; `test/airwallex-events.test.ts` | Was "card transactions only". The pages show the webhook panel only when events exist; the recording has none. |
@@ -129,6 +129,28 @@ partners' own site maps (airwallex.com/docs, platform.claude.com/docs) on 2 Nove
 | Structured outputs, the cached system prompt, effort low (Opus medium), fallback to a plain parser | `docs/claude.md`; `src/claude/reader.ts` |
 | Not shown: not yet a live run with Max; in the recorded run code decided and Claude read and explained; variation test and red team with stand-in rails and Haiku only; list prices, not a bill | rows "Claude agents that decide", "Autonomous agents", "The variation test" above; `src/claude/pricing.ts` |
 | "Powered by Claude" with the Claude logo on a dark ground; no Visa logo on either page | `src/ui/logos/README.md`; the page check |
+
+## The four tabs (Home, Watch, Try, Proof; added 2 November)
+
+Home, Watch and Proof are built without hand-typed figures from agent run 1's record (`docs/demo/agent-run.json`,
+`npm run autonomy-record` on a copy of the agent-1 ledger; `src/redesign/run.ts`) and, for the Visa card, the live TAP
+run's record (`docs/runs/visa-tap-live-2026-11-02.json`). `test/redesign-numbers.test.ts` fails on any number on them
+that neither record holds (or that the test does not count again from the record), and `test/browser/redesign.check.ts`
+checks them at 390 and 1440 px, light and dark, with a link check. Old addresses redirect: `/live` and `/demo` to `/watch`.
+
+| Claim | Proof |
+|---|---|
+| "Replay of agent run 1 · 2 Nov · test money · real Claude decisions" | record `run`, `recorded_at`; `agent_stats` (26 of 26 by Claude, 0 fallback) |
+| Core sentence: "Claude agents handle the exceptions — price shocks, disputes, rebalancing. Routine runs at code speed. Metal and Airwallex enforce every limit; the CFO approves anything beyond them." | the three moments below; `src/config/brand.ts` `CORE_SENTENCE` |
+| The price rise: Stockline 0.02 → 0.04; refused on chain (tx `0x3ad8…a84d`); Treasury replans (`design_rebalance`); 2 of 2 signatures (Max and the test-controller); the mandate replaced, cap 0.04 | record `flows` (refused by metal, with tx), `agent_chat`, `traces`, `decisions` (`P-0003`, "Max & Test-controller · Face ID"), `tower` |
+| The dispute: 12 orders checked, the 3 wrong ones (#7, #10, #13) refunded by the Support agent, the CFO rejects the rest (P-0004) | record `traces` (dispute: 12 `verify_order`), `flows` (refunds with tx), `decisions` |
+| Earnings and euros: 1.97 swept after finality and booked at Airwallex; the EUR 240.00 licence approved with Face ID; Airwallex refused it (400 `fee_unknown`), nothing paid | record `flows` (sweep tx, deposit), `decisions` (`P-0005` FAILED), `refusals` ("P-0005 failed: Airwallex /transfers/create -> 400 fee_unknown"); the amount from the Treasury agent's own plan in `agent_chat` |
+| Scene 3's card buy signed with Visa TAP | the TAP run's record (labelled "TAP run · 2 Nov"), a separate run of the same day |
+| Five numbers: 26/26 by Claude; 85 payments inside the limits (62 of them the simulated customer's agent); 4 stopped (2 on chain, 1 by Airwallex, 1 by the CFO); 4 Face ID decisions; $0.0124 Claude cost per decision | record `agent_stats`, `counts.alone`, `flows[].refused`, `decisions`, `proof.face_id`, `agent_stats[].cost_usd_micros` (list prices) |
+| Four eyes: "1 of 2 → 2 of 2 signatures", second approver a labelled test passkey | record `decisions[].by`; the run log `docs/runs/2026-11-02-agent-run-1.md` |
+| World set-up: "the alternative supplier (Ridgeline) is offline in this world, so the price rise forces a choice. The agents were not told what to do." | the run log; record `agent_chat` (Ridgeline's maintenance notice) |
+| Proof: the variation test (20 of 20 by Claude, 0 unsafe, 2 different choices), the switch in dry-118 (Ridgeline online), the red team, system health (353 audit rows, chain intact) | `docs/evals/autonomy-variation.json`, `docs/demo/autonomy.json` (labelled with its own name), `docs/redteam/report.json`, `docs/evals/autonomy-redteam.json`, record `audit` |
+| "Built on" Airwallex, Metal, Claude (logos) and "Visa TAP" (text, no logo); the Kit line "· Metal Award + Visa Award" | `src/config/brand.ts` (`VISA_AWARD_ON`, on since the live TAP run and the interop test were green) |
 
 ## The video
 
