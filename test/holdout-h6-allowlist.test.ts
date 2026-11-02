@@ -144,3 +144,15 @@ describe("H6: plan_invoice's IBAN/BIC gate is unchanged (it reads the ledger's b
     expect(beneficiaries(db)).toBe(2);
   });
 });
+
+describe("H6: once the ledger holds a payee, the ledger alone speaks for it", () => {
+  it("a ledger whose account for a code payee differs from code's: only the ledger's is on the allowlist the facts read", () => {
+    const db = openDb(":memory:");
+    db.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES ('ben-x', ?, '0000', ?, 'COBADEFFXXX', 'EUR', 'SWIFT')")
+      .run(MANUFACTURER.name, ibanSha("DE44500105175407324931"));
+    const bergtex = payeeAllowlist(db).filter((p) => p.name === MANUFACTURER.name);
+    expect(bergtex).toEqual([{ name: MANUFACTURER.name, ibanSha256: ibanSha("DE44500105175407324931"), bic: "COBADEFFXXX" }]);
+    // The licensor, not in the ledger yet, comes from code.
+    expect(payeeAllowlist(db).filter((p) => p.name === LICENSOR.name)).toEqual([{ name: LICENSOR.name, ibanSha256: ibanSha(LICENSOR.iban), bic: LICENSOR.bic }]);
+  });
+});

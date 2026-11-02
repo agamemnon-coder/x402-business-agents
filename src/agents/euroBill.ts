@@ -59,17 +59,17 @@ export interface AllowlistedPayee { name: string; ibanSha256: string; bic: strin
 
 /**
  * The allowlist as it stands, for the agents' facts: the ledger's active beneficiaries, and each code payee
- * (ALLOWLISTED_PAYEES) whose account the ledger does not hold yet, exactly as seedTreasury will record it (holdout H6,
- * dry-177: before the first Treasury flow ran, the facts called the licensor "an unlisted vendor"). A code payee whose
- * account the ledger holds as REPLACED (a person changed it) is not added back. It reads only; it never writes a payee,
- * and paying still checks the ledger's own beneficiaries (checkInvoice).
+ * (ALLOWLISTED_PAYEES) the ledger holds no account for yet, exactly as seedTreasury will record it (holdout H6,
+ * dry-177: before the first Treasury flow ran, the facts called the licensor "an unlisted vendor"). Once the ledger
+ * holds any account under that name (active, or REPLACED by a person's payee change), only the ledger's is used.
+ * It reads only; it never writes a payee, and paying still checks the ledger's own beneficiaries (checkInvoice).
  */
 export function payeeAllowlist(db: DB): AllowlistedPayee[] {
   const rows = db.prepare("SELECT name, iban_sha256, bic, status FROM beneficiaries").all() as { name: string; iban_sha256: string; bic: string; status: string }[];
   const out: AllowlistedPayee[] = rows.filter((r) => r.status === "ACTIVE").map((r) => ({ name: r.name.trim(), ibanSha256: r.iban_sha256, bic: r.bic }));
+  // Once the ledger holds any account under a payee's name (active or replaced), the ledger alone speaks for it.
   for (const p of ALLOWLISTED_PAYEES) {
-    const sha = ibanSha(p.iban);
-    if (!rows.some((r) => r.iban_sha256 === sha)) out.push({ name: p.name, ibanSha256: sha, bic: p.bic });
+    if (!rows.some((r) => r.name.trim() === p.name)) out.push({ name: p.name, ibanSha256: ibanSha(p.iban), bic: p.bic });
   }
   return out;
 }
