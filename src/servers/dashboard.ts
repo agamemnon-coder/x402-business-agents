@@ -3,6 +3,7 @@
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
 import { visaPage } from "../visa/page.js";
+import { airwallexPage, claudePage } from "../partners/page.js";
 import { WORLD_CHANGES } from "../try/world.js";
 import { localTryAnswer } from "../try/local.js";
 import { buildFilm } from "../film/film.js";
@@ -155,6 +156,12 @@ export const METAL_CSP = cspFor(METAL_PAGE);
 export const VISA_PAGE = withNav(visaPage(), "visa");
 // No script on /visa: a style-only policy, as for the evidence report.
 export const VISA_CSP = ["default-src 'none'", `style-src ${inlineHash(VISA_PAGE, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
+/** The partner pages (src/partners/): Airwallex shows the 30 October recording too, so it carries the names note. No script. */
+export const AIRWALLEX_PAGE = withNav(withNamesNote(airwallexPage()), "airwallex");
+export const CLAUDE_PAGE = withNav(withNamesNote(claudePage()), "claude");
+const styleOnlyCsp = (page: string) => ["default-src 'none'", `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
+export const AIRWALLEX_CSP = styleOnlyCsp(AIRWALLEX_PAGE);
+export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
 export const METAL_REPORT = (() => {
   const c = metalData().dispute;
@@ -240,6 +247,14 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/visa", (_req, res) => {
     res.setHeader("Content-Security-Policy", VISA_CSP);
     res.type("html").send(VISA_PAGE);
+  });
+  app.get("/airwallex", (_req, res) => {
+    res.setHeader("Content-Security-Policy", AIRWALLEX_CSP);
+    res.type("html").send(AIRWALLEX_PAGE);
+  });
+  app.get("/claude", (_req, res) => {
+    res.setHeader("Content-Security-Policy", CLAUDE_CSP);
+    res.type("html").send(CLAUDE_PAGE);
   });
   app.get("/metal/report", (_req, res, next) => {
     if (!METAL_REPORT) return next();

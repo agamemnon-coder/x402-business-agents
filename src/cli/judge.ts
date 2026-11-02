@@ -9,7 +9,7 @@
 import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
-import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { localTryAnswer } from "../try/local.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
@@ -40,6 +40,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/lab", page(LAB_CSP, () => lab));
   app.get("/metal", page(METAL_CSP, () => METAL_PAGE));
   app.get("/visa", page(VISA_CSP, () => VISA_PAGE));
+  app.get("/airwallex", page(AIRWALLEX_CSP, () => AIRWALLEX_PAGE));
+  app.get("/claude", page(CLAUDE_CSP, () => CLAUDE_PAGE));
   const report = METAL_REPORT;
   if (report) app.get("/metal/report", page(METAL_REPORT_CSP, () => report));
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
@@ -68,7 +70,7 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
   const { server, url } = await startJudge(Number(process.env.PORT ?? 4311));
   if (args.includes("--check")) {
     let ok = true;
-    for (const path of ["/", "/metal", "/metal/report", "/visa", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
+    for (const path of ["/", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
       const res = await fetch(`${url}${path}`);
       const body = await res.text();
       const good = res.status === 200 && body.length > 1000;
@@ -84,6 +86,8 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
     `  ${url}/?recorded     the CFO dashboard at the end of the recorded run`,
     `  ${url}/live          the working day on two rails, Airwallex and Metal`,
     `  ${url}/try           type a task for an agent (offline, code reads it)`,
+    `  ${url}/airwallex     how Purser uses Airwallex, with this week's proof`,
+    `  ${url}/claude        how Purser uses Claude: each agent's model, cost and decisions`,
     `  ${url}/visa          agent recognition, then the agent's own Airwallex Visa card`,
     `  ${url}/demo          the run, step by step`,
     `  ${url}/month         a simulated month in 90 seconds`,
