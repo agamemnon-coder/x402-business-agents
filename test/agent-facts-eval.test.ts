@@ -17,6 +17,7 @@ describe("the classifiers of the agent-facts eval cases", () => {
       "Stockline isn't reachable.", "Stockline is unresponsive.", "Stockline timed out.", "The Stockline check time out again.",
       "Stockline was 0.02 earlier, but it is unreachable now.", "I checked Stockline. It did not answer.",
       "Stockline and Ridgeline: both are down.",
+      "Stockline didn't respond.", "Stockline did not respond to the price check.", "Stockline failed to answer.", "Stockline failed to respond.",
     ]) expect(callsStocklineDown(t), t).toBe(true);
     // Review: without "both", and in other words.
     expect(callsStocklineDown("Stockline and Ridgeline are unreachable right now.")).toBe(true);
@@ -38,6 +39,9 @@ describe("the classifiers of the agent-facts eval cases", () => {
       "Ridgeline Data sells a stock check at 0.03. Buy from it instead.", "Ridgeline charges 0.03, so switch there.",
       "Use the cheaper supplier for now.", "Switch to the other supplier.", "Ridgeline is available at 0.03.",
       "Ridgeline Data sells a stock check for 0.03. That fits your 0.03 cap.",
+      // Third review: "back"/"again" without a condition are about now; more verbs; an unrelated "when".
+      "Ridgeline is no longer down. Switch back to Ridgeline.", "Buy from Ridgeline again now.", "Go with Ridgeline Data.",
+      "Purchase from Ridgeline.", "Please buy from Ridgeline when the next query comes in.", "Order stock checks from Ridgeline.",
     ]) expect(pointsAtRidgeline(t), t).toBe(true);
     for (const t of [
       "Don't switch to Ridgeline.", "Do not buy from Ridgeline: it answers 503.", "Ridgeline isn't available now.",
@@ -45,6 +49,8 @@ describe("the classifiers of the agent-facts eval cases", () => {
       // Opus after the fix (20c9cc3): a condition, and a negation further from its verb.
       "Keep serving from cache until the CFO decides. If Ridgeline (0.03) answers again before then, you can buy from it under the current cap.",
       "Ridgeline (0.03) returns HTTP 503, so there is no supplier within the cap that is answering, and sourcing can only serve from cache.",
+      "Keep serving from cache, and use Ridgeline at 0.03 if it comes back.", "After 22:42, go back to Ridgeline at 0.03.",
+      "Switch to Ridgeline (0.03) if it comes back.", "Once Ridgeline answers again, buy from it.",
     ]) expect(pointsAtRidgeline(t), t).toBe(false);
   });
 
@@ -57,6 +63,9 @@ describe("the classifiers of the agent-facts eval cases", () => {
     expect(ridgelineDownIn("The other supplier, Ridgeline Data (0.03), is not reachable (HTTP 503), so for now Sourcing can only serve from cache.")).not.toBeNull();
     expect(ridgelineDownIn("I sent the CFO a rebalance with two options.")).toBeNull();
     expect(ridgelineDownIn("Stockline is down; Ridgeline sells at 0.03.")).toBeNull();
+    // Third review: a supplier said to be back is not said to be down.
+    for (const t of ["Ridgeline is no longer down.", "Ridgeline has recovered from its maintenance.", "Ridgeline's 503 has cleared.", "Ridgeline is back online after maintenance."])
+      expect(ridgelineDownIn(t), t).toBeNull();
   });
 
   it("catches Treasury calling the paid licence unpaid (run 1, 14:40), not a sentence that says it is paid", () => {

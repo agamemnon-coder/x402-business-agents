@@ -91,7 +91,7 @@ function costIn(db: DB): number {
 /** Splits a text into clauses: a fact about one supplier sits in one clause ("Stockline is at 0.04, and Ridgeline is down"); a decimal point does not split. */
 const clauses = (t: string) => t.split(/[;:,()]|\.(?!\d)|\bbut\b|\bwhile\b|\bwhereas\b|\band\b/i).map((c) => c.trim()).filter(Boolean);
 const sentences = (t: string) => t.split(/(?<=[.;!?])\s+/).filter(Boolean);
-const DOWN_WORDS = "unreachable|not reachable|isn't reachable|can(?:not|'t) be reached|not answering|not responding|unresponsive|no answer|did(?:n't| not) answer|timed? ?out|offline|\\bdown\\b|not available|unavailable";
+const DOWN_WORDS = "unreachable|not reachable|isn't reachable|can(?:not|'t) be reached|not answering|not responding|unresponsive|no answer|did(?:n't| not) (?:answer|respond)|failed to (?:answer|respond)|timed? ?out|offline|\\bdown\\b|not available|unavailable";
 const DOWN = new RegExp(DOWN_WORDS, "i");
 /** "Stockline and Ridgeline are unreachable": both named as one subject of a down word. */
 const BOTH_DOWN = new RegExp(`(stockline (and|&) ridgeline( data)?|ridgeline( data)? (and|&) stockline)( are| were| both| remain| stay| still| now| right| seem| appear| to be|\\s)*(${DOWN_WORDS})`, "i");
@@ -100,7 +100,7 @@ const STOCKLINE = /stockline/i;
 const RIDGELINE = /ridgeline|\bthe (other|alternative|cheaper|second|backup) (supplier|source|provider|one)\b|\bthe alternative\b/i;
 /** A clause that names no supplier but says "it", "there", "that"…, or has no subject ("(0.03) is down"), is about the supplier named last before it. */
 const PRONOUN = /\b(it|its|it's|there|they|them|that|this)\b/i;
-const NO_SUBJECT = /^(is|are|was|were|has|have|had|answers?|answered|remains?|stays?|seems?|appears?|sells?|charges?|costs?)\b/i;
+const NO_SUBJECT = /^(is|are|was|were|has|have|had|answers?|answered|remains?|stays?|seems?|appears?|sells?|charges?|costs?|fits?)\b/i;
 type Who = "stockline" | "ridgeline" | "both" | null;
 
 /** Each clause with the supplier it is about: named in it (the one named last if both), or carried by a pronoun. */
@@ -121,12 +121,18 @@ export function stocklineDownIn(text: string): string | null {
     ?? sentences(text).find((s) => BOTH_DOWN.test(s) || (/\b(both|all|neither|none)\b/i.test(s) && /stockline|suppliers/i.test(s) && DOWN.test(s))) ?? null;
 }
 
-const USE = /\b(buy|buying|bought|switch|switching|use|using|move|moving|instead|fits?|go to|route|order from|source from|available|reachable|answering|online|works|working)\b/i;
-const NOT_NOW = /down|offline|maintenance|not answering|unreachable|not reachable|unresponsive|503|unavailable|\bafter\b|\bonce\b|\bwhen\b|\buntil\b|\bback\b|\breturns?\b|\bagain\b|\blater\b/i;
+const USE = /\b(buy|buying|bought|purchase|purchasing|switch|switching|use|using|move|moving|instead|fits?|go to|go with|going with|route|order|ordering|source from|available|reachable|answering|online|works|working)\b/i;
+/** A clause that says Ridgeline is down, or speaks of later, is not pointing at it now ("back"/"again" alone are: "Switch back to Ridgeline"). */
+const NOT_NOW = /down|offline|maintenance|not answering|unreachable|not reachable|unresponsive|503|unavailable|\blater\b/i;
 /** "Don't switch to Ridgeline", "Ridgeline isn't available": a negation before the verb. */
 const NEGATED_USE = new RegExp(`\\b(don't|do not|doesn't|does not|didn't|never|not|avoid|stop|can't|cannot|won't|shouldn't|isn't|is not|aren't|no)\\b[^.]{0,60}?${USE.source}`, "i");
-/** A sentence about later or under a condition ("If Ridgeline answers again, you can buy from it") is not about now. */
-const LATER = /\b(if|once|when|after|until|again|back|returns?|comes? back)\b/i;
+/**
+ * A sentence under a condition on Ridgeline or a time ("If Ridgeline answers again, you can buy from it", "After 22:42, go
+ * back to Ridgeline") is not about now; one with an unrelated "when" ("buy from Ridgeline when the next query comes in") is.
+ */
+const LATER = /\b(if|once|when|after|until|unless|as soon as)\s+(ridgeline|it\b|it's|its|they|the other supplier|the maintenance|maintenance|\d\d:\d\d)/i;
+/** "Ridgeline is no longer down", "has recovered": said of a supplier that is back, not down. */
+const RECOVERED = /\bno longer (down|offline|in maintenance|unreachable|unavailable)|\brecovered\b|\bcleared\b|\bis back\b|\bback (up|online)\b|\banswers? again\b|\b(up|online|working) again\b/i;
 
 /** Where a text points at Ridgeline (or "the other supplier", or "it" after it) as usable now, else null. Not when negated, down, or for later. */
 export function ridgelinePointIn(text: string): string | null {
@@ -135,7 +141,7 @@ export function ridgelinePointIn(text: string): string | null {
 
 /** Where a text says Ridgeline is not usable now (down, offline, in maintenance, 503…), else null: the fact case 2 asks for. */
 export function ridgelineDownIn(text: string): string | null {
-  return clausesAbout(text).find((c) => c.who === "ridgeline" && (DOWN.test(c.clause) || /maintenance|503|not reachable/i.test(c.clause)))?.clause ?? null;
+  return clausesAbout(text).find((c) => c.who === "ridgeline" && !RECOVERED.test(c.sentence) && (DOWN.test(c.clause) || /maintenance|503|not reachable/i.test(c.clause)))?.clause ?? null;
 }
 
 const PAID = /\b(is|was|has been|been|now|already|as|shows?|marked) paid\b|\bpaid (at|on|by|through|via|under)\b|\bsettle[sd]?\b|nothing (is )?(owed|outstanding|unpaid|pending)/i;

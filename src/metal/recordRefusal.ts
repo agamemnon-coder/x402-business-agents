@@ -21,12 +21,12 @@ export interface RecordedRefusal { tx: string | null; reason: string }
 /** Key files being created in this process: two recordings at once create the key once (a failed creation is retried). */
 const creating = new Map<string, Promise<string>>();
 function gasKeyCreated(file: string): Promise<string> {
-  if (existsSync(file)) return Promise.resolve(file);
+  // The creation in flight first: its file may already exist half-written.
   let p = creating.get(file);
-  if (!p) {
-    p = metalAgentAsync(["key", "create", "--out", file]).then(() => file).finally(() => creating.delete(file));
-    creating.set(file, p);
-  }
+  if (p) return p;
+  if (existsSync(file)) return Promise.resolve(file);
+  p = metalAgentAsync(["key", "create", "--out", file]).then(() => file).finally(() => creating.delete(file));
+  creating.set(file, p);
   return p;
 }
 

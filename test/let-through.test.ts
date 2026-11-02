@@ -95,7 +95,8 @@ describe("(a) Metal refuses the one purchase let through: nothing settles", () =
     expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'upstream.refused'").get() as { payload_json: string }).payload_json)).toMatchObject({ refused_by: "metal", reason: "mandate_cap_exceeded" });
     expect(n(db, "SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'PAID'")).toBe(0);
     expect(n(db, "SELECT COUNT(*) AS n FROM sales")).toBe(0);
-    expect(db.prepare("SELECT status, cents FROM holds").all()).toEqual([{ status: "RELEASED", cents: 4 }]);
+    // The let-through's hold, and the record pull's own hold (agent-facts review M2), both released: nothing moved.
+    expect(db.prepare("SELECT ref LIKE 'record:%' AS record, status, cents FROM holds ORDER BY record").all()).toEqual([{ record: 0, status: "RELEASED", cents: 4 }, { record: 1, status: "RELEASED", cents: 4 }]);
     // The customer's side, from the seller: 503, not settled.
     expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'sale.refused'").get() as { payload_json: string }).payload_json)).toMatchObject({ seq: 18, status: 503, settled: false, reason: "mandate_cap_exceeded" });
     // The record: let through, refused by Metal with Max's label, recorded on chain for the 0.04.
