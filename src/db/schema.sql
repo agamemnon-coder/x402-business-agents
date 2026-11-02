@@ -76,6 +76,27 @@ CREATE TABLE IF NOT EXISTS disputes (
   created_at TEXT NOT NULL
 );
 
+-- A dispute is decided once (agent run 1: a restart decided one twice). The decision is written before any refund is
+-- paid or any proposal made; a restart carries out the rest of that decision and never decides again. The decision
+-- itself cannot change or be deleted; only its progress (what is paid, which proposal) is filled in.
+CREATE TABLE IF NOT EXISTS dispute_decisions (
+  dispute_id TEXT PRIMARY KEY,
+  source TEXT NOT NULL CHECK (source IN ('claude', 'code')),
+  plan_json TEXT NOT NULL,
+  decided_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('DECIDED', 'DONE')),
+  paid_json TEXT NOT NULL DEFAULT '[]',
+  escalation_proposal TEXT,
+  approval_proposal TEXT,
+  last_note TEXT,
+  audited INTEGER NOT NULL DEFAULT 0,
+  done_at TEXT
+);
+CREATE TRIGGER IF NOT EXISTS dispute_decision_fixed BEFORE UPDATE OF dispute_id, source, plan_json, decided_at ON dispute_decisions
+BEGIN SELECT RAISE(ABORT, 'a dispute decision is decided once'); END;
+CREATE TRIGGER IF NOT EXISTS dispute_decision_kept BEFORE DELETE ON dispute_decisions
+BEGIN SELECT RAISE(ABORT, 'a dispute decision is kept'); END;
+
 CREATE TABLE IF NOT EXISTS proposals (
   proposal_id TEXT PRIMARY KEY,
   kind TEXT NOT NULL,

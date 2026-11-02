@@ -40,6 +40,15 @@ import { resolve } from "node:path";
 import { meetNewDeclines } from "../agents/declineTrigger.js";
 import { pausedCredential, pausesNotRevoked, syncPauses } from "../policy/pause.js";
 import { LivePauseChain } from "../metal/pauseChain.js";
+import { osProcesses } from "../ops/processes.js";
+import { asWorldGroup, holdRunnerLock } from "../ops/runnerLock.js";
+
+// One world, one runner, one process group (2 November: a stop reached only a wrapper, another world's runner ran on).
+// Outside a world's group this starts itself again as the leader of a new one; then it takes the ledger's runner lock,
+// so a second runner on the same ledger refuses to start. `npm run stop -- <world>` stops exactly this group.
+const group = await asWorldGroup();
+const db = openDb();
+holdRunnerLock(db, db.name, "relay", group, osProcesses);
 
 const args = process.argv.slice(2);
 const once = args.includes("--once");
@@ -56,7 +65,6 @@ if (args.includes("--local")) {
   cfg = await relayConfig();
 }
 
-const db = openDb();
 const label = process.env.KIT11_APPROVER ?? "max";
 const stamp = () => new Date().toISOString().slice(11, 19);
 console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${process.env.KIT11_DB ?? "data/kit11.sqlite"})`);
