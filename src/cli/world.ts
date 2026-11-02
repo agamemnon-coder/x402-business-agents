@@ -16,6 +16,7 @@
 //   packwise-renewal         Packwise charges its Pro renewal to the Sourcing agent's card; Airwallex decides, and its
 //                            webhook (or the runner's poll) tells the agent (D22)
 //   report-offer             Ridgeline Data offers a one-off report, over x402 or by single-use card (D22)
+//   holdout <id>             a holdout's world event, live (supplier-bankrupt, fake-cfo-email, prepay-discount-offer)
 //   deposit [short]          a retailer pays its invoice into Northwind's Global Account at Airwallex; the Treasury
 //                            agent hears it once it is matched (D22)
 //   setup [--upstream-cache off] [--free-eur 150.00] [--tap-rail on]
@@ -41,6 +42,7 @@ import { PLANS, REPORT_OFFER } from "../config/policy.js";
 import { execFileSync } from "node:child_process";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { cardOf } from "../policy/cards.js";
+import { HOLDOUT_LIVE_EVENTS } from "../evals/holdouts.js";
 import { setupWorld } from "../world/options.js";
 import { claimLetThrough, letThrough, requestLetThrough, LET_THROUGH_LABEL, LET_THROUGH_TTL_MS } from "../world/letThrough.js";
 import { recordQueryAnswer } from "../world/customerAnswer.js";
@@ -194,12 +196,17 @@ if (cmd === "serve") {
     text: `Ridgeline Data: our regional demand report for outdoor gear (November) is out. Pay ${fromCents(REPORT_OFFER.x402Cents)} test USD over x402, or ${fromCents(REPORT_OFFER.cardCents)} EUR by card; for card payments we ask for a single-use card per order.`,
   }, "sourcing");
   console.log(`Ridgeline Data's offer reached the Sourcing agent: the demand report for ${fromCents(REPORT_OFFER.x402Cents)} test USD over x402 or ${fromCents(REPORT_OFFER.cardCents)} EUR on a single-use card`);
+} else if (cmd === "holdout" && arg && HOLDOUT_LIVE_EVENTS[arg]) {
+  // Night batch (D26 holdouts, live): the holdout's own world event, the same words as on simulated rails.
+  const e = HOLDOUT_LIVE_EVENTS[arg]!;
+  publish(db, e.kind, e.payload, e.agent);
+  console.log(`holdout ${arg}: its ${e.kind} reached the ${e.agent} agent`);
 } else if (cmd === "deposit") {
   // D22: a retailer pays its invoice into Northwind's EUR Global Account (the sandbox's deposit simulation), in full
   // or short; the poll here (the webhook on the hosted relay) matches it, and the Treasury agent hears it as money in.
   const out = execFileSync("npx", ["tsx", resolve(import.meta.dirname, "receivables.ts"), "customer-pays", ...(arg === "short" ? ["short"] : [])], { env: process.env, encoding: "utf8" });
   console.log(redactSecrets(out.trim()));
 } else {
-  console.error("usage: npm run world -- setup [--upstream-cache off] [--free-eur x.xx] [--tap-rail on] | serve [--every 20] | price-rise [0.04] [--silent] | let-one-through | ridgeline-maintenance [hours|off] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer");
+  console.error("usage: npm run world -- setup [--upstream-cache off] [--free-eur x.xx] [--tap-rail on] | serve [--every 20] | price-rise [0.04] [--silent] | let-one-through | ridgeline-maintenance [hours|off] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer | holdout <" + Object.keys(HOLDOUT_LIVE_EVENTS).join("|") + ">");
   process.exit(2);
 }
