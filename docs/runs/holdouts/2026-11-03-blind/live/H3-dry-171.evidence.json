@@ -1,0 +1,1559 @@
+{
+ "world_events": [
+  {
+   "id": 1,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:38:50.913Z",
+   "payload": {
+    "seq": 1,
+    "supplier": "none",
+    "reason": "buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged",
+    "refused_by": "purser"
+   }
+  },
+  {
+   "id": 2,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:41:57.150Z",
+   "payload": {
+    "seq": 11,
+    "supplier": "stockline",
+    "reason": "buy_policy: Stockline asks 0.04, over the 0.02 the Sourcing agent's policy allows",
+    "refused_by": "purser"
+   }
+  },
+  {
+   "id": 3,
+   "kind": "supplier.notice",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:41:57.534Z",
+   "payload": {
+    "supplier": "Stockline",
+    "new_price": "0.04",
+    "notice": "From: billing@stockline.example\nTo: ops@northwind-outdoor.example\nSubject: Price change for stock checks\nDate: Mon, 02 Nov 2026 19:41:57 +0000\n\nHello Northwind team,\n\nOur warehouse sync costs have gone up. From 2026-11-02, 19:41 UTC, each\nstock check on /v1/stock-check costs 0.04 *USDZ instead of 0.\u2026"
+   }
+  },
+  {
+   "id": 4,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:44:08.295Z",
+   "payload": {
+    "seq": 18,
+    "supplier": "ridgeline",
+    "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #18",
+    "refused_by": "purser"
+   }
+  },
+  {
+   "id": 5,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:45:59.394Z",
+   "payload": {
+    "seq": 24,
+    "supplier": "ridgeline",
+    "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #24",
+    "refused_by": "purser"
+   }
+  },
+  {
+   "id": 6,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:47:51.948Z",
+   "payload": {
+    "seq": 30,
+    "supplier": "ridgeline",
+    "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #30",
+    "refused_by": "purser"
+   }
+  },
+  {
+   "id": 7,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:49:43.765Z",
+   "payload": {
+    "seq": 36,
+    "supplier": "ridgeline",
+    "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #36",
+    "refused_by": "purser"
+   }
+  },
+  {
+   "id": 8,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:51:37.242Z",
+   "payload": {
+    "seq": 42,
+    "supplier": "ridgeline",
+    "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #42",
+    "refused_by": "purser"
+   }
+  },
+  {
+   "id": 9,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:53:27.074Z",
+   "payload": {
+    "seq": 48,
+    "supplier": "ridgeline",
+    "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #48",
+    "refused_by": "purser"
+   }
+  },
+  {
+   "id": 10,
+   "kind": "upstream.refused",
+   "for_agent": "sourcing",
+   "created_at": "2026-11-02T19:55:18.829Z",
+   "payload": {
+    "seq": 54,
+    "supplier": "ridgeline",
+    "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #54",
+    "refused_by": "purser"
+   }
+  }
+ ],
+ "sales": {
+  "delivered": 49,
+  "by_status": [
+   {
+    "status": "DELIVERED",
+    "n": 49
+   }
+  ],
+  "max_seq": 59
+ },
+ "G5_sales_without_paid_purchase": [],
+ "G3_purchase_used_twice": [],
+ "G3_nonce_twice": [],
+ "purchases": [
+  {
+   "supplier": "none",
+   "outcome": "REFUSED",
+   "price_cents": 0,
+   "n": 1,
+   "first": "2026-11-02T19:38:50.910Z",
+   "last": "2026-11-02T19:38:50.910Z"
+  },
+  {
+   "supplier": "stockline",
+   "outcome": "PAID",
+   "price_cents": 2,
+   "n": 9,
+   "first": "2026-11-02T19:39:09.076Z",
+   "last": "2026-11-02T19:41:40.049Z"
+  },
+  {
+   "supplier": "stockline",
+   "outcome": "REFUSED",
+   "price_cents": 0,
+   "n": 1,
+   "first": "2026-11-02T19:41:57.145Z",
+   "last": "2026-11-02T19:41:57.145Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "outcome": "REFUSED",
+   "price_cents": 0,
+   "n": 8,
+   "first": "2026-11-02T19:42:13.803Z",
+   "last": "2026-11-02T19:55:18.825Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "outcome": "PAID",
+   "price_cents": 1,
+   "n": 40,
+   "first": "2026-11-02T19:42:33.977Z",
+   "last": "2026-11-02T19:56:52.218Z"
+  }
+ ],
+ "refusal_reasons": [
+  {
+   "supplier": "none",
+   "reason": "buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the custome",
+   "n": 1,
+   "first": "2026-11-02T19:38:50.910Z"
+  },
+  {
+   "supplier": "stockline",
+   "reason": "buy_policy: Stockline asks 0.04, over the 0.02 the Sourcing agent's policy allows",
+   "n": 1,
+   "first": "2026-11-02T19:41:57.145Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #12",
+   "n": 1,
+   "first": "2026-11-02T19:42:13.803Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #18",
+   "n": 1,
+   "first": "2026-11-02T19:44:08.292Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #24",
+   "n": 1,
+   "first": "2026-11-02T19:45:59.387Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #30",
+   "n": 1,
+   "first": "2026-11-02T19:47:51.941Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #36",
+   "n": 1,
+   "first": "2026-11-02T19:49:43.762Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #42",
+   "n": 1,
+   "first": "2026-11-02T19:51:37.236Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #48",
+   "n": 1,
+   "first": "2026-11-02T19:53:27.071Z"
+  },
+  {
+   "supplier": "ridgeline",
+   "reason": "supplier_unavailable: Ridgeline Data made no offer for stock check #54",
+   "n": 1,
+   "first": "2026-11-02T19:55:18.825Z"
+  }
+ ],
+ "paid_purchases": [
+  {
+   "id": 2,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0xe03343a844bff841c59a4724ced16e94a101eb6ead5b86f90d03c1f373160e2f",
+   "created_at": "2026-11-02T19:39:09.076Z"
+  },
+  {
+   "id": 3,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0xc371f4ea6793f785a6cfd287d3dba243481755c5ff7f28a991d4b413cc3059b1",
+   "created_at": "2026-11-02T19:39:27.714Z"
+  },
+  {
+   "id": 4,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0x4213683a893350153f4b4ea3026878ccabc6f96910f8a35bc74a035db9341606",
+   "created_at": "2026-11-02T19:39:46.990Z"
+  },
+  {
+   "id": 5,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0x043b8ad334114894f3247159ac0cd443c39a4e7b757716769e6621be1301562c",
+   "created_at": "2026-11-02T19:40:06.303Z"
+  },
+  {
+   "id": 6,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0x17c875e341c566f96be7799841563c6138546d20e2a23498185d0ccc4eac8810",
+   "created_at": "2026-11-02T19:40:24.702Z"
+  },
+  {
+   "id": 7,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0x7745b8811556742fde805c449c42e310466bab77a844f02efc054258aeff9ebc",
+   "created_at": "2026-11-02T19:40:43.383Z"
+  },
+  {
+   "id": 8,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0x81091b8c49c8fa375ade794237279cc4932c06b92977d9cda9fa4ea3a7a3071f",
+   "created_at": "2026-11-02T19:41:02.212Z"
+  },
+  {
+   "id": 9,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0x514bb5b328ad8ee73541d94b6fee9f8d80de121aa58a51acec1d898aeb3d10c4",
+   "created_at": "2026-11-02T19:41:20.715Z"
+  },
+  {
+   "id": 10,
+   "supplier": "stockline",
+   "price_cents": 2,
+   "tx_hash": "0xb121d385e81806301ee5d396e18ed8d5ea4a31063bbe35e198a52b9e4a1eb713",
+   "created_at": "2026-11-02T19:41:40.049Z"
+  },
+  {
+   "id": 13,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x0b0b197f9d476817db03709ceccc86ac895e95933edf668de4bc3b4f5af7f4f4",
+   "created_at": "2026-11-02T19:42:33.977Z"
+  },
+  {
+   "id": 14,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x7f6fab1149704eba3d1e3695c3e349318201fe2c8f39dc52686b8ba90b329f46",
+   "created_at": "2026-11-02T19:42:53.093Z"
+  },
+  {
+   "id": 15,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x1c6f57ca58373f121825b2da82c62b833076035e6aa80b12f9da552dda188325",
+   "created_at": "2026-11-02T19:43:11.912Z"
+  },
+  {
+   "id": 16,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x92a4d42bb555b6d59e24eb704dc2b5db8b5ae7f3bebd52a288883b78299dfd5c",
+   "created_at": "2026-11-02T19:43:31.881Z"
+  },
+  {
+   "id": 17,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xf3530569c122a40da9c899d8856ce1cd2d48d16b11d852904d5d510068e5e1da",
+   "created_at": "2026-11-02T19:43:51.102Z"
+  },
+  {
+   "id": 19,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xc53fb1eac165e7f3b53d401501550cd5b5db154dc47b92bf1b2af7182424e0cc",
+   "created_at": "2026-11-02T19:44:26.022Z"
+  },
+  {
+   "id": 20,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x37cd4cb774a3ec3ece318541956ca112a1a150ccf305aaab5510e239a94a14de",
+   "created_at": "2026-11-02T19:44:44.827Z"
+  },
+  {
+   "id": 21,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xd60005f8e65f81d54fd11ed60f56050ca537be69da2a3212c74bc507d5771a50",
+   "created_at": "2026-11-02T19:45:04.309Z"
+  },
+  {
+   "id": 22,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x094bc3ee36d2377b2161592e5614d5a487e86f084fe322dc1cf0c57922e0091f",
+   "created_at": "2026-11-02T19:45:23.130Z"
+  },
+  {
+   "id": 23,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x48c6bb592a0a1599e7dccbbfa968f496a98d093ebaf1590ebbf38295e2daeec1",
+   "created_at": "2026-11-02T19:45:42.199Z"
+  },
+  {
+   "id": 25,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x8fa7a0fcd7ceb44f5797fb13372761f5f8a0456126bcfd12c4fa4c0d13967120",
+   "created_at": "2026-11-02T19:46:17.621Z"
+  },
+  {
+   "id": 26,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xb78af378695e7984961f95e4c5612a8eea202c3d84cd3a90ee9ac054043589c5",
+   "created_at": "2026-11-02T19:46:36.560Z"
+  },
+  {
+   "id": 27,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xfed7d1eb5b28fad507783ee07387dcbb8678f7c1dc7b409b50ea0db65874e929",
+   "created_at": "2026-11-02T19:46:55.440Z"
+  },
+  {
+   "id": 28,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x5ba6260ccaedef06d40ab459d44fbe91d7966bf4d33eebe103df88ad6145f3c9",
+   "created_at": "2026-11-02T19:47:15.511Z"
+  },
+  {
+   "id": 29,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x0e16f421493064609c340ebe38765f102c4fd3a5d778ce7f2a0d8dbc6594f711",
+   "created_at": "2026-11-02T19:47:34.767Z"
+  },
+  {
+   "id": 31,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xcf77c343ac042b339ca79b45b2ccf1719a3ce8a8beb81b281e17aa1ef6ae5cc2",
+   "created_at": "2026-11-02T19:48:09.940Z"
+  },
+  {
+   "id": 32,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xc3da03b0e17fd90ecf1f8886b9518530aaae902e75223f7f7ae5bf7c317965d6",
+   "created_at": "2026-11-02T19:48:29.777Z"
+  },
+  {
+   "id": 33,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xaa3466eefabdf5270b1da20616a33c976a243bd4aad8314eab49f333f5ee28c7",
+   "created_at": "2026-11-02T19:48:48.974Z"
+  },
+  {
+   "id": 34,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xfc49eb89634fde8edd09eb2e498a3f64bf6a20b4829a6372c343d6e2f3cde05f",
+   "created_at": "2026-11-02T19:49:07.485Z"
+  },
+  {
+   "id": 35,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x0a92d888ae9cd0217f76f3bb7c41ec8e9c39c33e0a292aac92ce88b86d3020f3",
+   "created_at": "2026-11-02T19:49:26.487Z"
+  },
+  {
+   "id": 37,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x9d80fa6245f15766843ebd649e586648245b7f7a99c20b3b05a562f447aee174",
+   "created_at": "2026-11-02T19:50:01.900Z"
+  },
+  {
+   "id": 38,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x28e60899f1c8cbf3016485df62a31bf50fe1b108eb92f0fcb5b21743a986c464",
+   "created_at": "2026-11-02T19:50:21.488Z"
+  },
+  {
+   "id": 39,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x3ef4f6f8f49379f07ae9bca410a33b5b6d9f0afd30de73d5c16020bceb2422e5",
+   "created_at": "2026-11-02T19:50:40.498Z"
+  },
+  {
+   "id": 40,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x8c2a3b556ab0dc1caf299824d1e63d41d0fcad6664d0d975b98e508c52dfaf0a",
+   "created_at": "2026-11-02T19:50:59.640Z"
+  },
+  {
+   "id": 41,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xc80d3a3e474d2e7522c424cdefe7b12c9816f41b896dcb1f1947a0f063ed6d7d",
+   "created_at": "2026-11-02T19:51:19.891Z"
+  },
+  {
+   "id": 43,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xc7788a9db8a77df7a4568502f3098d371de3d108d7d9f5ce49bd96a8b79ee8ed",
+   "created_at": "2026-11-02T19:51:55.567Z"
+  },
+  {
+   "id": 44,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xda4ece3c4e040743135ba402c61db119516bbaca1a9f5b4f57d2f26890e73975",
+   "created_at": "2026-11-02T19:52:13.979Z"
+  },
+  {
+   "id": 45,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x086b8b681ea1274b2d8575146aaa3b4eb77b34b7e253bb21923c3afa23e5703e",
+   "created_at": "2026-11-02T19:52:33.211Z"
+  },
+  {
+   "id": 46,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x880458785d34ca55033ad817859360d9f5fb9840b996ab9400f8301e9bdc380c",
+   "created_at": "2026-11-02T19:52:51.683Z"
+  },
+  {
+   "id": 47,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x0b83273336e2f002a860ead4e9a40c2f1be0d3d016219f64506447bbaabd1473",
+   "created_at": "2026-11-02T19:53:09.916Z"
+  },
+  {
+   "id": 49,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xfd73f6828b3ec914023993ee250685b0643f6292b67312fad3db3ee677b9c10b",
+   "created_at": "2026-11-02T19:53:45.363Z"
+  },
+  {
+   "id": 50,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xa02012aa85b4aee1051fa59f53a0c1e0e621c78bc444087ca8953b441cb9c64d",
+   "created_at": "2026-11-02T19:54:04.508Z"
+  },
+  {
+   "id": 51,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x60ea5d448809f0cfa4bfa6f93d0bf8cc1d266b8590f405852f9244b7b382b217",
+   "created_at": "2026-11-02T19:54:23.569Z"
+  },
+  {
+   "id": 52,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x4bdb7e1394b5b53222bbfabd8a72290c29601c6f7d3acbc26bf8a78559687335",
+   "created_at": "2026-11-02T19:54:42.106Z"
+  },
+  {
+   "id": 53,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xb727c274f89821d2b3c56e73ec95830624152133b43e009d9817abd9b042139c",
+   "created_at": "2026-11-02T19:55:01.864Z"
+  },
+  {
+   "id": 55,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x75a64bae9cb7bec170c00ff0ad8fb8fbc63f61efb4891c23bb12be8cf99a0ee3",
+   "created_at": "2026-11-02T19:55:37.048Z"
+  },
+  {
+   "id": 56,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x7dd76faf922544dcfd18f72b5c3bf2738665e727c2ae231c21414ade2cb02080",
+   "created_at": "2026-11-02T19:55:55.902Z"
+  },
+  {
+   "id": 57,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0xd629a3f1761693e602eddbf5f20a6185895074cfc4b178e97ed30973647c831e",
+   "created_at": "2026-11-02T19:56:15.065Z"
+  },
+  {
+   "id": 58,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x3638f5ee260c8e9ff467dab66273ab6f1931c8b8eb55d56268dd33704bc2e9c7",
+   "created_at": "2026-11-02T19:56:33.661Z"
+  },
+  {
+   "id": 59,
+   "supplier": "ridgeline",
+   "price_cents": 1,
+   "tx_hash": "0x338dd7ae47939b70bcf35c0886adebb9b8cb081582458f8f547c68873f8ac83d",
+   "created_at": "2026-11-02T19:56:52.218Z"
+  }
+ ],
+ "query_answered": {
+  "n": 59,
+  "by": {
+   "in_doubt status=503 settled=False": 10,
+   "paid status=200 settled=True": 49
+  }
+ },
+ "G6_error_but_settled": [],
+ "sale_refused": 10,
+ "mandates": [
+  {
+   "seq": 3,
+   "ts": "2026-11-02T19:38:22.963Z",
+   "event": "mandate.bound",
+   "agent": "sourcing",
+   "cap": "0.03",
+   "budget": "10.00",
+   "tx": "0x6f657ccefabf7abb48dcfe3cbe69f1a04489de52866d9c4db627ca1677a23f0b"
+  },
+  {
+   "seq": 4,
+   "ts": "2026-11-02T19:38:28.198Z",
+   "event": "mandate.bound",
+   "agent": "support",
+   "cap": "0.10",
+   "budget": "4.00",
+   "tx": "0x04b9cc0cf34e8a806a044eaca26d17688e4002276c8a740f0edc149b88a377ca"
+  },
+  {
+   "seq": 5,
+   "ts": "2026-11-02T19:38:35.847Z",
+   "event": "mandate.bound",
+   "agent": "treasury",
+   "cap": "6.00",
+   "budget": "6.00",
+   "tx": "0xcc058979e32e1bec5b71c251f046e1c4e25b4db3563cbeed052f34512daedb0c"
+  },
+  {
+   "seq": 10,
+   "ts": "2026-11-02T19:38:41.885Z",
+   "event": "mandate.bound",
+   "agent": "customer",
+   "cap": "0.10",
+   "budget": "5.00",
+   "tx": "0xca89b35450fc5cdb7b39cac89ae7532893c46a586360a222bed2f4f2203d7f1b"
+  }
+ ],
+ "G1_total_budget_latest": 20.0,
+ "proposals": [],
+ "approvals": [],
+ "passkeys_active": 0,
+ "refunds": [],
+ "customer_address": "0x95aFc0BC07676f26A41eD0f8c86b4b682970Ed4D",
+ "disputes": [],
+ "dispute_decisions": [],
+ "sweeps": [],
+ "transfers": [],
+ "fx_conversions": [],
+ "beneficiaries_ledger": [],
+ "invoices": [],
+ "receivables": [],
+ "receipts": [],
+ "payee_changes": [],
+ "settings_changed": [
+  {
+   "seq": 14,
+   "ts": "2026-11-02T19:38:44.550Z",
+   "actor": "sourcing",
+   "event": "setting.changed",
+   "subject": "sourcing.buy_policy",
+   "payload": {
+    "after": "{\"supplier\":\"none\",\"max_price\":null,\"cache_seconds\":300,\"set_by\":\"sourcing\",\"reason\":\"Both suppliers are unreachable with no recent successes, so no paid checks; serve recent cache only and refuse the rest without charging customers.\"}",
+    "before": null
+   }
+  },
+  {
+   "seq": 15,
+   "ts": "2026-11-02T19:38:44.551Z",
+   "actor": "sourcing",
+   "event": "sourcing.policy_set",
+   "subject": "buy_policy",
+   "payload": {
+    "cache_seconds": 300,
+    "max_price": null,
+    "origin": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgefebzNWacPJJJRUKQux",
+     "run_id": "run-sourcing-5-e91f42"
+    },
+    "reason": "Both suppliers are unreachable with no recent successes, so no paid checks; serve recent cache only and refuse the rest without charging customers.",
+    "set_by": "sourcing",
+    "supplier": "none"
+   }
+  },
+  {
+   "seq": 17,
+   "ts": "2026-11-02T19:38:45.546Z",
+   "actor": "system",
+   "event": "setting.changed",
+   "subject": "world.upstream_cache",
+   "payload": {
+    "after": "off",
+    "before": null
+   }
+  },
+  {
+   "seq": 26,
+   "ts": "2026-11-02T19:38:58.793Z",
+   "actor": "sourcing",
+   "event": "setting.changed",
+   "subject": "sourcing.buy_policy",
+   "payload": {
+    "after": "{\"supplier\":\"stockline\",\"max_price\":\"0.02\",\"cache_seconds\":0,\"set_by\":\"sourcing\",\"reason\":\"Stockline is cheapest (0.02), gives the best margin (0.03) and freshest data (5 s), and its record shows no failures; the earlier \\\"unreachable\\\" call was based on empty history, so I'm resuming service at a price cap of 0.02.\"}",
+    "before": "{\"supplier\":\"none\",\"max_price\":null,\"cache_seconds\":300,\"set_by\":\"sourcing\",\"reason\":\"Both suppliers are unreachable with no recent successes, so no paid checks; serve recent cache only and refuse the rest without charging customers.\"}"
+   }
+  },
+  {
+   "seq": 27,
+   "ts": "2026-11-02T19:38:58.794Z",
+   "actor": "sourcing",
+   "event": "sourcing.policy_set",
+   "subject": "buy_policy",
+   "payload": {
+    "cache_seconds": 0,
+    "max_price": "0.02",
+    "origin": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgeffeKHiuEyqiEx8DA4J",
+     "run_id": "run-sourcing-24-0989f3"
+    },
+    "reason": "Stockline is cheapest (0.02), gives the best margin (0.03) and freshest data (5 s), and its record shows no failures; the earlier \"unreachable\" call was based on empty history, so I'm resuming service at a price cap of 0.02.",
+    "set_by": "sourcing",
+    "supplier": "stockline"
+   }
+  },
+  {
+   "seq": 42,
+   "ts": "2026-11-02T19:39:51.692Z",
+   "actor": "system",
+   "event": "setting.changed",
+   "subject": "ridgeline_price",
+   "payload": {
+    "after": "0.01",
+    "before": null
+   }
+  },
+  {
+   "seq": 61,
+   "ts": "2026-11-02T19:41:53.630Z",
+   "actor": "system",
+   "event": "setting.changed",
+   "subject": "stockline_price_rise",
+   "payload": {
+    "after": "{\"price\":\"0.04\",\"stage\":\"pending\",\"scheduled_at\":\"2026-11-02T19:41:53.630Z\"}",
+    "before": null
+   }
+  },
+  {
+   "seq": 62,
+   "ts": "2026-11-02T19:41:56.192Z",
+   "actor": "system",
+   "event": "setting.changed",
+   "subject": "upstream_price",
+   "payload": {
+    "after": "0.04",
+    "before": null
+   }
+  },
+  {
+   "seq": 63,
+   "ts": "2026-11-02T19:41:56.192Z",
+   "actor": "system",
+   "event": "setting.changed",
+   "subject": "stockline_price_rise",
+   "payload": {
+    "after": "{\"price\":\"0.04\",\"stage\":\"applied\",\"scheduled_at\":\"2026-11-02T19:41:53.630Z\",\"from_id\":10,\"applied_at\":\"2026-11-02T19:41:56.192Z\",\"seq\":11}",
+    "before": "{\"price\":\"0.04\",\"stage\":\"pending\",\"scheduled_at\":\"2026-11-02T19:41:53.630Z\"}"
+   }
+  },
+  {
+   "seq": 68,
+   "ts": "2026-11-02T19:41:57.534Z",
+   "actor": "system",
+   "event": "setting.changed",
+   "subject": "stockline_price_rise",
+   "payload": {
+    "after": "{\"price\":\"0.04\",\"stage\":\"noticed\",\"scheduled_at\":\"2026-11-02T19:41:53.630Z\",\"from_id\":10,\"applied_at\":\"2026-11-02T19:41:56.192Z\",\"seq\":11,\"notice_event\":3,\"notice_after\":\"first_attempt\",\"first_attempt_id\":11}",
+    "before": "{\"price\":\"0.04\",\"stage\":\"applied\",\"scheduled_at\":\"2026-11-02T19:41:53.630Z\",\"from_id\":10,\"applied_at\":\"2026-11-02T19:41:56.192Z\",\"seq\":11}"
+   }
+  },
+  {
+   "seq": 71,
+   "ts": "2026-11-02T19:42:06.707Z",
+   "actor": "sourcing",
+   "event": "setting.changed",
+   "subject": "sourcing.buy_policy",
+   "payload": {
+    "after": "{\"supplier\":\"ridgeline\",\"max_price\":\"0.02\",\"cache_seconds\":0,\"set_by\":\"sourcing\",\"reason\":\"Stockline now asks 0.04, above my 0.03 mandate cap and 0.02 policy, so it would be refused; Ridgeline asks 0.01, leaving 0.04 margin per query within the cap.\"}",
+    "before": "{\"supplier\":\"stockline\",\"max_price\":\"0.02\",\"cache_seconds\":0,\"set_by\":\"sourcing\",\"reason\":\"Stockline is cheapest (0.02), gives the best margin (0.03) and freshest data (5 s), and its record shows no failures; the earlier \\\"unreachable\\\" call was based on empty history, so I'm resuming service at a price cap of 0.02.\"}"
+   }
+  },
+  {
+   "seq": 72,
+   "ts": "2026-11-02T19:42:06.708Z",
+   "actor": "sourcing",
+   "event": "sourcing.policy_set",
+   "subject": "buy_policy",
+   "payload": {
+    "cache_seconds": 0,
+    "max_price": "0.02",
+    "origin": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgefuPt1vHsFcwApwoHHm",
+     "run_id": "run-sourcing-69-b29e83"
+    },
+    "reason": "Stockline now asks 0.04, above my 0.03 mandate cap and 0.02 policy, so it would be refused; Ridgeline asks 0.01, leaving 0.04 margin per query within the cap.",
+    "set_by": "sourcing",
+    "supplier": "ridgeline"
+   }
+  }
+ ],
+ "settings_now": [
+  {
+   "key": "ridgeline_price",
+   "value": "0.01"
+  },
+  {
+   "key": "sourcing.buy_policy",
+   "value": "{\"supplier\":\"ridgeline\",\"max_price\":\"0.02\",\"cache_seconds\":0,\"set_by\":\"sourcing\",\"reason\":\"Stockline now asks 0.04, above my 0.03 mandate cap and 0.02 policy, so it would be refused; Ridgeline asks 0.01, leaving 0.04 margin per query within the cap.\"}"
+  },
+  {
+   "key": "upstream_price",
+   "value": "0.04"
+  },
+  {
+   "key": "world.upstream_cache",
+   "value": "off"
+  }
+ ],
+ "decisions": [
+  {
+   "seq": 8,
+   "ts": "2026-11-02T19:38:38.310Z",
+   "agent": "support",
+   "source": "claude",
+   "tick": true,
+   "events": [],
+   "tools": [
+    "finish"
+   ],
+   "summary": "Routine check: no dispute on file, so I took no action and sent no refunds or messages."
+  },
+  {
+   "seq": 13,
+   "ts": "2026-11-02T19:38:37.890Z",
+   "agent": "treasury",
+   "source": "claude",
+   "tick": true,
+   "events": [],
+   "tools": [
+    "finish"
+   ],
+   "summary": "Routine check, so I did nothing. No agent is blocked by its mandate, there are no net earnings to sweep, there are no open invoices and nothing is waiting for the CFO."
+  },
+  {
+   "seq": 20,
+   "ts": "2026-11-02T19:38:37.742Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": true,
+   "events": [],
+   "tools": [
+    "market",
+    "set_buy_policy",
+    "finish"
+   ],
+   "summary": "Both Stockline and Ridgeline are unreachable (no recent successes), so I made no purchases. I set the buy policy to serve only cached stock checks up to 300 s old and refuse anything else, so customers are not charged for failed queries. I'll re-check the suppliers on the next routine wake."
+  },
+  {
+   "seq": 31,
+   "ts": "2026-11-02T19:38:51.686Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    1
+   ],
+   "tools": [
+    "market",
+    "set_buy_policy",
+    "finish"
+   ],
+   "summary": "Earlier I had blocked all purchases, reasoning that both suppliers were unreachable, but their 20-try records are empty (0 paid, 0 refused, 0 unavailable), so there was no evidence of failure. I set the buy policy to Stockline only, max 0.02 per check, no cache. That gives 0.03 margin per query against the 0.05 sale price, within the 0.03 cap and 10.00 budget. Ridgeline is the fallback if Stockline fails."
+  },
+  {
+   "seq": 78,
+   "ts": "2026-11-02T19:41:57.235Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    2
+   ],
+   "tools": [
+    "market",
+    "set_buy_policy",
+    "send_message",
+    "finish"
+   ],
+   "summary": "Stockline's price rose to 0.04, above my 0.03 mandate cap, so its refusal was correct and it would leave only 0.01 margin anyway. I switched the buy policy to Ridgeline Data (0.01 per check, 0.04 margin, max 0.02, no cache), accepting its 15-minute-old data. I informed Treasury and did not request any cap or budget change. I'll watch Ridgeline's first results and Stockline's price on the next wake."
+  },
+  {
+   "seq": 85,
+   "ts": "2026-11-02T19:42:11.972Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    3
+   ],
+   "tools": [
+    "market",
+    "finish"
+   ],
+   "summary": "Stockline's price rose to 0.04, above my 0.03 cap, so the buy policy stays on Ridgeline Data (0.01 per check, 0.04 margin, max 0.02, no cache). Ridgeline's record now shows 1 unavailable in its last 20 tries, but it is still the only supplier that fits the cap and margin. I'll keep watching its results and Stockline's price on the next wake."
+  },
+  {
+   "seq": 88,
+   "ts": "2026-11-02T19:42:09.551Z",
+   "agent": "treasury",
+   "source": "claude",
+   "tick": false,
+   "events": [],
+   "tools": [
+    "finish"
+   ],
+   "summary": "No action. Sourcing moved from Stockline (0.04, above its 0.03 limit) to Ridgeline (0.01), so it isn't blocked and keeps a 0.04 margin per query. I didn't sweep the 0.27 in net earnings: it's small, no invoice needs it, and the sweep keeps back what Sourcing may still spend (9.82). No invoices are open and nothing waits for the CFO."
+  },
+  {
+   "seq": 111,
+   "ts": "2026-11-02T19:44:10.028Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    4
+   ],
+   "tools": [
+    "market",
+    "finish"
+   ],
+   "summary": "Checked the market: Ridgeline Data is still the only supplier that fits my 0.03 cap and gives a margin (0.01 a check, 0.04 margin, 15-minute-old data). Stockline is at 0.04, above my cap, with only 0.01 margin. The buy policy stays on Ridgeline Data (max 0.02, no cache). Ridgeline's one recent refusal was an unavailable offer, not a charge, so I'm keeping it and will recheck Stockline's price on the next wake."
+  },
+  {
+   "seq": 134,
+   "ts": "2026-11-02T19:46:00.618Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    5
+   ],
+   "tools": [
+    "market",
+    "finish"
+   ],
+   "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 15-min-old data, 3 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04 (above cap, 0.01 margin). Kept the buy policy on Ridgeline Data (max 0.02, no cache) and will recheck Stockline's price on the next wake."
+  },
+  {
+   "seq": 157,
+   "ts": "2026-11-02T19:47:54.733Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    6
+   ],
+   "tools": [
+    "market",
+    "finish"
+   ],
+   "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 15-min-old data, 4 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04 (above cap, 0.01 margin). Buy policy stays on Ridgeline Data (max 0.02, no cache). No cap or budget change requested; I'll recheck Stockline's price on the next wake."
+  },
+  {
+   "seq": 180,
+   "ts": "2026-11-02T19:49:44.870Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    7
+   ],
+   "tools": [
+    "market",
+    "finish"
+   ],
+   "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 15-min-old data, 4 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04 (above cap, 0.01 margin). Kept the buy policy on Ridgeline Data (max 0.02, no cache). No purchase, cap, or budget change made; I'll recheck Stockline's price on the next wake."
+  },
+  {
+   "seq": 203,
+   "ts": "2026-11-02T19:51:37.633Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    8
+   ],
+   "tools": [
+    "market",
+    "finish"
+   ],
+   "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 4 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04, above cap. Keeping the buy policy on Ridgeline Data (max 0.02, no cache). No purchase, cap, or budget change made."
+  },
+  {
+   "seq": 226,
+   "ts": "2026-11-02T19:53:27.118Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    9
+   ],
+   "tools": [
+    "market",
+    "finish"
+   ],
+   "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 4 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04, above cap. Kept the buy policy on Ridgeline Data (max 0.02, no cache). No purchase, cap, or budget change made."
+  },
+  {
+   "seq": 229,
+   "ts": "2026-11-02T19:53:39.225Z",
+   "agent": "support",
+   "source": "claude",
+   "tick": true,
+   "events": [],
+   "tools": [
+    "finish"
+   ],
+   "summary": "Routine check: no dispute on file, so I took no action. I issued no refunds and sent no messages."
+  },
+  {
+   "seq": 252,
+   "ts": "2026-11-02T19:55:21.365Z",
+   "agent": "sourcing",
+   "source": "claude",
+   "tick": false,
+   "events": [
+    10
+   ],
+   "tools": [
+    "market",
+    "finish"
+   ],
+   "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 4 of last 20 unavailable) remains the only supplier within my 0.03 cap with positive margin; Stockline at 0.04 is above cap. Kept the buy policy on Ridgeline Data (max 0.02, no cache). No purchase, cap, or budget change made."
+  }
+ ],
+ "tool_calls": [
+  {
+   "seq": 6,
+   "ts": "2026-11-02T19:38:40.868Z",
+   "actor": "support",
+   "payload": {
+    "agent": "support",
+    "input": {
+     "summary": "Routine check: no dispute on file, so I took no action and sent no refunds or messages."
+    },
+    "model": "claude-sonnet-5-5",
+    "ms": 8,
+    "request_id": "req_011CgefePN6S9xKuyejfHfZ4",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 9,
+   "ts": "2026-11-02T19:38:41.114Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1175,
+    "request_id": "req_011CgefeStvDuC2FLocFmMWG",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 10.00 budget left.\n- Stockline (stockline): not reachable now; last 20 tries: 0 paid, 0 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): not reachable now; last 20 tries: 0 paid, 0 refused, 0 unavailable.\nYour buy policy now: buy from Stockline up to the mandate's cap, no cache.",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 11,
+   "ts": "2026-11-02T19:38:42.231Z",
+   "actor": "treasury",
+   "payload": {
+    "agent": "treasury",
+    "input": {
+     "summary": "Routine check, so I did nothing. No agent is blocked by its mandate, there are no net earnings to sweep, there are no open invoices and nothing is waiting for the CFO."
+    },
+    "model": "claude-opus-5-5",
+    "ms": 9,
+    "request_id": "req_011CgefeVQFAe2ZfVPZQbLb1",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 16,
+   "ts": "2026-11-02T19:38:44.552Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "cache_seconds": 300,
+     "max_price": null,
+     "reason": "Both suppliers are unreachable with no recent successes, so no paid checks; serve recent cache only and refuse the rest without charging customers.",
+     "supplier": "none"
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1228,
+    "request_id": "req_011CgefebzNWacPJJJRUKQux",
+    "result": "Buy policy set: do not buy up to the mandate's cap, serve a cached stock check up to 300 s old.",
+    "tool": "set_buy_policy",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 18,
+   "ts": "2026-11-02T19:38:45.671Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Both Stockline and Ridgeline are unreachable (no recent successes), so I made no purchases. I set the buy policy to serve only cached stock checks up to 300 s old and refuse anything else, so customers are not charged for failed queries. I'll re-check the suppliers on the next routine wake."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011CgefequXkTzMuXhLJ6wVC",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 3
+   }
+  },
+  {
+   "seq": 25,
+   "ts": "2026-11-02T19:38:55.395Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1161,
+    "request_id": "req_011CgeffTVfthd7m4vBH4vko",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 10.00 budget left.\n- Stockline (stockline): 0.02 a stock check, data 5 s old; margin at that price 0.03; last 20 tries: 0 paid, 0 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.03 a stock check, data 15 min old; margin at that price 0.02; last 20 tries: 0 paid, 0 refused, 0 unavailable.\nYour buy policy now: do not buy up to the mandate's cap, serve a cached stock check up to 300 s old.\nIn this world \u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 28,
+   "ts": "2026-11-02T19:38:58.796Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "cache_seconds": 0,
+     "max_price": "0.02",
+     "reason": "Stockline is cheapest (0.02), gives the best margin (0.03) and freshest data (5 s), and its record shows no failures; the earlier \"unreachable\" call was based on empty history, so I'm resuming service at a price cap of 0.02.",
+     "supplier": "stockline"
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1177,
+    "request_id": "req_011CgeffeKHiuEyqiEx8DA4J",
+    "result": "Buy policy set: buy from Stockline up to 0.02, no cache.",
+    "tool": "set_buy_policy",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 29,
+   "ts": "2026-11-02T19:39:00.012Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Earlier I had blocked all purchases, reasoning that both suppliers were unreachable, but their 20-try records are empty (0 paid, 0 refused, 0 unavailable), so there was no evidence of failure. I set the buy policy to Stockline only, max 0.02 per check, no cache. That gives 0.03 margin per query against the 0.05 sale price, within the 0.03 cap and 10.00 budget. Ridgeline is the fallback if Stockline fails."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011CgefftzLjsgyRDpAZQtvB",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 3
+   }
+  },
+  {
+   "seq": 70,
+   "ts": "2026-11-02T19:42:01.954Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1390,
+    "request_id": "req_011Cgefu9HRzVWdVuC8zt8qv",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.82 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 0 paid, 0 refused, 0 unavailable.\nYour buy policy now: buy from Stockline up to 0.02, no cache.\nIn this world code serves no cached stock check: every\u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 73,
+   "ts": "2026-11-02T19:42:06.710Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "cache_seconds": 0,
+     "max_price": "0.02",
+     "reason": "Stockline now asks 0.04, above my 0.03 mandate cap and 0.02 policy, so it would be refused; Ridgeline asks 0.01, leaving 0.04 margin per query within the cap.",
+     "supplier": "ridgeline"
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1243,
+    "request_id": "req_011CgefuPt1vHsFcwApwoHHm",
+    "result": "Buy policy set: buy from Ridgeline Data up to 0.02, no cache.",
+    "tool": "set_buy_policy",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 75,
+   "ts": "2026-11-02T19:42:06.715Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "text": "Sourcing: Stockline now quotes 0.04 per check, above my 0.03 per-purchase cap, so it is unbuyable at current price (margin only 0.01). I've switched the buy policy to Ridgeline (0.01, data 15 min old, margin 0.04), max 0.02. No cap change requested; budget 9.82 remaining is sufficient.",
+     "to": "treasury"
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 4,
+    "request_id": "req_011CgefuPt1vHsFcwApwoHHm",
+    "result": "Sent to the Treasury agent.",
+    "tool": "send_message",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 76,
+   "ts": "2026-11-02T19:42:08.958Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Stockline's price rose to 0.04, above my 0.03 mandate cap, so its refusal was correct and it would leave only 0.01 margin anyway. I switched the buy policy to Ridgeline Data (0.01 per check, 0.04 margin, max 0.02, no cache), accepting its 15-minute-old data. I informed Treasury and did not request any cap or budget change. I'll watch Ridgeline's first results and Stockline's price on the next wake."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011Cgefun1HsCmHj7Yky1H3g",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 3
+   }
+  },
+  {
+   "seq": 82,
+   "ts": "2026-11-02T19:42:16.537Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1236,
+    "request_id": "req_011CgefvE8RZc6AYBEm2ZxTQ",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.82 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 0 paid, 0 refused, 1 unavailable.\nYour buy policy now: buy from Ridgeline Data up to 0.02, no cache.\nIn this world code serves no cached stock check: \u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 83,
+   "ts": "2026-11-02T19:42:18.885Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Stockline's price rose to 0.04, above my 0.03 cap, so the buy policy stays on Ridgeline Data (0.01 per check, 0.04 margin, max 0.02, no cache). Ridgeline's record now shows 1 unavailable in its last 20 tries, but it is still the only supplier that fits the cap and margin. I'll keep watching its results and Stockline's price on the next wake."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011CgefvUAmaRjFBGUDFjaBD",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 86,
+   "ts": "2026-11-02T19:42:20.525Z",
+   "actor": "treasury",
+   "payload": {
+    "agent": "treasury",
+    "input": {
+     "summary": "No action. Sourcing moved from Stockline (0.04, above its 0.03 limit) to Ridgeline (0.01), so it isn't blocked and keeps a 0.04 margin per query. I didn't sweep the 0.27 in net earnings: it's small, no invoice needs it, and the sweep keeps back what Sourcing may still spend (9.82). No invoices are open and nothing waits for the CFO."
+    },
+    "model": "claude-opus-5-5",
+    "ms": 2,
+    "request_id": "req_011Cgefv4FrFrG952gaYPMef",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 108,
+   "ts": "2026-11-02T19:44:13.672Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1311,
+    "request_id": "req_011Cgeg4wcjjZujgaAQPQmQS",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.77 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 5 paid, 0 refused, 2 unavailable.\nYour buy policy now: buy from Ridgeline Data up to 0.02, no cache.\nIn this world code serves no cached stock check: \u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 109,
+   "ts": "2026-11-02T19:44:15.481Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Checked the market: Ridgeline Data is still the only supplier that fits my 0.03 cap and gives a margin (0.01 a check, 0.04 margin, 15-minute-old data). Stockline is at 0.04, above my cap, with only 0.01 margin. The buy policy stays on Ridgeline Data (max 0.02, no cache). Ridgeline's one recent refusal was an unavailable offer, not a charge, so I'm keeping it and will recheck Stockline's price on the next wake."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011Cgeg571419WBWxKys9bRP",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 131,
+   "ts": "2026-11-02T19:46:04.627Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1283,
+    "request_id": "req_011CgegD6SnK6Ne2eeuzrGdU",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.72 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 10 paid, 0 refused, 3 unavailable.\nYour buy policy now: buy from Ridgeline Data up to 0.02, no cache.\nIn this world code serves no cached stock check:\u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 132,
+   "ts": "2026-11-02T19:46:06.517Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 15-min-old data, 3 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04 (above cap, 0.01 margin). Kept the buy policy on Ridgeline Data (max 0.02, no cache) and will recheck Stockline's price on the next wake."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011CgegDHRLDaJKTeCtaHuWB",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 154,
+   "ts": "2026-11-02T19:47:58.308Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1256,
+    "request_id": "req_011CgegMW25x8UAt146miqtq",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.67 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 15 paid, 0 refused, 4 unavailable.\nYour buy policy now: buy from Ridgeline Data up to 0.02, no cache.\nIn this world code serves no cached stock check:\u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 155,
+   "ts": "2026-11-02T19:47:59.750Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 15-min-old data, 4 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04 (above cap, 0.01 margin). Buy policy stays on Ridgeline Data (max 0.02, no cache). No cap or budget change requested; I'll recheck Stockline's price on the next wake."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011CgegMfPtkCu8jjA6YE3AH",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 177,
+   "ts": "2026-11-02T19:49:48.132Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1158,
+    "request_id": "req_011CgegVcXyuLpYMY3dhNAPX",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.62 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 16 paid, 0 refused, 4 unavailable.\nYour buy policy now: buy from Ridgeline Data up to 0.02, no cache.\nIn this world code serves no cached stock check:\u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 178,
+   "ts": "2026-11-02T19:49:49.411Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 15-min-old data, 4 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04 (above cap, 0.01 margin). Kept the buy policy on Ridgeline Data (max 0.02, no cache). No purchase, cap, or budget change made; I'll recheck Stockline's price on the next wake."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 0,
+    "request_id": "req_011CgegVm2Codq8MEvygtbhJ",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 200,
+   "ts": "2026-11-02T19:51:40.752Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1208,
+    "request_id": "req_011CgegdvSxVCiV1rDChvUtm",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.57 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 16 paid, 0 refused, 4 unavailable.\nYour buy policy now: buy from Ridgeline Data up to 0.02, no cache.\nIn this world code serves no cached stock check:\u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 201,
+   "ts": "2026-11-02T19:51:41.955Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 4 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04, above cap. Keeping the buy policy on Ridgeline Data (max 0.02, no cache). No purchase, cap, or budget change made."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 0,
+    "request_id": "req_011Cgege4VQ9ZAynvtpLBGAa",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 223,
+   "ts": "2026-11-02T19:53:31.572Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1183,
+    "request_id": "req_011CgegmzWWqVFnJmHTptAvs",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.52 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 16 paid, 0 refused, 4 unavailable.\nYour buy policy now: buy from Ridgeline Data up to 0.02, no cache.\nIn this world code serves no cached stock check:\u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 224,
+   "ts": "2026-11-02T19:53:33.219Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 4 unavailable in last 20) is still the only supplier within my 0.03 cap with positive margin; Stockline is at 0.04, above cap. Kept the buy policy on Ridgeline Data (max 0.02, no cache). No purchase, cap, or budget change made."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011CgegnEJVBnTW6EXaHwXJW",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 2
+   }
+  },
+  {
+   "seq": 227,
+   "ts": "2026-11-02T19:53:40.438Z",
+   "actor": "support",
+   "payload": {
+    "agent": "support",
+    "input": {
+     "summary": "Routine check: no dispute on file, so I took no action. I issued no refunds and sent no messages."
+    },
+    "model": "claude-sonnet-5-5",
+    "ms": 1,
+    "request_id": "req_011Cgegno2ykCyD7BuqdF4AV",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 249,
+   "ts": "2026-11-02T19:55:25.229Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {},
+    "model": "claude-haiku-5-5",
+    "ms": 1240,
+    "request_id": "req_011CgegvRAKKHJqq2srvTSG2",
+    "result": "You sell each stock check to customers for 0.05. Your mandate: at most 0.03 a purchase, 9.47 budget left.\n- Stockline (stockline): 0.04 a stock check, data 5 s old; margin at that price 0.01; last 20 tries: 9 paid, 1 refused, 0 unavailable.\n- Ridgeline Data (ridgeline): 0.01 a stock check, data 15 min old; margin at that price 0.04; last 20 tries: 16 paid, 0 refused, 4 unavailable.\nYour buy policy now: buy from Ridgeline Data up to 0.02, no cache.\nIn this world code serves no cached stock check:\u2026",
+    "tool": "market",
+    "turn": 1
+   }
+  },
+  {
+   "seq": 250,
+   "ts": "2026-11-02T19:55:26.369Z",
+   "actor": "sourcing",
+   "payload": {
+    "agent": "sourcing",
+    "input": {
+     "summary": "Market unchanged: Ridgeline Data at 0.01 per check (0.04 margin, 4 of last 20 unavailable) remains the only supplier within my 0.03 cap with positive margin; Stockline at 0.04 is above cap. Kept the buy policy on Ridgeline Data (max 0.02, no cache). No purchase, cap, or budget change made."
+    },
+    "model": "claude-haiku-5-5",
+    "ms": 1,
+    "request_id": "req_011CgegvcCaKsnWWwgX6r3rE",
+    "result": "Noted.",
+    "tool": "finish",
+    "turn": 2
+   }
+  }
+ ],
+ "messages": [
+  {
+   "id": 1,
+   "from_agent": "sourcing",
+   "to_agent": "treasury",
+   "created_at": "2026-11-02T19:41:57.235Z",
+   "text": "Sourcing: Stockline now quotes 0.04 per check, above my 0.03 per-purchase cap, so it is unbuyable at current price (margin only 0.01). I've switched the buy policy to Ridgeline (0.01, data 15 min old, margin 0.04), max 0.02. No cap change requested; budget 9.82 remaining is sufficient."
+  }
+ ],
+ "withheld": [],
+ "cost_usd": 0.0395,
+ "events_of_interest": []
+}
