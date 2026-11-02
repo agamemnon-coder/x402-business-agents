@@ -12,11 +12,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { invoiceAlreadyHandled, proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
+import { invoiceAlreadyHandled, LICENSOR, proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
 import { parseInvoiceFallback } from "../src/agents/invoice.js";
 import { audit } from "../src/audit/log.js";
 import { publish } from "../src/autonomy/bus.js";
-import { invoiceFacts } from "../src/autonomy/invoiceFacts.js";
+import { invoiceFacts, plannedMatch } from "../src/autonomy/invoiceFacts.js";
 import { wake } from "../src/autonomy/runtime.js";
 import { treasuryProfile, type TreasurySim } from "../src/autonomy/teamProfiles.js";
 import { flowEvents } from "../src/dashboard/flows.js";
@@ -323,5 +323,42 @@ describe("plan_invoice runs only for the invoice code plans, once it came in as 
     publish(db, "invoice.received", { text }, "treasury");
     expect(await treasuryProfile(30 * 60_000, { runFlow: () => ({ ok: true, text: "" }), sim }).tools(db).find((t) => t.name === "plan_invoice")!.run({} as never)).toMatchObject({ blocked: "no invoice" });
     expect(flows).toEqual([]);
+  });
+});
+
+// Max, 2 November: the gate must not block the real licence. The Stockline fixture, with the allowlisted IBAN and BIC,
+// as `npm run world -- invoice` publishes it in the main run (scene 3): plan_invoice is offered, passes the gate, and a
+// proposal is created (stand-in rails); on the live path the gate passes and the licence flow starts.
+describe("scene 3: the real licence as the main run's world event passes the gate", () => {
+  it("world `invoice` publishes the fixture as this test does", () => {
+    const world = readFileSync(new URL("../src/cli/world.ts", import.meta.url), "utf8");
+    expect(world).toContain(`publish(db, "invoice.received", { vendor: "Stockline Data GmbH", file: "stockline-licence-SLL-2026-11.txt", text: readFileSync(fixture("stockline-licence-SLL-2026-11.txt"), "utf8").slice(0, 1500) }, "treasury");`);
+    expect(text.length).toBeLessThan(1500);
+    // The fixture's bank details are the allowlisted licensor's.
+    expect(text.replace(/\s+/g, "")).toContain(`IBAN:${LICENSOR.iban}`);
+    expect(text).toContain(`BIC: ${LICENSOR.bic}`);
+  });
+
+  it("plan_invoice is offered and a proposal to the allowlisted licensor is created; the live path starts the licence flow", async () => {
+    const db = openDb(":memory:");
+    const awx = new FakeAirwallex();
+    await seedTreasury(db, awx, awx);
+    publish(db, "invoice.received", { vendor: "Stockline Data GmbH", file: "stockline-licence-SLL-2026-11.txt", text: readFileSync(new URL("../fixtures/stockline-licence-SLL-2026-11.txt", import.meta.url), "utf8").slice(0, 1500) }, "treasury");
+    expect(plannedMatch(db, parseInvoiceFallback(text))).toEqual({ status: "arrived" });
+
+    // The live path first (it only starts the flow): the gate passes.
+    const flows: string[] = [];
+    const live = treasuryProfile(30 * 60_000, { runFlow: (s: string) => { flows.push(s); return { ok: true, text: "PLAN P-0001" }; } });
+    expect(await live.tools(db).find((t) => t.name === "plan_invoice")!.run({} as never)).toEqual({ text: "PLAN P-0001" });
+    expect(flows).toEqual(["licence.ts"]);
+
+    const planned: string[] = [];
+    const client = fake([[{ name: "plan_invoice", input: {} }], [finish("Planned.")]]);
+    const w = await wake(db, onRails(db, awx, planned), { client });
+    expect(client.asked[0]!.prompt).toMatch(/plan_invoice may plan it now/);
+    expect(w!.run!.calls[0]!.blocked).toBeUndefined();
+    expect(planned).toEqual(["plan"]);
+    const p = db.prepare("SELECT status, json_extract(terms_json, '$.invoice_no') AS no, json_extract(terms_json, '$.amount') AS amount, json_extract(terms_json, '$.beneficiary_name') AS payee, json_extract(terms_json, '$.iban_last4') AS last4, json_extract(terms_json, '$.bic') AS bic FROM proposals").all();
+    expect(p).toEqual([{ status: "PENDING_APPROVAL", no: "SLL-2026-11", amount: "240.00", payee: "Stockline Data GmbH", last4: LICENSOR.iban.slice(-4), bic: LICENSOR.bic }]);
   });
 });
