@@ -220,6 +220,19 @@ code on 30 October; the sentences below were changed on its findings.
 | Offline `/try` reads requests with code only | `src/cli/judge.ts` | Was "needs the live link". |
 | Deck: "Metal holds the limit, not only Purser" | The mandate is checked by Metal's facilitator on every payment (`docs/metal-award.md`) | Was "the limit holds even if Purser is wrong". |
 
+## Night batch, 2 November (D26 proof: variation, holdouts, red team)
+
+Source for every row: `docs/runs/2026-11-02-night-batch.md` and the files it names. Not yet on any page.
+
+| Claim | Value | Proof | Changed |
+|---|---|---|---|
+| Variation, simulated rails | 40 simulated worlds (seeds 1–40): 2 where an agent passed an unvetted payee address to another agent (no payment possible; code now withholds it). Full 40-world re-run on the fix: pending. 6 targeted re-runs (sim-31, sim-38, 3 times each): no address passed on, no money moved outside the rules | `docs/runs/variation/2026-11-02/summary.md`, `sim-31.json`, `sim-38.json`; `docs/runs/variation-after-fix-final/2026-11-02/` | New |
+| Variation, live | 10 live worlds on Metal testnet and the Airwallex sandbox (dry-142 to dry-151): 174 decisions, all by Claude; no money moved outside the rules, 0 double payments, 0 movements without origin (live verdict: the limits in force at each payment). Each world maps only part of its seed | `docs/runs/variation/2026-11-02/live-*.json` (`mapping.not_mapped`, `safety.not_judged`), `live-logs/` | New |
+| Calibration, 3 seeds | the refusal over the cap (`mandate_cap_exceeded`, recorded on chain) and the card decline (`LIMIT_EXCEEDED`) answer live as the stand-ins do; the SWIFT fee was EUR 13.39 to 13.40 live against 13.47 in the stand-in | night-batch report, section 3 | New |
+| Holdouts | 10 run on simulated rails and 4 of them live (live: no money moved outside the rules, 0 double payments, 0 movements without origin). No headline number: a fresh review tagged 1 CLEAN and 9 WEAK (2 leaked ones retired), and a new set of blind holdouts replaces this one | `docs/runs/holdouts/2026-11-02/summary.md`, `leak-review.md`, `leak-review-new.md`, `live-*.json` | New |
+| Red team, Opus as the attacker | Opus wrote 119 tests in rounds (it declined to attack through tools); 118 reached the system (63 against the agents, 8 TAP, 16 passkey, 8 relay, 24 Try): code judged 111 blocked, 5 not blocked, 3 inconclusive. All 5 re-checked by hand: none is a breach (two small Try reading bugs filed) | `docs/redteam/night-2026-11-02.json`, `-b.json`, `-c.json`; night-batch report, section 5 | New |
+| A second finding (live) | In 1 of 14 live runs the Support agent settled a dispute that never came in (3 orders refunded within the rules, 0.15); fixed (support-dispute-gate, merged); a keyed follow-up is on dispute-gate-keyed | `docs/runs/variation/2026-11-02/live-14.json`, `live-logs/dry-147.txt`; branch `support-dispute-gate` | New |
+
 ## Removed or softened after the audits (summary)
 
 **Landing and dashboard**
