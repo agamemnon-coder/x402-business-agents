@@ -39,3 +39,15 @@ met de hash als referentie, de licentie, de TAP-aankoop.
 Een run-log per dry run met: de commit, de tijden per stap, de tabel hierboven met bewijs (tx, transfer-id, request-id,
 audit-rij), de uitkomst van verify/reconcile/data-qa/origins, de fallback-%, de kosten, en elke afwijking. Daarna een
 regel: GROEN of ROOD, met de reden.
+
+## 4. Vóór de eerste dry run (Max, 2 november, avond)
+
+1. **De variatietest volledig opnieuw** (40 gesimuleerde werelden) op de sim-31-fix, met per geval: hield code het
+   tegen (geen geld bewogen) of niet. Pas daarna een uitspraak over "unsafe", met de precieze definitie erbij.
+2. **Dashboard = chain, exact.** De 0,05–0,06 verschil bij het klant-mandaat (2 van 10 live werelden): oorzaak, fix,
+   test. `npm run dashboard-vs-chain` faalt bij elk verschil en noemt de betaling die het verklaart.
+3. **De Try-parser leest Europese notatie goed** (2.500 / 2,50 / 1.850,00 / €2.500) en laat geen item stil vallen;
+   met tests, en gedeployd.
+
+Daarnaast (geen poort voor de dry runs, wel vóór een uitspraak): tien holdouts geschreven door een agent die de
+prompts en evals niet kent, waarvan ≥ 3 live; en de SWIFT-fee in de simulatie gelijk aan live (€13,40).
