@@ -697,7 +697,8 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
     expect(transferRows(db)).toEqual([{ transfer_id: null, status: "CANCELLED", failure_type: "closed_unsent" }]);
     const alarm = db.prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'transfer.row_conflict'").get() as { subject: string; payload_json: string } | undefined;
     expect(alarm?.subject).toBe(awx.transfers[0]!.id);
-    expect(JSON.parse(alarm!.payload_json)).toMatchObject({ request_id: out.terms.transfer_request_id, row_status: "CANCELLED" });
+    // A money event: it records its origin (none in force in this test, so null, which the origins check counts).
+    expect(JSON.parse(alarm!.payload_json)).toMatchObject({ request_id: out.terms.transfer_request_id, row_status: "CANCELLED", origin: null });
     expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event IN ('transfer.created', 'transfer.adopted')").get()).toEqual({ n: 0 });
   });
 
@@ -818,7 +819,7 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
       await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, { delaysMs: [15_000, 30_000], sleep })).rejects.toMatchObject({ code: "fee_unknown" });
       expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toHaveLength(1);
       expect(retries(db)).toEqual([expect.objectContaining({ attempt: 1, next_attempt_in_s: 15 })]);
-      expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.retry_stopped'").get() as { payload_json: string }).payload_json)).toMatchObject({ after_attempt: 1, reason: expect.stringMatching(/paused/) });
+      expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.retry_stopped'").get() as { payload_json: string }).payload_json)).toMatchObject({ after_attempt: 1, reason: expect.stringMatching(/paused/), origin: null });
       expect(transferRows(db)[0]!.status).toBe("CANCELLED");
     });
 

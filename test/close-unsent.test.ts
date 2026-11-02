@@ -17,6 +17,7 @@ import { reconcile } from "../src/finance/reconcile.js";
 import { eurInFlightCents } from "../src/policy/available.js";
 import { decide } from "../src/policy/approvals.js";
 import { chaos } from "../src/policy/saga.js";
+import { describeOrigin } from "../src/provenance/describe.js";
 import { parseOrigin } from "../src/provenance/origin.js";
 import { FakeAirwallex } from "../src/redteam/airwallex.js";
 
@@ -79,7 +80,9 @@ describe("closing a stale SUBMITTING payout row with no transfer behind it (npm 
     expect(a.subject).toBe(requestId);
     const p = JSON.parse(a.payload_json) as Record<string, unknown>;
     expect(p).toMatchObject({ request_id: requestId, invoice_no: "SLL-2026-11", amount: "EUR 240.00", proposal_id: out.proposal.proposal_id });
-    expect(parseOrigin(JSON.stringify(p.origin))).toMatchObject({ actor: "code", rule: expect.stringContaining("--close-unsent") });
+    // D24's fifth door: the CFO's own command, which moves no money (a new proposal still needs Face ID).
+    expect(parseOrigin(JSON.stringify(p.origin))).toEqual({ actor: "cfo-command", command: "npm run reconcile -- --close-unsent", moves_money: false });
+    expect(describeOrigin(parseOrigin(JSON.stringify(p.origin))).decided).toBe("the CFO ran npm run reconcile -- --close-unsent (it moves no money)");
     expect(eurInFlightCents(db)).toBe(0);
     expect(invoiceAlreadyHandled(db, "SLL-2026-11")).toBeNull();
     // Closed rows are never sent again under their request_id.

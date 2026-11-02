@@ -21,8 +21,11 @@ import { onlyRequestId } from "../airwallex/adapter.js";
 
 export const CLOSE_UNSENT_MIN_AGE_MINUTES = 30;
 
-/** D24: who decided the close. The CFO runs the command; code checks every condition above. */
-export const CLOSE_UNSENT_ORIGIN: Origin = { actor: "code", rule: "the CFO's command: npm run reconcile -- --close-unsent <request_id> (closes only after a read-only look-up by request_id finds no transfer)" };
+/**
+ * D24: who decided the close: the CFO's own command, the fifth door (src/provenance/origin.ts). It moves no money; code
+ * checks every condition above; a new proposal for the invoice still needs Face ID.
+ */
+export const CLOSE_UNSENT_ORIGIN: Origin = { actor: "cfo-command", command: "npm run reconcile -- --close-unsent", moves_money: false };
 
 export type CloseUnsentResult =
   | { closed: true; requestId: string; invoiceNo: string; proposalId: string; lookedUpAt: string }
