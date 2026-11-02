@@ -216,8 +216,9 @@ advise a retry with some backoff on `fee_unknown` and `unconfigured_client_fee` 
   in all). Airwallex keeps one transfer per `request_id`: a second create under it is answered `duplicate_request_id`,
   never paid twice, and that answer goes through the adoption checks (this payout's amount, currency, payee, live).
 - Each refused attempt is an audit row `transfer.retry` with Airwallex's code, **trace id** (`x-b3-traceid`), request id
-  and message, and when the next attempt goes. The dashboard feed shows it: "Airwallex refused the EUR 240.00 payout
-  for now (fee_unknown, trace …), attempt 1; nothing was paid. Next attempt in 15 s, same request_id…".
+  and message, and when the next attempt goes. The dashboard feed shows it: "Airwallex refused attempt 1 of the EUR
+  240.00 payout (fee_unknown, trace …). Retried in 15 s under the same request_id; Airwallex refused each attempt so
+  far".
 - It stops at once on any other answer; never makes an attempt at or after the approved terms' expiry (a proposal
   lives 10 minutes); and stops if a hold is set during a wait (emergency stop, pause, velocity stop, blocked payee).
 - If an attempt goes through, it is a normal payout: settled, the fee recorded and judged against the SWIFT ceiling.

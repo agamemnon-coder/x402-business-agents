@@ -76,8 +76,8 @@ omdat Support elke order op de chain controleert.
 - **Airwallex weigert de factuurbetaling met `fee_unknown`** (zoals de licentie in agent-run 1). Dat ligt aan
   Airwallex' sandbox, niet aan ons. Wat Max ziet terwijl de code opnieuw probeert:
   - De telefoon zegt "approved"; het voorstel staat op "executing", tot ongeveer 5 minuten.
-  - Op het dashboard per poging een regel: "Airwallex refused the EUR 240.00 payout for now (fee_unknown, trace …),
-    attempt 1; nothing was paid. Next attempt in 15 s, same request_id…". Daarna 30, 60, 90 en 120 s.
+  - Op het dashboard per poging een regel: "Airwallex refused attempt 1 of the EUR 240.00 payout (fee_unknown, trace …).
+    Retried in 15 s under the same request_id; Airwallex refused each attempt so far". Daarna 30, 60, 90 en 120 s.
   - Lukt een poging: de gewone regels "SWIFT transfer … created" en "Transfer PAID". Klaar.
   - Lukt geen enkele: "Execution stopped" met de code, het trace-id en de tekst van Airwallex, en "Payout refused by
     Airwallex … the payout is closed". Er is niets betaald.

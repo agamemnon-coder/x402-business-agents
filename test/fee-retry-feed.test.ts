@@ -10,15 +10,19 @@ const row = (event: string, payload: Record<string, unknown>, subject = RID) =>
 const feed = (event: string, payload: Record<string, unknown>, subject?: string) => describeFeed(row(event, payload, subject), () => undefined);
 
 describe("the dashboard while the payout is retried and after", () => {
-  it("a refused attempt with a next one: says nothing was paid, the code, the trace id, and when the next attempt goes", () => {
+  it("a refused attempt with a next one: says what we do (the code, the trace id, when it is retried, under the same request_id), not a promise", () => {
     const f = feed("transfer.retry", { attempt: 1, code: "fee_unknown", trace_id: "6f1c2a9e4b7d3c10", amount: "EUR 240.00", next_attempt_in_s: 15, stopped: null });
-    expect(f.text).toBe("Airwallex refused the EUR 240.00 payout for now (fee_unknown, trace 6f1c2a9e4b7d3c10), attempt 1; nothing was paid. Next attempt in 15 s, same request_id, so it cannot pay twice");
+    expect(f.text).toBe("Airwallex refused attempt 1 of the EUR 240.00 payout (fee_unknown, trace 6f1c2a9e4b7d3c10). Retried in 15 s under the same request_id; Airwallex refused each attempt so far");
+    expect(f.text).not.toMatch(/cannot pay twice/);
     expect(f.tone).toBe("info");
   });
 
   it("the last refused attempt says why no further one is made", () => {
     expect(feed("transfer.retry", { attempt: 6, code: "fee_unknown", trace_id: null, amount: "EUR 240.00", next_attempt_in_s: null, stopped: "no attempts left (6 made)" }).text)
-      .toBe("Airwallex refused the EUR 240.00 payout for now (fee_unknown), attempt 6; nothing was paid. No further attempt: no attempts left (6 made)");
+      .toBe("Airwallex refused attempt 6 of the EUR 240.00 payout (fee_unknown). No further attempt: no attempts left (6 made)");
+    expect(feed("transfer.left_open", { attempts: 6, amount: "EUR 240.00", reason: "the look-up by request_id after 6 attempts failed: timeout" })).toMatchObject({
+      tone: "refusal", text: "Airwallex refused the EUR 240.00 payout 6 times, but it could not be shown that nothing exists under its request_id (the look-up by request_id after 6 attempts failed: timeout); the payout stays under way until a person checks it",
+    });
     expect(feed("transfer.retry_stopped", { after_attempt: 2, reason: "the treasury agent is paused by the CFO" }).text)
       .toBe("The payout's retries stopped after attempt 2: the treasury agent is paused by the CFO; nothing was paid");
   });
@@ -30,6 +34,6 @@ describe("the dashboard while the payout is retried and after", () => {
       .toBe("Payout of invoice SLL-2026-11 (EUR 240.00, P-0005) closed by your command: Airwallex holds no transfer under it; the invoice can be proposed again");
     expect(feed("transfer.row_conflict", { request_id: RID, row_status: "CANCELLED", amount: "EUR 240.00" }, "tr-1")).toMatchObject({ tone: "refusal", text: expect.stringMatching(/^Alarm: Airwallex holds transfer tr-1 .*CANCELLED.*a person checks it now/) });
     expect(feed("transfer.found_after_close", { request_id: RID, invoice_no: "SLL-2026-11", amount: "EUR 240.00", status: "PAID" }, "tr-1")).toMatchObject({ tone: "refusal", text: expect.stringMatching(/^Alarm: Airwallex holds transfer tr-1 \(EUR 240\.00, PAID\).*SLL-2026-11/) });
-    for (const e of ["transfer.refused", "transfer.row_conflict", "transfer.found_after_close"]) expect(REFUSAL_EVENTS.has(e), e).toBe(true);
+    for (const e of ["transfer.refused", "transfer.row_conflict", "transfer.found_after_close", "transfer.left_open"]) expect(REFUSAL_EVENTS.has(e), e).toBe(true);
   });
 });
