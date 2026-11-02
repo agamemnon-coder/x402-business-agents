@@ -281,9 +281,11 @@ class ErringAirwallex extends FakeAirwallex {
   override async createQuote(a: Parameters<FakeAirwallex["createQuote"]>[0]): Promise<Quote> { this.take("createQuote"); return super.createQuote(a); }
   override async createConversion(a: Parameters<FakeAirwallex["createConversion"]>[0]): Promise<Conversion> { this.take("createConversion"); return super.createConversion(a); }
   /** Runs while a create is at Airwallex (before its answer): what another process does to the ledger meanwhile. */
-  onCreate: (() => void) | null = null;
+  onCreate: ((t: NewTransfer) => void) | null = null;
+  /** The fee Airwallex charges on the next transfer made, when a test wants another than the sandbox's usual. */
+  feeCents: number | null = null;
   override async createTransfer(t: NewTransfer): Promise<Transfer> {
-    this.onCreate?.();
+    this.onCreate?.(t);
     this.take("createTransfer");
     // [TERR] duplicate_request_id: "has been used for a transfer with the transfer ID … before", with details.id.
     const prior = this.transfers.find((x) => x.requestId === t.requestId);
@@ -293,7 +295,8 @@ class ErringAirwallex extends FakeAirwallex {
     const rename = () => { const last = this.transfers.at(-1)!; last.id = randomUUID(); return last.id; };
     try {
       const made = await super.createTransfer(t);
-      return { ...made, id: rename() };
+      if (this.feeCents !== null) this.transfers.at(-1)!.fee = { cents: this.feeCents, currency: "EUR" };
+      return { ...made, id: rename(), fee: this.transfers.at(-1)!.fee ?? null };
     } catch (e) {
       if (e instanceof AirwallexAmbiguous) rename();
       throw e;
@@ -319,6 +322,12 @@ class ErringAirwallex extends FakeAirwallex {
     return t && { ...t, beneficiaryId: this.payeeIn.list ? t.beneficiaryId : null };
   }
 }
+
+/** The fee retry in tests: the same attempts as live, no real waiting; `waited` lists each wait asked for. */
+const fast = () => { const waited: number[] = []; return { waited, delaysMs: [15_000, 30_000, 60_000, 90_000, 120_000], sleep: async (ms: number) => { waited.push(ms); } }; };
+const FAST = fast();
+/** Airwallex answering the same refusal to every create (more than the retries allow). */
+const persistently = (code: string) => Array.from({ length: 6 }, () => awxError(400, code, "/transfers/create"));
 
 async function world() {
   const db = openDb(":memory:");
@@ -396,8 +405,9 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
     it(`${code} from POST /transfers/create: refused, nothing paid, the payout row closed so the invoice can be proposed again [${source}]`, async () => {
       const { db, awx } = await world();
       const out = await approved(db, awx);
-      awx.fail.createTransfer = awxError(400, code, "/transfers/create");
-      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code });
+      // fee_unknown is retried under the same request_id (below); here Airwallex keeps refusing past the last retry.
+      awx.fail.createTransfer = code === "fee_unknown" ? persistently(code) : awxError(400, code, "/transfers/create");
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, FAST)).rejects.toMatchObject({ code });
       expect(status(db, out.proposal.proposal_id)).toBe("FAILED");
       expect(awx.transfers).toHaveLength(0);
       // Airwallex made no transfer: the ledger's row must not stay SUBMITTING (an invisible payout "under way").
@@ -415,7 +425,7 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
     const msg = "There is a problem with your transfer fee configuration. Please contact your Account Manager.";
     const refusal = () => new AirwallexError(400, "fee_unknown", { code: "fee_unknown", message: msg, source: "transfer" }, "/transfers/create", { traceId: "6f1c2a9e4b7d3c10", requestId: "awx-req-77" });
     awx.fail.createTransfer = [1, 2, 3, 4, 5, 6].map(refusal);
-    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "fee_unknown" });
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, FAST)).rejects.toMatchObject({ code: "fee_unknown" });
     const payload = (event: string) => JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = ? ORDER BY seq DESC").get(event) as { payload_json: string }).payload_json) as Record<string, unknown>;
     expect(payload("transfer.refused")).toMatchObject({ code: "fee_unknown", trace_id: "6f1c2a9e4b7d3c10", awx_request_id: "awx-req-77", message: msg });
     expect(payload("proposal.failed")).toMatchObject({ code: "fee_unknown", trace_id: "6f1c2a9e4b7d3c10", awx_request_id: "awx-req-77", awx_message: msg });
@@ -470,10 +480,10 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
   it("a payout closed as refused is never sent again under its request_id, and its proposal re-run stops before Airwallex", async () => {
     const { db, awx } = await world();
     const out = await approved(db, awx);
-    awx.fail.createTransfer = awxError(400, "fee_unknown", "/transfers/create");
-    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "fee_unknown" });
-    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow(/refused by Airwallex and closed/);
-    expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toEqual(["createTransfer:refused"]);
+    awx.fail.createTransfer = persistently("fee_unknown");
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, FAST)).rejects.toMatchObject({ code: "fee_unknown" });
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, FAST)).rejects.toThrow(/refused by Airwallex and closed/);
+    expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toEqual(Array(6).fill("createTransfer:refused"));
     const refused = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.refused'").all() as { payload_json: string }[];
     expect(refused).toHaveLength(1);
     expect(JSON.parse(refused[0]!.payload_json)).toHaveProperty("origin");
@@ -482,8 +492,8 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
   it("the reconciliation raises a payout closed as refused that Airwallex holds after all; System health counts the double", async () => {
     const { db, awx } = await world();
     const out = await approved(db, awx);
-    awx.fail.createTransfer = awxError(400, "fee_unknown", "/transfers/create");
-    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "fee_unknown" });
+    awx.fail.createTransfer = persistently("fee_unknown");
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, FAST)).rejects.toMatchObject({ code: "fee_unknown" });
     // Suppose Airwallex had made it anyway, and a second proposal paid the invoice.
     awx.transfers.push({ id: randomUUID(), requestId: out.terms.transfer_request_id, status: "PAID", amountCents: 185_000, currency: "EUR", metadata: "x", beneficiaryId: out.terms.beneficiary_id });
     db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES ('tr-second', 'req-second', 'BTX-2026-11', '1850.00', 'EUR', 'SWIFT', '20.00', 'PAID', 'h', ?)").run(new Date().toISOString());
@@ -621,6 +631,153 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
     expect(alarm?.subject).toBe(awx.transfers[0]!.id);
     expect(JSON.parse(alarm!.payload_json)).toMatchObject({ request_id: out.terms.transfer_request_id, row_status: "CANCELLED" });
     expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event IN ('transfer.created', 'transfer.adopted')").get()).toEqual({ n: 0 });
+  });
+
+  describe("fee_unknown and unconfigured_client_fee: the create is retried under the same request_id with a bounded backoff (agent run 1)", () => {
+    const retries = (db: DB) => (db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.retry' ORDER BY seq").all() as { payload_json: string }[]).map((r) => JSON.parse(r.payload_json) as Record<string, unknown>);
+
+    for (const code of ["fee_unknown", "unconfigured_client_fee"]) {
+      it(`${code} twice, then accepted: paid exactly once, every attempt under the same request_id with the same terms, each audited`, async () => {
+        const { db, awx } = await world();
+        const out = await approved(db, awx);
+        const sent: NewTransfer[] = [];
+        awx.onCreate = (t) => sent.push(t);
+        awx.fail.createTransfer = [awxError(400, code, "/transfers/create"), awxError(400, code, "/transfers/create")];
+        const retry = fast();
+        const r = await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, retry);
+        expect(r.transfer.status).toBe("PAID");
+        expect(awx.transfers).toHaveLength(1);
+        expect(status(db, out.proposal.proposal_id)).toBe("EXECUTED");
+        expect(sent).toHaveLength(3);
+        expect(new Set(sent.map((t) => JSON.stringify(t))).size).toBe(1);
+        expect(sent[0]!.requestId).toBe(out.terms.transfer_request_id);
+        expect(retry.waited).toEqual([15_000, 30_000]);
+        expect(retries(db)).toEqual([
+          expect.objectContaining({ attempt: 1, code, request_id: out.terms.transfer_request_id, next_attempt_in_s: 15 }),
+          expect.objectContaining({ attempt: 2, code, request_id: out.terms.transfer_request_id, next_attempt_in_s: 30 }),
+        ]);
+        expect(retries(db).every((p) => "origin" in p)).toBe(true);
+        expect(transferRows(db)).toEqual([{ transfer_id: awx.transfers[0]!.id, status: "PAID", failure_type: null }]);
+      });
+    }
+
+    it("refused on every attempt: 1 + 5 retries over about 5 minutes, then the existing refusal path closes the first send", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      awx.fail.createTransfer = persistently("fee_unknown");
+      const retry = fast();
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, retry)).rejects.toMatchObject({ code: "fee_unknown" });
+      expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toEqual(Array(6).fill("createTransfer:refused"));
+      expect(retry.waited).toEqual([15_000, 30_000, 60_000, 90_000, 120_000]);
+      expect(retry.waited.reduce((a, b) => a + b, 0)).toBe(315_000);
+      expect(retries(db).map((p) => p.attempt)).toEqual([1, 2, 3, 4, 5, 6]);
+      expect(retries(db).at(-1)).toMatchObject({ next_attempt_in_s: null, stopped: expect.stringMatching(/no attempts left/) });
+      expect(transferRows(db)).toEqual([{ transfer_id: null, status: "CANCELLED", failure_type: "fee_unknown" }]);
+      expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.refused'").get() as { payload_json: string }).payload_json)).toMatchObject({ code: "fee_unknown", attempts: 6 });
+      expect(awx.transfers).toHaveLength(0);
+    });
+
+    it("any other code stops the retries at once: a documented refusal closes the first send, an undocumented one keeps it open", async () => {
+      for (const [next, row] of [["balance_insufficient", "CANCELLED"], ["service_unavailable", "SUBMITTING"]] as const) {
+        const { db, awx } = await world();
+        const out = await approved(db, awx);
+        awx.fail.createTransfer = [awxError(400, "fee_unknown", "/transfers/create"), awxError(400, next, "/transfers/create"), ...persistently("fee_unknown")];
+        const retry = fast();
+        await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, retry), next).rejects.toMatchObject({ code: next });
+        expect(awx.calls.filter((c) => c.startsWith("createTransfer")), next).toHaveLength(2);
+        expect(retry.waited, next).toEqual([15_000]);
+        expect(transferRows(db)[0]!.status, next).toBe(row);
+      }
+    });
+
+    it("a lost answer during the retries is never retried blind: it is looked up by request_id and adopted", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      awx.fail.createTransfer = [awxError(400, "fee_unknown", "/transfers/create")];
+      let n = 0;
+      awx.onCreate = () => { if (++n === 2) awx.loseNextTransferAnswer = true; };
+      const r = await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast());
+      expect(awx.transfers).toHaveLength(1);
+      expect(r.transfer.id).toBe(awx.transfers[0]!.id);
+      expect(n).toBe(2);
+    });
+
+    it("duplicate_request_id on a retry: the existing adoption checks apply (this payout adopted once; anything else never, and never closed)", async () => {
+      for (const amountCents of [185_000, 1]) {
+        const { db, awx } = await world();
+        const out = await approved(db, awx);
+        awx.fail.createTransfer = [awxError(400, "fee_unknown", "/transfers/create")];
+        let n = 0;
+        // By the second attempt Airwallex holds a transfer under this request_id after all.
+        awx.onCreate = (t) => {
+          if (++n === 2) awx.transfers.push({ id: randomUUID(), requestId: t.requestId, status: "PROCESSING", amountCents, currency: "EUR", metadata: t.approvalSha256, beneficiaryId: t.beneficiaryId, fee: { cents: 1347, currency: "EUR" } });
+        };
+        const run = executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast());
+        if (amountCents === 185_000) {
+          expect((await run).transfer.id).toBe(awx.transfers[0]!.id);
+          expect(transferRows(db)).toEqual([{ transfer_id: awx.transfers[0]!.id, status: "PAID", failure_type: null }]);
+          expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'transfer.adopted'").get()).toEqual({ n: 1 });
+        } else {
+          await expect(run).rejects.toMatchObject({ code: "duplicate_request_id" });
+          expect(transferRows(db)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+          expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event IN ('transfer.adopted', 'transfer.created', 'transfer.refused')").get()).toEqual({ n: 0 });
+        }
+        expect(awx.transfers).toHaveLength(1);
+      }
+    });
+
+    it("no attempt after the approved terms expire: the retries stop before the expiry, and the first send is closed", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      const expires = Date.parse(out.terms.expires_at);
+      let t = expires - 50_000;
+      const at: number[] = [];
+      awx.onCreate = () => at.push(t);
+      awx.fail.createTransfer = persistently("fee_unknown");
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, () => new Date(t), { delaysMs: [15_000, 30_000, 60_000, 90_000, 120_000], sleep: async (ms) => { t += ms; } }))
+        .rejects.toMatchObject({ code: "fee_unknown" });
+      expect(at).toEqual([expires - 50_000, expires - 35_000, expires - 5_000]);
+      expect(at.every((x) => x < expires)).toBe(true);
+      expect(retries(db).at(-1)).toMatchObject({ attempt: 3, next_attempt_in_s: null, stopped: expect.stringMatching(/expire/) });
+      expect(transferRows(db)).toEqual([{ transfer_id: null, status: "CANCELLED", failure_type: "fee_unknown" }]);
+    });
+
+    it("a hold set during the wait (the CFO pauses Treasury) stops the retries: no further attempt", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      awx.fail.createTransfer = persistently("fee_unknown");
+      const sleep = async () => { db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('pause.treasury', 'on', ?) ON CONFLICT(key) DO UPDATE SET value = 'on'").run(new Date().toISOString()); };
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, { delaysMs: [15_000, 30_000], sleep })).rejects.toMatchObject({ code: "fee_unknown" });
+      expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toHaveLength(1);
+      expect(retries(db)).toEqual([expect.objectContaining({ attempt: 1, next_attempt_in_s: 15 })]);
+      expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.retry_stopped'").get() as { payload_json: string }).payload_json)).toMatchObject({ after_attempt: 1, reason: expect.stringMatching(/paused/) });
+      expect(transferRows(db)[0]!.status).toBe("CANCELLED");
+    });
+
+    it("the SWIFT fee ceiling still applies to what is finally paid after a retry", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      awx.fail.createTransfer = [awxError(400, "fee_unknown", "/transfers/create")];
+      awx.feeCents = 2_500;
+      await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast());
+      expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.fee_over_ceiling'").get() as { payload_json: string }).payload_json)).toMatchObject({ fee: "EUR 25.00" });
+    });
+
+    it("a resend (the row written by an earlier run that crashed before its first create) is retried too, and stays open: never closed", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      chaos.at = (point) => { if (point === "transfer:after-insert") throw new Error("crash"); };
+      try {
+        await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast())).rejects.toThrow("crash");
+      } finally {
+        chaos.at = null;
+      }
+      expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toHaveLength(0);
+      awx.fail.createTransfer = persistently("fee_unknown");
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id, undefined, fast())).rejects.toMatchObject({ code: "fee_unknown" });
+      expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toHaveLength(6);
+      expect(transferRows(db)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+    });
   });
 
   it("names the supplier's real account only from the allowlist, whatever the error", () => {

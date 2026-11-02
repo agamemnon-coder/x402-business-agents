@@ -26,7 +26,23 @@ export interface InvoicePaymentResult {
   transfer: Transfer;
 }
 
-export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: SandboxSim | null, proposalId: string, now = () => new Date()): Promise<InvoicePaymentResult> {
+/** The retry of a transfer create that Airwallex refused for its own fee configuration (see FEE_RETRY_CODES). */
+export interface FeeRetry {
+  /** The wait before each retry, in order: as many retries as entries. */
+  delaysMs: readonly number[];
+  sleep: (ms: number) => Promise<void>;
+}
+
+/**
+ * Live: 15, 30, 60, 90 and 120 s, 5 min 15 s in all. Airwallex staff advised a retry with some backoff on these codes
+ * (Slack, 2 November); the delays they measured before it worked were 33 s to 3.2 min. A proposal lives 10 minutes.
+ */
+export const FEE_RETRY: FeeRetry = { delaysMs: [15_000, 30_000, 60_000, 90_000, 120_000], sleep: (ms) => new Promise((r) => setTimeout(r, ms)) };
+
+/** Airwallex's fee configuration on its side, transient (agent run 1: the same payout paid 5 times that day). */
+export const FEE_RETRY_CODES = new Set(["fee_unknown", "unconfigured_client_fee"]);
+
+export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: SandboxSim | null, proposalId: string, now = () => new Date(), feeRetry: FeeRetry = FEE_RETRY): Promise<InvoicePaymentResult> {
   const pre = treasuryState(db, await snapshot(db, rail, `pre-exec:${proposalId}`));
   const sha = (db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_sha256: string }).terms_sha256;
 
@@ -34,13 +50,8 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
   const resumedAfterConversion = begun("conversion") && !begun("transfer");
   const terms = beginExecution<InvoicePaymentTerms>(db, proposalId, (t) => {
     // The CFO may block a payee after the approval: checked again here, before Airwallex is called (review L2).
-    if (!counterpartyAllowed(db, t.beneficiary_name)) throw new Error(`${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`);
-    if (frozen(db)) throw new Error("the CFO pulled the emergency stop; nothing is paid until it is lifted");
-    if (stopped(db, "treasury")) throw new Error("the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop");
-    if (paused(db, "treasury")) throw new Error("the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID");
-    // The treasury agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
-    const denied = authorize(db, "treasury", { rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, now());
-    if (denied) throw new Error(`${denied}; nothing is paid`);
+    const held = holdReason(db, t, now());
+    if (held) throw new Error(held);
     // Another payout for the same invoice (an older proposal approved elsewhere): stop before any conversion.
     const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
       .find((r) => invoiceKey(r.invoice_no) === invoiceKey(t.invoice_no));
@@ -98,7 +109,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
       }
     }
     // Step 2: the payout, under its own request_id (the transfers row is its outbox entry). Step 3: its settlement.
-    const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submitTransfer(db, rail, terms, sha), now);
+    const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submitTransfer(db, rail, terms, sha, now, feeRetry), now);
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
     await snapshot(db, rail, `post-exec:${proposalId}`);
@@ -110,7 +121,18 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
   }
 }
 
-async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms, sha: string): Promise<Transfer> {
+/** Why nothing may be paid now (the holds and the agent's identity, checked before every create), or null. */
+function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | null {
+  if (!counterpartyAllowed(db, t.beneficiary_name)) return `${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`;
+  if (frozen(db)) return "the CFO pulled the emergency stop; nothing is paid until it is lifted";
+  if (stopped(db, "treasury")) return "the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop";
+  if (paused(db, "treasury")) return "the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID";
+  // The treasury agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
+  const denied = authorize(db, "treasury", { rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, at);
+  return denied ? `${denied}; nothing is paid` : null;
+}
+
+async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms, sha: string, now: () => Date, feeRetry: FeeRetry): Promise<Transfer> {
   const existing = db.prepare("SELECT transfer_id, status FROM transfers WHERE request_id = ?").get(t.transfer_request_id) as { transfer_id: string | null; status: string } | undefined;
   if (existing?.transfer_id) return rail.getTransfer(existing.transfer_id);
   // Closed as refused at create: never sent again under this request_id (a re-run of a FAILED proposal would also skip
@@ -131,13 +153,17 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
     db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?, ?)")
       .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString(), originJson());
   }
+  // A crash here: the row is written, nothing was sent. The re-run is a resend (it may never close the row); a row left
+  // SUBMITTING with nothing behind it is closed by the CFO's `npm run reconcile -- --close-unsent` (src/finance/closeUnsent.ts).
+  await checkpoint("transfer:after-insert");
   // Only the call that wrote the row sends the first create; any other path here is a resend under the same request_id.
   const firstSend = !existing;
   const create = req(t, sha);
   let tr: Transfer;
   let adopted: boolean;
+  let attempts = 0;
   try {
-    ({ transfer: tr, adopted } = await createOrAdopt(rail, create));
+    ({ transfer: tr, adopted } = await createWithFeeRetry(db, rail, t, sha, create, now, feeRetry, () => attempts++));
   } catch (err) {
     if (firstSend && err instanceof AirwallexError && err.status === 400 && REFUSED_AT_CREATE.has(err.code ?? "")) {
       // Airwallex refused the very first create outright (contract tests): no transfer exists, so the row is closed,
@@ -151,7 +177,7 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
         if (closed.changes !== 1) return;
         audit(db, "awx-executor", "transfer.refused", t.transfer_request_id, {
           code: err.code ?? null, status: err.status, request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, approval_sha256: sha,
-          trace_id: err.traceId, awx_request_id: err.awxRequestId, message: err.awxMessage,
+          trace_id: err.traceId, awx_request_id: err.awxRequestId, message: err.awxMessage, attempts,
         });
       }).immediate();
       throw err;
@@ -240,6 +266,54 @@ export const REFUSED_AT_CREATE = new Set([
   // The builder guide: FX on a newly activated account (https://airwallexdev.com/guide).
   "unconfigured_client_fee",
 ]);
+
+/**
+ * The create, retried while Airwallex refuses it for its own fee configuration (fee_unknown, unconfigured_client_fee):
+ * after each such 400 it waits the next delay and sends the very same create again. Any other answer ends it at once
+ * (a success, an adoption, or the error for the caller's existing paths: a lost answer is looked up, never retried blind).
+ * It stops, with the last refusal, when no retry is left, when the next attempt would fall at or after the approved
+ * terms' expiry, or when a hold is set during the wait. Each refused attempt is audited (transfer.retry).
+ *
+ * Why a retry under the same request_id cannot pay twice:
+ * - Airwallex is idempotent on request_id: a create under a request_id that already made a transfer is answered
+ *   duplicate_request_id naming that transfer, never with a second one ([TERR]; the contract tests "a lost answer, then
+ *   duplicate_request_id on the resend" and "duplicate_request_id on a retry"). That answer goes through the existing
+ *   adoption checks (createOrAdopt): this request_id, amount, currency, a payee that is ours, and live; else it stays an
+ *   error and the payout stays open as under way.
+ * - A retry follows only a documented 400 refusal, which made nothing; a lost answer (AirwallexAmbiguous) is never
+ *   retried here but looked up by request_id first.
+ * - Every attempt sends the same object (`want`): the approved request_id, payee, amount, currency and approval hash.
+ * - Whatever is finally paid is still judged against the SWIFT fee ceiling (recordFee), as before.
+ */
+async function createWithFeeRetry(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms, sha: string, want: NewTransfer, now: () => Date, retry: FeeRetry, attempted: () => void): Promise<{ transfer: Transfer; adopted: boolean }> {
+  const expires = Date.parse(t.expires_at);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      attempted();
+      return await createOrAdopt(rail, want);
+    } catch (err) {
+      if (!(err instanceof AirwallexError) || err.status !== 400 || !FEE_RETRY_CODES.has(err.code ?? "")) throw err;
+      const wait = retry.delaysMs[attempt - 1];
+      const stopped = wait === undefined ? `no attempts left (${attempt} made)`
+        : now().getTime() + wait >= expires ? `the approved terms expire at ${t.expires_at}; no attempt after that`
+          : null;
+      const log = (extra: { next_attempt_in_s: number | null; stopped: string | null }) => audit(db, "awx-executor", "transfer.retry", t.transfer_request_id, {
+        attempt, code: err.code ?? null, trace_id: err.traceId, awx_request_id: err.awxRequestId, message: err.awxMessage,
+        request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, approval_sha256: sha, ...extra,
+      });
+      if (stopped !== null || wait === undefined) { log({ next_attempt_in_s: null, stopped }); throw err; }
+      log({ next_attempt_in_s: wait / 1000, stopped: null });
+      await retry.sleep(wait);
+      // After the wait: still before the expiry, and no hold set meanwhile (the emergency stop, a pause, a blocked payee).
+      const late = now().getTime() >= expires ? `the approved terms expired at ${t.expires_at} during the wait` : null;
+      const held = late ?? holdReason(db, t, now());
+      if (held) {
+        audit(db, "awx-executor", "transfer.retry_stopped", t.transfer_request_id, { after_attempt: attempt, reason: held, request_id: t.transfer_request_id, approval_sha256: sha });
+        throw err;
+      }
+    }
+  }
+}
 
 /**
  * Creates the transfer; if Airwallex answers that this request_id already made one (duplicate_request_id, or the

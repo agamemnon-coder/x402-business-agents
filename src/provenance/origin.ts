@@ -52,6 +52,8 @@ export const MONEY_EVENTS = new Set([
   "quarantine.held", "quarantine.returned", "quarantine.accepted",
   // After a crash the action is found at the outside service and adopted, never sent twice: the same money movement.
   "transfer.adopted", "fx.adopted", "credit.adopted", "transfer.refused", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
+  // A transfer create Airwallex refused for its fee configuration, retried under the same request_id (each attempt).
+  "transfer.retry",
   // Test money for a fresh world, and the passkey owners' own transfer.
   "business.funded", "treasury.seeded", "owners.sent",
 ]);
