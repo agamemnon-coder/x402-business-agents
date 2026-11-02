@@ -225,6 +225,6 @@ async function describeStep(db: DB, d: LiveRunDeps, from: number, s: { step: str
   // Holds when TAP passed through the proxy and our layer, Airwallex answered as expected (its own decline for step 2,
   // whatever reason it gives, recorded as given), a read-only GET confirms it, and the charge's origin names its id.
   const ok = tapOk && !!airwallex && airwallex.approved === s.expectApproved && !!airwallex.confirmed_by_get && airwallex.confirmed_by_get.approved === s.expectApproved
-    && (origin as { tap?: { authorization_id?: string } } | null)?.tap?.authorization_id === airwallex.transaction_id;
+    && (origin as { tap?: { awx_transaction_id?: string } } | null)?.tap?.awx_transaction_id === airwallex.transaction_id;
   return { step: s.step, by: s.by, plan: started?.subject ?? null, rail: s.rail, tap, airwallex, origin, ok, note: s.note };
 }

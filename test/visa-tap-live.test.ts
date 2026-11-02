@@ -75,7 +75,7 @@ describe("the live TAP run, offline", () => {
       origin: { actor: "agent", agent: "sourcing", tap: { key_id: r.key_id, proxy_status: 200 } },
       note: expect.stringMatching(/metal_x402 \(refused by code: supplier's rails\).*airwallex_card/),
     });
-    expect((agent!.origin as { tap: { authorization_id: string } }).tap.authorization_id).toBe(agent!.airwallex!.transaction_id);
+    expect((agent!.origin as { tap: { awx_transaction_id: string } }).tap.awx_transaction_id).toBe(agent!.airwallex!.transaction_id);
     expect(over).toMatchObject({
       by: "code", plan: "packwise-pro", ok: true,
       tap: { proxy_status: 200, merchant: "accepted" },

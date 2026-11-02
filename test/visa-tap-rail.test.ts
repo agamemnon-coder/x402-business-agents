@@ -13,7 +13,9 @@ import { setupCards } from "../src/policy/cards.js";
 import { parseOrigin, withOrigin, type Origin } from "../src/provenance/origin.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
 import { registerAgent, revokeAgent } from "../src/visa/tap.js";
-import { buySoftwareOnCard, loadTapSigner, proxyTransport, TAP_RAIL_MERCHANT, tapRailOn, transportFromEnv, type TapSigner } from "../src/visa/tapRail.js";
+import { buySoftwareOnCard, inProcessTransport, loadTapSigner, proxyTransport, TAP_RAIL_MERCHANT, tapRailOn, transportFromEnv, type Delivery, type TapSigner, type TapTransport } from "../src/visa/tapRail.js";
+import { rawHeadersOf, verifyTapCheckout, type TapMerchantVerdict } from "../src/visa/tapMerchant.js";
+import type { TapHeaders } from "../src/visa/tapSig.js";
 import { startTapMerchant, type TapMerchantServer } from "../src/visa/tapServer.js";
 import { ed25519FromSeed } from "../src/visa/tapSig.js";
 
@@ -62,18 +64,18 @@ describe("KIT11_TAP_RAIL=on", () => {
     const started = parseOrigin(originOf("card.purchase_started")!.o);
     expect(started).toEqual({ ...agentOrigin, tap: { key_id: sourcing.keyId, nonce, sig1: "verified", sig2: "verified" } });
     const charged = parseOrigin(originOf("card.charge_approved")!.o);
-    expect(charged).toEqual({ ...agentOrigin, tap: { key_id: sourcing.keyId, nonce, sig1: "verified", sig2: "verified", authorization_id: t.transactionId } });
+    expect(charged).toEqual({ ...agentOrigin, tap: { key_id: sourcing.keyId, nonce, sig1: "verified", sig2: "verified", awx_transaction_id: t.transactionId } });
   });
 
   it("without an agent's run around it, code's origin names the rail", async () => {
     const t = await buySoftwareOnCard(db, awx, "packwise-starter", { env: ON, now, signer: () => sourcing });
-    expect(parseOrigin(originOf("card.charge_approved")!.o)).toMatchObject({ actor: "code", rule: expect.stringMatching(/TAP/), agent: "sourcing", tap: { key_id: sourcing.keyId, authorization_id: t.transactionId } });
+    expect(parseOrigin(originOf("card.charge_approved")!.o)).toMatchObject({ actor: "code", rule: expect.stringMatching(/TAP/), agent: "sourcing", tap: { key_id: sourcing.keyId, awx_transaction_id: t.transactionId } });
   });
 
   it("over the card's limit: TAP passes, Airwallex declines, and the decline's origin still carries the evidence", async () => {
     const t = await withOrigin(agentOrigin, () => buySoftwareOnCard(db, awx, "packwise-pro", { env: ON, now, signer: () => sourcing }));
     expect(t).toMatchObject({ approved: false, failureReason: expect.stringMatching(/LIMIT/) });
-    expect(parseOrigin(originOf("card.charge_declined")!.o)).toMatchObject({ tap: { sig1: "verified", sig2: "verified", authorization_id: t.transactionId } });
+    expect(parseOrigin(originOf("card.charge_declined")!.o)).toMatchObject({ tap: { sig1: "verified", sig2: "verified", awx_transaction_id: t.transactionId } });
   });
 
   it("charges nothing when the merchant refuses the signature (a key not pinned, a revoked key)", async () => {
@@ -118,11 +120,78 @@ describe("the agent's signing key", () => {
 
 describe("D24 origin with TAP evidence", () => {
   it("accepts the evidence on an agent's, the CFO's and code's origin, and nothing extra in it", () => {
-    const tap = { key_id: "k-1", nonce: "n".repeat(20), sig1: "verified", sig2: "verified", authorization_id: "auth_1" };
+    const tap = { key_id: "k-1", nonce: "n".repeat(20), sig1: "verified", sig2: "verified", awx_transaction_id: "auth_1" };
     expect(parseOrigin(JSON.stringify({ ...agentOrigin, tap }))).toEqual({ ...agentOrigin, tap });
     expect(parseOrigin(JSON.stringify({ actor: "code", rule: "r", tap }))).toEqual({ actor: "code", rule: "r", tap });
     expect(parseOrigin(JSON.stringify({ ...agentOrigin, tap: { ...tap, proxy: "200" } }))).toBeNull();
     expect(parseOrigin(JSON.stringify({ actor: "external", party: "merchant", tap }))).toBeNull();
+  });
+});
+
+describe("review S1 and S5: the rail trusts no verdict on its own", () => {
+  const forgedVerdict = (headers: TapHeaders): TapMerchantVerdict => {
+    const nonce = /nonce="([^"]+)"/.exec(headers["signature-input"])![1]!;
+    return { ok: true, agent: "sourcing", keyId: sourcing.keyId, nonce, created: NOW_S, expires: NOW_S + 300, sig1: "verified", sig2: "verified", order: { plan: "packwise-starter", amount: "19.99", currency: "EUR", amountCents: 1999 } };
+  };
+  const charges = () => awx.calls.filter((c) => c === "charge").length;
+
+  it("charges nothing on a forged verdict: our merchant never stored that nonce", async () => {
+    const forged: TapTransport = { kind: "in-process", config: inProcessTransport(db).config, deliver: async ({ headers }) => ({ proxyStatus: null, verdict: forgedVerdict(headers) }) };
+    await expect(buySoftwareOnCard(db, awx, "packwise-starter", { env: ON, now, signer: () => sourcing, transport: forged })).rejects.toThrow(/no record of accepting/);
+    expect(charges()).toBe(0);
+  });
+
+  it("charges nothing on a stale verdict from an earlier, accepted request", async () => {
+    const real = inProcessTransport(db);
+    let kept: Delivery | null = null;
+    const recording: TapTransport = { ...real, deliver: async (r) => (kept = await real.deliver(r)) };
+    await buySoftwareOnCard(db, awx, "packwise-starter", { env: ON, now, signer: () => sourcing, transport: recording });
+    expect(charges()).toBe(1);
+    const stale: TapTransport = { ...real, deliver: async () => kept! };
+    await expect(buySoftwareOnCard(db, awx, "packwise-starter", { env: ON, now, signer: () => sourcing, transport: stale })).rejects.toThrow(/not about this request/);
+    expect(charges()).toBe(1);
+  });
+
+  it("charges nothing through the proxy unless the proxy answered 200", async () => {
+    const config = proxyTransport("http://127.0.0.1:1").config;
+    db.prepare("UPDATE tap_agents SET domains_json = ?").run(JSON.stringify([config.authority]));
+    const viaProxy: TapTransport = {
+      kind: "reference-proxy", config,
+      deliver: async ({ headers, body, now: n }) => ({ proxyStatus: 422, verdict: verifyTapCheckout(db, { method: "POST", target: config.checkoutPath, rawHeaders: rawHeadersOf(headers as unknown as Record<string, string>), body: Buffer.from(body) }, config, n) }),
+    };
+    await expect(buySoftwareOnCard(db, awx, "packwise-starter", { env: ON, now, signer: () => sourcing, transport: viaProxy })).rejects.toThrow(/proxy answered 422, not 200/);
+    expect(charges()).toBe(0);
+  });
+
+  it("charges nothing when the merchant's verified order is not this purchase (another plan or amount)", async () => {
+    const real = inProcessTransport(db);
+    for (const swap of [{ plan: "packwise-pro" }, { amountCents: 100 }, { currency: "USD" as "EUR" }]) {
+      const altered: TapTransport = { ...real, deliver: async (r) => {
+        const d = await real.deliver(r);
+        return d.verdict?.ok && d.verdict.order ? { ...d, verdict: { ...d.verdict, order: { ...d.verdict.order, ...swap } } } : d;
+      } };
+      await expect(buySoftwareOnCard(db, awx, "packwise-starter", { env: ON, now, signer: () => sourcing, transport: altered })).rejects.toThrow(/no order matching/);
+    }
+    expect(charges()).toBe(0);
+  });
+
+  it("charges the order the merchant verified: plan, amount and currency signed in the body", async () => {
+    let body = "";
+    const real = inProcessTransport(db);
+    const seen: TapTransport = { ...real, deliver: async (r) => { body = r.body; return real.deliver(r); } };
+    const t = await buySoftwareOnCard(db, awx, "packwise-starter", { env: ON, now, signer: () => sourcing, transport: seen });
+    expect(JSON.parse(body)).toEqual({ plan: "packwise-starter", amount: "19.99", currency: "EUR" });
+    expect(t).toMatchObject({ approved: true, amountCents: 1999, currency: "EUR" });
+  });
+});
+
+describe("Packwise's checkout server binds every address it is given", () => {
+  it("fails when a requested address is taken, instead of serving on the others", async () => {
+    const squatter = createServer();
+    await new Promise<void>((ok) => squatter.listen(0, "127.0.0.1", () => ok()));
+    const port = (squatter.address() as AddressInfo).port;
+    await expect(startTapMerchant(db, inProcessTransport(db).config, { port, hosts: ["127.0.0.1"] })).rejects.toThrow(/could not listen on 127\.0\.0\.1.*EADDRINUSE/);
+    await new Promise<void>((ok) => squatter.close(() => ok()));
   });
 });
 
@@ -167,7 +236,7 @@ describe("through the reference proxy (KIT11_TAP_PROXY), with a pass-through sta
   it("charges after the proxy passed it and our merchant accepted it; the origin records the proxy's 200", async () => {
     const t = await withOrigin(agentOrigin, () => buySoftwareOnCard(db, awx, "packwise-starter", { env: { ...ON, KIT11_TAP_PROXY: proxyUrl }, now, signer: () => sourcing }));
     expect(t.approved).toBe(true);
-    expect(parseOrigin(originOf("card.charge_approved")!.o)).toMatchObject({ actor: "agent", tap: { key_id: sourcing.keyId, proxy_status: 200, sig1: "verified", sig2: "verified", authorization_id: t.transactionId } });
+    expect(parseOrigin(originOf("card.charge_approved")!.o)).toMatchObject({ actor: "agent", tap: { key_id: sourcing.keyId, proxy_status: 200, sig1: "verified", sig2: "verified", awx_transaction_id: t.transactionId } });
   });
 
   it("charges nothing when the proxy itself refuses (403), and says so", async () => {

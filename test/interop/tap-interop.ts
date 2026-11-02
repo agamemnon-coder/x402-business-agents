@@ -39,11 +39,12 @@ const REGISTRY = process.env.TAP_REGISTRY_URL ?? "http://127.0.0.1:9002";
 const MERCHANT_PORT = Number(process.env.TAP_MERCHANT_PORT ?? 3000);
 const AUTHORITY = `${PROXY.host}:${PROXY.port}`;
 const CHECKOUT = "/product/checkout";
-const BODY = '{"plan":"packwise-starter"}';
+// The signed body is the order; our merchant checks it against what Packwise sells (plan, price, currency).
+const BODY = '{"plan":"packwise-starter","amount":"19.99","currency":"EUR"}';
 const SIGNED = ["signature-input", "signature", "content-digest", "purser-signature-input", "purser-signature"] as const;
 
 const db = openDb(":memory:");
-const cfg = tapMerchantConfig({ authority: AUTHORITY, checkoutPath: CHECKOUT });
+const cfg = tapMerchantConfig({ authority: AUTHORITY, checkoutPath: CHECKOUT, merchantName: "Packwise" });
 const seed = randomBytes(32);
 const key = { keyId: `purser-interop-${randomBytes(6).toString("hex")}`, ...ed25519FromSeed(seed) };
 const strangerKey = { keyId: `purser-stranger-${randomBytes(6).toString("hex")}`, ...ed25519FromSeed(randomBytes(32)) };
@@ -154,7 +155,9 @@ async function main(): Promise<void> {
   await merchantRefuses("window over 8 minutes", /window of 600 s/, { headers: asRecord(sign({ expiresIn: 600, unchecked: true })) });
   await merchantRefuses("query appended (signed)", /query/, { path: `${CHECKOUT}?coupon=1`, headers: asRecord(sign({ target: `${CHECKOUT}?coupon=1` })) });
   await merchantRefuses("tampered body", /Content-Digest does not match/, { headers: asRecord(sign()), body: '{"plan":"packwise-pro"}' });
-  const tampered = '{"plan":"packwise-pro"}';
+  const cheap = '{"plan":"packwise-pro","amount":"1.00","currency":"EUR"}';
+  await merchantRefuses("an order at a price Packwise does not sell (signed)", /payment check: .*amount 1\.00 is not 45\.00/, { headers: asRecord(sign({ body: cheap })), body: cheap });
+  const tampered = '{"plan":"packwise-pro","amount":"45.00","currency":"EUR"}';
   await merchantRefuses("recomputed digest", /signature 2 does not verify/, { headers: { ...asRecord(sign()), "content-digest": contentDigest(tampered) }, body: tampered });
   const a = sign(), b = sign({ body: tampered });
   await merchantRefuses("signature 2 moved under another TAP request (other nonce)", /nonces of signature 1 and signature 2 differ/, {
@@ -247,9 +250,9 @@ async function railThroughProxy(): Promise<void> {
   try {
     const t = await buySoftwareOnCard(db, awx, "packwise-starter", { env, signer: () => signer });
     const o = (db.prepare("SELECT json_extract(payload_json, '$.origin') AS o FROM audit_log WHERE event = 'card.charge_approved' ORDER BY seq DESC LIMIT 1").get() as { o: string } | undefined)?.o;
-    const tap = parseOrigin(o)?.actor === "code" ? (parseOrigin(o) as { tap?: { proxy_status?: number; sig1: string; sig2: string; authorization_id?: string } }).tap : undefined;
+    const tap = parseOrigin(o)?.actor === "code" ? (parseOrigin(o) as { tap?: { proxy_status?: number; sig1: string; sig2: string; awx_transaction_id?: string } }).tap : undefined;
     record("e the rail through the proxy", "Packwise Starter: proxy, our merchant, then the card",
-      t.approved && received.length === before + 1 && tap?.proxy_status === 200 && tap.sig1 === "verified" && tap.sig2 === "verified" && tap.authorization_id === t.transactionId,
+      t.approved && received.length === before + 1 && tap?.proxy_status === 200 && tap.sig1 === "verified" && tap.sig2 === "verified" && tap.awx_transaction_id === t.transactionId,
       `card ${t.approved ? "approved" : "declined"}, origin tap ${JSON.stringify(tap ? { proxy_status: tap.proxy_status, sig1: tap.sig1, sig2: tap.sig2 } : null)}`);
   } catch (e) {
     record("e the rail through the proxy", "Packwise Starter: proxy, our merchant, then the card", false, (e as Error).message);

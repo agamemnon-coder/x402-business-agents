@@ -7,8 +7,12 @@
 //      reference proxy, run unchanged outside this repo, to our merchant server on :3000 (src/visa/tapServer.ts);
 //      otherwise the merchant layer runs in-process (tests, and runs without the reference);
 //   3. only then the agent's own Airwallex card is charged (src/agents/cardBuyer.ts), inside its limit at Airwallex.
+// The signed body is the order (plan, amount, currency); the merchant checks it against what it sells, and the card is
+// charged for the order the merchant verified. Before charging, the rail also requires the proxy's 200 (when it ran)
+// and our own nonce row for exactly this request (review, 2 November: a verdict alone is not trusted).
 // D24: the purchase's origin carries the TAP keyId and nonce, the proxy's HTTP status (when it ran) and our two
-// verdicts; the charge's origin also carries Airwallex's authorisation id. A refusal charges nothing and is audited.
+// verdicts; the charge's origin also carries Airwallex's transaction id for the authorisation (awx_transaction_id).
+// A refusal charges nothing and is audited.
 
 import { readFileSync } from "node:fs";
 import { request } from "node:http";
@@ -19,6 +23,7 @@ import { audit } from "../audit/log.js";
 import { agentName } from "../config/brand.js";
 import { PLANS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
+import { fromCents } from "../lib/money.js";
 import { keyPath } from "../metal/agentCli.js";
 import { currentOrigin, withOrigin, type Origin, type TapEvidence } from "../provenance/origin.js";
 import { rawHeadersOf, tapMerchantConfig, verifyTapCheckout, type TapMerchantConfig, type TapMerchantVerdict } from "./tapMerchant.js";
@@ -57,7 +62,7 @@ export interface TapTransport {
 
 /** Our merchant layer in this process: no proxy. */
 export function inProcessTransport(db: DB): TapTransport {
-  const config = tapMerchantConfig(TAP_RAIL_MERCHANT);
+  const config = tapMerchantConfig({ ...TAP_RAIL_MERCHANT, merchantName: TAP_RAIL_MERCHANT.name });
   return {
     kind: "in-process", config,
     deliver: async ({ headers, body, now }) => ({
@@ -74,7 +79,7 @@ export function inProcessTransport(db: DB): TapTransport {
 export function proxyTransport(proxyUrl: string): TapTransport {
   const u = new URL(proxyUrl);
   if (u.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(u.hostname) || u.pathname !== "/") throw new Error("KIT11_TAP_PROXY must be the reference proxy on this machine, e.g. http://localhost:3001");
-  const config = tapMerchantConfig({ authority: u.host, checkoutPath: TAP_RAIL_MERCHANT.checkoutPath });
+  const config = tapMerchantConfig({ authority: u.host, checkoutPath: TAP_RAIL_MERCHANT.checkoutPath, merchantName: TAP_RAIL_MERCHANT.name });
   return {
     kind: "reference-proxy", config,
     deliver: ({ headers, body }) => new Promise<Delivery>((ok) => {
@@ -118,7 +123,8 @@ export async function tapCardPurchase(db: DB, sim: IssuingSim, planId: string, s
   if (!plan) throw new Error(`no plan ${planId}`);
   const nowS = Math.floor(now.getTime() / 1000);
   const m = transport.config;
-  const body = JSON.stringify({ plan: planId });
+  // The order, signed: the merchant checks it against what it sells, and only that order is charged.
+  const body = JSON.stringify({ plan: planId, amount: fromCents(plan.amountCents), currency: "EUR" });
   // 1. The agent signs, for the authority it sends to.
   const nonce = newNonce();
   const headers = signTapCheckout({ authority: m.authority, target: m.checkoutPath, method: "POST", body, keyId: signer.keyId, privateKey: signer.privateKey, created: nowS, nonce, tag: "agent-payer-auth" });
@@ -132,15 +138,21 @@ export async function tapCardPurchase(db: DB, sim: IssuingSim, planId: string, s
   const v = d.verdict;
   if (!v) return refuse(d.note ?? "no verdict from the merchant");
   if (!v.ok) return refuse(v.reason, { sig1: v.sig1, sig2: v.sig2 });
+  if (transport.kind === "reference-proxy" && d.proxyStatus !== 200) return refuse(`the merchant said accepted, but the proxy answered ${d.proxyStatus ?? "nothing"}, not 200`);
   if (v.keyId !== signer.keyId || v.nonce !== nonce) return refuse("the merchant's verdict is not about this request");
+  // Our own merchant's record: it stores the nonce only after every check passed. No row, no charge.
+  if (!db.prepare("SELECT 1 FROM tap_rail_nonces WHERE keyid = ? AND nonce = ?").get(v.keyId, v.nonce)) return refuse("our merchant has no record of accepting this request's nonce");
+  if (!v.order || v.order.plan !== planId || v.order.amountCents !== plan.amountCents || v.order.currency !== "EUR") return refuse("the merchant verified no order matching this purchase");
   // A recognised agent pays only with its own card: the signing agent must be the plan's agent.
   if (v.agent !== plan.agent) return refuse(`the ${agentName(v.agent)} may not pay with the ${agentName(plan.agent)}'s card`);
   const tap: TapEvidence = { key_id: v.keyId, nonce: v.nonce, sig1: v.sig1, sig2: v.sig2, ...(d.proxyStatus === null ? {} : { proxy_status: d.proxyStatus }) };
   audit(db, "system", "tap.checkout_verified", m.authority, { agent: v.agent, plan: planId, ...tap, ...via }, now);
-  // 3. The card, under the origin that carries the evidence; the charge's origin adds the authorisation id.
+  // 3. The card, for the order the merchant verified, under the origin that carries the evidence; the charge's origin
+  //    adds Airwallex's transaction id for the authorisation.
+  const verified = v.order.plan;
   const base = currentOrigin();
   return withOrigin(withTap(base, plan.agent, tap), () =>
-    buyPlan(db, sim, planId, now, { chargeOrigin: (t) => withTap(base, plan.agent, { ...tap, authorization_id: t.transactionId }) }));
+    buyPlan(db, sim, verified, now, { chargeOrigin: (t) => withTap(base, plan.agent, { ...tap, awx_transaction_id: t.transactionId }) }));
 }
 
 /**
