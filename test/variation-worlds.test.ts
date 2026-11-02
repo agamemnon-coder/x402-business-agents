@@ -35,6 +35,9 @@ describe("the seeded world generator", () => {
       expect(w.sellCents).toBeGreaterThan(w.stockline.beforeCents);
       expect(w.priceRiseAfter).toBeGreaterThanOrEqual(1);
       expect(w.priceRiseAfter).toBeLessThan(w.queries);
+      // At one query per 20 s, at least 16 queries after the rise outlast code's 300 s cache: a policy that stops buying
+      // turns customers away within the world, so Treasury's timing can be measured (Max, 2 November).
+      expect(w.queries - w.priceRiseAfter).toBeGreaterThanOrEqual(16);
       expect(w.ridgeline === null).toBe(w.suppliers === 1);
       expect(w.third === null).toBe(w.suppliers !== 3);
       if (w.ridgeline) {

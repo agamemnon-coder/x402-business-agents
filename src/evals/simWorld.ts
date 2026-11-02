@@ -464,7 +464,7 @@ export function defaultSteps(spec: SimWorldSpec): SimStep[] {
   return steps;
 }
 
-export function newCtx(spec: SimWorldSpec, client: Anthropic | null, maxWakes = 16): SimCtx {
+export function newCtx(spec: SimWorldSpec, client: Anthropic | null, maxWakes = 30): SimCtx {
   const db = openDb(":memory:");
   setUp(db, spec);
   return {

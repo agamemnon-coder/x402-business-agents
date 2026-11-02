@@ -59,8 +59,8 @@ export function generateWorld(seed: number): SimWorldSpec {
   const ridgeline = suppliers === 1 ? null : { priceCents: int(2, 5), ageSeconds: pick([30, 60, 120, 300, 600, 900, 1800, 3600]), unavailableOf20: int(0, 15) };
   const third = suppliers === 3 ? { name: pick(THIRD_NAMES), priceCents: int(1, 3), ageSeconds: pick([5, 20, 60]) } : null;
   const history = 16;
-  const queries = int(8, 12);
-  const priceRiseAfter = int(1, queries - 3);
+  const queries = int(20, 24);
+  const priceRiseAfter = int(1, queries - 18);
 
   const kind = pick(["justified", "partly", "false"] as const);
   const first = int(1, history - 4);
