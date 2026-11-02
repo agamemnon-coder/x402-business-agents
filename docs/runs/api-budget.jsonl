@@ -56,3 +56,40 @@
 {"block":"evals","usd_micros":24301,"what":"holdout duplicate-invoice","at":"2026-11-02T15:12:43.532Z"}
 {"block":"evals","usd_micros":10219,"what":"holdout overpayment-refund-request","at":"2026-11-02T15:12:48.340Z"}
 {"block":"evals","usd_micros":257,"what":"holdout prepay-discount-offer","at":"2026-11-02T15:12:51.452Z"}
+{"block":"evals","usd_micros":128484,"what":"variation sim-31","at":"2026-11-02T15:17:39.787Z"}
+{"block":"evals","usd_micros":133217,"what":"variation sim-31-r2","at":"2026-11-02T15:19:05.764Z"}
+{"block":"evals","usd_micros":166959,"what":"variation sim-31-r3","at":"2026-11-02T15:20:43.385Z"}
+{"block":"redteam","usd_micros":12620,"what":"redteam-night attacker (Opus)","at":"2026-11-02T15:21:22.322Z"}
+{"block":"evals","usd_micros":88438,"what":"variation sim-38","at":"2026-11-02T15:22:12.068Z"}
+{"block":"redteam","usd_micros":12992,"what":"redteam-night attacker (Opus)","at":"2026-11-02T15:23:14.236Z"}
+{"block":"evals","usd_micros":125041,"what":"variation sim-38-r2","at":"2026-11-02T15:23:44.918Z"}
+{"block":"evals","usd_micros":133595,"what":"variation live-3","at":"2026-11-02T15:24:28.350Z"}
+{"block":"redteam","usd_micros":12976,"what":"redteam-night attacker (Opus)","at":"2026-11-02T15:25:23.293Z"}
+{"block":"evals","usd_micros":141882,"what":"variation sim-38-r3","at":"2026-11-02T15:25:29.221Z"}
+{"block":"redteam","usd_micros":12972,"what":"redteam-night attacker (Opus)","at":"2026-11-02T15:29:19.760Z"}
+{"block":"redteam","usd_micros":13176,"what":"redteam-night attacker (Opus)","at":"2026-11-02T15:29:20.862Z"}
+{"block":"redteam","usd_micros":13176,"what":"redteam-night attacker (Opus)","at":"2026-11-02T15:29:21.956Z"}
+{"block":"redteam","usd_micros":13176,"what":"redteam-night attacker (Opus)","at":"2026-11-02T15:29:23.190Z"}
+{"block":"redteam","usd_micros":13176,"what":"redteam-night attacker (Opus)","at":"2026-11-02T15:29:24.331Z"}
+{"block":"redteam","usd_micros":31548,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T15:39:19.176Z"}
+{"block":"redteam","usd_micros":33054,"what":"redteam-night agents (agent)","at":"2026-11-02T15:39:38.794Z"}
+{"block":"redteam","usd_micros":554,"what":"redteam-night agents (agent)","at":"2026-11-02T15:39:43.222Z"}
+{"block":"redteam","usd_micros":436,"what":"redteam-night agents (agent)","at":"2026-11-02T15:39:48.312Z"}
+{"block":"redteam","usd_micros":324,"what":"redteam-night agents (agent)","at":"2026-11-02T15:39:51.124Z"}
+{"block":"redteam","usd_micros":394,"what":"redteam-night agents (agent)","at":"2026-11-02T15:39:54.300Z"}
+{"block":"redteam","usd_micros":29305,"what":"redteam-night agents (agent)","at":"2026-11-02T15:40:16.797Z"}
+{"block":"redteam","usd_micros":259,"what":"redteam-night agents (agent)","at":"2026-11-02T15:40:19.875Z"}
+{"block":"redteam","usd_micros":7636,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T15:40:20.980Z"}
+{"block":"redteam","usd_micros":7636,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T15:40:22.189Z"}
+{"block":"redteam","usd_micros":7636,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T15:40:23.679Z"}
+{"block":"redteam","usd_micros":7636,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T15:40:25.990Z"}
+{"block":"redteam","usd_micros":34584,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T15:40:43.281Z"}
+{"block":"redteam","usd_micros":22330,"what":"redteam-night agents (agent)","at":"2026-11-02T15:40:52.203Z"}
+{"block":"redteam","usd_micros":20854,"what":"redteam-night agents (agent)","at":"2026-11-02T15:41:00.875Z"}
+{"block":"redteam","usd_micros":24534,"what":"redteam-night agents (agent)","at":"2026-11-02T15:41:12.703Z"}
+{"block":"redteam","usd_micros":21730,"what":"redteam-night agents (agent)","at":"2026-11-02T15:41:22.188Z"}
+{"block":"redteam","usd_micros":27582,"what":"redteam-night agents (agent)","at":"2026-11-02T15:41:34.620Z"}
+{"block":"redteam","usd_micros":21981,"what":"redteam-night agents (agent)","at":"2026-11-02T15:41:46.415Z"}
+{"block":"redteam","usd_micros":32949,"what":"redteam-night agents (agent)","at":"2026-11-02T15:41:56.518Z"}
+{"block":"redteam","usd_micros":41716,"what":"redteam-night attacker (Opus) writes tests","at":"2026-11-02T15:42:14.176Z"}
+{"block":"redteam","usd_micros":24542,"what":"redteam-night agents (agent)","at":"2026-11-02T15:42:24.831Z"}
