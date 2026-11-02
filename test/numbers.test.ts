@@ -187,7 +187,8 @@ function oldReadAmount(written: string): string | null {
 
 describe("invoices (readAmount) against the reader it replaced (property)", () => {
   const invoiceText = fc.oneof(
-    fc.stringMatching(/^(EUR |USD |€ ?|\$)?[0-9][0-9., \u00a0\u202f]{0,14}( EUR| €| USD)?$/),
+    fc.stringMatching(/^(EUR |USD |USDZ |€ ?|\$|eur)?[0-9][0-9., \u00a0\u202f]{0,14}( EUR| €| USD| USDZ| euros|\$| dollars)?$/),
+    fc.stringMatching(/^[0-9 \u00a0\u202f.,€$EURSDZ]{0,16}$/),
     fc.tuple(fc.integer({ min: 0, max: 999_999_999 }), fc.nat(), fc.nat()).map(([c, style, sign]) => writeMoney(c, style, sign) ?? fromCents(c)),
     fc.string({ maxLength: 20 }),
   );
@@ -196,7 +197,7 @@ describe("invoices (readAmount) against the reader it replaced (property)", () =
     fc.assert(fc.property(invoiceText, (s) => {
       const now = readAmount(s);
       if (now !== null) expect({ s, now }).toEqual({ s, now: oldReadAmount(s) });
-    }), { numRuns: 5_000 });
+    }), { numRuns: Number(process.env.INVOICE_RUNS ?? 5_000) });
   });
 
   it("still reads every total the old reader read in the notations suppliers use", () => {

@@ -36,6 +36,9 @@ export interface ReadContext {
 
 const CURRENCY_BEFORE = /^(?:EUR|USDZ|USD|€|\$)\s*/i;
 const CURRENCY_AFTER = /\s*(?:EUR|USDZ|USD|euros?|dollars?|€|\$)$/i;
+/** Invoices keep exactly the signs and codes the invoice reader always took (before: EUR, USD, €, $; after: EUR, USD, €). */
+const INVOICE_BEFORE = /^(?:EUR|USD|USDZ|€|\$)\s*/i;
+const INVOICE_AFTER = /\s*(?:EUR|USD|€)$/i;
 const SPACES = /[\u00a0\u202f]/g;
 
 const fmtCents = (c: number) => `${String(Math.floor(c / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${String(c % 100).padStart(2, "0")}`;
@@ -75,10 +78,11 @@ function shapeOf(s: string, invoice: boolean): Shape {
  * whole count, by the rules above; a refusal says why in words a person can act on.
  */
 export function readNumber(written: string, field: NumberField, ctx: ReadContext = {}): NumberReading {
-  let s = written.trim().replace(SPACES, " ");
-  const bare = s.replace(CURRENCY_BEFORE, "").replace(CURRENCY_AFTER, "");
-  const currency = bare !== s || !!ctx.currency;
-  s = bare.trim();
+  const bare = written.trim().replace(ctx.invoice ? INVOICE_BEFORE : CURRENCY_BEFORE, "").replace(ctx.invoice ? INVOICE_AFTER : CURRENCY_AFTER, "");
+  // Thousands grouped by spaces (invoices) use one kind of space throughout, as they always had to.
+  if (ctx.invoice && new Set(bare.replace(/[^ \u00a0\u202f]/g, "")).size > 1) return { ok: false, why: `${bare} mixes kinds of spaces` };
+  const currency = bare !== written.trim() || !!ctx.currency;
+  const s = bare.replace(SPACES, " ").trim();
   const shape = shapeOf(s, !!ctx.invoice);
   if ("bad" in shape) return { ok: false, why: shape.bad };
   if (shape.ambiguous && field === "money" && !currency && !ctx.invoice && ctx.decimalMarksElsewhere?.has(shape.ambiguous)) {
