@@ -12,7 +12,7 @@
 // - a read-only look-up by request_id at Airwallex finds no transfer (an error is a refusal, never "nothing"); and
 // - nothing changed in the ledger for the row or its proposal while Airwallex was being asked.
 // The close is audited (transfer.closed_unsent, a money event) with an origin naming the command. The reconciliation
-// keeps looking such rows up, so a transfer that shows up later is still a difference.
+// looks such rows up for 7 days after the close, so a transfer that shows up then is still a difference.
 
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";

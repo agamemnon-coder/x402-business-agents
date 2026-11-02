@@ -153,6 +153,25 @@ describe("closing a stale SUBMITTING payout row with no transfer behind it (npm 
   });
 });
 
+describe("the reconciliation's look-ups of payout rows with no transfer id", () => {
+  it("looks a closed (CANCELLED) row up during its first 7 days only; a SUBMITTING row always", async () => {
+    const { db, requestId, later } = await stuckRow();
+    expect(await closeUnsent(db, requestId, nothing, { now: () => later })).toMatchObject({ closed: true });
+    const closedAt = Date.parse((db.prepare("SELECT updated_at FROM transfers WHERE request_id = ?").get(requestId) as { updated_at: string }).updated_at);
+    // A second, older SUBMITTING row (another invoice), never answered.
+    db.prepare("INSERT INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, doc_sha256, status) VALUES ('OLD-1', 'x', '1.00', 'EUR', '2026-01-01', 'x', 'x', 'x', 'RECEIVED')").run();
+    db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES ('old-submitting', 'OLD-1', '1.00', 'EUR', 'SWIFT', '20.00', 'SUBMITTING', 'h', '2026-01-01T00:00:00.000Z')").run();
+    const asked = async (at: number) => {
+      const seen: string[] = [];
+      await reconcile(db, { transfer: async () => ({ status: "PAID", amountCents: 0, currency: "EUR" }), transferByRequestId: async (rid) => { seen.push(rid); return undefined; } }, new Date(at));
+      return seen.sort();
+    };
+    const day = 24 * 3600_000;
+    expect(await asked(closedAt + 6 * day)).toEqual([requestId, "old-submitting"].sort());
+    expect(await asked(closedAt + 8 * day)).toEqual(["old-submitting"]);
+  });
+});
+
 describe("the strict look-up the command uses: Airwallex's list must really be filtered by the request_id", () => {
   const rid = randomUUID();
   it("asks GET /transfers with the request_id only, and reads its item", async () => {

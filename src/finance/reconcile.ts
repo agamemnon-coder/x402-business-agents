@@ -1,7 +1,7 @@
 // Light hourly reconciliation (finance item 5): every money movement in the ledger is checked against the system that
 // moved it, by id and amount. Sandbox balances are millions of test money, so totals say nothing; the flows do.
 //   Airwallex transfers: Airwallex's status and amount for each transfer the ledger holds; and each payout row with no
-//   transfer id (still SUBMITTING, closed as refused at create, or closed by the CFO's --close-unsent) looked up by its request_id: a transfer there is a
+//   transfer id (still SUBMITTING; or, for 7 days after its close, closed as refused at create or by --close-unsent) looked up by its request_id: a transfer there is a
 //   difference (Airwallex may hold a payout the ledger thinks was never made; review of 2 November).
 //   Card transactions: both ways, approved at Airwallex but missing here, or approved here but not at Airwallex.
 //   Metal: each sale, supplier purchase, refund and sweep the ledger calls paid has a receipt with exactly that *USDZ
@@ -13,6 +13,9 @@ import { audit } from "../audit/log.js";
 import type { CardTransaction } from "../airwallex/issuing.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
+
+/** A payout row closed with no transfer id is looked up at Airwallex for this many days after its close. */
+export const CLOSED_LOOKUP_DAYS = 7;
 
 export interface ReconcileSources {
   /** Airwallex's view of a transfer. */
@@ -61,8 +64,11 @@ export async function reconcile(db: DB, src: ReconcileSources, now = new Date())
       }
     }
     if (src.transferByRequestId) {
-      // Every row without a transfer id: SUBMITTING, closed as refused at create, or closed by the CFO's --close-unsent.
-      const open = db.prepare("SELECT request_id, invoice_no, amount, status, failure_type FROM transfers WHERE transfer_id IS NULL AND status IN ('SUBMITTING', 'CANCELLED')").all() as { request_id: string; invoice_no: string; amount: string; status: string; failure_type: string | null }[];
+      // Every row without a transfer id: SUBMITTING, always; closed (refused at create, or by the CFO's --close-unsent)
+      // during its first 7 days, the window in which a transfer Airwallex made after all would show up.
+      const since = new Date(now.getTime() - CLOSED_LOOKUP_DAYS * 24 * 3600_000).toISOString();
+      const open = (db.prepare("SELECT request_id, invoice_no, amount, status, failure_type, updated_at FROM transfers WHERE transfer_id IS NULL AND status IN ('SUBMITTING', 'CANCELLED')").all() as { request_id: string; invoice_no: string; amount: string; status: string; failure_type: string | null; updated_at: string }[])
+        .filter((r) => r.status === "SUBMITTING" || Date.parse(r.updated_at) >= Date.parse(since));
       for (const r of open) {
         checked++;
         const t = await src.transferByRequestId(r.request_id);

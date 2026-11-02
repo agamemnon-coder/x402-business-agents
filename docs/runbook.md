@@ -196,7 +196,7 @@ resent); `reconciliation_stale` after three hours.
    refused on its very first create (`fee_unknown` after its retries, `balance_insufficient`, …) is closed in the
    ledger with its code (a resend never closes it). **Before the invoice is proposed again**, the plan itself asks
    Airwallex by that `request_id` (since 2 November): a transfer there stops the plan with an alarm
-   (`transfer.found_after_close`), and no answer stops it too. The reconciliation keeps looking closed rows up. A new
+   (`transfer.found_after_close`), and no answer stops it too. The reconciliation looks closed rows up for 7 days after their close. A new
    proposal needs Face ID.
 
 Known Airwallex answers that are not an outage: `unconfigured_client_fee` on FX in the first minutes after an account
@@ -247,7 +247,7 @@ advise a retry with some backoff on `fee_unknown` and `unconfigured_client_fee` 
    id; its proposal is not approved or executing and is past its expiry; the row and proposal were quiet for 30
    minutes; a look-up by `request_id` finds no transfer (a list that was not filtered, or no answer, is a refusal); and
    nothing changed while Airwallex was asked. Any other case: `REFUSED` with the reason, nothing changed. After a close,
-   `npm run reconcile` keeps looking the row up; then the invoice is planned again as in step 2.
+   `npm run reconcile` looks the row up for 7 more days; then the invoice is planned again as in step 2.
 
 #### A Metal outage: what to do (added 2 November)
 
