@@ -54,7 +54,7 @@ h2.gap { margin-top: 28px; }
   <h2 class="gap">What this is, and is not</h2>
   <ul class="notes">${(run?.labels ?? []).map((l) => `<li>${esc(l.replace(/not a Visa-approved agent/g, "no approval by Visa of this agent"))}</li>`).join("")}</ul>
 </main>
-<footer>Code: src/visa/tapSig.ts, src/visa/tapLiveRun.ts, src/visa/tapMerchant.ts and src/visa/tapRail.ts. Run record: ${esc(run?.file ?? "")}.</footer>
+<footer>Code: src/visa/tapSig.ts, src/visa/tapLiveRun.ts, src/visa/tapMerchant.ts and src/visa/tapRail.ts (ours); Visa's reference is run unmodified outside this repository and not included in it (.github/workflows/tap-interop.yml). Run record: ${esc(run?.file ?? "")}.</footer>
 </body>
 </html>`;
 }

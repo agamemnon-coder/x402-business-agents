@@ -31,12 +31,15 @@ export const SOURCING_RULES = [
 
 export const policyWords = (p: BuyPolicy) => `${p.supplier === "none" ? "do not buy" : `buy from ${SUPPLIERS[p.supplier].name}`}${p.max_price ? ` up to ${p.max_price}` : " up to the mandate's cap"}${p.cache_seconds ? `, serve a cached stock check up to ${p.cache_seconds} s old` : ", no cache"}`;
 
+/** A margin per query in words; a supplier above the sell price is a loss, said as such (variation batch, 2 November). */
+const marginWords = (cents: number) => (cents < 0 ? `-${fromCents(-cents)} (a loss)` : fromCents(cents));
+
 /** What the agent sees at every wake (and from its market tool). */
 export function sourcingBrief(v: SourcingView): string {
   const sell = v.sellCents;
   return [
     `You sell each stock check to customers for ${fromCents(sell)}. Your mandate: at most ${fromCents(v.capCents)} a purchase, ${fromCents(v.budgetLeftCents)} budget left.`,
-    ...v.suppliers.map((s) => `- ${s.name} (${s.id}): ${s.available ? `${fromCents(s.price_cents)} a stock check, data ${s.data_age_seconds < 60 ? `${s.data_age_seconds} s` : `${Math.round(s.data_age_seconds / 60)} min`} old; margin at that price ${fromCents(sell - s.price_cents)}` : "not reachable now"}; last 20 tries: ${s.last20.paid} paid, ${s.last20.refused} refused, ${s.last20.unavailable} unavailable.`),
+    ...v.suppliers.map((s) => `- ${s.name} (${s.id}): ${s.available ? `${fromCents(s.price_cents)} a stock check, data ${s.data_age_seconds < 60 ? `${s.data_age_seconds} s` : `${Math.round(s.data_age_seconds / 60)} min`} old; margin at that price ${marginWords(sell - s.price_cents)}` : "not reachable now"}; last 20 tries: ${s.last20.paid} paid, ${s.last20.refused} refused, ${s.last20.unavailable} unavailable.`),
     `Your buy policy now: ${policyWords(v.policy)}.`,
     ...(v.card ? [`Your company card (Airwallex, software only): up to ${fromCents(v.card.perTxCents)} EUR a purchase, ${fromCents(v.card.monthlyCents)} EUR a month.`] : []),
   ].join("\n");
