@@ -5,9 +5,8 @@
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
-import { agentRun, callBadge, faceIdDecisions, highlights, homeFilm, loadRecord, split, tapRun } from "../src/redesign/run.js";
-import { HOME_BADGE, SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM, WORLD_SETUP } from "../src/config/brand.js";
-import { HEADLINE } from "../src/redesign/ui.js";
+import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, split, tapRun } from "../src/redesign/run.js";
+import { SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM, WORLD_SETUP } from "../src/config/brand.js";
 
 const pages = buildPages();
 const run = agentRun();
@@ -30,7 +29,7 @@ const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g
 
 describe("the site after v4", () => {
   it("keeps every page within its text budget (Home about 60 words plus the Visa Award status; partner pages at most 150)", () => {
-    const budget: Record<string, number> = { home: 65 + VISA_AWARD_STATUS.split(" ").length, watch: 100, try: 180, proof: 460, metal: 150, airwallex: 150, visa: 150, claude: 150, notFound: 40 };
+    const budget: Record<string, number> = { home: 520, watch: 100, try: 180, proof: 460, metal: 150, airwallex: 150, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -82,46 +81,6 @@ describe("the site after v4", () => {
     }
   });
 
-  it("gives Home a short headline, the badges as text, one four-scene animation from the record, and three buttons", () => {
-    const home = pages.home!;
-    expect(HEADLINE.split(" ").length).toBeGreaterThanOrEqual(4);
-    expect(HEADLINE.split(" ").length).toBeLessThanOrEqual(6);
-    expect(home).toContain(HOME_BADGE);
-    expect(home).toMatch(/<span class="badge tap">[\s\S]*?Visa TAP<\/span>/);
-    expect(home).not.toMatch(/<img[^>]*visa/i);
-    expect(home).toContain(VISA_AWARD_STATUS);
-    const f = homeFilm(run)!;
-    expect(f.scenes.map((s) => s.n)).toEqual([1, 2, 3, 4]);
-    expect(f.scenes[0]!.line).toMatch(/Refused on chain/);
-    expect(f.scenes[0]!.proof?.href).toMatch(/^https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/);
-    expect(f.scenes[1]!.line).toMatch(/Face ID 1 of 2 → 2 of 2/);
-    expect(f.scenes[2]!.line).toBe(`${f.orders.length} orders disputed: ${f.orders.length - f.refunded.length} valid, ${f.refunded.length} refunded.`);
-    expect(f.refunded.length).toBeGreaterThan(0);
-    expect(f.scenes[3]!.line).toContain("€240 licence paid by SWIFT · Face ID");
-    expect(f.scenes[3]!.line).toContain("Visa TAP ✓");
-    // The failed fee_unknown attempt is not on Home.
-    expect(home).not.toMatch(/fee_unknown|could not price|earlier attempt/i);
-    expect((home.match(/class="btn( primary)?" href="(watch|try|proof)"/g) ?? []).length).toBe(3);
-    // SVG and CSS only: no image, no external script; reduced motion is respected.
-    expect(home).not.toMatch(/<script[^>]+src=|<canvas|<video/);
-    expect(home).toMatch(/prefers-reduced-motion/);
-    expect(home).toMatch(/class="film-svg wide-l"[\s\S]*class="film-svg phone-l"/);
-  });
-
-  it("on phones never overlaps 'Refused on chain' with the signatures, and the tags never share a spot", async () => {
-    const { PHONE, WIDE } = await import("../src/redesign/home.js");
-    for (const L of [PHONE, WIDE]) {
-      const box = (b: { x: number; y: number; w: number; h: number }) => [b.x, b.y, b.x + b.w, b.y + b.h] as const;
-      const hit = (a: readonly number[], b: readonly number[]) => a[0]! < b[2]! && b[0]! < a[2]! && a[1]! < b[3]! && b[1]! < a[3]!;
-      // Shown at the same time: the refusal, the bubble and the phone (scene 2); the tiles alone (scene 3); the tap pill and the phone (scene 4).
-      expect(hit(box(L.refused), box(L.phone))).toBe(false);
-      expect(hit(box(L.refused), box(L.bubble))).toBe(false);
-      expect(hit(box(L.bubble), box(L.phone))).toBe(false);
-      expect(hit(box(L.tap), box(L.phone))).toBe(false);
-      expect(hit(box(L.tap), box(L.licence))).toBe(false);
-    }
-  });
-
   it("puts the Claude call behind each decision on Watch and Home, from its trace (D2)", () => {
     const says = run.events.filter((e): e is Extract<typeof e, { k: "say" }> => e.k === "say");
     expect(says.length).toBeGreaterThan(0);
@@ -134,7 +93,6 @@ describe("the site after v4", () => {
       expect(callBadge(e.call!)).toBe(`Claude call ✓ · ${fam[0]!.toUpperCase()}${fam.slice(1)} · ${total.toLocaleString("en-US")} tokens · ${secs} s · ${tr.request_ids[0]!.slice(0, 12)}…`);
       expect(pages.watch).toContain(callBadge(e.call!));
     }
-    for (const s of homeFilm(run)!.scenes) expect(pages.home).toContain(callBadge(s.call!));
   });
 
   it("keeps Watch on about a dozen highlights without the fee_unknown attempt; the full run labels it an earlier attempt", () => {

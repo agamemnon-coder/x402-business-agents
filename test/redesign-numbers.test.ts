@@ -148,7 +148,9 @@ describe("the redesigned public pages", () => {
     expect(VISA_AWARD_ON).toBe(true);
     expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award");
     expect(HOME_BADGE).toBe("Kit 11 · Metal Award + Visa Award · built on Airwallex, Metal, Claude");
-    expect(homePage()).toContain(`<span class="badge">${HOME_BADGE}</span>`);
+    // Two pills, each on one line: the kit, and the awards entered (never read as already won).
+    expect(homePage()).toContain(">Kit 11 · x402 Business Agents<");
+    expect(homePage()).toContain(">entered for the Metal Award + Visa Award<");
     expect(homePage()).toMatch(/Visa TAP/);
     for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
@@ -160,7 +162,7 @@ describe("the redesigned public pages", () => {
     // No refusal on chain is claimed unless the record has one with its tx.
     const chain = record.snapshot.flows.some((f) => f.refused?.by === "metal" && f.proof.href);
     expect(JSON.stringify(run.scenes).includes("Refused · recorded on chain")).toBe(chain);
-    expect(homePage().includes("Refused on chain")).toBe(chain);
+    expect(homePage().includes("refused, and recorded on chain")).toBe(chain);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
     expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence paid by SWIFT · Face ID");
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));

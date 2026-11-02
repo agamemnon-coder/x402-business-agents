@@ -67,6 +67,9 @@ function expected(): Record<string, string | string[]> {
     "variation runs by Claude": `${VAR.summary.by_claude}/${VAR.summary.runs}`,
     "attacks failed": `${RED.blocked}/${RED.attempts}`,
     "audit rows": String(s.audit.rows),
+    // Home's tiles (the Home before the v4 animation).
+    "decisions made by Claude": `${byClaude}/${decisions}`,
+    "payments inside the limits": String((R.snapshot as unknown as { counts: { alone: number } }).counts.alone),
     "signatures": String(signatures),
     "decisions +": String(faceIds),
     "co-signature": String(signatures - faceIds),
