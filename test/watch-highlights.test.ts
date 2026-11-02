@@ -10,8 +10,11 @@ const h = highlights(run);
 const text = (e: (typeof h)[number]) => ("text" in e ? e.text : "label" in e ? e.label : "");
 
 describe("Watch highlights", () => {
-  it("are shorter than the full run and keep every key moment, in order", () => {
-    expect(h.length).toBeLessThan(run.events.length);
+  it("are much shorter than the full run and keep every key moment, in order", () => {
+    expect(h.length).toBeLessThan(run.events.length * 0.6);
+    // The three refunds are one step: "refund 0.05 ×3", for orders #7, #10, #13.
+    const refunds = h.filter((e) => e.k === "money" && e.agent === "support");
+    expect(refunds.map((e) => e.k === "money" && [e.label, e.what])).toEqual([["refund 0.05 ×3", "refunds for orders #7, #10, #13"]]);
     const kinds = h.map((e) => (e.k === "money" && e.refused?.by === "recorded" ? "refused-recorded" : e.k === "face" ? `face:${e.status}:${e.signers.length}` : e.k));
     for (const want of ["refused-recorded", "face:COSIGNED:1", "face:APPROVED:2", "mandate", "shield"]) expect(kinds).toContain(want);
     const at = (f: (e: (typeof h)[number]) => boolean) => h.findIndex(f);
@@ -31,11 +34,12 @@ describe("Watch highlights", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  it("merge the routine checks into lines that count them, and lose none", () => {
+  it("merge the routine checks (decisions that only looked) into lines that count them, and lose none", () => {
     const routine = h.filter((e): e is Extract<typeof e, { k: "routine" }> => e.k === "routine");
     expect(routine.length).toBeGreaterThan(0);
     for (const r of routine) expect(r.text).toBe(`${r.count} routine check${r.count > 1 ? "s" : ""}: nothing to do`);
-    const quiet = run.events.filter((e) => e.k === "say" && !h.includes(e)).length;
+    const looked = (tools: string[]) => tools.every((x) => /^(market|position|read_|finish)/.test(x));
+    const quiet = run.events.filter((e) => e.k === "say" && !h.includes(e) && looked(e.tools)).length;
     expect(routine.reduce((n, r) => n + r.count, 0)).toBe(quiet);
   });
 

@@ -292,22 +292,30 @@ export function stops(r: RunRecord): { metal: number; airwallex: number; cfo: nu
   };
 }
 
-/** Tools that mean an agent acted, not only looked: a decision with one of them is a key moment. */
+/** Tools that mean an agent acted, not only looked: a decision without any of them is a routine check. */
 const ACTING = /^(set_buy_policy|design_rebalance|send_message|settle_dispute|sweep_earnings|plan_invoice|submit_plan|submit_advice|refund|escalate_to_cfo)$/;
+/** The decisions Watch's highlights show: Treasury's plan, the dispute settled, the sweep, the licence planned. */
+const KEY_TOOLS = /^(design_rebalance|settle_dispute|sweep_earnings|plan_invoice)$/;
 
 /**
- * Watch's default: the run's key moments only (the world changes, the refusals, each decision that acted, every
- * signature, the mandates replaced, the refunds, the sweep, the licence), the agents' routine checks merged into one
- * line between them, and the TAP run's card purchase last, under that run's label.
+ * Watch's default: the run's key moments only (the world set-up and the moments' world changes, the refusal recorded
+ * on chain, Treasury's plan, each signature, the mandates replaced, the dispute and its refunds, the sweep, the
+ * licence), the agents' routine checks ("nothing to do") merged into one line between them, and the TAP run's card
+ * purchase last, under that run's label.
  */
 export function highlights(run: AgentRun): Ev[] {
   const ev = run.events;
   const replaced = ev.findIndex((e) => e.k === "mandate");
   const firstBuyAfter = replaced >= 0 ? ev.findIndex((e, i) => i > replaced && e.k === "money" && e.agent === "sourcing" && !e.refused) : -1;
+  const firstWorld = ev.findIndex((e) => e.k === "world");
+  const sceneStarts = new Set(run.scenes.map((s) => s.start));
+  const firstMsg = ev.findIndex((e) => e.k === "msg");
   const key = (e: Ev, i: number): boolean => {
-    if (e.k === "world" || e.k === "msg" || e.k === "face" || e.k === "mandate" || e.k === "shield") return true;
-    if (e.k === "say") return e.tools.some((x) => ACTING.test(x));
-    if (e.k === "money") return !!e.refused || (e.agent !== null && e.agent !== "sourcing") || i === firstBuyAfter;
+    if (e.k === "world") return i === firstWorld || sceneStarts.has(i) || /asks \d|disputes|invoice arrived/i.test(e.text);
+    if (e.k === "msg") return i === firstMsg;
+    if (e.k === "face" || e.k === "mandate" || e.k === "shield") return true;
+    if (e.k === "say") return e.tools.some((x) => KEY_TOOLS.test(x));
+    if (e.k === "money") return e.refused?.by === "recorded" || e.refused?.by === "airwallex" || e.refused?.by === "airwallex-sandbox" || e.agent === "support" || e.agent === "treasury" || i === firstBuyAfter;
     return false;
   };
   const out: Ev[] = [];
@@ -318,7 +326,17 @@ export function highlights(run: AgentRun): Ev[] {
     quiet = [];
   };
   ev.forEach((e, i) => {
-    if (key(e, i)) { flush(); out.push(e); } else if (e.k === "say") quiet.push(e);
+    if (key(e, i)) {
+      flush();
+      // The Support agent's refunds, one step: how many, how much, the first one's tx (each is in the full run).
+      const prev = out[out.length - 1];
+      if (e.k === "money" && e.agent === "support" && /refund/i.test(e.what) && prev?.k === "money" && prev.agent === "support" && /refund/i.test(prev.what) && !e.refused) {
+        const n = prev.count + 1, each = ((Number(prev.amount) * prev.count + Number(e.amount)) / n).toFixed(2);
+        out[out.length - 1] = { ...prev, count: n, amount: each, what: `refunds for orders ${[prev.what, e.what].map((w) => /#\d+(, #\d+)*/.exec(w)?.[0] ?? "").join(", ")}`, label: `refund ${each} ×${n}` };
+        return;
+      }
+      out.push(e);
+    } else if (e.k === "say" && !e.tools.some((x) => ACTING.test(x))) quiet.push(e);
   });
   flush();
   const tap = tapRun();
