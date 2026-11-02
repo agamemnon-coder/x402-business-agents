@@ -92,20 +92,30 @@ export class SourcingAgent {
     publish(this.db, "customers.turned_away", { count: n, window_minutes: TURNED_AWAY_WINDOW_MS / 60_000 }, "treasury");
   }
 
-  /** Once per mandate for Purser's first cap refusal, and once more for the one let-through (`letThrough`), if any. */
-  private async recordOnChain(m: LoadedMandate, seq: number, reason: string, refusedCents?: number, letThrough = false): Promise<void> {
+  /**
+   * Once per mandate for Purser's first cap refusal, and once more for the one let-through (`letThrough`), if any. True
+   * when it ended in an incident: a pull that may have reached Metal and was not reported refused (Sourcing is stopped).
+   */
+  private async recordOnChain(m: LoadedMandate, seq: number, reason: string, refusedCents?: number, letThrough = false): Promise<boolean> {
     if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ? AND COALESCE(json_extract(payload_json, '$.let_through'), 0) = ?")
-      .get(m.reference, letThrough ? 1 : 0)) return;
+      .get(m.reference, letThrough ? 1 : 0)) return false;
     const cents = refusedCents ?? Number(/over the sourcing mandate's|is over/.test(reason) ? toCents((/^mandate_cap_exceeded: (?:the supplier asks )?(\d+\.\d{2})/.exec(reason) ?? [])[1] ?? "0.00") : 0);
     try {
       if (!cents) throw new Error("the refused amount is not in the reason");
+      // The record pull is an over-cap payment sent to Metal too: never more than a small rise over the bound cap.
+      let cap: bigint | null = null;
+      try { cap = boundCapUnits(m); } catch { cap = null; }
+      if (cap !== null && centsToBaseUnits(cents) > cap + centsToBaseUnits(LET_THROUGH_MAX_OVER_CENTS)) throw new Error(`${fromCents(cents)} is more than ${fromCents(LET_THROUGH_MAX_OVER_CENTS)} over the cap; no pull is sent to record it`);
       const r = await recordCapRefusalOnChain(m, this.supplier, cents, `refusal-${m.reference.slice(2, 14)}-${seq}`);
       audit(this.db, "sourcing", "upstream.refused_on_chain", String(seq), { seq, mandate: m.reference, amount: fromCents(cents), tx: r.tx, metal_reason: r.reason, ...(letThrough ? { let_through: true } : {}) });
+      return false;
     } catch (e) {
       const error = (e as Error).message;
       audit(this.db, "sourcing", "upstream.refusal_not_recorded", String(seq), { seq, mandate: m.reference, error: error.slice(0, 240), ...(letThrough ? { let_through: true } : {}) });
-      // An over-cap pull that Metal did not report refusing may have paid: an incident, as for the let-through itself.
-      if (/did not report a refusal/.test(error)) this.letThroughIncident(seq, null, `Metal did not report refusing the ${fromCents(cents)} over-cap pull sent to record its refusal (${error.slice(0, 120)})`);
+      // A pull that may have reached Metal and was not reported refused may have paid: an incident.
+      if (!/^pull sent: |did not report a refusal/.test(error)) return false;
+      this.letThroughIncident(seq, null, `the ${fromCents(cents)} over-cap pull sent to record Metal's refusal was not reported refused (${error.slice(0, 120)})`, "record_pull");
+      return true;
     }
   }
 
@@ -146,11 +156,11 @@ export class SourcingAgent {
    * stopped (stop.sourcing: every purchase refused before signing until the CFO lifts it with Face ID) and an alarm row
    * is written. The payment, if any, is in the ledger like any other; it was inside the mandate's on-chain budget.
    */
-  private letThroughIncident(seq: number, purchaseId: number | null, what: string): void {
+  private letThroughIncident(seq: number, purchaseId: number | null, what: string, kind: "let_through" | "record_pull" = "let_through"): void {
     this.db.transaction(() => {
       const at = new Date().toISOString();
       this.db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('stop.sourcing', 'on', ?) ON CONFLICT(key) DO UPDATE SET value = 'on', updated_at = excluded.updated_at").run(at);
-      audit(this.db, "system", "upstream.let_through_incident", purchaseId === null ? String(seq) : String(purchaseId), { seq, purchase_id: purchaseId, what, stopped: "sourcing", lift: "an approved policy change (Face ID) setting the Sourcing agent's stop to off" });
+      audit(this.db, "system", "upstream.let_through_incident", purchaseId === null ? String(seq) : String(purchaseId), { seq, purchase_id: purchaseId, kind, what, stopped: "sourcing", lift: "an approved policy change (Face ID) setting the Sourcing agent's stop to off" });
       if (purchaseId !== null) finishLetThrough(this.db, { outcome: "incident", purchase_id: purchaseId, seq, detail: what });
     }).immediate();
   }
@@ -271,10 +281,15 @@ export class SourcingAgent {
         if (out.status === 0) {
           finishLetThrough(this.db, { outcome: "not_sent", purchase_id: id, seq, detail: out.reason });
         } else if (refusalOf(out.reason) === "OverPerPaymentCap") {
-          // Metal refused it itself, on the cap: nothing moved. Its refusal is also recorded on chain.
-          audit(this.db, "sourcing", "upstream.let_through_refused", String(id), { seq, purchase_id: id, metal_status: out.status, metal_reason: out.reason.slice(0, 200), amount: fromCents(lt.cents), label: LET_THROUGH_LABEL });
-          finishLetThrough(this.db, { outcome: "metal_refused", purchase_id: id, seq, detail: `${out.status} ${out.reason}` });
-          if (agentsOn()) await this.recordOnChain(m, seq, out.reason, lt.cents, true);
+          // Metal refused it itself, on the cap: nothing moved. Its refusal is then recorded on chain; only if that record
+          // ends well does the purchase get its label (a record pull not reported refused is an incident instead).
+          const incident = agentsOn() ? await this.recordOnChain(m, seq, out.reason, lt.cents, true) : false;
+          if (incident) {
+            finishLetThrough(this.db, { outcome: "incident", purchase_id: id, seq, detail: "Metal refused the purchase, but the pull recording its refusal was not reported refused" });
+          } else {
+            audit(this.db, "sourcing", "upstream.let_through_refused", String(id), { seq, purchase_id: id, metal_status: out.status, metal_reason: out.reason.slice(0, 200), amount: fromCents(lt.cents), label: LET_THROUGH_LABEL });
+            finishLetThrough(this.db, { outcome: "metal_refused", purchase_id: id, seq, detail: `${out.status} ${out.reason}` });
+          }
         } else {
           // Refused, nothing settled, but not by Metal on the cap (a rate limit, an outage): no label, no record; not repeated.
           finishLetThrough(this.db, { outcome: "inconclusive", purchase_id: id, seq, detail: `${out.status} ${out.reason}` });

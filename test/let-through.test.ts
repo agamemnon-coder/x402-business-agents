@@ -9,7 +9,7 @@ import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DB } from "../src/db/open.js";
 
-const state = vi.hoisted(() => ({ db: null as DB | null, signed: [] as number[], metal: "refuse" as "refuse" | "accept" | "lost" | "rate_limited", recordRefuses: true, onChain: [] as number[] }));
+const state = vi.hoisted(() => ({ db: null as DB | null, signed: [] as number[], metal: "refuse" as "refuse" | "accept" | "lost" | "rate_limited", recordRefuses: true, recordThrows: "", onChain: [] as number[] }));
 
 vi.mock("../src/metal/mandate.js", async (orig) => ({
   ...(await orig<object>()),
@@ -37,6 +37,7 @@ vi.mock("../src/metal/pay.js", async (orig) => ({
 }));
 vi.mock("../src/metal/recordRefusal.js", () => ({ recordCapRefusalOnChain: async (_m: unknown, _to: unknown, cents: number) => {
   state.onChain.push(cents);
+  if (state.recordThrows) throw new Error(state.recordThrows);
   if (!state.recordRefuses) throw new Error("Metal did not report a refusal (exit 0); check the pull refusal-x");
   return { tx: `0x${"cd".repeat(32)}`, reason: "mandate_cap_exceeded" };
 } }));
@@ -52,7 +53,7 @@ const { stopped, stopReason } = await import("../src/policy/velocity.js");
 const { sellerApp, SELLER_ROUTE } = await import("../src/servers/seller.js");
 
 const env = { ...process.env };
-beforeEach(() => { process.env.KIT11_AGENTS = "on"; process.env.KIT11_AUTONOMY = "on"; state.signed = []; state.metal = "refuse"; state.onChain = []; state.recordRefuses = true; });
+beforeEach(() => { process.env.KIT11_AGENTS = "on"; process.env.KIT11_AUTONOMY = "on"; state.signed = []; state.metal = "refuse"; state.onChain = []; state.recordRefuses = true; state.recordThrows = ""; });
 afterEach(() => { process.env = { ...env }; vi.unstubAllEnvs(); });
 
 const SUPPLIER = "0x0000000000000000000000000000000000000001" as const;
@@ -324,6 +325,24 @@ describe("(c) Metal accepts it anyway: an incident", () => {
     expect(events(db, "upstream.refusal_not_recorded")).toBe(1);
     expect(events(db, "upstream.let_through_incident")).toBe(1);
     expect(stopped(db, "sourcing")).toBe(true);
+    // No "nothing moved" label for it: the let-through's outcome is the incident.
+    expect(events(db, "upstream.let_through_refused")).toBe(0);
+    expect(letThrough(db)).toMatchObject({ stage: "used", outcome: "incident" });
+  });
+
+  it("a record pull that failed after it was sent is an incident; one never sent (a large ask) is not", async () => {
+    const db = world();
+    const a = new SourcingAgent(db, "http://127.0.0.1:1", SUPPLIER);
+    state.recordThrows = "pull sent: metal-agent exited 2";
+    price(db, "0.04");
+    await a.buy(18);
+    expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'upstream.let_through_incident'").get() as { payload_json: string }).payload_json)).toMatchObject({ kind: "record_pull", stopped: "sourcing" });
+    const other = world();
+    const b = new SourcingAgent(other, "http://127.0.0.1:1", SUPPLIER);
+    price(other, "0.50");
+    await b.buy(18);
+    expect(JSON.parse((other.prepare("SELECT payload_json FROM audit_log WHERE event = 'upstream.refusal_not_recorded'").get() as { payload_json: string }).payload_json)).toMatchObject({ error: expect.stringMatching(/more than 0\.02 over the cap; no pull is sent/) });
+    expect(stopped(other, "sourcing")).toBe(false);
   });
 
   it("a lost answer is an incident too: the hold stays HELD until the reconciliation resolves it", async () => {
