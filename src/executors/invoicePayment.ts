@@ -117,12 +117,13 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   // the EUR floor check). A new proposal, with its own request_id and Face ID, pays the invoice.
   if (existing?.status === "CANCELLED") throw new Error(`the payout ${t.transfer_request_id} was refused by Airwallex and closed; nothing is sent again under it, a new proposal is needed`);
   // Written before the call but never answered (a crash in between): Airwallex may have it; adopt it, never resend blind.
-  const found = existing ? await rail.findTransferByRequestId(t.transfer_request_id) : undefined;
+  const listed = existing ? await rail.findTransferByRequestId(t.transfer_request_id) : undefined;
+  const found = listed && await withPayee(rail, listed);
   const made = found && sameTransfer(found, req(t, sha)) ? found : undefined;
   if (found && !made) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`);
   if (made) {
     recordTransfer(db, t, made, sha);
-    audit(db, "awx-executor", "transfer.adopted", made.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, status: made.status, approval_sha256: sha });
+    audit(db, "awx-executor", "transfer.adopted", made.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, status: made.status, approval_sha256: sha, payee_confirmed: made.beneficiaryId != null });
     return made;
   }
   if (!existing) {
@@ -156,7 +157,8 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
       throw err;
     }
     if (!(err instanceof AirwallexAmbiguous)) throw err;
-    const found = await rail.findTransferByRequestId(t.transfer_request_id);
+    const listed = await rail.findTransferByRequestId(t.transfer_request_id);
+    const found = listed && await withPayee(rail, listed);
     if (found && !sameTransfer(found, create)) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`, { cause: err });
     if (found) ({ transfer: tr, adopted } = { transfer: found, adopted: true });
     else ({ transfer: tr, adopted } = await createOrAdopt(rail, create));
@@ -165,7 +167,10 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   // A crash here: Airwallex has the payout, the ledger only its SUBMITTING row. The retry adopts it by request_id.
   await checkpoint("transfer:after-create");
   recordTransfer(db, t, tr, sha);
-  audit(db, "awx-executor", adopted ? "transfer.adopted" : "transfer.created", tr.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha });
+  audit(db, "awx-executor", adopted ? "transfer.adopted" : "transfer.created", tr.id, {
+    request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha,
+    ...(adopted ? { payee_confirmed: tr.beneficiaryId != null } : {}),
+  });
   return tr;
 }
 
@@ -198,12 +203,25 @@ const req = (t: InvoicePaymentTerms, sha: string): NewTransfer => ({
 });
 
 /**
- * A transfer Airwallex holds is this payout only if it carries its request_id, amount, currency and payee. Adopting it
- * on duplicate_request_id also needs it live (`live`): a failed or cancelled one is not a payout made by this resend.
+ * A transfer Airwallex holds is this payout only if it carries its request_id, amount and currency, and no other payee.
+ * Adopting it on duplicate_request_id also needs it live (`live`): a failed or cancelled one is not a payout made by
+ * this resend.
+ *
+ * The payee: no recorded run shows `beneficiary_id` in Airwallex's GET or list answers (docs/runs/airwallex-readback.json
+ * keeps only kind, status and amount; re-review of 2 November). So a stated payee must be ours, but adoption does not
+ * depend on Airwallex stating one: withPayee first reads it back by id, and a transfer under our own request_id (a
+ * random UUID only our key can send, and Airwallex keeps one transfer per request_id) with our amount and currency is
+ * our own create. transfer.adopted records whether the payee was confirmed.
  */
 export function sameTransfer(found: Transfer, want: NewTransfer, live = false): boolean {
   return found.requestId === want.requestId && found.amountCents === want.amountCents && found.currency === want.currency
-    && found.beneficiaryId === want.beneficiaryId && (!live || (found.status !== "FAILED" && found.status !== "CANCELLED"));
+    && (found.beneficiaryId == null || found.beneficiaryId === want.beneficiaryId) && (!live || (found.status !== "FAILED" && found.status !== "CANCELLED"));
+}
+
+/** A transfer from the list without its payee is read back by its id (GET /transfers/{id}, a UUID only), which is then judged. */
+async function withPayee(rail: AirwallexRail, found: Transfer): Promise<Transfer> {
+  if (found.beneficiaryId != null || !UUID.test(found.id)) return found;
+  return rail.getTransfer(found.id);
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -234,7 +252,8 @@ async function createOrAdopt(rail: AirwallexRail, want: NewTransfer): Promise<{ 
     if (!(err instanceof AirwallexError) || (err.code !== "duplicate_request_id" && err.code !== "request_id_duplicate")) throw err;
     // The id Airwallex names goes into a URL path only if it is a UUID; otherwise the transfer is looked up by request_id.
     const id = (err.body as { details?: { id?: unknown } } | null)?.details?.id;
-    const existing = typeof id === "string" && UUID.test(id) ? await rail.getTransfer(id) : await rail.findTransferByRequestId(want.requestId);
+    const listed = typeof id === "string" && UUID.test(id) ? await rail.getTransfer(id) : await rail.findTransferByRequestId(want.requestId);
+    const existing = listed && await withPayee(rail, listed);
     // Adopted only when it is exactly this payout; anything else stays an error (the payout stays open, under way).
     if (!existing || !sameTransfer(existing, want, true)) throw err;
     return { transfer: existing, adopted: true };

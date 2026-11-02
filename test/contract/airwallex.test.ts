@@ -304,10 +304,19 @@ class ErringAirwallex extends FakeAirwallex {
   /** The id a duplicate_request_id answer names, when a test wants another one. */
   duplicateId: string | null = null;
   gotIds: string[] = [];
-  override async getTransfer(id: string) { this.gotIds.push(id); return super.getTransfer(id); }
+  /** Whether Airwallex's answers state the payee (beneficiary_id): no recorded run proves the list or GET carry it. */
+  payeeIn = { list: true, get: true };
+  /** The payee GET /transfers/{id} states, when a test wants it to differ from the one sent. */
+  payeeOnGet: string | null = null;
+  override async getTransfer(id: string) {
+    this.gotIds.push(id);
+    const t = await super.getTransfer(id);
+    return { ...t, beneficiaryId: this.payeeIn.get ? (this.payeeOnGet ?? t.beneficiaryId) : null };
+  }
   override async findTransferByRequestId(requestId: string) {
     if (this.listLag > 0) { this.listLag--; return undefined; }
-    return super.findTransferByRequestId(requestId);
+    const t = await super.findTransferByRequestId(requestId);
+    return t && { ...t, beneficiaryId: this.payeeIn.list ? t.beneficiaryId : null };
   }
 }
 
@@ -498,6 +507,62 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
       expect(transferRows(db), JSON.stringify(change)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
       expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event IN ('transfer.adopted', 'transfer.created')").get()).toEqual({ n: 0 });
     }
+  });
+
+  describe("adoption when Airwallex's answer does not state the payee (beneficiary_id is unproven in its GET/list answers)", () => {
+    /** A crash right after the create: Airwallex has the transfer, the ledger only its SUBMITTING row; then the re-run. */
+    async function crashedAfterCreate() {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      chaos.at = (point) => { if (point === "transfer:after-create") throw new Error("crash"); };
+      try {
+        await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow("crash");
+      } finally {
+        chaos.at = null;
+      }
+      return { db, awx, out };
+    }
+    const adoptedPayload = (db: DB) => (db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.adopted'").get() as { payload_json: string } | undefined)?.payload_json;
+
+    it("the list answer lacks it: read back by GET /transfers/{id}; the same payee there is adopted, payee confirmed", async () => {
+      const { db, awx, out } = await crashedAfterCreate();
+      awx.payeeIn = { list: false, get: true };
+      const r = await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
+      expect(r.transfer.id).toBe(awx.transfers[0]!.id);
+      expect(awx.transfers).toHaveLength(1);
+      expect(awx.gotIds[0]).toBe(awx.transfers[0]!.id);
+      expect(JSON.parse(adoptedPayload(db)!)).toMatchObject({ payee_confirmed: true });
+    });
+
+    it("the read-back names another payee: never adopted, the payout stays open for a person", async () => {
+      const { db, awx, out } = await crashedAfterCreate();
+      awx.payeeIn = { list: false, get: true };
+      awx.payeeOnGet = "someone-else";
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow(/not this payout/);
+      expect(transferRows(db)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+      expect(adoptedPayload(db)).toBeUndefined();
+    });
+
+    it("neither answer states it: adopted on what is proven (request_id, amount, currency), recorded as payee not confirmed", async () => {
+      const { db, awx, out } = await crashedAfterCreate();
+      awx.payeeIn = { list: false, get: false };
+      const r = await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
+      expect(r.transfer.status).toBe("PAID");
+      expect(awx.transfers).toHaveLength(1);
+      expect(JSON.parse(adoptedPayload(db)!)).toMatchObject({ payee_confirmed: false });
+    });
+
+    it("duplicate_request_id with an id that is not a UUID, the list lacking the payee: read back by its own id before adoption", async () => {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      awx.loseNextTransferAnswer = true;
+      awx.listLag = 1;
+      awx.duplicateId = "not-a-uuid";
+      awx.payeeIn = { list: false, get: true };
+      awx.payeeOnGet = "someone-else";
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow(/duplicate_request_id/);
+      expect(transferRows(db)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+    });
   });
 
   it("duplicate_request_id: an id that is not a UUID never goes into a URL; the transfer is looked up by request_id instead", async () => {
