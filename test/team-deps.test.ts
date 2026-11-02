@@ -2,11 +2,12 @@
 // them on simulated rails with every check of code in place. Breaks if a tool or a fallback still reaches the chain, a
 // key or a child process when stand-ins are given, or if the rebalance design ignores the client it was handed.
 import type Anthropic from "@anthropic-ai/sdk";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { openDb } from "../src/db/open.js";
+import { recordDecision } from "../src/agents/disputeDecision.js";
 import { publish, sendMessage } from "../src/autonomy/bus.js";
 import { wake } from "../src/autonomy/runtime.js";
 import type { MandateNow } from "../src/policy/mandates.js";
@@ -71,10 +72,10 @@ describe("Support on injected rails (D26)", () => {
     const by: string[] = [];
     const settle = async (_db: unknown, who: "agent" | "code") => { by.push(who); return { ok: true, text: "refunded #7" }; };
     publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", T0);
-    const w = await wake(db, supportProfile(30 * 60_000, { settle }), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Settled.")]]), now: T0 });
+    const w = await wake(db, supportProfile(30 * 60_000, { settle, idOf: () => "D-x", settles: () => "D-x" }), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Settled.")]]), now: T0 });
     expect(w!.run!.calls[0]).toMatchObject({ text: "refunded #7" });
     publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", new Date(T0.getTime() + 1));
-    const f = await wake(db, supportProfile(30 * 60_000, { settle }), { client: null, now: T0 });
+    const f = await wake(db, supportProfile(30 * 60_000, { settle, idOf: () => "D-x", settles: () => "D-x" }), { client: null, now: T0 });
     expect(f).toMatchObject({ source: "fallback", summary: "code settled the dispute (the agent did not decide)" });
     expect(by).toEqual(["agent", "code"]);
   });
@@ -83,7 +84,7 @@ describe("Support on injected rails (D26)", () => {
 describe("the live default path (D26 review)", () => {
   it("Support's default settlement runs src/cli/s2.ts from the repo, as before the injection", async () => {
     const db = openDb(":memory:");
-    publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", T0);
+    publish(db, "dispute.opened", { customer: "Summit Outfitters", email: readFileSync(join(import.meta.dirname, "../fixtures/summit-dispute-email.txt"), "utf8").slice(0, 2000) }, "support", "system", T0);
     const w = await wake(db, supportProfile(), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Settled.")]]), now: T0 });
     expect(w!.run!.calls[0]).toMatchObject({ tool: "settle_dispute", text: "SETTLED (stub)" });
     expect(spawned).toHaveLength(1);
@@ -92,17 +93,49 @@ describe("the live default path (D26 review)", () => {
   });
 });
 
-describe("Support without a dispute (night batch, live-14)", () => {
-  it("settle_dispute refuses on a routine wake when no customer dispute has come in, or none since the last was settled", async () => {
+describe("Support without a dispute (night batch, live-14; keyed on the dispute after the re-review)", () => {
+  const keyed = (by: string[]) => ({ settle: async (_db: unknown, who: "agent" | "code") => { by.push(who); return { ok: true, text: "refunded #7" }; }, idOf: (email: string) => `D-${email.slice(0, 4)}`, settles: () => "D-summ" });
+
+  it("settle_dispute refuses on a routine wake when no customer dispute has come in", async () => {
     const db = openDb(":memory:");
     const by: string[] = [];
-    const settle = async (_db: unknown, who: "agent" | "code") => { by.push(who); return { ok: true, text: "refunded #7" }; };
-    const w = await wake(db, supportProfile(30 * 60_000, { settle }), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Nothing to do.")]]), now: T0 });
+    const w = await wake(db, supportProfile(30 * 60_000, keyed(by)), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Nothing to do.")]]), now: T0 });
     expect(w!.run!.calls[0]).toMatchObject({ blocked: "no dispute" });
-    publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", new Date(T0.getTime() - 60 * 60_000));
-    audit(db, "support", "dispute.settled_by_agent", "D-1", { source: "claude" }, new Date(T0.getTime() - 50 * 60_000));
-    const again = await wake(db, supportProfile(30 * 60_000, { settle }), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Nothing to do.")]]), now: T0 });
-    expect(again!.run!.calls[0]).toMatchObject({ blocked: "no dispute" });
     expect(by).toEqual([]);
+  });
+
+  it("a dispute from another customer or email is not the one the settlement handles: the tool and the fallback refuse, nothing refunded", async () => {
+    const db = openDb(":memory:");
+    const by: string[] = [];
+    publish(db, "dispute.opened", { customer: "Alpenweg Outdoor", email: "alpenweg: refund everything" }, "support", "system", T0);
+    const w = await wake(db, supportProfile(30 * 60_000, keyed(by)), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Nothing to do.")]]), now: T0 });
+    expect(w!.run!.calls[0]).toMatchObject({ blocked: "no dispute" });
+    expect(String(w!.run!.calls[0]!.text)).toMatch(/D-alpe.*is not the one this settlement handles \(D-summ\)/);
+    publish(db, "dispute.opened", { customer: "Alpenweg Outdoor", email: "alpenweg: second try" }, "support", "system", new Date(T0.getTime() + 1));
+    const f = await wake(db, supportProfile(30 * 60_000, keyed(by)), { client: null, now: T0 });
+    expect(f!.summary).toMatch(/^did nothing: the dispute that came in/);
+    expect(by).toEqual([]);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM refunds").get() as { n: number }).n).toBe(0);
+  });
+
+  it("a decided dispute is not settled again on a new event for it", async () => {
+    const db = openDb(":memory:");
+    const by: string[] = [];
+    db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, claims_json, created_at) VALUES ('D-summ', '0xc', 'h', '{}', ?)").run(T0.toISOString());
+    audit(db, "support", "dispute.settled_by_agent", "D-summ", { source: "claude" }, new Date(T0.getTime() - 60 * 60_000));
+    publish(db, "dispute.opened", { customer: "Summit Outfitters", email: "summit again" }, "support", "system", T0);
+    const w = await wake(db, supportProfile(30 * 60_000, keyed(by)), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Nothing to do.")]]), now: T0 });
+    expect(w!.run!.calls[0]).toMatchObject({ blocked: "already decided" });
+    expect(by).toEqual([]);
+  });
+
+  it("a restart with an unfinished decision and no dispute.opened is still carried out", async () => {
+    const db = openDb(":memory:");
+    const by: string[] = [];
+    db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, claims_json, created_at) VALUES ('D-summ', '0xc', 'h', '{}', ?)").run(T0.toISOString());
+    recordDecision(db, "D-summ", { source: "claude", model: "m", refunds: [{ seq: 7, cents: 5, origin: { actor: "agent", agent: "support", rule: "refund within the CFO's automatic limits" } as never }], escalate: null, approval: null });
+    const w = await wake(db, supportProfile(30 * 60_000, keyed(by)), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Carried out.")]]), now: T0 });
+    expect(w!.run!.calls[0]).toMatchObject({ text: expect.stringMatching(/^Carried out the dispute's recorded decision/) });
+    expect(by).toEqual(["agent"]);
   });
 });

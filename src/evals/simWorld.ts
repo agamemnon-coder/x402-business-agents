@@ -308,7 +308,7 @@ export function profilesOf(ctx: SimCtx): Record<AgentName, AgentProfile> {
   return {
     sourcing: sourcingProfile(sourcingWorld(ctx)),
     treasury,
-    support: supportProfile(30 * 60_000, { settle: (_db, by) => settleSim(ctx, by) }),
+    support: supportProfile(30 * 60_000, { settle: (_db, by) => settleSim(ctx, by), idOf: (email) => `D-${sha256Hex(`${ctx.spec.seed}:${email}`).slice(0, 8)}`, settles: () => ctx.disputeId ?? "" }),
   };
 }
 
