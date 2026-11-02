@@ -33,7 +33,7 @@ export interface OpenInvoice {
 }
 export interface InvoiceFacts { paid: PaidInvoice[]; inFlight: { invoice_no: string; status: string }[]; open: OpenInvoice[]; unreadable: number; lines: string[] }
 /** The invoice plan_invoice plans, as code read it from its own file (live: the licence fixture). */
-export type PlannedInvoice = { invoice_no: string; vendor: string; amount: string; currency: string; due_date: string };
+export type PlannedInvoice = { invoice_no: string; vendor: string; amount: string; currency: string; due_date: string; iban?: string; bic?: string };
 
 /** A balance reading older than this is too old to judge the money by; code reads the balances again when it plans. */
 export const BALANCE_READING_STALE_MS = 60 * 60_000;
@@ -85,16 +85,36 @@ function received(db: DB): { byKey: Map<string, Received[]>; unreadable: number 
       if (typeof text !== "string") { unreadable++; continue; }
       try {
         const inv = parseInvoiceFallback(text);
-        add({ invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: inv.currency, due_date: inv.due_date });
+        add({ invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: inv.currency, due_date: inv.due_date, iban: inv.iban, bic: inv.bic });
       } catch { unreadable++; /* an invoice code cannot read whole is not listed as a fact; planning it escalates to a person */ }
     }
   }
   return { byKey, unreadable };
 }
 
-const sameInvoice = (a: Received, b: Received) => a.vendor === b.vendor && a.amount === b.amount && a.currency === b.currency && a.due_date === b.due_date;
+// The bank details are compared too when both copies hold them (a copy from the invoices table may not): a copy under the
+// licence's number asking for another account is not the invoice code plans.
+const bank = (v: string | undefined) => (v ? v.replace(/\s+/g, "").toUpperCase() : null);
+const bankDiffers = (a: string | undefined, b: string | undefined) => bank(a) !== null && bank(b) !== null && bank(a) !== bank(b);
+const sameInvoice = (a: Received, b: Received) => a.vendor === b.vendor && a.amount === b.amount && a.currency === b.currency && a.due_date === b.due_date && !bankDiffers(a.iban, b.iban) && !bankDiffers(a.bic, b.bic);
 const diff = (a: Received, b: Received) =>
-  [a.vendor !== b.vendor && "vendor", a.amount !== b.amount && "amount", a.currency !== b.currency && "currency", a.due_date !== b.due_date && "due date"].filter(Boolean).join(", ");
+  [a.vendor !== b.vendor && "vendor", a.amount !== b.amount && "amount", a.currency !== b.currency && "currency", a.due_date !== b.due_date && "due date",
+    bankDiffers(a.iban, b.iban) && "IBAN", bankDiffers(a.bic, b.bic) && "BIC"].filter(Boolean).join(", ");
+
+export type PlannedMatch = { status: "arrived" } | { status: "unreadable" } | { status: "not_received" } | { status: "differs"; fields: string }; 
+
+/**
+ * Whether the invoice plan_invoice plans came in as code would plan it: its number is one code vouches for, a copy came
+ * in under it, and no copy under it differs (vendor, amount, currency, due date, IBAN, BIC). plan_invoice runs only on
+ * "arrived" (review, 2 November: the tool, not only the facts, must refuse a copy that is not code's plan).
+ */
+export function plannedMatch(db: DB, plans: PlannedInvoice | null): PlannedMatch {
+  if (!plans || !vouchedInvoiceNo(plans.invoice_no) || !wellFormed(plans)) return { status: "unreadable" };
+  const copies = received(db).byKey.get(invoiceKey(plans.invoice_no)) ?? [];
+  if (copies.length === 0) return { status: "not_received" };
+  const other = copies.find((c) => !sameInvoice(c, plans));
+  return other ? { status: "differs", fields: diff(other, plans) } : { status: "arrived" };
+}
 
 /** Paid invoices: a PAID payout, else an executed payment proposal (newest first). */
 function paidInvoices(db: DB): PaidInvoice[] {

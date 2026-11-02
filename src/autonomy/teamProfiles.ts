@@ -27,7 +27,7 @@ import { INVOICE_PROPOSAL_TTL_MS, LICENCE_INVOICE_FIXTURE, TOTAL_BUDGET_CENTS } 
 import { agentsOn } from "../config/agents.js";
 import { invoiceAlreadyHandled } from "../agents/euroBill.js";
 import { parseInvoiceFallback } from "../agents/invoice.js";
-import { invoiceFacts, type PlannedInvoice } from "./invoiceFacts.js";
+import { invoiceFacts, plannedMatch, vouchedInvoiceNo, type PlannedInvoice } from "./invoiceFacts.js";
 import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } from "../config/suppliers.js";
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
@@ -118,7 +118,7 @@ const LICENCE_TEXT = resolve(repo, "fixtures", LICENCE_INVOICE_FIXTURE);
 /** The invoice a text holds, as code reads it whole, or null when it cannot. */
 const invoiceOf = (text: string | null): PlannedInvoice | null => {
   if (!text) return null;
-  try { const i = parseInvoiceFallback(text); return { invoice_no: i.invoice_no, vendor: i.vendor, amount: i.amount, currency: i.currency, due_date: i.due_date }; } catch { return null; }
+  try { const i = parseInvoiceFallback(text); return { invoice_no: i.invoice_no, vendor: i.vendor, amount: i.amount, currency: i.currency, due_date: i.due_date, iban: i.iban, bic: i.bic }; } catch { return null; }
 };
 /** The licence's own file, or null when it cannot be read (the facts then offer no plan; the tool's flow reads it again). */
 const licenceText = (): string | null => { try { return readFileSync(LICENCE_TEXT, "utf8"); } catch { return null; } };
@@ -203,9 +203,16 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
           if (waiting(db, "invoice_payment").length) return { text: "Not planned: an invoice payment already waits for the CFO.", blocked: "already waiting" };
           // Code's duplicate guard, before anything runs (the flow applies it again): never an invoice that is paid,
           // being paid, or has a plan waiting, whatever the agent believes (review, 2 November).
-          const no = invoiceOf(plannedText())?.invoice_no ?? null;
-          const handled = no ? invoiceAlreadyHandled(db, no) : null;
+          const planned = invoiceOf(plannedText());
+          const no = planned?.invoice_no ?? null;
+          const handled = no ? invoiceAlreadyHandled(db, no, new Date(), vouchedInvoiceNo(no) ? no : "(the licence)") : null;
           if (handled) return { text: `Not planned: ${handled}.`, blocked: /already paid/.test(handled) ? "already paid" : "already handled" };
+          // Fail closed (review, 2 November): only the invoice code reads from its own file, and only once it came in
+          // as code would plan it; a copy under its number that asks for something else goes to a person.
+          const match = plannedMatch(db, planned);
+          if (match.status === "unreadable") return { text: "Not planned: code cannot read or vouch for the invoice plan_invoice plans; a person checks it.", blocked: "no invoice" };
+          if (match.status === "not_received") return { text: "Not planned: the invoice plan_invoice plans has not come in.", blocked: "not received" };
+          if (match.status === "differs") return { text: `Not planned: a copy that came in under its number differs from the invoice plan_invoice plans (${match.fields}); a person checks it.`, blocked: "invoice differs" };
           const r = sim ? await sim.planInvoice(db) : withOrigin(currentOrigin() ?? NO_RUN, () => deps.runFlow("licence.ts"));
           return { text: r.text, ...(r.ok ? {} : { blocked: "the plan did not complete" }) };
         },
