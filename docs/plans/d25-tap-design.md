@@ -119,3 +119,38 @@ Claim wording for Max to choose, after the interop test: his text "Our agents si
 Protocol; verified against Visa's open-source TAP reference", or the reviewer's narrower one "Our agents' TAP
 signatures are accepted by Visa's open-source reference verifier (commit 16d59bd); body integrity, tag and payment
 checks are ours." The second is exact if only one direction passes.
+
+## Built, 2 November (what changed against this design, and why)
+
+Code: `src/visa/tapSig.ts` (both signatures, pure), `src/visa/tapMerchant.ts` (our layer), `src/visa/tapServer.ts`
+(Packwise's checkout on :3000, loopback only), `src/visa/tapRail.ts` (the rail, `KIT11_TAP_RAIL=on`; through the
+reference proxy with `KIT11_TAP_PROXY`), `src/visa/tapLiveRun.ts` and `npm run visa:tap-live` (the live run), the CI job
+`.github/workflows/tap-interop.yml` with `test/interop/tap-interop.ts`. The earlier `src/visa/tap.ts` and
+`src/visa/merchant.ts` (the RFC 9421 dev test behind `/visa`) are unchanged except that a revocation now sticks.
+
+- **"Visa's signer → our verifier" runs headless, with Ed25519.** `tap-agent/agent_app.py` defines
+  `create_ed25519_signature(private_key_pem, authority, path, keyid, nonce, created, expires, tag)` at module level and
+  starts Streamlit only under `if __name__ == "__main__"`; the key comes from `ED25519_PRIVATE_KEY` (the raw 32-byte
+  seed, base64). The interop test imports the module and calls that function with our test key and a UUID nonce (as the
+  reference does), and our signature-1 check verifies the result. The module imports `streamlit` at the top and the
+  function uses it only to show an error, so the test puts a do-nothing stand-in module in its place; the reference's
+  file runs unchanged. No RSA-PSS is needed in our verifier. Only signature 1 exists in that direction (the reference
+  has no body signature), and its request passes the proxy and is refused by our merchant for lacking signature 2.
+- **Layout of signature 1:** `; ` between parameters, as the reference agent emits it (the proxy reads `;` with or
+  without the space; our parser accepts both and nothing else: each parameter once, no unknown ones, the proxy's key-id
+  rule, alg exactly `ed25519`).
+- **Skew:** 30 s either way (`TAP_CLOCK_SKEW_S`), on both signatures; a nonce is kept for 480 s plus twice the
+  merchant's skew, in a new table `tap_rail_nonces` (per key; `tap_nonces` of the dev test is untouched).
+- **Signature 2 covers `@query`** and the request target carries none; a merchant refuses any `?`.
+- **The proxy ships no lockfile.** CI installs its `package.json` as is, without dev dependencies or install scripts,
+  with npm resolving its ranges as they stood on 19 October (`--before`). Python: not the reference's requirements files
+  (unpinned, sdists allowed, a UI stack the test does not run) but only what the registry and the signing function
+  import, at the reference's own pins, from a committed hashed file (`test/interop/tap-ref-requirements.txt`, wheels
+  only, `--require-hashes`). Python 3.12, because pydantic 2.5.0 has no 3.13 wheels.
+- **The rail in the product** checks in-process unless `KIT11_TAP_PROXY` names the reference proxy on this machine;
+  then the checkout goes through the proxy to our merchant server. The D24 origin carries
+  `tap {key_id, nonce, proxy_status, sig1, sig2, authorization_id}`; the authorisation id is on the charge's origin
+  only (it is known once Airwallex answers).
+- **Run locally, 2 November,** against the reference files at 16d59bd (checked byte for byte against GitHub; codeload is
+  blocked in this sandbox, so not a fresh clone): 21 of 21 interop cases, and the live-run script with Airwallex's
+  stand-in and a scripted Claude, both steps. The CI job itself and the live run have not run yet.
