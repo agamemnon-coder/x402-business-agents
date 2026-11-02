@@ -29,6 +29,7 @@ import { eurInFlightCents } from "../../src/policy/available.js";
 import { chaos } from "../../src/policy/saga.js";
 import { reconcile } from "../../src/finance/reconcile.js";
 import { systemHealth } from "../../src/dashboard/health.js";
+import { REFUSAL_EVENTS, describe as describeFeed } from "../../src/dashboard/snapshot.js";
 import { FakeAirwallex } from "../../src/redteam/airwallex.js";
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -602,13 +603,31 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
       expect(adoptedPayload(db)).toBeUndefined();
     });
 
-    it("neither answer states it: adopted on what is proven (request_id, amount, currency), recorded as payee not confirmed", async () => {
+    it("neither answer states it: adopted on what is proven (request_id, amount, currency), recorded as payee not confirmed, with an alarm", async () => {
       const { db, awx, out } = await crashedAfterCreate();
       awx.payeeIn = { list: false, get: false };
       const r = await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
       expect(r.transfer.status).toBe("PAID");
       expect(awx.transfers).toHaveLength(1);
-      expect(JSON.parse(adoptedPayload(db)!)).toMatchObject({ payee_confirmed: false });
+      // Our payee is named as ours, never as if Airwallex had confirmed it.
+      const adopted = JSON.parse(adoptedPayload(db)!) as Record<string, unknown>;
+      expect(adopted).toMatchObject({ payee_confirmed: false, our_beneficiary_id: out.terms.beneficiary_id });
+      expect(adopted).not.toHaveProperty("beneficiary_id");
+      // A visible alarm: a red line on the dashboard, and System health misses its objective.
+      const alarm = db.prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'transfer.payee_unconfirmed'").get() as { subject: string; payload_json: string } | undefined;
+      expect(alarm?.subject).toBe(r.transfer.id);
+      expect(REFUSAL_EVENTS.has("transfer.payee_unconfirmed")).toBe(true);
+      expect(describeFeed({ seq: 1, ts: "", actor: "awx-executor", event: "transfer.payee_unconfirmed", subject: alarm!.subject, payload_json: alarm!.payload_json, prev_hash: "", row_hash: "" } as never, () => undefined))
+        .toMatchObject({ tone: "refusal", text: expect.stringMatching(/^Alarm: .*payee/) });
+      expect(systemHealth(db).slos.find((x) => x.id === "payee_confirmed")).toMatchObject({ met: false, detail: expect.stringContaining(r.transfer.id) });
+    });
+
+    it("a confirmed payee raises no alarm, and System health's payee objective is met", async () => {
+      const { db, awx, out } = await crashedAfterCreate();
+      await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
+      expect(JSON.parse(adoptedPayload(db)!)).toMatchObject({ payee_confirmed: true, our_beneficiary_id: out.terms.beneficiary_id });
+      expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'transfer.payee_unconfirmed'").get()).toEqual({ n: 0 });
+      expect(systemHealth(db).slos.find((x) => x.id === "payee_confirmed")).toMatchObject({ met: true });
     });
 
     it("duplicate_request_id with an id that is not a UUID, the list lacking the payee: read back by its own id before adoption", async () => {

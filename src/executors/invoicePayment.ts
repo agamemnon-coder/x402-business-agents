@@ -148,7 +148,7 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   if (found && !made) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`);
   if (made) {
     recordTransfer(db, t, made, sha);
-    audit(db, "awx-executor", "transfer.adopted", made.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, status: made.status, approval_sha256: sha, payee_confirmed: made.beneficiaryId != null });
+    auditAdopted(db, t, made, sha);
     return made;
   }
   if (!existing) {
@@ -202,11 +202,27 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   // A crash here: Airwallex has the payout, the ledger only its SUBMITTING row. The retry adopts it by request_id.
   await checkpoint("transfer:after-create");
   recordTransfer(db, t, tr, sha);
-  audit(db, "awx-executor", adopted ? "transfer.adopted" : "transfer.created", tr.id, {
-    request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha,
-    ...(adopted ? { payee_confirmed: tr.beneficiaryId != null } : {}),
-  });
+  if (adopted) auditAdopted(db, t, tr, sha);
+  else audit(db, "awx-executor", "transfer.created", tr.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha });
   return tr;
+}
+
+/**
+ * An adopted transfer names our payee as ours (our_beneficiary_id), never as if Airwallex had confirmed it, and records
+ * whether Airwallex's answer stated it (payee_confirmed). Unconfirmed is an alarm (transfer.payee_unconfirmed): a red
+ * line on the dashboard and a missed objective in System health, until a person checks the payee at Airwallex.
+ */
+function auditAdopted(db: DB, t: InvoicePaymentTerms, tr: Transfer, sha: string): void {
+  const confirmed = tr.beneficiaryId != null;
+  audit(db, "awx-executor", "transfer.adopted", tr.id, {
+    request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, our_beneficiary_id: t.beneficiary_id, payee_confirmed: confirmed, status: tr.status, approval_sha256: sha,
+  });
+  if (!confirmed) {
+    audit(db, "awx-executor", "transfer.payee_unconfirmed", tr.id, {
+      request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, our_beneficiary_id: t.beneficiary_id,
+      reason: "Airwallex's answers did not state the payee; the transfer was adopted on its request_id, amount and currency",
+    });
+  }
 }
 
 /**

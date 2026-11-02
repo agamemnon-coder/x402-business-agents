@@ -787,6 +787,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     }
     case "transfer.closed_unsent": return out(`Payout of invoice ${str(p.invoice_no)} (${str(p.amount)}, ${str(p.proposal_id)}) closed by your command: Airwallex holds no transfer under it; the invoice can be proposed again`, "approval");
     case "transfer.row_conflict": return out(`Alarm: Airwallex holds transfer ${s} (${str(p.amount)}) under payout ${str(p.request_id)}, but the ledger's row is ${str(p.row_status)}; nothing more is sent, a person checks it now`, "refusal", { awx_id: s || null });
+    case "transfer.payee_unconfirmed": return out(`Alarm: transfer ${s} (${str(p.amount)}) was adopted, but Airwallex never stated its payee; a person checks the payee in the Airwallex web app`, "refusal", { awx_id: s || null });
     case "transfer.found_after_close": return out(`Alarm: Airwallex holds transfer ${s} (${str(p.amount)}, ${str(p.status)}) under the closed payout ${str(p.request_id)} of invoice ${str(p.invoice_no)}; it is not proposed again, a person checks it now`, "refusal", { awx_id: s || null });
     case "clearing.deposited": return out(`Summit put ${str(p.amount)} USDZ into Metal clearing: its prepaid budget for our stock checks`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
     case "clearing.withdrawn": return out(`Our clearing earnings of ${str(p.amount)} USDZ went to the business account`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
@@ -1014,7 +1015,7 @@ export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
   "sweep.held", "invoice.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
-  "transfer.refused", "transfer.retry_stopped", "transfer.row_conflict", "transfer.found_after_close",
+  "transfer.refused", "transfer.retry_stopped", "transfer.row_conflict", "transfer.found_after_close", "transfer.payee_unconfirmed",
   "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered", "velocity.tripped", "reconcile.difference",
 ]);
 
@@ -1042,6 +1043,7 @@ export const REFUSAL_WHAT: Record<string, string> = {
   "transfer.retry_stopped": "Payout retries stopped",
   "transfer.row_conflict": "Alarm: payout row changed",
   "transfer.found_after_close": "Alarm: closed payout found at Airwallex",
+  "transfer.payee_unconfirmed": "Alarm: payee not confirmed",
   "passkey.refused": "Passkey approval refused",
   "passkey.enrol_refused": "Passkey enrolment refused",
   "card.charge_declined": "Card purchase declined by Airwallex",
