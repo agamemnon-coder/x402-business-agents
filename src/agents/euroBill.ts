@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import { audit } from "../audit/log.js";
-import { EUR_FLOOR_CENTS, LICENSOR_NAME, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
+import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, LICENSOR_NAME, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
@@ -252,7 +252,7 @@ export async function proposeInvoicePayment(
   }
 
   const id = nextProposalId(db);
-  const expires = proposalExpiry(now.getTime(), PROPOSAL_TTL_MS, quote ? Date.parse(quote.validTo) : undefined, QUOTE_SAFETY_MS);
+  const expires = proposalExpiry(now.getTime(), INVOICE_PROPOSAL_TTL_MS, quote ? Date.parse(quote.validTo) : undefined, QUOTE_SAFETY_MS);
   const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
   const terms: InvoicePaymentTerms = {
     schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: id, expires_at: iso(expires),
