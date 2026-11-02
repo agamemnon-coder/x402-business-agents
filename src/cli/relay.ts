@@ -42,6 +42,7 @@ import { pausedCredential, pausesNotRevoked, syncPauses } from "../policy/pause.
 import { LivePauseChain } from "../metal/pauseChain.js";
 import { osProcesses } from "../ops/processes.js";
 import { asWorldGroup, holdRunnerLock } from "../ops/runnerLock.js";
+import { openDecisions } from "../agents/disputeDecision.js";
 
 // One world, one runner, one process group (2 November: a stop reached only a wrapper, another world's runner ran on).
 // Outside a world's group this starts itself again as the leader of a new one; then it takes the ledger's runner lock,
@@ -201,6 +202,20 @@ async function quarantineTick(): Promise<void> {
   const holds = recoverHolds(db);
   if (holds.settled + holds.released + holds.open) console.log(`${stamp()} recover  holds: ${holds.settled} settled, ${holds.released} released, ${holds.open} still open`);
   for (const r of await resumeInterrupted(db, execute)) console.log(`${stamp()} recover  ${r.id} resumed after a restart: ${redactSecrets(r.outcome)}`);
+  // A dispute decision a restart cut off (refunds partly paid, the CFO's proposal not yet made): carried out now, once,
+  // by the dispute flow from the ledger (npm run s2 -- --resume-only). It is never decided again.
+  const undone = openDecisions(db);
+  if (undone.length) {
+    console.log(`${stamp()} recover  dispute decision(s) not fully carried out: ${undone.map((d) => d.dispute_id).join(", ")}; carrying out what is left`);
+    const code = await new Promise<number | null>((ok) => {
+      const child = spawn(resolve(import.meta.dirname, "../../node_modules/.bin/tsx"), [resolve(import.meta.dirname, "s2.ts"), "--resume-only"], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"] });
+      const out = (b: Buffer) => { for (const l of b.toString().split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) console.log(`${stamp()} recover  ${redactSecrets(l).slice(0, 300)}`); };
+      child.stdout.on("data", out);
+      child.stderr.on("data", out);
+      child.on("exit", ok);
+    });
+    if (code !== 0) console.error(`${stamp()} recover  the dispute decision was not carried out (exit ${code}); /health shows it until it is`);
+  }
   // 4.2 A pause whose revoke failed or was cut off by a crash: finish it now (review of 4.2). Purser refused the agent
   // all along; this makes the chain refuse it too. A failure here stays a health alarm until it succeeds.
   if (agentsOn() && pausesNotRevoked(db).length) {

@@ -12,17 +12,18 @@
 
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { realpathSync, statSync } from "node:fs";
 import { constants, hostname } from "node:os";
 import { basename } from "node:path";
 import Database from "better-sqlite3";
 import type { DB } from "../db/open.js";
-import { ownPgid, type Proc, type ProcessTable } from "./processes.js";
+import { ownPgid, procOf, type Proc, type ProcessTable } from "./processes.js";
 
 export interface RunnerLock {
   world: string;
-  /** The ledger's real path. */
+  /** The ledger's real path, and its file identity (device:inode): another path to the same file is the same ledger. */
   db: string;
+  file?: string;
   host: string;
   pid: number;
   /** The holder's start time from the process table: with the pid it names one process, also after pid reuse. */
@@ -54,6 +55,10 @@ export function lockOf(db: Database.Database): RunnerLock | null {
 }
 
 const live = (p: Proc) => !p.state.startsWith("Z");
+/** device:inode of a ledger file: a row copied into another file does not match, a second path to this one does. */
+export const fileId = (path: string) => { const st = statSync(path); return `${st.dev}:${st.ino}`; };
+/** Whether a lock row is about this ledger file. */
+export const sameLedger = (held: RunnerLock, real: string) => (held.file ? held.file === fileId(real) : held.db === real);
 const describe = (l: RunnerLock) => `pid ${l.pid} (process group ${l.pgid}, ${l.role}) on ${l.host}, since ${l.started_at}`;
 
 export type Acquired = { ok: true; owner: boolean; lock: RunnerLock; note?: string } | { ok: false; message: string };
@@ -65,19 +70,20 @@ export type Acquired = { ok: true; owner: boolean; lock: RunnerLock; note?: stri
 export function acquireRunnerLock(db: DB, dbPath: string, me: Me, table: ProcessTable, host = hostname(), now = new Date()): Acquired {
   const real = realpathSync(dbPath);
   const world = worldOf(real);
-  const mine: RunnerLock = { world, db: real, host, pid: me.pid, pid_start: me.pid_start, pgid: me.pgid, token: me.token, role: me.role, started_at: now.toISOString() };
+  const mine: RunnerLock = { world, db: real, file: fileId(real), host, pid: me.pid, pid_start: me.pid_start, pgid: me.pgid, token: me.token, role: me.role, started_at: now.toISOString() };
   const take = (note?: string): Acquired => {
     db.prepare("INSERT INTO locks (lock_key, holder, acquired_at, released_at) VALUES (?, ?, ?, NULL) ON CONFLICT (lock_key) DO UPDATE SET holder = excluded.holder, acquired_at = excluded.acquired_at, released_at = NULL")
       .run(KEY, JSON.stringify(mine), mine.started_at);
     return { ok: true, owner: true, lock: mine, ...(note ? { note } : {}) };
   };
+  // The process table is read before the write transaction, so other writers of the ledger do not wait on the scan.
+  const procs = table.list();
   return db.transaction((): Acquired => {
     const held = lockOf(db);
     if (!held) return take();
     // A row copied with the ledger (a snapshot, a copy for a new world) is not a lock on this file.
-    if (held.db !== real) return take(`a lock row copied from ${held.db} was replaced`);
-    if (held.host !== host) return { ok: false, message: `world ${world} has a runner lock held on host ${held.host} (${describe(held)}); it cannot be checked from ${host}. Stop it there first.` };
-    const procs = table.list();
+    if (!sameLedger(held, real)) return take(`a lock row copied from ${held.db} was replaced`);
+    if (held.host !== host) return { ok: false, message: `world ${world} has a runner lock held on host ${held.host} (${describe(held)}); it cannot be checked from ${host}. Stop it there first; if that host is gone (a new container), npm run stop -- ${world} --forget-other-host clears it once nothing here uses the ledger.` };
     const sameRun = held.token === me.token && held.pgid === me.pgid;
     const holder = procs.find((p) => p.pid === held.pid && p.start === held.pid_start && live(p));
     if (holder) {
@@ -133,7 +139,7 @@ export async function asWorldGroup(log: (line: string) => void = (l) => console.
 /** The runner lock for this process, taken at start and given back at exit; exits with a clear message when refused. */
 export function holdRunnerLock(db: DB, dbPath: string, role: string, group: { token: string; pgid: number }, table: ProcessTable): void {
   if (dbPath === ":memory:") return;
-  const me: Me = { pid: process.pid, pid_start: table.list().find((p) => p.pid === process.pid)?.start ?? "", pgid: group.pgid, token: group.token, role };
+  const me: Me = { pid: process.pid, pid_start: procOf(process.pid)?.start ?? "", pgid: group.pgid, token: group.token, role };
   const r = acquireRunnerLock(db, dbPath, me, table);
   if (!r.ok) {
     console.error(`REFUSED  ${r.message}`);

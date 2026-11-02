@@ -9,12 +9,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
-import { decisionOf, recordDecision } from "../src/agents/disputeDecision.js";
+import { carryOut, decisionOf, recordDecision } from "../src/agents/disputeDecision.js";
 import { settleDispute, type SupportDeps } from "../src/agents/supportAgent.js";
 import { publish } from "../src/autonomy/bus.js";
 import { supportProfile } from "../src/autonomy/teamProfiles.js";
 import { wake } from "../src/autonomy/runtime.js";
 import { openDb, type DB } from "../src/db/open.js";
+import { health } from "../src/ops/health.js";
 import { currentOrigin, type Origin } from "../src/provenance/origin.js";
 
 const SEQS = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
@@ -159,35 +160,80 @@ describe("a dispute is decided once, also after a restart", () => {
     expect(settledRows(db)).toBe(1);
   });
 
+  /** Proposals kept in the ledger file itself (as the live proposals table), made in carryOut's transaction. */
+  function ledgerProposals(db: DB, hangReview: { on: boolean }) {
+    db.exec("CREATE TABLE IF NOT EXISTS test_props (id TEXT PRIMARY KEY, part TEXT, seqs TEXT, review TEXT)");
+    return {
+      existing: (part: "escalate" | "approval") => (db.prepare("SELECT id FROM test_props WHERE part = ?").get(part) as { id: string } | undefined)?.id ?? null,
+      proposals: {
+        create: (part: "escalate" | "approval", seqs: number[]) => {
+          const id = `P-${String(count(db, "SELECT COUNT(*) AS n FROM test_props") + 9).padStart(4, "0")}`;
+          db.prepare("INSERT INTO test_props (id, part, seqs) VALUES (?, ?, ?)").run(id, part, JSON.stringify(seqs));
+          return id;
+        },
+        review: async (_part: "escalate" | "approval", id: string) => {
+          if (hangReview.on) return never<void>();
+          db.prepare("UPDATE test_props SET review = 'advisory' WHERE id = ?").run(id);
+        },
+        reviewed: (id: string) => !!(db.prepare("SELECT review FROM test_props WHERE id = ?").get(id) as { review: string | null } | undefined)?.review,
+      },
+    };
+  }
+  const codePlan = () => ({
+    plan: { refunds: [7, 10, 13].map((seq) => ({ seq, cents: 5, origin: { actor: "code", rule: "refund within the CFO's automatic limits", agent: "support" } as Origin })), escalate: { seqs: RIGHT, text: "customer request", origin: null }, approval: null },
+    audits: [{ actor: "support" as const, event: "refund.auto_approved", payload: { sales: ["7", "10", "13"] } }],
+  });
+
   it("code's decision (the agent's run did not count) is recorded once and carried out once after a crash", async () => {
     const file = ledgerFile();
     const w = world();
-    const codeProposals: number[][] = [];
-    const withCode = (): SupportDeps => ({
-      ...w.deps(),
-      fallback: {
-        plan: () => ({
-          plan: { refunds: [7, 10, 13].map((seq) => ({ seq, cents: 5, origin: { actor: "code", rule: "refund within the CFO's automatic limits", agent: "support" } as Origin })), escalate: { seqs: RIGHT, text: "customer request", origin: null }, approval: null },
-          audits: [{ actor: "support", event: "refund.auto_approved", payload: { sales: ["7", "10", "13"] } }],
-        }),
-        propose: async (_part, seqs) => { codeProposals.push(seqs); return "P-0009"; },
-      },
-    });
+    const hang = { on: false };
+    const withCode = (db: DB): SupportDeps => ({ ...w.deps(), ...ledgerProposals(db, hang), fallback: { plan: codePlan } });
     w.crash({ refundNo: 2 });
     const first = openDb(file);
-    const cut = await Promise.race([settleDispute(first, facts, withCode(), null).then(() => "finished"), new Promise((ok) => setTimeout(() => ok("crashed"), 300))]);
+    const cut = await Promise.race([settleDispute(first, facts, withCode(first), null).then(() => "finished"), new Promise((ok) => setTimeout(() => ok("crashed"), 300))]);
     expect(cut).toBe("crashed");
     w.crash({});
     const db = openDb(file);
-    const r = await settleDispute(db, facts, withCode(), agent());
+    const r = await settleDispute(db, facts, withCode(db), agent());
     expect(r).toMatchObject({ source: "fallback", decided: "code" });
     expect(r.already).toBeTruthy();
     expect([...w.sends.values()]).toEqual([1, 1, 1]);
-    expect(codeProposals).toEqual([RIGHT]);
+    expect(db.prepare("SELECT id, seqs, review FROM test_props").all()).toEqual([{ id: "P-0009", seqs: JSON.stringify(RIGHT), review: "advisory" }]);
     expect(decisions(db)).toBe(1);
     expect(settledRows(db)).toBe(1);
     expect(count(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'refund.auto_approved'")).toBe(1);
     for (const seq of [7, 10, 13]) expect(w.origins.get(seq)).toMatchObject({ actor: "code", rule: "refund within the CFO's automatic limits" });
+  });
+
+  it("a crash while the proposal's review runs: the restart keeps that proposal and adds the missing review", async () => {
+    const file = ledgerFile();
+    const w = world();
+    const hang = { on: true };
+    const first = openDb(file);
+    const withCode = (db: DB): SupportDeps => ({ ...w.deps(), ...ledgerProposals(db, hang), fallback: { plan: codePlan } });
+    const cut = await Promise.race([settleDispute(first, facts, withCode(first), null).then(() => "finished"), new Promise((ok) => setTimeout(() => ok("crashed"), 300))]);
+    expect(cut).toBe("crashed");
+    expect(decisionOf(first, facts.disputeId)).toMatchObject({ status: "DECIDED", escalation_proposal: "P-0009" });
+    hang.on = false;
+    const db = openDb(file);
+    await settleDispute(db, facts, withCode(db), null);
+    expect(db.prepare("SELECT id, review FROM test_props").all()).toEqual([{ id: "P-0009", review: "advisory" }]);
+    expect(decisionOf(db, facts.disputeId)!.status).toBe("DONE");
+  });
+
+  it("two processes carrying out the same decision at once: one proposal, each refund sent once", async () => {
+    const file = ledgerFile();
+    const w = world();
+    const hang = { on: false };
+    const a = openDb(file);
+    const b = openDb(file);
+    recordDecision(a, facts.disputeId, { ...codePlan().plan, source: "code", model: null });
+    const run = (db: DB) => { const l = ledgerProposals(db, hang); return carryOut(db, facts.disputeId, { refund: w.deps().refund, existing: l.existing, ...l.proposals }); };
+    await Promise.all([run(a), run(b)]);
+    expect(count(a, "SELECT COUNT(*) AS n FROM test_props")).toBe(1);
+    expect([...w.sends.values()]).toEqual([1, 1, 1]);
+    expect(decisionOf(a, facts.disputeId)).toMatchObject({ status: "DONE", paid: [7, 10, 13] });
   });
 
   it("a second process that decides at the same time: the first decision stands, the second writes nothing", () => {
@@ -238,7 +284,7 @@ describe("the Support agent's settle_dispute tool after a restart", () => {
   function onFile(db: DB, status: "DONE" | "DECIDED"): void {
     db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES ('D-1', '0xc', 'h', ?)").run(T0.toISOString());
     recordDecision(db, "D-1", { source: "claude", model: "claude-sonnet-5-5", refunds: [{ seq: 7, cents: 5, origin: null }], escalate: { seqs: [5, 6], text: "Reject.", origin: null }, approval: null, agent_ran: true });
-    if (status === "DONE") db.prepare("UPDATE dispute_decisions SET status = 'DONE', paid_json = '[7]', escalation_proposal = 'P-0004' WHERE dispute_id = 'D-1'").run();
+    if (status === "DONE") db.prepare("UPDATE dispute_decisions SET status = 'DONE', paid_json = '[7]', escalation_proposal = 'P-0004', audited = 1 WHERE dispute_id = 'D-1'").run();
   }
 
   it("answers 'already decided' with the decision's summary and ids, and settles nothing", async () => {
@@ -250,6 +296,29 @@ describe("the Support agent's settle_dispute tool after a restart", () => {
     expect(settled).toBe(0);
     expect(w!.run!.calls[0]).toMatchObject({ tool: "settle_dispute", blocked: "already decided" });
     expect(w!.run!.calls[0]!.text).toMatch(/Already decided: D-1: decided by the Support agent .*refund #7.*paid #7.*#5, #6 to the CFO as P-0004/);
+  });
+
+  it("a decision carried out but whose settlement row a crash cut off is finished, not reported as done", async () => {
+    const db = openDb(":memory:");
+    onFile(db, "DONE");
+    db.prepare("UPDATE dispute_decisions SET audited = 0 WHERE dispute_id = 'D-1'").run();
+    expect(health(db).alerts.map((x) => x.code)).toContain("dispute_decision_open");
+    let settled = 0;
+    publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", T0);
+    await wake(db, supportProfile(30 * 60_000, { settle: async () => { settled++; return { ok: true, text: "RESUMED" }; } }), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Finished.")]]), now: T0 });
+    expect(settled).toBe(1);
+  });
+
+  it("a refund refused at payment is tried again at most every half hour, never decided again", async () => {
+    const db = openDb(":memory:");
+    onFile(db, "DECIDED");
+    db.prepare("UPDATE dispute_decisions SET attempts = 1, attempted_at = ?, last_note = 'refund #7 REFUSED: velocity' WHERE dispute_id = 'D-1'").run(new Date().toISOString());
+    let settled = 0;
+    publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", T0);
+    const w = await wake(db, supportProfile(30 * 60_000, { settle: async () => { settled++; return { ok: true, text: "x" }; } }), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Later.")]]), now: T0 });
+    expect(settled).toBe(0);
+    expect(w!.run!.calls[0]).toMatchObject({ blocked: "carried out recently" });
+    expect(w!.run!.calls[0]!.text).toMatch(/REFUSED: velocity.*nothing is decided again/);
   });
 
   it("carries out a decision a restart cut off, even within the half hour, and says nothing is decided again", async () => {

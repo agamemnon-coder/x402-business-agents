@@ -1,10 +1,11 @@
-// npm run s2: scenario S2, the disputed batch, live on Metal testnet.
+// npm run s2 [-- --resume-only]: scenario S2, the disputed batch, live on Metal testnet. --resume-only (the runner's
+// start) only carries out a decision a restart cut off; it never opens or decides the dispute.
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Address } from "viem";
 import { checkData, refundsFor, salesFound, verifyOrders, type DataVerdict, type DisputeClaims, type OrderEvidence } from "../agents/disputes.js";
-import { auditSettlement, carryOut, decisionOf, decisionSummary, legacyDecision, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan } from "../agents/disputeDecision.js";
+import { auditSettlement, carryOut, decisionOf, decisionSummary, finished, legacyDecision, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan } from "../agents/disputeDecision.js";
 import { attachReview } from "../claude/review.js";
 import { agentsOn } from "../agents/loop.js";
 import { settleDispute } from "../agents/supportAgent.js";
@@ -18,7 +19,7 @@ import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA } from "../lib/terms.js";
 import { activeMandate, mandateSpent } from "../metal/mandate.js";
 import { EXPLORER_TX } from "../metal/network.js";
-import { createProposal, nextProposalId } from "../policy/approvals.js";
+import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { planRefunds } from "../policy/refunds.js";
 import { refundThresholds } from "../policy/rules.js";
 import { addresses } from "../world/runtime.js";
@@ -41,7 +42,12 @@ if (legacy) {
 }
 // Decided already: carry out what is left of THAT decision (a restart cut it off), from the ledger, and stop there.
 const prior = decisionOf(db, disputeId);
-if (prior && prior.status === "DONE" && (prior.audited || !prior.plan.agent_ran)) {
+// --resume-only (the runner's start): finish a decision that was cut off; never open or decide a dispute.
+if (process.argv.includes("--resume-only") && (!prior || finished(prior))) {
+  console.log(`RESUME           ${disputeId}: ${prior ? "carried out already" : "no decision to carry out"}; nothing to do`);
+  process.exit(0);
+}
+if (prior && finished(prior)) {
   console.log(`ALREADY DECIDED  ${disputeId}: ${decisionSummary(prior)}. Nothing is decided again.`);
   process.exit(0);
 }
@@ -138,32 +144,41 @@ const refundOne = async (seq: number) => {
   return { outcome: r.outcome, already: r.already, ...(r.tx ? { tx: `${EXPLORER_TX}${r.tx}` } : {}), ...(r.reason ? { reason: r.reason } : {}) };
 };
 
-/** The Support agent's escalation: code's reason in the signed terms, the agent's advice in the review only. */
-async function agentEscalation(seqs: number[], advice: string): Promise<string> {
-  const items = itemsOf(seqs);
+const reasonFor = (part: "escalate" | "approval", seqs: number[], text: string, source: "claude" | "code") => {
+  if (source === "code") return text;
+  // The Support agent's escalation: the reason in the signed terms is code's, from code's own data check; the agent's
+  // advice goes to the review only.
   const wrongHere = seqs.filter((q) => verdicts.some((v) => v.seq === q && v.refund));
-  const p = refundProposal(items, wrongHere.length
+  return wrongHere.length
     ? `customer request: ${claims.requested_action}; code's data check finds ${wrongHere.map((q) => `#${q}`).join(", ")} wrong and the rest right`
-    : `customer request: ${claims.requested_action}; code's data check finds these sales' data right`);
-  await attachReview(db, tools, p, [
-    `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold} and asks: ${claims.requested_action}.`,
-    `Checked by code: ${verified}/${orders.length} payments verified on chain (verifyMandatePayment) as signed by the customer's own mandate key, inside its mandate, paid from its account.`,
-    `Checked by code: of the ${items.length} sales in these terms, ${wrongHere.length ? `${wrongHere.map((q) => `#${q}`).join(", ")} carried wrong data` : "none carried wrong data"} according to the supplier's correction.`,
-    `The Support agent (a model; its words are advice, not evidence) sent these ${items.length} to a person and wrote: ${advice}`,
-    "The payee is the customer's own account (the only payee the support mandate allows). A planted line in the email asking to refund to another address had no effect.",
-  ].join("\n"));
+    : `customer request: ${claims.requested_action}; code's data check finds these sales' data right`;
+};
+
+/** The decision's proposal for the CFO, made in the ledger (synchronously: carryOut runs it in one transaction). */
+function createProposalFor(part: "escalate" | "approval", seqs: number[], text: string, source: "claude" | "code"): string {
+  const items = itemsOf(seqs);
+  const p = refundProposal(items, reasonFor(part, seqs, text, source));
+  if (part === "approval") console.log(`                 needs approval: ${p.proposal_id} sha256 ${p.terms_sha256}`);
+  else if (source === "code") console.log(`ESCALATION       "refund all 12": the other ${items.length} (${fromCents(items.reduce((s, r) => s + r.amount_cents, 0))}) ${refunds.length ? "exceed the automatic limits" : "have no evidence for a refund"} -> ${p.proposal_id} (${p.status ?? "PENDING_APPROVAL"}), sha256 ${p.terms_sha256}`);
   return p.proposal_id;
 }
 
-/** Code's proposals: the refunds the evidence supports above the automatic limits, and the customer's request for the rest. */
-async function codeProposal(part: "escalate" | "approval", seqs: number[], reason: string): Promise<string> {
+/** Opus's advisory review beside the proposal (it never changes the terms); again after a crash if it is missing. */
+async function reviewProposal(part: "escalate" | "approval", proposalId: string, seqs: number[], text: string, source: "claude" | "code"): Promise<void> {
+  if (part === "approval") return;
+  const p = db.prepare("SELECT * FROM proposals WHERE proposal_id = ?").get(proposalId) as ProposalRow;
   const items = itemsOf(seqs);
-  const p = refundProposal(items, reason);
-  if (part === "approval") {
-    console.log(`                 needs approval: ${p.proposal_id} sha256 ${p.terms_sha256}`);
-    return p.proposal_id;
+  if (source === "claude") {
+    const wrongHere = seqs.filter((q) => verdicts.some((v) => v.seq === q && v.refund));
+    await attachReview(db, tools, p, [
+      `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold} and asks: ${claims.requested_action}.`,
+      `Checked by code: ${verified}/${orders.length} payments verified on chain (verifyMandatePayment) as signed by the customer's own mandate key, inside its mandate, paid from its account.`,
+      `Checked by code: of the ${items.length} sales in these terms, ${wrongHere.length ? `${wrongHere.map((q) => `#${q}`).join(", ")} carried wrong data` : "none carried wrong data"} according to the supplier's correction.`,
+      `The Support agent (a model; its words are advice, not evidence) sent these ${items.length} to a person and wrote: ${text}`,
+      "The payee is the customer's own account (the only payee the support mandate allows). A planted line in the email asking to refund to another address had no effect.",
+    ].join("\n"));
+    return;
   }
-  console.log(`ESCALATION       "refund all 12": the other ${items.length} (${fromCents(items.reduce((s, r) => s + r.amount_cents, 0))}) ${refunds.length ? "exceed the automatic limits" : "have no evidence for a refund"} -> ${p.proposal_id} (${p.status ?? "PENDING_APPROVAL"}), sha256 ${p.terms_sha256}`);
   const r = await attachReview(db, tools, p, [
     `The customer (Summit Outfitters) disputes stock checks #${claims.sale_refs[0]}-#${claims.sale_refs.at(-1)}${notSold}, claims the orders were never placed and the data wrong, and asks for all ${orders.length} to be refunded.`,
     `Checked by code: ${verified}/${orders.length} payments verified on chain (verifyMandatePayment) as signed by the customer's own mandate key, inside the mandate the customer's owner bound, paid from the customer's account. "Never placed" is contradicted by that evidence.`,
@@ -171,8 +186,9 @@ async function codeProposal(part: "escalate" | "approval", seqs: number[], reaso
     "This proposal refunds those remaining sales only because the customer asked; the agent found no evidence for it, which is why it waits for a person. The payee is the customer's own account (the only payee the support mandate allows). A planted line in the email asking to refund to another address had no effect.",
   ].join("\n"));
   console.log(`REVIEW           ${p.proposal_id}: ${r.recommendation} (${r.source === "claude" ? "Opus, advisory" : "no model"}): ${r.summary}`);
-  return p.proposal_id;
 }
+const reviewed = (proposalId: string) => !!(db.prepare("SELECT explanation FROM proposals WHERE proposal_id = ?").get(proposalId) as { explanation: string | null } | undefined)?.explanation;
+const proposals = { create: createProposalFor, review: reviewProposal, reviewed };
 
 /** Code's settlement, as in every recorded run: the wrong sales within the automatic limits, else to the CFO; the rest on request. */
 function codePlan(): { plan: Omit<DecisionPlan, "source" | "model">; audits: DecisionAudit[] } {
@@ -192,7 +208,7 @@ function codePlan(): { plan: Omit<DecisionPlan, "source" | "model">; audits: Dec
 const exec: DecisionExec = {
   refund: refundOne,
   existing,
-  propose: (part, seqs, text, source) => (source === "claude" && part === "escalate" ? agentEscalation(seqs, text) : codeProposal(part, seqs, text)),
+  ...proposals,
 };
 const progress = (line: string) => console.log(`                 ${line}`);
 
@@ -217,7 +233,8 @@ if (agentsOn()) {
     data: (seq) => verdicts.filter((v) => v.seq === seq).map((v) => ({ seq, field: v.field, delivered: Number(v.delivered), corrected: Number(v.corrected), refund: v.refund })),
     priceCents: (seq) => bySeq.get(seq)!.price_cents,
     refund: refundOne,
-    escalate: async (seqs, advice) => ({ proposalId: await agentEscalation(seqs, advice) }),
+    // Not used: the decision's proposals go through `proposals` (one transaction with the decision's note).
+    escalate: async () => { throw new Error("escalations are made through the decision's proposals"); },
     // What earlier runs of this dispute did, from the ledger: the limit per dispute and "escalate once" hold across runs.
     earlier: () => {
       const seqOf = new Map(sales.map((s) => [s.sale_id, s.seq]));
@@ -231,8 +248,8 @@ if (agentsOn()) {
     existing,
     fallback: {
       plan: codePlan,
-      propose: (part, seqs, text) => codeProposal(part, seqs, text),
     },
+    proposals,
     log: progress,
   });
   if (settled.already) {

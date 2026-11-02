@@ -26,7 +26,7 @@ import { TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } from "../config/suppliers.js";
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
-import { decisionOf, decisionSummary, legacyDecision } from "../agents/disputeDecision.js";
+import { decisionOf, decisionSummary, finished, legacyDecision } from "../agents/disputeDecision.js";
 import type { AgentProfile } from "./runtime.js";
 
 const repo = resolve(import.meta.dirname, "../..");
@@ -213,7 +213,7 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
     rules: "settle_dispute runs your dispute tools: the signed orders and their payments on chain, the supplier's corrections, refunds inside the CFO's automatic limits (paid under your mandate), and an escalation for the rest. You cannot refund outside those limits; the CFO decides with Face ID.",
     observe: async (db) => {
       const d = open(db);
-      const left = (id: string) => { const dec = decisionOf(db, id); return dec && dec.status !== "DONE" ? ` [decided, not yet carried out (a restart?): settle_dispute finishes it and decides nothing again]` : dec || legacyDecision(db, id) ? " [decided]" : ""; };
+      const left = (id: string) => { const dec = decisionOf(db, id); return dec && !finished(dec) ? ` [decided, not yet carried out (a restart?): settle_dispute finishes it and decides nothing again]` : dec || legacyDecision(db, id) ? " [decided]" : ""; };
       return d.length ? `Disputes on file: ${d.map((x) => `${x.dispute_id} from ${x.customer.slice(0, 10)}… (${x.created_at.slice(11, 16)})${left(x.dispute_id)}`).join(", ")}.` : "No dispute on file.";
     },
     tools: (db) => [
@@ -225,11 +225,14 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
           // whose decision a restart cut off is carried out (the settlement pays only what that decision left unpaid).
           const cases = (db.prepare("SELECT dispute_id FROM disputes WHERE dispute_id LIKE 'D-%' ORDER BY created_at DESC").all() as { dispute_id: string }[]).map((x) => x.dispute_id);
           const state = cases.map((id) => { const d = decisionOf(db, id); return { id, d, legacy: d ? null : legacyDecision(db, id) }; });
-          const open = state.filter((x) => !x.legacy && (!x.d || x.d.status !== "DONE"));
+          const open = state.filter((x) => !x.legacy && (!x.d || !finished(x.d)));
           if (cases.length && open.length === 0) {
             return { text: `Already decided: ${state.map((x) => `${x.id}: ${x.d ? decisionSummary(x.d) : x.legacy}`).join(" | ")}. Nothing is decided again.`, blocked: "already decided" };
           }
           const resuming = open.some((x) => x.d);
+          // A refund refused at payment is tried again at most every half hour (it never becomes a new decision).
+          const recent = open.find((x) => x.d?.attempted_at && Date.now() - Date.parse(x.d.attempted_at) < 30 * 60_000);
+          if (recent?.d) return { text: `Decided already; carried out last at ${recent.d.attempted_at}: ${decisionSummary(recent.d)}. Tried again after half an hour; nothing is decided again.`, blocked: "carried out recently" };
           if (!resuming && db.prepare("SELECT 1 FROM audit_log WHERE event = 'dispute.settled_by_agent' AND ts > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: this dispute was settled in the last half hour.", blocked: "already settled" };
           const r = await deps.settle(db, "agent");
           return { text: `${resuming ? "Carried out the dispute's recorded decision (nothing decided again): " : ""}${r.text}`, ...(r.ok ? {} : { blocked: "the settlement did not complete" }) };

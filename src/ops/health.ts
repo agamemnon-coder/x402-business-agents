@@ -7,6 +7,7 @@ import type { DB } from "../db/open.js";
 import { lastReconciliation } from "../finance/reconcile.js";
 import { frozen } from "../policy/rules.js";
 import { pausesNotRevoked } from "../policy/pause.js";
+import { openDecisions } from "../agents/disputeDecision.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -34,6 +35,10 @@ export function health(db: DB, now = new Date()): Health {
   // the chain would not; npm run pause -- sync (also run at the runner's start) finishes it.
   for (const a of pausesNotRevoked(db)) alerts.push({ code: "pause_not_revoked", severity: "critical", since: null, words: `The ${a} agent is paused, but its Metal mandate is not revoked on chain yet; run npm run pause -- sync.` });
   if (frozen(db)) alerts.push({ code: "emergency_stop", severity: "critical", since: freeze?.ts ?? null, words: "The CFO pulled the emergency stop: no agent pays until it is lifted with Face ID." });
+
+  // A dispute decision not fully carried out (a restart cut it off, or a refund was refused at payment): the runner's
+  // start finishes it (npm run s2 -- --resume-only); it is never decided again.
+  for (const d of openDecisions(db)) alerts.push({ code: "dispute_decision_open", severity: "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; the runner's start or npm run s2 -- --resume-only finishes it, without deciding again.` });
 
   const stopped = db.prepare("SELECT key, updated_at FROM settings WHERE key LIKE 'stop.%' AND value = 'on' ORDER BY key").all() as { key: string; updated_at: string }[];
   for (const s of stopped) alerts.push({ code: "velocity_stop", severity: "warning", since: s.updated_at, words: `The ${s.key.slice(5)} agent hit a speed limit and was stopped; the CFO lifts it with Face ID.` });

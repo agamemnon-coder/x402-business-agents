@@ -90,6 +90,8 @@ CREATE TABLE IF NOT EXISTS dispute_decisions (
   approval_proposal TEXT,
   last_note TEXT,
   audited INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  attempted_at TEXT,
   done_at TEXT
 );
 CREATE TRIGGER IF NOT EXISTS dispute_decision_fixed BEFORE UPDATE OF dispute_id, source, plan_json, decided_at ON dispute_decisions

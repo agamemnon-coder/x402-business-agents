@@ -2,7 +2,7 @@
 // wrapper; the runner of another world kept running until 11:03). A fake process table here: the lock refuses a second
 // runner, joins the runner `up` starts, clears a stale lock, and the stop signals only the locked world's process group,
 // only when every process in it is that run's, then checks with "ps" before it removes the lock.
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -112,6 +112,19 @@ describe("the runner lock: one runner per world", () => {
   });
 });
 
+describe("the runner lock: the same ledger file by another path", () => {
+  it("a second path (a symlink) to the same ledger is the same world: refused, not treated as a copied row", () => {
+    const a = ledger("world-a");
+    const t = new FakeTable();
+    t.add({ pid: 100, pgid: 100, token: "run-a" });
+    acquireRunnerLock(a.db, a.path, me(100, 100, "run-a"), t, "box");
+    const link = join(dirs.at(-1)!, "other-name.sqlite");
+    symlinkSync(a.path, link);
+    t.add({ pid: 200, pgid: 200, token: "run-b" });
+    expect(acquireRunnerLock(openDb(link), link, me(200, 200, "run-b"), t, "box").ok).toBe(false);
+  });
+});
+
 describe("npm run stop -- <world>: exactly that world, verified", () => {
   /** Two worlds running side by side, as live-1 and agent-1 did on 2 November. */
   function twoWorlds() {
@@ -193,6 +206,30 @@ describe("npm run stop -- <world>: exactly that world, verified", () => {
     expect(t.signals).toEqual([]);
     const none = await stopWorld(ledger("world-c").path, deps(new FakeTable()));
     expect(none).toMatchObject({ ok: true, message: expect.stringMatching(/nothing to stop/) });
+  });
+
+  it("names, but never signals, another process still using the ledger outside the run", async () => {
+    const { a, t } = twoWorlds();
+    t.add({ pid: 800, pgid: 800, token: null, db: a.path, cmd: "node src/cli/agent.ts support" });
+    const r = await stopWorld(a.path, deps(t));
+    expect(r.ok).toBe(false);
+    expect(r.message).toMatch(/run stopped .*lock removed.*1 other process\(es\) still use its ledger: 800/);
+    expect(t.signals).toEqual([{ pgid: 100, signal: "SIGTERM" }]);
+    expect(t.procs.map((p) => p.pid)).toContain(800);
+  });
+
+  it("a lock from a host that is gone is cleared only with --forget-other-host and only if nothing here uses the ledger", async () => {
+    const a = ledger("world-a");
+    const t = new FakeTable();
+    a.db.prepare("INSERT INTO locks (lock_key, holder, acquired_at) VALUES ('runner', ?, 'x')").run(JSON.stringify({ world: "world-a", db: a.path, host: "old-container", pid: 5, pid_start: "t5", pgid: 5, token: "run-a", role: "relay", started_at: "x" }));
+    expect((await stopWorld(a.path, deps(t))).ok).toBe(false);
+    t.add({ pid: 900, pgid: 900, token: null, db: a.path });
+    expect((await stopWorld(a.path, deps(t, { forgetOtherHost: true }))).ok).toBe(false);
+    expect(lockOf(a.db)).not.toBeNull();
+    t.procs = [];
+    expect(await stopWorld(a.path, deps(t, { forgetOtherHost: true }))).toMatchObject({ ok: true, message: expect.stringMatching(/from host old-container was cleared/) });
+    expect(lockOf(a.db)).toBeNull();
+    expect(t.signals).toEqual([]);
   });
 
   it("a world name with no ledger creates nothing and signals nothing", async () => {

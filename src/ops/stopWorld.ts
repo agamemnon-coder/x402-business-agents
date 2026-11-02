@@ -7,7 +7,7 @@ import { existsSync, realpathSync } from "node:fs";
 import Database from "better-sqlite3";
 import { redactSecrets } from "../lib/redact.js";
 import type { Proc, ProcessTable } from "./processes.js";
-import { lockOf, worldOf, type RunnerLock } from "./runnerLock.js";
+import { lockOf, sameLedger, worldOf, type RunnerLock } from "./runnerLock.js";
 
 export interface StopDeps {
   table: ProcessTable;
@@ -21,6 +21,8 @@ export interface StopDeps {
   graceMs?: number;
   /** After SIGKILL, how long to wait for the OS to clear the group. */
   killWaitMs?: number;
+  /** Clear a lock held on another host (that host is gone: a new container), once nothing here uses the ledger. */
+  forgetOtherHost?: boolean;
 }
 
 export interface StopResult { ok: boolean; message: string; signalled: { pgid: number; signal: NodeJS.Signals }[] }
@@ -43,16 +45,32 @@ export async function stopWorld(dbPath: string, deps: StopDeps): Promise<StopRes
   try {
     db.pragma("busy_timeout = 5000");
     const lock = lockOf(db);
-    if (!lock || lock.db !== real) {
+    if (!lock || !sameLedger(lock, real)) {
       const others = unlocked(deps.table, real);
       if (others.length) return done(false, `world ${world} has no runner lock, but ${others.length} process(es) use its ledger (started before the lock existed?): ${show(others)}. Not stopped: check them with ps -o pid,pgid,args and stop their own group by hand.`);
       return done(true, `world ${world}: no runner holds its lock; nothing to stop`);
     }
-    if (lock.host !== deps.host) return done(false, `world ${world}'s runner lock is held on host ${lock.host}; stop it there. Nothing signalled.`);
+    if (lock.host !== deps.host) {
+      if (!deps.forgetOtherHost) return done(false, `world ${world}'s runner lock is held on host ${lock.host}; stop it there. If that host is gone (a new container), add --forget-other-host. Nothing signalled.`);
+      const here = unlocked(deps.table, real);
+      if (here.length) return done(false, `world ${world}'s lock is from host ${lock.host}, but ${here.length} process(es) here use its ledger: ${show(here)}. Lock kept, nothing signalled.`);
+      removeLock(db, lock);
+      return done(true, `world ${world}: the lock from host ${lock.host} was cleared (nothing here uses the ledger); nothing signalled`);
+    }
     if (!Number.isSafeInteger(lock.pgid) || lock.pgid <= 1 || lock.pgid === deps.ownPgid) return done(false, `world ${world}'s lock names process group ${lock.pgid}, which is not a world's own group; nothing signalled`);
 
     // Every process in the group must be this run's: one that is not would be hit by a group signal.
     const group = () => deps.table.list().filter((p) => p.pgid === lock.pgid && live(p));
+    // This run's processes only (a group id the OS gave out again after the run ended is not this run).
+    const ours = () => group().filter((p) => p.token === lock.token);
+    const signal = (sig: NodeJS.Signals) => {
+      try {
+        deps.table.signalGroup(lock.pgid, sig);
+        signalled.push({ pgid: lock.pgid, signal: sig });
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== "ESRCH") throw e; // the group ended by itself just now
+      }
+    };
     const check = (): Proc[] | string => {
       const g = group();
       const foreign = g.filter((p) => p.token !== lock.token);
@@ -66,12 +84,11 @@ export async function stopWorld(dbPath: string, deps: StopDeps): Promise<StopRes
     }
 
     deps.log(`stopping world ${world}: SIGTERM to process group ${lock.pgid} (${first.length} process(es): ${show(first)})`);
-    deps.table.signalGroup(lock.pgid, "SIGTERM");
-    signalled.push({ pgid: lock.pgid, signal: "SIGTERM" });
+    signal("SIGTERM");
     const gone = async (ms: number) => {
       const until = deps.now() + ms;
       for (;;) {
-        if (group().length === 0) return true;
+        if (ours().length === 0) return true;
         if (deps.now() >= until) return false;
         await deps.sleep(500);
       }
@@ -81,15 +98,17 @@ export async function stopWorld(dbPath: string, deps: StopDeps): Promise<StopRes
       if (typeof still === "string") return done(false, `${still} (after SIGTERM)`);
       if (still.length) {
         deps.log(`world ${world} did not stop within ${Math.round((deps.graceMs ?? 90_000) / 1000)} s; SIGKILL to process group ${lock.pgid} (${show(still)}). A money action cut off here is resumed by the runner's next start.`);
-        deps.table.signalGroup(lock.pgid, "SIGKILL");
-        signalled.push({ pgid: lock.pgid, signal: "SIGKILL" });
+        signal("SIGKILL");
         await gone(deps.killWaitMs ?? 10_000);
       }
     }
     // The OS's own answer, independent of the table read above.
     const left = deps.table.psGroup(lock.pgid);
-    if (left.length || group().length) return done(false, `world ${world}: process group ${lock.pgid} still has ${[...new Set([...left, ...group().map((p) => p.pid)])].join(", ")} after the stop; the lock is kept`);
+    if (left.length || ours().length) return done(false, `world ${world}: process group ${lock.pgid} still has ${[...new Set([...left, ...ours().map((p) => p.pid)])].join(", ")} after the stop; the lock is kept`);
     removeLock(db, lock);
+    // Anything else still using this ledger is not part of the run (a standalone agent, a manual script): named, never signalled.
+    const others = unlocked(deps.table, real);
+    if (others.length) return done(false, `world ${world}'s run stopped (process group ${lock.pgid} gone, checked with ps; lock removed), but ${others.length} other process(es) still use its ledger: ${show(others)}. Not signalled: stop them by hand after checking with ps.`);
     return done(true, `world ${world} stopped: process group ${lock.pgid} is gone (checked with ps); lock removed`);
   } finally {
     db.close();

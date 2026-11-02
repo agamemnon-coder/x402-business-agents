@@ -50,7 +50,12 @@ export interface SupportDeps {
    * When the agent's run does not count, code decides instead: its plan, recorded as this dispute's one decision and
    * carried out here, with the proposal for the refunds above the automatic limits. Without it the caller settles.
    */
-  fallback?: { plan(): { plan: Omit<DecisionPlan, "source" | "model">; audits?: DecisionAudit[] }; propose(part: "escalate" | "approval", seqs: number[], text: string): Promise<string> };
+  fallback?: { plan(): { plan: Omit<DecisionPlan, "source" | "model">; audits?: DecisionAudit[] } };
+  /**
+   * The live ledger's proposals for the decision, made in one transaction with the decision's note (so two processes
+   * cannot both make one) and reviewed after. Without it, escalate above is used (stand-ins, one process).
+   */
+  proposals?: Required<Pick<DecisionExec, "create" | "review" | "reviewed">>;
   /** Progress lines while the decision is carried out. */
   log?(line: string): void;
 }
@@ -94,11 +99,12 @@ function execOf(deps: SupportDeps): DecisionExec {
   return {
     refund: (seq) => deps.refund(seq),
     existing: (part) => deps.existing?.(part) ?? (part === "escalate" ? deps.earlier().escalated?.proposalId ?? null : null),
-    propose: async (part, seqs, text, source) => {
-      if (source === "code" && deps.fallback) return deps.fallback.propose(part, seqs, text);
-      if (part === "escalate") return (await deps.escalate(seqs, text)).proposalId;
-      throw new Error("no proposal for refunds above the automatic limits: only code's plan has one");
-    },
+    ...(deps.proposals ?? {
+      propose: async (part: "escalate" | "approval", seqs: number[], text: string) => {
+        if (part === "escalate") return (await deps.escalate(seqs, text)).proposalId;
+        throw new Error("no proposal for refunds above the automatic limits without the ledger's proposals");
+      },
+    }),
   };
 }
 

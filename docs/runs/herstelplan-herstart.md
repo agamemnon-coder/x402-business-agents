@@ -26,7 +26,8 @@ zes uur stil, daarna in twee minuten weer op). Alle programma's stoppen tegelijk
    de vervaldatum en de quote. Getest: na een kill direct na Face ID werd de licentie precies één keer betaald
    (dry-6, dry-12; `test/resume-approved.test.ts`). Een geschil dat al besloten was, wordt niet opnieuw besloten: het
    besluit staat in het grootboek vóór er iets betaald wordt, en de Support-agent (of `npm run s2`) betaalt alleen wat
-   van dát besluit nog openstond, elke refund één keer (`test/dispute-decided-once.test.ts`).
+   van dát besluit nog openstond, elke refund één keer (`test/dispute-decided-once.test.ts`). De runner doet dat zelf bij
+   de start (`npm run s2 -- --resume-only`); tot het klaar is staat er een melding op /health.
 3. `npm run verify` op de wereld: niets twee keer betaald, elke goedkeuring met een passkey.
 4. Max laten weten: de laatste stap uit het log, wat er is hervat, en de volgende stap. Max zegt "ok".
 5. Een voorstel dat in de tussentijd verliep: opnieuw voorstellen (een nieuw P-nummer) en opnieuw laten goedkeuren.
@@ -50,7 +51,10 @@ pid, procesgroep, host, starttijd, wereld, run-token). Een tweede runner op hetz
   een naam (`pkill -f` nooit) of een andere wereld.
 - Exit 0 = de wereld is aantoonbaar gestopt. Anders blijft het slot staan en zegt de melding wat er nog draait.
 - Een runner die gekild werd (container-herstart, kill -9) laat een oud slot achter; de volgende start ruimt het op als
-  er niets van die run meer draait.
+  er niets van die run meer draait. Heeft de nieuwe container een andere hostnaam, dan weigert de start met die melding:
+  `npm run stop -- <wereld> --forget-other-host` ruimt dat slot op, alleen als hier niets het grootboek gebruikt.
+- Draait er na de stop nog iets anders op dat grootboek (een losse `npm run agent`, een handmatig script), dan noemt
+  `stop` het en eindigt met exit 1; het signaleert het niet.
 - Een runner van vóór deze wijziging heeft geen slot: `stop` noemt dan de processen die dat grootboek gebruiken en
   signaleert niets. Die stop je één keer met de hand, per procesgroep, na controle met `ps -o pid,pgid,args`.
 - Na elke dry run: `npm run stop -- <wereld>`, dan `ps -eo pid,pgid,args` nalopen.
