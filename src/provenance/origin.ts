@@ -10,7 +10,10 @@
 // - the doors where outside money arrives: a customer's payment, a retailer's deposit, a merchant's card charge;
 // - the CFO's own commands that change the ledger's money state without moving money, named by the command
 //   (`npm run reconcile -- --close-unsent`, src/finance/closeUnsent.ts: it closes a payout row Airwallex holds nothing
-//   under; it moves no money, and a new proposal for that invoice still needs Face ID).
+//   under; it moves no money, and a new proposal for that invoice still needs Face ID; and `npm run licence`,
+//   src/cli/licence.ts: it plans the licence invoice as a proposal, which moves nothing until the CFO's Face ID).
+// A proposal records the origin in force when it is created (proposal.created, src/policy/approvals.ts), so a plan the
+// CFO started by command is told apart from one an agent planned (review, 2 November: P-0007).
 // Every money event in the audit chain records the origin in force when it is written (src/audit/log.ts), or null:
 // a null is an error the origins check counts (src/provenance/check.ts), never a guess.
 
@@ -67,6 +70,9 @@ export const MONEY_EVENTS = new Set([
   // Test money for a fresh world, and the passkey owners' own transfer.
   "business.funded", "treasury.seeded", "owners.sent",
 ]);
+
+/** The CFO's `npm run licence` when a person runs it (a tool that starts it passes its own origin, which wins). */
+export const LICENCE_COMMAND: Origin = { actor: "cfo-command", command: "npm run licence", moves_money: false };
 
 /** Code's own automatic paths, by their rule (D24). */
 export const AUTO_REFUND: Origin = { actor: "code", rule: "refund within the CFO's automatic limits", agent: "support" };

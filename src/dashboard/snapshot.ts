@@ -712,7 +712,12 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     }
     case "claude.fallback": return out(`Claude was not used for ${s.replace(/_/g, " ")}; the deterministic parser decided (${str(p.note)})`, "info", { model: modelName(str(p.model)) });
     case "claude.rejected": return out(`Claude's answer for ${s.replace(/_/g, " ")} failed the code check and was not used`, "refusal", { model: modelName(str(p.model)) });
-    case "proposal.created": return out(`${r.actor === "human" ? "Max" : r.actor in AGENT_DISPLAY ? `The ${AGENT_DISPLAY[r.actor as keyof typeof AGENT_DISPLAY].name}` : `Agent ${r.actor}`} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()})`, "approval");
+    case "proposal.created": {
+      // Who started it, from the origin recorded on the proposal (review, 2 November): the CFO's own command is the CFO's.
+      const started = "origin" in p ? parseOrigin(JSON.stringify(p.origin)) : null;
+      if (started?.actor === "cfo-command") return out(`Max started ${s} (${kindTitle(str(p.kind)).toLowerCase()}) with ${started.command}`, "approval");
+      return out(`${r.actor === "human" ? "Max" : r.actor in AGENT_DISPLAY ? `The ${AGENT_DISPLAY[r.actor as keyof typeof AGENT_DISPLAY].name}` : `Agent ${r.actor}`} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()})`, "approval");
+    }
     case "price_rise.options": {
       const opts = Array.isArray(p.options) ? (p.options as P[]) : [];
       return out(`Priced the options: ${opts.map((o) => (o.sell === null ? `${str(o.id)} ${str(o.label)}` : `${str(o.id)} sell ${str(o.sell)} (margin ${str(o.margin)})`)).join(", ")}`, "approval");

@@ -8,6 +8,7 @@ import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
 import { policyVersion } from "./versions.js";
+import { currentOrigin } from "../provenance/origin.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -53,12 +54,18 @@ export function nextProposalId(db: DB): string {
   return `P-${String(n + 1).padStart(4, "0")}`;
 }
 
+/**
+ * Files a proposal. proposal.created records the origin in force (D24; review, 2 November): an agent's Claude run when
+ * an agent planned it, the CFO's command (`npm run licence`) when a person started it, code's rule, or null when
+ * nothing set one. created_by stays the role that owns the proposal (four eyes reads it); the origin says who started it.
+ */
 export function createProposal(
   db: DB,
   args: { terms: Terms; createdBy: Actor; evidence?: Json; explanation?: string },
   now = new Date(),
 ): ProposalRow {
   const sha = termsHash(args.terms);
+  const origin = currentOrigin();
   return db.transaction(() => {
     const policy = policyVersion(db, now);
     db.prepare(
@@ -69,7 +76,7 @@ export function createProposal(
       args.evidence === undefined ? null : JSON.stringify(args.evidence), args.explanation ?? null,
       args.terms.expires_at, now.toISOString(), policy.version,
     );
-    audit(db, args.createdBy, "proposal.created", args.terms.proposal_id, { kind: args.terms.kind, terms_sha256: sha, policy_version: policy.version }, now);
+    audit(db, args.createdBy, "proposal.created", args.terms.proposal_id, { kind: args.terms.kind, terms_sha256: sha, policy_version: policy.version, origin: (origin as Json | null) ?? null }, now);
     return get(db, args.terms.proposal_id);
   }).immediate();
 }

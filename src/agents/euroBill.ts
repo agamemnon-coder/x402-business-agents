@@ -121,7 +121,9 @@ export interface InvoicePaymentTerms extends Terms {
 
 /**
  * Why this invoice may not get another payment proposal, or null. A payout counts unless it was cancelled (the same
- * rule as the one_live_transfer_per_invoice index); a proposal counts while it can still be approved or is running.
+ * rule as the one_live_transfer_per_invoice index); a proposal counts while it can still be approved or is running,
+ * and once it was executed (the payment went out; review, 2 November: the Treasury agent's plan and the CFO's own
+ * `npm run licence` both pass through this guard).
  */
 export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date()): string | null {
   // The same invoice with a cosmetically different number ("btx-dup ", another dash) is still the same invoice.
@@ -129,10 +131,11 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
     .find((r) => invoiceKey(r.invoice_no) === key);
   if (t) return t.status === "PAID" ? `invoice ${t.invoice_no} is already paid` : `invoice ${t.invoice_no} already has a payout (${t.status})`;
-  const p = (db.prepare(`SELECT proposal_id, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
-    AND (status IN ('APPROVED', 'EXECUTING') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
-    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
-  return p ? `invoice ${p.invoice_no} already waits for approval as ${p.proposal_id}` : null;
+  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
+    AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
+    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
+  if (!p) return null;
+  return p.status === "EXECUTED" ? `invoice ${p.invoice_no} is already paid (${p.proposal_id} was executed)` : `invoice ${p.invoice_no} already waits for approval as ${p.proposal_id}`;
 }
 
 /** An invoice number as a duplicate check compares it: Unicode-normalised, upper case, any dash as "-", no spaces around it. */

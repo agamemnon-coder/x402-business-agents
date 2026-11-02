@@ -7,7 +7,7 @@
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { describeOrigin, NOT_RECORDED } from "../provenance/describe.js";
-import { MONEY_EVENTS, parseOrigin } from "../provenance/origin.js";
+import { MONEY_EVENTS, parseOrigin, type Origin } from "../provenance/origin.js";
 
 const EXPLORER = "https://testnet.metalntwx.com/tx/";
 export type FlowNode = "customer" | "retailer" | "northwind" | "sourcing" | "support" | "treasury" | "suppliers" | "airwallex" | "payee" | "merchant";
@@ -69,6 +69,14 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
   const salePrice = has(db, "sales") ? db.prepare("SELECT price_cents FROM sales WHERE sale_id = ?") : null;
   const refundRow = has(db, "refunds") ? db.prepare("SELECT r.proposal_id, p.status FROM refunds r LEFT JOIN proposals p ON p.proposal_id = r.proposal_id WHERE r.payment_id = ?") : null;
   const proposalBySha = has(db, "proposals") ? db.prepare("SELECT proposal_id FROM proposals WHERE terms_sha256 = ?") : null;
+  // Who started a proposal: the origin its proposal.created recorded (review, 2 November). A ledger from before that
+  // has no such field (undefined), and the plan is then read from the Treasury agent's advice as before.
+  const createdRow = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'proposal.created' AND subject = ? ORDER BY seq LIMIT 1");
+  const startedBy = (pid: string): Origin | null | undefined => {
+    const row = createdRow.get(pid) as { payload_json: string } | undefined;
+    const p = row ? (JSON.parse(row.payload_json) as Record<string, unknown>) : undefined;
+    return p && "origin" in p ? parseOrigin(JSON.stringify(p.origin)) : undefined;
+  };
   const askedByRow = has(db, "proposals") ? db.prepare("SELECT json_extract(terms_json, '$.asked_by') AS a FROM proposals WHERE proposal_id = ?") : null;
   const askedBy = (pid: string): string | null => { const a = (askedByRow?.get(pid) as { a: string | null } | undefined)?.a ?? null; return a?.startsWith("agent:") ? AGENT_WORDS[a.slice(6)] ?? null : null; };
   const orderOf = has(db, "sales") ? db.prepare("SELECT CAST(json_extract(request_params_json, '$.seq') AS INTEGER) AS seq FROM sales WHERE sale_id = ?") : null;
@@ -179,10 +187,20 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
         // by the approval hash the transfer carries), if there was one.
         const pid = c?.sha ? (proposalBySha?.get(c.sha) as { proposal_id: string } | undefined)?.proposal_id ?? null : null;
         const plan = pid ? advised.filter((x) => x.seq < r.seq && x.proposal === pid && x.source === "claude" && x.model).at(-1) : undefined;
-        // Who decided the payment is the transfer's own origin (the CFO's approval); the Treasury agent's advice on the
-        // same proposal, linked by its id, is named as the plan.
+        // Who decided the payment is the transfer's own origin (the CFO's approval). Who planned it is the origin the
+        // proposal recorded when it was created: the CFO's command, or an agent's own Claude run. Only a ledger from
+        // before proposals recorded it falls back to the Treasury agent's advice on the same proposal, linked by its id.
         const paid = who(c!.p, () => ({ model: null, decided: "paid after the CFO's Face ID" }));
-        push({ at: r.ts, kind: "licence", from: "treasury", to: "payee", amount: m[2]!, unit: m[1] as FlowEvent["unit"], rail: "airwallex_swift", agent: "treasury", ...paid, model: plan?.model ?? null, decided: `${plan?.model ? `planned by the Treasury agent (${MODEL_WORDS[plan.model] ?? plan.model}), ` : ""}${paid.decided}`, what: "the euro invoice, by SWIFT", proof: awxProof(r.subject) });
+        const start = pid ? startedBy(pid) : undefined;
+        const advice = plan?.model ? `; the Treasury agent (${MODEL_WORDS[plan.model] ?? plan.model}) advised on its timing` : "";
+        const planned: { model: string | null; before: string; after: string } =
+          start === undefined ? { model: plan?.model ?? null, before: plan?.model ? `planned by the Treasury agent (${MODEL_WORDS[plan.model] ?? plan.model}), ` : "", after: "" }
+          : start === null ? { model: null, before: "who planned it is not recorded, ", after: advice }
+          : start.actor === "cfo-command" ? { model: null, before: `payment started by the CFO (${start.command}), `, after: advice }
+          : start.actor === "agent" ? { model: start.model, before: `planned by ${AGENT_WORDS[start.agent] ?? start.agent} (${MODEL_WORDS[start.model] ?? start.model}), `, after: "" }
+          : start.actor === "code" ? { model: null, before: `planned by code (${start.rule}), `, after: advice }
+          : { model: null, before: `planned as recorded: ${describe(start).decided}, `, after: advice };
+        push({ at: r.ts, kind: "licence", from: "treasury", to: "payee", amount: m[2]!, unit: m[1] as FlowEvent["unit"], rail: "airwallex_swift", agent: "treasury", ...paid, model: planned.model, decided: `${planned.before}${paid.decided}${planned.after}`, what: "the euro invoice, by SWIFT", proof: awxProof(r.subject) });
         break;
       }
       case "card.charge_approved":
