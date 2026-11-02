@@ -3,7 +3,8 @@
 // converts only the shortfall, fee included, on a locked quote, and never below either floor.
 
 import { randomUUID } from "node:crypto";
-import type { AirwallexRail, Currency, Quote, SandboxSim } from "../airwallex/port.js";
+import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
+import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import { audit } from "../audit/log.js";
 import { EUR_FLOOR_CENTS, LICENSOR_NAME, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
@@ -194,8 +195,19 @@ export async function proposeInvoicePayment(
   let usdAfter = s.usdAvailableCents;
   if (plan.kind === "convert_shortfall") {
     // The market's current rate first: context for judging the binding quote, which is what the CFO approves.
-    const market = await rail.currentRate({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents });
-    quote = await rail.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents, validity: quoteValidity });
+    // A rate or quote Airwallex refuses (unconfigured_client_fee on a newly activated account, forbidden before it is
+    // ACTIVE, a lost answer: a quote moves nothing) is an escalation with nothing moved, not a crash (contract tests).
+    let market: MarketRate;
+    try {
+      market = await rail.currentRate({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents });
+      quote = await rail.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents, validity: quoteValidity });
+    } catch (e) {
+      if (!(e instanceof AirwallexError) && !(e instanceof AirwallexAmbiguous)) throw e;
+      const what = e instanceof AirwallexError ? `${e.status} ${e.code ?? "no code"}` : "no answer";
+      const reason = `Airwallex refused the FX rate or quote (${what} on ${e.path}); nothing was converted or paid. Options: try again in a few minutes (a newly activated account answers unconfigured_client_fee at first), pay from EUR on the due date, or pay later`;
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+      return { kind: "escalated", reason };
+    }
     await checkpoint("quote:after");
     const markupBps = Math.round(((quote.sellAmountCents - market.sellAmountCents) / market.sellAmountCents) * 10_000);
     audit(db, "treasury", "fx.rate_checked", inv.invoice_no, {

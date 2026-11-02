@@ -1,6 +1,8 @@
 // Light hourly reconciliation (finance item 5): every money movement in the ledger is checked against the system that
 // moved it, by id and amount. Sandbox balances are millions of test money, so totals say nothing; the flows do.
-//   Airwallex transfers: Airwallex's status and amount for each transfer the ledger holds.
+//   Airwallex transfers: Airwallex's status and amount for each transfer the ledger holds; and each payout row with no
+//   transfer id (still SUBMITTING, or closed as refused at create) looked up by its request_id: a transfer there is a
+//   difference (Airwallex may hold a payout the ledger thinks was never made; review of 2 November).
 //   Card transactions: both ways, approved at Airwallex but missing here, or approved here but not at Airwallex.
 //   Metal: each sale, supplier purchase, refund and sweep the ledger calls paid has a receipt with exactly that *USDZ
 //   transfer, from the payer to the payee.
@@ -15,6 +17,8 @@ import { fromCents, toCents } from "../lib/money.js";
 export interface ReconcileSources {
   /** Airwallex's view of a transfer. */
   transfer?: (id: string) => Promise<{ status: string; amountCents: number; currency: string }>;
+  /** Airwallex's transfer under a request_id, if it holds one. */
+  transferByRequestId?: (requestId: string) => Promise<{ id: string; status: string; amountCents: number; currency: string } | undefined>;
   /** Airwallex's list of a card's transactions. */
   cardTransactions?: (cardId: string) => Promise<CardTransaction[]>;
   /** Null if the receipt carries exactly this *USDZ transfer, otherwise what is wrong. */
@@ -54,6 +58,20 @@ export async function reconcile(db: DB, src: ReconcileSources, now = new Date())
       const t = await src.transfer(r.transfer_id);
       if (t.amountCents !== toCents(r.amount) || t.status !== r.status) {
         differences.push({ area: "airwallex transfer", ref: r.transfer_id, ledger: `EUR ${r.amount}, ${r.status}`, outside: `${t.currency} ${fromCents(t.amountCents)}, ${t.status}` });
+      }
+    }
+    if (src.transferByRequestId) {
+      const open = db.prepare("SELECT request_id, invoice_no, amount, status FROM transfers WHERE transfer_id IS NULL AND (status = 'SUBMITTING' OR failure_reason LIKE 'refused by Airwallex at create%')").all() as { request_id: string; invoice_no: string; amount: string; status: string }[];
+      for (const r of open) {
+        checked++;
+        const t = await src.transferByRequestId(r.request_id);
+        if (t) {
+          differences.push({
+            area: "airwallex transfer", ref: r.request_id,
+            ledger: `no transfer for invoice ${r.invoice_no} (EUR ${r.amount}, ${r.status === "SUBMITTING" ? "never answered" : "closed as refused at create"})`,
+            outside: `transfer ${t.id}: ${t.currency} ${fromCents(t.amountCents)}, ${t.status}`,
+          });
+        }
       }
     }
   } else skipped.push("Airwallex transfers (no Airwallex keys)");

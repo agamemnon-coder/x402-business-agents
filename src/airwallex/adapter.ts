@@ -31,6 +31,7 @@ interface AwxTransfer {
   failure_reason?: string | null;
   fee_amount?: number | string | null;
   fee_currency?: string | null;
+  beneficiary_id?: string | null;
 }
 
 function toTransfer(t: AwxTransfer): Transfer {
@@ -44,6 +45,7 @@ function toTransfer(t: AwxTransfer): Transfer {
     failureType: t.failure_type ?? t.failure?.details?.type ?? t.failure?.code ?? null,
     failureReason: t.failure_reason ?? t.failure?.message ?? null,
     fee: t.fee_amount != null && t.fee_currency ? { cents: cents(t.fee_amount), currency: t.fee_currency } : null,
+    beneficiaryId: t.beneficiary_id ?? null,
   };
 }
 
@@ -192,7 +194,7 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
   }
 
   async getTransfer(id: string): Promise<Transfer> {
-    return toTransfer(await this.api.call<AwxTransfer>("GET", `/transfers/${id}`));
+    return toTransfer(await this.api.call<AwxTransfer>("GET", `/transfers/${encodeURIComponent(id)}`));
   }
 
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {
