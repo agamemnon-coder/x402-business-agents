@@ -29,6 +29,12 @@ const hasTable = (db: DB, name: string): boolean => !!db.prepare("SELECT 1 FROM 
  * What Summit's buying mandate paid: its sales on the mandate route (scheme 'exact'). A clearing sale ('bajillion') is
  * paid from Summit's clearing deposit, not under the mandate, so Metal's mandate does not count it and neither does this.
  */
+/**
+ * A settlement whose sale is recorded counts once, as the sale: also when its row could not be closed as DONE (that
+ * write comes after the sale's own transaction, so it never undoes a sale; review of 2 November).
+ */
+const NO_SALE = "NOT EXISTS (SELECT 1 FROM sales x WHERE x.status = 'DELIVERED' AND lower(x.settlement_id) LIKE '%:' || s.nonce)";
+
 const hasScheme = new WeakMap<DB, boolean>();
 const customerSales = (db: DB): string => {
   // A ledger from before clearing (opened read-only, so not migrated) has no scheme column: every sale was 'exact'.
@@ -57,8 +63,12 @@ export function mandateAvailability(db: DB, agent: string): MandateAvailability 
     pending = sum(db, "SELECT SUM(amount_cents) AS n FROM sweeps WHERE outcome IN ('PENDING', 'HELD')");
   } else if (agent === "customer") {
     paid = sum(db, `SELECT SUM(price_cents) AS n ${customerSales(db)}`);
-    // Sent to Metal's facilitator, its sale not yet recorded (src/seller/settling.ts): the chain may count it already.
-    if (hasTable(db, "sale_settlements")) pending = sum(db, "SELECT SUM(price_cents) AS n FROM sale_settlements WHERE status = 'SETTLING'");
+    if (hasTable(db, "sale_settlements")) {
+      // Charged with no sale behind it (found by the reconciliation): Metal counts it under the mandate, so does this.
+      paid += sum(db, "SELECT SUM(price_cents) AS n FROM sale_settlements WHERE status = 'CHARGED'");
+      // Sent to Metal's facilitator, its sale not yet recorded (src/seller/settling.ts): the chain may count it already.
+      pending = sum(db, `SELECT SUM(price_cents) AS n FROM sale_settlements s WHERE s.status = 'SETTLING' AND ${NO_SALE}`);
+    }
   }
   const held = heldCents(db, agent);
   return { budgetCents, paidCents: paid, pendingCents: pending, heldCents: held, availableCents: budgetCents === null ? null : budgetCents - paid - pending - held };
@@ -111,8 +121,14 @@ export function mandatePayments(db: DB, agent: string): LedgerPayment[] {
       out.push({ what: `sale ${String(r.sale_id)}`, cents: Number(r.price_cents), tx: lower(r.tx_hash), nonce: nonceOf(r.settlement_id), state: "paid" });
     }
     if (hasTable(db, "sale_settlements")) {
-      for (const r of rows("SELECT key, nonce, price_cents, status, detail, started_at FROM sale_settlements WHERE status IN ('SETTLING', 'FAILED') ORDER BY started_at")) {
-        out.push({ what: `a sale being settled (paid by ${String(r.key).split(":")[0]!.slice(0, 10)}…)`, cents: Number(r.price_cents), tx: null, nonce: lower(r.nonce), state: r.status === "SETTLING" ? "pending" : "failed", detail: typeof r.detail === "string" ? r.detail : undefined, since: String(r.started_at) });
+      for (const r of rows(`SELECT key, nonce, price_cents, status, tx_hash, detail, started_at FROM sale_settlements s
+                            WHERE (s.status = 'SETTLING' AND ${NO_SALE}) OR s.status IN ('FAILED', 'CHARGED') ORDER BY started_at`)) {
+        const by = String(r.key).split(":")[0]!.slice(0, 10);
+        if (r.status === "CHARGED") {
+          out.push({ what: `a payment by ${by}… charged with no delivery recorded`, cents: Number(r.price_cents), tx: lower(r.tx_hash), nonce: lower(r.nonce), state: "paid", detail: typeof r.detail === "string" ? r.detail : undefined });
+          continue;
+        }
+        out.push({ what: `a sale being settled (paid by ${by}…)`, cents: Number(r.price_cents), tx: null, nonce: lower(r.nonce), state: r.status === "SETTLING" ? "pending" : "failed", detail: typeof r.detail === "string" ? r.detail : undefined, since: String(r.started_at) });
       }
     }
   }

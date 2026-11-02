@@ -71,6 +71,20 @@ function migrate(db: DB): void {
       INSERT INTO finality_evidence SELECT tx, block_hash, CASE status WHEN 'CERTIFIED' THEN 'REPORTED' ELSE status END, recorded_at FROM finality_evidence_old;
       DROP TABLE finality_evidence_old;`);
   }
+  // Ledgers from the first sale_settlements (2 November): the CHARGED state came with the reconciliation of rows left
+  // SETTLING. Nothing references this table, so it is rebuilt with its rows.
+  const ss = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sale_settlements'").get() as { sql: string } | undefined;
+  if (ss && !ss.sql.includes("'CHARGED'")) {
+    db.exec(`ALTER TABLE sale_settlements RENAME TO sale_settlements_old;
+      DROP INDEX IF EXISTS sale_settlements_open;
+      CREATE TABLE sale_settlements (key TEXT PRIMARY KEY, payer TEXT NOT NULL, nonce TEXT NOT NULL, price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
+        status TEXT NOT NULL CHECK (status IN ('SETTLING', 'DONE', 'FAILED', 'CHARGED')), sale_id INTEGER REFERENCES sales(sale_id), tx_hash TEXT, detail TEXT,
+        started_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS sale_settlements_open ON sale_settlements (status);
+      INSERT INTO sale_settlements (key, payer, nonce, price_cents, status, sale_id, tx_hash, detail, started_at, updated_at)
+        SELECT key, payer, nonce, price_cents, status, sale_id, tx_hash, detail, started_at, updated_at FROM sale_settlements_old;
+      DROP TABLE sale_settlements_old;`);
+  }
   allowPasskeyApprovals(db);
   allowPasskeyRejections(db);
 }

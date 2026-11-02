@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
+import { buildSnapshot } from "../src/dashboard/snapshot.js";
 import { compareMandate, dashboardVsChain, plain, type ChainMandate, type ChainPayment, type ChainReader } from "../src/metal/dashboardVsChain.js";
 import { centsToBaseUnits as u } from "../src/lib/money.js";
 import type { LedgerPayment } from "../src/policy/available.js";
@@ -143,6 +144,20 @@ describe("the dashboard against the chain, payment by payment", () => {
   });
 });
 
+describe("after a pause and a resume", () => {
+  it("the dashboard counts the resumed credential and compares its budget with what was left, as Metal bound it", () => {
+    const db = openDb(":memory:");
+    audit(db, "owner-signer", "mandate.bound", "support", { cap: "0.10", budget: "4.00", payee: "0x00000000000000000000000000000000000000c1" });
+    audit(db, "owner-signer", "mandate.resumed", "support", { agent: "support", proposal_id: "P-0009", tx: tx(9), credential_hash: tx(10), spent_before: "0.30", budget: "3.70" });
+    const b = buildSnapshot(db).budgets.agents.find((x) => x.agent === "support")!;
+    expect(b).toMatchObject({ budget: "4.00", chain_budget: "3.70", credentials: 2, cap: "0.10" });
+    const sup = { agent: "support", cap: "0.10", budget: "4.00", chain_budget: "3.70", spent: "0.00", pending: "0.00", credentials: 2 };
+    const c = { perPaymentCap: u(10), budget: u(370), spent: 0n, revoked: false, bound: true, payments: [] as ChainPayment[] };
+    expect(compareMandate(sup, c)).toEqual({ differences: [], notes: ["budget: 4.00 over the mandate's life; the credential bound at the resume has 3.70, what was left, as on chain"] });
+    expect(compareMandate(sup, { ...c, budget: u(400) }).differences).toEqual(["budget: the bound credential's budget is 3.70 on the dashboard (what was left of 4.00 at the resume), the chain 4.00"]);
+  });
+});
+
 describe("the reading: the ledger, the chain at one block, the ledger again", () => {
   function world(sales: number): DB {
     const db = openDb(":memory:");
@@ -205,12 +220,26 @@ describe("the reading: the ledger, the chain at one block, the ledger again", ()
     }
   });
 
-  it("a ledger that never stops moving is compared at the last reading, and says so", async () => {
+  it("a ledger that never stops moving is compared as read before the chain, and says so", async () => {
+    // Each time the chain is read at its block, a sale from after that block lands in the ledger. Read after the chain,
+    // the ledger would have a paid sale the chain does not have at that block; read before it, the two agree.
     const db = world(1);
-    let n = 1;
-    const r = reader(db, () => n, () => { n++; sale(db, n); });
+    let k = 1;
+    const r = {
+      reads: 0,
+      block: async () => 100n + BigInt(r.reads),
+      async mandate(_agent: string, block: bigint): Promise<ChainMandate> {
+        r.reads++;
+        const m = { ...custChain(Array.from({ length: k }, (_, i) => ({ tx: tx(i + 1), block: block - 1n, amount: u(5) }))), block };
+        k++;
+        sale(db, k);
+        return m;
+      },
+      detail: async (t: string) => ({ nonce: nonce(parseInt(t.slice(2), 16)), at: null }),
+    };
     const [c] = await dashboardVsChain(db, r, 3);
     expect(r.reads).toBe(3);
+    expect(c).toMatchObject({ ok: true, differences: [] });
     expect(c!.notes).toContain("the ledger kept changing during 3 readings; this is the last one");
   });
 });

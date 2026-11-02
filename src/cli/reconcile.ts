@@ -36,6 +36,7 @@ if (at >= 0) {
 const r = await reconcile(openDb(), reconcileSourcesFromEnv());
 console.log(`RECONCILED       ${r.checked} flows checked against Airwallex and Metal at ${r.at}`);
 for (const s of r.skipped) console.log(`NOT CHECKED      ${s}`);
+for (const x of r.settlements ?? []) console.log(`SETTLEMENT       ${x.key.slice(0, 10)}… ${x.outcome}${x.sale_id ? ` (sale ${x.sale_id})` : ""}${x.tx ? ` tx ${x.tx.slice(0, 10)}…` : ""}`);
 for (const d of r.differences) console.log(redactSecrets(`DIFFERENCE       ${d.area} ${d.ref}: ledger says ${d.ledger}; ${d.area === "metal" ? "the chain" : "Airwallex"} says ${d.outside}`));
 console.log(r.differences.length ? `${r.differences.length} difference(s): a person looks; nothing was changed` : "no differences");
 process.exit(r.differences.length ? 1 : 0);

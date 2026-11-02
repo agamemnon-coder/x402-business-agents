@@ -13,6 +13,7 @@ import { audit } from "../audit/log.js";
 import type { CardTransaction } from "../airwallex/issuing.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
+import { resolveSettlements, type ResolvedSettlement, type SettlementLookup } from "./settlements.js";
 
 /** A payout row closed with no transfer id is looked up at Airwallex for this many days after its close. */
 export const CLOSED_LOOKUP_DAYS = 7;
@@ -26,6 +27,8 @@ export interface ReconcileSources {
   cardTransactions?: (cardId: string) => Promise<CardTransaction[]>;
   /** Null if the receipt carries exactly this *USDZ transfer, otherwise what is wrong. */
   chainTransfer?: (tx: string, from: string, to: string, cents: number) => Promise<string | null>;
+  /** Metal's facilitator: what settled to Northwind under a payment's nonce (src/finance/settlements.ts). */
+  settlementByNonce?: SettlementLookup;
 }
 
 export interface Difference {
@@ -43,6 +46,8 @@ export interface Reconciliation {
   differences: Difference[];
   /** Refunds held at Metal for over two hours, looked up on chain (not differences; not refunded yet). */
   held?: { ref: string; since: string | null; chain: string }[];
+  /** Customer payments left "being settled", resolved now (src/finance/settlements.ts). */
+  settlements?: ResolvedSettlement[];
 }
 
 /** Card transactions this fresh may still be on their way into the ledger (the poll waits up to 2 minutes). */
@@ -159,12 +164,20 @@ export async function reconcile(db: DB, src: ReconcileSources, now = new Date())
     held.push({ ref: h.payment_id, since: h.since, chain });
   }
 
+  // Customer payments left "being settled": resolved from the ledger and the facilitator. A payment found charged with
+  // no sale is a difference (recorded by the resolution itself, which the runner also runs on its own).
+  const s = await resolveSettlements(db, src.settlementByNonce, now);
+  if (s.skipped) skipped.push(s.skipped);
+  const charged: Difference[] = s.resolved.filter((r) => r.outcome === "CHARGED").map((r) => ({
+    area: "metal", ref: r.key, ledger: `no sale for a customer payment of ${fromCents(r.cents)} USDZ`, outside: `charged in ${r.tx ?? "an unknown transaction"}, no delivery recorded; owed back unless a person finds it was delivered`,
+  }));
+
   const at = now.toISOString();
   db.transaction(() => {
     for (const d of differences) audit(db, "system", "reconcile.difference", d.ref, { ...d }, now);
-    audit(db, "system", "reconcile.done", null, { checked, differences: differences.length, skipped, ...(held.length ? { held } : {}) }, now);
+    audit(db, "system", "reconcile.done", null, { checked, differences: differences.length + charged.length, skipped, ...(held.length ? { held } : {}), ...(s.resolved.length ? { settlements: s.resolved } : {}) }, now);
   }).immediate();
-  return { at, checked, skipped, differences, ...(held.length ? { held } : {}) };
+  return { at, checked, skipped, differences: [...differences, ...charged], ...(held.length ? { held } : {}), ...(s.resolved.length ? { settlements: s.resolved } : {}) };
 }
 
 /** A refund held at Metal longer than this is followed: on /health and by the reconciliation. */

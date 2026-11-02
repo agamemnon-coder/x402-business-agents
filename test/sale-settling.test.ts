@@ -100,6 +100,20 @@ describe("a sale between its block and its row (dry-146, 2 November)", () => {
     expect(c!.differences[0]).toMatch(/^spent: the dashboard shows 3\.30 spent \(0\.00 pending\), the chain 3\.35 at block 13271980: tx 0x0000000000…0043 \(0\.05 in block 13271973, 2026-11-02T16:30:44\.000Z\) is on chain under the customer mandate, but the ledger has no payment for it/);
   });
 
+  it("closing the pending line can never undo a sale the customer paid for and got", async () => {
+    const db = world();
+    for (const h of hooks.before) await h(ctx(67));
+    // The settlement row cannot be written at that moment (a busy ledger, simulated by a trigger).
+    db.exec("CREATE TRIGGER no_close BEFORE UPDATE ON sale_settlements BEGIN SELECT RAISE(ABORT, 'ledger busy'); END;");
+    for (const h of hooks.after) await h({ ...ctx(67), ...settled(67) });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM sales").get()).toEqual({ n: 67 });
+    expect(db.prepare("SELECT status FROM sale_settlements").get()).toEqual({ status: "SETTLING" });
+    expect(db.prepare("SELECT subject FROM audit_log WHERE event = 'sale.settlement_left_open'").all()).toEqual([{ subject: "67" }]);
+    // Counted once, as the sale; the check against the chain agrees; the reconciliation closes the row later.
+    expect(customer(db)).toMatchObject({ spent: "3.35", pending: "0.00" });
+    expect(await dashboardVsChain(db, chainWith(67))).toEqual([{ agent: "customer", ok: true, differences: [], notes: [] }]);
+  });
+
   it("a settle the facilitator refuses closes the pending line; one with an unknown outcome keeps it", async () => {
     const db = world();
     for (const h of hooks.before) await h(ctx(67));

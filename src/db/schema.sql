@@ -70,12 +70,14 @@ CREATE TABLE IF NOT EXISTS sales (
 -- chain, closed when the sale is recorded (DONE) or the settle fails (FAILED). Between Metal's block and the sale's
 -- row the chain already counts the payment; this row is what lets the dashboard show it as pending instead of a spend
 -- that differs from the chain without a reason. Keyed by payer and ERC-3009 nonce, as the settlement id ends.
+-- CHARGED: the reconciliation found it settled with no sale behind it (charged, no delivery recorded): it counts as
+-- paid under the customer's mandate, as on chain, and is owed back unless a person finds it was delivered.
 CREATE TABLE IF NOT EXISTS sale_settlements (
   key TEXT PRIMARY KEY,
   payer TEXT NOT NULL,
   nonce TEXT NOT NULL,
   price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
-  status TEXT NOT NULL CHECK (status IN ('SETTLING', 'DONE', 'FAILED')),
+  status TEXT NOT NULL CHECK (status IN ('SETTLING', 'DONE', 'FAILED', 'CHARGED')),
   sale_id INTEGER REFERENCES sales(sale_id),
   tx_hash TEXT,
   detail TEXT,

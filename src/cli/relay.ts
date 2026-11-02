@@ -12,6 +12,7 @@ import { displayKey } from "../relay/sign.js";
 import { reconcile } from "../finance/reconcile.js";
 import { certifyPending } from "../metal/finality.js";
 import { reconcileSourcesFromEnv } from "../finance/sources.js";
+import { resolveSettlements } from "../finance/settlements.js";
 import { redactSecrets } from "../lib/redact.js";
 import { keyPath } from "../metal/agentCli.js";
 import { randomBytes } from "node:crypto";
@@ -185,6 +186,20 @@ async function reconcileTick(): Promise<void> {
   }
 }
 
+// Customer payments left "being settled" (src/finance/settlements.ts): every 5 minutes, not only with the hourly
+// reconciliation, so a sale whose row a crash cut off is closed, or charged-with-no-delivery goes to the CFO, soon.
+let settlementsAt = 0;
+async function settlementsTick(): Promise<void> {
+  if (Date.now() - settlementsAt < 5 * 60_000) return;
+  settlementsAt = Date.now();
+  try {
+    const r = await resolveSettlements(db, reconcileSourcesFromEnv().settlementByNonce);
+    for (const x of r.resolved) console.log(`${stamp()} settle   ${x.key.slice(0, 10)}… ${x.outcome}${x.outcome === "CHARGED" ? ": charged with no delivery recorded, owed back unless a person finds it was delivered" : ""}`);
+  } catch (e) {
+    console.error(`${stamp()} settle   ${redactSecrets((e as Error).message)}`);
+  }
+}
+
 // Enterprise item 3: Metal's finality certificate for each new chain transaction in the ledger, every minute. Nodes keep
 // them about 2 hours on testnet, so this must not wait for the hourly reconciliation. Read-only towards the chain.
 let finalityAt = 0;
@@ -280,6 +295,7 @@ while (!stopping) {
   await quarantineTick();
   recordPullsTick();
   await reconcileTick();
+  await settlementsTick();
   await finalityTick();
   try {
     await runner.syncOnce();

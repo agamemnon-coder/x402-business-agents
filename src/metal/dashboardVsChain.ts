@@ -51,7 +51,11 @@ export function plain(e: unknown, env = process.env): string {
 /** How long a payment may stay on its way before the check names it as left behind (a settle takes seconds). */
 export const ON_ITS_WAY_MS = 5 * 60_000;
 
-export interface ShownMandate { agent: string; cap: string; budget: string; spent: string; pending: string; held?: string; credentials: number }
+export interface ShownMandate {
+  agent: string; cap: string; budget: string; spent: string; pending: string; held?: string; credentials: number;
+  /** After a resume: the bound credential's own budget (what was left), which is what the chain has. */
+  chain_budget?: string | null;
+}
 
 /** One payment Metal recorded under one of the agent's mandates (a MandatePayment event). */
 export interface ChainPayment { tx: string; block: bigint; amount: bigint; nonce?: string | null; at?: string | null }
@@ -95,7 +99,10 @@ export function compareMandate(shown: ShownMandate, chain: ChainMandate, ledger:
   const notes: string[] = [];
   const units = (s: string | undefined) => centsToBaseUnits(toCents(s ?? "0.00"));
   if (units(shown.cap) !== chain.perPaymentCap) differences.push(`cap: the dashboard shows ${shown.cap}, the chain ${words(chain.perPaymentCap)}`);
-  if (units(shown.budget) !== chain.budget) differences.push(`budget: the dashboard shows ${shown.budget}, the chain ${words(chain.budget)}`);
+  if (shown.chain_budget) {
+    if (units(shown.chain_budget) !== chain.budget) differences.push(`budget: the bound credential's budget is ${shown.chain_budget} on the dashboard (what was left of ${shown.budget} at the resume), the chain ${words(chain.budget)}`);
+    else notes.push(`budget: ${shown.budget} over the mandate's life; the credential bound at the resume has ${shown.chain_budget}, what was left, as on chain`);
+  } else if (units(shown.budget) !== chain.budget) differences.push(`budget: the dashboard shows ${shown.budget}, the chain ${words(chain.budget)}`);
   const paid = units(shown.spent), onItsWay = units(shown.pending) + units(shown.held);
   const showing = `the dashboard shows ${shown.spent} spent (${shown.pending} pending${shown.held && shown.held !== "0.00" ? `, ${shown.held} held` : ""})`;
   const at = chain.block !== undefined ? ` at block ${chain.block}` : "";
@@ -188,7 +195,7 @@ export interface Bind { tx: string | null; credentialHash: string | null; princi
 function readLedger(db: DB): LedgerReading {
   const b = buildSnapshot(db).budgets;
   const shown: ShownMandate[] = [...b.agents, ...(b.counterparty ? [b.counterparty] : [])]
-    .map((m) => ({ agent: m.agent, cap: m.cap, budget: m.budget, spent: m.spent, pending: m.pending, held: m.held, credentials: m.credentials }));
+    .map((m) => ({ agent: m.agent, cap: m.cap, budget: m.budget, spent: m.spent, pending: m.pending, held: m.held, credentials: m.credentials, chain_budget: m.chain_budget }));
   const payments = Object.fromEntries(shown.map((s) => [s.agent, mandatePayments(db, s.agent)]));
   const hex = (v: unknown, n: number) => (typeof v === "string" && new RegExp(`^0x[0-9a-fA-F]{${n}}$`).test(v) ? v.toLowerCase() : null);
   const binds = Object.fromEntries(shown.map((s) => [s.agent, (db.prepare(`SELECT json_extract(payload_json, '$.tx') AS tx, json_extract(payload_json, '$.credential_hash') AS hash,
@@ -232,9 +239,9 @@ export async function dashboardVsChain(db: DB, chain: ChainReader = metalReader(
         read.set(s.agent, new Error(plain(e)));
       }
     }
-    const after = readLedger(db);
-    steady = after.key === reading.key;
-    reading = after;
+    // Compared against the reading taken before the chain's: a payment recorded after the chain's block cannot then show
+    // up as "in the ledger, not on chain", and one on its way was written down before its settle (src/seller/settling.ts).
+    steady = readLedger(db).key === reading.key;
   }
   const out: MandateCheck[] = [];
   for (const s of reading.shown) {

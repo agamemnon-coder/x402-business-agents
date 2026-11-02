@@ -7,6 +7,7 @@ import { Airwallex, fromEnv } from "../airwallex/client.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { centsToBaseUnits, fromCents } from "../lib/money.js";
 import { publicClient } from "../metal/chain.js";
+import { findSettlementByNonce } from "../metal/pay.js";
 import { USDZ } from "../metal/network.js";
 import type { ReconcileSources } from "./reconcile.js";
 
@@ -29,5 +30,7 @@ export function reconcileSourcesFromEnv(): ReconcileSources {
     ...(rest ? { transferByRequestId: async (requestId: string) => { const t = await rest.findTransferByRequestIdStrict(requestId); return t && { id: t.id, status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),
     ...(issuing ? { cardTransactions: (cardId: string) => issuing.rail.listCardTransactions(cardId) } : {}),
     ...(process.env.METAL_RPC_URL ? { chainTransfer: receiptCarries } : {}),
+    // A live world (Metal configured): the facilitator's public list of what settled to Northwind.
+    ...(process.env.METAL_RPC_URL ? { settlementByNonce: (payTo: string, nonce: string, sinceMs: number) => findSettlementByNonce(payTo as `0x${string}`, nonce, sinceMs) } : {}),
   };
 }

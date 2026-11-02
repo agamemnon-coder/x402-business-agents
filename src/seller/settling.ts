@@ -3,8 +3,9 @@
 // The seller records a sale after the facilitator's settle answer, and the facilitator answers after the payment's
 // block. In that second the chain already counts the payment under the customer's mandate and the ledger does not: in
 // 2 of 10 live worlds the dashboard read the ledger just before the row, the chain just after, and showed 0.05–0.06 less
-// spent than Metal with no reason given. So the payment is written down before the settle (SETTLING), closed in the
-// same transaction as the sale's row (DONE), or when the facilitator says nothing moved (FAILED). A SETTLING row is
+// spent than Metal with no reason given. So the payment is written down before the settle (SETTLING), closed right
+// after the sale's row is committed (DONE; never in its transaction, so it cannot undo a sale), or when the facilitator
+// says nothing moved (FAILED). One left SETTLING is resolved by src/finance/settlements.ts. A SETTLING row is
 // shown as pending; one that stays SETTLING (a lost answer, a row that could not be written) is named by the chain
 // check once it is older than a settle takes (src/metal/dashboardVsChain.ts), never passed as "on its way" for good.
 //
@@ -37,7 +38,8 @@ export function settlementStarted(db: DB, auth: Authorization | undefined, cents
 }
 
 /**
- * Settled and recorded: call inside the sale row's transaction, so the ledger never counts it twice or not at all.
+ * Settled and recorded: call after the sale row's transaction. Until it is written the ledger still counts the payment
+ * once: a settlement whose sale is recorded is read as that sale (src/policy/available.ts).
  * Whatever the row said before (a replay of the same payment may have been refused meanwhile), the sale decides.
  */
 export function settlementDone(db: DB, key: string | null, saleId: number, tx: string | null, now = new Date()): void {

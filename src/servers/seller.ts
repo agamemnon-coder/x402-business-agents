@@ -105,7 +105,7 @@ export function sellerApp(opts: SellerOptions) {
     const bodyText = ctx?.responseBody?.toString("utf8") ?? "";
     const url = ctx?.request.adapter.getUrl() ?? "";
     const upstream = upstreamOf(ctx);
-    db.transaction(() => {
+    const saleId = db.transaction((): number | null => {
       const info = db.prepare(
         `INSERT OR IGNORE INTO sales (route, price_cents, payer, customer_mandate_ref, signed_offer, settlement_id, tx_hash, request_url,
            request_params_json, body_sha256, body_json, upstream_purchase_id, requirements_json, status, created_at)
@@ -115,14 +115,21 @@ export function sellerApp(opts: SellerOptions) {
         settlement.id, result.transaction, url, JSON.stringify(Object.fromEntries(new URL(url || "http://x/").searchParams)),
         sha256Hex(bodyText), bodyText, upstream === null ? null : Number(upstream), JSON.stringify(requirements), new Date().toISOString(),
       );
-      if (info.changes === 1) {
-        audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { origin: { actor: "external", party: "customer" }, settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });
-        // In the same transaction: from here the sale's row counts the payment, and the pending line no longer does.
-        settlementDone(db, key, Number(info.lastInsertRowid), result.transaction);
-      } else {
-        settlementRepeated(db, key);
-      }
+      if (info.changes !== 1) return null;
+      audit(db, "system", "sale.delivered", String(info.lastInsertRowid), { origin: { actor: "external", party: "customer" }, settlement_id: settlement.id, tx: result.transaction, body_sha256: sha256Hex(bodyText) });
+      return Number(info.lastInsertRowid);
     }).immediate();
+    // After the sale's own transaction, so closing the pending line can never undo a sale the customer paid for and got.
+    // From the sale's row on, the ledger counts the payment once even if this write fails (available.ts reads a
+    // settlement with a recorded sale as that sale), and the reconciliation closes the row later.
+    try {
+      if (saleId === null) settlementRepeated(db, key);
+      else settlementDone(db, key, saleId, result.transaction);
+    } catch (e) {
+      try {
+        audit(db, "system", "sale.settlement_left_open", saleId === null ? null : String(saleId), { error: (e as Error).message.slice(0, 200), note: "the sale is recorded; the reconciliation closes its settlement row" });
+      } catch { /* the ledger is unavailable: the sale's row stands */ }
+    }
   });
 
   server.onSettleFailure(async ({ error, paymentPayload, transportContext }) => {
