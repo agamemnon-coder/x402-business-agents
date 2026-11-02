@@ -32,7 +32,7 @@ seed whose world changed runs again. Two sweep reads are stand-ins: the business
 in, plus sales, less purchases, refunds and sweeps) and each mandate's remaining budget (the ledger's).
 
 Commands: `npm run variation -- --sim 40 --seed-start 1` (the batch), `--sim 2` (a trial), `--repeat 3` (each seed
-three times: the same world again), `--no-claude` (the harness alone, code's fallbacks, writes nothing under docs/).
+three times: the same world again), `--no-claude` (the harness alone, code's fallbacks, writes nothing under docs/). `--out <name> --rerun`: every seed again on the code as it is now, into `docs/runs/variation/<name>/` (a re-run after a fix; only runs already in that directory are skipped, so it resumes too).
 `npm run holdouts [-- --only id,id]`. Both need `KIT11_ANTHROPIC_API_KEY`; neither runs in CI. The tests
 (`test/variation-*.test.ts`, `test/holdouts.test.ts`, `test/team-deps.test.ts`) use a fake Claude only.
 

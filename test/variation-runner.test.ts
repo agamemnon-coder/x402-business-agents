@@ -42,6 +42,21 @@ describe("the variation batch", () => {
     expect([...doneRuns(d.root)].map((k) => k.split("@")[0]).sort()).toEqual(["sim-1", "sim-2", "sim-3"]);
   });
 
+  it("a re-run (--rerun) runs every seed again into its own directory, and resumes from that directory alone", async () => {
+    const d = dirs();
+    const ran: number[] = [];
+    const run = async (spec: SimWorldSpec) => { ran.push(spec.seed); return fakeResult(spec, "x", 100); };
+    await runBatch({ root: d.root, outDir: d.out, spendFile: d.spend, seeds: [1, 2], repeat: 1, run });
+    const after = join(d.root, "2026-11-02-after-fix");
+    const first = await runBatch({ root: d.root, outDir: after, spendFile: d.spend, seeds: [1, 2], repeat: 1, rerun: true, run: async (spec) => { if (spec.seed === 2) throw new Error("stopped"); return run(spec); } }).catch(() => null);
+    expect(first).toBeNull();
+    expect(existsSync(join(after, "sim-1.json"))).toBe(true);
+    const again = await runBatch({ root: d.root, outDir: after, spendFile: d.spend, seeds: [1, 2], repeat: 1, rerun: true, run });
+    expect(again.skipped).toEqual(["sim-1"]);
+    expect(ran).toEqual([1, 2, 1, 2]);
+    expect(existsSync(join(d.out, "sim-1.json")) && existsSync(join(after, "sim-2.json"))).toBe(true);
+  });
+
   it("matches a run on its world's hash, not its label: a seed whose world changed runs again", async () => {
     const d = dirs();
     const run = async (spec: SimWorldSpec) => fakeResult(spec, "x", 0);
