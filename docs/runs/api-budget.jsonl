@@ -1,0 +1,4 @@
+{"block":"evals","usd_micros":146744,"what":"variation sim-1","at":"2026-11-02T09:42:15.131Z"}
+{"block":"evals","usd_micros":113959,"what":"variation sim-2","at":"2026-11-02T09:43:23.660Z"}
+{"block":"evals","usd_micros":27126,"what":"holdout invoice-bank-change","at":"2026-11-02T09:43:48.772Z"}
+{"block":"evals","usd_micros":21074,"what":"holdout invoice-bank-change","at":"2026-11-02T09:44:59.445Z"}
