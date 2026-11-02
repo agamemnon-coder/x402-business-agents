@@ -284,6 +284,7 @@ describe("a dispute is decided once, also after a restart", () => {
     expect(() => db.prepare("UPDATE dispute_decisions SET plan_json = '{}' WHERE dispute_id = 'D-x'").run()).toThrow(/decided once/);
     expect(() => db.prepare("UPDATE dispute_decisions SET source = 'claude' WHERE dispute_id = 'D-x'").run()).toThrow(/decided once/);
     expect(() => db.prepare("DELETE FROM dispute_decisions").run()).toThrow(/kept/);
+    expect(() => db.prepare("INSERT OR REPLACE INTO dispute_decisions (dispute_id, source, plan_json, decided_at, status) VALUES ('D-x', 'claude', '{}', 'x', 'DECIDED')").run()).toThrow(/decided once/);
     db.prepare("UPDATE dispute_decisions SET status = 'DONE' WHERE dispute_id = 'D-x'").run();
   });
 
