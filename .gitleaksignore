@@ -28,3 +28,16 @@ f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-ap
 0fa6aad8621683823849e09f04f0a317cfffbb7c:test/clearing-wallet.test.ts:generic-api-key:39
 # A public contract address (OpenZeppelin WebAuthn verifier on Metal testnet); 'PASSKEY' in the name looks like a key to the generic rule.
 de13a51c69a6230bbfd891213481258de2b5adc3:src/metal/passkeyRelay.ts:generic-api-key:13
+# test/contract/airwallex.test.ts in 87585de set a fake key ("awx-key-…") to prove redaction; the test now builds it at run time.
+87585de7fdb48f11f50ce031648edc4639793467:test/contract/airwallex.test.ts:generic-api-key:96
+# docs/demo/agent-run.json in c34694e: credential_hash / replaces_credential_hash are keccak hashes of mandate credentials, public on chain, not secrets.
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:5876
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:5899
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6168
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6169
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6183
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6184
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6234
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6235
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6249
+c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6250
