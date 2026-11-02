@@ -97,7 +97,16 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
     .replace("__AGENTS_JSON__", AGENTS_JSON)
     .replace("__REDTEAM_JSON__", () => REDTEAM_JSON);
 }
-export const PAGE = dashboardPage();
+/**
+ * Words the public pages no longer use (Max, v4): older records and Lab results still carry them in their text, so the
+ * pages that show those records say them in today's words. Display only; the records stay as they were written.
+ */
+const PUBLIC_WORDS: [RegExp, string][] = [
+  [/warehouse software/g, "warehouse data"], [/\bare stand-ins\b/g, "are simulated"], [/\bis a stand-in\b/g, "is simulated"],
+  [/\ba stand-in passkey\b/g, "a test passkey"], [/\bstand-ins\b/g, "simulations"], [/\bstand-in\b/g, "simulated"],
+];
+export const publicWords = (text: string) => PUBLIC_WORDS.reduce((t, [re, to]) => t.replace(re, to), text);
+export const PAGE = publicWords(dashboardPage());
 // Only the page's own script and style may run; data arrives over fetch from this origin only.
 export const CSP = cspFor(PAGE);
 /** The month replay carries its data inside the page, so it needs no request at all once loaded. */
@@ -108,7 +117,7 @@ export const LAB_CSP = cspFor(LAB_TEMPLATE);
 export interface LabData { mode: "live" | "recorded"; at: string; results: ScenarioResult[] }
 /** The Lab page: results run now (on the runner) or the ones recorded by npm run lab (docs/lab/results.json). */
 export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readFileSync(LAB_FILE, "utf8")) as Omit<LabData, "mode">) }): string {
-  return LAB_TEMPLATE.replace("__LAB_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
+  return LAB_TEMPLATE.replace("__LAB_JSON__", () => publicWords(JSON.stringify(data)).replace(/</g, "\\u003c"));
 }
 
 /** "Purser live": the animated day, its timeline inside the page (src/live/timeline.ts), built from the recordings. */

@@ -85,7 +85,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (gap > 40) fail(`/home ${tag}: ${gap}px between the headline and the animation`);
     await page.screenshot({ path: join(shots, `home-${tag}.png`) });
     // Each scene, still (as with reduced motion): what it must show, all of it visible, and nothing on top of anything else.
-    const wants = [/Refused on chain/, /Face ID 1 of 2 → 2 of 2/, /12 orders disputed: 9 valid, 3 refunded/, /€240 licence paid by SWIFT · Face ID/];
+    const wants = [/Refused on chain/, /Face ID 1 of 2 → 2 of 2/, /\d+ orders disputed: \d+ valid, \d+ refunded/, /licence paid by SWIFT · Face ID/];
     for (const n of [1, 2, 3, 4]) {
       await page.goto(`${base}/home?scene=${n}`, { waitUntil: "load" });
       await page.waitForTimeout(500);

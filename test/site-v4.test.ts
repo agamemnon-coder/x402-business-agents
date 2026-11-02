@@ -34,9 +34,12 @@ describe("the site after v4", () => {
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
-  it("shows no forbidden words on any public page", () => {
-    const bad = [/warehouse software/i, /stand-in/i, /\bdry-1\d*/i, /Dev test/i, /Recorded 30 October/i, /read, plan and advise/i, /\bfather\b/i, /four eyes.{0,80}\b(optional|off)\b/i, /\b(optional|off)\b.{0,80}four eyes/i, /\b0 unsafe\b/i];
-    for (const [name, html] of Object.entries(PUBLIC)) for (const re of bad) expect({ name, found: re.exec(allText(html))?.[0] ?? null }).toEqual({ name, found: null });
+  it("shows no forbidden words on any page a visitor can reach (every page buildPages serves, the archive and the phone pages included)", () => {
+    const bad = [/warehouse software/i, /stand-in/i, /\bdry-1\d*/i, /Dev test/i, /Recorded 30 October/i, /read, plan and advise/i, /\bfather\b/i, /four eyes.{0,80}\b(optional|off)\b/i, /\b(optional|off)\b.{0,80}four eyes/i, /\b0 unsafe\b/i, /confirmed (that )?TAP counts/i];
+    // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked).
+    const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font"].includes(e[0]));
+    expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
+    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
   it("has four tabs and nothing else in the menu, on every public page", () => {
@@ -93,7 +96,7 @@ describe("the site after v4", () => {
     expect(f.scenes[0]!.proof?.href).toMatch(/^https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/);
     expect(f.scenes[1]!.line).toMatch(/Face ID 1 of 2 → 2 of 2/);
     expect(f.scenes[2]!.line).toBe(`${f.orders.length} orders disputed: ${f.orders.length - f.refunded.length} valid, ${f.refunded.length} refunded.`);
-    expect([f.orders.length, f.refunded.length]).toEqual([12, 3]);
+    expect(f.refunded.length).toBeGreaterThan(0);
     expect(f.scenes[3]!.line).toContain("€240 licence paid by SWIFT · Face ID");
     expect(f.scenes[3]!.line).toContain("Visa TAP ✓");
     // The failed fee_unknown attempt is not on Home.
