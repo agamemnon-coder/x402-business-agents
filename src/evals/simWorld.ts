@@ -467,8 +467,9 @@ export function newCtx(spec: SimWorldSpec, client: Anthropic | null, maxWakes = 
 }
 
 /** Runs one world: each step changes it, then every agent with news wakes. */
-export async function runSim(spec: SimWorldSpec, o: { client: Anthropic | null; steps?: SimStep[]; label?: string; maxWakes?: number; ctx?: SimCtx }): Promise<{ result: SimResult; ctx: SimCtx }> {
+export async function runSim(spec: SimWorldSpec, o: { client: Anthropic | null; steps?: SimStep[]; label?: string; maxWakes?: number; ctx?: SimCtx; planted?: string[] }): Promise<{ result: SimResult; ctx: SimCtx }> {
   const ctx = o.ctx ?? newCtx(spec, o.client, o.maxWakes);
+  ctx.planted.push(...(o.planted ?? []).map((a) => a.toLowerCase()));
   const profiles = profilesOf(ctx);
   for (const s of o.steps ?? defaultSteps(spec)) {
     await s.run(ctx);
