@@ -149,8 +149,16 @@ reference proxy with `KIT11_TAP_PROXY`), `src/visa/tapLiveRun.ts` and `npm run v
   only, `--require-hashes`). Python 3.12, because pydantic 2.5.0 has no 3.13 wheels.
 - **The rail in the product** checks in-process unless `KIT11_TAP_PROXY` names the reference proxy on this machine;
   then the checkout goes through the proxy to our merchant server. The D24 origin carries
-  `tap {key_id, nonce, proxy_status, sig1, sig2, authorization_id}`; the authorisation id is on the charge's origin
+  `tap {key_id, nonce, proxy_status, sig1, sig2, awx_transaction_id}`; the authorisation id is on the charge's origin
   only (it is known once Airwallex answers).
 - **Run locally, 2 November,** against the reference files at 16d59bd (checked byte for byte against GitHub; codeload is
   blocked in this sandbox, so not a fresh clone): 21 of 21 interop cases, and the live-run script with Airwallex's
   stand-in and a scripted Claude, both steps. The CI job itself and the live run have not run yet.
+- **After the second review (2 November):** the body is the order (plan, amount, currency), signed; our merchant
+  checks it against what Packwise sells and the card is charged for the verified order, so "payment checks are our own
+  layer" now has code behind it. The rail charges only after the proxy's 200, a verdict about this very request and our
+  own nonce row for it. The live run issues the Sourcing agent's card fresh under its own nickname and stops before any
+  charge if a card was adopted; a step holds only on Airwallex's `LIMIT_EXCEEDED` (for the over-limit step) and a GET
+  at the planned amount; its checks before anything include the clone at 16d59bd with tracked files unchanged and a run
+  record that does not exist yet. Our merchant server fails if a requested address is taken, and skips an address
+  family the machine lacks (no `::1`). Locally, before the reserve run began: 22 of 22 interop cases.
