@@ -40,6 +40,15 @@ Stand op 1 november: dry-96 rood (opgelost), dry-97 en dry-98 groen. Stappen 4b 
 | 4c | `npm run world -- money-in`: de verkopen van vandaag zijn binnen op Metal | **Treasury** | De besluit-regel; bij een sweep het bewijs | Treasury veegt de netto-opbrengst naar Airwallex (na finality, geboekt), of wacht. Code houdt over wat de andere mandaten nog mogen uitgeven. |
 | 5 | Claude draait `npm run verify` en `npm run agent-summary` | code | Terminal | Niets dubbel betaald, elke goedkeuring met een passkey, elke Claude-call met een request-id, het fallback-%. |
 
+**Hoe lang Treasury erover doet (gemeten, 2 november).** Vanaf de derde weggestuurde klant tot de twee opties op de
+telefoon: 30 s (dry-138) en 36 s (dry-133), dus mediaan ±33 s en maximum 36 s, uit **maar twee runs** waarin klanten
+werden weggestuurd (in de andere runs stapte Sourcing over op Ridgeline of wachtte, en kwam er geen voorstel; zo ook
+in dry-141). Vóór de fix van 1 november duurde het 415 s (dry-131). In de tussentijd ziet Max op het dashboard de
+geweigerde aankopen ("buy policy") en de besluit-regels van Sourcing; de telefoon is leeg. **Langer dan 2 minuten
+niets:** niets doen op de telefoon; Claude kijkt naar Treasury's laatste besluit-regel. Na 15 minuten zonder opties
+gaat de run door zonder herverdeling (dat is een geldige uitkomst: de agent besloot het niet te vragen), en Claude
+meldt het aan Max.
+
 Tijden uit dry-97: elk besluit kwam binnen 1 minuut na het wereld-event. De dispute duurt het langst (1–2 minuten),
 omdat Support elke order op de chain controleert.
 
