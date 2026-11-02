@@ -27,3 +27,14 @@ balances read, Claude key set).
 Not done here, by design: the passkey enrolment, the four-eyes policy and every approval are Max's, in the run.
 The reserve worktree carries one uncommitted scratch change in `test/browser/dryrun.check.ts` (a hosted-relay switch
 for yesterday's check); no reserve-run command uses that file.
+
+## Final check, 08:22 UTC: READY
+
+- Code: the worktree is at eff08b4 (tag `reserve-run-2026-11-02`).
+- `npm run health` on live-1: green (Metal chain and finality, x402 facilitator, Airwallex sandbox, Claude key).
+- Balances: business account 20.00, customer account C 100.00, sweep wallet 0.50, four-eyes sponsor 100.00; owner
+  keys 79.49 and 99.99 (gas).
+- Mandates on chain: sourcing, support, treasury and customer bound, not revoked, nothing spent (10 / 4 / 6 / 5).
+- Hosted relay: every page byte for byte the eff08b4 build (approve, enrol, policy, the phone's script and stylesheet,
+  /, /try, /metal, /live); `/health` 503 "runner down", as expected before the runner starts. No deploy.
+- Nothing else running (soak finished 07:58); a local ledger snapshot `00-prepared` taken.
