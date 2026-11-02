@@ -33,6 +33,22 @@ import { netEarnings } from "../agents/sweep.js";
 import { decisionOf, decisionSummary, finished, legacyDecision } from "../agents/disputeDecision.js";
 import type { AgentProfile } from "./runtime.js";
 import type { SupplierView } from "./sourcingCore.js";
+import { audit } from "../audit/log.js";
+import { replaceHoldFact, replaceHoldRefusal } from "../policy/replaceHold.js";
+
+/**
+ * dry-179: while a mandate replace of the treasury mandate is open, sweep_earnings waits. The tool says why (the hold,
+ * as code's reason) and an audit row records it; null when nothing holds it. Purser holds every payment itself too
+ * (src/policy/holds.ts): this keeps a sweep that could only be refused from starting, and from leaving a refused sweep
+ * row that would hold the next sweep for half an hour. Support's refunds are held one by one at Purser instead: its
+ * dispute decision and any escalation to the CFO move no money and go ahead.
+ */
+function heldSpend(db: DB, agent: "treasury", path: string): string | null {
+  const held = replaceHoldRefusal(db, agent);
+  if (!held) return null;
+  audit(db, agent, "spend.held", agent, { path, reason: held });
+  return held.replace(/^replace_pending: /, "");
+}
 
 const repo = resolve(import.meta.dirname, "../..");
 const NOTICE = resolve(repo, "fixtures/stockline-price-notice.txt");
@@ -164,6 +180,8 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
       (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
+      // dry-179: the hold as a fact, so the agent does not try sweep_earnings into it.
+      ...(((f) => (f ? [`${f} That includes sweep_earnings.`] : []))(replaceHoldFact(db, "treasury"))),
       ...invoiceFacts(db, new Date(), invoiceOf(plannedText())).lines,
       ...refusedPayouts(db),
     ].join("\n");
@@ -208,6 +226,9 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
           if (swept || db.prepare("SELECT 1 FROM sweeps WHERE created_at > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: a sweep ran in the last half hour.", blocked: "already swept" };
           const e = netEarnings(db);
           if (e.netCents <= 0) return { text: `Not swept: net earnings are ${fromCents(Math.max(0, e.netCents))}; nothing to move.`, blocked: "nothing to sweep" };
+          // dry-179: a sweep moves the treasury mandate's spend, which an open replace carries as it was proposed.
+          const held = heldSpend(db, "treasury", "sweep_earnings");
+          if (held) return { text: `Not swept: ${held}. The earnings stay on the business account; sweep after that.`, blocked: "mandate replace pending" };
           swept = true;
           const r = sim ? await sim.sweep(db) : deps.runFlow("s3.ts", ["--sweep-only"]);
           return { text: r.text, ...(r.ok ? {} : { blocked: "the sweep did not complete" }) };
@@ -297,7 +318,11 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
     observe: async (db) => {
       const d = open(db);
       const left = (id: string) => { const dec = decisionOf(db, id); return dec && !finished(dec) ? ` [decided, not yet carried out (a restart?): settle_dispute finishes it and decides nothing again]` : dec || legacyDecision(db, id) ? " [decided]" : ""; };
-      return d.length ? `Disputes on file: ${d.map((x) => `${x.dispute_id} from ${x.customer.slice(0, 10)}… (${x.created_at.slice(11, 16)})${left(x.dispute_id)}`).join(", ")}.` : "No dispute on file.";
+      const held = replaceHoldFact(db, "support");
+      return [d.length ? `Disputes on file: ${d.map((x) => `${x.dispute_id} from ${x.customer.slice(0, 10)}… (${x.created_at.slice(11, 16)})${left(x.dispute_id)}`).join(", ")}.` : "No dispute on file.",
+        // The decision and any escalation to the CFO go ahead; a refund is refused before signing until then, and is
+        // tried again when the decision is carried out again (code's rule, not a lasting refusal).
+        ...(held ? [`${held} Refunds are paid under it: settle_dispute still decides and escalates, but each refund waits and is tried again when the decision is carried out again.`] : [])].join("\n");
     },
     tools: (db) => [
       {

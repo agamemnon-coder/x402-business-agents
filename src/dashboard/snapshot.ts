@@ -283,6 +283,8 @@ const capFirst = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 const REFUSAL_WORDS: Record<string, string> = {
   mandate_cap_exceeded: "over the mandate's per-payment cap",
+  // Purser's hold while a mandate replace of the agent's mandate is open (src/policy/replaceHold.ts), not a mandate limit.
+  replace_pending: "held while a mandate replace is open",
   mandate_budget_exceeded: "over the mandate's total budget",
   mandate_revoked: "the credential was revoked by a replacement",
   mandate_expired: "the mandate has expired",
@@ -622,6 +624,12 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     }
     case "upstream.refused": {
       const reason = str(p.reason);
+      const detail = () => reason.slice(reason.indexOf(":") + 1).trim();
+      // dry-179: say which check refused. The agent's own buy policy and a supplier with no offer are not Purser's
+      // refusals against the mandate (older rows logged them as Purser's: they are read by their reason here).
+      if (reason.startsWith("buy_policy:")) return out(`Stock check #${str(p.seq)} not bought: the Sourcing agent's own buy policy (${detail()}); nothing was signed`, "refusal");
+      if (reason.startsWith("supplier_unavailable:")) return out(`Stock check #${str(p.seq)} not bought: the supplier made no offer (${detail()}); nothing was signed`, "refusal");
+      if (reason.startsWith("replace_pending:")) return out(`Purchase of stock check #${str(p.seq)} held by Purser before signing: ${detail()}`, "refusal");
       return reason.startsWith("policy_cap_exceeded")
         ? out(`Purchase of stock check #${str(p.seq)} refused by the CFO policy before signing: ${reason.slice(reason.indexOf(":") + 1).trim().replace(/\b(\d+\.\d{2})\b/g, "$1 USDZ")}`, "refusal")
         : str(p.refused_by) === "purser"
@@ -751,6 +759,9 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "proposal.executed": return out(`${s} executed`, "ok");
     case "proposal.failed": return out(`${s} failed: ${str(p.error) || "see the ledger"}`, "refusal");
     case "proposal.needs_reapproval": return out(`${s} needs a new approval: ${str(p.error)}`, "refusal");
+    case "proposal.execution_stopped": return out(`${s} was approved, but its execution stopped before any step: ${str(p.error) || "see the ledger"}`, "refusal");
+    // dry-179: an agent's tool that would spend from a mandate a replace is about to change waits for it.
+    case "spend.held": return out(`${capFirst(agentWho(s))}'s ${str(p.path) === "sweep_earnings" ? "sweep" : str(p.path) === "settle_dispute" ? "dispute settlement (its refunds)" : str(p.path)} waits: ${refusalWords(str(p.reason))}`, "refusal");
     case "proposal.superseded": return out(`${s} closed: another option (${str(p.by)}) was approved`);
     case "proposal.expired": return out(`${s} expired: its terms can no longer be approved or run`, "refusal");
     case "approval.too_late": return out(`${str(p.approver) || "A person"} approved ${s} after it expired; nothing ran`, "refusal");

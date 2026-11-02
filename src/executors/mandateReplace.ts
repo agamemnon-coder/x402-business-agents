@@ -24,7 +24,23 @@ function byHash(agent: MandateAgent, hash: string) {
   throw new Error(`${agent}: no credential file with hash ${hash}`);
 }
 
+/** The audit event of a replace whose execution stopped before it began (its proposal stays APPROVED until it expires). */
+export const EXECUTION_STOPPED = "proposal.execution_stopped";
+
 export async function executeMandateReplace(db: DB, proposalId: string, now = new Date()): Promise<void> {
+  const terms = await begin(db, proposalId, now).catch((err: unknown) => {
+    // A check before the first step refused it (dry-179: "spent moved … a new one is needed"): the guard's transaction
+    // rolled back, so the proposal is still APPROVED. Recorded, so the hold on the agents' spending (src/policy/
+    // replaceHold.ts) lifts now instead of at its expiry. Only for an approved one: the row always follows its approval.
+    const status = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string } | undefined)?.status;
+    if (status === "APPROVED") audit(db, "system", EXECUTION_STOPPED, proposalId, { error: (err as Error).message.slice(0, 300) });
+    throw err;
+  });
+  await run(db, proposalId, terms);
+}
+
+/** Reads the chain, then the execution guard (beginExecution): from here the proposal is EXECUTING. */
+async function begin(db: DB, proposalId: string, now: Date): Promise<MandateReplaceTerms> {
   const draft = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_json: string }).terms_json) as MandateReplaceTerms;
 
   // Read the chain first (async); the guard below re-checks it against the approved terms.
@@ -40,7 +56,7 @@ export async function executeMandateReplace(db: DB, proposalId: string, now = ne
     });
   }
 
-  const terms = beginExecution<MandateReplaceTerms>(db, proposalId, (t) => {
+  return beginExecution<MandateReplaceTerms>(db, proposalId, (t) => {
     if (toCents(t.total_budget) > TOTAL_BUDGET_CENTS) throw new Error(`total ${t.total_budget} exceeds the limit`);
     // Block 6: the chain budgets were set for the spend carried at proposal; a resume since would make them wrong.
     checkCarried(db, t.steps);
@@ -54,7 +70,10 @@ export async function executeMandateReplace(db: DB, proposalId: string, now = ne
       }
     }
   }, now);
+}
 
+/** The steps, in the approved order, each once (keyed); then the new price and the siblings superseded. */
+async function run(db: DB, proposalId: string, terms: MandateReplaceTerms): Promise<void> {
   try {
     for (const step of [...terms.steps].sort((a, b) => Number(a.order) - Number(b.order))) {
       const agent = step.agent as MandateAgent;
