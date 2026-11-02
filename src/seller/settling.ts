@@ -15,7 +15,7 @@
 import type { DB } from "../db/open.js";
 
 /** The ERC-3009 authorization the customer's x402 payment carries. */
-export interface Authorization { from?: string; value?: string; nonce?: string }
+export interface Authorization { from?: string; value?: string; nonce?: string; validBefore?: string | number }
 
 /** A settlement's key: payer and nonce, as the facilitator's settlement id ends. */
 export const settlementKey = (payer: string, nonce: string): string => `${payer.toLowerCase()}:${nonce.toLowerCase()}`;
@@ -31,9 +31,12 @@ export function settlementStarted(db: DB, auth: Authorization | undefined, cents
   const key = keyOf(auth);
   if (!key) return null;
   const ts = now.toISOString();
-  db.prepare(`INSERT INTO sale_settlements (key, payer, nonce, price_cents, status, started_at, updated_at) VALUES (?, ?, ?, ?, 'SETTLING', ?, ?)
-              ON CONFLICT (key) DO UPDATE SET status = 'SETTLING', detail = NULL, started_at = excluded.started_at, updated_at = excluded.updated_at
-              WHERE sale_settlements.status = 'FAILED'`).run(key, auth!.from!.toLowerCase(), auth!.nonce!.toLowerCase(), cents, ts, ts);
+  // When the authorization stops being valid: after it, a nonce still unused on chain can never move.
+  const vb = Number(auth!.validBefore);
+  const validBefore = Number.isSafeInteger(vb) && vb > 0 ? vb : null;
+  db.prepare(`INSERT INTO sale_settlements (key, payer, nonce, price_cents, status, valid_before, started_at, updated_at) VALUES (?, ?, ?, ?, 'SETTLING', ?, ?, ?)
+              ON CONFLICT (key) DO UPDATE SET status = 'SETTLING', detail = NULL, valid_before = excluded.valid_before, started_at = excluded.started_at, updated_at = excluded.updated_at
+              WHERE sale_settlements.status = 'FAILED'`).run(key, auth!.from!.toLowerCase(), auth!.nonce!.toLowerCase(), cents, validBefore, ts, ts);
   return key;
 }
 

@@ -31,7 +31,8 @@ const hasTable = (db: DB, name: string): boolean => !!db.prepare("SELECT 1 FROM 
  */
 /**
  * A settlement whose sale is recorded counts once, as the sale: also when its row could not be closed as DONE (that
- * write comes after the sale's own transaction, so it never undoes a sale; review of 2 November).
+ * write comes after the sale's own transaction, so it never undoes a sale), and when it was found CHARGED while the
+ * sale's row was being committed (review of 2 November).
  */
 const NO_SALE = "NOT EXISTS (SELECT 1 FROM sales x WHERE x.status = 'DELIVERED' AND lower(x.settlement_id) LIKE '%:' || s.nonce)";
 
@@ -65,7 +66,7 @@ export function mandateAvailability(db: DB, agent: string): MandateAvailability 
     paid = sum(db, `SELECT SUM(price_cents) AS n ${customerSales(db)}`);
     if (hasTable(db, "sale_settlements")) {
       // Charged with no sale behind it (found by the reconciliation): Metal counts it under the mandate, so does this.
-      paid += sum(db, "SELECT SUM(price_cents) AS n FROM sale_settlements WHERE status = 'CHARGED'");
+      paid += sum(db, `SELECT SUM(price_cents) AS n FROM sale_settlements s WHERE s.status = 'CHARGED' AND ${NO_SALE}`);
       // Sent to Metal's facilitator, its sale not yet recorded (src/seller/settling.ts): the chain may count it already.
       pending = sum(db, `SELECT SUM(price_cents) AS n FROM sale_settlements s WHERE s.status = 'SETTLING' AND ${NO_SALE}`);
     }
@@ -122,7 +123,7 @@ export function mandatePayments(db: DB, agent: string): LedgerPayment[] {
     }
     if (hasTable(db, "sale_settlements")) {
       for (const r of rows(`SELECT key, nonce, price_cents, status, tx_hash, detail, started_at FROM sale_settlements s
-                            WHERE (s.status = 'SETTLING' AND ${NO_SALE}) OR s.status IN ('FAILED', 'CHARGED') ORDER BY started_at`)) {
+                            WHERE (s.status IN ('SETTLING', 'CHARGED') AND ${NO_SALE}) OR s.status = 'FAILED' ORDER BY started_at`)) {
         const by = String(r.key).split(":")[0]!.slice(0, 10);
         if (r.status === "CHARGED") {
           out.push({ what: `a payment by ${by}… charged with no delivery recorded`, cents: Number(r.price_cents), tx: lower(r.tx_hash), nonce: lower(r.nonce), state: "paid", detail: typeof r.detail === "string" ? r.detail : undefined });

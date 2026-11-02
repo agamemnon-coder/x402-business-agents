@@ -193,7 +193,7 @@ async function settlementsTick(): Promise<void> {
   if (Date.now() - settlementsAt < 5 * 60_000) return;
   settlementsAt = Date.now();
   try {
-    const r = await resolveSettlements(db, reconcileSourcesFromEnv().settlementByNonce);
+    const r = await resolveSettlements(db, reconcileSourcesFromEnv());
     for (const x of r.resolved) console.log(`${stamp()} settle   ${x.key.slice(0, 10)}… ${x.outcome}${x.outcome === "CHARGED" ? ": charged with no delivery recorded, owed back unless a person finds it was delivered" : ""}`);
   } catch (e) {
     console.error(`${stamp()} settle   ${redactSecrets((e as Error).message)}`);

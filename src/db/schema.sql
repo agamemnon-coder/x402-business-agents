@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS sale_settlements (
   sale_id INTEGER REFERENCES sales(sale_id),
   tx_hash TEXT,
   detail TEXT,
+  -- The authorization's validBefore (unix seconds): after it, an unused nonce can never move.
+  valid_before INTEGER,
   started_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

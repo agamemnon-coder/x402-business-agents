@@ -13,7 +13,7 @@ import { audit } from "../audit/log.js";
 import type { CardTransaction } from "../airwallex/issuing.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
-import { resolveSettlements, type ResolvedSettlement, type SettlementLookup } from "./settlements.js";
+import { resolveSettlements, type AuthorizationUsed, type ResolvedSettlement, type SettlementLookup } from "./settlements.js";
 
 /** A payout row closed with no transfer id is looked up at Airwallex for this many days after its close. */
 export const CLOSED_LOOKUP_DAYS = 7;
@@ -29,6 +29,8 @@ export interface ReconcileSources {
   chainTransfer?: (tx: string, from: string, to: string, cents: number) => Promise<string | null>;
   /** Metal's facilitator: what settled to Northwind under a payment's nonce (src/finance/settlements.ts). */
   settlementByNonce?: SettlementLookup;
+  /** The token's ERC-3009 authorizationState for a payer's nonce (read-only chain call). */
+  authorizationUsed?: AuthorizationUsed;
 }
 
 export interface Difference {
@@ -166,7 +168,7 @@ export async function reconcile(db: DB, src: ReconcileSources, now = new Date())
 
   // Customer payments left "being settled": resolved from the ledger and the facilitator. A payment found charged with
   // no sale is a difference (recorded by the resolution itself, which the runner also runs on its own).
-  const s = await resolveSettlements(db, src.settlementByNonce, now);
+  const s = await resolveSettlements(db, { settlementByNonce: src.settlementByNonce, authorizationUsed: src.authorizationUsed }, now);
   if (s.skipped) skipped.push(s.skipped);
   const charged: Difference[] = s.resolved.filter((r) => r.outcome === "CHARGED").map((r) => ({
     area: "metal", ref: r.key, ledger: `no sale for a customer payment of ${fromCents(r.cents)} USDZ`, outside: `charged in ${r.tx ?? "an unknown transaction"}, no delivery recorded; owed back unless a person finds it was delivered`,

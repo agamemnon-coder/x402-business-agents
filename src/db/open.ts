@@ -71,22 +71,50 @@ function migrate(db: DB): void {
       INSERT INTO finality_evidence SELECT tx, block_hash, CASE status WHEN 'CERTIFIED' THEN 'REPORTED' ELSE status END, recorded_at FROM finality_evidence_old;
       DROP TABLE finality_evidence_old;`);
   }
-  // Ledgers from the first sale_settlements (2 November): the CHARGED state came with the reconciliation of rows left
-  // SETTLING. Nothing references this table, so it is rebuilt with its rows.
-  const ss = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sale_settlements'").get() as { sql: string } | undefined;
-  if (ss && !ss.sql.includes("'CHARGED'")) {
-    db.exec(`ALTER TABLE sale_settlements RENAME TO sale_settlements_old;
-      DROP INDEX IF EXISTS sale_settlements_open;
-      CREATE TABLE sale_settlements (key TEXT PRIMARY KEY, payer TEXT NOT NULL, nonce TEXT NOT NULL, price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
-        status TEXT NOT NULL CHECK (status IN ('SETTLING', 'DONE', 'FAILED', 'CHARGED')), sale_id INTEGER REFERENCES sales(sale_id), tx_hash TEXT, detail TEXT,
-        started_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-      CREATE INDEX IF NOT EXISTS sale_settlements_open ON sale_settlements (status);
-      INSERT INTO sale_settlements (key, payer, nonce, price_cents, status, sale_id, tx_hash, detail, started_at, updated_at)
-        SELECT key, payer, nonce, price_cents, status, sale_id, tx_hash, detail, started_at, updated_at FROM sale_settlements_old;
-      DROP TABLE sale_settlements_old;`);
-  }
+  settlementsTable(db);
   allowPasskeyApprovals(db);
   allowPasskeyRejections(db);
+}
+
+const SETTLEMENT_COLUMNS = "key, payer, nonce, price_cents, status, sale_id, tx_hash, detail, started_at, updated_at";
+
+/**
+ * Ledgers from the first sale_settlements (2 November): the CHARGED state came with the reconciliation of rows left
+ * SETTLING, and valid_before with its check on chain. Nothing references this table, so it is rebuilt with its rows, in
+ * one IMMEDIATE transaction (SQLite rolls DDL back): a crash leaves the old table whole, and a second process opening
+ * the ledger at the same moment waits, then finds it done. Rows stranded by a rebuild without that transaction (in
+ * sale_settlements_old, beside an empty new table) are brought back.
+ */
+export function settlementsTable(db: DB): void {
+  const sqlOf = (name: string) => (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(name) as { sql: string } | undefined)?.sql;
+  const due = () => {
+    const sql = sqlOf("sale_settlements");
+    return !!sqlOf("sale_settlements_old") || (!!sql && (!sql.includes("'CHARGED'") || !sql.includes("valid_before")));
+  };
+  if (!due()) return;
+  db.transaction(() => {
+    if (!due()) return; // another process did it while this one waited for the lock
+    const cols = (name: string) => (db.prepare(`PRAGMA table_info(${name})`).all() as { name: string }[]).map((c) => c.name);
+    const copy = (from: string) => {
+      const have = new Set(cols(from));
+      const list = [...SETTLEMENT_COLUMNS.split(", "), "valid_before"].filter((c) => have.has(c)).join(", ");
+      // The newest copy of a row wins: the current table is copied first, the stranded one only fills in. Plain INSERT
+      // (not OR IGNORE, which would also drop a row the new table refuses): any refusal rolls the whole rebuild back.
+      db.exec(`INSERT INTO sale_settlements_v2 (${list}) SELECT ${list} FROM ${from} WHERE key NOT IN (SELECT key FROM sale_settlements_v2)`);
+    };
+    db.exec(`DROP TABLE IF EXISTS sale_settlements_v2;
+      CREATE TABLE sale_settlements_v2 (key TEXT PRIMARY KEY, payer TEXT NOT NULL, nonce TEXT NOT NULL, price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
+        status TEXT NOT NULL CHECK (status IN ('SETTLING', 'DONE', 'FAILED', 'CHARGED')), sale_id INTEGER REFERENCES sales(sale_id), tx_hash TEXT, detail TEXT,
+        valid_before INTEGER, started_at TEXT NOT NULL, updated_at TEXT NOT NULL);`);
+    for (const t of ["sale_settlements", "sale_settlements_old"]) {
+      if (!sqlOf(t)) continue;
+      copy(t);
+      db.exec(`DROP TABLE ${t}`);
+    }
+    db.exec(`ALTER TABLE sale_settlements_v2 RENAME TO sale_settlements;
+      DROP INDEX IF EXISTS sale_settlements_open;
+      CREATE INDEX sale_settlements_open ON sale_settlements (status);`);
+  }).immediate();
 }
 
 /** Ledgers from before passkey approvals: SQLite cannot change a CHECK, so the approvals table is rebuilt once. */

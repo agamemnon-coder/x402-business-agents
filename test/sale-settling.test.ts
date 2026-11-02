@@ -58,7 +58,7 @@ function world(): DB {
 /** What the x402 server hands the seller's hooks for sale n. */
 function ctx(n: number, extra: Record<string, unknown> = {}) {
   return {
-    paymentPayload: { x402Version: 2, payload: { authorization: { from: PAYER, to: BUSINESS, value: String(centsToBaseUnits(5)), nonce: nonce(n) } } },
+    paymentPayload: { x402Version: 2, payload: { authorization: { from: PAYER, to: BUSINESS, value: String(centsToBaseUnits(5)), nonce: nonce(n), validBefore: "1793637600" } } },
     requirements: { scheme: "exact", network: "eip155:63825", amount: String(centsToBaseUnits(5)) },
     transportContext: { responseBody: Buffer.from('{"seller":"Northwind Outdoor","seq":70,"stock":{}}'), request: { adapter: { getUrl: () => "http://127.0.0.1/v1/stock?seq=70" } }, responseHeaders: {} },
     ...extra,
@@ -83,6 +83,8 @@ describe("a sale between its block and its row (dry-146, 2 November)", () => {
     for (const h of hooks.before) expect(await h(ctx(67))).toBeUndefined();
     // Metal's block holds sale 67 now; the seller has not written its row. This is the moment the night batch read.
     expect(customer(db)).toMatchObject({ spent: "3.30", pending: "0.05", remaining: "1.65" });
+    // With when its authorization stops being valid, for the reconciliation's proof that nothing moved.
+    expect(db.prepare("SELECT valid_before FROM sale_settlements").get()).toEqual({ valid_before: 1793637600 });
     const [c] = await dashboardVsChain(db, chainWith(67));
     expect(c).toMatchObject({ agent: "customer", ok: true, differences: [] });
     expect(c!.notes[0]).toMatch(/^tx 0x0000000000…0043 \(0\.05 in block 13271973, 2026-11-02T16:30:44\.000Z\) is on chain; the ledger has a sale being settled \(paid by 0xdeb2b727…\) on its way \(shown as pending\)$/);
