@@ -98,6 +98,38 @@ displays was not checked.
 | `/try`: a visitor changes the world and the Sourcing agent decides with Claude (D21) | Five world changes; the same brief, rules, buy-policy tool and code check as the autonomy runtime in its variation test (a test compares the runtime's own request with /try's; no card tools here); demo world, no money; two dev runs against the real Haiku: 10 of 10 decided by Claude, about 0.0005 USD each, request ids in the run log (1 Nov). **On the hosted page after the Worker's next deploy (Max's go)**; until then the local and judge copies answer with the labelled fallback | `docs/runs/2026-11-01-try-world-dev.md`, `test/try-world.test.ts`, `test/try-desk.test.ts`, the page check | /try (labelled "Demo world · stand-in suppliers · no money moves") |
 | Airwallex's own events in the autonomous world (D22): a card decline Airwallex made reaches the agent by webhook or poll; money paid into the Global Account reaches the Treasury agent; Ridgeline's one-off report on x402 (refused over the cap) or a single-use Airwallex task card the CFO approves | Built behind `KIT11_AUTONOMY=on`, with tests (`test/autonomy-airwallex.test.ts`) and dry-run steps A4b, A4d, A4e. In 19 green autonomous dry runs (dry-118 to dry-140): Airwallex's own decline reached the agent 19 of 19 times (by poll; the webhook path is the hosted relay's, Thursday), money in at Airwallex reached the Treasury agent 19 of 19 times; the report offer reached the Sourcing agent every time, and it **never chose the task card (0 of 19)**: that path is proven by tests and the 29 October card runs, not by an autonomous run | D22, [soak report](runs/2026-11-01-soak.md) | the decline and money in: yes; the task card in the autonomous world: not claimed |
 
+## The partner pages (`/airwallex`, `/claude`, added 2 November)
+
+Both pages are built without a script from `src/partners/` (`data.ts` reads the recorded files, `page.ts` renders), and
+`test/partner-pages.test.ts` fails if an id, tx or request id on them is not in the recorded files, if an agent's model
+is not the one in code and in the recording, or if a part or a run label is missing. Every proof line on them is a feed
+line or money movement of the two recordings, shown with the recording's label; the docs links were taken from the
+partners' own site maps (airwallex.com/docs, platform.claude.com/docs) on 2 November.
+
+| Claim | Proof |
+|---|---|
+| /airwallex, in our story: "Airwallex is Northwind's bank: each agent pays with its own company card, under limits Airwallex enforces on the card, and the Treasury agent's euro bills are paid by SWIFT, with euros bought at a locked rate when they are short, only after the CFO's Face ID" | `docs/airwallex.md` (Issuing, FX, Transfers); story `card`, `swift`; autonomy flows (the EUR 240.00 licence, planned by the Treasury agent, approved with Face ID) |
+| Card per agent; agents never see the card number or CVV | `docs/airwallex.md` Issuing; snapshot and autonomy `rails.airwallex` (card endings) |
+| Limits on the card from the CFO policy, synced and read back; Airwallex declines over them | `docs/airwallex.md` (`authorization_controls`, `GET /issuing/cards/{id}`); story `card` details; the declines in both recordings' feeds |
+| 3 card charges Airwallex declined itself | counted from the flows: 2 in the recorded run (LIMIT_EXCEEDED, MERCHANT_CATEGORY_NOT_ALLOWED), 1 in dry-118 (LIMIT_EXCEEDED) |
+| 2 euro invoices paid by SWIFT after Face ID (EUR 1,850.00 and EUR 240.00) | the two recordings' `airwallex_swift` flows; fees EUR 13.41 and EUR 13.48 from their feeds |
+| 12 Airwallex ids read back with GET only; an id's hover text says when and with which status | `docs/runs/airwallex-readback.json` (1 November) |
+| FX: only the shortfall, a quote locked for 15 minutes and checked against the current rate, booked after Face ID | `docs/airwallex.md` FX (`validity MIN_15`, `GET /fx/rates/current`) |
+| SWIFT only to an allowlisted beneficiary, approval hash in the metadata, fee ceiling EUR 20.00 | `docs/airwallex.md` Beneficiaries and Transfers; the feeds' `transfer.created` and `transfer.fee` lines |
+| Earnings booked once final, as a sandbox deposit that names the testnet tx | metal.json `finality`; the feeds' `credit.deposited` lines (with the tx) |
+| Retailers' payments reach the Treasury agent; matched booked once, short or unknown to the CFO; the separate 30 October run (2 matched, 1 short by EUR 10.00, 1 with no invoice) | D22 row above (19 of 19); dry-118 feed `receivable.escalated`; `docs/runs/2026-10-30-receivables.md` |
+| Webhooks: 23 events, checked by the relay and again by the runner, moving no money; not in the two recordings; shown live in a separate run | `docs/airwallex.md` Webhooks; `docs/runs/2026-10-30-webhooks.md`; snapshot `airwallex_events.total` 0 |
+| Why: a lost answer is looked up by its `request_id`, a quote is booked once | `docs/airwallex.md` ("How Purser talks to Airwallex", FX single use) |
+| Not done or simulated: sandbox only; merchants simulated; no stablecoin reaches Airwallex; PAID set by the sandbox; placeholder cardholders, KYC not shown; emergency stop and payout/conversion/card-status webhooks not yet live; decline by poll in the dry runs; the task card chosen 0 of 19 | `docs/airwallex.md`; the "Removed or softened" list below; the rows "Emergency stop", "Airwallex webhooks" and D22 above |
+| /claude, in our story: "Claude is how Purser's agents read the world and decide what to do inside their limits: the Sourcing agent runs on Haiku, the Support agent on Sonnet, the Treasury agent on Opus, and code checks every decision before money moves" | models in code (`src/autonomy/sourcingProfile.ts`, `teamProfiles.ts`, `MODELS` in `src/claude/reader.ts`) and in autonomy `agent_stats.models`; deciding only as shown from the dry run, with its label (D19 row above) |
+| Per agent: decisions, decided by Claude, fallback (code) and its %, Claude calls, cost at list price, median time per run | autonomy `agent_stats` and `claude.agents` (dry-118: 10/10, 3/3, 6/6 by Claude, 0 fallbacks; 37 agent calls, 0 without a request id; USD 0.18) |
+| Request ids beside the money they decided: `req_011CgcUUJMu4AyUHz2TcgPQL` (refunds of orders 7, 10, 13), `req_011CgcUdBoG69KTWRWb2wkUq` (the 0.25 sweep); the /try dev run's ids | autonomy `flows[].request`; `docs/runs/2026-11-01-try-world-dev.md` |
+| Every decision in the run, each labelled "Decided by Claude" or "Fallback (code)" | autonomy `traces` (status `done` is the agent's own Claude loop; anything else fell back to code, `src/dashboard/trace.ts`) |
+| The recorded run's model split and cost (Haiku 7 calls, Sonnet 9, Opus 7; 23 calls USD 0.18; USD 0.093 per EUR 1,000) | snapshot `claude`; `docs/claude.md` |
+| Structured outputs, the cached system prompt, effort low (Opus medium), fallback to a plain parser | `docs/claude.md`; `src/claude/reader.ts` |
+| Not shown: not yet a live run with Max; in the recorded run code decided and Claude read and explained; variation test and red team with stand-in rails and Haiku only; list prices, not a bill | rows "Claude agents that decide", "Autonomous agents", "The variation test" above; `src/claude/pricing.ts` |
+| "Powered by Claude" with the Claude logo on a dark ground; no Visa logo on either page | `src/ui/logos/README.md`; the page check |
+
 ## The video
 
 | Claim | Proof | Changed |
