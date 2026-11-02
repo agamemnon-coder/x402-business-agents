@@ -70,7 +70,7 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3
           git /repo --redact --verbose --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
   # Static analysis (Semgrep, pinned) and the SBOM (Max, 2 November). Semgrep blocks on any finding or if no rules loaded
-  # (it started non-blocking; its first run found 0 in 110 rules). The rules are Semgrep's public
+  # (it started non-blocking; its first run found 0 in 110 rules). The rules are Semgrep's public (TypeScript, Node.js, secrets, OWASP Top Ten)
   # TypeScript, Node.js and secrets sets; no code or results leave the runner (metrics off).
   security:
     runs-on: ubuntu-24.04
@@ -91,6 +91,6 @@ jobs:
           SEMGREP_SEND_METRICS: "off"
         run: |
           python3 -m venv /tmp/sg && /tmp/sg/bin/pip install --quiet semgrep==1.180.0
-          /tmp/sg/bin/semgrep scan --metrics=off --config p/typescript --config p/nodejs --config p/secrets --time --json --output semgrep.json src worker/src
+          /tmp/sg/bin/semgrep scan --metrics=off --config p/typescript --config p/nodejs --config p/secrets --config p/owasp-top-ten --time --json --output semgrep.json src worker/src
           node -e 'const d=require("./semgrep.json"); const rules=d.time?.rules?.length ?? 0; console.log(`Semgrep: ${d.results.length} findings, ${rules} rules, ${d.paths.scanned.length} files`); for (const r of d.results) console.log(`${r.extra.severity} ${r.check_id.split(".").pop()} ${r.path}:${r.start.line}`); if (!rules || d.results.length) process.exit(1)' | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
