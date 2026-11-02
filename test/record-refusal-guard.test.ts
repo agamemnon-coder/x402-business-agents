@@ -10,7 +10,8 @@ import { describe, expect, it, vi } from "vitest";
 
 const metal = vi.hoisted(() => ({ calls: 0, inFlight: 0, most: 0, holdsSeen: [] as string[], answer: "refused" as "refused" | "lost", db: null as unknown }));
 vi.mock("../src/metal/recordRefusal.js", () => ({
-  recordCapRefusalOnChain: async () => {
+  recordCapRefusalOnChain: async (_m: unknown, _to: unknown, _cents: number, _id: string, _gas: unknown, onPullStart?: () => void) => {
+    onPullStart?.();
     metal.calls++;
     metal.inFlight++;
     metal.most = Math.max(metal.most, metal.inFlight);
@@ -25,7 +26,8 @@ vi.mock("../src/metal/recordRefusal.js", () => ({
 
 const { openDb } = await import("../src/db/open.js");
 const { audit } = await import("../src/audit/log.js");
-const { SourcingAgent } = await import("../src/agents/sourcing.js");
+const { SourcingAgent, recoverRecordPulls, RECORDING_STALE_MS, CLAIM_STALE_MS } = await import("../src/agents/sourcing.js");
+const { holdBeyondCap } = await import("../src/policy/holds.js");
 
 const mandate = (ref: string) => ({ agent: "sourcing", reference: ref, credentialPath: "c", keyFile: "k", credential: {}, credentialHash: `0x${"34".repeat(32)}`, principal: `0x${"56".repeat(20)}`, signDigest: async () => "0x" });
 const A = mandate(`0x${"12".repeat(32)}`), B = mandate(`0x${"ab".repeat(32)}`);
@@ -35,7 +37,7 @@ function world() {
   const db = openDb(":memory:");
   metal.db = db; metal.calls = 0; metal.inFlight = 0; metal.most = 0; metal.holdsSeen = []; metal.answer = "refused";
   const a = new SourcingAgent(db, "http://127.0.0.1:1", "0x0000000000000000000000000000000000000001");
-  const record = (m: unknown, seq: number, letThrough = false) => (a as unknown as { recordOnChain(m: unknown, seq: number, reason: string, cents?: number, lt?: boolean): Promise<boolean> }).recordOnChain(m, seq, REASON, 4, letThrough);
+  const record = (m: unknown, seq: number, letThrough = false) => (a as unknown as { recordOnChain(m: unknown, seq: number, reason: string, cents?: number, lt?: boolean): Promise<string> }).recordOnChain(m, seq, REASON, 4, letThrough);
   const count = (event: string) => (db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = ?").get(event) as { n: number }).n;
   return { db, record, count };
 }
@@ -63,32 +65,67 @@ describe("recording Metal's refusal: one at a time, claimed first, held", () => 
     const { db, record } = world();
     await record(A, 18);
     const events = (db.prepare("SELECT event FROM audit_log WHERE event LIKE 'upstream.refus%' ORDER BY seq").all() as { event: string }[]).map((e) => e.event);
-    expect(events).toEqual(["upstream.refusal_recording", "upstream.refused_on_chain"]);
+    expect(events).toEqual(["upstream.refusal_recording", "upstream.refusal_pull_started", "upstream.refused_on_chain"]);
     expect(metal.holdsSeen).toEqual([`record:refusal-${"12".repeat(6)}-18 HELD`]);
-    expect(db.prepare("SELECT status, cents FROM holds").all()).toEqual([{ status: "RELEASED", cents: 4 }]);
+    expect(db.prepare("SELECT status, cents, reason FROM holds").all()).toEqual([{ status: "RELEASED", cents: 4, reason: "Metal refused the record pull; nothing moved" }]);
   });
 
   it("a pull whose answer is lost is an incident: the Sourcing agent stopped, its hold kept HELD", async () => {
     const { db, record, count } = world();
     metal.answer = "lost";
-    expect(await record(A, 18)).toBe(true);
+    expect(await record(A, 18)).toBe("incident");
     expect(count("upstream.let_through_incident")).toBe(1);
     expect(db.prepare("SELECT value FROM settings WHERE key = 'stop.sourcing'").get()).toEqual({ value: "on" });
     expect(db.prepare("SELECT status FROM holds").all()).toEqual([{ status: "HELD" }]);
   });
 
-  it("a claim with no outcome after the CLI's timeout (a process ended mid-pull) is an incident; nothing is sent again", async () => {
+  // A process that ended mid-recording leaves a claim (and maybe a pull-start stamp and a HELD hold) behind.
+  const leftBehind = (db: ReturnType<typeof openDb>, at: Date, pulled: boolean) => {
+    const pid = `refusal-${"12".repeat(6)}-17`;
+    audit(db, "sourcing", "upstream.refusal_recording", "17", { seq: 17, mandate: A.reference, payment_id: pid, purchase_id: null }, at);
+    expect(holdBeyondCap(db, { agent: "sourcing", cents: 4, ref: `record:${pid}`, payee: "supplier", reason: "record_pull", now: at })).toBeNull();
+    if (pulled) audit(db, "sourcing", "upstream.refusal_pull_started", "17", { seq: 17, mandate: A.reference, payment_id: pid }, new Date(at.getTime() + 1000));
+  };
+  const hold = (db: ReturnType<typeof openDb>) => (db.prepare("SELECT status FROM holds").get() as { status: string }).status;
+
+  it("after a restart: a pull that started and has no outcome past its timeout is an incident (hold kept); within it, still pending", () => {
+    const { db, count } = world();
+    const t = new Date(Date.now() - 10_000);
+    leftBehind(db, t, true);
+    expect(recoverRecordPulls(db, new Date(t.getTime() + 60_000))).toEqual({ incidents: 0, notSent: 0, pending: 1 });
+    expect(recoverRecordPulls(db, new Date(t.getTime() + RECORDING_STALE_MS + 2_000))).toEqual({ incidents: 1, notSent: 0, pending: 0 });
+    expect(count("upstream.let_through_incident")).toBe(1);
+    expect(db.prepare("SELECT value FROM settings WHERE key = 'stop.sourcing'").get()).toEqual({ value: "on" });
+    expect(hold(db)).toBe("HELD");
+    // Resolved once: the next recovery finds nothing open.
+    expect(recoverRecordPulls(db, new Date(t.getTime() + 10 * RECORDING_STALE_MS))).toEqual({ incidents: 0, notSent: 0, pending: 0 });
+  });
+
+  it("after a restart: a claim whose pull never started is not sent (hold released), only after the steps before the pull could take", () => {
+    const { db, count } = world();
+    const t = new Date(Date.now() - 10_000);
+    leftBehind(db, t, false);
+    expect(recoverRecordPulls(db, new Date(t.getTime() + RECORDING_STALE_MS + 2_000)).pending).toBe(1);
+    expect(recoverRecordPulls(db, new Date(t.getTime() + CLAIM_STALE_MS + 2_000))).toEqual({ incidents: 0, notSent: 1, pending: 0 });
+    expect(count("upstream.let_through_incident")).toBe(0);
+    expect(hold(db)).toBe("RELEASED");
+  });
+
+  it("a recording that meets a claim still in flight (another process) sends nothing and counts as not recorded, never as recorded", async () => {
     const { db, record, count } = world();
-    audit(db, "sourcing", "upstream.refusal_recording", "17", { seq: 17, mandate: A.reference, payment_id: "refusal-x-17" }, new Date(Date.now() - 300_000));
-    expect(await record(A, 18)).toBe(true);
+    leftBehind(db, new Date(), true);
+    expect(await record(A, 18)).toBe("not_recorded");
+    expect(metal.calls).toBe(0);
+    expect(count("upstream.let_through_incident")).toBe(0);
+  });
+
+  it("a recording that meets a stale started pull of a process that ended: an incident, nothing sent again", async () => {
+    const { db, record, count } = world();
+    leftBehind(db, new Date(Date.now() - RECORDING_STALE_MS - 5_000), true);
+    expect(await record(A, 18)).toBe("incident");
     expect(metal.calls).toBe(0);
     expect(count("upstream.let_through_incident")).toBe(1);
-    expect(count("upstream.refusal_not_recorded")).toBe(1);
-    // A fresh claim (another process still pulling) is left alone.
-    const fresh = world();
-    audit(fresh.db, "sourcing", "upstream.refusal_recording", "17", { seq: 17, mandate: A.reference, payment_id: "refusal-x-17" });
-    expect(await fresh.record(A, 18)).toBe(false);
+    expect(await record(A, 19)).toBe("not_recorded");
     expect(metal.calls).toBe(0);
-    expect(fresh.count("upstream.let_through_incident")).toBe(0);
   });
 });

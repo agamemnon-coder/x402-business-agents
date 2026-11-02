@@ -9,7 +9,7 @@ import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DB } from "../src/db/open.js";
 
-const state = vi.hoisted(() => ({ db: null as DB | null, signed: [] as number[], metal: "refuse" as "refuse" | "accept" | "lost" | "rate_limited", recordRefuses: true, recordThrows: "", onChain: [] as number[] }));
+const state = vi.hoisted(() => ({ db: null as DB | null, signed: [] as number[], metal: "refuse" as "refuse" | "accept" | "lost" | "rate_limited", recordRefuses: true, recordThrows: "", onChain: [] as number[], recordHangs: null as null | ((e: Error) => void) | "hang" }));
 
 vi.mock("../src/metal/mandate.js", async (orig) => ({
   ...(await orig<object>()),
@@ -35,8 +35,11 @@ vi.mock("../src/metal/pay.js", async (orig) => ({
   },
   findSettlementByNonce: async () => undefined,
 }));
-vi.mock("../src/metal/recordRefusal.js", () => ({ recordCapRefusalOnChain: async (_m: unknown, _to: unknown, cents: number) => {
+vi.mock("../src/metal/recordRefusal.js", () => ({ recordCapRefusalOnChain: async (_m: unknown, _to: unknown, cents: number, _id: string, _gas: unknown, onPullStart?: () => void) => {
+  onPullStart?.();
   state.onChain.push(cents);
+  // A process that ends mid-pull: the pull never answers (the test fails it at its end, so the queue moves on).
+  if (state.recordHangs === "hang") return new Promise((_ok, fail) => { state.recordHangs = fail; });
   if (state.recordThrows) throw new Error(state.recordThrows);
   if (!state.recordRefuses) throw new Error("Metal did not report a refusal (exit 0); check the pull refusal-x");
   return { tx: `0x${"cd".repeat(32)}`, reason: "mandate_cap_exceeded" };
@@ -46,14 +49,14 @@ vi.mock("@x402/express", () => ({ paymentMiddleware: () => (_req: unknown, _res:
 
 const { openDb } = await import("../src/db/open.js");
 const { audit } = await import("../src/audit/log.js");
-const { SourcingAgent } = await import("../src/agents/sourcing.js");
+const { SourcingAgent, recoverRecordPulls, RECORDING_STALE_MS } = await import("../src/agents/sourcing.js");
 const { claimLetThrough, letThrough, requestLetThrough, LET_THROUGH_LABEL, LET_THROUGH_TTL_MS } = await import("../src/world/letThrough.js");
 const { holdBeyondCap, reserveSpend } = await import("../src/policy/holds.js");
 const { stopped, stopReason } = await import("../src/policy/velocity.js");
 const { sellerApp, SELLER_ROUTE } = await import("../src/servers/seller.js");
 
 const env = { ...process.env };
-beforeEach(() => { process.env.KIT11_AGENTS = "on"; process.env.KIT11_AUTONOMY = "on"; state.signed = []; state.metal = "refuse"; state.onChain = []; state.recordRefuses = true; state.recordThrows = ""; });
+beforeEach(() => { process.env.KIT11_AGENTS = "on"; process.env.KIT11_AUTONOMY = "on"; state.signed = []; state.metal = "refuse"; state.onChain = []; state.recordRefuses = true; state.recordThrows = ""; state.recordHangs = null; });
 afterEach(() => { process.env = { ...env }; vi.unstubAllEnvs(); });
 
 const SUPPLIER = "0x0000000000000000000000000000000000000001" as const;
@@ -295,6 +298,33 @@ describe("a refusal that is not Metal's on the cap", () => {
     expect(state.onChain).toEqual([]);
     expect(db.prepare("SELECT status FROM holds").all()).toEqual([{ status: "RELEASED" }]);
     expect(() => requestLetThrough(db)).toThrow(/already used its one let-through \(inconclusive\)/);
+  });
+});
+
+describe("a restart while the let-through's refusal was being recorded (agent-facts re-review)", () => {
+  it("the let-through is never labelled as recorded; the runner's recovery makes it an incident once the pull's timeout has passed; its hold stays", async () => {
+    const db = world();
+    const a = armed(db);
+    price(db, "0.04");
+    state.recordHangs = "hang";
+    // The purchase is refused by Metal; the record pull starts and never answers: the process "ends" here.
+    void a.buy(18).catch(() => undefined);
+    for (let i = 0; i < 50 && typeof state.recordHangs !== "function"; i++) await new Promise((r) => setTimeout(r, 10));
+    expect(events(db, "upstream.refusal_pull_started")).toBe(1);
+    expect(letThrough(db)).toMatchObject({ stage: "used", outcome: "in_flight" });
+    // The restarted runner's recovery, within the pull's timeout: still pending, nothing labelled.
+    expect(recoverRecordPulls(db).pending).toBe(1);
+    expect(events(db, "upstream.let_through_refused")).toBe(0);
+    // Past the timeout: an incident, the let-through finished as one, the Sourcing agent stopped, the record pull's hold kept.
+    expect(recoverRecordPulls(db, new Date(Date.now() + RECORDING_STALE_MS + 1_000))).toMatchObject({ incidents: 1 });
+    expect(letThrough(db)).toMatchObject({ stage: "used", outcome: "incident" });
+    expect(stopped(db, "sourcing")).toBe(true);
+    expect(events(db, "upstream.let_through_refused")).toBe(0);
+    expect(db.prepare("SELECT status FROM holds WHERE ref LIKE 'record:%'").get()).toEqual({ status: "HELD" });
+    // Free the queue of this test process (the "ended" process would never answer).
+    (state.recordHangs as unknown as (e: Error) => void)(new Error("pull sent: the process ended"));
+    state.recordHangs = null;
+    await new Promise((r) => setTimeout(r, 20));
   });
 });
 

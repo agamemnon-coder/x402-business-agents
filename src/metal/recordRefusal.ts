@@ -39,7 +39,8 @@ export async function refusalGasKey(): Promise<string> {
   return file;
 }
 
-export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cents: number, paymentId: string, gasKey?: string): Promise<RecordedRefusal> {
+/** onPullStart: called right before the CLI is started (the caller stamps it: from then on the pull may reach Metal). */
+export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cents: number, paymentId: string, gasKey?: string, onPullStart?: () => void): Promise<RecordedRefusal> {
   const cap = extractTerms(m.credential).constraints.perPaymentCap;
   if (centsToBaseUnits(cents) <= cap) throw new Error(`${fromCents(cents)} is not over this mandate's cap; Metal would pay it, so nothing is sent`);
   const state = await readMandateState(publicClient(), m.principal, m.reference);
@@ -49,6 +50,7 @@ export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cen
   try {
     // Asynchronous: the world's process keeps serving the suppliers and the seller while Metal records it (agent run 1).
     // The customer's request that met the refusal still waits for it (at most the CLI's 180 s timeout).
+    onPullStart?.();
     r = await metalAgentAsync(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(cents),
       "--payment-id", paymentId, "--record-refusal", "--key", key], [0, 1]);
   } catch (e) {
