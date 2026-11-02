@@ -77,7 +77,11 @@ geldige uitkomst), en Claude meldt het.
   auditregel. Dat geldt voor de aankopen van Sourcing (ook de let-through en de record-pull), de refunds van Support en
   de sweep van Treasury; de agent ziet het als feit in zijn situatie. In dry-179 veegde Treasury 0,45 uit zijn eigen
   mandaat terwijl P-0002 wachtte, en daarna weigerde de uitvoering ("spent moved"). De hold vervalt zodra de replace is
-  uitgevoerd, afgewezen, vervangen, verlopen of mislukt (ook "approved, but execution stopped").
+  uitgevoerd, afgewezen, vervangen, verlopen of mislukt. Weigert de uitvoering een goedgekeurde replace ("approved, but
+  execution stopped", bijv. "spent moved … a new one is needed"), dan sluit code hem met de reden in het grootboek
+  (`NEEDS_REAPPROVAL`, `proposal.needs_reapproval`), samen met de andere optie van dezelfde wijziging die om dezelfde
+  reden nooit meer kan draaien. Treasury wordt gewekt en ziet het als feit, en kan een nieuwe replace voorstellen vanaf
+  wat nu is uitgegeven; Watch en het dashboard tonen de reden.
 - Een agent kiest geen sleutel, URL of ontvanger. Geld beweegt alleen binnen het mandaat, of na Face ID van Max op de
   exacte voorwaarden.
 - Code controleert elke tool-call en geeft de reden terug als hij weigert. Dat staat in de trace.

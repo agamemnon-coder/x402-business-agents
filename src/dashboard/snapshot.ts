@@ -758,8 +758,11 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "proposal.executing": return out(`Running ${s}, after checking its terms are exactly what was approved`);
     case "proposal.executed": return out(`${s} executed`, "ok");
     case "proposal.failed": return out(`${s} failed: ${str(p.error) || "see the ledger"}`, "refusal");
-    case "proposal.needs_reapproval": return out(`${s} needs a new approval: ${str(p.error)}`, "refusal");
-    case "proposal.execution_stopped": return out(`${s} was approved, but its execution stopped before any step: ${str(p.error) || "see the ledger"}`, "refusal");
+    case "proposal.needs_reapproval":
+      // dry-179: a replace its executor's guard refused (or another option of it the same facts refuse) is closed.
+      if (str(p.sibling_of)) return out(`${s} is closed: ${str(p.error)}. A new proposal is needed`, "refusal");
+      if (str(p.stopped)) return out(`${s} was approved, but code did not run it: ${str(p.error)}. It is closed; a new proposal is needed`, "refusal");
+      return out(`${s} needs a new approval: ${str(p.error)}`, "refusal");
     // dry-179: an agent's tool that would spend from a mandate a replace is about to change waits for it.
     case "spend.held": return out(`${capFirst(agentWho(s))}'s ${str(p.path) === "sweep_earnings" ? "sweep" : str(p.path) === "settle_dispute" ? "dispute settlement (its refunds)" : str(p.path)} waits: ${refusalWords(str(p.reason))}`, "refusal");
     case "proposal.superseded": return out(`${s} closed: another option (${str(p.by)}) was approved`);

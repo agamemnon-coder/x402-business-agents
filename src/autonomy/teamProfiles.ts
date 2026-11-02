@@ -100,6 +100,24 @@ function refusedPayouts(db: DB): string[] {
   return rows.map((r) => `Payout of invoice ${r.invoice_no} (${r.currency} ${r.amount}) ${r.failure_type === "closed_unsent" ? "closed by the CFO as never sent" : `refused by Airwallex (${r.failure_type ?? "no code"})`} at ${r.updated_at.slice(11, 16)} UTC; nothing was paid and that payout is closed.`);
 }
 
+/**
+ * dry-179 (a): a mandate replace the executor's guard refused, as a fact for Treasury, until a newer replace is proposed.
+ * Before, the ledger had no row of it and Treasury read "no refusal of it", so it never planned a new one and Sourcing
+ * turned customers away to the end of the run.
+ */
+export function stoppedReplaceFacts(db: DB): string[] {
+  const row = db.prepare(`SELECT a.subject AS id, a.payload_json, a.ts FROM audit_log a JOIN proposals p ON p.proposal_id = a.subject
+    WHERE a.event = 'proposal.needs_reapproval' AND p.kind = 'mandate_replace' AND json_extract(a.payload_json, '$.stopped') IS NOT NULL ORDER BY a.seq DESC LIMIT 1`).get() as { id: string; payload_json: string; ts: string } | undefined;
+  if (!row) return [];
+  const siblings = (db.prepare("SELECT subject FROM audit_log WHERE event = 'proposal.needs_reapproval' AND json_extract(payload_json, '$.sibling_of') = ? ORDER BY seq").all(row.id) as { subject: string }[]).map((r) => r.subject);
+  // Old news once a replace was proposed after it stopped, whatever became of that one.
+  if ((db.prepare("SELECT proposal_id FROM proposals WHERE kind = 'mandate_replace' AND created_at >= ?").all(row.ts) as { proposal_id: string }[]).some((x) => x.proposal_id !== row.id && !siblings.includes(x.proposal_id))) return [];
+  const p = JSON.parse(row.payload_json) as { error?: string };
+  const lines = [`Mandate replace ${row.id} was approved, but code did not run it: ${p.error ?? "see the ledger"}. It is closed;${siblings.length ? ` ${siblings.join(" and ")}, another option of the same change, ${siblings.length > 1 ? "are" : "is"} closed with it.` : " it can never be approved or run again."}`.replace(/;\s*$/, ".")];
+  if (!waiting(db, "mandate_replace").length) lines.push("No mandate replace waits for the CFO now: if an agent is still blocked by its mandate, a new rebalance (design_rebalance) is needed; code plans it from the spend as it is now.");
+  return lines;
+}
+
 const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'PENDING_APPROVAL' AND expires_at > ?").all(kind, new Date().toISOString()) as { proposal_id: string }[];
 const lastFrom = (db: DB, from: string) => (db.prepare("SELECT text FROM agent_messages WHERE from_agent = ? AND to_agent = 'treasury' ORDER BY id DESC LIMIT 1").get(from) as { text: string } | undefined)?.text;
 
@@ -182,6 +200,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
       // dry-179: the hold as a fact, so the agent does not try sweep_earnings into it.
       ...(((f) => (f ? [`${f} That includes sweep_earnings.`] : []))(replaceHoldFact(db, "treasury"))),
+      ...stoppedReplaceFacts(db),
       ...invoiceFacts(db, new Date(), invoiceOf(plannedText())).lines,
       ...refusedPayouts(db),
     ].join("\n");

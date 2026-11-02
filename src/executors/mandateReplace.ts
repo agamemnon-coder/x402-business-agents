@@ -10,7 +10,7 @@ import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { publicClient } from "../metal/chain.js";
 import { activeMandate, credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
-import { beginExecution, finishExecution, resuming } from "../policy/approvals.js";
+import { beginExecution, closeAsStale, finishExecution, resuming } from "../policy/approvals.js";
 import { setSetting } from "../world/settings.js";
 import { checkCarried } from "../policy/pause.js";
 import type { MandateReplaceTerms } from "../agents/treasury.js";
@@ -24,9 +24,6 @@ function byHash(agent: MandateAgent, hash: string) {
   throw new Error(`${agent}: no credential file with hash ${hash}`);
 }
 
-/** The audit event of a replace whose execution guard refused it (its proposal stays APPROVED, or EXECUTING on a resume). */
-export const EXECUTION_STOPPED = "proposal.execution_stopped";
-
 export async function executeMandateReplace(db: DB, proposalId: string, now = new Date()): Promise<void> {
   // A chain read that fails (a network blip) throws here with nothing recorded: the replace can still run.
   const facts = await chainFacts(db, proposalId);
@@ -34,18 +31,44 @@ export async function executeMandateReplace(db: DB, proposalId: string, now = ne
   try {
     terms = guard(db, proposalId, facts, now);
   } catch (err) {
-    // The guard refused it (dry-179: "spent moved … a new one is needed"). Its transaction rolled back, so the proposal
-    // is still APPROVED until it expires (or still EXECUTING, on a restart's resume). Recorded, so the hold on the
-    // agents' spending (src/policy/replaceHold.ts) lifts now; a later attempt holds again. Not for a second call while
-    // another run is executing it (that run keeps the hold), nor for one not approved (the row follows its approval).
-    const status = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string } | undefined)?.status;
-    if (status === "APPROVED" || (status === "EXECUTING" && resuming.has(proposalId))) audit(db, "system", EXECUTION_STOPPED, proposalId, { error: (err as Error).message.slice(0, 300) });
+    if (err instanceof GuardRefusal) stopped(db, proposalId, facts, err.message);
     throw err;
   }
   await run(db, proposalId, terms);
 }
 
+/** The guard's own refusal of the terms against the chain as it is (as strict as ever); other errors are not this. */
+class GuardRefusal extends Error {}
+
+/**
+ * dry-179: the guard refused an approved replace ("spent moved … a new one is needed"). Its transaction rolled back, so
+ * before this the proposal stayed APPROVED with no row in the ledger, Treasury never learnt it failed, and its other
+ * option stayed waiting though it could never run either. Now: the replace is closed (NEEDS_REAPPROVAL, terminal) with
+ * the reason; each other replace still open that the same chain facts refuse is closed with it; Treasury is woken with
+ * the facts (it may plan a new one, from the spend as it is now); the hold on the agents' spending lifts
+ * (src/policy/replaceHold.ts). Not for a second call while another run executes it (that run goes on), nor for one not
+ * approved: closeAsStale closes only from approved or failed, or from executing on a restart's resume.
+ */
+function stopped(db: DB, proposalId: string, facts: Facts, reason: string): void {
+  const resume = resuming.has(proposalId);
+  if (!closeAsStale(db, proposalId, { error: reason, stopped: resume ? "on resume" : "before its first step" }, { resuming: resume })) return;
+  const closed: string[] = [];
+  const open = db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE kind = 'mandate_replace' AND status IN ('PENDING_APPROVAL', 'APPROVED', 'FAILED') AND proposal_id != ? ORDER BY proposal_id").all(proposalId) as { proposal_id: string; terms_json: string }[];
+  for (const o of open) {
+    const t = JSON.parse(o.terms_json) as MandateReplaceTerms;
+    // Only another option of the same change (it replaces a credential this one replaces), and only when the same
+    // facts refuse it too: one that could still run stays open for the CFO.
+    if (!t.steps.some((s) => facts.has(stepKey(s)))) continue;
+    let why: string | null = null;
+    try { preconditions(db, t, facts, true); } catch (e) { why = (e as Error).message; }
+    if (why && closeAsStale(db, o.proposal_id, { error: `${why} (found when ${proposalId}, another option of the same change, was run)`, sibling_of: proposalId })) closed.push(o.proposal_id);
+  }
+  if (autonomyOn()) publish(db, "mandate_replace.stopped", { proposal_id: proposalId, reason, closed }, "treasury", "system");
+}
+
 type Facts = Map<string, { activeHash: string; spentCents: number }>;
+/** A step's facts are keyed by the agent and the credential it replaces (the options of one change share them). */
+const stepKey = (s: { agent: string; replaces_credential_hash: string }) => `${s.agent}:${s.replaces_credential_hash.toLowerCase()}`;
 
 /** What the chain says now, for each step: the bound mandate and what it spent. */
 async function chainFacts(db: DB, proposalId: string): Promise<Facts> {
@@ -57,7 +80,7 @@ async function chainFacts(db: DB, proposalId: string): Promise<Facts> {
     const agent = step.agent as MandateAgent;
     const done = await isBound(byHash(agent, step.credential_hash));
     const active = await activeMandate(agent);
-    facts.set(step.order, {
+    facts.set(stepKey(step), {
       activeHash: active.credentialHash,
       spentCents: baseUnitsToCents((await readMandateState(publicClient(), active.principal, active.reference)).spent),
       ...(done ? { activeHash: step.replaces_credential_hash } : {}),
@@ -68,12 +91,22 @@ async function chainFacts(db: DB, proposalId: string): Promise<Facts> {
 
 /** The execution guard (beginExecution) against the chain facts: from here the proposal is EXECUTING. */
 function guard(db: DB, proposalId: string, facts: Facts, now: Date): MandateReplaceTerms {
-  return beginExecution<MandateReplaceTerms>(db, proposalId, (t) => {
+  return beginExecution<MandateReplaceTerms>(db, proposalId, (t) => preconditions(db, t, facts), now);
+}
+
+/**
+ * Block 6 and the chain: the terms still fit the chain as it is now; otherwise a GuardRefusal, with why. `onlyRead`:
+ * for another option of the same change, a step whose mandate was not read here proves nothing and is skipped.
+ */
+function preconditions(db: DB, t: MandateReplaceTerms, facts: Facts, onlyRead = false): void {
+  try {
     if (toCents(t.total_budget) > TOTAL_BUDGET_CENTS) throw new Error(`total ${t.total_budget} exceeds the limit`);
     // Block 6: the chain budgets were set for the spend carried at proposal; a resume since would make them wrong.
     checkCarried(db, t.steps);
     for (const step of t.steps) {
-      const f = facts.get(step.order)!;
+      const f = facts.get(stepKey(step));
+      if (!f && onlyRead) continue;
+      if (!f) throw new Error(`${step.agent}: the chain was not read for this step`);
       if (f.activeHash.toLowerCase() !== step.replaces_credential_hash.toLowerCase()) {
         throw new Error(`${step.agent}: the bound mandate is no longer the one this proposal replaces`);
       }
@@ -81,7 +114,9 @@ function guard(db: DB, proposalId: string, facts: Facts, now: Date): MandateRepl
         throw new Error(`${step.agent}: spent moved from ${step.spent_at_proposal} to ${fromCents(f.spentCents)} since the proposal; a new one is needed`);
       }
     }
-  }, now);
+  } catch (e) {
+    throw new GuardRefusal((e as Error).message);
+  }
 }
 
 /** The steps, in the approved order, each once (keyed); then the new price and the siblings superseded. */

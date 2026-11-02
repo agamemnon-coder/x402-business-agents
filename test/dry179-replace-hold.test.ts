@@ -243,15 +243,13 @@ describe("the agents' own tools and situation", () => {
 });
 
 describe("the feed says which check held it", () => {
-  it("a held sweep and a stopped replace read as such", async () => {
+  it("a held sweep reads as such", async () => {
     const { describe: feedLine } = await import("../src/dashboard/snapshot.js");
     const db = world();
     audit(db, "treasury", "spend.held", "treasury", { path: "sweep_earnings", reason: "replace_pending: mandate replace P-0002 pending; spending waits until it is executed or closed" });
-    audit(db, "system", "proposal.execution_stopped", "P-0002", { error: "treasury: spent moved from 0.00 to 0.45 since the proposal; a new one is needed" });
-    const rows = db.prepare("SELECT * FROM audit_log WHERE event IN ('spend.held', 'proposal.execution_stopped') ORDER BY seq").all() as never[];
+    const rows = db.prepare("SELECT * FROM audit_log WHERE event = 'spend.held' ORDER BY seq").all() as never[];
     expect(rows.map((r) => feedLine(r, () => undefined).text)).toEqual([
       "The Treasury agent's sweep waits: held while a mandate replace is open (mandate replace P-0002 pending; spending waits until it is executed or closed)",
-      "P-0002 was approved, but its execution stopped before any step: treasury: spent moved from 0.00 to 0.45 since the proposal; a new one is needed",
     ]);
   });
 });
