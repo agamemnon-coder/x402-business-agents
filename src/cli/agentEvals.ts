@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { claudeClient } from "../claude/reader.js";
 import { PRICES } from "../claude/pricing.js";
+import { budgetStatus, recordSpend } from "../claude/budget.js";
 import { AGENT_CASES, type AgentName } from "../evals/agentEvals.js";
 
 const args = process.argv.slice(2);
@@ -15,6 +16,8 @@ const ALL = { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5", opus: "cla
 const pick = args.includes("--models") ? args[args.indexOf("--models") + 1]!.split(",") as (keyof typeof ALL)[] : (["haiku", "sonnet", "opus"] as const);
 const client = claudeClient();
 if (!client) { console.error("KIT11_ANTHROPIC_API_KEY is not set"); process.exit(2); }
+const SPEND = resolve(import.meta.dirname, "../../docs/runs/api-budget.jsonl");
+if (budgetStatus(SPEND).blocks.evals.over) { console.error("the evals block of the API budget is spent (npm run budget)"); process.exit(2); }
 
 interface Row { case: string; agent: AgentName; kind: string; model: string; passed: number; runs: number; cost_usd_micros: number; median_ms: number; details: string[] }
 const rows: Row[] = [];
@@ -40,6 +43,7 @@ for (const c of AGENT_CASES.filter((x) => (onlyCases ? onlyCases.includes(x.id) 
     times.sort((a, b) => a - b);
     r.median_ms = times[Math.floor(times.length / 2)]!;
     rows.push(r);
+    if (r.cost_usd_micros > 0) recordSpend(SPEND, { block: "evals", usd_micros: r.cost_usd_micros, what: `agent-evals ${c.id} ${name} ×${runs}` });
     console.log(`${r.passed === runs ? "pass" : "FAIL"}  ${c.id.padEnd(24)} ${name.padEnd(7)} ${r.passed}/${runs}  ${(r.cost_usd_micros / 1e6).toFixed(4)} USD  ${(r.median_ms / 1000).toFixed(1)} s  ${r.details.at(-1)}`);
   }
 }

@@ -50,24 +50,32 @@ export interface SourcingWorld {
 export const SOFTWARE_PLANS = ["packwise-starter", "packwise-pro"] as const;
 export type SoftwarePlan = (typeof SOFTWARE_PLANS)[number];
 
+/** One supplier as the Sourcing agent sees it: code's price check of its free /v1/info and its last 20 tries. */
+export async function supplierView(db: DB, id: SupplierId, base = `http://127.0.0.1:${SUPPLIERS[id].port}`): Promise<SupplierView> {
+  const s = SUPPLIERS[id];
+  const stats = (db.prepare(`SELECT
+      SUM(outcome = 'PAID') AS paid, SUM(outcome = 'REFUSED' AND refusal_reason NOT LIKE 'supplier_unavailable%') AS refused, SUM(refusal_reason LIKE 'supplier_unavailable%') AS unavailable
+    FROM (SELECT outcome, refusal_reason FROM upstream_purchases WHERE supplier = ? ORDER BY id DESC LIMIT 20)`).get(id) as { paid: number | null; refused: number | null; unavailable: number | null });
+  let info: { price?: string; data_age_seconds?: number } | null;
+  try {
+    // A supplier that answers with an error (503 while it is offline for maintenance) is not reachable now.
+    const res = await fetch(`${base}/v1/info`, { signal: AbortSignal.timeout(5000) });
+    info = res.ok ? await res.json() as { price?: string; data_age_seconds?: number } : null;
+  } catch { info = null; }
+  return { id, name: s.name, price_cents: toCents(info?.price ?? supplierPrice(db, id)), data_age_seconds: info?.data_age_seconds ?? s.dataAgeSeconds, available: info !== null,
+    last20: { paid: stats.paid ?? 0, refused: stats.refused ?? 0, unavailable: stats.unavailable ?? 0 } };
+}
+
+/** The suppliers running in this world (Ridgeline Data only where it has a key), each as supplierView reads it. */
+export async function liveSuppliers(db: DB): Promise<SupplierView[]> {
+  const running: SupplierId[] = addresses(db).ridgeline ? ["stockline", "ridgeline"] : ["stockline"];
+  return Promise.all(running.map((id) => supplierView(db, id)));
+}
+
 /** The live world: the suppliers on localhost, the mandate from the chain, the price from the ledger. */
 export function liveSourcingWorld(db: DB): SourcingWorld {
-  const running = (): SupplierId[] => (addresses(db).ridgeline ? ["stockline", "ridgeline"] : ["stockline"]);
   return {
-    suppliers: async () => Promise.all(running().map(async (id) => {
-      const s = SUPPLIERS[id];
-      const stats = (db.prepare(`SELECT
-          SUM(outcome = 'PAID') AS paid, SUM(outcome = 'REFUSED' AND refusal_reason NOT LIKE 'supplier_unavailable%') AS refused, SUM(refusal_reason LIKE 'supplier_unavailable%') AS unavailable
-        FROM (SELECT outcome, refusal_reason FROM upstream_purchases WHERE supplier = ? ORDER BY id DESC LIMIT 20)`).get(id) as { paid: number | null; refused: number | null; unavailable: number | null });
-      let info: { price?: string; data_age_seconds?: number } | null;
-      try {
-        // A supplier that answers with an error (503 while it is offline for maintenance) is not reachable now.
-        const res = await fetch(`http://127.0.0.1:${s.port}/v1/info`, { signal: AbortSignal.timeout(5000) });
-        info = res.ok ? await res.json() as { price?: string; data_age_seconds?: number } : null;
-      } catch { info = null; }
-      return { id, name: s.name, price_cents: toCents(info?.price ?? supplierPrice(db, id)), data_age_seconds: info?.data_age_seconds ?? s.dataAgeSeconds, available: info !== null,
-        last20: { paid: stats.paid ?? 0, refused: stats.refused ?? 0, unavailable: stats.unavailable ?? 0 } };
-    })),
+    suppliers: async () => liveSuppliers(db),
     mandate: async () => { const m = (await mandatesNow(db)).get("sourcing")!.now; return { capCents: m.capCents, budgetLeftCents: m.budgetCents - m.spentCents }; },
     sellCents: () => toCents(sellPrice(db)),
     // The company card, where it was issued (npm run cards -- setup) and the sandbox keys are set.
