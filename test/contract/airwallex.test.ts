@@ -76,6 +76,28 @@ describe("contract: Airwallex authentication and the client", () => {
     expect(e).toMatchObject({ status: 400, code: "fee_unknown", path: "/transfers/create" });
   });
 
+  it("keeps Airwallex's trace id, request id and message, and the error body redacted, so the request can be shown to Airwallex (agent run 1, 2 Nov)", async () => {
+    const body = { code: "fee_unknown", message: "There is a problem with your transfer fee configuration. Please contact your Account Manager.", source: "transfer", details: { token: "tok-secret", client_id: "cid" } };
+    const { api } = http({ ...LOGIN, "POST /transfers/create": { status: 400, body, headers: { "x-b3-traceid": "6f1c2a9e4b7d3c10", "x-request-id": "awx-req-77" } } });
+    const e = await api.call("POST", "/transfers/create", { request_id: "r" }).catch((x: unknown) => x) as AirwallexError;
+    expect(e).toBeInstanceOf(AirwallexError);
+    expect(e).toMatchObject({ status: 400, code: "fee_unknown", traceId: "6f1c2a9e4b7d3c10", awxRequestId: "awx-req-77", awxMessage: body.message });
+    // Never a key or token, not even one Airwallex echoes back in its error.
+    expect(JSON.stringify(e.body)).not.toMatch(/tok-secret|"cid"/);
+    expect(e.body).toMatchObject({ code: "fee_unknown", message: body.message, details: { token: "[redacted]", client_id: "[redacted]" } });
+    // The message a person reads (proposal.failed) names the code, the trace id and Airwallex's own words.
+    expect(e.message).toContain("fee_unknown");
+    expect(e.message).toContain("6f1c2a9e4b7d3c10");
+    expect(e.message).toContain("transfer fee configuration");
+  });
+
+  it("drops a trace header that is not a plain id (nothing from a header is written to a log as it came)", async () => {
+    const { api } = http({ ...LOGIN, "POST /transfers/create": { status: 400, body: { code: "fee_unknown", message: "m" }, headers: { "x-b3-traceid": "abc def<script>", "request-id": "r-1" } } });
+    const e = await api.call("POST", "/transfers/create", { request_id: "r" }).catch((x: unknown) => x) as AirwallexError;
+    expect(e.traceId).toBeNull();
+    expect(e.awxRequestId).toBe("r-1");
+  });
+
   it("refreshes the token once on a 401, then reports 401 Insufficient permissions as an error [RUN-CARDS]", async () => {
     const denied = { status: 401, body: { code: "unauthorized", message: "Insufficient permissions for subscribing to conversion.overdue" } };
     const { api, calls } = http({ ...LOGIN, "POST /webhooks/create": [denied, denied] });
@@ -245,12 +267,15 @@ const awxError = (status: number, code: string, path: string, extra: Record<stri
 type Hook = "currentRate" | "createQuote" | "createConversion" | "createTransfer";
 /** The in-memory rail, made to answer one call with Airwallex's documented error (as the real client throws it). */
 class ErringAirwallex extends FakeAirwallex {
-  fail: Partial<Record<Hook, Error>> = {};
+  /** One error answers the next call; a list answers that many calls, one each, in order. */
+  fail: Partial<Record<Hook, Error | Error[]>> = {};
   /** Hide transfers from the list for this many look-ups (the list lags behind a create). */
   listLag = 0;
   private take(k: Hook): void {
-    const e = this.fail[k];
-    if (e) { delete this.fail[k]; this.calls.push(`${k}:refused`); throw e; }
+    const f = this.fail[k];
+    const e = Array.isArray(f) ? f.shift() : f;
+    if (!Array.isArray(f) || f.length === 0) delete this.fail[k];
+    if (e) { this.calls.push(`${k}:refused`); throw e; }
   }
   override async currentRate(a: Parameters<FakeAirwallex["currentRate"]>[0]): Promise<MarketRate> { this.take("currentRate"); return super.currentRate(a); }
   override async createQuote(a: Parameters<FakeAirwallex["createQuote"]>[0]): Promise<Quote> { this.take("createQuote"); return super.createQuote(a); }
@@ -371,6 +396,19 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
       expect(JSON.parse(refused!.payload_json)).toMatchObject({ code, amount: "EUR 1850.00" });
     });
   }
+
+  it("the refusal row and proposal.failed carry the code, Airwallex's trace id and its message (agent run 1: we kept neither)", async () => {
+    const { db, awx } = await world();
+    const out = await approved(db, awx);
+    const msg = "There is a problem with your transfer fee configuration. Please contact your Account Manager.";
+    const refusal = () => new AirwallexError(400, "fee_unknown", { code: "fee_unknown", message: msg, source: "transfer" }, "/transfers/create", { traceId: "6f1c2a9e4b7d3c10", requestId: "awx-req-77" });
+    awx.fail.createTransfer = [1, 2, 3, 4, 5, 6].map(refusal);
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "fee_unknown" });
+    const payload = (event: string) => JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = ? ORDER BY seq DESC").get(event) as { payload_json: string }).payload_json) as Record<string, unknown>;
+    expect(payload("transfer.refused")).toMatchObject({ code: "fee_unknown", trace_id: "6f1c2a9e4b7d3c10", awx_request_id: "awx-req-77", message: msg });
+    expect(payload("proposal.failed")).toMatchObject({ code: "fee_unknown", trace_id: "6f1c2a9e4b7d3c10", awx_request_id: "awx-req-77", awx_message: msg });
+    expect(String(payload("proposal.failed").error)).toContain("6f1c2a9e4b7d3c10");
+  });
 
   it("a lost answer, then duplicate_request_id on the resend: the existing transfer is adopted, paid exactly once [TERR]", async () => {
     const { db, awx } = await world();

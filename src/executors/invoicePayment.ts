@@ -105,7 +105,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     finishExecution(db, proposalId, final.status === "PAID" ? "EXECUTED" : "FAILED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
     return { conversionId, transfer: final };
   } catch (err) {
-    finishExecution(db, proposalId, err instanceof AirwallexError && err.code === "expired_quote" ? "NEEDS_REAPPROVAL" : "FAILED", { error: (err as Error).message });
+    finishExecution(db, proposalId, err instanceof AirwallexError && err.code === "expired_quote" ? "NEEDS_REAPPROVAL" : "FAILED", { error: (err as Error).message, ...awxFacts(err) });
     throw err;
   }
 }
@@ -148,7 +148,10 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
         const closed = db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
           .run(err.code, `refused by Airwallex at create: ${err.code}`, at, t.transfer_request_id);
         if (closed.changes !== 1) return;
-        audit(db, "awx-executor", "transfer.refused", t.transfer_request_id, { code: err.code ?? null, status: err.status, request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, approval_sha256: sha });
+        audit(db, "awx-executor", "transfer.refused", t.transfer_request_id, {
+          code: err.code ?? null, status: err.status, request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, approval_sha256: sha,
+          trace_id: err.traceId, awx_request_id: err.awxRequestId, message: err.awxMessage,
+        });
       }).immediate();
       throw err;
     }
@@ -164,6 +167,12 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ?").run(tr.id, tr.status, new Date().toISOString(), t.transfer_request_id);
   audit(db, "awx-executor", adopted ? "transfer.adopted" : "transfer.created", tr.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha });
   return tr;
+}
+
+/** What Airwallex said, for the audit and the CFO: its code, trace and request ids, and its own words (none on our side). */
+function awxFacts(err: unknown): { code: string | null; trace_id: string | null; awx_request_id: string | null; awx_message: string | null } | Record<string, never> {
+  const e = err instanceof AirwallexError ? err : err instanceof AirwallexAmbiguous && err.cause instanceof AirwallexError ? err.cause : null;
+  return e ? { code: e.code ?? null, trace_id: e.traceId, awx_request_id: e.awxRequestId, awx_message: e.awxMessage } : {};
 }
 
 const req = (t: InvoicePaymentTerms, sha: string): NewTransfer => ({

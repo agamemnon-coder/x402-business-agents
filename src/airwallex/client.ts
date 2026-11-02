@@ -17,14 +17,45 @@ export interface AirwallexConfig {
   timeoutMs?: number;
 }
 
+/** What Airwallex needs to find one request in its own logs: the response's trace and request ids. */
+export interface AirwallexTrace {
+  traceId?: string | null;
+  requestId?: string | null;
+}
+
+/** A header value kept only when it is a plain id: nothing from a header goes into a log as it came. */
+const plainId = (v: string | null | undefined): string | null => (v && /^[A-Za-z0-9._:-]{1,128}$/.test(v) ? v : null);
+
+/** The trace headers of an Airwallex answer (x-b3-traceid; x-request-id or request-id), if present. */
+export function traceOf(headers: Headers): AirwallexTrace {
+  return { traceId: plainId(headers.get("x-b3-traceid")), requestId: plainId(headers.get("x-request-id") ?? headers.get("request-id")) };
+}
+
 export class AirwallexError extends Error {
+  /** The error body, redacted (never a key or token, even one Airwallex echoes back). */
+  readonly body: unknown;
+  /** Airwallex's x-b3-traceid for this answer, so the request can be shown to Airwallex (agent run 1, 2 November). */
+  readonly traceId: string | null;
+  /** Airwallex's request id header for this answer (not our request_id), if it sent one. */
+  readonly awxRequestId: string | null;
+  /** Airwallex's own words for the error (the body's message), at most 300 characters. */
+  readonly awxMessage: string | null;
+
   constructor(
     readonly status: number,
     readonly code: string | undefined,
-    readonly body: unknown,
+    body: unknown,
     readonly path: string,
+    trace: AirwallexTrace = {},
   ) {
-    super(`Airwallex ${path} -> ${status}${code ? ` ${code}` : ""}`);
+    const message = (body as { message?: unknown } | null)?.message;
+    const awxMessage = typeof message === "string" && message.trim() ? message.trim().slice(0, 300) : null;
+    const traceId = plainId(trace.traceId);
+    super(`Airwallex ${path} -> ${status}${code ? ` ${code}` : ""}${awxMessage ? `: ${awxMessage}` : ""}${traceId ? ` (trace ${traceId})` : ""}`);
+    this.body = redact(body);
+    this.traceId = traceId;
+    this.awxRequestId = plainId(trace.requestId);
+    this.awxMessage = awxMessage;
   }
 }
 
@@ -85,7 +116,7 @@ export class Airwallex {
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     const body = (await res.json().catch(() => ({}))) as { token?: string; code?: string };
-    if (!res.ok || !body.token) throw new AirwallexError(res.status, body.code, redact(body), "/authentication/login");
+    if (!res.ok || !body.token) throw new AirwallexError(res.status, body.code, body, "/authentication/login", traceOf(res.headers));
     this.token = { value: body.token, expiresAt: this.now() + TOKEN_LIFETIME_MS };
     return body.token;
   }
@@ -125,10 +156,10 @@ export class Airwallex {
           continue;
         }
         const json = (await res.json().catch(() => null)) as unknown;
-        if (res.status >= 500 && method === "POST") throw new AirwallexAmbiguous(path, new AirwallexError(res.status, undefined, json, path));
+        if (res.status >= 500 && method === "POST") throw new AirwallexAmbiguous(path, new AirwallexError(res.status, undefined, json, path, traceOf(res.headers)));
         if (!res.ok) {
           const code = (json as { code?: string } | null)?.code;
-          throw new AirwallexError(res.status, code, json, path);
+          throw new AirwallexError(res.status, code, json, path, traceOf(res.headers));
         }
         return json as T;
       }
