@@ -4,7 +4,7 @@
 // src/redesign/run.ts tapRun); the claim is Max's text word for word (VISA_CLAIM). No script; no Visa logo.
 
 import { readFileSync } from "node:fs";
-import { VISA_CLAIM } from "../config/brand.js";
+import { VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
 import { family, tapRun } from "../redesign/run.js";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -43,6 +43,7 @@ h2.gap { margin-top: 28px; }
   <h1>An agent signs before it pays</h1>
   <p class="lead">Before the Sourcing agent pays a merchant by card, it signs its checkout with Visa's Trusted Agent Protocol. Visa's public TAP reference verifier checks that signature; our own layer checks the body, the tag and the payment. Only then does the agent's own Airwallex Visa card pay, inside the limit the CFO set.</p>
   <p class="label">${esc(VISA_CLAIM)}</p>
+  <p class="label">${esc(VISA_AWARD_STATUS)}</p>
   <div class="flow">
     <div><b>1. The agent signs</b><span>A TAP signature over the checkout request, with a fresh nonce and a short window; our second signature covers the body.</span></div>
     <div><b>2. The verifier accepts it</b><span>Visa's reference proxy, unchanged at commit ${esc(run?.commit ?? "16d59bd")}, verifies the TAP signature; our layer checks the rest.</span></div>

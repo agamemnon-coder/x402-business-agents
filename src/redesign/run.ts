@@ -82,7 +82,21 @@ const SHORT_EUR = (a: string) => `€${a.replace(/\.00$/, "")}`;
 export function loadRecord(): { file: string; standIn: boolean; record: RunRecord } {
   const own = existsSync(new URL(`../../${AGENT_RUN_FILE}`, import.meta.url));
   const file = own ? AGENT_RUN_FILE : STAND_IN_FILE;
-  return { file, standIn: !own, record: readJson<RunRecord>(file) };
+  const record = readJson<RunRecord>(file);
+  if (own && existsSync(new URL(`../../${AGENT_RUN_NOTES}`, import.meta.url))) applyNotes(record, readJson<RunNotes>(AGENT_RUN_NOTES));
+  return { file, standIn: !own, record };
+}
+
+/** Facts about agent run 1 its ledger does not hold (who started the licence payment), each with its source. */
+export const AGENT_RUN_NOTES = "docs/demo/agent-run-notes.json";
+interface RunNotes { flows: { transfer_id: string; decided: string; source: string }[] }
+function applyNotes(r: RunRecord, n: RunNotes): void {
+  for (const note of n.flows) {
+    for (const f of r.snapshot.flows) {
+      const full = (f as { proof?: { full?: string } }).proof?.full;
+      if (full === note.transfer_id) { f.decided = note.decided; f.what = `${f.what}: ${note.decided}`; }
+    }
+  }
 }
 
 /** The run's short name: "agent run 1 (rehearsal), 2 Nov" → "agent run 1"; a dry run keeps its name up to the colon. */

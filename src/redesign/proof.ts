@@ -4,7 +4,7 @@
 // health and the archive. Every figure from a named record; nothing typed in by hand.
 
 import { readFileSync } from "node:fs";
-import { SECOND_APPROVER, VISA_CLAIM } from "../config/brand.js";
+import { SECOND_APPROVER, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
 import { tileHtml } from "./home.js";
 import { agentRun, family, runName, tapRun, type AgentRun, type Ev, type RunRecord } from "./run.js";
 import { esc, icon, page } from "./ui.js";
@@ -98,7 +98,7 @@ function partnerCards(run: AgentRun): string {
   return `<div class="partners">
 ${card("metal", '<span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>', "Metal", "Each agent's limits are a mandate on chain; payments per query over x402; refusals recorded on chain.", "A limit the agent cannot talk past: Metal checks every payment against the mandate.", run.label, metal, "metal")}
 ${card("airwallex", '<span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>', "Airwallex", "A company card per agent with its limits on the card; FX; SWIFT; earnings booked once final.", "The bank enforces each card's limits itself: over a limit, Airwallex declines, whatever the agent does.", run.label, awx, "airwallex")}
-${tap ? card("visa", '<span class="logo txt">Visa TAP</span>', "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex Visa card pays.", "The merchant knows which agent is paying, and the card's limits still hold.", tap.label, visa, "visa", `<p class="claim">${esc(VISA_CLAIM)}</p>`) : ""}
+${tap ? card("visa", '<span class="logo txt">Visa TAP</span>', "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex Visa card pays.", "The merchant knows which agent is paying, and the card's limits still hold.", tap.label, visa, "visa", `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`) : ""}
 ${card("claude", '<span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>', "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, "The world changes in words; Claude reads it and decides inside the limits, and says why.", run.label, claude, "claude")}
 </div>`;
 }
@@ -132,7 +132,7 @@ function moreCards(run: AgentRun): string {
 ${box("stops", "Who stopped what", `At a limit: Metal and the CFO in ${runName(r)}; Airwallex at the card's limit in the TAP run. The licence's fee_unknown is not a limit and is not counted.`, fold("Show each one", stopItems, false))}
 ${box("faceid", "Face ID decisions", `${faces.length} decisions signed on the CFO's phone. ${SECOND_APPROVER}`, fold("Show each one", faceItems))}
 ${box("dispute", "Dispute desk", `${checked} disputed · ${checked - refunded} proven valid · ${refunded} wrong data, refunded (${runName(r)}).`, "", ["Watch the dispute", "watch?scene=2"])}
-${box("variation", "Variation test: real choices", `${v.summary.by_claude} of ${v.summary.runs} decided by Claude, ${v.summary.unsafe} unsafe, ${v.summary.distinct_choices_same_world} different choices in the same world (stand-in rails, Haiku, ${d(v.ran_at)}).`, sw ? fold(`Another world, Ridgeline online: ${runName(dry)}`, [li(sw.text, "ok", null, `${runName(dry)}, ${d(dry.recorded_at)}: the Sourcing agent switched supplier instead`)]) : "")}
+${box("variation", "Variation test: real choices", `${v.summary.by_claude} of ${v.summary.runs} decided by Claude, ${v.summary.distinct_choices_same_world} different choices in the same world (${d(v.ran_at)}). Safety count under review: one action in the 2 November batch is being checked.`, sw ? fold(`Another world, Ridgeline online: ${runName(dry)}`, [li(sw.text, "ok", null, `${runName(dry)}, ${d(dry.recorded_at)}: the Sourcing agent switched supplier instead`)]) : "")}
 ${box("redteam", "Red team", `${red.blocked} of ${red.attempts} attacks failed (${d(red.ran_at)}, test world${red.caught_after ? `; ${red.caught_after} found afterwards, not prevented` : ""}). Against the agent loop: ${rt.summary.held} of ${rt.summary.runs} held (${d(rt.ran_at)}).`, "")}
 ${box("health", "System health", `${s.audit.rows} audit rows in ${runName(r)}, hash chain ${s.audit.intact ? "intact" : "broken"}.`, "")}
 ${box("dashboard", "The CFO dashboard of the run", "As the CFO saw it at the end of the run, with Books and the agents' limits.", "", ["Open the dashboard", "./?autonomy"])}
