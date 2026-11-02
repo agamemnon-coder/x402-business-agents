@@ -1,0 +1,138 @@
+(node:18040) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+=== 0 Health
+  ok    metal chain id: 63825
+  ok    metal finality: head 13302755, finalized 13302755
+  ok    x402 facilitator: ready
+  ok    airwallex sandbox: AED 0, ARS 0, AUD 0, BDT 0, BHD 0, BOB 0, BRL 0, CAD 0, CHF 0, CLP 0, CNY 10000000, COP 0, CZK 0, DKK 0, EGP 0, EUR 9965163.1, GBP 10000960.5, HKD 0, HRK 0, HUF 0, IDR 0, ILS 0, INR 0, JPY 0, KRW 0, LKR 0, MAD 0, MXN 0, MYR 0, NOK 0, NPR 0, NZD 0, PEN 0, PHP 0, PKR 0, PLN 0, RON 0, SAR 0, SEK 0, SGD 0, THB 0, TRY 0, USD 9995948.69, UYU 0, VND 0, ZAR 0
+  ok    claude api key: set
+
+=== Runner (local relay, real executors)
+
+=== Enrol: test-cfo and test-controller, each on their own phone
+ok    enrol test-cfo: the phone's fingerprint E439-CC35-8959-34A3 waits on the runner
+ok    enrol test-controller: the phone's fingerprint 3942-BE5B-1516-F0FC waits on the runner
+ok    two active passkeys, two people
+  P-0001 policy change, hash 17f4a8d9, expires 2026-11-02T17:20:19Z; approve on the phone (/approve/P-0001) or the laptop page
+ok    the four-eyes policy waits as a proposal
+ok    the CFO approved the four-eyes policy (Done)
+ok    four eyes is on above EUR 1,000 before any mandate change
+
+=== S0 Bootstrap
+  business account 0xA30F43bf22319FA54A5B2a6205130F273842a344 (created https://testnet.metalntwx.com/tx/0x8ba5c3429d639af566bcb70dc03505dc03c627e8df0ed733e9a68bcbb5045a6f)
+  customer account 0xFedC4F28e830D05F538BAA1Cb6eef722e5b68E7A (created https://testnet.metalntwx.com/tx/0x21a28b7ad85c1c4ce1abdadd9147ed75903cb48b3f0a36e8adde3b491e45c10b)
+  supplier address 0x2B1EF603A35FB08066d476F466d2A10336C2f097
+  sweep address 0xD745F4d5C2766fc67979BEb812dE984ACF23AB78
+    faucet asks us to wait; retrying in 65 s
+  funded customer account from the faucet
+  moved 20.00 *USDZ owner -> business: https://testnet.metalntwx.com/tx/0x0070b4e6767dffc999f1687cee113373851131a238958b0f4d7f02a51baae24e
+  business account holds 20.00 *USDZ
+  ridgeline address 0x5130c23C0264095fE3d24798Ee2A77EABcfc8576
+  sourcing mandate bound: https://testnet.metalntwx.com/tx/0x0653b0f82bd26d6fa14a9480ae96190263a38a8c40952b356b7739529462b240
+  support mandate bound: https://testnet.metalntwx.com/tx/0xa7e9ac5f4b3bb2ec22d99d07711ad0c49a8352f0c00ae511f12a2d1f1c633eb3
+  treasury mandate bound: https://testnet.metalntwx.com/tx/0xd10491f471fc2c7696ac8296c17430292404628264ab92a02be0ff4e58dc0bd7
+  customer mandate bound: https://testnet.metalntwx.com/tx/0x27c2f1b61d88e3ff384843394e0e8994c109f8754156dfdc46a7fa80700be3af
+  bootstrap done
+
+=== A0 Cards: each agent its company card at Airwallex
+  sourcing  Visa •••• 8337  30.00 EUR per purchase, 100.00 EUR per month, spent 0.00 this month  (sourcing agent: warehouse and data software (42a344))
+  support   Visa •••• 8027  60.00 EUR per purchase, 150.00 EUR per month, spent 0.00 this month  (support agent: helpdesk software (42a344))
+  treasury  Visa •••• 6334  25.00 EUR per purchase, 50.00 EUR per month, spent 0.00 this month  (treasury agent: bookkeeping (42a344))
+SEED 21: Stockline to 0.06, Ridgeline 0.02, deposit exact; not mapped: a third supplier, Northgate Stock (live: none); Ridgeline's data age and outages (live: 15 min, every 6th try); the dispute (false; live: Summit's fixture email, #5 to #16); no card decline (live: the 45.00 Packwise renewal meets the 30.00 card)
+
+=== A1 The shop runs: customer queries every 15 s, Sourcing's buy policy applies
+ok    3 sales so far
+  Ridgeline Data now asks 0.02 a stock check
+Ridgeline Data now asks 0.02 a stock check
+
+=== A2 World: Stockline raises its price to 0.06 (the Sourcing agent decides what to do)
+  Stockline now asks 0.06 a stock check; its notice reached the Sourcing agent
+SOURCING DECIDED (claude): Stockline raised its price to 0.06 per check, above our 0.05 sale price and 0.03 mandate cap, so I paused purchases: policy set to supplier none with a 60 s cache, meaning customers get cached checks up to 60 s old and uncached queries are refused without charge. Ridgeline (0.02, but 15-min-old data) was not used since that data is too stale to sell as fresh. No spend made; budget stays at 9.98 and I informed Treasury.
+ok    the Sourcing agent decided itself (not code's fallback)
+TREASURY TIMING: options 33 s after the third customer was turned away
+TREASURY DECIDED (claude): No rebalance yet. Stockline's 0.06 price is above our 0.05 query price, but Ridgeline at 0.02 fits sourcing's 0.03 cap with margin. No customer has been turned away and code shows no agent blocked. I told Sourcing to use Ridgeline where 15-minute-old data is good enough, and to report any turned-away customers so I can design a rebalance. I didn't sweep the 0.18 because it's too small to be worth it now.
+ok    the CFO and the controller approved option B (P-0003), as the Treasury agent recommended
+ok    no upstream purchase above the cap in force (0.06)
+
+=== A3 World: Summit Outfitters disputes 12 orders (the Support agent decides)
+ok    the shop ran past #16 before the dispute (8 sales delivered)
+  not yet: Summit's dispute names #5 to #16, and #6, #7, #8, #9, #10, #11, #12 were not delivered to Summit; the dispute waits
+FAIL  A3 World: Summit Outfitters disputes 12 orders (the Support agent decides): world.ts dispute exited 3
+
+=== A4 World: the licence invoice arrives (the Treasury agent decides when and how to pay)
+  Stockline Data's licence invoice reached the Treasury agent
+TREASURY DECIDED (claude): I planned Stockline's EUR 240.00 November licence invoice (SLL-2026-11, due 15 Nov) as P-0004. It pays by SWIFT with fees capped at EUR 20.00. No FX is needed because free euros cover it. P-0004 expires 17:37 UTC and needs the CFO's Face ID. I didn't sweep the 0.44 net earnings because it's still too small, and no agent is blocked.
+ok    the CFO approved the licence payment P-0004 (Approved)
+
+=== A4b World: Packwise charges its Pro renewal (EUR 45.00) to the Sourcing card; Airwallex decides, its webhook or poll tells the agent
+  Packwise charged its Pro renewal, 45.00 EUR, to the Sourcing agent's card ····8337: Airwallex declined it (LIMIT_EXCEEDED) (01a19d44-2f90-7000-842d-0fca03f466cb); its webhook or the runner's poll tells the agent
+Packwise charged its Pro renewal, 45.00 EUR, to the Sourcing agent's card ····8337: Airwallex declined it (LIMIT_EXCEEDED) (01a19d44-2f90-7000-842d-0fca03f466cb); its webhook or the runner's poll tells the agent
+ok    the decline came from Airwallex itself (Airwallex poll), not from an agent's own call
+SOURCING DECIDED (claude): No change. Query price is 0.08, Stockline sells fresh 5-second-old checks at 0.06 (0.02 margin, above the 0.01 minimum) within my 0.06 cap, and the policy stays at Stockline up to 0.06 with a 60 s cache. Ridgeline stays unused because its data is 15 minutes old. Budget left is 11.86. The Packwise card decline concerns software, not stock checks, so I'm not acting on it now.
+ok    the block 5.2 decline agent did not also act (the Sourcing agent decides)
+NO RAISE: the agent decided otherwise (its summary says why)
+
+=== A4c World: money in (the Treasury agent decides whether to sweep to Airwallex)
+  money in: 11 sales settled; net earnings 0.62 on the business account; the Treasury agent was told
+TREASURY DECIDED (claude): The day's sales settled, so I swept 0.70 of net earnings to Airwallex. That is 0.08 more than the 0.62 in event #9, from one more sale. The transfer reached finality and is booked as an Airwallex deposit, but that deposit is simulated: the sandbox can't receive stablecoins. The business account still holds 20.00, enough for the 15.86 the other mandates may still spend, and no agent is blocked, so no rebalance is needed.
+ok    the sweep sweep-20261102-1 of 0.70 is paid on chain (PAID)
+
+=== A4d World: a retailer pays its invoice into the Global Account at Airwallex (the Treasury agent hears the money in)
+  Alpenweg Sport AG paid 1240.00 EUR for NW-R-201 (1240.00 EUR) into Northwind's EUR Global Account: sandbox deposit 5e7583f9… PENDING
+  MATCHED        5e7583f9…  NW-R-201 from Alpenweg Sport AG paid in full, 1240.00 EUR
+  open: none; escalated to the CFO: 0
+Alpenweg Sport AG paid 1240.00 EUR for NW-R-201 (1240.00 EUR) into Northwind's EUR Global Account: sandbox deposit 5e7583f9… PENDING
+MATCHED        5e7583f9…  NW-R-201 from Alpenweg Sport AG paid in full, 1240.00 EUR
+
+open: none; escalated to the CFO: 0
+ok    money in at Airwallex, seen by its poll (MATCHED)
+TREASURY DECIDED (claude): I took no action. The 1240.00 EUR payment from Alpenweg Sport AG covers invoice NW-R-201 in full, and code has already matched it to that invoice. Nothing is in suspense, no invoices are open and nothing waits for the CFO. The 0.02 in net earnings is too small to sweep, and no agent is blocked, so no rebalance is needed.
+ok    the payment in full is not held as short
+
+=== A4e World: Ridgeline offers a one-off report, over x402 (Metal) or on a single-use Airwallex card (the Sourcing agent picks)
+  Ridgeline Data's offer reached the Sourcing agent: the demand report for 0.20 test USD over x402 or 15.00 EUR on a single-use card
+Ridgeline Data's offer reached the Sourcing agent: the demand report for 0.20 test USD over x402 or 15.00 EUR on a single-use card
+SOURCING DECIDED (claude): No change. Market is unchanged: Stockline sells 5-second-old checks at 0.06 (0.02 margin at the 0.08 query price), within my 0.06 cap, and the buy policy stays at Stockline up to 0.06 with a 60 s cache. Ridgeline stays unused because its data is 15 minutes old. I'm declining Ridgeline's November regional demand report (0.20 test USD or 15.00 EUR), since it doesn't help stock-check sales and would spend budget with no clear return. Budget left is 11.80 per the market view.
+ok    x402 over the cap was refused before anything was signed
+NO TASK CARD: the agent decided otherwise (its summary says why)
+
+=== A5 Invariants: verify, request ids, fallbacks under 10%
+  ok    audit log hash chain  221 rows, head 0fb1c8ea36a6f9404ca3a52e0c7ac62b7f1d70f39300d48498b4aa8f875b548b
+  ok    mandate sourcing.P-0002.credential.json
+  ok    mandate sourcing.credential.json
+  ok    mandate support.credential.json
+  ok    mandate treasury.P-0002.credential.json
+  ok    mandate treasury.credential.json
+  ok    mandate customer.credential.json
+  ok    pull sweep-20261102-1  0x3c85e84812… under treasury.P-0002.credential.json
+  ok    passkey approval P-0001  signed by test-cfo's passkey bbjqHeAj over 17f4a8d9…
+  ok    passkey approval P-0003  signed by test-cfo's passkey bbjqHeAj and test-controller's passkey RlUjMWFr over 6e0fc24f…
+  ok    passkey approval P-0004  signed by test-cfo's passkey bbjqHeAj over 961a9d52…
+  ok    approval methods  every approval since the passkey was enrolled was signed with it
+  ok    policy v1  22 rules, sha256 40fd91d2…, from 2026-11-02T17:10:19.644Z
+  ok    policy v2  22 rules, sha256 49be233b…, from 2026-11-02T17:12:44.206Z
+  ok    policy v3  24 rules, sha256 7f757058…, from 2026-11-02T17:17:04.360Z
+  ok    P-0001 approved  under policy v1 (sha256 40fd91d2…), policy_change
+  ok    P-0003 approved  under policy v2 (sha256 49be233b…), mandate_replace
+  ok    P-0004 approved  under policy v3 (sha256 7f757058…), invoice_payment
+  ok    finality certificates  22 transaction(s) in 22 block(s) with Metal's reported certificate: header hash and number, signer bitmap and a quorum of the 4 pinned validators hold; not checked: the BLS signature (it needs the validators' public keys, which Metal has not published for testnet), so this is what Metal's RPC reported
+  ok    deposit b7eeaa0b-c509-470d-947b-1841e98a4f81  USD 0.70, reference = tx 0x3c85e84812…, SETTLED
+  ok    P-0004 transfer 7c0722bf-852e-4a96-aeab-0994be13c15f  EUR 240.00 to Stockline Data GmbH, approval hash in metadata, PAID
+  ok    P-0004 fee  EUR 13.39, ceiling EUR 20.00
+  all checks pass
+ok    npm run verify passes (nothing paid twice, every approval by passkey)
+  ok    sourcing: cap, budget and spend match the chain
+  ok    support: cap, budget and spend match the chain
+  ok    treasury: cap, budget and spend match the chain
+  ok    customer: cap, budget and spend match the chain
+  the dashboard matches the chain for all 4 mandates
+ok    the dashboard's mandates match the chain (cap, budget, spend)
+ok    fallbacks 0 of 25 decisions (under 10%)
+ok    every Claude call has an API request id
+AGENT SUMMARY sourcing: 12 decisions, fallback 0%, 25 calls, 0.0075 USD
+AGENT SUMMARY support: 2 decisions, fallback 0%, 2 calls, 0.0048 USD
+AGENT SUMMARY treasury: 11 decisions, fallback 0%, 18 calls, 0.2346 USD
+ok    every money movement has its origin (36 movements, 0 without)
+ORIGINS 36 movements, 0 without an origin
+1 check(s) failed in the autonomy run

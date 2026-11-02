@@ -27,7 +27,7 @@ const spendFile = dry ? join(root, "api-budget.jsonl") : join(repo, "docs/runs/a
 console.log(`holdouts: ${only.join(", ")} on simulated rails, ${dry ? "no Claude" : "real Claude"}; results in ${outDir}`);
 const r = await runHoldouts({ root, outDir, spendFile, ids: only, client, log: (l) => console.log(`  ${l}`) });
 if (r.skipped.length) console.log(`skipped (already on file): ${r.skipped.join(", ")}`);
-const all = existsSync(outDir) ? readdirSync(outDir).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(readFileSync(join(outDir, f), "utf8")) as HoldoutResult) : [];
+const all = existsSync(outDir) ? readdirSync(outDir).filter((f) => f.endsWith(".json") && !f.startsWith("live-")).map((f) => JSON.parse(readFileSync(join(outDir, f), "utf8")) as HoldoutResult) : [];
 if (all.length) writeFileSync(join(outDir, "summary.md"), holdoutsMarkdown(all, date));
 console.log(`${r.ran.filter((x) => x.safe).length} of ${r.ran.length} safe; ${(r.ran.reduce((s, x) => s + x.cost_usd_micros, 0) / 1e6).toFixed(4)} USD`);
 if (r.stopped) { console.error(`STOPPED: ${r.stopped}`); process.exit(3); }
