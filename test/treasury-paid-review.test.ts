@@ -25,7 +25,7 @@ import { approvalOrigin } from "../src/executors/index.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
 import { createProposal, decide } from "../src/policy/approvals.js";
 import { withOrigin } from "../src/provenance/origin.js";
-import { TERMS_SCHEMA } from "../src/lib/terms.js";
+import { TERMS_SCHEMA, termsHash } from "../src/lib/terms.js";
 import { FakeAirwallex } from "../src/redteam/airwallex.js";
 
 const text = readFileSync(new URL("../fixtures/stockline-licence-SLL-2026-11.txt", import.meta.url), "utf8");
@@ -215,6 +215,41 @@ group("L7: two runs planning the same invoice at once", () => {
     expect(proposals(first)).toBe(1);
     first.close();
     second.close();
+  });
+
+  it("two different invoices planned at once across two connections: both filed, each under its own number, each terms hash its own", async () => {
+    const file = join(mkdtempSync(join(tmpdir(), "kit11-ids-")), "ledger.db");
+    const first = openDb(file);
+    const awx = new FakeAirwallex();
+    await seedTreasury(first, awx, awx);
+    const second = openDb(file);
+    const other = variant({ no: "SLL-2026-12" });
+    const [a, b] = await Promise.all([
+      proposeInvoicePayment(first, awx, parseInvoiceFallback(text), text),
+      proposeInvoicePayment(second, awx, parseInvoiceFallback(other), other),
+    ]);
+    if (a.kind !== "proposed" || b.kind !== "proposed") throw new Error(`${a.kind === "escalated" ? a.reason : ""} ${b.kind === "escalated" ? b.reason : ""}`);
+    expect(new Set([a.proposal.proposal_id, b.proposal.proposal_id])).toEqual(new Set(["P-0001", "P-0002"]));
+    for (const o of [a, b]) {
+      expect(o.terms.proposal_id).toBe(o.proposal.proposal_id);
+      expect(JSON.parse(o.proposal.terms_json)).toEqual(o.terms);
+      expect(o.proposal.terms_sha256).toBe(termsHash(o.terms));
+    }
+    first.close();
+    second.close();
+  });
+
+  it("a number counted before another process filed (stale): assignId takes the next free one inside the lock; without it the insert fails", async () => {
+    const { db } = await world();
+    const stale = { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: "P-0001", expires_at: "2099-01-01T00:00:00Z", invoice_no: "SLL-2026-11" };
+    // Another process files P-0001 between this run's count and its insert.
+    createProposal(db, { terms: { ...stale, invoice_no: "SLL-2026-12" } as never, createdBy: "treasury" });
+    expect(() => createProposal(db, { terms: stale as never, createdBy: "treasury" })).toThrow(/UNIQUE|PRIMARY KEY/);
+    const p = createProposal(db, { terms: stale as never, createdBy: "treasury", assignId: true });
+    expect(p.proposal_id).toBe("P-0002");
+    expect(JSON.parse(p.terms_json)).toMatchObject({ proposal_id: "P-0002", invoice_no: "SLL-2026-11" });
+    expect(p.terms_sha256).toBe(termsHash({ ...stale, proposal_id: "P-0002" } as never));
+    expect(db.prepare("SELECT subject FROM audit_log WHERE event = 'proposal.created' ORDER BY seq").all()).toEqual([{ subject: "P-0001" }, { subject: "P-0002" }]);
   });
 
   it("createProposal's guard runs inside the write: a refusal writes nothing, not even the audit row", async () => {

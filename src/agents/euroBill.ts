@@ -261,6 +261,8 @@ export async function proposeInvoicePayment(
       .run(quote.quoteId, "USD/EUR", fromCents(quote.buyAmountCents), fromCents(quote.sellAmountCents), quote.clientRate, quote.validFrom, quote.validTo);
   }
 
+  // A provisional number: createProposal takes the real one inside its write lock (assignId), and the terms returned
+  // carry it (another process may file a proposal between this count and that lock).
   const id = nextProposalId(db);
   const expires = proposalExpiry(now.getTime(), INVOICE_PROPOSAL_TTL_MS, quote ? Date.parse(quote.validTo) : undefined, QUOTE_SAFETY_MS);
   const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -282,14 +284,14 @@ export async function proposeInvoicePayment(
   // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.
   let proposal: ProposalRow;
   try {
-    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now) }, now);
+    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now), assignId: true }, now);
   } catch (e) {
     if (!(e instanceof ProposalRefused)) throw e;
     const reason = `${e.reason}; a second copy is not paid again (another plan was filed while this one was being prepared)`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, ...(quote ? { quote_id: quote.quoteId } : {}) }, now);
     return { kind: "escalated", reason };
   }
-  return { kind: "proposed", proposal, terms };
+  return { kind: "proposed", proposal, terms: { ...terms, proposal_id: proposal.proposal_id } };
 }
 
 /** The SWIFT fees Airwallex really charged, from the ledger (EUR only; a transfer without a recorded fee is skipped). */

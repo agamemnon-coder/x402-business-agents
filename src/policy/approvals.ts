@@ -66,26 +66,29 @@ export class ProposalRefused extends Error {
  */
 export function createProposal(
   db: DB,
-  args: { terms: Terms; createdBy: Actor; evidence?: Json; explanation?: string; guard?: (db: DB) => string | null },
+  args: { terms: Terms; createdBy: Actor; evidence?: Json; explanation?: string; guard?: (db: DB) => string | null; assignId?: boolean },
   now = new Date(),
 ): ProposalRow {
-  const sha = termsHash(args.terms);
   const origin = currentOrigin();
   return db.transaction(() => {
     // A caller's guard runs inside the write lock (BEGIN IMMEDIATE), so no other run can file between its check and the insert.
     const refused = args.guard?.(db) ?? null;
     if (refused) throw new ProposalRefused(refused);
+    // assignId: the number is taken inside the same lock, so two runs filing at once (two connections) never pick the
+    // same one (Opus re-review, 2 November); the terms, and so their hash, carry the number taken here.
+    const terms: Terms = args.assignId ? { ...args.terms, proposal_id: nextProposalId(db) } : args.terms;
+    const sha = termsHash(terms);
     const policy = policyVersion(db, now);
     db.prepare(
       `INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, evidence_json, explanation, status, expires_at, created_at, policy_version)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?, ?, ?)`,
     ).run(
-      args.terms.proposal_id, args.terms.kind, JSON.stringify(args.terms), sha, args.createdBy,
+      terms.proposal_id, terms.kind, JSON.stringify(terms), sha, args.createdBy,
       args.evidence === undefined ? null : JSON.stringify(args.evidence), args.explanation ?? null,
-      args.terms.expires_at, now.toISOString(), policy.version,
+      terms.expires_at, now.toISOString(), policy.version,
     );
-    audit(db, args.createdBy, "proposal.created", args.terms.proposal_id, { kind: args.terms.kind, terms_sha256: sha, policy_version: policy.version, origin: (origin as Json | null) ?? null }, now);
-    return get(db, args.terms.proposal_id);
+    audit(db, args.createdBy, "proposal.created", terms.proposal_id, { kind: terms.kind, terms_sha256: sha, policy_version: policy.version, origin: (origin as Json | null) ?? null }, now);
+    return get(db, terms.proposal_id);
   }).immediate();
 }
 
