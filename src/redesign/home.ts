@@ -140,7 +140,7 @@ ${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.p
 
 const sceneCard = (s: Scene) => `<a class="scene card" href="watch?scene=${s.n}"><div class="n"><b>${s.n}</b>${esc(s.title)}</div>${mini(s.mini)}<p>${esc(s.sentence)}</p><span class="go">Watch it happen ${icon("arrow-right", 15)}</span></a>`;
 
-export const tileHtml = (t: Tile) => `<a class="tile card" href="${esc(t.href)}"><span class="v">${esc(t.value)}</span><span class="l">${esc(t.label)}</span>${t.parts ? `<span class="parts">${t.parts.map((p) => `<span><b>${esc(p.value)}</b> ${esc(p.label)}</span>`).join("")}</span>` : ""}<p class="x">${esc(t.explain)}</p><span class="go">Open proof ${icon("arrow-right", 14)}</span></a>`;
+export const tileHtml = (t: Tile) => `<a class="tile card" href="${esc(t.href)}" title="${esc(t.tip ?? t.explain)}"><span class="v">${esc(t.value)}</span><span class="l">${esc(t.label)}</span>${t.parts ? `<span class="parts">${t.parts.map((p) => `<b>${esc(p.value)}</b>&nbsp;${esc(p.label)}`).join(" · ")}</span>` : ""}<p class="x">${esc(t.explain)}</p><span class="go">Open proof ${icon("arrow-right", 14)}</span></a>`;
 
 const JS = `
 (function () {

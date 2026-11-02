@@ -111,8 +111,9 @@ h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .st-rails { grid-area: rails; display: grid; gap: 14px; align-content: center; min-width: 0; }
 .lane { display: grid; gap: 6px; transition: opacity .3s; }
 .lane.past { opacity: .4; }
-.lane .ln { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 750; min-height: 26px; min-width: 0; }
-.lane .ln small { font-weight: 550; color: var(--faint); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.lane .ln { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 15px; font-weight: 750; min-height: 26px; min-width: 0; }
+/* The rail's line in full, on its own row under the name and the result (never cut off). */
+.lane .ln small { order: 3; flex-basis: 100%; font-weight: 550; color: var(--faint); font-size: 14px; white-space: normal; }
 .lane.metal .ln { color: var(--metal); } .lane.awx .ln { color: var(--awx); }
 .lane .verdict { margin-left: auto; flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
 .lane .verdict:empty { display: none; }
@@ -154,16 +155,14 @@ a.verdict:hover { text-decoration: underline; }
   .st-phone::before { display: none; }
   .ag { padding: 8px 2px; } .ag .nm { font-size: 14.5px; } .av { width: 40px; height: 40px; }
   .st-bubble { font-size: 15.5px; min-height: 112px; }
-  .lane .ln small { display: none; }
 }
 /* Number tile. */
 .tile { display: flex; flex-direction: column; gap: 4px; padding: 22px; text-decoration: none; transition: transform .2s, border-color .2s; }
 .tile:hover { transform: translateY(-2px); border-color: var(--accent); }
 .tile .v { font-size: clamp(34px, 3.6vw, 46px); font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .tile .l { color: var(--text); font-size: 16px; font-weight: 650; line-height: 1.3; }
-.tile .x { color: var(--muted); font-size: 15px; line-height: 1.45; margin: 4px 0 0; }
-.tile .parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.tile .parts span { font-size: 14px; font-weight: 650; background: var(--sunken); border-radius: 999px; padding: 3px 10px; color: var(--muted); }
+.tile .x { color: var(--muted); font-size: 15px; line-height: 1.45; margin: 4px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tile .parts { display: block; font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 2px; line-height: 1.4; }
 .tile .parts b { color: var(--text); }
 .tile .go { margin-top: auto; padding-top: 10px; font-size: 15px; font-weight: 650; color: var(--accent); display: inline-flex; align-items: center; gap: 4px; }
 footer.foot { padding: 40px 0 56px; color: var(--faint); font-size: 14.5px; }
@@ -338,7 +337,7 @@ function Stage(root, run) {
     if (ev.k === "shield") { setWorld(ev.text, true); caption("Blocked", ev.text, null); return 2400; }
     if (ev.k === "say" || ev.k === "msg") { speak(ev, sentences, instant); return Math.min(6500, 2600 + first(ev.text, sentences).length * 22); }
     if (ev.k === "money") {
-      var rail = ev.rail === "metal" ? "Metal · " + ev.via : "Airwallex · " + ev.via;
+      var rail = (ev.rail === "metal" ? "Metal · " + ev.via : "Airwallex · " + ev.via) + (ev.run ? " · " + ev.run : "");
       caption(rail, (amount(ev) ? amount(ev) + " · " : "") + ev.what + ": " + result(ev) + ".", ev.agent);
       move(ev, instant); return ev.refused ? 3200 : 2200;
     }
@@ -348,6 +347,7 @@ function Stage(root, run) {
       return 2400;
     }
     if (ev.k === "face") { face(ev); return 3000; }
+    if (ev.k === "routine") { caption("Routine checks", ev.text + ".", null); return 1800; }
     return 1000;
   }
   /** Never an empty rail: each lane shows its latest movement before this point, or else the next one, marked as later. */

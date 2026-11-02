@@ -68,10 +68,12 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
 
   it("counts the Airwallex limit stop from the TAP run, labelled, and keeps fee_unknown apart", () => {
     const t = run.tiles.find((x) => x.label.startsWith("stopped"))!;
-    expect(t.parts).toEqual([{ value: "2", label: "by Metal" }, { value: "1", label: "by the CFO" }, { value: "1", label: "by Airwallex · TAP run" }]);
+    expect(t.parts).toEqual([{ value: "2", label: "Metal" }, { value: "1", label: "CFO" }, { value: "1", label: "Airwallex · TAP run" }]);
     expect(t.value).toBe("4");
-    expect(t.explain).toMatch(/fee_unknown|could not price the fee/);
-    expect(t.explain).toMatch(/not a limit/);
+    // At most two short lines on the card; the details in its tooltip.
+    expect(t.explain.length).toBeLessThanOrEqual(60);
+    expect(t.tip).toMatch(/fee_unknown|could not price the fee/);
+    expect(t.tip).toMatch(/not a limit/);
   });
 
   it("says a decision may be several Claude calls, beside the cost per decision", () => {
