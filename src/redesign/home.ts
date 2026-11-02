@@ -1,218 +1,236 @@
-// Home: the whole story in three screens, picture first. 1. The heading, the core sentence, the Kit line and the stage
-// playing the run's Metal moment (the price rise refused on chain, Treasury replans, two signatures, the mandate
-// replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
-// partners. Everything from the recorded run (src/redesign/run.ts).
+// Home (mega-prompt v4, C2; Max's concept artifact of 2 Nov): a four-word headline, the badges, and ONE continuous
+// animation of about 26 seconds in four scenes, all from the recorded run (src/redesign/run.ts homeFilm):
+//   1. the supplier's price rise, refused on chain (with its tx);  2. Treasury replans, Face ID 1 of 2 → 2 of 2;
+//   3. the dispute: every order checked, the wrong ones refunded;  4. the sweep, the licence paid by SWIFT after Face ID,
+//      and the TAP run's card buy (Visa TAP as text).
+// One subtitle line per scene, the Claude call behind its decision (D2), scene buttons and pause. SVG and CSS only, no
+// library; two drawings of the same scene (wide and phone), so text stays at least 14 px; prefers-reduced-motion shows
+// each scene's end state, still. Then three buttons. About 60 words besides the header and footer.
 
-import { CORE_SENTENCE, KIT_LINE, VISA_AWARD_ON } from "../config/brand.js";
-import { agentRun, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
-import { esc, icon, page, stageHtml } from "./ui.js";
+import { HOME_BADGE, VISA_AWARD_ON } from "../config/brand.js";
+import { agentRun, callBadge, callTip, homeFilm, type AgentRun, type HomeFilm } from "./run.js";
+import { HEADLINE, esc, icon, page } from "./ui.js";
 
-const CSS = `.hero { padding: 24px 0 44px; }
-.hero .wrap { display: grid; gap: 20px; grid-template-areas: "copy" "stage" "act"; }
-.hero .copy { grid-area: copy; } .hero .show { grid-area: stage; min-width: 0; } .hero .act { grid-area: act; }
-@media (min-width: 980px) { .hero { padding: 60px 0 76px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 600px); grid-template-areas: "copy stage" "act stage"; gap: 0 52px; align-items: center; } .hero .copy { align-self: end; } .hero .act { align-self: start; } }
-.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-.badges .pill.kit { background: var(--text); color: var(--bg); white-space: nowrap; }
-.badges .pill.kit.award { background: var(--accent-soft); color: var(--accent); }
-.swipe { display: none; font-size: 15px; color: var(--muted); margin: -12px 0 14px; align-items: center; gap: 6px; }
-@media (max-width: 899px) { .swipe { display: flex; } }
-.hero .lead { margin-top: 16px; max-width: 34em; }
-.ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+/** The animation's clock: the loop and where each scene starts, in seconds (Max's concept). */
+export const LOOP = 26;
+export const STARTS = [0, 8, 13, 19];
+
+/** Where everything sits, in the drawing's own units: one layout for wide screens and one for phones. */
+interface Box { x: number; y: number; w: number; h: number }
+export interface Layout {
+  w: number; h: number; r: number; agents: [number, number][];
+  metal: { x1: number; x2: number; y: number; ly: number }; awx: { x1: number; x2: number; y: number; ly: number };
+  supplier: Box; licence: Box; gate: { x: number; y1: number; y2: number; ty: number }; refused: Box;
+  tiles: { x: number; y: number; dx: number; dy: number; w: number; h: number; ly: number }; bubble: Box; tap: Box; sweepX: number;
+  phone: Box & { ring: [number, number]; t1: [number, number]; t2: [number, number]; anchor: "middle" | "start" };
+}
+export const WIDE: Layout = {
+  w: 1000, h: 440, r: 28, agents: [[78, 96], [78, 216], [78, 336]],
+  metal: { x1: 176, x2: 742, y: 152, ly: 118 }, awx: { x1: 176, x2: 742, y: 322, ly: 288 },
+  supplier: { x: 756, y: 112, w: 120, h: 80 }, licence: { x: 756, y: 282, w: 120, h: 80 },
+  gate: { x: 540, y1: 128, y2: 176, ty: 204 }, refused: { x: 440, y: 58, w: 200, h: 36 },
+  tiles: { x: 300, y: 36, dx: 46, dy: 32, w: 38, h: 24, ly: 24 }, bubble: { x: 140, y: 380, w: 280, h: 40 }, tap: { x: 500, y: 350, w: 240, h: 36 }, sweepX: 700,
+  phone: { x: 886, y: 132, w: 108, h: 196, ring: [940, 200], t1: [940, 256], t2: [940, 282], anchor: "middle" },
+};
+export const PHONE: Layout = {
+  w: 360, h: 540, r: 24, agents: [[60, 40], [180, 40], [300, 40]],
+  metal: { x1: 16, x2: 244, y: 170, ly: 138 }, awx: { x1: 16, x2: 244, y: 378, ly: 346 },
+  supplier: { x: 254, y: 134, w: 98, h: 72 }, licence: { x: 254, y: 342, w: 98, h: 72 },
+  gate: { x: 170, y1: 150, y2: 190, ty: 210 }, refused: { x: 40, y: 222, w: 190, h: 34 },
+  tiles: { x: 26, y: 248, dx: 50, dy: 34, w: 42, h: 26, ly: 238 }, bubble: { x: 16, y: 270, w: 228, h: 36 }, tap: { x: 30, y: 394, w: 214, h: 32 }, sweepX: 200,
+  phone: { x: 16, y: 444, w: 328, h: 84, ring: [56, 486], t1: [92, 478], t2: [92, 504], anchor: "start" },
+};
+
+const AG = ["sourcing", "support", "treasury"] as const;
+const inner = (svg: string) => svg.replace(/^<svg[^>]*>|<\/svg>$/g, "");
+
+/** One drawing of the stage; the script animates whichever is shown. Text from the record only. */
+function drawing(run: AgentRun, f: HomeFilm, L: Layout, cls: string): string {
+  const t = (x: number, y: number, s: string, c: string, a = "middle") => `<text x="${x}" y="${y}" text-anchor="${a}" class="${c}">${esc(s)}</text>`;
+  const rect = (b: Box, c: string, rx = 14) => `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${rx}" class="${c}"/>`;
+  const agents = AG.map((id, i) => {
+    const a = run.agents.find((x) => x.id === id)!;
+    const [x, y] = L.agents[i]!;
+    return `<g class="ag" data-agent="${id}"><circle cx="${x}" cy="${y}" r="${L.r}" class="av-${id}"/><svg x="${x - 12}" y="${y - 12}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="glyph">${inner(icon(id === "sourcing" ? "package" : id === "support" ? "headphones" : "landmark", 24))}</svg>${t(x, y + L.r + 22, `${a.short} · ${a.family}`, "lbl")}</g>`;
+  }).join("");
+  const tx = (i: number) => L.tiles.x + (i % 6) * L.tiles.dx, ty = (i: number) => L.tiles.y + Math.floor(i / 6) * L.tiles.dy;
+  const tiles = f.orders.map((o, i) => `<g class="tile"${f.refunded.includes(o) ? ' data-wrong="1"' : ""}>${rect({ x: tx(i), y: ty(i), w: L.tiles.w, h: L.tiles.h }, "tl", 6)}${t(tx(i) + L.tiles.w / 2, ty(i) + L.tiles.h / 2 + 5, `#${o}`, "tn")}</g>`).join("");
+  const P = L.phone;
+  return `<svg class="film-svg ${cls}" viewBox="0 0 ${L.w} ${L.h}" role="img" aria-label="${esc(`The four moments of ${run.name}, replayed from its record`)}" data-l='${JSON.stringify(L)}'>
+<line x1="${L.metal.x1}" y1="${L.metal.y}" x2="${L.metal.x2}" y2="${L.metal.y}" class="rail metal"/>${t(L.metal.x1, L.metal.ly, "Metal · per query · on chain", "rl metal", "start")}
+<line x1="${L.awx.x1}" y1="${L.awx.y}" x2="${L.awx.x2}" y2="${L.awx.y}" class="rail awx"/>${t(L.awx.x1, L.awx.ly, "Airwallex · cards · FX · SWIFT", "rl awx", "start")}
+${agents}
+<g class="box">${rect(L.supplier, "bx")}${t(L.supplier.x + L.supplier.w / 2, L.supplier.y + 28, f.supplier, "lbl")}<text x="${L.supplier.x + L.supplier.w / 2}" y="${L.supplier.y + 60}" text-anchor="middle" class="num price">${esc(f.old)}</text></g>
+<g class="box">${rect(L.licence, "bx")}${t(L.licence.x + L.licence.w / 2, L.licence.y + 28, "Licence", "lbl")}<text x="${L.licence.x + L.licence.w / 2}" y="${L.licence.y + 60}" text-anchor="middle" class="num eur">${esc(f.licence)}</text></g>
+<g class="gate"><line x1="${L.gate.x}" y1="${L.gate.y1}" x2="${L.gate.x}" y2="${L.gate.y2}" class="gl"/><text x="${L.gate.x}" y="${L.gate.ty}" text-anchor="middle" class="gt" data-a="${esc(`cap ${f.cap}`)}" data-b="${esc(`cap ${f.newCap} · new mandate`)}">${esc(`cap ${f.cap}`)}</text></g>
+<a class="refused" href="${esc(f.refusedTx.href ?? "proof#metal")}" target="_blank" rel="noopener" aria-label="Refused on chain: the transaction on Metal's testnet explorer">${rect(L.refused, "rf", L.refused.h / 2)}${t(L.refused.x + L.refused.w / 2, L.refused.y + L.refused.h / 2 + 5, "Refused on chain ↗", "rft")}</a>
+<g class="tiles">${t(L.tiles.x, L.tiles.ly, `${f.orders.length} orders disputed`, "lbl", "start")}${tiles}</g>
+<g class="bubble">${rect(L.bubble, "bb", 12)}${t(L.bubble.x + L.bubble.w / 2, L.bubble.y + L.bubble.h / 2 + 5, "Treasury replans the limits", "bt")}</g>
+${f.tapAmount ? `<g class="tap">${rect(L.tap, "tp", L.tap.h / 2)}${t(L.tap.x + L.tap.w / 2, L.tap.y + L.tap.h / 2 + 5, `Visa TAP ✓ ${f.tapAmount} card buy`, "tpt")}</g>` : ""}
+<g class="phone">${rect(P, "ph", 18)}<circle cx="${P.ring[0]}" cy="${P.ring[1]}" r="20" class="ring"/><svg x="${P.ring[0] - 11}" y="${P.ring[1] - 11}" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="fid">${inner(icon("scan-face", 22))}</svg>${t(P.t1[0], P.t1[1], "CFO", "pt1", P.anchor)}${t(P.t2[0], P.t2[1], "Face ID", "pt2", P.anchor)}</g>
+<g class="coins"></g>
+</svg>`;
+}
+
+const CSS = `.hero { padding: 20px 0 36px; }
+.hero .wrap { max-width: 1120px; display: grid; gap: 14px; }
+@media (min-width: 980px) { .hero { padding: 30px 0 52px; } }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; font: 650 14px/1.35 Inter, system-ui, sans-serif; padding: 5px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.badge.tap { white-space: nowrap; }
+.h-hero { font-size: clamp(40px, 6.4vw, 72px); font-weight: 800; letter-spacing: -.035em; line-height: 1; }
+.h-hero span { color: var(--metal); }
+.film { padding: 0; overflow: hidden; }
+.film-svg { display: block; width: 100%; height: auto; }
+.film-svg.phone-l { display: none; max-width: 520px; margin: 0 auto; }
+@media (max-width: 979px) { .film-svg.wide-l { display: none; } .film-svg.phone-l { display: block; } }
+.film text { font-family: Inter, system-ui, sans-serif; font-size: 16px; fill: var(--text); }
+.film .phone-l text { font-size: 14px; }
+.film .lbl { fill: var(--muted); font-weight: 600; }
+.film .rl { font-weight: 700; } .film .rl.metal { fill: var(--metal); } .film .rl.awx { fill: var(--awx); }
+.film .rail { stroke-width: 10; stroke-linecap: round; opacity: .28; } .film .rail.metal { stroke: var(--metal); } .film .rail.awx { stroke: var(--awx); }
+.film .av-sourcing { fill: var(--a-sourcing); } .film .av-support { fill: var(--a-support); } .film .av-treasury { fill: var(--a-treasury); }
+.film .glyph { color: #fff; }
+.film .ag { transition: opacity .3s; } .film .ag.dim { opacity: .4; }
+.film .ag.on circle { stroke: var(--text); stroke-width: 3; }
+.film .bx { fill: var(--sunken); stroke: var(--border); }
+.film text.num { font-weight: 750; font-size: 22px; font-variant-numeric: tabular-nums; }
+.film text.num.up { fill: var(--bad); } .film text.num.paid { fill: var(--ok); }
+.film .gl { stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
+.film .gt { fill: var(--muted); font-weight: 650; } .film .gt.new { fill: var(--ok); }
+.film .rf { fill: var(--bad); } .film .rft { fill: var(--on-bad); font-weight: 700; }
+.film .tl { fill: var(--sunken); stroke: var(--border); } .film text.tn { font-size: 14px; font-weight: 700; fill: var(--muted); }
+.film .tile.ok .tl { fill: var(--ok-soft); stroke: var(--ok); } .film .tile.ok .tn { fill: var(--ok); }
+.film .tile.wrong .tl { fill: var(--accent-soft); stroke: var(--accent); } .film .tile.wrong .tn { fill: var(--accent); }
+.film .bb { fill: var(--sunken); stroke: var(--a-treasury); } .film .bt { font-weight: 650; }
+.film .tp { fill: var(--surface); stroke: var(--text); stroke-opacity: .5; } .film .tpt { font-weight: 700; }
+.film .ph { fill: var(--surface); stroke: var(--border); stroke-width: 2; } .film .ring { fill: none; stroke: var(--faint); stroke-width: 2.5; } .film .fid { color: var(--faint); }
+.film .phone.wait .ring { stroke: var(--awx); } .film .phone.wait .fid { color: var(--awx); }
+.film .phone.ok .ring { stroke: var(--ok); } .film .phone.ok .fid { color: var(--ok); } .film .phone.ok .pt2 { fill: var(--ok); }
+.film .pt1 { fill: var(--muted); font-weight: 600; } .film .pt2 { font-weight: 750; }
+.film .refused, .film .tiles, .film .bubble, .film .tap { opacity: 0; transition: opacity .25s; }
+.film .show { opacity: 1; }
+.film .coin text { font-size: 14px; font-weight: 750; fill: #fff; }
+.film .coin.metal circle { fill: var(--metal); } .film .coin.awx circle { fill: var(--awx); } .film .coin.refund circle { fill: var(--accent); }
+.film .coin.bad circle { fill: var(--bad); } .film .coin.bad text { fill: var(--on-bad); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .film .coin text { fill: #06121a; } }
+:root[data-theme="dark"] .film .coin text { fill: #06121a; }
+.sub { min-height: 4.4em; display: grid; gap: 8px; align-content: start; }
+.sub .line { margin: 0; font-size: clamp(19px, 2.2vw, 26px); font-weight: 680; letter-spacing: -.01em; line-height: 1.3; }
+.sub .line a { color: var(--accent); font-size: 17px; font-weight: 650; text-decoration: none; white-space: nowrap; }
+.sub .call { justify-self: start; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bar button { font: 650 15px/1 Inter, system-ui, sans-serif; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 0 14px; min-height: 44px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+.bar button b { width: 22px; height: 22px; border-radius: 50%; background: var(--sunken); display: grid; place-items: center; font-size: 14px; }
+.bar button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.bar button[aria-pressed="true"] b { background: var(--accent); color: var(--surface); }
+.bar #play { width: 44px; padding: 0; justify-content: center; background: var(--text); color: var(--bg); border-color: var(--text); }
+.prog { flex: 1 1 100%; height: 4px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
+.prog i { display: block; height: 100%; width: 0; background: var(--accent); }
+.ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
 .ctas .btn { height: 52px; }
-@media (max-width: 979px) { .ctas { margin-top: 0; } .ctas .btn { flex: 1 1 40%; justify-content: center; } .ctas .btn.primary { flex-basis: 100%; } }
-.built { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--faint); font-size: 14px; font-weight: 600; }
-.logo { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--border); }
-.logo.dark { background: #191919; border-color: #191919; }
-.logo img { display: block; height: 15px; width: auto; }
-.logo.txt { background: var(--surface); color: var(--text); font-weight: 750; font-size: 14px; white-space: nowrap; flex: none; }
-.runlabel { margin-top: 10px; font-size: 14px; color: var(--faint); display: flex; align-items: center; gap: 6px; }
-section.band { padding: 60px 0; border-top: 1px solid var(--border); }
-.sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
-.sechead .pill { white-space: normal; }
-.scenes { display: grid; gap: 18px; }
-@media (min-width: 900px) { .scenes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.scene { padding: 22px; display: flex; flex-direction: column; gap: 16px; text-decoration: none; transition: transform .2s, border-color .2s; }
-.scene:hover { transform: translateY(-2px); border-color: var(--accent); }
-.scene .n { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 22px; letter-spacing: -.015em; }
-.scene .n b { width: 32px; height: 32px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font-size: 15px; flex: none; }
-.scene p { margin: 0; font-size: 17px; line-height: 1.45; }
-.scene .go { margin-top: auto; font-size: 15px; font-weight: 650; color: var(--accent); display: inline-flex; align-items: center; gap: 4px; }
-.mini { height: 236px; border-radius: 16px; background: var(--sunken); position: relative; overflow: hidden; }
-/* 1: the price goes through the cap and is refused on chain; two signatures move the cap; the purchase goes through. */
-.m-price .plot { position: absolute; left: 14px; width: 118px; top: 40px; bottom: 36px; }
-.m-price .cap { position: absolute; left: 0; right: -8px; border-top: 2px dashed var(--text); opacity: .7; bottom: calc(var(--c0) * 1%); animation: cap 6s infinite; }
-.m-price .cap span { position: absolute; left: 0; top: -26px; font-size: 14px; font-weight: 750; background: var(--surface); border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
-.m-price .cap span::after { content: attr(data-a); animation: capt 6s infinite; }
-@keyframes cap { 0%, 62% { bottom: calc(var(--c0) * 1%); } 74%, 100% { bottom: calc(var(--c1) * 1%); } }
-@keyframes capt { 0%, 62% { content: attr(data-a); } 74%, 100% { content: attr(data-b); } }
-.m-price .bar { position: absolute; right: 0; bottom: 0; width: 46px; border-radius: 10px 10px 4px 4px; background: var(--ok); animation: bar 6s infinite; height: calc(var(--h1) * 1%); }
-@keyframes bar { 0%, 10% { height: calc(var(--h0) * 1%); background: var(--ok); } 26%, 70% { height: calc(var(--h1) * 1%); background: var(--bad); } 80%, 100% { height: calc(var(--h1) * 1%); background: var(--ok); } }
-.m-price .bar em { position: absolute; bottom: -26px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 14px; font-weight: 650; color: var(--muted); white-space: nowrap; }
-.m-price .bar b { position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 14px; color: #fff; }
-/* The tags stack in one column, so a tag that wraps on a phone pushes the next one down instead of overlapping it. */
-.m-price .tags { position: absolute; right: 12px; top: 34px; left: 160px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-/* On a phone the card is too narrow for a column beside the chart: the tags go under it, one per line. */
-@media (max-width: 899px) {
-  .mini.m-price { height: 340px; }
-  .m-price .plot { bottom: 150px; }
-  .m-price .tags { left: 12px; right: 12px; top: auto; bottom: 12px; align-items: flex-start; gap: 8px; }
-  .m-price .tag { white-space: nowrap; }
-}
-.m-price .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 750; border-radius: 999px; padding: 4px 10px; opacity: 0; white-space: normal; max-width: 100%; }
-.m-price .t1 { color: var(--bad); background: var(--bad-soft); animation: t1 6s infinite; }
-.m-price .t2 { color: var(--accent); background: var(--accent-soft); animation: t2 6s infinite; }
-.m-price .t3 { color: var(--ok); background: var(--ok-soft); animation: t3 6s infinite; }
-@keyframes t1 { 0%, 24% { opacity: 0; } 30%, 100% { opacity: 1; } }
-@keyframes t2 { 0%, 44% { opacity: 0; } 50%, 100% { opacity: 1; } }
-@keyframes t3 { 0%, 76% { opacity: 0; } 82%, 100% { opacity: 1; } }
-.m-price .t2 .one { animation: one 6s infinite; } .m-price .t2 .two { display: none; }
-/* 2: every order checked; the wrong ones refunded. */
-.m-orders { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; padding: 16px; align-content: center; }
-.m-orders span { height: 44px; border-radius: 11px; background: var(--surface); border: 1px solid var(--border); display: grid; place-items: center; font-size: 14px; font-weight: 700; color: var(--muted); animation: ok 6s infinite; animation-delay: calc(var(--d) * 1ms); }
-.m-orders span.wrong { animation-name: wrong; }
-@keyframes ok { 0%, 6% { background: var(--surface); color: var(--muted); } 14%, 100% { background: var(--ok-soft); color: var(--ok); border-color: transparent; } }
-@keyframes wrong { 0%, 6% { background: var(--surface); color: var(--muted); } 14%, 50% { background: var(--bad-soft); color: var(--bad); border-color: transparent; } 62%, 100% { background: var(--accent-soft); color: var(--accent); border-color: transparent; } }
-.m-orders .legend { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted); margin-top: 4px; }
-.m-orders .legend i { width: 11px; height: 11px; border-radius: 3px; background: var(--ok); } .m-orders .legend i.rf { background: var(--accent); margin-left: 8px; }
-/* 3: four moves, one after another. */
-.m-flow { display: grid; gap: 6px; padding: 10px 12px; align-content: center; }
-.m-flow div { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 12px; padding: 7px 11px; font-size: 14px; line-height: 1.3; font-weight: 600; opacity: 0; animation: step 6s infinite; animation-delay: calc(var(--d) * 1ms); }
-.m-flow div.ok .i { color: var(--ok); } .m-flow div.bad { color: var(--bad); } .m-flow div.bad .i { color: var(--bad); } .m-flow div.face .i { color: var(--accent); }
-@keyframes step { 0% { opacity: 0; transform: translateY(6px); } 8%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; } }
-.tiles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-@media (min-width: 640px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1000px) { .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; } }
-.tile .v { font-size: clamp(32px, 2.8vw, 42px) !important; }
-.partners { display: grid; gap: 12px; margin-top: 18px; }
-@media (min-width: 640px) { .partners { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .partners { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.partner { display: flex; align-items: center; gap: 14px; padding: 16px 18px; text-decoration: none; font-size: 16px; color: var(--muted); }
-@media (max-width: 899px) {
-  .scenes { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 8px; scrollbar-width: none; }
-  .scenes::-webkit-scrollbar { display: none; }
-  .scene { flex: 0 0 86%; scroll-snap-align: center; }
-  section.band { padding: 44px 0; }
-  .tile { padding: 18px; }
-}
-@media (prefers-reduced-motion: reduce) { .m-price .bar { height: calc(var(--h1) * 1%); background: var(--ok); } .m-price .cap { bottom: calc(var(--c1) * 1%); } .m-price .tag { opacity: 1; } .m-orders span { background: var(--ok-soft); color: var(--ok); } .m-orders span.wrong { background: var(--accent-soft); color: var(--accent); } .m-flow div { opacity: 1; } }`;
-
-/**
- * What the hero plays: the Metal moment first (from the first refusal on chain to the first purchase under the replaced
- * mandate), then the other two moments' key steps. Purchases refused by Purser before signing are left to Watch.
- */
-export function heroMoments(run: AgentRun): number[] {
-  const ev = run.events;
-  const s1 = run.scenes.find((s) => s.n === 1);
-  const out: number[] = [];
-  const add = (i: number) => { if (i >= 0 && !out.includes(i)) out.push(i); };
-  if (s1) {
-    const chain = ev.findIndex((e, i) => i >= s1.start && e.k === "money" && (e.refused?.by === "recorded" || e.refused?.by === "metal") && !!e.proof.href);
-    add(chain);
-    add(ev.findIndex((e, i) => i > chain && e.k === "world" && /asks \d/.test(e.text)));
-    add(ev.findIndex((e, i) => i > chain && e.k === "msg" && e.agent === "sourcing"));
-    add(ev.findIndex((e, i) => i > chain && e.k === "say" && e.agent === "treasury" && e.tools.some((t) => /rebalance/.test(t))));
-    // Four eyes as it happened: the first signature (1 of 2), the second (2 of 2), then the mandates replaced on chain.
-    add(ev.findIndex((e, i) => i > chain && e.k === "face" && e.status === "COSIGNED"));
-    const sig = ev.findIndex((e, i) => i > chain && e.k === "face" && e.signers.length > 1);
-    add(sig);
-    const rep = ev.findIndex((e, i) => i > sig && e.k === "mandate" && e.agent === "sourcing");
-    add(rep >= 0 ? rep : ev.findIndex((e, i) => i > sig && e.k === "world" && /replaced/.test(e.text)));
-    add(ev.findIndex((e, i) => i > sig && e.k === "money" && e.agent === "sourcing" && !e.refused));
-  }
-  for (const s of run.scenes.filter((x) => x.n !== 1)) {
-    const end = run.scenes.find((x) => x.n === s.n + 1)?.start ?? ev.length;
-    ev.forEach((e, i) => {
-      if (i < s.start || i >= end) return;
-      const key = e.k === "world" || e.k === "face" || e.k === "shield" || e.k === "mandate" || (e.k === "say" && e.tools.some((t) => /settle|sweep|plan_invoice/.test(t))) || (e.k === "money" && e.agent !== null);
-      if (key && !(e.k === "money" && e.agent === "support" && out.some((j) => { const p = ev[j]!; return p.k === "money" && p.agent === "support"; }))) add(i);
-    });
-  }
-  return out.filter((i) => i >= 0);
-}
-
-function mini(m: Mini | null): string {
-  if (!m) return "";
-  if (m.kind === "price") {
-    const top = Math.max(Number(m.price), Number(m.newCap ?? 0), Number(m.cap)) * 1.3;
-    const pct = (v: string | null) => String(Math.round((Number(v ?? 0) / top) * 100));
-    return `<div class="mini m-price" aria-hidden="true"><div class="plot">
-<div class="cap" data-vars="--c0:${pct(m.cap)};--c1:${pct(m.newCap ?? m.cap)}"><span data-a="cap ${esc(m.cap)}" data-b="cap ${esc(m.newCap ?? m.cap)}"></span></div>
-<div class="bar" data-vars="--h0:${pct(m.old ?? m.cap)};--h1:${pct(m.price)}"><b>${esc(m.price)}</b><em>${esc(m.from)}</em></div></div>
-<div class="tags">${m.tx ? `<span class="tag t1">${icon("ban", 14)} Refused · recorded on chain</span>` : ""}
-${m.signers > 1 ? `<span class="tag t2">${icon("scan-face", 14)} ${m.signers} of ${m.signers} signatures</span>` : ""}
-${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.price)}</span>` : ""}</div></div>`;
-  }
-  if (m.kind === "orders") {
-    return `<div class="mini m-orders" aria-hidden="true">${m.orders.map((o, i) => `<span class="${m.refunded.includes(o) ? "wrong" : ""}" data-vars="--d:${i * 90}">#${esc(o)}</span>`).join("")}<div class="legend"><i></i>signed, valid<i class="rf"></i>wrong data, refunded</div></div>`;
-  }
-  return `<div class="mini m-flow" aria-hidden="true">${m.rows.map((r, i) => `<div class="${r.tone}" data-vars="--d:${i * 1100}">${icon(r.icon, 16)}<span>${esc(r.text)}</span></div>`).join("")}</div>`;
-}
-
-const sceneCard = (s: Scene) => `<a class="scene card" href="watch?scene=${s.n}"><div class="n"><b>${s.n}</b>${esc(s.title)}</div>${mini(s.mini)}<p>${esc(s.sentence)}</p><span class="go">Watch it happen ${icon("arrow-right", 15)}</span></a>`;
-
-export const tileHtml = (t: Tile) => `<a class="tile card" href="${esc(t.href)}" title="${esc(t.tip ?? t.explain)}"><span class="v">${esc(t.value)}</span><span class="l">${esc(t.label)}</span>${t.parts ? `<span class="parts">${t.parts.map((p) => `<b>${esc(p.value)}</b>&nbsp;${esc(p.label)}`).join(" · ")}</span>` : ""}<p class="x">${esc(t.explain)}</p><span class="go">Open proof ${icon("arrow-right", 14)}</span></a>`;
+@media (max-width: 640px) { .ctas .btn { flex: 1 1 40%; justify-content: center; } .ctas .btn.primary { flex-basis: 100%; } .bar button { padding: 0 10px; } }
+.runlabel { font-size: 14px; color: var(--faint); display: flex; align-items: center; gap: 6px; }`;
 
 const JS = `
 (function () {
-  var run = JSON.parse(document.getElementById("run-data").textContent);
-  document.querySelectorAll("[data-vars]").forEach(function (el) { el.getAttribute("data-vars").split(";").forEach(function (p) { var kv = p.split(":"); if (kv[1] !== undefined) el.style.setProperty(kv[0], kv[1]); }); });
-  var st = Stage(document.querySelector("[data-stage]"), run);
-  var list = run.moments.map(function (i) { return run.events[i]; });
-  var frame = /[?&]frame=(\\d+)/.exec(location.search);
-  // The first frame already shows the run: the rails primed, the refusal on chain at the wall.
-  st.prime(run.events, run.moments[0] || 0);
-  if (frame || st.reduce) {
-    var upto = frame ? Math.min(list.length - 1, +frame[1]) : 0;
-    st.prime(run.events, run.moments[upto] || 0);
-    for (var k = 0; k <= upto; k++) st.show(list[k], { instant: true });
-    return;
+  var D = JSON.parse(document.getElementById("run-data").textContent);
+  var NS = "http://www.w3.org/2000/svg", LOOP = D.loop, SC = D.starts;
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var svgs = [].slice.call(document.querySelectorAll(".film-svg"));
+  var line = document.getElementById("line"), call = document.getElementById("call"), prog = document.querySelector(".prog i"), play = document.getElementById("play");
+  function clamp(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function ease(x) { x = clamp(x); return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; }
+  function seg(t, a, b) { return clamp((t - a) / (b - a)); }
+  // One set of moving coins per drawing; each drawing keeps its own coordinates.
+  var V = svgs.map(function (svg) {
+    var L = JSON.parse(svg.getAttribute("data-l")), layer = svg.querySelector(".coins");
+    function coin(cls, label) { var g = document.createElementNS(NS, "g"); g.setAttribute("class", "coin " + cls); g.setAttribute("opacity", "0"); var c = document.createElementNS(NS, "circle"); c.setAttribute("r", label.length > 4 ? "27" : "21"); g.appendChild(c); var t = document.createElementNS(NS, "text"); t.setAttribute("text-anchor", "middle"); t.setAttribute("y", "5"); t.textContent = label; g.appendChild(t); layer.appendChild(g); return g; }
+    var tiles = [].slice.call(svg.querySelectorAll(".tile"));
+    return { svg: svg, L: L, q: function (s) { return svg.querySelector(s); }, tiles: tiles,
+      flow: [0, 1, 2, 3].map(function () { return coin("metal", D.old); }), hit: coin("metal", D.price), pass: coin("metal", D.price),
+      refunds: tiles.filter(function (t) { return t.getAttribute("data-wrong"); }).map(function () { return coin("refund", D.refundEach); }),
+      sweep: coin("metal", D.sweep), euro: coin("awx", D.licence) };
+  });
+  function put(g, x, y, on) { g.setAttribute("transform", "translate(" + x + "," + y + ")"); g.setAttribute("opacity", on ? "1" : "0"); }
+  function cls(el, c, on) { if (el) el.classList.toggle(c, !!on); }
+  function scene(t) { for (var s = SC.length - 1; s >= 0; s--) if (t >= SC[s]) return s; return 0; }
+  var last = -1;
+  function subtitle(s) {
+    var sc = D.scenes[s]; line.textContent = sc.line;
+    if (sc.proof && sc.proof.href) { line.appendChild(document.createTextNode(" ")); var a = document.createElement("a"); a.href = sc.proof.href; a.target = "_blank"; a.rel = "noopener"; a.textContent = sc.proof.label + " ↗"; line.appendChild(a); }
+    call.textContent = sc.badge || ""; call.title = sc.tip || ""; call.hidden = !sc.badge;
+    document.querySelectorAll("[data-s]").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.getAttribute("data-s") === s)); });
   }
-  // The first frame: the refusal on chain, the notice and the Sourcing agent's own words, at once; then it plays on.
-  var i = 0;
-  while (i < Math.min(3, list.length)) st.show(list[i++], { instant: true });
-  function next() {
-    if (i >= list.length) { i = 0; st.reset(); st.prime(run.events, run.moments[0] || 0); }
-    var ms = st.show(list[i++]);
-    setTimeout(next, ms);
+  function draw(v, t) {
+    var L = v.L, s = scene(t), m = L.metal, w = L.awx;
+    v.svg.querySelectorAll(".ag").forEach(function (g) { var on = g.getAttribute("data-agent") === D.scenes[s].agent; cls(g, "on", on); cls(g, "dim", !on); });
+    // 1. Coins at the old price; the price rises; one at the new price hits the cap and is refused on chain.
+    v.flow.forEach(function (c, i) { var p = seg(t, .3 + i * .7, 2.6 + i * .7); put(c, m.x1 + (L.supplier.x - 26 - m.x1) * ease(p), m.y, p > 0 && p < 1); });
+    var up = t >= 4.6, price = v.q(".price"); price.textContent = up ? D.price : D.old; cls(price, "up", up && t < 11.4);
+    var hp = seg(t, 5, 6.4), shake = t > 6.4 && t < 7.2 ? Math.sin(t * 60) * 4 : 0;
+    put(v.hit, m.x1 + (L.gate.x - 26 - m.x1) * ease(hp) + shake, m.y, t >= 5 && t < 8);
+    cls(v.hit, "bad", t >= 6.4);
+    cls(v.q(".refused"), "show", t >= 6.4 && t < 11.5);
+    // 2. Treasury replans; Face ID 1 of 2, then 2 of 2; the cap moves; a coin at the new price goes through.
+    cls(v.q(".bubble"), "show", t >= 8 && t < 12.6);
+    var ph = v.q(".phone"), p2 = v.q(".pt2"), p1 = v.q(".pt1");
+    var f = t >= 9.4 && t < 10.8 ? ["wait", "Face ID", "1 of 2"] : t >= 10.8 && t < 12.8 ? ["ok", "Approved", "2 of 2"] : t >= 20.4 && t < 22.6 ? ["ok", "Approved", D.licence] : t >= 22.6 ? ["ok", "Paid", D.licence] : ["", "CFO", "Face ID"];
+    cls(ph, "wait", f[0] === "wait"); cls(ph, "ok", f[0] === "ok"); p1.textContent = f[1]; p2.textContent = f[2];
+    var gt = v.q(".gt"), newCap = t >= 11.4; gt.textContent = gt.getAttribute(newCap ? "data-b" : "data-a"); cls(gt, "new", newCap);
+    var pp = seg(t, 11.6, 12.9); put(v.pass, m.x1 + (L.supplier.x - 26 - m.x1) * ease(pp), m.y, pp > 0 && pp < 1);
+    // 3. Every disputed order checked; the wrong ones refunded to the customer.
+    cls(v.q(".tiles"), "show", t >= 13 && t < 19);
+    v.tiles.forEach(function (g, i) { var on = t >= 13.6 + i * .12, bad = !!g.getAttribute("data-wrong"); cls(g, "ok", on && !(bad && t >= 15.2)); cls(g, "wrong", on && bad && t >= 15.2); });
+    var wrong = v.tiles.filter(function (g) { return g.getAttribute("data-wrong"); }), sup = L.agents[1];
+    v.refunds.forEach(function (c, i) { var r = wrong[i].querySelector("rect"), x0 = +r.getAttribute("x") + +r.getAttribute("width") / 2, y0 = +r.getAttribute("y") + +r.getAttribute("height") / 2, p = seg(t, 16 + i * .35, 17.6 + i * .35);
+      put(c, x0 + (sup[0] - x0) * ease(p), y0 + (sup[1] - y0) * ease(p), p > 0 && p < 1); });
+    // 4. Earnings swept to Airwallex; the licence paid by SWIFT after Face ID; the TAP run's card buy.
+    var sp = seg(t, 19, 20.6); put(v.sweep, L.sweepX, m.y + (w.y - m.y) * ease(sp), sp > 0 && sp < 1);
+    var ep = seg(t, 21.2, 23.4); put(v.euro, w.x1 + (L.licence.x - 30 - w.x1) * ease(ep), w.y, ep > 0 && ep < 1);
+    cls(v.q(".eur"), "paid", t >= 23.4);
+    cls(v.q(".tap"), "show", t >= 23.8);
   }
-  setTimeout(next, 2600);
+  function render(t) {
+    var s = scene(t);
+    if (s !== last) { last = s; subtitle(s); }
+    prog.style.width = (t / LOOP * 100) + "%";
+    V.forEach(function (v) { draw(v, t); });
+  }
+  // Each scene's end state, for a still picture (reduced motion, ?scene=N): everything the scene shows, visible.
+  var STILL = [7, 12.2, 18.2, 25.5];
+  var t = 0, playing = !reduce, prev = null;
+  var sp = /[?&]scene=([1-4])/.exec(location.search);
+  if (sp) { playing = false; t = STILL[+sp[1] - 1]; } else if (reduce) t = STILL[0];
+  function setPlay(on) { playing = on; play.setAttribute("aria-label", on ? "Pause" : "Play"); play.innerHTML = on ? D.icons.pause : D.icons.play; prev = null; }
+  function frame(ts) { if (playing) { if (prev !== null) { t += (ts - prev) / 1000; if (t >= LOOP) { t = 0; last = -1; } } prev = ts; render(t); } requestAnimationFrame(frame); }
+  play.addEventListener("click", function () { setPlay(!playing); });
+  document.querySelectorAll("[data-s]").forEach(function (b) { b.addEventListener("click", function () { var s = +b.getAttribute("data-s"); last = -1; t = playing ? SC[s] : STILL[s]; render(t); }); });
+  setPlay(playing);
+  render(t);
+  requestAnimationFrame(frame);
 })();`;
 
 export function homePage(run: AgentRun = agentRun()): string {
-  const moments = heroMoments(run);
-  const s1 = run.scenes.find((s) => s.n === 1);
+  const f = homeFilm(run);
+  if (!f) throw new Error("the record lacks the four moments Home plays");
+  const scenes = f.scenes.map((s) => ({ ...s, badge: s.call ? `${s.agent[0]!.toUpperCase()}${s.agent.slice(1)} · ${callBadge(s.call)}` : "", tip: s.call ? callTip(s.call) : "" }));
+  const first = scenes[0]!;
+  const words = HEADLINE.split(" ");
   const body = `<main>
 <section class="hero"><div class="wrap">
-  <div class="copy">
-    <div class="badges">${KIT_LINE.split(/ · (?=entered for)/).map((x, i) => `<span class="pill kit${i ? " award" : ""}">${esc(x)}</span>`).join("")}</div>
-    <h1 class="h-hero">AI agents that run a business. Limits they can't break.</h1>
-    <p class="lead">${esc(CORE_SENTENCE)}</p>
-  </div>
-  <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div></div>
-  <div class="act">
-    <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the agents</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div>
-    <div class="built">Built on <span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${VISA_AWARD_ON ? '<span class="logo txt">Visa TAP</span>' : ""}</div>
-  </div>
-</div></section>
-<section class="band" aria-labelledby="h-scenes"><div class="wrap">
-  <div class="sechead"><h2 class="h-sec" id="h-scenes">Three moments from the run</h2></div>
-  <p class="swipe" aria-hidden="true">Swipe for all three ${icon("arrow-right", 15)}</p>
-  <div class="scenes">${run.scenes.map(sceneCard).join("")}</div>
-</div></section>
-<section class="band" aria-labelledby="h-proof"><div class="wrap">
-  <div class="sechead"><h2 class="h-sec" id="h-proof">Proof, from ${esc(run.name)}</h2><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
-  <div class="tiles">${run.tiles.map(tileHtml).join("")}</div>
-  <div class="partners">
-    <a class="partner card" href="proof#metal"><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>Mandates and refusals on chain</a>
-    <a class="partner card" href="proof#airwallex"><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>Cards, FX and SWIFT</a>
-    <a class="partner card" href="proof#claude"><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${esc(run.agents.map((a) => a.family).join(" · "))} decide</a>
-    ${VISA_AWARD_ON ? '<a class="partner card" href="visa"><span class="logo txt">Visa TAP</span>Card checkouts signed with TAP</a>' : ""}
-  </div>
+  <div class="badges"><span class="badge">${esc(HOME_BADGE)}</span>${VISA_AWARD_ON ? `<span class="badge tap">${icon("credit-card", 15)}Visa TAP</span>` : ""}</div>
+  <h1 class="h-hero">${esc(words.slice(0, 2).join(" "))} <span>${esc(words.slice(2).join(" "))}</span></h1>
+  <div class="film card">${drawing(run, f, WIDE, "wide-l")}${drawing(run, f, PHONE, "phone-l")}</div>
+  <div class="sub" aria-live="polite"><p class="line" id="line">${esc(first.line)} ${first.proof?.href ? `<a href="${esc(first.proof.href)}" target="_blank" rel="noopener">${esc(first.proof.label)} ↗</a>` : ""}</p><span class="call" id="call" title="${esc(first.tip)}">${esc(first.badge)}</span></div>
+  <div class="bar"><button id="play" type="button" aria-label="Pause">${icon("pause", 18)}</button>${scenes.map((s, i) => `<button type="button" data-s="${i}" aria-pressed="${i === 0}"><b>${s.n}</b>${esc(s.title)}</button>`).join("")}<div class="prog" aria-hidden="true"><i></i></div></div>
+  <div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div>
+  <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the run</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div>
 </div></section>
 </main>`;
   return page({
-    title: "Purser", description: "AI agents that run a business, with limits they can't break. Claude agents decide; Metal and Airwallex enforce every limit; the CFO approves the rest.", tab: "home", css: CSS, body, js: JS,
-    data: { agents: run.agents, events: run.events, moments },
-    source: `Source: ${run.file} (${run.name}).`,
+    title: "Purser", description: "Three Claude agents run Northwind Outdoor's money on Metal testnet and the Airwallex sandbox; the limits hold, and the CFO approves the rest with Face ID.", tab: "home", css: CSS, body, js: JS, stage: false,
+    data: { loop: LOOP, starts: STARTS, scenes, old: f.old, price: f.price, refundEach: f.refundEach, sweep: f.sweep, licence: f.licence, icons: { play: icon("play", 18), pause: icon("pause", 18) } },
+    source: `Source: ${run.file} (${run.name}); the card buy from the TAP run of the same day.`,
   });
 }

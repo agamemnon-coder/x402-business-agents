@@ -13,6 +13,10 @@ export const VISA_AWARD_ON = true;
 export const VISA_CLAIM = "Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top.";
 /** The big line under the heading: the kit, the track and the awards entered. */
 export const KIT_LINE = `Kit 11 · x402 Business Agents · entered for the Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""}`;
+/** Home's badge (Max's mega-prompt v4, C2), word for word: the kit, the awards entered, what it is built on. Visa TAP is a separate text badge, never a logo. */
+export const HOME_BADGE = `Kit 11 · Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""} · built on Airwallex, Metal, Claude`;
+/** D3, in one sentence: who decides what. */
+export const SPLIT_LINE = "Claude decides the exceptions; routine buying and selling per query is code.";
 /** The core sentence (Max, 2 Nov), word for word, wherever the story is told in one line. */
 export const CORE_SENTENCE = "Claude agents handle the exceptions — price shocks, disputes, rebalancing. Routine runs at code speed. Metal and Airwallex enforce every limit; the CFO approves anything beyond them.";
 /** Who the second approver is, said wherever four eyes appears (Max, 2 Nov: he does everything alone). */
