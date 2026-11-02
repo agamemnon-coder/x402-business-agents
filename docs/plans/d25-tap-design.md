@@ -86,3 +86,36 @@ Product Terms version (10 October 2025) and the reference commit (16d59bd).
 3. Does the proxy forward `Purser-*` headers and the body byte for byte? (`http-middleware-proxy` with
    `changeOrigin`; to be shown in the interop test.)
 4. Is "verified against Visa's open-source TAP reference" true if only one direction passes?
+
+## Review, 2 November (fresh Opus review, read against the reference at 16d59bd): what changes
+
+1. **The proxy checks only paths that start with `/product/`** (`server.js` 643–662); everything else, `/checkout`
+   included, passes unchecked. The checkout moves under `/product/…`, and every negative case that the proxy should
+   refuse asserts that the proxy itself answered 403.
+2. **The merchant re-verifies signature 1 itself**, reading it the way TAP does (`keyId`, `@path` with the query),
+   because the unchanged proxy adds no header and a request could bypass it. Signature 2 also covers
+   `"signature-input"`, so tag, window, keyId and nonce are authenticated for our layer. The merchant listens on
+   127.0.0.1 only. The D24 origin records "our check of signature 1" (and the proxy's 200), not a proxy verdict we
+   cannot see.
+3. **Keys:** Visa's registry has no authentication (register, add, change, delete). It runs on localhost only, and the
+   merchant keeps its own pinned list (`tap_agents`: merchant domains, end date, revocation); the registry is used
+   only so the proxy can verify. `keyId` (signature 1) and `keyid` (signature 2) must be identical.
+4. **`Host`:** the proxy rewrites it (`changeOrigin`), so the merchant checks `@authority` against its configured public
+   authority, not the incoming header.
+5. **Serialisation:** `keyId` is not an RFC 8941 key, so `http-message-sig` can neither emit nor parse signature 1.
+   Signature 1 and the snapshot for signature 2 are built by hand, with a fixed test vector both sides check byte for
+   byte. A request with more than one field line of `Signature`, `Signature-Input`, `Content-Digest` or a `Purser-*`
+   header is refused; `Content-Digest` holds exactly one `sha-256` entry.
+6. **Query:** signature 2 covers `@query`; checkout URLs carry none.
+7. **Time and nonces:** one skew value on both sides, at most 480 s for both signatures, nonces in the database per
+   key for the window plus the skew (the proxy keeps them in memory for an hour and stores them before verifying;
+   noted, not patched).
+
+What the unmodified proxy checks is narrow: the key exists and is active, the timing loosely, the nonce, and an Ed25519
+signature over `@authority` and `@path`. It does not check the tag, the window length, the merchant or the body; our
+layer does. Signature 1 is not RFC 9421-conformant because of `keyId`, so no text says "signs per RFC 9421".
+
+Claim wording for Max to choose, after the interop test: his text "Our agents sign requests per Visa's Trusted Agent
+Protocol; verified against Visa's open-source TAP reference", or the reviewer's narrower one "Our agents' TAP
+signatures are accepted by Visa's open-source reference verifier (commit 16d59bd); body integrity, tag and payment
+checks are ours." The second is exact if only one direction passes.
