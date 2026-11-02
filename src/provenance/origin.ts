@@ -44,7 +44,7 @@ export const MONEY_EVENTS = new Set([
   "card.charge_reversed", "receivable.matched", "receivable.escalated", "mandate.replaced", "clearing.deposited", "clearing.withdrawn",
   "quarantine.held", "quarantine.returned", "quarantine.accepted",
   // After a crash the action is found at the outside service and adopted, never sent twice: the same money movement.
-  "transfer.adopted", "fx.adopted", "credit.adopted", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
+  "transfer.adopted", "fx.adopted", "credit.adopted", "transfer.refused", "refund.already_paid", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
   // Test money for a fresh world, and the passkey owners' own transfer.
   "business.funded", "treasury.seeded", "owners.sent",
 ]);

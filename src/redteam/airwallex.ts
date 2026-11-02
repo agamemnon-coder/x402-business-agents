@@ -74,7 +74,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     if (this.bal.EUR.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     this.bal.EUR.availableCents -= t.amountCents + fee;
     this.bal.EUR.reservedCents += t.amountCents + fee;
-    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, fee: { cents: fee, currency: "EUR" } };
+    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId };
     this.transfers.push(tr);
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };

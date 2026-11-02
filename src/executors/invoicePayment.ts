@@ -1,7 +1,10 @@
 // Executes an approved invoice_payment: the conversion (if any) on the approved quote, then the SWIFT
 // transfer, both carrying the approval hash in metadata and built only from the approved terms.
-// Transfer lifecycle: SUBMITTING (row written before the call) -> SENT -> PAID, or FAILED -> CANCELLED.
-// A lost answer is resolved by looking the request_id up, never by a blind resend with a new id.
+// Transfer lifecycle: SUBMITTING (row written before the call) -> SENT -> PAID, or FAILED -> CANCELLED; or
+// SUBMITTING -> CANCELLED when Airwallex refuses the very first create outright (a documented 400: no transfer exists).
+// A resend under the same request_id never closes the row: Airwallex may hold the first send, whatever it answers.
+// A lost answer is resolved by looking the request_id up, never by a blind resend with a new id; a transfer found that
+// way, or named by duplicate_request_id, is adopted only if it is exactly this payout (amount, currency, payee).
 
 import { SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
 import { originJson } from "../provenance/origin.js";
@@ -110,8 +113,13 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
 async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms, sha: string): Promise<Transfer> {
   const existing = db.prepare("SELECT transfer_id, status FROM transfers WHERE request_id = ?").get(t.transfer_request_id) as { transfer_id: string | null; status: string } | undefined;
   if (existing?.transfer_id) return rail.getTransfer(existing.transfer_id);
+  // Closed as refused at create: never sent again under this request_id (a re-run of a FAILED proposal would also skip
+  // the EUR floor check). A new proposal, with its own request_id and Face ID, pays the invoice.
+  if (existing?.status === "CANCELLED") throw new Error(`the payout ${t.transfer_request_id} was refused by Airwallex and closed; nothing is sent again under it, a new proposal is needed`);
   // Written before the call but never answered (a crash in between): Airwallex may have it; adopt it, never resend blind.
-  const made = existing ? await rail.findTransferByRequestId(t.transfer_request_id) : undefined;
+  const found = existing ? await rail.findTransferByRequestId(t.transfer_request_id) : undefined;
+  const made = found && sameTransfer(found, req(t, sha)) ? found : undefined;
+  if (found && !made) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`);
   if (made) {
     db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ?").run(made.id, made.status, new Date().toISOString(), t.transfer_request_id);
     audit(db, "awx-executor", "transfer.adopted", made.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, status: made.status, approval_sha256: sha });
@@ -122,30 +130,57 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
     db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?, ?)")
       .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString(), originJson());
   }
-  const req = { requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR" as const, sourceCurrency: "EUR" as const, reference: t.reference, reason: t.reason, approvalSha256: sha };
+  // Only the call that wrote the row sends the first create; any other path here is a resend under the same request_id.
+  const firstSend = !existing;
+  const create = req(t, sha);
   let tr: Transfer;
+  let adopted: boolean;
   try {
-    tr = await createOrAdopt(rail, req);
+    ({ transfer: tr, adopted } = await createOrAdopt(rail, create));
   } catch (err) {
-    if (err instanceof AirwallexError && err.status === 400 && REFUSED_AT_CREATE.has(err.code ?? "")) {
-      // Airwallex refused the create outright (contract tests): no transfer exists, so the row is closed, not left
-      // SUBMITTING, where it would count as money under way and block the invoice forever. A new proposal pays it.
-      db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
-        .run(err.code, `refused by Airwallex at create: ${err.code}`, new Date().toISOString(), t.transfer_request_id);
-      audit(db, "awx-executor", "transfer.refused", t.transfer_request_id, { code: err.code ?? null, status: err.status, amount: `EUR ${t.amount}`, approval_sha256: sha });
+    if (firstSend && err instanceof AirwallexError && err.status === 400 && REFUSED_AT_CREATE.has(err.code ?? "")) {
+      // Airwallex refused the very first create outright (contract tests): no transfer exists, so the row is closed,
+      // not left SUBMITTING, where it would count as money under way and block the invoice for ever. On a resend the
+      // row stays SUBMITTING whatever the answer (Airwallex may hold the first send; review of 2 November), and the
+      // reconciliation looks such rows up by request_id.
+      const at = new Date().toISOString();
+      db.transaction(() => {
+        const closed = db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
+          .run(err.code, `refused by Airwallex at create: ${err.code}`, at, t.transfer_request_id);
+        if (closed.changes !== 1) return;
+        audit(db, "awx-executor", "transfer.refused", t.transfer_request_id, { code: err.code ?? null, status: err.status, request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, approval_sha256: sha });
+      }).immediate();
       throw err;
     }
     if (!(err instanceof AirwallexAmbiguous)) throw err;
     const found = await rail.findTransferByRequestId(t.transfer_request_id);
-    audit(db, "awx-executor", "transfer.ambiguous", t.transfer_request_id, { resolved: found ? "adopted" : "resent with the same request_id" });
-    tr = found ?? (await createOrAdopt(rail, req));
+    if (found && !sameTransfer(found, create)) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`, { cause: err });
+    if (found) ({ transfer: tr, adopted } = { transfer: found, adopted: true });
+    else ({ transfer: tr, adopted } = await createOrAdopt(rail, create));
+    audit(db, "awx-executor", "transfer.ambiguous", t.transfer_request_id, { resolved: adopted ? "adopted" : "resent with the same request_id" });
   }
   // A crash here: Airwallex has the payout, the ledger only its SUBMITTING row. The retry adopts it by request_id.
   await checkpoint("transfer:after-create");
   db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ?").run(tr.id, tr.status, new Date().toISOString(), t.transfer_request_id);
-  audit(db, "awx-executor", "transfer.created", tr.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha });
+  audit(db, "awx-executor", adopted ? "transfer.adopted" : "transfer.created", tr.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha });
   return tr;
 }
+
+const req = (t: InvoicePaymentTerms, sha: string): NewTransfer => ({
+  requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR", sourceCurrency: "EUR",
+  reference: t.reference, reason: t.reason, approvalSha256: sha,
+});
+
+/**
+ * A transfer Airwallex holds is this payout only if it carries its request_id, amount, currency and payee. Adopting it
+ * on duplicate_request_id also needs it live (`live`): a failed or cancelled one is not a payout made by this resend.
+ */
+export function sameTransfer(found: Transfer, want: NewTransfer, live = false): boolean {
+  return found.requestId === want.requestId && found.amountCents === want.amountCents && found.currency === want.currency
+    && found.beneficiaryId === want.beneficiaryId && (!live || (found.status !== "FAILED" && found.status !== "CANCELLED"));
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * The create errors Airwallex documents for POST /transfers/create that mean no transfer was made
@@ -166,16 +201,17 @@ export const REFUSED_AT_CREATE = new Set([
  * Creates the transfer; if Airwallex answers that this request_id already made one (duplicate_request_id, or the
  * legacy request_id_duplicate, with the transfer's id in details), that transfer is adopted, never a second one made.
  */
-async function createOrAdopt(rail: AirwallexRail, req: NewTransfer): Promise<Transfer> {
+async function createOrAdopt(rail: AirwallexRail, want: NewTransfer): Promise<{ transfer: Transfer; adopted: boolean }> {
   try {
-    return await rail.createTransfer(req);
+    return { transfer: await rail.createTransfer(want), adopted: false };
   } catch (err) {
     if (!(err instanceof AirwallexError) || (err.code !== "duplicate_request_id" && err.code !== "request_id_duplicate")) throw err;
+    // The id Airwallex names goes into a URL path only if it is a UUID; otherwise the transfer is looked up by request_id.
     const id = (err.body as { details?: { id?: unknown } } | null)?.details?.id;
-    const existing = typeof id === "string" && id ? await rail.getTransfer(id) : await rail.findTransferByRequestId(req.requestId);
-    // Adopted only when it is this payout's own request_id; anything else stays an error (the payout stays open).
-    if (!existing || existing.requestId !== req.requestId) throw err;
-    return existing;
+    const existing = typeof id === "string" && UUID.test(id) ? await rail.getTransfer(id) : await rail.findTransferByRequestId(want.requestId);
+    // Adopted only when it is exactly this payout; anything else stays an error (the payout stays open, under way).
+    if (!existing || !sameTransfer(existing, want, true)) throw err;
+    return { transfer: existing, adopted: true };
   }
 }
 

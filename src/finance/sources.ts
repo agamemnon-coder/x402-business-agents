@@ -26,6 +26,7 @@ export function reconcileSourcesFromEnv(): ReconcileSources {
   const issuing = issuingFromEnv();
   return {
     ...(rest ? { transfer: async (id: string) => { const t = await rest.getTransfer(id); return { status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),
+    ...(rest ? { transferByRequestId: async (requestId: string) => { const t = await rest.findTransferByRequestId(requestId); return t && { id: t.id, status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),
     ...(issuing ? { cardTransactions: (cardId: string) => issuing.rail.listCardTransactions(cardId) } : {}),
     ...(process.env.METAL_RPC_URL ? { chainTransfer: receiptCarries } : {}),
   };

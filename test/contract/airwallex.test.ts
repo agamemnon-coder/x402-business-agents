@@ -13,6 +13,7 @@
 //   [RUN-S3]    docs/runs/2026-10-29-s3.md, [RUN-R3] docs/runs/2026-10-29-rehearsal-3.md (quote, conversion, transfer ids)
 //   [READBACK]  docs/runs/airwallex-readback.json (ids re-read GET-only on 1 November)
 //   [HOOKS]     docs/runs/2026-10-30-webhooks.md (a card transaction in both event shapes)
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MANUFACTURER, invoiceAlreadyHandled, proposeInvoicePayment, seedTreasury } from "../../src/agents/euroBill.js";
@@ -25,6 +26,9 @@ import { openDb, type DB } from "../../src/db/open.js";
 import { executeInvoicePayment } from "../../src/executors/invoicePayment.js";
 import { decide } from "../../src/policy/approvals.js";
 import { eurInFlightCents } from "../../src/policy/available.js";
+import { chaos } from "../../src/policy/saga.js";
+import { reconcile } from "../../src/finance/reconcile.js";
+import { systemHealth } from "../../src/dashboard/health.js";
 import { FakeAirwallex } from "../../src/redteam/airwallex.js";
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -255,9 +259,24 @@ class ErringAirwallex extends FakeAirwallex {
     this.take("createTransfer");
     // [TERR] duplicate_request_id: "has been used for a transfer with the transfer ID … before", with details.id.
     const prior = this.transfers.find((x) => x.requestId === t.requestId);
-    if (prior) throw awxError(400, "duplicate_request_id", "/transfers/create", { source: "request_id", details: { id: prior.id, request_id: t.requestId } });
-    return super.createTransfer(t);
+    if (prior && this.tamper) Object.assign(prior, this.tamper);
+    if (prior) throw awxError(400, "duplicate_request_id", "/transfers/create", { source: "request_id", details: { id: this.duplicateId ?? prior.id, request_id: t.requestId } });
+    // Airwallex's transfer ids are UUIDs (the in-memory rail's are not): renamed as Airwallex would name them.
+    const rename = () => { const last = this.transfers.at(-1)!; last.id = randomUUID(); return last.id; };
+    try {
+      const made = await super.createTransfer(t);
+      return { ...made, id: rename() };
+    } catch (e) {
+      if (e instanceof AirwallexAmbiguous) rename();
+      throw e;
+    }
   }
+  /** What Airwallex's record of the first send turns out to hold, when a test wants it to differ from the payout. */
+  tamper: Partial<Transfer> | null = null;
+  /** The id a duplicate_request_id answer names, when a test wants another one. */
+  duplicateId: string | null = null;
+  gotIds: string[] = [];
+  override async getTransfer(id: string) { this.gotIds.push(id); return super.getTransfer(id); }
   override async findTransferByRequestId(requestId: string) {
     if (this.listLag > 0) { this.listLag--; return undefined; }
     return super.findTransferByRequestId(requestId);
@@ -364,6 +383,92 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
     expect(r.transfer.status).toBe("PAID");
     expect(status(db, out.proposal.proposal_id)).toBe("EXECUTED");
     expect(transferRows(db)).toEqual([{ transfer_id: awx.transfers[0]!.id, status: "PAID", failure_type: null }]);
+    // Named by its UUID, read back by it, and recorded as adopted, never as created.
+    expect(awx.gotIds[0]).toBe(awx.transfers[0]!.id);
+    const events = (db.prepare("SELECT event FROM audit_log WHERE event LIKE 'transfer.%' ORDER BY seq").all() as { event: string }[]).map((e) => e.event);
+    expect(events).toContain("transfer.adopted");
+    expect(events).not.toContain("transfer.created");
+    expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.ambiguous'").get() as { payload_json: string }).payload_json)).toMatchObject({ resolved: "adopted" });
+  });
+
+  it("the review's probe: a crash after create, then a resend answered balance_insufficient, never closes the payout [review 2 Nov]", async () => {
+    const { db, awx } = await world();
+    const out = await approved(db, awx);
+    chaos.at = (point) => { if (point === "transfer:after-create") throw new Error("crash"); };
+    try {
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow("crash");
+    } finally {
+      chaos.at = null;
+    }
+    expect(awx.transfers).toHaveLength(1); // Airwallex made it; the ledger has only its SUBMITTING row
+    awx.listLag = 1; // the look-up misses it
+    awx.fail.createTransfer = awxError(400, "balance_insufficient", "/transfers/create"); // and the resend is refused
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "balance_insufficient" });
+    expect(awx.transfers).toHaveLength(1);
+    // A resend never closes the row: it stays under way and keeps blocking a second payout of the invoice.
+    expect(transferRows(db)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+    expect(invoiceAlreadyHandled(db, "BTX-2026-11")).toMatch(/already has a payout \(SUBMITTING\)/);
+    expect(eurInFlightCents(db)).toBeGreaterThan(0);
+    // The reconciliation looks the id-less row up by request_id and raises it.
+    const r = await reconcile(db, {
+      transfer: async (id) => awx.getTransfer(id),
+      transferByRequestId: async (requestId) => { const t = await awx.findTransferByRequestId(requestId); return t && { id: t.id, status: t.status, amountCents: t.amountCents, currency: t.currency }; },
+    });
+    expect(r.differences).toEqual([expect.objectContaining({ area: "airwallex transfer", ref: out.terms.transfer_request_id, outside: expect.stringContaining(awx.transfers[0]!.id) })]);
+  });
+
+  it("a payout closed as refused is never sent again under its request_id, and its proposal re-run stops before Airwallex", async () => {
+    const { db, awx } = await world();
+    const out = await approved(db, awx);
+    awx.fail.createTransfer = awxError(400, "fee_unknown", "/transfers/create");
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "fee_unknown" });
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow(/refused by Airwallex and closed/);
+    expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toEqual(["createTransfer:refused"]);
+    const refused = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.refused'").all() as { payload_json: string }[];
+    expect(refused).toHaveLength(1);
+    expect(JSON.parse(refused[0]!.payload_json)).toHaveProperty("origin");
+  });
+
+  it("the reconciliation raises a payout closed as refused that Airwallex holds after all; System health counts the double", async () => {
+    const { db, awx } = await world();
+    const out = await approved(db, awx);
+    awx.fail.createTransfer = awxError(400, "fee_unknown", "/transfers/create");
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "fee_unknown" });
+    // Suppose Airwallex had made it anyway, and a second proposal paid the invoice.
+    awx.transfers.push({ id: randomUUID(), requestId: out.terms.transfer_request_id, status: "PAID", amountCents: 185_000, currency: "EUR", metadata: "x", beneficiaryId: out.terms.beneficiary_id });
+    db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES ('tr-second', 'req-second', 'BTX-2026-11', '1850.00', 'EUR', 'SWIFT', '20.00', 'PAID', 'h', ?)").run(new Date().toISOString());
+    const r = await reconcile(db, {
+      transfer: async () => ({ status: "PAID", amountCents: 185_000, currency: "EUR" }),
+      transferByRequestId: async (requestId) => { const t = await awx.findTransferByRequestId(requestId); return t && { id: t.id, status: t.status, amountCents: t.amountCents, currency: t.currency }; },
+    });
+    expect(r.differences.map((d) => d.ref)).toEqual([out.terms.transfer_request_id]);
+    expect(systemHealth(db).slos.find((s) => s.id === "double_payments")).toMatchObject({ met: false, detail: expect.stringMatching(/BTX-2026-11.*req-second/) });
+  });
+
+  it("adoption on duplicate_request_id: the transfer it names must be this payout (amount, currency, payee) and live", async () => {
+    for (const change of [{ amountCents: 1 }, { beneficiaryId: "someone-else" }, { status: "FAILED" }] as Partial<Transfer>[]) {
+      const { db, awx } = await world();
+      const out = await approved(db, awx);
+      awx.loseNextTransferAnswer = true;
+      awx.listLag = 1;
+      // After the lost answer, Airwallex's record differs from the payout: never adopted, the payout stays open.
+      awx.tamper = change;
+      await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id), JSON.stringify(change)).rejects.toThrow();
+      expect(transferRows(db), JSON.stringify(change)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+      expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event IN ('transfer.adopted', 'transfer.created')").get()).toEqual({ n: 0 });
+    }
+  });
+
+  it("duplicate_request_id: an id that is not a UUID never goes into a URL; the transfer is looked up by request_id instead", async () => {
+    const { db, awx } = await world();
+    const out = await approved(db, awx);
+    awx.loseNextTransferAnswer = true;
+    awx.listLag = 1;
+    awx.duplicateId = "../../balances/current";
+    const r = await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
+    expect(awx.gotIds).not.toContain("../../balances/current");
+    expect(r.transfer.id).toBe(awx.transfers[0]!.id);
+    expect(awx.transfers).toHaveLength(1);
   });
 
   it("a duplicate_request_id naming a transfer under another request_id is never adopted", async () => {
