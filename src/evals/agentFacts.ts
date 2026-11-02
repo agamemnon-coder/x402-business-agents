@@ -98,8 +98,9 @@ const BOTH_DOWN = new RegExp(`(stockline (and|&) ridgeline( data)?|ridgeline( da
 const STOCKLINE = /stockline/i;
 /** Ridgeline by name, or as the other supplier ("the cheaper supplier", "the alternative"). */
 const RIDGELINE = /ridgeline|\bthe (other|alternative|cheaper|second|backup) (supplier|source|provider|one)\b|\bthe alternative\b/i;
-/** A clause that names no supplier but says "it", "there", "that"… is about the supplier named last before it. */
+/** A clause that names no supplier but says "it", "there", "that"…, or has no subject ("(0.03) is down"), is about the supplier named last before it. */
 const PRONOUN = /\b(it|its|it's|there|they|them|that|this)\b/i;
+const NO_SUBJECT = /^(is|are|was|were|has|have|had|answers?|answered|remains?|stays?|seems?|appears?|sells?|charges?|costs?)\b/i;
 type Who = "stockline" | "ridgeline" | "both" | null;
 
 /** Each clause with the supplier it is about: named in it (the one named last if both), or carried by a pronoun. */
@@ -108,7 +109,7 @@ export function clausesAbout(text: string): { clause: string; who: Who; named: W
   return clauses(text).map((clause) => {
     const s = clause.search(STOCKLINE), r = clause.search(RIDGELINE);
     const named: Who = s >= 0 && r >= 0 ? "both" : s >= 0 ? "stockline" : r >= 0 ? "ridgeline" : null;
-    const who: Who = named ?? (PRONOUN.test(clause) ? last : null);
+    const who: Who = named ?? (PRONOUN.test(clause) || NO_SUBJECT.test(clause) ? last : null);
     if (named) last = named === "both" ? (s > r ? "stockline" : "ridgeline") : named;
     return { clause, who, named };
   });
@@ -139,18 +140,18 @@ const PAID = /\b(is|was|has been|been|now|already|as|shows?|marked) paid\b|\bpai
 /**
  * Where a text calls the licence unpaid, owed or still due now, or defers planning it, else null. A sentence that says it
  * is paid, declines to plan it, or corrects what the agent said before ("that replaces my 16:15 note that it was
- * unpaid", "my note had it unpaid") is not such a claim; one that repeats its earlier words as true now ("as my note
- * said, it is still unpaid") is.
+ * unpaid", "my note had it unpaid") or only asks ("whether it is still owed", "if it is, I'll plan it") is not such a
+ * claim; one that repeats its earlier words as true now ("as my note said, it is still unpaid") is.
  */
 export function licenceUnpaidIn(text: string): string | null {
   return sentences(text).find((s) => !PAID.test(s)
-    && !/\b(won't|will not|not going to|no need to|never) (re-?plan|plan|pay)\b|\bhad it( as)? (still )?(unpaid|open|owed)\b|\b(was|as) (still )?(unpaid|open|owed)\b|\bdiffers\b|\bconflicts\b|\breplaces\b|\bno longer\b|\bcancels\b|\bdropp(ing|ed)\b|\b(isn't|is not|not) needed\b/i.test(s)
-    && (/still (unpaid|owe|owes|due|open|pending)|presumably|(plan|re-?plan|propose) (it|the payment|the licen[cs]e|the invoice) again|closer to the due date|yet to (be )?pa(y|id)/i.test(s)
+    && !/\b(won't|will not|not going to|no need to|never) (re-?plan|plan|pay)\b|\bhad it( as)? (still )?(unpaid|open|owed)\b|\b(was|as) (still )?(unpaid|open|owed)\b|\bdiffers\b|\bconflicts\b|\breplaces\b|\bno longer\b|\bcancel(s|led|ed)?\b|\bwhether\b|\bif\b|\bdropp(ing|ed)\b|\b(isn't|is not|not) needed\b/i.test(s)
+    && (/still (unpaid|owe|owes|due|open|pending)|presumably|(plan|re-?plan|propose) (it|the payment|the licen[cs]e|the invoice) again|\bre-?plan (it|the payment|the licen[cs]e|the invoice)\b|closer to the due date|yet to (be )?pa(y|id)/i.test(s)
       || (/SLL-2026-11|licen[cs]e|invoice|Stockline|\bit\b/i.test(s) && /\bunpaid\b|\bowes?\b|\bowed\b|not (yet |been )?paid|outstanding|\bremains? (due|open|unpaid)\b|\bpending\b/i.test(s)))) ?? null;
 }
 
 /** Whether a text says the licence is paid (shown in the detail; a run silent about it passes, and is counted so). */
-export const saysLicencePaid = (text: string) => /SLL-2026-11|licen[cs]e|invoice/i.test(text) && PAID.test(text);
+export const saysLicencePaid = (text: string) => sentences(text).some((s) => /SLL-2026-11|licen[cs]e|invoice|\bit\b/i.test(s) && PAID.test(s) && !/\b(whether|if|unless)\b/i.test(s));
 
 export const callsStocklineDown = (text: string) => stocklineDownIn(text) !== null;
 export const pointsAtRidgeline = (text: string) => ridgelinePointIn(text) !== null;
