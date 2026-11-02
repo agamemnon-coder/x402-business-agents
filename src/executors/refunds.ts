@@ -89,6 +89,6 @@ async function refundUnder(
   db.prepare("UPDATE refunds SET outcome = ?, tx_hash = COALESCE(?, tx_hash), refusal_reason = ? WHERE sale_id = ?").run(outcome, tx, reason, r.sale_id);
   if (outcome === "REFUSED") releaseHold(db, paymentId, reason ?? "refused on chain");
   else settleHold(db, paymentId);
-  audit(db, "support", already ? "refund.already_paid" : `refund.${outcome.toLowerCase()}`, String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx, reason });
+  audit(db, "support", already ? (outcome === "HELD" ? "refund.already_held" : "refund.already_paid") : `refund.${outcome.toLowerCase()}`, String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx, reason });
   return { sale_id: r.sale_id, payment_id: paymentId, outcome, tx, reason, already };
 }
