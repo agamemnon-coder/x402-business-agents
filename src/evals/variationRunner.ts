@@ -1,18 +1,27 @@
 // D26: the variation batch. Runs simulated-rail worlds by seed (each one or more times), writes one result file per
 // run under docs/runs/variation/<date>/, records each world's Claude cost in the evals block of the API budget, and
 // stops before a world once that block has reached its cap. Resumable: a run whose result is on file under the
-// variation root (any date) is skipped, so a batch started again does no work twice and spends nothing twice.
+// variation root (any date) is skipped, so a batch started again does no work twice and spends nothing twice. A run
+// is matched by its world's hash, not its label: if the generator changes, the same seed is a new world and runs again.
+// Spend is recorded from the world's own ledger (its agent.run rows) in a finally, before the result is written, so a
+// world that stops half-way is still counted; a world stops waking agents once the block's cap is reached mid-world.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { budgetStatus, recordSpend } from "../claude/budget.js";
-import type { AgentDecision, SimResult } from "./simWorld.js";
+import type { DB } from "../db/open.js";
+import { sha256Hex } from "../lib/terms.js";
+import { costOf, type AgentDecision, type SimResult } from "./simWorld.js";
 import { generateWorld, type SimWorldSpec } from "./worlds.js";
 import { timingStats } from "./treasuryTiming.js";
 
 export const labelOf = (seed: number, rep: number) => (rep === 1 ? `sim-${seed}` : `sim-${seed}-r${rep}`);
 
-/** The runs on file under the variation root, any date: a file counts only when it reads as a result. */
+/** The hash a run is matched by on resume: the world exactly as the generator makes it from the seed now. */
+export const worldSha = (seed: number) => sha256Hex(JSON.stringify(generateWorld(seed)));
+const doneKey = (sha: string, label: string) => `${label}@${sha.slice(0, 12)}`;
+
+/** The runs on file under the variation root, any date, as label@world-hash: a file counts only when it reads as a result. */
 export function doneRuns(root: string): Set<string> {
   const done = new Set<string>();
   if (!existsSync(root)) return done;
@@ -20,7 +29,7 @@ export function doneRuns(root: string): Set<string> {
     for (const f of readdirSync(join(root, day.name)).filter((x) => /^sim-\d+(-r\d+)?\.json$/.test(x))) {
       try {
         const r = JSON.parse(readFileSync(join(root, day.name, f), "utf8")) as Partial<SimResult>;
-        if (r.label === f.replace(/\.json$/, "") && r.safety) done.add(r.label);
+        if (r.label === f.replace(/\.json$/, "") && r.safety && r.world_sha256) done.add(doneKey(r.world_sha256, r.label));
       } catch { /* unreadable: not done, it runs again */ }
     }
   }
@@ -39,9 +48,14 @@ export interface BatchOptions {
   spendFile: string;
   seeds: number[];
   repeat: number;
-  run(spec: SimWorldSpec): Promise<SimResult>;
+  /** Runs one world; it hands the runner the world's ledger (so spend is counted even if it stops) and gets the budget left. */
+  run(spec: SimWorldSpec, w: { ledger(db: DB): void; budgetLeftMicros: number }): Promise<SimResult>;
   log?(line: string): void;
 }
+
+/** The spend of the world in flight, for a signal handler (the CLI records it on Ctrl-C before exiting). */
+let inFlight: (() => void) | null = null;
+export function recordInFlight(): void { inFlight?.(); }
 
 export async function runBatch(o: BatchOptions): Promise<{ ran: SimResult[]; skipped: string[]; stopped: string | null }> {
   const done = doneRuns(o.root);
@@ -51,18 +65,35 @@ export async function runBatch(o: BatchOptions): Promise<{ ran: SimResult[]; ski
   outer: for (const seed of o.seeds) {
     for (let rep = 1; rep <= o.repeat; rep++) {
       const label = labelOf(seed, rep);
-      if (done.has(label)) { skipped.push(label); continue; }
+      const sha = worldSha(seed);
+      if (done.has(doneKey(sha, label))) { skipped.push(label); continue; }
       const b = budgetStatus(o.spendFile).blocks.evals;
       if (b.over || b.spentUsd >= b.capUsd) {
         stopped = `the evals block has reached its cap: ${b.spentUsd.toFixed(2)} of ${b.capUsd} USD spent; nothing more runs`;
         break outer;
       }
-      const r = { ...(await o.run(generateWorld(seed))), label };
+      let ledger: DB | null = null;
+      let result: SimResult | null = null;
+      let recorded = false;
+      const record = () => {
+        if (recorded) return;
+        recorded = true;
+        const cost = ledger ? costOf(ledger) : (result?.cost_usd_micros ?? 0);
+        if (cost > 0) recordSpend(o.spendFile, { block: "evals", usd_micros: cost, what: `variation ${label}${result ? "" : " (stopped before its end)"}` });
+      };
+      inFlight = record;
+      try {
+        result = await o.run(generateWorld(seed), { ledger: (db) => { ledger = db; }, budgetLeftMicros: Math.max(0, Math.round((b.capUsd - b.spentUsd) * 1e6)) });
+      } finally {
+        record();
+        inFlight = null;
+      }
+      const r: SimResult = { ...result, label, world_sha256: sha };
       mkdirSync(o.outDir, { recursive: true });
       writeFileSync(join(o.outDir, `${label}.json`), `${JSON.stringify(r, null, 2)}\n`);
-      if (r.cost_usd_micros > 0) recordSpend(o.spendFile, { block: "evals", usd_micros: r.cost_usd_micros, what: `variation ${label}` });
       ran.push(r);
       o.log?.(`${label}: ${r.decisions.length} decisions (${Math.round((1 - r.fallback_share) * 100)}% Claude), ${r.safety.unsafe} unsafe, ${(r.cost_usd_micros / 1e6).toFixed(4)} USD`);
+      if (r.stopped_early) { stopped = `${label}: ${r.stopped_early}; nothing more runs`; break outer; }
     }
   }
   return { ran, skipped, stopped };
@@ -109,14 +140,15 @@ export function summaryMarkdown(rs: SimResult[], o: { date: string }): string {
     "",
     "Seconds from the first `customers.turned_away` event (or, without one, the third buy-policy refusal) to the first `mandate_replace` proposal, as the dry-run harness measures it. Simulated worlds measure the agents' own work only (queries are instant, agents with news wake at once); live worlds add the query interval and the runner's poll, so the two are never pooled.",
     "",
-    "| Worlds | Runs | Customers turned away | Options came (n) | Median s | p90 s | Max s | No options |",
-    "|---|---|---|---|---|---|---|---|",
+    "| Worlds | Runs | Customers turned away | Options came (n) | Median s | p90 s | Max s | Options before turned away | No options |",
+    "|---|---|---|---|---|---|---|---|---|",
     ...(["simulated", "live"] as const).map((kind) => {
       const of = rs.filter((r) => (r.rails ?? "simulated") === kind);
       const t = of.map((r) => r.treasury_timing).filter((x) => x?.applies);
-      const s = timingStats(t.map((x) => x!.seconds));
+      const before = t.filter((x) => x!.options_before).length;
+      const s = timingStats(t.filter((x) => !x!.options_before).map((x) => x!.seconds));
       const v = (x: number | null) => (x === null ? "–" : String(x));
-      return `| ${kind} | ${of.length} | ${t.length} | ${s.n} | ${v(s.median)} | ${v(s.p90)} | ${v(s.max)} | ${s.none ? t.filter((x) => x!.seconds === null).map((x) => x!.words).join("; ") : "0"} |`;
+      return `| ${kind} | ${of.length} | ${t.length} | ${s.n} | ${v(s.median)} | ${v(s.p90)} | ${v(s.max)} | ${before} | ${s.none ? t.filter((x) => x!.seconds === null && !x!.options_before).map((x) => x!.words).join("; ") : "0"} |`;
     }),
     "",
     "## The same world, again: the spread of choices",

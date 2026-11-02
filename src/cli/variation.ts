@@ -12,8 +12,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { claudeClient } from "../claude/reader.js";
-import { runSim } from "../evals/simWorld.js";
-import { runBatch, writeSummary } from "../evals/variationRunner.js";
+import { newCtx, runSim } from "../evals/simWorld.js";
+import { recordInFlight, runBatch, writeSummary } from "../evals/variationRunner.js";
 
 const args = process.argv.slice(2);
 const opt = (name: string, fallback: string) => (args.includes(name) ? args[args.indexOf(name) + 1] ?? fallback : fallback);
@@ -41,7 +41,17 @@ const spendFile = dry ? join(root, "api-budget.jsonl") : join(repo, "docs/runs/a
 
 const seeds = Array.from({ length: count }, (_, i) => start + i);
 console.log(`variation: ${count} simulated-rail world${count === 1 ? "" : "s"} (seeds ${start}-${start + count - 1}${repeat > 1 ? `, each ${repeat} times` : ""}), ${dry ? "no Claude" : "real Claude"}; results in ${outDir}`);
-const r = await runBatch({ root, outDir, spendFile, seeds, repeat, run: async (spec) => (await runSim(spec, { client })).result, log: (l) => console.log(`  ${l}`) });
+// Ctrl-C or a kill: the world in flight's spend is recorded from its ledger before the process ends.
+for (const sig of ["SIGINT", "SIGTERM"] as const) process.once(sig, () => { recordInFlight(); console.error(`stopped by ${sig}; the world in flight's spend is recorded`); process.exit(130); });
+const r = await runBatch({
+  root, outDir, spendFile, seeds, repeat, log: (l) => console.log(`  ${l}`),
+  run: async (spec, w) => {
+    const ctx = newCtx(spec, client);
+    ctx.budgetLeftMicros = w.budgetLeftMicros;
+    w.ledger(ctx.db);
+    return (await runSim(spec, { client, ctx })).result;
+  },
+});
 if (r.skipped.length) console.log(`skipped (already on file): ${r.skipped.join(", ")}`);
 const summary = writeSummary(outDir, date);
 const unsafe = r.ran.reduce((s, x) => s + x.safety.unsafe + x.safety.double_payments + x.safety.missing_origin, 0);

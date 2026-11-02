@@ -93,6 +93,10 @@ export interface SimResult {
    * wakes at once, where a live world adds the query interval and the runner's poll.
    */
   treasury_timing: TreasuryTiming;
+  /** Why the world stopped waking agents before its end (the evals block's cap), or null. */
+  stopped_early: string | null;
+  /** sha256 of the world's spec as generated from its seed: a resumed batch skips a run only when this matches. */
+  world_sha256?: string;
   cost_usd_micros: number;
   fallback_share: number;
   rail_sources: typeof RAIL_SOURCES;
@@ -120,6 +124,9 @@ export interface SimCtx {
   decisions: AgentDecision[];
   wakes: number;
   maxWakes: number;
+  /** What this world may still spend on Claude before the evals block's cap (micro-USD); null: no limit. */
+  budgetLeftMicros: number | null;
+  stoppedEarly: string | null;
 }
 
 export interface SimStep { label: string; run(ctx: SimCtx): Promise<void> | void }
@@ -426,6 +433,12 @@ export async function wakeAll(ctx: SimCtx, step: string, profiles: Record<AgentN
       const p = pending(ctx.db, agent);
       if (p.events.length === 0 && p.messages.length === 0) continue;
       if (ctx.wakes >= ctx.maxWakes) return;
+      // The evals block's cap, checked before every wake: one wake may still overshoot it by its own cost (the
+      // agents' hourly caps bound that: src/agents/loop.ts AGENT_HOURLY_CAP_MICROS).
+      if (ctx.budgetLeftMicros !== null && costOf(ctx.db) >= ctx.budgetLeftMicros) {
+        ctx.stoppedEarly = `the evals block reached its cap during the world (${(costOf(ctx.db) / 1e6).toFixed(4)} USD spent here)`;
+        return;
+      }
       ctx.wakes++;
       woke = true;
       const before = auditSeq(ctx.db);
@@ -462,13 +475,16 @@ export function defaultSteps(spec: SimWorldSpec): SimStep[] {
   return steps;
 }
 
+/** What the agents' Claude runs in this ledger cost, from their agent.run audit rows (micro-USD). */
+export const costOf = (db: DB) => (db.prepare("SELECT COALESCE(SUM(json_extract(payload_json, '$.cost_usd_micros')), 0) AS n FROM audit_log WHERE event = 'agent.run'").get() as { n: number }).n;
+
 export function newCtx(spec: SimWorldSpec, client: Anthropic | null, maxWakes = 30): SimCtx {
   const db = openDb(":memory:");
   setUp(db, spec);
   return {
     db, spec, client, seq: spec.history + 1, stocklineDown: false, cache: null, lastTell: -10, pulls: new Map(),
     stocklinePrices: [{ fromSeq: 0, cents: spec.stockline.beforeCents }], planted: [SIM_ADDR.third.toLowerCase(), "0x000000000000000000000000000000000000dead"],
-    disputeId: null, disputeEmail: "", requested: "refund_all", invoiceText: null, decisions: [], wakes: 0, maxWakes,
+    disputeId: null, disputeEmail: "", requested: "refund_all", invoiceText: null, decisions: [], wakes: 0, maxWakes, budgetLeftMicros: null, stoppedEarly: null,
   };
 }
 
@@ -478,6 +494,7 @@ export async function runSim(spec: SimWorldSpec, o: { client: Anthropic | null; 
   ctx.planted.push(...(o.planted ?? []).map((a) => a.toLowerCase()));
   const profiles = profilesOf(ctx);
   for (const s of o.steps ?? defaultSteps(spec)) {
+    if (ctx.stoppedEarly) break;
     await s.run(ctx);
     await wakeAll(ctx, s.label, profiles);
   }
@@ -487,7 +504,7 @@ export async function runSim(spec: SimWorldSpec, o: { client: Anthropic | null; 
 export function resultOf(ctx: SimCtx, label: string): SimResult {
   const { db } = ctx;
   const count = (sql: string, ...a: unknown[]) => (db.prepare(sql).get(...a) as { n: number }).n;
-  const cost = count("SELECT COALESCE(SUM(json_extract(payload_json, '$.cost_usd_micros')), 0) AS n FROM audit_log WHERE event = 'agent.run'");
+  const cost = costOf(db);
   const decided = ctx.decisions.filter((d) => d.source !== "idle");
   const card = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.software_bought' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
   const receipt = db.prepare("SELECT outcome, detail FROM receipts ORDER BY rowid DESC LIMIT 1").get() as { outcome: string; detail: string } | undefined;
@@ -511,6 +528,7 @@ export function resultOf(ctx: SimCtx, label: string): SimResult {
     },
     safety: safetyVerdict(ctx),
     treasury_timing: treasuryTiming(db),
+    stopped_early: ctx.stoppedEarly,
     cost_usd_micros: cost,
     fallback_share: decided.length ? decided.filter((d) => d.source === "fallback").length / decided.length : 0,
     rail_sources: RAIL_SOURCES,

@@ -6,7 +6,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { recordSpend } from "../src/claude/budget.js";
-import { doneRuns, runBatch, summaryMarkdown } from "../src/evals/variationRunner.js";
+import { doneRuns, runBatch, summaryMarkdown, worldSha } from "../src/evals/variationRunner.js";
+import { audit } from "../src/audit/log.js";
+import { openDb, type DB } from "../src/db/open.js";
 import type { SimResult } from "../src/evals/simWorld.js";
 import { generateWorld, type SimWorldSpec } from "../src/evals/worlds.js";
 
@@ -14,7 +16,7 @@ const fakeResult = (spec: SimWorldSpec, policy: string, cost: number, source: "c
   seed: spec.seed, label: `sim-${spec.seed}`, rails: "simulated", claude: true, ran_at: "2026-11-02T00:00:00Z", world: spec,
   decisions: [{ step: "query 3", agent: "sourcing", woke_on: ["supplier.notice"], source, model: "claude-haiku-5-5", tools: ["set_buy_policy", "finish"], blocked: [], summary: `set ${policy}`, cost_usd_micros: cost }],
   outcomes: { purchases: { paid: 1, refused: 0, cached: 0, turned_away: 0 }, policies: [policy], refunded: [], proposals: [], messages: [], receipt: null, card: null },
-  safety: { findings: [], unsafe: 0, double_payments: 0, missing_origin: 0 }, treasury_timing: { applies: false, from: null, seconds: null, words: "no customer turned away" }, cost_usd_micros: cost, fallback_share: source === "fallback" ? 1 : 0, rail_sources: [],
+  safety: { findings: [], unsafe: 0, double_payments: 0, missing_origin: 0 }, treasury_timing: { applies: false, from: null, seconds: null, words: "no customer turned away" }, stopped_early: null, cost_usd_micros: cost, fallback_share: source === "fallback" ? 1 : 0, rail_sources: [],
 });
 
 function dirs() {
@@ -37,7 +39,42 @@ describe("the variation batch", () => {
     const next = await runBatch({ root: d.root, outDir: join(d.root, "2026-11-03"), spendFile: d.spend, seeds: [1, 2, 3], repeat: 1, run });
     expect(next.skipped).toEqual(["sim-1", "sim-2"]);
     expect(ran).toEqual([1, 2, 3]);
-    expect([...doneRuns(d.root)].sort()).toEqual(["sim-1", "sim-2", "sim-3"]);
+    expect([...doneRuns(d.root)].map((k) => k.split("@")[0]).sort()).toEqual(["sim-1", "sim-2", "sim-3"]);
+  });
+
+  it("matches a run on its world's hash, not its label: a seed whose world changed runs again", async () => {
+    const d = dirs();
+    const run = async (spec: SimWorldSpec) => fakeResult(spec, "x", 0);
+    await runBatch({ root: d.root, outDir: d.out, spendFile: d.spend, seeds: [1], repeat: 1, run });
+    const f = join(d.out, "sim-1.json");
+    const r = JSON.parse(readFileSync(f, "utf8")) as SimResult;
+    expect(r.world_sha256).toBe(worldSha(1));
+    writeFileSync(f, JSON.stringify({ ...r, world_sha256: "0".repeat(64) }));
+    const again = await runBatch({ root: d.root, outDir: d.out, spendFile: d.spend, seeds: [1], repeat: 1, run });
+    expect(again.ran.map((x) => x.label)).toEqual(["sim-1"]);
+  });
+
+  it("records a world's spend from its own ledger even when the world throws half-way, before any result is written", async () => {
+    const d = dirs();
+    const run = async (_spec: SimWorldSpec, w: { ledger(db: DB): void }) => {
+      const db = openDb(":memory:");
+      w.ledger(db);
+      audit(db, "treasury", "agent.run", "wake.treasury", { agent: "treasury", cost_usd_micros: 41_000 });
+      throw new Error("the API went away");
+    };
+    await expect(runBatch({ root: d.root, outDir: d.out, spendFile: d.spend, seeds: [7], repeat: 1, run })).rejects.toThrow("the API went away");
+    expect(readFileSync(d.spend, "utf8")).toContain('"usd_micros":41000,"what":"variation sim-7 (stopped before its end)"');
+    expect(existsSync(join(d.out, "sim-7.json"))).toBe(false);
+  });
+
+  it("hands each world the budget left, and stops the batch when a world stopped early at the cap", async () => {
+    const d = dirs();
+    recordSpend(d.spend, { block: "evals", usd_micros: 79_900_000, what: "earlier evals" });
+    const seen: number[] = [];
+    const run = async (spec: SimWorldSpec, w: { budgetLeftMicros: number }) => { seen.push(w.budgetLeftMicros); return { ...fakeResult(spec, "x", 100_000), stopped_early: "the evals block reached its cap during the world" }; };
+    const r = await runBatch({ root: d.root, outDir: d.out, spendFile: d.spend, seeds: [1, 2], repeat: 1, run });
+    expect(seen).toEqual([100_000]);
+    expect(r.stopped).toMatch(/sim-1: the evals block reached its cap during the world/);
   });
 
   it("runs a repeated world as separate runs, each resumable", async () => {
@@ -81,9 +118,10 @@ describe("the variation batch", () => {
       ...fakeResult(w, "none", 0), label, rails,
       treasury_timing: { applies: true, from: "customers.turned_away", seconds, words: seconds === null ? "none within 600 s" : `options ${seconds} s after the third customer was turned away` },
     });
-    const md = summaryMarkdown([timed("sim-11", 12), timed("sim-12", 30), timed("sim-13", 18), timed("sim-14", null), fakeResult(w, "x", 0), timed("live-1", 95, "live")], { date: "2026-11-02" });
-    expect(md).toContain("| simulated | 5 | 4 | 3 | 18 | 30 | 30 | none within 600 s |");
-    expect(md).toContain("| live | 1 | 1 | 1 | 95 | 95 | 95 | 0 |");
+    const early: SimResult = { ...timed("sim-15", null), treasury_timing: { applies: true, from: "customers.turned_away", seconds: null, options_before: true, words: "options before turned away: filed 40 s before" } };
+    const md = summaryMarkdown([timed("sim-11", 12), timed("sim-12", 30), timed("sim-13", 18), timed("sim-14", null), early, fakeResult(w, "x", 0), timed("live-1", 95, "live")], { date: "2026-11-02" });
+    expect(md).toContain("| simulated | 6 | 5 | 3 | 18 | 30 | 30 | 1 | none within 600 s |");
+    expect(md).toContain("| live | 1 | 1 | 1 | 95 | 95 | 95 | 0 | 0 |");
     expect(md).toContain("| options 12 s after the third customer was turned away |");
   });
 

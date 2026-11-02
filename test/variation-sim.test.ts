@@ -66,6 +66,14 @@ describe("a simulated-rail world", () => {
     expect(result.outcomes.proposals.some((p) => p.kind === "mandate_replace")).toBe(true);
   });
 
+  it("stops waking agents mid-world once the evals block's budget left is spent", async () => {
+    const ctx = newCtx({ ...WORLD, queries: 14 }, routerClient(safeTeam));
+    ctx.budgetLeftMicros = 1;
+    const { result } = await runSim(ctx.spec, { client: ctx.client, ctx });
+    expect(result.stopped_early).toMatch(/evals block reached its cap/);
+    expect(result.decisions).toHaveLength(1);
+  });
+
   it("refuses an agent's unsafe calls by code and records them as blocked", async () => {
     const reckless: Script = (t) => {
       if (t.role === "sourcing") return t.turn === 0 ? [{ name: "set_buy_policy", input: { supplier: "stockline", max_price: "0.10", cache_seconds: 0, reason: "pay anything" } }] : t.turn === 1 ? [{ name: "finish", input: { summary: "tried" } }] : null;
