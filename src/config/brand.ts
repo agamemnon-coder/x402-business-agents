@@ -4,6 +4,16 @@
 export const PRODUCT = "Purser";
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
+/**
+ * The Visa Award in the Kit line: off until the live TAP run and a green interop test (Max, 2 Nov; D25). Max switches
+ * it on; nothing else changes with it (the /visa page and its claim text are separate).
+ */
+export const VISA_AWARD_ON = false;
+/** The big line under the heading: the kit, the track and the awards entered. */
+export const KIT_LINE = `Kit 11 · x402 Business Agents · Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""}`;
+/** The core sentence (Max, 2 Nov), word for word, wherever the story is told in one line. */
+export const CORE_SENTENCE = "Claude agents handle the exceptions. Metal and Airwallex enforce every limit. The CFO approves anything beyond them.";
+
 /** The example company that runs Purser in the demo. */
 export const COMPANY = "Northwind Outdoor";
 /** How Northwind is described everywhere a juror reads it: Kit 11's data business, in one sentence. */
