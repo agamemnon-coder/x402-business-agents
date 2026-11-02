@@ -754,6 +754,11 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       const then = str(p.route) === "approval" ? `waiting for your Face ID (${str(p.proposal_id)})` : str(p.route) === "auto" ? "within the automatic limits" : "";
       return out(`Dispute ${s} decided by code: refund ${str(p.refund)} test USD${then ? `, ${then}` : ""}`, "ok");
     }
+    case "dispute.decision_recorded": {
+      const list = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map(str).join(", ") : "");
+      const who = str(p.source) === "claude" ? "the Support agent" : "code";
+      return out(`Dispute ${s} decided once, by ${who}, before anything was paid: refund ${list(p.refunds) || "none"}${p.escalate ? `; ${list(p.escalate)} to the CFO` : ""}${p.approval ? `; ${list(p.approval)} above the automatic limits to the CFO` : ""}`, "info");
+    }
     case "refund.auto_approved": return out(`Refunds for sales ${(Array.isArray(p.sales) ? (p.sales as unknown[]) : []).map((x) => `#${str(x)}`).join(", ")} are within the automatic limits`, "ok");
     case "refund.paid": return out(`Refunded ${str(p.amount)} to Summit Outfitters for sale #${s} (${str(p.payment_id)})`, "ok");
     case "refund.already_paid": return out(`Retry of ${str(p.payment_id)}: already paid, nothing sent`, "ok");
