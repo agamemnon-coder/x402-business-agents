@@ -11,6 +11,7 @@
 import { agentName } from "../config/brand.js";
 import { CARDS, PLANS, type Agent } from "../config/policy.js";
 import { openDb } from "../db/open.js";
+import { SANDBOX_SWIFT_FEE_CENTS } from "../redteam/airwallex.js";
 import { fromCents } from "../lib/money.js";
 import { assessInvoice } from "../policy/fraud.js";
 import { priceRiseOptions } from "../policy/mandates.js";
@@ -91,8 +92,8 @@ function rng(seed: number): () => number {
 export const EUR_USD = 1.085;
 /** Airwallex's FX spread over mid, assumed for the P&L; the live quotes are in docs/runs/2026-10-29-s3.md. */
 export const FX_SPREAD = 0.004;
-/** The sandbox's SWIFT fee on 2026-10-29 (EUR). */
-export const SWIFT_FEE_EUR_CENTS = 1347;
+/** The stand-in's SWIFT fee (EUR cents): SANDBOX_SWIFT_FEE_CENTS, matched to the live sandbox (sources there). */
+export const SWIFT_FEE_EUR_CENTS = SANDBOX_SWIFT_FEE_CENTS;
 
 /** Claude prices per million tokens (input, output) in USD, and the average tokens one call used in rehearsal 3. */
 const AI = {

@@ -50,7 +50,8 @@ export const INVOICE_PROPOSAL_TTL_MS = 20 * 60 * 1000;
 
 /**
  * Ceiling for the Airwallex SWIFT payout fee, reserved before converting. Airwallex does not quote the fee
- * in advance (transfers/validate only answers "OK"); the sandbox charged EUR 13.47 on 2026-10-29.
+ * in advance (transfers/validate only answers "OK"); the sandbox charged EUR 13.47 on 2026-10-29 and EUR 13.36 to 13.40
+ * on 2026-11-02 (the stand-in charges SANDBOX_SWIFT_FEE_CENTS, src/redteam/airwallex.ts).
  */
 export const SWIFT_FEE_MAX_EUR_CENTS = 2000;
 export const EUR_FLOOR_CENTS = 2_500_000;
