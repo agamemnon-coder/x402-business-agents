@@ -20,11 +20,23 @@ export function publish(db: DB, kind: string, payload: Record<string, unknown>, 
   return id;
 }
 
+/**
+ * Payment details never travel between agents (variation sim-31 and sim-38, 2 November: the Sourcing agent passed an
+ * unvetted supplier's x402 address from that supplier's own notice on to Treasury). No agent needs one from another:
+ * every payee comes from code's mandates and allowlists. So code withholds every full on-chain address and every IBAN
+ * in a message, whatever the model writes; a short form stays readable ("0x5100…0503").
+ */
+export function withholdPaymentDetails(text: string): string {
+  return text
+    .replace(/0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/g, (a) => `${a.slice(0, 6)}…${a.slice(-4)} [address withheld by code]`)
+    .replace(/\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]{4}){2,7}(?:[ ]?[A-Z0-9]{1,3})?\b/g, (iban) => `${iban.slice(0, 4)}… [IBAN withheld by code]`);
+}
+
 /** One agent's message to another, at most 600 characters, redacted; logged in the audit chain as the agent's. */
 /** `by`: who wrote it, Claude (the agent's send_message tool) or code (a fallback); the page labels it so. */
 export function sendMessage(db: DB, from: AgentName, to: AgentName, text: string, now = new Date(), by: "claude" | "code" = "code"): number {
   if (from === to) throw new Error("an agent does not message itself");
-  const clean = redactSecrets(text.trim()).slice(0, 600);
+  const clean = withholdPaymentDetails(redactSecrets(text.trim())).slice(0, 600);
   const id = Number(db.prepare("INSERT INTO agent_messages (from_agent, to_agent, text, created_at) VALUES (?, ?, ?, ?)").run(from, to, clean, now.toISOString()).lastInsertRowid);
   audit(db, from, "agent.message", String(id), { from, to, text: clean, by }, now);
   return id;
