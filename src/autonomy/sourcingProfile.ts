@@ -51,26 +51,61 @@ export interface SourcingWorld {
 export const SOFTWARE_PLANS = ["packwise-starter", "packwise-pro"] as const;
 export type SoftwarePlan = (typeof SOFTWARE_PLANS)[number];
 
+type InfoAnswer = { info: { price?: string; data_age_seconds?: number } } | { why: string; answered: boolean };
+
+async function askInfo(url: string, timeoutMs: number): Promise<InfoAnswer> {
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    const err = e as Error & { cause?: { code?: string } };
+    return { why: err.name === "TimeoutError" ? `no answer within ${timeoutMs / 1000} s` : err.cause?.code === "ECONNREFUSED" ? "nothing answers on its address" : "the connection failed", answered: false };
+  }
+  // An answer: an error status, or a body code can read. A 200 whose body is not a JSON object is an answer too.
+  if (!res.ok) { await res.body?.cancel().catch(() => {}); return { why: `answered HTTP ${res.status}`, answered: true }; }
+  const body = await res.json().catch(() => null) as { price?: string; data_age_seconds?: number } | null;
+  if (!body || typeof body !== "object") return { why: `answered ${res.status} with an unreadable body`, answered: true };
+  return { info: body };
+}
+
+/**
+ * Code's price check of one supplier: its free /v1/info. An error answer (503 while offline for maintenance) is the
+ * supplier's answer. No answer at all is checked once more after a pause: in agent run 1 one unanswered check, while the
+ * world's process was busy, read as "Stockline: not reachable now" while Stockline was serving (2 November).
+ */
+export async function checkSupplier(base: string, o: { timeoutMs?: number; pauseMs?: number } = {}): Promise<InfoAnswer> {
+  const url = `${base}/v1/info`, timeoutMs = o.timeoutMs ?? 5000;
+  const first = await askInfo(url, timeoutMs);
+  if ("info" in first || first.answered) return first;
+  await new Promise((r) => setTimeout(r, o.pauseMs ?? 1000));
+  const second = await askInfo(url, timeoutMs);
+  return "info" in second || second.answered ? second : { why: `${second.why}, checked twice`, answered: false };
+}
+
+/** One supplier as the Sourcing agent sees it: code's price check of its free /v1/info and its last 20 tries. */
+export async function supplierView(db: DB, id: SupplierId, base = `http://127.0.0.1:${SUPPLIERS[id].port}`, check: { timeoutMs?: number; pauseMs?: number } = {}): Promise<SupplierView> {
+  const s = SUPPLIERS[id];
+  const stats = (db.prepare(`SELECT
+      SUM(outcome = 'PAID') AS paid, SUM(outcome = 'REFUSED' AND refusal_reason NOT LIKE 'supplier_unavailable%') AS refused, SUM(refusal_reason LIKE 'supplier_unavailable%') AS unavailable
+    FROM (SELECT outcome, refusal_reason FROM upstream_purchases WHERE supplier = ? ORDER BY id DESC LIMIT 20)`).get(id) as { paid: number | null; refused: number | null; unavailable: number | null });
+  const a = await checkSupplier(base, check);
+  const info = "info" in a ? a.info : null;
+  return { id, name: s.name, price_cents: toCents(info?.price ?? supplierPrice(db, id)), data_age_seconds: info?.data_age_seconds ?? s.dataAgeSeconds, available: info !== null,
+    ...("why" in a ? { why: a.why } : {}), last20: { paid: stats.paid ?? 0, refused: stats.refused ?? 0, unavailable: stats.unavailable ?? 0 } };
+}
+
+/** The suppliers running in this world (Ridgeline Data only where it has a key), each as supplierView reads it. */
+export async function liveSuppliers(db: DB): Promise<SupplierView[]> {
+  const running: SupplierId[] = addresses(db).ridgeline ? ["stockline", "ridgeline"] : ["stockline"];
+  return Promise.all(running.map((id) => supplierView(db, id)));
+}
+
 /** The live world: the suppliers on localhost, the mandate from the chain, the price from the ledger. */
 export function liveSourcingWorld(db: DB, o: { issuing?: ReturnType<typeof issuingFromEnv> } = {}): SourcingWorld {
   // Airwallex Issuing from the sandbox keys; a test passes its fake (the live wiring is otherwise the same).
   const iss = o.issuing === undefined ? issuingFromEnv() : o.issuing;
-  const running = (): SupplierId[] => (addresses(db).ridgeline ? ["stockline", "ridgeline"] : ["stockline"]);
   return {
-    suppliers: async () => Promise.all(running().map(async (id) => {
-      const s = SUPPLIERS[id];
-      const stats = (db.prepare(`SELECT
-          SUM(outcome = 'PAID') AS paid, SUM(outcome = 'REFUSED' AND refusal_reason NOT LIKE 'supplier_unavailable%') AS refused, SUM(refusal_reason LIKE 'supplier_unavailable%') AS unavailable
-        FROM (SELECT outcome, refusal_reason FROM upstream_purchases WHERE supplier = ? ORDER BY id DESC LIMIT 20)`).get(id) as { paid: number | null; refused: number | null; unavailable: number | null });
-      let info: { price?: string; data_age_seconds?: number } | null;
-      try {
-        // A supplier that answers with an error (503 while it is offline for maintenance) is not reachable now.
-        const res = await fetch(`http://127.0.0.1:${s.port}/v1/info`, { signal: AbortSignal.timeout(5000) });
-        info = res.ok ? await res.json() as { price?: string; data_age_seconds?: number } : null;
-      } catch { info = null; }
-      return { id, name: s.name, price_cents: toCents(info?.price ?? supplierPrice(db, id)), data_age_seconds: info?.data_age_seconds ?? s.dataAgeSeconds, available: info !== null,
-        last20: { paid: stats.paid ?? 0, refused: stats.refused ?? 0, unavailable: stats.unavailable ?? 0 } };
-    })),
+    suppliers: async () => liveSuppliers(db),
     mandate: async () => { const m = (await mandatesNow(db)).get("sourcing")!.now; return { capCents: m.capCents, budgetLeftCents: m.budgetCents - m.spentCents }; },
     sellCents: () => toCents(sellPrice(db)),
     // The company card, where it was issued (npm run cards -- setup) and the sandbox keys are set.

@@ -13,7 +13,7 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, statSync, writeF
 import { basename, dirname, join, resolve } from "node:path";
 import type { Address, Hex } from "viem";
 import { centsToBaseUnits, baseUnitsToCents, fromCents } from "../lib/money.js";
-import { keysDir, metalAgent } from "./agentCli.js";
+import { keysDir, metalAgentAsync } from "./agentCli.js";
 import { transferUsdz, usdzBalance } from "./chain.js";
 import { EXPLORER_TX } from "./network.js";
 
@@ -38,7 +38,8 @@ export interface FundDeps {
   address(world: string, file: string): Address | null;
   balance(a: Address): Promise<bigint>;
   transfer(world: string, file: string, to: Address, amount: bigint): Promise<Hex>;
-  faucet(a: Address): void;
+  /** Asynchronous where the caller also serves others (the world, recording a refusal on chain). */
+  faucet(a: Address): void | Promise<void>;
   log(row: string): void;
 }
 
@@ -55,7 +56,7 @@ export async function fundTestWallet(address: Address, minCents: number, opts: {
   const have = await d.balance(address);
   const want = centsToBaseUnits(minCents);
   if (have >= want) return "enough";
-  if (!d.recycle) { d.faucet(address); return "faucet"; }
+  if (!d.recycle) { await d.faucet(address); return "faucet"; }
   // Whole cents: the shortfall rounded up to the next cent.
   let need = want - have;
   if (need % CENT !== 0n) need = floorCents(need) + CENT;
@@ -100,7 +101,7 @@ function liveDeps(): FundDeps {
     },
     balance: usdzBalance,
     transfer: (world, file, to, amount) => transferUsdz(join(root, world, file), to, amount),
-    faucet: (a) => { metalAgent(["fund", a]); },
+    faucet: async (a) => { await metalAgentAsync(["fund", a]); },
     log: (row) => {
       if (!existsSync(LOG)) writeFileSync(LOG, "# Test money recycled from finished dry runs\n\nMax's rules (1 November): only from finished dry-N worlds, never the reserve world or Thursday's; each transfer with its tx; old ledgers and proofs unchanged; keys stay where they are. Written by `src/metal/testFunds.ts`.\n\n| UTC | From (world · wallet) | To (world · wallet, address) | *USDZ | Tx |\n|---|---|---|---|---|\n");
       appendFileSync(LOG, `${row}\n`);

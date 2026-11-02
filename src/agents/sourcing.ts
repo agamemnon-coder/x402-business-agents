@@ -2,7 +2,7 @@
 // a per-purchase cap, a budget). It holds its mandate key and nothing else.
 
 import { currentOrigin, originJson, parseOrigin, withOrigin, type Origin } from "../provenance/origin.js";
-import { holdBeyondCap, releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
+import { holdBeyondCap, RECORD_PULL_HOLD, releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -52,6 +52,85 @@ export function buyPolicy(db: DB): BuyPolicy {
   }
 }
 
+/** The recordings of Metal's refusal in this process, one after the other (see recordOnChain). */
+let recordingQueue: Promise<unknown> = Promise.resolve();
+/** A record pull that started (the CLI was started) and has no outcome after this long (the CLI's 180 s timeout and a margin) ended mid-pull. */
+export const RECORDING_STALE_MS = 240_000;
+/** A claim whose pull never started, after this long (the mandate read, the gas key's creation and its top-up, each up to the CLI's 180 s): its process ended before the pull. */
+export const CLAIM_STALE_MS = 900_000;
+
+/** The start of the error the pull-start check throws: nothing was started (never read as "pull sent"). */
+const PULL_NOT_STARTED = "not started";
+
+/** What became of a recording: Metal's refusal recorded on chain, an incident, or not recorded (for whatever reason). */
+export type Recording = "recorded" | "incident" | "not_recorded";
+
+/**
+ * An incident of the let-through or of a record pull: the Sourcing agent is stopped (stop.sourcing: every purchase
+ * refused before signing until the CFO lifts it with Face ID), an alarm row is written and, for a purchase let through,
+ * the let-through is finished as an incident, all in one transaction (nested in the caller's, if any).
+ */
+function raiseIncident(db: DB, seq: number, purchaseId: number | null, what: string, kind: "let_through" | "record_pull"): void {
+  db.transaction(() => {
+    const at = new Date().toISOString();
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('stop.sourcing', 'on', ?) ON CONFLICT(key) DO UPDATE SET value = 'on', updated_at = excluded.updated_at").run(at);
+    audit(db, "system", "upstream.let_through_incident", purchaseId === null ? String(seq) : String(purchaseId), { seq, purchase_id: purchaseId, kind, what, stopped: "sourcing", lift: "an approved policy change (Face ID) setting the Sourcing agent's stop to off" });
+    if (purchaseId !== null) finishLetThrough(db, { outcome: "incident", purchase_id: purchaseId, seq, detail: what });
+  }).immediate();
+}
+
+interface Claim { seq: number; mandate: string; payment_id: string; let_through?: boolean; purchase_id?: number | null; ts: string; pulled: string | null }
+
+/** The claims of a record pull with no outcome yet (for one mandate and kind, or all), with when each pull started. */
+function openClaims(db: DB, only?: { mandate: string; letThrough: boolean }): Claim[] {
+  const rows = db.prepare(`SELECT c.ts, c.payload_json,
+      (SELECT p.ts FROM audit_log p WHERE p.event = 'upstream.refusal_pull_started' AND json_extract(p.payload_json, '$.payment_id') = json_extract(c.payload_json, '$.payment_id') LIMIT 1) AS pulled
+    FROM audit_log c WHERE c.event = 'upstream.refusal_recording'
+      AND NOT EXISTS (SELECT 1 FROM audit_log o WHERE o.event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded')
+        AND json_extract(o.payload_json, '$.mandate') = json_extract(c.payload_json, '$.mandate')
+        AND COALESCE(json_extract(o.payload_json, '$.let_through'), 0) = COALESCE(json_extract(c.payload_json, '$.let_through'), 0))`).all() as { ts: string; payload_json: string; pulled: string | null }[];
+  // A claim written before the pull-start stamp existed (no purchase_id in it) counts as started when it was claimed.
+  return rows.map((r) => { const p = JSON.parse(r.payload_json) as Omit<Claim, "ts" | "pulled">; return { ...p, ts: r.ts, pulled: r.pulled ?? ("purchase_id" in p ? null : r.ts) }; })
+    .filter((c) => !only || (c.mandate === only.mandate && Boolean(c.let_through) === only.letThrough));
+}
+
+/**
+ * Resolves one claim with no outcome, inside the caller's transaction: still in flight (a pull of another process, or of
+ * this one before it ended) is "pending"; a pull that started and has no outcome after its timeout may have reached
+ * Metal: an incident (its hold stays HELD); a claim whose pull never started, after the steps before it could take, was
+ * never sent: not recorded, its hold released.
+ */
+function resolveClaim(db: DB, c: Claim, now: Date): "pending" | Recording {
+  const lt: Record<string, boolean> = c.let_through ? { let_through: true } : {};
+  if (c.pulled) {
+    if (now.getTime() - Date.parse(c.pulled) < RECORDING_STALE_MS) return "pending";
+    audit(db, "sourcing", "upstream.refusal_not_recorded", String(c.seq), { seq: c.seq, mandate: c.mandate, error: `pull sent: started at ${c.pulled} and no outcome after the CLI's timeout (the process ended mid-pull?)`, ...lt }, now);
+    raiseIncident(db, c.seq, c.purchase_id ?? null, `the pull recording Metal's refusal (${c.payment_id}) started at ${c.pulled} and has no outcome; it may have reached Metal`, "record_pull");
+    return "incident";
+  }
+  if (now.getTime() - Date.parse(c.ts) < CLAIM_STALE_MS) return "pending";
+  audit(db, "sourcing", "upstream.refusal_not_recorded", String(c.seq), { seq: c.seq, mandate: c.mandate, error: `not sent: claimed at ${c.ts}, the pull never started (the process ended before it)`, ...lt }, now);
+  releaseHold(db, `record:${c.payment_id}`, "not sent: the record pull never started", now);
+  return "not_recorded";
+}
+
+/**
+ * After a restart, and on the runner's poll: every record pull left without an outcome is resolved (resolveClaim) once
+ * its timeout has passed, so a crash mid-pull never leaves its hold HELD or the let-through labelled as recorded.
+ */
+export function recoverRecordPulls(db: DB, now = new Date()): { incidents: number; notSent: number; pending: number } {
+  let incidents = 0, notSent = 0, pending = 0;
+  for (const seen of openClaims(db)) {
+    // Read again inside the write transaction: another writer may have given it an outcome meanwhile.
+    const r = db.transaction(() => {
+      const c = openClaims(db, { mandate: seen.mandate, letThrough: Boolean(seen.let_through) }).find((x) => x.payment_id === seen.payment_id);
+      return c ? resolveClaim(db, c, now) : null;
+    }).immediate();
+    if (r === "incident") incidents++; else if (r === "not_recorded") notSent++; else if (r === "pending") pending++;
+  }
+  return { incidents, notSent, pending };
+}
+
 export class SourcingAgent {
   private mandate: LoadedMandate | undefined;
   private cache: { body: unknown; at: number; purchaseId: number; supplier: SupplierId } | null = null;
@@ -94,28 +173,75 @@ export class SourcingAgent {
 
   /**
    * Once per mandate for Purser's first cap refusal, and once more for the one let-through (`letThrough`), if any. True
-   * when it ended in an incident: a pull that may have reached Metal and was not reported refused (Sourcing is stopped).
+   * when it ended in an incident: a pull that may have reached Metal and was not reported refused (Sourcing is stopped;
+   * with `purchaseId`, the let-through is finished as an incident in that same transaction).
+   * The recording no longer blocks the process (agent run 1), so other refusals may arrive while it runs. All recordings
+   * in this process run one at a time (they share one gas key: two at once could race its nonce and read as an
+   * incident). Across processes, the claim row written before the pull is the guard.
    */
-  private async recordOnChain(m: LoadedMandate, seq: number, reason: string, refusedCents?: number, letThrough = false): Promise<boolean> {
-    if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ? AND COALESCE(json_extract(payload_json, '$.let_through'), 0) = ?")
-      .get(m.reference, letThrough ? 1 : 0)) return false;
+  private recordOnChain(m: LoadedMandate, seq: number, reason: string, refusedCents?: number, letThrough = false, purchaseId: number | null = null): Promise<Recording> {
+    const run = recordingQueue.then(() => this.recordOnce(m, seq, reason, refusedCents, letThrough, purchaseId));
+    recordingQueue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async recordOnce(m: LoadedMandate, seq: number, reason: string, refusedCents: number | undefined, letThrough: boolean, purchaseId: number | null): Promise<Recording> {
+    const paymentId = `refusal-${m.reference.slice(2, 14)}-${seq}`;
+    const lt: Record<string, boolean> = letThrough ? { let_through: true } : {};
+    // The claim, in one write transaction with the check: at most one record pull per mandate and kind, ever. An earlier
+    // outcome decides; an earlier claim without one is resolved (resolveClaim): still in flight counts as not recorded.
+    const claim = this.db.transaction((): Recording | "claimed" => {
+      const done = this.db.prepare(`SELECT event FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded')
+        AND json_extract(payload_json, '$.mandate') = ? AND COALESCE(json_extract(payload_json, '$.let_through'), 0) = ? ORDER BY seq LIMIT 1`).get(m.reference, letThrough ? 1 : 0) as { event: string } | undefined;
+      if (done) return done.event === "upstream.refused_on_chain" ? "recorded" : "not_recorded";
+      const open = openClaims(this.db, { mandate: m.reference, letThrough })[0];
+      if (open) { const r = resolveClaim(this.db, open, new Date()); return r === "pending" ? "not_recorded" : r; }
+      audit(this.db, "sourcing", "upstream.refusal_recording", String(seq), { seq, mandate: m.reference, payment_id: paymentId, purchase_id: purchaseId, ...lt });
+      return "claimed";
+    }).immediate();
+    if (claim !== "claimed") return claim;
     const cents = refusedCents ?? Number(/over the sourcing mandate's|is over/.test(reason) ? toCents((/^mandate_cap_exceeded: (?:the supplier asks )?(\d+\.\d{2})/.exec(reason) ?? [])[1] ?? "0.00") : 0);
+    // The record pull is an over-cap payment sent to Metal: it gets its own hold (past the cap, like the let-through's),
+    // released when Metal refuses it, kept when its outcome is unknown, so the budget never runs ahead of the chain.
+    const hold = `record:${paymentId}`;
+    let held = false;
     try {
       if (!cents) throw new Error("the refused amount is not in the reason");
-      // The record pull is an over-cap payment sent to Metal too: never more than a small rise over the bound cap.
+      // Never more than a small rise over the bound cap.
       let cap: bigint | null = null;
       try { cap = boundCapUnits(m); } catch { cap = null; }
       if (cap !== null && centsToBaseUnits(cents) > cap + centsToBaseUnits(LET_THROUGH_MAX_OVER_CENTS)) throw new Error(`${fromCents(cents)} is more than ${fromCents(LET_THROUGH_MAX_OVER_CENTS)} over the cap; no pull is sent to record it`);
-      const r = await recordCapRefusalOnChain(m, this.supplier, cents, `refusal-${m.reference.slice(2, 14)}-${seq}`);
-      audit(this.db, "sourcing", "upstream.refused_on_chain", String(seq), { seq, mandate: m.reference, amount: fromCents(cents), tx: r.tx, metal_reason: r.reason, ...(letThrough ? { let_through: true } : {}) });
-      return false;
+      const refused = holdBeyondCap(this.db, { agent: "sourcing", cents, ref: hold, payee: "supplier", reason: RECORD_PULL_HOLD });
+      if (refused) throw new Error(`no hold for the record pull (${refused.slice(0, 160)}); nothing is sent`);
+      held = true;
+      // The stamp right before the CLI starts: from then on the pull may reach Metal (resolveClaim times it from here).
+      // Guarded: only while the claim has no outcome and its hold is still HELD (the runner may have resolved a claim
+      // whose steps before the pull ran long); otherwise nothing is started and the pull is not sent.
+      const r = await recordCapRefusalOnChain(m, this.supplier, cents, paymentId, undefined, () => this.db.transaction(() => {
+        const open = openClaims(this.db, { mandate: m.reference, letThrough }).some((c) => c.payment_id === paymentId);
+        const holding = (this.db.prepare("SELECT status FROM holds WHERE ref = ?").get(hold) as { status: string } | undefined)?.status === "HELD";
+        if (!open || !holding) throw new Error(`${PULL_NOT_STARTED}: the claim was resolved before the pull started (${open ? "its hold is no longer held" : "it has an outcome"})`);
+        audit(this.db, "sourcing", "upstream.refusal_pull_started", String(seq), { seq, mandate: m.reference, payment_id: paymentId, ...lt });
+      }).immediate());
+      releaseHold(this.db, hold, "Metal refused the record pull; nothing moved");
+      audit(this.db, "sourcing", "upstream.refused_on_chain", String(seq), { seq, mandate: m.reference, amount: fromCents(cents), tx: r.tx, metal_reason: r.reason, ...lt });
+      return "recorded";
     } catch (e) {
       const error = (e as Error).message;
-      audit(this.db, "sourcing", "upstream.refusal_not_recorded", String(seq), { seq, mandate: m.reference, error: error.slice(0, 240), ...(letThrough ? { let_through: true } : {}) });
-      // A pull that may have reached Metal and was not reported refused may have paid: an incident.
-      if (!/^pull sent: |did not report a refusal/.test(error)) return false;
-      this.letThroughIncident(seq, null, `the ${fromCents(cents)} over-cap pull sent to record Metal's refusal was not reported refused (${error.slice(0, 120)})`, "record_pull");
-      return true;
+      // A pull that may have reached Metal and was not reported refused may have paid: an incident, its hold kept; the
+      // outcome row, the stop and the alarm in one transaction.
+      // Resolved by the runner before the pull started: its outcome and hold are already settled; nothing is sent.
+      if (error.startsWith(PULL_NOT_STARTED)) return "not_recorded";
+      if (!/^pull sent: |did not report a refusal/.test(error)) {
+        audit(this.db, "sourcing", "upstream.refusal_not_recorded", String(seq), { seq, mandate: m.reference, error: error.slice(0, 240), ...lt });
+        if (held) releaseHold(this.db, hold, `not sent: ${error.slice(0, 200)}`);
+        return "not_recorded";
+      }
+      this.db.transaction(() => {
+        audit(this.db, "sourcing", "upstream.refusal_not_recorded", String(seq), { seq, mandate: m.reference, error: error.slice(0, 240), ...lt });
+        raiseIncident(this.db, seq, purchaseId, `the ${fromCents(cents)} over-cap pull sent to record Metal's refusal was not reported refused (${error.slice(0, 120)})`, "record_pull");
+      }).immediate();
+      return "incident";
     }
   }
 
@@ -157,12 +283,7 @@ export class SourcingAgent {
    * is written. The payment, if any, is in the ledger like any other; it was inside the mandate's on-chain budget.
    */
   private letThroughIncident(seq: number, purchaseId: number | null, what: string, kind: "let_through" | "record_pull" = "let_through"): void {
-    this.db.transaction(() => {
-      const at = new Date().toISOString();
-      this.db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('stop.sourcing', 'on', ?) ON CONFLICT(key) DO UPDATE SET value = 'on', updated_at = excluded.updated_at").run(at);
-      audit(this.db, "system", "upstream.let_through_incident", purchaseId === null ? String(seq) : String(purchaseId), { seq, purchase_id: purchaseId, kind, what, stopped: "sourcing", lift: "an approved policy change (Face ID) setting the Sourcing agent's stop to off" });
-      if (purchaseId !== null) finishLetThrough(this.db, { outcome: "incident", purchase_id: purchaseId, seq, detail: what });
-    }).immediate();
+    raiseIncident(this.db, seq, purchaseId, what, kind);
   }
 
   /** Called after a replace: the next purchase signs under the new credential. */
@@ -283,12 +404,18 @@ export class SourcingAgent {
         } else if (refusalOf(out.reason) === "OverPerPaymentCap") {
           // Metal refused it itself, on the cap: nothing moved. Its refusal is then recorded on chain; only if that record
           // ends well does the purchase get its label (a record pull not reported refused is an incident instead).
-          const incident = agentsOn() ? await this.recordOnChain(m, seq, out.reason, lt.cents, true) : false;
-          if (incident) {
-            finishLetThrough(this.db, { outcome: "incident", purchase_id: id, seq, detail: "Metal refused the purchase, but the pull recording its refusal was not reported refused" });
-          } else {
-            audit(this.db, "sourcing", "upstream.let_through_refused", String(id), { seq, purchase_id: id, metal_status: out.status, metal_reason: out.reason.slice(0, 200), amount: fromCents(lt.cents), label: LET_THROUGH_LABEL });
-            finishLetThrough(this.db, { outcome: "metal_refused", purchase_id: id, seq, detail: `${out.status} ${out.reason}` });
+          // An incident there finishes this let-through as one, in the incident's own transaction (stop and alarm). Not
+          // recorded (never sent, or a claim still in flight elsewhere): no label, the outcome stays inconclusive.
+          const rec: Recording = agentsOn() ? await this.recordOnChain(m, seq, out.reason, lt.cents, true, id) : "recorded";
+          if (rec === "recorded") {
+            // The label only with the let-through's own outcome (not when something else finished it meanwhile).
+            this.db.transaction(() => {
+              if (finishLetThrough(this.db, { outcome: "metal_refused", purchase_id: id, seq, detail: `${out.status} ${out.reason}` })) {
+                audit(this.db, "sourcing", "upstream.let_through_refused", String(id), { seq, purchase_id: id, metal_status: out.status, metal_reason: out.reason.slice(0, 200), amount: fromCents(lt.cents), label: LET_THROUGH_LABEL });
+              }
+            }).immediate();
+          } else if (rec === "not_recorded") {
+            finishLetThrough(this.db, { outcome: "inconclusive", purchase_id: id, seq, detail: `Metal refused it (${out.status} ${out.reason.slice(0, 120)}), but its refusal was not recorded on chain` });
           }
         } else {
           // Refused, nothing settled, but not by Metal on the cap (a rate limit, an outage): no label, no record; not repeated.

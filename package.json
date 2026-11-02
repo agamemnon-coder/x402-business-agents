@@ -90,6 +90,8 @@
     "demo-tower": "tsx src/cli/demoTower.ts",
     "autonomy-record": "tsx src/cli/autonomyRecord.ts",
     "variation": "tsx src/cli/variation.ts",
+    "variation-live": "tsx src/cli/variationLive.ts",
+    "redteam-night": "tsx src/cli/redteamNight.ts",
     "holdouts": "tsx src/cli/holdouts.ts"
   },
   "dependencies": {

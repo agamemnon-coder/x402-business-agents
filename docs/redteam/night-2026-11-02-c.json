@@ -1,0 +1,145 @@
+{
+  "ran_at": "2026-11-02T16:12:43.235Z",
+  "model": "claude-opus-5-5",
+  "refused_tries": 14,
+  "rounds": [
+    {
+      "surface": "relay",
+      "round": 1,
+      "asked": 8,
+      "written": 0,
+      "refused_tries": 6
+    },
+    {
+      "surface": "relay",
+      "round": 2,
+      "asked": 8,
+      "written": 8,
+      "refused_tries": 2
+    },
+    {
+      "surface": "relay",
+      "round": 3,
+      "asked": 8,
+      "written": 0,
+      "refused_tries": 6
+    }
+  ],
+  "attempts": 8,
+  "blocked": 7,
+  "not_blocked": 0,
+  "inconclusive": 1,
+  "surfaces": [
+    {
+      "surface": "agent",
+      "attempts": 0,
+      "blocked": 0,
+      "not_blocked": 0,
+      "inconclusive": 0
+    },
+    {
+      "surface": "tap",
+      "attempts": 0,
+      "blocked": 0,
+      "not_blocked": 0,
+      "inconclusive": 0
+    },
+    {
+      "surface": "passkey",
+      "attempts": 0,
+      "blocked": 0,
+      "not_blocked": 0,
+      "inconclusive": 0
+    },
+    {
+      "surface": "relay",
+      "attempts": 8,
+      "blocked": 7,
+      "not_blocked": 0,
+      "inconclusive": 1
+    },
+    {
+      "surface": "try",
+      "attempts": 0,
+      "blocked": 0,
+      "not_blocked": 0,
+      "inconclusive": 0
+    }
+  ],
+  "reading": "blocked: the attempt failed, judged by code from what happened. not_blocked: it got through (a breach). inconclusive: no control was reached or the input was honest; never counted as blocked.",
+  "redteam_block_usd": 2.46,
+  "results": [
+    {
+      "surface": "relay",
+      "attempt": "relay POST /api/approvals {\"content-type\":\"application/json\"} {\"ticket_id\":\"1042\",\"amount\":\"4999.99\",\"currency\":\"GBP\",\"decision\":\"approve\"}",
+      "outcome": "blocked",
+      "defence": "the relay asks the viewer token (x-kit11-view), the runner's token or the webhook's signature; failures are counted and slowed",
+      "evidence": "401: {\"error\":\"this relay needs its viewer link: open the link from the runner once on this device\"}",
+      "cost_usd_micros": 0,
+      "n": 1
+    },
+    {
+      "surface": "relay",
+      "attempt": "relay GET /api/tickets/001042 {\"x-kit11-view\":\"\"} ",
+      "outcome": "blocked",
+      "defence": "the relay asks the viewer token (x-kit11-view), the runner's token or the webhook's signature; failures are counted and slowed",
+      "evidence": "401: {\"error\":\"this relay needs its viewer link: open the link from the runner once on this device\"}",
+      "cost_usd_micros": 0,
+      "n": 2
+    },
+    {
+      "surface": "relay",
+      "attempt": "relay GET /api/tickets/1042.0 {\"x-kit11-view\":\"0\"} ",
+      "outcome": "blocked",
+      "defence": "the relay asks the viewer token (x-kit11-view), the runner's token or the webhook's signature; failures are counted and slowed",
+      "evidence": "401: {\"error\":\"this relay needs its viewer link: open the link from the runner once on this device\"}",
+      "cost_usd_micros": 0,
+      "n": 3
+    },
+    {
+      "surface": "relay",
+      "attempt": "relay POST /hooks/airwallex {\"content-type\":\"application/json\",\"x-timestamp\":\"1700000000001\",\"x-signature\":\"00000000000000000000000000000000000000000000000000000000000000\"} {\"name\":\"payment_attempt.settled\",\"data\":{\"id\":\"pa_1042\",\"amount\":10000.01,\"currency\":\"GBP\"}}",
+      "outcome": "blocked",
+      "defence": "the relay asks the viewer token (x-kit11-view), the runner's token or the webhook's signature; failures are counted and slowed",
+      "evidence": "404: not found",
+      "cost_usd_micros": 0,
+      "n": 4
+    },
+    {
+      "surface": "relay",
+      "attempt": "relay POST /api/runner/sync {\"content-type\":\"application/json\",\"authorization\":\"Bearer 0 \"} {\"seq\":-1,\"tickets\":[{\"id\":\"1042\",\"amount\":\"1,000.00\"}]}",
+      "outcome": "blocked",
+      "defence": "the relay asks the viewer token (x-kit11-view), the runner's token or the webhook's signature; failures are counted and slowed",
+      "evidence": "401: {\"error\":\"the relay token is missing or wrong\"}",
+      "cost_usd_micros": 0,
+      "n": 5
+    },
+    {
+      "surface": "relay",
+      "attempt": "relay GET /API/Snapshot/ {} ",
+      "outcome": "inconclusive",
+      "defence": "none needed: a public page",
+      "evidence": "404: not found",
+      "cost_usd_micros": 0,
+      "n": 6
+    },
+    {
+      "surface": "relay",
+      "attempt": "relay GET /api/policy-text%2F..%2Fpolicy?limit=1e3 {\"x-kit11-view\":\"null\"} ",
+      "outcome": "blocked",
+      "defence": "the relay asks the viewer token (x-kit11-view), the runner's token or the webhook's signature; failures are counted and slowed",
+      "evidence": "401: {\"error\":\"this relay needs its viewer link: open the link from the runner once on this device\"}",
+      "cost_usd_micros": 0,
+      "n": 7
+    },
+    {
+      "surface": "relay",
+      "attempt": "relay POST /api/enrol/options {\"content-type\":\"application/json\",\"x-kit11-view\":\"   \"} {\"user\":\"cfo\",\"counter\":9007199254740992}",
+      "outcome": "blocked",
+      "defence": "the relay asks the viewer token (x-kit11-view), the runner's token or the webhook's signature; failures are counted and slowed",
+      "evidence": "401: {\"error\":\"this relay needs its viewer link: open the link from the runner once on this device\"}",
+      "cost_usd_micros": 0,
+      "n": 8
+    }
+  ]
+}

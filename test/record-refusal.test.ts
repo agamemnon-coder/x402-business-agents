@@ -4,7 +4,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 const cli = vi.hoisted(() => ({ calls: 0, run: (() => ({ code: 1, fields: new Map([["refused", ["mandate_cap_exceeded"]], ["transaction", ["0xabc"]]]) })) as () => unknown }));
-vi.mock("../src/metal/agentCli.js", async (orig) => ({ ...(await orig<object>()), metalAgent: () => { cli.calls++; return cli.run(); } }));
+// The pull runs asynchronously (agent run 1: the blocking call held the world's process); the blocking one is never used.
+vi.mock("../src/metal/agentCli.js", async (orig) => ({ ...(await orig<object>()), metalAgent: () => { throw new Error("the blocking call is not used"); }, metalAgentAsync: async () => { cli.calls++; return cli.run(); } }));
 vi.mock("../src/metal/chain.js", async (orig) => ({ ...(await orig<object>()), publicClient: () => ({}) }));
 vi.mock("@metalntwx/metal-pay/mandates", async (orig) => ({
   ...(await orig<object>()),

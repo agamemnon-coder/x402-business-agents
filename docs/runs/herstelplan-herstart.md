@@ -63,6 +63,29 @@ pid, procesgroep, host, starttijd, wereld, run-token). Een tweede runner op hetz
   signaleert niets. Die stop je één keer met de hand, per procesgroep, na controle met `ps -o pid,pgid,args`.
 - Na elke dry run: `npm run stop -- <wereld>`, dan `ps -eo pid,pgid,args` nalopen.
 
+## Een opname van Metals weigering zonder uitkomst (agent-facts, 2 november)
+
+De eerste weigering boven de cap (en de ene let-through) laat de wereld door Metal op chain vastleggen met een
+"record pull". Die draait in het proces van de wereld (`npm run world -- serve`), niet onder het slot van de runner. Het
+grootboek houdt per pull bij: een claim, het moment waarop de CLI echt start ("pull gestart"), en de uitkomst.
+
+- Stopt dat proces midden in een pull, dan lost de runner het op, bij de start en bij elke poll:
+  - **pull gestart, na 4 minuten geen uitkomst:** een incident. De Sourcing agent is gestopt, er staat een alarm, en
+    de hold `record:<payment id>` blijft staan (ten hoogste de cap plus 0,02). De pull kan Metal bereikt hebben.
+  - **pull nooit gestart, na 15 minuten:** "niet verstuurd". De hold komt vrij, er is geen incident.
+  - Een let-through waarvan de opname geen uitkomst kreeg, krijgt nooit het label "Metal refused"; na de 4 minuten
+    wordt hij een incident.
+- **Vals incident (fail closed):** stopte het proces precies tussen de stempel "pull gestart" en de start van de CLI,
+  dan is het een incident terwijl er niets naar Metal ging.
+- **Opheffen, alleen na controle:**
+  1. Lees het alarm: het noemt het payment id van de pull.
+  2. Controleer dat er niets betaald is: `npm run reconcile` (geen verschillen) en `npm run dashboard-vs-chain` (het
+     uitgegeven bedrag van het Sourcing-mandaat op chain is niet gestegen).
+  3. Dan heft de CFO de stop op met `npm run policy -- set stop.sourcing off --reason "record pull <payment id>
+     gecontroleerd: niets betaald"` en keurt het voorstel goed met Face ID.
+  4. De hold van die pull blijft geteld (fail closed, ten hoogste de cap plus 0,02); die wordt niet met de hand uit
+     het grootboek gehaald.
+
 ## Snapshots van het grootboek
 
 Na elke stap maakt Claude een consistente kopie van het grootboek (SQLite online backup), lokaal in

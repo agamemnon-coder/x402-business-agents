@@ -92,11 +92,12 @@ export function consumeLetThrough(db: DB, armedAt: string, now = new Date()): bo
   }).immediate();
 }
 
-/** What came of the purchase that took the arm (or of the cap refusal that took it without being let through). */
-export function finishLetThrough(db: DB, u: { outcome: Exclude<LetThrough["outcome"], "in_flight" | undefined> } & Pick<LetThrough, "purchase_id" | "seq" | "detail">, now = new Date()): void {
-  db.transaction(() => {
+/** What came of the purchase that took the arm (or of the cap refusal that took it without being let through). True when it was applied (the let-through was still in flight). */
+export function finishLetThrough(db: DB, u: { outcome: Exclude<LetThrough["outcome"], "in_flight" | undefined> } & Pick<LetThrough, "purchase_id" | "seq" | "detail">, now = new Date()): boolean {
+  return db.transaction(() => {
     const r = letThrough(db);
-    if (r?.stage !== "used" || r.outcome !== "in_flight") return;
+    if (r?.stage !== "used" || r.outcome !== "in_flight") return false;
     save(db, { ...r, ...u, ...(u.detail ? { detail: u.detail.slice(0, 300) } : {}) }, now);
+    return true;
   }).immediate();
 }

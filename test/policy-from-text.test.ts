@@ -20,7 +20,16 @@ describe("policy from plain words (P2)", () => {
   it("reads amounts the way people write them", () => {
     expect(amountsIn("hooguit €40 per aankoop")).toEqual([4000]);
     expect(amountsIn("boven €0,08")).toEqual([8]);
-    expect(amountsIn("1.250,50 EUR or 1,250.50 or 2.000 or 0.03")).toEqual([125050, 125050, 200000, 3]);
+    expect(amountsIn("1.250,50 EUR or 1,250.50 or €2.000 or 0.03")).toEqual([125050, 125050, 200000, 3]);
+    expect(amountsIn("2.000 or 2,000")).toEqual([200000, 200000]);
+    expect(amountsIn("2.5 or 0,5")).toEqual([250, 50]);
+  });
+
+  // The one reader (src/lib/numbers.ts): a bare "2.000" in words that also write "0.03" with a decimal point could be
+  // 2.00 or 2,000.00, so it is no amount the CFO wrote; with a euro sign it is 2,000.00.
+  it("does not count an amount whose reading the words leave open", () => {
+    expect(amountsIn("Refunds above 2.000 need two of us; at most 0.03 a payment.")).toEqual([3]);
+    expect(amountsIn("Refunds above €2.000 need two of us; at most 0.03 a payment.")).toEqual([200000, 3]);
   });
 
   it("turns checked rules into one proposal and never applies them itself", async () => {

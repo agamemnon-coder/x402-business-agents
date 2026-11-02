@@ -18,6 +18,7 @@ import { randomBytes } from "node:crypto";
 import { openDb } from "../db/open.js";
 import { execute } from "../executors/index.js";
 import { recoverHolds } from "../policy/holds.js";
+import { recoverRecordPulls } from "../agents/sourcing.js";
 import { resumeInterrupted } from "../policy/saga.js";
 import { health, RECONCILE_EVERY_MS } from "../ops/health.js";
 import { openEnrolment } from "../passkey/ledger.js";
@@ -158,6 +159,18 @@ async function cardsTick(): Promise<void> {
   }
 }
 
+// A pull recording Metal's refusal (src/agents/sourcing.ts) runs in the world's process, not under this runner's lock:
+// one left without an outcome by a process that ended is resolved here, at start and on every poll, once its timeout
+// has passed (a started pull: an incident, its hold kept; one never started: not sent, its hold released).
+function recordPullsTick(): void {
+  try {
+    const r = recoverRecordPulls(db);
+    if (r.incidents + r.notSent) console.log(`${stamp()} recover  record pulls without an outcome: ${r.incidents} incident(s) (the Sourcing agent is stopped), ${r.notSent} never sent`);
+  } catch (e) {
+    console.error(`${stamp()} recover  ${redactSecrets((e as Error).message)}`);
+  }
+}
+
 // The light reconciliation (finance item 5): a minute after start, then every hour (RECONCILE_EVERY_MS). Read-only;
 // a difference is logged, raises an alarm and is shown on the dashboard.
 let reconcileAt = Date.now() - RECONCILE_EVERY_MS + 60_000;
@@ -208,6 +221,7 @@ async function quarantineTick(): Promise<void> {
 {
   const holds = recoverHolds(db);
   if (holds.settled + holds.released + holds.open) console.log(`${stamp()} recover  holds: ${holds.settled} settled, ${holds.released} released, ${holds.open} still open`);
+  recordPullsTick();
   for (const r of await resumeInterrupted(db, execute)) console.log(`${stamp()} recover  ${r.id} resumed after a restart: ${redactSecrets(r.outcome)}`);
   // A dispute decision a restart cut off (refunds partly paid, the CFO's proposal not yet made): carried out now, once,
   // by the dispute flow from the ledger (npm run s2 -- --resume-only). It is never decided again.
@@ -264,6 +278,7 @@ while (!stopping) {
   alarmsTick();
   await cardsTick();
   await quarantineTick();
+  recordPullsTick();
   await reconcileTick();
   await finalityTick();
   try {
