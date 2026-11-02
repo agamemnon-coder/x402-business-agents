@@ -4,7 +4,7 @@
 // to the three moments; labelled with the run's own name.
 
 import { WORLD_SETUP } from "../config/brand.js";
-import { agentRun, type AgentRun } from "./run.js";
+import { agentRun, highlights, type AgentRun } from "./run.js";
 import { AVATAR, esc, icon, iconSet, page, stageHtml } from "./ui.js";
 
 const CSS = `.watch { padding: 26px 0 24px; }
@@ -51,7 +51,10 @@ ol.log span.pf { color: var(--muted); }
 const JS = `
 (function () {
   var run = JSON.parse(document.getElementById("run-data").textContent);
-  var ev = run.events, IC = run.icons;
+  // Two ways to watch: the highlights (the default) and the full run; each has its own scene starts.
+  var MODES = { hl: { events: run.highlights, scenes: run.hlScenes }, full: { events: run.events, scenes: run.scenes } };
+  var mode = /[?&]full=1/.test(location.search) ? "full" : "hl";
+  var ev = MODES[mode].events, SC = MODES[mode].scenes, IC = run.icons;
   var st = Stage(document.querySelector("[data-stage]"), run);
   var log = document.getElementById("log"), bar = document.querySelector(".progress i"), count = document.getElementById("count"), playBtn = document.getElementById("play");
   var names = {}; run.agents.forEach(function (a) { names[a.id] = a; });
@@ -90,12 +93,17 @@ const JS = `
       var rp = el("span", "res " + (r ? "bad" : "ok"), res);
       if (r) rp.title = (r.by === "recorded" ? "Purser refused it before signing; Metal recorded the same refusal on chain" : r.reason) + (r.code ? " (" + r.code + ")" : "");
       meta.appendChild(rp);
+      if (e.run) meta.appendChild(el("span", "res face", e.run));
       meta.appendChild(el("span", "", time(e.at)));
       body.appendChild(meta);
       var amt = e.amount ? (e.unit === "EUR" ? "EUR " + e.amount : e.unit === "USD" ? "USD " + e.amount : e.amount + " test USD") + " · " : "";
       var p = el("p", "", amt + e.what + (e.count > 1 ? " (" + e.count + ")" : "") + (r && r.by !== "recorded" ? ": " + r.reason : r ? ": Purser refused it before signing, and Metal recorded the refusal on chain" : "") + " ");
       var pe = proofEl(e.proof); if (pe) p.appendChild(pe);
       body.appendChild(p);
+    } else if (e.k === "routine") {
+      head = el("span", "ic"); head.appendChild(svg("clock"));
+      meta.appendChild(el("b", "", "Routine checks")); meta.appendChild(el("span", "", time(e.at)));
+      body.appendChild(meta); body.appendChild(el("p", "", e.text + " (" + e.agents.map(function (a) { return names[a] ? names[a].short : a; }).join(", ") + ")"));
     } else if (e.k === "mandate") {
       head = el("span", "ic metal"); head.appendChild(svg("zap"));
       meta.appendChild(el("b", "", "Metal · new mandate"));
@@ -122,7 +130,7 @@ const JS = `
     li.appendChild(head); li.appendChild(body);
     return li;
   }
-  function sceneOf(k) { var s = 0; run.scenes.forEach(function (x) { if (k >= x.start) s = x.n; }); return s; }
+  function sceneOf(k) { var s = 0; SC.forEach(function (x) { if (k >= x.start) s = x.n; }); return s; }
   function mark() {
     bar.style.width = (i / ev.length * 100) + "%";
     count.textContent = "step " + i + " of " + ev.length;
@@ -147,15 +155,25 @@ const JS = `
   }
   playBtn.addEventListener("click", function () { if (!playing && i >= ev.length) jump(0); setPlay(!playing); });
   document.querySelectorAll("#speed button").forEach(function (b) { b.addEventListener("click", function () { speed = +b.getAttribute("data-speed"); document.querySelectorAll("#speed button").forEach(function (x) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }); }); });
-  document.querySelectorAll("#scenes button").forEach(function (b) { b.addEventListener("click", function () { var n = +b.getAttribute("data-scene"); var sc = run.scenes.filter(function (x) { return x.n === n; })[0]; jump(sc ? sc.start : 0); setPlay(true); }); });
-  run.scenes.forEach(function (s) { var m = el("em"); m.style.left = (s.start / ev.length * 100) + "%"; document.querySelector(".progress").appendChild(m); });
+  document.querySelectorAll("#scenes button").forEach(function (b) { b.addEventListener("click", function () { var n = +b.getAttribute("data-scene"); var sc = SC.filter(function (x) { return x.n === n; })[0]; jump(sc ? sc.start : 0); setPlay(true); }); });
+  function marks() { var pr = document.querySelector(".progress"); pr.querySelectorAll("em").forEach(function (m) { m.remove(); }); SC.forEach(function (s) { var m = el("em"); m.style.left = (s.start / ev.length * 100) + "%"; pr.appendChild(m); }); }
+  marks();
+  document.querySelectorAll("#mode button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      mode = b.getAttribute("data-mode"); ev = MODES[mode].events; SC = MODES[mode].scenes;
+      document.querySelectorAll("#mode button").forEach(function (x) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
+      marks(); jump(0); setPlay(true);
+    });
+    var on = b.getAttribute("data-mode") === mode; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on));
+  });
   var sc = /[?&]scene=(\\d)/.exec(location.search), at = /[?&]at=(\\d+)/.exec(location.search), still = /[?&]autoplay=0/.test(location.search);
-  var startAt = at ? Math.min(ev.length, +at[1]) : sc ? ((run.scenes.filter(function (x) { return x.n === +sc[1]; })[0] || { start: 0 }).start) : 0;
+  var startAt = at ? Math.min(ev.length, +at[1]) : sc ? ((SC.filter(function (x) { return x.n === +sc[1]; })[0] || { start: 0 }).start) : 0;
   jump(startAt);
   if (still || st.reduce) { setPlay(false); if (startAt < ev.length) { var e0 = ev[startAt]; if (e0) { st.show(e0, { instant: true, sentences: 2 }); log.insertBefore(entry(e0), log.firstChild); i = startAt + 1; mark(); } } } else setPlay(true);
 })();`;
 
 export function watchPage(run: AgentRun = agentRun()): string {
+  const hl = highlights(run);
   const s1 = run.scenes.find((s) => s.n === 1);
   const body = `<main class="watch"><div class="wrap">
   <div class="whead"><h1>Watch the agents work</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
@@ -168,6 +186,7 @@ export function watchPage(run: AgentRun = agentRun()): string {
         <div class="seg" id="speed" role="group" aria-label="Speed"><button type="button" data-speed="1" class="on" aria-pressed="true">1×</button><button type="button" data-speed="2" aria-pressed="false">2×</button><button type="button" data-speed="4" aria-pressed="false">4×</button></div>
         <span class="count" id="count"></span>
       </div>
+      <div class="controls"><div class="seg" id="mode" role="group" aria-label="What to watch"><button type="button" data-mode="hl" class="on" aria-pressed="true">Highlights</button><button type="button" data-mode="full" aria-pressed="false">Full run (${run.events.length} steps)</button></div></div>
       <div class="controls"><div class="chips" id="scenes" role="group" aria-label="Jump to a moment"><button type="button" data-scene="0">Start</button>${run.scenes.map((s) => `<button type="button" data-scene="${s.n}"><b>${s.n}</b>${esc(s.title)}</button>`).join("")}</div></div>
       <div class="progress" aria-hidden="true"><i></i></div>
     </div>
@@ -176,7 +195,7 @@ export function watchPage(run: AgentRun = agentRun()): string {
 </div></main>`;
   return page({
     title: "Watch the agents", description: "A replay of a recorded agent run: each decision in the agent's own words, the money on its rail, the CFO's Face ID.", tab: "watch", css: CSS, body, js: JS,
-    data: { agents: run.agents, events: run.events, scenes: run.scenes.map(({ n, title, start }) => ({ n, title, start })), icons: { ...iconSet(["ban", "zap", "credit-card", "landmark", "scan-face", "shield-check", "sparkles", "play", "pause", "rotate-ccw"]), ...Object.fromEntries(Object.entries(AVATAR).map(([id, name]) => [`av-${id}`, icon(name, 18)])) } },
+    data: { agents: run.agents, events: run.events, scenes: run.scenes.map(({ n, title, start }) => ({ n, title, start })), highlights: hl, hlScenes: run.scenes.map(({ n, title, start }) => ({ n, title, start: Math.max(0, hl.findIndex((e) => e.at >= run.events[start]!.at)) })), icons: { ...iconSet(["ban", "zap", "credit-card", "landmark", "scan-face", "shield-check", "sparkles", "play", "pause", "rotate-ccw", "clock"]), ...Object.fromEntries(Object.entries(AVATAR).map(([id, name]) => [`av-${id}`, icon(name, 18)])) } },
     source: `Source: ${run.file} (${run.name}).`,
   });
 }

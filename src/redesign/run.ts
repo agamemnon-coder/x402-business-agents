@@ -47,9 +47,10 @@ export type Ev =
   | { k: "world"; at: string; text: string }
   | { k: "say"; at: string; agent: AgentId; model: string | null; by: "claude" | "fallback"; text: string; tools: string[] }
   | { k: "msg"; at: string; agent: AgentId; text: string }
-  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof }
+  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string }
   | { k: "face"; at: string; id: string; title: string; status: string; signers: string[] }
   | { k: "mandate"; at: string; agent: AgentId; cap: string; budget: string; proposal: string; proof: Proof }
+  | { k: "routine"; at: string; count: number; agents: AgentId[]; text: string }
   | { k: "shield"; at: string; text: string };
 
 export type Mini =
@@ -58,7 +59,7 @@ export type Mini =
   | { kind: "flow"; rows: { icon: string; text: string; tone: "ok" | "bad" | "face" }[] };
 export interface Step { icon: string; text: string; tone: "ok" | "bad" | "face" | "info"; proof?: Proof }
 export interface Scene { n: 1 | 2 | 3; title: string; start: number; steps: Step[]; sentence: string; mini: Mini | null }
-export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[] }
+export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string }
 export interface AgentCard { id: AgentId; name: string; short: string; model: string; family: string }
 
 export interface AgentRun {
@@ -291,6 +292,44 @@ export function stops(r: RunRecord): { metal: number; airwallex: number; cfo: nu
   };
 }
 
+/** Tools that mean an agent acted, not only looked: a decision with one of them is a key moment. */
+const ACTING = /^(set_buy_policy|design_rebalance|send_message|settle_dispute|sweep_earnings|plan_invoice|submit_plan|submit_advice|refund|escalate_to_cfo)$/;
+
+/**
+ * Watch's default: the run's key moments only (the world changes, the refusals, each decision that acted, every
+ * signature, the mandates replaced, the refunds, the sweep, the licence), the agents' routine checks merged into one
+ * line between them, and the TAP run's card purchase last, under that run's label.
+ */
+export function highlights(run: AgentRun): Ev[] {
+  const ev = run.events;
+  const replaced = ev.findIndex((e) => e.k === "mandate");
+  const firstBuyAfter = replaced >= 0 ? ev.findIndex((e, i) => i > replaced && e.k === "money" && e.agent === "sourcing" && !e.refused) : -1;
+  const key = (e: Ev, i: number): boolean => {
+    if (e.k === "world" || e.k === "msg" || e.k === "face" || e.k === "mandate" || e.k === "shield") return true;
+    if (e.k === "say") return e.tools.some((x) => ACTING.test(x));
+    if (e.k === "money") return !!e.refused || (e.agent !== null && e.agent !== "sourcing") || i === firstBuyAfter;
+    return false;
+  };
+  const out: Ev[] = [];
+  let quiet: Extract<Ev, { k: "say" }>[] = [];
+  const flush = () => {
+    if (!quiet.length) return;
+    out.push({ k: "routine", at: quiet[0]!.at, count: quiet.length, agents: [...new Set(quiet.map((q) => q.agent))], text: `${quiet.length} routine check${quiet.length > 1 ? "s" : ""}: nothing to do` });
+    quiet = [];
+  };
+  ev.forEach((e, i) => {
+    if (key(e, i)) { flush(); out.push(e); } else if (e.k === "say") quiet.push(e);
+  });
+  flush();
+  const tap = tapRun();
+  const buy = tap?.steps.find((x) => x.approved && x.model);
+  if (tap && buy) {
+    out.push({ k: "money", at: tap.ranAt, agent: "sourcing", rail: "airwallex", via: "card · Visa TAP", dir: "out", what: `${buy.plan} at ${tap.merchant.replace(/\s*\(.*\)$/, "")}, signed with Visa TAP`, amount: buy.amount, unit: buy.currency, count: 1,
+      label: `${SHORT_EUR(buy.amount)} card buy · Visa TAP`, refused: null, proof: { label: `Airwallex ${buy.txId.slice(0, 8)}… · read back with GET: ${buy.getStatus}`, href: null }, run: tap.label });
+  }
+  return out;
+}
+
 export function agentRun(): AgentRun {
   const { file, standIn, record: r } = loadRecord();
   const s = r.snapshot;
@@ -313,8 +352,9 @@ export function agentRun(): AgentRun {
     { value: String(s.counts.alone), label: "payments inside the limits", explain: `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
       value: String(st.metal + st.airwallex + st.cfo), label: "stopped at a limit", href: "proof#stops",
-      explain: `Metal and the CFO in this run; Airwallex at the card's limit in the TAP run.${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
-      parts: [{ value: String(st.metal), label: "by Metal" }, { value: String(st.cfo), label: "by the CFO" }, { value: String(st.airwallex), label: "by Airwallex · TAP run" }],
+      explain: "Metal and the CFO in this run; Airwallex in the TAP run.",
+      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run; by Airwallex at the card's limit in the TAP run.${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
+      parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, { value: String(st.airwallex), label: "Airwallex · TAP run" }],
     },
     { value: String(r.proof.face_id), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
     { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices; each decision may be several calls.", href: "proof#claude" },
