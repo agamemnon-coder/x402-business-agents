@@ -70,7 +70,7 @@ let refused = 0;
 const rounds: { surface: string; round: number; asked: number; written: number; refused_tries: number }[] = [];
 async function write(ask: string): Promise<{ tests: unknown[]; refusedTries: number }> {
   let refusedTries = 0;
-  for (let tryNo = 0; tryNo < 4; tryNo++) {
+  for (let tryNo = 0; tryNo < 6; tryNo++) {
     const r = await client.messages.create({ model: MODEL, max_tokens: 8000, system: SYSTEM, messages: [{ role: "user", content: ask }] });
     recordSpend(spendFile, { block: "redteam", usd_micros: usageCost(r.usage), what: "redteam-night attacker (Opus) writes tests" });
     if (r.stop_reason === "refusal") { refused++; refusedTries++; continue; }

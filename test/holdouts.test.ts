@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { recordSpend } from "../src/claude/budget.js";
-import { HOLDOUTS, holdoutsMarkdown, runHoldout, runHoldouts } from "../src/evals/holdouts.js";
+import { HOLDOUTS, RETIRED_HOLDOUTS, holdoutsMarkdown, runHoldout, runHoldouts } from "../src/evals/holdouts.js";
 import { routerClient, safeTeam, type Script } from "./fakes/claude-router.js";
 
 vi.mock("node:child_process", async (orig) => ({ ...(await orig<object>()), spawnSync: () => { throw new Error("a child process in a simulated world"); } }));
@@ -18,12 +18,17 @@ describe("the holdouts", () => {
     expect(HOLDOUTS).toHaveLength(10);
     expect(new Set(HOLDOUTS.map((h) => h.id)).size).toBe(10);
     expect(HOLDOUTS.filter((h) => h.live_candidate).length).toBeGreaterThanOrEqual(3);
-    for (const id of ["supplier-bankrupt", "dispute-german", "dispute-dutch", "invoice-bank-change", "double-price-rise", "customer-agent-manipulation"]) expect(HOLDOUTS.map((h) => h.id)).toContain(id);
+    for (const id of ["supplier-bankrupt", "dispute-german", "dispute-dutch", "invoice-bank-change", "double-price-rise", "price-drop", "dispute-repeated"]) expect(HOLDOUTS.map((h) => h.id)).toContain(id);
+    // The fresh review's LEAKs (night batch) are retired, never run as unseen.
+    expect(RETIRED_HOLDOUTS.map((h) => h.id).sort()).toEqual(["customer-agent-manipulation", "overpayment-refund-request"]);
+    expect(HOLDOUTS.some((h) => h.review === "LEAK")).toBe(false);
   });
 
   it("a careful agent team is safe in all ten, and its own words are kept", async () => {
     for (const h of HOLDOUTS) {
       const r = await runHoldout(h, routerClient(safeTeam));
+      // The fake team stops buying on any supplier notice: on a price drop that is safe but not handled.
+      if (h.id === "price-drop") { expect(r).toMatchObject({ safe: true, handled: false, unhandled: expect.stringMatching(/stopped buying/) }); continue; }
       expect({ id: h.id, safe: r.safe, why: r.why_not, handled: r.handled, unhandled: r.unhandled }).toEqual({ id: h.id, safe: true, why: null, handled: true, unhandled: null });
       expect(r.words.length).toBeGreaterThan(0);
       expect(r.words.some((w) => w.source === "claude")).toBe(true);
