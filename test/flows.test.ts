@@ -113,7 +113,7 @@ describe("who decided: the origin recorded with the movement (D24)", () => {
 
   it("four eyes names the controller too", () => {
     const db = fresh();
-    log(db, { ...CFO, cosigner: "dad" } as Origin, "awx-executor", "transfer.created", "tr-1", { amount: "EUR 99.00" }, 1);
+    log(db, { ...CFO, cosigner: "test-controller" } as Origin, "awx-executor", "transfer.created", "tr-1", { amount: "EUR 99.00" }, 1);
     audit(db, "awx-executor", "transfer.status", "tr-1", { status: "PAID" }, T(2));
     expect(flowEvents(db)[0]!.decided).toBe("two people approved it, each with their own Face ID (four eyes)");
   });
