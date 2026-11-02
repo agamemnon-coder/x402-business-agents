@@ -285,6 +285,7 @@ const REFUSAL_WORDS: Record<string, string> = {
   // Metal's own names for the rest (@metalntwx/metal-pay REFUSALS; test/contract/metal-facilitator.test.ts).
   mandate_budget_spent: "over the mandate's total budget",
   mandate_payee_not_listed: "payee not allowed by the mandate",
+  mandate_payee_not_allowed: "payee not allowed by the mandate",
   mandate_not_bound: "no such mandate is bound on the account",
   mandate_bad_signature: "not signed by the mandate key",
   mandate_nonce_used: "this payment was already made or refused",
