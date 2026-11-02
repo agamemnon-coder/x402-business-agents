@@ -86,7 +86,7 @@ jobs:
         run: |
           npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json
           node -e 'const d=require("./sbom.cdx.json"); if (d.bomFormat !== "CycloneDX" || !d.components.length) process.exit(1); console.log(d.components.length, "components")' | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Semgrep (blocking; first run 2 Nov, 110 rules on 279 files, 0 findings)
+      - name: Semgrep (blocking; public sets plus .semgrep/purser.yml)
         env:
           SEMGREP_SEND_METRICS: "off"
         run: |
