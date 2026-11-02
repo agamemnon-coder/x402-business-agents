@@ -121,7 +121,7 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   const made = found && sameTransfer(found, req(t, sha)) ? found : undefined;
   if (found && !made) throw new Error(`Airwallex holds a transfer under ${t.transfer_request_id} that is not this payout; nothing is sent, a person checks it`);
   if (made) {
-    db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ?").run(made.id, made.status, new Date().toISOString(), t.transfer_request_id);
+    recordTransfer(db, t, made, sha);
     audit(db, "awx-executor", "transfer.adopted", made.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, status: made.status, approval_sha256: sha });
     return made;
   }
@@ -164,7 +164,7 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   }
   // A crash here: Airwallex has the payout, the ledger only its SUBMITTING row. The retry adopts it by request_id.
   await checkpoint("transfer:after-create");
-  db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ?").run(tr.id, tr.status, new Date().toISOString(), t.transfer_request_id);
+  recordTransfer(db, t, tr, sha);
   audit(db, "awx-executor", adopted ? "transfer.adopted" : "transfer.created", tr.id, { request_id: t.transfer_request_id, amount: `EUR ${t.amount}`, beneficiary_id: t.beneficiary_id, status: tr.status, approval_sha256: sha });
   return tr;
 }
@@ -173,6 +173,23 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
 function awxFacts(err: unknown): { code: string | null; trace_id: string | null; awx_request_id: string | null; awx_message: string | null } | Record<string, never> {
   const e = err instanceof AirwallexError ? err : err instanceof AirwallexAmbiguous && err.cause instanceof AirwallexError ? err.cause : null;
   return e ? { code: e.code ?? null, trace_id: e.traceId, awx_request_id: e.awxRequestId, awx_message: e.awxMessage } : {};
+}
+
+/**
+ * Writes the transfer Airwallex holds into its own payout row, only while that row is still SUBMITTING with no id. A row
+ * that changed meanwhile (closed, or holding another id) is never overwritten: money may have left while the ledger
+ * says otherwise, so it is an alarm and a stop for a person, never a silent write.
+ */
+function recordTransfer(db: DB, t: InvoicePaymentTerms, tr: Transfer, sha: string): void {
+  const r = db.prepare("UPDATE transfers SET transfer_id = ?, status = ?, updated_at = ? WHERE request_id = ? AND status = 'SUBMITTING' AND transfer_id IS NULL")
+    .run(tr.id, tr.status, new Date().toISOString(), t.transfer_request_id);
+  if (r.changes === 1) return;
+  const row = db.prepare("SELECT transfer_id, status FROM transfers WHERE request_id = ?").get(t.transfer_request_id) as { transfer_id: string | null; status: string } | undefined;
+  if (row?.transfer_id === tr.id) return; // the same transfer, already recorded by another path
+  audit(db, "awx-executor", "transfer.row_conflict", tr.id, {
+    request_id: t.transfer_request_id, row_status: row?.status ?? null, row_transfer_id: row?.transfer_id ?? null, status: tr.status, amount: `EUR ${t.amount}`, approval_sha256: sha,
+  });
+  throw new Error(`Airwallex holds transfer ${tr.id} (${tr.status}) under ${t.transfer_request_id}, but the ledger's payout row is ${row?.status ?? "missing"}; nothing more is sent, a person checks it now`);
 }
 
 const req = (t: InvoicePaymentTerms, sha: string): NewTransfer => ({

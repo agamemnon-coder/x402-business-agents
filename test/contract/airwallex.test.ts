@@ -280,7 +280,10 @@ class ErringAirwallex extends FakeAirwallex {
   override async currentRate(a: Parameters<FakeAirwallex["currentRate"]>[0]): Promise<MarketRate> { this.take("currentRate"); return super.currentRate(a); }
   override async createQuote(a: Parameters<FakeAirwallex["createQuote"]>[0]): Promise<Quote> { this.take("createQuote"); return super.createQuote(a); }
   override async createConversion(a: Parameters<FakeAirwallex["createConversion"]>[0]): Promise<Conversion> { this.take("createConversion"); return super.createConversion(a); }
+  /** Runs while a create is at Airwallex (before its answer): what another process does to the ledger meanwhile. */
+  onCreate: (() => void) | null = null;
   override async createTransfer(t: NewTransfer): Promise<Transfer> {
+    this.onCreate?.();
     this.take("createTransfer");
     // [TERR] duplicate_request_id: "has been used for a transfer with the transfer ID … before", with details.id.
     const prior = this.transfers.find((x) => x.requestId === t.requestId);
@@ -528,6 +531,31 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
     await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "service_unavailable" });
     expect(awx.calls.filter((c) => c.startsWith("createTransfer"))).toEqual(["createTransfer:refused"]);
     expect(transferRows(db)).toEqual([{ transfer_id: null, status: "SUBMITTING", failure_type: null }]);
+  });
+
+  it("a refusal at create closes only a row still SUBMITTING with no id: a row another path changed meanwhile is left, with no refusal recorded", async () => {
+    const { db, awx } = await world();
+    const out = await approved(db, awx);
+    // While the first create is at Airwallex, another path records a transfer for this payout (an adoption).
+    awx.onCreate = () => db.prepare("UPDATE transfers SET transfer_id = 'tr-other', status = 'PROCESSING' WHERE request_id = ?").run(out.terms.transfer_request_id);
+    awx.fail.createTransfer = awxError(400, "balance_insufficient", "/transfers/create");
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "balance_insufficient" });
+    expect(transferRows(db)).toEqual([{ transfer_id: "tr-other", status: "PROCESSING", failure_type: null }]);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'transfer.refused'").get()).toEqual({ n: 0 });
+  });
+
+  it("a created transfer is written only over its own SUBMITTING row: a row closed meanwhile is never overwritten, and it raises an alarm", async () => {
+    const { db, awx } = await world();
+    const out = await approved(db, awx);
+    // While the create is at Airwallex (and makes the transfer), the row is closed (a mistaken close, for one).
+    awx.onCreate = () => db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = 'closed_unsent' WHERE request_id = ?").run(out.terms.transfer_request_id);
+    await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toThrow(/a person checks it/);
+    expect(awx.transfers).toHaveLength(1);
+    expect(transferRows(db)).toEqual([{ transfer_id: null, status: "CANCELLED", failure_type: "closed_unsent" }]);
+    const alarm = db.prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'transfer.row_conflict'").get() as { subject: string; payload_json: string } | undefined;
+    expect(alarm?.subject).toBe(awx.transfers[0]!.id);
+    expect(JSON.parse(alarm!.payload_json)).toMatchObject({ request_id: out.terms.transfer_request_id, row_status: "CANCELLED" });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event IN ('transfer.created', 'transfer.adopted')").get()).toEqual({ n: 0 });
   });
 
   it("names the supplier's real account only from the allowlist, whatever the error", () => {
