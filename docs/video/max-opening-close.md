@@ -1,0 +1,31 @@
+# Opening en slot: Max, op camera
+
+Concept. Pas de woorden gerust aan naar hoe jij het zegt; houd de kernzin en "Starter Kit 11" erin. Engels, want de
+jury is internationaal. Ongeveer 140 woorden per minuut.
+
+## Opening (20 s, ±47 woorden)
+
+> Hi, I'm Max Geurtsen. This is Purser — Starter Kit 11, for the Metal and Visa Awards.
+> Most treasury agents just move money. Our Claude agents handle the exceptions: price shocks, disputes, rebalancing.
+> Routine runs at code speed. Metal and Airwallex enforce every limit; I approve anything beyond them.
+
+Waarom zo: de jury ziet in de eerste 30 seconden Kit 11, beide awards en het verschil met pure treasury-agents (in
+Track 1 zitten er meer, zoals "Ballast").
+
+## Slot (15 s, ±35 woorden)
+
+> Three moments: a price rise, a dispute, a euro bill. Claude decided, the rails held the limits, and I signed only
+> what went beyond them. Purser — Starter Kit 11, for the Metal and Visa Awards.
+
+Let op: "for the Visa Award" is een inzending, geen technische claim. Over TAP zelf zeggen we in de video alleen wat
+na de groene interop-test in `docs/claims.md` staat.
+
+## Opname-instructie
+
+1. **iPhone horizontaal**, op ooghoogte, op een stapel boeken of een statief. Niet uit de hand.
+2. **Licht van voren**: een raam of lamp achter de telefoon, niet achter jou. Geen tegenlicht.
+3. Een stille kamer. Zet meldingen uit (Niet storen) zodat er niets in beeld of geluid komt.
+4. Kijk in de camera, niet naar het scherm. Een kleine pauze voor je begint en na je laatste woord.
+5. **Drie takes** van de opening en drie van het slot. Stuur ze alle zes; we kiezen samen.
+6. 1080p (Instellingen → Camera → Neem video op → 1080p, 30 fps).
+7. Niets van een scherm met sleutels, wachtwoorden of privé-meldingen in beeld.
