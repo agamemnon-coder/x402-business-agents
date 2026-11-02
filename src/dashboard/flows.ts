@@ -74,8 +74,10 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
   const createdRow = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'proposal.created' AND subject = ? ORDER BY seq LIMIT 1");
   const startedBy = (pid: string): Origin | null | undefined => {
     const row = createdRow.get(pid) as { payload_json: string } | undefined;
-    const p = row ? (JSON.parse(row.payload_json) as Record<string, unknown>) : undefined;
-    return p && "origin" in p ? parseOrigin(JSON.stringify(p.origin)) : undefined;
+    let p: Record<string, unknown> | undefined;
+    // A payload that does not parse is read as "not recorded" (null), never a broken flow view.
+    try { p = row ? (JSON.parse(row.payload_json) as Record<string, unknown>) : undefined; } catch { return null; }
+    return p && typeof p === "object" && "origin" in p ? parseOrigin(JSON.stringify(p.origin)) : undefined;
   };
   const askedByRow = has(db, "proposals") ? db.prepare("SELECT json_extract(terms_json, '$.asked_by') AS a FROM proposals WHERE proposal_id = ?") : null;
   const askedBy = (pid: string): string | null => { const a = (askedByRow?.get(pid) as { a: string | null } | undefined)?.a ?? null; return a?.startsWith("agent:") ? AGENT_WORDS[a.slice(6)] ?? null : null; };

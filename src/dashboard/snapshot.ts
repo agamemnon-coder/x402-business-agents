@@ -716,6 +716,8 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       // Who started it, from the origin recorded on the proposal (review, 2 November): the CFO's own command is the CFO's.
       const started = "origin" in p ? parseOrigin(JSON.stringify(p.origin)) : null;
       if (started?.actor === "cfo-command") return out(`Max started ${s} (${kindTitle(str(p.kind)).toLowerCase()}) with ${started.command}`, "approval");
+      // Code's own rule started it (no agent's Claude run, no person): code is named, not the agent that owns the proposal.
+      if (started?.actor === "code") return out(`Code proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()}) by its rule: ${started.rule}`, "approval");
       return out(`${r.actor === "human" ? "Max" : r.actor in AGENT_DISPLAY ? `The ${AGENT_DISPLAY[r.actor as keyof typeof AGENT_DISPLAY].name}` : `Agent ${r.actor}`} proposed ${s} (${kindTitle(str(p.kind)).toLowerCase()})`, "approval");
     }
     case "price_rise.options": {

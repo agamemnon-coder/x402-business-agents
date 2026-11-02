@@ -27,7 +27,7 @@ import { INVOICE_PROPOSAL_TTL_MS, LICENCE_INVOICE_FIXTURE, TOTAL_BUDGET_CENTS } 
 import { agentsOn } from "../config/agents.js";
 import { invoiceAlreadyHandled } from "../agents/euroBill.js";
 import { parseInvoiceFallback } from "../agents/invoice.js";
-import { invoiceFacts } from "./invoiceFacts.js";
+import { invoiceFacts, type PlannedInvoice } from "./invoiceFacts.js";
 import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } from "../config/suppliers.js";
 import { receivablesView } from "../agents/receivables.js";
 import { netEarnings } from "../agents/sweep.js";
@@ -115,8 +115,13 @@ export interface FlowDeps { runFlow: typeof runFlow; sim?: TreasurySim }
 
 const liveMandates = async (db: DB) => [...(await mandatesNow(db)).values()].map((c) => c.now);
 const LICENCE_TEXT = resolve(repo, "fixtures", LICENCE_INVOICE_FIXTURE);
-/** The invoice number of a text, or null when code cannot read it whole. */
-const invoiceNoOf = (text: string | null): string | null => { if (!text) return null; try { return parseInvoiceFallback(text).invoice_no; } catch { return null; } };
+/** The invoice a text holds, as code reads it whole, or null when it cannot. */
+const invoiceOf = (text: string | null): PlannedInvoice | null => {
+  if (!text) return null;
+  try { const i = parseInvoiceFallback(text); return { invoice_no: i.invoice_no, vendor: i.vendor, amount: i.amount, currency: i.currency, due_date: i.due_date }; } catch { return null; }
+};
+/** The licence's own file, or null when it cannot be read (the facts then offer no plan; the tool's flow reads it again). */
+const licenceText = (): string | null => { try { return readFileSync(LICENCE_TEXT, "utf8"); } catch { return null; } };
 /** plan_invoice never starts the licence flow without an origin: else the flow would record the CFO's command. */
 const NO_RUN: Origin = { actor: "code", rule: "plan_invoice called outside an agent run", agent: "treasury" };
 // Live, the world's addresses are read first, before anything is designed (as before D26): without them nothing can be filed.
@@ -129,7 +134,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
   // On simulated rails, code's evidence reads the cap from the sim's mandates (never from the chain).
   const sourcingCap = async (db: DB) => (sim ? (await mandates(db)).find((x) => x.agent === "sourcing")?.capCents : undefined);
   // The invoice plan_invoice plans: live, the licence (`npm run licence` reads the same file); on the sim's rails, the sim's.
-  const plannedText = (): string | null => (sim ? sim.invoiceText?.() ?? null : readFileSync(LICENCE_TEXT, "utf8"));
+  const plannedText = (): string | null => (sim ? sim.invoiceText?.() ?? null : licenceText());
   const position = async (db: DB) => {
     const m = await mandates(db);
     const sell = toCents(sellPrice(db));
@@ -142,7 +147,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
       (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
-      ...invoiceFacts(db, new Date(), invoiceNoOf(plannedText())).lines,
+      ...invoiceFacts(db, new Date(), invoiceOf(plannedText())).lines,
       ...refusedPayouts(db),
     ].join("\n");
   };
@@ -198,7 +203,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
           if (waiting(db, "invoice_payment").length) return { text: "Not planned: an invoice payment already waits for the CFO.", blocked: "already waiting" };
           // Code's duplicate guard, before anything runs (the flow applies it again): never an invoice that is paid,
           // being paid, or has a plan waiting, whatever the agent believes (review, 2 November).
-          const no = invoiceNoOf(plannedText());
+          const no = invoiceOf(plannedText())?.invoice_no ?? null;
           const handled = no ? invoiceAlreadyHandled(db, no) : null;
           if (handled) return { text: `Not planned: ${handled}.`, blocked: /already paid/.test(handled) ? "already paid" : "already handled" };
           const r = sim ? await sim.planInvoice(db) : withOrigin(currentOrigin() ?? NO_RUN, () => deps.runFlow("licence.ts"));

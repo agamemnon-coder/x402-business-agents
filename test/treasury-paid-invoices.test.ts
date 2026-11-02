@@ -28,6 +28,7 @@ import { currentOrigin, LICENCE_COMMAND, parseOrigin, withOrigin, type Origin } 
 import { FakeAirwallex } from "../src/redteam/airwallex.js";
 
 const text = readFileSync(new URL("../fixtures/stockline-licence-SLL-2026-11.txt", import.meta.url), "utf8");
+const PLANNED = { invoice_no: "SLL-2026-11", vendor: "Stockline Data GmbH", amount: "240.00", currency: "EUR", due_date: "2026-11-15" };
 const FAST = { delaysMs: [15_000, 30_000, 60_000, 90_000, 120_000], sleep: async () => {} };
 
 type Call = { name: string; input: unknown };
@@ -88,7 +89,7 @@ describe("the Treasury agent's facts about invoices (task 1)", () => {
     const profile = onRails(db, awx);
     const before = await profile.observe(db);
     expect(before).toMatch(/Invoices paid \(from the ledger\): none\./);
-    expect(before).toMatch(/Open invoice SLL-2026-11 from Stockline Data GmbH: EUR 240\.00, due 2026-11-15; not paid\. No plan waits for the CFO/);
+    expect(before).toMatch(/Open invoice SLL-2026-11, as the invoice states \(unverified\): from Stockline Data GmbH, EUR 240\.00, due 2026-11-15\. The ledger: not paid\. No plan waits for the CFO/);
     expect(before).toMatch(/plan_invoice may plan it now/);
 
     const out = await withOrigin(LICENCE_COMMAND, () => proposeInvoicePayment(db, awx, parseInvoiceFallback(text), text));
@@ -100,7 +101,7 @@ describe("the Treasury agent's facts about invoices (task 1)", () => {
 
     const paid = await approveAndPay(db, awx, out.proposal.proposal_id);
     expect(paid.transfer.status).toBe("PAID");
-    const facts = invoiceFacts(db, new Date(), "SLL-2026-11");
+    const facts = invoiceFacts(db, new Date(), PLANNED);
     expect(facts.paid).toEqual([expect.objectContaining({ invoice_no: "SLL-2026-11", amount: "240.00", currency: "EUR", transfer_id: paid.transfer.id, proposal_id: out.proposal.proposal_id })]);
     expect(facts.open).toEqual([]);
     const after = await profile.observe(db);
@@ -128,7 +129,7 @@ describe("the Treasury agent's facts about invoices (task 1)", () => {
     if (out.kind !== "proposed") throw new Error(out.reason);
     expireDue(db, new Date(Date.parse(out.terms.expires_at) + 1000));
     const seen = await onRails(db, awx).observe(db);
-    expect(seen).toMatch(new RegExp(`Open invoice SLL-2026-11 .*Its last plan, ${out.proposal.proposal_id}, expired unsigned at .*; nothing was paid under it\\. No plan waits for the CFO .*plan_invoice may plan it now`));
+    expect(seen).toMatch(new RegExp(`Open invoice SLL-2026-11, .*Its last plan, ${out.proposal.proposal_id}, expired unsigned at .*; nothing was paid under it\\. No plan waits for the CFO .*plan_invoice may plan it now`));
   });
 
   it("an executed payment proposal counts as paid for code's duplicate guard, even without a payout row", () => {
@@ -149,7 +150,7 @@ describe("the Treasury agent plans the licence itself, within the rules (task 2)
     expect(w).toMatchObject({ source: "claude" });
     // What it was told: the open invoice and code's rule, not a hint about the scenario.
     expect(client.asked[0]!.prompt).toMatch(/event #\d+ invoice\.received/);
-    expect(client.asked[0]!.prompt).toMatch(/Open invoice SLL-2026-11 .* Nothing in the ledger stops a plan: plan_invoice may plan it now\. Planning moves no money/);
+    expect(client.asked[0]!.prompt).toMatch(/Open invoice SLL-2026-11, .* Nothing in the ledger stops a plan: plan_invoice may plan it now\. Planning moves no money/);
     expect(client.asked[0]!.system).toMatch(/Code never plans an invoice that is paid, being paid or already has a plan waiting/);
     expect(w!.run!.calls[0]).toMatchObject({ tool: "plan_invoice" });
     expect(w!.run!.calls[0]!.blocked).toBeUndefined();

@@ -10,7 +10,7 @@ import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, LICENSOR_NAME, QUOTE_SAFETY_M
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
-import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
+import { createProposal, nextProposalId, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
 import { checkQuoteAgainstFloor, feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_RESERVE_CAP_CENTS, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
 import { getSetting, setSetting } from "../world/settings.js";
 import type { FraudFinding } from "../policy/fraud.js";
@@ -135,7 +135,12 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
     AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
     .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
   if (!p) return null;
-  return p.status === "EXECUTED" ? `invoice ${p.invoice_no} is already paid (${p.proposal_id} was executed)` : `invoice ${p.invoice_no} already waits for approval as ${p.proposal_id}`;
+  switch (p.status) {
+    case "EXECUTED": return `invoice ${p.invoice_no} is already paid (${p.proposal_id} was executed)`;
+    case "EXECUTING": return `invoice ${p.invoice_no} is being paid under ${p.proposal_id} (executing)`;
+    case "APPROVED": return `invoice ${p.invoice_no} is already approved as ${p.proposal_id} and waits to be executed`;
+    default: return `invoice ${p.invoice_no} already waits for approval as ${p.proposal_id}`;
+  }
 }
 
 /** An invoice number as a duplicate check compares it: Unicode-normalised, upper case, any dash as "-", no spaces around it. */
@@ -271,7 +276,17 @@ export async function proposeInvoicePayment(
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
   };
-  const proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence }, now);
+  // The duplicate guard again, inside the transaction that files the proposal (Opus review, 2 November): a plan filed by
+  // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.
+  let proposal: ProposalRow;
+  try {
+    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now) }, now);
+  } catch (e) {
+    if (!(e instanceof ProposalRefused)) throw e;
+    const reason = `${e.reason}; a second copy is not paid again (another plan was filed while this one was being prepared)`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, ...(quote ? { quote_id: quote.quoteId } : {}) }, now);
+    return { kind: "escalated", reason };
+  }
   return { kind: "proposed", proposal, terms };
 }
 
