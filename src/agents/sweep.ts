@@ -54,20 +54,23 @@ async function remaining(agent: "sourcing" | "support" | "treasury"): Promise<nu
   const m = await activeMandate(agent);
   return baseUnitsToCents(extractTerms(m.credential).constraints.budget) - baseUnitsToCents(await mandateSpent(m));
 }
-/** What a mandate may still spend: its budget less what the chain counts spent, less holds for payments under way. */
-async function available(db: DB, agent: "sourcing" | "support" | "treasury"): Promise<number> {
-  return (await remaining(agent)) - heldCents(db, agent);
+
+/** What planning a sweep reads from the chain; D26's simulated rails pass their own (default: Metal testnet). */
+export interface SweepReads {
+  balanceCents(business: Address): Promise<number>;
+  remaining(agent: "sourcing" | "support" | "treasury"): Promise<number>;
 }
+const liveReads: SweepReads = { balanceCents: async (a) => baseUnitsToCents(await usdzBalance(a)), remaining };
 
 /** Sweep the net earnings, but never below what the other mandates may still spend, nor past treasury's own budget. */
-export async function planSweep(db: DB, business: Address): Promise<SweepPlan | { refuse: string }> {
+export async function planSweep(db: DB, business: Address, reads: SweepReads = liveReads): Promise<SweepPlan | { refuse: string }> {
   const e = netEarnings(db);
   if (e.netCents <= 0) return { refuse: `nothing to sweep: net earnings ${fromCents(Math.max(0, e.netCents))}` };
-  const before = baseUnitsToCents(await usdzBalance(business));
+  const before = await reads.balanceCents(business);
   // The other agents' held payments are still in the business account until paid, so their whole remaining budget
   // stays committed; treasury's own holds (another sweep under way) come off what it may still move.
-  const committed = (await remaining("sourcing")) + (await remaining("support"));
-  const treasuryRemaining = await available(db, "treasury");
+  const committed = (await reads.remaining("sourcing")) + (await reads.remaining("support"));
+  const treasuryRemaining = (await reads.remaining("treasury")) - heldCents(db, "treasury");
   const amount = e.netCents;
   if (amount > treasuryRemaining) return { refuse: `sweep ${fromCents(amount)} exceeds treasury's remaining budget ${fromCents(treasuryRemaining)}` };
   if (before - amount < committed) return { refuse: `sweep would leave ${fromCents(before - amount)}, under the ${fromCents(committed)} the other mandates may still spend` };

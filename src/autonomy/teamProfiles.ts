@@ -75,29 +75,39 @@ const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM pr
 const lastFrom = (db: DB, from: string) => (db.prepare("SELECT text FROM agent_messages WHERE from_agent = ? AND to_agent = 'treasury' ORDER BY id DESC LIMIT 1").get(from) as { text: string } | undefined)?.text;
 
 /**
- * What the Treasury agent's tools reach outside the ledger. Live: the tested flows as child processes, the mandates on
- * Metal testnet, the price-rise proposals (replacement credentials signed with the owner key) and the env's Claude.
- * D26: the variation test passes stand-ins for these, so every check of code still runs on simulated rails.
+ * D26: everything the Treasury agent's tools reach outside the ledger, replaced as one bundle for the variation test's
+ * simulated rails, so a world never mixes stand-in mandates with the real owner-key filing or a real flow.
  */
-export interface FlowDeps {
-  runFlow: typeof runFlow;
-  /** Each agent's mandate now (default: read from Metal testnet). */
-  mandates?: (db: DB) => Promise<MandateNow[]>;
-  /** Files the price-rise options for the CFO (default: proposePriceRise with the world's addresses). */
-  proposePriceRise?: (db: DB, sellCents: number, ev: PriceRiseEvidence, plan?: PricePlan) => Promise<{ proposal_id: string }[]>;
-  /** The Claude client of the rebalance design (default: the env's). */
-  client?: Anthropic | null;
+export interface TreasurySim {
+  /** Each agent's mandate now. */
+  mandates(db: DB): Promise<MandateNow[]>;
+  /** Files the price-rise options for the CFO (live: proposePriceRise, which signs replacement credentials). */
+  proposePriceRise(db: DB, sellCents: number, ev: PriceRiseEvidence, plan?: PricePlan): Promise<{ proposal_id: string }[]>;
+  /** The Claude client of the rebalance design. */
+  client: Anthropic | null;
+  /** The sweep (live: `s3.ts --sweep-only`). */
+  sweep(db: DB): Promise<{ ok: boolean; text: string }>;
+  /** The invoice plan (live: `licence.ts`). */
+  planInvoice(db: DB): Promise<{ ok: boolean; text: string }>;
 }
+
+/**
+ * What the Treasury agent's tools reach outside the ledger. Live: the tested flows as child processes (runFlow; tests
+ * may pass their own), the mandates on Metal testnet, the price-rise filing with the owner key and the env's Claude.
+ * With `sim`, all of it is the sim's, and nothing live is reached.
+ */
+export interface FlowDeps { runFlow: typeof runFlow; sim?: TreasurySim }
 
 const liveMandates = async (db: DB) => [...(await mandatesNow(db)).values()].map((c) => c.now);
 // Live, the world's addresses are read first, before anything is designed (as before D26): without them nothing can be filed.
 const livePriceRise = (db: DB) => { const addr = addresses(db); return (d: DB, sellCents: number, ev: PriceRiseEvidence, plan?: PricePlan) => proposePriceRise(d, addr, sellCents, ev, new Date(), plan); };
 
 export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow }): AgentProfile {
-  const mandates = deps.mandates ?? liveMandates;
-  const filer = (db: DB) => deps.proposePriceRise ?? livePriceRise(db);
-  // With stand-in mandates, code's evidence reads the cap from them (never from the chain).
-  const sourcingCap = async (db: DB) => (deps.mandates ? (await mandates(db)).find((x) => x.agent === "sourcing")?.capCents : undefined);
+  const sim = deps.sim;
+  const mandates = sim ? (db: DB) => sim.mandates(db) : liveMandates;
+  const filer = (db: DB) => (sim ? sim.proposePriceRise.bind(sim) : livePriceRise(db));
+  // On simulated rails, code's evidence reads the cap from the sim's mandates (never from the chain).
+  const sourcingCap = async (db: DB) => (sim ? (await mandates(db)).find((x) => x.agent === "sourcing")?.capCents : undefined);
   const position = async (db: DB) => {
     const m = await mandates(db);
     const sell = toCents(sellPrice(db));
@@ -138,7 +148,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
             sellCents, oldUpstreamCents: 2, newUpstreamCents: live, refusal: r.refusal_reason, mandates: await mandates(db),
             ...(lastFrom(db, "sourcing") ? { sourcingMessage: `${lastFrom(db, "sourcing")} (Treasury's own reason: ${reason})` } : {}),
           };
-          const design = deps.client === undefined ? await designPriceRise(db, facts) : await designPriceRise(db, facts, deps.client);
+          const design = sim ? await designPriceRise(db, facts, sim.client) : await designPriceRise(db, facts);
           const props = await fileRise(db, sellCents, { noticePath: NOTICE, liveOfferCents: live, refusal: { purchaseId: r.id, reason: r.refusal_reason, ...(r.turnedAway ? { turnedAway: r.turnedAway } : {}) } }, design.plan);
           return { text: `${design.source === "claude" ? "Your plan" : "Code's plan"} went to the CFO as ${props.map((p) => p.proposal_id).join(" and ")}: ${design.plan.advice}`, ...(design.source === "claude" ? {} : { blocked: "plan fell back to code" }) };
         },
@@ -151,7 +161,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
           const e = netEarnings(db);
           if (e.netCents <= 0) return { text: `Not swept: net earnings are ${fromCents(Math.max(0, e.netCents))}; nothing to move.`, blocked: "nothing to sweep" };
           swept = true;
-          const r = deps.runFlow("s3.ts", ["--sweep-only"]);
+          const r = sim ? await sim.sweep(db) : deps.runFlow("s3.ts", ["--sweep-only"]);
           return { text: r.text, ...(r.ok ? {} : { blocked: "the sweep did not complete" }) };
         },
       },
@@ -160,7 +170,7 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
         input: z.strictObject({}),
         run: async () => {
           if (waiting(db, "invoice_payment").length) return { text: "Not planned: an invoice payment already waits for the CFO.", blocked: "already waiting" };
-          const r = deps.runFlow("licence.ts");
+          const r = sim ? await sim.planInvoice(db) : deps.runFlow("licence.ts");
           return { text: r.text, ...(r.ok ? {} : { blocked: "the plan did not complete" }) };
         },
       },

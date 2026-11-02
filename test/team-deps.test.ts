@@ -2,12 +2,18 @@
 // them on simulated rails with every check of code in place. Breaks if a tool or a fallback still reaches the chain, a
 // key or a child process when stand-ins are given, or if the rebalance design ignores the client it was handed.
 import type Anthropic from "@anthropic-ai/sdk";
-import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { publish, sendMessage } from "../src/autonomy/bus.js";
 import { wake } from "../src/autonomy/runtime.js";
-import { supportProfile, treasuryProfile } from "../src/autonomy/teamProfiles.js";
 import type { MandateNow } from "../src/policy/mandates.js";
+
+// The live default path's child process, observed and stubbed: no flow runs here.
+const spawned = vi.hoisted(() => [] as { cmd: string; args: string[]; cwd: string }[]);
+vi.mock("node:child_process", async (orig) => ({ ...(await orig<object>()), spawnSync: (cmd: string, args: string[], o: { cwd: string }) => { spawned.push({ cmd, args, cwd: o.cwd }); return { status: 0, stdout: "SETTLED (stub)\n", stderr: "" }; } }));
+const { supportProfile, treasuryProfile } = await import("../src/autonomy/teamProfiles.js");
 
 type Call = { name: string; input: unknown };
 function fake(turns: Call[][]): Anthropic & { asked: number } {
@@ -27,6 +33,11 @@ const MANDATES: MandateNow[] = [
   { agent: "treasury", capCents: 600, budgetCents: 600, spentCents: 0 },
 ];
 const noFlow = () => { throw new Error("no child process in the sim"); };
+const noSweep = async () => { throw new Error("no sweep here"); };
+const bundle = (o: { client: Anthropic | null; file: (sell: number, live: number) => { proposal_id: string }[] }) => ({
+  mandates: async () => MANDATES, client: o.client, sweep: noSweep, planInvoice: noSweep,
+  proposePriceRise: async (_db: unknown, sell: number, ev: { liveOfferCents: number }) => o.file(sell, ev.liveOfferCents),
+});
 
 describe("Treasury on injected rails (D26)", () => {
   it("designs a rebalance with the given client and mandates, and files it through the given stand-in", async () => {
@@ -37,8 +48,7 @@ describe("Treasury on injected rails (D26)", () => {
     // The design's own Claude run gets this client: it submits nothing, so code's fixed plan is used (labelled).
     const design = fake([]);
     const w = await wake(db, treasuryProfile(30 * 60_000, {
-      runFlow: noFlow, mandates: async () => MANDATES, client: design,
-      proposePriceRise: async (_db, sell, ev) => { filed.push(sell, ev.liveOfferCents); return [{ proposal_id: "P-0001" }, { proposal_id: "P-0002" }]; },
+      runFlow: noFlow, sim: bundle({ client: design, file: (sell, live) => { filed.push(sell, live); return [{ proposal_id: "P-0001" }, { proposal_id: "P-0002" }]; } }),
     }), { client: fake([[{ name: "design_rebalance", input: { reason: "Sourcing is blocked" } }], [finish("Sent options to the CFO.")]]), now: T0 });
     expect(w!.run!.calls[0]!.text).toContain("P-0001 and P-0002");
     expect(design.asked).toBeGreaterThan(0);
@@ -49,7 +59,7 @@ describe("Treasury on injected rails (D26)", () => {
     const db = openDb(":memory:");
     db.prepare("INSERT INTO upstream_purchases (price_cents, outcome, refusal_reason, created_at) VALUES (0, 'REFUSED', 'mandate_cap_exceeded: 0.04 is over the sourcing mandate''s 0.03 a payment', ?)").run(T0.toISOString());
     sendMessage(db, "sourcing", "treasury", "Refused over my cap.", T0);
-    const w = await wake(db, treasuryProfile(30 * 60_000, { runFlow: noFlow, mandates: async () => MANDATES, client: null, proposePriceRise: async () => [{ proposal_id: "P-0009" }] }), { client: null, now: T0 });
+    const w = await wake(db, treasuryProfile(30 * 60_000, { runFlow: noFlow, sim: bundle({ client: null, file: () => [{ proposal_id: "P-0009" }] }) }), { client: null, now: T0 });
     expect(w).toMatchObject({ source: "fallback", summary: "code's fixed plan went to the CFO as P-0009" });
   });
 });
@@ -66,5 +76,17 @@ describe("Support on injected rails (D26)", () => {
     const f = await wake(db, supportProfile(30 * 60_000, { settle }), { client: null, now: T0 });
     expect(f).toMatchObject({ source: "fallback", summary: "code settled the dispute (the agent did not decide)" });
     expect(by).toEqual(["agent", "code"]);
+  });
+});
+
+describe("the live default path (D26 review)", () => {
+  it("Support's default settlement runs src/cli/s2.ts from the repo, as before the injection", async () => {
+    const db = openDb(":memory:");
+    publish(db, "dispute.opened", { customer: "Summit Outfitters" }, "support", "system", T0);
+    const w = await wake(db, supportProfile(), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Settled.")]]), now: T0 });
+    expect(w!.run!.calls[0]).toMatchObject({ tool: "settle_dispute", text: "SETTLED (stub)" });
+    expect(spawned).toHaveLength(1);
+    expect(spawned[0]).toMatchObject({ cmd: "npx", args: ["tsx", "src/cli/s2.ts"] });
+    expect(existsSync(join(spawned[0]!.cwd, "src/cli/s2.ts"))).toBe(true);
   });
 });

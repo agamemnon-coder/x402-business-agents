@@ -22,6 +22,9 @@ export const SIM_ADDR = {
   sweep: "0x5100000000000000000000000000000000000d01",
 } as const;
 
+/** The business account's float on simulated Metal: bootstrap moves 20.00 in (src/cli/bootstrap.ts, "the business owner moves 20.00 to its account"). */
+export const SIM_BUSINESS_FLOAT_CENTS = 2000;
+
 export interface RailSource { what: string; answer: string; source: string }
 
 /** Where each stand-in's answer comes from (also written into every result file). */
@@ -30,6 +33,7 @@ export const RAIL_SOURCES: RailSource[] = [
   { what: "Metal: a purchase within the cap", answer: "paid on chain, one transfer per purchase (tx hash recorded)", source: "docs/runs/2026-11-01-autonomy-dry-96-97.md (dry-97: Sourcing bought from Ridgeline within its 0.03 cap)" },
   { what: "Ridgeline Data unavailable", answer: "no offer before any payment (`supplier_unavailable: Ridgeline Data made no offer for stock check #N`)", source: "src/config/suppliers.ts (an outage costs nothing) and src/agents/sourcing.ts buyUnder" },
   { what: "Metal: a refund pull under the Support mandate", answer: "PAID with a tx; a second pull of the same payment id answers \"already paid, nothing sent\"", source: "docs/runs/2026-11-01-autonomy-dry-96-97.md (dry-97: #7, #10, #13 refunded, 0.15 *USDZ); src/executors/refunds.ts header" },
+  { what: "Metal: the business account's balance (read by planSweep)", answer: "20.00 moved in at bootstrap, plus sales, less upstream purchases, refunds and sweeps", source: "src/cli/bootstrap.ts (the business owner moves 20.00 to its account); the ledger's own rows" },
   { what: "Metal: the Treasury sweep", answer: "paid to the sweep wallet after finality, the credit booked at Airwallex", source: "docs/runs/2026-11-01-autonomy-dry-96-97.md (dry-100: Treasury swept 0.09, final, booked)" },
   { what: "Airwallex: Packwise Pro, 45.00 EUR on a card with a 30.00 EUR per-purchase limit", answer: "declined, `LIMIT_EXCEEDED`; approved once the limit is 50.00", source: "docs/runs/2026-10-29-cards.md (15:54 declined LIMIT_EXCEEDED; 17:31:58 approved at 50.00)" },
   { what: "Airwallex: SWIFT fee on a EUR payout", answer: "EUR 13.47 charged (a PAID transfer on record), the ceiling stays 20.00", source: "docs/runs/2026-10-29-s3.md, docs/runs/2026-10-29-rehearsal-1.md, docs/runs/2026-10-29-rehearsal-2.md" },
