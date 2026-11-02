@@ -34,22 +34,22 @@ const TABS: [Tab, string, string][] = [["home", "Home", "home"], ["watch", "Watc
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/inter.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
-  --bg: #f7f8fa; --surface: #ffffff; --sunken: #f1f3f7; --border: #e3e6ec; --text: #0b1220; --muted: #586174; --faint: #8a93a4;
-  --accent: #4f46e5; --accent-soft: #eef0ff; --ok: #0f9f55; --ok-soft: #e6f6ee; --bad: #e0464c; --bad-soft: #fdecec;
-  --metal: #0d9488; --metal-soft: #e3f5f2; --awx: #ea6a1f; --awx-soft: #fdf0e7; --claude: #d97757; --claude-soft: #fbefe9;
+  --bg: #f7f8fa; --surface: #ffffff; --sunken: #f1f3f7; --border: #e3e6ec; --text: #0b1220; --muted: #586174; --faint: #646d7e;
+  --accent: #4f46e5; --accent-soft: #eef0ff; --ok: #0b7d43; --ok-soft: #e6f6ee; --bad: #c5363c; --bad-soft: #fdecec; --on-bad: #ffffff;
+  --metal: #0b7a70; --metal-soft: #e3f5f2; --awx: #ad4a0c; --awx-soft: #fdf0e7; --claude: #a84d2b; --claude-soft: #fbefe9;
   --a-sourcing: #2563eb; --a-support: #9333ea; --a-treasury: #0e7490;
   --shadow: 0 1px 2px rgba(16,24,40,.05), 0 12px 32px -12px rgba(16,24,40,.12);
   --r: 22px; --gut: 16px; color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0a0c11; --surface: #12151d; --sunken: #191d27; --border: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #737d8f;
-  --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c;
+  --bg: #0a0c11; --surface: #12151d; --sunken: #191d27; --border: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #858fa1;
+  --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
   --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b;
   --a-sourcing: #60a5fa; --a-support: #c084fc; --a-treasury: #22d3ee; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -12px rgba(0,0,0,.6); color-scheme: dark;
 } }
 :root[data-theme="dark"] {
-  --bg: #0a0c11; --surface: #12151d; --sunken: #191d27; --border: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #737d8f;
-  --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c;
+  --bg: #0a0c11; --surface: #12151d; --sunken: #191d27; --border: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #858fa1;
+  --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
   --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b;
   --a-sourcing: #60a5fa; --a-support: #c084fc; --a-treasury: #22d3ee; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -12px rgba(0,0,0,.6); color-scheme: dark;
 }
@@ -124,7 +124,7 @@ h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .lane.metal .coin { background: var(--metal); } .lane.awx .coin { background: var(--awx); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lane .coin { color: #06121a; } }
 :root[data-theme="dark"] .lane .coin { color: #06121a; }
-.coin.bad { background: var(--bad) !important; color: #fff !important; }
+.coin.bad { background: var(--bad) !important; color: var(--on-bad) !important; }
 .coin.ghost { opacity: .5; }
 .wall { position: absolute; top: -5px; bottom: -5px; left: 58%; width: 5px; border-radius: 4px; background: var(--bad); opacity: 0; transition: opacity .2s; }
 .wall.on { opacity: 1; }
@@ -132,6 +132,8 @@ h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .pill, .model, .tool, .verdict, .tag, .sig { display: inline-flex; align-items: center; gap: 5px; font: 650 14px/1.35 Inter, system-ui, sans-serif; padding: 3px 10px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
 .model { color: var(--claude); background: var(--claude-soft); }
 .tool { background: var(--surface); border: 1px solid var(--border); padding: 2px 9px; }
+/* D2: the Claude call behind a decision, from its trace. */
+.call { display: inline-flex; align-items: center; gap: 5px; font: 600 14px/1.35 Inter, system-ui, sans-serif; color: var(--claude); background: var(--claude-soft); border-radius: 8px; padding: 3px 9px; white-space: normal; font-variant-numeric: tabular-nums; }
 .tag { text-transform: none; letter-spacing: 0; color: var(--faint); }
 .verdict.ok { background: var(--ok-soft); color: var(--ok); } .verdict.bad { background: var(--bad-soft); color: var(--bad); } .verdict.next { background: var(--surface); color: var(--faint); }
 a.verdict:hover { text-decoration: underline; }
@@ -155,6 +157,8 @@ a.verdict:hover { text-decoration: underline; }
   .st-phone::before { display: none; }
   .ag { padding: 8px 2px; } .ag .nm { font-size: 14.5px; } .av { width: 40px; height: 40px; }
   .st-bubble { font-size: 15.5px; min-height: 112px; }
+  /* The rail's result on its own line under the name, in full (the Metal lane was cut off at 390 px). */
+  .lane .verdict { order: 4; margin-left: 0; max-width: 100%; white-space: normal; overflow: visible; }
 }
 /* Number tile. */
 .tile { display: flex; flex-direction: column; gap: 4px; padding: 22px; text-decoration: none; transition: transform .2s, border-color .2s; }
@@ -174,7 +178,10 @@ details.real .pop { margin-top: 10px; max-width: 640px; padding: 16px 18px; font
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
 
-export function header(current: Tab): string {
+/** Home's headline (Max's concept, 2 Nov): four words. */
+export const HEADLINE = "Agents spend. Limits hold.";
+
+export function header(current: Tab | null): string {
   return `<header class="top"><div class="wrap"><a class="brand" href="home" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>
 <nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${href}"${k === current ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}</nav></div></header>`;
 }
@@ -237,7 +244,7 @@ function Stage(root, run) {
     if (!r) return ev.dir === "in" ? "received" : /refund/i.test(ev.what) ? "refunded" : "paid";
     if (r.by === "recorded") return "refused before signing, and recorded on chain";
     if (r.by === "metal") return "refused by Metal: " + r.reason;
-    if (r.by === "airwallex-sandbox") return "not paid: Airwallex's sandbox could not price the fee (not a limit)";
+    if (r.by === "airwallex-sandbox") return (ev.earlier ? "earlier attempt, nothing paid: " : "not paid: ") + "Airwallex's sandbox could not price the fee (not a limit)";
     if (r.by === "airwallex") return "declined by Airwallex: " + r.reason;
     return "refused before signing";
   }
@@ -246,7 +253,7 @@ function Stage(root, run) {
     if (!r) return "✓ " + result(ev);
     if (r.by === "recorded") return "✕ Refused · recorded on chain" + (ev.proof && ev.proof.href ? " ↗" : "");
     if (r.by === "metal") return "✕ Refused by Metal";
-    if (r.by === "airwallex-sandbox") return "✕ Not paid · fee not priced";
+    if (r.by === "airwallex-sandbox") return ev.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced";
     if (r.by === "airwallex") return "✕ Declined by Airwallex";
     return "✕ Refused before signing";
   }
@@ -262,6 +269,7 @@ function Stage(root, run) {
     var n = names[ev.agent] || { short: ev.agent };
     var b = document.createElement("span"); b.textContent = n.short + (ev.k === "msg" ? " · message" : ev.by === "claude" ? " · decided by Claude" : " · fallback (code)"); who.appendChild(b);
     (ev.tools || []).slice(0, 3).forEach(function (t) { var c = document.createElement("span"); c.className = "tool"; c.textContent = t; who.appendChild(c); });
+    if (ev.badge) { var k = document.createElement("span"); k.className = "call"; k.textContent = ev.badge; k.title = ev.tip || ""; who.appendChild(k); }
     bubble.classList.remove("idle"); bubble.classList.add("quote");
     var text = first(ev.text, sentences);
     if (instant || reduce) { say.textContent = text; return; }
@@ -380,13 +388,23 @@ button.run { background: var(--text) !important; color: var(--bg) !important; }
 }
 
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
-export function page(o: { title: string; description: string; tab: Tab; css: string; body: string; data: unknown; js: string; source: string }): string {
+export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string }): string {
+  const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
+${o.js}</script>`;
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="${esc(o.description)}">
+<meta name="theme-color" content="#0b1220">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Purser">
+<meta property="og:title" content="${esc(o.title === "Purser" ? `Purser · ${HEADLINE}` : `${o.title} · Purser`)}">
+<meta property="og:description" content="${esc(o.description)}">
+<meta property="og:image" content="assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <title>${esc(o.title)}</title>
 <style>${CSS}
 ${o.css}</style>
@@ -395,9 +413,7 @@ ${o.css}</style>
 ${header(o.tab)}
 ${o.body}
 ${footer(o.source)}
-<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>
-<script>${STAGE_JS}
-${o.js}</script>
+${script}
 </body>
 </html>`;
 }

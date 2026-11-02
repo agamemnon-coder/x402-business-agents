@@ -18,7 +18,7 @@ const AGENTS: AgentId[] = ["sourcing", "support", "treasury"];
 
 interface Chat { ts: string; kind: "decision" | "message" | "world"; who: string; by: string | null; model: string | null; text: string }
 interface Flow { at: string; kind: string; agent: string | null; model: string | null; decided: string; request?: string; what: string; amount: string; unit: string; rail: string; count?: number; proof: { label: string; href: string | null; full?: string | null }; refused?: { by: string; reason: string } }
-interface Trace { agent: string; task: string; status: string; model: string; steps: { ts: string; kind: string; tool: string | null; input: unknown }[] }
+interface Trace { run_seq?: number; agent: string; task: string; status: string; model: string; tokens?: { input: number; output: number; cache_read: number; cache_write: number }; latency_ms?: number; claude_ms?: number[]; request_ids?: string[]; cost_usd_micros?: number; steps: { ts: string; kind: string; tool: string | null; input: unknown }[] }
 interface Refusal { seq: number; ts: string; agent: string; what: string; reason: string }
 interface Decision { proposal_id: string; title: string; status: string; by: string | null; at: string }
 interface Stat { agent: string; decisions: number; by_claude: number; fallback: number; claude_calls: number; cost_usd_micros: number; models: string[] }
@@ -37,6 +37,8 @@ export interface RunRecord {
 }
 
 export interface Proof { label: string; href: string | null }
+/** One agent decision's Claude call(s), from its trace in the record (D2): model family, total tokens, latency, first request id. */
+export interface Call { family: string; tokens: number; /** Claude's own time over the decision's calls (claude_ms summed). */ latencyMs: number; /** The whole decision, tools and waits included (latency_ms). */ wallMs: number; requestId: string; requestIds: string[]; calls: number }
 /**
  * Who said no, in one vocabulary: "recorded" is Purser refusing before signing with Metal recording the same refusal on
  * chain; "metal" is Metal's facilitator; "airwallex" is an Airwallex limit; "airwallex-sandbox" is the sandbox failing
@@ -45,9 +47,9 @@ export interface Proof { label: string; href: string | null }
 export interface Refused { by: "recorded" | "metal" | "airwallex" | "airwallex-sandbox" | "purser"; reason: string; code?: string }
 export type Ev =
   | { k: "world"; at: string; text: string }
-  | { k: "say"; at: string; agent: AgentId; model: string | null; by: "claude" | "fallback"; text: string; tools: string[] }
+  | { k: "say"; at: string; agent: AgentId; model: string | null; by: "claude" | "fallback"; text: string; tools: string[]; call?: Call | null }
   | { k: "msg"; at: string; agent: AgentId; text: string }
-  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string }
+  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string; /** Who decided it: code, or the agent's Claude model (the flow's own "decided"). */ by?: string; /** A failed attempt before the one that paid: nothing paid. */ earlier?: boolean; /** The proposal that paid it later. */ retried?: { id: string; at: string; status: string } }
   | { k: "face"; at: string; id: string; title: string; status: string; signers: string[] }
   | { k: "mandate"; at: string; agent: AgentId; cap: string; budget: string; proposal: string; proof: Proof }
   | { k: "routine"; at: string; count: number; agents: AgentId[]; text: string }
@@ -102,12 +104,25 @@ function applyNotes(r: RunRecord, n: RunNotes): void {
 /** The run's short name: "agent run 1 (rehearsal), 2 Nov" → "agent run 1"; a dry run keeps its name up to the colon. */
 export const runName = (r: RunRecord) => r.run.split(":")[0]!.replace(/\s*\([^)]*\)/g, "").replace(/,\s*\d{1,2} \w+( \d{4})?$/, "").trim();
 
-/** The label every page shows above the run. */
+/**
+ * The run's time span, from its own rows (the first and last event in the record), and whether a later part follows a
+ * long pause (more than an hour without an event: a follow-up, such as agent run 1's licence paid in the afternoon).
+ */
+export function runSpan(r: RunRecord): { from: string; to: string; followUp: boolean } {
+  const ts = [...r.snapshot.agent_chat.map((c) => c.ts), ...r.snapshot.flows.map((f) => f.at), ...(r.ledger?.events.map((e) => e.ts) ?? []),
+    ...r.snapshot.traces.flatMap((t) => t.steps.map((x) => x.ts))].filter(Boolean).sort();
+  const gap = ts.slice(1).reduce((g, t, i) => Math.max(g, Date.parse(t) - Date.parse(ts[i]!)), 0);
+  return { from: ts[0] ?? r.recorded_at, to: ts[ts.length - 1] ?? r.recorded_at, followUp: gap > 60 * 60 * 1000 };
+}
+const hhmm = (iso: string) => iso.slice(11, 16);
+
+/** The label every page shows above the run: its name (and follow-up), its day and time span, test money, who decided. */
 export function runLabel(r: RunRecord): string {
   const s = r.snapshot.agent_stats;
   const decisions = s.reduce((n, a) => n + a.decisions, 0), byClaude = s.reduce((n, a) => n + a.by_claude, 0);
   const claude = decisions && byClaude === decisions ? "real Claude decisions" : `${byClaude} of ${decisions} decisions by Claude`;
-  return `Replay of ${runName(r)} · ${day(r.recorded_at)} · test money · ${claude}`;
+  const span = runSpan(r);
+  return `Replay of ${runName(r)}${span.followUp ? " and its follow-up" : ""}, ${day(span.from)} ${hhmm(span.from)}–${hhmm(span.to)} UTC · test money · ${claude}`;
 }
 
 /** The label of a movement's coin on its rail: "0.05 per query · x402", "€240 · SWIFT". */
@@ -126,6 +141,22 @@ function coinLabel(f: { amount: string; unit: string; count: number; via: string
 
 const VIA: Record<string, string> = { metal: "x402", purser: "x402", airwallex_swift: "SWIFT", airwallex_card: "card", airwallex_deposit: "deposit", airwallex_fx: "FX" };
 
+/** The trace of the decision an agent made at `at` (its last step is the decision's moment), or null. */
+export function traceAt(r: RunRecord, agent: string, at: string): Trace | null {
+  const t = Date.parse(at);
+  const best = r.snapshot.traces.filter((x) => x.agent === agent && x.steps.length).map((x) => ({ x, d: Math.abs(Date.parse(x.steps[x.steps.length - 1]!.ts) - t) })).sort((a, b) => a.d - b.d)[0];
+  return best && best.d < 5000 ? best.x : null;
+}
+/** A trace's Claude call(s) as the badge shows them; null when the trace has no request id (no Claude call recorded). */
+export function callOf(t: Trace | null): Call | null {
+  if (!t?.request_ids?.length || !t.tokens) return null;
+  const k = t.tokens;
+  return { family: family(t.model), tokens: k.input + k.output + k.cache_read + k.cache_write, latencyMs: t.claude_ms?.length ? t.claude_ms.reduce((n, x) => n + x, 0) : t.latency_ms ?? 0, wallMs: t.latency_ms ?? 0, requestId: t.request_ids[0]!, requestIds: t.request_ids, calls: t.request_ids.length };
+}
+/** "Claude call ✓ · Opus · 3,861 tokens · 3.4 s · req_011CgeFq…" (D2). */
+export const callTip = (c: Call) => `${c.calls} Claude call${c.calls > 1 ? "s" : ""} (${c.requestIds.join(", ")}): ${(c.latencyMs / 1000).toFixed(1)} s of Claude time; the decision took ${(c.wallMs / 1000).toFixed(1)} s in all, tools included.`;
+export const callBadge = (c: Call) => `Claude call ✓ · ${c.family} · ${c.tokens.toLocaleString("en-US")} tokens · ${(c.latencyMs / 1000).toFixed(1)} s · ${c.requestId.slice(0, 12)}…`;
+
 function events(r: RunRecord): Ev[] {
   const s = r.snapshot;
   const out: Ev[] = [];
@@ -141,7 +172,7 @@ function events(r: RunRecord): Ev[] {
       if (!text || /^[a-z_]+\.[a-z_.]+$/.test(text) || /^A purchase from \S+ was refused before signing/.test(text)) continue;
       out.push({ k: "world", at: c.ts, text });
     } else if (c.kind === "decision" && isAgent(c.who)) {
-      out.push({ k: "say", at: c.ts, agent: c.who, model: c.model, by: c.by === "claude" ? "claude" : "fallback", text: c.text, tools: toolsFor(c.who, c.ts) });
+      out.push({ k: "say", at: c.ts, agent: c.who, model: c.model, by: c.by === "claude" ? "claude" : "fallback", text: c.text, tools: toolsFor(c.who, c.ts), call: c.by === "claude" ? callOf(traceAt(r, c.who, c.ts)) : null });
     } else if (c.kind === "message" && isAgent(c.who)) {
       out.push({ k: "msg", at: c.ts, agent: c.who, text: c.text });
     }
@@ -166,7 +197,7 @@ function events(r: RunRecord): Ev[] {
       }
     }
     if (refused && refused.by === "metal" && /mandate_revoked/.test(f.refused!.reason)) refused = { by: "metal", reason: "the old mandate was revoked by its replacement", code: "mandate_revoked" };
-    out.push({ k: "money", at: f.at, agent: isAgent(f.agent) ? f.agent : null, rail, via, dir: ["sale", "deposit", "booked"].includes(f.kind) ? "in" : "out", what: f.what, amount: f.amount, unit: f.unit, count, label: coinLabel({ ...f, count, via }), refused, proof });
+    out.push({ k: "money", at: f.at, agent: isAgent(f.agent) ? f.agent : null, rail, via, dir: ["sale", "deposit", "booked"].includes(f.kind) ? "in" : "out", what: f.what, amount: f.amount, unit: f.unit, count, label: coinLabel({ ...f, count, via }), refused, proof, by: f.decided });
   }
   const titleOf = (id: string) => s.decisions.find((d) => d.proposal_id === id)?.title ?? r.ledger?.proposals.find((p) => p.proposal_id === id)?.kind.replace(/_/g, " ") ?? id;
   const person = (who: string) => who.trim().replace(/\s*\(.*\)$/, "").replace(/^./, (c) => c.toUpperCase());
@@ -191,7 +222,8 @@ function events(r: RunRecord): Ev[] {
         out.push({ k: "money", at: new Date(Date.parse(row.ts) + 1).toISOString(), agent: "treasury", rail: "airwallex", via: method, dir: "out", what: `${String(terms.vendor ?? "the supplier")}'s invoice ${String(terms.invoice_no ?? "")} (${id})`.replace("  ", " "), amount, unit, count: 1,
           label: amount ? `${unit === "EUR" ? SHORT_EUR(amount) : amount} invoice · ${method}` : method,
           refused: code === "fee_unknown" ? { by: "airwallex-sandbox", reason: "the sandbox could not price the fee; nothing paid", code } : { by: "airwallex", reason: `${code}; nothing paid`, code },
-          proof: { label: `${error} · no transfer made`, href: null } });
+          proof: { label: `${error} · no transfer made`, href: null }, earlier: r.ledger.proposals.some((p) => p.status === "EXECUTED" && String(p.terms?.invoice_no ?? "") === String(terms.invoice_no ?? "") && p.proposal_id !== id),
+          retried: (() => { const p = r.ledger.proposals.find((x) => x.status === "EXECUTED" && String(x.terms?.invoice_no ?? "") === String(terms.invoice_no ?? "") && x.proposal_id !== id); const done = p && r.ledger.events.find((e) => e.event === "proposal.executed" && e.subject === p.proposal_id); return p && done ? { id: p.proposal_id, at: done.ts, status: String(done.payload.status ?? "") } : undefined; })() });
       }
     }
   } else {
@@ -303,10 +335,12 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
  * at the card's limit, from the TAP run of the same day (labelled so). Not counted, because it is not a limit: an
  * Airwallex sandbox failure such as fee_unknown (`feeUnknown`).
  */
-export function stops(r: RunRecord): { metal: number; airwallex: number; cfo: number; feeUnknown: number } {
+export function stops(r: RunRecord): { metal: number; revoked: number; airwallex: number; cfo: number; feeUnknown: number } {
   const s = r.snapshot;
   return {
-    metal: s.flows.filter((f) => f.refused?.by === "metal").length,
+    // At a limit: over the mandate's cap. Apart: a payment under an old mandate refused because it had just been replaced.
+    metal: s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason)).length,
+    revoked: s.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length,
     airwallex: s.flows.filter((f) => f.refused?.by === "airwallex").length + (tapRun()?.steps.filter((x) => !x.approved && x.reason === "LIMIT_EXCEEDED").length ?? 0),
     cfo: s.decisions.filter((d) => d.status === "REJECTED").length,
     feeUnknown: s.refusals.filter((x) => /fee_unknown/.test(x.reason)).length,
@@ -315,58 +349,116 @@ export function stops(r: RunRecord): { metal: number; airwallex: number; cfo: nu
 
 /** Tools that mean an agent acted, not only looked: a decision without any of them is a routine check. */
 const ACTING = /^(set_buy_policy|design_rebalance|send_message|settle_dispute|sweep_earnings|plan_invoice|submit_plan|submit_advice|refund|escalate_to_cfo)$/;
-/** The decisions Watch's highlights show: Treasury's plan, the dispute settled, the sweep, the licence planned. */
-const KEY_TOOLS = /^(design_rebalance|settle_dispute|sweep_earnings|plan_invoice)$/;
+
+/** A highlight: a key moment, with the routine checks ("nothing to do") merged into it that came before it. */
+export type Highlight = Ev & { quiet?: number };
 
 /**
- * Watch's default: the run's key moments only (the world set-up and the moments' world changes, the refusal recorded
- * on chain, Treasury's plan, each signature, the mandates replaced, the dispute and its refunds, the sweep, the
- * licence), the agents' routine checks ("nothing to do") merged into one line between them, and the TAP run's card
- * purchase last, under that run's label.
+ * The four moments the whole site tells (Home's animation, Watch's jumps), each anchored on its event in the run:
+ * 1. the price rise refused on chain; 2. Treasury replans and the four eyes (1 of 2, 2 of 2) replace the mandate;
+ * 3. the dispute: every order checked, the wrong ones refunded; 4. the sweep, the licence paid by SWIFT after Face ID,
+ * and the TAP run's card buy. A failed attempt before the licence was paid (fee_unknown) is not one of them.
  */
-export function highlights(run: AgentRun): Ev[] {
+export interface Moments {
+  refusal: number; notice: number; sourcingSay: number; replan: number; cosigned: number; approved: number; mandate: number;
+  dispute: number; settle: number; refunds: number[]; sweep: number; sweepSay: number; licenceFace: number; licence: number;
+}
+export function moments(ev: Ev[]): Moments {
+  const at = (f: (e: Ev, i: number) => boolean, from = 0) => ev.findIndex((e, i) => i >= from && f(e, i));
+  const refusal = at((e) => e.k === "money" && (e.refused?.by === "recorded" || e.refused?.by === "metal") && !!e.proof.href);
+  const notice = at((e) => e.k === "world" && /asks \d/i.test(e.text));
+  const sourcingSay = at((e) => e.k === "say" && e.agent === "sourcing" && e.tools.includes("send_message"), Math.max(0, refusal));
+  const replan = at((e) => e.k === "say" && e.agent === "treasury" && e.tools.some((t) => /rebalance/.test(t)));
+  const cosigned = at((e) => e.k === "face" && e.status === "COSIGNED", Math.max(0, replan));
+  const approved = at((e) => e.k === "face" && e.signers.length > 1, Math.max(0, cosigned));
+  const mandate = at((e) => e.k === "mandate" && e.agent === "sourcing", Math.max(0, approved));
+  const dispute = at((e) => e.k === "world" && /disputes/i.test(e.text));
+  const settle = at((e) => e.k === "say" && e.agent === "support" && e.tools.includes("settle_dispute"), Math.max(0, dispute));
+  const refunds = ev.map((e, i) => (e.k === "money" && e.agent === "support" && /refund/i.test(e.what) && !e.refused ? i : -1)).filter((i) => i >= 0);
+  const sweep = at((e) => e.k === "money" && e.agent === "treasury" && /sweep/i.test(e.what) && e.rail === "metal" && !e.refused);
+  const sweepSay = at((e) => e.k === "say" && e.agent === "treasury" && e.tools.includes("sweep_earnings"));
+  const licence = at((e) => e.k === "money" && e.via === "SWIFT" && !e.refused);
+  const licenceFace = licence < 0 ? -1 : ev.map((e, i) => (e.k === "face" && e.status === "APPROVED" && /invoice/i.test(e.title) && i < licence ? i : -1)).filter((i) => i >= 0).pop() ?? -1;
+  return { refusal, notice, sourcingSay, replan, cosigned, approved, mandate, dispute, settle, refunds, sweep, sweepSay, licenceFace, licence };
+}
+
+/**
+ * Watch's default: the run's key moments only (about a dozen, in order: the refusal recorded on chain, the supplier's
+ * notice, Treasury's plan, the two signatures, the mandate replaced, the dispute, the Support agent's settlement, its
+ * refunds as one step, the sweep, the licence's Face ID and its SWIFT payout, then the TAP run's card buy under that
+ * run's label). The routine checks before each moment are merged into it (`quiet`). The failed licence attempt
+ * (fee_unknown, nothing paid) is not a highlight: it is in the full run, labelled an earlier attempt, and on Proof.
+ */
+export function highlights(run: AgentRun): Highlight[] {
   const ev = run.events;
-  const replaced = ev.findIndex((e) => e.k === "mandate");
-  const firstBuyAfter = replaced >= 0 ? ev.findIndex((e, i) => i > replaced && e.k === "money" && e.agent === "sourcing" && !e.refused) : -1;
-  const firstWorld = ev.findIndex((e) => e.k === "world");
-  const sceneStarts = new Set(run.scenes.map((s) => s.start));
-  const firstMsg = ev.findIndex((e) => e.k === "msg");
-  const key = (e: Ev, i: number): boolean => {
-    if (e.k === "world") return i === firstWorld || sceneStarts.has(i) || /asks \d|disputes|invoice arrived/i.test(e.text);
-    if (e.k === "msg") return i === firstMsg;
-    if (e.k === "face" || e.k === "mandate" || e.k === "shield") return true;
-    if (e.k === "say") return e.tools.some((x) => KEY_TOOLS.test(x));
-    if (e.k === "money") return e.refused?.by === "recorded" || e.refused?.by === "airwallex" || e.refused?.by === "airwallex-sandbox" || e.agent === "support" || e.agent === "treasury" || i === firstBuyAfter;
-    return false;
-  };
-  const out: Ev[] = [];
-  let quiet: Extract<Ev, { k: "say" }>[] = [];
-  const flush = () => {
-    if (!quiet.length) return;
-    out.push({ k: "routine", at: quiet[0]!.at, count: quiet.length, agents: [...new Set(quiet.map((q) => q.agent))], text: `${quiet.length} routine check${quiet.length > 1 ? "s" : ""}: nothing to do` });
-    quiet = [];
-  };
-  ev.forEach((e, i) => {
-    if (key(e, i)) {
-      flush();
-      // The Support agent's refunds, one step: how many, how much, the first one's tx (each is in the full run).
-      const prev = out[out.length - 1];
-      if (e.k === "money" && e.agent === "support" && /refund/i.test(e.what) && prev?.k === "money" && prev.agent === "support" && /refund/i.test(prev.what) && !e.refused) {
-        const n = prev.count + 1, each = ((Number(prev.amount) * prev.count + Number(e.amount)) / n).toFixed(2);
-        out[out.length - 1] = { ...prev, count: n, amount: each, what: `refunds for orders ${[prev.what, e.what].map((w) => /#\d+(, #\d+)*/.exec(w)?.[0] ?? "").join(", ")}`, label: `refund ${each} ×${n}` };
-        return;
-      }
-      out.push(e);
-    } else if (e.k === "say" && !e.tools.some((x) => ACTING.test(x))) quiet.push(e);
-  });
-  flush();
+  const m = moments(ev);
+  const keys = [m.refusal, m.notice, m.replan, m.cosigned, m.approved, m.mandate, m.dispute, m.settle, m.refunds[0] ?? -1, m.sweep, m.licenceFace, m.licence].filter((i) => i >= 0).sort((a, b) => a - b);
+  const out: Highlight[] = [];
+  let last = -1;
+  for (const i of keys) {
+    const quiet = ev.slice(last + 1, i).filter((e) => e.k === "say" && !e.tools.some((x) => ACTING.test(x))).length;
+    last = i;
+    const e = ev[i]!;
+    if (i === m.refunds[0] && m.refunds.length > 1 && e.k === "money") {
+      // The Support agent's refunds, one step: how many, how much each, the first one's tx (each is in the full run).
+      const all = m.refunds.map((j) => ev[j]!).filter((x): x is Extract<Ev, { k: "money" }> => x.k === "money");
+      const each = (all.reduce((n, x) => n + Number(x.amount) * x.count, 0) / all.length).toFixed(2);
+      out.push({ ...e, count: all.length, amount: each, what: `refunds for orders ${all.map((w) => /#\d+/.exec(w.what)?.[0] ?? "").join(", ")}`, label: `refund ${each} ×${all.length}`, quiet });
+      continue;
+    }
+    out.push({ ...e, quiet });
+  }
   const tap = tapRun();
   const buy = tap?.steps.find((x) => x.approved && x.model);
   if (tap && buy) {
     out.push({ k: "money", at: tap.ranAt, agent: "sourcing", rail: "airwallex", via: "card · Visa TAP", dir: "out", what: `${buy.plan} at ${tap.merchant.replace(/\s*\(.*\)$/, "")}, signed with Visa TAP`, amount: buy.amount, unit: buy.currency, count: 1,
-      label: `${SHORT_EUR(buy.amount)} card buy · Visa TAP`, refused: null, proof: { label: `Airwallex ${buy.txId.slice(0, 8)}… · read back with GET: ${buy.getStatus}`, href: null }, run: tap.label });
+      label: `${SHORT_EUR(buy.amount)} card buy · Visa TAP`, refused: null, proof: { label: `Airwallex ${buy.txId.slice(0, 8)}… · read back with GET: ${buy.getStatus}`, href: null }, run: tap.label, by: `the Sourcing agent (Claude ${family(buy.model)}) picked the card rail` });
   }
   return out;
+}
+
+/**
+ * Home's animation (C2): four scenes, each with one subtitle line, the Claude call behind its decision (D2) and the
+ * figures it draws, all from the record (and the TAP run for the card buy, under that run's label).
+ */
+export interface HomeScene { n: 1 | 2 | 3 | 4; title: string; line: string; agent: AgentId; call: Call | null; proof: Proof | null }
+export interface HomeFilm {
+  scenes: HomeScene[];
+  supplier: string; old: string; price: string; cap: string; newCap: string; refusedTx: Proof;
+  orders: string[]; refunded: string[]; refundEach: string;
+  sweep: string; licence: string; licenceUnit: string; tapAmount: string | null; tapRun: string | null;
+}
+export function homeFilm(run: AgentRun): HomeFilm | null {
+  const ev = run.events, m = moments(ev);
+  const s1 = run.scenes.find((s) => s.n === 1)?.mini, s2 = run.scenes.find((s) => s.n === 2)?.mini;
+  const ref = ev[m.refusal], swp = ev[m.sweep], lic = ev[m.licence];
+  if (s1?.kind !== "price" || s2?.kind !== "orders" || ref?.k !== "money" || swp?.k !== "money" || lic?.k !== "money" || !s1.newCap || !s1.old) return null;
+  const say = (i: number) => { const e = ev[i]; return e?.k === "say" ? e : null; };
+  const refundEach = (() => { const r = ev[m.refunds[0] ?? -1]; return r?.k === "money" ? r.amount : ""; })();
+  const tap = tapRun(), buy = tap?.steps.find((x) => x.approved && x.model);
+  const licence = lic.unit === "EUR" ? SHORT_EUR(lic.amount) : money(lic.amount, lic.unit);
+  const valid = s2.orders.length - s2.refunded.length;
+  const scenes: HomeScene[] = [
+    { n: 1, title: "Price rise", agent: "sourcing", call: say(m.sourcingSay)?.call ?? null, proof: ref.proof, line: `${s1.from} raises its price ${s1.old} → ${s1.price}. Refused on chain.` },
+    { n: 2, title: "Replan", agent: "treasury", call: say(m.replan)?.call ?? null, proof: null, line: `Treasury replans. Face ID 1 of 2 → 2 of 2. New cap ${s1.newCap}.` },
+    { n: 3, title: "Dispute", agent: "support", call: say(m.settle)?.call ?? null, proof: null, line: `${s2.orders.length} orders disputed: ${valid} valid, ${s2.refunded.length} refunded.` },
+    { n: 4, title: "Euros", agent: "treasury", call: say(m.sweepSay)?.call ?? null, proof: null, line: `${swp.amount} swept · ${licence} licence paid by SWIFT · Face ID${buy ? " · Visa TAP ✓ (TAP run)" : ""}` },
+  ];
+  return { scenes, supplier: s1.from, old: s1.old, price: s1.price, cap: s1.cap, newCap: s1.newCap, refusedTx: ref.proof, orders: s2.orders, refunded: s2.refunded, refundEach,
+    sweep: swp.amount, licence, licenceUnit: lic.unit, tapAmount: buy ? SHORT_EUR(buy.amount) : null, tapRun: tap?.label ?? null };
+}
+
+/** Face ID decisions in the run: the proposals the CFO decided with his own passkey (approved or rejected), from the ledger; the record's proof count otherwise. */
+export function faceIdDecisions(r: RunRecord): number {
+  if (!r.ledger) return r.proof.face_id;
+  return new Set(r.ledger.events.filter((e) => /^proposal\.(approved|rejected)$/.test(e.event) && /\bmax\b/i.test(String(e.payload.approver ?? ""))).map((e) => e.subject)).size;
+}
+
+/** D3: decisions by Claude (and fallbacks to code), and the routine payments per query that code made (buying and selling, not refused). */
+export function split(r: RunRecord): { byClaude: number; decisions: number; fallbacks: number; routine: number } {
+  const st = r.snapshot.agent_stats;
+  const routine = r.snapshot.flows.filter((f) => !f.refused && (f.kind === "sale" || (f.kind === "upstream" && /^code\b/.test(f.decided)))).reduce((n, f) => n + (f.count ?? 1), 0);
+  return { byClaude: st.reduce((n, a) => n + a.by_claude, 0), decisions: st.reduce((n, a) => n + a.decisions, 0), fallbacks: st.reduce((n, a) => n + a.fallback, 0), routine };
 }
 
 export function agentRun(): AgentRun {
@@ -392,15 +484,15 @@ export function agentRun(): AgentRun {
     {
       value: String(st.metal + st.airwallex + st.cfo), label: "stopped at a limit", href: "proof#stops",
       explain: "Metal and the CFO in this run; Airwallex in the TAP run.",
-      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run; by Airwallex at the card's limit in the TAP run.${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
+      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run; by Airwallex at the card's limit in the TAP run.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
       parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, { value: String(st.airwallex), label: "Airwallex · TAP run" }],
     },
-    { value: String(r.proof.face_id), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
+    { value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
     { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices; each decision may be several calls.", href: "proof#claude" },
   ];
   return {
     file, standIn, name, recordedAt: r.recorded_at, kind: r.kind ?? "", record: r,
     label: runLabel(r), agents, events: ev, scenes: scenes(r, ev), tiles,
-    derived: { decisions: String(decisions), byClaude: String(byClaude), perDecision, stopped: String(st.metal + st.airwallex + st.cfo), cosigned: String(cosigned), sales: String(sales) },
+    derived: { decisions: String(decisions), byClaude: String(byClaude), fallbacks: String(fallbacks), perDecision, stopped: String(st.metal + st.airwallex + st.cfo), cosigned: String(cosigned), sales: String(sales), faceId: String(faceIdDecisions(r)), routine: String(split(r).routine) },
   };
 }
