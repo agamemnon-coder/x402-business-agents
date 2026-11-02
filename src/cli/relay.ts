@@ -35,7 +35,7 @@ import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { existsSync, readFileSync } from "node:fs";
 import { agentsOn, autonomyOn } from "../config/agents.js";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { resolve } from "node:path";
 import { meetNewDeclines } from "../agents/declineTrigger.js";
 import { pausedCredential, pausesNotRevoked, syncPauses } from "../policy/pause.js";
@@ -108,8 +108,10 @@ const ask = (text: string, ticket: string) => relayAsk(db, new Tools(db))(text, 
 const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, ask, log: (line) => console.log(`${stamp()} ${line}`) });
 let stopping = false;
 // D19: with the autonomous agents on, each agent runs as its own process beside the runner (npm run agent -- <name>);
-// their lines go to this log, prefixed. They stop with the runner.
-const agentProcs = autonomyOn() ? (["sourcing", "support", "treasury"] as const).map((n) => {
+// their lines go to this log, prefixed. They stop with the runner. They start after the recovery below, so the
+// Support agent never carries out a dispute decision while the runner's own resume does.
+let agentProcs: ChildProcess[] = [];
+const startAgents = () => autonomyOn() ? (["sourcing", "support", "treasury"] as const).map((n) => {
   const child = spawn("npx", ["tsx", resolve(import.meta.dirname, "agent.ts"), n], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"] });
   const out = (b: Buffer) => { for (const l of b.toString().split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) console.log(`agent    ${redactSecrets(l).slice(0, 400)}`); };
   child.stdout.on("data", out);
@@ -207,14 +209,16 @@ async function quarantineTick(): Promise<void> {
   const undone = openDecisions(db);
   if (undone.length) {
     console.log(`${stamp()} recover  dispute decision(s) not fully carried out: ${undone.map((d) => d.dispute_id).join(", ")}; carrying out what is left`);
-    const code = await new Promise<number | null>((ok) => {
-      const child = spawn(resolve(import.meta.dirname, "../../node_modules/.bin/tsx"), [resolve(import.meta.dirname, "s2.ts"), "--resume-only"], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"] });
+    // At most ten minutes: a hung refund or review must not keep the runner from starting (the alarm stays on /health).
+    const code = await new Promise<number | string | null>((ok) => {
+      const child = spawn(resolve(import.meta.dirname, "../../node_modules/.bin/tsx"), [resolve(import.meta.dirname, "s2.ts"), "--resume-only"], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"], timeout: 10 * 60_000 });
       const out = (b: Buffer) => { for (const l of b.toString().split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) console.log(`${stamp()} recover  ${redactSecrets(l).slice(0, 300)}`); };
       child.stdout.on("data", out);
       child.stderr.on("data", out);
-      child.on("exit", ok);
+      child.on("error", (e) => ok(e.message));
+      child.on("exit", (c, sig) => ok(c ?? sig));
     });
-    if (code !== 0) console.error(`${stamp()} recover  the dispute decision was not carried out (exit ${code}); /health shows it until it is`);
+    if (code !== 0) console.error(`${stamp()} recover  the dispute decision was not carried out (${code}); /health shows it until it is`);
   }
   // 4.2 A pause whose revoke failed or was cut off by a crash: finish it now (review of 4.2). Purser refused the agent
   // all along; this makes the chain refuse it too. A failure here stays a health alarm until it succeeds.
@@ -227,6 +231,8 @@ async function quarantineTick(): Promise<void> {
     }
   }
 }
+
+if (!stopping) agentProcs = startAgents();
 
 // Monitoring (B7): each alarm is logged once when it is raised and once when it clears; the relay's /health shows them.
 let standing = new Set<string>();

@@ -128,7 +128,8 @@ export interface DecisionExec {
   create?(part: "escalate" | "approval", seqs: number[], text: string, source: DecisionPlan["source"]): string;
   /** The review that goes with the proposal (Opus, advisory); run again after a crash if the proposal has none. */
   review?(part: "escalate" | "approval", proposalId: string, seqs: number[], text: string, source: DecisionPlan["source"]): Promise<void>;
-  reviewed?(proposalId: string): boolean;
+  /** Whether this part's proposal has the review it needs (a part that takes no review answers true). */
+  reviewed?(part: "escalate" | "approval", proposalId: string): boolean;
   /** Without create: makes the proposal asynchronously (stand-ins in tests and the sim, one process only). */
   propose?(part: "escalate" | "approval", seqs: number[], text: string, source: DecisionPlan["source"]): Promise<string>;
 }
@@ -192,17 +193,17 @@ export async function carryOut(db: DB, disputeId: string, exec: DecisionExec, lo
       }
       if (made) log(`${list(p.seqs)} to the CFO as ${id}`);
       // A proposal a crash left without its review gets it now; the review never changes the terms.
-      if (id && exec.review && (made || !exec.reviewed?.(id))) await run(() => exec.review!(part, id!, p.seqs, p.text, d.plan.source));
+      if (id && exec.review && (made || !exec.reviewed?.(part, id))) await run(() => exec.review!(part, id!, p.seqs, p.text, d.plan.source));
     } catch (e) {
       notes.push(`proposal for ${list(p.seqs)}: ${(e as Error).message.slice(0, 160)}`);
       log(`the proposal for ${list(p.seqs)} failed: ${(e as Error).message.slice(0, 160)}`);
     }
   }
   const now = decisionOf(db, disputeId)!;
-  const reviewed = (id: string | null) => !id || !exec.review || !exec.reviewed || exec.reviewed(id);
+  const reviewed = (part: "escalate" | "approval", id: string) => !exec.review || !exec.reviewed || exec.reviewed(part, id);
   const done = now.plan.refunds.every((r) => now.paid.includes(r.seq))
-    && (!now.plan.escalate || (now.escalation_proposal && reviewed(now.escalation_proposal)))
-    && (!now.plan.approval || (now.approval_proposal && reviewed(now.approval_proposal)));
+    && (!now.plan.escalate || (!!now.escalation_proposal && reviewed("escalate", now.escalation_proposal)))
+    && (!now.plan.approval || (!!now.approval_proposal && reviewed("approval", now.approval_proposal)));
   db.prepare("UPDATE dispute_decisions SET status = ?, last_note = ?, done_at = ? WHERE dispute_id = ? AND status = 'DECIDED'")
     .run(done ? "DONE" : "DECIDED", notes.length ? notes.join("; ").slice(0, 600) : null, done ? new Date().toISOString() : null, disputeId);
   return decisionOf(db, disputeId);

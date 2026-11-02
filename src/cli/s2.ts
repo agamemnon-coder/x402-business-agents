@@ -187,7 +187,8 @@ async function reviewProposal(part: "escalate" | "approval", proposalId: string,
   ].join("\n"));
   console.log(`REVIEW           ${p.proposal_id}: ${r.recommendation} (${r.source === "claude" ? "Opus, advisory" : "no model"}): ${r.summary}`);
 }
-const reviewed = (proposalId: string) => !!(db.prepare("SELECT explanation FROM proposals WHERE proposal_id = ?").get(proposalId) as { explanation: string | null } | undefined)?.explanation;
+// Code's proposal for refunds above the automatic limits takes no review (as before); the CFO's escalation does.
+const reviewed = (part: "escalate" | "approval", proposalId: string) => part === "approval" || !!(db.prepare("SELECT explanation FROM proposals WHERE proposal_id = ?").get(proposalId) as { explanation: string | null } | undefined)?.explanation;
 const proposals = { create: createProposalFor, review: reviewProposal, reviewed };
 
 /** Code's settlement, as in every recorded run: the wrong sales within the automatic limits, else to the CFO; the rest on request. */
@@ -240,7 +241,8 @@ if (agentsOn()) {
       const seqOf = new Map(sales.map((s) => [s.sale_id, s.seq]));
       const refundedBefore = (db.prepare("SELECT sale_id, amount_cents FROM refunds WHERE dispute_id = ? AND outcome IN ('PAID', 'PENDING', 'HELD')").all(disputeId) as { sale_id: number; amount_cents: number }[])
         .filter((r) => seqOf.has(r.sale_id)).map((r) => ({ seq: seqOf.get(r.sale_id)!, cents: r.amount_cents }));
-      const before = db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE kind = 'refund_batch' AND json_extract(terms_json, '$.dispute_id') = ? AND json_extract(terms_json, '$.reason') LIKE 'customer request%' ORDER BY created_at LIMIT 1").get(disputeId) as { proposal_id: string; terms_json: string } | undefined;
+      const id = existing("escalate");
+      const before = id ? db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE proposal_id = ?").get(id) as { proposal_id: string; terms_json: string } : undefined;
       const beforeSeqs = before ? (JSON.parse(before.terms_json) as RefundBatchTerms).refunds.map((r) => seqOf.get(Number(r.sale_id))).filter((q): q is number => q !== undefined) : [];
       return { refunded: refundedBefore, escalated: before ? { proposalId: before.proposal_id, seqs: beforeSeqs } : null };
     },

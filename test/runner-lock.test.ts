@@ -99,6 +99,21 @@ describe("the runner lock: one runner per world", () => {
     if (!r.ok) expect(r.message).toMatch(/still run \(pids 102\).*npm run stop -- world-a/);
   });
 
+  it("refuses while a process of an earlier run still uses the ledger, even with no lock row left", () => {
+    const a = ledger("world-a");
+    const t = new FakeTable();
+    t.add({ pid: 150, pgid: 150, token: "run-old", db: a.path, cmd: "node src/cli/s2.ts" });
+    t.add({ pid: 300, pgid: 300, token: "run-new" });
+    const r = acquireRunnerLock(a.db, a.path, me(300, 300, "run-new"), t, "box");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/earlier run of world world-a still use its ledger \(pids 150, process group 150\)/);
+    // A process of another world, or one without a run token (a manual check), does not stop the start.
+    t.procs = t.procs.filter((p) => p.pid !== 150);
+    t.add({ pid: 160, pgid: 160, token: "run-b", db: ledger("world-b").path });
+    t.add({ pid: 170, pgid: 170, token: null, db: a.path });
+    expect(acquireRunnerLock(a.db, a.path, me(300, 300, "run-new"), t, "box").ok).toBe(true);
+  });
+
   it("replaces a lock row copied in with the ledger, and refuses a lock held on another host", () => {
     const a = ledger("world-a");
     const t = new FakeTable();
@@ -206,6 +221,13 @@ describe("npm run stop -- <world>: exactly that world, verified", () => {
     expect(t.signals).toEqual([]);
     const none = await stopWorld(ledger("world-c").path, deps(new FakeTable()));
     expect(none).toMatchObject({ ok: true, message: expect.stringMatching(/nothing to stop/) });
+  });
+
+  it("does not count the stop command itself (KIT11_DB exported in the operator's shell) as another user", async () => {
+    const { a, t } = twoWorlds();
+    t.add({ pid: process.pid, pgid: 9000, token: null, db: a.path, cmd: "node src/cli/stop.ts world-a" });
+    t.add({ pid: 9001, pgid: 9000, token: null, db: a.path, cmd: "npm run stop" });
+    expect(await stopWorld(a.path, deps(t))).toMatchObject({ ok: true });
   });
 
   it("names, but never signals, another process still using the ledger outside the run", async () => {

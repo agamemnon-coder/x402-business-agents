@@ -76,10 +76,18 @@ export function acquireRunnerLock(db: DB, dbPath: string, me: Me, table: Process
       .run(KEY, JSON.stringify(mine), mine.started_at);
     return { ok: true, owner: true, lock: mine, ...(note ? { note } : {}) };
   };
-  // The process table is read before the write transaction, so other writers of the ledger do not wait on the scan.
-  const procs = table.list();
+  // The process table is read before the write transaction, so other writers of the ledger do not wait on the scan;
+  // read again inside it when the lock it judges was taken after that read.
+  const scannedAt = new Date().toISOString();
+  let procs = table.list();
+  const id = fileId(real);
+  // Processes of another run still using this ledger (its owner gave the lock back or died while they run on): no start.
+  const leftovers = () => procs.filter((p) => live(p) && p.token !== null && p.token !== me.token && p.db !== null && (() => { try { return fileId(p.db!) === id; } catch { return false; } })());
   return db.transaction((): Acquired => {
     const held = lockOf(db);
+    if (held && held.started_at >= scannedAt) procs = table.list();
+    const earlier = leftovers().filter((p) => !held || p.token !== held.token);
+    if (earlier.length) return { ok: false, message: `${earlier.length} process(es) of an earlier run of world ${world} still use its ledger (pids ${earlier.map((p) => p.pid).join(", ")}, process group ${[...new Set(earlier.map((p) => p.pgid))].join(", ")}). Stop them first (check with ps -o pid,pgid,args).` };
     if (!held) return take();
     // A row copied with the ledger (a snapshot, a copy for a new world) is not a lock on this file.
     if (!sameLedger(held, real)) return take(`a lock row copied from ${held.db} was replaced`);

@@ -30,9 +30,16 @@ export interface StopResult { ok: boolean; message: string; signalled: { pgid: n
 const live = (p: Proc) => !p.state.startsWith("Z");
 const show = (ps: Proc[]) => ps.map((p) => `${p.pid} (${redactSecrets(p.cmd).slice(0, 80)})`).join("; ");
 
-/** The processes started for this ledger without a lock (a runner from before the lock existed): reported, never signalled. */
-function unlocked(table: ProcessTable, real: string): Proc[] {
-  return table.list().filter((p) => live(p) && p.db !== null && existsSync(p.db) && realpathSync(p.db) === real);
+/**
+ * The processes started for this ledger outside its run (a runner from before the lock existed, a standalone agent, a
+ * manual script): reported, never signalled. The stop command itself and the processes that started it (an exported
+ * KIT11_DB in the operator's shell) are not counted.
+ */
+function unlocked(table: ProcessTable, real: string, ownPgid: number): Proc[] {
+  const all = table.list();
+  const mine = new Set<number>();
+  for (let p = all.find((x) => x.pid === process.pid); p && !mine.has(p.pid); p = all.find((x) => x.pid === p!.ppid)) mine.add(p.pid);
+  return all.filter((p) => live(p) && !mine.has(p.pid) && p.pgid !== ownPgid && p.db !== null && existsSync(p.db) && realpathSync(p.db) === real);
 }
 
 export async function stopWorld(dbPath: string, deps: StopDeps): Promise<StopResult> {
@@ -46,13 +53,13 @@ export async function stopWorld(dbPath: string, deps: StopDeps): Promise<StopRes
     db.pragma("busy_timeout = 5000");
     const lock = lockOf(db);
     if (!lock || !sameLedger(lock, real)) {
-      const others = unlocked(deps.table, real);
+      const others = unlocked(deps.table, real, deps.ownPgid);
       if (others.length) return done(false, `world ${world} has no runner lock, but ${others.length} process(es) use its ledger (started before the lock existed?): ${show(others)}. Not stopped: check them with ps -o pid,pgid,args and stop their own group by hand.`);
       return done(true, `world ${world}: no runner holds its lock; nothing to stop`);
     }
     if (lock.host !== deps.host) {
       if (!deps.forgetOtherHost) return done(false, `world ${world}'s runner lock is held on host ${lock.host}; stop it there. If that host is gone (a new container), add --forget-other-host. Nothing signalled.`);
-      const here = unlocked(deps.table, real);
+      const here = unlocked(deps.table, real, deps.ownPgid);
       if (here.length) return done(false, `world ${world}'s lock is from host ${lock.host}, but ${here.length} process(es) here use its ledger: ${show(here)}. Lock kept, nothing signalled.`);
       removeLock(db, lock);
       return done(true, `world ${world}: the lock from host ${lock.host} was cleared (nothing here uses the ledger); nothing signalled`);
@@ -107,7 +114,9 @@ export async function stopWorld(dbPath: string, deps: StopDeps): Promise<StopRes
     if (left.length || ours().length) return done(false, `world ${world}: process group ${lock.pgid} still has ${[...new Set([...left, ...ours().map((p) => p.pid)])].join(", ")} after the stop; the lock is kept`);
     removeLock(db, lock);
     // Anything else still using this ledger is not part of the run (a standalone agent, a manual script): named, never signalled.
-    const others = unlocked(deps.table, real);
+    // The starter left behind (npm, sh, tsx and the waiting starter) exits right after its group: a few seconds for it.
+    let others = unlocked(deps.table, real, deps.ownPgid);
+    for (let i = 0; i < 10 && others.length; i++) { await deps.sleep(500); others = unlocked(deps.table, real, deps.ownPgid); }
     if (others.length) return done(false, `world ${world}'s run stopped (process group ${lock.pgid} gone, checked with ps; lock removed), but ${others.length} other process(es) still use its ledger: ${show(others)}. Not signalled: stop them by hand after checking with ps.`);
     return done(true, `world ${world} stopped: process group ${lock.pgid} is gone (checked with ps); lock removed`);
   } finally {

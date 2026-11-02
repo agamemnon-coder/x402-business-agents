@@ -175,7 +175,7 @@ describe("a dispute is decided once, also after a restart", () => {
           if (hangReview.on) return never<void>();
           db.prepare("UPDATE test_props SET review = 'advisory' WHERE id = ?").run(id);
         },
-        reviewed: (id: string) => !!(db.prepare("SELECT review FROM test_props WHERE id = ?").get(id) as { review: string | null } | undefined)?.review,
+        reviewed: (part: "escalate" | "approval", id: string) => part === "approval" || !!(db.prepare("SELECT review FROM test_props WHERE id = ?").get(id) as { review: string | null } | undefined)?.review,
       },
     };
   }
@@ -220,6 +220,16 @@ describe("a dispute is decided once, also after a restart", () => {
     await settleDispute(db, facts, withCode(db), null);
     expect(db.prepare("SELECT id, review FROM test_props").all()).toEqual([{ id: "P-0009", review: "advisory" }]);
     expect(decisionOf(db, facts.disputeId)!.status).toBe("DONE");
+  });
+
+  it("refunds above the automatic limits go to the CFO as one proposal, and the decision is then carried out", async () => {
+    const db = openDb(ledgerFile());
+    const w = world();
+    const l = ledgerProposals(db, { on: false });
+    recordDecision(db, facts.disputeId, { source: "code", model: null, refunds: [], escalate: null, approval: { seqs: [7, 10, 13], text: "wrong data per supplier correction", origin: null } });
+    const d = await carryOut(db, facts.disputeId, { refund: w.deps().refund, existing: l.existing, ...l.proposals });
+    expect(d).toMatchObject({ status: "DONE", approval_proposal: "P-0009" });
+    expect(w.sends.size).toBe(0);
   });
 
   it("two processes carrying out the same decision at once: one proposal, each refund sent once", async () => {
