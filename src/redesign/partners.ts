@@ -56,9 +56,9 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { title: string; description: string; logo: string; h1: string; picture: string; nums: string; line: string; extra?: string; folds: string; proofHash: string }): string {
+function shell(run: AgentRun, o: { label?: string; title: string; description: string; logo: string; h1: string; picture: string; nums: string; line: string; extra?: string; folds: string; proofHash: string }): string {
   const body = `<main class="pp"><div class="wrap">
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(run.label)}</span><h1>${esc(o.h1)}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
   <div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>
   ${o.nums}
   <p class="line">${esc(o.line)}</p>
@@ -124,7 +124,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "visa",
     picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow, node("shield-check", "Reference verifier", `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,
       node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", "Airwallex card", "ok"), arrow, node("ban", decline ? `€${decline.amount} declined` : "Over the limit", "by Airwallex, at the limit", "bad")].join(""),
-    nums: "", line: tap ? tap.label : "No TAP run recorded.",
+    label: tap?.label, nums: "", line: "The card's limit still holds: over it, Airwallex declines.",
     extra: `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`,
     folds: fold("The live TAP run", p.visa) + fold("What this is, and is not", (tap?.labels ?? []).map((l) => plainLi(l.replace(/not a Visa-approved agent/g, "no approval by Visa of this agent")))),
   });

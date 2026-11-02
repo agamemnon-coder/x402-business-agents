@@ -231,7 +231,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       const pt = await page.evaluate(() => document.body.innerText);
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
       if (words > 175) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget 150 plus the frame`);
-      if (!/Replay of agent run 1 · 2 Nov · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: agent run 1 is not labelled`);
+      if (!(path === "/visa" ? /TAP run · \d+ \w+ · test money/ : /Replay of agent run 1 · 2 Nov · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
       if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);

@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
-import { agentRun, callBadge, faceIdDecisions, highlights, homeFilm, loadRecord, split } from "../src/redesign/run.js";
+import { agentRun, callBadge, faceIdDecisions, highlights, homeFilm, loadRecord, split, tapRun } from "../src/redesign/run.js";
 import { HOME_BADGE, SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM, WORLD_SETUP } from "../src/config/brand.js";
 import { HEADLINE } from "../src/redesign/ui.js";
 
@@ -181,7 +181,8 @@ describe("the site after v4", () => {
       expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
       expect(html).not.toMatch(/<script/);
-      expect(html).toContain(run.label);
+      // Each page is labelled with the run it shows: agent run 1, or for /visa the separate TAP run of the same day.
+      expect(html).toContain(name === "visa" ? tapRun()!.label : run.label);
     }
   });
 
