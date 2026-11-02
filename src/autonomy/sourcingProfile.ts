@@ -19,7 +19,8 @@ import { buyPolicy } from "../agents/sourcing.js";
 import { mandatesNow } from "../agents/treasury.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
-import { buyPlan, proposeCardRaise } from "../agents/cardBuyer.js";
+import { proposeCardRaise } from "../agents/cardBuyer.js";
+import { buySoftwareOnCard } from "../visa/tapRail.js";
 import { maxRaiseCents } from "../agents/declineAgent.js";
 import { cardRows } from "../policy/cards.js";
 import { setSetting } from "../world/settings.js";
@@ -79,7 +80,8 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
       },
       askCardRaise: async (perPurchase: string, reason: string) => ({ proposal_id: proposeCardRaise(db, "sourcing", { perTx: perPurchase }, reason).proposal_id }),
       buyPlan: async (plan: SoftwarePlan) => {
-        const t = await buyPlan(db, issuingFromEnv()!.sim, plan);
+        // D25: with KIT11_TAP_RAIL=on the checkout is signed with TAP and checked by the merchant before the card is charged.
+        const t = await buySoftwareOnCard(db, issuingFromEnv()!.sim, plan);
         if (t.approved) return { approved: true, text: "approved by Airwallex", ref: t.transactionId };
         // D22: Airwallex's answer is the agent's to act on (ask_card_raise); its webhook or the poll records it too.
         return { approved: false, text: `declined by Airwallex (${t.failureReason}); your card's limit decides, and only the CFO can raise it: ask with ask_card_raise if you need this plan`, ref: t.transactionId };

@@ -13,12 +13,13 @@ import { proposePolicyChange } from "../executors/policyChange.js";
 import type { ProposalRow } from "../policy/approvals.js";
 import { cardOf, ingestCardTransaction } from "../policy/cards.js";
 import { chargeUnderHold } from "../policy/holds.js";
+import { withOrigin, type Origin } from "../provenance/origin.js";
 
 /**
  * The agent subscribes to a plan; the merchant charges the card. In the sandbox that charge is Airwallex's
  * simulation endpoint (an honest stand-in for the merchant's checkout); the approve or decline is Airwallex's own.
  */
-export async function buyPlan(db: DB, sim: IssuingSim, planId: string, now = new Date()): Promise<CardTransaction> {
+export async function buyPlan(db: DB, sim: IssuingSim, planId: string, now = new Date(), o: { chargeOrigin?: (t: CardTransaction) => Origin } = {}): Promise<CardTransaction> {
   const plan = PLANS[planId];
   if (!plan) throw new Error(`no plan ${planId}; known: ${Object.keys(PLANS).join(", ")}`);
   const card = cardOf(db, plan.agent);
@@ -29,7 +30,10 @@ export async function buyPlan(db: DB, sim: IssuingSim, planId: string, now = new
   const purpose = `${plan.merchant}, ${plan.label}`;
   audit(db, plan.agent, "card.purchase_started", planId, { agent: plan.agent, last4: card.last4, merchant: plan.merchant, plan: plan.label, amount: fromCents(plan.amountCents), currency: "EUR" }, now);
   const t = await chargeUnderHold(db, plan.agent, plan.amountCents, now, () => sim.simulateCardCharge({ cardId: card.card_id, amountCents: plan.amountCents, currency: "EUR", merchant: plan.merchant, mcc: plan.mcc }));
-  ingestCardTransaction(db, t, "simulation", now, purpose);
+  // D25: on the TAP rail the charge's own origin also names Airwallex's authorisation id, known only now.
+  const record = () => ingestCardTransaction(db, t, "simulation", now, purpose);
+  if (o.chargeOrigin) withOrigin(o.chargeOrigin(t), record);
+  else record();
   return t;
 }
 
