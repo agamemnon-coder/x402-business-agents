@@ -8,9 +8,11 @@
 //   unknown. A slow stand-in Metal; no chain.
 import { describe, expect, it, vi } from "vitest";
 
-const metal = vi.hoisted(() => ({ calls: 0, inFlight: 0, most: 0, holdsSeen: [] as string[], answer: "refused" as "refused" | "lost", db: null as unknown }));
+const metal = vi.hoisted(() => ({ calls: 0, inFlight: 0, most: 0, holdsSeen: [] as string[], answer: "refused" as "refused" | "lost", db: null as unknown, beforeStart: null as null | (() => void) }));
 vi.mock("../src/metal/recordRefusal.js", () => ({
   recordCapRefusalOnChain: async (_m: unknown, _to: unknown, _cents: number, _id: string, _gas: unknown, onPullStart?: () => void) => {
+    // The steps before the pull (mandate read, gas key, top-up) may run long: the runner can act meanwhile.
+    metal.beforeStart?.();
     onPullStart?.();
     metal.calls++;
     metal.inFlight++;
@@ -35,7 +37,7 @@ const REASON = "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a
 
 function world() {
   const db = openDb(":memory:");
-  metal.db = db; metal.calls = 0; metal.inFlight = 0; metal.most = 0; metal.holdsSeen = []; metal.answer = "refused";
+  metal.db = db; metal.calls = 0; metal.inFlight = 0; metal.most = 0; metal.holdsSeen = []; metal.answer = "refused"; metal.beforeStart = null;
   const a = new SourcingAgent(db, "http://127.0.0.1:1", "0x0000000000000000000000000000000000000001");
   const record = (m: unknown, seq: number, letThrough = false) => (a as unknown as { recordOnChain(m: unknown, seq: number, reason: string, cents?: number, lt?: boolean): Promise<string> }).recordOnChain(m, seq, REASON, 4, letThrough);
   const count = (event: string) => (db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = ?").get(event) as { n: number }).n;
@@ -117,6 +119,25 @@ describe("recording Metal's refusal: one at a time, claimed first, held", () => 
     expect(await record(A, 18)).toBe("not_recorded");
     expect(metal.calls).toBe(0);
     expect(count("upstream.let_through_incident")).toBe(0);
+  });
+
+  it("race: the runner marks a slow claim 'not sent' before its pull starts; the pull is then never started, and nothing is written twice", async () => {
+    const { db, record, count } = world();
+    metal.beforeStart = () => { recoverRecordPulls(db, new Date(Date.now() + CLAIM_STALE_MS + 1_000)); };
+    expect(await record(A, 18)).toBe("not_recorded");
+    expect(metal.calls).toBe(0);
+    expect(count("upstream.refusal_pull_started")).toBe(0);
+    expect(count("upstream.refusal_not_recorded")).toBe(1);
+    expect(count("upstream.let_through_incident")).toBe(0);
+    expect(hold(db)).toBe("RELEASED");
+  });
+
+  it("a claim written before the pull-start stamp existed (no purchase_id) counts as started at its claim: an incident after 240 s", () => {
+    const { db, count } = world();
+    const t = new Date(Date.now() - RECORDING_STALE_MS - 5_000);
+    audit(db, "sourcing", "upstream.refusal_recording", "17", { seq: 17, mandate: A.reference, payment_id: "refusal-old-17" }, t);
+    expect(recoverRecordPulls(db)).toEqual({ incidents: 1, notSent: 0, pending: 0 });
+    expect(count("upstream.let_through_incident")).toBe(1);
   });
 
   it("a recording that meets a stale started pull of a process that ended: an incident, nothing sent again", async () => {

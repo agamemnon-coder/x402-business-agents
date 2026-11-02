@@ -46,11 +46,13 @@ export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cen
   const state = await readMandateState(publicClient(), m.principal, m.reference);
   if (state.boundBlock === 0n || state.revoked) throw new Error("this mandate is not bound (or is revoked); nothing to record against");
   const key = gasKey ?? await refusalGasKey();
+  // The caller's last check before anything is sent (its claim still open, its hold still held): an error here is
+  // thrown as is, never as "pull sent", because nothing was started.
+  onPullStart?.();
   let r: CliResult;
   try {
     // Asynchronous: the world's process keeps serving the suppliers and the seller while Metal records it (agent run 1).
     // The customer's request that met the refusal still waits for it (at most the CLI's 180 s timeout).
-    onPullStart?.();
     r = await metalAgentAsync(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(cents),
       "--payment-id", paymentId, "--record-refusal", "--key", key], [0, 1]);
   } catch (e) {

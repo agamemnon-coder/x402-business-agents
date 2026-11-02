@@ -74,7 +74,7 @@ function outcome(args: string[], okCodes: number[], code: number, raw: string): 
  */
 export function metalAgentAsync(args: string[], okCodes: number[] = [0], bin = BIN): Promise<CliResult> {
   return new Promise((resolveRun, reject) => {
-    execFile(bin, [...args, "--network", "testnet"], { env: { ...process.env, HOME: join(keysDir(), "home") }, encoding: "utf8", timeout: 180_000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
+    execFile(bin, [...args, "--network", "testnet"], { env: { ...process.env, HOME: join(keysDir(), "home") }, encoding: "utf8", timeout: 180_000, killSignal: "SIGKILL", maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
       // As spawnSync's status: the exit code, or -1 when the CLI did not exit by itself (not started, killed, timed out).
       const code = !err ? 0 : typeof err.code === "number" ? err.code : -1;
       try { resolveRun(outcome(args, okCodes, code, `${stdout ?? ""}${stderr ?? ""}`)); } catch (e) { reject(e as Error); }

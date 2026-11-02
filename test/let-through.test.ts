@@ -9,7 +9,7 @@ import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DB } from "../src/db/open.js";
 
-const state = vi.hoisted(() => ({ db: null as DB | null, signed: [] as number[], metal: "refuse" as "refuse" | "accept" | "lost" | "rate_limited", recordRefuses: true, recordThrows: "", onChain: [] as number[], recordHangs: null as null | ((e: Error) => void) | "hang" }));
+const state = vi.hoisted(() => ({ db: null as DB | null, signed: [] as number[], metal: "refuse" as "refuse" | "accept" | "lost" | "rate_limited", recordRefuses: true, recordThrows: "", onChain: [] as number[], recordHangs: null as null | ((e: Error) => void) | "hang", beforeAnswer: null as null | (() => void) }));
 
 vi.mock("../src/metal/mandate.js", async (orig) => ({
   ...(await orig<object>()),
@@ -40,6 +40,7 @@ vi.mock("../src/metal/recordRefusal.js", () => ({ recordCapRefusalOnChain: async
   state.onChain.push(cents);
   // A process that ends mid-pull: the pull never answers (the test fails it at its end, so the queue moves on).
   if (state.recordHangs === "hang") return new Promise((_ok, fail) => { state.recordHangs = fail; });
+  state.beforeAnswer?.();
   if (state.recordThrows) throw new Error(state.recordThrows);
   if (!state.recordRefuses) throw new Error("Metal did not report a refusal (exit 0); check the pull refusal-x");
   return { tx: `0x${"cd".repeat(32)}`, reason: "mandate_cap_exceeded" };
@@ -56,7 +57,7 @@ const { stopped, stopReason } = await import("../src/policy/velocity.js");
 const { sellerApp, SELLER_ROUTE } = await import("../src/servers/seller.js");
 
 const env = { ...process.env };
-beforeEach(() => { process.env.KIT11_AGENTS = "on"; process.env.KIT11_AUTONOMY = "on"; state.signed = []; state.metal = "refuse"; state.onChain = []; state.recordRefuses = true; state.recordThrows = ""; state.recordHangs = null; });
+beforeEach(() => { process.env.KIT11_AGENTS = "on"; process.env.KIT11_AUTONOMY = "on"; state.signed = []; state.metal = "refuse"; state.onChain = []; state.recordRefuses = true; state.recordThrows = ""; state.recordHangs = null; state.beforeAnswer = null; });
 afterEach(() => { process.env = { ...env }; vi.unstubAllEnvs(); });
 
 const SUPPLIER = "0x0000000000000000000000000000000000000001" as const;
@@ -325,6 +326,19 @@ describe("a restart while the let-through's refusal was being recorded (agent-fa
     (state.recordHangs as unknown as (e: Error) => void)(new Error("pull sent: the process ended"));
     state.recordHangs = null;
     await new Promise((r) => setTimeout(r, 20));
+  });
+});
+
+describe("the label only with the let-through's own outcome", () => {
+  it("a let-through finished meanwhile (here: as an incident by the runner) gets no 'Metal refused' label when its record comes back", async () => {
+    const db = world();
+    const a = armed(db);
+    price(db, "0.04");
+    const { finishLetThrough } = await import("../src/world/letThrough.js");
+    state.beforeAnswer = () => { expect(finishLetThrough(db, { outcome: "incident", purchase_id: 1, seq: 18, detail: "finished meanwhile" })).toBe(true); };
+    await a.buy(18);
+    expect(letThrough(db)).toMatchObject({ stage: "used", outcome: "incident" });
+    expect(events(db, "upstream.let_through_refused")).toBe(0);
   });
 });
 
