@@ -13,10 +13,25 @@ export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
   // The runner, the agent API and the CLIs share one ledger: a writer waits for another instead of failing at once.
   // Set first, so that switching a new ledger to WAL, which needs a lock too, also waits for another opener.
   db.pragma("busy_timeout = 5000");
-  db.pragma("journal_mode = WAL");
+  walWithRetry(db);
   db.pragma("foreign_keys = ON");
   prepare(db);
   return db;
+}
+
+/**
+ * Switching a new ledger to WAL can return SQLITE_BUSY at once, without the busy handler, while another process is
+ * switching the same file (CI run 41586612679: 1 of 4 concurrent openers failed). Retry for up to 5 s; any other error,
+ * or still busy after that, is thrown.
+ */
+function walWithRetry(db: DB): void {
+  const until = Date.now() + 5000;
+  for (;;) {
+    try { db.pragma("journal_mode = WAL"); return; } catch (e) {
+      if ((e as { code?: string }).code !== "SQLITE_BUSY" || Date.now() >= until) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25 + Math.floor(Math.random() * 50));
+    }
+  }
 }
 
 /**
