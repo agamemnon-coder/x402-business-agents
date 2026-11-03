@@ -7,7 +7,8 @@
 //
 // Open: waiting for approval (also with 1 of 2 signatures) or approved and not yet run, within its time; or being run
 // (EXECUTING), whatever its time: a restart resumes a replace a crash cut off without looking at its expiry, so the hold
-// stays until it is finished (or a person resolves it). The hold lifts by itself when the proposal is executed,
+// stays until a restart resumes and finishes it (ops/health raises action_stuck for it meanwhile); and FAILED within its
+// time once a step of it ran (a DONE or STARTED execution row): the mandates are half replaced and a retry carries on. The hold lifts by itself when the proposal is executed,
 // rejected, superseded, expires, or fails. A replace its executor's guard refuses (dry-179: "spent moved … a new one is
 // needed") is closed as NEEDS_REAPPROVAL with the reason, and so are the other options of the same change that the same
 // facts refuse (src/executors/mandateReplace.ts): before, it stayed APPROVED until its expiry and held for nothing. A
@@ -19,7 +20,7 @@
 import type { DB } from "../db/open.js";
 
 const OPEN_STATUSES = ["PENDING_APPROVAL", "APPROVED", "EXECUTING"] as const;
-type OpenStatus = (typeof OPEN_STATUSES)[number];
+type OpenStatus = (typeof OPEN_STATUSES)[number] | "FAILED";
 
 export interface OpenReplace { proposal_id: string; status: OpenStatus; expires_at: string }
 
@@ -38,7 +39,8 @@ function agentsOf(termsJson: string): string[] | "all" {
 export function openReplacesFor(db: DB, agent: string, now = new Date()): OpenReplace[] {
   // A ledger from before proposals (opened read-only by an old page) has none.
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'proposals'").get()) return [];
-  const rows = db.prepare(`SELECT proposal_id, status, expires_at, terms_json FROM proposals WHERE kind = 'mandate_replace' AND status IN (${OPEN_STATUSES.map(() => "?").join(", ")}) ORDER BY created_at, proposal_id`)
+  const rows = db.prepare(`SELECT proposal_id, status, expires_at, terms_json FROM proposals p WHERE kind = 'mandate_replace' AND (status IN (${OPEN_STATUSES.map(() => "?").join(", ")})
+      OR (status = 'FAILED' AND EXISTS (SELECT 1 FROM executions e WHERE e.proposal_id = p.proposal_id AND e.status IN ('DONE', 'STARTED')))) ORDER BY created_at, proposal_id`)
     .all(...OPEN_STATUSES) as { proposal_id: string; status: OpenStatus; expires_at: string; terms_json: string }[];
   return rows
     // Compared as instants, as the approvals do (src/policy/approvals.ts expireIfDue: an unreadable time is expired there,
@@ -61,7 +63,7 @@ export function replaceHoldRefusal(db: DB, agent: string, now = new Date()): str
   return `replace_pending: mandate replace ${ids(open)} pending; spending waits until it is executed or closed`;
 }
 
-const STATUS_WORDS: Record<OpenStatus, string> = { PENDING_APPROVAL: "waiting for approval", APPROVED: "approved, not yet carried out", EXECUTING: "being carried out" };
+const STATUS_WORDS: Record<OpenStatus, string> = { PENDING_APPROVAL: "waiting for approval", APPROVED: "approved, not yet carried out", EXECUTING: "being carried out", FAILED: "partly carried out, then stopped" };
 const hhmm = (iso: string) => (Number.isNaN(Date.parse(iso)) ? iso : new Date(iso).toISOString().slice(11, 16));
 
 /** The hold as a fact, for the agent's own situation at every wake (so it does not retry blindly); null without one. */

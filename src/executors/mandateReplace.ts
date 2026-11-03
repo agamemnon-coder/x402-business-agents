@@ -31,14 +31,22 @@ export async function executeMandateReplace(db: DB, proposalId: string, now = ne
   try {
     terms = guard(db, proposalId, facts, now);
   } catch (err) {
-    if (err instanceof GuardRefusal) stopped(db, proposalId, facts, err.message);
+    if (err instanceof GuardRefusal) {
+      try { stopped(db, proposalId, facts, err); } catch { /* the guard's reason is what is thrown, whatever recording it did */ }
+    }
     throw err;
   }
   await run(db, proposalId, terms);
 }
 
-/** The guard's own refusal of the terms against the chain as it is (as strict as ever); other errors are not this. */
-class GuardRefusal extends Error {}
+/**
+ * The guard's own refusal of the terms against the chain as it is (as strict as ever); other errors are not this.
+ * permanent: the terms can never run (a spend above the one at proposal, another bound mandate, the total, Block 6). A
+ * spend read LOWER than at proposal is refused just the same, but proves nothing (spent only goes up: a stale node).
+ */
+class GuardRefusal extends Error {
+  constructor(message: string, readonly permanent: boolean) { super(message); }
+}
 
 /**
  * dry-179: the guard refused an approved replace ("spent moved … a new one is needed"). Its transaction rolled back, so
@@ -49,10 +57,23 @@ class GuardRefusal extends Error {}
  * (src/policy/replaceHold.ts). Not for a second call while another run executes it (that run goes on), nor for one not
  * approved: closeAsStale closes only from approved or failed, or from executing on a restart's resume.
  */
-function stopped(db: DB, proposalId: string, facts: Facts, reason: string): void {
+function stopped(db: DB, proposalId: string, facts: Facts, err: GuardRefusal): void {
+  const reason = err.message;
   const resume = resuming.has(proposalId);
+  // Never closed as "not run" once a step ran or may have (a DONE or STARTED execution row: a FAILED retry, a resume
+  // after a crash mid-step), nor on a read that proves nothing: the refusal is recorded, the proposal stays as it is
+  // (still holding while open) for a person or a later run. Review 2 of fix-dry179.
+  const stepsRun = (db.prepare("SELECT COUNT(*) AS n FROM executions WHERE proposal_id = ? AND status IN ('DONE', 'STARTED')").get(proposalId) as { n: number }).n;
+  if (stepsRun > 0 || !err.permanent) {
+    const status = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string } | undefined)?.status ?? "";
+    if (["APPROVED", "FAILED"].includes(status) || (status === "EXECUTING" && resume)) {
+      audit(db, "system", "proposal.guard_refused", proposalId, { error: reason.slice(0, 300), steps_started: stepsRun, status, ...(err.permanent ? {} : { inconclusive: "a spend read lower than at the proposal: a stale chain read, not a move" }) });
+    }
+    return;
+  }
   if (!closeAsStale(db, proposalId, { error: reason, stopped: resume ? "on resume" : "before its first step" }, { resuming: resume })) return;
   const closed: string[] = [];
+  try {
   const open = db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE kind = 'mandate_replace' AND status IN ('PENDING_APPROVAL', 'APPROVED', 'FAILED') AND proposal_id != ? ORDER BY proposal_id").all(proposalId) as { proposal_id: string; terms_json: string }[];
   for (const o of open) {
     const t = JSON.parse(o.terms_json) as MandateReplaceTerms;
@@ -60,8 +81,13 @@ function stopped(db: DB, proposalId: string, facts: Facts, reason: string): void
     // facts refuse it too: one that could still run stays open for the CFO.
     if (!t.steps.some((s) => facts.has(stepKey(s)))) continue;
     let why: string | null = null;
-    try { preconditions(db, t, facts, true); } catch (e) { why = (e as Error).message; }
+    // Only a refusal that proves the sibling can never run closes it; one filed later from the spend as it is stays.
+    try { preconditions(db, t, facts, true); } catch (e) { why = e instanceof GuardRefusal && e.permanent ? e.message : null; }
     if (why && closeAsStale(db, o.proposal_id, { error: `${why} (found when ${proposalId}, another option of the same change, was run)`, sibling_of: proposalId })) closed.push(o.proposal_id);
+  }
+  } catch (e) {
+    // Closing the others is best effort: the main proposal is closed with its reason whatever happens here.
+    audit(db, "system", "proposal.siblings_not_checked", proposalId, { error: (e as Error).message.slice(0, 300) });
   }
   if (autonomyOn()) publish(db, "mandate_replace.stopped", { proposal_id: proposalId, reason, closed }, "treasury", "system");
 }
@@ -111,11 +137,11 @@ function preconditions(db: DB, t: MandateReplaceTerms, facts: Facts, onlyRead = 
         throw new Error(`${step.agent}: the bound mandate is no longer the one this proposal replaces`);
       }
       if (f.spentCents !== toCents(step.spent_at_proposal)) {
-        throw new Error(`${step.agent}: spent moved from ${step.spent_at_proposal} to ${fromCents(f.spentCents)} since the proposal; a new one is needed`);
+        throw new GuardRefusal(`${step.agent}: spent moved from ${step.spent_at_proposal} to ${fromCents(f.spentCents)} since the proposal; a new one is needed`, f.spentCents > toCents(step.spent_at_proposal));
       }
     }
   } catch (e) {
-    throw new GuardRefusal((e as Error).message);
+    throw e instanceof GuardRefusal ? e : new GuardRefusal((e as Error).message, true);
   }
 }
 

@@ -248,23 +248,24 @@ describe("dry-179 item (a): an approved replace its guard stops is closed in the
       .toEqual({ k: "face", at: row.ts, id: p2!.id, title: "Mandate change (option A)", status: "STOPPED", signers: [], reason: SPENT_MOVED });
   });
 
-  it("a resumed replace that its guard stops is closed too, so an EXECUTING leftover does not hold for ever", async () => {
+  it("a resume after a crash mid-step that its guard refuses is not closed: it stays EXECUTING and held, for a person (health alerts)", async () => {
     const [p2, p3] = propose();
     db.prepare("UPDATE proposals SET status = 'REJECTED' WHERE proposal_id = ?").run(p3!.id);
     approveBy(p2!, "test-cfo");
     approveBy(p2!, "test-controller");
+    // The crash: inside the first step's CLI call (its tx may have been broadcast), the proposal is left EXECUTING.
     h.onReplace = () => { throw new Error("process killed"); };
     await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/process killed/);
     db.prepare("UPDATE proposals SET status = 'EXECUTING' WHERE proposal_id = ?").run(p2!.id);
-    // Meanwhile the treasury spend moved on chain: the resume's guard refuses, as strict as ever.
     h.chain.set(T0.reference, { ...h.chain.get(T0.reference)!, spent: units(45) });
     h.onReplace = () => null;
     const { resumeInterrupted } = await import("../src/policy/saga.js");
     const out = await resumeInterrupted(db, (d, id) => executeMandateReplace(d, id));
     expect(out).toEqual([{ id: "P-0002", outcome: expect.stringMatching(/spent moved from 0\.00 to 0\.45/) }]);
-    expect(status(db, p2!.id)).toBe("NEEDS_REAPPROVAL");
-    expect(needsRows()).toEqual([expect.objectContaining({ subject: "P-0002", stopped: "on resume" })]);
-    expect(replaceHoldRefusal(db, "treasury")).toBeNull();
+    expect(status(db, p2!.id)).toBe("EXECUTING");
+    expect(needsRows()).toEqual([]);
+    expect(db.prepare("SELECT json_extract(payload_json, '$.steps_started') AS n FROM audit_log WHERE event = 'proposal.guard_refused'").get()).toEqual({ n: 1 });
+    expect(replaceHoldRefusal(db, "treasury")).toMatch(/^replace_pending: /);
   });
 
   it("nothing is closed for a proposal not approved, a second run while one is running, or a chain read that failed", async () => {
@@ -307,5 +308,58 @@ describe("dry-179 item (a): an approved replace its guard stops is closed in the
     await resumeInterrupted(db, (d, id) => executeMandateReplace(d, id));
     expect(status(db, p2!.id)).toBe("EXECUTED");
     expect(replaceHoldRefusal(db, "treasury", new Date(Date.now() + 2 * 3_600_000))).toBeNull();
+  });
+});
+
+describe("review 2 of fix-dry179: never close a replace that ran a step, nor on a stale read", () => {
+  it("a retry of a FAILED replace that already ran a step is not closed or called 'not run'; the hold stays while it is open", async () => {
+    const [p2, p3] = propose();
+    db.prepare("UPDATE proposals SET status = 'REJECTED' WHERE proposal_id = ?").run(p3!.id);
+    approveBy(p2!, "test-cfo");
+    approveBy(p2!, "test-controller");
+    // Step 1 (treasury) is bound, then the sourcing step fails: FAILED, half replaced.
+    let n = 0;
+    h.onReplace = () => { if (++n === 2) throw new Error("rpc unreachable"); return null; };
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/rpc unreachable/);
+    expect(status(db, p2!.id)).toBe("FAILED");
+    // Still held: a step of it is on chain.
+    expect(replaceHoldRefusal(db, "sourcing")).toMatch(/^replace_pending: mandate replace P-0002 pending/);
+    // The sourcing spend moves anyway (outside Purser): the retry's guard refuses, as strict as ever, but nothing is closed.
+    h.chain.set(S0.reference, { ...h.chain.get(S0.reference)!, spent: units(34) });
+    h.onReplace = () => null;
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/sourcing: spent moved from 0\.30 to 0\.34/);
+    expect(status(db, p2!.id)).toBe("FAILED");
+    expect(needsRows()).toEqual([]);
+    const refused = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'proposal.guard_refused'").get() as { payload_json: string };
+    expect(JSON.parse(refused.payload_json)).toMatchObject({ error: expect.stringMatching(/sourcing: spent moved/), steps_started: 2 });
+    const { describe: feedLine } = await import("../src/dashboard/snapshot.js");
+    expect(feedLine(db.prepare("SELECT * FROM audit_log WHERE event = 'proposal.guard_refused'").get() as never, () => undefined).text).toMatch(/^P-0002: its execution was refused after 2 of its steps had started: sourcing: spent moved .*a person resolves it/);
+  });
+
+  it("a read lower than the spend at proposal (a stale RPC node) refuses, but closes nothing: the replace and its sibling stay open", async () => {
+    const [p2, p3] = propose();
+    approveBy(p2!, "test-cfo");
+    approveBy(p2!, "test-controller");
+    // Spent only goes up: 0.20 against 0.30 at proposal is a stale read, not a move.
+    h.chain.set(S0.reference, { ...h.chain.get(S0.reference)!, spent: units(20) });
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(/sourcing: spent moved from 0\.30 to 0\.20/);
+    expect([status(db, p2!.id), status(db, p3!.id)]).toEqual(["APPROVED", "PENDING_APPROVAL"]);
+    expect(needsRows()).toEqual([]);
+    // The node catches up: the same approval runs.
+    h.chain.set(S0.reference, { ...h.chain.get(S0.reference)!, spent: units(30) });
+    await executeMandateReplace(db, p2!.id);
+    expect(status(db, p2!.id)).toBe("EXECUTED");
+  });
+
+  it("a sibling the same facts do not refuse stays open (filed later, from the spend as it is now)", async () => {
+    const [p2] = propose();
+    approveBy(p2!, "test-cfo");
+    approveBy(p2!, "test-controller");
+    h.chain.set(T0.reference, { ...h.chain.get(T0.reference)!, spent: units(45) });
+    const fresh = propose2("P-0004", [step("1", "treasury", T1, T0, "5.50", "5.50", "0.45"), step("2", "sourcing", S1, S0, "0.04", "10.50", "0.30")]);
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(SPENT_MOVED);
+    expect(status(db, p2!.id)).toBe("NEEDS_REAPPROVAL");
+    expect(status(db, "P-0003")).toBe("NEEDS_REAPPROVAL");
+    expect(status(db, fresh)).toBe("PENDING_APPROVAL");
   });
 });

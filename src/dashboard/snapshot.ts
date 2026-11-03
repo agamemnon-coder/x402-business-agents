@@ -758,6 +758,9 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "proposal.executing": return out(`Running ${s}, after checking its terms are exactly what was approved`);
     case "proposal.executed": return out(`${s} executed`, "ok");
     case "proposal.failed": return out(`${s} failed: ${str(p.error) || "see the ledger"}`, "refusal");
+    case "proposal.guard_refused": return str(p.inconclusive)
+      ? out(`${s}: its execution was refused on a chain read that may be stale: ${str(p.error)}; it stays open and can run again`, "refusal")
+      : out(`${s}: its execution was refused after ${str(p.steps_started)} of its steps had started: ${str(p.error)}; it stays ${str(p.status).toLowerCase()} until a person resolves it`, "refusal");
     case "proposal.needs_reapproval":
       // dry-179: a replace its executor's guard refused (or another option of it the same facts refuse) is closed.
       if (str(p.sibling_of)) return out(`${s} is closed: ${str(p.error)}. A new proposal is needed`, "refusal");

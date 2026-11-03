@@ -110,11 +110,15 @@ export function stoppedReplaceFacts(db: DB): string[] {
     WHERE a.event = 'proposal.needs_reapproval' AND p.kind = 'mandate_replace' AND json_extract(a.payload_json, '$.stopped') IS NOT NULL ORDER BY a.seq DESC LIMIT 1`).get() as { id: string; payload_json: string; ts: string } | undefined;
   if (!row) return [];
   const siblings = (db.prepare("SELECT subject FROM audit_log WHERE event = 'proposal.needs_reapproval' AND json_extract(payload_json, '$.sibling_of') = ? ORDER BY seq").all(row.id) as { subject: string }[]).map((r) => r.subject);
-  // Old news once a replace was proposed after it stopped, whatever became of that one.
-  if ((db.prepare("SELECT proposal_id FROM proposals WHERE kind = 'mandate_replace' AND created_at >= ?").all(row.ts) as { proposal_id: string }[]).some((x) => x.proposal_id !== row.id && !siblings.includes(x.proposal_id))) return [];
+  // Old news once a replace proposed after it executed or is still open; one rejected or expired since does not count.
+  const nowIso = new Date().toISOString();
+  const open = (db.prepare(`SELECT proposal_id FROM proposals WHERE kind = 'mandate_replace' AND (status = 'EXECUTING'
+    OR (status IN ('PENDING_APPROVAL', 'APPROVED') AND expires_at > ?))`).all(nowIso) as { proposal_id: string }[]).map((x) => x.proposal_id);
+  if ((db.prepare("SELECT proposal_id, status FROM proposals WHERE kind = 'mandate_replace' AND created_at >= ?").all(row.ts) as { proposal_id: string; status: string }[])
+    .some((x) => x.proposal_id !== row.id && !siblings.includes(x.proposal_id) && (x.status === "EXECUTED" || open.includes(x.proposal_id)))) return [];
   const p = JSON.parse(row.payload_json) as { error?: string };
   const lines = [`Mandate replace ${row.id} was approved, but code did not run it: ${p.error ?? "see the ledger"}. It is closed;${siblings.length ? ` ${siblings.join(" and ")}, another option of the same change, ${siblings.length > 1 ? "are" : "is"} closed with it.` : " it can never be approved or run again."}`.replace(/;\s*$/, ".")];
-  if (!waiting(db, "mandate_replace").length) lines.push("No mandate replace waits for the CFO now: if an agent is still blocked by its mandate, a new rebalance (design_rebalance) is needed; code plans it from the spend as it is now.");
+  if (!open.length) lines.push("No mandate replace waits for the CFO now: if an agent is still blocked by its mandate, a new rebalance (design_rebalance) is needed; code plans it from the spend as it is now.");
   return lines;
 }
 
