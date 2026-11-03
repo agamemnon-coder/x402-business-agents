@@ -9,17 +9,18 @@
 import { parseArgs } from "node:util";
 import { books, type Posting } from "../accounting/books.js";
 import {
-  buildEntries, compareReports, functionalCurrency, pushBooks, resolveAccounts, T0Client, t0AccountType, trialInFunctional, type T0Entry,
+  buildEntries, compareOwnEntries, functionalCurrency, pushBooks, resolveAccounts, T0Client, t0AccountType, type T0Entry,
 } from "../accounting/t0.js";
 import { CHART } from "../config/gl.js";
+import { T0_MAP_VERSION, T0_SANDBOX_MAP } from "../config/t0Map.js";
 import { openDb, type DB } from "../db/open.js";
 import { redactSecrets } from "../lib/redact.js";
 
-const USAGE = "usage: npm run t0 -- accounts | push [--rate CUR=rate ...] [--dry-run] | compare [--rate CUR=rate ...] [--from YYYY-MM-DD] [--to YYYY-MM-DD]";
+const USAGE = "usage: npm run t0 -- accounts | push [--rate CUR=rate ...] [--dry-run] [--map sandbox] | compare [--rate CUR=rate ...] [--map sandbox]; --map sandbox uses src/config/t0Map.ts for our codes T:0 lacks";
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
-  options: { rate: { type: "string", multiple: true }, "dry-run": { type: "boolean" }, from: { type: "string" }, to: { type: "string" } },
+  options: { rate: { type: "string", multiple: true }, "dry-run": { type: "boolean" }, from: { type: "string" }, to: { type: "string" }, map: { type: "string" } },
 });
 const cmd = positionals[0];
 if (cmd !== "accounts" && cmd !== "push" && cmd !== "compare") {
@@ -56,11 +57,15 @@ function rates(): (date: string, cur: string) => number | undefined {
   return (_date, cur) => m.get(cur);
 }
 
-async function entriesFor(postings: Posting[]): Promise<{ entries: T0Entry[]; currency: string }> {
+if (values.map !== undefined && values.map !== "sandbox") throw new Error(`--map ${values.map}: only "sandbox" exists`);
+const fallback = values.map === "sandbox" ? T0_SANDBOX_MAP : undefined;
+
+async function entriesFor(postings: Posting[]): Promise<{ entries: T0Entry[]; currency: string; numbers: Map<string, string> }> {
   const { currency, atomsPerUnit } = await functionalCurrency(client);
-  const { map, warnings } = resolveAccounts(await client.listGlAccounts(), postings.map((p) => p.account));
+  const { map, warnings, numbers, labels } = resolveAccounts(await client.listGlAccounts(), postings.map((p) => p.account), { fallback });
   for (const w of warnings) console.log(`WARNING  ${w}`);
-  return { entries: buildEntries(postings, map, currency, rates(), { atomsPerUnit }), currency };
+  if (fallback) console.log(`Account map: sandbox v${T0_MAP_VERSION} (${[...numbers].filter(([c, n]) => c !== n).map(([c, n]) => `${c}>${n}`).join(" ")})`);
+  return { entries: buildEntries(postings, map, currency, rates(), { atomsPerUnit, labels }), currency, numbers };
 }
 
 function postedTable(db: DB): Set<string> {
@@ -111,16 +116,18 @@ async function compare(): Promise<void> {
   const dates = b.postings.map((p) => p.date.slice(0, 10)).sort();
   const from = values.from ?? dates[0], to = values.to ?? dates.at(-1);
   if (!from || !to) { console.log("No postings in our books: nothing to compare"); return; }
-  const { entries } = await entriesFor(b.postings);
+  const { entries, currency, numbers } = await entriesFor(b.postings);
   const inWindow = entries.filter((e) => e.request.entry_date >= from && e.request.entry_date <= to);
-  const pl = await client.profitLoss({ start_date: from, end_date: to, period_type: "yearly" });
-  const c = compareReports(trialInFunctional(inWindow), pl);
-  const money = (atoms: number) => (atoms / pl.atoms_per_unit).toFixed(Math.round(Math.log10(pl.atoms_per_unit)));
-  console.log(`P&L ${from} to ${to}, ${c.currency}: ours, T:0, difference`);
-  for (const r of c.rows) console.log(`  ${r.account}  ${r.name.slice(0, 44).padEnd(44)} ${money(r.ours_atoms).padStart(12)} ${money(r.t0_atoms).padStart(12)} ${r.diff_atoms ? money(r.diff_atoms).padStart(12) : ""}`);
-  if (c.matches) console.log(`T:0 matches our Books line by line (${c.rows.length} P&L accounts)`);
+  const held: Awaited<ReturnType<T0Client["getJournalEntry"]>>[] = [];
+  for await (const je of client.listJournalEntries({ dateFrom: from, dateTo: to, source: ["manual"] })) held.push(je);
+  const c = compareOwnEntries(inWindow, numbers, held);
+  const money = (atoms: number) => (atoms / 100).toFixed(2);
+  console.log(`Our entries only (je_number PUR-), ${from} to ${to}, ${currency}, net debit minus credit: ours, T:0, difference`);
+  console.log(`  ${c.entries_in_t0} PUR- entries in T:0, ${c.entries_ours} built from our books, ${c.foreign_entries} other manual entries in the window ignored`);
+  for (const r of c.rows) console.log(`  ${r.account}  (ours ${r.ours_codes.join("+") || "-"}) ${money(r.ours_atoms).padStart(12)} ${money(r.t0_atoms).padStart(12)} ${r.diff_atoms ? money(r.diff_atoms).padStart(12) : ""}`);
+  if (c.matches) console.log(`T:0 matches our Books line by line (${c.rows.length} mapped accounts, ${c.entries_in_t0} entries)`);
   else {
-    console.log(`DIFFERENT: ${c.differences.length} account(s) differ (${c.differences.map((d) => d.account).join(", ")})`);
+    console.log(`DIFFERENT: ${c.differences.length} account(s) differ (${c.differences.map((d) => d.account).join(", ")}); entries ours ${c.entries_ours}, in T:0 ${c.entries_in_t0}`);
     process.exitCode = 1;
   }
 }

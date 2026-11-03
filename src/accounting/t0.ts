@@ -6,6 +6,7 @@
 
 import { createHash } from "node:crypto";
 import { CHART } from "../config/gl.js";
+import type { T0MapTarget } from "../config/t0Map.js";
 import type { Posting, TrialRow } from "./books.js";
 
 export const T0_BASE_URL = "https://api.t0.ai";
@@ -260,18 +261,30 @@ export const T0_ACCOUNT_TYPES: Record<string, T0AccountType | undefined> = Objec
  * Our code to T:0's external_id, by account_number. Throws, naming every code at once, when an account is missing,
  * inactive or not postable; a different account type than we expect is only a warning.
  */
-export function resolveAccounts(accounts: T0GlAccount[], codes: Iterable<string>): { map: Map<string, string>; warnings: string[] } {
-  const map = new Map<string, string>();
+export function resolveAccounts(
+  accounts: T0GlAccount[], codes: Iterable<string>, o: { fallback?: Record<string, T0MapTarget> } = {},
+): { map: Map<string, string>; warnings: string[]; /** our code to the T:0 account_number it landed on */ numbers: Map<string, string>; /** memo prefix for lines on a shared account */ labels: Map<string, string> } {
+  const map = new Map<string, string>(), numbers = new Map<string, string>(), labels = new Map<string, string>();
   const missing: string[] = [], unpostable: string[] = [], ambiguous: string[] = [], warnings: string[] = [];
   for (const code of [...new Set(codes)].sort()) {
     const same = accounts.filter((a) => a.account_number === code);
     const usable = same.filter((a) => a.is_active && a.is_postable);
+    if (!same.length && o.fallback?.[code]) {
+      const t = o.fallback[code]!;
+      const hit = accounts.filter((a) => a.account_number === t.number && a.is_active && a.is_postable);
+      if (hit.length !== 1) { missing.push(`${code} (mapped to ${t.number}, which is not exactly one active postable account)`); continue; }
+      map.set(code, hit[0]!.external_id);
+      numbers.set(code, t.number);
+      labels.set(code, `Purser ${code} ${CHART[code] ?? ""}`.trim());
+      continue;
+    }
     if (!same.length) missing.push(code);
     else if (!usable.length) unpostable.push(code);
     else if (usable.length > 1) ambiguous.push(code);
     else {
       const a = usable[0]!;
       map.set(code, a.external_id);
+      numbers.set(code, code);
       const want = t0AccountType(code);
       if (want && a.account_type !== want) warnings.push(`${code} is ${a.account_type} in T:0; we expected ${want}`);
       if (a.currency) warnings.push(`${code} is denominated in ${a.currency} in T:0: lines in another currency will be refused`);
@@ -282,7 +295,7 @@ export function resolveAccounts(accounts: T0GlAccount[], codes: Iterable<string>
     const parts = [missing.length && `missing: ${missing.join(", ")}`, unpostable.length && `not postable or inactive: ${unpostable.join(", ")}`, ambiguous.length && `more than one postable account: ${ambiguous.join(", ")}`].filter(Boolean);
     throw new Error(`T:0 has no usable account for ${bad.join(", ")} (${parts.join("; ")}). Create them in T:0 with account_number = our code (docs/t0.md).`);
   }
-  return { map, warnings };
+  return { map, warnings, numbers, labels };
 }
 
 // ---- Building entries ----
@@ -333,7 +346,7 @@ function groups(postings: Posting[]): Posting[][] {
  * tagged as test money in the memo. Every unmapped account and every missing rate is listed in one error, before
  * anything is posted.
  */
-export function buildEntries(postings: Posting[], accountMap: ReadonlyMap<string, string>, functionalCurrency: string, rate: T0Rate, o: { atomsPerUnit?: number } = {}): T0Entry[] {
+export function buildEntries(postings: Posting[], accountMap: ReadonlyMap<string, string>, functionalCurrency: string, rate: T0Rate, o: { atomsPerUnit?: number; /** our code to a memo prefix, for accounts that share a T:0 account */ labels?: ReadonlyMap<string, string> } = {}): T0Entry[] {
   const functional = functionalCurrency.toUpperCase();
   const atomsPerUnit = o.atomsPerUnit ?? 100;
   const gs = groups(postings);
@@ -373,7 +386,7 @@ export function buildEntries(postings: Posting[], accountMap: ReadonlyMap<string
     const request: T0JournalEntryRequest = {
       entry_date: date, currency: functional, ...(foreign ? { transaction_currency: cur } : {}), memo: memoOf(memo), je_number: jeNumber,
       lines: lines.map((l) => {
-        const lineMemo = [l.p.cost_centre && `cost centre ${l.p.cost_centre}`, l.p.proof && `proof ${l.p.proof}`].filter(Boolean).join("; ");
+        const lineMemo = [o.labels?.get(l.p.account), l.p.cost_centre && `cost centre ${l.p.cost_centre}`, l.p.proof && `proof ${l.p.proof}`].filter(Boolean).join("; ");
         return {
           gl_account_id: accountMap.get(l.p.account)!, line_type: l.debit ? "debit" as const : "credit" as const, amount_atoms: l.atoms,
           ...(foreign ? { transaction_amount_atoms: l.cents } : {}), ...(lineMemo ? { memo: memoOf(lineMemo) } : {}),
@@ -499,4 +512,44 @@ export function compareReports(rows: TrialRow[], pl: T0ProfitLoss): T0Comparison
   }
   const differences = out.filter((r) => r.diff_atoms !== 0);
   return { matches: differences.length === 0, currency, rows: out, differences };
+}
+
+// ---- Comparing only our own entries (a shared T:0 entity holds other people's books too) ----
+
+export interface T0OwnRow { account: string; ours_atoms: number; t0_atoms: number; diff_atoms: number; ours_codes: string[] }
+export interface T0OwnComparison { matches: boolean; currency: string; entries_in_t0: number; entries_ours: number; foreign_entries: number; rows: T0OwnRow[]; differences: T0OwnRow[] }
+
+/**
+ * Our entries as T:0 holds them against what we built, per T:0 account number. Only T:0 entries whose je_number starts
+ * with `PUR-` count; everything else in the entity is ignored. Both sides are net debit minus credit in atoms, our side
+ * rolled up by `numbers` (our code to the T:0 account number). Matches only when every account agrees to the atom
+ * and the same je_numbers are on both sides.
+ */
+export function compareOwnEntries(ours: T0Entry[], numbers: ReadonlyMap<string, string>, inT0: T0JournalEntry[]): T0OwnComparison {
+  const mine = inT0.filter((e) => e.je_number.startsWith("PUR-"));
+  const o = new Map<string, { atoms: number; codes: Set<string> }>(), t = new Map<string, number>();
+  for (const e of ours) {
+    e.request.lines.forEach((l, i) => {
+      const code = e.accounts[i]!, key = numbers.get(code) ?? code;
+      const r = o.get(key) ?? { atoms: 0, codes: new Set<string>() };
+      r.atoms += l.line_type === "debit" ? l.amount_atoms : -l.amount_atoms;
+      r.codes.add(code);
+      o.set(key, r);
+    });
+  }
+  for (const e of mine) for (const l of e.lines) {
+    const key = l.account_number ?? l.account_id;
+    t.set(key, (t.get(key) ?? 0) + (l.line_type === "debit" ? l.amount_atoms : -l.amount_atoms));
+  }
+  const rows: T0OwnRow[] = [...new Set([...o.keys(), ...t.keys()])].sort().map((account) => {
+    const a = o.get(account)?.atoms ?? 0, b = t.get(account) ?? 0;
+    return { account, ours_atoms: a, t0_atoms: b, diff_atoms: a - b, ours_codes: [...(o.get(account)?.codes ?? [])].sort() };
+  });
+  const wanted = new Set(ours.map((e) => e.jeNumber)), have = new Set(mine.map((e) => e.je_number));
+  const sameSet = wanted.size === have.size && [...wanted].every((j) => have.has(j));
+  const differences = rows.filter((r) => r.diff_atoms !== 0);
+  return {
+    matches: differences.length === 0 && sameSet, currency: mine[0]?.currency ?? ours[0]?.request.currency ?? "", entries_in_t0: mine.length,
+    entries_ours: ours.length, foreign_entries: inT0.length - mine.length, rows, differences,
+  };
 }

@@ -5,9 +5,10 @@ import { doubleEntry, trialBalance, type Posting } from "../src/accounting/books
 import type { JournalLine } from "../src/accounting/gl.js";
 import { CHART } from "../src/config/gl.js";
 import {
-  buildEntries, compareReports, pushBooks, resolveAccounts, T0Client, T0Error, t0AccountType, trialInFunctional,
+  buildEntries, compareOwnEntries, compareReports, pushBooks, resolveAccounts, T0Client, T0Error, t0AccountType, trialInFunctional,
   type T0ProfitLoss, type T0Rate,
 } from "../src/accounting/t0.js";
+import { T0_SANDBOX_MAP } from "../src/config/t0Map.js";
 import { chartAccounts, FakeT0 } from "./fakes/t0.js";
 
 const line = (over: Partial<JournalLine>): JournalLine => ({
@@ -321,5 +322,63 @@ describe("T:0 entries", () => {
     expect(codes.map((c) => [c, t0AccountType(c)])).toEqual(codes.map((c) => [c, expect.any(String)]));
     expect(["1200", "1210", "1220", "1590", "2900", "3000", "4100", "5000", "6200", "6900"].map(t0AccountType))
       .toEqual(["bank", "bank", "bank", "other_current_assets", "other_current_liabilities", "equity", "income", "cost_of_goods_sold", "cost_of_goods_sold", "expenses"]);
+  });
+});
+
+describe("T:0 sandbox mapping and own-entry comparison", () => {
+  const sandbox = () => {
+    const nums = [...new Set(Object.values(T0_SANDBOX_MAP).map((t) => t.number))];
+    const fake = new FakeT0(chartAccounts([...nums, "51010"], () => "expenses"));
+    fake.functional = "USD";
+    const client = new T0Client({ apiKey: fake.key, fetch: fake.fetch, retryDelayMs: 0 });
+    return { fake, client };
+  };
+
+  it("maps every code of our chart, only when our own code is missing, and the memo keeps shared accounts apart", () => {
+    expect(Object.keys(T0_SANDBOX_MAP).sort()).toEqual(codes.sort());
+    const { fake } = sandbox();
+    const r = resolveAccounts(fake.accounts, codes, { fallback: T0_SANDBOX_MAP });
+    expect(r.numbers.get("4100")).toBe("41010");
+    expect(r.map.get("4000")).toBe(r.map.get("4200"));
+    expect(r.labels.get("1200")).toContain("Purser 1200");
+    // Our own code wins when T:0 has it.
+    const own = resolveAccounts([...fake.accounts, ...chartAccounts(["4000"], () => "income")], ["4000", "4200"], { fallback: T0_SANDBOX_MAP });
+    expect(own.numbers.get("4000")).toBe("4000");
+    expect(own.numbers.get("4200")).toBe("41010");
+    // Without the map flag the codes are still missing; a mapped target that does not exist is named.
+    expect(() => resolveAccounts(fake.accounts, codes)).toThrow(/missing/);
+    expect(() => resolveAccounts([], ["4000"], { fallback: T0_SANDBOX_MAP })).toThrow(/41010/);
+    const { map, labels } = r;
+    const entries = buildEntries(doubleEntry(day.map((l) => (l.currency === "EUR" ? { ...l, currency: "USD", bank_account: "1201" } : l))), map, "USD", () => undefined, { labels });
+    const memos = entries.flatMap((e) => e.request.lines.map((l) => l.memo ?? ""));
+    expect(memos.some((m) => m.startsWith("Purser 4000"))).toBe(true);
+    expect(memos.some((m) => m.startsWith("Purser 4100"))).toBe(true);
+  });
+
+  it("compare totals only PUR- entries, ignores foreign ones, and matches only to the atom", async () => {
+    const { fake, client } = sandbox();
+    const { map, numbers, labels } = resolveAccounts(fake.accounts, codes, { fallback: T0_SANDBOX_MAP });
+    const usdDay = day.map((l) => (l.currency === "EUR" ? { ...l, currency: "USD", bank_account: "1201" } : l));
+    const entries = buildEntries(doubleEntry(usdDay), map, "USD", () => undefined, { labels });
+    // Someone else's entries on the same accounts, with other je_numbers.
+    for (const je of ["LEAP-1", "MANUAL-7"]) {
+      await client.postJournalEntry({ entry_date: "2026-10-30", currency: "USD", je_number: je, lines: [
+        { gl_account_id: map.get("4000")!, line_type: "credit", amount_atoms: 99999 }, { gl_account_id: map.get("1210")!, line_type: "debit", amount_atoms: 99999 }] }, `k-${je}`);
+    }
+    await pushBooks(client, entries, new Set());
+    const held = async () => { const a = []; for await (const e of client.listJournalEntries({ dateFrom: "2026-10-01", dateTo: "2026-10-31", source: ["manual"] })) a.push(e); return a; };
+    const all = await held();
+    const ok = compareOwnEntries(entries, numbers, all);
+    expect(all.length).toBe(entries.length + 2);
+    expect(ok).toMatchObject({ matches: true, entries_in_t0: entries.length, foreign_entries: 2 });
+    expect(ok.rows.find((r) => r.account === "41010")?.ours_codes).toEqual(["4000", "4100"]);
+    // 4000 +5 atoms and 4100 -5 net out on the shared account; the foreign 99999 is not in it.
+    expect(ok.rows.find((r) => r.account === "41010")?.t0_atoms).toBe(0);
+    // A missing entry or a one-atom difference is a difference.
+    expect(compareOwnEntries(entries, numbers, all.filter((e) => e.je_number !== entries[0]!.jeNumber)).matches).toBe(false);
+    const skewed = entries.map((e, i) => (i === 2 ? { ...e, request: { ...e.request, lines: e.request.lines.map((l, j) => (j === 0 ? { ...l, amount_atoms: l.amount_atoms + 1 } : l)) } } : e));
+    const bad = compareOwnEntries(skewed, numbers, all);
+    expect(bad.matches).toBe(false);
+    expect(bad.differences.length).toBeGreaterThan(0);
   });
 });
