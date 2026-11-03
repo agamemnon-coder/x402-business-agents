@@ -378,3 +378,4 @@
 {"block":"evals","usd_micros":123232,"what":"blind holdout H7 dry-176 (live)","at":"2026-11-02T21:18:30.834Z"}
 {"block":"evals","usd_micros":74548,"what":"blind holdout H6 dry-177 (live)","at":"2026-11-02T21:31:47.626Z"}
 {"block":"evals","usd_micros":49528,"what":"blind holdout H2 dry-178 (live)","at":"2026-11-02T21:52:15.290Z"}
+{"block":"evals","usd_micros":291069,"what":"dry run dry-179 (Thursday world, 3 agents, live; from the ledger agent.run calls)","at":"2026-11-02T22:18:05.000Z"}
