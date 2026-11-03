@@ -12,7 +12,7 @@ Twijfel je? Zeg "stop". Er gaat dan niets weg.
 ## Begin
 
 1. Link 1 in een **privé Safari-tab**, open laten. 2. Enrol-pagina, code, **10 seconden wachten**, Face ID.
-3. Stuur in de chat: **"Bevestig passkey &lt;vingerafdruk&gt;"** (ook voor de test-passkey). 4. **Vier ogen aan:** P-0001 → tik de kaart → Confirm with Face ID.
+3. Stuur in de chat: **"Bevestig passkey [vingerafdruk]"** (ook voor de test-passkey). 4. **Vier ogen aan:** P-0001 → tik de kaart → Confirm with Face ID.
 
 ## De run, in volgorde (Claude start eerst de leveranciers, dan de agents)
 
