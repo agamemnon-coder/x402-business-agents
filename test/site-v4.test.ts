@@ -95,15 +95,13 @@ describe("the site after v4", () => {
     }
   });
 
-  it("keeps Watch on about a dozen highlights without the fee_unknown attempt; the full run labels it an earlier attempt", () => {
+  it("keeps Watch on about a dozen highlights; the main run's licence was paid on its first attempt (no earlier attempt to label)", () => {
     const h = highlights(run);
     expect(h.length).toBeGreaterThanOrEqual(10);
     expect(h.length).toBeLessThanOrEqual(15);
     expect(h.some((e) => e.k === "money" && (e.refused?.code === "fee_unknown" || e.earlier))).toBe(false);
-    const fee = run.events.find((e) => e.k === "money" && e.refused?.code === "fee_unknown");
-    expect(fee && fee.k === "money" && fee.earlier).toBe(true);
+    expect(run.events.some((e) => e.k === "money" && e.earlier)).toBe(false);
     expect(pages.watch).toContain(`Full run (${run.events.length} steps)`);
-    expect(pages.watch).toMatch(/Earlier attempt · nothing paid/);
     expect(pages.watch).toContain(WORLD_SETUP);
   });
 
@@ -142,8 +140,10 @@ describe("the site after v4", () => {
       expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
       expect(html).not.toMatch(/<script/);
-      // Each page is labelled with the run it shows: agent run 1, or for /visa the separate TAP run of the same day.
-      expect(html).toContain(name === "visa" ? tapRun()!.label : run.label);
+      // Each page is labelled with the run it shows: the main run, which on /visa has its own TAP-signed card buy
+      // (the separate TAP run of 2 Nov is named inside, under its own label).
+      expect(html).toContain(run.label);
+      if (name === "visa") expect(html).toContain(tapRun()!.label);
     }
   });
 

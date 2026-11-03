@@ -40,7 +40,7 @@ export function runLabels(rec: Recording, auto: Recording): { recorded: string; 
     autonomy: runLabel(auto as unknown as RunRecord),
   };
 }
-/** The agent run's record: agent run 1 when it is in the repo. */
+/** The agent run's record: the main run (3 Nov) when it is in the repo. */
 const agentRecord = <T>() => loadRecord().record as unknown as T;
 
 /** The Airwallex ids read back from the sandbox with GET only (npm run awx-readback). */

@@ -22,18 +22,16 @@ Purser gives each AI agent an Airwallex card and a Metal on-chain mandate, withi
 **Track 1 (Adaptive Treasury Controller), Starter Kit 11 (x402 Business Agents), for the Metal Award. Your AI agents
 spend through Airwallex and Metal. The CFO stays in control.**
 
-**Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. The TAP run (2 November) was a separate test world, not part of the main flow: Visa's reference registry self-hosted with a test key, and our own TAP merchant. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
+**Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. The TAP run (2 November) was a separate test world: Visa's reference registry self-hosted with a test key, and our own TAP merchant. In the main run (3 November) the Sourcing agent's TAP-signed card buy ran in the run's own world: our layer verified both signatures and Airwallex approved EUR 45.00 on the agent's card. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
 
 Purser is for the CFO or controller of a small company that runs AI agents and wants them to spend company money only
 within limits the CFO sets. The example company is Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query
-(here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. In agent run 1
-(2 November), 44 of the 63 sales resold data from a cache up to 300 s old, as the Sourcing agent's buy policy allowed;
-Thursday's main run is planned with the cache off. It has Kit 11's three
+(here one simulated customer, Summit Outfitters, whose agent we run) and pays its suppliers. In the main run
+(3 November) the cache was off: 55 queries, 55 upstream purchases (41 paid, 14 refused). It has Kit 11's three
 agents, the Sourcing, Support and Treasury agent, each with its own card and its own mandate.
 
 ### From idea to build
 
-<!-- Max: update the figures after Thursday's main run (5 November); each one has its source in docs/claims.md. -->
 Our idea (submitted 24 October) promised three agents on one Metal account, each under its own on-chain mandate, and
 three moments: a price rise, a dispute and a euro bill. Built as promised, each with its proof in
 [docs/idea-vs-build.md](../idea-vs-build.md):
@@ -41,13 +39,12 @@ three moments: a price rise, a dispute and a euro bill. Built as promised, each 
   agent with the owner key;
 - x402 queries at 5 cents with a signed order, upstream data at 2 cents;
 - the price rise to 4 cents refused against the mandate, two priced options, the mandates replaced on chain only after
-  the approval of their exact terms;
+  the approval of their exact terms (main run: Treasury's options 40 s after Metal's refusal);
 - the dispute settled from signed orders and on-chain payments, refunds only for wrong data, each once;
-- the euro licence invoice paid at Airwallex by SWIFT, with the fee in the approval: in agent run 1 (2 November)
-  EUR 240.00 from the EUR balance, no FX needed (transfer `7bbb3d61…` PAID, fee EUR 13.37; payment started by the CFO
-  with `npm run licence`, the Treasury agent had advised paying later). When euros are short the plan buys only the
-  shortfall on a locked quote; that ran this week in separate runs (30 October end check: EUR 370.00 for an invoice;
-  1 November hosted reserve check: EUR 253.48 for the licence), not in agent run 1.
+- the euro licence invoice paid at Airwallex by SWIFT, with the fee in the approval: in the main run (3 November) the
+  Treasury agent planned the EUR 240.00 licence itself (P-0005); after the CFO's Face ID it bought only the shortfall
+  by FX (EUR 110.00 for USD 124.29 on a locked quote), then paid by SWIFT: transfer `03360bfa…` PAID 6 s after the
+  Face ID, fee EUR 13.42 (ceiling EUR 20.00).
 
 What got better than the idea: the agents now decide for themselves, as Claude agents with their own tools, inside
 the same limits; the approval is Face ID on the CFO's phone instead of a typed hash; every agent also has an Airwallex
@@ -85,9 +82,10 @@ agents.
   a total budget, one payee and an end date.
 - **A price rise refused against the mandate (recorded run, 30 October).** When the warehouse API (a stand-in we run)
   raised its price above the cap, Metal's facilitator refused the payment against the mandate on chain
-  (`mandate_cap_exceeded`); nothing moved. In agent run 1 (2 November) Purser refused before signing; Metal recorded
-  the refusal on chain (tx `0x3ad8de2f…a84d`). The Treasury agent proposed options, the CFO
-  signed the new terms with Face ID, and Purser replaced the mandates; the old one is refused (`mandate_revoked`).
+  (`mandate_cap_exceeded`); nothing moved. Defense in depth: Purser normally refuses before signing. To prove the rail
+  itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved (main run,
+  3 November, tx `0x2e92f9cb…1871`). The Treasury agent proposed options 40 s later, the CFO signed the new terms with
+  Face ID, the second approver signed too, and Purser replaced the mandates; the old one is refused (`mandate_revoked`).
 - **x402 with signed orders** for per-request sales, **mandate pulls** for refunds and the earnings sweep, and
   **pay-per-call clearing** for a prepaying customer (separate live run).
 - **Earnings are booked at Airwallex only when final**, exactly once: a simulated sandbox deposit that names the
@@ -121,7 +119,9 @@ agents.
 Haiku sorts each incoming document, Sonnet reads it into checked fields, and Opus reviews a proposal's risk for the
 CFO. Claude also played the attacker in the red team. Claude holds no key and cannot use the CFO's passkey; in this demo
 the second approver is a labelled test passkey, signed on the CFO's go. In production this is a second person. Code
-checks every payment against the policy, and only the CFO's Face ID moves money beyond the agents' limits. In the recorded run
+checks every payment against the policy, and only the CFO's Face ID moves money beyond the agents' limits. In the
+main run the three agents (Sourcing on Haiku, Support on Sonnet, Treasury on Opus) made 24 decisions, all by Claude,
+0 fallbacks, in 50 calls each with a request id, for USD 0.3170 at list prices. In the recorded run of 30 October
 Claude cost $0.093 per €1,000 the agents paid.
 
 ### Controls
@@ -134,6 +134,22 @@ Claude cost $0.093 per €1,000 the agents paid.
   instruction is held for a person; an agent that pays too often is stopped; a payment the ledger cannot explain is
   found by the hourly reconciliation.
 - **Audit:** every decision goes into an append-only, hash-chained log that `npm run verify` re-checks.
+
+### Proof from the main run (3 November)
+
+Max on his own phone with Face ID; the agents decided with Claude; test money only (Metal testnet, Airwallex sandbox).
+Second approver: a labelled test passkey in this demo. In production this is a second person. Log:
+`docs/runs/2026-11-03-hoofdrun.md`.
+- the price rise: one purchase at 0.04 let through to Metal, which refused it itself (tx `0x2e92f9cb…1871`); 14
+  queries answered with an error status, none settled;
+- Treasury's options 40 s after the refusal; four eyes (the CFO, then the second approver) and the mandates replaced
+  on chain;
+- the dispute: 12 orders checked, 3 refunded by the Support agent, "refund the other 9" rejected by the CFO;
+- the EUR licence planned by the Treasury agent, EUR 110.00 bought by FX for the shortfall, PAID 6 s after Face ID;
+- a TAP-signed card buy approved by Airwallex in the same world;
+- 24 of 24 decisions by Claude, 0 fallbacks; 5 decisions signed with Face ID by the CFO; the books match the chain and
+  Airwallex (`verify`, `reconcile` 0 differences, `data-qa` 217 of 217 checks, 110 money movements, 0 without an
+  origin).
 
 ### Proof from the recorded run
 
@@ -185,6 +201,8 @@ Scenario Lab and a simulated month, and opens the browser. Running it live (sand
 4. `screens/4-live.png`: the working day on the two rails
 5. `screens/5-disputes.png`: the Dispute desk case, order by order
 6. `screens/6-books.png`: the books, from the same ledger
+7. `screens/15-watch.png`: Watch, replaying the main run (3 November)
+8. `screens/16-proof.png`: Proof, from the main run
 
 ## Deck and zip
 

@@ -1725,7 +1725,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     markNav("dashboard");
     document.getElementById("signin").hidden = false;
   } else if (wantAutonomy && AUTONOMY) {
-    // D19: the agents deciding, from an autonomous dry run (test passkeys, test money), never shown as a live run.
+    // D19: the agents deciding, from the played run's record (the main run of 3 Nov; test money), labelled as a recording.
     markNav("dashboard");
     tabs([["The agents decide", "?autonomy", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?autonomy&agents", wantAgents], ["Books", "?autonomy&books", wantBooks], ["Disputes", "?autonomy&disputes", wantDisputes]]);
     var asnap = AUTONOMY.snapshot; asnap.recorded = true; asnap.relay = null;
@@ -1733,7 +1733,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     document.getElementById("rec-text").textContent = AUTONOMY.label || ("Autonomous dry run · " + dayFmt.format(new Date(AUTONOMY.recorded_at)) + " · test passkeys and test money · not a live run");
     var aMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", AUTONOMY.run + ". We changed the world; each agent decided with real Claude calls, inside its limits on Metal and Airwallex. " + (AUTONOMY.about || ""))]);
     var arb = document.getElementById("recbanner"); if (!arb.querySelector("details")) arb.appendChild(aMore);
-    live("rec", "Dry run");
+    live("rec", "Recorded run");
     var ast = document.getElementById("stop"); ast.hidden = false; ast.disabled = true; ast.lastChild.textContent = "Emergency stop · live only";
     showDash(); render(asnap);
     if (!wantAgents && !wantBooks && !wantDisputes) { var cp = document.getElementById("claude-panel"); if (cp) setTimeout(function () { cp.scrollIntoView({ block: "start" }); }, 50); }

@@ -29,6 +29,8 @@ const SCREENS: [string, string][] = [
   ["4-live", "/live?scene=refuse&autoplay=0"],
   ["5-disputes", "/?recorded&disputes"],
   ["6-books", "/?recorded&books"],
+  ["15-watch", "/watch"],
+  ["16-proof", "/proof"],
 ];
 
 const judge = await startJudge(0);
@@ -60,6 +62,8 @@ try {
     await page.goto(`${judge.url}${path}`, { waitUntil: "load" });
     await unstick();
     await page.waitForTimeout(1200);
+    // A panel no longer on its page (the landing became Home on 2 Nov): the earlier close-up is kept as it was.
+    if ((await page.locator(sels[0]!).count()) === 0) { console.log(`screens/${name}.png  kept: ${path} has no ${sels[0]}`); continue; }
     // One element, or the box around several (the three enterprise cards), captured from the full page.
     const boxes = await Promise.all(sels.map(async (sel) => (await page.locator(sel).first().boundingBox())!));
     const [x, y] = [Math.min(...boxes.map((b) => b.x)), Math.min(...boxes.map((b) => b.y))];
@@ -88,7 +92,7 @@ try {
   const deckShots: DeckShots = {
     landing: png("1-landing"), dashboard: png("2-dashboard"), metal: png("3-metal"), live: png("4-live"), disputes: png("5-disputes"), books: png("6-books"),
     rails: png("7-rails"), inspector: png("8-inspector"), fourEyes: png("9-four-eyes"), compliance: png("9-compliance"), try: png("10-try"),
-    overview: png("11-overview"), claude: png("12-claude"), result: png("13-result"), dispute: png("14-dispute"),
+    overview: png("11-overview"), claude: png("12-claude"), result: png("13-result"), dispute: png("14-dispute"), watch: png("15-watch"), proof: png("16-proof"),
     // Moments of the film, taken above.
     refuse: png("live-refuse"), decline: png("live-decline"),
     phoneOptions: png("phone-options"), phoneConfirm: png("phone-confirm"),

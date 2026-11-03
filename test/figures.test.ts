@@ -1,7 +1,7 @@
 // Every labelled figure on Home, Proof and Watch is the figure the record says for that label (Max's rescan, 2 Nov:
 // Proof showed 5 Face ID decisions in one card and "6 decisions signed" in another). Each figure is read off the page
-// with its label and compared with a value counted here, straight from the raw files (docs/demo/agent-run.json with
-// its notes, the TAP run, the eval and red-team records), not through the page code. A labelled figure this test
+// with its label and compared with a value counted here, straight from the raw files (docs/demo/main-run.json, the
+// TAP run, the eval and red-team records), not through the page code. A labelled figure this test
 // does not know fails too, so a new number cannot slip in unchecked.
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -10,7 +10,7 @@ import { buildPages } from "../src/relay/assets.js";
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 interface Raw {
   snapshot: {
-    flows: { kind: string; rail: string; amount: string; unit: string; count?: number; decided: string; refused?: { by: string; reason: string } | null }[];
+    flows: { at: string; agent: string | null; kind: string; rail: string; amount: string; unit: string; count?: number; decided: string; proof: { href: string | null }; refused?: { by: string; reason: string } | null }[];
     agent_stats: { decisions: number; by_claude: number; fallback: number; claude_calls: number; cost_usd_micros: number }[];
     decisions: { status: string }[]; audit: { rows: number };
     traces: { agent: string; task: string; steps: { tool: string | null; input: unknown }[] }[];
@@ -18,7 +18,7 @@ interface Raw {
   proof: { face_id: number };
   ledger: { events: { event: string; subject: string | null; payload: Record<string, unknown> }[] };
 }
-const R = JSON.parse(read("docs/demo/agent-run.json")) as Raw;
+const R = JSON.parse(read("docs/demo/main-run.json")) as Raw;
 const tapFile = readdirSync(new URL("../docs/runs/", import.meta.url)).filter((f) => /^visa-tap-live.*\.json$/.test(f)).sort().pop()!;
 const TAP = JSON.parse(read(`docs/runs/${tapFile}`)) as { reference: { commit: string }; steps: { airwallex: { approved: boolean; failure_reason: string | null } }[] };
 const VAR = JSON.parse(read("docs/evals/autonomy-variation.json")) as { summary: { runs: number; by_claude: number } };
@@ -33,7 +33,11 @@ function expected(): Record<string, string | string[]> {
   const faceIds = new Set(ev.filter((e) => /^proposal\.(approved|rejected)$/.test(e.event) && /\bmax\b/i.test(String(e.payload.approver ?? ""))).map((e) => e.subject)).size;
   const signatures = ev.filter((e) => /^proposal\.(approved|rejected|cosigned)$/.test(e.event)).length;
   // At the cap; a refusal because the mandate had just been replaced is shown apart, not as a limit.
-  const metalRefusals = s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason)).length;
+  // The main run's purchase let through to Metal has two rows (the facilitator's 402, then its record on chain): one attempt.
+  const atCap = s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason));
+  const metalRefusals = atCap.filter((f) => !(!f.proof.href && atCap.some((g) => g !== f && g.proof.href && g.agent === f.agent && Date.parse(g.at) >= Date.parse(f.at) && Date.parse(g.at) - Date.parse(f.at) < 15_000))).length;
+  const fx = ev.find((e) => e.event === "fx.converted");
+  const ownTap = ev.some((e) => e.event === "tap.checkout_verified") && ev.some((e) => e.event === "card.charge_approved");
   const revoked = s.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length;
   const tapDeclines = TAP.steps.filter((x) => !x.airwallex.approved && x.airwallex.failure_reason === "LIMIT_EXCEEDED").length;
   const rejected = s.decisions.filter((d) => d.status === "REJECTED").length;
@@ -54,7 +58,8 @@ function expected(): Record<string, string | string[]> {
     "refused by Metal at the cap": String(metalRefusals),
     "refused by Metal: mandate just replaced": String(revoked),
     "mandates replaced": String(ev.filter((e) => e.event === "mandate.replaced").length),
-    "movements at Airwallex": String(s.flows.filter((f) => f.rail.startsWith("airwallex") && !f.refused).length),
+    // The FX conversion (fx.converted in the ledger) is a movement at Airwallex too.
+    "movements at Airwallex": String(s.flows.filter((f) => f.rail.startsWith("airwallex") && !f.refused).length + (fx ? 1 : 0)),
     "card decline at the limit (TAP run)": String(tapDeclines),
     "signed checkouts (TAP run)": String(TAP.steps.length),
     "reference commit": TAP.reference.commit.slice(0, 7),
@@ -66,6 +71,8 @@ function expected(): Record<string, string | string[]> {
     "USD booked after finality": booked.amount,
     "licence paid by SWIFT": `€${licence.amount.replace(/\.00$/, "")}`,
     "earlier attempt, nothing paid": String(failedThenPaid),
+    "bought by FX for the shortfall": fx ? String(fx.payload.buy).replace(/^EUR /, "€").replace(/\.00$/, "") : "",
+    "signed checkout in this run": ownTap ? "1" : "0",
     "orders disputed": String(orders),
     "variation runs by Claude": `${VAR.summary.by_claude}/${VAR.summary.runs}`,
     "attacks failed": `${RED.blocked}/${RED.attempts}`,

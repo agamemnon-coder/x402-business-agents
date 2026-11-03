@@ -49,7 +49,7 @@ const REDTEAM_JSON = (() => {
 
 const PAGE_TEMPLATE = withNav(readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8"), "overview");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
-// The agent run (agent run 1, 2 Nov; src/redesign/run.ts), recorded with npm run autonomy-record, for /?autonomy, with
+// The agent run (the main run, 3 Nov; src/redesign/run.ts), recorded with npm run autonomy-record, for /?autonomy, with
 // its label, the world set-up and who the second approver was.
 const AUTONOMY_JSON = (() => {
   try {

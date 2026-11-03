@@ -47,7 +47,7 @@ describe("the partner pages", () => {
 
   it("are short, label the run, link the partner's docs (folded), and show no Visa logo and no script", () => {
     for (const [page, docs] of [[AIRWALLEX_PAGE, "https://www.airwallex.com/docs/"], [CLAUDE_PAGE, "https://platform.claude.com/docs/"]] as const) {
-      expect(page).toMatch(/Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/);
+      expect(page).toMatch(/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/);
       expect(page).toMatch(/<details class="fold"><summary>The (Airwallex|Claude) [^<]*docs/);
       expect(page.split(docs).length - 1).toBeGreaterThanOrEqual(4);
       expect(page).not.toMatch(/<img[^>]*visa/i);

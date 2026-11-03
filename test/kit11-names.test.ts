@@ -98,7 +98,7 @@ describe("Kit 11's agent names, word for word", () => {
     expect(INITIAL_MANDATES.sourcing.capCents).toBe(3);
   });
 
-  // The 30 October banner is gone (Max, 2 Nov): the pages play agent run 1, recorded with the Kit 11 names.
+  // The 30 October banner is gone (Max, 2 Nov): the pages play the main run (3 Nov), recorded with the Kit 11 names.
   it("shows no banner about the 30 October recording", () => {
     for (const [name, body] of Object.entries(buildPages())) if (typeof body === "string") expect({ name, banner: body.includes(RECORDING_NAMES_NOTE) }).toEqual({ name, banner: false });
   });

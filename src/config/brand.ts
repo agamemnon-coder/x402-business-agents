@@ -26,7 +26,12 @@ export const SPLIT_LINE = "Claude decides the exceptions; routine buying and sel
 export const CORE_SENTENCE = "Claude agents handle the exceptions — price shocks, disputes, rebalancing. Routine runs at code speed. Metal and Airwallex enforce every limit; the CFO approves anything beyond them.";
 /** Who the second approver is, said wherever four eyes appears (Max, 2 Nov: he does everything alone). */
 export const SECOND_APPROVER = "Second approver: a labelled test passkey in this demo. In production this is a second person.";
-/** How agent run 1's world was set up, said wherever the run is shown (Max, 2 Nov). */
+/**
+ * The main run (3 Nov): one purchase over the cap let through to Metal on Max's flag, word for word wherever that
+ * refusal is shown. The run's own ledger row carries the same text (upstream.let_through_refused).
+ */
+export const DEFENSE_IN_DEPTH = "Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved.";
+/** How the played run's world was set up (agent run 1 and the main run alike), said wherever the run is shown (Max, 2 Nov). */
 export const WORLD_SETUP = "World set-up: the alternative supplier (Ridgeline) is offline in this world, so the price rise forces a choice. The agents were not told what to do.";
 /** Four eyes, in one line, wherever a page names it. */
 export const FOUR_EYES_LINE = "Four eyes on chain: two signatures required (second approver = a labelled test passkey in this demo)";

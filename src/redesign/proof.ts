@@ -1,11 +1,11 @@
-// Proof (mega-prompt v4, C5 and D3): everything from agent run 1, compact. Who decides what (decisions by Claude next
+// Proof (mega-prompt v4, C5 and D3): everything from the played run (the main run, 3 Nov), compact. Who decides what (decisions by Claude next
 // to routine payments by code), the run's numbers, four partner cards (Metal, Airwallex, Visa TAP as text, Claude) with
 // their live proof folded, who stopped what, the Face ID decisions (one number, from the run's ledger), the earlier
 // licence attempt that paid nothing, the checks, and a folded, labelled Archive. Nothing typed in by hand.
 
 import { readFileSync } from "node:fs";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
-import { agentRun, faceIdDecisions, family, runName, split, stops, tapRun, type AgentRun, type Ev, type Tile } from "./run.js";
+import { agentRun, faceIdDecisions, family, ownTap, runName, split, stops, tapRun, type AgentRun, type Ev, type Tile } from "./run.js";
 import { esc, icon, page } from "./ui.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
@@ -91,7 +91,7 @@ export const LOGO = {
 export function partnerProof(run: AgentRun): Record<"metal" | "airwallex" | "visa" | "claude", string[]> {
   const s = run.record.snapshot;
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
-  const tap = tapRun();
+  const tap = tapRun(), own = ownTap(run.record);
   const mandates = run.events.filter((e): e is Extract<Ev, { k: "mandate" }> => e.k === "mandate");
   const tapDecline = tap?.steps.find((x) => !x.approved);
   return {
@@ -106,16 +106,20 @@ export function partnerProof(run: AgentRun): Record<"metal" | "airwallex" | "vis
       ...(tapDecline ? [li(`The limit, enforced by Airwallex (${tap!.label}): EUR ${tapDecline.amount} declined, ${tapDecline.reason ?? ""}`, "no", { label: `Airwallex ${tapDecline.txId.slice(0, 8)}… · read back with GET: ${tapDecline.getStatus}`, href: null })] : []),
       ...money.filter((e) => e.rail === "airwallex" && e.refused?.by === "airwallex-sandbox").map((e) => li(`${earlierLine(e)}`, "no", null)),
     ],
-    visa: tap ? tap.steps.map((x) => li(
-      `${x.model ? `The Sourcing agent (${family(x.model)}) picked the card rail` : "Code tried one purchase over the card's limit"}: Visa's reference proxy answered ${x.proxyStatus}, our layer verified both signatures (${x.sig1}, ${x.sig2}); the Airwallex card (brand as Airwallex returns it: ${x.brand}) was ${x.approved ? "approved" : `declined by Airwallex (${x.reason})`}, EUR ${x.amount}`,
-      x.approved ? "ok" : "no", { label: `Airwallex ${x.txId.slice(0, 8)}… · read back with GET: ${x.getStatus}`, href: null })) : [],
+    visa: [
+      // The played run's own TAP-signed buy (main run), then the separate TAP run of 2 November, labelled as that run.
+      ...(own ? [li(`In this run: the Sourcing agent (${family(own.model)}) bought the ${own.plan} plan at ${own.merchant}, EUR ${own.amount}; our layer verified both TAP signatures (${own.sig1}, ${own.sig2}); the agent's Airwallex card ····${own.last4} was approved by Airwallex`, "ok", { label: `Airwallex ${own.txId.slice(0, 8)}…`, href: null })] : []),
+      ...(tap ? tap.steps.map((x) => li(
+        `${tap.label}: ${x.model ? `the Sourcing agent (${family(x.model)}) picked the card rail` : "code tried one purchase over the card's limit"}: Visa's reference proxy answered ${x.proxyStatus}, our layer verified both signatures (${x.sig1}, ${x.sig2}); the Airwallex card (brand as Airwallex returns it: ${x.brand}) was ${x.approved ? "approved" : `declined by Airwallex (${x.reason})`}, EUR ${x.amount}`,
+        x.approved ? "ok" : "no", { label: `Airwallex ${x.txId.slice(0, 8)}… · read back with GET: ${x.getStatus}`, href: null })) : []),
+    ],
     claude: s.agent_stats.map((a) => li(`${a.agent[0]!.toUpperCase()}${a.agent.slice(1)} agent on ${family(a.models[0])}: ${a.by_claude} of ${a.decisions} decisions by Claude, ${a.fallback} fallback, ${a.claude_calls} calls, USD ${(a.cost_usd_micros / 1e6).toFixed(4)}`, "ok")),
   };
 }
 
 /** The four partner cards: logo, one line, two or three numbers, the live proof folded, a link to the partner's page. */
 function partnerCards(run: AgentRun): string {
-  const s = run.record.snapshot, p = partnerProof(run), st = stops(run.record), tap = tapRun(), sp = split(run.record);
+  const s = run.record.snapshot, p = partnerProof(run), st = stops(run.record), tap = tapRun(), own = ownTap(run.record), sp = split(run.record);
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
   const onChain = money.filter((e) => e.rail === "metal" && !e.refused).reduce((n, e) => n + e.count, 0);
   const mandates = run.events.filter((e) => e.k === "mandate").length;
@@ -125,7 +129,7 @@ function partnerCards(run: AgentRun): string {
   return `<div class="partners">
 ${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the cap") + (st.revoked ? fact(String(st.revoked), "refused by Metal: mandate just replaced") : "") + fact(String(mandates), "mandates replaced"), p.metal)}
 ${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + fact(String(st.airwallex), "card decline at the limit (TAP run)"), p.airwallex)}
-${tap ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit"), p.visa, `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`) : ""}
+${tap || own ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", (own ? fact("1", "signed checkout in this run") : "") + (tap ? fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit") : ""), p.visa, `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`) : ""}
 ${card("claude", LOGO.claude, "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls, each with a request id"), p.claude)}
 </div>`;
 }
@@ -189,7 +193,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ${moreCards(run)}
 </div></main>`;
   return page({
-    title: "Proof", description: "Every proof of agent run 1 in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS, body, js: JS, stage: false,
+    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS, body, js: JS, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

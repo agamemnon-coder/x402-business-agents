@@ -1,13 +1,13 @@
 // The partner pages in the redesign's style (mega-prompt v4, C1): /metal, /airwallex, /visa, /claude. Each is short
 // (about 150 visible words at most): a picture of the flow first, three or four numbers, one sentence, and everything
-// else folded (<details>): the live proof from agent run 1 (the same list as Proof's card), the docs we built on, what
+// else folded (<details>): the live proof from the main run (the same list as Proof's card), the docs we built on, what
 // is simulated. Every figure from the record (src/redesign/run.ts) or the TAP run's record; logos only as "built on",
 // never a Visa logo. No script. Also the clean 404 page.
 
 import { readFileSync } from "node:fs";
 import { SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
-import { agentRun, callBadge, faceIdDecisions, family, split, stops, tapRun, type AgentRun, type Ev } from "./run.js";
+import { agentRun, callBadge, faceIdDecisions, family, fxOf, ownTap, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { esc, icon, page } from "./ui.js";
 
@@ -102,14 +102,16 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   const booked = money.find((e) => e.via === "deposit" && e.dir === "in");
   const licence = money.find((e) => e.via === "SWIFT" && !e.refused);
   const earlier = money.filter((e) => e.earlier).length;
+  const fx = fxOf(run.record), t = timings(run.record);
   const used = airwallexData().features.filter((f) => /^(cards|controls|transactions|swift|deposit)$/.test(f.id));
   const eur = licence ? `€${licence.amount.replace(/\.00$/, "")}` : "";
   return shell(run, {
     title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
     picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "after finality", "awx"), arrow,
-      node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, node("circle-check", licence ? `${eur} paid by SWIFT` : "Paid by SWIFT", licence ? `Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
-    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], [String(st.airwallex), "card decline at the limit (TAP run)"], [String(earlier), "earlier attempt, nothing paid"]]),
+      node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
+      node("circle-check", licence ? `${eur} PAID by SWIFT` : "Paid by SWIFT", licence ? `${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID · ` : ""}Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
+    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.airwallex), "card decline at the limit (TAP run)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
     line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
     folds: fold("The live proof, with every Airwallex id", p.airwallex) + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
       + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."), ...money.filter((e) => e.earlier).map((e) => plainLi(earlierLine(e)))]),
@@ -117,16 +119,18 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
 }
 
 export function visaPage(run: AgentRun = agentRun()): string {
-  const tap = tapRun(), p = partnerProof(run);
-  const buy = tap?.steps.find((x) => x.approved && x.model), decline = tap?.steps.find((x) => !x.approved);
+  const tap = tapRun(), p = partnerProof(run), own = ownTap(run.record);
+  const buy = own ?? tap?.steps.find((x) => x.approved && x.model), decline = tap?.steps.find((x) => !x.approved);
   return shell(run, {
     title: "Visa TAP", description: "The Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol before its Airwallex card pays.",
     logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "visa",
-    picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow, node("shield-check", "Reference verifier", `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,
-      node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", "Airwallex card", "ok"), arrow, node("ban", decline ? `€${decline.amount} declined` : "Over the limit", "by Airwallex, at the limit", "bad")].join(""),
-    label: tap?.label, nums: "", line: "The card's limit still holds: over it, Airwallex declines.",
+    picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,
+      node("shield-check", own ? "Both signatures verified" : "Reference verifier", own ? "by our layer, in this run" : `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,
+      node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", own ? `Airwallex card ····${own.last4}` : "Airwallex card", "ok"), arrow,
+      node("ban", decline ? `€${decline.amount} declined` : "Over the limit", tap && own ? `by Airwallex · ${tap.label.replace(/ · test money$/, "")}` : "by Airwallex, at the limit", "bad")].join(""),
+    label: own ? undefined : tap?.label, nums: "", line: "The card's limit still holds: over it, Airwallex declines.",
     extra: `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`,
-    folds: fold("The live TAP run", p.visa) + fold("What this is, and is not", (tap?.labels ?? []).map((l) => plainLi(l.replace(/not a Visa-approved agent/g, "no approval by Visa of this agent")))),
+    folds: fold(own ? "The live proof" : "The live TAP run", p.visa) + fold("What this is, and is not", (tap?.labels ?? []).map((l) => plainLi(l.replace(/not a Visa-approved agent/g, "no approval by Visa of this agent")))),
   });
 }
 

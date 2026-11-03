@@ -90,7 +90,7 @@ const JS = `
       said(body, e.text);
     } else if (e.k === "money") {
       var r = e.refused;
-      head = el("span", "ic " + (r ? "bad" : e.rail)); head.appendChild(svg(r ? "ban" : e.rail === "metal" ? "zap" : e.via === "card" ? "credit-card" : "landmark"));
+      head = el("span", "ic " + (r ? "bad" : e.rail)); head.appendChild(svg(r ? "ban" : e.rail === "metal" ? "zap" : /^card/.test(e.via) ? "credit-card" : "landmark"));
       meta.appendChild(el("b", "", (e.rail === "metal" ? "Metal" : "Airwallex") + " · " + e.via));
       var res = !r ? (e.dir === "in" ? "✓ received" : /refund/i.test(e.what) ? "✓ refunded" : "✓ paid")
         : r.by === "recorded" ? "✕ Refused · recorded on chain" : r.by === "metal" ? "✕ Refused by Metal" : r.by === "airwallex-sandbox" ? (e.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced") : r.by === "airwallex" ? "✕ Declined by Airwallex" : "✕ Refused before signing";

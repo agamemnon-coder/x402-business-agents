@@ -139,7 +139,7 @@ function mini(m: Mini | null): string {
     return `<div class="mini m-price" aria-hidden="true"><div class="plot">
 <div class="cap" data-vars="--c0:${pct(m.cap)};--c1:${pct(m.newCap ?? m.cap)}"><span data-a="cap ${esc(m.cap)}" data-b="cap ${esc(m.newCap ?? m.cap)}"></span></div>
 <div class="bar" data-vars="--h0:${pct(m.old ?? m.cap)};--h1:${pct(m.price)}"><b>${esc(m.price)}</b><em>${esc(m.from)}</em></div></div>
-<div class="tags">${m.tx ? `<span class="tag t1">${icon("ban", 14)} Refused · recorded on chain</span>` : ""}
+<div class="tags">${m.tx ? `<span class="tag t1">${icon("ban", 14)} ${m.byMetal ? "Metal refused it · on chain" : "Refused · recorded on chain"}</span>` : ""}
 ${m.signers > 1 ? `<span class="tag t2">${icon("scan-face", 14)} ${m.signers} of ${m.signers} signatures</span>` : ""}
 ${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.price)}</span>` : ""}</div></div>`;
   }

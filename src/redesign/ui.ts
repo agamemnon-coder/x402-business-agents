@@ -252,7 +252,7 @@ function Stage(root, run) {
     var r = ev.refused;
     if (!r) return "✓ " + result(ev);
     if (r.by === "recorded") return "✕ Refused · recorded on chain" + (ev.proof && ev.proof.href ? " ↗" : "");
-    if (r.by === "metal") return "✕ Refused by Metal";
+    if (r.by === "metal") return "✕ Refused by Metal" + (ev.proof && ev.proof.href ? " · on chain ↗" : "");
     if (r.by === "airwallex-sandbox") return ev.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced";
     if (r.by === "airwallex") return "✕ Declined by Airwallex";
     return "✕ Refused before signing";
