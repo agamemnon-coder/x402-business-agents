@@ -7,6 +7,22 @@ supplier costs rise — plus Airwallex for cards, FX and the euro licence fee. E
 
 **Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
 
+**Proof from the main run (3 November 2026, world `main-1`, test money).** Run once, live, against the Airwallex
+sandbox and Metal testnet, with real Claude decisions (24 of 24 by Claude) and the CFO's real Face ID. Look these up
+yourself; the full log is [docs/runs/2026-11-03-hoofdrun.md](docs/runs/2026-11-03-hoofdrun.md).
+
+| What happened | Id |
+|---|---|
+| Metal refused the purchase over the mandate cap (`mandate_cap_exceeded`), recorded on chain | tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871` |
+| Mandates replaced on chain after four eyes (Sourcing; Treasury) | tx `0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790`; tx `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` |
+| Earnings swept after finality; the Airwallex deposit uses the tx as its reference | tx `0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4`; deposit `b3812e05-2afa-4698-8f64-429f9608e0a0` |
+| Airwallex FX: EUR 110.00 bought for the licence shortfall | conversion `3ca88196-05da-4d88-9caa-796f03704636` |
+| Airwallex SWIFT transfer: EUR 240.00 licence, PAID 6 s after Face ID (fee EUR 13.42) | transfer `03360bfa-afce-457b-89d1-e1097fbe3985` |
+| Airwallex card: Packwise Pro (EUR 45.00), TAP-signed checkout, approved after the CFO raised the limit | authorization `01a1a12f-4113-7000-b76d-014677710007` |
+
+What is ours and what is simulated is listed under [Test money](#test-money). Home, Watch and Proof on the
+hosted site (and in the offline `npm run judge`) replay this recorded run; they are not live.
+
 **Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/))
 or offline with `npm ci && npm run judge` (no keys, no network). Steps 2 and 3 are from the recorded run of 30 October
 (test money):
