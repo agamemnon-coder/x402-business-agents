@@ -9,6 +9,7 @@
 // past a cap, no refund outside the limits or for a sale code finds right, no payee other than allowed, no double
 // payment, and every payment carries its origin (D24).
 
+import { decideNothingNew, disputeLimits, handledElsewhere } from "../agents/disputeSource.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { audit } from "../audit/log.js";
 import { openDb, type DB } from "../db/open.js";
@@ -257,7 +258,13 @@ async function settleSim(ctx: SimCtx, by: "agent" | "code"): Promise<{ ok: boole
   const disputeId = ctx.disputeId;
   if (!disputeId) return { ok: false, text: "no dispute on file" };
   const bySeq = new Map((db.prepare("SELECT sale_id, CAST(json_extract(request_params_json, '$.seq') AS INTEGER) AS seq, price_cents FROM sales WHERE payer = ? AND status = 'DELIVERED'").all(SIM_ADDR.customer) as { sale_id: number; seq: number; price_cents: number }[]).map((s) => [s.seq, s]));
-  const seqs = spec.dispute.seqs.filter((s) => bySeq.has(s));
+  // As s2 does: an order an earlier dispute already refunded or put to the CFO is not decided again.
+  const elsewhere = handledElsewhere(db, spec.dispute.seqs.filter((s) => bySeq.has(s)).map((s) => bySeq.get(s)!.sale_id), disputeId);
+  const seqs = spec.dispute.seqs.filter((s) => bySeq.has(s) && !elsewhere.has(bySeq.get(s)!.sale_id));
+  if (seqs.length === 0 && elsewhere.size) {
+    await decideNothingNew(db, disputeId);
+    return { ok: true, text: `every order in ${disputeId} was handled by an earlier dispute; nothing new is refunded or sent to the CFO` };
+  }
   const wrong = new Set(spec.dispute.wrong);
   const data = (seq: number) => (wrong.has(seq) ? [{ seq, field: "parkas_in_stock", delivered: 12, corrected: 0, refund: true }] : seqs.includes(seq) ? [{ seq, field: "parkas_in_stock", delivered: 4, corrected: 4, refund: false }] : []);
   const pull = simPull(spec.seed, ctx.pulls);
@@ -283,14 +290,14 @@ async function settleSim(ctx: SimCtx, by: "agent" | "code"): Promise<{ ok: boole
         refunded: (db.prepare("SELECT r.amount_cents AS cents, CAST(json_extract(s.request_params_json, '$.seq') AS INTEGER) AS seq FROM refunds r JOIN sales s ON s.sale_id = r.sale_id WHERE r.dispute_id = ? AND r.outcome IN ('PAID', 'PENDING', 'HELD')").all(disputeId) as { seq: number; cents: number }[]),
         escalated: null,
       }),
-      limits: refundThresholds(db),
+      limits: disputeLimits(refundThresholds(db), db, SIM_ADDR.customer, disputeId),
     };
     const s = await settleDispute(db, { disputeId, customer: SUMMIT, seqs, requested: ctx.requested, email: ctx.disputeEmail }, deps, ctx.client, MODELS.act);
     if (s.source === "claude") return { ok: true, text: `SUPPORT AGENT refunded ${s.refunded.map((x) => `#${x}`).join(", ") || "nothing"}${s.escalated ? `; sent ${s.escalated.seqs.map((x) => `#${x}`).join(", ")} to the CFO as ${s.escalated.proposalId}` : ""}. ${s.run.text.slice(0, 400)}` };
   }
   // Code's settlement, as s2 does without the agent: the wrong sales within the automatic limits, else to the CFO.
   const wrongSeqs = seqs.filter((q) => wrong.has(q));
-  const route = planRefunds(wrongSeqs.map((q) => bySeq.get(q)!.price_cents), refundThresholds(db));
+  const route = planRefunds(wrongSeqs.map((q) => bySeq.get(q)!.price_cents), disputeLimits(refundThresholds(db), db, SIM_ADDR.customer, disputeId));
   if (route.route === "none") return { ok: true, text: "code refunded nothing: its data check finds no delivered sale wrong" };
   if (route.route === "auto") {
     await withOrigin(AUTO_REFUND, async () => { for (const q of wrongSeqs) await refundOne(q); });

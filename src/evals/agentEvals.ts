@@ -137,7 +137,7 @@ function declineCase(id: string, kind: AgentCase["kind"], what: string, reason: 
 const TIMING: TimingFacts = {
   proposalId: "P-eval", invoiceNo: "SLL-2026-11", vendor: "Stockline Data GmbH", amount: "1200.00", dueDate: "2026-11-15", today: "2026-11-05",
   eurAvailable: "800.00", eurFloor: "500.00", eurObligations: "0.00", usdAvailable: "40000.00", usdFloor: "10000.00",
-  quote: { sell: "USD 1006.21", buy: "EUR 920.00", rate: "0.9143", validTo: "2026-11-05T10:20:00Z" }, after: { eurFree: "0.00", usdAvailable: "38993.79" },
+  quote: { sell: "USD 1006.21", buy: "EUR 920.00", rate: "0.9143", validTo: "2026-11-05T10:20:00Z" }, after: { eurFree: "0.00", usdAvailable: "38993.79" }, feeMax: "20.00",
 };
 function timingCase(id: string, kind: AgentCase["kind"], what: string, f: TimingFacts, mustPayNow: boolean): AgentCase {
   return {
