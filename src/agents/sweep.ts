@@ -18,6 +18,7 @@ import { heldCents, releaseHold, reserveSpend, settleHold } from "../policy/hold
 import { extractTerms } from "@metalntwx/metal-pay/mandates";
 import { capRefusal } from "../policy/rules.js";
 import { velocityGate } from "../policy/velocity.js";
+import { replaceHoldRefusal } from "../policy/replaceHold.js";
 
 const sum = (db: DB, sql: string) => (db.prepare(sql).get() as { s: number | null }).s ?? 0;
 
@@ -101,9 +102,11 @@ async function sweepUnder(db: DB, paymentId: string, amountCents: number, to: Ad
   if (newAttempt) db.prepare("UPDATE sweeps SET origin_json = ? WHERE payment_id = ?").run(originJson(), paymentId);
   // The CFO policy's limit per sweep, the velocity limits, the mandate's budget and the agents' shared total, reserved
   // together before anything is signed (a hold). A pull already sent is counted by its ledger row: its retry only checks.
+  // An open mandate replace of the treasury mandate holds both (dry-179): the retry of a pull that never reached the
+  // chain would move the spend the replace carries.
   const inFlight = row.outcome === "PENDING" || row.outcome === "HELD";
   const refusal = inFlight
-    ? capRefusal(db, "treasury", amountCents) ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId)
+    ? capRefusal(db, "treasury", amountCents) ?? replaceHoldRefusal(db, "treasury") ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId)
     : reserveSpend(db, { agent: "treasury", rail: "metal", cents: amountCents, ref: paymentId, payee: "sweep" });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its

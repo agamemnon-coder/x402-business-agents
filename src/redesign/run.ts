@@ -50,7 +50,7 @@ export type Ev =
   | { k: "say"; at: string; agent: AgentId; model: string | null; by: "claude" | "fallback"; text: string; tools: string[]; call?: Call | null }
   | { k: "msg"; at: string; agent: AgentId; text: string }
   | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string; /** Who decided it: code, or the agent's Claude model (the flow's own "decided"). */ by?: string; /** A failed attempt before the one that paid: nothing paid. */ earlier?: boolean; /** The proposal that paid it later. */ retried?: { id: string; at: string; status: string } }
-  | { k: "face"; at: string; id: string; title: string; status: string; signers: string[] }
+  | { k: "face"; at: string; id: string; title: string; status: string; signers: string[]; /** STOPPED: why code did not run it. */ reason?: string }
   | { k: "mandate"; at: string; agent: AgentId; cap: string; budget: string; proposal: string; proof: Proof }
   | { k: "routine"; at: string; count: number; agents: AgentId[]; text: string }
   | { k: "shield"; at: string; text: string };
@@ -209,6 +209,7 @@ function events(r: RunRecord): Ev[] {
       if (row.event === "proposal.cosigned") out.push({ k: "face", at: row.ts, id, title: titleOf(id), status: "COSIGNED", signers: [person(approver)] });
       else if (row.event === "proposal.approved") out.push({ k: "face", at: row.ts, id, title: titleOf(id), status: "APPROVED", signers: approver.split(/\s*\+\s*/).map(person) });
       else if (row.event === "proposal.rejected") out.push({ k: "face", at: row.ts, id, title: titleOf(id), status: "REJECTED", signers: approver.split(/\s*\+\s*/).map(person) });
+      else if (row.event === "proposal.needs_reapproval") { const f = stoppedFace(row, titleOf(id)); if (f) out.push(f); }
       else if (row.event === "mandate.replaced" && isAgent(row.subject)) {
         const tx = String(row.payload.tx ?? "");
         out.push({ k: "mandate", at: row.ts, agent: row.subject, cap: String(row.payload.cap ?? ""), budget: String(row.payload.budget ?? ""), proposal: String(row.payload.proposal_id ?? ""), proof: { label: `tx ${tx.slice(0, 6)}…${tx.slice(-4)}`, href: `https://testnet.metalntwx.com/tx/${tx}` } });
@@ -234,6 +235,15 @@ function events(r: RunRecord): Ev[] {
   }
   for (const x of s.refusals) if (/planted instruction/i.test(x.what)) out.push({ k: "shield", at: x.ts, text: x.what });
   return out.sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/**
+ * dry-179: an approved proposal code did not run because its executor's guard refused it (closed, NEEDS_REAPPROVAL), as
+ * a step of Watch with the reason; null for any other needs_reapproval row (its other options closed with it).
+ */
+export function stoppedFace(row: { ts: string; event: string; subject: string | null; payload: Record<string, unknown> }, title: string): Extract<Ev, { k: "face" }> | null {
+  if (row.event !== "proposal.needs_reapproval" || typeof row.payload.stopped !== "string") return null;
+  return { k: "face", at: row.ts, id: row.subject ?? "", title, status: "STOPPED", signers: [], reason: String(row.payload.error ?? "") };
 }
 
 /** The live TAP run (docs/runs/visa-tap-live-*.json): a separate run of 2 November, shown under its own label. */

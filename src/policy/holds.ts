@@ -1,8 +1,9 @@
 // Spend holds (backend review B1). Before an agent signs a Metal payment or makes a card purchase, its amount is
 // reserved here in one exclusive (IMMEDIATE) SQLite transaction that checks, together: the emergency stop and the
-// agent's stop, the CFO policy's cap per payment, the mandate's cap per payment, the agent's mandate budget, the
-// agents' shared total, the card's month and the velocity limits. Two payments racing for the last cents therefore
-// cannot both pass: the second sees the first one's hold. (A card's limits are the issuer's to enforce: see below.) The runner, the agent API and the CLIs are separate
+// agent's stop, an open mandate replace of its mandate (src/policy/replaceHold.ts), the CFO policy's cap per payment,
+// the mandate's cap per payment, the agent's mandate budget, the agents' shared total, the card's month and the velocity
+// limits. Two payments racing for the last cents therefore cannot both pass: the second sees the first one's hold. (A
+// card's limits are the issuer's to enforce: see below.) The runner, the agent API and the CLIs are separate
 // processes on one ledger, so the lock is the database's, not a JavaScript one.
 //
 // Counting: what the ledger records as spent (paid, or sent and not yet final) plus every HELD hold. A hold becomes
@@ -20,6 +21,7 @@ import { capRefusal, paused } from "./rules.js";
 import { stopped, velocityGate } from "./velocity.js";
 import { policyVersion } from "./versions.js";
 import { authorize, type Payee } from "./principals.js";
+import { replaceHoldRefusal } from "./replaceHold.js";
 
 export type HoldRail = "metal" | "card";
 export interface SpendRequest { agent: Agent | `ext:${string}`; rail: HoldRail; cents: number; ref: string; now?: Date; payee?: Payee }
@@ -75,12 +77,8 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
     const denied = authorize(db, agent, { rail: r.rail, currency: r.rail === "metal" ? "USDZ" : "EUR", payee: r.payee }, now);
     if (denied) return denied;
     if (r.rail === "metal") {
-      if (ours) {
-        const refused = capRefusal(db, agent as Agent, r.cents);
-        if (refused) return refused;
-      }
-      const l = spendLimits(db, agent);
-      if (l.capCents !== null && r.cents > l.capCents) return `mandate_cap_exceeded: ${fromCents(r.cents)} is over the ${agent} mandate's ${fromCents(l.capCents)} a payment`;
+      const refused = ours ? purserRefusal(db, agent as Agent, r.cents, now) : mandateCapRefusal(db, agent, r.cents);
+      if (refused) return refused;
       const after = budgetAndVelocity(db, agent, r.cents, r.ref, now, ours);
       if (after) return after;
     } else if (paused(db, agent)) {
@@ -99,6 +97,23 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
     else db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, created_at, updated_at, policy_version, origin_json) VALUES (?, ?, ?, ?, 'HELD', ?, ?, ?, ?)").run(r.ref, agent, r.rail, r.cents, ts, ts, policy, originJson());
     return null;
   }).immediate();
+}
+
+/** The mandate's cap per payment, as the last bind or replace on chain set it. */
+function mandateCapRefusal(db: DB, agent: string, cents: number): string | null {
+  const l = spendLimits(db, agent);
+  return l.capCents !== null && cents > l.capCents ? `mandate_cap_exceeded: ${fromCents(cents)} is over the ${agent} mandate's ${fromCents(l.capCents)} a payment` : null;
+}
+
+/**
+ * Purser's own refusals of a Metal payment by one of our agents before its budget is counted, read-only: the CFO's
+ * emergency stop, the agent's pause and velocity stop, an open mandate replace that names its mandate (dry-179: the
+ * agent may not move what the replacement carries), the CFO policy's cap per payment, the mandate's cap per payment.
+ * reserveSpend runs exactly this first; the Sourcing purchase runs it before the agent's own buy policy (dry-179), so
+ * when both refuse, the refusal recorded is Purser's. Null when none of these refuses (the budget may still).
+ */
+export function purserRefusal(db: DB, agent: Agent, cents: number, now = new Date()): string | null {
+  return capRefusal(db, agent, 0) ?? replaceHoldRefusal(db, agent, now) ?? capRefusal(db, agent, cents) ?? mandateCapRefusal(db, agent, cents);
 }
 
 /** The checks after the caps: the mandate's budget and the shared total (spent and held), then the velocity limits,
@@ -133,7 +148,8 @@ export const RECORD_PULL_HOLD = "record_pull";
  * Defense in depth, one purchase (src/world/letThrough.ts): the one Sourcing purchase let past the cap checks to Metal,
  * which must refuse it, is still held while it is in flight, so an unexpected acceptance or a lost answer is counted
  * like any payment. Only the two cap comparisons are skipped; every other check applies: the agent's identity, the
- * CFO's emergency stop, its pause and its velocity stop, the mandate's budget, the shared total and the velocity limits.
+ * CFO's emergency stop, its pause and its velocity stop, an open mandate replace of its mandate, the mandate's budget,
+ * the shared total and the velocity limits.
  * Null when held; otherwise why not (then nothing is sent).
  */
 export function holdBeyondCap(db: DB, r: { agent: "sourcing"; cents: number; ref: string; payee: Payee; now?: Date; reason?: typeof LET_THROUGH_HOLD | typeof RECORD_PULL_HOLD }): string | null {
@@ -141,8 +157,9 @@ export function holdBeyondCap(db: DB, r: { agent: "sourcing"; cents: number; ref
   if (!Number.isInteger(r.cents) || r.cents <= 0) return `invalid_amount: ${r.cents}`;
   return db.transaction((): string | null => {
     if (db.prepare("SELECT 1 FROM holds WHERE ref = ?").get(r.ref)) return `hold_conflict: ${r.ref} is already held`;
+    // An open mandate replace holds it too (dry-179): Metal must refuse it, but if it did not, the agent's spend would move.
     const denied = authorize(db, r.agent, { rail: "metal", currency: "USDZ", payee: r.payee }, now) ?? capRefusal(db, r.agent, 0)
-      ?? budgetAndVelocity(db, r.agent, r.cents, r.ref, now, true);
+      ?? replaceHoldRefusal(db, r.agent, now) ?? budgetAndVelocity(db, r.agent, r.cents, r.ref, now, true);
     if (denied) return denied;
     const ts = now.toISOString();
     db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, reason, created_at, updated_at, policy_version, origin_json) VALUES (?, ?, 'metal', ?, 'HELD', ?, ?, ?, ?, ?)")

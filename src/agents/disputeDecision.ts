@@ -158,11 +158,13 @@ export interface DecisionExec {
 // keep following it until Metal settles or refuses it.
 const FINAL = new Set(["PAID"]);
 /**
- * A refusal that a later try can clear (a speed limit, the network, a server error); any other refusal hands the
- * refund to the CFO. A CFO freeze or pause (frozen_by_cfo, paused_by_cfo) counts as lasting on purpose: the refund then
- * waits for the CFO as a proposal, the CFO's own decision, rather than being paid by code once the freeze lifts.
+ * A refusal that a later try can clear (a speed limit, the network, a server error, a mandate replace still open:
+ * src/policy/replaceHold.ts, which lifts when it is executed or closed); any other refusal hands the refund to the CFO.
+ * A CFO freeze or pause (frozen_by_cfo, paused_by_cfo) counts as lasting on purpose: the refund then waits for the CFO as
+ * a proposal, the CFO's own decision, rather than being paid by code once the freeze lifts. The automatic limits are
+ * checked again at every later try, and after HANDOVER_AFTER tries a refund still refused goes to the CFO anyway.
  */
-const TRANSIENT = /velocity|in a minute|in an hour|speed|timeout|timed out|network|ECONN|ETIMEDOUT|fetch failed|(?:HTTP|status)\s*5\d\d\b|\b5\d\d (?:Internal Server Error|Bad Gateway|Service Unavailable|Gateway Timeout)/i;
+const TRANSIENT = /^replace_pending:|velocity|in a minute|in an hour|speed|timeout|timed out|network|ECONN|ETIMEDOUT|fetch failed|(?:HTTP|status)\s*5\d\d\b|\b5\d\d (?:Internal Server Error|Bad Gateway|Service Unavailable|Gateway Timeout)/i;
 /** D24: when a refund cannot be paid automatically, code's own rule sends it to the CFO. */
 export const CODE_HANDS_OVER: Origin = { actor: "code", rule: "carrying out a dispute decision: a refund code cannot pay automatically goes to the CFO", agent: "support" };
 /** After this many carry-outs a refund still refused goes to the CFO whatever the reason. */

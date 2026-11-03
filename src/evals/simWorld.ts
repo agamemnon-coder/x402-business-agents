@@ -16,7 +16,7 @@ import { pending, publish } from "../autonomy/bus.js";
 import { wake, type AgentProfile, type Wake } from "../autonomy/runtime.js";
 import { sourcingProfile, type SourcingWorld, type SupplierView } from "../autonomy/sourcingProfile.js";
 import { setSupplierPrice, supportProfile, treasuryProfile } from "../autonomy/teamProfiles.js";
-import { buyPolicy } from "../agents/sourcing.js";
+import { buyPolicy, refusedByOf } from "../agents/sourcing.js";
 import { settleDispute, type SupportDeps as DisputeDeps } from "../agents/supportAgent.js";
 import { parseInvoiceFallback, ibanSha } from "../agents/invoice.js";
 import { LICENSOR, MANUFACTURER, proposeInvoicePayment } from "../agents/euroBill.js";
@@ -30,7 +30,7 @@ import { MAX_CACHE_SECONDS, MIN_MARGIN_CENTS, SUPPLIERS, TURNED_AWAY_MIN, TURNED
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA } from "../lib/terms.js";
 import { createProposal } from "../policy/approvals.js";
-import { reserveSpend, settleHold, spendLimits } from "../policy/holds.js";
+import { purserRefusal, reserveSpend, settleHold, spendLimits } from "../policy/holds.js";
 import { planRefunds } from "../policy/refunds.js";
 import { refundThresholds } from "../policy/rules.js";
 import { planReplaceSteps, type MandateNow } from "../policy/mandates.js";
@@ -336,9 +336,11 @@ export async function customerQuery(ctx: SimCtx): Promise<"paid" | "cached" | "r
     }
     const refuse = (reason: string, supplier: string) => {
       const id = Number(db.prepare("INSERT INTO upstream_purchases (price_cents, outcome, refusal_reason, created_at, supplier, origin_json) VALUES (0, 'REFUSED', ?, ?, ?, ?)").run(reason, now.toISOString(), supplier, originJson()).lastInsertRowid);
-      audit(db, "sourcing", "upstream.refused", String(id), { seq, reason, refused_by: "purser", supplier });
+      // Which check refused it, as SourcingAgent records it (dry-179).
+      const by = refusedByOf(reason, 0);
+      audit(db, "sourcing", "upstream.refused", String(id), { seq, reason, refused_by: by, supplier });
       // Tells the Sourcing agent, at most once a minute (every third query at one per 20 s), as SourcingAgent.tell does.
-      if (seq - ctx.lastTell >= 3) { ctx.lastTell = seq; publish(db, "upstream.refused", { seq, supplier, reason, refused_by: "purser" }, "sourcing"); }
+      if (seq - ctx.lastTell >= 3) { ctx.lastTell = seq; publish(db, "upstream.refused", { seq, supplier, reason, refused_by: by }, "sourcing"); }
       if (reason.startsWith("buy_policy:")) {
         const n = (db.prepare("SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > ?").get(new Date(Date.now() - TURNED_AWAY_WINDOW_MS).toISOString()) as { n: number }).n;
         if (n >= TURNED_AWAY_MIN && !db.prepare("SELECT 1 FROM world_events WHERE kind = 'customers.turned_away'").get()) publish(db, "customers.turned_away", { count: n, window_minutes: TURNED_AWAY_WINDOW_MS / 60_000 }, "treasury");
@@ -350,7 +352,10 @@ export async function customerQuery(ctx: SimCtx): Promise<"paid" | "cached" | "r
     const price = id === "stockline" ? stocklineCents(db) : toCents(getSetting(db, "ridgeline_price", "0.03"));
     const down = id === "stockline" ? ctx.stocklineDown : (seq * 7 + spec.seed) % 20 < spec.ridgeline!.unavailableOf20;
     if (down) return refuse(`supplier_unavailable: ${SUPPLIERS[id].name} made no offer for stock check #${seq}`, id);
-    if (policy.max_price && price > toCents(policy.max_price)) return refuse(`buy_policy: ${SUPPLIERS[id].name} asks ${fromCents(price)}, over the ${policy.max_price} the Sourcing agent's policy allows`, id);
+    // dry-179, as SourcingAgent: Purser's pre-check before the agent's own max_price; when both refuse, Purser's is recorded.
+    const purser = policy.max_price && price > toCents(policy.max_price) ? purserRefusal(db, "sourcing", price) : null;
+    const purserFirst = !!purser && !(purser.startsWith("policy_cap_exceeded") && (spendLimits(db, "sourcing").capCents ?? Infinity) >= price);
+    if (policy.max_price && price > toCents(policy.max_price) && !purserFirst) return refuse(`buy_policy: ${SUPPLIERS[id].name} asks ${fromCents(price)}, over the ${policy.max_price} the Sourcing agent's policy allows`, id);
     // Purser before signing: the CFO policy, velocity, the mandate's cap and budget, the shared total (one hold).
     const ref = `upstream:${spec.seed}:${seq}`;
     const refused = reserveSpend(db, { agent: "sourcing", rail: "metal", cents: price, ref, payee: "supplier" });

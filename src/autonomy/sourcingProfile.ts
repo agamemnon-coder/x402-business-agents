@@ -26,6 +26,7 @@ import { cardRows } from "../policy/cards.js";
 import { setSetting } from "../world/settings.js";
 import { upstreamCacheOff } from "../world/options.js";
 import { sendMessage } from "./bus.js";
+import { replaceHoldFact } from "../policy/replaceHold.js";
 import type { AgentProfile } from "./runtime.js";
 import type { AgentTool } from "../agents/loop.js";
 import { BUY_POLICY_DESCRIPTION, BUY_POLICY_INPUT, checkBuyPolicy, MARKET_DESCRIPTION, sourcingFallback, policyFrom, policyWords, sourcingBrief, SOURCING_DISPLAY, SOURCING_GOAL, SOURCING_RULES, type BuyPolicyInput, type SupplierView } from "./sourcingCore.js";
@@ -130,7 +131,8 @@ export function liveSourcingWorld(db: DB, o: { issuing?: ReturnType<typeof issui
 export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): AgentProfile {
   const describe = async (db: DB) => {
     const [suppliers, m, card] = await Promise.all([world.suppliers(), world.mandate(), world.card ? world.card() : Promise.resolve(null)]);
-    return sourcingBrief({ suppliers, capCents: m.capCents, budgetLeftCents: m.budgetLeftCents, sellCents: world.sellCents(), policy: buyPolicy(db), card, ...(upstreamCacheOff(db) ? { noCache: true } : {}) });
+    const held = replaceHoldFact(db, "sourcing");
+    return sourcingBrief({ suppliers, capCents: m.capCents, budgetLeftCents: m.budgetLeftCents, sellCents: world.sellCents(), policy: buyPolicy(db), card, ...(upstreamCacheOff(db) ? { noCache: true } : {}), ...(held ? { held } : {}) });
   };
   return {
     name: "sourcing", display: SOURCING_DISPLAY, model: MODELS.classify, tickMs,

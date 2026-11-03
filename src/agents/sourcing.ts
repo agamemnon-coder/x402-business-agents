@@ -2,7 +2,8 @@
 // a per-purchase cap, a budget). It holds its mandate key and nothing else.
 
 import { currentOrigin, originJson, parseOrigin, withOrigin, type Origin } from "../provenance/origin.js";
-import { holdBeyondCap, RECORD_PULL_HOLD, releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
+import { holdBeyondCap, purserRefusal, RECORD_PULL_HOLD, releaseHold, reserveSpend, settleHold, spendLimits } from "../policy/holds.js";
+import { replaceHoldRefusal } from "../policy/replaceHold.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -149,8 +150,11 @@ export class SourcingAgent {
     return { id: "stockline", base: this.supplierBase, address: this.supplier };
   }
 
-  /** Tells the Sourcing agent's loop that a purchase was refused (at most once a minute, so a busy shop does not flood it). */
-  private tell(seq: number, supplier: SupplierId | "none", reason: string, refusedBy: "purser" | "metal"): void {
+  /**
+   * Tells the Sourcing agent's loop that a purchase was refused (at most once a minute, so a busy shop does not flood it),
+   * and by which check: Purser (before signing), Metal (on chain), the agent's own buy policy, or the supplier (no offer).
+   */
+  private tell(seq: number, supplier: SupplierId | "none", reason: string, refusedBy: RefusedBy): void {
     if (!autonomyOn()) return;
     if (this.db.prepare("SELECT 1 FROM world_events WHERE kind = 'upstream.refused' AND for_agent = 'sourcing' AND created_at > ?").get(new Date(Date.now() - 60_000).toISOString())) return;
     publish(this.db, "upstream.refused", { seq, supplier, reason, refused_by: refusedBy }, "sourcing");
@@ -302,6 +306,9 @@ export class SourcingAgent {
     const offer = decodePaymentRequiredHeader(header).accepts.find((a) => a.scheme === "exact");
     if (!offer) return "the supplier made no exact offer";
     const cents = Number(BigInt(offer.amount) / 10n ** 16n);
+    // An open mandate replace of the Sourcing mandate: Purser refuses every purchase until it is executed or closed.
+    const held = replaceHoldRefusal(this.db, "sourcing");
+    if (held) return held;
     // The cap of the credential last bound or replaced on chain, as the audit log recorded it.
     const last = this.db.prepare("SELECT payload_json FROM audit_log WHERE event IN ('mandate.bound', 'mandate.replaced') AND subject = 'sourcing' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
     const cap = last ? toCents(String((JSON.parse(last.payload_json) as { cap?: string }).cap)) : null;
@@ -333,19 +340,37 @@ export class SourcingAgent {
       audit(this.db, "sourcing", "upstream.cached", String(this.cache.purchaseId), { seq, from_purchase: this.cache.purchaseId, supplier: this.cache.supplier, age_seconds: Math.round((Date.now() - this.cache.at) / 1000) });
       return { ok: true, purchaseId: this.cache.purchaseId, body: this.cache.body };
     }
+    // Refused before anything is signed, by the agent's own buy policy or because the supplier made no offer; the row
+    // says which (dry-179: these were logged as Purser's, and Watch read a buy-policy refusal as one against the mandate).
     const policyRefusal = (reason: string, supplier: SupplierId | "none"): UpstreamResult => {
       const id = Number(insert.run(0, null, null, "REFUSED", reason, now0, supplier, originJson()).lastInsertRowid);
-      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason, refused_by: "purser", supplier });
-      this.tell(seq, supplier, reason, "purser");
+      const by = refusedByOf(reason, 0);
+      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason, refused_by: by, supplier });
+      this.tell(seq, supplier, reason, by);
       if (reason.startsWith("buy_policy:")) this.turnedAway();
       return { ok: false, purchaseId: id, reason, inDoubt: false };
     };
     if (policy.supplier === "none") return policyRefusal("buy_policy: the Sourcing agent chose not to buy (and nothing fresh is cached); the customer is not charged", "none");
     const t = this.target(policy.supplier);
-    if (policy.max_price) {
+    // dry-179 (acceptance item 5): Purser's pre-check comes before the agent's own policy. An offer over the policy's
+    // max_price that the mandate would allow is refused by the policy, as it always was. One that Purser refuses anyway
+    // (over the mandate's cap, a stop, a pause, an open replace) goes on to Purser, whose refusal is the one recorded:
+    // mandate_cap_exceeded, Metal's record of it on chain, and (armed) the one let-through to Metal.
+    const maxCents = policy.max_price ? toCents(policy.max_price) : null;
+    // Purser refuses it anyway, so its refusal goes first. Except a CFO policy limit under the mandate's cap alone, for an
+    // amount within the mandate's cap: that is no mandate refusal to record, and the buy policy refuses it as before
+    // (else it would reach Purser and use up the armed let-through, which only an amount over the mandate's cap may take).
+    const purserFirst = (cents: number) => {
+      const r = purserRefusal(this.db, "sourcing", cents);
+      if (!r) return false;
+      const cap = spendLimits(this.db, "sourcing").capCents;
+      return !(r.startsWith("policy_cap_exceeded") && (cap === null || cents <= cap));
+    };
+    const overPolicy = (cents: number) => `buy_policy: ${SUPPLIERS[t.id].name} asks ${fromCents(cents)}, over the ${policy.max_price} the Sourcing agent's policy allows`;
+    if (maxCents !== null) {
       const offer = await offerCents(`${t.base}${SUPPLIER_ROUTE}?seq=${seq}`);
       if (offer === null) return policyRefusal(`supplier_unavailable: ${SUPPLIERS[t.id].name} made no offer for stock check #${seq}`, t.id);
-      if (offer > toCents(policy.max_price)) return policyRefusal(`buy_policy: ${SUPPLIERS[t.id].name} asks ${fromCents(offer)}, over the ${policy.max_price} the Sourcing agent's policy allows`, t.id);
+      if (offer > maxCents && !purserFirst(offer)) return policyRefusal(overPolicy(offer), t.id);
     }
     this.mandate ??= await activeMandate("sourcing");
     const started = Date.now() - 60_000;
@@ -358,8 +383,14 @@ export class SourcingAgent {
     // Defense in depth (src/world/letThrough.ts): set when this purchase is the one let past Purser's cap check to Metal.
     let letThrough: { cents: number; purser: string } | null = null;
     let notLetThrough: string | null = null;
+    // The amount signed (or refused) was also over the buy policy's max_price: said in the refusal's row.
+    let alsoOverPolicy = false;
     const m = this.mandate;
     const out = await payUnderMandate(m, `${t.base}${SUPPLIER_ROUTE}?seq=${seq}`, {}, (cents, payTo) => {
+      // The buy policy's max_price, on the amount actually signed (the offer may differ from the check above), unless
+      // Purser refuses it anyway: then Purser's refusal is the one recorded. Nothing is reserved for a policy refusal.
+      alsoOverPolicy = maxCents !== null && cents > maxCents;
+      if (alsoOverPolicy && !purserFirst(cents)) return overPolicy(cents);
       const refused = reserveSpend(this.db, { agent: "sourcing", rail: "metal", cents, ref, payee: "supplier" });
       held = refused === null;
       // Armed, and Purser refused over a cap: the arm is used now, by this attempt, whatever comes of it.
@@ -371,10 +402,20 @@ export class SourcingAgent {
         }
         held = true;
         letThrough = { cents, purser: refused };
-        audit(this.db, "sourcing", "upstream.let_through", String(seq), { seq, supplier: t.id, amount: fromCents(cents), purser_would_refuse: refused, bound_cap: fromCents(Number(boundCapUnits(m) / 10n ** 16n)), mandate: m.reference });
+        // Over the mandate's cap, the buy policy's max_price does not stop the one let-through before Metal: Metal is
+        // the check it proves, and its hold (holdBeyondCap) covers it. The policy's supplier is still the only payee.
+        audit(this.db, "sourcing", "upstream.let_through", String(seq), { seq, supplier: t.id, amount: fromCents(cents), purser_would_refuse: refused, bound_cap: fromCents(Number(boundCapUnits(m) / 10n ** 16n)), mandate: m.reference, ...(alsoOverPolicy ? { over_buy_policy: policy.max_price } : {}) });
         return null;
       }
-      return refused;
+      if (refused) return refused;
+      // Purser allowed it (and reserved it): a price over the policy that got here only because Purser refused it a
+      // moment ago, and allows it now, is still the policy's to refuse: the hold is released, nothing is signed.
+      if (alsoOverPolicy) {
+        releaseHold(this.db, ref, "refused by the Sourcing agent's buy policy before signing");
+        held = false;
+        return overPolicy(cents);
+      }
+      return null;
     });
     const now = new Date().toISOString();
     const lt = letThrough as { cents: number; purser: string } | null;
@@ -395,8 +436,10 @@ export class SourcingAgent {
     if (out.kind === "refused") {
       const id = Number(insert.run(0, out.nonce ?? null, null, "REFUSED", out.reason, now, t.id, originJson()).lastInsertRowid);
       if (held) releaseHold(this.db, ref, out.reason);
-      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason, refused_by: out.status === 0 ? "purser" : "metal", supplier: t.id });
-      this.tell(seq, t.id, out.reason, out.status === 0 ? "purser" : "metal");
+      const by = refusedByOf(out.reason, out.status);
+      audit(this.db, "sourcing", "upstream.refused", String(id), { seq, reason: out.reason, refused_by: by, supplier: t.id, ...(alsoOverPolicy && by !== "buy_policy" ? { buy_policy_also_refuses: policy.max_price } : {}) });
+      this.tell(seq, t.id, out.reason, by);
+      if (by === "buy_policy") this.turnedAway();
       if (notLetThrough) finishLetThrough(this.db, { outcome: "not_let_through", purchase_id: id, seq, detail: notLetThrough });
       if (lt) {
         if (out.status === 0) {
@@ -445,6 +488,15 @@ export class SourcingAgent {
     }).immediate();
     return { ok: false, purchaseId: id, reason: found ? "paid but no stock check delivered" : out.reason, inDoubt: !found };
   }
+}
+
+/** Which check refused a purchase: Metal (it answered), or before signing the agent's own buy policy, the supplier (no offer), or Purser. */
+export type RefusedBy = "purser" | "metal" | "buy_policy" | "supplier";
+export function refusedByOf(reason: string, status: number): RefusedBy {
+  if (status !== 0) return "metal";
+  if (reason.startsWith("buy_policy:")) return "buy_policy";
+  if (reason.startsWith("supplier_unavailable:")) return "supplier";
+  return "purser";
 }
 
 /** A facilitator settlement's amount (base units of *USDZ, 18 decimals) in cents; null when it is not a whole number of cents. */

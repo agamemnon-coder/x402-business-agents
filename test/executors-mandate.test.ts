@@ -162,13 +162,15 @@ describe("executeMandateReplace", () => {
     expect(h.cli).toEqual([]);
   });
 
-  it("refuses a total above 20.00 before any replace, and leaves the proposal approved", async () => {
+  it("refuses a total above 20.00 before any replace, and closes the proposal with the reason (dry-179: it can never run)", async () => {
     const p = propose({ total_budget: "20.01" });
     approve(p);
     // Fails if: the TOTAL_BUDGET_CENTS precondition is removed.
     await expect(executeMandateReplace(db, p.id)).rejects.toThrow("total 20.01 exceeds the limit");
     expect(h.cli).toEqual([]);
-    expect(status(p.id)).toBe("APPROVED");
+    // dry-179 (a): before, it stayed APPROVED with no row in the ledger; now it is closed, terminal, with the reason.
+    expect(status(p.id)).toBe("NEEDS_REAPPROVAL");
+    expect(db.prepare("SELECT json_extract(payload_json, '$.error') AS error FROM audit_log WHERE event = 'proposal.needs_reapproval' AND subject = ?").get(p.id)).toEqual({ error: "total 20.01 exceeds the limit" });
   });
 
   it("refuses when the bound mandate is no longer the one the proposal replaces", async () => {

@@ -14,11 +14,14 @@ export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
   | "EXECUTING" | "EXECUTED" | "FAILED" | "NEEDS_REAPPROVAL";
 
+// NEEDS_REAPPROVAL is terminal: the terms can no longer run, a new proposal is needed. Besides an execution that ends
+// there, code closes a proposal there before it runs when its executor's guard shows the terms can never run (dry-179:
+// "spent moved … a new one is needed"); that moves no money and runs nothing (closeAsStale).
 const ALLOWED: Record<ProposalStatus, ProposalStatus[]> = {
-  PENDING_APPROVAL: ["APPROVED", "REJECTED", "EXPIRED", "SUPERSEDED"],
-  APPROVED: ["EXECUTING", "EXPIRED"],
+  PENDING_APPROVAL: ["APPROVED", "REJECTED", "EXPIRED", "SUPERSEDED", "NEEDS_REAPPROVAL"],
+  APPROVED: ["EXECUTING", "EXPIRED", "NEEDS_REAPPROVAL"],
   EXECUTING: ["EXECUTED", "FAILED", "NEEDS_REAPPROVAL"],
-  FAILED: ["EXECUTING", "EXPIRED"],
+  FAILED: ["EXECUTING", "EXPIRED", "NEEDS_REAPPROVAL"],
   REJECTED: [],
   EXPIRED: [],
   SUPERSEDED: [],
@@ -236,6 +239,22 @@ export function finishExecution(db: DB, proposalId: string, outcome: "EXECUTED" 
   db.transaction(() => {
     transition(db, proposalId, "EXECUTING", outcome);
     audit(db, "system", `proposal.${outcome.toLowerCase()}`, proposalId, detail, now);
+  }).immediate();
+}
+
+/**
+ * Closes a proposal whose terms can never run (its executor's guard refused them, or would): NEEDS_REAPPROVAL, terminal,
+ * with the reason in a proposal.needs_reapproval row. From waiting, approved, failed, or (only for a restart's resume)
+ * executing; anything else is left as it is. True when it was closed here. Runs nothing and moves no money.
+ */
+export function closeAsStale(db: DB, proposalId: string, detail: { error: string } & Record<string, Json>, opts: { resuming?: boolean } = {}, now = new Date()): boolean {
+  return db.transaction((): boolean => {
+    const p = get(db, proposalId);
+    const from: ProposalStatus[] = ["PENDING_APPROVAL", "APPROVED", "FAILED", ...(opts.resuming ? ["EXECUTING" as const] : [])];
+    if (!from.includes(p.status)) return false;
+    transition(db, proposalId, p.status, "NEEDS_REAPPROVAL");
+    audit(db, "system", "proposal.needs_reapproval", proposalId, { ...detail, error: detail.error.slice(0, 300), from: p.status }, now);
+    return true;
   }).immediate();
 }
 

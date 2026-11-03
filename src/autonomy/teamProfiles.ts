@@ -33,6 +33,22 @@ import { netEarnings } from "../agents/sweep.js";
 import { decisionOf, decisionSummary, finished, legacyDecision } from "../agents/disputeDecision.js";
 import type { AgentProfile } from "./runtime.js";
 import type { SupplierView } from "./sourcingCore.js";
+import { audit } from "../audit/log.js";
+import { replaceHoldFact, replaceHoldRefusal } from "../policy/replaceHold.js";
+
+/**
+ * dry-179: while a mandate replace of the treasury mandate is open, sweep_earnings waits. The tool says why (the hold,
+ * as code's reason) and an audit row records it; null when nothing holds it. Purser holds every payment itself too
+ * (src/policy/holds.ts): this keeps a sweep that could only be refused from starting, and from leaving a refused sweep
+ * row that would hold the next sweep for half an hour. Support's refunds are held one by one at Purser instead: its
+ * dispute decision and any escalation to the CFO move no money and go ahead.
+ */
+function heldSpend(db: DB, agent: "treasury", path: string): string | null {
+  const held = replaceHoldRefusal(db, agent);
+  if (!held) return null;
+  audit(db, agent, "spend.held", agent, { path, reason: held });
+  return held.replace(/^replace_pending: /, "");
+}
 
 const repo = resolve(import.meta.dirname, "../..");
 const NOTICE = resolve(repo, "fixtures/stockline-price-notice.txt");
@@ -82,6 +98,28 @@ function refusedPayouts(db: DB): string[] {
   const rows = db.prepare(`SELECT t.invoice_no, t.amount, t.currency, t.failure_type, t.updated_at FROM transfers t WHERE t.status = 'CANCELLED' AND t.transfer_id IS NULL
     AND NOT EXISTS (SELECT 1 FROM transfers o WHERE o.invoice_no = t.invoice_no AND o.status <> 'CANCELLED') ORDER BY t.updated_at DESC LIMIT 3`).all() as { invoice_no: string; amount: string; currency: string; failure_type: string | null; updated_at: string }[];
   return rows.map((r) => `Payout of invoice ${r.invoice_no} (${r.currency} ${r.amount}) ${r.failure_type === "closed_unsent" ? "closed by the CFO as never sent" : `refused by Airwallex (${r.failure_type ?? "no code"})`} at ${r.updated_at.slice(11, 16)} UTC; nothing was paid and that payout is closed.`);
+}
+
+/**
+ * dry-179 (a): a mandate replace the executor's guard refused, as a fact for Treasury, until a newer replace is proposed.
+ * Before, the ledger had no row of it and Treasury read "no refusal of it", so it never planned a new one and Sourcing
+ * turned customers away to the end of the run.
+ */
+export function stoppedReplaceFacts(db: DB): string[] {
+  const row = db.prepare(`SELECT a.subject AS id, a.payload_json, a.ts FROM audit_log a JOIN proposals p ON p.proposal_id = a.subject
+    WHERE a.event = 'proposal.needs_reapproval' AND p.kind = 'mandate_replace' AND json_extract(a.payload_json, '$.stopped') IS NOT NULL ORDER BY a.seq DESC LIMIT 1`).get() as { id: string; payload_json: string; ts: string } | undefined;
+  if (!row) return [];
+  const siblings = (db.prepare("SELECT subject FROM audit_log WHERE event = 'proposal.needs_reapproval' AND json_extract(payload_json, '$.sibling_of') = ? ORDER BY seq").all(row.id) as { subject: string }[]).map((r) => r.subject);
+  // Old news once a replace proposed after it executed or is still open; one rejected or expired since does not count.
+  const nowIso = new Date().toISOString();
+  const open = (db.prepare(`SELECT proposal_id FROM proposals WHERE kind = 'mandate_replace' AND (status = 'EXECUTING'
+    OR (status IN ('PENDING_APPROVAL', 'APPROVED') AND expires_at > ?))`).all(nowIso) as { proposal_id: string }[]).map((x) => x.proposal_id);
+  if ((db.prepare("SELECT proposal_id, status FROM proposals WHERE kind = 'mandate_replace' AND created_at >= ?").all(row.ts) as { proposal_id: string; status: string }[])
+    .some((x) => x.proposal_id !== row.id && !siblings.includes(x.proposal_id) && (x.status === "EXECUTED" || open.includes(x.proposal_id)))) return [];
+  const p = JSON.parse(row.payload_json) as { error?: string };
+  const lines = [`Mandate replace ${row.id} was approved, but code did not run it: ${p.error ?? "see the ledger"}. It is closed;${siblings.length ? ` ${siblings.join(" and ")}, another option of the same change, ${siblings.length > 1 ? "are" : "is"} closed with it.` : " it can never be approved or run again."}`.replace(/;\s*$/, ".")];
+  if (!open.length) lines.push("No mandate replace waits for the CFO now: if an agent is still blocked by its mandate, a new rebalance (design_rebalance) is needed; code plans it from the spend as it is now.");
+  return lines;
 }
 
 const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'PENDING_APPROVAL' AND expires_at > ?").all(kind, new Date().toISOString()) as { proposal_id: string }[];
@@ -164,6 +202,9 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
       (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
+      // dry-179: the hold as a fact, so the agent does not try sweep_earnings into it.
+      ...(((f) => (f ? [`${f} That includes sweep_earnings.`] : []))(replaceHoldFact(db, "treasury"))),
+      ...stoppedReplaceFacts(db),
       ...invoiceFacts(db, new Date(), invoiceOf(plannedText())).lines,
       ...refusedPayouts(db),
     ].join("\n");
@@ -208,6 +249,9 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
           if (swept || db.prepare("SELECT 1 FROM sweeps WHERE created_at > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: a sweep ran in the last half hour.", blocked: "already swept" };
           const e = netEarnings(db);
           if (e.netCents <= 0) return { text: `Not swept: net earnings are ${fromCents(Math.max(0, e.netCents))}; nothing to move.`, blocked: "nothing to sweep" };
+          // dry-179: a sweep moves the treasury mandate's spend, which an open replace carries as it was proposed.
+          const held = heldSpend(db, "treasury", "sweep_earnings");
+          if (held) return { text: `Not swept: ${held}. The earnings stay on the business account; sweep after that.`, blocked: "mandate replace pending" };
           swept = true;
           const r = sim ? await sim.sweep(db) : deps.runFlow("s3.ts", ["--sweep-only"]);
           return { text: r.text, ...(r.ok ? {} : { blocked: "the sweep did not complete" }) };
@@ -297,7 +341,11 @@ export function supportProfile(tickMs = 30 * 60_000, deps: SupportDeps = liveSet
     observe: async (db) => {
       const d = open(db);
       const left = (id: string) => { const dec = decisionOf(db, id); return dec && !finished(dec) ? ` [decided, not yet carried out (a restart?): settle_dispute finishes it and decides nothing again]` : dec || legacyDecision(db, id) ? " [decided]" : ""; };
-      return d.length ? `Disputes on file: ${d.map((x) => `${x.dispute_id} from ${x.customer.slice(0, 10)}… (${x.created_at.slice(11, 16)})${left(x.dispute_id)}`).join(", ")}.` : "No dispute on file.";
+      const held = replaceHoldFact(db, "support");
+      return [d.length ? `Disputes on file: ${d.map((x) => `${x.dispute_id} from ${x.customer.slice(0, 10)}… (${x.created_at.slice(11, 16)})${left(x.dispute_id)}`).join(", ")}.` : "No dispute on file.",
+        // The decision and any escalation to the CFO go ahead; a refund is refused before signing until then, and is
+        // tried again when the decision is carried out again (code's rule, not a lasting refusal).
+        ...(held ? [`${held} Your refunds come from this mandate, so none is paid meanwhile: settle_dispute still decides and escalates, and each refund it holds back is tried again when the decision is carried out again.`] : [])].join("\n");
     },
     tools: (db) => [
       {

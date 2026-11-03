@@ -118,6 +118,14 @@ const JS = `
       body.appendChild(meta);
       var mp = el("p", "", (names[e.agent] ? names[e.agent].short : e.agent) + " agent: cap " + e.cap + ", budget " + e.budget + " ");
       mp.appendChild(proofEl(e.proof)); body.appendChild(mp);
+    } else if (e.k === "face" && e.status === "STOPPED") {
+      head = el("span", "ic bad"); head.appendChild(svg("scan-face"));
+      meta.appendChild(el("b", "", "Purser · not run"));
+      meta.appendChild(el("span", "res bad", "approved, but stopped"));
+      meta.appendChild(el("span", "", time(e.at)));
+      body.appendChild(meta);
+      var sp = el("p", "", e.title + " was approved, but code did not run it: " + e.reason + ". It is closed; a new proposal is needed.");
+      sp.title = e.id; body.appendChild(sp);
     } else if (e.k === "face") {
       var rej = e.status === "REJECTED", n = e.signers.length;
       head = el("span", "ic " + (rej ? "bad" : "face")); head.appendChild(svg("scan-face"));

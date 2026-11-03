@@ -75,6 +75,17 @@ geldige uitkomst), en Claude meldt het.
   velocity-stop, en alleen binnen het budget, het gezamenlijke totaal en de velocity-limieten. Eén keer per wereld (een
   verzoek dat ongebruikt verloopt, mag opnieuw). Accepteert Metal hem toch: incident, de Sourcing agent staat stil tot
   Max hem met Face ID vrijgeeft, en er is hooguit die ene betaling van 0,04 gedaan (maximaal 0,05), binnen het budget.
+- Zolang een mandaat-replace openstaat (wacht op goedkeuring, ook 1 van 2; goedgekeurd en nog niet uitgevoerd; of
+  bezig), betaalt geen agent wiens mandaat erin staat iets uit dat mandaat: Purser houdt het vóór het tekenen tegen
+  (`replace_pending: mandate replace P-000x pending; spending waits until it is executed or closed`), met een
+  auditregel. Dat geldt voor de aankopen van Sourcing (ook de let-through en de record-pull), de refunds van Support en
+  de sweep van Treasury; de agent ziet het als feit in zijn situatie. In dry-179 veegde Treasury 0,45 uit zijn eigen
+  mandaat terwijl P-0002 wachtte, en daarna weigerde de uitvoering ("spent moved"). De hold vervalt zodra de replace is
+  uitgevoerd, afgewezen, vervangen, verlopen of mislukt. Weigert de uitvoering een goedgekeurde replace ("approved, but
+  execution stopped", bijv. "spent moved … a new one is needed"), dan sluit code hem met de reden in het grootboek
+  (`NEEDS_REAPPROVAL`, `proposal.needs_reapproval`), samen met de andere optie van dezelfde wijziging die om dezelfde
+  reden nooit meer kan draaien. Treasury wordt gewekt en ziet het als feit, en kan een nieuwe replace voorstellen vanaf
+  wat nu is uitgegeven; Watch en het dashboard tonen de reden.
 - Een agent kiest geen sleutel, URL of ontvanger. Geld beweegt alleen binnen het mandaat, of na Face ID van Max op de
   exacte voorwaarden.
 - Code controleert elke tool-call en geeft de reden terug als hij weigert. Dat staat in de trace.
@@ -105,7 +116,10 @@ geldige uitkomst), en Claude meldt het.
   zijn echt: echte Claude-calls met request-id, tokens en kosten per besluit.
 - Wij zetten de wereld zo neer dat elke zin kan gebeuren. Dat kiezen wij, niet de agent: geen cache, weinig vrije EUR,
   Ridgeline offline, een stille prijsverhoging, één aankoop naar Metal. Zonder deze opties is de wereld zoals altijd.
-- Wat de agents doen, staat niet vast. Heeft Sourcing vóór stap 2 zelf een maximumprijs van 0,03 of lager gezet, dan
-  weigert zijn eigen koopbeleid al vóór het mandaat; dan komt er geen weigering op de chain. Claude meldt dat; we
-  sturen de agent niet bij.
+- Wat de agents doen, staat niet vast. Heeft Sourcing vóór stap 2 zelf een maximumprijs gezet (in dry-179: 0,03), dan
+  controleert Purser toch eerst het mandaat (sinds dry-179): boven de cap is de weigering `mandate_cap_exceeded`, met de
+  weigering op de chain en de let-through zoals bedoeld. Alleen een prijs onder de cap en boven zijn eigen maximum
+  weigert zijn koopbeleid zelf, en dat staat er ook zo ("the Sourcing agent's own buy policy"). Koopt Sourcing helemaal
+  niet meer (beleid `none`), dan komt er geen nieuwe weigering en wacht de let-through tot hij vervalt. Claude meldt dat;
+  we sturen de agent niet bij.
 - De tweede goedkeurder is in deze demo een gelabelde test-passkey; in productie is dat een tweede persoon.
