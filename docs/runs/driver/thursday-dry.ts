@@ -14,7 +14,7 @@
 // Order (runbook "Vooraf", then the table): health, bootstrap, cards setup, visa setup, world setup (cache off, free EUR
 // 150.00, TAP rail on); then 1 serve every 15 s (both suppliers checked to answer) and 1b ridgeline-maintenance BEFORE
 // the runner with the agents (after dry-179: agents started before the suppliers saw none and set "buy nothing"), both
-// passkeys, four eyes (P-0001, test-cfo alone); then 2 price-rise 0.04 --silent once #16 is sold, 2b let-one-through right after, 3
+// passkeys, four eyes (P-0001, test-cfo alone); then 2b let-one-through armed once #16 is sold, 2 price-rise 0.04 --silent, 3
 // Treasury's options (test-cfo then test-controller, the option Treasury recommends), 4 dispute ("refund all" rejected
 // as advised), 5 money-in, 6 invoice (Treasury plans; test-cfo approves), 7 packwise-pro (a card raise the Sourcing
 // agent asks for is approved); a private-tab check of the viewer link. Then 8: the customer (world serve) stops, the
@@ -294,19 +294,14 @@ try {
     say(`SOURCING POLICY after its first look: ${setting("sourcing.buy_policy") ?? "the default"}`);
   });
 
-  // ---- 2, 2b ----
+  // ---- 2b, then 2 (coordinator, 3 November): the let-through is ARMED before the price rise. A purchase under the cap
+  // does not use the arm, so the first over-cap purchase after the rise takes it; once Treasury's replace is open the
+  // spend hold refuses first, so an arm set after the rise would never be used. The command waits up to 90 s for its
+  // outcome; it runs in the background and its output is read at the end.
   let riseAt = "";
-  await timed("S2 world price-rise 0.04 --silent (after #16 is sold)", async () => {
-    await until("#16 sold", () => maxSold() >= 16 || undefined, 900_000);
-    say(`SOURCING POLICY at the rise: ${setting("sourcing.buy_policy") ?? "the default (Stockline, up to the mandate's cap)"}`);
-    riseAt = new Date().toISOString();
-    facts.rise_at = riseAt;
-    cli("world.ts", "price-rise", "0.04", "--silent");
-  });
-  // 2b right after 2. The command waits up to 90 s for its outcome; the runbook goes on meanwhile (Treasury's options may
-  // come at once), so it runs beside step 3 and its output is read at the end.
   let letThroughDone: Promise<void> = Promise.resolve();
-  await timed("S2b world let-one-through (started; runs beside step 3)", async () => {
+  await timed("S2b world let-one-through (armed before the rise, once #16 is sold)", async () => {
+    await until("#16 sold", () => maxSold() >= 16 || undefined, 900_000);
     facts.let_through_requested_at = new Date().toISOString();
     letThroughDone = new Promise<void>((done) => {
       const p = spawn("npx", ["tsx", "src/cli/world.ts", "let-one-through"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"] });
@@ -315,6 +310,14 @@ try {
       p.stderr!.on("data", (d: Buffer) => { text += d.toString(); });
       p.on("exit", (code) => { for (const l of text.split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) say(`  let-one-through: ${l}`); say(`  let-one-through exited ${code}`); facts.let_through = setting("world.let_one_through"); done(); });
     });
+    const armed = await until("the serve loop arming it", () => { const v = setting("world.let_one_through"); return v && JSON.parse(v).stage === "armed" ? v : undefined; }, 60_000).catch(() => undefined);
+    check(!!armed, `the let-through is armed before the rise (${armed ?? setting("world.let_one_through") ?? "no setting"})`);
+  });
+  await timed("S2 world price-rise 0.04 --silent", async () => {
+    say(`SOURCING POLICY at the rise: ${setting("sourcing.buy_policy") ?? "the default (Stockline, up to the mandate's cap)"}`);
+    riseAt = new Date().toISOString();
+    facts.rise_at = riseAt;
+    cli("world.ts", "price-rise", "0.04", "--silent");
   });
 
   // ---- 3 ----
