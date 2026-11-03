@@ -1,0 +1,51 @@
+21:31:28 === H2 in dry-178 (ledger data/dry-178.sqlite)
+21:31:30   [health.ts ] ok    metal chain id: 63825
+21:31:30   [health.ts ] ok    metal finality: head 13508788, finalized 13508788
+21:31:30   [health.ts ] ok    x402 facilitator: ready
+21:31:30   [health.ts ] ok    airwallex sandbox: AED 0, ARS 0, AUD 0, BDT 0, BHD 0, BOB 0, BRL 0, CAD 0, CHF 0, CLP 0, CNY 10000000, COP 0, CZK 0, DKK 0, EGP 0, EUR 9969882.75, GBP 10000960.5, HKD 0, HRK 0, HUF 0, IDR 0, ILS 0, INR 0, JPY 0, KRW 0, LKR 0, MAD 0, MXN 0, MYR 0, NOK 0, NPR 0, NZD 0, PEN 0, PHP 0, PKR 0, PLN 0, RON 0, SAR 0, SEK 0, SGD 0, THB 0, TRY 0, USD 9995953.15, UYU 0, VND 0, ZAR 0
+21:31:30   [health.ts ] ok    claude api key: set
+21:31:35 runner up (local relay, real executors, the three agents)
+21:32:13   [bootstrap.ts ] business account 0xa259D3db34B5Fe934c4B4c1022d5E355Ed607E04 (created https://testnet.metalntwx.com/tx/0x691889df58623870c91285a7acce5a3fff1ecce2ae1feffb653e237795587c3e)
+21:32:13   [bootstrap.ts ] customer account 0x326999D9275E2DA278583c41b3415CcCf32ae90f (created https://testnet.metalntwx.com/tx/0xf3940e2bf5258c4755aba43f7b563291940952a037b1a030219af13796fbe728)
+21:32:13   [bootstrap.ts ] supplier address 0xBB05E8CaF292a369ee6c092da65F6389eE83DdD5
+21:32:13   [bootstrap.ts ] sweep address 0xa231b947A470CF10abaBa221C5EA03d438d8cf30
+21:32:13   [bootstrap.ts ] funded customer account from the faucet
+21:32:13   [bootstrap.ts ] moved 20.00 *USDZ owner -> business: https://testnet.metalntwx.com/tx/0x35eac7d2dbed0401582526bc1b8953c4c2d300efbd2e9204c2d9b26d659cb595
+21:32:13   [bootstrap.ts ] business account holds 20.00 *USDZ
+21:32:13   [bootstrap.ts ] ridgeline address 0x7e20f6cE9E8ADA565DC65a6f15dCedc88b114aE7
+21:32:13   [bootstrap.ts ] sourcing mandate bound: https://testnet.metalntwx.com/tx/0xd09e38326c10bba16cd11e0fb00ecddf9cc6a15eb9601a480d5129fdf0ba0a2b
+21:32:13   [bootstrap.ts ] support mandate bound: https://testnet.metalntwx.com/tx/0x837e37c91b9085d6eb1a5e446077d4a1b943152e21c6f5d9d63d94bf9436c20e
+21:32:13   [bootstrap.ts ] treasury mandate bound: https://testnet.metalntwx.com/tx/0xfba8309069836ddb5acdbd7fefe5dae27bd462ce645610ba85e8a96d872661ec
+21:32:13   [bootstrap.ts ] customer mandate bound: https://testnet.metalntwx.com/tx/0x9ebdf1c5437f796d267727b9549d3c655dc4c51ef5fa40984672e0ce405f83dc
+21:32:13   [bootstrap.ts ] bootstrap done
+21:32:15   [world.ts setup --upstream-cache off] upstream cache off: every customer query buys its stock check upstream once; the buy policy's cache has no effect
+21:32:17 world serving, a query every 15 s
+21:35:35   [world.ts price-rise 0.03 --silent] Stockline will ask 0.03 a stock check from the next customer query, without notice; waiting for the world's serve loop
+21:35:35   [world.ts price-rise 0.03 --silent] Stockline now asks 0.03 a stock check, from query #11; no notice sent
+21:35:35   [world.ts price-rise 0.03 --silent] first purchase attempt at Stockline after the rise: PAID
+21:35:35   [world.ts price-rise 0.03 --silent] Stockline's notice reached the Sourcing agent after that first attempt
+21:35:35 WATCH H2: 15 minutes: 15 min
+21:35:35 DECISION #7 support (claude, tick; events []): Routine check: no dispute on file, so I took no action and sent no messages.
+21:35:35 DECISION #12 treasury (claude, tick; events []): Routine check: I did nothing. No agent is blocked by its mandate and the total budget is 20.00 of 20.00. There are no net earnings to sweep, no open invoices and nothing waiting for the CFO.
+21:35:35 DECISION #19 sourcing (claude, tick; events []): Routine check: both Stockline and Ridgeline are unreachable with no recent successes. I kept Stockline as the source, set the cap to the mandate's 0.03, and allowed up to 300 seconds of cache so customers can still be served while the suppliers are down. No purchases or software/report changes were made.
+21:35:50 DECISION #63 sourcing (claude; events [1]): Stockline raised its stock-check price to 0.03 USDZ, which is still within my 0.03 per-purchase cap and leaves a 0.02 margin against the 0.05 sell price, so I'm keeping the current policy (Stockline, max 0.03, no cache). Ridgeline stays unused: its data is 15 minutes old and it has no successful history. No purchases or software/report changes were made.
+21:40:50 DECISION #115 sourcing (claude, tick; events []): Routine check: Stockline is at 0.03 (cap 0.03), data 5 s old, margin 0.02, 20/20 recent tries paid, so the policy stays at Stockline, max 0.03, no cache. Ridgeline stays unused (15-minute-old data, no successful history). No purchases or software/report changes.
+21:45:50 DECISION #164 sourcing (claude, tick; events []): Routine check: market is unchanged. Stockline is at 0.03 (my cap), data 5 s old, margin 0.02 per query, 20/20 recent tries paid, so the policy stays at Stockline, max 0.03, no cache. Ridgeline stays unused (15-minute-old data, no successful history). No purchases, software, or report changes; budget remains 8.84.
+21:47:20 DECISION #182 support (claude, tick; events []): Routine check: no dispute on file, so I took no action and sent no messages.
+21:47:35 DECISION #195 treasury (claude, tick; events []): I swept the 1.04 in net earnings from the Metal business account to the sweep wallet. The transfer is final (block 13521143), and the credit was booked to Airwallex as a simulated deposit because the sandbox can't receive stablecoins. The business account still holds 20.00, which covers the 12.69 the other mandates may still spend. No agent is blocked, no invoice is open and nothing waits for the CFO, so I took no other action.
+21:50:35 stopping the runner: npm run stop -- the ledger
+21:50:38   [stop.ts data/dry-178.sqlite --grace 60] 21:50:36 stop     stopping world dry-178: SIGTERM to process group 29167 (13 process(es): 29167 (/opt/node22/bin/node --require /home/user/x402-business-agents/node_modules/tsx/); 29187 (npm exec tsx /tmp/claude-0/-home-user/***/scratchpad/wt-hold/src/cli/agent.ts so); 29188 (npm exec tsx /tmp/claude-0/-home-user/***/scratchpad/wt-hold/src/cli/agent.ts su); 29194 (npm exec tsx /tmp/claude-0/-home-user/***/scratchpad/wt-hold/src/cli/agent.ts tr); 29246 (sh -c tsx /tmp/claude-0/-home-user/688ec361-72ad-554b-b31d-67a034944a81/scratchp); 29248 (node /tmp/claude-0/-home-user/688ec361-72ad-554b-b31d-67a034944a81/scratchpad/wt); 29254 (sh -c tsx /tmp/claude-0/-home-user/688ec361-72ad-554b-b31d-67a034944a81/scratchp); 29255 (node /tmp/claude-0/-home-user/688ec361-72ad-554b-b31d-67a034944a81/scratchpad/wt); 29262 (sh -c tsx /tmp/claude-0/-home-user/688ec361-72ad-554b-b31d-67a034944a81/scratchp); 29263 (node /tmp/claude-0/-home-user/688ec361-72ad-554b-b31d-67a034944a81/scratchpad/wt); 29276 (/opt/node22/bin/node --require /home/user/x402-business-agents/node_modules/tsx/); 29286 (/opt/node22/bin/node --require /home/user/x402-business-agents/node_modules/tsx/); 29297 (/opt/node22/bin/node --require /home/user/x402-business-agents/node_modules/tsx/))
+21:50:38   [stop.ts data/dry-178.sqlite --grace 60] 21:50:38 STOPPED  world dry-178 stopped: process group 29167 is gone (checked with ps); lock removed
+21:51:44   [verify.ts ] ok    audit log hash chain  226 rows, head dbd1c22f1661b173b633405d705618e1250e0b180f97d785064c83c2059974e3
+21:51:44   [verify.ts ] ok    mandate sourcing.credential.json
+21:51:44   [verify.ts ] ok    mandate support.credential.json
+21:51:44   [verify.ts ] ok    mandate treasury.credential.json
+21:51:44   [verify.ts ] ok    mandate customer.credential.json
+21:51:44   [verify.ts ] ok    pull sweep-20261102-1  0x00320e5e29… under treasury.credential.json
+21:51:44   [verify.ts ] ok    approval methods  no passkey enrolled; approvals by typed hash prefix
+21:51:44   [verify.ts ] ok    policy v1  22 rules, sha256 40fd91d2…, from 2026-11-02T21:32:18.980Z
+21:51:44   [verify.ts ] ok    policy v2  24 rules, sha256 4981a08f…, from 2026-11-02T21:47:41.116Z
+21:51:44   [verify.ts ] ok    finality certificates  113 transaction(s) in 113 block(s) with Metal's reported certificate: header hash and number, signer bitmap and a quorum of the 4 pinned validators hold; not checked: the BLS signature (it needs the validators' public keys, which Metal has not published for testnet), so this is what Metal's RPC reported
+21:51:44   [verify.ts ] ok    deposit d5013c3e-d886-4edd-8ea8-fabd1984d1c5  USD 1.04, reference = tx 0x00320e5e29…, SETTLED
+21:51:44   [verify.ts ] all checks pass
+21:51:44 === done H2 in dry-178, 20 min
