@@ -5,7 +5,7 @@ of 3 November (`docs/demo/main-run.json`; an earlier run is named with its date 
 Sources for each claim: [docs/claims.md](../claims.md), section "The submission pack".
 
 Fill in before submitting: the video link, the live link (the relay's address, kept out of the repo) and the repo link
-once the repo is public. Max's steps: [checklist-max.md](checklist-max.md).
+once the repo is public. Max's steps: [docs/internal/checklist-max.md](../internal/checklist-max.md).
 
 ## Title
 
@@ -139,7 +139,7 @@ Claude cost $0.093 per €1,000 the agents paid.
 
 Max on his own phone with Face ID; the agents decided with Claude; test money only (Metal testnet, Airwallex sandbox).
 Second approver: a labelled test passkey in this demo. In production this is a second person. Log:
-`docs/runs/2026-11-03-hoofdrun.md`.
+`docs/runs/2026-11-03-main-run.md`.
 - the price rise: one purchase at 0.04 let through to Metal, which refused it itself (tx `0x2e92f9cb…1871`); 14
   queries answered with an error status, none settled;
 - Treasury's options 40 s after the refusal; four eyes (the CFO, then the second approver) and the mandates replaced

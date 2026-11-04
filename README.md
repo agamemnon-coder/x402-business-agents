@@ -33,7 +33,7 @@ hold every limit, and a person signs before money moves beyond them. The diagram
 real Claude decisions (24 of 24 by Claude) and the CFO's real Face ID. It ran on the frozen commit
 `35e1cac` (the code the run ran on; no code
 was changed during the run). Look the ids up yourself; the full log, with every step in UTC, is
-[docs/runs/2026-11-03-hoofdrun.md](docs/runs/2026-11-03-hoofdrun.md). Times are UTC, from the run's ledger
+[docs/runs/2026-11-03-main-run.md](docs/runs/2026-11-03-main-run.md). Times are UTC, from the run's ledger
 ([docs/demo/main-run.json](docs/demo/main-run.json)).
 
 | What happened | Id | Time (UTC) |

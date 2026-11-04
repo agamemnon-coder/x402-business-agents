@@ -38,7 +38,7 @@ Metal testnet.
 
 | Fact | Source |
 |---|---|
-| Main run: 3 November 2026, 11:15–11:37 UTC, commit `35e1cac`, 24 of 24 decisions by Claude | [docs/runs/2026-11-03-hoofdrun.md](runs/2026-11-03-hoofdrun.md) |
+| Main run: 3 November 2026, 11:15–11:37 UTC, commit `35e1cac`, 24 of 24 decisions by Claude | [docs/runs/2026-11-03-main-run.md](runs/2026-11-03-main-run.md) |
 | Price rise to 0.04 from query #24; that purchase let through once on purpose (`world let-one-through`); Metal refused it with `mandate_cap_exceeded`; Purser would have refused it (0.04 over the 0.03 cap) | the run log, acceptance row 5 |
 | The refusal on chain: tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`, 11:23:33 UTC | [README, Sandbox proof](../README.md#sandbox-proof) |
 | Treasury's options P-0002 (A: cap 0.04, price 0.05, recommended) and P-0003 (B: price 0.07), total 20.00, 40 s after the refusal | the run log, steps 11:24:07 |
