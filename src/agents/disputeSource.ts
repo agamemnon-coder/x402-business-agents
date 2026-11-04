@@ -10,7 +10,9 @@
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
-import { carryOut, decisionOf, finished, legacyDecision, recordDecision } from "./disputeDecision.js";
+import { carryOut, cfoResolution, decisionOf, finished, legacyDecision, recordDecision, type DecisionAudit } from "./disputeDecision.js";
+
+export { cfoResolution };
 
 /** A dispute's id, from its email as received: D- and the first 8 hex of the email's sha256 (as s2 has always keyed it). */
 export const disputeKey = (email: string): string => `D-${sha256Hex(email).slice(0, 8)}`;
@@ -59,7 +61,8 @@ export function escalatedAt(db: DB, id: string): string | null {
 /**
  * Hands a dispute that came in, and that code could not settle, to the CFO: recorded once per dispute
  * (dispute.escalated), shown on the dashboard's refusals and on /health while it is undecided. It moves no money and
- * makes no refund proposal: the CFO settles it (npm run s2 -- --dispute <id>, or a refund proposal with Face ID).
+ * makes no refund proposal: the CFO settles it (npm run s2 -- --dispute <id>, or a refund proposal with Face ID) and,
+ * once handled, marks it resolved (npm run s2 -- --resolve <id> --note "…"; the only way for a D-ev<id> dispute).
  */
 export function escalateDispute(db: DB, d: { id: string; customer: string }, reason: string, now = new Date()): { fresh: boolean; at: string } {
   const before = escalatedAt(db, d.id);
@@ -87,32 +90,95 @@ export function escalatedUndecided(db: DB): { id: string; at: string; reason: st
   return out;
 }
 
+/** A refund_batch proposal that can still run or that a person decided: an order in it is put to the CFO once. Not one
+ *  that can no longer run (EXPIRED, FAILED, SUPERSEDED, NEEDS_REAPPROVAL, or pending past its expiry): a sale covered
+ *  only by such a proposal is decided again, so the refund that is due comes back to the CFO (late review, MEDIUM 1). */
+const LIVE_PROPOSAL = "status IN ('APPROVED', 'EXECUTING', 'EXECUTED', 'REJECTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)";
+/** A refund row that was paid, is under way or is held (a REFUSED one alone handles nothing: late review, MEDIUM 2). */
+const REFUND_WORDS: Record<string, string> = {
+  PAID: "refunded under", PENDING: "refund sent under", HELD: "refund held at Metal under", PROPOSED: "refund started under",
+};
+const REFUND_TAIL: Record<string, string> = { PENDING: ", not yet confirmed", PROPOSED: ", not yet sent" };
+
 /**
  * Sales another dispute already handled (holdouts, dispute-repeated: an angrier second email about the same orders is
- * a new dispute id): refunded or being refunded, or named in a refund proposal for the CFO, any status. One order is
- * refunded, or put to the CFO, once across disputes; a new dispute decides only the orders no earlier one handled.
- * Returns each such sale with the dispute or proposal that handled it.
+ * a new dispute id): refunded, being refunded or held (PAID, PENDING, HELD, PROPOSED), or named in a live refund
+ * proposal for the CFO (LIVE_PROPOSAL). One order is refunded, or put to the CFO, once across disputes; a new dispute
+ * decides only the orders no earlier one handled. A refund that was refused, or a proposal that can no longer run,
+ * handles nothing: the sale is decided again. Returns each such sale with what handled it, worded by its outcome.
  */
-export function handledElsewhere(db: DB, saleIds: number[], disputeId: string): Map<number, string> {
+export function handledElsewhere(db: DB, saleIds: number[], disputeId: string, now = new Date()): Map<number, string> {
   const want = new Set(saleIds);
   const out = new Map<number, string>();
-  for (const r of db.prepare("SELECT sale_id, dispute_id, proposal_id FROM refunds WHERE dispute_id IS NULL OR dispute_id <> ?").all(disputeId) as { sale_id: number; dispute_id: string | null; proposal_id: string | null }[]) {
-    if (want.has(r.sale_id)) out.set(r.sale_id, r.dispute_id ? `refunded under ${r.dispute_id}` : `refunded under ${r.proposal_id ?? "an earlier refund"}`);
+  const at = now.toISOString();
+  const live = new Map((db.prepare(`SELECT proposal_id, status, terms_json FROM proposals WHERE kind = 'refund_batch' AND (${LIVE_PROPOSAL})`).all(at) as { proposal_id: string; status: string; terms_json: string }[])
+    .map((p) => [p.proposal_id, p]));
+  const sentAs = (p: { proposal_id: string; status: string }) => `sent to the CFO as ${p.proposal_id} (${p.status})`;
+  // The live proposals of other disputes, by the sales they name.
+  const coveredBy = new Map<number, { proposal_id: string; status: string }>();
+  for (const p of live.values()) {
+    let terms: { dispute_id?: unknown; refunds?: { sale_id?: unknown }[] };
+    try { terms = JSON.parse(p.terms_json) as typeof terms; } catch { continue; }
+    if ((typeof terms.dispute_id === "string" ? terms.dispute_id : "") === disputeId) continue;
+    for (const r of terms.refunds ?? []) { const id = Number(r.sale_id); if (want.has(id) && !coveredBy.has(id)) coveredBy.set(id, p); }
   }
-  const props = db.prepare("SELECT proposal_id, terms_json FROM proposals WHERE kind = 'refund_batch' AND COALESCE(json_extract(terms_json, '$.dispute_id'), '') <> ?").all(disputeId) as { proposal_id: string; terms_json: string }[];
-  for (const p of props) {
-    let refunds: { sale_id?: unknown }[];
-    try { refunds = (JSON.parse(p.terms_json) as { refunds?: { sale_id?: unknown }[] }).refunds ?? []; } catch { continue; }
-    for (const r of refunds) { const id = Number(r.sale_id); if (want.has(id) && !out.has(id)) out.set(id, `sent to the CFO as ${p.proposal_id}`); }
+  for (const r of db.prepare("SELECT sale_id, outcome, dispute_id, proposal_id FROM refunds WHERE dispute_id IS NULL OR dispute_id <> ?").all(disputeId) as { sale_id: number; outcome: string; dispute_id: string | null; proposal_id: string | null }[]) {
+    if (!want.has(r.sale_id)) continue;
+    const under = r.dispute_id ?? r.proposal_id ?? "an earlier refund";
+    if (REFUND_WORDS[r.outcome]) { out.set(r.sale_id, `${REFUND_WORDS[r.outcome]} ${under}${REFUND_TAIL[r.outcome] ?? ""}`); continue; }
+    // REFUSED: handled only while a live proposal covers its sale (its own, or another dispute's).
+    const cover = (r.proposal_id ? live.get(r.proposal_id) : undefined) ?? coveredBy.get(r.sale_id);
+    if (cover) out.set(r.sale_id, `refund refused under ${under}; ${sentAs(cover)}`);
   }
+  for (const [id, p] of coveredBy) if (!out.has(id)) out.set(id, sentAs(p));
   return out;
 }
 
 /** A dispute with nothing to decide (its orders were all handled by earlier disputes, or none was sold): decided once,
- *  by code, with nothing new (no refund, no proposal), so it is never settled again nor blocks the disputes after it. */
-export async function decideNothingNew(db: DB, disputeId: string, note = "every order in it was handled by an earlier dispute"): Promise<void> {
-  recordDecision(db, disputeId, { source: "code", model: null, refunds: [], escalate: null, approval: null, agent_note: note });
+ *  by code, with nothing new (no refund, no proposal), so it is never settled again nor blocks the disputes after it.
+ *  `audits` are written in the decision's own transaction (decided once: a rerun writes none). Callers use
+ *  decideHandledBefore or decideNoneSold, which say so where a person looks. */
+export async function decideNothingNew(db: DB, disputeId: string, note = "every order in it was handled by an earlier dispute", audits: DecisionAudit[] = []): Promise<void> {
+  recordDecision(db, disputeId, { source: "code", model: null, refunds: [], escalate: null, approval: null, agent_note: note }, audits);
   await carryOut(db, disputeId, { refund: async () => { throw new Error("nothing to refund"); }, existing: () => null });
+}
+
+/** Every order in the dispute was handled before (`handled`: "#7 (refunded under D-…)" each): decided once with
+ *  nothing new, and recorded as dispute.handled_before, which the dashboard shows (late review, LOW-MEDIUM 3). */
+export async function decideHandledBefore(db: DB, d: { id: string; customer: string }, handled: string[]): Promise<void> {
+  await decideNothingNew(db, d.id, "every order in it was handled by an earlier dispute", [
+    { actor: "support", event: "dispute.handled_before", payload: { customer: d.customer.slice(0, 80), handled: handled.slice(0, 50).map((h) => h.slice(0, 200)) } },
+  ]);
+}
+
+/** None of the disputed numbers was sold to this customer: handed to the CFO (dispute.escalated, on the dashboard), then
+ *  decided once with nothing to refund, so it is not settled again (late review, LOW-MEDIUM 3: never closed silently). */
+export async function decideNoneSold(db: DB, d: { id: string; customer: string }): Promise<void> {
+  if (decisionOf(db, d.id)) return;
+  escalateDispute(db, d, "no disputed number matched a sale");
+  await decideNothingNew(db, d.id, "none of the disputed numbers was sold to this customer");
+}
+
+/**
+ * The CFO marks a dispute it holds resolved (late review, L2): npm run s2 -- --resolve <id> --note "…". Only a dispute
+ * handed to the CFO (dispute.escalated) and not decided; once (a second call is refused). It moves no money and makes
+ * no proposal: it records the CFO's decision (dispute.resolved_by_cfo, outcome resolved_by_cfo, with the note), which
+ * clears the /health alert and counts as the dispute's decision (legacyDecision), so code never settles it after.
+ * D-ev<id> disputes (no email code can read) can only be closed this way.
+ */
+export function resolveByCfo(db: DB, id: string, note: string, now = new Date()): { id: string; outcome: "resolved_by_cfo"; at: string } {
+  const words = note.trim();
+  if (!words) throw new Error("a note is required: say how the dispute was settled");
+  const tx = db.transaction(() => {
+    if (decisionOf(db, id) || legacyDecision(db, id)) throw new Error(`${id} is already decided; nothing is decided again`);
+    if (!escalatedAt(db, id)) throw new Error(`${id} is not with the CFO (no dispute.escalated names it); nothing is resolved`);
+    audit(db, "human", "dispute.resolved_by_cfo", id, {
+      outcome: "resolved_by_cfo", note: words.slice(0, 500), moves_money: false,
+      origin: { actor: "cfo-command", command: "npm run s2 -- --resolve", moves_money: false },
+    }, now);
+  });
+  tx.immediate();
+  return { id, outcome: "resolved_by_cfo", at: now.toISOString() };
 }
 
 /**

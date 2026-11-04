@@ -1,7 +1,8 @@
 // npm run submission: the submission pack's files (awards item 6), from the recorded pages and files. Writes
 //   docs/submission/screens/1-6 *.png   six screenshots of the recorded pages at 1440 x 900 (npm run judge serves them)
-//   docs/submission/screens/7-* .. 14-*  close-ups for the deck, one panel each (rails, inspector, enterprise cards,
-//                                        Try Purser, overview, Claude, the run's result, the dispute case)
+//   docs/submission/screens/7-* .. 13-*  close-ups for the deck, one panel each (rails, inspector, enterprise cards,
+//                                        Try Purser, overview, Claude, the run's result)
+//   docs/submission/screens/14-dispute   the main run's dispute on /watch, at the CFO's rejection of the refund batch
 //   docs/submission/purser-deck.pdf      sixteen slides, one picture each (src/submission/deck.ts); the phone screens
 //                                        (screens/phone-*.png) come from test/browser/approve.check.ts, a dev-test world
 //   out/submission/purser-source.zip     git archive of the current commit: code and docs, no keys, no ledger
@@ -58,7 +59,6 @@ try {
     ["11-overview", "/?recorded", ["#kpis", "#cards"]],
     ["12-claude", "/?recorded", ["#claude-panel"]],
     ["13-result", "/?recorded&books", ["#books .panel.bk"]],
-    ["14-dispute", "/?recorded&disputes", ["#disputes > *"]],
   ];
   for (const [name, path, sels] of CLOSEUPS) {
     await page.goto(`${judge.url}${path}`, { waitUntil: "load" });
@@ -74,6 +74,16 @@ try {
     await page.screenshot({ path: resolve(shots, `${name}.png`), clip, fullPage: true });
     console.log(`screens/${name}.png  ${path} ${sels.join(" ")}`);
   }
+  // The dispute slide, from the main run (3 Nov): /watch's full run held at the CFO's Face ID rejection of the refund
+  // batch, so the three refunds on chain sit just under it. The step is found in the page's own run data.
+  await page.goto(`${judge.url}/watch?full=1&autoplay=0`, { waitUntil: "load" });
+  const rejectAt = await page.evaluate(() => (JSON.parse(document.getElementById("run-data")!.textContent!) as { events: { k: string; status?: string; title?: string }[] }).events
+    .findIndex((e) => e.k === "face" && e.status === "REJECTED" && /refund/i.test(e.title ?? "")));
+  if (rejectAt < 0) throw new Error("the main run on /watch has no rejected refund batch");
+  await page.goto(`${judge.url}/watch?full=1&at=${rejectAt}&autoplay=0`, { waitUntil: "load" });
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: resolve(shots, "14-dispute.png") });
+  console.log(`screens/14-dispute.png  /watch?full=1&at=${rejectAt}&autoplay=0`);
   // Two moments of the film (1920x1080), from the same recorded pages: the card declined then raised, and the
   // mandate refusing the price rise. Taken here, not from a rendered video, so they always show the pages as they are.
   const film = await browser.newPage({ viewport: { width: 1920, height: 1080 } });

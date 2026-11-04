@@ -9,7 +9,7 @@
 // past a cap, no refund outside the limits or for a sale code finds right, no payee other than allowed, no double
 // payment, and every payment carries its origin (D24).
 
-import { decideNothingNew, disputeLimits, handledElsewhere } from "../agents/disputeSource.js";
+import { decideHandledBefore, disputeLimits, handledElsewhere } from "../agents/disputeSource.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { audit } from "../audit/log.js";
 import { openDb, type DB } from "../db/open.js";
@@ -262,7 +262,7 @@ async function settleSim(ctx: SimCtx, by: "agent" | "code"): Promise<{ ok: boole
   const elsewhere = handledElsewhere(db, spec.dispute.seqs.filter((s) => bySeq.has(s)).map((s) => bySeq.get(s)!.sale_id), disputeId);
   const seqs = spec.dispute.seqs.filter((s) => bySeq.has(s) && !elsewhere.has(bySeq.get(s)!.sale_id));
   if (seqs.length === 0 && elsewhere.size) {
-    await decideNothingNew(db, disputeId);
+    await decideHandledBefore(db, { id: disputeId, customer: SUMMIT }, spec.dispute.seqs.filter((q) => elsewhere.has(bySeq.get(q)?.sale_id ?? -1)).map((q) => `#${q} (${elsewhere.get(bySeq.get(q)!.sale_id)})`));
     return { ok: true, text: `every order in ${disputeId} was handled by an earlier dispute; nothing new is refunded or sent to the CFO` };
   }
   const wrong = new Set(spec.dispute.wrong);
