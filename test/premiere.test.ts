@@ -199,13 +199,16 @@ describe("the /try/sign mock says what the live page says", () => {
 });
 
 describe("the premiere's script", () => {
-  it("fits in three minutes, with the optional hook as one clip to cut", () => {
+  it("fits in three minutes: 2:49, the line on black and then the pen, no hook (cut, Max, 4 Nov)", () => {
     expect(premiereSeconds()).toBeLessThanOrEqual(180);
-    expect(premiereSeconds()).toBe(177);
+    expect(premiereSeconds()).toBe(169);
     expect(timeline.at(-1)!.start + timeline.at(-1)!.seconds).toBe(premiereSeconds());
-    expect(PREMIERE_SCENES.find((s) => s.id === "02-hook")).toMatchObject({ kind: "slot", seconds: 8 });
-    expect(PREMIERE_SCENES.filter((s) => s.kind === "slot").map((s) => s.id)).toEqual(["02-hook", "08-faceid", "15-close"]);
-    expect(OVERLAYS).toEqual(["02-hook", "08-faceid", "10-try-sign", "15-close"]);
+    expect(timeline.slice(0, 2).map((s) => [s.id, s.start])).toEqual([["01-line", 0], ["03-pen", 3]]);
+    expect(PREMIERE_SCENES.map((s) => s.id).filter((id) => id.startsWith("02"))).toEqual([]);
+    expect(Object.keys(data.screen).filter((id) => id.startsWith("02"))).toEqual([]);
+    expect(PREMIERE_SCENES.filter((s) => s.kind === "slot").map((s) => s.id)).toEqual(["08-faceid", "15-close"]);
+    expect(OVERLAYS).toEqual(["08-faceid", "10-try-sign", "15-close"]);
+    expect(JSON.stringify(data.screen).replace(String((screen("16-end").credits as { ai: string }).ai), "")).not.toMatch(/AI-generated|AI hook/);
   });
 
   it("records one clip per scene from the page, and the AI-voice end card as a spare outside the master", () => {
@@ -291,12 +294,11 @@ describe("docs/video/ holds what the code writes", () => {
     // without the hook and with a 10-second one are the script's.
     const rows = [...guide.matchAll(/^\| (\d:\d\d) \| `(\d\d-[a-z-]+)\.mp4` \|/gm)].map((m) => [m[2], m[1]]);
     expect(rows).toEqual(timeline.map((s) => [s.id, clock(s.start)]));
-    const hook = PREMIERE_SCENES.find((s) => s.id === "02-hook")!.seconds;
-    expect(guide).toContain(`the film is ${clock(premiereSeconds() - hook)}. With a 10-second hook it is ${clock(premiereSeconds() - hook + 10)}`);
     expect(guide).toContain(`**Purser in ${clock(premiereSeconds())}**`);
+    expect(guide).not.toMatch(/AI hook|02-hook|without the hook|10-second hook/i);
     expect(guide).toMatch(/YouTube Audio Library/);
     expect(guide).toMatch(/unlisted/i);
-    expect(guide).toMatch(/AI[- ]generated/);
+    expect(guide).toMatch(/`clips\/16-end-ai-voice\.mp4` \| A spare/);
   });
 
   it("shows the hashes of the mock's example terms, as the page hashes them: one cent changes all of it", () => {

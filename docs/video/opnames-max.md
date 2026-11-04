@@ -1,7 +1,7 @@
 # Opnames voor Max (de premiere)
 
-Twee opnames: de opening en slotzin (2) en /try/sign (3). Het Face ID-shot (1) knippen we uit opname 3. Alles is
-testgeld. Er komt nooit een sleutel of iets privés in beeld.
+Twee opnames: de voice-over in je eigen stem (4, met de opening en slotzin erin) en /try/sign op je telefoon (3).
+Het Face ID-shot (1) knippen we uit opname 3. Alles is testgeld. Er komt nooit een sleutel of iets privés in beeld.
 Waar elke opname in de film komt: [README.md](README.md).
 
 ## Eerst
@@ -17,22 +17,17 @@ film zegt dat het na de run is gefilmd, op een testvoorstel, met testgeld.
 
 Staat het Face ID-scherm niet in je schermopname? Film je telefoon tijdens opname 3 dan met een tweede toestel.
 
-## 2. De opening en de slotzin (je eigen stem en gezicht)
+## 2. De opening en de slotzin (in je voice-over)
 
-**Opening**, alleen je stem:
+Ze zitten in de voice-over (4): de opening bij 0:03, de slotzin bij 2:29.
 
 > So who holds the pen? I'm Max Geurtsen, and this is Purser.
-
-**Slotzin**, op camera:
 
 > A price shock, a dispute, a euro bill. Claude decided, the rails and the code held the limits, and I signed only
 > what went beyond them. Purser, Starter Kit 11.
 
-- iPhone horizontaal, op ooghoogte, op een statief of een stapel boeken.
-- Licht van voren. Een stille kamer.
-- Kijk in de camera. Wacht 1 seconde voor je begint en na je laatste woord.
-- Neem elke zin drie keer op. We kiezen samen.
-- Video in 1080p (Instellingen → Camera → Neem video op).
+De slotzin ook op camera? Mag, hoeft niet: zonder beeld staat de zin als kaart met je naam. Wil je het wel: iPhone
+horizontaal op ooghoogte, licht van voren, kijk in de camera, video in 1080p.
 
 ## 3. Ondertekenen op /try/sign (±30 seconden, schermopname op je iPhone)
 
@@ -47,9 +42,11 @@ Staat het Face ID-scherm niet in je schermopname? Film je telefoon tijdens opnam
 
 Dit is een testwereld met een testpasskey. Er gebeurt niets echts.
 
-## De andere zinnen (als je wilt)
+## 4. De voice-over (je eigen stem)
 
-Wil je ook de andere zinnen inspreken? Ze staan in [script.md](script.md), met de tijd erbij. Neem elke zin apart op,
-met 1 seconde stilte ervoor en erna. Een AI-stem mag ook, maar dan staat dat in de aftiteling.
+Je spreekt de hele voice-over zelf in. De zinnen staan in [script.md](script.md), met de tijd erbij.
+
+- Eén audio-opname is genoeg (Dictafoon of Voice Memos). Een stille kamer; de telefoon op 20 cm, iets naast je mond.
+- Lees elke zin rustig voor, met 2 seconden stilte ertussen. Een zin opnieuw? Lees hem nog eens; we nemen de laatste.
 
 Stuur alle bestanden naar mij. Ik zet ze in de film.
