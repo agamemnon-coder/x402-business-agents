@@ -5,23 +5,19 @@
 **Purser lets the CFO of a small company give its AI agents company money to spend through Airwallex and Metal, only
 within limits the CFO sets in code and signs for with Face ID.**
 
-Kit 11 · x402 Business Agents: three agents (Sourcing, Support, Treasury) on one Metal account, rebalancing when
-supplier costs rise — plus Airwallex for cards, FX and the euro licence fee. Entered for the Metal Award.
+> Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.
 
-**Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
+<p align="center"><img src="docs/media/architecture.svg" width="100%" alt="An agent proposes, rules in code check, a person signs with Face ID (optionally also on the Cardputer hub), then Airwallex or Metal move test money and every step lands in the books (optionally also in a T:0 ledger); a run the rules fail never runs"></p>
 
-## How it works
-
-<p align="center"><img src="docs/media/architecture.svg" width="100%" alt="An agent proposes, rules in code check, a person signs with Face ID (optionally also on the Cardputer hub), then Airwallex or Metal move test money, and the books go to T:0; a run the rules fail never runs"></p>
-
-An agent works inside its limits and proposes anything beyond them. Rules in code check every proposal against the CFO's
-limits, and a run the rules fail never runs. A person signs the exact terms with Face ID; with the hub on, Max's
-Cardputer is a second, separate yes, never a replacement for Face ID. Only then does Airwallex or Metal move money, and
-every step lands in the books and the hash-chained audit log. In short: Claude explains and proposes, the rules in code
-hold every limit, and a person signs before money moves beyond them. The diagram's source is
-[docs/media/architecture.svg](docs/media/architecture.svg).
+An agent works inside its limits and proposes anything beyond them. Rules in code check every proposal against the
+CFO's limits, and a run the rules fail never runs. A person signs the exact terms with Face ID. Only then does
+Airwallex or Metal move money, and every step lands in the books and the hash-chained audit log. Which Claude model
+does what, and why Opus does the rare steps a person signs: [docs/claude.md](docs/claude.md#why-opus-and-where-it-is-not-needed).
 
 ## Sandbox proof
+
+**3 November 2026, 11:15–11:37 UTC · commit `35e1cac` · script: the `npm run world` steps in
+[docs/runs/2026-11-03-hoofdrun.md](docs/runs/2026-11-03-hoofdrun.md#steps-utc); fresh ids: `npm run smoke:sandbox`.**
 
 **The run itself.** 3 November 2026, world `main-1`, run live against the Airwallex sandbox and Metal testnet with
 real Claude decisions (24 of 24 by Claude) and the CFO's real Face ID. It ran on the frozen commit
@@ -113,46 +109,23 @@ approved, and the hash, expiry and passkey rules apply to every one of them:
   [`task_card`](src/agents/askPurser.ts) above the threshold, [`payee_change`](src/policy/payeeChange.ts) and
   [`owners_execute`](src/metal/ownersExecute.ts) (always two owners).
 
-## Safety
-
-- **Idempotent money calls.** Every Airwallex write carries a request id that is stored before the call. After a timeout
-  or a lost answer, Purser looks the request id up first and adopts what it finds; it never sends blind a second time
-  ([src/executors/invoicePayment.ts](src/executors/invoicePayment.ts), the `transfers` table;
-  [contract/airwallex.test.ts](test/contract/airwallex.test.ts): "a lost answer, then duplicate_request_id on the resend:
-  the existing transfer is adopted, paid exactly once").
-- **Audit chain.** The audit log is append-only (the database refuses updates and deletes) and hash-chained: each row
-  holds the hash of the one before. `npm run verify` recomputes the chain from the genesis hash and re-checks every
-  passkey approval, credential and pull; `npm run verify-log` checks an exported log
-  ([src/audit/log.ts](src/audit/log.ts), [src/cli/verify.ts](src/cli/verify.ts); [audit.test.ts](test/audit.test.ts)).
-- **Reconciliation.** Each Airwallex transfer and card transaction and each Metal payment is checked against the ledger
-  by id and amount, every hour while the runner runs; a difference is an audit row and an alarm, and nothing is fixed
-  automatically (`npm run reconcile`; [reconcile.test.ts](test/reconcile.test.ts)).
-- **No secrets in the repository.** Keys come from environment variables only (Airwallex, Metal, Anthropic, T:0, the
-  hub); error text is passed through [`redactSecrets`](src/lib/redact.ts) before it is stored, and the hub's address
-  and token are never logged.
-- **Sandbox and testnet only.** The Airwallex client refuses any base URL but the sandbox; Metal runs on testnet. All
-  money here is test money.
-- **A person signs.** Face ID on the exact terms hash; a typed hash prefix can only reject once a passkey is enrolled;
-  four eyes above the CFO's threshold. Second approver: a labelled test passkey in this demo. In production this is a
-  second person.
-- **Outside services never decide alone.** The hub can only add a "no": unreachable, it falls back to Face ID alone,
-  recorded. T:0 gets the books after a payment, in the background: a failure is logged and the payment is not affected.
-
 ## What is real, what is mock
 
-- **Live, in that run:** the Airwallex sandbox calls above (FX, SWIFT transfer, card authorization, the deposit), the
-  Metal testnet transactions above, the Claude decisions, and the CFO's Face ID. Sandbox and testnet only: the money
-  is test money. The sandbox itself simulates the last steps of the SWIFT transfer (SENT, PAID) and the merchant's
-  card charge; see [Test money](#test-money).
-- **Recorded, not live:** Home, Watch and Proof on the hosted site replay this recording.
-- **Offline:** `npm run judge` runs the recording with no keys and no network.
-- **Stand-ins:** the Scenario Lab (`/lab`) runs against stand-ins for Airwallex and Metal, not the real services.
-- **Simulated:** the month in 90 seconds is a simulation, not a month of real payments.
-- **Test fixtures:** the automated tests run on fixtures and stand-ins; they do not call the sandbox or testnet.
-- **Built, tested on stand-ins, not yet run live:** the hub push and the hub gate (a fake hub in the tests; it waits for
-  Max's hub address and token), the T:0 sink after each payment (a fake T:0; the shared T:0 sandbox key can read but
-  not post, `403 CAPI71`, see [docs/runs/2026-11-03-t0-sandbox.md](docs/runs/2026-11-03-t0-sandbox.md)), and
-  `npm run smoke:sandbox` (the Airwallex stand-in; our current sandbox key is read-only).
+| Part | Status | Where to check |
+|---|---|---|
+| Airwallex: FX conversion, SWIFT transfer, card authorization, deposit | **Live**, in the Airwallex sandbox (test money) | the ids in [Sandbox proof](#sandbox-proof) |
+| Metal: mandates, the refusal over the cap, the sweep | **Live**, on Metal testnet (test money) | the tx hashes in [Sandbox proof](#sandbox-proof) |
+| The agents' decisions | **Live**, real Claude calls (24 of 24 in the main run) | [docs/runs/2026-11-03-hoofdrun.md](docs/runs/2026-11-03-hoofdrun.md) |
+| The CFO's approval | **Live**: Max's own Face ID. The second approver is a labelled test passkey; in production a second person | the same run log |
+| A SWIFT transfer's last steps (SENT, PAID), a merchant's card charge | **Simulated by the Airwallex sandbox** | [Test money](#test-money) |
+| Home, Watch and Proof on the hosted site | **Recorded**: a replay of the main run | [kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/) |
+| `npm run judge` | **Offline replay**: no keys, no network | [Run it in 3 commands](#run-it-in-3-commands) |
+| The Scenario Lab (`/lab`) | **Stand-ins** for Airwallex and Metal | `npm run judge`, then `/lab` |
+| A month in 90 seconds | **Simulated**, not real payments | `npm run judge`, then `/month` |
+| The automated tests | **Stand-ins and fixtures**; none calls a real service | [Tests](#tests) |
+| The Cardputer hub (push and gate) | **Built, tested on a fake hub, not run live**; it waits for Max's hub address and token | [src/hub/](src/hub/), [hub-gate.test.ts](test/hub-gate.test.ts) |
+| T:0 books after each payment | **Built, waiting for a write key**: the shared T:0 sandbox key can read but not post (`403 CAPI71`); nothing has been posted | [docs/runs/2026-11-03-t0-sandbox.md](docs/runs/2026-11-03-t0-sandbox.md) |
+| `npm run smoke:sandbox` | **Built, tested on the Airwallex stand-in**; our current sandbox key is read-only | [src/smoke/sandbox.ts](src/smoke/sandbox.ts) |
 
 ## Run it in 3 commands
 
@@ -181,7 +154,37 @@ default; see [.env.example](.env.example).
 the same suite on every push). Every test runs on stand-ins for Airwallex, Metal, Anthropic, T:0 and the hub; none
 calls a real service.
 
+## Safety
+
+- **Idempotent money calls.** Every Airwallex write carries a request id that is stored before the call. After a timeout
+  or a lost answer, Purser looks the request id up first and adopts what it finds; it never sends blind a second time
+  ([src/executors/invoicePayment.ts](src/executors/invoicePayment.ts), the `transfers` table;
+  [contract/airwallex.test.ts](test/contract/airwallex.test.ts): "a lost answer, then duplicate_request_id on the resend:
+  the existing transfer is adopted, paid exactly once").
+- **Audit chain.** The audit log is append-only (the database refuses updates and deletes) and hash-chained: each row
+  holds the hash of the one before. `npm run verify` recomputes the chain from the genesis hash and re-checks every
+  passkey approval, credential and pull; `npm run verify-log` checks an exported log
+  ([src/audit/log.ts](src/audit/log.ts), [src/cli/verify.ts](src/cli/verify.ts); [audit.test.ts](test/audit.test.ts)).
+- **Reconciliation.** Each Airwallex transfer and card transaction and each Metal payment is checked against the ledger
+  by id and amount, every hour while the runner runs; a difference is an audit row and an alarm, and nothing is fixed
+  automatically (`npm run reconcile`; [reconcile.test.ts](test/reconcile.test.ts)).
+- **No secrets in the repository.** Keys come from environment variables only (Airwallex, Metal, Anthropic, T:0, the
+  hub); error text is passed through [`redactSecrets`](src/lib/redact.ts) before it is stored, and the hub's address
+  and token are never logged.
+- **Sandbox and testnet only.** The Airwallex client refuses any base URL but the sandbox; Metal runs on testnet. All
+  money here is test money.
+- **A person signs.** Face ID on the exact terms hash; a typed hash prefix can only reject once a passkey is enrolled;
+  four eyes above the CFO's threshold. Second approver: a labelled test passkey in this demo. In production this is a
+  second person.
+- **Outside services never decide alone.** The hub can only add a "no": unreachable, it falls back to Face ID alone,
+  recorded. T:0 gets the books after a payment, in the background: a failure is logged and the payment is not affected.
+
 ## The demo
+
+Kit 11 · x402 Business Agents: three agents (Sourcing, Support, Treasury) on one Metal account, rebalancing when
+supplier costs rise — plus Airwallex for cards, FX and the euro licence fee. Entered for the Metal Award.
+
+**Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
 
 **Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/))
 or offline with `npm ci && npm run judge` (no keys, no network). Steps 2 and 3 are from the recorded run of 30 October

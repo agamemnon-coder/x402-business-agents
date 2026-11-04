@@ -11,7 +11,7 @@ const dir = (p: string, re: RegExp) => readdirSync(new URL(`../${p}`, import.met
 const OLD = /code decides|(models?|claude) only reads? and advises?/i;
 const DOCS = [
   "README.md", "docs/claims.md", "docs/claude.md", "docs/metal-award.md", "docs/airwallex.md", "docs/controls-matrix.md",
-  "docs/uitleg-voor-max.md", "docs/fraud-and-injection.md", "docs/model-benchmark.md", "docs/demo/story.json", "docs/demo/metal.json",
+  "docs/uitleg-voor-max.md", "docs/fraud-and-injection.md", "docs/model-benchmark.md", "docs/demo/story.json", "docs/demo/metal.json", "docs/video-script.md",
   ...dir("docs/submission", /\.md$/), ...dir("docs/video", /\.(md|srt)$/),
 ];
 
