@@ -51,7 +51,8 @@ Without the AI hook, cut `02-hook.mp4`: the film is 2:49. With a 10-second hook 
 
 ## Max's recordings
 
-1. **Face ID (1:12, 8 s).** His iPhone approving a test proposal with Face ID ([opnames-max.md](opnames-max.md), 1).
+1. **Face ID (1:12, 8 s).** His iPhone approving a test proposal with Face ID, cut from his /try/sign recording
+   (3 below; [opnames-max.md](opnames-max.md), 1): the Face ID sheet only, not the page's terms, which are not P-0005's.
    Put it on the track above `08-faceid.mp4`, scale it so the phone fills the picture between the bars, and put
    `overlays/08-faceid.png` above it: the label says it was filmed after the run, on a test proposal, with test money.
    Keep that label on screen the whole time.

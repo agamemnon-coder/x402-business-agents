@@ -1,6 +1,7 @@
 # Opnames voor Max (de premiere)
 
-Drie opnames. Alles is testgeld. Er komt nooit een sleutel of iets privés in beeld.
+Twee opnames: de opening en slotzin (2) en /try/sign (3). Het Face ID-shot (1) knippen we uit opname 3. Alles is
+testgeld. Er komt nooit een sleutel of iets privés in beeld.
 Waar elke opname in de film komt: [README.md](README.md).
 
 ## Eerst
@@ -9,16 +10,12 @@ Waar elke opname in de film komt: [README.md](README.md).
 - Niets privés in beeld: geen meldingen, geen e-mail, geen andere tabbladen, geen wachtwoorden of sleutels.
 - Gebruik Safari op je iPhone en sluit de andere tabbladen.
 
-## 1. Face ID (±10 seconden)
+## 1. Face ID (niets apart opnemen)
 
-1. Stuur mij: **Klaar voor Face ID-opname**. Je krijgt een link naar een testvoorstel in een testwereld. Het is geen
-   echte betaling.
-2. Zet schermopname aan (Bedieningspaneel → opnameknop).
-3. Open de link. Laat het voorstel 3 seconden zien.
-4. Keur goed met Face ID. Stop de opname.
+In opname 3 keur je een testvoorstel goed met Face ID. Dat moment knippen we eruit voor dit shot. Het label in de
+film zegt dat het na de run is gefilmd, op een testvoorstel, met testgeld.
 
-Staat het Face ID-scherm niet in de opname? Film je telefoon dan met een tweede toestel.
-Geen link gekregen? Dan gebruiken we het Face ID-moment uit opname 3.
+Staat het Face ID-scherm niet in je schermopname? Film je telefoon tijdens opname 3 dan met een tweede toestel.
 
 ## 2. De opening en de slotzin (je eigen stem en gezicht)
 
