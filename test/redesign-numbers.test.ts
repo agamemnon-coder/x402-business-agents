@@ -274,7 +274,7 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
     // On Metal: all but the card buy; routine by code: the sales and the supplier purchases; reconcile: Metal + SWIFT + card.
     expect([pay.onChain, pay.routine, pay.transfers, pay.reconciled]).toEqual([86, 82, 1, 88]);
     expect(pay.routine).toBe(pay.sales + pay.purchases);
-    expect(pay.reconciled).toBe(record.snapshot.reconciliation.checked);
+    expect(pay.reconciled).toBe((record.snapshot as unknown as { reconciliation: { checked: number } }).reconciliation.checked);
     // The 14 queries that got an error: 14 refused supplier purchases, none settled.
     expect(record.snapshot.refusals.filter((x) => x.what === "Supplier purchase refused")).toHaveLength(14);
   });
