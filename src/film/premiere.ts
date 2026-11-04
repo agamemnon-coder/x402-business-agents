@@ -176,6 +176,10 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
   const fx = one("fx.converted", (e) => (e.payload.origin as { proposal_id?: string } | undefined)?.proposal_id === p.proposal_id);
   const transfer = one("transfer.created", (e) => e.subject === paid.subject);
   const fee = one("transfer.fee", (e) => e.subject === paid.subject);
+  const sent = one("transfer.status", (e) => e.subject === paid.subject && e.payload.status === "SENT");
+  // The sandbox's last steps (SENT, then PAID) are Purser's own calls to Airwallex's simulation API (settleInSandbox in
+  // src/executors/invoicePayment.ts), each recorded by the executor: the settlement itself is simulated.
+  const settled = ev.filter((e) => e.event === "transfer.status" && e.subject === paid.subject && e.actor === "awx-executor").map((e) => String(e.payload.status));
   const conv = need(p.terms.conversion as { buy_currency?: string; buy_amount?: string; sell_currency?: string; sell_amount?: string } | undefined, `${p.proposal_id}'s conversion`);
   const origin = need(created.payload.origin as { agent?: string; model?: string } | undefined, `${p.proposal_id}'s origin`);
   const seconds = Math.round((Date.parse(paid.ts) - Date.parse(approved.ts)) / 1000);
@@ -194,7 +198,9 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
   fact("paid.faceAt", hms(approved.ts), `record \`ledger.events\` \`proposal.approved\` (seq ${approved.seq}), UTC`);
   fact("paid.fxAt", hms(fx.ts), `record \`ledger.events\` \`fx.converted\` (seq ${fx.seq}), UTC`);
   fact("paid.createdAt", hms(transfer.ts), `record \`ledger.events\` \`transfer.created\` (seq ${transfer.seq}), UTC`);
+  fact("paid.sentAt", hms(sent.ts), `record \`ledger.events\` \`transfer.status\` SENT (seq ${sent.seq}), UTC`);
   fact("paid.paidAt", hms(paid.ts), `record \`ledger.events\` \`transfer.status\` PAID (seq ${paid.seq}), UTC`);
+  fact("paid.simulated", need(settled.join(",") === "SENT,PAID" ? "SENT and then PAID" : null, "sandbox settlement (SENT, then PAID, by the executor)"), "record `ledger.events` `transfer.status` SENT and PAID by the executor (`awx-executor`): `settleInSandbox` (src/executors/invoicePayment.ts) moves a sandbox transfer through Airwallex's simulation API, `POST /simulation/transfers/{id}/transition`");
   fact("paid.seconds", need(seconds > 0 ? seconds : null, "time from Face ID to PAID"), `record \`ledger.events\`: ${approved.ts.slice(11, 23)} (Face ID, seq ${approved.seq}) to ${paid.ts.slice(11, 23)} (PAID, seq ${paid.seq}), rounded`);
   fact("paid.transfer", paid.subject, `record \`ledger.events\` \`transfer.status\` PAID (seq ${paid.seq})`);
   fact("paid.fee", fee.payload.fee, `record \`ledger.events\` \`transfer.fee\` (seq ${fee.seq})`);
@@ -291,10 +297,11 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
     },
     "09-six-seconds": {
       big: v("paid.seconds"), unit: n("paid.seconds") === 1 ? "second" : "seconds", line: "from Face ID to PAID",
-      steps: [[v("paid.faceAt"), "Face ID"], [v("paid.fxAt"), `FX · ${v("licence.fxBuy")} for ${v("licence.fxSell")}`], [v("paid.createdAt"), `${v("licence.method")} · ${v("licence.amount")}`], [v("paid.paidAt"), "PAID"]],
+      simulated: "In the sandbox, the settlement is simulated.",
+      steps: [[v("paid.faceAt"), "Face ID"], [v("paid.fxAt"), `FX · ${v("licence.fxBuy")} for ${v("licence.fxSell")}`], [v("paid.createdAt"), `${v("licence.method")} · ${v("licence.amount")}`], [v("paid.sentAt"), "SENT (simulated)"], [v("paid.paidAt"), "PAID (simulated)"]],
       transferLabel: "Airwallex sandbox transfer", transfer: v("paid.transfer"), detail: `${v("licence.amount")} by ${v("licence.method")} · fee ${v("paid.fee")} (at most ${v("licence.feeMax")})`,
-      look: "Look it up yourself.", where: `Every id of the run: ${site}/proof`,
-      foot: "The sandbox simulates a SWIFT transfer's last steps (SENT, PAID). Test money.",
+      look: "Every id is on /proof", where: `${site}/proof`,
+      foot: `Purser moved the transfer to ${v("paid.simulated")} itself, through Airwallex's sandbox simulation API. Test money.`,
     },
     "10-try-sign": {
       label: TRY_SIGN_LABEL, url: TRY_SIGN_URL.replace(/^https:\/\//, ""), ...TRY_SIGN_WORDS,
@@ -362,9 +369,9 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       { at: 3.6, who: "Voice", text: "The phone shows the exact terms." },
     ],
     "09-six-seconds": [
-      { at: 0.6, who: "Voice", text: `${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} from Face ID to paid, in the Airwallex sandbox.` },
-      { at: 5.4, who: "Voice", text: "That is the transfer id." },
-      { at: 7.8, who: "Voice", text: "Look it up yourself." },
+      { at: 0.3, who: "Voice", text: `${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} from Face ID to paid, in the Airwallex sandbox.` },
+      { at: 4.8, who: "Voice", text: "In the sandbox, the settlement itself is simulated." },
+      { at: 8.2, who: "Voice", text: "Every id is on the proof page." },
     ],
     "10-try-sign": [
       { at: 0.6, who: "Voice", text: "Now it's your turn." },

@@ -37,7 +37,7 @@ line changes, render `13-specs` again.
 | 0:42 | `06-dispute.mp4` | Twelve orders, three refunded, “refund the other 9” rejected with Face ID | | Steady |
 | 0:57 | `07-approval.mp4` | The approval card (P-0005's exact terms) | | Thins out |
 | 1:04 | `08-faceid.mp4` | Stand-in for the Face ID | **Max's Face ID** with `overlays/08-faceid.png` | Almost silent: let the Face ID breathe |
-| 1:12 | `09-six-seconds.mp4` | 6 seconds from Face ID to PAID; the transfer id; “Look it up yourself.” | | **The first hit**, on “6 seconds” |
+| 1:12 | `09-six-seconds.mp4` | 6 seconds from Face ID to PAID; “In the sandbox, the settlement is simulated.”; the transfer id; “Every id is on /proof” | | **The first hit**, on “6 seconds” |
 | 1:24 | `10-try-sign.mp4` | A mock of the live /try/sign page | **Max on /try/sign** with `overlays/10-try-sign.png` (or keep the mock) | Building again |
 | 1:40 | `11-one-cent.mp4` | +0.01, refused: “One cent. Worthless.” | | **Hard cut to silence**: no music, no voice |
 | 1:48 | `12-why-face-id.mp4` | Why Face ID, not a password | | The music comes back, softly |

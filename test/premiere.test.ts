@@ -67,8 +67,33 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(read("docs/runs/2026-11-03-main-run.md")).toContain("6 s from Face ID to PAID");
     expect(fact("paid.transfer")).toBe("03360bfa-afce-457b-89d1-e1097fbe3985");
     expect(screen("09-six-seconds")).toMatchObject({ big: "6", unit: "seconds", transfer: "03360bfa-afce-457b-89d1-e1097fbe3985" });
-    expect(screen("09-six-seconds").steps).toEqual([["11:31:18", "Face ID"], ["11:31:19", "FX · EUR 110.00 for USD 124.29"], ["11:31:21", "SWIFT · EUR 240.00"], ["11:31:24", "PAID"]]);
-    expect(String(screen("09-six-seconds").foot)).toMatch(/sandbox simulates .*PAID/);
+    expect(screen("09-six-seconds").steps).toEqual([["11:31:18", "Face ID"], ["11:31:19", "FX · EUR 110.00 for USD 124.29"], ["11:31:21", "SWIFT · EUR 240.00"], ["11:31:23", "SENT (simulated)"], ["11:31:24", "PAID (simulated)"]]);
+  });
+
+  it("says that the sandbox settlement is simulated: SENT and PAID are Purser's own calls to Airwallex's simulation API", () => {
+    // The record: SENT, then PAID, each written by the executor (settleInSandbox, src/executors/invoicePayment.ts).
+    const transfer = fact("paid.transfer");
+    const statuses = byEvent("transfer.status").filter((e) => e.subject === transfer);
+    expect(statuses.map((e) => [e.actor, e.payload.status])).toEqual([["awx-executor", "SENT"], ["awx-executor", "PAID"]]);
+    expect(read("src/executors/invoicePayment.ts")).toMatch(/async function settleInSandbox[\s\S]*?for \(const to of \["SENT", "PAID"\] as const\)[\s\S]*?sim\.transitionTransfer/);
+    expect(read("src/airwallex/adapter.ts")).toContain("/simulation/transfers/${id}/transition");
+    // On screen, as a line of its own, and in the footnote; in the voice-over, Max's three lines as written.
+    expect(screen("09-six-seconds")).toMatchObject({ simulated: "In the sandbox, the settlement is simulated.", look: "Every id is on /proof", where: "kit11.max-31b.workers.dev/proof" });
+    expect(screen("09-six-seconds").foot).toBe("Purser moved the transfer to SENT and then PAID itself, through Airwallex's sandbox simulation API. Test money.");
+    const s9 = timeline.find((s) => s.id === "09-six-seconds")!;
+    expect(data.voice["09-six-seconds"]!.map((l) => [clock(s9.start + l.at), l.text])).toEqual([
+      ["1:12", "Six seconds from Face ID to paid, in the Airwallex sandbox."],
+      ["1:16", "In the sandbox, the settlement itself is simulated."],
+      ["1:20", "Every id is on the proof page."],
+    ]);
+    // A sandbox transfer id cannot be looked up publicly: nothing asks anyone to.
+    expect(JSON.stringify(data.screen) + JSON.stringify(data.voice) + premiereTable(data)).not.toMatch(/look it up/i);
+  });
+
+  it("shows the second approval only as what it was: a labelled test passkey, never a second person", () => {
+    const words = JSON.stringify(data.screen) + JSON.stringify(data.voice);
+    expect(words).not.toMatch(/four eyes|2 of 2|two signatures|co-?sign|second person|test-controller|two people/i);
+    expect([...words.matchAll(/second approver[^"]*/gi)].map((m) => m[0])).toEqual(["second approver: a labelled test passkey", "second approver, a labelled test passkey."]);
   });
 
   it("the approval card is P-0005's exact terms: the Treasury agent's plan, its hash the one Max signed", () => {
@@ -114,6 +139,8 @@ describe("the premiere refuses to render when a figure is missing", () => {
     ["the purchase let through", (r) => { r.ledger.events = r.ledger.events.filter((e) => e.event !== "upstream.let_through"); }, /upstream\.let_through/],
     ["the refusal on chain", (r) => { r.ledger.events = r.ledger.events.filter((e) => e.event !== "upstream.refused_on_chain"); }, /refused_on_chain/],
     ["the transfer's PAID", (r) => { r.ledger.events = r.ledger.events.filter((e) => !(e.event === "transfer.status" && e.payload.status === "PAID")); }, /transfer\.status/],
+    ["the transfer's SENT", (r) => { r.ledger.events = r.ledger.events.filter((e) => !(e.event === "transfer.status" && e.payload.status === "SENT")); }, /transfer\.status/],
+    ["the sandbox settlement by the executor", (r) => { for (const e of r.ledger.events) if (e.event === "transfer.status") e.actor = "someone"; }, /sandbox settlement/],
     ["the Face ID on the licence", (r) => { r.ledger.events = r.ledger.events.filter((e) => !(e.event === "proposal.approved" && e.subject === "P-0005")); }, /proposal\.approved/],
     ["the FX", (r) => { r.ledger.events = r.ledger.events.filter((e) => e.event !== "fx.converted"); }, /fx\.converted/],
     ["the dispute", (r) => { r.ledger.disputes = []; }, /dispute case/],

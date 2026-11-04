@@ -123,6 +123,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .step { display: flex; align-items: baseline; gap: 26px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 34px; font-weight: 600; }
 .step .mono { font-size: 30px; color: var(--muted); width: 190px; flex: none; }
 .step.paid { color: var(--ok); font-weight: 800; }
+.simline { font-size: 36px; font-weight: 650; letter-spacing: -.01em; color: var(--wait); }
 /* The spec cards. */
 .spec { position: absolute; left: 0; top: 0; width: 1920px; height: 804px; display: flex; align-items: center; justify-content: center; gap: 52px; padding-bottom: 30px; }
 .spec .col { display: flex; flex-direction: column; gap: 16px; max-width: 960px; }
@@ -292,18 +293,22 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
     "09-six-seconds": function (L, S) {
       var six = put(L, E("div", "sixrow", null, [E("span", "mega", S.big), E("span", "hl", S.unit)]), 140, 40);
       var line = put(L, E("div", "hm muted", S.line), 146, 318);
-      var steps = S.steps.map(function (s, i) { var n = E("div", "step" + (i === S.steps.length - 1 ? " paid" : ""), null, [E("span", "mono", s[0]), E("span", null, s[1])]); return put(L, width(n, 760), 1020, 56 + i * 86); });
-      var tl = put(L, E("div", "kick", S.transferLabel), 140, 460);
-      var tr = put(L, E("div", "idl mono", S.transfer), 140, 502);
-      var de = put(L, E("div", "small", S.detail), 142, 572);
-      var lk = put(L, E("div", "hm acc", S.look), 1020, 472);
-      var wh = put(L, E("div", "small", S.where), 1022, 552);
-      var foot = put(L, E("div", "tiny", S.foot), 140, 724);
+      // Said plainly, not only in the footnote: in the sandbox the settlement is simulated (SENT and PAID are Purser's
+      // own calls to Airwallex's simulation API).
+      var sim = put(L, E("div", "simline", S.simulated), 146, 398);
+      var steps = S.steps.map(function (s, i) { var n = E("div", "step" + (i === S.steps.length - 1 ? " paid" : ""), null, [E("span", "mono", s[0]), E("span", null, s[1])]); return put(L, width(n, 760), 1020, 40 + i * 78); });
+      var tl = put(L, E("div", "kick", S.transferLabel), 140, 486);
+      var tr = put(L, E("div", "idl mono", S.transfer), 140, 524);
+      var de = put(L, E("div", "small", S.detail), 142, 590);
+      var lk = put(L, E("div", "hm acc", S.look), 1020, 484);
+      var wh = put(L, E("div", "small", S.where), 1022, 562);
+      var foot = put(L, width(E("div", "tiny", S.foot), 1640), 140, 724);
       return function (t) {
-        rise(six, t, .3, null, 40); rise(line, t, 1.2);
-        steps.forEach(function (s, i) { rise(s, t, 2.0 + i * .6, null, 14); });
-        rise(tl, t, 5.4); rise(tr, t, 5.5); rise(de, t, 5.8);
-        rise(lk, t, 7.8); rise(wh, t, 8.4); fade(foot, t, 9.0);
+        rise(six, t, .2, null, 40); rise(line, t, 1.0);
+        steps.forEach(function (s, i) { rise(s, t, 1.6 + i * .5, null, 14); });
+        rise(sim, t, 4.8);
+        rise(tl, t, 5.8); rise(tr, t, 5.9); rise(de, t, 6.2);
+        rise(lk, t, 8.2); rise(wh, t, 8.7); fade(foot, t, 9.2);
       };
     },
     "10-try-sign": function (L, S, ov) {
