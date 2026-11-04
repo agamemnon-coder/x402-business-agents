@@ -3,7 +3,7 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { CORE_SENTENCE, HERO, KIT_LINE, VISA_AWARD_ON, VISA_AWARD_STATUS } from "../config/brand.js";
+import { CORE_SENTENCE, HERO, KIT_LINE, VISA_AWARD_ON } from "../config/brand.js";
 import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -76,6 +76,8 @@ section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .m-orders .legend i { width: 11px; height: 11px; border-radius: 3px; background: var(--ok); } .m-orders .legend i.rf { background: var(--accent); margin-left: 8px; }
 /* 3: four moves, one after another. */
 .m-flow { display: grid; gap: 6px; padding: 10px 12px; align-content: center; }
+/* The flow's rows grow the box rather than being cut off (the licence row's sandbox note wraps to a third line on a phone). */
+.mini.m-flow { height: auto; min-height: 236px; }
 .m-flow div { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 12px; padding: 7px 11px; font-size: 14px; line-height: 1.3; font-weight: 600; opacity: 0; animation: step 6s infinite; animation-delay: calc(var(--d) * 1ms); }
 .m-flow div.ok .i { color: var(--ok); } .m-flow div.bad { color: var(--bad); } .m-flow div.bad .i { color: var(--bad); } .m-flow div.face .i { color: var(--accent); }
 @keyframes step { 0% { opacity: 0; transform: translateY(6px); } 8%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; } }
@@ -86,7 +88,7 @@ section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .partners { display: grid; gap: 12px; margin-top: 18px; }
 @media (min-width: 640px) { .partners { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1100px) { .partners { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.award-note { margin: 12px 0 0; font-size: 15px; color: var(--muted); }
+.award-note { margin: 12px 0 0; font-size: 15px; color: var(--muted); } .award-note a { color: var(--accent); font-weight: 600; text-decoration: none; }
 .partner { display: flex; align-items: center; gap: 14px; padding: 16px 18px; text-decoration: none; font-size: 16px; color: var(--muted); }
 @media (max-width: 899px) {
   .scenes { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 8px; scrollbar-width: none; }
@@ -228,7 +230,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
     <a class="partner card" href="proof#claude"><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${esc(run.agents.map((a) => a.family).join(" · "))} decide</a>
     ${VISA_AWARD_ON ? '<a class="partner card" href="visa"><span class="logo txt">Visa TAP</span>Card checkouts signed with TAP</a>' : ""}
   </div>
-  ${VISA_AWARD_ON ? `<p class="award-note">${esc(VISA_AWARD_STATUS)}</p>` : ""}
+  ${VISA_AWARD_ON ? '<p class="award-note"><a href="visa">The Visa Award entry and its status, on /visa</a></p>' : ""}
 </div></section>
 </main>`;
   return page({

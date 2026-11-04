@@ -651,7 +651,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <div class="tcol tout"><h2>Money out</h2><div id="t-out"></div></div>
     <div class="tpnl" id="t-pnl"></div>
   </section>
-  <section class="panel" id="enforced" aria-labelledby="h-enforced" hidden><div class="sect flush"><h2 id="h-enforced">Enforced by</h2><span class="hint">who stopped each payment that went over a limit, with its proof</span></div><div class="encols" id="enforced-body"></div></section>
+  <section class="panel" id="enforced" aria-labelledby="h-enforced" hidden><div class="sect flush"><h2 id="h-enforced">Enforced by</h2><span class="hint">who stopped each payment that went over a limit, with its proof</span></div><div class="encols" id="enforced-body"></div><p class="hint" id="enforced-note" hidden></p></section>
   <section class="kpis" id="kpis" aria-label="What the agents did, in money"></section>
   <div class="sect"><h2>Company cards <span class="rail">Airwallex</span></h2><span class="hint">Virtual Visa per agent · limits set by your policy</span></div>
   <section class="grid4 swipe" id="cards" aria-label="Company cards"></section>
@@ -1014,11 +1014,13 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     // Blocks and refusals first; proposals that simply expired fold away below (nobody was stopped by them).
     var expired = d.refusals.filter(function (r) { return /expired/i.test(r.what); });
     var blocked = d.refusals.filter(function (r) { return !/expired/i.test(r.what); });
-    document.getElementById("refusals-count").textContent = String(d.counts ? d.counts.blocked : blocked.length);
+    // The replayed run (/?autonomy) counts its stops as Home and Proof do (d.figures, src/redesign/run.ts replayRecord).
+    document.getElementById("refusals-count").textContent = d.figures ? d.figures.refusedPill : String(d.counts ? d.counts.blocked : blocked.length);
     var row = function (r) { return el("div", "refusal", [el("div", "what", [icon("ban"), plain(r.what)]), txt("div", "reason", plain(r.reason)), txt("div", "meta num", agentName(r.agent) + " · " + hm(r.ts))]); };
     var nodes = blocked.slice(0, 10).map(row);
     // The pill counts each stop once; the rows can differ (one document flagged twice, an invoice escalated for the reserve).
-    if (d.counts && blocked.length !== d.counts.blocked) nodes.push(txt("p", "hint", "The count is " + d.counts.blocked + " stops, each once; the list shows " + blocked.length + " events (a document seen twice is one stop, and an invoice escalated for the reserve is a question to you, not a stop)."));
+    if (d.figures) nodes.push(txt("p", "hint", d.figures.refusedNote));
+    else if (d.counts && blocked.length !== d.counts.blocked) nodes.push(txt("p", "hint", "The count is " + d.counts.blocked + " stops, each once; the list shows " + blocked.length + " events (a document seen twice is one stop, and an invoice escalated for the reserve is a question to you, not a stop)."));
     if (!nodes.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing refused or blocked yet."]));
     if (expired.length) nodes.push(el("details", "tech", [txt("summary", "", expired.length + " expired proposal" + (expired.length === 1 ? "" : "s") + ": nobody approved in time, nothing ran"), el("div", "", expired.slice(0, 10).map(row))]));
     set("refusals", nodes);
@@ -1056,7 +1058,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       kpi("ok", "credit-card", "Card spend this month", eur(m.card_spent_eur), "of " + eur(m.card_limit_eur), "spent by the agents alone, inside the cards' limits", bar(m.card_spent_eur, m.card_limit_eur)),
       kpi("ok", "file-lock-2", "On-chain spend", group(m.chain_spent_usdz), "of " + tusd(m.chain_limit_usdz), "paid under the mandates, per request", bar(m.chain_spent_usdz, m.chain_limit_usdz)),
       kpi("wait", "scan-face", "Waiting for your Face ID", m.waiting ? String(m.waiting) : "Nothing", m.waiting ? (waitMoney || "proposals") : "", m.waiting ? "each one on the exact terms" : "the agents are inside their limits"),
-      kpi("bad", "shield-check", "Kept out for good", eur(m.blocked_eur), cents(m.blocked_usdz) ? "+ " + tusd(m.blocked_usdz) : "", blockedNote(m, d.counts.blocked)),
+      kpi("bad", "shield-check", "Kept out for good", eur(m.blocked_eur), cents(m.blocked_usdz) ? "+ " + tusd(m.blocked_usdz) : "", d.figures ? d.figures.keptOut : blockedNote(m, d.counts.blocked)),
     ]);
   }
   // One row per agent: both rails side by side.
@@ -1100,7 +1102,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     else {
       nodes.push(el("div", "money num", [
         el("div", "m", [txt("div", "k", "AI cost per €1,000 paid"), txt("div", "v", c.per_1000_eur_usd_micros == null ? "—" : usdMicros(c.per_1000_eur_usd_micros)), txt("div", "k sub", "in this run: card spend and euro transfers of " + eur(c.eur_paid) + "; the cost follows documents read, not euros")]),
-        el("div", "m", [txt("div", "k", "Per Claude call"), txt("div", "v", usdMicros(c.per_call_usd_micros)), txt("div", "k sub", c.calls + " calls, " + usdMicros(c.cost_usd_micros) + " in all")]),
+        el("div", "m", [txt("div", "k", "Per Claude call"), txt("div", "v", usdMicros(c.per_call_usd_micros)), txt("div", "k sub", d.figures && d.figures.claude ? d.figures.claude : c.calls + " calls, " + usdMicros(c.cost_usd_micros) + " in all")]),
         el("div", "m", [txt("div", "k", "Checked by code"), txt("div", "v", "Every answer"), txt("div", "k sub", c.fallbacks ? c.fallbacks + " times the plain parser decided instead" : "a wrong shape falls back to the plain parser")]),
       ]));
       var labels = ["Model", "What it does", "Calls", "Average time", "Cost"];
@@ -1397,6 +1399,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   }
   function renderTower(d) {
     renderTowerAt("", d.tower);
+    var en = document.getElementById("enforced-note");
+    if (en) { en.hidden = !(d.tower && d.figures && d.figures.enforcedNote); en.textContent = d.figures && d.figures.enforcedNote ? d.figures.enforcedNote : ""; }
     var rt = document.getElementById("rec-text");
     renderFlowAt("", d.flows, d.recorded ? "Replay · " + (rt && rt.textContent ? rt.textContent : "a recorded run · test money") : "Live, from this ledger · test money");
   }
@@ -1717,7 +1721,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   try {
     var RT = JSON.parse(document.getElementById("redteam-data").textContent);
     // Short on the card; the full breakdown is in docs/redteam/report.json and on /lab.
-    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often is stopped by code. Red team, in a test world: " + RT.blocked + " of " + RT.attempts + " attacks failed" + (RT.caught_after ? ", " + RT.caught_after + " of them found afterwards, not prevented." : ".");
+    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often is stopped by code. Red team, in a test world on simulated rails: " + (RT.blocked - (RT.caught_after || 0)) + " of " + RT.attempts + " attacks stopped" + (RT.caught_after ? ", " + RT.caught_after + " more detected afterwards, not prevented." : ".");
   } catch (e) {}
   var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
   var wantAutonomy = /[?&]autonomy(=|&|$)/.test(location.search);
@@ -1729,7 +1733,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     // D19: the agents deciding, from the played run's record (the main run of 3 Nov; test money), labelled as a recording.
     markNav("dashboard");
     tabs([["The agents decide", "?autonomy", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?autonomy&agents", wantAgents], ["Books", "?autonomy&books", wantBooks], ["Disputes", "?autonomy&disputes", wantDisputes]]);
-    var asnap = AUTONOMY.snapshot; asnap.recorded = true; asnap.relay = null;
+    var asnap = AUTONOMY.snapshot; asnap.recorded = true; asnap.relay = null; asnap.figures = AUTONOMY.figures || null;
     document.getElementById("recbanner").hidden = false;
     document.getElementById("rec-text").textContent = AUTONOMY.label || ("Autonomous dry run · " + dayFmt.format(new Date(AUTONOMY.recorded_at)) + " · test passkeys and test money · not a live run");
     var aMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", AUTONOMY.run + ". We changed the world; each agent decided with real Claude calls, inside its limits on Metal and Airwallex. " + (AUTONOMY.about || ""))]);
@@ -1744,7 +1748,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
     document.getElementById("recbanner").hidden = false;
     // One line, the rest folded (design review): what this is, when, test money.
-    document.getElementById("rec-text").textContent = "Recorded run · " + dayFmt.format(new Date(RECORDED.recorded_at)) + " · test money · nothing here is live";
+    document.getElementById("rec-text").textContent = RECORDED.label || ("Recorded run · " + dayFmt.format(new Date(RECORDED.recorded_at)) + " · test money · nothing here is live");
     var recMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", "The CFO dashboard of " + recCompany() + " as it stood: real data from the Airwallex sandbox and Metal testnet." + (RECORDED.names_note ? " " + RECORDED.names_note : ""))]);
     var rb = document.getElementById("recbanner"); if (!rb.querySelector("details")) rb.appendChild(recMore);
     live("rec", "Recorded");
