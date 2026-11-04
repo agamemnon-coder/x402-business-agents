@@ -20,7 +20,7 @@ const CSS = `.proofp { padding: 26px 0 24px; }
 .num:hover { border-color: var(--accent); }
 .num .v { font-size: clamp(30px, 3vw, 40px); font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .num .l { font-size: 15px; font-weight: 650; color: var(--muted); line-height: 1.3; }
-.num .note, .more p.note { font-size: 13px; font-weight: 500; color: var(--muted); line-height: 1.35; margin-top: 4px; }
+.num .note, .more p.note { font-size: 14px; font-weight: 500; color: var(--muted); line-height: 1.35; margin-top: 4px; }
 .num.claude .v { color: var(--claude); } .num.code .v { color: var(--metal); } .num.face .v { color: var(--accent); } .num.stop .v { color: var(--bad); }
 h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 36px 0 14px; }
 .partners { display: grid; gap: 12px; }

@@ -168,7 +168,7 @@ a.verdict:hover { text-decoration: underline; }
 .tile .x { color: var(--muted); font-size: 15px; line-height: 1.45; margin: 4px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .tile .parts { display: block; font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 2px; line-height: 1.4; }
 .tile .parts b { color: var(--text); }
-.tile .note { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+.tile .note { display: block; font-size: 14px; font-weight: 500; color: var(--muted); margin-top: 4px; line-height: 1.35; }
 .tile .go { margin-top: auto; padding-top: 10px; font-size: 15px; font-weight: 650; color: var(--accent); display: inline-flex; align-items: center; gap: 4px; }
 footer.foot { padding: 40px 0 56px; color: var(--faint); font-size: 14.5px; }
 footer.foot .wrap { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
