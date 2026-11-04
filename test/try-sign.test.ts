@@ -8,10 +8,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { jcs } from "@metalntwx/metal-pay/mandates";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import {
-  canonical, FIXED_PROPOSALS, TRY_SIGN_ALL_PER_MINUTE, TRY_SIGN_MAX_WORLDS, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_UNCLAIMED_MS, TRY_SIGN_WORLDS_PER_HOUR, TRY_SIGN_WORLDS_PER_NETWORK_HOUR, networkKey, readCbor, trySignRoute,
+  canonical, FIXED_PROPOSALS, TRY_SIGN_ALL_PER_MINUTE, TRY_SIGN_MAX_WORLDS, TRY_SIGN_NET_PER_MINUTE, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_UNCLAIMED_MS, TRY_SIGN_WORLDS_PER_HOUR, TRY_SIGN_WORLDS_PER_NETWORK_HOUR, networkKey, readCbor, trySignRoute,
 } from "../worker/src/trySign.js";
 
-import { BASE, call, challengeOf, desk, newWorld, RP, signBody, t0, withPasskey } from "./support/trySign.js";
+import Sqlite from "better-sqlite3";
+import { TrySignDesk } from "../worker/src/trySign.js";
+import { BASE, call, challengeOf, desk, newWorld, RP, signBody, sqlOver, t0, withPasskey } from "./support/trySign.js";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const count = (db: Database.Database, table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
@@ -202,11 +204,13 @@ describe("/try/sign: the visitor's test world", () => {
     expect((await call(busy.d, "sign", {}, { ip: "192.0.2.2" })).status).toBe(429);
     // Everyone together: past the ceiling a minute, every address waits; a minute later it is open again.
     const crowd = desk();
-    for (let i = 0; i < TRY_SIGN_ALL_PER_MINUTE; i++) await call(crowd.d, "sign", {}, { ip: `172.16.${i >> 8}.${i & 255}` });
+    // Each from its own network (/24), so the per-network limit does not stop them first.
+    for (let i = 0; i < TRY_SIGN_ALL_PER_MINUTE; i++) await call(crowd.d, "sign", {}, { ip: `10.${i >> 8}.${i & 255}.1` });
     expect((await call(crowd.d, "sign", {}, { ip: "172.31.0.1" })).status).toBe(503);
     crowd.at(new Date(t0.getTime() + 61_000));
     expect((await call(crowd.d, "sign", {}, { ip: "172.31.0.1" })).status).toBe(410);
-    expect(count(crowd.db, "ts_hits")).toBe(1);
+    // Only the last request's two counts (its address and its network) are left.
+    expect(count(crowd.db, "ts_hits")).toBe(2);
     expect((await call(desk().d, "sign", { token: "x".repeat(20_000) })).status).toBe(413);
     // A body sent without a length (chunked) is counted as it arrives and stopped past the limit.
     const chunks = new ReadableStream<Uint8Array>({ start(c) { for (let i = 0; i < 40; i++) c.enqueue(new Uint8Array(1024).fill(32)); c.close(); } });
@@ -247,6 +251,37 @@ describe("/try/sign: the visitor's test world", () => {
     expect((await call(d, "passkey", { token: idle.world.token, credential: new FakeAuthenticator().register({ challenge: idle.passkey_options.challenge, origin: BASE, rpId: RP }) })).status).toBe(410);
     const res = await call(d, "sign", signBody(used.w.world.token, used.b, used.auth.sign({ challenge: challengeOf(used.b.terms_sha256), origin: BASE, rpId: RP, counter: 1 })));
     expect(res.status).toBe(200);
+  });
+
+  it("abuse: one IPv6 /48 cannot fill the ceiling for everyone by itself", async () => {
+    // The review's attack: 20 /64s of one /48 at 30 requests a minute each made 600, the ceiling, and locked everyone out.
+    const { d } = desk();
+    let passed = 0;
+    for (let i = 0; i < 20; i++) for (let k = 0; k < TRY_SIGN_PER_MINUTE; k++) if ((await call(d, "sign", {}, { ip: `2001:db8:7:${i.toString(16)}::1` })).status !== 429) passed++;
+    expect(passed).toBe(TRY_SIGN_NET_PER_MINUTE);
+    expect(TRY_SIGN_NET_PER_MINUTE * 2).toBeLessThan(TRY_SIGN_ALL_PER_MINUTE);
+    // Another network is not touched by it.
+    expect((await call(d, "world", {}, { ip: "192.0.2.77" })).status).toBe(201);
+    // An IPv4 /24 counts as one network too.
+    const v4 = desk();
+    let ok4 = 0;
+    for (let i = 1; i <= 3; i++) for (let k = 0; k < TRY_SIGN_PER_MINUTE; k++) if ((await call(v4.d, "sign", {}, { ip: `198.51.100.${i}` })).status !== 429) ok4++;
+    expect(ok4).toBe(TRY_SIGN_NET_PER_MINUTE);
+  });
+
+  it("a world that goes while its passkey is checked leaves no passkey row behind", async () => {
+    // Stand-in for the race: the world is dropped right after its challenge is used, as an eviction during the await would.
+    const db = new Sqlite(":memory:");
+    const base = sqlOver(db);
+    const d = new TrySignDesk({ exec(q, ...b) {
+      const r = base.exec(q, ...b);
+      if (q.startsWith("UPDATE ts_worlds SET reg_challenge = NULL")) db.prepare("DELETE FROM ts_worlds WHERE id = ?").run(b[0]);
+      return r;
+    } }, { now: () => t0 });
+    const w = await newWorld(d);
+    const res = await call(d, "passkey", { token: w.world.token, credential: new FakeAuthenticator().register({ challenge: w.passkey_options.challenge, origin: BASE, rpId: RP }) });
+    expect(res.status).toBe(410);
+    expect(count(db, "ts_creds")).toBe(0);
   });
 
   it("groups addresses by network for the second world limit", () => {
