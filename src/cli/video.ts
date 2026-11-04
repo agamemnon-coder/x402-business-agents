@@ -1,8 +1,15 @@
-// npm run video [-- <beat id>...]: records the video's shots (src/video/plan.ts) from the recorded pages, at
-// 1920x1080 and exactly 60 frames a second. The browser runs on virtual time: each frame moves the clock by 1/60 s and
-// is captured, so nothing loads or stutters on screen. A cursor highlight, clicks and zooms are drawn by a small
-// overlay. Writes to out/video/: one clip per beat, the silent master, a master with burned-in English subtitles,
-// subtitles.srt and script.md. Nothing here is live: the pages are the recordings, as npm run judge serves them.
+// npm run video [-- <clip id>...]: records the premiere (src/film/premiere.html, its script in
+// src/film/premiereScript.ts), Purser in under three minutes made from the main run of 3 November, one clip per scene,
+// at 1920x1080, letterboxed to 2.39:1 and exactly 60 frames a second. The browser runs on virtual time: each frame moves
+// the clock by 1/60 s and is captured, so nothing loads or stutters on screen. Every figure comes from the run's record
+// through src/film/premiere.ts, which stops the build when one is missing. Writes to out/video/: clips/, overlays/ (a
+// transparent PNG per recording slot), the silent master (with stand-ins in the slots), a master with burned-in
+// subtitles, subtitles.srt, script.md (the voice-over) and premiere-script.md (the script table).
+//   --docs     writes docs/video/premiere-script.md, subtitles.srt and script.md, and nothing else
+//   --stills   a PNG of three moments of each scene in out/video/stills/, for a quick look, and nothing else
+//   --check    draws every scene in a browser and fails on a page error, and nothing else
+//   --film     the earlier film of the 30 October recording (src/video/plan.ts) into out/video/film/, as before
+// Nothing here is live: the pages are the recordings, as npm run judge serves them.
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -12,12 +19,18 @@ import express from "express";
 import { chromium } from "playwright";
 import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { BEATS, scriptMarkdown, subtitlesSrt, totalSeconds, type Action, type Beat } from "../video/plan.js";
+import { PREMIERE_CSP, loadPremiere, premierePage } from "../film/premiere.js";
+import { MASTER_CLIPS, OVERLAYS, premiereAss, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline } from "../film/premiereScript.js";
 
 const FPS = 60;
 const root = resolve(import.meta.dirname, "../..");
-const out = resolve(root, process.env.VIDEO_OUT ?? "out/video");
+const film = process.argv.includes("--film");
+const out = resolve(root, process.env.VIDEO_OUT ?? "out/video", film ? "film" : ".");
 const check = process.argv.includes("--check");
 const only = new Set(process.argv.slice(2).filter((a) => !a.startsWith("--")));
+// The premiere's figures, read from the main run's record now: a missing one stops everything before a frame is drawn.
+const premiere = loadPremiere();
+const timeline = premiereTimeline();
 
 /** The recorded pages, as npm run judge serves them, and the newest Dispute desk report. */
 function server(): Promise<{ url: string; close: () => void }> {
@@ -26,6 +39,7 @@ function server(): Promise<{ url: string; close: () => void }> {
   app.get("/", send(CSP, PAGE));
   app.get("/live", send(LIVE_CSP, livePage()));
   app.get("/film", send(FILM_CSP, filmPage()));
+  app.get("/premiere", send(PREMIERE_CSP, premierePage(premiere, timeline.map((x) => ({ id: x.id, start: x.start, seconds: x.seconds, kind: x.kind })))));
   app.get("/demo", send(DEMO_CSP, demoPage()));
   app.get("/month", send(MONTH_CSP, monthPage()));
   app.get("/lab", send(LAB_CSP, labPage()));
@@ -171,30 +185,127 @@ async function checkPlan(browser: import("playwright").Browser, base: string): P
   return problems;
 }
 
+/** --check for the premiere: every scene drawn at several moments, with no page error and its layer on screen. */
+async function checkPremiere(browser: import("playwright").Browser, base: string): Promise<number> {
+  const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(`${base}/premiere?manual`, { waitUntil: "load" });
+  await page.evaluate(() => document.fonts.ready);
+  let problems = 0;
+  for (const s of timeline) {
+    for (const f of [0.1, 0.5, 0.9]) {
+      const visible = await page.evaluate((t) => { (window as unknown as { __film: (t: number) => void }).__film(t); return [...document.querySelectorAll("#pic > .layer")].filter((l) => (l as HTMLElement).style.visibility === "visible").length; }, s.start + f * s.seconds);
+      const bad = visible !== 1 || errors.length > 0;
+      if (bad) problems++;
+      console.log(`${bad ? "PROBLEM" : "ok     "} ${s.id} at ${(f * s.seconds).toFixed(1)} s${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+      errors.length = 0;
+    }
+  }
+  for (const id of OVERLAYS) {
+    await page.goto(`${base}/premiere?overlay=${id}`, { waitUntil: "load" });
+    const labels = await page.locator(".layer .a").count();
+    if (!labels || errors.length) problems++;
+    console.log(`${labels && !errors.length ? "ok     " : "PROBLEM"} overlay ${id}: ${labels} label(s)`);
+  }
+  await ctx.close();
+  return problems;
+}
+
+/** The overlays: each recording slot's letterbox bars and label, a transparent 1920x1080 PNG to lay over the footage. */
+async function overlays(browser: import("playwright").Browser, base: string): Promise<void> {
+  mkdirSync(resolve(out, "overlays"), { recursive: true });
+  const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const page = await ctx.newPage();
+  for (const id of OVERLAYS) {
+    await page.goto(`${base}/premiere?overlay=${id}`, { waitUntil: "load" });
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({ path: resolve(out, "overlays", `${id}.png`), omitBackground: true });
+    console.log(`overlay  overlays/${id}.png`);
+  }
+  await ctx.close();
+}
+
+/** --stills: three moments of each scene, as the recording draws them (1920x1080 PNGs, for a quick look). */
+async function stills(browser: import("playwright").Browser, base: string): Promise<void> {
+  mkdirSync(resolve(out, "stills"), { recursive: true });
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 810 }, deviceScaleFactor: 1920 / 1440 });
+  const page = await ctx.newPage();
+  await page.goto(`${base}/premiere?manual`, { waitUntil: "load" });
+  await page.evaluate(() => document.fonts.ready);
+  const draw = async (t: number, file: string) => {
+    await page.evaluate((x) => (window as unknown as { __film: (t: number) => void }).__film(x), t);
+    await page.waitForTimeout(60);
+    await page.screenshot({ path: resolve(out, "stills", file) });
+  };
+  // "05-price-rise@12.5": that scene at that second (from its start); a bare id: three moments of it.
+  const at = [...only].filter((a) => a.includes("@")).map((a) => a.split("@") as [string, string]);
+  for (const [id, sec] of at) {
+    const s = timeline.find((x) => x.id === id);
+    if (!s) throw new Error(`video: no scene ${id}`);
+    await draw(s.start + Number(sec), `${id}@${sec}.png`);
+    console.log(`still    stills/${id}@${sec}.png`);
+  }
+  for (const s of timeline) {
+    if (at.length || (only.size && !only.has(s.id))) continue;
+    for (const [k, f] of [["a", 0.3], ["b", 0.62], ["c", 0.93]] as const) await draw(s.start + f * s.seconds, `${s.id}-${k}.png`);
+    console.log(`stills   stills/${s.id}-a/b/c.png`);
+  }
+  await ctx.close();
+}
+
+/** The premiere's words, written next to the clips (and, with --docs, into docs/video/). */
+function writeWords(dir: string): void {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(resolve(dir, "subtitles.srt"), premiereSrt(premiere));
+  writeFileSync(resolve(dir, "script.md"), premiereReadAloud(premiere));
+  writeFileSync(resolve(dir, "premiere-script.md"), premiereTable(premiere));
+}
+
+if (process.argv.includes("--docs")) {
+  writeWords(resolve(root, "docs/video"));
+  console.log("docs     docs/video/premiere-script.md, subtitles.srt and script.md");
+  process.exit(0);
+}
+
 mkdirSync(resolve(out, "clips"), { recursive: true });
-writeFileSync(resolve(out, "subtitles.srt"), subtitlesSrt());
-writeFileSync(resolve(out, "script.md"), scriptMarkdown());
+if (film) {
+  writeFileSync(resolve(out, "subtitles.srt"), subtitlesSrt());
+  writeFileSync(resolve(out, "script.md"), scriptMarkdown());
+} else {
+  writeWords(out);
+  writeFileSync(resolve(out, "subtitles.ass"), premiereAss(premiere));
+}
 const srv = await server();
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 if (check) {
-  const problems = await checkPlan(browser, srv.url);
+  const problems = film ? await checkPlan(browser, srv.url) : await checkPremiere(browser, srv.url);
   await browser.close(); srv.close();
   process.exit(problems ? 1 : 0);
 }
+if (process.argv.includes("--stills")) {
+  await stills(browser, srv.url);
+  await browser.close(); srv.close();
+  process.exit(0);
+}
+const beats: Beat[] = film ? BEATS : premiereBeats(premiere);
 const t0 = Date.now();
-for (const beat of BEATS) {
+for (const beat of beats) {
   if (only.size && !only.has(beat.id)) continue;
   const s = Date.now();
   await recordBeat(browser, srv.url, beat);
   console.log(`clip     ${beat.id}.mp4 (${beat.shots.reduce((a, x) => a + x.seconds, 0)} s) in ${Math.round((Date.now() - s) / 1000)} s`);
 }
+if (!film) await overlays(browser, srv.url);
 await browser.close();
 srv.close();
 // The master is rebuilt whenever every clip is there, also after recording only some beats again.
-if (BEATS.every((b) => existsSync(resolve(out, "clips", `${b.id}.mp4`)))) {
-  writeFileSync(resolve(out, "clips.txt"), BEATS.map((b) => `file 'clips/${b.id}.mp4'`).join("\n") + "\n");
+const inMaster = film ? BEATS.map((b) => b.id) : MASTER_CLIPS;
+if (inMaster.every((id) => existsSync(resolve(out, "clips", `${id}.mp4`)))) {
+  writeFileSync(resolve(out, "clips.txt"), inMaster.map((id) => `file 'clips/${id}.mp4'`).join("\n") + "\n");
   await ffmpeg(["-f", "concat", "-safe", "0", "-i", resolve(out, "clips.txt"), "-c", "copy", "-movflags", "+faststart", resolve(out, "master.mp4")]);
-  await ffmpeg(["-i", resolve(out, "master.mp4"), "-vf", `subtitles=${resolve(out, "subtitles.srt")}:force_style='FontName=Inter,FontSize=22,Outline=2,Shadow=0,MarginV=36'`,
-    "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart", resolve(out, "master-subtitled.mp4")]);
-  console.log(`master   out/video/master.mp4 and master-subtitled.mp4, ${totalSeconds()} s, in ${Math.round((Date.now() - t0) / 1000)} s`);
+  const burn = film ? `subtitles=${resolve(out, "subtitles.srt")}:force_style='FontName=Inter,FontSize=22,Outline=2,Shadow=0,MarginV=36'` : `ass=${resolve(out, "subtitles.ass")}`;
+  await ffmpeg(["-i", resolve(out, "master.mp4"), "-vf", burn, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart", resolve(out, "master-subtitled.mp4")]);
+  console.log(`master   ${film ? "out/video/film" : "out/video"}/master.mp4 and master-subtitled.mp4, ${film ? totalSeconds() : premiereSeconds()} s, in ${Math.round((Date.now() - t0) / 1000)} s`);
 }
