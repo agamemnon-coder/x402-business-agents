@@ -85,8 +85,10 @@ export interface TryResult {
 }
 
 /**
- * The demo world: Northwind Outdoor's CFO policy, as in the recorded runs, and a short catalog so a request without a
- * price can still be shown. Everything in it is labelled demo; none of it is a live price or a live account.
+ * The demo world: a fixed copy of Northwind Outdoor's CFO policy, and a short catalog so a request without a price can
+ * still be shown. Everything in it is labelled demo; none of it is a live price or a live account. Its card limit (€50 a
+ * software purchase) is the demo's own: in the main run (3 Nov) the Sourcing card was €30, raised to €46 with Face ID,
+ * and the page says so.
  */
 export const DEMO_WORLD = {
   company: "Northwind Outdoor (demo world)",
