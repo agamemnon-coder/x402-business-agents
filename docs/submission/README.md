@@ -187,6 +187,8 @@ Running it live (sandbox keys, a Metal RPC) is in [docs/run-it.md](../run-it.md)
 
 - Video: _(Max fills in: the unlisted YouTube link)_
 - Live: _(Max fills in: the relay's address; `/try` needs it)_
+- Try it yourself: `/try/sign` on the live address: sign a test proposal with your own Face ID, in a test world of your
+  own; nothing real moves (live since 4 November 2026).
 - Repository: _(Max fills in once public)_
 
 ## Screenshots

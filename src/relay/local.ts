@@ -40,7 +40,7 @@ export async function startLocalRelay(opts: { port: number; token: string }): Pr
           const path = new URL(request.url).pathname;
           const response = pageResponse(request, pages)
             ?? (isTrySignPath(path) ? await (trySign ? trySign.fetch(request) : trySignNotFound()) : null)
-            ?? (new URL(request.url).pathname.startsWith("/api/") ? await relay.fetch(request) : new Response("not found", { status: 404 }));
+            ?? (path.startsWith("/api/") || path === "/health" || path === "/health/live" ? await relay.fetch(request) : new Response("not found", { status: 404 }));
           res.writeHead(response.status, Object.fromEntries(response.headers));
           res.end(Buffer.from(await response.arrayBuffer()));
         } catch (e) {

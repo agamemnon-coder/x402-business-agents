@@ -17,6 +17,8 @@ export interface Env {
   AIRWALLEX_WEBHOOK_SECRET?: string;
   /** Claude for Try Purser, set with `wrangler secret put ANTHROPIC_API_KEY`. Without it the page reads by code alone. */
   ANTHROPIC_API_KEY?: string;
+  /** "on" declares a live run (a plain var, off by default): /health then keeps the alarm however long the runner is silent. */
+  LIVE_RUN?: string;
 }
 
 export class RelayObject extends DurableObject<Env> {
@@ -30,7 +32,7 @@ export class RelayObject extends DurableObject<Env> {
     const path = new URL(req.url).pathname;
     if (isTrySignPath(path)) return (this.trySign ??= new TrySignDesk(this.ctx.storage.sql)).fetch(req);
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
-    return (this.relay ??= new Relay(this.ctx.storage.sql, { relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on" })).fetch(req);
+    return (this.relay ??= new Relay(this.ctx.storage.sql, { relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on" })).fetch(req);
   }
 }
 
@@ -45,8 +47,8 @@ export default {
     if (trySign) return trySign === "desk" ? env.RELAY.get(env.RELAY.idFromName("try-sign")).fetch(req) : trySignNotFound();
     // Try Purser runs in its own instance: its storage and its load stay apart from the approvals.
     if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
-    // /health is the relay's too: it knows when the runner last synced (B7).
-    if (path.startsWith("/api/") || path === "/hooks/airwallex" || path === "/health") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
+    // /health and /health/live are the relay's too: it knows when the runner last synced (B7).
+    if (path.startsWith("/api/") || path === "/hooks/airwallex" || path === "/health" || path === "/health/live") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
     return notFoundResponse(PAGES);
   },
 } satisfies ExportedHandler<Env>;

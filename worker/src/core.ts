@@ -5,7 +5,7 @@
 
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { normalizeCode } from "../../src/passkey/code.js";
-import { publicHealth, type Health } from "../../src/ops/publicHealth.js";
+import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHealth.js";
 
 export type SqlValue = string | number | null;
 export interface Sql {
@@ -110,7 +110,10 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
       "cross-origin-opener-policy": "same-origin",
     },
   });
-  if (path === "/") return page(pages.dashboard, pages.csp.dashboard);
+  // "/" is Home itself, so a reader without script (a link preview, a fetch) sees it too. With a query (?recorded,
+  // ?autonomy, ?signin, ?dashboard…) it is the CFO dashboard's page. The CFO's viewer link keeps its key after the "#",
+  // which never reaches a server: Home's script hands a device with a key to ?dashboard (src/redesign/home.ts).
+  if (path === "/") return !new URL(req.url).search && pages.home && pages.csp.home ? page(pages.home, pages.csp.home) : page(pages.dashboard, pages.csp.dashboard);
   if (path === "/home" && pages.home && pages.csp.home) return page(pages.home, pages.csp.home);
   if (path === "/watch" && pages.watch && pages.csp.watch) return page(pages.watch, pages.csp.watch);
   if (path === "/proof" && pages.proof && pages.csp.proof) return page(pages.proof, pages.csp.proof);
@@ -295,7 +298,8 @@ interface TicketRow {
 export class Relay {
   private readonly now: () => Date;
 
-  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean }) {
+  /** liveRun: a live run is declared (the Worker's LIVE_RUN variable), so /health keeps the alarm however long the runner is silent. */
+  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean }) {
     this.now = opts.now ?? (() => new Date());
     this.sql.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     this.sql.exec(`CREATE TABLE IF NOT EXISTS inbox (
@@ -420,15 +424,18 @@ export class Relay {
     const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/ask", "/api/enrol/options", "/api/enrol", ...(this.opts.mfa ? ["/api/session/options", "/api/session"] : [])];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
-    // Monitoring (B7), for an uptime monitor and anyone: all well or not, alarm codes only, 503 while anything is wrong
-    // or the runner has stopped syncing. No amounts, names or ids; the details stay behind the viewer key.
-    if (route("GET", "/health")) {
+    // Monitoring (B7), alarm codes only; no amounts, names or ids (the details stay behind the viewer key).
+    // /health/live is the alarm, for an uptime monitor and the CFO: 503 while anything is wrong or the runner has stopped
+    // syncing. /health is what anyone sees: the same while a live run is expected (the runner synced in the last 30
+    // minutes, or LIVE_RUN declares one); between live runs, 200 and "Recorded demo · the live runner runs during live runs".
+    if (route("GET", "/health") || route("GET", "/health/live")) {
       const state = this.state();
       const raw = state?.snapshot.health as Health | undefined;
       // A runner too old to send health is "unknown", never "ok".
       const ok = raw && typeof raw.at === "string" && Array.isArray(raw.alerts) ? raw : null;
-      const h = publicHealth(ok, state ? this.relayInfo(state).age_ms : null);
-      return new Response(JSON.stringify(h.body), { status: h.status, headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
+      const info = state ? this.relayInfo(state) : null;
+      const h = path === "/health/live" ? publicHealth(ok, info?.age_ms ?? null) : publicStatus(ok, info?.age_ms ?? null, { liveRun: this.opts.liveRun, lastSync: info?.synced_at ?? null });
+      return json(h.status, h.body);
     }
     // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,
     // so guessing is slowed and shows up (HF1). The runner's route has its own token and is not counted.
