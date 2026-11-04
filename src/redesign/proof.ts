@@ -4,8 +4,8 @@
 // licence attempt that paid nothing, the checks, and a folded, labelled Archive. Nothing typed in by hand.
 
 import { readFileSync } from "node:fs";
-import { SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
-import { agentRun, faceIdDecisions, family, letThroughOf, ownTap, payments, runName, split, stoppedAtLimit, stops, tapLimitLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
+import { SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS } from "../config/brand.js";
+import { agentRun, faceIdDecisions, family, letThroughOf, ownTap, payments, separateRowHtml, runName, split, stoppedAtLimit, stops, tapLimitLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { esc, icon, page } from "./ui.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
@@ -142,7 +142,7 @@ function partnerCards(run: AgentRun): string {
   return `<div class="partners">
 ${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the cap") + (st.revoked ? fact(String(st.revoked), "refused by Metal: mandate just replaced") : "") + fact(String(mandates), "mandates replaced"), p.metal, pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : "")}
 ${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + fact(String(st.tapDeclines), "card decline at the limit (TAP run)"), p.airwallex)}
-${tap || own ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", (own ? fact("1", "signed checkout in this run") : "") + (tap ? fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit") : ""), p.visa, `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`) : ""}
+${tap || own ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", (own ? fact("1", "signed checkout in this run") : "") + (tap ? fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit") : ""), p.visa, `<p class="note">${esc(VISA_AWARD_STATUS)} <a class="pf" href="visa">What TAP is, in one paragraph</a></p>`) : ""}
 ${card("claude", LOGO.claude, "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls, each with a request id"), p.claude)}
 </div>`;
 }
@@ -173,7 +173,7 @@ function moreCards(run: AgentRun): string {
     `<li><a class="pf" href="film">The film</a></li>`, `<li><a class="pf" href="month">A month in 90 seconds (simulated)</a></li>`, `<li><a class="pf" href="lab">The Scenario Lab</a></li>`,
   ];
   return `<div class="more">
-${box("stops", "ban", "stopped at a limit", String(stoppedAtLimit(st)), `${st.metal} Metal · ${st.cfo} CFO${st.airwallex ? ` · ${st.airwallex} Airwallex` : ""}, in this run.${st.revoked ? ` ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}`, noteHtml(tapLimitLine()) /* the separate TAP run's decline: on its own line, not counted */ + fold("Show each one", [...stopItems, ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`Not counted, not a limit: ${e.what}, refused by Metal because its mandate had just been replaced`, "", e.proof.href ? e.proof : null))]))}
+${box("stops", "ban", "stopped at a limit", String(stoppedAtLimit(st)), `${st.metal} Metal · ${st.cfo} CFO${st.airwallex ? ` · ${st.airwallex} Airwallex` : ""}, in this run.${st.revoked ? ` ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}`, separateRowHtml(tapLimitLine()) /* the separate TAP run's decline: its own labelled row, not counted */ + fold("Show each one", [...stopItems, ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`Not counted, not a limit: ${e.what}, refused by Metal because its mandate had just been replaced`, "", e.proof.href ? e.proof : null))]))}
 ${box("faceid", "scan-face", "Face ID decisions", String(faceIdDecisions(r)), `Proposals the CFO decided on his phone${faces.some((f) => f.status === "COSIGNED") ? "; the mandate change needed a second signature too" : ""}. ${SECOND_APPROVER}`, fold(`Show the ${faces.length} signatures: ${faceIdDecisions(r)} decisions + ${faces.length - faceIdDecisions(r)} co-signature${faces.length - faceIdDecisions(r) === 1 ? "" : "s"}`, faceItems))}
 ${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), "The sandbox could not price the fee: nothing paid, not a limit.", fold("Show what followed", earlier.map((e) => li(earlierLine(e), "no", { label: e.proof.label, href: null })))) : ""}
 ${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=2"])}
@@ -189,13 +189,13 @@ export function proofPage(run: AgentRun = agentRun()): string {
     { cls: "claude", value: String(sp.byClaude), label: `decisions by Claude (${sp.fallbacks} fallbacks)`, explain: "", href: "#claude" },
     { cls: "code", value: String(sp.routine), label: "routine payments by code", explain: "", href: "#metal", ...(pay.sums ? { note: `The ${pay.sales} sales and ${pay.purchases} supplier purchases of: ${pay.line}` } : {}) },
     { cls: "face", value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: "", href: "#faceid" },
-    { cls: "stop", value: String(stoppedAtLimit(st)), label: "stopped at a limit", explain: "", href: "#stops", ...(tapLimitLine() ? { note: tapLimitLine() } : {}) },
+    { cls: "stop", value: String(stoppedAtLimit(st)), label: "stopped at a limit", explain: "", href: "#stops", ...(tapLimitLine() ? { separate: tapLimitLine() } : {}) },
     { cls: "", value: `$${run.derived.perDecision}`, label: "Claude cost per decision", explain: "", href: "#claude" },
   ];
   const body = `<main class="proofp"><div class="wrap">
   <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
   <p class="split">${esc(SPLIT_LINE)}</p>
-  <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>
+  <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>${nums.map((n) => separateRowHtml(n.separate)).join("")}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
   <h2 class="sec">Checks</h2>

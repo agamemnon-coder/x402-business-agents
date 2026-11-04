@@ -65,7 +65,7 @@ export type Mini =
   | { kind: "flow"; rows: { icon: string; text: string; tone: "ok" | "bad" | "face" }[] };
 export interface Step { icon: string; text: string; tone: "ok" | "bad" | "face" | "info"; proof?: Proof }
 export interface Scene { n: 1 | 2 | 3; title: string; start: number; steps: Step[]; sentence: string; mini: Mini | null }
-export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string; /** A separate labelled line directly below the figure. */ note?: string }
+export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string; /** A separate labelled line directly below the figure. */ note?: string; /** A result from another run: shown in its own labelled row below the tiles, never inside the card. */ separate?: string }
 export interface AgentCard { id: AgentId; name: string; short: string; model: string; family: string }
 
 export interface AgentRun {
@@ -452,6 +452,19 @@ export function tapLimitLine(): string {
   return `Airwallex declined ${x.currency} ${x.amount} over the card limit (LIMIT_EXCEEDED), separate TAP run, ${date}`;
 }
 
+/** The label of the separate TAP run's row ("Separate test, 2 November"), "" without that run. */
+export function tapSeparateLabel(): string {
+  const tap = tapRun();
+  return tap ? `Separate test, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt))}` : "";
+}
+
+/** The separate TAP run's decline as its own labelled row, below the figures and outside every card ("" without one). */
+export function separateRowHtml(text: string | undefined): string {
+  if (!text) return "";
+  const e = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  return `<p class="septest"><b>${e(tapSeparateLabel())}:</b> ${e(text)}; not counted in the figures above.</p>`;
+}
+
 /** Tools that mean an agent acted, not only looked: a decision without any of them is a routine check. */
 const ACTING = /^(set_buy_policy|design_rebalance|send_message|settle_dispute|sweep_earnings|plan_invoice|submit_plan|submit_advice|refund|escalate_to_cfo|ask_card_raise|buy_software)$/;
 
@@ -622,7 +635,7 @@ export function agentRun(): AgentRun {
       explain: st.airwallex ? "By Metal, the CFO and Airwallex in this run." : "By Metal and the CFO in this run.",
       tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run${st.airwallex ? "; by Airwallex at the card's limit" : ""}.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
       parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, ...(st.airwallex ? [{ value: String(st.airwallex), label: "Airwallex" }] : [])],
-      ...(tapLimitLine() ? { note: tapLimitLine() } : {}),
+      ...(tapLimitLine() ? { separate: tapLimitLine() } : {}),
     },
     { value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
     { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices; each decision may be several calls.", href: "proof#claude" },

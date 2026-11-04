@@ -109,7 +109,13 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect([st.metal, st.cfo, st.airwallex, st.revoked, st.tapDeclines]).toEqual([1, 1, 0, 1, 1]);
     expect(t.parts).toEqual([{ value: "1", label: "Metal" }, { value: "1", label: "CFO" }]);
     expect(t.value).toBe("2");
-    expect(t.note).toBe(TAP_LINE);
+    // Not inside the card: its own row, labelled as the separate test it was (agent X's review, 4 Nov).
+    expect(t.note).toBeUndefined();
+    expect(t.separate).toBe(TAP_LINE);
+    for (const html of [homePage(), proofPage()]) {
+      expect(html).toContain(`<p class="septest"><b>Separate test, 2 November:</b> ${TAP_LINE}; not counted in the figures above.</p>`);
+      expect(html).not.toContain(`<span class="note">${TAP_LINE}</span>`);
+    }
     if (st.revoked) expect(t.tip).toMatch(/mandate had just been replaced/);
     // At most two short lines on the card; the details in its tooltip.
     expect(t.explain.length).toBeLessThanOrEqual(60);
