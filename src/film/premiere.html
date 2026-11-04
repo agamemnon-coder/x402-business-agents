@@ -178,13 +178,6 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var h = put(L, E("div", "hl c", S.line), 0, 352);
       return function (t) { h.style.opacity = Math.min(prog(t, .15, 1.0), 1 - prog(t, 2.25, 2.9)); };
     },
-    "02-hook": function (L, S, ov) {
-      var lab = put(L, E("div", "ovl", S.label), 48, 36);
-      if (ov) return function () {};
-      L.classList.add("black");
-      slot(L, S);
-      return function () { lab.style.opacity = 1; };
-    },
     "03-pen": function (L, S) {
       var qn = put(L, E("div", "hl c", S.question), 0, 352);
       var mk = put(L, mark(132), 894, 118);
@@ -426,7 +419,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   };
 
   // The fade into and out of each scene (seconds); each clip starts and ends on black, so clips can be cut apart.
-  var FADES = { "01-line": [0, 0], "11-one-cent": [0, .45], "02-hook": [.3, .3], "08-faceid": [.3, .3] };
+  var FADES = { "01-line": [0, 0], "11-one-cent": [0, .45], "08-faceid": [.3, .3] };
   var scenes = D.scenes.map(function (sc) {
     var L = E("div", "layer"); pic.appendChild(L);
     var only = overlay === sc.id;

@@ -12,7 +12,7 @@
 // Nothing here is live: the pages are the recordings, as npm run judge serves them.
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
 import express from "express";
@@ -215,6 +215,8 @@ async function checkPremiere(browser: import("playwright").Browser, base: string
 
 /** The overlays: each recording slot's letterbox bars and label, a transparent 1920x1080 PNG to lay over the footage. */
 async function overlays(browser: import("playwright").Browser, base: string): Promise<void> {
+  // Only the slots there are now: a slot that was cut leaves no overlay behind.
+  rmSync(resolve(out, "overlays"), { recursive: true, force: true });
   mkdirSync(resolve(out, "overlays"), { recursive: true });
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const page = await ctx.newPage();
@@ -269,6 +271,8 @@ if (process.argv.includes("--docs")) {
   process.exit(0);
 }
 
+// A full recording starts from an empty clips/, so a scene that was cut leaves no clip behind.
+if (!film && !only.size && !check && !process.argv.includes("--stills")) rmSync(resolve(out, "clips"), { recursive: true, force: true });
 mkdirSync(resolve(out, "clips"), { recursive: true });
 if (film) {
   writeFileSync(resolve(out, "subtitles.srt"), subtitlesSrt());
