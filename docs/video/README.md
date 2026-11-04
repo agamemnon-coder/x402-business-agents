@@ -41,7 +41,7 @@ line changes, render `13-specs` again.
 | 1:20 | `09-six-seconds.mp4` | 6 seconds from Face ID to PAID; the transfer id; “Look it up yourself.” | | **The first hit**, on “6 seconds” |
 | 1:32 | `10-try-sign.mp4` | A mock of the live /try/sign page | **Max on /try/sign** with `overlays/10-try-sign.png` (or keep the mock) | Building again |
 | 1:48 | `11-one-cent.mp4` | +0.01, refused: “One cent. Worthless.” | | **Hard cut to silence**: no music, no voice |
-| 1:56 | `12-why-face-id.mp4` | Why Face ID, not a PIN | | The music comes back, softly |
+| 1:56 | `12-why-face-id.mp4` | Why Face ID, not a password | | The music comes back, softly |
 | 2:08 | `13-specs.mp4` | Four spec cards, 4 s each | | One card on each beat |
 | 2:24 | `14-real.mp4` | What's real, what's ours | | Steady, lower |
 | 2:37 | `15-close.mp4` | The closing line as a card, Max's name | **Max on camera** with `overlays/15-close.png`, or his voice over this card | Low, under Max's voice |
@@ -76,7 +76,7 @@ Royalty-free and slowly building, one track for the whole film, cut so it hits a
 - **Where it hits and where it goes silent:** see the table above. In short: silence for the first line; low from the
   title; building through the diagram and the price rise; thin under the approval card and the Face ID; the first hit
   on “6 seconds”; building on /try/sign; **silence from 1:48 to 1:56** (“One cent. Worthless.” stands alone); back,
-  softly, for the PIN line; on the beat for the spec cards; low under Max's closing; the last swell on the end card.
+  softly, for the password line; on the beat for the spec cards; low under Max's closing; the last swell on the end card.
 - Under a voice, keep the music 18 to 22 dB lower.
 
 ## Cutting it

@@ -47,7 +47,7 @@ export const PREMIERE_SCENES: PremiereScene[] = [
     slot: "Max's iPhone: signing on the live /try/sign page (docs/video/opnames-max.md, 3); the rendered mock is the fallback" },
   { id: "11-one-cent", title: "One cent. Worthless.", seconds: 8, kind: "render", music: "Hard cut to silence: no music, no voice.",
     picture: "The amount changes by one cent, its hash changes completely, the same signature is refused. “One cent. Worthless.”" },
-  { id: "12-why-face-id", title: "Why Face ID, not a PIN", seconds: 12, kind: "render", music: "The music comes back, softly.",
+  { id: "12-why-face-id", title: "Why Face ID, not a password", seconds: 12, kind: "render", music: "The music comes back, softly.",
     picture: "The question, then the answer in one sentence." },
   { id: "13-specs", title: "Spec cards", seconds: 16, kind: "render", music: "Rhythmic: one card on each beat.",
     picture: "Four fast cards: the tests, the hash-chained audit log, stopped at a limit, decisions by Claude." },
@@ -231,7 +231,7 @@ const WORDS_FROM: Record<string, string> = {
   "02-hook": "No figure. Max's choice; we generate nothing.",
   "03-pen": "No figure. Max's opening (docs/video/max-opening-close.md).",
   "04-architecture": "No figure. The T:0 tag: docs/claims.md (\"Posting the books to T:0\": the shared sandbox key can read, not post; nothing posted) and docs/runs/2026-11-03-t0-sandbox.md.",
-  "12-why-face-id": "No figure. The reason: docs/phone-approval.md (\"The passkey signs the SHA-256 of the exact terms … any change after signing makes it worthless\"); README.md, Words (\"the CFO's Face ID signs that hash\"). Not said: that Face ID is required: a passkey may also be unlocked with Touch ID or the device's PIN (README.md, Try it yourself); what counts is that it signs these exact terms.",
+  "12-why-face-id": "No figure. The reason: docs/phone-approval.md (\"The passkey signs the SHA-256 of the exact terms … any change after signing makes it worthless\"); README.md, Words (\"the CFO's Face ID signs that hash\"). \"Password\", not \"PIN\": a passkey may itself be unlocked with the device's PIN, or Touch ID (README.md, Try it yourself); what counts is that it signs these exact terms, so the film does not say Face ID is required.",
   "14-real": "No figure. README.md, \"What is real, what is mock\"; docs/claims.md (the second approver: `SECOND_APPROVER` in src/config/brand.ts).",
   "15-close": "No figure. Max's closing (docs/video/max-opening-close.md, \"Slot\"); what it says of the run: see the 13-specs and 05–09 rows, and the Face ID decisions below.",
   "16-end": "No figure. The address: the hosted /try/sign (live since 4 November).",
@@ -266,7 +266,7 @@ export function premiereTable(data: PremiereData): string {
     `- **The tests:** the README's test line, read when the film is built (${data.facts["specs.tests"]!.value} tests in ${data.facts["specs.files"]!.value} files when this file was generated). Render the spec cards again after the README's line changes: \`npm run video -- 13-specs\`.`,
     `- **Max's closing line** ("Claude decided … I signed only what went beyond them"): ${data.facts["specs.byClaude"]!.value} of ${data.facts["specs.decisions"]!.value} decisions by Claude; ${data.facts["run.faceIds"]!.value} decisions with Max's Face ID (${data.facts["run.faceIds"]!.source}).`,
     "- **T:0:** built, not yet live: the shared sandbox key can read and not post (`403 CAPI71`); nothing has been posted. The film never shows a T:0 booking.",
-    "- **Face ID, not a PIN:** the reason is the docs' own (docs/phone-approval.md). The film does not say the server proves Face ID: /try/sign checks no attestation (docs/claims.md), so it says the server checks the signature.",
+    "- **Face ID, not a password:** the reason is the docs' own (docs/phone-approval.md); \"password\", because a passkey may itself be unlocked with a PIN. The film does not say the server proves Face ID: /try/sign checks no attestation (docs/claims.md), so it says the server checks the signature.",
     "- **Kept out:** logos of others, any seal of approval, safety counts, and other runs' figures.", "");
   return lines.join("\n");
 }

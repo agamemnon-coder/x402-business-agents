@@ -104,18 +104,18 @@ The server checks the signature against the exact terms.
 
 27
 00:01:56,400 --> 00:01:59,250
-Why Face ID, and not a PIN?
+Why Face ID, and not a password?
 
 28
-00:01:59,400 --> 00:02:01,328
-A PIN is the same for every
+00:01:59,400 --> 00:02:01,598
+A password is the same for every
 
 29
-00:02:01,378 --> 00:02:04,333
+00:02:01,648 --> 00:02:04,478
 payment; Face ID signs these exact terms:
 
 30
-00:02:04,383 --> 00:02:07,850
+00:02:04,528 --> 00:02:07,850
 change anything, and the signature is worthless.
 
 31

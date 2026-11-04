@@ -61,10 +61,10 @@ Each line starts at the time shown. 275 words in 2:57: calm, with the silences l
 
 *Silence: no voice, no music.*
 
-## 1:56 Why Face ID, not a PIN (12 s, clip `12-why-face-id.mp4`)
+## 1:56 Why Face ID, not a password (12 s, clip `12-why-face-id.mp4`)
 
-- 1:56 Why Face ID, and not a PIN?
-- 1:59 A PIN is the same for every payment; Face ID signs these exact terms: change anything, and the signature is worthless.
+- 1:56 Why Face ID, and not a password?
+- 1:59 A password is the same for every payment; Face ID signs these exact terms: change anything, and the signature is worthless.
 
 ## 2:08 Spec cards (16 s, clip `13-specs.mp4`)
 
