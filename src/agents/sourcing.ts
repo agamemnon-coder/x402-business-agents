@@ -100,34 +100,21 @@ export class SourcingAgent {
     if (this.db.prepare("SELECT 1 FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND json_extract(payload_json, '$.mandate') = ? AND COALESCE(json_extract(payload_json, '$.let_through'), 0) = ?")
       .get(m.reference, letThrough ? 1 : 0)) return false;
     const cents = refusedCents ?? Number(/over the sourcing mandate's|is over/.test(reason) ? toCents((/^mandate_cap_exceeded: (?:the supplier asks )?(\d+\.\d{2})/.exec(reason) ?? [])[1] ?? "0.00") : 0);
-    const paymentId = `refusal-${m.reference.slice(2, 14)}-${seq}`;
-    // The record pull is a payment to Metal like any other: held before it is sent (budget, shared total, velocity, stop),
-    // released once Metal reports refusing it, kept while it may have paid, so an unexpected acceptance is counted.
-    const ref = `record:${paymentId}`;
-    let held = false;
     try {
       if (!cents) throw new Error("the refused amount is not in the reason");
       // The record pull is an over-cap payment sent to Metal too: never more than a small rise over the bound cap.
       let cap: bigint | null = null;
       try { cap = boundCapUnits(m); } catch { cap = null; }
       if (cap !== null && centsToBaseUnits(cents) > cap + centsToBaseUnits(LET_THROUGH_MAX_OVER_CENTS)) throw new Error(`${fromCents(cents)} is more than ${fromCents(LET_THROUGH_MAX_OVER_CENTS)} over the cap; no pull is sent to record it`);
-      const denied = holdBeyondCap(this.db, { agent: "sourcing", cents, ref, payee: "supplier" });
-      if (denied) throw new Error(`not held, so no pull is sent to record it: ${denied}`);
-      held = true;
-      const r = await recordCapRefusalOnChain(m, this.supplier, cents, paymentId);
-      releaseHold(this.db, ref, "record pull: Metal reported refusing it");
+      const r = await recordCapRefusalOnChain(m, this.supplier, cents, `refusal-${m.reference.slice(2, 14)}-${seq}`);
       audit(this.db, "sourcing", "upstream.refused_on_chain", String(seq), { seq, mandate: m.reference, amount: fromCents(cents), tx: r.tx, metal_reason: r.reason, ...(letThrough ? { let_through: true } : {}) });
       return false;
     } catch (e) {
       const error = (e as Error).message;
       audit(this.db, "sourcing", "upstream.refusal_not_recorded", String(seq), { seq, mandate: m.reference, error: error.slice(0, 240), ...(letThrough ? { let_through: true } : {}) });
-      // A pull that may have reached Metal and was not reported refused may have paid: an incident, and its hold stays
-      // HELD (counted against the budget and the shared total) until a person resolves it.
-      if (!/^pull sent: |did not report a refusal/.test(error)) {
-        if (held) releaseHold(this.db, ref, `record pull not sent: ${error}`);
-        return false;
-      }
-      this.letThroughIncident(seq, null, `the ${fromCents(cents)} over-cap pull sent to record Metal's refusal was not reported refused (${error.slice(0, 120)}); its hold ${ref} stays until a person resolves it`, "record_pull");
+      // A pull that may have reached Metal and was not reported refused may have paid: an incident.
+      if (!/^pull sent: |did not report a refusal/.test(error)) return false;
+      this.letThroughIncident(seq, null, `the ${fromCents(cents)} over-cap pull sent to record Metal's refusal was not reported refused (${error.slice(0, 120)})`, "record_pull");
       return true;
     }
   }
