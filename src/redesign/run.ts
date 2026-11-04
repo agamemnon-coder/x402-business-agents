@@ -7,7 +7,8 @@
 // the record (test/redesign-numbers.test.ts fails on a number the record lacks).
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { AGENT_DISPLAY, DEFENSE_IN_DEPTH } from "../config/brand.js";
+import { AGENT_DISPLAY, DEFENSE_IN_DEPTH, SANDBOX_SETTLED } from "../config/brand.js";
+import { REFUSED_PURCHASE_LINE, refusedPurchaseLine } from "../dashboard/agentStats.js";
 import type { RunLedger } from "../demo/runLedger.js";
 
 /** The main run's record (3 Nov; the same form `npm run autonomy-record` writes): the run the pages play. */
@@ -22,7 +23,7 @@ const AGENTS: AgentId[] = ["sourcing", "support", "treasury"];
 
 interface Chat { ts: string; kind: "decision" | "message" | "world"; who: string; by: string | null; model: string | null; text: string }
 interface Flow { at: string; kind: string; agent: string | null; model: string | null; decided: string; request?: string; what: string; amount: string; unit: string; rail: string; count?: number; proof: { label: string; href: string | null; full?: string | null }; refused?: { by: string; reason: string } }
-interface Trace { run_seq?: number; agent: string; task: string; status: string; model: string; tokens?: { input: number; output: number; cache_read: number; cache_write: number }; latency_ms?: number; claude_ms?: number[]; request_ids?: string[]; cost_usd_micros?: number; steps: { ts: string; kind: string; tool: string | null; input: unknown }[] }
+interface Trace { run_seq?: number; agent: string; task: string; status: string; model: string; tokens?: { input: number; output: number; cache_read: number; cache_write: number }; latency_ms?: number; claude_ms?: number[]; request_ids?: string[]; cost_usd_micros?: number; decision_seq?: number | null; steps: { ts: string; kind: string; tool: string | null; input: unknown; seq?: number; text?: string }[] }
 interface Refusal { seq: number; ts: string; agent: string; what: string; reason: string }
 interface Decision { proposal_id: string; title: string; status: string; by: string | null; at: string }
 interface Stat { agent: string; decisions: number; by_claude: number; fallback: number; claude_calls: number; cost_usd_micros: number; models: string[] }
@@ -174,8 +175,8 @@ function events(r: RunRecord): Ev[] {
       // A world notice is our simulation's text, not an agent's words; "warehouse software" is shown as "warehouse app"
       // (a phrase kept off the public pages, test/site-v4.test.ts).
       const text = c.text.trim().replace(/^([^:]+): \1: /, "$1: ").replace(/^Money in:\s*/, "").replace(/warehouse software/gi, "warehouse app");
-      // Raw event names, and purchases refused before signing, are told by their own rows (a money movement, a refusal).
-      if (!text || /^[a-z_]+\.[a-z_.]+$/.test(text) || /^A purchase from \S+ was refused before signing/.test(text)) continue;
+      // Raw event names, and refused purchases (whoever refused them), are told by their own rows (a money movement, a refusal).
+      if (!text || /^[a-z_]+\.[a-z_.]+$/.test(text) || REFUSED_PURCHASE_LINE.test(text)) continue;
       out.push({ k: "world", at: c.ts, text });
     } else if (c.kind === "decision" && isAgent(c.who)) {
       out.push({ k: "say", at: c.ts, agent: c.who, model: c.model, by: c.by === "claude" ? "claude" : "fallback", text: c.text, tools: toolsFor(c.who, c.ts), call: c.by === "claude" ? callOf(traceAt(r, c.who, c.ts)) : null });
@@ -362,7 +363,8 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     if (replan) steps.push({ icon: "bot", text: `${nameOf("treasury")} · ${family(replan.model)} replans${toOptions !== null ? `: options in ${toOptions} s` : ""}`, tone: "ok" });
     if (signed) steps.push({ icon: "scan-face", text: `${signed.signers.length} of ${signed.signers.length} signatures`, tone: "face" });
     if (replaced && newCap) steps.push({ icon: "circle-check", text: `Mandate replaced: cap ${newCap}`, tone: "ok" });
-    const parts = [`${supplier} raises its price to ${price}`, chain ? (chain.letThrough ? "Metal refuses it on chain" : "refused, and recorded on chain") : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
+    // The main run's #24: Purser let it through on purpose (defense in depth), so the sentence says so (final review, 4 Nov).
+    const parts = [`${supplier} raises its price to ${price}`, chain ? (chain.letThrough ? "one purchase is let through on purpose, and Metal refuses it on chain" : "refused, and recorded on chain") : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
     out.push({ n: 1, title: "The price rise", start: i1, steps, sentence: `${parts.join(" → ")}.`, mini: price && capWas ? { kind: "price", from: supplier, old, price, cap: capWas, newCap, tx: chain?.proof ?? null, signers: signed?.signers.length ?? 0, ...(chain?.letThrough ? { byMetal: true } : {}) } : null });
   }
 
@@ -399,7 +401,8 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     if (sweep) steps.push({ icon: "wallet", text: `${money(sweep.amount, sweep.unit)} swept after finality`, tone: "ok", proof: sweep.proof });
     if (booked) steps.push({ icon: "landmark", text: `${money(booked.amount, booked.unit)} booked at Airwallex`, tone: "ok" });
     if (fx && bill && !bill.refused) steps.push({ icon: "arrow-left-right", text: `${fx.buy} bought by FX for the shortfall`, tone: "ok" });
-    if (bill && !bill.refused && face) steps.push({ icon: "circle-check", text: `${bill.unit === "EUR" ? SHORT_EUR(bill.amount) : money(bill.amount, bill.unit)} licence PAID by SWIFT · ${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID` : "Face ID"}`, tone: "ok" });
+    // PAID in the sandbox: Purser moves the transfer to SENT, then PAID, itself (settleInSandbox); the seconds are measured.
+    if (bill && !bill.refused && face) steps.push({ icon: "circle-check", text: `${bill.unit === "EUR" ? SHORT_EUR(bill.amount) : money(bill.amount, bill.unit)} licence PAID by SWIFT · ${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID` : "Face ID"} · ${SANDBOX_SETTLED}`, tone: "ok" });
     else {
       if (bill && face) steps.push({ icon: "scan-face", text: `${money(bill.amount, bill.unit)} licence: Face ID approved`, tone: "face" });
       if (bill) steps.push({ icon: bill.refused ? "ban" : "circle-check", text: bill.refused ? (bill.refused.by === "airwallex-sandbox" ? `Airwallex: ${bill.refused.reason}` : `Airwallex refused: ${bill.refused.reason}`) : "Paid by SWIFT", tone: bill.refused ? "bad" : "ok" });
@@ -468,17 +471,15 @@ export function disputeStory(r: RunRecord): string {
   return `A simulated customer disputes ${n} orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. ${words[k] ?? String(k)} orders had wrong data; the Support agent refunds those ${k} (${sum} test USD) itself. "Refund the other ${n - k}" goes to the CFO, who rejects it with Face ID.`;
 }
 
-/** The label of the separate TAP run's row ("Separate test, 2 November"), "" without that run. */
-export function tapSeparateLabel(): string {
-  const tap = tapRun();
-  return tap ? `Separate test, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt))}` : "";
-}
-
-/** The separate TAP run's decline as its own labelled row, below the figures and outside every card ("" without one). */
+/**
+ * The separate TAP run's decline as its own row, below the figures and outside every card ("" without one). The line
+ * names its run and day itself ("…, separate TAP run, 2 November"), so the row adds no label saying it again (final
+ * review, 4 Nov: "Separate test, 2 November: … separate TAP run, 2 November").
+ */
 export function separateRowHtml(text: string | undefined): string {
   if (!text) return "";
   const e = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-  return `<p class="septest"><b>${e(tapSeparateLabel())}:</b> ${e(text)}; not counted in the figures above.</p>`;
+  return `<p class="septest">${e(text)}; <b>not counted in the figures above</b>.</p>`;
 }
 
 /** Tools that mean an agent acted, not only looked: a decision without any of them is a routine check. */
@@ -623,6 +624,112 @@ export function split(r: RunRecord): { byClaude: number; decisions: number; fall
   const st = r.snapshot.agent_stats;
   const routine = r.snapshot.flows.filter((f) => !f.refused && (f.kind === "sale" || (f.kind === "upstream" && /^code\b/.test(f.decided)))).reduce((n, f) => n + (f.count ?? 1), 0);
   return { byClaude: st.reduce((n, a) => n + a.by_claude, 0), decisions: st.reduce((n, a) => n + a.decisions, 0), fallbacks: st.reduce((n, a) => n + a.fallback, 0), routine };
+}
+
+/** One agent decision as /claude lists it: its row's seq, when, which agent, what it decided, the Claude call(s) behind it. */
+export interface AgentDecision { seq: number | null; at: string; agent: AgentId; text: string; call: Call | null }
+/**
+ * Every decision the run's headline counts (24/24 in the main run), one per trace in the record, oldest first. A
+ * wake's decision is the agent's own words, from the chat. The decisions code records as rows of their own (Treasury's
+ * plan after a price rise, its timing advice on an invoice, Support's settlement of a dispute) never reach the chat, so
+ * their row's text from the trace is used, the agent's words quoted in it (final review, 4 Nov: /claude listed only the
+ * chat's 21 of the 24).
+ */
+export function decisionsOf(r: RunRecord): AgentDecision[] {
+  const chat = r.snapshot.agent_chat.filter((c) => c.kind === "decision");
+  return r.snapshot.traces.filter((t) => isAgent(t.agent) && t.steps.length).map((t) => {
+    const agent = t.agent as AgentId, last = t.steps[t.steps.length - 1]!;
+    const said = chat.find((c) => c.who === agent && c.ts === last.ts);
+    const row = (last.text ?? "").replace(new RegExp(`^The ${AGENT_DISPLAY[agent].name} `), "").replace(/^./, (c) => c.toUpperCase());
+    return { seq: t.decision_seq ?? last.seq ?? null, at: last.ts, agent, text: said?.text ?? row, call: callOf(t) };
+  }).sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/**
+ * The card raise before the played run's card buy, from its ledger: the proposal the CFO approved with Face ID that
+ * ran just before the Sourcing card's limits were synced at Airwallex, and the limit per purchase before and after
+ * (EUR, as the sync recorded them); null without one.
+ */
+export function cardRaiseOf(r: RunRecord): { proposal: string; from: string; to: string; approvedAt: string } | null {
+  const ev = r.ledger?.events ?? [];
+  const synced = ev.find((e) => e.event === "card.limits_synced" && e.subject === "sourcing");
+  const ran = synced ? ev.filter((e) => e.event === "proposal.executed" && e.ts <= synced.ts).pop() : undefined;
+  const approved = ran ? ev.find((e) => e.event === "proposal.approved" && e.subject === ran.subject) : undefined;
+  if (!synced || !ran || !approved) return null;
+  const perPurchase = (v: unknown) => String(v ?? "").split(" / ")[0] ?? "";
+  return { proposal: ran.subject ?? "", from: perPurchase(synced.payload.from), to: perPurchase(synced.payload.to), approvedAt: approved.ts };
+}
+
+/**
+ * A record's Airwallex rails as the pages show them: the SWIFT payout's PAID said as the sandbox's settlement, which
+ * Purser itself moves to SENT, then PAID (records made before src/dashboard/rails.ts said so; final review, 4 Nov).
+ */
+export function sandboxRails<T extends { what: string; detail: string }>(items: T[]): T[] {
+  return items.map((x) => (x.what === "SWIFT payout of an invoice" && !x.detail.includes(SANDBOX_SETTLED) ? { ...x, detail: x.detail.replace(/, PAID(?=[,;])/, `, PAID ${SANDBOX_SETTLED}`) } : x));
+}
+
+/** The CFO dashboard's notes on the replayed run (/?autonomy), each from the functions Home, Watch and Proof count with. */
+export interface ReplayFigures { stopped: number; keptOut: string; refusedPill: string; refusedNote: string; enforcedNote: string; claude: string }
+interface Enforcer { who: string; count: number; last: { reason: string; words: string; at: string; proof: { kind: "tx" | "awx"; ref: string } | null } | null }
+
+/**
+ * The played run as the CFO dashboard replays it (/?autonomy). Final review, 4 Nov: the dashboard counted the run its
+ * own way (Metal 3, #24's facilitator refusal and its record on chain counted twice plus #37 refused under a replaced
+ * mandate; "16 stops, all counted"; 58 Claude calls beside Proof's 50) and still read #24 as refused before signing. So
+ * its figures here come from stops() and the agents' stats, as on Home, Watch and Proof, and the record's lines are
+ * worded as the pages word them now: a refused purchase by who refused it (from the run's ledger, as
+ * src/dashboard/agentStats.ts words it live), a sandbox PAID as simulated. The record's own rows are not changed.
+ */
+export function replayRecord(r: RunRecord): RunRecord & { figures: ReplayFigures } {
+  const s = r.snapshot, ev = r.ledger?.events ?? [];
+  const st = stops(r), stopped = stoppedAtLimit(st);
+  const parts = `${st.metal} Metal · ${st.cfo} CFO${st.airwallex ? ` · ${st.airwallex} Airwallex` : ""}`;
+  const notCounted = st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : "";
+  // The refusals the dashboard lists (it folds expired proposals away), each said as a limit or not.
+  const listed = s.refusals.filter((x) => !/expired/i.test(x.what));
+  const buyPolicy = listed.filter((x) => /own buy policy/.test(x.reason)).length, planted = listed.filter((x) => /planted instruction/i.test(x.what)).length;
+  const notLimits = [buyPolicy ? `${buyPolicy} purchase${buyPolicy === 1 ? "" : "s"} the Sourcing agent's own buy policy declined (nothing signed)` : "",
+    st.revoked ? `${st.revoked} refused by Metal because its mandate had just been replaced` : "", planted ? `${planted} planted instruction${planted === 1 ? "" : "s"} ignored` : ""].filter(Boolean);
+  const rest = listed.length - stopped - buyPolicy - st.revoked - planted;
+  if (rest > 0) notLimits.push(`${rest} other`);
+  // Claude: every call of the run (the agents' and the reader's, which sorts and reads documents and reviews proposals), and the agents' own as Proof counts them.
+  const c = (s as unknown as { claude?: { calls: number; cost_usd_micros: number } | null }).claude;
+  const agentCalls = s.agent_stats.reduce((n, a) => n + a.claude_calls, 0), agentMicros = s.agent_stats.reduce((n, a) => n + a.cost_usd_micros, 0);
+  const usd = (m: number) => `$${(m / 1e6).toFixed(m >= 10000 ? 2 : 4)}`;
+  const claude = c?.calls ? `${c.calls} Claude calls in all, ${usd(c.cost_usd_micros)}: the agents' own ${agentCalls} (USD ${(agentMicros / 1e6).toFixed(4)}, as on Proof) and ${c.calls - agentCalls} more that read documents or review proposals.` : "";
+  // Enforced by: Metal once at the cap, with its refusal's tx (#24 let through on purpose), as stops() counts it.
+  const cap = events(r).find((e): e is Extract<Ev, { k: "money" }> => e.k === "money" && (e.refused?.by === "metal" || e.refused?.by === "recorded") && e.refused.code !== "mandate_revoked" && !!e.proof.href);
+  const tx = /0x[0-9a-fA-F]{64}/.exec(cap?.proof.href ?? "")?.[0];
+  const tower = s.tower as typeof s.tower & { enforced?: Enforcer[] };
+  const enforced = (tower.enforced ?? []).map((e): Enforcer => e.who === "metal"
+    ? { who: "metal", count: st.metal, last: cap ? { reason: cap.refused?.code ?? "mandate_cap_exceeded", words: `Over the mandate's cap per payment${cap.letThrough ? ", let through on purpose" : ""}`, at: cap.at, proof: tx ? { kind: "tx", ref: tx } : null } : null }
+    : e.who === "airwallex" ? { ...e, count: st.airwallex } : e);
+  // A purchase "refused before signing", as older records word every refusal: worded by its ledger row (who refused it);
+  // a line the ledger does not confirm is left out, as Watch leaves out every such line (each is told by its own row).
+  const chat = s.agent_chat.flatMap((x) => {
+    const m = x.kind === "world" ? /^A purchase from \S+ was refused before signing: ([\s\S]*)$/.exec(x.text) : null;
+    if (!m) return [x];
+    const t = Date.parse(x.ts);
+    const row = ev.filter((e) => e.event === "upstream.refused" && Math.abs(Date.parse(e.ts) - t) < 1000 && String(e.payload.reason ?? "").startsWith(m[1]!))
+      .sort((a, b) => Math.abs(Date.parse(a.ts) - t) - Math.abs(Date.parse(b.ts) - t))[0];
+    if (!row) return [];
+    const letThrough = ev.some((e) => e.event === "upstream.let_through" && e.subject === row.subject);
+    return [{ ...x, text: refusedPurchaseLine({ ...row.payload, ...(letThrough ? { let_through: true } : {}) }) }];
+  });
+  const feed = (s as unknown as { feed?: { event: string; text: string }[] }).feed;
+  const snapshot = {
+    ...s, agent_chat: chat, tower: { ...s.tower, enforced }, rails: { ...s.rails, airwallex: sandboxRails(s.rails.airwallex) },
+    ...(feed ? { feed: feed.map((f) => (f.event === "transfer.status" && f.text === "Transfer PAID" ? { ...f, text: `Transfer PAID ${SANDBOX_SETTLED}` } : f)) } : {}),
+  };
+  return {
+    ...r, snapshot,
+    figures: {
+      stopped, refusedPill: `${stopped} at a limit`, claude,
+      keptOut: `${stopped} stopped at a limit (${parts}).${notCounted} The amount is what stayed out for good.`,
+      refusedNote: `${listed.length} refusals in this run; ${stopped} stopped a payment at a limit (${parts}), as on Home and Proof.${notLimits.length ? ` Not limits: ${notLimits.join(", ")}.` : ""}`,
+      enforcedNote: `Stopped at a limit in this run: ${stopped} (${parts}).${notCounted}`,
+    },
+  };
 }
 
 export function agentRun(): AgentRun {

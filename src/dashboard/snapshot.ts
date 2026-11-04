@@ -11,7 +11,7 @@ import { verifyAuditChain } from "../audit/log.js";
 import { agentName } from "../config/brand.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
-import { AGENT_DISPLAY } from "../config/brand.js";
+import { AGENT_DISPLAY, SANDBOX_SETTLED } from "../config/brand.js";
 import { receivablesView, type ReceivablesView } from "../agents/receivables.js";
 import { airwallexEventsView, type AirwallexEventsView } from "../policy/airwallexEvents.js";
 import { spendReview, type SpendReview } from "../agents/spendReview.js";
@@ -863,7 +863,8 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     }
     case "fx.converted": return out(`Converted ${str(p.sell)} into ${str(p.buy)} on the approved quote`, "ok", { awx_id: s || null });
     case "transfer.created": return out(`SWIFT transfer of ${str(p.amount)} created, approval hash in its metadata`, "ok", { awx_id: s || null });
-    case "transfer.status": return out(`Transfer ${str(p.status)}`, str(p.status) === "PAID" ? "ok" : "info", { awx_id: s || null });
+    // Only the sandbox's settlement writes this row (invoicePayment.ts settleInSandbox): its PAID is said as simulated.
+    case "transfer.status": return out(`Transfer ${str(p.status)}${str(p.status) === "PAID" ? ` ${SANDBOX_SETTLED}` : ""}`, str(p.status) === "PAID" ? "ok" : "info", { awx_id: s || null });
     case "transfer.fee": return out(`Airwallex fee ${str(p.fee)}, within the approved ceiling of ${str(p.fee_max)}`, "ok", { awx_id: s || null });
     case "transfer.fee_over_ceiling": return out(`Airwallex fee ${str(p.fee)} is above the approved ceiling of ${str(p.fee_max)}`, "refusal", { awx_id: s || null });
     case "transfer.ambiguous": return out(`Transfer answer lost; ${str(p.resolved)}`, "info");

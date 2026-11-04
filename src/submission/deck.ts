@@ -38,7 +38,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       title: "Purser",
       extra: `<p class="lead">${esc(HERO)}</p>
         <div class="stats two">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude agents, ${m.fallbacks} fallbacks`)}${stat(String(m.alone), "payments inside the limits, with no approval at the time")}${stat(String(m.face_id), "decisions by the CFO with Face ID")}<div class="stat"><b>${m.stopped}</b><span>stopped at a limit (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO)</span></div></div>
-        ${m.tap_limit_line ? `<p class="sep"><b>Separate test, 2 November:</b> ${esc(m.tap_limit_line)}; not counted above.</p>` : ""}
+        ${m.tap_limit_line ? `<p class="sep">${esc(m.tap_limit_line)}; <b>not counted above</b>.</p>` : ""}
         <p class="src">The main run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only.<br>${esc(VISA_AWARD_STATUS)}</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
       pic: shot(s.landing, "Home, replaying the main run (3 November)"),
@@ -121,7 +121,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       points: [
         `Each decision is a real Claude call with its request id, tokens and cost. In the main run: ${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks, ${m.claude_calls} calls, USD ${m.claude_usd} at list prices.`,
         "Claude holds no key and approves nothing; code checks every decision before money moves.",
-        `Red team, in a throwaway test world: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,
+        `Red team, in a throwaway test world on simulated rails: ${rt.before} of ${rt.attempts} attacks stopped, ${rt.after} more detected afterwards, not prevented.`,
       ],
       pic: shot(s.proof, "Proof: who decided what in the main run, each partner's live proof"),
     },

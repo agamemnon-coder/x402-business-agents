@@ -305,6 +305,12 @@ export function trySignPage(): string {
     title: "Sign with your own Face ID", description: "Try it yourself: a test world of your own, a test passkey, and a signature the server verifies. Nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false, data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check"]) },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else.",
+    // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
+    real: [
+      "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor; its balance and the agent's two proposals (fixed text, no model) are test data.",
+      "No Airwallex, Metal or Claude call, and no money moves: the executor only records, in your test world.",
+      "Real: your device's passkey signature over the hash of the exact terms, and the server's check of it against the public key your device registered.",
+    ],
   }).replace("<body>\n", () => `<body>\n<div class="testband" role="note">${icon("lock", 16)}${esc(TRY_SIGN_LABEL)}</div>\n`);
   // Relative links and assets made absolute: the page answers one level down, at /try/sign.
   return html.replace(/(href|src)="(?!https?:|#|\/|data:|mailto:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");

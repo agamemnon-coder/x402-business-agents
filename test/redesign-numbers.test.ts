@@ -94,10 +94,11 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
   it("scene 3 ends with the licence PAID by SWIFT after the CFO's Face ID (P-0005), the FX before it", () => {
     const steps = run.scenes[2]!.steps.map((s) => s.text);
     expect(steps).toContain("EUR 110.00 bought by FX for the shortfall");
-    expect(steps).toContain("€240 licence PAID by SWIFT · 6 s after Face ID");
+    // PAID in the sandbox, where Purser itself moves the transfer to SENT, then PAID (final review, 4 Nov).
+    expect(steps).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
     expect(steps.filter((t) => /licence/.test(t))).toHaveLength(1);
     expect(run.scenes[2]!.sentence).toMatch(/licence paid by SWIFT after Face ID/);
-    expect(homePage()).toContain("€240 licence PAID by SWIFT · 6 s after Face ID");
+    expect(homePage()).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
     expect(run.scenes[0]!.steps.map((s) => s.text).join(" ")).toMatch(/options in 40 s/);
   });
 
@@ -113,7 +114,9 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(t.note).toBeUndefined();
     expect(t.separate).toBe(TAP_LINE);
     for (const html of [homePage(), proofPage()]) {
-      expect(html).toContain(`<p class="septest"><b>Separate test, 2 November:</b> ${TAP_LINE}; not counted in the figures above.</p>`);
+      // The run and its date said once (final review, 4 Nov): no "Separate test, 2 November:" before the line that names them.
+      expect(html).toContain(`<p class="septest">${TAP_LINE}; <b>not counted in the figures above</b>.</p>`);
+      expect(html).not.toContain("Separate test, 2 November");
       expect(html).not.toContain(`<span class="note">${TAP_LINE}</span>`);
     }
     if (st.revoked) expect(t.tip).toMatch(/mandate had just been replaced/);
@@ -191,15 +194,17 @@ describe("the redesigned public pages", () => {
     expect(JSON.stringify(run.scenes).includes("Metal refused it · on chain")).toBe(chain);
     expect(homePage().includes("Metal refuses it on chain")).toBe(chain);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
-    expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence PAID by SWIFT · 6 s after Face ID");
+    expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 
-  it("the Visa Award status is Max's sentence on Home, Proof and /visa, and no page says TAP was confirmed (2 Nov evening)", () => {
+  it("the Visa Award status is Max's sentence, said once, on /visa (Home and Proof link to it), and no page says TAP was confirmed (2 Nov evening)", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
+    // Said once (final review, 4 Nov): on /visa; Home and Proof only link to /visa.
     for (const name of ["home", "proof", "visa"]) {
       const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
-      expect({ name, has: html.includes(VISA_AWARD_STATUS) }).toEqual({ name, has: true });
+      expect({ name, has: html.includes(VISA_AWARD_STATUS) }).toEqual({ name, has: name === "visa" });
+      if (name !== "visa") expect({ name, link: /<a [^>]*href="visa"[^>]*>[^<]*Visa Award[^<]*<\/a>/.test(html) }).toEqual({ name, link: true });
     }
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling/i.test(body.replace(VISA_AWARD_STATUS, "")) }).toEqual({ name, bad: false });
   });
