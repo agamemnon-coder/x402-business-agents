@@ -32,7 +32,7 @@ vi.mock("../src/metal/pay.js", async (orig) => ({
 const { openDb } = await import("../src/db/open.js");
 const { audit } = await import("../src/audit/log.js");
 const { buyPolicy, SourcingAgent } = await import("../src/agents/sourcing.js");
-const { setupWorld, upstreamCacheOff } = await import("../src/world/options.js");
+const { freeEurTargetCents, setupWorld, upstreamCacheOff } = await import("../src/world/options.js");
 const { sourcingProfile, liveSourcingWorld } = await import("../src/autonomy/sourcingProfile.js");
 const { sourcingBrief } = await import("../src/autonomy/sourcingCore.js");
 const { answerOf, recordQueryAnswer } = await import("../src/world/customerAnswer.js");
@@ -175,6 +175,16 @@ describe("(3) less free EUR: the licence needs FX for its shortfall", () => {
     expect(after.eurAvailableCents).toBeGreaterThanOrEqual(after.eurFloorCents + after.eurObligationsCents);
     expect(awx.bal.EUR.availableCents).toBeGreaterThan(eurBefore - 24_000 - 2000);
     expect(after.usdAvailableCents).toBeGreaterThanOrEqual(after.usdFloorCents);
+  });
+
+  it("a target written past the setup's bound is ignored when read: the calibration keeps the default free EUR", async () => {
+    const db = world();
+    // Not through setupWorld (which refuses it): written straight into the ledger.
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('world.free_eur_target', '50000.00', ?)").run(new Date().toISOString());
+    expect(freeEurTargetCents(db)).toBeNull();
+    const awx = new FakeAirwallex();
+    const s = await seedTreasury(db, awx, awx);
+    expect(s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents).toBe(150_000);
   });
 
   it("the default world is unchanged: 1,500.00 free EUR, no FX for the licence", async () => {
