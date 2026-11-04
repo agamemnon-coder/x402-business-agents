@@ -6,13 +6,17 @@
 small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
 every id below.
 
+**Try it yourself: [sign with your own Face ID](https://kit11.max-31b.workers.dev/try/sign).** In a test world of your
+own, an agent proposes two payments: a rule blocks one, and you sign the other's exact terms with a passkey your phone
+or laptop makes (Face ID, Touch ID or a PIN). The server checks the signature; change one cent and the same signature is
+refused. Nothing real moves. Live since 4 November 2026.
+
 Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
 each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything
 beyond them, with Face ID on the exact terms.
 
-**Try it:** [`/try`](https://kit11.max-31b.workers.dev/try): give an agent a task: Claude reads it, code applies the
-CFO's limits, no money moves. After the next deploy also `/try/sign`: sign a test proposal with your own Face ID, in a
-test world of your own (built and tested, not live yet).
+**Also:** [the site](https://kit11.max-31b.workers.dev/) replays the main run; [`/try`](https://kit11.max-31b.workers.dev/try)
+gives an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves.
 
 Starter Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award ([note](#links)). Northwind Outdoor,
 the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
@@ -78,7 +82,9 @@ merchant is ours.
 - **Run by us:** Summit Outfitters (the customer) and its agent, Stockline (the supplier), the TAP merchant.
 - **Replayed:** Home, Watch and Proof on the hosted site, and `npm run judge` offline, play the main run's record.
 - **Stand-ins:** the automated tests and the Scenario Lab (`/lab`) run on stand-ins for Airwallex, Metal and Anthropic.
-- **Built, not yet live:** `/try/sign` (deploy pending); the Cardputer hub push and gate (a fake hub in the tests);
+- **Your own test world:** `/try/sign` (live since 4 November 2026) runs each visitor's world on stand-in executors with
+  fixed proposals; your passkey's signature and the server's check of it are real.
+- **Built, not yet live:** the Cardputer hub push and gate (a fake hub in the tests);
   the T:0 books sink (the shared sandbox key cannot post, `403 CAPI71`); the emergency stop and `npm run smoke:sandbox`
   (on stand-ins).
 

@@ -153,7 +153,25 @@ const sceneCard = (s: Scene) => `<a class="scene card" href="watch?scene=${s.n}"
 
 export const tileHtml = (t: Tile) => `<a class="tile card" href="${esc(t.href)}" title="${esc(t.tip ?? t.explain)}"><span class="v">${esc(t.value)}</span><span class="l">${esc(t.label)}</span>${t.parts ? `<span class="parts">${t.parts.map((p) => `<b>${esc(p.value)}</b>&nbsp;${esc(p.label)}`).join(" · ")}</span>` : ""}${t.note ? `<span class="note">${esc(t.note)}</span>` : ""}<p class="x">${esc(t.explain)}</p><span class="go">Open proof ${icon("arrow-right", 14)}</span></a>`;
 
-const JS = `
+/**
+ * Home is served at "/" too (worker/src/core.ts). The CFO's viewer link opens "/" with its key after the "#" (never sent
+ * to a server), and a device that opened it keeps the key (kit11.view, as src/dashboard/page.html stores it): either
+ * goes on to the dashboard, "#" and all, by the same patterns the dashboard reads. The key leaves this page's address at
+ * once, as it does on the dashboard. A guest stays on Home, and the Home tab (/home) is always Home.
+ */
+export const CFO_FORWARD_JS = `
+(function () {
+  try {
+    if (location.pathname.slice(-1) !== "/") return;
+    var h = location.hash, kept = "";
+    try { kept = localStorage.getItem("kit11.view") || ""; } catch (e) {}
+    if (!kept && !/(?:^#|&)(?:view=[0-9a-f]{32}|runner=[A-Za-z0-9_-]{80,200})(?:&|$)/.test(h)) return;
+    if (h) try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    location.replace("./?dashboard" + h);
+  } catch (e) {}
+})();`;
+
+const JS = `${CFO_FORWARD_JS}
 (function () {
   var run = JSON.parse(document.getElementById("run-data").textContent);
   document.querySelectorAll("[data-vars]").forEach(function (el) { el.getAttribute("data-vars").split(";").forEach(function (p) { var kv = p.split(":"); if (kv[1] !== undefined) el.style.setProperty(kv[0], kv[1]); }); });
