@@ -8,7 +8,7 @@ import { heldRefunds, heldThenRefused, lastReconciliation } from "../finance/rec
 import { frozen } from "../policy/rules.js";
 import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
-import { escalatedAt, escalatedUndecided } from "../agents/disputeSource.js";
+import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -40,11 +40,10 @@ export function health(db: DB, now = new Date()): Health {
   // A dispute decision not fully carried out (a restart cut it off, or a refund was refused at payment): the runner's
   // start finishes it (npm run s2 -- --resume-only); it is never decided again. Not one whose dispute is with the CFO
   // (dispute.escalated) with a refund or a proposal left: the runner's start leaves that to a person, who carries it out
-  // with npm run s2 -- --dispute <id> (the dispute review 2, LOW 4: codeMayCarryOut on dispute-review-2).
+  // with npm run s2 -- --dispute <id> (the dispute review 2, LOW 4: codeMayCarryOut).
   // Critical once a refund could not be paid (it goes to the CFO as a proposal) or carrying out failed more than once.
   for (const d of openDecisions(db)) {
-    const withCfo = d.status === "DECIDED" && (d.plan.refunds.length > 0 || !!d.plan.escalate || !!d.plan.approval) && !!escalatedAt(db, d.dispute_id);
-    const next = withCfo ? `it is with the CFO: npm run s2 -- --dispute ${d.dispute_id} carries it out, without deciding again` : "the runner's start or npm run s2 -- --resume-only finishes it, without deciding again";
+    const next = !codeMayCarryOut(db, d) ? `it is with the CFO: npm run s2 -- --dispute ${d.dispute_id} carries it out, without deciding again` : "the runner's start or npm run s2 -- --resume-only finishes it, without deciding again";
     alerts.push({ code: "dispute_decision_open", severity: d.handover.length || d.attempts >= HANDOVER_AFTER - 1 ? "critical" : "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; ${next}.` });
   }
   // A refund sent but held at Metal for over two hours is not refunded yet; one held and then refused was never refunded.
