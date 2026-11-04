@@ -126,7 +126,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       // The rail is marked when the money reaches it (about 1.2 s into the movement; at once without motion).
       if (refused && !(await page.locator(`#mf .mf-n[data-x="${refused[1]} ✕"]`).waitFor({ timeout: 3000 }).then(() => true, () => false))) fail(`${where}: the refusal does not mark ${refused[1]}`);
     }
-    for (const want of [/Recorded run · .* · test money/, /On-chain budgets/i, /test USD/, /Company cards/i]) {
+    // Its label line names its run: the 30 October run, not the main run (final review, 4 Nov).
+    for (const want of [/Recorded run · the 30 October run, an earlier recording · test money/, /On-chain budgets/i, /test USD/, /Company cards/i]) {
       if (!want.test(rec)) fail(`/?recorded ${tag}: missing ${want}`);
     }
     for (const bad of [/USDZ/, /\$\s?\d/]) {
@@ -177,6 +178,14 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(au)) fail(`/?autonomy ${tag}: not labelled as the main run`);
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
     if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
+    // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov): Metal once at the cap (not 3),
+    // 2 stopped at a limit (not "16 stops, all counted"), all Claude calls said as such, #24 refused by Metal itself.
+    for (const want of [/Metal's mandate check\s+1\b/, /Stopped at a limit in this run: 2 \(1 Metal · 1 CFO\)/, /Refused and blocked\s+2 at a limit/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
+      if (!want.test(au)) fail(`/?autonomy ${tag}: missing ${want}`);
+    }
+    // The KPI's note (hidden on a phone, as every KPI note is) says the same figure.
+    if (w >= 1000 && !/2 stopped at a limit \(1 Metal · 1 CFO\)/.test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say 2 stopped at a limit`);
+    for (const bad of [/all counted/, /Metal's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
     if (!(await page.isVisible("#mf"))) fail(`/?autonomy ${tag}: no money flow`);
     // Somewhere in the run a movement was decided by an agent's own Claude call: its caption names the model.
     let named = false;
@@ -202,6 +211,10 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/try`, { waitUntil: "load" });
     await look(page, `/try ${tag}`, w);
     if (!/demo world/i.test(await page.evaluate(() => document.body.innerText))) fail(`/try ${tag}: not labelled as the demo world`);
+    // Each copy says what it is (final review, 4 Nov): the offline copy that no model is asked; the hosted page never "offline".
+    const realbox = await page.evaluate(() => document.getElementById("real")?.textContent ?? "");
+    if (liveAt < 0 && !/In this offline copy no model is asked/.test(realbox)) fail(`/try ${tag}: the offline copy does not say no model is asked`);
+    if (liveAt >= 0 && /offline copy/i.test(await page.content())) fail(`/try ${tag}: the hosted page says "offline copy"`);
     for (const [q, outcome] of tries) {
       await page.goto(`${base}/try?q=${encodeURIComponent(q)}`, { waitUntil: "load" });
       await page.waitForSelector(".outcome.show", { timeout: 15_000 }).catch(() => fail(`/try "${q}" ${tag}: no outcome`));

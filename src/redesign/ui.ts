@@ -189,13 +189,20 @@ export function header(current: Tab | null): string {
 <nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${href}"${k === current ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}</nav></div></header>`;
 }
 
-/** "What's real?": test money, sandbox, what is simulated, the world set-up, the second approver; opens from the footer. */
-export function footer(source: string): string {
+/** What is real in the main run, the run the public pages play: test money, sandbox, what is simulated, the world set-up, the second approver. */
+export const MAIN_RUN_REAL = [
+  `Northwind Outdoor is ${NORTHWIND_LINE}: the example company.`,
+  "Real Claude decisions, real Metal testnet and Airwallex sandbox calls. Test money only; customers and merchants are simulated.",
+  WORLD_SETUP,
+  SECOND_APPROVER,
+];
+/**
+ * "What's real?", opened from the footer: the main run's lines on the pages that play it, or a page's own (final review,
+ * 4 Nov: /try/sign, which calls no Airwallex, Metal or Claude, carried the main run's), then the page's source.
+ */
+export function footer(source: string, real: string[] = MAIN_RUN_REAL): string {
   return `<footer class="foot"><div class="wrap"><details class="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
-<li>Northwind Outdoor is ${esc(NORTHWIND_LINE)}: the example company.</li>
-<li>Real Claude decisions, real Metal testnet and Airwallex sandbox calls. Test money only; customers and merchants are simulated.</li>
-<li>${esc(WORLD_SETUP)}</li>
-<li>${esc(SECOND_APPROVER)}</li>
+${real.map((line) => `<li>${esc(line)}</li>`).join("\n")}
 <li>${esc(source)}</li></ul></div></details><span>Built for the Airwallex Agentic Banking Hackathon</span></div></footer>`;
 }
 
@@ -391,7 +398,7 @@ button.run { background: var(--text) !important; color: var(--bg) !important; }
 }
 
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
-export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string }): string {
+export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[] }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
 ${o.js}</script>`;
   return `<!doctype html>
@@ -415,7 +422,7 @@ ${o.css}</style>
 <body>
 ${header(o.tab)}
 ${o.body}
-${footer(o.source)}
+${footer(o.source, o.real)}
 ${script}
 </body>
 </html>`;

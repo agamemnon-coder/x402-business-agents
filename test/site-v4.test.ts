@@ -129,9 +129,11 @@ describe("the site after v4", () => {
     const proof = pages.proof!;
     expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(4);
     expect(proof).toMatch(/<span class="logo txt">Visa TAP<\/span>/);
-    // The Visa paragraph is said once, on /visa (jury review, 4 Nov); Proof keeps only the award status as a footnote.
+    // The Visa paragraph is said once, on /visa (jury review, 4 Nov); the award status too (final review, 4 Nov): Proof
+    // links to /visa for it.
     expect(proof).not.toContain(VISA_CLAIM);
-    expect(proof).toContain(VISA_AWARD_STATUS);
+    expect(proof).not.toContain(VISA_AWARD_STATUS);
+    expect(proof).toMatch(/<a [^>]*href="visa"[^>]*>[^<]*Visa Award[^<]*<\/a>/);
     expect(proof).toContain(SECOND_APPROVER);
     expect(pages.visa).toContain(VISA_CLAIM);
     expect(pages.visa).toContain(VISA_AWARD_STATUS);

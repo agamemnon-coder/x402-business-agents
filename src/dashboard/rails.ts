@@ -3,6 +3,7 @@
 // the id or transaction that proves it: an Airwallex id (as the sandbox API returns it), or a Metal testnet explorer
 // link. Nothing here is typed in by hand; an item the ledger has no record of is left out.
 
+import { SANDBOX_SETTLED } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { EXPLORER_TX } from "../metal/network.js";
@@ -59,7 +60,8 @@ export function railsView(db: DB): RailsView {
   }
   if (has(db, "transfers")) {
     for (const t of all(db, "SELECT transfer_id, amount, currency, status, fee_actual, invoice_no FROM transfers WHERE transfer_id IS NOT NULL")) {
-      airwallex.push({ what: "SWIFT payout of an invoice", detail: `${String(t.currency)} ${t.amount} to the allowlisted supplier, ${String(t.status)}${t.fee_actual ? `, fee ${t.fee_actual}` : ""}; the approval hash is in the transfer's metadata`, proof: awxId(t.transfer_id), simulated: t.status === "PAID" });
+      // PAID is the sandbox's settlement, which Purser itself triggers (settleInSandbox): said as simulated.
+      airwallex.push({ what: "SWIFT payout of an invoice", detail: `${String(t.currency)} ${t.amount} to the allowlisted supplier, ${t.status === "PAID" ? `PAID ${SANDBOX_SETTLED}` : String(t.status)}${t.fee_actual ? `, fee ${t.fee_actual}` : ""}; the approval hash is in the transfer's metadata`, proof: awxId(t.transfer_id), simulated: t.status === "PAID" });
     }
   }
   // Global Accounts: retailers' payments, matched to their invoices by the receivables agent.
