@@ -167,13 +167,16 @@ approved, and the hash, expiry and passkey rules apply to every one of them:
 
 ## Run it in 3 commands
 
+Needs Node.js 22.13 or later (`engines` in [package.json](package.json)) and git; nothing else.
+
 ```sh
 npm ci            # install
 npm test          # the full suite, on stand-ins: no keys, no network
 npm run judge     # the recorded live run, the dashboard and the Scenario Lab, offline
 ```
 
-`npm run judge` needs no keys and no network after `npm ci`. It serves the recorded live run, the CFO dashboard as it
+`npm run judge` needs no keys and no network after `npm ci` (`npm run judge -- --check` serves each page once and
+exits, without a browser). It serves the recorded live run, the CFO dashboard as it
 stood at the end, a simulated month, and the Scenario Lab (`/lab`: 18 stories run against stand-ins for Airwallex and
 Metal, from a normal purchase to the emergency stop, each with what should happen and what did), "How Purser uses Metal"
 (`/metal`: every Metal feature Purser uses, with its testnet proof and docs link, a mandate inspector per agent, and the
@@ -195,8 +198,8 @@ calls a real service.
 ## The demo
 
 **Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/))
-or offline with `npm ci && npm run judge` (no keys, no network). Step 2 is from the main run of 3 November, step 3 from
-the recorded run of 30 October (test money):
+or offline with `npm ci && npm run judge` (no keys, no network). Steps 2 to 4 are from the main run of 3 November (test
+money):
 
 1. **The problem:** AI agents are starting to spend company money; one shared card or wallet gives no limit per agent
    and no one place for the exceptions. ([Watch](https://kit11.max-31b.workers.dev/film))
@@ -204,23 +207,21 @@ the recorded run of 30 October (test money):
    raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the TAP-signed
    EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`). ([the card buy](https://kit11.max-31b.workers.dev/visa))\
    *Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
-3. **Metal refuses the higher price** against the on-chain mandate (`mandate_cap_exceeded`), and the CFO moves budget
-   between the mandates within the same 20.00 with Face ID. ([the recorded run's dashboard](https://kit11.max-31b.workers.dev/?recorded))
-4. **The Dispute desk checks every order:** a simulated customer (we filed for it) disputes 12 orders; each is
-   checked against its signed order and the mandate on chain. All 12 hold, so nothing new is refunded. ([the evidence](https://kit11.max-31b.workers.dev/metal#dispute))
+3. **Metal refuses the higher price** against the on-chain mandate (`mandate_cap_exceeded`, purchase #24), and the CFO
+   moves budget between the mandates within the same 20.00 with Face ID (four eyes; both mandates replaced on chain by
+   11:26:59). ([watch it](https://kit11.max-31b.workers.dev/watch?scene=1))
+4. **The Dispute desk checks every order:** a simulated customer (we run it) disputes 12 orders and asks for all 12
+   back. The Support agent checked each against its signed order and the mandate on chain, and refunded only the 3 the
+   supplier's corrections prove wrong: #7, #10 and #13, 0.05 each, 0.15 in total, each on chain
+   (`0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d`,
+   `0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5`,
+   `0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510`). "Refund the other 9" went to the CFO as
+   P-0004, rejected by Max with Face ID. ([watch the dispute](https://kit11.max-31b.workers.dev/watch?scene=3))
 5. **Try it yourself:** type a task for an agent. ([Try it](https://kit11.max-31b.workers.dev/try))
 
-Also: **the agents deciding by themselves** (`/?autonomy`), from agent run 1 (a rehearsal, 2 November): we changed the
-world, each agent decided with real Claude calls inside its limits (38 of 38 decisions by Claude). Max's real Face ID;
-the second approver is a labelled test passkey (in production a second person); test money only.
-
-<p>
-  <img src="docs/media/purser-card.gif" width="49%" alt="Airwallex declines the agent's card over its limit">
-  <img src="docs/media/purser-metal.gif" width="49%" alt="Metal refuses a payment over the agent's on-chain mandate">
-</p>
-
-*Left: Airwallex itself declines the agent's card over its limit. Right: Metal refuses a payment over the agent's
-on-chain mandate. Both from the recorded run of 30 October (test money).*
+Also: **the agents deciding by themselves** (`/?autonomy`), from the main run (3 November): we changed the world, each
+agent decided with real Claude calls inside its limits (24 of 24 decisions by Claude). Max's real Face ID; the second
+approver is a labelled test passkey (in production a second person); test money only.
 
 **Kit 11 (x402 Business Agents), as built.** Northwind Outdoor, an outdoor wholesaler that sells live stock data to
 retailers per query: the kit's data business. (In agent run 1, 44 of the 63 sales resold data from a cache up to
