@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { jcs } from "@metalntwx/metal-pay/mandates";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import {
-  canonical, FIXED_PROPOSALS, TRY_SIGN_MAX_WORLDS, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_WORLDS_PER_HOUR, readCbor, trySignRoute,
+  canonical, FIXED_PROPOSALS, TRY_SIGN_ALL_PER_MINUTE, TRY_SIGN_MAX_WORLDS, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_WORLDS_PER_HOUR, readCbor, trySignRoute,
 } from "../worker/src/trySign.js";
 
 import { BASE, call, challengeOf, desk, newWorld, RP, signBody, t0, withPasskey } from "./support/trySign.js";
@@ -201,6 +201,13 @@ describe("/try/sign: the visitor's test world", () => {
     const busy = desk();
     for (let i = 0; i < TRY_SIGN_PER_MINUTE; i++) await call(busy.d, "sign", {}, { ip: "192.0.2.2" });
     expect((await call(busy.d, "sign", {}, { ip: "192.0.2.2" })).status).toBe(429);
+    // Everyone together: past the ceiling a minute, every address waits; a minute later it is open again.
+    const crowd = desk();
+    for (let i = 0; i < TRY_SIGN_ALL_PER_MINUTE; i++) await call(crowd.d, "sign", {}, { ip: `172.16.${i >> 8}.${i & 255}` });
+    expect((await call(crowd.d, "sign", {}, { ip: "172.31.0.1" })).status).toBe(503);
+    crowd.at(new Date(t0.getTime() + 61_000));
+    expect((await call(crowd.d, "sign", {}, { ip: "172.31.0.1" })).status).toBe(410);
+    expect(count(crowd.db, "ts_hits")).toBe(1);
     expect((await call(desk().d, "sign", { token: "x".repeat(20_000) })).status).toBe(413);
     expect((await call(desk().d, "world", {}, { method: "GET" })).status).toBe(405);
     expect((await call(desk().d, "admin", {})).status).toBe(404);

@@ -20,6 +20,8 @@ export const TRY_SIGN_MAX_WORLDS = 300;
 export const TRY_SIGN_WORLDS_PER_HOUR = 6;
 /** Requests per address per minute, every kind together. */
 export const TRY_SIGN_PER_MINUTE = 30;
+/** Requests a minute from everyone together: many addresses at once cannot make the instance (or its table) grow. */
+export const TRY_SIGN_ALL_PER_MINUTE = 600;
 /** Failed signatures or passkeys per address per hour before it is refused. */
 export const TRY_SIGN_FAILS_PER_HOUR = 30;
 const MAX_BODY = 16_384;
@@ -217,6 +219,8 @@ export class TrySignDesk {
     const ip = rateKey(req.headers.get("cf-connecting-ip") ?? "unknown");
     if (this.hits(ip, "fail", nowMs - 3_600_000) >= TRY_SIGN_FAILS_PER_HOUR) return answer(429, { error: "too many refused signatures from this address; wait an hour" });
     if (this.hits(ip, "req", nowMs - 60_000) >= TRY_SIGN_PER_MINUTE) return answer(429, { error: "a few requests a minute; wait a moment" });
+    const [{ n: everyone }] = this.sql.exec("SELECT COUNT(*) AS n FROM ts_hits WHERE kind = 'req' AND at > ?", nowMs - 60_000).toArray() as [{ n: number }];
+    if (everyone >= TRY_SIGN_ALL_PER_MINUTE) return answer(503, { error: "many visitors are trying this right now; try again in a minute" });
     this.hit(ip, "req", nowMs);
 
     if (Number(req.headers.get("content-length") ?? "0") > MAX_BODY) return answer(413, { error: "too large" });
@@ -249,7 +253,8 @@ export class TrySignDesk {
       this.sql.exec("DELETE FROM ts_proposals WHERE world = ?", id);
       this.sql.exec("DELETE FROM ts_worlds WHERE id = ?", id);
     }
-    this.sql.exec("DELETE FROM ts_hits WHERE at <= ?", nowMs - 3_600_000);
+    // Request counts matter for a minute, worlds and failures for an hour: nothing older is kept.
+    this.sql.exec("DELETE FROM ts_hits WHERE (kind = 'req' AND at <= ?) OR at <= ?", nowMs - 60_000, nowMs - 3_600_000);
   }
 
   private async worldOf(token: unknown): Promise<WorldRow | null> {
