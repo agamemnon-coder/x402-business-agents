@@ -806,6 +806,8 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "treasury.seeded": return out(`Airwallex sandbox seeded with ${str(p.currency)} ${str(p.amount)}`);
     case "invoice.escalated": return out(`Invoice ${s} escalated to a person: ${str(p.reason)}`, "refusal");
     case "dispute.escalated": return out(`Dispute ${s} from ${str(p.customer)} sent to the CFO: code could not settle it (${str(p.reason)}); nothing was refunded for it`, "refusal");
+    case "dispute.handled_before": return out(`Dispute ${s} from ${str(p.customer)}: every order in it was handled before (${(Array.isArray(p.handled) ? (p.handled as unknown[]) : []).map(str).join(", ")}); nothing new refunded or sent to the CFO`);
+    case "dispute.resolved_by_cfo": return out(`Dispute ${s} marked resolved by the CFO: ${str(p.note)} Nothing was refunded by code for it`, "ok");
     case "document.injection_flagged": {
       const found = Array.isArray(p.findings) ? (p.findings as P[]) : [];
       const n = found.length;

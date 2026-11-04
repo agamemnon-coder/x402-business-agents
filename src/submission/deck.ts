@@ -91,7 +91,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         `It refunded only the ${m.refunded.length} with wrong data (orders ${m.refunded.slice(0, -1).join(", ")} and ${m.refunded.at(-1)}); "refund the other ${m.disputed - m.refunded.length}" went to the CFO, who rejected it with Face ID.`,
         "Any seller on Metal can reuse it: <code>examples/metal-dispute-desk</code>.",
       ],
-      pic: shot(s.dispute, "The Disputes tab of the earlier recorded run (30 October), order by order"),
+      pic: shot(s.dispute, `The main run, 3 November (/watch): #${m.refunded.join(", #")} refunded, each on chain; "refund the other ${m.disputed - m.refunded.length}" rejected by Max with Face ID`),
     },
     {
       kicker: "Scene 3 · The euro licence · Airwallex pays and enforces",

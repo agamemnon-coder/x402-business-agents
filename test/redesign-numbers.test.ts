@@ -257,6 +257,27 @@ describe("one 'stopped at a limit' figure everywhere, from the main run (Max, 4 
     }
   });
 
+  it("tells the main run's dispute in the README and the deck: the refunds with their tx, the refund-all rejected; no 30 October figure (Max's rule)", () => {
+    const m = packFacts().main;
+    const events = record.ledger?.events ?? [];
+    const txs = events.filter((e) => e.event === "refund.paid").map((e) => String((e.payload as { tx?: unknown }).tx ?? ""));
+    const rejected = (record.ledger?.proposals ?? []).find((p) => p.kind === "refund_batch" && p.status === "REJECTED")?.proposal_id ?? "";
+    expect({ refunds: m.refunded.length, txs: txs.length, rejected: !!rejected }).toEqual({ refunds: 3, txs: 3, rejected: true });
+    const readme = text(doc("README.md"));
+    expect(readme).toContain(`${m.disputed} orders`);
+    expect(readme).toContain(`#${m.refunded.slice(0, -1).join(", #")} and #${m.refunded.at(-1)}`);
+    for (const tx of txs) expect(readme).toContain(tx);
+    expect(readme).toMatch(new RegExp(`${rejected}[^.]*rejected by Max with Face ID`));
+    // The deck's dispute slide is the main run's, picture and caption.
+    const deck = text(deckHtml(packFacts(), shots, ""));
+    expect(deck).toMatch(/The main run, 3 November \(\/watch\): #\d+, #\d+, #\d+ refunded, each on chain; (?:"|&quot;)refund the other \d+(?:"|&quot;) rejected by Max with Face ID/);
+    // Figures from other runs are gone from the demo: the 30 October dispute ("all 12 hold") and agent run 1's 38 of 38.
+    expect({ allHold: /All 12 hold|all 12 hold/.test(readme), run1: readme.includes("38 of 38"), oct30Dispute: /Disputes tab of the earlier recorded run/.test(deck) }).toEqual({ allHold: false, run1: false, oct30Dispute: false });
+    const s = record.snapshot.agent_stats;
+    const [decisions, byClaude] = [s.reduce((n, a) => n + a.decisions, 0), s.reduce((n, a) => n + a.by_claude, 0)];
+    expect(readme).toContain(`${byClaude} of ${decisions} decisions by Claude`);
+  });
+
   it("would catch a stray 3 or 4", () => {
     expect([...text(doc("docs/claims.md").replace("2 stopped at a limit, both", "3 stopped at a limit, both")).matchAll(/(\d+) stopped at a limit/gi)].map((m) => m[1])).toContain("3");
   });
