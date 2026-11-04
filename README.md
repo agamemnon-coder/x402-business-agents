@@ -191,8 +191,9 @@ default; see [.env.example](.env.example).
 
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=build/next)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml)
 
-**2127 tests in 236 files, all passing** on 4 November 2026 (`npx vitest run`, our last full run before this README; CI runs
-the same suite on every push). Every test runs on stand-ins for Airwallex, Metal, Anthropic, T:0 and the hub; none
+**2174 tests in 241 files, all passing** on 4 November 2026 (`npx vitest run`, about 3 minutes, our last full run before
+this README; a fresh clone of `main` with no keys, no environment variables and no network passed it too). CI runs the
+same suite on every push. Every test runs on stand-ins for Airwallex, Metal, Anthropic, T:0 and the hub; none
 calls a real service.
 
 ## The demo
