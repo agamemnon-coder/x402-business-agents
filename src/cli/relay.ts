@@ -45,6 +45,8 @@ import { LivePauseChain } from "../metal/pauseChain.js";
 import { osProcesses } from "../ops/processes.js";
 import { asWorldGroup, holdRunnerLock } from "../ops/runnerLock.js";
 import { openDecisions } from "../agents/disputeDecision.js";
+import { HubLoop } from "../hub/consult.js";
+import { hubDecisionsEnabled, hubPushEnabled } from "../hub/config.js";
 
 // One world, one runner, one process group (2 November: a stop reached only a wrapper, another world's runner ran on).
 // Outside a world's group this starts itself again as the leader of a new one; then it takes the ledger's runner lock,
@@ -288,6 +290,19 @@ function alarmsTick(): void {
   standing = codes;
 }
 
+// Phase D (src/hub): Max's hub and Cardputer, each part behind its own switch. The push never holds up this loop; the
+// hub's decisions only add a gate (src/hub/gate.ts). Neither the hub's address nor its token is ever printed.
+const hub = new HubLoop(db, { fetch, log: (line) => console.log(`${stamp()} ${line}`) }, execute);
+if (hubPushEnabled() || hubDecisionsEnabled()) console.log(`hub      push ${hubPushEnabled() ? "on" : "off"}, decisions ${hubDecisionsEnabled() ? "on (an extra gate after Face ID)" : "off"}`);
+async function hubTick(): Promise<void> {
+  void hub.pushIfChanged();
+  try {
+    for (const id of await hub.tick()) console.log(`${stamp()} hub      ${id}: the hub decided; handed to the executor`);
+  } catch (e) {
+    console.error(`${stamp()} hub      tick failed: ${redactSecrets((e as Error).message).slice(0, 200)}`);
+  }
+}
+
 let lastError = "";
 while (!stopping) {
   alarmsTick();
@@ -297,6 +312,7 @@ while (!stopping) {
   await reconcileTick();
   await settlementsTick();
   await finalityTick();
+  await hubTick();
   try {
     await runner.syncOnce();
     if (lastError) console.log(`${stamp()} relay reachable again`);
