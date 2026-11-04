@@ -153,7 +153,9 @@ check(await page.isDisabled("button.confirm"), "confirm screen: Confirm is not a
 const nots = await page.$$eval(".nots li", (n: Element[]) => n.map((x) => x.textContent));
 check(nots.length === 1 && nots[0] === "option A: sell at 0.05 per query (margin 0.01)", `confirm screen: names what it is not (${nots.join(" | ")})`);
 const adviceEyebrow = await page.$$eval("#sheet .review .eyebrow", (n: Element[]) => n.map((x) => x.textContent));
-check(adviceEyebrow.includes("Treasury agent (Opus), advisory: recommends this option"), `confirm screen: the Treasury agent's advice, marked advisory (${adviceEyebrow.join(" | ")})`);
+check(adviceEyebrow.includes("Treasury agent (Opus) · advisory · recommends this option") && adviceEyebrow.includes("Opus review · advisory · approve"), `confirm screen: the Treasury agent's advice and Opus's review, each marked advisory (${adviceEyebrow.join(" | ")})`);
+check(((await page.textContent("#sheet .advice-note")) ?? "").includes("advice never approves"), "confirm screen: says advice never approves");
+check(!(await page.$eval("#sheet details.all", (d: Element) => (d as HTMLDetailsElement).open)), "confirm screen: all terms are folded away until asked for");
 const hashShown = await page.textContent(".hash strong");
 const bHash = (db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(optB) as { terms_sha256: string }).terms_sha256;
 check(hashShown === bHash.slice(0, 8), "confirm screen: the hash prefix is option B's");

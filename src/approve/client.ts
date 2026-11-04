@@ -716,6 +716,8 @@ interface SheetContext {
   from: HTMLElement;
   /** REJECTED: the sheet says so, and the passkey signs the rejection hash instead of the terms hash. */
   decision?: "APPROVED" | "REJECTED";
+  /** This page's own check of the terms (hash, canonical form, proposal id, expiry); absent means they were built here. */
+  check?: { ok: boolean; problem: string | null };
   /** Sends the signed assertion; 202 means queued for the runner. */
   send: (credential: Obj, decision: "APPROVED" | "REJECTED") => Promise<{ status: number; data: Obj }>;
 }
@@ -730,9 +732,38 @@ export function againstAdvice(decision: "APPROVED" | "REJECTED", review: { recom
     : [];
 }
 
+/** A copy button for a long value shown shortened; the full value is also its title. */
+function copyButton(value: string, what: string): HTMLButtonElement {
+  const b = el("button", "copy", ["Copy"]) as HTMLButtonElement;
+  b.type = "button";
+  b.title = value;
+  b.setAttribute("aria-label", `Copy the full ${what}`);
+  b.addEventListener("click", () => {
+    const done = (word: string) => { b.textContent = word; setTimeout(() => { b.textContent = "Copy"; }, 1500); };
+    if (!navigator.clipboard) return done("Not here");
+    navigator.clipboard.writeText(value).then(() => done("Copied"), () => done("Not here"));
+  });
+  return b;
+}
+
+/**
+ * One adviser's line on the confirm screen: a badge saying whose advice it is and that it is advice, at most two
+ * lines of its reasoning, and the rest behind "Why".
+ */
+function adviceBlock(head: string, verdict: string | null, text: string): HTMLElement {
+  const long = text.length > 140;
+  return el("div", "review", [
+    el("p", "eyebrow", [head, verdict ? " · " : null, verdict ? txt("span", "badge", verdict) : null]),
+    txt("p", long ? "review-text clamp" : "review-text", text),
+    long ? el("details", "why", [txt("summary", "", "Why"), txt("p", "", text)]) : null,
+  ]);
+}
+
 /**
  * The full-screen summary of one proposal (mis-tap prevention): built only from its hashed terms; Confirm arms
  * after 0.8 s and only it starts the passkey, whose challenge is this proposal's hash; Back signs nothing.
+ * Layout (4 November): one summary card (what, how much, to whom, until when, the check, the hash), then the
+ * plain sentence, the warnings, the advice, what it is not, and every term behind "All terms", closed.
  */
 function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   const sheet = document.getElementById("sheet")!;
@@ -740,11 +771,16 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   const rejecting = x.decision === "REJECTED";
   const nots = rejecting ? [] : x.nots;
   const from = x.from;
-  const cd = el("span", "countdown big");
+  const cd = el("span", "countdown");
   cd.dataset.expires = o.expires_at;
+  // What blocks signing an approval: terms that do not check out here, or terms this page will not let be signed.
+  const termsOk = x.check?.ok ?? true;
+  const blocked = rejecting ? null
+    : !termsOk ? `the terms did not check out: ${x.check?.problem ?? "unknown"}`
+    : !f.approvable ? (f.warnings[0] ?? f.sentence).replace(/; this cannot be signed$/, "") : null;
   // Approving what Opus advises rejecting is the slow, second choice: twice in live runs a CFO who meant to reject
   // tapped the proposal and approved it. The sheet then says "Approve anyway", arms after 3 s, and offers to reject.
-  const against = !rejecting && o.review?.recommendation === "reject";
+  const against = !rejecting && !blocked && o.review?.recommendation === "reject";
   const confirm = el("button", rejecting ? "confirm reject" : against ? "confirm against" : "confirm",
     [rejecting ? "Reject with Face ID" : against ? "Approve anyway with Face ID" : "Confirm with Face ID"]) as HTMLButtonElement;
   const backBtn = el("button", "secondary", ["Back"]) as HTMLButtonElement;
@@ -754,27 +790,59 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   // A double tap on the option must not land on Confirm: it arms after a moment.
   confirm.disabled = true;
   const arm = setTimeout(() => { confirm.disabled = !x.enrolled || countdown(o.expires_at).over; }, against ? 3000 : 800);
-  const body = el("div", "sheet-body", [
+  const checkRow = blocked || !termsOk
+    ? el("dd", "check", [txt("span", "badge fail", "Fail"), ` ${blocked ?? x.check?.problem ?? ""}`])
+    : el("dd", "check", [txt("span", "badge pass", "Pass"), " hash checked here"]);
+  const hash = o.terms_sha256;
+  const summary = el("section", "summary", [
     txt("p", "eyebrow", rejecting ? "You are rejecting" : "You are approving"),
     el("h2", "sheet-title", [f.title]),
-    txt("p", "sentence", rejecting ? `Nothing of this will happen: ${f.sentence}` : f.sentence),
-    ...againstAdvice(rejecting ? "REJECTED" : "APPROVED", o.review).map((w) => txt("p", "alarm big", w)),
-    ...f.warnings.map((w) => txt("p", "alarm", w)),
-    ...(o.warnings ?? []).map((w) => txt("p", "alarm", w)),
+    f.big ? el("p", "big-amount num", [f.big, f.unit ? txt("span", "unit", ` ${f.unit}`) : null]) : null,
     el("dl", "facts", [
-      txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount),
       ...(f.margin ? [txt("dt", "", "Margin"), txt("dd", "num", f.margin)] : []),
       txt("dt", "", "Recipient"), txt("dd", "", f.recipient),
       txt("dt", "", "Expires"), el("dd", "", [cd]),
-      txt("dt", "", "Hash"), el("dd", "hash", [txt("strong", "mono", o.terms_sha256.slice(0, 8)), txt("span", "mono", o.terms_sha256.slice(8))]),
+      txt("dt", "", "Check"), checkRow,
+      txt("dt", "", "Terms hash"), el("dd", "hash", [
+        el("span", "mono", [txt("strong", "mono", hash.slice(0, 8)), `…${hash.slice(-4)}`]), copyButton(hash, "terms hash"),
+      ]),
     ]),
-    nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
-    o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
-    o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
-    el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
+  ]);
+  summary.querySelector(".hash")!.setAttribute("title", hash);
+  const shownNots = nots.slice(0, 3);
+  const advice = [
+    o.agent_advice ? adviceBlock(`${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""} · advisory`,
+      o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option"), o.agent_advice.text) : null,
+    o.review ? (o.review.recommendation === "drafted"
+      ? adviceBlock("Drafted by Opus from your words, each rule checked by code", null, o.review.text)
+      : adviceBlock("Opus review · advisory", o.review.recommendation.replace(/_/g, " "), o.review.text)) : null,
+  ].filter((n): n is HTMLElement => n !== null);
+  const body = el("div", "sheet-body", [
+    summary,
+    ...againstAdvice(rejecting ? "REJECTED" : "APPROVED", o.review).map((w) => txt("p", "alarm big", w)),
+    txt("p", "sentence", rejecting ? `Nothing of this will happen: ${f.sentence}` : f.sentence),
+    // The rule that blocks signing is named once, at the bottom, where Face ID would be.
+    ...f.warnings.filter((w) => !blocked || !w.startsWith(blocked)).map((w) => txt("p", "alarm", w)),
+    ...(o.warnings ?? []).map((w) => txt("p", "alarm", w)),
+    // Mis-tap prevention: what this is not stays above the fold, right under what it is.
+    shownNots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", [
+      ...shownNots.map((n) => txt("li", "", n)),
+      nots.length > shownNots.length ? txt("li", "", `and ${nots.length - shownNots.length} more`) : null,
+    ])]) : null,
+    ...advice,
+    advice.length ? txt("p", "advice-note", "Advice only: the rules in code hold the limits, and advice never approves. You decide.") : null,
+    el("details", "all", [
+      txt("summary", "", "All terms (exactly what is hashed)"),
+      el("dl", "rows", [txt("dt", "", "Terms SHA-256"), txt("dd", "mono", hash), ...f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])]),
+      el("div", "terms-wrap", [termsTable(terms)]),
+    ]),
   ]);
   const status = el("div", "sheet-status");
-  const actions = el("div", "sheet-actions", instead ? [backBtn, instead, confirm] : [backBtn, confirm]);
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  const notice = blocked ? txt("p", "alarm blocked", `Nothing to sign: ${blocked.replace(/\.$/, "")}.`) : null;
+  const actions = el("div", "sheet-actions", notice ? [backBtn, notice] : instead ? [backBtn, instead, confirm] : [backBtn, confirm]);
+  if (notice) clearTimeout(arm);
   sheet.replaceChildren(el("div", "sheet-card", [body, status, actions]));
   sheet.hidden = false;
   sheet.setAttribute("role", "dialog");
@@ -914,21 +982,22 @@ async function approvePage(attempt = 0): Promise<void> {
       o.review ? txt("span", `chip ${o.review.recommendation}`, o.review.recommendation === "drafted" ? "Drafted by Opus from your words" : `Opus: ${o.review.recommendation.replace(/_/g, " ")} (advisory)`) : null,
       el("span", "option-meta", [cd, " · ", el("span", "mono", [`hash ${o.terms_sha256.slice(0, 8)}`])]),
       check.ok ? null : txt("span", "alarm", `Do not approve: ${check.problem}.`),
-      check.ok && f && !f.approvable ? txt("span", "alarm", f.sentence) : null,
+      check.ok && f && !f.approvable ? txt("span", "alarm", `Cannot be signed: ${f.warnings[0] ?? f.sentence}`) : null,
       ...(o.warnings ?? []).map((w) => txt("span", "alarm", w)),
       o.four_eyes ? txt("span", "chip", `Needs two people (four eyes)${o.four_eyes.approved_by.length ? ` · approved so far: ${o.four_eyes.approved_by.join(", ")}` : ""}`) : null,
     ]) as HTMLButtonElement;
     card.type = "button";
-    card.disabled = !check.ok || !f || !f.approvable;
-    card.setAttribute("aria-label", `${f ? f.title : o.proposal_id}. Opens a summary to confirm.`);
-    card.addEventListener("click", () => openSummary(o, check.terms!, card));
+    // Terms that check out but cannot be signed still open their summary: it names what blocks them, with nothing to sign.
+    card.disabled = !check.ok || !f;
+    card.setAttribute("aria-label", `${f ? f.title : o.proposal_id}. ${f && !f.approvable ? "Opens a summary of why it cannot be signed." : "Opens a summary to confirm."}`);
+    card.addEventListener("click", () => openSummary(o, check.terms!, card, "APPROVED", check));
     // Rejecting needs no working terms: whatever this proposal is, a person may say no to it.
     const advisedNo = o.review?.recommendation === "reject";
     const no = el("button", advisedNo ? "reject-btn advised" : "reject-btn", [advisedNo ? "Reject (Opus advises this)" : "Reject"]) as HTMLButtonElement;
     no.type = "button";
     no.disabled = !enrolled;
     no.setAttribute("aria-label", `Reject ${f ? f.title : o.proposal_id}. Opens a summary to confirm.`);
-    no.addEventListener("click", () => openSummary(o, check.terms ?? parsedOrEmpty(o.canonical), no, "REJECTED"));
+    no.addEventListener("click", () => openSummary(o, check.terms ?? parsedOrEmpty(o.canonical), no, "REJECTED", check));
     // When Opus advises against it, saying no comes first.
     return el("div", advisedNo ? "option-wrap advised-no" : "option-wrap", advisedNo ? [no, card] : [card, no]);
   });
@@ -946,10 +1015,10 @@ async function approvePage(attempt = 0): Promise<void> {
   ].filter((n): n is HTMLElement => n !== null));
   tickCountdowns();
 
-  function openSummary(o: PhoneProposal, terms: Obj, from: HTMLButtonElement, decision: "APPROVED" | "REJECTED" = "APPROVED"): void {
+  function openSummary(o: PhoneProposal, terms: Obj, from: HTMLButtonElement, decision: "APPROVED" | "REJECTED", check: OptionCheck): void {
     openSheet(o, terms, {
       names: a.names, nots: notList(o, checked.filter((c) => c.check.ok).map((c) => c.p), a.names), enrolled,
-      credentials: a.passkey.credentials, from, decision,
+      credentials: a.passkey.credentials, from, decision, check: { ok: check.ok, problem: check.problem },
       send: (credential, d) => api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision: d, credential }),
     });
   }

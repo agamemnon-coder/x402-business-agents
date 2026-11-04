@@ -44,10 +44,13 @@ phone (pages, WebCrypto, passkey)  ⇄  relay Worker on Cloudflare  ⇄  runner 
 - **The phone checks the hash too.** The page canonicalises the terms and hashes them itself (WebCrypto), and will
   not offer anything that does not hash to the hash it would sign. Every line of the confirm screen is built from
   those hashed terms, never from text the relay sends.
-- **Mis-tap prevention.** Price options sit side by side. A tap opens a full-screen summary of that one option: what
-  it does in one sentence, amount, margin, recipient, the options it is *not*, the countdown and the hash prefix.
-  Only "Confirm with Face ID" there starts the passkey (it arms after 0.8 s, so a double tap cannot reach it); Back
-  signs nothing. Once one option is approved, the runner refuses the others.
+- **Mis-tap prevention.** Price options sit side by side. A tap opens a full-screen summary of that one option: one
+  card with what it is, the amount, margin, recipient, the countdown, the page's own check (pass or fail) and the hash
+  prefix; then what it does in one sentence and the options it is *not*. Advice (Opus, the Treasury agent) is marked
+  advisory, and every term is folded under "All terms (exactly what is hashed)". Only "Confirm with Face ID" there
+  starts the passkey (it arms after 0.8 s, so a double tap cannot reach it); Back signs nothing. Terms that check out
+  but cannot be signed show a red notice naming the rule instead of the button. Once one option is approved, the
+  runner refuses the others. `test/browser/approve-layout.check.ts` holds the layout at 360 to 1280 px.
 - **Rejecting with Face ID.** Every proposal has a Reject button beside it (marked when Opus advises it). The same
   summary opens, saying "You are rejecting", and the passkey signs a rejection hash derived from the terms hash
   (`sha256("kit11 reject v1 " + terms hash)`), so a rejection signature can never be replayed as an approval, nor an
