@@ -101,18 +101,19 @@ describe("the recorded run's headline figures (landing, dashboard, README, claim
     expect(claims).toContain(`| Decisions signed with Face ID | ${a.face_id} |`);
     expect(claims).toContain(`| Fake invoices and AI tricks stopped | ${a.fake_invoices} + ${a.ai_tricks} |`);
     expect(claims).toContain(`| Audit log | ${a.rows} rows, hash chain intact`);
-    expect(claims).toContain(`| ${a.alone} with no approval at the time`);
-    expect(claims).toContain(`| ${a.blocked} stops: ${a.blocked - a.ai_tricks} payments and ${a.ai_tricks} planted instructions |`);
+    // The submission pack's rows for this run are an archive since 4 Nov (the form's run figures are the main run's).
+    expect(claims).toContain(`| Archive (30 October run): ${a.alone} with no approval at the time; ${a.blocked} stops (${a.blocked - a.ai_tricks} payments, ${a.ai_tricks} planted instructions) |`);
     expect(flat("docs/audit/README.md")).toContain(`stored: ${a.rows} rows`);
     expect(flat("docs/audit/README.md")).toContain(`--anchor ${a.rows}:${a.head}`);
     expect(flat("docs/metal-award.md")).toContain(`its ${a.rows}-row chain`);
     expect(flat("docs/requirements-matrix.md")).toContain(`the recorded Friday run: ${a.alone} alone, ${a.blocked} stops, ${a.face_id} Face ID decisions`);
   });
 
-  it("the form's proof list repeats them (6 payments and 2 planted instructions make the 8 stops)", () => {
+  it("the form no longer repeats them: its run figures are the main run's since 4 Nov (Max)", () => {
     const form = flat("docs/submission/README.md");
-    expect(form).toContain(`${a.blocked} stops by the card, the chain, the fraud checks or the CFO (${a.blocked - a.ai_tricks} payments, ${a.ai_tricks} planted instructions)`);
-    expect(form).toContain(`${eur(a.kept_out_cents)} kept out for good`);
+    expect(form).not.toContain(`${a.blocked} stops by the card, the chain, the fraud checks or the CFO`);
+    expect(form).not.toContain(`${eur(a.kept_out_cents)} kept out for good`);
+    expect(form).toContain("2 stopped at a limit");
   });
 });
 
@@ -144,38 +145,35 @@ describe("Claude's cost and the red team, where the docs repeat them", () => {
   });
 });
 
-describe("Kit 11's three mandates (README table) against the chain recording and the policy in code", () => {
+describe("Kit 11's three mandates (README table) against the main run's record and the policy in code", () => {
   const readme = text("README.md");
   const table = readme.split("| Kit 11 agent | Its job in the brief |")[1]!.split("\n\n")[0]!.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("|---"));
-  const kit = metal.mandates.filter((m) => ["sourcing", "support", "treasury"].includes(m.role));
+  // When bound: the policy in code. After the CFO's Face ID: the main run's record (3 Nov), as on chain at its end.
+  const main = json<{ snapshot: { tower: { agents: { agent: string; mandate: { cap: string; budget: string } | null }[] } } }>("docs/demo/main-run.json");
+  const kit = (["sourcing", "support", "treasury"] as Agent[]).map((role) => {
+    const now = main.snapshot.tower.agents.find((a) => a.agent === role)!.mandate!;
+    return { role, bound: { budget: fromCents(INITIAL_MANDATES[role].budgetCents), cap: fromCents(INITIAL_MANDATES[role].capCents) }, now };
+  });
   const arrow = (from: string, to: string) => (from === to ? from : `${from} → ${to}`);
 
-  it("has one row per Kit 11 agent, and each budget (and cap, where shown) is the recorded one, bound and after the replace", () => {
+  it("has one row per Kit 11 agent, and each budget (and cap, where shown) is the main run's, bound and after the CFO's Face ID", () => {
     expect(table).toHaveLength(3);
-    expect(kit).toHaveLength(3);
+    expect(kit.map((k) => `${k.bound.budget}→${k.now.budget}`)).toEqual(["10.00→14.00", "4.00→4.00", "6.00→2.00"]);
     for (const m of kit) {
-      // The row named as the pages name the agent (AGENT_DISPLAY: Kit 11's names, word for word).
-      const row = table.find((l) => l.split("|")[1]!.trim() === AGENT_DISPLAY[m.role as Agent].name);
+      const row = table.find((l) => l.split("|")[1]!.trim() === AGENT_DISPLAY[m.role].name);
       expect(row, m.role).toBeDefined();
       const cell = row!.split("|")[3]!.trim();
-      const bound = m.history[0]!;
-      expect(cell.startsWith(arrow(bound.budget, m.budget)), `${m.role}: "${cell}"`).toBe(true);
-      // A cap the row states must be the recorded one.
+      expect(cell.startsWith(arrow(m.bound.budget, m.now.budget)), `${m.role}: "${cell}"`).toBe(true);
       const cap = cell.match(/cap ([\d.]+(?: → [\d.]+)?)/)?.[1];
-      if (cap) expect(cap).toBe(arrow(bound.cap, m.cap));
+      if (cap) expect(cap).toBe(arrow(m.bound.cap, m.now.cap));
     }
+    // No figure from an earlier run or a brief's example.
+    expect(readme).not.toMatch(/10\.00 → 12\.00|6\.00 → 4\.00|14 \/ 2 \/ 4|4\.00 in the brief/);
   });
 
-  it("binds what src/config/policy.ts says, and both before and after add up to TOTAL_BUDGET_CENTS, as the README says", () => {
-    for (const m of kit) {
-      const p = INITIAL_MANDATES[m.role as Agent];
-      expect(cents(m.history[0]!.budget), m.role).toBe(p.budgetCents);
-      expect(cents(m.history[0]!.cap), m.role).toBe(p.capCents);
-    }
-    const before = kit.reduce((s, m) => s + cents(m.history[0]!.budget), 0);
-    const after = kit.reduce((s, m) => s + cents(m.budget), 0);
-    expect(before).toBe(TOTAL_BUDGET_CENTS);
-    expect(after).toBe(TOTAL_BUDGET_CENTS);
+  it("both before and after add up to TOTAL_BUDGET_CENTS, as the README says", () => {
+    expect(kit.reduce((s, m) => s + cents(m.bound.budget), 0)).toBe(TOTAL_BUDGET_CENTS);
+    expect(kit.reduce((s, m) => s + cents(m.now.budget), 0)).toBe(TOTAL_BUDGET_CENTS);
     expect(readme).toContain(`${fromCents(TOTAL_BUDGET_CENTS)} test USD between them, before and after, held in code (\`TOTAL_BUDGET_CENTS\`)`);
   });
 });

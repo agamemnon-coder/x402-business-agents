@@ -20,9 +20,10 @@ import { runAll, runScenario, SCENARIOS, type ScenarioResult } from "../lab/scen
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
-import { AGENT_DISPLAY, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { AGENT_DISPLAY, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { loadRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
+import { trySignPage } from "../try/sign.js";
 import { watchPage } from "../redesign/watch.js";
 import { proofPage } from "../redesign/proof.js";
 import { restyle } from "../redesign/ui.js";
@@ -49,7 +50,7 @@ const REDTEAM_JSON = (() => {
 
 const PAGE_TEMPLATE = withNav(readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8"), "overview");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
-// The agent run (agent run 1, 2 Nov; src/redesign/run.ts), recorded with npm run autonomy-record, for /?autonomy, with
+// The agent run (the main run, 3 Nov; src/redesign/run.ts), recorded with npm run autonomy-record, for /?autonomy, with
 // its label, the world set-up and who the second approver was.
 const AUTONOMY_JSON = (() => {
   try {
@@ -95,7 +96,9 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
     .replace("__RECORDED_JSON__", () => JSON.stringify(recorded).replace(/</g, "\\u003c"))
     .replace("__AUTONOMY_JSON__", () => AUTONOMY_JSON.replace(/</g, "\\u003c"))
     .replace("__AGENTS_JSON__", AGENTS_JSON)
-    .replace("__REDTEAM_JSON__", () => REDTEAM_JSON);
+    .replace("__REDTEAM_JSON__", () => REDTEAM_JSON)
+    // The Overview's line: the core sentence, word for word (who holds which limit; never "every limit").
+    .replace("__CORE_SENTENCE__", () => CORE_SENTENCE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
 }
 /**
  * Words the public pages no longer use (Max, v4): older records and Lab results still carry them in their text, so the
@@ -169,6 +172,14 @@ export const HOME_PAGE = homePage();
 export const WATCH_PAGE = watchPage();
 export const PROOF_PAGE = proofPage();
 export const HOME_CSP = cspFor(HOME_PAGE);
+/** /try/sign (TRY_SIGN_ENABLED): the page, under the same kind of hash-based CSP; the bundle carries it only when on. */
+export const TRY_SIGN_PAGE = trySignPage();
+export const TRY_SIGN_CSP = cspFor(TRY_SIGN_PAGE);
+/** Home with its "Sign with your own Face ID" button: only in a bundle that also carries /try/sign. */
+export function homeWithTrySign(): { page: string; csp: string } {
+  const page = homePage(undefined, { trySign: true });
+  return { page, csp: cspFor(page) };
+}
 export const WATCH_CSP = cspFor(WATCH_PAGE);
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */

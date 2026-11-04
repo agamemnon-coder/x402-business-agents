@@ -69,11 +69,12 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
     page.on("requestfailed", (r) => { if (!/testnet\.metalntwx\.com/.test(r.url())) fail(`${tag} ${page.url()}: request failed: ${r.url()}`); });
 
-    // "/" sends a guest to Home. The first frame already shows the refusal on chain; then it plays.
+    // "/" is Home itself for a guest (no redirect). The first frame already shows the refusal on chain; then it plays.
     await page.goto(`${base}/`, { waitUntil: "load" });
-    await page.waitForURL(/\/home$/);
+    if (new URL(page.url()).pathname !== "/") fail(`/ ${tag}: a guest is sent away from / (${page.url()})`);
     await page.waitForTimeout(300);
-    if (!/Refused · recorded on chain/.test(await page.locator("[data-stage]").innerText())) fail(`/home ${tag}: the first frame does not show the refusal recorded on chain`);
+    // The main run: Metal refused the purchase let through to it, on chain ("Refused by Metal · on chain").
+    if (!/Refused · recorded on chain|Refused by Metal · on chain/.test(await page.locator("[data-stage]").innerText())) fail(`/home ${tag}: the first frame does not show the refusal on chain`);
     await page.screenshot({ path: join(shots, `home-first-${tag}.png`) });
     await page.waitForTimeout(9000);
     await look(page, `/home ${tag}`, w);
@@ -82,7 +83,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // The stylesheet parsed to the end (a stray brace once dropped the tiles' style).
     if (await page.locator(".tiles .tile").first().evaluate((e) => getComputedStyle(e).display) !== "flex") fail(`/home ${tag}: the proof tiles lost their style`);
     if ((await page.locator("nav.tabs a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
-    if (!/Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
+    if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
     // The rail's line is said in full (Max, 2 Nov: it was cut off).
     for (const s of await page.locator("[data-stage] .lane .ln small").all()) if (await s.evaluate((e) => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).display === "none")) fail(`/home ${tag}: a rail line is cut off or hidden`);
     await page.screenshot({ path: join(shots, `home-${tag}.png`) });
@@ -99,7 +100,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/watch`, { waitUntil: "load" });
     await page.waitForTimeout(5000);
     await look(page, `/watch ${tag}`, w);
-    if (!/Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.locator(".pill.run").innerText())) fail(`/watch ${tag}: no run label`);
+    if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.locator(".pill.run").innerText())) fail(`/watch ${tag}: no run label`);
     if (!/^Highlights$/.test(await page.locator('#mode button[aria-pressed="true"]').innerText())) fail(`/watch ${tag}: not on the highlights by default`);
     if (!/^Full run \(\d+ steps\)$/.test(await page.locator('#mode button[data-mode="full"]').innerText())) fail(`/watch ${tag}: no full-run button with its steps`);
     await page.screenshot({ path: join(shots, `watch-${tag}.png`) });

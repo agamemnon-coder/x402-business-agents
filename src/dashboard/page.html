@@ -616,8 +616,9 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <div class="callout"><span data-icon="info"></span><p>You are a guest, so there is nothing to sign in to here. Everything the CFO sees is in the <a href="?recorded">recorded CFO dashboard</a>, and the <a href="demo">demo</a> walks through one real run step by step. To run it yourself, the README has the steps.</p></div>
 </section>
 
-<!-- For guests the public pages are Home, Watch, Try and Proof: a guest who opens "/" is sent to Home. This block is
-     shown only to a device whose viewer link no longer works. -->
+<!-- For guests the public pages are Home, Watch, Try and Proof: "/" is Home itself, and this page (served at "/" with a
+     query) sends a guest with none of its modes to Home. This block is shown only to a device whose viewer link no
+     longer works. -->
 <div id="landing" hidden>
   <section class="section">
     <h1 class="big">Purser</h1>
@@ -643,7 +644,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <div id="disputes"></div>
   </div>
   <div id="overview">
-  <div class="head"><div><h1>Overview</h1><div class="sub">Your AI agents spend through Airwallex and Metal. You stay in control: every limit below is yours.</div></div></div>
+  <div class="head"><div><h1>Overview</h1><div class="sub">__CORE_SENTENCE__</div></div></div>
   <section class="tower" id="tower" aria-label="Control tower" hidden>
     <div class="tcol tag"><h2>The agents, inside your limits</h2><div class="tagents-grid" id="t-agents"></div></div>
     <div class="tcol tin"><h2>Money in</h2><div id="t-in"></div></div>
@@ -1725,7 +1726,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     markNav("dashboard");
     document.getElementById("signin").hidden = false;
   } else if (wantAutonomy && AUTONOMY) {
-    // D19: the agents deciding, from an autonomous dry run (test passkeys, test money), never shown as a live run.
+    // D19: the agents deciding, from the played run's record (the main run of 3 Nov; test money), labelled as a recording.
     markNav("dashboard");
     tabs([["The agents decide", "?autonomy", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?autonomy&agents", wantAgents], ["Books", "?autonomy&books", wantBooks], ["Disputes", "?autonomy&disputes", wantDisputes]]);
     var asnap = AUTONOMY.snapshot; asnap.recorded = true; asnap.relay = null;
@@ -1733,7 +1734,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     document.getElementById("rec-text").textContent = AUTONOMY.label || ("Autonomous dry run · " + dayFmt.format(new Date(AUTONOMY.recorded_at)) + " · test passkeys and test money · not a live run");
     var aMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", AUTONOMY.run + ". We changed the world; each agent decided with real Claude calls, inside its limits on Metal and Airwallex. " + (AUTONOMY.about || ""))]);
     var arb = document.getElementById("recbanner"); if (!arb.querySelector("details")) arb.appendChild(aMore);
-    live("rec", "Dry run");
+    live("rec", "Recorded run");
     var ast = document.getElementById("stop"); ast.hidden = false; ast.disabled = true; ast.lastChild.textContent = "Emergency stop · live only";
     showDash(); render(asnap);
     if (!wantAgents && !wantBooks && !wantDisputes) { var cp = document.getElementById("claude-panel"); if (cp) setTimeout(function () { cp.scrollIntoView({ block: "start" }); }, 50); }
@@ -1753,10 +1754,11 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     showDash(); render(snap);
   } else if (MODE === "local" || viewKey) {
     markNav("dashboard");
-    tabs([["Dashboard", "./", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Disputes", "?disputes", wantDisputes]].concat(MODE === "local" ? [] : [["Policy", "policy"]]));
+    tabs([["Dashboard", "?dashboard", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Disputes", "?disputes", wantDisputes]].concat(MODE === "local" ? [] : [["Policy", "policy"]]));
     showDash(); statusTimer = setInterval(status, 1000); poll();
   } else {
-    // A guest: the public story is Home (redesign, 2 Nov); the CFO's link carries its key and stays here.
+    // A guest (no key in the link or on this device, none of the modes above): the public story is Home (redesign,
+    // 2 Nov). "/" itself is Home already; this covers the page's own address, ?dashboard, and any other query.
     location.replace("home");
   }
 

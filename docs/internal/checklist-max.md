@@ -2,6 +2,11 @@
 
 Claude zet alles klaar. Jij verstuurt. Deadline: 13 november, 19:29 (NL-tijd). Plan: inleveren op donderdag 12 november.
 
+> **`/try/sign` staat live sinds 4 november 2026** (Worker-deploy van commit `852b323`, met `TRY_SIGN_ENABLED=on`).
+> `npx tsx test/browser/trysign.check.ts --live` is groen tegen de gehoste site. De README zet "Try it yourself: sign with
+> your own Face ID" bovenaan met de link; `docs/claims.md` en `docs/security.md` noemen de datum. Nog open, voor de
+> video-agent: de `/try/sign`-scène in `docs/video-script.md` (2:35–2:50).
+
 Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal of in het Airwallex- of Cloudflare-scherm.
 
 ## 1. Airwallex-sleutel met alleen de nodige rechten

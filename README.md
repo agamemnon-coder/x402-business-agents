@@ -1,132 +1,125 @@
 # Purser
 
-**Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)
 
-Kit 11 · x402 Business Agents: three agents (Sourcing, Support, Treasury) on one Metal account, rebalancing when
-supplier costs rise — plus Airwallex for cards, FX and the euro licence fee. Entered for the Metal Award.
+**A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
+small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
+every id below.
 
-**Visa TAP.** Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top. Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).
+**Try it yourself: [sign with your own Face ID](https://kit11.max-31b.workers.dev/try/sign).** In a test world of your
+own, an agent proposes two payments: a rule blocks one, and you sign the other's exact terms with a passkey your phone
+or laptop makes (Face ID, Touch ID or a PIN). The server checks the signature; change one cent and the same signature is
+refused. Nothing real moves. Live since 4 November 2026.
 
-**Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/))
-or offline with `npm ci && npm run judge` (no keys, no network). Steps 2 and 3 are from the recorded run of 30 October
-(test money):
+Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
+each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything
+beyond them, with Face ID on the exact terms.
 
-1. **The problem:** AI agents are starting to spend company money; one shared card or wallet gives no limit per agent
-   and no one place for the exceptions. ([Watch](https://kit11.max-31b.workers.dev/film))
-2. **Airwallex declines the card** above its limit (`LIMIT_EXCEEDED`, €45.00 on a €30.00 card); after the CFO's Face
-   ID the limit follows (€30 → €50) and the same purchase is paid. ([the Airwallex ids](https://kit11.max-31b.workers.dev/airwallex))
-3. **Metal refuses the higher price** against the on-chain mandate (`mandate_cap_exceeded`), and the CFO moves budget
-   between the mandates within the same 20.00 with Face ID. ([the recorded run's dashboard](https://kit11.max-31b.workers.dev/?recorded))
-4. **The Dispute desk checks every order:** a simulated customer (we filed for it) disputes 12 orders; each is
-   checked against its signed order and the mandate on chain. All 12 hold, so nothing new is refunded. ([the evidence](https://kit11.max-31b.workers.dev/metal#dispute))
-5. **Try it yourself:** type a task for an agent. ([Try it](https://kit11.max-31b.workers.dev/try))
+**Also:** [the site](https://kit11.max-31b.workers.dev/) replays the main run; [`/try`](https://kit11.max-31b.workers.dev/try)
+gives an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves.
 
-Also: **the agents deciding by themselves** (`/?autonomy`), from agent run 1 (a rehearsal, 2 November): we changed the
-world, each agent decided with real Claude calls inside its limits (38 of 38 decisions by Claude). Max's real Face ID;
-the second approver is a labelled test passkey (in production a second person); test money only.
+Starter Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award ([note](#links)). Northwind Outdoor,
+the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
 
-<p>
-  <img src="docs/media/purser-card.gif" width="49%" alt="Airwallex declines the agent's card over its limit">
-  <img src="docs/media/purser-metal.gif" width="49%" alt="Metal refuses a payment over the agent's on-chain mandate">
-</p>
+## The main run (3 November)
 
-*Left: Airwallex itself declines the agent's card over its limit. Right: Metal refuses a payment over the agent's
-on-chain mandate. Both from the recorded run of 30 October (test money).*
+World `main-1`, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, frozen commit `35e1cac`.
+24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks. The CFO (Max, the
+builder) signed on his own phone with Face ID; the second approver is a labelled test passkey in this demo, in
+production a second person. Log: [docs/runs/2026-11-03-main-run.md](docs/runs/2026-11-03-main-run.md); record:
+[docs/demo/main-run.json](docs/demo/main-run.json); replayed on [/watch](https://kit11.max-31b.workers.dev/watch).
 
-**Kit 11 (x402 Business Agents), as built.** Northwind Outdoor, an outdoor wholesaler that sells live stock data to
-retailers per query: the kit's data business. (In agent run 1, 44 of the 63 sales resold data from a cache up to
-300 s old, as the Sourcing agent's buy policy allowed; Thursday's main run is planned with the cache off.) Three agents
-draw on one Metal account, each under its own mandate:
+**1. The price rise** ([watch](https://kit11.max-31b.workers.dev/watch?scene=1)). Stockline went from 0.02 to 0.04 a
+stock check, over the Sourcing mandate's 0.03 cap. Metal refused purchase #24 itself, `mandate_cap_exceeded` (let
+through on purpose; Purser normally refuses first): tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`
+(11:23:33). Treasury's options came 40 s later, within the same 20.00; after four eyes, both mandates were replaced on
+chain: Treasury `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` (11:26:54), Sourcing
+`0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790` (11:26:59).
 
-| Kit 11 agent | Its job in the brief | Budget when bound → after the CFO's Face ID |
+**2. The dispute** ([watch](https://kit11.max-31b.workers.dev/watch?scene=2)). A simulated customer disputes 12 orders,
+saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had
+wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects
+it with Face ID. The refunds, #7, #10 and #13:
+`0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d`,
+`0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5`,
+`0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510`; P-0004 ("refund the other 9") rejected by Max
+with Face ID at 11:29:37.
+
+**3. Earnings and euros** ([watch](https://kit11.max-31b.workers.dev/watch?scene=3)). 0.69 swept after finality, tx
+`0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4`, booked at Airwallex as deposit
+`b3812e05-2afa-4698-8f64-429f9608e0a0`. The Treasury agent planned the EUR 240.00 licence itself; after the CFO's
+Face ID, EUR 110.00 bought by FX for USD 124.29 (conversion `3ca88196-05da-4d88-9caa-796f03704636`), then SWIFT:
+transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, PAID 11:31:24, 6 s after Face ID. The Sourcing agent
+asked for a card raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the
+TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
+
+**2 stopped at a limit:** Metal refused purchase #24 over the mandate cap, and the CFO rejected P-0004 with Face ID.
+Not counted: query #37, refused `mandate_revoked` while the mandate was being replaced.\
+*Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
+
+**Payments:** 87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy, with no
+approval at the time; 86 of them on Metal. 14 of the 55 queries got an error and were not charged. `verify` passes,
+`reconcile` checked 88 with 0 differences, and every one of the 110 money movements has an origin.
+
+| Kit 11 agent | Its job in the brief | Budget (test USD) when bound → after the CFO's Face ID |
 |---|---|---|
-| Sourcing agent | buys the upstream data per query; its card pays warehouse and data software | 10.00 → 12.00, cap 0.03 → 0.04 a purchase |
-| Support agent | refunds customers when a dispute holds; its card pays helpdesk software | 4.00 |
-| Treasury agent | designs the rebalance after the price rise (with the agents on, its own split, e.g. 14 / 2 / 4); the sweep to Airwallex runs on its mandate; the EUR licence fee is paid through Airwallex (FX and SWIFT, after Face ID), not from a Metal mandate. With the agents off, both are code's decisions; with the agents on, the Treasury agent decides the sweep and advises when to pay the licence. | 6.00 → 4.00 in the brief |
+| Sourcing agent | buys the upstream data per query; its card pays warehouse and data software | 10.00 → 14.00, cap 0.03 → 0.04 a purchase |
+| Support agent | refunds customers when a dispute holds; its card pays helpdesk software | 4.00, cap 0.10 a refund |
+| Treasury agent | rebalances the budgets after the price rise, sweeps earnings to Airwallex, plans the EUR licence (Airwallex FX and SWIFT, after Face ID) | 6.00 → 2.00 |
 
-20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). Every Kit 11 sentence and where
-it is done: [docs/requirements-matrix.md](docs/requirements-matrix.md) section 4.
+20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). The limits in code, each with its test:
+[docs/controls.md](docs/controls.md#guards-in-code).
 
-Each agent gets an Airwallex company card and a Metal on-chain mandate. The CFO sets the limits for both: card limits come from the CFO policy, and an agent's mandate changes only when
-the CFO signs the new terms with Face ID. When an agent needs more, it stops and asks, and the CFO approves on a phone with Face ID.
+**Visa:** each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which
+agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the
+merchant is ours.
 
-**Who it is for:** the CFO (or controller) of a small company that runs AI agents and wants them to spend company
-money only within limits the CFO sets.
+## What is real, what is mock
 
-**Designed with these principles, not certified:** Airwallex is the regulated provider (accounts, card issuing, payouts; its KYB,
-KYC and screening are its own, not shown in this repo), Metal enforces the limits on chain, and Purser holds no funds of
-its own (they stay in the business's Airwallex and Metal accounts), logs every model call its agents make and keeps a
-person in charge
-([docs/compliance.md](docs/compliance.md)).
+- **Live, in the main run:** the Airwallex sandbox calls and Metal testnet transactions above, the Claude decisions and
+  the CFO's Face ID. Test money only. The sandbox simulates a SWIFT transfer's last steps (SENT, PAID), the merchant's
+  card charge and the deposit that stands in for Metal earnings at Airwallex.
+- **Run by us:** Summit Outfitters (the customer) and its agent, Stockline (the supplier), the TAP merchant.
+- **Replayed:** Home, Watch and Proof on the hosted site, and `npm run judge` offline, play the main run's record.
+- **Stand-ins:** the automated tests and the Scenario Lab (`/lab`) run on stand-ins for Airwallex, Metal and Anthropic.
+- **Your own test world:** `/try/sign` (live since 4 November 2026) runs each visitor's world on stand-in executors with
+  fixed proposals; your passkey's signature and the server's check of it are real.
+- **Built, not yet live:** the Cardputer hub push and gate (a fake hub in the tests);
+  the T:0 books sink (the shared sandbox key cannot post, `403 CAPI71`); the emergency stop and `npm run smoke:sandbox`
+  (on stand-ins).
 
-```mermaid
-flowchart LR
-  A["AI agents"] --> P["CFO policy<br/>limits, floors, payees"]
-  P --> AW["Airwallex<br/>cards, FX, SWIFT"]
-  P --> M["Metal<br/>mandates, x402, clearing"]
-  AW -->|"over a limit"| C["CFO phone<br/>Face ID"]
-  M -->|"over a limit"| C
-  C -->|"approved terms only"| AW
-  C -->|"approved terms only"| M
-  AW --> L["Audit log<br/>append-only, hash-chained"]
-  M --> L
-  C --> L
-```
+**Other live tests (separate worlds, dated):** the TAP run (2 November), four eyes on chain, the compliance contract
+and clearing under load (30 October): [docs/runs/](docs/runs/) and [docs/metal-award.md](docs/metal-award.md).
 
-## For a juror
+## Run it in 3 commands
+
+Needs Node.js 22.13 or later (`engines` in [package.json](package.json)) and git; no keys, no network after `npm ci`.
 
 ```sh
-npm ci && npm run judge
+npm ci            # install
+npm test          # the full suite, on stand-ins
+npm run judge     # the main run's replay, the CFO dashboard and the Scenario Lab, offline
 ```
 
-No keys, and no network after `npm ci`; the judge step itself starts in seconds. It serves the recorded
-live run, the CFO dashboard as it stood at the end, a simulated month, and the Scenario Lab (`/lab`: 18 stories run against stand-ins for Airwallex and Metal,
-from a normal purchase to the emergency stop, each with what should happen and what did), "How Purser uses Metal"
-(`/metal`: every Metal feature Purser uses, with its testnet proof and docs link (clearing, the receive policy, four eyes and compliance from separate live runs), a mandate inspector per agent, and the Dispute
-desk case order by order), and opens your browser.
+**2181 tests in 241 files, all passing** (`npx vitest run` on this branch, 4 November); CI runs the same suite on
+every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/run-it.md).
 
-## Run it live
+## Words
 
-Needs a Metal testnet RPC endpoint, Airwallex sandbox keys and, optionally, an Anthropic key. Setup, commands and
-the step-by-step run are in [docs/run-it.md](docs/run-it.md).
+- **Mandate:** an agent's on-chain spending permission on Metal: a cap per payment, a total budget, one payee, an end date.
+- **x402:** HTTP 402 "Payment Required" as a protocol: each data query is paid on Metal before it is answered.
+- **Terms hash:** the SHA-256 of a proposal's exact terms; the CFO's Face ID signs that hash, and nothing else runs.
+- **Four eyes:** above the CFO's threshold, two different people must sign; the proposer never approves.
 
-## Read more
+## Links
 
-Start here:
-
-- [docs/metal-award.md](docs/metal-award.md): what the build uses from Metal, with proof on testnet
-- [docs/airwallex.md](docs/airwallex.md): every Airwallex API Purser calls, and why
+- [docs/controls.md](docs/controls.md): every guard in code, its test, and what needs a person
+- [docs/claims.md](docs/claims.md): every claim in this repo and its source
+- [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
-- [docs/controls-matrix.md](docs/controls-matrix.md): every risk, the control against it, its test and the live evidence
-- [docs/runbook.md](docs/runbook.md): incidents, the emergency stop, key rotation and recovery
-- [docs/ask-purser.md](docs/ask-purser.md): Ask Purser: a single-use card for one task (a flight, a hotel, a train) from one sentence: at once within the CFO's policy (up to €300, 3 a day, asked at the runner), otherwise after Face ID
-- [docs/claude.md](docs/claude.md): Powered by Claude: which model does what, why, and what it costs per call and per €1,000 paid
-- [docs/compliance.md](docs/compliance.md): who does what (Airwallex, Metal, Purser) for the EU AI Act, PSD2, GDPR, AML and audit
-- [docs/requirements-matrix.md](docs/requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof
-- [docs/decisions.md](docs/decisions.md): decisions taken during the build, and what each costs if wrong
-- [docs/roadmap.md](docs/roadmap.md): from company cards for agents to the agent finance department (not built yet)
-- [docs/runs/](docs/runs/): logs of live runs
+- [docs/submission/README.md](docs/submission/README.md): the submission text
+- Visa Award: Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP
+  counts as Visa tooling is still being confirmed with Visa).
 
-The old README sections, now in docs:
-
-- [Overview, the story, controls, where Claude is used](docs/overview.md)
-- [Company cards (Airwallex Issuing)](docs/cards-and-clearing.md#company-cards-airwallex-issuing)
-- [Selling by Metal clearing (prepaid, new on testnet)](docs/cards-and-clearing.md#selling-by-metal-clearing-prepaid-new-on-testnet)
-- [A month in 90 seconds (simulated)](docs/cards-and-clearing.md#a-month-in-90-seconds-simulated)
-- [The CFO policy](docs/cfo-policy.md), [in plain words](docs/cfo-policy.md#the-cfo-policy-in-plain-words) and
-  [four eyes](docs/cfo-policy.md#four-eyes-two-people-above-a-threshold)
-- [Outside agents: the agent API (MCP)](docs/agent-api.md#outside-agents-the-agent-api-mcp) and the
-  [GL export for the ERP](docs/agent-api.md)
-- [Invoice fraud and prompt injection](docs/fraud-and-injection.md)
-- [Dashboard and phone approval with a passkey](docs/phone-approval.md)
-- [Run it](docs/run-it.md)
-- [Code map, tooling, credits](docs/architecture.md)
-
-## Test money
-
-All money here is test money: the Airwallex sandbox and Metal testnet. Simulated by the sandbox:
-merchants' card charges, a SWIFT transfer's last steps (SENT, PAID), the deposit that stands in for Metal earnings at
-Airwallex, and retailers' payments into the Global Accounts. *USDZ is shown as "test USD". Run by us: Summit and its
-agent, and Stockline. Northwind Outdoor is the example company.
-
-Built with Claude (Anthropic) as the developer, directed and reviewed by Max Geurtsen. Licence: MIT.
+All money here is test money: the Airwallex sandbox and Metal testnet. Built with Claude (Anthropic) as the developer,
+directed and reviewed by Max Geurtsen. Licence: MIT.

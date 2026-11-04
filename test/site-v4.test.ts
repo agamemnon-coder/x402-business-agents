@@ -29,12 +29,15 @@ const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g
 
 describe("the site after v4", () => {
   it("keeps every page within its text budget (Home about 60 words plus the Visa Award status; partner pages at most 150)", () => {
-    const budget: Record<string, number> = { home: 520, watch: 100, try: 180, proof: 460, metal: 150, airwallex: 150, visa: 150, claude: 150, notFound: 40 };
+    // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
+    const budget: Record<string, number> = { home: 520, watch: 100, try: 180, proof: 480, metal: 150, airwallex: 150, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
   it("shows no forbidden words on any page a visitor can reach (every page buildPages serves, the archive and the phone pages included)", () => {
-    const bad = [/warehouse software/i, /stand-in/i, /\bdry-1\d*/i, /Dev test/i, /Recorded 30 October/i, /read, plan and advise/i, /\bfather\b/i, /four eyes.{0,80}\b(optional|off)\b/i, /\b(optional|off)\b.{0,80}four eyes/i, /\b0 unsafe\b/i, /confirmed (that )?TAP counts/i];
+    const bad = [/warehouse software/i, /stand-in/i, /\bdry-1\d*/i, /Dev test/i, /Recorded 30 October/i, /read, plan and advise/i, /\bfather\b/i, /four eyes.{0,80}\b(optional|off)\b/i, /\b(optional|off)\b.{0,80}four eyes/i, /\b0 unsafe\b/i, /confirmed (that )?TAP counts/i,
+      // The old absolute claims (jury review, 4 Nov): the core sentence says who holds which limit instead.
+      /every limit/i, /can['’]t break/i];
     // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked).
     const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font"].includes(e[0]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
@@ -95,15 +98,13 @@ describe("the site after v4", () => {
     }
   });
 
-  it("keeps Watch on about a dozen highlights without the fee_unknown attempt; the full run labels it an earlier attempt", () => {
+  it("keeps Watch on about a dozen highlights; the main run's licence was paid on its first attempt (no earlier attempt to label)", () => {
     const h = highlights(run);
     expect(h.length).toBeGreaterThanOrEqual(10);
     expect(h.length).toBeLessThanOrEqual(15);
     expect(h.some((e) => e.k === "money" && (e.refused?.code === "fee_unknown" || e.earlier))).toBe(false);
-    const fee = run.events.find((e) => e.k === "money" && e.refused?.code === "fee_unknown");
-    expect(fee && fee.k === "money" && fee.earlier).toBe(true);
+    expect(run.events.some((e) => e.k === "money" && e.earlier)).toBe(false);
     expect(pages.watch).toContain(`Full run (${run.events.length} steps)`);
-    expect(pages.watch).toMatch(/Earlier attempt · nothing paid/);
     expect(pages.watch).toContain(WORLD_SETUP);
   });
 
@@ -128,7 +129,9 @@ describe("the site after v4", () => {
     const proof = pages.proof!;
     expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(4);
     expect(proof).toMatch(/<span class="logo txt">Visa TAP<\/span>/);
-    expect(proof).toContain(VISA_CLAIM.replace(/'/g, "'"));
+    // The Visa paragraph is said once, on /visa (jury review, 4 Nov); Proof keeps only the award status as a footnote.
+    expect(proof).not.toContain(VISA_CLAIM);
+    expect(proof).toContain(VISA_AWARD_STATUS);
     expect(proof).toContain(SECOND_APPROVER);
     expect(pages.visa).toContain(VISA_CLAIM);
     expect(pages.visa).toContain(VISA_AWARD_STATUS);
@@ -142,8 +145,10 @@ describe("the site after v4", () => {
       expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
       expect(html).not.toMatch(/<script/);
-      // Each page is labelled with the run it shows: agent run 1, or for /visa the separate TAP run of the same day.
-      expect(html).toContain(name === "visa" ? tapRun()!.label : run.label);
+      // Each page is labelled with the run it shows: the main run, which on /visa has its own TAP-signed card buy
+      // (the separate TAP run of 2 Nov is named inside, under its own label).
+      expect(html).toContain(run.label);
+      if (name === "visa") expect(html).toContain(tapRun()!.label);
     }
   });
 

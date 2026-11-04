@@ -11,11 +11,15 @@ export const LEDGER_EVENTS = [
   // dry-179: an approved proposal its executor's guard refused, closed with the reason.
   "proposal.needs_reapproval",
   "mandate.replaced", "refund.paid", "upstream.refused", "upstream.refused_on_chain", "credit.locked", "credit.deposited",
+  // The main run (3 Nov): the purchase let through to Metal and its label, the customer's error status per refused
+  // query, the FX for the licence's shortfall, and the TAP-signed card buy in the same world.
+  "upstream.let_through", "upstream.let_through_refused", "sale.refused", "fx.converted", "tap.checkout_verified",
+  "card.limits_synced", "card.charge_approved", "card.charge_declined",
 ] as const;
 const PREFIXES = ["sweep.", "transfer."];
 
 /** Keys never recorded, wherever they appear. */
-const DROP = new Set(["passkey", "credential_id", "assertion_sha256", "transfer_request_id", "beneficiary_id", "iban", "iban_last4", "bic", "balances_before", "floors", "after", "email_sha256", "viewer", "view_key", "token", "relay", "host"]);
+const DROP = new Set(["passkey", "credential_id", "assertion_sha256", "transfer_request_id", "beneficiary_id", "iban", "iban_last4", "bic", "balances_before", "floors", "after", "email_sha256", "viewer", "view_key", "token", "relay", "host", "nonce"]);
 
 /** Keys renamed on the way out: a mandate's hash is public, but CI's secret scan reads "credential_hash" as a key. */
 const RENAME: Record<string, string> = { credential_hash: "mandate_hash", replaces_credential_hash: "replaces_mandate_hash" };
@@ -35,6 +39,20 @@ export interface RunLedger {
   disputes: { dispute_id: string; customer: string; created_at: string; claims: unknown; evidence: unknown; verdicts: unknown }[];
 }
 
+/** An FX row's request_id is Airwallex's (idempotency), not Anthropic's: left out like the transfer's. */
+const airwallexIdsOut = (event: string, p: Record<string, unknown>): Record<string, unknown> => {
+  if (event !== "fx.converted") return p;
+  const { request_id: _drop, ...rest } = p;
+  return rest;
+};
+/** The same for a proposal's FX quote (terms.conversion.request_id). */
+const termsOut = (t: Record<string, unknown>): Record<string, unknown> => {
+  const c = t.conversion;
+  if (!c || typeof c !== "object") return t;
+  const { request_id: _drop, ...rest } = c as Record<string, unknown>;
+  return { ...t, conversion: rest };
+};
+
 const parse = (s: string | null): unknown => { try { return s ? JSON.parse(s) as unknown : null; } catch { return null; } };
 
 export function runLedger(db: DB): RunLedger {
@@ -44,8 +62,8 @@ export function runLedger(db: DB): RunLedger {
   const proposals = db.prepare("SELECT proposal_id, kind, status, created_by, created_at, terms_json FROM proposals ORDER BY proposal_id").all() as { proposal_id: string; kind: string; status: string; created_by: string; created_at: string; terms_json: string }[];
   const disputes = db.prepare("SELECT dispute_id, customer, created_at, claims_json, evidence_json, verdicts_json FROM disputes ORDER BY created_at").all() as { dispute_id: string; customer: string; created_at: string; claims_json: string | null; evidence_json: string | null; verdicts_json: string | null }[];
   return scrub({
-    events: rows.map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, subject: r.subject, payload: (parse(r.payload_json) ?? {}) as Record<string, unknown> })),
-    proposals: proposals.map((p) => ({ proposal_id: p.proposal_id, kind: p.kind, status: p.status, created_by: p.created_by, created_at: p.created_at, terms: (parse(p.terms_json) ?? {}) as Record<string, unknown> })),
+    events: rows.map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, subject: r.subject, payload: airwallexIdsOut(r.event, (parse(r.payload_json) ?? {}) as Record<string, unknown>) })),
+    proposals: proposals.map((p) => ({ proposal_id: p.proposal_id, kind: p.kind, status: p.status, created_by: p.created_by, created_at: p.created_at, terms: termsOut((parse(p.terms_json) ?? {}) as Record<string, unknown>) })),
     disputes: disputes.map((d) => ({ dispute_id: d.dispute_id, customer: d.customer, created_at: d.created_at, claims: parse(d.claims_json), evidence: parse(d.evidence_json), verdicts: parse(d.verdicts_json) })),
   });
 }

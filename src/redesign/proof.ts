@@ -1,11 +1,11 @@
-// Proof (mega-prompt v4, C5 and D3): everything from agent run 1, compact. Who decides what (decisions by Claude next
+// Proof (mega-prompt v4, C5 and D3): everything from the played run (the main run, 3 Nov), compact. Who decides what (decisions by Claude next
 // to routine payments by code), the run's numbers, four partner cards (Metal, Airwallex, Visa TAP as text, Claude) with
 // their live proof folded, who stopped what, the Face ID decisions (one number, from the run's ledger), the earlier
 // licence attempt that paid nothing, the checks, and a folded, labelled Archive. Nothing typed in by hand.
 
 import { readFileSync } from "node:fs";
-import { SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
-import { agentRun, faceIdDecisions, family, runName, split, stops, tapRun, type AgentRun, type Ev, type Tile } from "./run.js";
+import { SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS } from "../config/brand.js";
+import { agentRun, faceIdDecisions, family, letThroughOf, ownTap, payments, separateRowHtml, runName, split, stoppedAtLimit, stops, tapLimitLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { esc, icon, page } from "./ui.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
@@ -20,6 +20,7 @@ const CSS = `.proofp { padding: 26px 0 24px; }
 .num:hover { border-color: var(--accent); }
 .num .v { font-size: clamp(30px, 3vw, 40px); font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .num .l { font-size: 15px; font-weight: 650; color: var(--muted); line-height: 1.3; }
+.num .note, .more p.note, .pcard p.note { font-size: 14px; font-weight: 500; color: var(--muted); line-height: 1.35; margin-top: 4px; }
 .num.claude .v { color: var(--claude); } .num.code .v { color: var(--metal); } .num.face .v { color: var(--accent); } .num.stop .v { color: var(--bad); }
 h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 36px 0 14px; }
 .partners { display: grid; gap: 12px; }
@@ -43,6 +44,7 @@ ul.pl { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; gap: 8px
 ul.pl li { font-size: 15.5px; line-height: 1.45; border-left: 3px solid var(--border); padding-left: 11px; overflow-wrap: anywhere; }
 ul.pl li.no { border-left-color: var(--bad); } ul.pl li.ok { border-left-color: var(--ok); } ul.pl li.face { border-left-color: var(--accent); }
 ul.pl small { display: block; color: var(--faint); font-size: 14px; }
+ul.pl code { font: 600 14.5px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
 abbr[title] { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 15px; }
 .claim { margin: 0; font-size: 15.5px; line-height: 1.5; border-left: 4px solid var(--accent); padding: 4px 0 4px 12px; }
@@ -73,11 +75,22 @@ export function plain(text: string): string {
 }
 const li = (text: string, tone = "", link?: { label: string; href: string | null } | null, sub?: string) =>
   `<li class="${tone}">${plain(text)}${link ? ` ${link.href ? `<a class="pf" href="${esc(link.href)}" target="_blank" rel="noopener">${esc(link.label)} ↗</a>` : `<small>${plain(link.label)}</small>`}` : ""}${sub ? `<small>${plain(sub)}</small>` : ""}</li>`;
+/**
+ * The purchase let through to Metal (main run), in one clean line: who refused what, at what price, over which cap,
+ * with the code as written; the run's Defense-in-depth label on its own line below it.
+ */
+export function letThroughLi(r: RunRecord, e: Extract<Ev, { k: "money" }>, prefix = "Refused by Metal: "): string {
+  const cap = letThroughOf(r)?.cap ?? "";
+  const link = e.proof.href ? ` <a class="pf" href="${esc(e.proof.href)}" target="_blank" rel="noopener">${esc(e.proof.label)} ↗</a>` : "";
+  return `<li class="no">${esc(`${prefix}${e.what} at ${e.amount}${cap ? `, over the ${cap} cap` : ""} `)}(<code>${esc(e.refused?.code ?? "mandate_cap_exceeded")}</code>); nothing moved.${link}<small>${esc(e.refused?.reason ?? "")}</small></li>`;
+}
 /** A failed licence attempt and what followed, from the run's ledger: "The first licence transfer (P-0005) was refused …". */
 export function earlierLine(e: Extract<Ev, { k: "money" }>): string {
   const id = /\((P-\d+)\)/.exec(e.what)?.[1] ?? "";
   return `The first licence transfer${id ? ` (${id})` : ""} was refused by the sandbox (${e.refused?.code ?? ""}; nothing paid); it is not a limit.${e.retried ? ` It was proposed again as ${e.retried.id}, approved with Face ID and ${e.retried.status || "paid"} at ${e.retried.at.slice(11, 16)} UTC.` : ""}`;
 }
+/** A separate labelled line below a figure, in its own words (codes kept as written). */
+const noteHtml = (note: string | undefined, tag = "p") => (note ? `<${tag} class="note">${esc(note)}</${tag}>` : "");
 export const fold = (summary: string, items: string[], open = false) => items.length ? `<details class="fold"${open ? " open" : ""}><summary>${esc(summary)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
 const fact = (v: string, l: string) => `<span class="fact"><b>${esc(v)}</b> ${esc(l)}</span>`;
 export const LOGO = {
@@ -91,13 +104,13 @@ export const LOGO = {
 export function partnerProof(run: AgentRun): Record<"metal" | "airwallex" | "visa" | "claude", string[]> {
   const s = run.record.snapshot;
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
-  const tap = tapRun();
+  const tap = tapRun(), own = ownTap(run.record);
   const mandates = run.events.filter((e): e is Extract<Ev, { k: "mandate" }> => e.k === "mandate");
   const tapDecline = tap?.steps.find((x) => !x.approved);
   return {
     metal: [
       ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`Refused · recorded on chain: ${e.amount} test USD to ${e.what}, ${e.refused!.code ?? ""}. Purser refused it before signing; Metal recorded the same refusal on chain`, "no", e.proof)),
-      ...money.filter((e) => e.refused?.by === "metal").map((e) => li(`Refused by Metal: ${e.what}, ${e.refused!.reason}; nothing moved`, "no", e.proof.href ? e.proof : null)),
+      ...money.filter((e) => e.refused?.by === "metal").map((e) => (e.letThrough ? letThroughLi(run.record, e) : li(`Refused by Metal: ${e.what}, ${e.refused!.reason}; nothing moved`, "no", e.proof.href ? e.proof : null))),
       ...mandates.map((m) => li(`New mandate on chain after two signatures: ${m.agent[0]!.toUpperCase()}${m.agent.slice(1)} agent, cap ${m.cap}, budget ${m.budget}`, "ok", m.proof)),
       ...s.rails.metal.filter((r) => !/^Refused|^Mandate replaced/.test(r.what)).map((r) => li(`${r.what}: ${r.detail}`, "", r.proof)),
     ],
@@ -106,16 +119,20 @@ export function partnerProof(run: AgentRun): Record<"metal" | "airwallex" | "vis
       ...(tapDecline ? [li(`The limit, enforced by Airwallex (${tap!.label}): EUR ${tapDecline.amount} declined, ${tapDecline.reason ?? ""}`, "no", { label: `Airwallex ${tapDecline.txId.slice(0, 8)}… · read back with GET: ${tapDecline.getStatus}`, href: null })] : []),
       ...money.filter((e) => e.rail === "airwallex" && e.refused?.by === "airwallex-sandbox").map((e) => li(`${earlierLine(e)}`, "no", null)),
     ],
-    visa: tap ? tap.steps.map((x) => li(
-      `${x.model ? `The Sourcing agent (${family(x.model)}) picked the card rail` : "Code tried one purchase over the card's limit"}: Visa's reference proxy answered ${x.proxyStatus}, our layer verified both signatures (${x.sig1}, ${x.sig2}); the Airwallex card (brand as Airwallex returns it: ${x.brand}) was ${x.approved ? "approved" : `declined by Airwallex (${x.reason})`}, EUR ${x.amount}`,
-      x.approved ? "ok" : "no", { label: `Airwallex ${x.txId.slice(0, 8)}… · read back with GET: ${x.getStatus}`, href: null })) : [],
+    visa: [
+      // The played run's own TAP-signed buy (main run), then the separate TAP run of 2 November, labelled as that run.
+      ...(own ? [li(`In this run: the Sourcing agent (${family(own.model)}) bought the ${own.plan} plan at ${own.merchant}, EUR ${own.amount}; our layer verified both TAP signatures (${own.sig1}, ${own.sig2}); the agent's Airwallex card ····${own.last4} was approved by Airwallex`, "ok", { label: `Airwallex ${own.txId.slice(0, 8)}…`, href: null })] : []),
+      ...(tap ? tap.steps.map((x) => li(
+        `${tap.label}: ${x.model ? `the Sourcing agent (${family(x.model)}) picked the card rail` : "code tried one purchase over the card's limit"}: Visa's reference proxy answered ${x.proxyStatus}, our layer verified both signatures (${x.sig1}, ${x.sig2}); the Airwallex card (brand as Airwallex returns it: ${x.brand}) was ${x.approved ? "approved" : `declined by Airwallex (${x.reason})`}, EUR ${x.amount}`,
+        x.approved ? "ok" : "no", { label: `Airwallex ${x.txId.slice(0, 8)}… · read back with GET: ${x.getStatus}`, href: null })) : []),
+    ],
     claude: s.agent_stats.map((a) => li(`${a.agent[0]!.toUpperCase()}${a.agent.slice(1)} agent on ${family(a.models[0])}: ${a.by_claude} of ${a.decisions} decisions by Claude, ${a.fallback} fallback, ${a.claude_calls} calls, USD ${(a.cost_usd_micros / 1e6).toFixed(4)}`, "ok")),
   };
 }
 
 /** The four partner cards: logo, one line, two or three numbers, the live proof folded, a link to the partner's page. */
 function partnerCards(run: AgentRun): string {
-  const s = run.record.snapshot, p = partnerProof(run), st = stops(run.record), tap = tapRun(), sp = split(run.record);
+  const s = run.record.snapshot, p = partnerProof(run), st = stops(run.record), tap = tapRun(), own = ownTap(run.record), sp = split(run.record), pay = payments(run.record);
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
   const onChain = money.filter((e) => e.rail === "metal" && !e.refused).reduce((n, e) => n + e.count, 0);
   const mandates = run.events.filter((e) => e.k === "mandate").length;
@@ -123,9 +140,9 @@ function partnerCards(run: AgentRun): string {
   const card = (id: string, logo: string, name: string, what: string, facts: string, items: string[], extra = "") =>
     `<article class="pcard card" id="${id}"><div class="ph">${logo}<h3>${esc(name)}</h3><a class="open" href="${id}">More ${icon("arrow-right", 14)}</a></div><p class="what">${esc(what)}</p><div class="facts">${facts}</div>${extra}${fold("Show the live proof", items)}</article>`;
   return `<div class="partners">
-${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the cap") + (st.revoked ? fact(String(st.revoked), "refused by Metal: mandate just replaced") : "") + fact(String(mandates), "mandates replaced"), p.metal)}
-${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + fact(String(st.airwallex), "card decline at the limit (TAP run)"), p.airwallex)}
-${tap ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit"), p.visa, `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`) : ""}
+${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the cap") + (st.revoked ? fact(String(st.revoked), "refused by Metal: mandate just replaced") : "") + fact(String(mandates), "mandates replaced"), p.metal, pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : "")}
+${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + fact(String(st.tapDeclines), "card decline at the limit (TAP run)"), p.airwallex)}
+${tap || own ? card("visa", LOGO.visa, "Visa Trusted Agent Protocol", "The agent signs its card checkout at a TAP merchant before its Airwallex card pays.", (own ? fact("1", "signed checkout in this run") : "") + (tap ? fact(String(tap.steps.length), "signed checkouts (TAP run)") + fact(tap.commit, "reference commit") : ""), p.visa, `<p class="note">${esc(VISA_AWARD_STATUS)} <a class="pf" href="visa">What TAP is, in one paragraph</a></p>`) : ""}
 ${card("claude", LOGO.claude, "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls, each with a request id"), p.claude)}
 </div>`;
 }
@@ -134,18 +151,15 @@ function moreCards(run: AgentRun): string {
   const r = run.record, s = r.snapshot;
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
   const faces = run.events.filter((e): e is Extract<Ev, { k: "face" }> => e.k === "face");
-  const tap = tapRun();
   const st = stops(r);
   const stopItems = [
     ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`By Metal: ${e.amount} test USD over the mandate's cap; Purser refused it before signing and Metal recorded the same refusal on chain`, "no", e.proof)),
-    ...money.filter((e) => e.refused?.by === "metal" && e.refused.code !== "mandate_revoked").map((e) => li(`By Metal: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", e.proof.href ? e.proof : null)),
+    ...money.filter((e) => e.refused?.by === "metal" && e.refused.code !== "mandate_revoked").map((e) => (e.letThrough ? letThroughLi(r, e, "By Metal: ") : li(`By Metal: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", e.proof.href ? e.proof : null))),
     ...faces.filter((f) => f.status === "REJECTED").map((f) => li(`By the CFO with Face ID: ${f.id} · ${f.title} rejected`, "no")),
-    ...(tap?.steps.filter((x) => !x.approved).map((x) => li(`By Airwallex, ${tap.label}: EUR ${x.amount} over the card's limit (${x.reason ?? ""})`, "no")) ?? []),
   ];
   // One Face ID number from one source (faceIdDecisions): the proposals the CFO decided with his passkey, from the run's ledger.
   const faceItems = faces.map((f) => li(`${f.id} · ${f.title}: ${f.status === "COSIGNED" ? `1 of 2 signatures, by ${f.signers[0]}` : `${f.status === "REJECTED" ? "rejected" : "approved"} by ${f.signers.join(" and ")}${f.signers.length > 1 ? ` (${f.signers.length} of ${f.signers.length} signatures)` : ""}`}`, "face", null, f.signers.length > 1 ? SECOND_APPROVER : undefined));
   const earlier = money.filter((e) => e.earlier);
-  const v = readJson<{ ran_at: string; summary: { runs: number; by_claude: number; distinct_choices_same_world: number } }>("docs/evals/autonomy-variation.json");
   const rt = readJson<{ ran_at: string; summary: { runs: number; held: number } }>("docs/evals/autonomy-redteam.json");
   const red = readJson<{ ran_at: string; attempts: number; blocked: number; caught_after?: number }>("docs/redteam/report.json");
   const t = s.traces.find((x) => x.agent === "support" && x.task.startsWith("dispute"));
@@ -159,11 +173,10 @@ function moreCards(run: AgentRun): string {
     `<li><a class="pf" href="film">The film</a></li>`, `<li><a class="pf" href="month">A month in 90 seconds (simulated)</a></li>`, `<li><a class="pf" href="lab">The Scenario Lab</a></li>`,
   ];
   return `<div class="more">
-${box("stops", "ban", "stopped at a limit", String(st.metal + st.airwallex + st.cfo), `${st.metal} Metal · ${st.cfo} CFO · ${st.airwallex} Airwallex (TAP run).${st.revoked ? ` ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}`, fold("Show each one", [...stopItems, ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`Not counted, not a limit: ${e.what}, refused by Metal because its mandate had just been replaced`, "", e.proof.href ? e.proof : null))]))}
+${box("stops", "ban", "stopped at a limit", String(stoppedAtLimit(st)), `${st.metal} Metal · ${st.cfo} CFO${st.airwallex ? ` · ${st.airwallex} Airwallex` : ""}, in this run.${st.revoked ? ` ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}`, separateRowHtml(tapLimitLine()) /* the separate TAP run's decline: its own labelled row, not counted */ + fold("Show each one", [...stopItems, ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`Not counted, not a limit: ${e.what}, refused by Metal because its mandate had just been replaced`, "", e.proof.href ? e.proof : null))]))}
 ${box("faceid", "scan-face", "Face ID decisions", String(faceIdDecisions(r)), `Proposals the CFO decided on his phone${faces.some((f) => f.status === "COSIGNED") ? "; the mandate change needed a second signature too" : ""}. ${SECOND_APPROVER}`, fold(`Show the ${faces.length} signatures: ${faceIdDecisions(r)} decisions + ${faces.length - faceIdDecisions(r)} co-signature${faces.length - faceIdDecisions(r) === 1 ? "" : "s"}`, faceItems))}
 ${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), "The sandbox could not price the fee: nothing paid, not a limit.", fold("Show what followed", earlier.map((e) => li(earlierLine(e), "no", { label: e.proof.label, href: null })))) : ""}
-${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=3"])}
-${box("variation", "sparkles", "variation runs by Claude", `${v.summary.by_claude}/${v.summary.runs}`, `${v.summary.distinct_choices_same_world} different choices in the same world (simulated rails, real Claude Haiku, ${d(v.ran_at)}). Safety count under review: one action in the 2 November batch is being checked.`, "")}
+${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=2"])}
 ${box("redteam", "shield-check", "attacks failed", `${red.blocked}/${red.attempts}`, `${d(red.ran_at)}, test world${red.caught_after ? `; ${red.caught_after} found afterwards, not prevented` : ""}. Against the agent loop: ${rt.summary.held} of ${rt.summary.runs} held (${d(rt.ran_at)}).`, "")}
 ${box("health", "database", "audit rows", String(s.audit.rows), `Hash chain ${s.audit.intact ? "intact" : "broken"} (${runName(r)}).`, "", ["Open the CFO dashboard", "./?autonomy"])}
 ${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they were.", fold("Show the archive", archive))}
@@ -171,25 +184,25 @@ ${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they w
 }
 
 export function proofPage(run: AgentRun = agentRun()): string {
-  const r = run.record, sp = split(r), st = stops(r);
+  const r = run.record, sp = split(r), st = stops(r), pay = payments(r);
   const nums: (Tile & { cls: string })[] = [
     { cls: "claude", value: String(sp.byClaude), label: `decisions by Claude (${sp.fallbacks} fallbacks)`, explain: "", href: "#claude" },
-    { cls: "code", value: String(sp.routine), label: "routine payments by code", explain: "", href: "#metal" },
+    { cls: "code", value: String(sp.routine), label: "routine payments by code", explain: "", href: "#metal", ...(pay.sums ? { note: `The ${pay.sales} sales and ${pay.purchases} supplier purchases of: ${pay.line}` } : {}) },
     { cls: "face", value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: "", href: "#faceid" },
-    { cls: "stop", value: String(st.metal + st.airwallex + st.cfo), label: "stopped at a limit", explain: "", href: "#stops" },
+    { cls: "stop", value: String(stoppedAtLimit(st)), label: "stopped at a limit", explain: "", href: "#stops", ...(tapLimitLine() ? { separate: tapLimitLine() } : {}) },
     { cls: "", value: `$${run.derived.perDecision}`, label: "Claude cost per decision", explain: "", href: "#claude" },
   ];
   const body = `<main class="proofp"><div class="wrap">
   <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
   <p class="split">${esc(SPLIT_LINE)}</p>
-  <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span></a>`).join("")}</div>
+  <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>${nums.map((n) => separateRowHtml(n.separate)).join("")}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
   <h2 class="sec">Checks</h2>
   ${moreCards(run)}
 </div></main>`;
   return page({
-    title: "Proof", description: "Every proof of agent run 1 in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS, body, js: JS, stage: false,
+    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS, body, js: JS, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

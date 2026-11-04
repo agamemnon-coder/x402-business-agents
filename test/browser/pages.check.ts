@@ -1,4 +1,4 @@
-// The guest pages as a juror opens them, with no key: / (to /home), /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirects), /month (start and end), at phone
+// The guest pages as a juror opens them, with no key: / (Home itself), /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirects), /month (start and end), at phone
 // (390 px) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
@@ -73,11 +73,14 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
     page.on("requestfailed", (r) => fail(`${tag} ${page.url()}: request failed: ${r.url()}`));
 
-    // A guest who opens "/" is sent to Home (the four tabs are checked in test/browser/redesign.check.ts).
+    // A guest who opens "/" gets Home itself, with no redirect, so a reader without script sees Home too (the four tabs
+    // are checked in test/browser/redesign.check.ts; the CFO's link on "/" in test/browser/root.check.ts).
+    const raw = await (await fetch(`${base}/`)).text();
+    if (!raw.includes('<h1 class="h-hero">') || raw.includes('id="recorded-data"')) fail(`/ ${tag}: the HTML served at / is not Home`);
     await page.goto(`${base}/`, { waitUntil: "load" });
-    await page.waitForURL(/\/home$/).catch(() => fail(`/ ${tag}: a guest is not sent to /home`));
     await page.waitForTimeout(1500);
-    await look(page, `/home ${tag}`, w);
+    if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
+    await look(page, `/ (Home) ${tag}`, w);
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
@@ -171,7 +174,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.waitForTimeout(800);
     await look(page, `/?autonomy ${tag}`, w);
     const au = await page.evaluate(() => document.body.innerText);
-    if (!/Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(au)) fail(`/?autonomy ${tag}: not labelled as agent run 1`);
+    if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(au)) fail(`/?autonomy ${tag}: not labelled as the main run`);
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
     if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
     if (!(await page.isVisible("#mf"))) fail(`/?autonomy ${tag}: no money flow`);
@@ -231,14 +234,14 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       const pt = await page.evaluate(() => document.body.innerText);
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
       if (words > 175) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget 150 plus the frame`);
-      if (!(path === "/visa" ? /TAP run · \d+ \w+ · test money/ : /Replay of agent run 1( and its follow-up)?, \d+ \w+ \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
       if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
       await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
-      if (path === "/visa" && (!/Their signatures are accepted by Visa's public TAP reference verifier \(pinned commit 16d59bd\)/.test(open) || !/simulated authorisations/.test(open) || !/Entered for the Visa Award/.test(open) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
+      if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Entered for the Visa Award/.test(open) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);

@@ -70,7 +70,7 @@ What to do when a control fires: [runbook.md](runbook.md). Claims and their sour
 
 ## Not covered (known)
 
-- **No pager is connected to `/health`.**
+- **No pager is connected to `/health/live`** (the relay's alarm; its public `/health` is calm between live runs).
 - **The emergency stop has not been pulled live end to end.**
 - **The BLS signature in finality certificates is not verified:** Metal has not published testnet's validator keys.
 - **The compliance key is fixed per contract:** rotating it means a new contract.

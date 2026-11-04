@@ -1,7 +1,7 @@
 # Purser uitgelegd, voor Max
 
 Kort en simpel. Lees dit voor Demo Day en voor elk gesprek met de jury. Alle cijfers komen uit de opgenomen
-run (vrijdag-run 1, 30 oktober) of uit een losse live test; waar het staat, zie [claims.md](claims.md).
+run (vrijdag-run 1, 30 oktober) of uit een losse live test; waar het staat, zie [claims.md](../claims.md).
 
 ## 1. Purser in 30 seconden
 
@@ -114,19 +114,19 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 36. **Hoe verdien je geld?** Een maandbedrag per bedrijf en per actieve agent. Geen percentage van betalingen.
 37. **Waarom nu?** Mastercard Agent Pay (april 2025), Visa Intelligent Commerce en Google AP2 (september 2025): agents gaan betalen. McKinsey schat $3–5 biljoen agent-handel in 2030.
 38. **Wie zijn je eerste klanten?** Kleine bedrijven die over grenzen handelen, op Airwallex zitten en AI-agents gebruiken.
-39. **Wat is nodig voor productie?** Sleutels in een KMS, Postgres met herstel, een pager op `/health`, en meer bedrijven per installatie. Daarna Metal mainnet.
+39. **Wat is nodig voor productie?** Sleutels in een KMS, Postgres met herstel, een pager op `/health/live`, en meer bedrijven per installatie. Daarna Metal mainnet.
 40. **Wat is het moeilijkste geweest?** Dat elke claim klopt. Elke betaling heeft een bewijs, en alles wat gesimuleerd is staat erbij.
 
 ### De Claude-agents (41–50)
 
 41. **Wat als Claude zich vergist?** Dan houdt code of de rail het tegen. Echt voorbeeld: een agent liet zich door een
     klant-mail verleiden om ook orders buiten het geschil mee te nemen; code weigerde dat, er ging niets weg
-    ([agent-was-wrong.md](agent-was-wrong.md)). De agent kan geen ontvanger kiezen en niet boven zijn mandaat betalen.
+    ([agent-was-wrong.md](../agent-was-wrong.md)). De agent kan geen ontvanger kiezen en niet boven zijn mandaat betalen.
 42. **Waarom niet volledig autonoom?** Binnen de limieten wél: de agents betalen en beslissen zelf. Een groter budget, een
     grote factuur of een nieuw rekeningnummer kan geld kwijtraken dat niet terugkomt; daar wil een CFO zelf ja zeggen.
 43. **Wat kost een beslissing?** Gemeten in vier dry runs: Sourcing $0,0007, Treasury ongeveer $0,026, Support ongeveer
     $0,046 per beslissing. Per vraag van een klant samen ongeveer een halve cent; de marge blijft 1,9 cent per vraag
-    ([unit-economics.md](unit-economics.md)).
+    ([unit-economics.md](../unit-economics.md)).
 44. **Kan een klant-agent liegen?** Ja, en daar is het op gebouwd. Wat de klant schrijft is alleen data; code controleert
     elke order zelf (getekend, binnen het mandaat, betaald) en refundt alleen als code's eigen data-check fout vindt.
 45. **Waarom Metal en niet alleen kaarten?** Een kaart kan geen betaling van 5 cent per vraag doen, en de limiet zit bij

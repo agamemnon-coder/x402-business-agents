@@ -9,6 +9,8 @@ import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/te
 import { fourEyes } from "./fourEyes.js";
 import { policyVersion } from "./versions.js";
 import { currentOrigin } from "../provenance/origin.js";
+import { hubGateRefusal } from "../hub/gate.js";
+import { hubDecisionsEnabled } from "../hub/config.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -216,6 +218,18 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     return (p.status === "APPROVED" || p.status === "FAILED") && Date.parse(p.expires_at) <= now.getTime() ? (expireIfDue(db, p, now), p.expires_at) : null;
   }).immediate();
   if (expired) throw new Error(`${proposalId} expired at ${expired}; approval void`);
+  // The hub gate (src/hub/gate.ts), an extra gate on top of every check below, never instead of one; off unless
+  // HUB_DECISIONS_ENABLED. Its refusal is committed on its own, so the record survives the error thrown here. A
+  // restart's resume is not a new execution: it was gated when it began.
+  const hubRefused = hubDecisionsEnabled() && db.transaction(() => {
+    const p = get(db, proposalId);
+    if (p.status === "EXECUTING" && resuming.has(proposalId)) return null;
+    if (p.status !== "APPROVED" && p.status !== "FAILED") return null;
+    const why = hubGateRefusal(db, p, now);
+    if (why) audit(db, "system", "hub.gate_refused", proposalId, { reason: why, terms_sha256: p.terms_sha256 }, now);
+    return why;
+  }).immediate();
+  if (hubRefused) throw new Error(hubRefused);
   return db.transaction((): T => {
     const p = get(db, proposalId);
     // A restart resumes an action a crash left EXECUTING: same hash checks and preconditions, no new transition.
@@ -227,6 +241,11 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     const recomputed = termsHash(terms);
     if (!approval || approval.decision !== "APPROVED") throw new Error(`${proposalId} has no approval`);
     if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) throw new Error(`${proposalId}: terms do not match the approved hash`);
+    if (!resume) {
+      // Again inside the write lock, so nothing can change between the gate and the transition.
+      const why = hubGateRefusal(db, p, now);
+      if (why) throw new Error(why);
+    }
     preconditions(terms);
     if (resume) return terms;
     transition(db, proposalId, p.status, "EXECUTING");

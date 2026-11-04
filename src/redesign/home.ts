@@ -3,8 +3,8 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { CORE_SENTENCE, KIT_LINE, VISA_AWARD_ON, VISA_AWARD_STATUS } from "../config/brand.js";
-import { agentRun, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
+import { CORE_SENTENCE, HERO, KIT_LINE, VISA_AWARD_ON, VISA_AWARD_STATUS } from "../config/brand.js";
+import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
 const CSS = `.hero { padding: 24px 0 44px; }
@@ -139,7 +139,7 @@ function mini(m: Mini | null): string {
     return `<div class="mini m-price" aria-hidden="true"><div class="plot">
 <div class="cap" data-vars="--c0:${pct(m.cap)};--c1:${pct(m.newCap ?? m.cap)}"><span data-a="cap ${esc(m.cap)}" data-b="cap ${esc(m.newCap ?? m.cap)}"></span></div>
 <div class="bar" data-vars="--h0:${pct(m.old ?? m.cap)};--h1:${pct(m.price)}"><b>${esc(m.price)}</b><em>${esc(m.from)}</em></div></div>
-<div class="tags">${m.tx ? `<span class="tag t1">${icon("ban", 14)} Refused · recorded on chain</span>` : ""}
+<div class="tags">${m.tx ? `<span class="tag t1">${icon("ban", 14)} ${m.byMetal ? "Metal refused it · on chain" : "Refused · recorded on chain"}</span>` : ""}
 ${m.signers > 1 ? `<span class="tag t2">${icon("scan-face", 14)} ${m.signers} of ${m.signers} signatures</span>` : ""}
 ${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.price)}</span>` : ""}</div></div>`;
   }
@@ -151,9 +151,27 @@ ${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.p
 
 const sceneCard = (s: Scene) => `<a class="scene card" href="watch?scene=${s.n}"><div class="n"><b>${s.n}</b>${esc(s.title)}</div>${mini(s.mini)}<p>${esc(s.sentence)}</p><span class="go">Watch it happen ${icon("arrow-right", 15)}</span></a>`;
 
-export const tileHtml = (t: Tile) => `<a class="tile card" href="${esc(t.href)}" title="${esc(t.tip ?? t.explain)}"><span class="v">${esc(t.value)}</span><span class="l">${esc(t.label)}</span>${t.parts ? `<span class="parts">${t.parts.map((p) => `<b>${esc(p.value)}</b>&nbsp;${esc(p.label)}`).join(" · ")}</span>` : ""}<p class="x">${esc(t.explain)}</p><span class="go">Open proof ${icon("arrow-right", 14)}</span></a>`;
+export const tileHtml = (t: Tile) => `<a class="tile card" href="${esc(t.href)}" title="${esc(t.tip ?? t.explain)}"><span class="v">${esc(t.value)}</span><span class="l">${esc(t.label)}</span>${t.parts ? `<span class="parts">${t.parts.map((p) => `<b>${esc(p.value)}</b>&nbsp;${esc(p.label)}`).join(" · ")}</span>` : ""}${t.note ? `<span class="note">${esc(t.note)}</span>` : ""}<p class="x">${esc(t.explain)}</p><span class="go">Open proof ${icon("arrow-right", 14)}</span></a>`;
 
-const JS = `
+/**
+ * Home is served at "/" too (worker/src/core.ts). The CFO's viewer link opens "/" with its key after the "#" (never sent
+ * to a server), and a device that opened it keeps the key (kit11.view, as src/dashboard/page.html stores it): either
+ * goes on to the dashboard, "#" and all, by the same patterns the dashboard reads. The key leaves this page's address at
+ * once, as it does on the dashboard. A guest stays on Home, and the Home tab (/home) is always Home.
+ */
+export const CFO_FORWARD_JS = `
+(function () {
+  try {
+    if (location.pathname.slice(-1) !== "/") return;
+    var h = location.hash, kept = "";
+    try { kept = localStorage.getItem("kit11.view") || ""; } catch (e) {}
+    if (!kept && !/(?:^#|&)(?:view=[0-9a-f]{32}|runner=[A-Za-z0-9_-]{80,200})(?:&|$)/.test(h)) return;
+    if (h) try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    location.replace("./?dashboard" + h);
+  } catch (e) {}
+})();`;
+
+const JS = `${CFO_FORWARD_JS}
 (function () {
   var run = JSON.parse(document.getElementById("run-data").textContent);
   document.querySelectorAll("[data-vars]").forEach(function (el) { el.getAttribute("data-vars").split(";").forEach(function (p) { var kv = p.split(":"); if (kv[1] !== undefined) el.style.setProperty(kv[0], kv[1]); }); });
@@ -179,19 +197,20 @@ const JS = `
   setTimeout(next, 2600);
 })();`;
 
-export function homePage(run: AgentRun = agentRun()): string {
+/** opts.trySign: the bundle also carries /try/sign (TRY_SIGN_ENABLED), so the landing links to it; never otherwise. */
+export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean } = {}): string {
   const moments = heroMoments(run);
   const s1 = run.scenes.find((s) => s.n === 1);
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="copy">
     <div class="badges">${KIT_LINE.split(/ · (?=entered for)/).map((x, i) => `<span class="pill kit${i ? " award" : ""}">${esc(x)}</span>`).join("")}</div>
-    <h1 class="h-hero">AI agents that run a business. Limits they can't break.</h1>
+    <h1 class="h-hero">${esc(HERO)}</h1>
     <p class="lead">${esc(CORE_SENTENCE)}</p>
   </div>
   <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div></div>
   <div class="act">
-    <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the agents</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div>
+    <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the agents</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a>${opts.trySign ? `<a class="btn" href="try/sign">${icon("scan-face", 18)}Sign with your own Face ID</a>` : ""}<a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div>
     <div class="built">Built on <span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${VISA_AWARD_ON ? '<span class="logo txt">Visa TAP</span>' : ""}</div>
   </div>
 </div></section>
@@ -202,7 +221,7 @@ export function homePage(run: AgentRun = agentRun()): string {
 </div></section>
 <section class="band" aria-labelledby="h-proof"><div class="wrap">
   <div class="sechead"><h2 class="h-sec" id="h-proof">Proof, from ${esc(run.name)}</h2><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
-  <div class="tiles">${run.tiles.map(tileHtml).join("")}</div>
+  <div class="tiles">${run.tiles.map(tileHtml).join("")}</div>${run.tiles.map((t) => separateRowHtml(t.separate)).join("")}
   <div class="partners">
     <a class="partner card" href="proof#metal"><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>Mandates and refusals on chain</a>
     <a class="partner card" href="proof#airwallex"><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>Cards, FX and SWIFT</a>
@@ -213,7 +232,7 @@ export function homePage(run: AgentRun = agentRun()): string {
 </div></section>
 </main>`;
   return page({
-    title: "Purser", description: "AI agents that run a business, with limits they can't break. Claude agents decide; Metal and Airwallex enforce every limit; the CFO approves the rest.", tab: "home", css: CSS, body, js: JS,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS, body, js: JS,
     data: { agents: run.agents, events: run.events, moments },
     source: `Source: ${run.file} (${run.name}).`,
   });

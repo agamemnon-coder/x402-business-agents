@@ -168,6 +168,9 @@ a.verdict:hover { text-decoration: underline; }
 .tile .x { color: var(--muted); font-size: 15px; line-height: 1.45; margin: 4px 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .tile .parts { display: block; font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 2px; line-height: 1.4; }
 .tile .parts b { color: var(--text); }
+.septest { margin: 10px 0 0; font-size: 14.5px; line-height: 1.4; color: var(--muted); border-left: 3px solid var(--border); padding: 2px 0 2px 10px; }
+.septest b { color: var(--text); font-weight: 650; }
+.tile .note { display: block; font-size: 14px; font-weight: 500; color: var(--muted); margin-top: 4px; line-height: 1.35; }
 .tile .go { margin-top: auto; padding-top: 10px; font-size: 15px; font-weight: 650; color: var(--accent); display: inline-flex; align-items: center; gap: 4px; }
 footer.foot { padding: 40px 0 56px; color: var(--faint); font-size: 14.5px; }
 footer.foot .wrap { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
@@ -252,7 +255,7 @@ function Stage(root, run) {
     var r = ev.refused;
     if (!r) return "✓ " + result(ev);
     if (r.by === "recorded") return "✕ Refused · recorded on chain" + (ev.proof && ev.proof.href ? " ↗" : "");
-    if (r.by === "metal") return "✕ Refused by Metal";
+    if (r.by === "metal") return "✕ Refused by Metal" + (ev.proof && ev.proof.href ? " · on chain ↗" : "");
     if (r.by === "airwallex-sandbox") return ev.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced";
     if (r.by === "airwallex") return "✕ Declined by Airwallex";
     return "✕ Refused before signing";

@@ -1,15 +1,19 @@
 // The public pages (Home, Watch, Proof, the partner pages and the CFO dashboard's replay) play one recorded agent run:
-// agent run 1 (rehearsal), 2 November, recorded with `npm run autonomy-record` into docs/demo/agent-run.json. Without
-// that file the newest autonomous dry run (docs/demo/autonomy.json) is shown instead, under its own name. Nothing is
+// the main run, 3 November (docs/runs/2026-11-03-main-run.md), recorded with `npm run autonomy-record` into
+// docs/demo/main-run.json. Agent run 1 (2 November, docs/demo/agent-run.json) stays in the repo for the honest notes
+// that cite it. Without the main run's file the newest autonomous dry run (docs/demo/autonomy.json) is shown instead,
+// under its own name. Nothing is
 // typed in by hand: the events, the agents' words and models, the money, the signatures and every proof id come from
 // the record (test/redesign-numbers.test.ts fails on a number the record lacks).
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { AGENT_DISPLAY } from "../config/brand.js";
+import { AGENT_DISPLAY, DEFENSE_IN_DEPTH } from "../config/brand.js";
 import type { RunLedger } from "../demo/runLedger.js";
 
-/** Agent run 1's record (the same form `npm run autonomy-record` writes). */
-export const AGENT_RUN_FILE = "docs/demo/agent-run.json";
+/** The main run's record (3 Nov; the same form `npm run autonomy-record` writes): the run the pages play. */
+export const AGENT_RUN_FILE = "docs/demo/main-run.json";
+/** Agent run 1's record (2 Nov): kept for the earlier honest notes that cite it, not played. */
+export const AGENT_RUN_1_FILE = "docs/demo/agent-run.json";
 /** Shown only when the agent run's record is absent: the newest autonomous dry run. */
 export const STAND_IN_FILE = "docs/demo/autonomy.json";
 
@@ -49,19 +53,19 @@ export type Ev =
   | { k: "world"; at: string; text: string }
   | { k: "say"; at: string; agent: AgentId; model: string | null; by: "claude" | "fallback"; text: string; tools: string[]; call?: Call | null }
   | { k: "msg"; at: string; agent: AgentId; text: string }
-  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string; /** Who decided it: code, or the agent's Claude model (the flow's own "decided"). */ by?: string; /** A failed attempt before the one that paid: nothing paid. */ earlier?: boolean; /** The proposal that paid it later. */ retried?: { id: string; at: string; status: string } }
+  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string; /** Who decided it: code, or the agent's Claude model (the flow's own "decided"). */ by?: string; /** A failed attempt before the one that paid: nothing paid. */ earlier?: boolean; /** The proposal that paid it later. */ retried?: { id: string; at: string; status: string }; /** The main run: the one purchase let through to Metal, which Metal refused itself. */ letThrough?: boolean }
   | { k: "face"; at: string; id: string; title: string; status: string; signers: string[]; /** STOPPED: why code did not run it. */ reason?: string }
   | { k: "mandate"; at: string; agent: AgentId; cap: string; budget: string; proposal: string; proof: Proof }
   | { k: "routine"; at: string; count: number; agents: AgentId[]; text: string }
   | { k: "shield"; at: string; text: string };
 
 export type Mini =
-  | { kind: "price"; from: string; old: string | null; price: string; cap: string; newCap: string | null; tx: Proof | null; signers: number }
+  | { kind: "price"; from: string; old: string | null; price: string; cap: string; newCap: string | null; tx: Proof | null; signers: number; /** Metal refused it itself (the purchase let through, main run). */ byMetal?: boolean }
   | { kind: "orders"; orders: string[]; refunded: string[] }
   | { kind: "flow"; rows: { icon: string; text: string; tone: "ok" | "bad" | "face" }[] };
 export interface Step { icon: string; text: string; tone: "ok" | "bad" | "face" | "info"; proof?: Proof }
 export interface Scene { n: 1 | 2 | 3; title: string; start: number; steps: Step[]; sentence: string; mini: Mini | null }
-export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string }
+export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string; /** A separate labelled line directly below the figure. */ note?: string; /** A result from another run: shown in its own labelled row below the tiles, never inside the card. */ separate?: string }
 export interface AgentCard { id: AgentId; name: string; short: string; model: string; family: string }
 
 export interface AgentRun {
@@ -80,7 +84,7 @@ const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", 
 export const money = (amount: string, unit: string) => unit === "EUR" ? `EUR ${amount}` : unit === "USD" ? `USD ${amount}` : `${amount} test USD`;
 const SHORT_EUR = (a: string) => `€${a.replace(/\.00$/, "")}`;
 
-/** The record the pages play: agent run 1's when it is in the repo, else the newest dry run. */
+/** The record the pages play: the main run's when it is in the repo, else the newest dry run. */
 export function loadRecord(): { file: string; standIn: boolean; record: RunRecord } {
   const own = existsSync(new URL(`../../${AGENT_RUN_FILE}`, import.meta.url));
   const file = own ? AGENT_RUN_FILE : STAND_IN_FILE;
@@ -89,7 +93,7 @@ export function loadRecord(): { file: string; standIn: boolean; record: RunRecor
   return { file, standIn: !own, record };
 }
 
-/** Facts about agent run 1 its ledger does not hold (who started the licence payment), each with its source. */
+/** Facts about a played run its ledger does not hold, each with its source (agent run 1: who started the licence payment). */
 export const AGENT_RUN_NOTES = "docs/demo/agent-run-notes.json";
 interface RunNotes { flows: { transfer_id: string; decided: string; source: string }[] }
 function applyNotes(r: RunRecord, n: RunNotes): void {
@@ -167,7 +171,9 @@ function events(r: RunRecord): Ev[] {
   };
   for (const c of s.agent_chat) {
     if (c.kind === "world") {
-      const text = c.text.trim().replace(/^([^:]+): \1: /, "$1: ").replace(/^Money in:\s*/, "");
+      // A world notice is our simulation's text, not an agent's words; "warehouse software" is shown as "warehouse app"
+      // (a phrase kept off the public pages, test/site-v4.test.ts).
+      const text = c.text.trim().replace(/^([^:]+): \1: /, "$1: ").replace(/^Money in:\s*/, "").replace(/warehouse software/gi, "warehouse app");
       // Raw event names, and purchases refused before signing, are told by their own rows (a money movement, a refusal).
       if (!text || /^[a-z_]+\.[a-z_.]+$/.test(text) || /^A purchase from \S+ was refused before signing/.test(text)) continue;
       out.push({ k: "world", at: c.ts, text });
@@ -196,9 +202,29 @@ function events(r: RunRecord): Ev[] {
         proof = { label: onChain.proof.label, href: onChain.proof.href };
       }
     }
+    // The main run: one purchase let through past Purser's pre-check; Metal's facilitator refused it itself (a 402, no
+    // tx), and the same refusal was then put on chain. One attempt, one step, with the run's own label.
+    let amount = f.amount, letThrough = false;
+    if (f.refused?.by === "metal" && !f.proof.href && !/mandate_revoked/.test(f.refused.reason)) {
+      const onChain = flows.find((g) => g !== f && g.refused?.by === "metal" && g.proof.href && g.agent === f.agent && Date.parse(g.at) >= Date.parse(f.at) && Date.parse(g.at) - Date.parse(f.at) < 15_000);
+      const lt = letThroughOf(r);
+      if (onChain && lt) {
+        merged.add(onChain);
+        letThrough = true;
+        amount = onChain.amount;
+        refused = { by: "metal", reason: lt.label, code: refused?.code };
+        proof = { label: onChain.proof.label, href: onChain.proof.href };
+      }
+    }
     if (refused && refused.by === "metal" && /mandate_revoked/.test(f.refused!.reason)) refused = { by: "metal", reason: "the old mandate was revoked by its replacement", code: "mandate_revoked" };
-    out.push({ k: "money", at: f.at, agent: isAgent(f.agent) ? f.agent : null, rail, via, dir: ["sale", "deposit", "booked"].includes(f.kind) ? "in" : "out", what: f.what, amount: f.amount, unit: f.unit, count, label: coinLabel({ ...f, count, via }), refused, proof, by: f.decided });
+    const tap = f.rail === "airwallex_card" ? ownTap(r) : null;
+    out.push({ k: "money", at: f.at, agent: isAgent(f.agent) ? f.agent : null, rail, via: tap ? "card · Visa TAP" : via, dir: ["sale", "deposit", "booked"].includes(f.kind) ? "in" : "out", what: tap ? `${f.what}, checkout signed with Visa TAP (both signatures verified)` : f.what, amount, unit: f.unit, count,
+      label: tap ? `${SHORT_EUR(f.amount)} card buy · Visa TAP` : coinLabel({ ...f, amount, count, via }), refused, proof, by: f.decided, ...(letThrough ? { letThrough } : {}) });
   }
+  // The FX for the licence's shortfall (main run): bought before the SWIFT transfer, after the CFO's Face ID.
+  const fx = fxOf(r);
+  if (fx) out.push({ k: "money", at: fx.at, agent: "treasury", rail: "airwallex", via: "FX", dir: "out", what: `${fx.buy} bought for ${fx.sell}, only the shortfall, for ${fx.proposal}`, amount: fx.buy.replace(/^EUR /, ""), unit: "EUR", count: 1,
+    label: `${SHORT_EUR(fx.buy.replace(/^EUR /, ""))} FX · shortfall`, refused: null, proof: { label: `Airwallex conversion ${fx.id.slice(0, 8)}…`, href: null, full: fx.id } as Proof, by: `code, after the CFO's Face ID on ${fx.proposal}` });
   const titleOf = (id: string) => s.decisions.find((d) => d.proposal_id === id)?.title ?? r.ledger?.proposals.find((p) => p.proposal_id === id)?.kind.replace(/_/g, " ") ?? id;
   const person = (who: string) => who.trim().replace(/\s*\(.*\)$/, "").replace(/^./, (c) => c.toUpperCase());
   if (r.ledger) {
@@ -246,6 +272,51 @@ export function stoppedFace(row: { ts: string; event: string; subject: string | 
   return { k: "face", at: row.ts, id: row.subject ?? "", title, status: "STOPPED", signers: [], reason: String(row.payload.error ?? "") };
 }
 
+/** The purchase let through to Metal in the main run (Max's flag), with its label, from the run's ledger; null otherwise. */
+export function letThroughOf(r: RunRecord): { at: string; amount: string; cap: string; label: string; tx: string | null } | null {
+  const ev = r.ledger?.events ?? [];
+  const lt = ev.find((e) => e.event === "upstream.let_through");
+  const refused = ev.find((e) => e.event === "upstream.let_through_refused");
+  if (!lt || !refused) return null;
+  const onChain = ev.find((e) => e.event === "upstream.refused_on_chain" && e.payload.let_through === true);
+  return { at: lt.ts, amount: String(lt.payload.amount ?? ""), cap: String(lt.payload.bound_cap ?? ""), label: String(refused.payload.label ?? DEFENSE_IN_DEPTH), tx: onChain ? String(onChain.payload.tx ?? "") : null };
+}
+
+/** The FX for an invoice's shortfall, from the run's ledger (fx.converted): what was bought, for what, for which proposal. */
+export function fxOf(r: RunRecord): { at: string; id: string; buy: string; sell: string; proposal: string } | null {
+  const e = r.ledger?.events.find((x) => x.event === "fx.converted");
+  if (!e) return null;
+  const origin = (e.payload.origin ?? {}) as { proposal_id?: string };
+  return { at: e.ts, id: e.subject ?? "", buy: String(e.payload.buy ?? ""), sell: String(e.payload.sell ?? ""), proposal: origin.proposal_id ?? "" };
+}
+
+/** The run's own TAP-signed card buy (main run): our layer verified both signatures, then Airwallex approved the card. */
+export interface OwnTap { at: string; merchant: string; plan: string; amount: string; currency: string; last4: string; txId: string; keyId: string; sig1: string; sig2: string; model: string | null }
+export function ownTap(r: RunRecord): OwnTap | null {
+  const ev = r.ledger?.events ?? [];
+  const v = ev.find((e) => e.event === "tap.checkout_verified");
+  const ok = v && ev.find((e) => e.event === "card.charge_approved" && e.seq > v.seq && (e.payload.origin as { tap?: unknown } | undefined)?.tap);
+  if (!v || !ok) return null;
+  const o = ok.payload.origin as { model?: string };
+  return { at: ok.ts, merchant: String(ok.payload.merchant ?? v.subject ?? ""), plan: String(v.payload.plan ?? ""), amount: String(ok.payload.amount ?? ""), currency: String(ok.payload.currency ?? ""), last4: String(ok.payload.last4 ?? ""),
+    txId: ok.subject ?? "", keyId: String(v.payload.key_id ?? ""), sig1: String(v.payload.sig1 ?? ""), sig2: String(v.payload.sig2 ?? ""), model: o?.model ?? null };
+}
+
+/**
+ * The run's timings, from its own rows: seconds from the first refusal at the cap to Treasury's options (its first
+ * mandate_replace proposal), and from the CFO's Face ID on the invoice to the transfer's PAID.
+ */
+export function timings(r: RunRecord): { toOptions: number | null; faceToPaid: number | null } {
+  const ev = r.ledger?.events ?? [];
+  const refusal = ev.find((e) => e.event === "upstream.refused" && /mandate_cap_exceeded/.test(String(e.payload.reason ?? "")));
+  const options = refusal && ev.find((e) => e.event === "proposal.created" && e.payload.kind === "mandate_replace" && e.ts > refusal.ts);
+  const paid = ev.find((e) => e.event === "transfer.status" && e.payload.status === "PAID");
+  const executed = paid && ev.find((e) => e.event === "proposal.executed" && e.payload.transfer_id === paid.subject);
+  const face = executed && ev.find((e) => e.event === "proposal.approved" && e.subject === executed.subject);
+  const secs = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 1000);
+  return { toOptions: refusal && options ? secs(refusal.ts, options.ts) : null, faceToPaid: paid && face ? secs(face.ts, paid.ts) : null };
+}
+
 /** The live TAP run (docs/runs/visa-tap-live-*.json): a separate run of 2 November, shown under its own label. */
 export interface TapStep { by: string; model: string | null; plan: string; proxyStatus: number; sig1: string; sig2: string; txId: string; approved: boolean; reason: string | null; amount: string; currency: string; getStatus: string; brand: string }
 export interface TapRun { file: string; ranAt: string; label: string; commit: string; merchant: string; steps: TapStep[]; labels: string[] }
@@ -278,7 +349,7 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     const price = /(\d+\.\d{2})/.exec(w?.text ?? "")?.[1] ?? (capRefusal >= 0 ? (ev[capRefusal] as Extract<Ev, { k: "money" }>).amount : "");
     const supplier = /^(\S+)/.exec(w?.text ?? "")?.[1] ?? (capRefusal >= 0 ? (ev[capRefusal] as Extract<Ev, { k: "money" }>).what : "");
     const chain = ev.slice(i1).find((e): e is Extract<Ev, { k: "money" }> => isMoney(e) && (e.refused?.by === "recorded" || e.refused?.by === "metal") && !!e.proof.href);
-    const capWas = s.flows.map((f) => /mandate's (\d+\.\d{2})/.exec(f.refused?.reason ?? "")?.[1]).find(Boolean) ?? s.tower.agents.find((a) => a.agent === "sourcing")?.mandate?.cap ?? "";
+    const capWas = letThroughOf(r)?.cap || (s.flows.map((f) => /mandate's (\d+\.\d{2})/.exec(f.refused?.reason ?? "")?.[1]).find(Boolean) ?? s.tower.agents.find((a) => a.agent === "sourcing")?.mandate?.cap ?? "");
     const replan = ev.slice(i1).find((e): e is Extract<Ev, { k: "say" }> => e.k === "say" && e.agent === "treasury" && e.tools.some((t) => /rebalance|plan/.test(t)));
     const signed = ev.slice(i1).find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && /mandate/i.test(e.title) && (e.status === "EXECUTED" || e.status === "APPROVED"));
     const replaced = ev.slice(i1).find((e) => e.k === "mandate" || (e.k === "world" && /mandate was replaced/i.test(e.text)));
@@ -286,12 +357,13 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     const before = s.flows.find((f) => f.kind === "upstream" && f.what === supplier && !f.refused && Date.parse(f.at) < Date.parse(ev[i1]!.at));
     const old = before ? (Number(before.amount) / (before.count ?? 1)).toFixed(2) : null;
     const steps: Step[] = [{ icon: "trending-up", text: `${supplier} ${old ? `${old} → ` : ""}${price}`, tone: "info" }];
-    if (chain) steps.push({ icon: "ban", text: "Refused · recorded on chain", tone: "bad", proof: chain.proof });
-    if (replan) steps.push({ icon: "bot", text: `${nameOf("treasury")} · ${family(replan.model)} replans`, tone: "ok" });
+    if (chain) steps.push({ icon: "ban", text: chain.letThrough ? "Metal refused it · on chain" : "Refused · recorded on chain", tone: "bad", proof: chain.proof });
+    const toOptions = timings(r).toOptions;
+    if (replan) steps.push({ icon: "bot", text: `${nameOf("treasury")} · ${family(replan.model)} replans${toOptions !== null ? `: options in ${toOptions} s` : ""}`, tone: "ok" });
     if (signed) steps.push({ icon: "scan-face", text: `${signed.signers.length} of ${signed.signers.length} signatures`, tone: "face" });
     if (replaced && newCap) steps.push({ icon: "circle-check", text: `Mandate replaced: cap ${newCap}`, tone: "ok" });
-    const parts = [`${supplier} raises its price to ${price}`, chain ? "refused, and recorded on chain" : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
-    out.push({ n: 1, title: "The price rise", start: i1, steps, sentence: `${parts.join(" → ")}.`, mini: price && capWas ? { kind: "price", from: supplier, old, price, cap: capWas, newCap, tx: chain?.proof ?? null, signers: signed?.signers.length ?? 0 } : null });
+    const parts = [`${supplier} raises its price to ${price}`, chain ? (chain.letThrough ? "Metal refuses it on chain" : "refused, and recorded on chain") : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
+    out.push({ n: 1, title: "The price rise", start: i1, steps, sentence: `${parts.join(" → ")}.`, mini: price && capWas ? { kind: "price", from: supplier, old, price, cap: capWas, newCap, tx: chain?.proof ?? null, signers: signed?.signers.length ?? 0, ...(chain?.letThrough ? { byMetal: true } : {}) } : null });
   }
 
   // 2. The dispute: every order the Support agent checked, the ones it refunded itself, and what the CFO decided.
@@ -307,7 +379,7 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     if (refunds.length) steps.push({ icon: "undo-2", text: `${refunds.length} wrong ones refunded`, tone: "ok", proof: refunds[0]!.proof });
     if (face) steps.push({ icon: "scan-face", text: `CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest`, tone: "face" });
     out.push({ n: 2, title: "The dispute", start: i2, steps, mini: orders.length ? { kind: "orders", orders, refunded } : null,
-      sentence: `A customer's agent disputes ${orders.length} orders → Support checks every signed order → refunds only the ${refunds.length} wrong ones${face ? ` → the CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest` : ""}.` });
+      sentence: disputeStory(r) || `A customer's agent disputes ${orders.length} orders → Support checks every signed order → refunds only the ${refunds.length} wrong ones${face ? ` → the CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest` : ""}.` });
   }
 
   // 3. Earnings and euros: the sweep after finality, booked at Airwallex; the euro bill and what Airwallex did with it.
@@ -323,42 +395,94 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     const face = bill ? ev.find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && bill.what.includes(e.id))
       ?? ev.filter((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && /invoice/i.test(e.title) && e.status === "APPROVED" && e.at <= bill.at).pop() : undefined;
     const steps: Step[] = [];
+    const fx = fxOf(r), t = timings(r);
     if (sweep) steps.push({ icon: "wallet", text: `${money(sweep.amount, sweep.unit)} swept after finality`, tone: "ok", proof: sweep.proof });
     if (booked) steps.push({ icon: "landmark", text: `${money(booked.amount, booked.unit)} booked at Airwallex`, tone: "ok" });
-    if (bill && !bill.refused && face) steps.push({ icon: "circle-check", text: `${bill.unit === "EUR" ? SHORT_EUR(bill.amount) : money(bill.amount, bill.unit)} licence paid by SWIFT · Face ID`, tone: "ok" });
+    if (fx && bill && !bill.refused) steps.push({ icon: "arrow-left-right", text: `${fx.buy} bought by FX for the shortfall`, tone: "ok" });
+    if (bill && !bill.refused && face) steps.push({ icon: "circle-check", text: `${bill.unit === "EUR" ? SHORT_EUR(bill.amount) : money(bill.amount, bill.unit)} licence PAID by SWIFT · ${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID` : "Face ID"}`, tone: "ok" });
     else {
       if (bill && face) steps.push({ icon: "scan-face", text: `${money(bill.amount, bill.unit)} licence: Face ID approved`, tone: "face" });
       if (bill) steps.push({ icon: bill.refused ? "ban" : "circle-check", text: bill.refused ? (bill.refused.by === "airwallex-sandbox" ? `Airwallex: ${bill.refused.reason}` : `Airwallex refused: ${bill.refused.reason}`) : "Paid by SWIFT", tone: bill.refused ? "bad" : "ok" });
     }
     // The card-only buy signed with Visa TAP comes from the separate TAP run of the same day, under its own label.
-    const tap = tapRun();
+    const own = ownTap(r);
+    const tap = own ? null : tapRun();
     const tapBuy = tap?.steps.find((x) => x.approved && x.model);
-    if (tapBuy) steps.push({ icon: "credit-card", text: `TAP run: ${SHORT_EUR(tapBuy.amount)} card buy, Visa TAP`, tone: "ok" });
-    const parts = [sweep ? "Earnings swept after finality" : "", bill && !bill.refused && face ? "licence paid by SWIFT after Face ID" : "", bill && (bill.refused || !face) && face ? "licence approved with Face ID" : "", bill && (bill.refused || !face) ? (bill.refused ? (bill.refused.by === "airwallex-sandbox" ? "Airwallex's sandbox could not price the fee, nothing paid" : "Airwallex refused it, nothing paid") : "paid by SWIFT") : "", tapBuy ? "a card buy signed with Visa TAP (TAP run)" : ""].filter(Boolean);
+    if (own) steps.push({ icon: "credit-card", text: `${SHORT_EUR(own.amount)} card buy, signed with Visa TAP`, tone: "ok" });
+    else if (tapBuy) steps.push({ icon: "credit-card", text: `TAP run: ${SHORT_EUR(tapBuy.amount)} card buy, Visa TAP`, tone: "ok" });
+    const parts = [sweep ? "Earnings swept after finality" : "", fx && bill && !bill.refused ? "euros for the shortfall bought by FX" : "", bill && !bill.refused && face ? "licence paid by SWIFT after Face ID" : "", bill && (bill.refused || !face) && face ? "licence approved with Face ID" : "", bill && (bill.refused || !face) ? (bill.refused ? (bill.refused.by === "airwallex-sandbox" ? "Airwallex's sandbox could not price the fee, nothing paid" : "Airwallex refused it, nothing paid") : "paid by SWIFT") : "", own ? "a card buy signed with Visa TAP" : tapBuy ? "a card buy signed with Visa TAP (TAP run)" : ""].filter(Boolean);
     out.push({ n: 3, title: "Earnings and euros", start: i3, steps, sentence: `${parts.join(" → ")}.`, mini: steps.length ? { kind: "flow", rows: steps.filter((x) => x.icon !== "landmark").map((x) => ({ icon: x.icon, text: x.text, tone: x.tone === "info" ? "ok" : x.tone })) } : null });
   }
   return out;
 }
 
 /**
- * Who stopped a payment at a limit: Metal against the on-chain mandate and the CFO with Face ID, in this run; Airwallex
- * at the card's limit, from the TAP run of the same day (labelled so). Not counted, because it is not a limit: an
- * Airwallex sandbox failure such as fee_unknown (`feeUnknown`).
+ * Who stopped a payment at a limit in the played run (the main run): Metal against the on-chain mandate, the CFO with
+ * Face ID, and Airwallex when one of this run's card charges was declined. Counted apart, never in the figure: the
+ * separate TAP run's card decline (`tapDeclines`, shown on its own labelled line, `tapLimitLine`); a payment under an
+ * old mandate refused because it had just been replaced (`revoked`); an Airwallex sandbox failure such as fee_unknown
+ * (`feeUnknown`), which is not a limit.
  */
-export function stops(r: RunRecord): { metal: number; revoked: number; airwallex: number; cfo: number; feeUnknown: number } {
+export function stops(r: RunRecord): { metal: number; revoked: number; airwallex: number; tapDeclines: number; cfo: number; feeUnknown: number } {
   const s = r.snapshot;
+  // One attempt counts once: the main run's purchase let through to Metal has two rows (the facilitator's 402 and its
+  // record on chain).
+  const capRefused = s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason));
+  const twin = (f: Flow) => !f.proof.href && capRefused.some((g) => g !== f && !!g.proof.href && g.agent === f.agent && Date.parse(g.at) >= Date.parse(f.at) && Date.parse(g.at) - Date.parse(f.at) < 15_000);
   return {
     // At a limit: over the mandate's cap. Apart: a payment under an old mandate refused because it had just been replaced.
-    metal: s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason)).length,
+    metal: capRefused.filter((f) => !twin(f)).length,
     revoked: s.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length,
-    airwallex: s.flows.filter((f) => f.refused?.by === "airwallex").length + (tapRun()?.steps.filter((x) => !x.approved && x.reason === "LIMIT_EXCEEDED").length ?? 0),
+    airwallex: s.flows.filter((f) => f.refused?.by === "airwallex").length,
+    tapDeclines: tapRun()?.steps.filter((x) => !x.approved && x.reason === "LIMIT_EXCEEDED").length ?? 0,
     cfo: s.decisions.filter((d) => d.status === "REJECTED").length,
     feeUnknown: s.refusals.filter((x) => /fee_unknown/.test(x.reason)).length,
   };
 }
 
+/** The one "stopped at a limit" figure: the played run's own stops only (never the TAP run's). */
+export const stoppedAtLimit = (st: ReturnType<typeof stops>) => st.metal + st.cfo + st.airwallex;
+
+/** The separate TAP run's card decline, on its own labelled line below the figure ("" without one). */
+export function tapLimitLine(): string {
+  const tap = tapRun();
+  const x = tap?.steps.find((y) => !y.approved && y.reason === "LIMIT_EXCEEDED");
+  if (!tap || !x) return "";
+  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt));
+  return `Airwallex declined ${x.currency} ${x.amount} over the card limit (LIMIT_EXCEEDED), separate TAP run, ${date}`;
+}
+
+/**
+ * The dispute in one text, the same on every surface (jury review, 4 Nov), from the run's own dispute case and
+ * refunds: "" unless the record holds a never-placed claim, every order signed, the Support agent's own refunds, and
+ * the CFO's Face ID rejection of the rest.
+ */
+export function disputeStory(r: RunRecord): string {
+  const d = (r.ledger as unknown as { disputes?: { claims: { claims: string[]; sale_refs: number[] }; evidence: { signed_order: boolean }[] }[] } | undefined)?.disputes?.[0];
+  const refunds = r.snapshot.flows.filter((f) => f.kind === "refund" && f.agent === "support" && !f.refused);
+  const rejected = r.ledger?.proposals.some((p) => p.kind === "refund_batch" && (p as { status?: string }).status === "REJECTED");
+  if (!d || !d.claims.claims.includes("never_placed") || !d.evidence.length || !d.evidence.every((e) => e.signed_order) || !refunds.length || !rejected) return "";
+  const n = d.claims.sale_refs.length, k = refunds.length;
+  const words = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+  const sum = (refunds.reduce((c, f) => c + Math.round(Number(f.amount) * 100), 0) / 100).toFixed(2);
+  return `A simulated customer disputes ${n} orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. ${words[k] ?? String(k)} orders had wrong data; the Support agent refunds those ${k} (${sum} test USD) itself. "Refund the other ${n - k}" goes to the CFO, who rejects it with Face ID.`;
+}
+
+/** The label of the separate TAP run's row ("Separate test, 2 November"), "" without that run. */
+export function tapSeparateLabel(): string {
+  const tap = tapRun();
+  return tap ? `Separate test, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt))}` : "";
+}
+
+/** The separate TAP run's decline as its own labelled row, below the figures and outside every card ("" without one). */
+export function separateRowHtml(text: string | undefined): string {
+  if (!text) return "";
+  const e = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  return `<p class="septest"><b>${e(tapSeparateLabel())}:</b> ${e(text)}; not counted in the figures above.</p>`;
+}
+
 /** Tools that mean an agent acted, not only looked: a decision without any of them is a routine check. */
-const ACTING = /^(set_buy_policy|design_rebalance|send_message|settle_dispute|sweep_earnings|plan_invoice|submit_plan|submit_advice|refund|escalate_to_cfo)$/;
+const ACTING = /^(set_buy_policy|design_rebalance|send_message|settle_dispute|sweep_earnings|plan_invoice|submit_plan|submit_advice|refund|escalate_to_cfo|ask_card_raise|buy_software)$/;
 
 /** A highlight: a key moment, with the routine checks ("nothing to do") merged into it that came before it. */
 export type Highlight = Ev & { quiet?: number };
@@ -372,6 +496,8 @@ export type Highlight = Ev & { quiet?: number };
 export interface Moments {
   refusal: number; notice: number; sourcingSay: number; replan: number; cosigned: number; approved: number; mandate: number;
   dispute: number; settle: number; refunds: number[]; sweep: number; sweepSay: number; licenceFace: number; licence: number;
+  /** The main run: the FX for the licence's shortfall, and the run's own card buy signed with Visa TAP (-1 when absent). */
+  fx: number; card: number;
 }
 export function moments(ev: Ev[]): Moments {
   const at = (f: (e: Ev, i: number) => boolean, from = 0) => ev.findIndex((e, i) => i >= from && f(e, i));
@@ -389,7 +515,9 @@ export function moments(ev: Ev[]): Moments {
   const sweepSay = at((e) => e.k === "say" && e.agent === "treasury" && e.tools.includes("sweep_earnings"));
   const licence = at((e) => e.k === "money" && e.via === "SWIFT" && !e.refused);
   const licenceFace = licence < 0 ? -1 : ev.map((e, i) => (e.k === "face" && e.status === "APPROVED" && /invoice/i.test(e.title) && i < licence ? i : -1)).filter((i) => i >= 0).pop() ?? -1;
-  return { refusal, notice, sourcingSay, replan, cosigned, approved, mandate, dispute, settle, refunds, sweep, sweepSay, licenceFace, licence };
+  const fx = at((e) => e.k === "money" && e.via === "FX" && !e.refused);
+  const card = at((e) => e.k === "money" && e.via === "card · Visa TAP" && !e.refused);
+  return { refusal, notice, sourcingSay, replan, cosigned, approved, mandate, dispute, settle, refunds, sweep, sweepSay, licenceFace, licence, fx, card };
 }
 
 /**
@@ -402,7 +530,7 @@ export function moments(ev: Ev[]): Moments {
 export function highlights(run: AgentRun): Highlight[] {
   const ev = run.events;
   const m = moments(ev);
-  const keys = [m.refusal, m.notice, m.replan, m.cosigned, m.approved, m.mandate, m.dispute, m.settle, m.refunds[0] ?? -1, m.sweep, m.licenceFace, m.licence].filter((i) => i >= 0).sort((a, b) => a - b);
+  const keys = [m.refusal, m.notice, m.replan, m.cosigned, m.approved, m.mandate, m.dispute, m.settle, m.refunds[0] ?? -1, m.sweep, m.licenceFace, m.fx, m.licence, m.card].filter((i) => i >= 0).sort((a, b) => a - b);
   const out: Highlight[] = [];
   let last = -1;
   for (const i of keys) {
@@ -418,7 +546,8 @@ export function highlights(run: AgentRun): Highlight[] {
     }
     out.push({ ...e, quiet });
   }
-  const tap = tapRun();
+  // The card buy signed with Visa TAP: the run's own when it has one (main run), else the separate TAP run's, labelled.
+  const tap = m.card >= 0 ? null : tapRun();
   const buy = tap?.steps.find((x) => x.approved && x.model);
   if (tap && buy) {
     out.push({ k: "money", at: tap.ranAt, agent: "sourcing", rail: "airwallex", via: "card · Visa TAP", dir: "out", what: `${buy.plan} at ${tap.merchant.replace(/\s*\(.*\)$/, "")}, signed with Visa TAP`, amount: buy.amount, unit: buy.currency, count: 1,
@@ -437,6 +566,8 @@ export interface HomeFilm {
   supplier: string; old: string; price: string; cap: string; newCap: string; refusedTx: Proof;
   orders: string[]; refunded: string[]; refundEach: string;
   sweep: string; licence: string; licenceUnit: string; tapAmount: string | null; tapRun: string | null;
+  /** Who refused the price-rise purchase on chain: Metal itself (let through, main run) or Purser with Metal's record. */
+  refusedByMetal: boolean;
 }
 export function homeFilm(run: AgentRun): HomeFilm | null {
   const ev = run.events, m = moments(ev);
@@ -445,23 +576,46 @@ export function homeFilm(run: AgentRun): HomeFilm | null {
   if (s1?.kind !== "price" || s2?.kind !== "orders" || ref?.k !== "money" || swp?.k !== "money" || lic?.k !== "money" || !s1.newCap || !s1.old) return null;
   const say = (i: number) => { const e = ev[i]; return e?.k === "say" ? e : null; };
   const refundEach = (() => { const r = ev[m.refunds[0] ?? -1]; return r?.k === "money" ? r.amount : ""; })();
-  const tap = tapRun(), buy = tap?.steps.find((x) => x.approved && x.model);
+  const own = ownTap(run.record);
+  const tap = own ? null : tapRun(), buy = own ? { amount: own.amount } : tap?.steps.find((x) => x.approved && x.model);
   const licence = lic.unit === "EUR" ? SHORT_EUR(lic.amount) : money(lic.amount, lic.unit);
   const valid = s2.orders.length - s2.refunded.length;
   const scenes: HomeScene[] = [
     { n: 1, title: "Price rise", agent: "sourcing", call: say(m.sourcingSay)?.call ?? null, proof: ref.proof, line: `${s1.from} raises its price ${s1.old} → ${s1.price}. Refused on chain.` },
     { n: 2, title: "Replan", agent: "treasury", call: say(m.replan)?.call ?? null, proof: null, line: `Treasury replans. Face ID 1 of 2 → 2 of 2. New cap ${s1.newCap}.` },
     { n: 3, title: "Dispute", agent: "support", call: say(m.settle)?.call ?? null, proof: null, line: `${s2.orders.length} orders disputed: ${valid} valid, ${s2.refunded.length} refunded.` },
-    { n: 4, title: "Euros", agent: "treasury", call: say(m.sweepSay)?.call ?? null, proof: null, line: `${swp.amount} swept · ${licence} licence paid by SWIFT · Face ID${buy ? " · Visa TAP ✓ (TAP run)" : ""}` },
+    { n: 4, title: "Euros", agent: "treasury", call: say(m.sweepSay)?.call ?? null, proof: null, line: `${swp.amount} swept · ${licence} licence paid by SWIFT · Face ID${own ? " · Visa TAP ✓" : buy ? " · Visa TAP ✓ (TAP run)" : ""}` },
   ];
   return { scenes, supplier: s1.from, old: s1.old, price: s1.price, cap: s1.cap, newCap: s1.newCap, refusedTx: ref.proof, orders: s2.orders, refunded: s2.refunded, refundEach,
-    sweep: swp.amount, licence, licenceUnit: lic.unit, tapAmount: buy ? SHORT_EUR(buy.amount) : null, tapRun: tap?.label ?? null };
+    sweep: swp.amount, licence, licenceUnit: lic.unit, tapAmount: buy ? SHORT_EUR(buy.amount) : null, tapRun: tap?.label ?? null, refusedByMetal: !!ref.letThrough };
 }
 
 /** Face ID decisions in the run: the proposals the CFO decided with his own passkey (approved or rejected), from the ledger; the record's proof count otherwise. */
 export function faceIdDecisions(r: RunRecord): number {
   if (!r.ledger) return r.proof.face_id;
   return new Set(r.ledger.events.filter((e) => /^proposal\.(approved|rejected)$/.test(e.event) && /\bmax\b/i.test(String(e.payload.approver ?? ""))).map((e) => e.subject)).size;
+}
+
+/**
+ * One breakdown of the run's payments, said the same way everywhere (jury review, 4 Nov): the payments inside the
+ * limits (the snapshot's `counts.alone`) as sales + supplier purchases + refunds + sweeps + card buys, the ones on
+ * Metal (all but the card buys), the routine ones by code (the sales and the code's supplier purchases), and what
+ * reconcile checks (the Metal payments, each SWIFT transfer and each card buy). `sums` is false when the parts do not
+ * add up to `counts.alone`; then no page shows the line.
+ */
+export function payments(r: RunRecord): { alone: number; sales: number; purchases: number; refunds: number; sweeps: number; cards: number; onChain: number; routine: number; transfers: number; reconciled: number; sums: boolean; line: string; onChainLine: string } {
+  const f = r.snapshot.flows.filter((x) => !x.refused);
+  const n = (kind: string) => f.filter((x) => x.kind === kind).reduce((k, x) => k + (x.count ?? 1), 0);
+  const [sales, purchases, refunds, sweeps, cards, transfers] = [n("sale"), n("upstream"), n("refund"), n("sweep"), n("card"), f.filter((x) => x.rail === "airwallex_swift").length];
+  const alone = r.snapshot.counts.alone;
+  const pl = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
+  const onChain = sales + purchases + refunds + sweeps;
+  return {
+    alone, sales, purchases, refunds, sweeps, cards, onChain, routine: split(r).routine, transfers, reconciled: onChain + transfers + cards,
+    sums: sales + purchases + refunds + sweeps + cards === alone,
+    line: `${alone} inside the limits = ${pl(sales, "sale")} + ${pl(purchases, "supplier purchase")} + ${pl(refunds, "refund")} + ${pl(sweeps, "sweep")} + ${pl(cards, "card buy")}`,
+    onChainLine: `${onChain} on Metal = the ${alone} inside the limits less the ${pl(cards, "card buy")}`,
+  };
 }
 
 /** D3: decisions by Claude (and fallbacks to code), and the routine payments per query that code made (buying and selling, not refused). */
@@ -488,14 +642,16 @@ export function agentRun(): AgentRun {
   });
   const cosigned = s.decisions.filter((d) => (d.by ?? "").includes("&")).length;
   const sales = s.flows.filter((f) => f.kind === "sale").reduce((n, f) => n + (f.count ?? 1), 0);
+  const pay = payments(r);
   const tiles: Tile[] = [
     { value: `${byClaude}/${decisions}`, label: "decisions made by Claude", explain: `Every time an agent decided something, it was a Claude call. ${fallbacks} fell back to code.`, href: "proof#claude" },
-    { value: String(s.counts.alone), label: "payments inside the limits", explain: `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
+    { value: String(s.counts.alone), label: "payments inside the limits", explain: pay.sums ? `${pay.line.replace(/^\d+ inside the limits = /, "")}, with no approval at the time; the sales are the simulated customer's agent buying from us.` : `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
-      value: String(st.metal + st.airwallex + st.cfo), label: "stopped at a limit", href: "proof#stops",
-      explain: "Metal and the CFO in this run; Airwallex in the TAP run.",
-      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run; by Airwallex at the card's limit in the TAP run.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
-      parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, { value: String(st.airwallex), label: "Airwallex · TAP run" }],
+      value: String(stoppedAtLimit(st)), label: "stopped at a limit", href: "proof#stops",
+      explain: st.airwallex ? "By Metal, the CFO and Airwallex in this run." : "By Metal and the CFO in this run.",
+      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run${st.airwallex ? "; by Airwallex at the card's limit" : ""}.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
+      parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, ...(st.airwallex ? [{ value: String(st.airwallex), label: "Airwallex" }] : [])],
+      ...(tapLimitLine() ? { separate: tapLimitLine() } : {}),
     },
     { value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
     { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices; each decision may be several calls.", href: "proof#claude" },
@@ -503,6 +659,6 @@ export function agentRun(): AgentRun {
   return {
     file, standIn, name, recordedAt: r.recorded_at, kind: r.kind ?? "", record: r,
     label: runLabel(r), agents, events: ev, scenes: scenes(r, ev), tiles,
-    derived: { decisions: String(decisions), byClaude: String(byClaude), fallbacks: String(fallbacks), perDecision, stopped: String(st.metal + st.airwallex + st.cfo), cosigned: String(cosigned), sales: String(sales), faceId: String(faceIdDecisions(r)), routine: String(split(r).routine) },
+    derived: { toOptions: String(timings(r).toOptions ?? ""), faceToPaid: String(timings(r).faceToPaid ?? ""), decisions: String(decisions), byClaude: String(byClaude), fallbacks: String(fallbacks), perDecision, stopped: String(stoppedAtLimit(st)), cosigned: String(cosigned), sales: String(sales), faceId: String(faceIdDecisions(r)), routine: String(split(r).routine) },
   };
 }

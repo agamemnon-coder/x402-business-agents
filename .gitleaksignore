@@ -41,4 +41,5 @@ c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-ke
 c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6235
 c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6249
 c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6250
+# test/dashboard-vs-chain.test.ts in 932420d: a made-up RPC URL on rpc.example.test, to prove the node URL is never printed
 932420dea14b9649470e014a058cd03b496a2c88:test/dashboard-vs-chain.test.ts:generic-api-key:190

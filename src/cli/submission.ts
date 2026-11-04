@@ -1,7 +1,8 @@
 // npm run submission: the submission pack's files (awards item 6), from the recorded pages and files. Writes
 //   docs/submission/screens/1-6 *.png   six screenshots of the recorded pages at 1440 x 900 (npm run judge serves them)
-//   docs/submission/screens/7-* .. 14-*  close-ups for the deck, one panel each (rails, inspector, enterprise cards,
-//                                        Try Purser, overview, Claude, the run's result, the dispute case)
+//   docs/submission/screens/7-* .. 13-*  close-ups for the deck, one panel each (rails, inspector, enterprise cards,
+//                                        Try Purser, overview, Claude, the run's result)
+//   docs/submission/screens/14-dispute   the main run's dispute on /watch, at the CFO's rejection of the refund batch
 //   docs/submission/purser-deck.pdf      sixteen slides, one picture each (src/submission/deck.ts); the phone screens
 //                                        (screens/phone-*.png) come from test/browser/approve.check.ts, a dev-test world
 //   out/submission/purser-source.zip     git archive of the current commit: code and docs, no keys, no ledger
@@ -24,11 +25,16 @@ mkdirSync(out, { recursive: true });
 
 const SCREENS: [string, string][] = [
   ["1-landing", "/"],
-  ["2-dashboard", "/?recorded"],
+  // The CFO dashboard, its disputes and its books replay the main run (3 Nov), not the 30 October recording.
+  ["2-dashboard", "/?autonomy"],
   ["3-metal", "/metal"],
   ["4-live", "/live?scene=refuse&autoplay=0"],
-  ["5-disputes", "/?recorded&disputes"],
-  ["6-books", "/?recorded&books"],
+  ["5-disputes", "/?autonomy&disputes"],
+  ["6-books", "/?autonomy&books"],
+  ["15-watch", "/watch"],
+  ["16-proof", "/proof"],
+  // The main run's card story (3 Nov): the TAP-signed card buy approved by Airwallex; the TAP run's decline labelled.
+  ["17-visa", "/visa"],
 ];
 
 const judge = await startJudge(0);
@@ -54,12 +60,13 @@ try {
     ["11-overview", "/?recorded", ["#kpis", "#cards"]],
     ["12-claude", "/?recorded", ["#claude-panel"]],
     ["13-result", "/?recorded&books", ["#books .panel.bk"]],
-    ["14-dispute", "/?recorded&disputes", ["#disputes > *"]],
   ];
   for (const [name, path, sels] of CLOSEUPS) {
     await page.goto(`${judge.url}${path}`, { waitUntil: "load" });
     await unstick();
     await page.waitForTimeout(1200);
+    // A panel no longer on its page (the landing became Home on 2 Nov): the earlier close-up is kept as it was.
+    if ((await page.locator(sels[0]!).count()) === 0) { console.log(`screens/${name}.png  kept: ${path} has no ${sels[0]}`); continue; }
     // One element, or the box around several (the three enterprise cards), captured from the full page.
     const boxes = await Promise.all(sels.map(async (sel) => (await page.locator(sel).first().boundingBox())!));
     const [x, y] = [Math.min(...boxes.map((b) => b.x)), Math.min(...boxes.map((b) => b.y))];
@@ -68,6 +75,16 @@ try {
     await page.screenshot({ path: resolve(shots, `${name}.png`), clip, fullPage: true });
     console.log(`screens/${name}.png  ${path} ${sels.join(" ")}`);
   }
+  // The dispute slide, from the main run (3 Nov): /watch's full run held at the CFO's Face ID rejection of the refund
+  // batch, so the three refunds on chain sit just under it. The step is found in the page's own run data.
+  await page.goto(`${judge.url}/watch?full=1&autoplay=0`, { waitUntil: "load" });
+  const rejectAt = await page.evaluate(() => (JSON.parse(document.getElementById("run-data")!.textContent!) as { events: { k: string; status?: string; title?: string }[] }).events
+    .findIndex((e) => e.k === "face" && e.status === "REJECTED" && /refund/i.test(e.title ?? "")));
+  if (rejectAt < 0) throw new Error("the main run on /watch has no rejected refund batch");
+  await page.goto(`${judge.url}/watch?full=1&at=${rejectAt}&autoplay=0`, { waitUntil: "load" });
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: resolve(shots, "14-dispute.png") });
+  console.log(`screens/14-dispute.png  /watch?full=1&at=${rejectAt}&autoplay=0`);
   // Two moments of the film (1920x1080), from the same recorded pages: the card declined then raised, and the
   // mandate refusing the price rise. Taken here, not from a rendered video, so they always show the pages as they are.
   const film = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
@@ -88,7 +105,7 @@ try {
   const deckShots: DeckShots = {
     landing: png("1-landing"), dashboard: png("2-dashboard"), metal: png("3-metal"), live: png("4-live"), disputes: png("5-disputes"), books: png("6-books"),
     rails: png("7-rails"), inspector: png("8-inspector"), fourEyes: png("9-four-eyes"), compliance: png("9-compliance"), try: png("10-try"),
-    overview: png("11-overview"), claude: png("12-claude"), result: png("13-result"), dispute: png("14-dispute"),
+    overview: png("11-overview"), claude: png("12-claude"), result: png("13-result"), dispute: png("14-dispute"), watch: png("15-watch"), proof: png("16-proof"), visa: png("17-visa"),
     // Moments of the film, taken above.
     refuse: png("live-refuse"), decline: png("live-decline"),
     phoneOptions: png("phone-options"), phoneConfirm: png("phone-confirm"),

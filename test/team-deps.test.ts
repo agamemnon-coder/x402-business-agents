@@ -88,7 +88,8 @@ describe("the live default path (D26 review)", () => {
     const w = await wake(db, supportProfile(), { client: fake([[{ name: "settle_dispute", input: {} }], [finish("Settled.")]]), now: T0 });
     expect(w!.run!.calls[0]).toMatchObject({ tool: "settle_dispute", text: "SETTLED (stub)" });
     expect(spawned).toHaveLength(1);
-    expect(spawned[0]).toMatchObject({ cmd: "npx", args: ["tsx", "src/cli/s2.ts"] });
+    // H9: the dispute that came in, by its own id (here the fixture's), not whatever s2 would read by itself.
+    expect(spawned[0]).toMatchObject({ cmd: "npx", args: ["tsx", "src/cli/s2.ts", "--dispute", "D-2f8a03a4"] });
     expect(existsSync(join(spawned[0]!.cwd, "src/cli/s2.ts"))).toBe(true);
   });
 });

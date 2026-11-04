@@ -1,5 +1,5 @@
 // Airwallex sandbox REST client. It is the only code that holds the client id, API key and bearer token.
-// Calls run one at a time, at most 5 per second, with backoff on 429. Money-moving creates always
+// Calls run one at a time, at most 5 per second, with backoff on 429 (and, for reads, on 502/503/504). Money-moving creates always
 // carry a caller-chosen request_id, so a retry after a timeout cannot create a second payment.
 
 import { redactSecrets } from "../lib/redact.js";
@@ -78,6 +78,8 @@ export class AirwallexAmbiguous extends Error {
 const TOKEN_LIFETIME_MS = 30 * 60 * 1000;
 const TOKEN_REFRESH_EARLY_MS = 5 * 60 * 1000;
 const MAX_429_RETRIES = 4;
+/** Answers that mean "try again shortly": a gateway or the service briefly down. Only reads are retried. */
+const TRANSIENT = new Set([502, 503, 504]);
 
 export function fromEnv(env = process.env): AirwallexConfig | null {
   const clientId = env.AIRWALLEX_CLIENT_ID;
@@ -164,6 +166,8 @@ export class Airwallex {
           await this.sleep(Number.isFinite(after) && after > 0 ? after * 1000 : 500 * 2 ** attempt);
           continue;
         }
+        // A brief outage on Airwallex's side (502, 503, 504): a read is safe to ask again; a POST never is (below).
+        if (method === "GET" && TRANSIENT.has(res.status) && attempt < MAX_429_RETRIES) { await this.sleep(500 * 2 ** attempt); continue; }
         const json = (await res.json().catch(() => null)) as unknown;
         if (res.status >= 500 && method === "POST") throw new AirwallexAmbiguous(path, new AirwallexError(res.status, undefined, json, path, traceOf(res.headers)));
         if (!res.ok) {

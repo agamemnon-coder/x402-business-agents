@@ -8,6 +8,7 @@ import { heldRefunds, heldThenRefused, lastReconciliation } from "../finance/rec
 import { frozen } from "../policy/rules.js";
 import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
+import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -37,12 +38,19 @@ export function health(db: DB, now = new Date()): Health {
   if (frozen(db)) alerts.push({ code: "emergency_stop", severity: "critical", since: freeze?.ts ?? null, words: "The CFO pulled the emergency stop: no agent pays until it is lifted with Face ID." });
 
   // A dispute decision not fully carried out (a restart cut it off, or a refund was refused at payment): the runner's
-  // start finishes it (npm run s2 -- --resume-only); it is never decided again.
+  // start finishes it (npm run s2 -- --resume-only); it is never decided again. Not one whose dispute is with the CFO
+  // (dispute.escalated) with a refund or a proposal left: the runner's start leaves that to a person, who carries it out
+  // with npm run s2 -- --dispute <id> (the dispute review 2, LOW 4: codeMayCarryOut).
   // Critical once a refund could not be paid (it goes to the CFO as a proposal) or carrying out failed more than once.
-  for (const d of openDecisions(db)) alerts.push({ code: "dispute_decision_open", severity: d.handover.length || d.attempts >= HANDOVER_AFTER - 1 ? "critical" : "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; the runner's start or npm run s2 -- --resume-only finishes it, without deciding again.` });
+  for (const d of openDecisions(db)) {
+    const next = !codeMayCarryOut(db, d) ? `it is with the CFO: npm run s2 -- --dispute ${d.dispute_id} carries it out, without deciding again` : "the runner's start or npm run s2 -- --resume-only finishes it, without deciding again";
+    alerts.push({ code: "dispute_decision_open", severity: d.handover.length || d.attempts >= HANDOVER_AFTER - 1 ? "critical" : "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; ${next}.` });
+  }
   // A refund sent but held at Metal for over two hours is not refunded yet; one held and then refused was never refunded.
   for (const h of heldRefunds(db, now)) alerts.push({ code: "refund_held", severity: "warning", since: h.since, words: `Refund ${h.payment_id} (sale ${h.sale_id}) was sent but is held at Metal${h.since ? ` since ${h.since}` : ""}: not refunded yet. The hourly reconciliation looks it up on chain.` });
   for (const r of heldThenRefused(db)) alerts.push({ code: "refund_held_then_refused", severity: "critical", since: null, words: `Refund ${r.payment_id} (sale ${r.sale_id}) was held at Metal and then refused${r.reason ? ` (${r.reason})` : ""}: nothing was refunded for it.` });
+  // A customer dispute that came in and that code could not settle (holdout H9): with the CFO until it is decided.
+  if (has(db, "audit_log")) for (const e of escalatedUndecided(db)) alerts.push({ code: "dispute_with_cfo", severity: "warning", since: e.at, words: `Dispute ${e.id} came in and code could not settle it (${e.reason}); it waits for a person: ${/^D-ev\d+$/.test(e.id) ? "settle it yourself (it has no email code can read)" : `npm run s2 -- --dispute ${e.id}, or a refund proposal with Face ID`}; once handled, npm run s2 -- --resolve ${e.id} --note "how it was settled" clears this.` });
   // A dispute settled before decisions were recorded, with refunds left unfinished: it is never decided again, so a person looks.
   for (const l of legacyUnfinished(db)) alerts.push({ code: "dispute_legacy_unfinished", severity: "warning", since: null, words: `Dispute ${l.dispute_id} was settled before decisions were recorded and has unfinished refunds (${l.refunds.join(", ")}); it is not decided again: check it and propose what is left for Face ID.` });
 

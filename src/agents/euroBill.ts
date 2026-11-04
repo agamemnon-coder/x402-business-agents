@@ -47,6 +47,33 @@ export const LICENSOR = {
   address: { street: "Datenallee 12", city: "Berlin", postcode: "10115", countryCode: "DE" as const },
 };
 
+/**
+ * The payees code allowlists, and the only ones: seedTreasury creates each once at Airwallex and records it in the
+ * ledger's beneficiaries. Neither an agent nor an invoice adds to it; a supplier's new account replaces its entry only
+ * through a person's verified payee change (src/policy/payeeChange.ts).
+ */
+export const ALLOWLISTED_PAYEES = [MANUFACTURER, LICENSOR] as const;
+
+/** A payee on the allowlist as code compares an invoice with it: the name, the IBAN's hash, the BIC. */
+export interface AllowlistedPayee { name: string; ibanSha256: string; bic: string }
+
+/**
+ * The allowlist as it stands, for the agents' facts: the ledger's active beneficiaries, and each code payee
+ * (ALLOWLISTED_PAYEES) the ledger holds no account for yet, exactly as seedTreasury will record it (holdout H6,
+ * dry-177: before the first Treasury flow ran, the facts called the licensor "an unlisted vendor"). Once the ledger
+ * holds any account under that name (active, or REPLACED by a person's payee change), only the ledger's is used.
+ * It reads only; it never writes a payee, and paying still checks the ledger's own beneficiaries (checkInvoice).
+ */
+export function payeeAllowlist(db: DB): AllowlistedPayee[] {
+  const rows = db.prepare("SELECT name, iban_sha256, bic, status FROM beneficiaries").all() as { name: string; iban_sha256: string; bic: string; status: string }[];
+  const out: AllowlistedPayee[] = rows.filter((r) => r.status === "ACTIVE").map((r) => ({ name: r.name.trim(), ibanSha256: r.iban_sha256, bic: r.bic }));
+  // Once the ledger holds any account under a payee's name (active or replaced), the ledger alone speaks for it.
+  for (const p of ALLOWLISTED_PAYEES) {
+    if (!rows.some((r) => r.name.trim() === p.name)) out.push({ name: p.name, ibanSha256: ibanSha(p.iban), bic: p.bic });
+  }
+  return out;
+}
+
 export async function snapshot(db: DB, rail: AirwallexRail, label: string) {
   const b = await rail.balances();
   db.prepare("INSERT INTO balance_snapshots (taken_at, label, json) VALUES (?, ?, ?)").run(new Date().toISOString(), label, JSON.stringify(b));
@@ -71,7 +98,7 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
   }
 
   // The allowlisted payees: the manufacturer and Kit 11's licensor, each created once at Airwallex.
-  for (const payee of [MANUFACTURER, LICENSOR]) {
+  for (const payee of ALLOWLISTED_PAYEES) {
     let ben = await rail.findBeneficiaryByIban(payee.iban);
     ben ??= await rail.createBeneficiary(payee);
     db.prepare("INSERT OR IGNORE INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES (?, ?, ?, ?, ?, 'EUR', 'SWIFT')")
@@ -149,10 +176,9 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
   }
 }
 
-/** An invoice number as a duplicate check compares it: Unicode-normalised, upper case, any dash as "-", no spaces around it. */
-export function invoiceKey(invoiceNo: string): string {
-  return invoiceNo.normalize("NFKC").toUpperCase().replace(/\s*[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D-]\s*/g, "-").replace(/\s+/g, "");
-}
+// The duplicate check's invoice key lives in src/lib/invoiceKey.ts (the hub gate needs it without this module's imports).
+import { invoiceKey } from "../lib/invoiceKey.js";
+export { invoiceKey };
 
 export type InvoiceOutcome =
   | { kind: "proposed"; proposal: ProposalRow; terms: InvoicePaymentTerms }

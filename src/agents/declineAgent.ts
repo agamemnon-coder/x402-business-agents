@@ -73,7 +73,7 @@ export async function meetDecline(db: DB, f: DeclineFacts, deps: DeclineDeps, cl
       {
         name: "propose_raise", description: "Proposes a higher card limit to the CFO (Face ID). Only for a decline a limit caused; enough to cover the purchase, at most 1.25× it.",
         input: z.strictObject({
-          per_purchase: money.describe("New limit per purchase, e.g. \"50.00\""),
+          per_purchase: money.describe("New limit per purchase in EUR, a string with exactly two decimals"),
           per_month: money.nullable().describe("New monthly limit, only if the month would still decline it; else null"),
           reason: z.string().describe("One sentence for the CFO: why this purchase is worth it"),
         }),

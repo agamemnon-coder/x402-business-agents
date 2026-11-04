@@ -604,6 +604,13 @@ async function api(path: string, body?: unknown, retried = false): Promise<{ sta
   return { status: res.status, data: isObj(data) ? data : {} };
 }
 
+/** The terms hash: the first 8 characters to compare, the rest on one line (the whole hash on hover and when copied). */
+function hashCell(hash: string): Node {
+  const dd = el("dd", "hash", [txt("strong", "mono", hash.slice(0, 8)), txt("span", "mono", hash.slice(8))]);
+  dd.title = hash;
+  return dd;
+}
+
 /** Every field of the hashed terms, nested, as text (the "All terms" section). */
 function termsTable(v: unknown): Node {
   if (Array.isArray(v)) {
@@ -764,9 +771,9 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     el("dl", "facts", [
       txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount),
       ...(f.margin ? [txt("dt", "", "Margin"), txt("dd", "num", f.margin)] : []),
-      txt("dt", "", "Recipient"), txt("dd", "", f.recipient),
+      txt("dt", "", "Recipient"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r))),
       txt("dt", "", "Expires"), el("dd", "", [cd]),
-      txt("dt", "", "Hash"), el("dd", "hash", [txt("strong", "mono", o.terms_sha256.slice(0, 8)), txt("span", "mono", o.terms_sha256.slice(8))]),
+      txt("dt", "", "Hash"), hashCell(o.terms_sha256),
     ]),
     nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
     o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
@@ -912,7 +919,7 @@ async function approvePage(attempt = 0): Promise<void> {
       f && group.length === 1 ? txt("span", "option-sentence", f.sentence) : null,
       o.agent_advice?.recommends ? txt("span", "chip approve", `${o.agent_advice.agent} recommends this`) : null,
       o.review ? txt("span", `chip ${o.review.recommendation}`, o.review.recommendation === "drafted" ? "Drafted by Opus from your words" : `Opus: ${o.review.recommendation.replace(/_/g, " ")} (advisory)`) : null,
-      el("span", "option-meta", [cd, " · ", el("span", "mono", [`hash ${o.terms_sha256.slice(0, 8)}`])]),
+      el("span", "option-meta", [cd, el("span", "mono", [`hash ${o.terms_sha256.slice(0, 8)}`])]),
       check.ok ? null : txt("span", "alarm", `Do not approve: ${check.problem}.`),
       check.ok && f && !f.approvable ? txt("span", "alarm", f.sentence) : null,
       ...(o.warnings ?? []).map((w) => txt("span", "alarm", w)),

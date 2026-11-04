@@ -96,7 +96,7 @@ const require = createRequire(import.meta.url);
 // Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { chromium } = require("playwright") as { chromium: any };
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: process.env.CHECK_SCHEME === "dark" ? "dark" : "light" });
 const page = await context.newPage();
 const cdp = await context.newCDPSession(page);
