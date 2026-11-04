@@ -25,6 +25,9 @@ export const TRY_SIGN_WORLDS_PER_HOUR = 6;
 export const TRY_SIGN_WORLDS_PER_NETWORK_HOUR = 20;
 /** Requests per address per minute, every kind together. */
 export const TRY_SIGN_PER_MINUTE = 30;
+/** Requests per network (IPv4 /24, IPv6 /48) per minute: one provider's block of addresses cannot fill the ceiling
+ * for everyone below on its own (20 /64s of one /48 at 30 a minute each would). */
+export const TRY_SIGN_NET_PER_MINUTE = 60;
 /** Requests a minute from everyone together: many addresses at once cannot make the instance (or its table) grow. */
 export const TRY_SIGN_ALL_PER_MINUTE = 600;
 /** Failed signatures or passkeys per address per hour before it is refused. */
@@ -257,9 +260,12 @@ export class TrySignDesk {
     const ip = rateKey(req.headers.get("cf-connecting-ip") ?? "unknown");
     if (this.hits(ip, "fail", nowMs - 3_600_000) >= TRY_SIGN_FAILS_PER_HOUR) return answer(429, { error: "too many refused signatures from this address; wait an hour" });
     if (this.hits(ip, "req", nowMs - 60_000) >= TRY_SIGN_PER_MINUTE) return answer(429, { error: "a few requests a minute; wait a moment" });
+    const net = networkKey(req.headers.get("cf-connecting-ip") ?? "unknown");
+    if (this.hits(net, "req-net", nowMs - 60_000) >= TRY_SIGN_NET_PER_MINUTE) return answer(429, { error: "many requests a minute from your network; wait a moment" });
     const [{ n: everyone }] = this.sql.exec("SELECT COUNT(*) AS n FROM ts_hits WHERE kind = 'req' AND at > ?", nowMs - 60_000).toArray() as [{ n: number }];
     if (everyone >= TRY_SIGN_ALL_PER_MINUTE) return answer(503, { error: "many visitors are trying this right now; try again in a minute" });
     this.hit(ip, "req", nowMs);
+    this.hit(net, "req-net", nowMs);
     this.purge(nowMs);
 
     const raw = await readCapped(req, MAX_BODY);
@@ -295,7 +301,7 @@ export class TrySignDesk {
       AND NOT EXISTS (SELECT 1 FROM ts_creds c WHERE c.world = w.id) LIMIT 500`, nowMs, nowMs - TRY_SIGN_UNCLAIMED_MS).toArray() as { id: string }[];
     for (const { id } of gone) this.dropWorld(id);
     // Request counts matter for a minute, worlds and failures for an hour: nothing older is kept.
-    this.sql.exec("DELETE FROM ts_hits WHERE kind = 'req' AND at <= ?", nowMs - 60_000);
+    this.sql.exec("DELETE FROM ts_hits WHERE kind IN ('req', 'req-net') AND at <= ?", nowMs - 60_000);
     this.sql.exec("DELETE FROM ts_hits WHERE at <= ?", nowMs - 3_600_000);
   }
 
@@ -367,6 +373,10 @@ export class TrySignDesk {
     const v = await verifyRegistration({ id: c.id, response: { clientDataJSON: c.response.clientDataJSON, attestationObject: c.response.attestationObject } },
       { challenge: world.reg_challenge, origin: url.origin, rpId: url.hostname });
     if (!v.ok) { this.hit(ip, "fail", this.now().getTime()); return answer(400, { error: `the new passkey did not verify (${v.why}); start a new test world`, why: v.why }); }
+    // The world may have gone during the await (expired, or made room for a new visitor while it had no passkey yet):
+    // then no passkey row is written, so none is left behind without its world.
+    const still = this.sql.exec("SELECT 1 FROM ts_worlds WHERE id = ? AND expires > ?", world.id, this.now().getTime()).toArray();
+    if (still.length === 0) return answer(410, { error: "this test world is gone (it expired, or made room while it had no passkey); start a new one", expired: true });
     this.sql.exec("INSERT INTO ts_creds (world, id, x, y, counter) VALUES (?, ?, ?, ?, ?)", world.id, c.id, v.key.x, v.key.y, v.counter);
     return answer(201, { passkey: { id: c.id }, world: { id: world.id } });
   }
