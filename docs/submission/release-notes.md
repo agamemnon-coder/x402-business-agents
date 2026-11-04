@@ -29,7 +29,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 
 ## Checked at this tag
 
-- 2256 tests in 244 files, all passing; typecheck, lint and `npm run judge -- --check` clean; CI green.
+- 2291 tests in 245 files, all passing; typecheck, lint and `npm run judge -- --check` clean; CI green.
 - `gitleaks` over every commit on every branch: no leaks (the checked false positives are listed in `.gitleaksignore`).
 - Every tx hash and id in the README, the submission pack, the claims, the site and the video script is in a run
   record.
