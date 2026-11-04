@@ -70,7 +70,7 @@ export async function planInvoice(db: DB, rest: AirwallexRest, s: Awaited<Return
       proposalId: out.proposal.proposal_id, invoiceNo: inv.invoice_no, vendor: inv.vendor, amount: t.amount, dueDate: inv.due_date, today,
       eurAvailable: t.balances_before.eur_available, eurFloor: t.floors.eur_floor, eurObligations: t.floors.eur_obligations, usdAvailable: t.balances_before.usd_available, usdFloor: t.floors.usd_floor,
       quote: t.conversion ? { sell: `${t.conversion.sell_currency} ${t.conversion.sell_amount}`, buy: `${t.conversion.buy_currency} ${t.conversion.buy_amount}`, rate: t.conversion.client_rate, validTo: t.conversion.valid_to } : null,
-      after: { eurFree: t.after.eur_free, usdAvailable: t.after.usd_available },
+      after: { eurFree: t.after.eur_free, usdAvailable: t.after.usd_available }, feeMax: t.fee_max,
     });
     console.log(`TREASURY AGENT   ${a.source === "claude" ? `${a.run.model ?? "Claude"}: advises ${a.timing === "pay_now" ? "paying now" : `waiting until ${a.date}`}: "${a.reason}"` : "no advice (the agent did not decide); the proposal stands as code planned it"}`);
   }

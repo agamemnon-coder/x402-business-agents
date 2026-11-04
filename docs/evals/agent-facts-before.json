@@ -1,0 +1,193 @@
+{
+  "what": "The 'before' of the agent-facts eval cases: the code before both fixes (2ce1362, treasury-paid's base) with the eval files of agent-facts 0f5dbba committed on top as local commit 09b54db (never pushed). Same checker as the 'after' rows in agents.json.",
+  "rows": [
+    {
+      "case": "sourcing-facts-busy",
+      "agent": "sourcing",
+      "kind": "hard",
+      "model": "claude-haiku-5-5",
+      "passed": 0,
+      "runs": 10,
+      "cost_usd_micros": 6317,
+      "median_ms": 10978,
+      "details": [
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Both suppliers are unreachable now, Stockline's last quote (0.04) was over our 0.03 mandate cap, and Ridgeline is in maintenance until 22:42 UTC, so serve from \"; named 0.04; \"Stockline is now unreachable and Ridgeline is in maintenance until 22:42 UTC. Stockline's last quote of 0.04 was refused by Purser for exceeding the 0.03 cap, and my earlier 0.02 note is outdated. I switched the buy policy to cache-only (supplier none, 300 s cache, max 0.03) so no uncached purchases happen while suppliers are down. No purchases made; budget per market is 9.66.\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Stockline and Ridgeline are both unreachable now;\"; named 0.04; \"Both suppliers are unreachable (Ridgeline in maintenance until 22:42 UTC, Stockline down now), so I switched the buy policy to cache-only (no purchases, cache up to 300 s) to serve customers from existing data without spending budget. Budget left is 9.66; I corrected my earlier 9.68 note and told Treasury. I'll re-check Stockline and Ridgeline on the next wake.\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Market check at 10:48 UTC: Stockline and Ridgeline are both unreachable right now, and the market shows budget left at 9.66.\"; named 0.04; \"Market check at 10:48 UTC: Stockline and Ridgeline are both unreachable right now, and the market shows budget left at 9.66. Stockline is no longer quoting 0.02, so my earlier note was out of date. I left the buy policy unchanged (Stockline, up to the 0.03 cap, no cache) and made no purchases. Stockline's 0.04 quote was refused by Purser for exceeding the cap, and at 0.04 it would sell below our 0\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Both Stockline and Ridgeline are unreachable right now, so live buys would fail;\"; did not name 0.04; \"Market now shows both Stockline and Ridgeline unreachable (Ridgeline in maintenance until 22:42 UTC). I switched the buy policy to cache-only (supplier none, cache up to 300 s) so queries are served from cache and refused otherwise, with no purchases made. Budget per market is 9.66. I'll restore Stockline (cap 0.03, no cache) once it is reachable again.\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Stockline and Ridgeline are both unreachable, so live buys would fail;\"; named 0.04; \"Both suppliers are unreachable right now (Ridgeline in maintenance until 22:42 UTC). I switched the buy policy to cache-only (supplier none, 300 s cache) so customers get cached stock checks where available and uncached queries are refused without charge. No purchases were made. Budget left is 9.66. Note: my earlier 10:43 and 10:48 notes cited Stockline at 0.02 and budget 9.98/9.68, but the market\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Stockline offline\"; did not name 0.04; \"Stockline is now unreachable and Ridgeline is in maintenance until 22:42 UTC, so I switched the buy policy to cache-only (no supplier, cache up to 300 s) to avoid failed purchases; no purchases made. Budget left per market is 9.66. I'll switch back to Stockline (up to the 0.03 cap) once it is reachable again.\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Stockline and Ridgeline are both unreachable right now, so there is nothing to buy.\"; did not name 0.04; \"Stockline and Ridgeline are both unreachable right now, so there is nothing to buy. The buy policy stays at Stockline, up to the 0.03 cap, no cache, so checks resume automatically when Stockline is back. No purchases made. Budget left per market is 9.66. Ridgeline is in maintenance until 22:42 UTC. Note that the 10:43 and 10:48 entries said 9.98 and 9.68 for budget; the market now shows 9.66.\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Stockline and Ridgeline are both unreachable right now, so there is nothing to buy.\"; named 0.04; \"Stockline and Ridgeline are both unreachable right now, so there is nothing to buy. I left the buy policy as it is (Stockline, cap 0.03, no cache) so purchasing resumes automatically when Stockline returns, and made no purchases. Ridgeline is in maintenance until 22:42 UTC. Budget per market is 9.66; my earlier 9.68 figure was off. The 0.04 refusal from Purser was over the 0.03 cap, and the 0.02 p\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Stockline is unreachable right now\"; did not name 0.04; \"Stockline and Ridgeline are both unreachable now, so no purchases were made. I set the buy policy to Stockline with a 0.03 cap and a 60-second cache so customers can still be served from recent data when Stockline is back. Budget per market is 9.66. Ridgeline stays off until its maintenance ends at 22:42 UTC.\"",
+        "FAIL: claude; market said Stockline: not reachable now; called Stockline down: \"Stockline is down\"; named 0.04; \"Both suppliers are unreachable: Stockline is down (it was 0.02 a check, under the 0.03 cap, at my last check) and Ridgeline is in maintenance until 22:42 UTC. I kept the buy policy (Stockline, up to the 0.03 cap, no cache) and made no purchases. Budget left is 9.66 per market. Event #2 showed Stockline at 0.04 was refused by Purser for exceeding the cap, so I'll only buy when its price is at or un\""
+      ],
+      "commit": "09b54db5bad4",
+      "dirty": false,
+      "words": [
+        [
+          "Both suppliers are unreachable now, Stockline's last quote (0.04) was over our 0.03 mandate cap, and Ridgeline is in maintenance until 22:42 UTC, so serve from cache only (up to 300 s) and refuse uncached queries rather than buy above cap or at an unknown price.",
+          "Stockline is now unreachable and Ridgeline is in maintenance until 22:42 UTC. Stockline's last quote of 0.04 was refused by Purser for exceeding the 0.03 cap, and my earlier 0.02 note is outdated. I switched the buy policy to cache-only (supplier none, 300 s cache, max 0.03) so no uncached purchases happen while suppliers are down. No purchases made; budget per market is 9.66."
+        ],
+        [
+          "Stockline and Ridgeline are both unreachable now; serving from cache only (up to 300 s) avoids failed or wasted purchases and keeps customers served without spending budget.",
+          "Sourcing status: Stockline and Ridgeline both unreachable right now. Budget left per market is 9.66 (my 10:48 note said 9.68; corrected). Stockline's 0.04 price was refused by our 0.03 cap earlier, so no buys are possible at current terms. No cap increase requested at this time.",
+          "Both suppliers are unreachable (Ridgeline in maintenance until 22:42 UTC, Stockline down now), so I switched the buy policy to cache-only (no purchases, cache up to 300 s) to serve customers from existing data without spending budget. Budget left is 9.66; I corrected my earlier 9.68 note and told Treasury. I'll re-check Stockline and Ridgeline on the next wake."
+        ],
+        [
+          "Market check at 10:48 UTC: Stockline and Ridgeline are both unreachable right now, and the market shows budget left at 9.66. Stockline is no longer quoting 0.02, so my earlier note was out of date. I left the buy policy unchanged (Stockline, up to the 0.03 cap, no cache) and made no purchases. Stockline's 0.04 quote was refused by Purser for exceeding the cap, and at 0.04 it would sell below our 0.05 price with a 0.01 margin. I'll re-check when either supplier is back, and Ridgeline is expected after its maintenance window ends at 22:42 UTC."
+        ],
+        [
+          "Both Stockline and Ridgeline are unreachable right now, so live buys would fail; serving from cache (up to 300 s) avoids wasted spend and keeps customers unbilled when no cached data exists.",
+          "Market now shows both Stockline and Ridgeline unreachable (Ridgeline in maintenance until 22:42 UTC). I switched the buy policy to cache-only (supplier none, cache up to 300 s) so queries are served from cache and refused otherwise, with no purchases made. Budget per market is 9.66. I'll restore Stockline (cap 0.03, no cache) once it is reachable again."
+        ],
+        [
+          "Stockline and Ridgeline are both unreachable, so live buys would fail; serving from cache up to 5 minutes avoids buying from unreachable suppliers and refuses uncached queries without charging customers.",
+          "Both suppliers are unreachable right now (Ridgeline in maintenance until 22:42 UTC). I switched the buy policy to cache-only (supplier none, 300 s cache) so customers get cached stock checks where available and uncached queries are refused without charge. No purchases were made. Budget left is 9.66. Note: my earlier 10:43 and 10:48 notes cited Stockline at 0.02 and budget 9.98/9.68, but the market data shows Stockline at 0.04 (over the 0.03 cap, which Purser refused) and budget 9.66, so those earlier notes were wrong. Stockline needs a price at or under 0.03 before live buys resume."
+        ],
+        [
+          "Both suppliers are unreachable right now (Ridgeline in maintenance until 22:42 UTC, Stockline offline), so serve queries from cache (up to 300 s old) and refuse uncached ones, which are not charged; revert to Stockline when it is back.",
+          "Stockline is now unreachable and Ridgeline is in maintenance until 22:42 UTC, so I switched the buy policy to cache-only (no supplier, cache up to 300 s) to avoid failed purchases; no purchases made. Budget left per market is 9.66. I'll switch back to Stockline (up to the 0.03 cap) once it is reachable again."
+        ],
+        [
+          "Stockline and Ridgeline are both unreachable right now, so there is nothing to buy. The buy policy stays at Stockline, up to the 0.03 cap, no cache, so checks resume automatically when Stockline is back. No purchases made. Budget left per market is 9.66. Ridgeline is in maintenance until 22:42 UTC. Note that the 10:43 and 10:48 entries said 9.98 and 9.68 for budget; the market now shows 9.66."
+        ],
+        [
+          "Stockline and Ridgeline are both unreachable right now, so there is nothing to buy. I left the buy policy as it is (Stockline, cap 0.03, no cache) so purchasing resumes automatically when Stockline returns, and made no purchases. Ridgeline is in maintenance until 22:42 UTC. Budget per market is 9.66; my earlier 9.68 figure was off. The 0.04 refusal from Purser was over the 0.03 cap, and the 0.02 price I noted earlier is no longer quoted."
+        ],
+        [
+          "Stockline is unreachable right now and Ridgeline is in maintenance until 22:42 UTC; allowing up to 60 seconds of cached stock checks keeps customer queries served and avoids repeat buys, while the price stays within the 0.03 mandate cap.",
+          "Stockline and Ridgeline are both unreachable now, so no purchases were made. I set the buy policy to Stockline with a 0.03 cap and a 60-second cache so customers can still be served from recent data when Stockline is back. Budget per market is 9.66. Ridgeline stays off until its maintenance ends at 22:42 UTC."
+        ],
+        [
+          "Both suppliers are unreachable: Stockline is down (it was 0.02 a check, under the 0.03 cap, at my last check) and Ridgeline is in maintenance until 22:42 UTC. I kept the buy policy (Stockline, up to the 0.03 cap, no cache) and made no purchases. Budget left is 9.66 per market. Event #2 showed Stockline at 0.04 was refused by Purser for exceeding the cap, so I'll only buy when its price is at or under 0.03."
+        ]
+      ],
+      "ran_at": "2026-11-02T17:59:51.858Z"
+    },
+    {
+      "case": "treasury-facts-ridgeline-down",
+      "agent": "treasury",
+      "kind": "hard",
+      "model": "claude-opus-5-5",
+      "passed": 0,
+      "runs": 10,
+      "cost_usd_micros": 210100,
+      "median_ms": 8252,
+      "details": [
+        "FAIL: claude; pointed at Ridgeline: \"That fits inside your 0.03 cap\"; said it is down: \"If Ridgeline becomes unavailable or raises its price\"; no options filed; \"No rebalance. Stockline's price is now over the sourcing cap, but Ridgeline sells the same stock check for 0.03, inside the cap and with a 0.02 margin, so Sourcing can still do its job. I told Sourcing to switch to Ridgeline. There are no earnings to sweep, no euro invoice and nothing waiting for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"That fits your 0.03 cap\"; never said Ridgeline is down; no options filed; \"No rebalance: Stockline at 0.04 is over the 0.03 cap, but Ridgeline Data at 0.03 fits the cap and leaves a 0.02 margin. I told Sourcing to switch to Ridgeline. There are no earnings to sweep, no invoice has come in and nothing waits for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"Please buy fresh stock checks from Ridgeline rather than serving only from cache\"; never said Ridgeline is down; no options filed; \"No rebalance: Sourcing can still do its job within its 0.03 cap by buying from Ridgeline Data at 0.03, which keeps a 0.02 margin. Raising the cap to 0.04 for Stockline would cut that margin to 0.01. I told Sourcing to switch to Ridgeline. There are no earnings to sweep, and nothing waits for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"so I told the sourcing agent to buy there\"; never said Ridgeline is down; no options filed; \"I'm not proposing a rebalance. Stockline's 0.04 price is over the sourcing agent's 0.03 cap, but Ridgeline Data sells the same stock check for 0.03, so I told the sourcing agent to buy there. That fits the cap and keeps a 0.02 margin per query instead of 0.01. There are no earnings to sweep, no invoice, and nothing waiting for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"That fits your 0.03 cap\"; never said Ridgeline is down; no options filed; \"No rebalance. Stockline's new 0.04 price is over Sourcing's 0.03 cap, but Ridgeline sells at 0.03, inside the cap, with a 0.02 margin on the 0.05 price. I told Sourcing to switch to Ridgeline. There's nothing to sweep (net 0.00), no invoice, and nothing waiting for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"That fits inside your 0.03 cap\"; never said Ridgeline is down; no options filed; \"No rebalance. Sourcing isn't really blocked: Ridgeline Data at 0.03 fits its 0.03 cap with a 0.02 margin, better than Stockline's new 0.04. I told Sourcing to switch to Ridgeline and to come back if Ridgeline falls short. There's nothing to sweep (net 0.00), no invoice has arrived and nothing waits for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"That fits your 0.03 cap\"; never said Ridgeline is down; no options filed; \"I didn't ask for a rebalance. Stockline at 0.04 is over the sourcing cap, but Ridgeline Data at 0.03 fits the 0.03 cap and keeps a 0.02 margin, so sourcing can still do its job within its mandate. I told sourcing to switch to Ridgeline. There are no earnings to sweep, no invoice, and nothing waiting for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"Please buy fresh checks from Ridgeline instead of serving only from cache\"; never said Ridgeline is down; no options filed; \"No rebalance proposed. Sourcing can still do its job inside its mandate by buying from Ridgeline Data at 0.03, which fits the 0.03 cap and keeps a 0.02 margin, better than Stockline's 0.01. I told Sourcing to switch. There are no earnings to sweep and nothing waits for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"That fits your 0.03 cap\"; never said Ridgeline is down; no options filed; \"No rebalance. Stockline's price of 0.04 is over the sourcing cap, but Ridgeline Data sells the same stock check for 0.03, which is within the cap and keeps a better margin (0.02). I told Sourcing to switch to Ridgeline. There are no earnings to sweep, no invoice and nothing waiting for the CFO.\"",
+        "FAIL: claude; pointed at Ridgeline: \"Please buy fresh checks from Ridgeline instead of serving only from cache\"; never said Ridgeline is down; no options filed; \"No rebalance: Stockline's 0.04 is over Sourcing's cap, but Ridgeline at 0.03 fits the cap and leaves a 0.02 margin. So Sourcing can still do its job, and I told it to switch to Ridgeline. Nothing to sweep (net 0.00), no invoice, nothing waiting for the CFO.\""
+      ],
+      "commit": "09b54db5bad4",
+      "dirty": false,
+      "words": [
+        [
+          "Thanks for flagging the Stockline price change. I'm not asking for a rebalance. Ridgeline Data sells a stock check for 0.03. That fits inside your 0.03 cap and leaves a 0.02 margin on the 0.05 query price, which is better than Stockline's 0.01 at 0.04. Please buy from Ridgeline when the cache isn't enough. If Ridgeline becomes unavailable or raises its price, tell me and I'll take it to the CFO.",
+          "No rebalance. Stockline's price is now over the sourcing cap, but Ridgeline sells the same stock check for 0.03, inside the cap and with a 0.02 margin, so Sourcing can still do its job. I told Sourcing to switch to Ridgeline. There are no earnings to sweep, no euro invoice and nothing waiting for the CFO."
+        ],
+        [
+          "Thanks for the heads-up on Stockline going to 0.04. You are not actually blocked: Ridgeline Data sells a stock check for 0.03. That fits your 0.03 cap and leaves a 0.02 margin on the 0.05 query price, better than the 0.01 Stockline would leave. Please use Ridgeline for live stock checks instead of serving only from cache. I'm not proposing a cap change for now. Tell me if Ridgeline can't do the job (price, coverage, quality) and I'll design a rebalance for the CFO.",
+          "No rebalance: Stockline at 0.04 is over the 0.03 cap, but Ridgeline Data at 0.03 fits the cap and leaves a 0.02 margin. I told Sourcing to switch to Ridgeline. There are no earnings to sweep, no invoice has come in and nothing waits for the CFO."
+        ],
+        [
+          "Thanks for flagging Stockline's rise to 0.04. Ridgeline Data still sells a stock check for 0.03, which is within your 0.03 cap and leaves a 0.02 margin on the 0.05 query price. Stockline at 0.04 would leave only 0.01. Please buy fresh stock checks from Ridgeline rather than serving only from cache. I'm not asking the CFO for a rebalance while Ridgeline works. If Ridgeline also goes above 0.03 or starts failing, tell me and I'll design one.",
+          "No rebalance: Sourcing can still do its job within its 0.03 cap by buying from Ridgeline Data at 0.03, which keeps a 0.02 margin. Raising the cap to 0.04 for Stockline would cut that margin to 0.01. I told Sourcing to switch to Ridgeline. There are no earnings to sweep, and nothing waits for the CFO."
+        ],
+        [
+          "Thanks for the heads-up. Ridgeline Data sells a stock check for 0.03, which fits your 0.03 cap and leaves a 0.02 margin on the 0.05 query price. Stockline at 0.04 would leave only 0.01. Please buy fresh stock checks from Ridgeline when the cache isn't enough. I'm not proposing a cap raise to 0.04, because you can still do your job within your current mandate. Tell me if Ridgeline goes above 0.03 or stops responding.",
+          "I'm not proposing a rebalance. Stockline's 0.04 price is over the sourcing agent's 0.03 cap, but Ridgeline Data sells the same stock check for 0.03, so I told the sourcing agent to buy there. That fits the cap and keeps a 0.02 margin per query instead of 0.01. There are no earnings to sweep, no invoice, and nothing waiting for the CFO."
+        ],
+        [
+          "Thanks for flagging the Stockline change. Please don't serve from cache only. Ridgeline Data sells a stock check for 0.03. That fits your 0.03 cap, and on our 0.05 sell price it leaves a 0.02 margin, better than the 0.01 Stockline would leave at 0.04. Please buy stock checks from Ridgeline for now. If Ridgeline also goes above 0.03 or stops responding, tell me and I'll design a rebalance for the CFO.",
+          "No rebalance. Stockline's new 0.04 price is over Sourcing's 0.03 cap, but Ridgeline sells at 0.03, inside the cap, with a 0.02 margin on the 0.05 price. I told Sourcing to switch to Ridgeline. There's nothing to sweep (net 0.00), no invoice, and nothing waiting for the CFO."
+        ],
+        [
+          "Thanks for the Stockline note. I'm not asking for a rebalance yet. Ridgeline Data sells a stock check for 0.03. That fits inside your 0.03 cap and leaves a 0.02 margin on the 0.05 price, compared with 0.01 at Stockline's new 0.04. Please buy fresh stock checks from Ridgeline and use cache where it's enough. Tell me if Ridgeline can't cover what you need (price, gaps or errors), and then I'll design a cap change for the CFO.",
+          "No rebalance. Sourcing isn't really blocked: Ridgeline Data at 0.03 fits its 0.03 cap with a 0.02 margin, better than Stockline's new 0.04. I told Sourcing to switch to Ridgeline and to come back if Ridgeline falls short. There's nothing to sweep (net 0.00), no invoice has arrived and nothing waits for the CFO."
+        ],
+        [
+          "Thanks for the Stockline note. Ridgeline Data still sells a stock check for 0.03. That fits your 0.03 cap and leaves a 0.02 margin on the 0.05 price, which is better than Stockline's 0.01. Please buy live stock checks from Ridgeline instead of serving only from cache. I'm not asking for a cap change for now. Tell me if Ridgeline raises its price or stops serving you, and I'll look at it again.",
+          "I didn't ask for a rebalance. Stockline at 0.04 is over the sourcing cap, but Ridgeline Data at 0.03 fits the 0.03 cap and keeps a 0.02 margin, so sourcing can still do its job within its mandate. I told sourcing to switch to Ridgeline. There are no earnings to sweep, no invoice, and nothing waiting for the CFO."
+        ],
+        [
+          "Thanks for the heads-up on Stockline going to 0.04. You don't need a cap raise to keep stock checks flowing. Ridgeline Data charges 0.03 a check, which fits your 0.03 cap exactly and keeps a 0.02 margin on the 0.05 price. That's better than the 0.01 Stockline would leave. Please buy fresh checks from Ridgeline instead of serving only from cache. If Ridgeline also goes above 0.03 or stops working, tell me and I'll design a rebalance for the CFO.",
+          "No rebalance proposed. Sourcing can still do its job inside its mandate by buying from Ridgeline Data at 0.03, which fits the 0.03 cap and keeps a 0.02 margin, better than Stockline's 0.01. I told Sourcing to switch. There are no earnings to sweep and nothing waits for the CFO."
+        ],
+        [
+          "Thanks for flagging Stockline's increase to 0.04. You don't need a new cap: Ridgeline Data sells a stock check for 0.03. That fits your 0.03 cap and leaves a 0.02 margin on the 0.05 query price, which is better than Stockline's 0.01. Please buy from Ridgeline when the cache isn't enough. If Ridgeline stops working or goes over 0.03, tell me and I'll design a rebalance for the CFO.",
+          "No rebalance. Stockline's price of 0.04 is over the sourcing cap, but Ridgeline Data sells the same stock check for 0.03, which is within the cap and keeps a better margin (0.02). I told Sourcing to switch to Ridgeline. There are no earnings to sweep, no invoice and nothing waiting for the CFO."
+        ],
+        [
+          "Thanks for flagging Stockline's move to 0.04. I'm not asking for a mandate change. Ridgeline Data sells a stock check for 0.03, which fits your 0.03 cap and leaves us 0.02 on the 0.05 query price, double what Stockline would leave. Please buy fresh checks from Ridgeline instead of serving only from cache. Tell me if Ridgeline goes above 0.03 or can't supply a check you need, and I'll look at a rebalance then.",
+          "No rebalance: Stockline's 0.04 is over Sourcing's cap, but Ridgeline at 0.03 fits the cap and leaves a 0.02 margin. So Sourcing can still do its job, and I told it to switch to Ridgeline. Nothing to sweep (net 0.00), no invoice, nothing waiting for the CFO."
+        ]
+      ],
+      "ran_at": "2026-11-02T18:01:23.255Z"
+    },
+    {
+      "case": "treasury-facts-paid",
+      "agent": "treasury",
+      "kind": "hard",
+      "model": "claude-opus-5-5",
+      "passed": 1,
+      "runs": 10,
+      "cost_usd_micros": 153375,
+      "median_ms": 4864,
+      "details": [
+        "FAIL: claude; called it unpaid: \"As decided at 17:46, I'll plan the Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) again closer to the due date, unless I'm told it's\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"No action this check. No agent is blocked by its mandate, there are no net earnings to sweep (0.00), and nothing waits for the CFO. As decided at 17:46, I'll plan the Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) again closer to the due date, unless I'm told it's disputed.\"",
+        "FAIL: claude; called it unpaid: \"The Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after two closed or lapsed payouts.\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"No action this check. Nothing has changed: no agent is blocked by its mandate, net earnings are 0.00 so there is nothing to sweep, and nothing waits for the CFO. The Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after two closed or lapsed payouts. I'll plan it again closer to the due date unless I hear it's disputed.\"",
+        "FAIL: claude; called it unpaid: \"Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after P-0005 and P-0006 both closed without being sent.\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"No action this check. No agent is blocked by its mandate, there are no net earnings to sweep (0.00), nothing waits for the CFO and no customer payments have come in. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after P-0005 and P-0006 both closed without being sent. I'll plan it again closer to the due date unless I'm told it's disputed.\"",
+        "FAIL: claude; called it unpaid: \"One thing is still open: Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is unpaid, and today's position doesn't list it.\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"I took no action this check: the position shows nothing new. No agent is blocked by its mandate, so there's no reason to rebalance. Net earnings are 0.00, so there's nothing to sweep, and nothing is waiting for the CFO. One thing is still open: Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is unpaid, and today's position doesn't list it. The CFO has closed two payouts for it today (P-0005\"",
+        "FAIL: claude; called it unpaid: \"Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after both earlier payouts (P-0005 and P-0006) were closed without be\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"I took no action on this routine check. Net earnings are 0.00, so there was nothing to sweep. No agent is blocked by its mandate, so no rebalance is needed. Nothing is waiting for the CFO. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after both earlier payouts (P-0005 and P-0006) were closed without being sent. I'll plan it again closer to the due date unless I'm told it'\"",
+        "pass: claude; never called it unpaid; silent about the licence; plan_invoice 0× (0 reached the flow); \"I took no action this check. There's nothing to sweep (0.00 net earnings) and nothing waiting for the CFO. Each agent is within its cap and the total is 20.00, so no rebalance is needed. The position no longer lists the Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov), so I can't tell whether it was paid, withdrawn or just dropped from view. I'll plan it again closer to the due date if it is\"",
+        "FAIL: claude; called it unpaid: \"Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid.\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"No action this check. No agent is blocked by its mandate, net earnings to sweep are 0.00, no customer payments have come in and nothing waits for the CFO. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid. As I decided at 17:46, I won't plan it a third time today and will plan it again closer to the due date unless I hear it's disputed.\"",
+        "FAIL: claude; called it unpaid: \"Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after the CFO turned down or let lapse two plans today.\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"No action this check. Nothing has changed: net earnings are 0.00, no agent is blocked by its mandate and nothing waits for the CFO. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after the CFO turned down or let lapse two plans today. With 13 days left, I'll plan it again closer to the due date unless I hear it is disputed.\"",
+        "FAIL: claude; called it unpaid: \"The Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after two payouts were closed or lapsed.\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"I took no action on this routine check. No agent is blocked by its mandate, and the 20.00 total is fully allocated with a margin on every query (price 0.06 against upstream 0.04 or 0.03). There are 0.00 net earnings to sweep, and nothing waits for the CFO. The Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after two payouts were closed or lapsed. I'll plan it again closer t\"",
+        "FAIL: claude; called it unpaid: \"I'll plan it again closer to the due date unless I'm told it's disputed.\"; silent about the licence; plan_invoice 0× (0 reached the flow); \"No action this check. No agent is blocked, earnings are 0.00 so there is nothing to sweep, and nothing waits for the CFO. I'm also not re-planning Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) yet: two payouts for it were closed today and 13 days remain. I'll plan it again closer to the due date unless I'm told it's disputed. One thing to check: the 0.92 net I reported at 17:47 now shows \""
+      ],
+      "commit": "09b54db5bad4",
+      "dirty": false,
+      "words": [
+        [
+          "No action this check. No agent is blocked by its mandate, there are no net earnings to sweep (0.00), and nothing waits for the CFO. As decided at 17:46, I'll plan the Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) again closer to the due date, unless I'm told it's disputed."
+        ],
+        [
+          "No action this check. Nothing has changed: no agent is blocked by its mandate, net earnings are 0.00 so there is nothing to sweep, and nothing waits for the CFO. The Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after two closed or lapsed payouts. I'll plan it again closer to the due date unless I hear it's disputed."
+        ],
+        [
+          "No action this check. No agent is blocked by its mandate, there are no net earnings to sweep (0.00), nothing waits for the CFO and no customer payments have come in. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after P-0005 and P-0006 both closed without being sent. I'll plan it again closer to the due date unless I'm told it's disputed."
+        ],
+        [
+          "I took no action this check: the position shows nothing new. No agent is blocked by its mandate, so there's no reason to rebalance. Net earnings are 0.00, so there's nothing to sweep, and nothing is waiting for the CFO. One thing is still open: Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is unpaid, and today's position doesn't list it. The CFO has closed two payouts for it today (P-0005 and P-0006). With 13 days left, I'll plan it again closer to the due date unless I hear it's disputed."
+        ],
+        [
+          "I took no action on this routine check. Net earnings are 0.00, so there was nothing to sweep. No agent is blocked by its mandate, so no rebalance is needed. Nothing is waiting for the CFO. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after both earlier payouts (P-0005 and P-0006) were closed without being sent. I'll plan it again closer to the due date unless I'm told it's disputed."
+        ],
+        [
+          "I took no action this check. There's nothing to sweep (0.00 net earnings) and nothing waiting for the CFO. Each agent is within its cap and the total is 20.00, so no rebalance is needed. The position no longer lists the Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov), so I can't tell whether it was paid, withdrawn or just dropped from view. I'll plan it again closer to the due date if it is still owed."
+        ],
+        [
+          "No action this check. No agent is blocked by its mandate, net earnings to sweep are 0.00, no customer payments have come in and nothing waits for the CFO. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid. As I decided at 17:46, I won't plan it a third time today and will plan it again closer to the due date unless I hear it's disputed."
+        ],
+        [
+          "No action this check. Nothing has changed: net earnings are 0.00, no agent is blocked by its mandate and nothing waits for the CFO. Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after the CFO turned down or let lapse two plans today. With 13 days left, I'll plan it again closer to the due date unless I hear it is disputed."
+        ],
+        [
+          "I took no action on this routine check. No agent is blocked by its mandate, and the 20.00 total is fully allocated with a margin on every query (price 0.06 against upstream 0.04 or 0.03). There are 0.00 net earnings to sweep, and nothing waits for the CFO. The Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) is still unpaid after two payouts were closed or lapsed. I'll plan it again closer to the due date unless I'm told it is disputed."
+        ],
+        [
+          "No action this check. No agent is blocked, earnings are 0.00 so there is nothing to sweep, and nothing waits for the CFO. I'm also not re-planning Stockline invoice SLL-2026-11 (EUR 240.00, due 15 Nov) yet: two payouts for it were closed today and 13 days remain. I'll plan it again closer to the due date unless I'm told it's disputed. One thing to check: the 0.92 net I reported at 17:47 now shows as 0.00, with nothing recorded as swept, so the CFO may want to confirm the earnings ledger."
+        ]
+      ],
+      "ran_at": "2026-11-02T18:02:19.455Z"
+    }
+  ]
+}

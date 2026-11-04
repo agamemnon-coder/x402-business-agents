@@ -6,7 +6,7 @@
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
-import { KIT11_JOBS } from "../config/brand.js";
+import { KIT11_JOBS, SECOND_APPROVER, VISA_AWARD_STATUS } from "../config/brand.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
 const dataUri = (p: string, type: string) => `data:${type};base64,${asset(p).toString("base64")}`;
@@ -16,7 +16,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 export const TRY_URL = "https://kit11.max-31b.workers.dev/try";
 
 /** Screenshots by name (data URIs), as npm run submission takes them. */
-export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max", string>;
+export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max" | "watch" | "proof", string>;
 
 interface Slide { kicker: string; title: string; points?: string[]; extra?: string; pic: string }
 
@@ -29,16 +29,17 @@ const phones = (a: string, b: string, caption: string) =>
 const stat = (value: string, label: string) => `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`;
 
 export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
-  const rt = f.redteam;
+  const rt = f.redteam, m = f.main;
+  const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-4)}`;
   const slides: Slide[] = [
     {
       kicker: "Airwallex Agentic Banking Hackathon · Metal Award",
       title: "Purser",
       extra: `<p class="lead">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</p>
-        <div class="stats">${stat(String(f.alone), "payments inside the limits, no approval at the time (about half by the simulated customer's agent)")}${stat(`${f.card_declines} · ${f.chain_refusals}`, "declined by Airwallex · refused by Metal against the on-chain mandate")}${stat(String(f.face_id), "decisions by the CFO with Face ID")}</div>
-        <p class="src">${esc(f.run)}. Audit log: ${f.audit_rows} rows, hash-chained, checkable offline. Test money only.</p>
+        <div class="stats">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude agents, ${m.fallbacks} fallbacks`)}${stat(String(m.alone), `payments inside the limits, no approval at the time (${m.sales} by the simulated customer's agent)`)}${stat(String(m.face_id), "decisions by the CFO with Face ID")}</div>
+        <p class="src">The main run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only. Audit log: ${m.audit_rows} rows, hash-chained, checkable offline.</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
-      pic: shot(s.landing, "The landing page, from the recorded live run"),
+      pic: shot(s.landing, "Home, replaying the main run (3 November)"),
     },
     {
       kicker: "Kit 11 · x402 Business Agents",
@@ -48,7 +49,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Each agent pays under its own on-chain mandate; 20.00 test USD between them, held in code.",
         "A supplier price rise is refused; the CFO approves new limits within the 20 with Face ID.",
       ],
-      pic: `<div class="kitmap">${f.kit11.map((k) => `<div><b>${esc(k.agent)}</b><span>${esc(KIT11_JOBS[k.role as keyof typeof KIT11_JOBS] ?? "")}</span><em>${esc(k.bound === k.now ? k.now : `${k.bound} → ${k.now}`)}</em></div>`).join("")}<p>budgets in test USD, when bound → after the CFO's Face ID (recorded run, 30 October, before the agents took Kit 11's names; the licence fee joins in the live run)</p></div>`,
+      pic: `<div class="kitmap">${m.kit11.map((k) => `<div><b>${esc(k.agent)}</b><span>${esc(KIT11_JOBS[k.role as keyof typeof KIT11_JOBS] ?? "")}</span><em>${esc(k.bound === k.now ? k.now : `${k.bound} → ${k.now}`)}</em></div>`).join("")}<p>budgets in test USD, when bound → after the CFO's Face ID (the main run, 3 November)</p></div>`,
     },
     {
       kicker: "The problem",
@@ -76,31 +77,31 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Scene 1 · The price rise · Metal enforces the limits",
       title: "Mandates on chain: Metal holds the limit",
       points: [
-        "<b>A mandate per agent</b>: cap per payment, budget, one payee, end date.",
-        "<b>A price rise was refused against the on-chain mandate</b>: <code>mandate_cap_exceeded</code>; nothing moved.",
-        "<b>x402 with signed orders</b>, refunds as mandate pulls, earnings swept once final.",
+        `<b>Stockline 0.02 → 0.04, over the 0.03 cap.</b> Purser normally refuses before signing; to prove the rail holds the limit, one purchase was let through to Metal: <b>Metal refused it</b> (<code>mandate_cap_exceeded</code>, tx ${esc(short(m.let_through_tx))}); nothing moved.`,
+        `<b>Treasury's options ${m.to_options_s} s later</b>, within the 20. The CFO signed with Face ID (1 of 2), then the second approver (2 of 2); the mandates were replaced on chain.`,
+        `<small>${esc(SECOND_APPROVER)}</small>`,
       ],
-      pic: shot(s.inspector, "The mandate inspector on /metal"),
+      pic: shot(s.watch, "Watch: the main run's key moments, each with its proof"),
     },
     {
       kicker: "Scene 2 · The dispute · the Dispute desk",
       title: "The seller checks each payment against the chain",
       points: [
-        `A simulated customer (we filed for it) disputed ${f.metal.dispute_orders} orders; each was checked against its signed order and mandate.`,
-        `All ${f.metal.dispute_orders} were signed and inside the mandate: ${f.metal.dispute_refunded === 0 ? "nothing new refunded" : `${f.metal.dispute_refunded} refunded`} (${f.metal.refunded_before.length} had been refunded earlier for wrong data).`,
-        "Open source for any seller on Metal: <code>examples/metal-dispute-desk</code>.",
+        `In the main run a simulated customer (we run it) disputed ${m.disputed} orders; the Support agent checked each against its signed order and the mandate.`,
+        `It refunded only the ${m.refunded.length} with wrong data (orders ${m.refunded.slice(0, -1).join(", ")} and ${m.refunded.at(-1)}); "refund the other ${m.disputed - m.refunded.length}" went to the CFO, who rejected it with Face ID.`,
+        "Any seller on Metal can reuse it: <code>examples/metal-dispute-desk</code>.",
       ],
-      pic: shot(s.dispute, "The Disputes tab; the case ran after the recorded run, on a copy of its ledger"),
+      pic: shot(s.dispute, "The Disputes tab of the earlier recorded run (30 October), order by order"),
     },
     {
-      kicker: "Scene 3 · The euro bill · Airwallex pays and enforces",
+      kicker: "Scene 3 · The euro licence · Airwallex pays and enforces",
       title: "The euro bill, and a company card per agent",
       points: [
-        "<b>€1,850.00 by SWIFT</b>: only the EUR shortfall converted; the approval's hash rides in the transfer.",
-        `<b>Declined by Airwallex itself</b>: €45.00 over the limit, €19.99 at the wrong kind of shop.`,
-        "<b>One Face ID</b> raised the limit; the same charge then went through.",
+        `<b>The Treasury agent planned the EUR 240.00 licence itself.</b> After the CFO's Face ID: ${esc(m.fx_buy)} bought by FX for only the shortfall, then SWIFT, <b>PAID ${m.face_to_paid_s} s after Face ID</b> (fee ${esc(m.licence_fee)}).`,
+        `<b>A card buy signed with Visa TAP</b> in the same world: Airwallex approved €${esc(m.tap_amount.replace(/\.00$/, ""))} on the agent's card after the CFO raised its limit with Face ID. In the 30 October run Airwallex declined €45.00 over the limit itself.`,
+        `<small>${esc(VISA_AWARD_STATUS)}</small>`,
       ],
-      pic: shot(s.decline, "Purser live: Airwallex declines €45.00 over the limit; the CFO raises it with Face ID"),
+      pic: shot(s.decline, "The 30 October run: Airwallex declines €45.00 over the limit; the CFO raises it with Face ID"),
     },
     {
       kicker: "For a bigger company",
@@ -117,12 +118,12 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Agents built on Claude (Anthropic API), and measured",
       title: "No model can raise a limit or move money outside it",
       points: [
-        "With the agents on, each decision is a real Claude call with its request id, tokens and cost; in five autonomous dry runs in a row, 0 decisions fell back to code (not yet in a live run with Max).",
+        `Each decision is a real Claude call with its request id, tokens and cost. In the main run: ${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks, ${m.claude_calls} calls, USD ${m.claude_usd} at list prices.`,
         "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO. On harder documents Haiku alone misread 1 of 15; this split read all 15.",
-        `Claude holds no key and approves nothing. ${f.claude_calls} calls, $${f.claude_per_1000_eur_usd} per €1,000 paid.`,
+        "Claude holds no key and approves nothing; code checks every decision before money moves.",
         `Red team, in a throwaway test world: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,
       ],
-      pic: shot(s.claude, "The Claude panel of the recorded run: each model, its calls and its cost"),
+      pic: shot(s.proof, "Proof: who decided what in the main run, each partner's live proof"),
     },
     {
       kicker: "Business model (plan) and roadmap",
@@ -133,7 +134,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Today the sandbox and testnet; next a KMS, Postgres and a pager; then Metal mainnet.",
       ],
       pic: `<div class="timeline">
-        <div><b>Now</b><span>Airwallex sandbox · Metal testnet</span><ul><li>live runs on sandbox and testnet; licence fee, T:0 and emergency stop not yet live</li><li>one company per ledger</li><li>tests and checks in CI on every push</li></ul></div>
+        <div><b>Now</b><span>Airwallex sandbox · Metal testnet</span><ul><li>live runs on sandbox and testnet, the licence fee paid in the main run; T:0 and emergency stop not yet live</li><li>one company per ledger</li><li>tests and checks in CI on every push</li></ul></div>
         <div><b>Next</b><span>production basics</span><ul><li>keys in a KMS, not files</li><li>Postgres with point-in-time recovery</li><li>a pager on <code>/health</code>; many companies</li></ul></div>
         <div><b>Then</b><span>scale</span><ul><li>Metal mainnet</li><li>four eyes as the default</li><li>finality proofs verified in full</li></ul></div>
       </div>`,

@@ -2,6 +2,7 @@
 // is a settled deposit whose reference is its tx hash, and every executed invoice payment's conversion and
 // transfer are exactly the ones the approved terms describe, carrying the approval hash in their metadata.
 
+import { SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
 import { cents } from "./adapter.js";
 import type { Airwallex } from "./client.js";
 import type { DB } from "../db/open.js";
@@ -93,7 +94,11 @@ export async function verifyAirwallex(db: DB, get: Get): Promise<Check[]> {
       // Terms before the fee ceiling carried an estimate ("fee"), which the real fee may exceed.
       const ceiling = (t as { fee_max?: string }).fee_max;
       const est = (t as { fee?: string }).fee;
-      if (ceiling) add(x.fee_currency === "EUR" && cents(x.fee_amount) <= toCents(ceiling) ? "ok" : "FAIL", `${p.proposal_id} fee`, `${fee}, ceiling EUR ${ceiling}`);
+      if (ceiling) {
+        add(x.fee_currency === "EUR" && cents(x.fee_amount) <= toCents(ceiling) ? "ok" : "FAIL", `${p.proposal_id} fee`, `${fee}, ceiling EUR ${ceiling}`);
+        // Within what the CFO approved, yet above the EUR 20.00 policy ceiling: shown, never silent (review, 2 November).
+        if (x.fee_currency === "EUR" && cents(x.fee_amount) > SWIFT_FEE_MAX_EUR_CENTS && cents(x.fee_amount) <= toCents(ceiling)) add("note", `${p.proposal_id} fee above the policy ceiling`, `${fee} is above EUR ${fromCents(SWIFT_FEE_MAX_EUR_CENTS)}; the approved terms reserved EUR ${ceiling}`);
+      }
       else add("note", `${p.proposal_id} fee`, `${fee}; the terms estimated EUR ${est ?? "?"} (approved before the fee ceiling existed)`);
     }
   }

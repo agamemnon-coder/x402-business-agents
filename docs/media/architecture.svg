@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 330" width="1000" height="330" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Purser: how money moves</title>
+  <desc id="d">An agent acts inside its limits and proposes the rest; rules in code check; a person approves with Face ID, optionally also on the Cardputer hub; only then Airwallex or Metal move test money; the books go to T:0 and every step to the hash-chained audit log. A run the rules fail never runs.</desc>
+  <rect x="0" y="0" width="1000" height="330" rx="12" fill="#ffffff"/>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+  </defs>
+  <g font-size="13" fill="#0f172a">
+    <!-- 1 agent -->
+    <rect x="15" y="60" width="170" height="160" rx="10" fill="#eef2ff" stroke="#6366f1"/>
+    <text x="100" y="86" text-anchor="middle" font-weight="700" font-size="15">AI agent</text>
+    <text x="100" y="108" text-anchor="middle">Claude reads, explains,</text>
+    <text x="100" y="126" text-anchor="middle">acts inside its limits</text>
+    <text x="100" y="144" text-anchor="middle">and proposes the rest.</text>
+    <text x="100" y="172" text-anchor="middle" fill="#4338ca">Cannot change</text>
+    <text x="100" y="190" text-anchor="middle" fill="#4338ca">its own limits</text>
+    <!-- 2 rules -->
+    <rect x="215" y="60" width="170" height="160" rx="10" fill="#ecfdf5" stroke="#10b981"/>
+    <text x="300" y="86" text-anchor="middle" font-weight="700" font-size="15">Rules in code</text>
+    <text x="300" y="108" text-anchor="middle">floors, caps, velocity,</text>
+    <text x="300" y="126" text-anchor="middle">duplicate invoice,</text>
+    <text x="300" y="144" text-anchor="middle">allowlisted payees</text>
+    <text x="300" y="172" text-anchor="middle" fill="#047857">pure functions,</text>
+    <text x="300" y="190" text-anchor="middle" fill="#047857">each with a test</text>
+    <!-- 3 person -->
+    <rect x="415" y="60" width="170" height="160" rx="10" fill="#fff7ed" stroke="#f97316"/>
+    <text x="500" y="86" text-anchor="middle" font-weight="700" font-size="15">A person signs</text>
+    <text x="500" y="108" text-anchor="middle">CFO's Face ID on the</text>
+    <text x="500" y="126" text-anchor="middle">exact terms hash;</text>
+    <text x="500" y="144" text-anchor="middle">four eyes above a limit</text>
+    <text x="500" y="172" text-anchor="middle" fill="#c2410c">optional: Cardputer hub,</text>
+    <text x="500" y="190" text-anchor="middle" fill="#c2410c">an extra gate, never instead</text>
+    <!-- 4 rails -->
+    <rect x="615" y="60" width="170" height="160" rx="10" fill="#f0f9ff" stroke="#0ea5e9"/>
+    <text x="700" y="86" text-anchor="middle" font-weight="700" font-size="15">Money moves</text>
+    <text x="700" y="108" text-anchor="middle">Airwallex sandbox:</text>
+    <text x="700" y="126" text-anchor="middle">FX, SWIFT, cards</text>
+    <text x="700" y="150" text-anchor="middle">Metal testnet:</text>
+    <text x="700" y="168" text-anchor="middle">mandates, x402</text>
+    <text x="700" y="194" text-anchor="middle" fill="#0369a1">idempotent request ids</text>
+    <!-- 5 books -->
+    <rect x="815" y="60" width="170" height="160" rx="10" fill="#f8fafc" stroke="#64748b"/>
+    <text x="900" y="86" text-anchor="middle" font-weight="700" font-size="15">Books</text>
+    <text x="900" y="108" text-anchor="middle">double entry, reconciled</text>
+    <text x="900" y="126" text-anchor="middle">with Airwallex and Metal</text>
+    <text x="900" y="150" text-anchor="middle">optional: T:0 ledger</text>
+    <text x="900" y="168" text-anchor="middle">(never blocks a payment)</text>
+    <text x="900" y="194" text-anchor="middle" fill="#334155">audit log, hash-chained</text>
+  </g>
+  <g stroke="#475569" stroke-width="2" fill="none" marker-end="url(#a)">
+    <line x1="187" y1="140" x2="211" y2="140"/>
+    <line x1="387" y1="140" x2="411" y2="140"/>
+    <line x1="587" y1="140" x2="611" y2="140"/>
+    <line x1="787" y1="140" x2="811" y2="140"/>
+    <path d="M300 222 L300 268"/>
+  </g>
+  <g font-size="13">
+    <rect x="200" y="272" width="200" height="40" rx="8" fill="#fef2f2" stroke="#ef4444"/>
+    <text x="300" y="290" text-anchor="middle" fill="#b91c1c" font-weight="700">check: fail</text>
+    <text x="300" y="306" text-anchor="middle" fill="#b91c1c">never runs, whoever approves</text>
+    <text x="500" y="36" text-anchor="middle" fill="#334155" font-size="14">Claude explains and proposes. Rules in code hold every limit. A person signs before money moves beyond them.</text>
+  </g>
+</svg>

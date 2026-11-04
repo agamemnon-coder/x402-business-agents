@@ -59,3 +59,21 @@ describe("planning a task card (code decides)", () => {
     expect(p.ok && p.task.purpose.length).toBe(120);
   });
 });
+
+// Red team, 2 November: Ask Purser reads typed amounts with the same reader as the Try page and the policy text.
+describe("Ask Purser reads amounts with the one reader (src/lib/numbers.ts)", () => {
+  const read = (over: Partial<TaskReading> = {}): TaskReading => ({ kind: "hotel", amount_eur: "250.00", purpose: "Munich", date: null, ...over });
+
+  it("reads Dutch and English notation", () => {
+    expect(readTaskFallback("Flight to Berlin, at most €2.5", now).amount_eur).toBe("2.50");
+    expect(readTaskFallback("Hotel in Munich, up to 1.250,00 EUR", now).amount_eur).toBe("1250.00");
+    expect(readTaskFallback("Hotel in Munich, up to €1.250", now).amount_eur).toBe("1250.00");
+    expect(readTaskFallback("Hotel in Munich, up to 1,250.00 EUR", now).amount_eur).toBe("1250.00");
+    expect(planTask("Hotel in Munich, up to 950,00 EUR", read({ amount_eur: "950.00" }), now)).toMatchObject({ ok: true, task: { amountCents: 95000 } });
+  });
+
+  it("refuses an amount the message leaves ambiguous, saying why", () => {
+    const p = planTask("Hotel in Munich for 2.5 nights, 1.200 at most", read({ amount_eur: "1200.00" }), now);
+    expect(p).toMatchObject({ ok: false, reply: expect.stringMatching(/1\.20 or 1,200\.00/) });
+  });
+});

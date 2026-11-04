@@ -1,0 +1,13 @@
+# D25 interop: only what Visa's reference needs for the test, at the versions the reference pins where it pins them.
+# - agent-registry/main.py (and database.py, models.py, schemas.py) imports fastapi, uvicorn, sqlalchemy, pydantic, dotenv;
+# - tap-agent/agent_app.py's create_ed25519_signature needs cryptography; the module imports requests and dotenv at the top
+#   (and streamlit, which test/interop/tap-interop.ts stands in for: the signing function calls it only on an error).
+# Compiled to tap-ref-requirements.txt with hashes, wheels only, nothing newer than 2026-10-19:
+#   uv pip compile test/interop/tap-ref-requirements.in --generate-hashes --python-version 3.12 --only-binary :all: --exclude-newer 2026-10-19 -o test/interop/tap-ref-requirements.txt
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+pydantic==2.5.0
+python-dotenv
+requests
+cryptography

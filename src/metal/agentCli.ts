@@ -2,7 +2,7 @@
 // HOME points into the keys directory so pull keep-files survive the container (risk R14).
 
 import { redactSecrets } from "../lib/redact.js";
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 
@@ -56,11 +56,30 @@ export function metalAgent(args: string[], okCodes: number[] = [0]): CliResult {
     encoding: "utf8",
     timeout: 180_000,
   });
-  const out = scrub(`${r.stdout ?? ""}${r.stderr ?? ""}`);
-  const result: CliResult = { code: r.status ?? -1, fields: parse(out), out };
+  return outcome(args, okCodes, r.status ?? -1, `${r.stdout ?? ""}${r.stderr ?? ""}`);
+}
+
+function outcome(args: string[], okCodes: number[], code: number, raw: string): CliResult {
+  const out = scrub(raw);
+  const result: CliResult = { code, fields: parse(out), out };
   // An "error:" line means the command did not run (bad input, bad setup); exit 1 must not read as "refused".
   if (!okCodes.includes(result.code) || /^error: /m.test(out)) throw new CliError(args, result);
   return result;
+}
+
+/**
+ * metalAgent without blocking the event loop, for a process that serves others while the CLI runs: the world serves
+ * Stockline, Ridgeline and the seller. Agent run 1 (2 November): recording the price-rise refusal on chain with
+ * spawnSync held that process for about six seconds, and the Sourcing agent's price check of Stockline went unanswered.
+ */
+export function metalAgentAsync(args: string[], okCodes: number[] = [0], bin = BIN): Promise<CliResult> {
+  return new Promise((resolveRun, reject) => {
+    execFile(bin, [...args, "--network", "testnet"], { env: { ...process.env, HOME: join(keysDir(), "home") }, encoding: "utf8", timeout: 180_000, killSignal: "SIGKILL", maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
+      // As spawnSync's status: the exit code, or -1 when the CLI did not exit by itself (not started, killed, timed out).
+      const code = !err ? 0 : typeof err.code === "number" ? err.code : -1;
+      try { resolveRun(outcome(args, okCodes, code, `${stdout ?? ""}${stderr ?? ""}`)); } catch (e) { reject(e as Error); }
+    });
+  });
 }
 
 export function field(r: CliResult, key: string): string {

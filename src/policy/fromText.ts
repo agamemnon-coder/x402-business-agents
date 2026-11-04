@@ -14,6 +14,7 @@ import type { Tools } from "../claude/tools.js";
 import type { DB } from "../db/open.js";
 import { proposePolicyChange } from "../executors/policyChange.js";
 import { fromCents, toCents } from "../lib/money.js";
+import { centsWritten } from "../lib/numbers.js";
 import type { ProposalRow } from "./approvals.js";
 import { currentPolicy, loosens, policyValue, rules, validateChange } from "./rules.js";
 
@@ -40,24 +41,13 @@ export interface PolicyDraftResult {
 
 /**
  * Every amount written in `s`, in cents, read the way people write money: "40", "€0,08", "1.250,50", "1,250.50",
- * "2.000". A separator followed by exactly two digits at the end is the decimal mark; one followed by three is a
- * thousands separator.
+ * "2.000". Read by the one reader for typed numbers (src/lib/numbers.ts, its rules in its header): a separator
+ * followed by exactly two digits at the end is the decimal mark; one followed by three is a thousands separator,
+ * unless the words also use that mark as a decimal point and no currency is written next to it (then it is ambiguous
+ * and is no amount the CFO wrote).
  */
 export function amountsIn(s: string): number[] {
-  const out: number[] = [];
-  for (const m of s.matchAll(/\d[\d.,]*\d|\d/g)) {
-    let t = m[0];
-    let cents = 0;
-    const dec = /[.,](\d{2})$/.exec(t);
-    if (dec) {
-      cents = Number(dec[1]);
-      t = t.slice(0, -3);
-    }
-    if (!/^\d{1,3}([.,]\d{3})*$|^\d+$/.test(t)) continue;
-    const whole = Number(t.replace(/[.,]/g, ""));
-    if (Number.isSafeInteger(whole * 100 + cents)) out.push(whole * 100 + cents);
-  }
-  return out;
+  return centsWritten(s);
 }
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();

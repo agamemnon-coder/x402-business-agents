@@ -12,6 +12,7 @@ import { livePull, type Puller } from "../metal/pull.js";
 import { checkpoint } from "../policy/saga.js";
 import { capRefusal } from "../policy/rules.js";
 import { velocityGate } from "../policy/velocity.js";
+import { replaceHoldRefusal } from "../policy/replaceHold.js";
 
 export type RefundOutcome = "PAID" | "REFUSED" | "PENDING" | "HELD";
 
@@ -67,9 +68,10 @@ async function refundUnder(
 
   // The CFO policy's limit per refund, the velocity limits, the mandate's budget and the agents' shared total, reserved
   // together before anything is signed (a hold). A pull already sent is counted by its ledger row: its retry only checks.
+  // An open mandate replace of the support mandate holds both (dry-179): it carries the spend as it was proposed.
   const inFlight = !!existing && (existing.outcome === "PENDING" || existing.outcome === "HELD");
   const refusal = inFlight
-    ? capRefusal(db, "support", r.amount_cents) ?? velocityGate(db, "support", "metal", r.amount_cents, new Date(), paymentId)
+    ? capRefusal(db, "support", r.amount_cents) ?? replaceHoldRefusal(db, "support") ?? velocityGate(db, "support", "metal", r.amount_cents, new Date(), paymentId)
     : reserveSpend(db, { agent: "support", rail: "metal", cents: r.amount_cents, ref: paymentId, payee: "customer" });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its state.
@@ -89,6 +91,6 @@ async function refundUnder(
   db.prepare("UPDATE refunds SET outcome = ?, tx_hash = COALESCE(?, tx_hash), refusal_reason = ? WHERE sale_id = ?").run(outcome, tx, reason, r.sale_id);
   if (outcome === "REFUSED") releaseHold(db, paymentId, reason ?? "refused on chain");
   else settleHold(db, paymentId);
-  audit(db, "support", already ? "refund.already_paid" : `refund.${outcome.toLowerCase()}`, String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx, reason });
+  audit(db, "support", already ? (outcome === "HELD" ? "refund.already_held" : "refund.already_paid") : `refund.${outcome.toLowerCase()}`, String(r.sale_id), { payment_id: paymentId, amount: fromCents(r.amount_cents), to: r.to, tx, reason });
   return { sale_id: r.sale_id, payment_id: paymentId, outcome, tx, reason, already };
 }

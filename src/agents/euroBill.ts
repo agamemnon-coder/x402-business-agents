@@ -3,21 +3,25 @@
 // converts only the shortfall, fee included, on a locked quote, and never below either floor.
 
 import { randomUUID } from "node:crypto";
-import type { AirwallexRail, Currency, Quote, SandboxSim } from "../airwallex/port.js";
+import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
+import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import { audit } from "../audit/log.js";
-import { EUR_FLOOR_CENTS, LICENSOR_NAME, PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_MAX_EUR_CENTS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
+import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, LICENSOR_NAME, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
-import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { checkQuoteAgainstFloor, planInvoice, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
+import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
+import { checkQuoteAgainstFloor, feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_RESERVE_CAP_CENTS, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
 import { getSetting, setSetting } from "../world/settings.js";
+import { freeEurTargetCents } from "../world/options.js";
 import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { checkpoint } from "../policy/saga.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
+/** The proposal number of invoice terms before createProposal assigns the real one (assignId); never stored. */
+export const PROPOSAL_ID_PENDING = "P-PENDING";
 export const SEED_USD_CENTS = 2_500_000;
 /** The USD floor sits this far below the seeded balance. */
 export const USD_HEADROOM_CENTS = 500_000;
@@ -43,6 +47,33 @@ export const LICENSOR = {
   address: { street: "Datenallee 12", city: "Berlin", postcode: "10115", countryCode: "DE" as const },
 };
 
+/**
+ * The payees code allowlists, and the only ones: seedTreasury creates each once at Airwallex and records it in the
+ * ledger's beneficiaries. Neither an agent nor an invoice adds to it; a supplier's new account replaces its entry only
+ * through a person's verified payee change (src/policy/payeeChange.ts).
+ */
+export const ALLOWLISTED_PAYEES = [MANUFACTURER, LICENSOR] as const;
+
+/** A payee on the allowlist as code compares an invoice with it: the name, the IBAN's hash, the BIC. */
+export interface AllowlistedPayee { name: string; ibanSha256: string; bic: string }
+
+/**
+ * The allowlist as it stands, for the agents' facts: the ledger's active beneficiaries, and each code payee
+ * (ALLOWLISTED_PAYEES) the ledger holds no account for yet, exactly as seedTreasury will record it (holdout H6,
+ * dry-177: before the first Treasury flow ran, the facts called the licensor "an unlisted vendor"). Once the ledger
+ * holds any account under that name (active, or REPLACED by a person's payee change), only the ledger's is used.
+ * It reads only; it never writes a payee, and paying still checks the ledger's own beneficiaries (checkInvoice).
+ */
+export function payeeAllowlist(db: DB): AllowlistedPayee[] {
+  const rows = db.prepare("SELECT name, iban_sha256, bic, status FROM beneficiaries").all() as { name: string; iban_sha256: string; bic: string; status: string }[];
+  const out: AllowlistedPayee[] = rows.filter((r) => r.status === "ACTIVE").map((r) => ({ name: r.name.trim(), ibanSha256: r.iban_sha256, bic: r.bic }));
+  // Once the ledger holds any account under a payee's name (active or replaced), the ledger alone speaks for it.
+  for (const p of ALLOWLISTED_PAYEES) {
+    if (!rows.some((r) => r.name.trim() === p.name)) out.push({ name: p.name, ibanSha256: ibanSha(p.iban), bic: p.bic });
+  }
+  return out;
+}
+
 export async function snapshot(db: DB, rail: AirwallexRail, label: string) {
   const b = await rail.balances();
   db.prepare("INSERT INTO balance_snapshots (taken_at, label, json) VALUES (?, ?, ?)").run(new Date().toISOString(), label, JSON.stringify(b));
@@ -62,11 +93,12 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
   if (getSetting(db, "usd_floor", "") === "") setSetting(db, "treasury", "usd_floor", fromCents(Math.max(0, usd - USD_HEADROOM_CENTS)));
   if (getSetting(db, "eur_floor", "") === "") setSetting(db, "treasury", "eur_floor", fromCents(EUR_FLOOR_CENTS));
   if (getSetting(db, "eur_obligations", "") === "") {
-    setSetting(db, "treasury", "eur_obligations", fromCents(Math.max(0, eur - EUR_FLOOR_CENTS - TARGET_FREE_EUR_CENTS)));
+    // A world may ask for less free EUR (world.free_eur_target, the main run): the licence then needs FX for its shortfall.
+    setSetting(db, "treasury", "eur_obligations", fromCents(Math.max(0, eur - EUR_FLOOR_CENTS - (freeEurTargetCents(db) ?? TARGET_FREE_EUR_CENTS))));
   }
 
   // The allowlisted payees: the manufacturer and Kit 11's licensor, each created once at Airwallex.
-  for (const payee of [MANUFACTURER, LICENSOR]) {
+  for (const payee of ALLOWLISTED_PAYEES) {
     let ben = await rail.findBeneficiaryByIban(payee.iban);
     ben ??= await rail.createBeneficiary(payee);
     db.prepare("INSERT OR IGNORE INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES (?, ?, ?, ?, ?, 'EUR', 'SWIFT')")
@@ -120,24 +152,33 @@ export interface InvoicePaymentTerms extends Terms {
 
 /**
  * Why this invoice may not get another payment proposal, or null. A payout counts unless it was cancelled (the same
- * rule as the one_live_transfer_per_invoice index); a proposal counts while it can still be approved or is running.
+ * rule as the one_live_transfer_per_invoice index); a proposal counts while it can still be approved or is running,
+ * and once it was executed (the payment went out; review, 2 November: the Treasury agent's plan and the CFO's own
+ * `npm run licence` both pass through this guard).
  */
-export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date()): string | null {
+export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(), label?: string): string | null {
+  // `label`: the number to name the invoice by in the answer (the agent's facts pass a vouched one, never a row's own).
   // The same invoice with a cosmetically different number ("btx-dup ", another dash) is still the same invoice.
   const key = invoiceKey(invoiceNo);
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
     .find((r) => invoiceKey(r.invoice_no) === key);
-  if (t) return t.status === "PAID" ? `invoice ${t.invoice_no} is already paid` : `invoice ${t.invoice_no} already has a payout (${t.status})`;
-  const p = (db.prepare(`SELECT proposal_id, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
-    AND (status IN ('APPROVED', 'EXECUTING') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
-    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
-  return p ? `invoice ${p.invoice_no} already waits for approval as ${p.proposal_id}` : null;
+  if (t) { const n = label ?? t.invoice_no; return t.status === "PAID" ? `invoice ${n} is already paid` : `invoice ${n} already has a payout (${t.status})`; }
+  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
+    AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
+    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
+  if (!p) return null;
+  const n = label ?? p.invoice_no;
+  switch (p.status) {
+    case "EXECUTED": return `invoice ${n} is already paid (${p.proposal_id} was executed)`;
+    case "EXECUTING": return `invoice ${n} is being paid under ${p.proposal_id} (executing)`;
+    case "APPROVED": return `invoice ${n} is already approved as ${p.proposal_id} and waits to be executed`;
+    default: return `invoice ${n} already waits for approval as ${p.proposal_id}`;
+  }
 }
 
-/** An invoice number as a duplicate check compares it: Unicode-normalised, upper case, any dash as "-", no spaces around it. */
-export function invoiceKey(invoiceNo: string): string {
-  return invoiceNo.normalize("NFKC").toUpperCase().replace(/\s*[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D-]\s*/g, "-").replace(/\s+/g, "");
-}
+// The duplicate check's invoice key lives in src/lib/invoiceKey.ts (the hub gate needs it without this module's imports).
+import { invoiceKey } from "../lib/invoiceKey.js";
+export { invoiceKey };
 
 export type InvoiceOutcome =
   | { kind: "proposed"; proposal: ProposalRow; terms: InvoicePaymentTerms }
@@ -171,12 +212,42 @@ export async function proposeInvoicePayment(
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
     return { kind: "escalated", reason };
   }
+  // An earlier payout of this invoice closed with no transfer id (refused at its first create, or closed by the CFO's
+  // --close-unsent): before it is planned again, Airwallex is asked by that request_id (re-review, 2 November). A
+  // transfer there means money may have left: no plan, an alarm. No answer: no plan either, until Airwallex answers.
+  const closed = (db.prepare("SELECT request_id, invoice_no FROM transfers WHERE status = 'CANCELLED' AND transfer_id IS NULL").all() as { request_id: string; invoice_no: string }[])
+    .filter((r) => invoiceKey(r.invoice_no) === invoiceKey(inv.invoice_no));
+  for (const c of closed) {
+    let held: Awaited<ReturnType<AirwallexRail["findTransferByRequestIdStrict"]>>;
+    try {
+      // Strict: a list that ignored the filter is an error here, never "nothing" (else the invoice could be paid twice).
+      held = await rail.findTransferByRequestIdStrict(c.request_id);
+    } catch (e) {
+      const reason = `Airwallex could not be asked whether the closed payout ${c.request_id} of invoice ${c.invoice_no} exists after all (${(e as Error).message}); nothing is planned until it answers`;
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+      return { kind: "escalated", reason };
+    }
+    if (held) {
+      audit(db, "treasury", "transfer.found_after_close", held.id, { request_id: c.request_id, invoice_no: c.invoice_no, status: held.status, amount: `${held.currency} ${fromCents(held.amountCents)}` }, now);
+      const reason = `Airwallex holds transfer ${held.id} (${held.currency} ${fromCents(held.amountCents)}, ${held.status}) under the payout ${c.request_id} that the ledger closed for invoice ${c.invoice_no}; it is not planned again. A person checks it now (npm run reconcile)`;
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+      return { kind: "escalated", reason };
+    }
+  }
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ibanSha(inv.iban), inv.bic, check.beneficiaryId, sha256Hex(invoiceText), JSON.stringify(inv));
 
   const b = await snapshot(db, rail, `plan:${inv.invoice_no}`);
   const s = treasuryState(db, b);
-  const plan = planInvoice(check.amountCents, s);
+  // Max, 2 November: the fee reserve follows what Airwallex really charged, plus a buffer, never under the ceiling.
+  const fees = measuredSwiftFeesCents(db);
+  if (feeReserveOverCap(fees)) {
+    const reason = `a SWIFT fee of EUR ${fromCents(Math.max(...fees))} is on record, far above the usual; a person checks it before the reserve for the next fee is set (it would be over EUR ${fromCents(SWIFT_FEE_RESERVE_CAP_CENTS)})`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+    return { kind: "escalated", reason };
+  }
+  const feeReserve = feeReserveCents(fees);
+  const plan = planInvoice(check.amountCents, s, feeReserve);
   if (plan.kind === "underfunded") {
     const reason = `EUR is already ${fromCents(-plan.freeEurCents)} below its floor plus commitments (available ${fromCents(s.eurAvailableCents)}, floor ${fromCents(s.eurFloorCents)}, committed ${fromCents(s.eurObligationsCents)}); options: restore the EUR reserve first, review the commitments, or pay later`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
@@ -186,8 +257,19 @@ export async function proposeInvoicePayment(
   let usdAfter = s.usdAvailableCents;
   if (plan.kind === "convert_shortfall") {
     // The market's current rate first: context for judging the binding quote, which is what the CFO approves.
-    const market = await rail.currentRate({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents });
-    quote = await rail.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents, validity: quoteValidity });
+    // A rate or quote Airwallex refuses (unconfigured_client_fee on a newly activated account, forbidden before it is
+    // ACTIVE, a lost answer: a quote moves nothing) is an escalation with nothing moved, not a crash (contract tests).
+    let market: MarketRate;
+    try {
+      market = await rail.currentRate({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents });
+      quote = await rail.createQuote({ buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: plan.buyEurCents, validity: quoteValidity });
+    } catch (e) {
+      if (!(e instanceof AirwallexError) && !(e instanceof AirwallexAmbiguous)) throw e;
+      const what = e instanceof AirwallexError ? `${e.status} ${e.code ?? "no code"}` : "no answer";
+      const reason = `Airwallex refused the FX rate or quote (${what} on ${e.path}); nothing was converted or paid. Options: try again in a few minutes (a newly activated account answers unconfigured_client_fee at first), pay from EUR on the due date, or pay later`;
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+      return { kind: "escalated", reason };
+    }
     await checkpoint("quote:after");
     const markupBps = Math.round(((quote.sellAmountCents - market.sellAmountCents) / market.sellAmountCents) * 10_000);
     audit(db, "treasury", "fx.rate_checked", inv.invoice_no, {
@@ -209,12 +291,14 @@ export async function proposeInvoicePayment(
       .run(quote.quoteId, "USD/EUR", fromCents(quote.buyAmountCents), fromCents(quote.sellAmountCents), quote.clientRate, quote.validFrom, quote.validTo);
   }
 
-  const id = nextProposalId(db);
-  const expires = proposalExpiry(now.getTime(), PROPOSAL_TTL_MS, quote ? Date.parse(quote.validTo) : undefined, QUOTE_SAFETY_MS);
+  // No number yet: createProposal takes the real one inside its write lock (assignId), and the terms stored, hashed
+  // and returned carry it (re-review: a count taken here could be stale; a placeholder can never be filed).
+  const id = PROPOSAL_ID_PENDING;
+  const expires = proposalExpiry(now.getTime(), INVOICE_PROPOSAL_TTL_MS, quote ? Date.parse(quote.validTo) : undefined, QUOTE_SAFETY_MS);
   const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
   const terms: InvoicePaymentTerms = {
     schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: id, expires_at: iso(expires),
-    invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: "EUR", fee_max: fromCents(SWIFT_FEE_MAX_EUR_CENTS),
+    invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: "EUR", fee_max: fromCents(feeReserve),
     beneficiary_id: check.beneficiaryId, beneficiary_name: check.name, iban_last4: check.ibanLast4, bic: check.bic, method: "SWIFT",
     reference: inv.reference, reason: "professional_business_services", transfer_request_id: randomUUID(),
     conversion: quote && {
@@ -226,6 +310,23 @@ export async function proposeInvoicePayment(
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
   };
-  const proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence }, now);
-  return { kind: "proposed", proposal, terms };
+  // The duplicate guard again, inside the transaction that files the proposal (Opus review, 2 November): a plan filed by
+  // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.
+  let proposal: ProposalRow;
+  try {
+    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now), assignId: true }, now);
+  } catch (e) {
+    if (!(e instanceof ProposalRefused)) throw e;
+    const reason = `${e.reason}; a second copy is not paid again (another plan was filed while this one was being prepared)`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, ...(quote ? { quote_id: quote.quoteId } : {}) }, now);
+    return { kind: "escalated", reason };
+  }
+  return { kind: "proposed", proposal, terms: { ...terms, proposal_id: proposal.proposal_id } };
+}
+
+/** The SWIFT fees Airwallex really charged, from the ledger (EUR only; a transfer without a recorded fee is skipped). */
+export function measuredSwiftFeesCents(db: DB): number[] {
+  // Only PAID transfers (review: a failed one's fee says less about the next), and a malformed row is skipped, not fatal.
+  return (db.prepare("SELECT fee_actual FROM transfers WHERE method = 'SWIFT' AND status = 'PAID' AND fee_actual LIKE 'EUR %'").all() as { fee_actual: string }[])
+    .flatMap((r) => { try { return [toCents(r.fee_actual.slice(4))]; } catch { return []; } });
 }

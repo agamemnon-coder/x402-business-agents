@@ -8,16 +8,22 @@ import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
 import { policyVersion } from "./versions.js";
+import { currentOrigin } from "../provenance/origin.js";
+import { hubGateRefusal } from "../hub/gate.js";
+import { hubDecisionsEnabled } from "../hub/config.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
   | "EXECUTING" | "EXECUTED" | "FAILED" | "NEEDS_REAPPROVAL";
 
+// NEEDS_REAPPROVAL is terminal: the terms can no longer run, a new proposal is needed. Besides an execution that ends
+// there, code closes a proposal there before it runs when its executor's guard shows the terms can never run (dry-179:
+// "spent moved … a new one is needed"); that moves no money and runs nothing (closeAsStale).
 const ALLOWED: Record<ProposalStatus, ProposalStatus[]> = {
-  PENDING_APPROVAL: ["APPROVED", "REJECTED", "EXPIRED", "SUPERSEDED"],
-  APPROVED: ["EXECUTING", "EXPIRED"],
+  PENDING_APPROVAL: ["APPROVED", "REJECTED", "EXPIRED", "SUPERSEDED", "NEEDS_REAPPROVAL"],
+  APPROVED: ["EXECUTING", "EXPIRED", "NEEDS_REAPPROVAL"],
   EXECUTING: ["EXECUTED", "FAILED", "NEEDS_REAPPROVAL"],
-  FAILED: ["EXECUTING", "EXPIRED"],
+  FAILED: ["EXECUTING", "EXPIRED", "NEEDS_REAPPROVAL"],
   REJECTED: [],
   EXPIRED: [],
   SUPERSEDED: [],
@@ -53,24 +59,41 @@ export function nextProposalId(db: DB): string {
   return `P-${String(n + 1).padStart(4, "0")}`;
 }
 
+/** A proposal the caller's guard refused inside createProposal's transaction; nothing was written. */
+export class ProposalRefused extends Error {
+  constructor(readonly reason: string) { super(`proposal refused: ${reason}`); this.name = "ProposalRefused"; }
+}
+
+/**
+ * Files a proposal. proposal.created records the origin in force (D24; review, 2 November): an agent's Claude run when
+ * an agent planned it, the CFO's command (`npm run licence`) when a person started it, code's rule, or null when
+ * nothing set one. created_by stays the role that owns the proposal (four eyes reads it); the origin says who started it.
+ */
 export function createProposal(
   db: DB,
-  args: { terms: Terms; createdBy: Actor; evidence?: Json; explanation?: string },
+  args: { terms: Terms; createdBy: Actor; evidence?: Json; explanation?: string; guard?: (db: DB) => string | null; assignId?: boolean },
   now = new Date(),
 ): ProposalRow {
-  const sha = termsHash(args.terms);
+  const origin = currentOrigin();
   return db.transaction(() => {
+    // A caller's guard runs inside the write lock (BEGIN IMMEDIATE), so no other run can file between its check and the insert.
+    const refused = args.guard?.(db) ?? null;
+    if (refused) throw new ProposalRefused(refused);
+    // assignId: the number is taken inside the same lock, so two runs filing at once (two connections) never pick the
+    // same one (Opus re-review, 2 November); the terms, and so their hash, carry the number taken here.
+    const terms: Terms = args.assignId ? { ...args.terms, proposal_id: nextProposalId(db) } : args.terms;
+    const sha = termsHash(terms);
     const policy = policyVersion(db, now);
     db.prepare(
       `INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, evidence_json, explanation, status, expires_at, created_at, policy_version)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING_APPROVAL', ?, ?, ?)`,
     ).run(
-      args.terms.proposal_id, args.terms.kind, JSON.stringify(args.terms), sha, args.createdBy,
+      terms.proposal_id, terms.kind, JSON.stringify(terms), sha, args.createdBy,
       args.evidence === undefined ? null : JSON.stringify(args.evidence), args.explanation ?? null,
-      args.terms.expires_at, now.toISOString(), policy.version,
+      terms.expires_at, now.toISOString(), policy.version,
     );
-    audit(db, args.createdBy, "proposal.created", args.terms.proposal_id, { kind: args.terms.kind, terms_sha256: sha, policy_version: policy.version }, now);
-    return get(db, args.terms.proposal_id);
+    audit(db, args.createdBy, "proposal.created", terms.proposal_id, { kind: terms.kind, terms_sha256: sha, policy_version: policy.version, origin: (origin as Json | null) ?? null }, now);
+    return get(db, terms.proposal_id);
   }).immediate();
 }
 
@@ -195,6 +218,18 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     return (p.status === "APPROVED" || p.status === "FAILED") && Date.parse(p.expires_at) <= now.getTime() ? (expireIfDue(db, p, now), p.expires_at) : null;
   }).immediate();
   if (expired) throw new Error(`${proposalId} expired at ${expired}; approval void`);
+  // The hub gate (src/hub/gate.ts), an extra gate on top of every check below, never instead of one; off unless
+  // HUB_DECISIONS_ENABLED. Its refusal is committed on its own, so the record survives the error thrown here. A
+  // restart's resume is not a new execution: it was gated when it began.
+  const hubRefused = hubDecisionsEnabled() && db.transaction(() => {
+    const p = get(db, proposalId);
+    if (p.status === "EXECUTING" && resuming.has(proposalId)) return null;
+    if (p.status !== "APPROVED" && p.status !== "FAILED") return null;
+    const why = hubGateRefusal(db, p, now);
+    if (why) audit(db, "system", "hub.gate_refused", proposalId, { reason: why, terms_sha256: p.terms_sha256 }, now);
+    return why;
+  }).immediate();
+  if (hubRefused) throw new Error(hubRefused);
   return db.transaction((): T => {
     const p = get(db, proposalId);
     // A restart resumes an action a crash left EXECUTING: same hash checks and preconditions, no new transition.
@@ -206,6 +241,11 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     const recomputed = termsHash(terms);
     if (!approval || approval.decision !== "APPROVED") throw new Error(`${proposalId} has no approval`);
     if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) throw new Error(`${proposalId}: terms do not match the approved hash`);
+    if (!resume) {
+      // Again inside the write lock, so nothing can change between the gate and the transition.
+      const why = hubGateRefusal(db, p, now);
+      if (why) throw new Error(why);
+    }
     preconditions(terms);
     if (resume) return terms;
     transition(db, proposalId, p.status, "EXECUTING");
@@ -218,6 +258,22 @@ export function finishExecution(db: DB, proposalId: string, outcome: "EXECUTED" 
   db.transaction(() => {
     transition(db, proposalId, "EXECUTING", outcome);
     audit(db, "system", `proposal.${outcome.toLowerCase()}`, proposalId, detail, now);
+  }).immediate();
+}
+
+/**
+ * Closes a proposal whose terms can never run (its executor's guard refused them, or would): NEEDS_REAPPROVAL, terminal,
+ * with the reason in a proposal.needs_reapproval row. From waiting, approved, failed, or (only for a restart's resume)
+ * executing; anything else is left as it is. True when it was closed here. Runs nothing and moves no money.
+ */
+export function closeAsStale(db: DB, proposalId: string, detail: { error: string } & Record<string, Json>, opts: { resuming?: boolean } = {}, now = new Date()): boolean {
+  return db.transaction((): boolean => {
+    const p = get(db, proposalId);
+    const from: ProposalStatus[] = ["PENDING_APPROVAL", "APPROVED", "FAILED", ...(opts.resuming ? ["EXECUTING" as const] : [])];
+    if (!from.includes(p.status)) return false;
+    transition(db, proposalId, p.status, "NEEDS_REAPPROVAL");
+    audit(db, "system", "proposal.needs_reapproval", proposalId, { ...detail, error: detail.error.slice(0, 300), from: p.status }, now);
+    return true;
   }).immediate();
 }
 

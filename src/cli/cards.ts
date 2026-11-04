@@ -14,6 +14,7 @@
 import { setScriptOrigin } from "../provenance/origin.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { buyPlan, proposeCardRaise } from "../agents/cardBuyer.js";
+import { buySoftwareOnCard } from "../visa/tapRail.js";
 import { AGENTS, PLANS, type Agent } from "../config/policy.js";
 import { openDb } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
@@ -62,7 +63,7 @@ async function railChoice(sim: IssuingSim): Promise<CardTransaction> {
         return { ok: false, text: `stock check #${seq}: ${u ? `refused (${u.refusal_reason ?? u.outcome})` : `nothing was bought (${p.outcome.kind})`}`, ref: null };
       },
       payPackwise: async () => {
-        card = await buyPlan(db, sim, "packwise-starter");
+        card = await buySoftwareOnCard(db, sim, "packwise-starter"); // D25: through TAP first with KIT11_TAP_RAIL=on
         return { ok: card.approved, text: card.approved ? "19.99 EUR approved by Airwallex on the agent's card" : `declined by Airwallex (${card.failureReason})`, ref: card.transactionId };
       },
     });

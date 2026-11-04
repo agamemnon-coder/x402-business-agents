@@ -1,6 +1,6 @@
 // D19: code follows the Sourcing agent's buy policy per query. "Do not buy" and an unreachable supplier refuse the
-// query before anything is signed (the customer is not charged), are logged as Purser's refusals with the supplier,
-// and tell the agent once a minute at most. Off (no autonomy), the policy is ignored and Stockline is used as before.
+// query before anything is signed (the customer is not charged), are logged with the check that refused them (the
+// agent's own buy policy, or the supplier) and the supplier, and tell the agent once a minute at most. Off (no autonomy), the policy is ignored and Stockline is used as before.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { buyPolicy, SourcingAgent } from "../src/agents/sourcing.js";

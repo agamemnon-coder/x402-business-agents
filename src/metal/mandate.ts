@@ -76,3 +76,9 @@ export async function activeMandate(agent: MandateAgent): Promise<LoadedMandate>
 export async function mandateSpent(m: LoadedMandate): Promise<bigint> {
   return (await readMandateState(publicClient(), m.principal, m.reference)).spent;
 }
+
+/** The per-payment cap written in the mandate's credential, in *USDZ base units. The credential's hash is what the chain
+ *  bound (its reference), so this is the cap Metal's Mandate Binding checks every payment against. */
+export function boundCapUnits(m: LoadedMandate): bigint {
+  return extractTerms(m.credential).constraints.perPaymentCap;
+}

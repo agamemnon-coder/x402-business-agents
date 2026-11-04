@@ -8,6 +8,9 @@
 import { envWithoutOrigin } from "../provenance/origin.js";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { resolve } from "node:path";
+import { openDb } from "../db/open.js";
+import { osProcesses } from "../ops/processes.js";
+import { asWorldGroup, holdRunnerLock } from "../ops/runnerLock.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const tsx = resolve(root, "node_modules/.bin/tsx");
@@ -19,6 +22,13 @@ if (!process.env.KIT11_DB || !process.env.KIT11_KEYS_DIR) {
   console.error("npm run up needs KIT11_DB (the ledger) and KIT11_KEYS_DIR (an absolute keys folder) for the world to run.");
   process.exit(2);
 }
+
+// The world's own process group and its runner lock (src/ops/runnerLock.ts): the runner this starts, and every
+// restart of it, run in the same group under the same lock; a second `up` or `relay` on this ledger refuses to start,
+// and `npm run stop -- <world>` stops the whole group (this supervisor included, so nothing restarts the runner).
+const group = await asWorldGroup();
+const ledger = openDb();
+holdRunnerLock(ledger, ledger.name, "up", group, osProcesses);
 
 console.log(`${at()} up       health checks`);
 const health = spawnSync(tsx, [resolve(root, "src/cli/health.ts")], { stdio: "inherit", env: process.env, cwd: root });

@@ -17,13 +17,23 @@ export const SUPPLIER_INFO_ROUTE = "/v1/info";
  * A supplier's x402 seller. `name`, `dataAgeSeconds` and `unavailableEvery` default to Stockline's; with the autonomous
  * agents on, Ridgeline Data runs the same app with its own (src/config/suppliers.ts). An unavailable stock check is
  * refused before any offer, so it never costs the buyer anything. GET /v1/info is free: price, data age, uptime.
+ * `down`: while it gives a reason (a supplier offline for maintenance, src/world/supplierEvents.ts), every route,
+ * /v1/info too, answers 503 with that reason before any offer.
  */
-export function supplierApp(opts: { payTo: Address; price: () => string; name?: string; dataAgeSeconds?: number; unavailableEvery?: number }) {
+export function supplierApp(opts: { payTo: Address; price: () => string; name?: string; dataAgeSeconds?: number; unavailableEvery?: number; down?: () => string | null }) {
   const name = opts.name ?? "Stockline";
   const facilitator = new HTTPFacilitatorClient({ url: FACILITATOR_URL });
   const server = registerMetalScheme(new x402ResourceServer(facilitator), { networks: ["testnet"] });
   const app = express();
   const every = opts.unavailableEvery ?? 0;
+  app.use((_req, res, next) => {
+    const why = opts.down?.();
+    if (why) {
+      res.status(503).json({ error: why });
+      return;
+    }
+    next();
+  });
   app.get(SUPPLIER_INFO_ROUTE, (_req, res) => {
     res.json({ supplier: name, price: opts.price(), data_age_seconds: opts.dataAgeSeconds ?? 5, unavailable_every: every });
   });

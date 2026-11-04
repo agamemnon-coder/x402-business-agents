@@ -35,9 +35,9 @@ button.run:disabled { opacity: .5; cursor: wait; }
 .examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
 .examples button { font: 600 14px Inter, system-ui, sans-serif; color: var(--text); background: var(--sunken); border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
 .examples button:hover { border-color: var(--accent); }
-.examples i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.examples i.awx { background: #ff4f42; } .examples i.mtl { background: #111827; } .examples i.no { background: var(--bad); }
-@media (prefers-color-scheme: dark) { .examples i.mtl { background: #e9ebf1; } }
+.quick { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 26px; }
+.qbtn { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 650 16px/1.2 Inter, system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+.qbtn small { color: var(--muted); font-weight: 550; font-size: 14px; }
 #steps-wrap { margin-top: 26px; }
 .steps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
 .step { display: grid; grid-template-columns: 104px 1fr auto; gap: 14px; align-items: start; padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); opacity: 0; transform: translateX(-8px); transition: all .35s ease; }
@@ -77,7 +77,6 @@ button.run:disabled { opacity: .5; cursor: wait; }
 .card .t { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; opacity: .9; }
 .card .n { font-size: 22px; font-weight: 700; letter-spacing: .04em; }
 .card .b { display: flex; justify-content: space-between; align-items: end; font-size: 13px; opacity: .92; gap: 10px; }
-.card .visa { font-style: italic; font-weight: 900; font-size: 20px; }
 .card.company { background: linear-gradient(135deg, #2a2f45, #11131c); box-shadow: 0 16px 34px rgba(0,0,0,.3); }
 .live { border-radius: 16px; padding: 14px 16px; background: var(--sunken); border: 1px dashed var(--border); font-size: 14px; line-height: 1.5; opacity: 0; transition: opacity .45s ease; }
 .live.show { opacity: 1; }
@@ -113,17 +112,20 @@ button.run:disabled { opacity: .5; cursor: wait; }
   .step { grid-template-columns: 1fr; gap: 6px; } .by { justify-self: start; } .meta { text-align: left; }
   .outcome { grid-template-columns: 1fr; } .outcome h3 { font-size: 21px; } .realbox { margin: 12px 16px 0; }
 }
+/* The menu on one line on a phone: the brand's mark only, the "what's real?" button short (Max, v4 C4). */
+@media (max-width: 520px) { header.top { flex-wrap: nowrap !important; gap: 8px !important; padding: 10px 12px !important; } .brand .nm, button.real .long { display: none; } button.real { white-space: nowrap; padding: 5px 9px; } header.top nav.pnav > a { padding: 8px 9px !important; font-size: 14.5px !important; } }
 @media (prefers-reduced-motion: reduce) { .step, .outcome, .node, .railtile, .live { transition: none; } .thinking div { animation: none; } }
 </style>
 </head>
 <body>
-<header class="top"><a class="brand" href="/"><i></i>Purser</a><span class="chip">Try it yourself</span><button class="real" id="real-btn" type="button" aria-expanded="false" aria-controls="real">Demo world · what's real?</button>
+<header class="top"><a class="brand" href="home" aria-label="Purser, home"><i></i><span class="nm">Purser</span></a><button class="real" id="real-btn" type="button" aria-expanded="false" aria-controls="real"><span class="long">Demo world · </span>what's real?</button>
   <nav aria-label="Pages"><a href="./">Overview</a><a href="try" aria-current="page">Try it</a><a href="metal">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
 <div class="realbox" id="real" hidden><b>What is real here.</b> On the hosted page the models are real: Claude Haiku sorts your request and Claude Sonnet reads it<span class="offline-only"> (in this offline copy, code alone reads it)</span>, and you see what each call cost. The limits are Northwind's CFO policy as in the recorded live run (€50 a software purchase, every bank transfer with Face ID, 0.04 test USD a request on Metal; task cards up to €300 without Face ID, a policy that ran live in a separate test); on this page a copy of those rules is checked in code. Simulated here: the cards and the payments; nothing on this page calls Airwallex or Metal, and no money exists. Each answer shows the same flow from the recorded live run, where Airwallex and Metal did act. Fair use: 6 tries a minute and 40 a day per visitor, 280 characters each; when many people try at once, or the day's model budget is used, code alone reads the request and says so.</div>
 <main>
-  <div class="kicker">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</div>
+  <div class="kicker">Try it yourself · demo world, no money moves</div>
   <h1>Give an agent a task. Watch the limits hold.</h1>
-  <p class="lead">Type what one of Northwind Outdoor's AI agents should do. Claude agents read and plan; Metal and Airwallex enforce the limits; the CFO approves anything beyond them. Here, in a demo world, Claude reads your task, the CFO policy picks the rail (an Airwallex card, an Airwallex bank transfer or a payment on Metal), and the agent pays within the limit, asks the CFO for Face ID, or is refused.</p>
+  <p class="lead">A separate demo world: Claude reads your task, and code applies the CFO's limits. No money moves.</p>
+  <div class="quick" role="group" aria-label="Change the world"><button type="button" class="qbtn" id="q-price">Raise the supplier price</button></div>
   <div class="grid">
     <div>
       <div class="ask">
@@ -154,7 +156,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
   <section class="worlds" aria-labelledby="w-h">
     <div class="kicker">Or change the world</div>
     <h2 id="w-h">Change Northwind's market. The Sourcing agent decides.</h2>
-    <p class="lead">Pick what happens. The Sourcing agent wakes once and decides with Claude Haiku: the same instructions, buy-policy tool and code check as in the autonomous agents' variation test (no card here, so not its card tools). Code refuses anything over its mandate or under its margin.</p>
+    <p class="lead">Change the market; the Sourcing agent decides with Claude Haiku, inside its limits.</p>
     <div class="examples" id="worlds" role="group" aria-label="World changes"></div>
     <div id="world-out" aria-live="polite"><p class="idle">Pick a change: the Sourcing agent decides with Claude Haiku<span class="offline-only"> (in this offline copy no model is asked: the agent's fallback in code answers, labelled as such)</span>.</p></div>
   </section>
@@ -171,7 +173,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
   var task = document.getElementById("task"), run = document.getElementById("run"), wrap = document.getElementById("steps-wrap"), count = document.getElementById("count");
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   var ex = document.getElementById("examples");
-  EXAMPLES.forEach(function (e) { var b = el("button"); b.type = "button"; b.appendChild(el("i", e[1])); b.appendChild(document.createTextNode(e[0])); b.addEventListener("click", function () { task.value = e[0]; update(); go(); }); ex.appendChild(b); });
+  EXAMPLES.forEach(function (e) { var b = el("button"); b.type = "button"; b.appendChild(document.createTextNode(e[0])); b.addEventListener("click", function () { task.value = e[0]; update(); go(); }); ex.appendChild(b); });
   function update() { count.textContent = task.value.length + " / 280"; }
   task.addEventListener("input", update);
   task.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); go(); } });
@@ -213,7 +215,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
     if (r.card) {
       var c = el("div", "card" + (/company card/.test(r.card.label) ? " company" : "")), t = el("div", "t"), b = el("div", "b");
       t.appendChild(el("span", null, r.card.label)); t.appendChild(el("span", null, "simulated"));
-      b.appendChild(el("span", null, r.card.limit + " · " + r.card.only + (r.card.until ? " · until " + r.card.until : ""))); b.appendChild(el("span", "visa", "VISA"));
+      b.appendChild(el("span", null, r.card.limit + " · " + r.card.only + (r.card.until ? " · until " + r.card.until : "")));
       c.appendChild(t); c.appendChild(el("div", "n", "•••• " + r.card.last4)); c.appendChild(b); body.appendChild(c);
     }
     o.appendChild(el("div", "oic", ICON[r.outcome] || "·")); o.appendChild(body);
@@ -316,6 +318,13 @@ button.run:disabled { opacity: .5; cursor: wait; }
         .then(function () { wbusy = false; Array.prototype.forEach.call(worlds.children, function (x) { x.disabled = false; }); });
     });
     worlds.appendChild(b);
+  });
+  // "Raise the supplier price": the same world change as below (D21), in the demo world, under the same ceilings.
+  document.getElementById("q-price").addEventListener("click", function () {
+    var b = worlds.querySelector('[data-world="price-rise"]');
+    if (!b) return;
+    document.getElementById("w-h").scrollIntoView({ block: "start" });
+    b.click();
   });
   run.addEventListener("click", go);
   var q = new URLSearchParams(location.search).get("q");

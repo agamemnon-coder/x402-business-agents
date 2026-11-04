@@ -1,0 +1,10 @@
+{
+  "about": "Facts about agent run 1 that its ledger does not hold, each with its source. Applied to the record when the pages load it (src/redesign/run.ts); the record itself is never edited.",
+  "flows": [
+    {
+      "transfer_id": "7bbb3d61-d9f3-4b8e-81cc-cc7cceb9c1df",
+      "decided": "payment started by the CFO (npm run licence); Treasury had advised paying later",
+      "source": "docs/runs/2026-11-02-agent-run-1.md, 14:25 and 14:26 UTC (Max, 2 November: label it this way)"
+    }
+  ]
+}

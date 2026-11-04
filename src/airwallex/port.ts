@@ -62,6 +62,8 @@ export interface Transfer {
   failureReason?: string | null;
   /** What Airwallex charged, once it says; null before. */
   fee?: { cents: number; currency: string } | null;
+  /** The payee, as Airwallex holds it (checked before a transfer found by request_id is adopted). */
+  beneficiaryId?: string | null;
 }
 
 export interface NewBeneficiary {
@@ -110,6 +112,12 @@ export interface AirwallexRail {
   createBeneficiary(b: NewBeneficiary): Promise<Beneficiary>;
   createTransfer(t: NewTransfer): Promise<Transfer>;
   findTransferByRequestId(requestId: string): Promise<Transfer | undefined>;
+  /**
+   * The same look-up, strict: answers "nothing" only for an empty, filtered list. A list that holds another request_id,
+   * says it has more pages, or holds two transfers is an error. Used where "nothing" lets a payout be closed or an
+   * invoice be planned again.
+   */
+  findTransferByRequestIdStrict(requestId: string): Promise<Transfer | undefined>;
   getTransfer(id: string): Promise<Transfer>;
 }
 

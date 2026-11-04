@@ -1,0 +1,74 @@
+// Agent run 1's record (docs/demo/agent-run.json): it holds the whole run's approvals, mandate replacements, refunds,
+// sweep, refusals, the dispute case and each proposal's terms (src/demo/runLedger.ts), and nothing secret: no passkey
+// credential id or assertion, no viewer key, no relay host or token, no private key.
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { scrub, secretsIn, type RunLedger } from "../src/demo/runLedger.js";
+
+const RAW = readFileSync(new URL("../docs/demo/agent-run.json", import.meta.url), "utf8");
+const rec = JSON.parse(RAW) as { ledger?: RunLedger };
+
+describe("agent run 1's record", () => {
+  it("holds no secret", () => {
+    expect(secretsIn(RAW)).toEqual([]);
+    expect(secretsIn(readFileSync(new URL("../docs/demo/autonomy.json", import.meta.url), "utf8"))).toEqual([]);
+  });
+
+  it("finds the secrets it guards against", () => {
+    expect(secretsIn('{"credential_id":"Pya6Ldsoo5WzeAaohC8TkiY1-Xc"}')).toHaveLength(1);
+    expect(secretsIn('"approver":"max (passkey Pya6Ldso)"')).toHaveLength(1);
+    expect(secretsIn('"href":"https://purser-relay.example.workers.dev/#k=abcdefgh12345"').length).toBeGreaterThanOrEqual(1);
+    expect(secretsIn('{"token": "x"}')).toHaveLength(1);
+    expect(secretsIn('"href":"https://testnet.metalntwx.com/tx/0xabc"')).toEqual([]);
+  });
+
+  it("names a mandate's hash mandate_hash, never with the word credential (CI's secret scan reads that as a key)", () => {
+    expect(RAW).not.toMatch(/"(replaces_)?credential_hash"/);
+    const p3 = rec.ledger!.proposals.find((p) => p.proposal_id === "P-0003")!.terms as { steps: Record<string, unknown>[] };
+    expect(p3.steps[0]).toHaveProperty("mandate_hash");
+    expect(p3.steps[0]).toHaveProperty("replaces_mandate_hash");
+    expect(scrub({ credential_hash: "0x1", replaces_credential_hash: "0x2" })).toEqual({ mandate_hash: "0x1", replaces_mandate_hash: "0x2" });
+  });
+
+  it("scrubs passkey ids and labels, Airwallex ids and balances, and keeps the rest", () => {
+    const out = scrub({ approver: "max (passkey Pya6Ldso) + test-controller (passkey FbRa0Ia1)", passkey: { credential_id: "x", assertion_sha256: "y" }, tx: "0x1", terms: { amount: "240.00", beneficiary_id: "b", transfer_request_id: "r", balances_before: {}, iban_last4: "2051" }, origin: { request_id: "req_1" } });
+    expect(out).toEqual({ approver: "max + test-controller", tx: "0x1", terms: { amount: "240.00" }, origin: { request_id: "req_1" } });
+  });
+
+  it("holds the whole run's approvals, both mandate replacements, the dispute case and the proposals' terms", () => {
+    const l = rec.ledger!;
+    expect(l).toBeTruthy();
+    const ev = (e: string, s?: string) => l.events.filter((r) => r.event === e && (s === undefined || r.subject === s));
+    expect(ev("proposal.cosigned", "P-0003")[0]!.payload).toMatchObject({ of: "1 of 2", approver: "max" });
+    expect(ev("proposal.approved", "P-0003")[0]!.payload).toMatchObject({ approver: "max + test-controller" });
+    expect(ev("mandate.replaced").map((r) => r.payload.tx)).toEqual(["0x563d4fff7bb58072ae0dbea4a6593c86af7020038286b44a31aeb875d297b152", "0x0e7f9d0a21b1a687fe13502981e4e2f01574949aa33001a8a99a802499ba2d8e"]);
+    expect(ev("upstream.refused_on_chain")[0]!.payload.tx).toBe("0x3ad8de2f1a4896567f089786438418f0bf3be0d2c61807a9f157b89ed7d9a84d");
+    expect(ev("refund.paid")).toHaveLength(3);
+    expect(ev("proposal.failed", "P-0005")[0]!.payload.error).toMatch(/400 fee_unknown/);
+    expect(l.proposals.map((p) => p.proposal_id)).toEqual(["P-0001", "P-0002", "P-0003", "P-0004", "P-0005", "P-0006", "P-0007"]);
+    // The licence after the run: P-0006 expired unsigned; P-0007 approved with Face ID and paid by SWIFT (fee EUR 13.37).
+    expect(l.proposals.find((p) => p.proposal_id === "P-0006")!.status).toBe("EXPIRED");
+    expect(ev("proposal.approved", "P-0007")[0]!.payload).toMatchObject({ approver: "max" });
+    expect(ev("proposal.executed", "P-0007")).toHaveLength(1);
+    expect(l.events.some((r) => r.event === "transfer.fee" && JSON.stringify(r.payload).includes("13.37"))).toBe(true);
+    expect(l.proposals.find((p) => p.proposal_id === "P-0005")!.terms).toMatchObject({ amount: "240.00", currency: "EUR", vendor: "Stockline Data GmbH", method: "SWIFT" });
+    expect(l.disputes).toHaveLength(1);
+    expect((l.disputes[0]!.evidence as unknown[]).length).toBe(12);
+  });
+
+  it("D1: every Claude run in the record carries its Anthropic request ids, model, tokens, latency and cost", () => {
+    const traces = (JSON.parse(RAW) as { snapshot: { traces: unknown[] } }).snapshot.traces as { task: string; model: string; status: string; request_ids?: string[]; tokens: unknown; latency_ms: number | null; cost_usd_micros: number; claude_ms: number[] }[];
+    expect(traces.length).toBeGreaterThan(30);
+    for (const t of traces) {
+      if (!t.claude_ms.length) continue; // no Claude call (fallback before any call)
+      expect({ task: t.task, n: t.request_ids?.length ?? 0 }).toEqual({ task: t.task, n: t.claude_ms.length });
+      for (const id of t.request_ids!) expect(id).toMatch(/^req_[A-Za-z0-9]{10,}$/);
+      expect(t.model).toMatch(/^claude-(haiku|sonnet|opus)-/);
+      expect(t.tokens).toBeTruthy();
+      expect(t.latency_ms).toBeGreaterThan(0);
+      expect(t.cost_usd_micros).toBeGreaterThan(0);
+    }
+    const all = traces.flatMap((t) => t.request_ids ?? []);
+    expect(new Set(all).size).toBe(all.length);
+  });
+});
