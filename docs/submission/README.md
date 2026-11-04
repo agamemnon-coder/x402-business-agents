@@ -6,8 +6,7 @@ of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-main-run.md`
 "Other live tests (separate worlds, dated)", with its date. Sources for each claim: [docs/claims.md](../claims.md),
 section "The submission pack".
 
-Fill in before submitting: the video link, the live link (the relay's address, kept out of the repo) and the repo link
-once the repo is public. Max's steps: [docs/internal/checklist-max.md](../internal/checklist-max.md).
+Fill in before submitting: the video link. Max's steps: [checklist-max.md](checklist-max.md).
 
 ## Title
 
@@ -186,10 +185,10 @@ Running it live (sandbox keys, a Metal RPC) is in [docs/run-it.md](../run-it.md)
 ## Links
 
 - Video: _(Max fills in: the unlisted YouTube link)_
-- Live: _(Max fills in: the relay's address; `/try` needs it)_
-- Try it yourself: `/try/sign` on the live address: sign a test proposal with your own Face ID, in a test world of your
-  own; nothing real moves (live since 4 November 2026).
-- Repository: _(Max fills in once public)_
+- Live: <https://kit11.max-31b.workers.dev/>
+- Try it yourself: <https://kit11.max-31b.workers.dev/try/sign>: sign a test proposal with your own Face ID, in a test
+  world of your own; nothing real moves (live since 4 November 2026).
+- Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.0-submission`)
 
 ## Screenshots
 
