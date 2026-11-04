@@ -3,16 +3,14 @@
 // changed terms, an expired world, a wrong origin or RP id, no user verification; and the abuse limits. Signatures
 // come from a software authenticator (src/redteam/authenticator.ts).
 import { createHash } from "node:crypto";
-import type Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jcs } from "@metalntwx/metal-pay/mandates";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import {
-  canonical, FIXED_PROPOSALS, TRY_SIGN_ALL_PER_MINUTE, TRY_SIGN_MAX_WORLDS, TRY_SIGN_NET_PER_MINUTE, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_UNCLAIMED_MS, TRY_SIGN_WORLDS_PER_HOUR, TRY_SIGN_WORLDS_PER_NETWORK_HOUR, networkKey, readCbor, trySignRoute,
+  canonical, FIXED_PROPOSALS, TRY_SIGN_ALL_PER_MINUTE, TRY_SIGN_MAX_WORLDS, TRY_SIGN_NET_PER_MINUTE, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_UNCLAIMED_MS, TRY_SIGN_WORLDS_PER_HOUR, TRY_SIGN_WORLDS_PER_NETWORK_HOUR, TrySignDesk, networkKey, readCbor, trySignRoute,
 } from "../worker/src/trySign.js";
 
-import Sqlite from "better-sqlite3";
-import { TrySignDesk } from "../worker/src/trySign.js";
 import { BASE, call, challengeOf, desk, newWorld, RP, signBody, sqlOver, t0, withPasskey } from "./support/trySign.js";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -271,7 +269,7 @@ describe("/try/sign: the visitor's test world", () => {
 
   it("a world that goes while its passkey is checked leaves no passkey row behind", async () => {
     // Stand-in for the race: the world is dropped right after its challenge is used, as an eviction during the await would.
-    const db = new Sqlite(":memory:");
+    const db = new Database(":memory:");
     const base = sqlOver(db);
     const d = new TrySignDesk({ exec(q, ...b) {
       const r = base.exec(q, ...b);
