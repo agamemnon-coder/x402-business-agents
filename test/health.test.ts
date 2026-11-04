@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { health, prometheus } from "../src/ops/health.js";
+import { recordDecision } from "../src/agents/disputeDecision.js";
+import { escalateDispute } from "../src/agents/disputeSource.js";
 import { LIVE_RUN_EXPECTED_MS, publicHealth, publicStatus, RECORDED_DEMO_WORDS } from "../src/ops/publicHealth.js";
 import { reserveSpend } from "../src/policy/holds.js";
 import { buildRelayState, stateHash } from "../src/relay/state.js";
@@ -47,6 +49,23 @@ describe("monitoring (B7)", () => {
     audit(db, "system", "proposal.executing", "P-0001", {}, now);
     expect(codes(db, min(5))).toEqual([]);
     expect(codes(db, min(11))).toEqual(["action_stuck"]);
+  });
+
+  it("names who carries out an open dispute decision: a person for a dispute with the CFO, the runner's start for any other", () => {
+    const db = openDb(":memory:");
+    db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES ('D-1', '0xc', 'h', ?)").run(now.toISOString());
+    recordDecision(db, "D-1", { source: "claude", model: null, refunds: [{ seq: 7, cents: 5, origin: null }], escalate: { seqs: [5, 6], text: "Reject.", origin: null }, approval: null, agent_ran: true });
+    const words = () => health(db, now).alerts.find((a) => a.code === "dispute_decision_open")!.words;
+    expect(words()).toMatch(/; the runner's start or npm run s2 -- --resume-only finishes it, without deciding again\.$/);
+    // With the CFO (dispute.escalated) and a refund and a proposal left: the runner's start leaves it to a person
+    // (dispute review 2, LOW 4), so the alert names the person's command, never the runner's start or --resolve
+    // (which refuses a decided dispute).
+    escalateDispute(db, { id: "D-1", customer: "0xc" }, "the CFO decides the rest", now);
+    expect(words()).toMatch(/; it is with the CFO: npm run s2 -- --dispute D-1 carries it out, without deciding again\.$/);
+    expect(words()).not.toMatch(/runner's start|--resume-only|--resolve/);
+    // Carried out but for its settlement row: nothing left to pay or propose, so code finishes it, as before.
+    db.prepare("UPDATE dispute_decisions SET status = 'DONE', paid_json = '[7]', escalation_proposal = 'P-0004', audited = 0 WHERE dispute_id = 'D-1'").run();
+    expect(words()).toMatch(/the runner's start or npm run s2 -- --resume-only finishes it/);
   });
 
   it("answers 503 on the public /health with alarm codes only, and runner_down when the runner stops syncing", async () => {
