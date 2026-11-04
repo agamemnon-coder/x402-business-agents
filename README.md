@@ -1,7 +1,7 @@
 # Purser
 
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml)
-**1335 tests** in 169 files pass at this commit (`npm test`); CI runs them, the judge pages and a secret scan on every push.
+**1337 tests** in 169 files pass at this commit (`npm test`); CI runs them, the judge pages and a secret scan on every push.
 
 **Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
 
@@ -62,6 +62,13 @@ flowchart LR
   M --> L
   C --> L
 ```
+
+**Why Face ID and not a password or PIN.** Every approval is a passkey signature (WebAuthn, user verification
+required) whose challenge is the SHA-256 of the exact terms shown on the phone. The private key never leaves the
+phone; there is no password or PIN to leak, guess or phish, and the passkey works only on Purser's own site. A
+signature over one set of terms is worthless for any other, so an agent, a script or a stolen session cannot turn
+it into a different payment. The runner checks each signature before anything moves, and `npm run verify` checks
+every recorded approval again afterwards.
 
 **Kit 11 (x402 Business Agents), as built.** Northwind Outdoor, an outdoor wholesaler that sells live stock data to
 retailers per query: the kit's data business. Three agents draw on one Metal account, each under its own mandate:
