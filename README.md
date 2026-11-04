@@ -5,6 +5,11 @@
 **Purser lets the CFO of a small company give its AI agents company money to spend through Airwallex and Metal, only
 within limits the CFO sets in code and signs for with Face ID.**
 
+**Try it yourself: sign with your own Face ID** → [`/try/sign`](https://kit11.max-31b.workers.dev/try/sign): a test
+world of your own for an hour, a test passkey, nothing real moves. *Built and tested behind `TRY_SIGN_ENABLED`;
+**deploy pending**: until the relay is redeployed with the flag on, this address answers 404 (the site's own button
+to it appears only in a build that serves it).*
+
 Kit 11 · x402 Business Agents: three agents (Sourcing, Support, Treasury) on one Metal account, rebalancing when
 supplier costs rise — plus Airwallex for cards, FX and the euro licence fee. Entered for the Metal Award.
 
