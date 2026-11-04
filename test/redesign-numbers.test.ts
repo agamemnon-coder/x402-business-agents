@@ -3,7 +3,7 @@
 // proof link is the record's, and the run is named by its own name. Breaks if a page shows a number the record lacks.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AGENT_RUN_1_FILE, agentRun, faceIdDecisions, fxOf, loadRecord, split, stoppedAtLimit, stops, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
+import { AGENT_RUN_1_FILE, agentRun, faceIdDecisions, fxOf, loadRecord, payments, split, stoppedAtLimit, stops, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
 import { deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
@@ -259,5 +259,45 @@ describe("one 'stopped at a limit' figure everywhere, from the main run (Max, 4 
 
   it("would catch a stray 3 or 4", () => {
     expect([...text(doc("docs/claims.md").replace("2 stopped at a limit, both", "3 stopped at a limit, both")).matchAll(/(\d+) stopped at a limit/gi)].map((m) => m[1])).toContain("3");
+  });
+});
+
+describe("one payment breakdown everywhere, and a clean refusal line (jury review, 4 Nov)", () => {
+  const pay = payments(record);
+  const PAGES = buildPages() as unknown as Record<string, string>;
+  const words = (html: string) => html.replace(/<\/?code>/g, "").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+
+  it("adds up: 87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy", () => {
+    expect(pay.sums).toBe(true);
+    expect(pay.sales + pay.purchases + pay.refunds + pay.sweeps + pay.cards).toBe(record.snapshot.counts.alone);
+    expect(pay.line).toBe("87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy");
+    // On Metal: all but the card buy; routine by code: the sales and the supplier purchases; reconcile: Metal + SWIFT + card.
+    expect([pay.onChain, pay.routine, pay.transfers, pay.reconciled]).toEqual([86, 82, 1, 88]);
+    expect(pay.routine).toBe(pay.sales + pay.purchases);
+    expect(pay.reconciled).toBe(record.snapshot.reconciliation.checked);
+    // The 14 queries that got an error: 14 refused supplier purchases, none settled.
+    expect(record.snapshot.refusals.filter((x) => x.what === "Supplier purchase refused")).toHaveLength(14);
+  });
+
+  it("shows that one line on Home, Proof and /metal", () => {
+    expect(words(homePage())).toContain("41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy");
+    expect(words(proofPage())).toContain(pay.line);
+    expect(words(proofPage())).toContain(pay.onChainLine);
+    expect(words(PAGES.metal!)).toContain(pay.line);
+  });
+
+  it("says the let-through refusal in one clean line, the Defense-in-depth label on its own line", () => {
+    for (const [name, html] of [["proof", proofPage()], ["metal", PAGES.metal!]] as const) {
+      const t = words(html);
+      expect({ name, line: t.includes("Refused by Metal: Stockline at 0.04, over the 0.03 cap (mandate_cap_exceeded); nothing moved.") }).toEqual({ name, line: true });
+      expect({ name, garbled: /Stockline, Defense in depth|nothing moved\.; nothing moved/.test(t) }).toEqual({ name, garbled: false });
+      expect({ name, own: html.replace(/&#39;/g, "'").includes(`<small>${DEFENSE_IN_DEPTH}</small>`) }).toEqual({ name, own: true });
+    }
+  });
+
+  it("claims no safety count on /proof, and links the dispute to its own scene", () => {
+    expect(proofPage()).not.toMatch(/Safety count|variation runs/);
+    expect(proofPage()).toContain('href="watch?scene=2"');
+    expect(agentRun().scenes.find((x) => x.n === 2)!.title).toBe("The dispute");
   });
 });

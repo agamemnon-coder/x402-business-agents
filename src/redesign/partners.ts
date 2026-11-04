@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
-import { agentRun, callBadge, faceIdDecisions, family, fxOf, ownTap, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
+import { agentRun, callBadge, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { esc, icon, page } from "./ui.js";
 
@@ -42,6 +42,7 @@ ul.pl { list-style: none; margin: 6px 0 10px; padding: 0; display: grid; gap: 8p
 ul.pl li { font-size: 15.5px; line-height: 1.45; border-left: 3px solid var(--border); padding-left: 11px; overflow-wrap: anywhere; }
 ul.pl li.no { border-left-color: var(--bad); } ul.pl li.ok { border-left-color: var(--ok); } ul.pl li.face { border-left-color: var(--accent); }
 ul.pl small { display: block; color: var(--faint); font-size: 14px; }
+ul.pl code { font: 600 14.5px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
 ul.pl .call { margin-top: 4px; }
 abbr[title] { text-decoration: underline dotted; text-underline-offset: 3px; }
 a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 15px; }
@@ -72,7 +73,7 @@ function shell(run: AgentRun, o: { label?: string; title: string; description: s
 const moneyOf = (run: AgentRun) => run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
 
 export function metalPage(run: AgentRun = agentRun()): string {
-  const p = partnerProof(run), st = stops(run.record), money = moneyOf(run);
+  const p = partnerProof(run), st = stops(run.record), money = moneyOf(run), pay = payments(run.record);
   const s1 = run.scenes.find((s) => s.n === 1)?.mini;
   const price = s1?.kind === "price" ? s1 : null;
   const onChain = money.filter((e) => e.rail === "metal" && !e.refused).reduce((n, e) => n + e.count, 0);
@@ -90,7 +91,7 @@ export function metalPage(run: AgentRun = agentRun()): string {
       node("ban", price ? `${price.price} refused` : "Over the cap: refused", refusal ? `recorded on chain · ${refusal.proof.label}` : "nothing settles", "bad"), arrow,
       node("scan-face", price?.newCap ? `New cap ${price.newCap}` : "New mandate", "after Face ID 1 of 2 → 2 of 2", "ok")].join(""),
     nums: nums([[String(onChain), "payments on chain"], [String(st.metal), "refused by Metal at the cap"], [String(mandates.length), "mandates replaced"], [sweep ? sweep.amount : "0", "test USD swept after finality"]]),
-    line: "Each agent pays from the company's Metal account under its own mandate; a payment over the cap does not settle.",
+    line: `Each agent pays from the company's Metal account under its own mandate; a payment over the cap does not settle.${pay.sums && pay.onChain === onChain ? ` ${pay.onChainLine}; ${pay.line}.` : ""}`,
     folds: fold("The live proof, with every tx", p.metal) + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
       + fold("What is simulated", [plainLi("Test money on Metal testnet only."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions.")])
       + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]),

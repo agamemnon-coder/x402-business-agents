@@ -567,6 +567,28 @@ export function faceIdDecisions(r: RunRecord): number {
   return new Set(r.ledger.events.filter((e) => /^proposal\.(approved|rejected)$/.test(e.event) && /\bmax\b/i.test(String(e.payload.approver ?? ""))).map((e) => e.subject)).size;
 }
 
+/**
+ * One breakdown of the run's payments, said the same way everywhere (jury review, 4 Nov): the payments inside the
+ * limits (the snapshot's `counts.alone`) as sales + supplier purchases + refunds + sweeps + card buys, the ones on
+ * Metal (all but the card buys), the routine ones by code (the sales and the code's supplier purchases), and what
+ * reconcile checks (the Metal payments, each SWIFT transfer and each card buy). `sums` is false when the parts do not
+ * add up to `counts.alone`; then no page shows the line.
+ */
+export function payments(r: RunRecord): { alone: number; sales: number; purchases: number; refunds: number; sweeps: number; cards: number; onChain: number; routine: number; transfers: number; reconciled: number; sums: boolean; line: string; onChainLine: string } {
+  const f = r.snapshot.flows.filter((x) => !x.refused);
+  const n = (kind: string) => f.filter((x) => x.kind === kind).reduce((k, x) => k + (x.count ?? 1), 0);
+  const [sales, purchases, refunds, sweeps, cards, transfers] = [n("sale"), n("upstream"), n("refund"), n("sweep"), n("card"), f.filter((x) => x.rail === "airwallex_swift").length];
+  const alone = r.snapshot.counts.alone;
+  const pl = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
+  const onChain = sales + purchases + refunds + sweeps;
+  return {
+    alone, sales, purchases, refunds, sweeps, cards, onChain, routine: split(r).routine, transfers, reconciled: onChain + transfers + cards,
+    sums: sales + purchases + refunds + sweeps + cards === alone,
+    line: `${alone} inside the limits = ${pl(sales, "sale")} + ${pl(purchases, "supplier purchase")} + ${pl(refunds, "refund")} + ${pl(sweeps, "sweep")} + ${pl(cards, "card buy")}`,
+    onChainLine: `${onChain} on Metal = the ${alone} inside the limits less the ${pl(cards, "card buy")}`,
+  };
+}
+
 /** D3: decisions by Claude (and fallbacks to code), and the routine payments per query that code made (buying and selling, not refused). */
 export function split(r: RunRecord): { byClaude: number; decisions: number; fallbacks: number; routine: number } {
   const st = r.snapshot.agent_stats;
@@ -591,9 +613,10 @@ export function agentRun(): AgentRun {
   });
   const cosigned = s.decisions.filter((d) => (d.by ?? "").includes("&")).length;
   const sales = s.flows.filter((f) => f.kind === "sale").reduce((n, f) => n + (f.count ?? 1), 0);
+  const pay = payments(r);
   const tiles: Tile[] = [
     { value: `${byClaude}/${decisions}`, label: "decisions made by Claude", explain: `Every time an agent decided something, it was a Claude call. ${fallbacks} fell back to code.`, href: "proof#claude" },
-    { value: String(s.counts.alone), label: "payments inside the limits", explain: `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
+    { value: String(s.counts.alone), label: "payments inside the limits", explain: pay.sums ? `${pay.line.replace(/^\d+ inside the limits = /, "")}, with no approval at the time; the sales are the simulated customer's agent buying from us.` : `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
       value: String(stoppedAtLimit(st)), label: "stopped at a limit", href: "proof#stops",
       explain: st.airwallex ? "By Metal, the CFO and Airwallex in this run." : "By Metal and the CFO in this run.",
