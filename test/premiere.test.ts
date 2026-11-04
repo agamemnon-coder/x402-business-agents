@@ -5,12 +5,13 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CLOSING, MAIN_RUN_FILE, TRY_SIGN_URL, TRY_SIGN_WORDS, buildPremiere, premiereFacts, premierePage, spoken, testLine, trySignExample, type MainRun, type PremiereData } from "../src/film/premiere.js";
-import { MASTER_CLIPS, OVERLAYS, PREMIERE_SCENES, clock, factsUsed, lineSeconds, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, voiceTimeline } from "../src/film/premiereScript.js";
+import { BACKGROUND, CLOSING, MAIN_RUN_FILE, TRY_SIGN_URL, TRY_SIGN_WORDS, buildPremiere, premiereFacts, premierePage, spoken, testLine, trySignExample, type MainRun, type PremiereData } from "../src/film/premiere.js";
+import { MASTER_CLIPS, OVERLAYS, PREMIERE_SCENES, clock, factsUsed, pageScenes, lineSeconds, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, voiceTimeline } from "../src/film/premiereScript.js";
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/submission/deck.js";
 import { TRY_SIGN_LABEL, trySignPage } from "../src/try/sign.js";
 import { DEFENSE_IN_DEPTH } from "../src/config/brand.js";
+import { maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed } from "../src/film/slots.js";
 import { FIXED_PROPOSALS, TEST_WORLD, canonical, checkPayment } from "../worker/src/trySign.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -21,7 +22,7 @@ const fact = (k: string) => data.facts[k]!.value;
 const screen = (id: string) => data.screen[id] as Record<string, unknown>;
 const toSeconds = (t: string) => { const [h, m, s] = t.split(":"); return Number(h) * 3600 + Number(m) * 60 + Number(s!.replace(",", ".")); };
 const timeline = premiereTimeline();
-const scenesForPage = timeline.map((s) => ({ id: s.id, start: s.start, seconds: s.seconds, kind: s.kind }));
+const scenesForPage = pageScenes();
 
 describe("the premiere's figures are the main run's record's", () => {
   // Counted again here from the raw record, by other code than the film's.
@@ -169,7 +170,7 @@ describe("the premiere refuses to render when a figure is missing", () => {
     const html = premierePage(data, scenesForPage);
     expect(html).not.toContain("__PREMIERE_JSON__");
     const block = /<script type="application\/json" id="premiere-data">([\s\S]*?)<\/script>/.exec(html)![1]!;
-    expect(JSON.parse(block)).toEqual({ screen: data.screen, scenes: scenesForPage });
+    expect(JSON.parse(block)).toEqual({ screen: data.screen, scenes: scenesForPage, credits: data.credits, background: { ...BACKGROUND, start: 3 } });
   });
 });
 
@@ -180,8 +181,8 @@ describe("the premiere's page", () => {
   it("types in no figure: no string in its script holds a digit (every figure is in the data)", () => {
     const literals = [...script.replace(/\/\/[^\n]*/g, "").matchAll(/"((?:[^"\\\n]|\\.)*)"/g)].map((m) => m[1]!);
     expect(literals.length).toBeGreaterThan(100);
-    // Scene ids ("05-price-rise") are names, not figures.
-    expect(literals.filter((s) => /\d/.test(s) && !PREMIERE_SCENES.some((x) => x.id === s))).toEqual([]);
+    // Scene ids ("05-price-rise") are names, not figures; so is the canvas API's "2d".
+    expect(literals.filter((s) => /\d/.test(s) && s !== "2d" && !PREMIERE_SCENES.some((x) => x.id === s))).toEqual([]);
   });
 
   it("draws every scene of the script, and nothing else", () => {
@@ -323,7 +324,7 @@ describe("docs/video/ holds what the code writes", () => {
     expect(rows).toEqual(timeline.map((s) => [s.id, clock(s.start)]));
     expect(guide).toContain(`**Purser in ${clock(premiereSeconds())}**`);
     expect(guide).not.toMatch(/AI hook|02-hook|without the hook|10-second hook/i);
-    expect(guide).toMatch(/YouTube Audio Library/);
+    expect(guide).toMatch(/Techno Fest Vibes/);
     expect(guide).toMatch(/unlisted/i);
     expect(guide).toMatch(/`clips\/16-end-ai-voice\.mp4` \| A spare/);
   });
@@ -334,5 +335,76 @@ describe("docs/video/ holds what the code writes", () => {
     expect([fact("try.hash"), fact("try.tamperedHash")]).toEqual([h(x.terms), h(x.tampered)]);
     expect({ ...x.tampered, amount: x.terms.amount }).toEqual(x.terms);
     expect([x.terms.amount, x.tampered.amount]).toEqual(["1850.00", "1850.01"]);
+  });
+});
+
+describe("the premiere's look (Max, 4 November)", () => {
+  const template = read("src/film/premiere.html");
+  const root = /:root \{([^}]*)\}/.exec(template)![1]!;
+  const colour = (name: string) => /#[0-9a-f]{6}/.exec(new RegExp(`--${name}: (#[0-9a-f]{6})`).exec(root)![1]!)![0];
+  const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const lum = (c: number[]) => 0.2126 * lin(c[0]!) + 0.7152 * lin(c[1]!) + 0.0722 * lin(c[2]!);
+
+  it("draws the coordinator's background: four colours, screen at 42%, inside the picture only, from 0:03", () => {
+    expect(BACKGROUND).toMatchObject({ colors: ["#4c1d95", "#0f5e63", "#1e1b4b", "#3730a3"], opacity: 0.42 });
+    expect(template).toMatch(/<div id="pic"><div id="bg"><canvas id="grad"/);
+    expect(template).toMatch(/#grad \{[^}]*mix-blend-mode: screen/);
+    expect(pageScenes().find((x) => x.credits)!.start).toBe(3);
+  });
+
+  it("keeps every text colour at WCAG AA over the brightest point of the background (grain allowed for)", () => {
+    // Screen-blended at 42% over the picture's base colour, then 25% more for the grain: the brightest the background gets.
+    const base = rgb(colour("pic"));
+    const brightest = Math.max(...BACKGROUND.colors.map((c) => lum(rgb(c).map((v, i) => base[i]! + BACKGROUND.opacity * (1 - (1 - base[i]!) * (1 - v) - base[i]!))))) * 1.25;
+    for (const name of ["text", "muted", "faint", "accent", "ok", "bad", "wait"]) {
+      const ratio = (lum(rgb(colour(name))) + 0.05) / (brightest + 0.05);
+      expect({ name, aa: ratio >= 4.5 }).toEqual({ name, aa: true });
+    }
+  });
+
+  it("shows the corner credits in the top bar, 0:03 to 2:43, text only (no logos of others)", () => {
+    expect(data.credits).toEqual({ left: "Max Geurtsen · Purser", right: "Built on Airwallex · Metal · Claude" });
+    const on = pageScenes().filter((x) => x.credits);
+    expect([clock(on[0]!.start), clock(on.at(-1)!.start + on.at(-1)!.seconds)]).toEqual(["0:03", "2:43"]);
+    expect(pageScenes().filter((x) => !x.credits).map((x) => x.id)).toEqual(["01-line", "16-end"]);
+    expect(template).toMatch(/\.credit \{ position: absolute; top: 0; height: 138px; display: flex; align-items: center; font-size: 24px; font-weight: 500; color: rgba\(255,255,255,\.72\)/);
+    expect(template).toMatch(/#cl \{ left: 64px; \} #cr \{ right: 64px; \}/);
+  });
+
+  it("credits the music on the end card and in the edit guide", () => {
+    expect(String((screen("16-end").credits as { max: string }).max)).toBe("Voice: Max Geurtsen · Music: Techno Fest Vibes (Mixkit)");
+    expect(read("docs/video/README.md")).toMatch(/Techno Fest Vibes[^\n]*Mixkit[^\n]*\n?[^\n]*Mixkit Stock Music Free License/);
+  });
+});
+
+describe("Max's recordings, laid in by npm run video -- --slot", () => {
+  it("reads --slot with a window, and refuses what cannot work", () => {
+    expect(parseSlotArgs(["13-specs", "--slot", "08-faceid=a b.mov@1.5-9", "--slot=10-try-sign=x.mp4", "--check"])).toEqual({
+      slots: [{ id: "08-faceid", file: "a b.mov", from: 1.5, to: 9 }, { id: "10-try-sign", file: "x.mp4", from: null, to: null }], rest: ["13-specs", "--check"],
+    });
+    expect(() => parseSlotArgs(["--slot", "05-price-rise=a.mov"])).toThrow(/only 08-faceid and 10-try-sign/);
+    expect(() => parseSlotArgs(["--slot", "08-faceid=a.mov@9-3"])).toThrow(/ends before it starts/);
+    expect(() => parseSlotArgs(["--slot"])).toThrow(/needs/);
+  });
+
+  it("frames a portrait recording 700 px tall inside the picture, and refuses a landscape one", () => {
+    expect(slotBox("10-try-sign", 9 / 16)).toEqual({ x: 190, y: 190, w: 394, h: 700 });
+    expect(slotBox("08-faceid", 886 / 1920)).toEqual({ x: 360, y: 190, w: 324, h: 700 });
+    for (const id of ["08-faceid", "10-try-sign"] as const) { const b = slotBox(id, 9 / 16); expect(b.y >= 138 && b.y + b.h <= 942).toBe(true); }
+    expect(() => slotBox("08-faceid", 16 / 9)).toThrow(/portrait/);
+  });
+
+  it("plays a longer window faster to fit (and the scene says so), holds a shorter one, rounds the corners", () => {
+    expect([slotSpeed(20, 16), slotSpeed(8, 8), slotSpeed(5, 8)]).toEqual([1.25, 1, 1]);
+    const f = slotFilter({ box: { x: 190, y: 190, w: 394, h: 700 }, seconds: 16, speed: 1.25, fade: [0.45, 0.5] });
+    for (const part of ["setpts=(PTS-STARTPTS)/1.25", "scale=394:700:force_original_aspect_ratio=increase,crop=394:700", "tpad=stop_mode=clone", "alphamerge", "fade=t=out:st=15.500:d=0.5:alpha=1", "overlay=190:190"]) expect(f).toContain(part);
+    expect(maskExpr(44)).toMatch(/^255\*not\(lt\(X,44\)\*lt\(Y,44\)\*gt\(hypot/);
+    expect(read("src/film/premiere.html")).toContain('"Shown at " + rec.speed + "× speed"');
+  });
+
+  it("keeps the honesty labels when a recording is laid in", () => {
+    expect(screen("08-faceid")).toMatchObject({ recHead: "Real Face ID.", recLine: "On Max's own iPhone, filmed after the run on a test proposal, with test money.", sub: "In the main run: P-0005 approved with Face ID at 11:31:18 UTC" });
+    expect(screen("10-try-sign")).toMatchObject({ label: TRY_SIGN_LABEL, overlay: "Max's iPhone · the live page" });
   });
 });

@@ -44,6 +44,8 @@ export interface VoiceLine { at: number; who: "Max" | "Voice"; text: string }
 
 export interface PremiereData {
   facts: Record<string, Fact>;
+  /** The corner credits in the top letterbox bar, text only (no logos of others). */
+  credits: { left: string; right: string };
   /** What each scene shows, by scene id: every string on screen, built from the facts. */
   screen: Record<string, Record<string, unknown>>;
   /** What is said over each scene, by scene id. */
@@ -294,6 +296,7 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       slot: "Recording slot · Max's iPhone · Face ID", note: "Max films the Face ID approval on his own phone.",
       label: "Max's iPhone · real Face ID · filmed after the run, on a test proposal (test money)",
       sub: `In the main run: ${v("licence.proposal")} approved with Face ID at ${v("paid.faceAt")} UTC`,
+      recHead: "Real Face ID.", recLine: "On Max's own iPhone, filmed after the run on a test proposal, with test money.",
     },
     "09-six-seconds": {
       big: v("paid.seconds"), unit: n("paid.seconds") === 1 ? "second" : "seconds", line: "from Face ID to PAID",
@@ -339,7 +342,7 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
     },
     "16-end": {
       cta: "Try it yourself", url: TRY_SIGN_URL, foot: "Test money only: the Airwallex sandbox and Metal testnet.",
-      credits: { max: "Voice: Max Geurtsen", ai: "Voice-over: an AI-generated voice · opening and closing: Max Geurtsen" },
+      credits: { max: `Voice: Max Geurtsen · ${MUSIC}`, ai: `Voice-over: an AI-generated voice · opening and closing: Max Geurtsen · ${MUSIC}` },
       mark: "Purser · Starter Kit 11",
     },
   };
@@ -398,8 +401,20 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       { at: 11.6, who: "Max", text: CLOSING[3]! },
     ],
   };
-  return { facts: F, screen, voice };
+  return { facts: F, screen, voice, credits: CREDITS };
 }
+
+/** The corner credits (Max, 4 November): who made it, and what it is built on, in words. */
+export const CREDITS = { left: "Max Geurtsen · Purser", right: "Built on Airwallex · Metal · Claude" } as const;
+/** The music, as the end card credits it (Mixkit track 124, Mixkit Stock Music Free License; the coordinator mixes it). */
+export const MUSIC = "Music: Techno Fest Vibes (Mixkit)";
+
+/**
+ * The background (the coordinator's preview, made with ffmpeg's `gradients` source, type radial, four colours, speed
+ * 0.01 a frame at its default 25 fps: 0.25 of a turn's radian a second), screen-blended at 42% with light grain. The
+ * two points are fractions of the picture; they turn about its centre. It fades in when the opening line has ended.
+ */
+export const BACKGROUND = { colors: ["#4c1d95", "#0f5e63", "#1e1b4b", "#3730a3"], turn: 0.25, from0: [0.32, 0.4], to0: [0.92, 0.88], opacity: 0.42, grain: 0.06, fadeIn: 1 } as const;
 
 /** Max's closing line (docs/video/max-opening-close.md, "Slot"), in the lines the fallback card shows. */
 export const CLOSING = ["A price shock, a dispute, a euro bill.", "Claude decided, the rails and the code held the limits,", "and I signed only what went beyond them.", "Purser, Starter Kit 11."] as const;
@@ -434,6 +449,8 @@ export function loadPremiere(root = new URL("../../", import.meta.url)): Premier
 }
 
 /** The film page, its data inside it ("<" escaped); the scenes' times come from the script (premiereScript.ts). */
-export function premierePage(data: PremiereData, scenes: { id: string; start: number; seconds: number; kind: string }[]): string {
-  return TEMPLATE.replace("__PREMIERE_JSON__", () => JSON.stringify({ screen: data.screen, scenes }).replace(/</g, "\\u003c"));
+export function premierePage(data: PremiereData, scenes: { id: string; start: number; seconds: number; kind: string; fade: [number, number]; credits: boolean }[]): string {
+  // The background starts with the first scene after the opening line (the first that carries the corner credits).
+  const background = { ...BACKGROUND, start: scenes.find((s) => s.credits)?.start ?? 0 };
+  return TEMPLATE.replace("__PREMIERE_JSON__", () => JSON.stringify({ screen: data.screen, scenes, credits: data.credits, background }).replace(/</g, "\\u003c"));
 }

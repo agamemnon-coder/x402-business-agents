@@ -13,9 +13,9 @@ are also in this folder.
 
 | File | What it is |
 |---|---|
-| `clips/01-line.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip starts and ends on black, so you can cut between them anywhere. There is no clip 02: the hook was cut, and the other clips keep their numbers. |
+| `clips/01-line.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip fades in and out over the moving background, which runs on the film's own clock, so in order the clips join seamlessly; the opening line is on black. There is no clip 02: the hook was cut, and the other clips keep their numbers. |
 | `clips/16-end-ai-voice.mp4` | A spare end card whose credits name an AI-generated voice. Not used: Max reads the whole voice-over himself. |
-| `overlays/08-faceid.png`, `overlays/10-try-sign.png`, `overlays/15-close.png` | Transparent 1920×1080 PNGs: the letterbox bars and the label for each recording slot. Put one on the track above the recording, for the slot's full length. |
+| `overlays/08-faceid.png`, `overlays/10-try-sign.png`, `overlays/15-close.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for each recording slot. Put one on the track above the recording, for the slot's full length. |
 | `master.mp4` | All fifteen clips in order (2:49), silent, with stand-ins where the recordings go: the rough cut to edit against. |
 | `master-subtitled.mp4` | The same, with the English subtitles burned into the lower bar. |
 | `subtitles.srt` | The voice-over as English subtitles on the script's times (a copy is in this folder). |
@@ -48,6 +48,17 @@ line changes, render `13-specs` again.
 
 ## Max's recordings
 
+The quickest way is to let `npm run video` lay them in: his portrait (9:16) phone recordings go into a rounded phone
+frame beside the scene's captions, with their honesty labels, and the master is rebuilt.
+
+```sh
+npm run video -- 08-faceid 10-try-sign --slot 08-faceid=<trysign.mov>@<start>-<end> --slot 10-try-sign=<trysign.mov>
+```
+
+`@<start>-<end>` (seconds) takes a window: for 08, the few seconds of the Face ID sheet in his /try/sign recording. A
+window longer than its scene plays faster to fit, and the scene says so (“shown at 1.25× speed”); a shorter one holds
+its last frame. Without a file a scene keeps its stand-in. In an editor instead:
+
 1. **Face ID (1:04, 8 s).** His iPhone approving a test proposal with Face ID, cut from his /try/sign recording
    (3 below; [opnames-max.md](opnames-max.md), 1): the Face ID sheet only, not the page's terms, which are not P-0005's.
    Put it on the track above `08-faceid.mp4`, scale it so the phone fills the picture between the bars, and put
@@ -66,10 +77,8 @@ line changes, render `13-specs` again.
 
 Royalty-free and slowly building, one track for the whole film, cut so it hits at 1:12 and stops dead at 1:40.
 
-- **Where to find it:** the YouTube Audio Library (YouTube Studio → Audio library; filter on “Attribution not
-  required”, genre Cinematic or Ambient, mood Inspirational or Dramatic), or Pixabay Music (search “cinematic build”
-  or “ambient build”; the Pixabay Content License). We name no track here: pick by ear, check the track's licence,
-  and keep its name and licence for the video's description.
+- **The track:** “Techno Fest Vibes” (Mixkit, track 124), under the Mixkit Stock Music Free License, stretched to
+  120 BPM. The end card credits it: “Music: Techno Fest Vibes (Mixkit)”.
 - **Where it hits and where it goes silent:** see the table above. In short: silence for the first line; low from the
   title; building through the diagram and the price rise; thin under the approval card and the Face ID; the first hit
   on “6 seconds”; building on /try/sign; **silence from 1:40 to 1:48** (“One cent. Worthless.” stands alone); back,
@@ -94,7 +103,7 @@ Royalty-free and slowly building, one track for the whole film, cut so it hits a
 overlay PNGs as overlay layers; voice and music as audio layers; export at 1080p, 60 fps.
 
 **Upload:** YouTube, visibility **Unlisted**. Add `subtitles.srt` as English captions. In the description: “Test money
-only: the Airwallex sandbox and Metal testnet”, the music's name and licence.
+only: the Airwallex sandbox and Metal testnet” and “Music: Techno Fest Vibes (Mixkit), Mixkit Stock Music Free License”.
 
 ## Before you upload
 
@@ -113,6 +122,13 @@ times, the voice-over's times and the music cues. `npm run video` (`src/cli/vide
 clock, one frame every 1/60 s, so every clip is exactly its length at 60 frames a second. `test/premiere.test.ts`
 counts the figures again from the record and fails on a difference, a missing figure, a figure typed into the page,
 or a file in this folder that the code would write differently.
+
+**The look.** Behind the text: an animated radial gradient in four colours (#4c1d95, #0f5e63, #1e1b4b, #3730a3,
+turning slowly, as ffmpeg's `gradients` source at speed 0.01), drawn small and scaled up, with light grain,
+screen-blended at 42% over the picture only, never the bars; it fades in from 0:03, so the opening line stays on
+black. In the top bar, 0:03 to 2:43: “Max Geurtsen · Purser” left and “Built on Airwallex · Metal · Claude” right
+(Inter Medium 24 px, white at 72%, 64 px from the edges), text only, no logos. Every text colour was measured against
+the brightest point of that background on seven frames: 5.0:1 or better (WCAG AA); the credits 10.6:1 on the bar.
 
 Earlier drafts (`hybrid-script.md`, `script-v0.md`, `review-2026-11-02.md`) are kept for the record; the premiere
 replaces them. Max's own wording for the opening and the closing is in [max-opening-close.md](max-opening-close.md).

@@ -6,14 +6,26 @@
 <title>Purser: the premiere</title>
 <style>
 @font-face { font-family: Inter; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
-:root { --pic: #07080c; --surface: #12151d; --sunken: #191d27; --line: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #7d8799; --accent: #8b85ff; --ok: #3ccf82; --bad: #ff6b70; --wait: #f5b14a; }
+:root { --pic: #07080c; --surface: #12151d; --sunken: #191d27; --line: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #98a2b4; --accent: #9b96ff; --ok: #3ccf82; --bad: #ff6b70; --wait: #f5b14a; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
 .tn { font-variant-numeric: tabular-nums; }
 #stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #000; overflow: hidden; }
 /* The picture: 2.39:1 inside 1920x1080, black bars above and below. */
-#pic { position: absolute; left: 0; top: 138px; width: 1920px; height: 804px; overflow: hidden; background: radial-gradient(1100px 620px at 78% 12%, #16152f 0%, rgba(7,8,12,0) 62%), radial-gradient(900px 520px at 8% 96%, #0b1f26 0%, rgba(7,8,12,0) 60%), var(--pic); }
+#pic { position: absolute; left: 0; top: 138px; width: 1920px; height: 804px; overflow: hidden; background: var(--pic); }
+/* The background (the coordinator's preview, built natively): an animated radial gradient in four colours, drawn
+   small and scaled up so it has no banding, with light grain, screen-blended at 42% over the picture only, never the
+   letterbox bars. It fades in after the opening line. Text stays at WCAG AA or better over it. */
+#bg { position: absolute; inset: 0; overflow: hidden; }
+#grad { position: absolute; left: 0; top: 0; width: 1920px; height: 804px; mix-blend-mode: screen; opacity: 0; }
+#grain { position: absolute; left: -40px; top: -38px; width: 2000px; height: 880px; opacity: 0; mix-blend-mode: soft-light; image-rendering: pixelated; }
+html.overlay #bg { display: none; }
+/* The corner credits, in the top bar: never near the subtitles in the lower bar. Text only. */
+.credit { position: absolute; top: 0; height: 138px; display: flex; align-items: center; font-size: 24px; font-weight: 500; color: rgba(255,255,255,.72); z-index: 6; opacity: 0; white-space: nowrap; }
+#cl { left: 64px; } #cr { right: 64px; }
+/* Max's own portrait recording goes inside this frame (npm run video -- --slot …): the page draws the frame only. */
+.ring { border: 10px solid #1e2331; border-radius: 54px; box-shadow: 0 40px 90px rgba(0,0,0,.65); }
 .bar { position: absolute; left: 0; width: 1920px; height: 138px; background: #000; z-index: 5; }
 .bar.top { top: 0; } .bar.bot { top: 942px; }
 html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { background: transparent; }
@@ -137,7 +149,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 <script type="application/json" id="premiere-data">__PREMIERE_JSON__</script>
 <h1 class="sr">Purser: the premiere</h1>
 <template id="mark-tpl"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0b1220"/><g transform="translate(4 4)" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></g></svg></template>
-<div id="stage"><div id="pic"></div><div class="bar top"></div><div class="bar bot"></div></div>
+<div id="stage"><div id="pic"><div id="bg"><canvas id="grad" width="240" height="101"></canvas><canvas id="grain" width="1000" height="440"></canvas></div></div><div class="bar top"></div><div class="bar bot"></div><div class="credit" id="cl"></div><div class="credit" id="cr"></div></div>
 <script>
 (function () {
   "use strict";
@@ -149,6 +161,45 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   var overlay = q.get("overlay");
   var credits = q.get("credits") === "ai" ? "ai" : "max";
 
+  var BAR = 138;
+  // ?rec=x,y,w,h&recfor=<scene>&speed=n: that scene frames Max's recording (laid in afterwards by ffmpeg).
+  var rec = null;
+  if (q.get("rec")) { var rv = q.get("rec").split(",").map(Number); rec = { x: rv[0], y: rv[1], w: rv[2], h: rv[3], id: q.get("recfor"), speed: Number(q.get("speed") || 1) }; }
+  // The background's grain: a fixed field of noise from a seeded generator, moved a little on every frame.
+  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var r = Math.imul(seed ^ seed >>> 15, 1 | seed); r = r + Math.imul(r ^ r >>> 7, 61 | r) ^ r; return ((r ^ r >>> 14) >>> 0) / 4294967296; }; }
+  (function () {
+    var c = document.getElementById("grain"), g = c.getContext("2d"), img = g.createImageData(c.width, c.height), next = rng(7);
+    for (var i = 0; i < img.data.length; i += 4) { var v = Math.floor(next() * 256); img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+    g.putImageData(img, 0, 0);
+  })();
+  var grad = document.getElementById("grad"), gc = grad.getContext("2d"), grain = document.getElementById("grain"), B = D.background;
+  // The background at film time t, as ffmpeg's gradients source draws a radial one: colour stops spread from one point
+  // to another, the two points turning slowly about the centre; faded in from B.from, with the grain moving a little.
+  function background(t) {
+    var w = grad.width, h = grad.height, a = t * B.turn, cx = w / 2, cy = h / 2;
+    var turn = function (p) { var x = p[0] * w - cx, y = p[1] * h - cy; return [cx + x * Math.cos(a) - y * Math.sin(a), cy + x * Math.sin(a) + y * Math.cos(a)]; };
+    var p0 = turn(B.from0), p1 = turn(B.to0), r = Math.max(1, Math.hypot(p1[0] - p0[0], p1[1] - p0[1]));
+    var g = gc.createRadialGradient(p0[0], p0[1], 0, p0[0], p0[1], r);
+    B.colors.forEach(function (c, i) { g.addColorStop(i / (B.colors.length - 1), c); });
+    gc.fillStyle = g; gc.fillRect(0, 0, w, h);
+    var on = prog(t, B.start, B.start + B.fadeIn);
+    grad.style.opacity = B.opacity * on; grain.style.opacity = B.grain * on;
+    var j = rng(Math.round(t * 60) + 1);
+    grain.style.transform = "translate(" + Math.round((j() - .5) * 60) + "px," + Math.round((j() - .5) * 60) + "px)";
+  }
+  // The corner credits at film time t: on every scene that has them, fading only where they start or stop.
+  var cl = document.getElementById("cl"), cr = document.getElementById("cr");
+  cl.textContent = D.credits.left; cr.textContent = D.credits.right;
+  function corner(t) {
+    var o = 0;
+    D.scenes.forEach(function (sc, i) {
+      var lt = t - sc.start;
+      if (lt < 0 || lt >= sc.seconds || !sc.credits) return;
+      var prev = D.scenes[i - 1], next = D.scenes[i + 1];
+      o = Math.min(prev && prev.credits ? 1 : prog(lt, 0, .3), next && next.credits ? 1 : 1 - prog(lt, sc.seconds - .3, sc.seconds - .02));
+    });
+    cl.style.opacity = cr.style.opacity = o;
+  }
   function fit() { var s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = "translate(" + (innerWidth - 1920 * s) / 2 + "px," + (innerHeight - 1080 * s) / 2 + "px) scale(" + s + ")"; }
   addEventListener("resize", fit); fit();
 
@@ -168,6 +219,8 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   function scan(f, t, t0) { var p = prog(t, t0, t0 + 1.1); f.style.transform = "scale(" + (1 + Math.sin(p * Math.PI * 3) * .06) + ")"; var b = f.querySelector("b"); b.style.opacity = prog(t, t0 + 1.1, t0 + 1.3); b.style.transform = "scale(" + mix(.5, 1, out3(prog(t, t0 + 1.1, t0 + 1.5))) + ")"; }
   var TILT = -6;
   function width(n, w) { n.style.width = w + "px"; return n; }
+  // The frame around a recording's box (stage pixels; the picture starts below the top bar).
+  function ring(L, rec) { L.classList.add("still"); var r = put(L, E("div", "ring"), rec.x - 10, rec.y - BAR - 10); r.style.width = rec.w + 20 + "px"; r.style.height = rec.h + 20 + "px"; return r; }
   function slot(L, S) { put(L, E("div", "slotframe"), 120, 90); put(L, E("div", "kick c", "Recording slot"), 0, 300); put(L, E("div", "hm c", S.slot), 0, 346); put(L, E("div", "small c", S.note), 0, 430); }
 
   // ---- the scenes, by id; their lengths and the voice-over are in src/film/premiereScript.ts ----
@@ -282,7 +335,15 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         bt.classList.toggle("lit", t > 5.6 && Math.floor((t - 5.6) * 2) % 2 === 0);
       };
     },
-    "08-faceid": function (L, S, ov) {
+    "08-faceid": function (L, S, ov, seconds, rec) {
+      if (rec) {
+        // Max's recording sits in the frame (laid in by ffmpeg); beside it, what it is, honestly labelled.
+        ring(L, rec);
+        var x = rec.x + rec.w + 150;
+        var h = put(L, E("div", "hl", S.recHead), x, 150), l = put(L, width(E("div", "hm", S.recLine), 1760 - x), x, 258), u = put(L, width(E("div", "small", S.sub), 1760 - x), x, 500);
+        var sp = rec.speed > 1 ? put(L, E("div", "tiny", "Shown at " + rec.speed + "× speed"), x, 560) : null;
+        return function (t) { rise(h, t, .3); rise(l, t, 1.0); rise(u, t, 1.6); if (sp) fade(sp, t, 1.8); };
+      }
       var lab = put(L, E("div", "ovl", S.label), 48, 640), sub = put(L, E("div", "ovl sub", S.sub), 48, 700);
       if (ov) return function () {};
       L.classList.add("black");
@@ -311,8 +372,17 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         rise(lk, t, 8.2); rise(wh, t, 8.7); fade(foot, t, 9.2);
       };
     },
-    "10-try-sign": function (L, S, ov) {
+    "10-try-sign": function (L, S, ov, seconds, rec) {
       if (ov) { put(L, E("div", "ovl", S.label), 48, 36); put(L, E("div", "ovl sub", S.overlay + " · " + S.url), 48, 718); return function () {}; }
+      if (rec) {
+        ring(L, rec);
+        var ry = [74, 268, 350, 432, 530];
+        var rl = S.side.map(function (s, i) { return put(L, E("div", i ? "hm" : "hl", s), 760, ry[i]); });
+        rl[4].classList.add("okc");
+        var ru = put(L, E("div", "hs acc", S.url), 762, 176), rp = put(L, E("div", "pill", S.label), 760, 640);
+        var rn = put(L, E("div", "tiny", S.overlay + (rec.speed > 1 ? " · shown at " + rec.speed + "× speed" : "")), 764, 726);
+        return function (t) { rise(rl[0], t, .6); rise(ru, t, 1.6); rise(rl[1], t, 3.0); rise(rl[2], t, 4.6); rise(rl[3], t, 6.2); rise(rl[4], t, 9.4); fade(rp, t, 1.0); fade(rn, t, 1.4); };
+      }
       var ph = put(L, E("div", "phone"), 180, 16);
       var scr = E("div", "scr"); ph.appendChild(scr); scr.appendChild(E("div", "notch"));
       var pg = E("div", "pg"); scr.appendChild(pg);
@@ -423,23 +493,23 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
     },
   };
 
-  // The fade into and out of each scene (seconds); each clip starts and ends on black, so clips can be cut apart.
-  var FADES = { "01-line": [0, 0], "11-one-cent": [0, .45], "08-faceid": [.3, .3] };
+  // Each scene fades in from the background and out to it (its fades are in the script, premiereScript.ts).
   var scenes = D.scenes.map(function (sc) {
     var L = E("div", "layer"); pic.appendChild(L);
     var only = overlay === sc.id;
-    return { id: sc.id, start: sc.start, seconds: sc.seconds, L: L, f: FADES[sc.id] || [.45, .5], update: overlay && !only ? function () {} : build[sc.id](L, D.screen[sc.id], only, sc.seconds) };
+    return { id: sc.id, start: sc.start, seconds: sc.seconds, L: L, f: sc.fade, update: overlay && !only ? function () {} : build[sc.id](L, D.screen[sc.id], only, sc.seconds, rec && rec.id === sc.id ? rec : null) };
   });
   var total = scenes.reduce(function (s, x) { return Math.max(s, x.start + x.seconds); }, 0);
 
   function render(t) {
+    background(t); corner(t);
     scenes.forEach(function (sc) {
       var lt = t - sc.start, on = lt >= 0 && lt < sc.seconds;
       if (!on) { sc.L.style.opacity = 0; sc.L.style.visibility = "hidden"; return; }
       sc.L.style.visibility = "visible";
       sc.L.style.opacity = Math.min(sc.f[0] ? prog(lt, 0, sc.f[0]) : 1, sc.f[1] ? 1 - prog(lt, sc.seconds - sc.f[1], sc.seconds - .02) : 1);
-      // A slow push-in, so the picture is never still.
-      sc.L.style.transform = "scale(" + mix(1, 1.02, clamp(lt / sc.seconds)) + ")";
+      // A slow push-in, so the picture is never still (not around a recording, which must stay in its frame).
+      sc.L.style.transform = sc.L.classList.contains("still") ? "" : "scale(" + mix(1, 1.02, clamp(lt / sc.seconds)) + ")";
       sc.update(lt);
     });
   }
@@ -449,6 +519,9 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   if (overlay) {
     document.documentElement.classList.add("overlay");
     scenes.forEach(function (sc) { if (sc.id === overlay) { sc.L.style.opacity = 1; sc.L.style.visibility = "visible"; } });
+    // The corner credits too: the overlay's bars cover the clip's.
+    var os = D.scenes.filter(function (sc) { return sc.id === overlay; })[0];
+    cl.style.opacity = cr.style.opacity = os && os.credits ? 1 : 0;
     return;
   }
   window.__film = function (t) { render(Math.min(Math.max(0, t), total - .001)); };
