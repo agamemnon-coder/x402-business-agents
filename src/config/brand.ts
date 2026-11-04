@@ -9,8 +9,12 @@ export const TAGLINE = "Give every AI agent its own company card, with limits th
  * interop test were green in both directions (2 Nov, docs/runs/visa-tap-live-2026-11-02.json; Max's go).
  */
 export const VISA_AWARD_ON = true;
-/** The Visa claim, word for word (Max, 2 Nov); nothing stronger anywhere. */
-export const VISA_CLAIM = "Our agents sign their card checkouts at TAP merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our own layer on top.";
+/**
+ * The Visa claim in plain words (jury review, 4 Nov), said once per surface (/visa, the README, the form, the deck);
+ * nothing stronger anywhere. "Public reference verifier", never "open source": Visa's reference has no open-source
+ * licence (docs/decisions.md).
+ */
+export const VISA_CLAIM = "Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.";
 /**
  * The Visa Award's status, word for word (Max, 2 Nov evening): Airwallex changed answer (1) to "TBD" and added Visa;
  * answer (2) stays "Yes". Never "organisers confirmed TAP counts".
@@ -22,8 +26,13 @@ export const KIT_LINE = `Kit 11 · x402 Business Agents · entered for the Metal
 export const HOME_BADGE = `Kit 11 · Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""} · built on Airwallex, Metal, Claude`;
 /** D3, in one sentence: who decides what. */
 export const SPLIT_LINE = "Claude decides the exceptions; routine buying and selling per query is code.";
-/** The core sentence (Max, 2 Nov), word for word, wherever the story is told in one line. */
-export const CORE_SENTENCE = "Claude agents handle the exceptions — price shocks, disputes, rebalancing. Routine runs at code speed. Metal and Airwallex enforce every limit; the CFO approves anything beyond them.";
+/** Home's heading (jury review, 4 Nov): no absolute claim; the CFO sets the limits, and the three layers below hold them. */
+export const HERO = "AI agents that run a business. Inside limits the CFO sets.";
+/**
+ * The core sentence (jury review, 4 Nov), word for word, wherever the story is told in one line: who holds which
+ * limit. Never "enforce every limit": the refund, FX and other thresholds are held by Purser's own code.
+ */
+export const CORE_SENTENCE = "Metal holds each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything beyond them.";
 /** Who the second approver is, said wherever four eyes appears (Max, 2 Nov: he does everything alone). */
 export const SECOND_APPROVER = "Second approver: a labelled test passkey in this demo. In production this is a second person.";
 /**

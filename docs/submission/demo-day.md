@@ -39,4 +39,4 @@ en laat het bewijs zien. Lees de zinnen niet voor; ken ze.
 - "Airwallex en de chain dwingen de limieten af, niet een prompt."
 - "Alles wat gesimuleerd is, staat erbij: de klant-agent, de stortingen in de sandbox, de red team en het Lab tegen nep-versies, en de agentherkenning als dev test."
 
-Meer vragen en antwoorden: [docs/uitleg-voor-max.md](../uitleg-voor-max.md).
+Meer vragen en antwoorden: [docs/internal/uitleg-voor-max.md](../internal/uitleg-voor-max.md).

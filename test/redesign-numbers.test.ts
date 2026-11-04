@@ -3,7 +3,7 @@
 // proof link is the record's, and the run is named by its own name. Breaks if a page shows a number the record lacks.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AGENT_RUN_1_FILE, agentRun, faceIdDecisions, fxOf, loadRecord, split, stoppedAtLimit, stops, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
+import { AGENT_RUN_1_FILE, agentRun, disputeStory, faceIdDecisions, fxOf, loadRecord, payments, split, stoppedAtLimit, stops, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
 import { deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
@@ -109,7 +109,13 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect([st.metal, st.cfo, st.airwallex, st.revoked, st.tapDeclines]).toEqual([1, 1, 0, 1, 1]);
     expect(t.parts).toEqual([{ value: "1", label: "Metal" }, { value: "1", label: "CFO" }]);
     expect(t.value).toBe("2");
-    expect(t.note).toBe(TAP_LINE);
+    // Not inside the card: its own row, labelled as the separate test it was (agent X's review, 4 Nov).
+    expect(t.note).toBeUndefined();
+    expect(t.separate).toBe(TAP_LINE);
+    for (const html of [homePage(), proofPage()]) {
+      expect(html).toContain(`<p class="septest"><b>Separate test, 2 November:</b> ${TAP_LINE}; not counted in the figures above.</p>`);
+      expect(html).not.toContain(`<span class="note">${TAP_LINE}</span>`);
+    }
     if (st.revoked) expect(t.tip).toMatch(/mandate had just been replaced/);
     // At most two short lines on the card; the details in its tooltip.
     expect(t.explain.length).toBeLessThanOrEqual(60);
@@ -257,7 +263,87 @@ describe("one 'stopped at a limit' figure everywhere, from the main run (Max, 4 
     }
   });
 
+  it("tells the main run's dispute in the README and the deck: the refunds with their tx, the refund-all rejected; no 30 October figure (Max's rule)", () => {
+    const m = packFacts().main;
+    const events = record.ledger?.events ?? [];
+    const txs = events.filter((e) => e.event === "refund.paid").map((e) => String((e.payload as { tx?: unknown }).tx ?? ""));
+    const rejected = (record.ledger?.proposals ?? []).find((p) => p.kind === "refund_batch" && p.status === "REJECTED")?.proposal_id ?? "";
+    expect({ refunds: m.refunded.length, txs: txs.length, rejected: !!rejected }).toEqual({ refunds: 3, txs: 3, rejected: true });
+    const readme = text(doc("README.md"));
+    expect(readme).toContain(`${m.disputed} orders`);
+    expect(readme).toContain(`#${m.refunded.slice(0, -1).join(", #")} and #${m.refunded.at(-1)}`);
+    for (const tx of txs) expect(readme).toContain(tx);
+    expect(readme).toMatch(new RegExp(`${rejected}[^.]*rejected by Max with Face ID`));
+    // The deck's dispute slide is the main run's, picture and caption.
+    const deck = text(deckHtml(packFacts(), shots, ""));
+    expect(deck).toMatch(/The main run, 3 November \(\/watch\): #\d+, #\d+, #\d+ refunded, each on chain; (?:"|&quot;)refund the other \d+(?:"|&quot;) rejected by Max with Face ID/);
+    // Figures from other runs are gone from the demo: the 30 October dispute ("all 12 hold") and agent run 1's 38 of 38.
+    expect({ allHold: /All 12 hold|all 12 hold/.test(readme), run1: readme.includes("38 of 38"), oct30Dispute: /Disputes tab of the earlier recorded run/.test(deck) }).toEqual({ allHold: false, run1: false, oct30Dispute: false });
+    const s = record.snapshot.agent_stats;
+    const [decisions, byClaude] = [s.reduce((n, a) => n + a.decisions, 0), s.reduce((n, a) => n + a.by_claude, 0)];
+    expect(readme).toContain(`${byClaude} of ${decisions} decisions by Claude`);
+  });
+
   it("would catch a stray 3 or 4", () => {
     expect([...text(doc("docs/claims.md").replace("2 stopped at a limit, both", "3 stopped at a limit, both")).matchAll(/(\d+) stopped at a limit/gi)].map((m) => m[1])).toContain("3");
+  });
+});
+
+describe("one payment breakdown everywhere, and a clean refusal line (jury review, 4 Nov)", () => {
+  const pay = payments(record);
+  const PAGES = buildPages() as unknown as Record<string, string>;
+  const words = (html: string) => html.replace(/<\/?code>/g, "").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+
+  it("adds up: 87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy", () => {
+    expect(pay.sums).toBe(true);
+    expect(pay.sales + pay.purchases + pay.refunds + pay.sweeps + pay.cards).toBe(record.snapshot.counts.alone);
+    expect(pay.line).toBe("87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy");
+    // On Metal: all but the card buy; routine by code: the sales and the supplier purchases; reconcile: Metal + SWIFT + card.
+    expect([pay.onChain, pay.routine, pay.transfers, pay.reconciled]).toEqual([86, 82, 1, 88]);
+    expect(pay.routine).toBe(pay.sales + pay.purchases);
+    expect(pay.reconciled).toBe((record.snapshot as unknown as { reconciliation: { checked: number } }).reconciliation.checked);
+    // The 14 queries that got an error: 14 refused supplier purchases, none settled.
+    expect(record.snapshot.refusals.filter((x) => x.what === "Supplier purchase refused")).toHaveLength(14);
+  });
+
+  it("shows that one line on Home, Proof and /metal", () => {
+    expect(words(homePage())).toContain("41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy");
+    expect(words(proofPage())).toContain(pay.line);
+    expect(words(proofPage())).toContain(pay.onChainLine);
+    expect(words(PAGES.metal!)).toContain(pay.line);
+  });
+
+  it("says the let-through refusal in one clean line, the Defense-in-depth label on its own line", () => {
+    for (const [name, html] of [["proof", proofPage()], ["metal", PAGES.metal!]] as const) {
+      const t = words(html);
+      expect({ name, line: t.includes("Refused by Metal: Stockline at 0.04, over the 0.03 cap (mandate_cap_exceeded); nothing moved.") }).toEqual({ name, line: true });
+      expect({ name, garbled: /Stockline, Defense in depth|nothing moved\.; nothing moved/.test(t) }).toEqual({ name, garbled: false });
+      expect({ name, own: html.replace(/&#39;/g, "'").includes(`<small>${DEFENSE_IN_DEPTH}</small>`) }).toEqual({ name, own: true });
+    }
+  });
+
+  it("claims no safety count on /proof, and links the dispute to its own scene", () => {
+    expect(proofPage()).not.toMatch(/Safety count|variation runs/);
+    expect(proofPage()).toContain('href="watch?scene=2"');
+    expect(agentRun().scenes.find((x) => x.n === 2)!.title).toBe("The dispute");
+  });
+});
+
+describe("the dispute, one text everywhere (jury review, 4 Nov)", () => {
+  const STORY = "A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. \"Refund the other 9\" goes to the CFO, who rejects it with Face ID.";
+  const doc = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8").replace(/[ \t]*\n[ \t]*/g, " ");
+  it("is told from the run's own dispute case", () => {
+    expect(disputeStory(record)).toBe(STORY);
+    expect(agentRun().scenes.find((x) => x.n === 2)!.sentence).toBe(STORY);
+    expect(homePage().replace(/&quot;/g, '"').replace(/&#39;/g, "'")).toContain(STORY);
+  });
+  it("is the same text in the submission form, the README and the deck", () => {
+    expect(doc("docs/submission/README.md")).toContain(STORY);
+    expect(doc("README.md")).toContain(STORY);
+    const deck = deckHtml(packFacts(), new Proxy({}, { get: () => "" }) as DeckShots, "").replace(/&quot;/g, '"');
+    expect(deck).toContain(STORY);
+    // The deck: Home's award labels on slide 1, no photo placeholder on the team slide (jury review, 4 Nov).
+    expect(deck).toContain(`<p class="kicker">${KIT_LINE}</p>`);
+    expect(deck).not.toContain("Photo of Max");
   });
 });

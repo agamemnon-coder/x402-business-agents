@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { INITIAL_MANDATES } from "../config/policy.js";
-import { faceIdDecisions, fxOf, letThroughOf, loadRecord, ownTap, split, stoppedAtLimit, stops, tapLimitLine, timings } from "../redesign/run.js";
+import { disputeStory, faceIdDecisions, fxOf, letThroughOf, loadRecord, ownTap, payments, split, stoppedAtLimit, stops, tapLimitLine, timings } from "../redesign/run.js";
 
 const read = <T>(path: string) => JSON.parse(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")) as T;
 
@@ -51,6 +51,10 @@ export interface MainRunFacts {
   to_options_s: number; face_to_paid_s: number;
   let_through_tx: string; fx_buy: string; fx_sell: string; licence_transfer: string; licence_fee: string; sweep: string;
   refunded: string[]; disputed: number; tap_amount: string; tap_last4: string;
+  /** The dispute in one text, the same as Home's and the form's (src/redesign/run.ts disputeStory). */
+  dispute_story: string;
+  /** The one payment breakdown ("87 inside the limits = 41 sales + …"), "" when its parts do not add up. */
+  payments_line: string;
   /** Kit 11's three agents: budget when bound (code) and after the CFO's replace in the main run. */
   kit11: { agent: string; role: string; bound: string; now: string }[];
 }
@@ -80,6 +84,7 @@ export function mainRunFacts(): MainRunFacts {
     refunded: s.flows.filter((f) => f.kind === "refund" && !f.refused).map((f) => /#(\d+)/.exec(f.what)?.[1] ?? ""),
     disputed: dispute ? new Set(dispute.steps.filter((x) => x.tool === "verify_order").map((x) => JSON.stringify(x.input))).size : 0,
     tap_amount: tap?.amount ?? "", tap_last4: tap?.last4 ?? "",
+    dispute_story: disputeStory(r), payments_line: payments(r).sums ? payments(r).line : "",
     kit11: (["sourcing", "support", "treasury"] as const).map((role) => ({ agent: AGENT_DISPLAY[role].name, role, bound: money(INITIAL_MANDATES[role].budgetCents), now: s.tower.agents.find((a) => a.agent === role)?.mandate?.budget ?? money(INITIAL_MANDATES[role].budgetCents) })),
   };
 }

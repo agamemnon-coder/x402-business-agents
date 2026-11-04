@@ -70,11 +70,24 @@ export function decisionOf(db: DB, disputeId: string): DisputeDecision | null {
   return { dispute_id: r.dispute_id, plan, decided_at: r.decided_at, status: r.status, paid: JSON.parse(r.paid_json) as number[], escalation_proposal: r.escalation_proposal, approval_proposal: r.approval_proposal, last_note: r.last_note, audited: r.audited === 1, attempts: r.attempts, attempted_at: r.attempted_at, handover: JSON.parse(r.handover_json) as number[], handover_proposal: r.handover_proposal, held_looks: JSON.parse(r.held_json) as Record<string, number>, sent: JSON.parse(r.sent_json) as number[], done_at: r.done_at };
 }
 
+/** The CFO's resolution of a dispute it held (npm run s2 -- --resolve; resolveByCfo in disputeSource.ts), as one
+ *  line, or null. */
+export function cfoResolution(db: DB, disputeId: string): string | null {
+  const r = db.prepare("SELECT ts, payload_json FROM audit_log WHERE event = 'dispute.resolved_by_cfo' AND subject = ? ORDER BY seq LIMIT 1").get(disputeId) as { ts: string; payload_json: string } | undefined;
+  if (!r) return null;
+  let note = "";
+  try { note = String((JSON.parse(r.payload_json) as { note?: unknown }).note ?? ""); } catch { /* words only */ }
+  return `resolved by the CFO at ${r.ts}: ${note}`;
+}
+
 /**
- * A dispute decided before decisions were recorded: the agent's settlement row, code's automatic refund, or a refund
- * proposal for the CFO (pending or decided) for this dispute. Returns what it found, or null.
+ * A dispute decided outside dispute_decisions: resolved by the CFO (cfoResolution), or decided before decisions were
+ * recorded (the agent's settlement row, code's automatic refund, or a refund proposal for the CFO, pending or decided,
+ * for this dispute). Returns what it found, or null.
  */
 export function legacyDecision(db: DB, disputeId: string): string | null {
+  const cfo = cfoResolution(db, disputeId);
+  if (cfo) return cfo;
   const settled = db.prepare("SELECT ts FROM audit_log WHERE event = 'dispute.settled_by_agent' AND subject = ? ORDER BY seq LIMIT 1").get(disputeId) as { ts: string } | undefined;
   if (settled) return `settled by the Support agent's run at ${settled.ts}`;
   const auto = db.prepare("SELECT ts FROM audit_log WHERE event = 'refund.auto_approved' AND subject = ? ORDER BY seq LIMIT 1").get(disputeId) as { ts: string } | undefined;
