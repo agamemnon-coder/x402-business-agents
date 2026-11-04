@@ -19,9 +19,12 @@ or **not yet exercised**. The risks each control covers, and the evidence, are i
 
 ## Alarms
 
-`/health` on the relay and the local dashboard server answers 503 while any alarm stands, or when the runner has not
-synced for two minutes. An uptime monitor pointed at it pages a person; none is connected in this build. Codes
-(`src/ops/health.ts`):
+`/health/live` on the relay and `/health` on the local dashboard server answer 503 while any alarm stands, or (the
+relay's) when the runner has not synced for two minutes (`runner_down`). An uptime monitor pointed at `/health/live`
+pages a person; none is connected in this build. The relay's `/health` is what anyone sees: the same alarm while a live
+run is expected (the runner synced in the last 30 minutes, or the Worker variable `LIVE_RUN=on` declares a run);
+between live runs it answers 200 with "Recorded demo · the live runner runs during live runs" and the codes that stood
+at the runner's last sync (`src/ops/publicHealth.ts`). Codes (`src/ops/health.ts`):
 
 | Code | Means | First action | Clears when |
 |---|---|---|---|

@@ -1,4 +1,4 @@
-// The guest pages as a juror opens them, with no key: / (to /home), /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirects), /month (start and end), at phone
+// The guest pages as a juror opens them, with no key: / (Home itself), /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirects), /month (start and end), at phone
 // (390 px) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
@@ -73,11 +73,14 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
     page.on("requestfailed", (r) => fail(`${tag} ${page.url()}: request failed: ${r.url()}`));
 
-    // A guest who opens "/" is sent to Home (the four tabs are checked in test/browser/redesign.check.ts).
+    // A guest who opens "/" gets Home itself, with no redirect, so a reader without script sees Home too (the four tabs
+    // are checked in test/browser/redesign.check.ts; the CFO's link on "/" in test/browser/root.check.ts).
+    const raw = await (await fetch(`${base}/`)).text();
+    if (!raw.includes('<h1 class="h-hero">') || raw.includes('id="recorded-data"')) fail(`/ ${tag}: the HTML served at / is not Home`);
     await page.goto(`${base}/`, { waitUntil: "load" });
-    await page.waitForURL(/\/home$/).catch(() => fail(`/ ${tag}: a guest is not sent to /home`));
     await page.waitForTimeout(1500);
-    await look(page, `/home ${tag}`, w);
+    if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
+    await look(page, `/ (Home) ${tag}`, w);
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.

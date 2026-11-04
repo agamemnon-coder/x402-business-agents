@@ -69,9 +69,9 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
     page.on("requestfailed", (r) => { if (!/testnet\.metalntwx\.com/.test(r.url())) fail(`${tag} ${page.url()}: request failed: ${r.url()}`); });
 
-    // "/" sends a guest to Home. The first frame already shows the refusal on chain; then it plays.
+    // "/" is Home itself for a guest (no redirect). The first frame already shows the refusal on chain; then it plays.
     await page.goto(`${base}/`, { waitUntil: "load" });
-    await page.waitForURL(/\/home$/);
+    if (new URL(page.url()).pathname !== "/") fail(`/ ${tag}: a guest is sent away from / (${page.url()})`);
     await page.waitForTimeout(300);
     // The main run: Metal refused the purchase let through to it, on chain ("Refused by Metal · on chain").
     if (!/Refused · recorded on chain|Refused by Metal · on chain/.test(await page.locator("[data-stage]").innerText())) fail(`/home ${tag}: the first frame does not show the refusal on chain`);
