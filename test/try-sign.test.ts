@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { jcs } from "@metalntwx/metal-pay/mandates";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import {
-  canonical, FIXED_PROPOSALS, TRY_SIGN_ALL_PER_MINUTE, TRY_SIGN_MAX_WORLDS, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_WORLDS_PER_HOUR, readCbor, trySignRoute,
+  canonical, FIXED_PROPOSALS, TRY_SIGN_ALL_PER_MINUTE, TRY_SIGN_MAX_WORLDS, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_UNCLAIMED_MS, TRY_SIGN_WORLDS_PER_HOUR, TRY_SIGN_WORLDS_PER_NETWORK_HOUR, networkKey, readCbor, trySignRoute,
 } from "../worker/src/trySign.js";
 
 import { BASE, call, challengeOf, desk, newWorld, RP, signBody, t0, withPasskey } from "./support/trySign.js";
@@ -180,7 +180,7 @@ describe("/try/sign: the visitor's test world", () => {
     expect((await call(d, "passkey", { token: w2.world.token, credential: new FakeAuthenticator().register({ challenge: w2.passkey_options.challenge, origin: BASE, rpId: RP }) })).status).toBe(409);
   });
 
-  it("abuse: worlds per address an hour, live worlds for everyone, requests a minute, body size, methods", async () => {
+  it("abuse: worlds per address and per network an hour, requests a minute, body size, methods", async () => {
     const { d, at } = desk();
     for (let i = 0; i < TRY_SIGN_WORLDS_PER_HOUR; i++) expect((await call(d, "world", {}, { ip: "192.0.2.1" })).status).toBe(201);
     expect((await call(d, "world", {}, { ip: "192.0.2.1" })).status).toBe(429);
@@ -190,13 +190,12 @@ describe("/try/sign: the visitor's test world", () => {
     at(new Date(t0.getTime() + 61 * 60_000));
     expect((await call(d, "world", {}, { ip: "192.0.2.1" })).status).toBe(201);
 
-    const many = desk();
-    for (let i = 0; i < TRY_SIGN_MAX_WORLDS; i++) await call(many.d, "world", {}, { ip: `10.${i >> 8}.${i & 255}.1` });
-    expect(count(many.db, "ts_worlds")).toBe(TRY_SIGN_MAX_WORLDS);
-    expect((await call(many.d, "world", {}, { ip: "10.200.0.1" })).status).toBe(503);
-    // Worlds expire, and then there is room again.
-    many.at(new Date(t0.getTime() + TRY_SIGN_TTL_MS + 1));
-    expect((await call(many.d, "world", {}, { ip: "10.200.0.1" })).status).toBe(201);
+    // One network (an IPv4 /24, an IPv6 /48) opens at most TRY_SIGN_WORLDS_PER_NETWORK_HOUR worlds an hour.
+    const net = desk();
+    let made = 0;
+    for (let a = 1; a <= 4; a++) for (let i = 0; i < TRY_SIGN_WORLDS_PER_HOUR; i++) if ((await call(net.d, "world", {}, { ip: `2001:db8:7:${a}::1` })).status === 201) made++;
+    expect(made).toBe(TRY_SIGN_WORLDS_PER_NETWORK_HOUR);
+    expect((await call(net.d, "world", {}, { ip: "2001:db8:8::1" })).status).toBe(201);
 
     const busy = desk();
     for (let i = 0; i < TRY_SIGN_PER_MINUTE; i++) await call(busy.d, "sign", {}, { ip: "192.0.2.2" });
@@ -209,8 +208,52 @@ describe("/try/sign: the visitor's test world", () => {
     expect((await call(crowd.d, "sign", {}, { ip: "172.31.0.1" })).status).toBe(410);
     expect(count(crowd.db, "ts_hits")).toBe(1);
     expect((await call(desk().d, "sign", { token: "x".repeat(20_000) })).status).toBe(413);
+    // A body sent without a length (chunked) is counted as it arrives and stopped past the limit.
+    const chunks = new ReadableStream<Uint8Array>({ start(c) { for (let i = 0; i < 40; i++) c.enqueue(new Uint8Array(1024).fill(32)); c.close(); } });
+    const chunked = new Request(`${BASE}/api/try-sign/sign`, { method: "POST", headers: { origin: BASE, "content-type": "application/json" }, body: chunks, duplex: "half" } as RequestInit);
+    expect(chunked.headers.get("content-length")).toBeNull();
+    expect((await desk().d.fetch(chunked)).status).toBe(413);
     expect((await call(desk().d, "world", {}, { method: "GET" })).status).toBe(405);
     expect((await call(desk().d, "admin", {})).status).toBe(404);
+  });
+
+  it("abuse: a cap on live worlds for everyone, which an idle world gives way to", async () => {
+    // Cap on live worlds: when full, the oldest world nobody made a passkey for makes room; when every world has a
+    // passkey, a new visitor waits; worlds without a passkey go after ten minutes, the rest after an hour.
+    const many = desk();
+    for (let i = 0; i < TRY_SIGN_MAX_WORLDS; i++) {
+      if (i % 500 === 0) many.at(new Date(t0.getTime() + (i / 500) * 61_000));
+      expect((await call(many.d, "world", {}, { ip: `10.${i >> 8}.${i & 255}.1` })).status).toBe(201);
+    }
+    expect(count(many.db, "ts_worlds")).toBe(TRY_SIGN_MAX_WORLDS);
+    const oldest = (many.db.prepare("SELECT id FROM ts_worlds ORDER BY created LIMIT 1").get() as { id: string }).id;
+    expect((await call(many.d, "world", {}, { ip: "10.200.0.1" })).status).toBe(201);
+    expect(count(many.db, "ts_worlds")).toBe(TRY_SIGN_MAX_WORLDS);
+    expect(many.db.prepare("SELECT id FROM ts_worlds WHERE id = ?").get(oldest)).toBeUndefined();
+    many.db.prepare("INSERT INTO ts_creds (world, id, x, y, counter) SELECT id, 'c', 'x', 'y', 0 FROM ts_worlds").run();
+    expect((await call(many.d, "world", {}, { ip: "10.200.0.2" })).status).toBe(503);
+    many.at(new Date(t0.getTime() + TRY_SIGN_TTL_MS + 5 * 61_000));
+    expect((await call(many.d, "world", {}, { ip: "10.200.0.1" })).status).toBe(201);
+    // Each request deletes at most 500 expired worlds (bounded work); a few requests later only the new one is left.
+    for (let i = 0; i < 3; i++) await call(many.d, "sign", {}, { ip: "10.200.0.3" });
+    expect(count(many.db, "ts_worlds")).toBe(1);
+  }, 60_000);
+
+  it("a world nobody made a passkey for is deleted after ten minutes; one with a passkey lives its hour", async () => {
+    const { d, at } = desk();
+    const idle = await newWorld(d);
+    const used = await withPasskey(d);
+    at(new Date(t0.getTime() + TRY_SIGN_UNCLAIMED_MS + 1));
+    expect((await call(d, "passkey", { token: idle.world.token, credential: new FakeAuthenticator().register({ challenge: idle.passkey_options.challenge, origin: BASE, rpId: RP }) })).status).toBe(410);
+    const res = await call(d, "sign", signBody(used.w.world.token, used.b, used.auth.sign({ challenge: challengeOf(used.b.terms_sha256), origin: BASE, rpId: RP, counter: 1 })));
+    expect(res.status).toBe(200);
+  });
+
+  it("groups addresses by network for the second world limit", () => {
+    expect(networkKey("203.0.113.77")).toBe("203.0.113.0/24");
+    expect(networkKey("2001:db8:aa:bb:1::2")).toBe("2001:db8:aa::/48");
+    expect(networkKey("2001:db8::1")).toBe("2001:db8:0::/48");
+    expect(networkKey("unknown")).toBe("unknown");
   });
 
   it("holds no key and calls nothing outside: no fetch during a whole visit", async () => {

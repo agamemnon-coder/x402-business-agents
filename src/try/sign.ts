@@ -283,7 +283,7 @@ export function trySignPage(): string {
     <p class="status" id="w-status" aria-live="polite"></p>
   </li>
   <li class="card step" id="s-key" hidden><h2><span class="n">2</span>Make a test passkey</h2>
-    <p class="muted small">Face ID, Touch ID, Windows Hello, a security key, or your phone by QR code. No name or e-mail: a random id, kept on your device as “Purser test passkey” for this site. It opens this test world and nothing else.</p>
+    <p class="muted small">Face ID, Touch ID, Windows Hello, a security key, or your phone by QR code, within ten minutes. No name or e-mail: a random id, kept on your device as “Purser test passkey” for this site. It opens this test world and nothing else.</p>
     <button class="btn primary" type="button" id="go-key" data-world="1">${icon("scan-face", 18)}Create a test passkey</button>
     <p class="status" id="k-status" aria-live="polite"></p>
   </li>
@@ -299,7 +299,7 @@ export function trySignPage(): string {
   <button class="btn" type="button" id="go-tamper" data-world="1">${icon("triangle-alert", 18)}Try to tamper: change the amount by 0.01</button>
   <div id="tamper" hidden><p class="small muted" id="t-what"></p><div class="line" id="t-line"><span id="t-icon"></span><span><b id="t-head"></b><span id="t-why" class="small"></span></span></div></div>
 </section>
-<p class="note">${esc("What is real here: the passkey, its signature and the server's check (the same verifier as the CFO's passkey sign-in). What is not: the world, its balance, the agent's words (fixed text) and the executor (a stand-in that only records). This world, its passkey record and its proposals live in their own store, apart from Northwind's: a test passkey can never approve a real proposal or sign in to the CFO's pages.")}</p>
+<p class="note">${esc("What is real here: your device's passkey signature over the hash, and the server's check of it (the same verifier as the CFO's passkey sign-in) against the public key your device registered. The server checks no attestation, so it cannot tell which authenticator made the key, and a key made in software would verify too; Face ID is what your device asks for, not something the server proves. What is not real: the world, its balance, the agent's words (fixed text) and the executor (a stand-in that only records). This world, its passkey record and its proposals live in their own store, apart from Northwind's: a test passkey is not enrolled anywhere else, so it can never approve a real proposal or sign in to the CFO's pages.")}</p>
 </div></main>`;
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: a test world of your own, a test passkey, and a signature the server verifies. Nothing real moves.",
@@ -307,5 +307,5 @@ export function trySignPage(): string {
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else.",
   }).replace("<body>\n", () => `<body>\n<div class="testband" role="note">${icon("lock", 16)}${esc(TRY_SIGN_LABEL)}</div>\n`);
   // Relative links and assets made absolute: the page answers one level down, at /try/sign.
-  return html.replace(/(href|src)="(?!https?:|#|\/)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
+  return html.replace(/(href|src)="(?!https?:|#|\/|data:|mailto:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 }

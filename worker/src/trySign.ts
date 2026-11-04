@@ -14,10 +14,15 @@ import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 
 /** A test world lives one hour, then everything in it is deleted. */
 export const TRY_SIGN_TTL_MS = 60 * 60 * 1000;
-/** At most this many live test worlds for everyone together; past it, a new one waits. */
-export const TRY_SIGN_MAX_WORLDS = 300;
+/** A world with no passkey yet is deleted after ten minutes, and is the first to go when the store is full. */
+export const TRY_SIGN_UNCLAIMED_MS = 10 * 60 * 1000;
+/** At most this many live test worlds for everyone together; when full, the oldest world without a passkey makes room,
+ * and only when every world has one does a new visitor wait. */
+export const TRY_SIGN_MAX_WORLDS = 2000;
 /** New test worlds per address (IPv6 by its /64) per hour. */
 export const TRY_SIGN_WORLDS_PER_HOUR = 6;
+/** New test worlds per network (IPv4 /24, IPv6 /48) per hour: one provider's block cannot open them all. */
+export const TRY_SIGN_WORLDS_PER_NETWORK_HOUR = 20;
 /** Requests per address per minute, every kind together. */
 export const TRY_SIGN_PER_MINUTE = 30;
 /** Requests a minute from everyone together: many addresses at once cannot make the instance (or its table) grow. */
@@ -190,6 +195,34 @@ interface WorldRow { id: string; expires: number; reg_challenge: string | null; 
 interface ProposalRow { id: string; canonical: string; sha: string; check_json: string; status: string; execution: string | null }
 interface CredRow { id: string; x: string; y: string; counter: number }
 
+/** The network an address belongs to, for the second world limit: IPv4 by its /24, IPv6 by its /48. */
+export function networkKey(ip: string): string {
+  const k = rateKey(ip);
+  if (k.endsWith("::/64")) return `${k.slice(0, -"::/64".length).split(":").slice(0, 3).join(":")}::/48`;
+  const v4 = /^(\d+\.\d+\.\d+)\.\d+$/.exec(k);
+  return v4 ? `${v4[1]}.0/24` : k;
+}
+
+/** The body, up to a limit, counted as it arrives (a body sent without a length cannot grow past it); null past it. */
+async function readCapped(req: Request, limit: number): Promise<string | null> {
+  if (Number(req.headers.get("content-length") ?? "0") > limit) return null;
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) { await reader.cancel().catch(() => undefined); return null; }
+    parts.push(value);
+  }
+  const all = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) { all.set(p, at); at += p.byteLength; }
+  return new TextDecoder().decode(all);
+}
+
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 export class TrySignDesk {
@@ -202,6 +235,12 @@ export class TrySignDesk {
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_creds (world TEXT NOT NULL, id TEXT NOT NULL, x TEXT NOT NULL, y TEXT NOT NULL, counter INTEGER NOT NULL, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_proposals (world TEXT NOT NULL, id TEXT NOT NULL, canonical TEXT NOT NULL, sha TEXT NOT NULL, check_json TEXT NOT NULL, status TEXT NOT NULL, execution TEXT, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_hits (ip TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL)");
+    // Every query on a request goes through an index: the counts per address and kind, the purges by time.
+    this.sql.exec("CREATE INDEX IF NOT EXISTS ts_hits_ip ON ts_hits (ip, kind, at)");
+    this.sql.exec("CREATE INDEX IF NOT EXISTS ts_hits_kind ON ts_hits (kind, at)");
+    this.sql.exec("CREATE INDEX IF NOT EXISTS ts_hits_at ON ts_hits (at)");
+    this.sql.exec("CREATE INDEX IF NOT EXISTS ts_worlds_expires ON ts_worlds (expires)");
+    this.sql.exec("CREATE INDEX IF NOT EXISTS ts_worlds_created ON ts_worlds (created)");
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -215,24 +254,23 @@ export class TrySignDesk {
     if (req.headers.get("origin") !== url.origin || req.headers.get("sec-fetch-site") === "cross-site") return answer(403, { error: "ask from the /try/sign page on this site" });
 
     const nowMs = this.now().getTime();
-    this.purge(nowMs);
     const ip = rateKey(req.headers.get("cf-connecting-ip") ?? "unknown");
     if (this.hits(ip, "fail", nowMs - 3_600_000) >= TRY_SIGN_FAILS_PER_HOUR) return answer(429, { error: "too many refused signatures from this address; wait an hour" });
     if (this.hits(ip, "req", nowMs - 60_000) >= TRY_SIGN_PER_MINUTE) return answer(429, { error: "a few requests a minute; wait a moment" });
     const [{ n: everyone }] = this.sql.exec("SELECT COUNT(*) AS n FROM ts_hits WHERE kind = 'req' AND at > ?", nowMs - 60_000).toArray() as [{ n: number }];
     if (everyone >= TRY_SIGN_ALL_PER_MINUTE) return answer(503, { error: "many visitors are trying this right now; try again in a minute" });
     this.hit(ip, "req", nowMs);
+    this.purge(nowMs);
 
-    if (Number(req.headers.get("content-length") ?? "0") > MAX_BODY) return answer(413, { error: "too large" });
-    const raw = await req.text();
-    if (enc.encode(raw).length > MAX_BODY) return answer(413, { error: "too large" });
+    const raw = await readCapped(req, MAX_BODY);
+    if (raw === null) return answer(413, { error: "too large" });
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return answer(400, { error: "send JSON" }); }
     if (!isObj(body)) return answer(400, { error: "send a JSON object" });
 
-    if (sub === "/world") return this.newWorld(url, ip, nowMs);
+    if (sub === "/world") return this.newWorld(url, req.headers.get("cf-connecting-ip") ?? "unknown", nowMs);
     const world = await this.worldOf(body.token);
-    if (!world || world.expires <= this.now().getTime()) return answer(410, { error: "no such test world: it expired (a world lasts one hour) or never existed; start a new one", expired: true });
+    if (!world || world.expires <= this.now().getTime()) return answer(410, { error: "no such test world: it expired (a world lasts one hour, ten minutes without a passkey) or never existed; start a new one", expired: true });
     if (sub === "/passkey") return this.registerPasskey(url, ip, world, body);
     return this.sign(url, ip, world, body);
   }
@@ -245,16 +283,20 @@ export class TrySignDesk {
     this.sql.exec("INSERT INTO ts_hits (ip, kind, at) VALUES (?, ?, ?)", ip, kind, at);
   }
 
-  /** Expired worlds go, with their passkeys and proposals; old hits go too. */
+  private dropWorld(id: string): void {
+    this.sql.exec("DELETE FROM ts_creds WHERE world = ?", id);
+    this.sql.exec("DELETE FROM ts_proposals WHERE world = ?", id);
+    this.sql.exec("DELETE FROM ts_worlds WHERE id = ?", id);
+  }
+
+  /** Expired worlds go (after an hour, or ten minutes without a passkey), with their passkeys and proposals; old hits too. */
   private purge(nowMs: number): void {
-    const gone = (this.sql.exec("SELECT id FROM ts_worlds WHERE expires <= ?", nowMs).toArray() as { id: string }[]).map((r) => r.id);
-    for (const id of gone) {
-      this.sql.exec("DELETE FROM ts_creds WHERE world = ?", id);
-      this.sql.exec("DELETE FROM ts_proposals WHERE world = ?", id);
-      this.sql.exec("DELETE FROM ts_worlds WHERE id = ?", id);
-    }
+    const gone = this.sql.exec(`SELECT id FROM ts_worlds WHERE expires <= ? UNION SELECT id FROM ts_worlds w WHERE created <= ?
+      AND NOT EXISTS (SELECT 1 FROM ts_creds c WHERE c.world = w.id) LIMIT 500`, nowMs, nowMs - TRY_SIGN_UNCLAIMED_MS).toArray() as { id: string }[];
+    for (const { id } of gone) this.dropWorld(id);
     // Request counts matter for a minute, worlds and failures for an hour: nothing older is kept.
-    this.sql.exec("DELETE FROM ts_hits WHERE (kind = 'req' AND at <= ?) OR at <= ?", nowMs - 60_000, nowMs - 3_600_000);
+    this.sql.exec("DELETE FROM ts_hits WHERE kind = 'req' AND at <= ?", nowMs - 60_000);
+    this.sql.exec("DELETE FROM ts_hits WHERE at <= ?", nowMs - 3_600_000);
   }
 
   private async worldOf(token: unknown): Promise<WorldRow | null> {
@@ -268,7 +310,9 @@ export class TrySignDesk {
       .map((p) => ({ ...p, terms: JSON.parse(p.canonical) as unknown, checked: JSON.parse(p.check_json) as Check }));
   }
 
-  private async newWorld(url: URL, ip: string, nowMs: number): Promise<Response> {
+  private async newWorld(url: URL, address: string, nowMs: number): Promise<Response> {
+    const ip = rateKey(address);
+    const net = networkKey(address);
     const id = hex(random(8));
     const token = toB64u(random(32));
     const tokenHash = await sha256Hex(token);
@@ -282,9 +326,16 @@ export class TrySignDesk {
     }
     // No await from here on: the limits are checked and the world written together, so tries at once cannot pass both.
     if (this.hits(ip, "world", nowMs - 3_600_000) >= TRY_SIGN_WORLDS_PER_HOUR) return answer(429, { error: `${TRY_SIGN_WORLDS_PER_HOUR} test worlds an hour from one address; use the one you have, or wait` });
-    const [{ n }] = this.sql.exec("SELECT COUNT(*) AS n FROM ts_worlds").toArray() as [{ n: number }];
-    if (n >= TRY_SIGN_MAX_WORLDS) return answer(503, { error: "many test worlds are open right now; try again in a few minutes" });
+    if (this.hits(net, "world-net", nowMs - 3_600_000) >= TRY_SIGN_WORLDS_PER_NETWORK_HOUR) return answer(429, { error: "many test worlds this hour from your network; use the one you have, or wait" });
+    const [{ n }] = this.sql.exec("SELECT COUNT(*) AS n FROM ts_worlds WHERE expires > ?", nowMs).toArray() as [{ n: number }];
+    if (n >= TRY_SIGN_MAX_WORLDS) {
+      // Full: the oldest world nobody made a passkey for makes room; only when every world has one, the visitor waits.
+      const idle = (this.sql.exec("SELECT id FROM ts_worlds w WHERE NOT EXISTS (SELECT 1 FROM ts_creds c WHERE c.world = w.id) ORDER BY created LIMIT 1").toArray() as { id: string }[])[0];
+      if (!idle) return answer(503, { error: "many test worlds are open right now; try again in a few minutes" });
+      this.dropWorld(idle.id);
+    }
     this.hit(ip, "world", nowMs);
+    this.hit(net, "world-net", nowMs);
     this.sql.exec("INSERT INTO ts_worlds (id, token_hash, ip, created, expires, reg_challenge, balance) VALUES (?, ?, ?, ?, ?, ?, ?)", id, tokenHash, ip, nowMs, expires, challenge, TEST_WORLD.balance);
     for (const [pid, c, sha, check] of rows) {
       this.sql.exec("INSERT INTO ts_proposals (world, id, canonical, sha, check_json, status, execution) VALUES (?, ?, ?, ?, ?, ?, NULL)", id, pid, c, sha, JSON.stringify(check), check.check === "fail" ? "blocked" : "waiting");

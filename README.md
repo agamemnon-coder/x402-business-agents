@@ -6,7 +6,8 @@
 within limits the CFO sets in code and signs for with Face ID.**
 
 **Try it yourself: sign with your own Face ID** → [`/try/sign`](https://kit11.max-31b.workers.dev/try/sign): a test
-world of your own for an hour, a test passkey, nothing real moves. *Built and tested behind `TRY_SIGN_ENABLED`;
+world of your own for an hour, a test passkey, nothing real moves (the server verifies your passkey's signature; it checks
+no attestation, so it cannot prove which authenticator made it). *Built and tested behind `TRY_SIGN_ENABLED`;
 **deploy pending**: until the relay is redeployed with the flag on, this address answers 404 (the site's own button
 to it appears only in a build that serves it).*
 
