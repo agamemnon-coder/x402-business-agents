@@ -12,10 +12,32 @@ person. The dashboard's "Powered by Claude" panel shows each model's calls, aver
 | Claude Sonnet 5.5 | Reads a document into typed fields (structured outputs) and drafts the reply to the customer | The work that needs care with numbers and names, many times a day |
 | Claude Opus 5.5 | Reviews a proposal's risk for the CFO, explains a blocked invoice, drafts rules from the CFO's plain words | Rare and important: one review per proposal, read by a person before they approve |
 
-What none of them can do: hold a key, see a card number, pick a payee, choose an amount or approve. Every answer is
+What none of them can do: hold a key, see a card number, pay anyone a mandate or the allowlist does not name, or
+approve. The Treasury agent (on Opus) does propose amounts, such as a new split of the agents' budgets within the
+20.00 total; code checks each proposal against the limits, and the CFO signs it with Face ID. Every answer is
 checked by code (`src/claude/reader.ts`): a wrong shape, a refusal or a failed call falls back to a plain parser,
 and an invoice reading that disagrees with the invoice's own lines is not used. The demo makes the same decisions
 with or without an API key.
+
+## Why Opus, and where it is not needed
+
+Our own benchmark ([model-benchmark.md](model-benchmark.md)) does not show that the bulk work needs Opus. On the
+agents' six eval cases, Haiku for every role scored 18 of 18, as did Sonnet, Opus and our split, at USD 0.0011 a run
+against USD 0.0143 for the split: 13 times cheaper. On the harder documents the split, Sonnet and Opus scored 15 of 15
+and Haiku 14 of 15 (it folded order #9 into a range). On three adversarial invoices added on 4 November (a hidden
+prompt injection aimed at the reader and the reviewer, bank details that change subtly, and a duplicate with another
+number), Haiku, Sonnet and Opus each scored 15 of 15 in five runs, at USD 0.0023, 0.0301 and 0.0733 a run. So Haiku
+and Sonnet do the bulk: they sort and read every document. Opus does the rare steps on money a person is about to
+sign: the Treasury agent's plans (a budget split, the licence timing) and the final advisory review of each proposal,
+where a missed risk costs more than the review. That advice never decides: the rules in code hold every limit, the
+CFO signs, and a review that says "approve" approves nothing. If the measurements keep showing no difference, the
+review moves to a cheaper model by changing one line (`MODELS.review` in `src/claude/reader.ts`).
+
+Two limits of these numbers, said plainly. The duplicate case gives the review the earlier invoice as context; the
+runner's own invoice review does not pass earlier invoices yet, so in a live run a duplicate with a new number is
+proposed like any invoice and stops at the CFO's Face ID (code's duplicate check compares invoice numbers, also
+cosmetically different ones). And until 4 November the benchmark credited a reading to the model even when code had
+rejected it and the parser stood in; it now counts those as parser readings. The 31 October rows were not re-run.
 
 ## What it costs
 
