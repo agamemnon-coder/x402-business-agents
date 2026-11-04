@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purser: the film</title>
+<style>
+@font-face { font-family: Inter; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+:root { --bg: #07080d; --panel: #11141d; --panel2: #171b27; --line: #252a3a; --text: #f3f4f8; --muted: #9aa2b6; --accent: #7c6cff; --accent2: #a99fff; --ok: #34d17e; --bad: #ff5d52; --wait: #f5a524; --metal: #38bdf8; --awx: #ff5b2e; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+#stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: radial-gradient(1200px 700px at 70% 20%, #1a1640 0%, rgba(7,8,13,0) 60%), radial-gradient(900px 600px at 10% 90%, #0b2a33 0%, rgba(7,8,13,0) 60%), var(--bg); overflow: hidden; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+.layer { position: absolute; inset: 0; opacity: 0; will-change: opacity, transform; }
+.a { position: absolute; will-change: opacity, transform; }
+.kicker { font-size: 26px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent2); }
+.h1 { font-size: 92px; font-weight: 800; letter-spacing: -.035em; line-height: 1.02; }
+.h2 { font-size: 64px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
+.h3 { font-size: 38px; font-weight: 700; letter-spacing: -.02em; }
+.muted { color: var(--muted); }
+.ok { color: var(--ok); } .bad { color: var(--bad); } .wait { color: var(--wait); }
+.card { width: 520px; height: 320px; border-radius: 28px; padding: 34px 38px; color: #fff; background: linear-gradient(135deg, #2a2f45 0%, #11131c 100%); box-shadow: 0 40px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08); }
+.card.v { background: linear-gradient(135deg, #7c6cff 0%, #3b2fb8 100%); }
+.card .t { font-size: 22px; font-weight: 600; opacity: .85; display: flex; justify-content: space-between; }
+.card .n { font-size: 38px; font-weight: 700; margin-top: 70px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.card .b { display: flex; justify-content: space-between; align-items: end; margin-top: 18px; font-size: 22px; opacity: .9; }
+.card .visa { font-weight: 500; font-size: 20px; opacity: .85; }
+.mini { width: 300px; height: 186px; border-radius: 18px; padding: 20px 22px; background: linear-gradient(135deg, #2a2f45 0%, #11131c 100%); box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+.mini .t { font-size: 17px; font-weight: 600; opacity: .8; }
+.mini .n { font-size: 22px; font-weight: 700; margin-top: 44px; font-variant-numeric: tabular-nums; }
+.mini .l { font-size: 18px; margin-top: 8px; color: var(--accent2); font-weight: 600; }
+.pill { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 999px; font-size: 26px; font-weight: 700; background: var(--panel2); border: 1px solid var(--line); white-space: nowrap; }
+.pill.ok { background: rgba(52,209,126,.14); border-color: rgba(52,209,126,.45); }
+.pill.bad { background: rgba(255,93,82,.14); border-color: rgba(255,93,82,.5); }
+.pill.ai { background: rgba(124,108,255,.16); border-color: rgba(124,108,255,.5); color: var(--accent2); font-size: 22px; padding: 9px 18px; }
+.toast { width: 640px; padding: 24px 28px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); display: flex; align-items: center; gap: 20px; font-size: 28px; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
+.toast .ic { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; font-weight: 900; flex: none; }
+.toast.ok .ic { background: rgba(52,209,126,.18); color: var(--ok); } .toast.bad .ic { background: rgba(255,93,82,.18); color: var(--bad); }
+.toast .amt { margin-left: auto; font-weight: 800; font-variant-numeric: tabular-nums; }
+.toast small { display: block; font-size: 20px; color: var(--muted); margin-top: 4px; }
+.phone { width: 400px; height: 820px; border-radius: 60px; background: #050608; border: 10px solid #1f2330; box-shadow: 0 50px 100px rgba(0,0,0,.6); padding: 70px 26px 30px; }
+.phone .sheet { background: var(--panel); border-radius: 28px; padding: 26px; height: 100%; display: flex; flex-direction: column; gap: 18px; }
+.phone .pid { font-size: 20px; color: var(--muted); font-weight: 700; letter-spacing: .06em; }
+.phone .what { font-size: 30px; font-weight: 800; line-height: 1.15; }
+.phone .row { display: flex; justify-content: space-between; font-size: 22px; border-top: 1px solid var(--line); padding-top: 14px; }
+.face { width: 150px; height: 150px; margin: 18px auto 0; position: relative; }
+.face i { position: absolute; width: 44px; height: 44px; border-color: var(--accent2); border-style: solid; border-width: 0; }
+.face i:nth-child(1) { left: 0; top: 0; border-left-width: 6px; border-top-width: 6px; border-top-left-radius: 18px; }
+.face i:nth-child(2) { right: 0; top: 0; border-right-width: 6px; border-top-width: 6px; border-top-right-radius: 18px; }
+.face i:nth-child(3) { left: 0; bottom: 0; border-left-width: 6px; border-bottom-width: 6px; border-bottom-left-radius: 18px; }
+.face i:nth-child(4) { right: 0; bottom: 0; border-right-width: 6px; border-bottom-width: 6px; border-bottom-right-radius: 18px; }
+.face b { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 50%; display: grid; place-items: center; font-size: 56px; color: #fff; background: var(--ok); }
+.btn { text-align: center; padding: 20px; border-radius: 18px; font-size: 26px; font-weight: 800; background: var(--accent); color: #fff; margin-top: auto; }
+.bar { width: 520px; height: 18px; border-radius: 9px; background: var(--panel2); overflow: hidden; border: 1px solid var(--line); }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0; }
+.node { width: 300px; padding: 26px; border-radius: 24px; background: var(--panel); border: 1px solid var(--line); text-align: center; }
+.node b { display: block; font-size: 30px; } .node span { font-size: 21px; color: var(--muted); }
+.coin { width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #9ee7ff, var(--metal)); box-shadow: 0 0 24px rgba(56,189,248,.7); }
+.wall { width: 22px; height: 300px; border-radius: 11px; background: linear-gradient(180deg, #ffd166, var(--wait)); box-shadow: 0 0 40px rgba(245,165,36,.7); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 28px; padding: 32px 36px; }
+.doc { width: 520px; background: #f7f7fa; color: #10131c; border-radius: 16px; padding: 36px 40px; box-shadow: 0 40px 80px rgba(0,0,0,.5); font-size: 22px; }
+.doc .hd { font-size: 30px; font-weight: 800; margin-bottom: 18px; } .doc .ln { display: flex; justify-content: space-between; border-top: 1px solid #dfe2ea; padding: 12px 0; }
+.stamp { font-size: 120px; font-weight: 900; letter-spacing: .04em; color: var(--ok); border: 12px solid var(--ok); border-radius: 26px; padding: 4px 40px; transform: rotate(-8deg); }
+.stamp.bad { color: var(--bad); border-color: var(--bad); font-size: 84px; }
+.rowv { display: grid; grid-template-columns: 80px 90px 220px 360px 200px; gap: 14px; align-items: center; font-size: 23px; padding: 9px 18px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); width: 1040px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rowv .k { color: var(--ok); font-weight: 700; opacity: 0; }
+.big { font-size: 190px; font-weight: 900; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.chat { max-width: 900px; padding: 26px 34px; border-radius: 30px 30px 30px 8px; background: var(--panel2); border: 1px solid var(--line); font-size: 36px; font-weight: 600; }
+.chat.me { border-radius: 30px 30px 8px 30px; background: var(--accent); border-color: var(--accent); }
+.stop { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ff8a80, #d42a1f); display: grid; place-items: center; font-size: 34px; font-weight: 900; color: #fff; box-shadow: 0 0 0 14px rgba(255,93,82,.18), 0 30px 60px rgba(0,0,0,.5); text-align: center; line-height: 1.05; }
+.logos { display: flex; align-items: center; gap: 34px; padding: 26px 44px; border-radius: 26px; background: #f5f6fa; }
+.logos img { display: block; } .logos .cl { background: #141413; border-radius: 999px; padding: 10px 22px; } .logos .sep { width: 2px; height: 44px; background: #d8dbe5; } .logos .w { font-size: 22px; color: #5b6172; font-weight: 600; }
+.foot { position: absolute; left: 60px; right: 60px; bottom: 26px; font-size: 18px; color: #6b7286; display: flex; justify-content: space-between; }
+.ticker { font-family: ui-monospace, Menlo, monospace; font-size: 22px; color: var(--metal); }
+.feat { display: flex; gap: 16px; flex-wrap: wrap; width: 1500px; }
+.feat .pill { font-size: 24px; opacity: .25; }
+</style>
+</head>
+<body>
+<script type="application/json" id="film-data">__FILM_JSON__</script>
+<h1 class="sr">Purser: the film</h1>
+<div id="stage"><div class="foot"><span id="foot-l"></span><span id="foot-r"></span></div></div>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("film-data").textContent);
+  var stage = document.getElementById("stage");
+  var q = new URLSearchParams(location.search);
+  document.getElementById("foot-l").textContent = "Recorded runs · test money · Airwallex sandbox and Metal testnet";
+  document.getElementById("foot-r").textContent = D.data.company + " · " + D.data.run + "; Ask Purser, the receive policy, the red team and the Lab from their own runs";
+
+  // Fit the 1920x1080 stage to the window.
+  function fit() { var s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = "translate(" + (innerWidth - 1920 * s) / 2 + "px," + (innerHeight - 1080 * s) / 2 + "px) scale(" + s + ")"; }
+  addEventListener("resize", fit); fit();
+
+  // ---- a small, pure animation kit: every frame is a function of the time t, so any moment can be shown again. ----
+  function E(tag, cls, text, kids) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (kids || []).forEach(function (k) { n.appendChild(k); }); return n; }
+  function put(parent, node, x, y) { node.classList.add("a"); node.style.left = x + "px"; node.style.top = y + "px"; parent.appendChild(node); return node; }
+  function clamp(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function prog(t, a, b) { return clamp((t - a) / (b - a)); }
+  function out3(p) { return 1 - Math.pow(1 - p, 3); }
+  function inOut(p) { return p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+  function back(p) { var c = 1.7; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); }
+  function mix(a, b, p) { return a + (b - a) * p; }
+  // Appear: fade in and rise into place at t0; optionally leave at t1.
+  function rise(n, t, t0, t1, dy) { var p = out3(prog(t, t0, t0 + .55)), o = p; if (t1 != null) o *= 1 - prog(t, t1, t1 + .4); n.style.opacity = o; n.style.transform = "translateY(" + (1 - p) * (dy == null ? 40 : dy) + "px)"; }
+  function pop(n, t, t0, t1) { var p = prog(t, t0, t0 + .45), o = clamp(p * 2); if (t1 != null) o *= 1 - prog(t, t1, t1 + .35); n.style.opacity = o; n.style.transform = "scale(" + mix(.6, 1, back(p)) + ")"; }
+  function slide(n, t, t0, dx, t1) { var p = out3(prog(t, t0, t0 + .7)), o = p; if (t1 != null) o *= 1 - prog(t, t1, t1 + .4); n.style.opacity = o; n.style.transform = "translateX(" + (1 - p) * dx + "px)"; }
+  function shake(t, t0) { var p = prog(t, t0, t0 + .6); return p <= 0 || p >= 1 ? 0 : Math.sin(p * Math.PI * 9) * 22 * (1 - p); }
+  function count(t, t0, t1, from, to) { return Math.round(mix(from, to, out3(prog(t, t0, t1)))); }
+  function typed(s, t, t0, cps) { return s.slice(0, Math.max(0, Math.floor((t - t0) * cps))); }
+  function face(t, t0) { // a Face ID scan: corners pulse, then a green tick
+    var f = E("div", "face"); for (var i = 0; i < 4; i++) f.appendChild(E("i")); var b = E("b", null, "✓"); f.appendChild(b);
+    return { n: f, at: function (t) { var p = prog(t, t0, t0 + 1.1); f.style.transform = "scale(" + (1 + Math.sin(p * Math.PI * 3) * .06) + ")"; b.style.opacity = prog(t, t0 + 1.1, t0 + 1.3); b.style.transform = "scale(" + mix(.4, 1, back(prog(t, t0 + 1.1, t0 + 1.5))) + ")"; } };
+  }
+  function phone(pid, what, rows, t0) {
+    var sh = E("div", "sheet", null, [E("div", "pid", pid + " · waits for your Face ID"), E("div", "what", what)]);
+    rows.forEach(function (r) { sh.appendChild(E("div", "row", null, [E("span", "muted", r[0]), E("b", null, r[1])])); });
+    var fc = face(0, t0 + 1); sh.appendChild(fc.n); var ok = E("div", "btn", "Approve with Face ID"); sh.appendChild(ok);
+    var ph = E("div", "phone", null, [sh]);
+    return { n: ph, at: function (t) { fc.at(t); var done = prog(t, t0 + 2.2, t0 + 2.4); ok.textContent = done > 0 ? "Approved ✓" : "Approve with Face ID"; ok.style.background = done > 0 ? "var(--ok)" : "var(--accent)"; } };
+  }
+  function toast(kind, title, sub, amt) { var n = E("div", "toast " + kind, null, [E("div", "ic", kind === "ok" ? "✓" : "✕"), E("div", null, title, [E("small", null, sub)]), E("div", "amt", amt)]); return n; }
+  function logo(name, h) { var i = document.createElement("img"); i.src = "assets/" + name; i.style.height = h + "px"; i.alt = ""; return i; }
+  var d = D.data;
+
+  // ---- the scenes; their lengths and words come from the film's script (src/film/script.ts). ----
+  var build = {
+    open: function (L) {
+      var flying = [["Packwise", "€" + d.card.small], ["Stockline", d.metal.oldPrice + " test USD"], ["Bergtex invoice", "€" + d.bill.invoice], ["Skyline Air", "€120.00"], ["Summit Outfitters", "0.05 test USD"], ["Packwise Pro", "€" + d.card.big]];
+      var chips = flying.map(function (f, i) { return put(L, E("div", "pill", f[0] + "  " + f[1]), 0, [40, 120, 200, 800, 870, 940][i]); }); // above and below the words, never through them
+      var k = put(L, E("div", "kicker", "Agentic spending"), 140, 330), h = put(L, E("div", "h1", "AI agents are starting to spend company money."), 140, 390);
+      h.style.width = "1300px";
+      var q2 = put(L, E("div", "h1", "Who is holding the pen?"), 140, 650); q2.style.color = "var(--accent2)";
+      return function (t) {
+        chips.forEach(function (c, i) { var p = (t * .16 + i * .17) % 1; c.style.opacity = .55 * Math.sin(p * Math.PI); c.style.transform = "translateX(" + mix(1950, -700, p) + "px)"; });
+        rise(k, t, .3); rise(h, t, .6); rise(q2, t, 6.2, null, 60);
+      };
+    },
+    problem: function (L) {
+      var t1 = put(L, E("div", "h2", "Two bad options"), 140, 110);
+      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Agent's card"), E("span", null, "no limit")]), E("div", "n", "•••• ••••"), E("div", "b", null, [E("span", null, "Hope it behaves"), E("span", "visa", "virtual Visa")])]), 160, 300);
+      var risk = put(L, E("div", "bar"), 160, 680); var ri = E("i"); risk.appendChild(ri); risk.querySelector("i").style.background = "linear-gradient(90deg,#f5a524,#ff5d52)";
+      var rl = put(L, E("div", "h3 bad", "Risk no auditor signs off"), 160, 720);
+      var ph = put(L, E("div", "phone", null, [E("div", "sheet", null, [E("div", "pid", "Approve?"), E("div", "big", "0")])]), 1220, 180);
+      var num = ph.querySelector(".big"); num.style.fontSize = "150px"; num.style.textAlign = "center"; num.style.marginTop = "140px";
+      var pl = put(L, E("div", "h3 muted", "Or approve every cent: no time saved"), 160, 820);
+      return function (t) {
+        rise(t1, t, .1); slide(c, t, .6, -300); ri.style.width = 100 * out3(prog(t, 1.5, 5)) + "%"; risk.style.opacity = prog(t, 1.2, 1.6); rise(rl, t, 3.5);
+        slide(ph, t, 5.5, 300); num.textContent = count(t, 6, 10, 1, 99) + (t > 10 ? "+" : ""); rise(pl, t, 7.5);
+      };
+    },
+    reveal: function (L) {
+      var k = put(L, E("div", "kicker", "Meet Purser"), 140, 110), h = put(L, E("div", "h2", "Every AI agent gets its own company card, with limits the CFO sets."), 140, 160); h.style.width = "1600px";
+      var cards = d.cards.map(function (c, i) { return put(L, E("div", "mini", null, [E("div", "t", c.name), E("div", "n", "•••• " + c.last4), E("div", "l", "€" + c.perTx + " a purchase · " + c.only)]), 140 + i * 340, 400); });
+      var awx = put(L, E("div", "pill", "Airwallex Issuing · Visa"), 140, 620);
+      var mand = d.mandates.map(function (m, i) { return put(L, E("div", "pill", m.name.replace(" agent", "") + ": at most " + m.cap + " test USD a payment, " + m.payee + " only"), 140, 720 + i * 78); });
+      var metal = put(L, E("div", "pill", "Mandates on chain · Metal"), 1300, 620); metal.style.color = "var(--metal)";
+      var fid = put(L, E("div", "pill ok", "Above the limits: Face ID"), 1300, 400);
+      return function (t) {
+        rise(k, t, .1); rise(h, t, .3);
+        cards.forEach(function (c, i) { var p = out3(prog(t, 1.4 + i * .25, 2.2 + i * .25)); c.style.opacity = p; c.style.transform = "translateY(" + (1 - p) * 120 + "px) rotate(" + (1 - p) * (i - 1) * 8 + "deg)"; });
+        rise(awx, t, 2.6); mand.forEach(function (m, i) { slide(m, t, 4 + i * .35, -200); }); rise(metal, t, 4.2); pop(fid, t, 7.5);
+      };
+    },
+    card: function (L) {
+      var c = put(L, E("div", "card", null, [E("div", "t", null, [E("span", null, "Sourcing agent"), E("span", null, "Virtual")]), E("div", "n", "•••• " + d.card.last4), E("div", "b", null, [E("span", null, "Warehouse software"), E("span", "visa", "virtual Visa")])]), 140, 170);
+      var lim = put(L, E("div", "h3", ""), 140, 520), bar = put(L, E("div", "bar"), 140, 580), bi = E("i"); bar.appendChild(bi);
+      var t1 = put(L, toast("ok", d.card.merchant + " Starter", "approved by Airwallex", "€" + d.card.small), 760, 170);
+      var t2 = put(L, toast("bad", d.card.merchant + " Pro", "declined by Airwallex: over the €" + d.card.from + " limit", "€" + d.card.big), 760, 300);
+      var ask = put(L, E("div", "chat", "Can I have €" + d.card.to + " a purchase for the Pro plan?"), 760, 450); ask.style.fontSize = "30px"; ask.style.maxWidth = "620px";
+      var ph = phone(d.card.proposal, "Sourcing agent's card: most per purchase", [["now", "€" + d.card.from], ["after", "€" + d.card.to]], 8.6); put(L, ph.n, 1440, 130);
+      var t3 = put(L, toast("ok", d.card.merchant + " Pro, again", "approved by Airwallex, after Face ID", "€" + d.card.big), 140, 680);
+      var log = put(L, E("div", "pill", "Every step in the audit log"), 140, 840);
+      return function (t) {
+        var limit = t < 13.5 ? Number(d.card.from) : mix(Number(d.card.from), Number(d.card.to), out3(prog(t, 13.5, 14.6)));
+        lim.textContent = "Limit per purchase: €" + limit.toFixed(2); bi.style.width = limit / 60 * 100 + "%";
+        slide(c, t, .2, -300); rise(lim, t, .8); bar.style.opacity = prog(t, .8, 1.2);
+        slide(t1, t, 2, 300); slide(t2, t, 4.4, 300); t2.style.transform += " translateX(" + shake(t, 4.9) + "px)";
+        c.style.transform += " translateX(" + shake(t, 4.9) * .5 + "px)";
+        rise(ask, t, 7); slide(ph.n, t, 8.2, 500); ph.at(t);
+        rise(t3, t, 16); rise(log, t, 19.5);
+      };
+    },
+    bill: function (L) {
+      var doc = put(L, E("div", "doc", null, [E("div", "hd", "Invoice · manufacturer"), E("div", "ln", null, [E("span", null, "Amount"), E("b", null, "EUR " + d.bill.invoice)]), E("div", "ln", null, [E("span", null, "Pay to"), E("b", null, "allowlisted payee")]), E("div", "ln", null, [E("span", null, "Pay by"), E("b", null, "SWIFT")])]), 140, 170);
+      var ai = put(L, E("div", "pill ai", "read by Haiku · Sonnet · code checks the fields"), 140, 560);
+      var usd = put(L, E("div", "panel", null, [E("div", "kicker", "Convert only what is missing"), E("div", "h2", "")]), 760, 170); usd.style.width = "620px";
+      var conv = usd.querySelector(".h2");
+      var floor = put(L, E("div", "pill", "Reserve floors checked · live quote, locked"), 760, 420);
+      var ph = phone(d.bill.proposal, "Pay EUR " + d.bill.invoice + " by SWIFT", [["buy", "EUR " + d.bill.eur], ["for", "USD " + d.bill.usd], ["fee at most", "EUR " + d.bill.ceiling]], 9.4); put(L, ph.n, 1440, 130);
+      var stamp = put(L, E("div", "stamp", "PAID"), 820, 600);
+      var fee = put(L, E("div", "pill ok", "Fee EUR " + d.bill.fee + " ≤ EUR " + d.bill.ceiling), 140, 700);
+      var hash = put(L, E("div", "pill", "Approval hash " + d.bill.hash + " in the payment"), 140, 800);
+      return function (t) {
+        slide(doc, t, .2, -300); pop(ai, t, 2.2);
+        rise(usd, t, 4); var p = out3(prog(t, 5, 7.5)); conv.textContent = "USD " + (Number(d.bill.usd) * p).toFixed(2) + " → EUR " + (Number(d.bill.eur) * p).toFixed(2);
+        rise(floor, t, 6.5); slide(ph.n, t, 9, 500); ph.at(t);
+        var sp = prog(t, 16, 16.4); stamp.style.opacity = sp; stamp.style.transform = "rotate(-8deg) scale(" + mix(2.4, 1, out3(sp)) + ")";
+        rise(fee, t, 18); rise(hash, t, 19.5);
+      };
+    },
+    metal: function (L) {
+      var k = put(L, E("div", "kicker", "On chain · Metal"), 140, 90); k.style.color = "var(--metal)";
+      var h = put(L, E("div", "h2", "Pay per request, inside a mandate"), 140, 136);
+      var a = put(L, E("div", "node", null, [E("b", null, "Summit's agent"), E("span", null, "a retail customer")]), 140, 360);
+      var b = put(L, E("div", "node", null, [E("b", null, "Northwind"), E("span", null, "Sourcing agent")]), 810, 360);
+      var c = put(L, E("div", "node", null, [E("b", null, "Stockline"), E("span", null, "")]), 1480, 360);
+      var price = c.querySelector("span");
+      var wall = put(L, E("div", "wall"), 1290, 290); var wl = put(L, E("div", "pill", ""), 1150, 610);
+      var coinsA = [0, 1, 2, 3].map(function () { return put(L, E("div", "coin"), 0, 405); });
+      var coinsB = [0, 1, 2, 3].map(function () { return put(L, E("div", "coin"), 0, 405); });
+      var bounce = put(L, E("div", "coin"), 0, 405);
+      var refused = put(L, E("div", "pill bad", "refused against the on-chain mandate · nothing moved · customer not charged"), 700, 700);
+      var tick = put(L, E("div", "ticker", ""), 140, 520);
+      var A = put(L, E("div", "panel", null, [E("div", "h3", "Option A"), E("div", "muted", d.metal.optionA)]), 140, 700), B = put(L, E("div", "panel", null, [E("div", "h3", "Option B"), E("div", "muted", d.metal.optionB)]), 600, 700);
+      A.style.width = B.style.width = "430px"; A.style.fontSize = B.style.fontSize = "24px";
+      var adv = put(L, E("div", "pill ai", "Opus: " + d.metal.advice + " (advice)"), 1080, 740);
+      var signed = put(L, E("div", "pill ok", "Face ID · " + d.metal.proposal + " · mandates replaced on chain"), 1080, 830);
+      var feats = put(L, E("div", "feat", null, ["Mandates", "x402 pay per request", "Signed orders", "Payouts and refunds", "Clearing", "Receive policy"].map(function (s) { return E("div", "pill", s); })), 140, 940);
+      return function (t) {
+        rise(k, t, .1); rise(h, t, .2); [a, b, c].forEach(function (n, i) { pop(n, t, .6 + i * .3); });
+        var risen = t > 9.5; price.textContent = "price " + (risen ? d.metal.newPrice : d.metal.oldPrice) + " a stock check"; price.style.color = risen ? "var(--wait)" : "";
+        if (t > 9.5 && t < 10.2) c.style.transform = "scale(" + (1 + .08 * Math.sin(prog(t, 9.5, 10.2) * Math.PI)) + ")";
+        wall.style.opacity = prog(t, 2, 2.6); wl.style.opacity = prog(t, 2, 2.6);
+        var cap = t < 21 ? d.metal.cap : "0.04"; wl.textContent = "mandate cap " + cap + " a payment";
+        wall.style.background = t < 21 ? "" : "linear-gradient(180deg,#9ee7ff,var(--metal))"; wall.style.boxShadow = t < 21 ? "" : "0 0 40px rgba(56,189,248,.7)";
+        var flowing = t < 10 || t > 22;
+        coinsA.forEach(function (n, i) { var p = ((t * .55) + i / 4) % 1; n.style.opacity = t > 1.5 ? .9 * Math.sin(p * Math.PI) : 0; n.style.transform = "translateX(" + mix(450, 800, p) + "px)"; });
+        coinsB.forEach(function (n, i) { var p = ((t * .55) + i / 4) % 1; n.style.opacity = flowing && t > 1.8 ? .9 * Math.sin(p * Math.PI) : 0; n.style.transform = "translateX(" + mix(1120, 1470, p) + "px)"; });
+        var bp = prog(t, 10.5, 12.3), x = bp < .5 ? mix(1120, 1255, bp * 2) : mix(1255, 1100, (bp - .5) * 2);
+        bounce.style.opacity = bp > 0 && bp < 1 ? 1 : 0; bounce.style.background = "radial-gradient(circle at 35% 35%,#ffb3ad,#ff5d52)"; bounce.style.transform = "translateX(" + x + "px)";
+        if (bp > .45 && bp < .65) wall.style.transform = "scaleX(1.6)"; else wall.style.transform = "";
+        rise(refused, t, 12, 15.2);
+        tick.textContent = t < 10 ? "stock check #" + count(t, 1.5, 9.5, 1, 40) + " · first payment " + d.metal.firstTx : t < 22 ? "" : d.metal.sales;
+        tick.style.opacity = t < 10 ? prog(t, 1.5, 2) : prog(t, 22, 22.5);
+        rise(A, t, 15.5, 25.5); rise(B, t, 15.8); pop(adv, t, 17.5); pop(signed, t, 19.8);
+        if (t > 19.8) { B.style.borderColor = "var(--ok)"; }
+        Array.prototype.forEach.call(feats.children, function (n, i) { var on = prog(t, 25 + i * .45, 25.4 + i * .45); n.style.opacity = .25 + .75 * on; n.style.borderColor = on > .5 ? "var(--metal)" : ""; });
+        feats.style.opacity = prog(t, 24.5, 25);
+      };
+    },
+    dispute: function (L) {
+      var k = put(L, E("div", "kicker", "Dispute desk · Northwind as seller"), 140, 70);
+      var claim = put(L, E("div", "chat", "“" + d.dispute.text + "”"), 140, 120); claim.style.fontSize = "32px";
+      var head = put(L, E("div", "rowv", null, [E("b", null, "Order"), E("b", null, "Paid"), E("b", null, "Signed order"), E("b", null, "Paid inside their mandate"), E("b", null, "Delivered")]), 140, 270);
+      head.style.background = "transparent"; head.style.border = "0"; head.style.color = "var(--muted)";
+      var rows = d.dispute.rows.map(function (r, i) {
+        var n = E("div", "rowv", null, [E("b", null, r.seq), E("span", null, r.amount), E("span", "k", "✓ signed"), E("span", "k", "✓ " + r.tx), E("span", "k", "✓ as recorded")]);
+        return put(L, n, 140, 320 + i * 54);
+      });
+      var cnt = put(L, E("div", "big", "0"), 1300, 300), of = put(L, E("div", "h3 muted", "of " + d.dispute.rows.length + " verified on chain · simulated customer"), 1320, 500);
+      var st = put(L, E("div", "stamp bad", "NOT REFUNDED"), 1230, 650); st.style.fontSize = "64px";
+      var rep = put(L, E("div", "pill", "A report the customer can check: " + d.dispute.caseId), 1230, 880);
+      return function (t) {
+        rise(k, t, .1); rise(claim, t, .3); rise(head, t, 3.5);
+        var proven = 0;
+        rows.forEach(function (n, i) { var t0 = 4 + i * .7; slide(n, t, t0, 200); Array.prototype.forEach.call(n.querySelectorAll(".k"), function (k2, j) { k2.style.opacity = prog(t, t0 + .2 + j * .15, t0 + .35 + j * .15); }); if (t > t0 + .6) proven = i + 1; });
+        cnt.textContent = proven; cnt.style.color = proven === rows.length ? "var(--ok)" : ""; rise(cnt, t, 3.8); rise(of, t, 3.8);
+        var sp = prog(t, 13.5, 13.9); st.style.opacity = sp; st.style.transform = "rotate(-8deg) scale(" + mix(2.2, 1, out3(sp)) + ")";
+        rise(rep, t, 15.5);
+      };
+    },
+    ask: function (L) {
+      var k = put(L, E("div", "kicker", "Ask Purser"), 140, 110);
+      var me = put(L, E("div", "chat me", ""), 140, 180);
+      var c = put(L, E("div", "card v", null, [E("div", "t", null, [E("span", null, "Flight · single use"), E("span", null, "airlines only")]), E("div", "n", d.ask.card.match(/•+ \d+/)[0]), E("div", "b", null, [E("span", null, d.ask.card.replace(/^.*?, /, "")), E("span", "visa", "virtual Visa")])]), 140, 380);
+      var booked = d.ask.booked.match(/^(.*?) ([\d.]+) EUR/); var ok = put(L, toast("ok", booked[1], "approved by Airwallex", "€" + booked[2]), 780, 420);
+      var no = put(L, toast("bad", "A second charge", "declined: the card had closed itself", "€20.00"), 780, 560);
+      return function (t) {
+        rise(k, t, .1); me.textContent = typed("“" + d.ask.ask + "”", t, .5, 22) || " "; me.style.opacity = prog(t, .4, .6);
+        var p = prog(t, 4.2, 5.2); c.style.opacity = p; c.style.transform = "rotateY(" + (1 - out3(p)) * 80 + "deg) scale(" + mix(.8, 1, out3(p)) + ")";
+        slide(ok, t, 7, 300); slide(no, t, 10, 300); no.style.transform += " translateX(" + shake(t, 10.4) + "px)";
+        if (t > 10.6) { c.style.filter = "grayscale(" + prog(t, 10.6, 11.4) + ")"; c.style.opacity = 1 - .5 * prog(t, 10.6, 11.4); }
+      };
+    },
+    trust: function (L) {
+      var k = put(L, E("div", "kicker", "Why you can trust it"), 140, 100), h = put(L, E("div", "h2", d.claude === "decided" ? "Agents built on Claude (Anthropic API) read, plan and advise. Metal and Airwallex enforce the limits." : "Claude read the documents and advised. Metal and Airwallex enforce the limits."), 140, 150);
+      var a = put(L, E("div", "big ok", "0"), 140, 330), al = put(L, E("div", "h3", "of " + d.trust.attacks + " red-team attacks failed · stand-ins, test world"), 150, 530);
+      var s = put(L, E("div", "big ok", "0"), 760, 330), sl = put(L, E("div", "h3", "of " + d.trust.scenarios + " scenarios as expected"), 770, 530);
+      var stop = put(L, E("div", "stop", "STOP"), 1450, 300);
+      var minis = d.cards.map(function (c, i) { return put(L, E("div", "mini", null, [E("div", "t", c.name), E("div", "n", "•••• " + c.last4), E("div", "l", "")]), 140 + i * 340, 660); });
+      var eyes = put(L, E("div", "pill", "Optional: two people approve above a threshold"), 1180, 620);
+      var cost = put(L, E("div", "pill ai", "AI cost: " + d.trust.per1000 + " per €1,000 paid"), 1180, 720);
+      var books = put(L, E("div", "pill", "Double-entry books, balanced"), 1180, 820);
+      return function (t) {
+        rise(k, t, .1); rise(h, t, .3);
+        a.textContent = count(t, 1, 3.5, 0, d.trust.blocked); s.textContent = count(t, 3, 5.5, 0, d.trust.passed); rise(a, t, 1); rise(al, t, 1.2); rise(s, t, 3); rise(sl, t, 3.2);
+        pop(stop, t, 6.5); var pressed = prog(t, 8, 8.3); stop.style.transform += " scale(" + (1 - .12 * Math.sin(pressed * Math.PI)) + ")";
+        minis.forEach(function (m, i) { rise(m, t, 6.8 + i * .2); var f = prog(t, 8.3 + i * .15, 8.8 + i * .15); m.style.filter = "grayscale(" + f + ")"; m.querySelector(".l").textContent = f > .5 ? "Frozen (tested on stand-ins)" : "Active"; m.querySelector(".l").style.color = f > .5 ? "var(--bad)" : ""; });
+        rise(eyes, t, 10.5); rise(cost, t, 12); rise(books, t, 13.5);
+      };
+    },
+    end: function (L) {
+      var p = put(L, E("div", "h1", "Purser"), 140, 220); p.style.fontSize = "150px";
+      var s = put(L, E("div", "h2 muted", "Agents move at machine speed. The CFO keeps the pen."), 140, 420); s.style.width = "1500px";
+      // "Powered by Claude" only for a recording in which the agents decided; the 30 October one predates them.
+      var decided = d.claude === "decided";
+      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep")].concat(decided ? [E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])] : [E("span", "cl", null, [(function () { var i = logo("logo-claude.png", 34); i.alt = "Claude"; return i; })()]), E("span", "w", "read the documents")])), 140, 640);
+      var e = put(L, E("div", "h2", "Every payment has a proof."), 140, 820); e.style.color = "var(--accent2)";
+      var note = put(L, E("div", "muted", decided ? "“Built on” and “Powered by” name the services Purser uses; they are not an endorsement." : "“Built on” names the services Purser uses; the Claude logo names the model that read the documents. Neither is an endorsement."), 140, 950); note.style.fontSize = "20px";
+      return function (t) { rise(p, t, .2); rise(s, t, .8); rise(lg, t, 2); rise(e, t, 3.5); rise(note, t, 4); };
+    },
+  };
+
+  var scenes = D.scenes.map(function (sc) {
+    var L = E("div", "layer"); stage.insertBefore(L, stage.firstChild);
+    return { start: sc.start, seconds: sc.seconds, L: L, update: build[sc.id](L) };
+  });
+  var total = scenes.reduce(function (s, x) { return Math.max(s, x.start + x.seconds); }, 0);
+
+  function render(t) {
+    scenes.forEach(function (sc) {
+      var lt = t - sc.start, on = lt >= -.35 && lt <= sc.seconds + .35;
+      if (!on) { sc.L.style.opacity = 0; sc.L.style.visibility = "hidden"; return; }
+      sc.L.style.visibility = "visible";
+      var fi = prog(lt, -.35, .2), fo = 1 - prog(lt, sc.seconds - .2, sc.seconds + .35);
+      sc.L.style.opacity = Math.min(fi, fo);
+      // A slow push-in on every scene, so the picture is never still.
+      sc.L.style.transform = "scale(" + mix(1, 1.035, clamp(lt / sc.seconds)) + ")";
+      sc.update(Math.max(0, lt));
+    });
+  }
+  // ?t=seconds shows one moment; ?manual leaves the clock to the caller (npm run video calls __film(t) for every
+  // frame, so the film cannot drift from the recording); ?from=seconds plays from there; otherwise from the start.
+  window.__film = function (t) { render(Math.min(Math.max(0, t), total)); };
+  if (q.has("t")) { render(Number(q.get("t"))); return; }
+  if (q.has("manual")) { render(Number(q.get("from") || 0)); return; }
+  var from = Number(q.get("from") || 0), t0 = null;
+  function frame(now) { if (t0 === null) t0 = now; var t = from + (now - t0) / 1000; render(Math.min(t, total)); requestAnimationFrame(frame); }
+  render(from);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

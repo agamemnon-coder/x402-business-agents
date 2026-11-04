@@ -1,0 +1,21 @@
+node_modules/
+.env
+.env.*
+!.env.example
+# Keys and credentials never go in this repo. They live in a separate private place.
+.metal/
+*.key.json
+*-key.json
+owner-key*.json
+/data/
+*.sqlite
+*.sqlite-*
+audit.jsonl
+audit.head
+# The relay Worker: generated pages module and wrangler's local state.
+worker/src/pages.gen.ts
+worker/.wrangler/
+test-results/
+coverage/
+# Rendered video (npm run video): large files, made again from the recordings.
+out/

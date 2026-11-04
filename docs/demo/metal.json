@@ -1,0 +1,1170 @@
+{
+  "recorded_at": "2026-10-30T08:33:27.599Z",
+  "run": "Friday run 1, 30 October 2026, with a Dispute desk case afterwards",
+  "features": [
+    {
+      "id": "mandates",
+      "title": "A mandate per agent",
+      "plain": "Each agent pays from the company's Metal account under its own mandate: a cap per payment, a total budget, one payee and an expiry, bound on chain by the account's owner.",
+      "why": "The limit lives on the chain, not in the agent's prompt. A confused or tricked agent cannot pay more, or pay someone else: the payment simply does not settle.",
+      "figure": "3 mandates",
+      "proofs": [
+        {
+          "label": "Sourcing agent · 0x25952ab9…60aa",
+          "href": "https://testnet.metalntwx.com/tx/0x25952ab99bf9ba1abd31050883bcb5aa8c2b6337d0e9b70f88656461f19260aa"
+        },
+        {
+          "label": "Support agent · 0x1b3308e2…f7d1",
+          "href": "https://testnet.metalntwx.com/tx/0x1b3308e2c59d278acafeb2d06a796cbf81241a32daf56758914d936680e5f7d1"
+        },
+        {
+          "label": "Treasury agent · 0xb89ea437…7585",
+          "href": "https://testnet.metalntwx.com/tx/0xb89ea43765c42ed0325ed5b66c691790df93224dae26bcc6e2030d65aefd7585"
+        }
+      ],
+      "source": "The recorded Northwind run on Metal testnet, 29 and 30 October",
+      "docs": [
+        {
+          "label": "Mandates",
+          "href": "https://docs.metalntwx.com/agents/mandates"
+        }
+      ]
+    },
+    {
+      "id": "replace",
+      "title": "Replace and revoke, after Face ID",
+      "plain": "A change to a mandate is one transaction: the new limits are bound, the old mandate is revoked, and the spend so far carries over.",
+      "why": "Loosening an agent's limit is a CFO decision. Purser proposes it, the CFO signs the exact terms with Face ID, and only then does the owner key bind it.",
+      "figure": "2 replacements",
+      "proofs": [
+        {
+          "label": "Sourcing agent · 0xbc70858f…b5d7",
+          "href": "https://testnet.metalntwx.com/tx/0xbc70858fef5ca185cb8dffb860becac2fe0876888aa5ea57d8aee2700449b5d7"
+        },
+        {
+          "label": "Treasury agent · 0x2909b164…8aed",
+          "href": "https://testnet.metalntwx.com/tx/0x2909b164c50779c342783309943901472cf1c966402c550d0d28f5ab86a08aed"
+        }
+      ],
+      "source": "The recorded Northwind run on Metal testnet, 29 and 30 October",
+      "docs": [
+        {
+          "label": "Binding, replacing and revoking",
+          "href": "https://docs.metalntwx.com/agents/mandates#binding-replacing-and-revoking"
+        }
+      ]
+    },
+    {
+      "id": "x402",
+      "title": "Pay per request (x402), with a signed order",
+      "plain": "An API answers 402 with its price; the agent signs an order for exactly that amount, payee and resource, and pays under its mandate. Northwind requires every buyer's signed order, and buys from its own supplier the same way under its mandate.",
+      "why": "Agents buy in cents, many times a day. Each payment is tied to the order the agent signed, so the seller can prove later what was bought, at what price, by whom.",
+      "figure": "100 payments",
+      "proofs": [
+        {
+          "label": "first sale · 0xa59a1461…b19e",
+          "href": "https://testnet.metalntwx.com/tx/0xa59a14619b0cacfa707dca5c3257088b229f1e87f4417c24b65df4094536b19e"
+        },
+        {
+          "label": "first purchase · 0xa465e23b…ea2a",
+          "href": "https://testnet.metalntwx.com/tx/0xa465e23be513b2f0b9586c87d7b60a6896fdb6eb97df89278ab3b1615137ea2a"
+        }
+      ],
+      "source": "The recorded Northwind run on Metal testnet, 29 and 30 October",
+      "docs": [
+        {
+          "label": "x402 on Metal",
+          "href": "https://docs.metalntwx.com/agents/x402-on-metal"
+        },
+        {
+          "label": "Signed orders",
+          "href": "https://docs.metalntwx.com/agents/mandates#signed-orders"
+        }
+      ]
+    },
+    {
+      "id": "facilitator",
+      "title": "Settled by Metal's facilitator, or refused",
+      "plain": "Metal's hosted facilitator settles each x402 payment and gives it a settlement id; a payment outside the mandate is refused with a reason, and nothing moves.",
+      "why": "The refusal is the safety: when the supplier doubled its price, Metal checked the on-chain mandate and said no before a cent left, and the agent had to ask the CFO.",
+      "figure": "1 refusal, 0 moved",
+      "proofs": [
+        {
+          "label": "settlement id 0x2ff041f0…f9d5",
+          "href": null
+        },
+        {
+          "label": "refused: mandate_cap_exceeded",
+          "href": null
+        }
+      ],
+      "source": "The recorded Northwind run on Metal testnet, 29 and 30 October",
+      "docs": [
+        {
+          "label": "Facilitator",
+          "href": "https://docs.metalntwx.com/agents/facilitator"
+        },
+        {
+          "label": "Refusal reasons",
+          "href": "https://docs.metalntwx.com/agents/facilitator#refusal-reasons"
+        }
+      ]
+    },
+    {
+      "id": "verify",
+      "title": "verifyMandatePayment: each payment checked against the chain",
+      "plain": "With the payment's transaction and the signed order the seller keeps, the chain confirms that the owner bound the mandate it was paid under and that the agent paid inside its limits.",
+      "why": "When a customer says \"our agent never ordered this\", the seller does not argue. It checks each payment on chain and shows the signed order.",
+      "figure": "12 of 12 verified",
+      "proofs": [
+        {
+          "label": "the customer's mandate · 0x6a4622a9…59a6",
+          "href": "https://testnet.metalntwx.com/tx/0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6"
+        }
+      ],
+      "source": "The recorded Northwind run's payments, checked afterwards on a copy of its ledger",
+      "docs": [
+        {
+          "label": "Verifying",
+          "href": "https://docs.metalntwx.com/agents/mandates#verifying"
+        }
+      ]
+    },
+    {
+      "id": "pull",
+      "title": "Refunds as mandate pulls",
+      "plain": "A refund is a payment under the Support agent's own mandate, whose only payee is the customer's account, each with its own payment id.",
+      "why": "A refund can only go back to the account that paid, never to an address in an email, and a retry never pays twice.",
+      "figure": "3 refunds",
+      "proofs": [
+        {
+          "label": "0xa0c537b4…70ad",
+          "href": "https://testnet.metalntwx.com/tx/0xa0c537b44c103df51ffa07865f6f3d51d4cc12eff5cb4140565e02a0c2d470ad"
+        },
+        {
+          "label": "0x512fdb1d…a97b",
+          "href": "https://testnet.metalntwx.com/tx/0x512fdb1d9680e74d8a735d9d9596211d266904018f816104f2a5c13f838fa97b"
+        },
+        {
+          "label": "0xcf11b76d…bed1",
+          "href": "https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1"
+        }
+      ],
+      "source": "The recorded Northwind run on Metal testnet, 29 and 30 October",
+      "docs": [
+        {
+          "label": "How a payment is checked",
+          "href": "https://docs.metalntwx.com/agents/mandates#how-a-payment-is-checked"
+        },
+        {
+          "label": "Payouts",
+          "href": "https://docs.metalntwx.com/agents/payouts"
+        }
+      ]
+    },
+    {
+      "id": "finality",
+      "title": "Sweep after finality",
+      "plain": "Earnings move to the sweep wallet under the Treasury agent's mandate. Purser books them at Airwallex, as a simulated sandbox deposit, only once their block (9401051) is final (9401068), and exactly once.",
+      "why": "The books never count money that could still be undone, and a restart never credits it twice.",
+      "figure": "booked once",
+      "proofs": [
+        {
+          "label": "sweep · 0x808f9133…a94f",
+          "href": "https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f"
+        }
+      ],
+      "source": "The recorded Northwind run on Metal testnet, 29 and 30 October",
+      "docs": [
+        {
+          "label": "Settlement and finality",
+          "href": "https://docs.metalntwx.com/reference/network-fundamentals/settlement"
+        }
+      ]
+    },
+    {
+      "id": "clearing",
+      "title": "Pay-per-call clearing",
+      "plain": "A buyer deposits once into Metal's clearing contract and pays each call with a signed receipt: no transaction per call. The seller withdraws its earnings once an epoch is final.",
+      "why": "Cent-sized calls at machine speed without a transaction each. Purser offers clearing only when it can deliver, because a clearing payment counts before the seller can refuse.",
+      "figure": "0 tx per call",
+      "proofs": [
+        {
+          "label": "deposit of 5.00 · 0x055ba899…6766",
+          "href": "https://testnet.metalntwx.com/tx/0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766"
+        },
+        {
+          "label": "withdrawal queued · 0x902badf6…c3d4",
+          "href": "https://testnet.metalntwx.com/tx/0x902badf6f82f4e453c99ff9e5fd870d3e96ab40293bff64e3a611014930cc3d4"
+        },
+        {
+          "label": "claim of 0.70 once final · 0x522470d2…5092",
+          "href": "https://testnet.metalntwx.com/tx/0x522470d292f78b390fe153cb40905cdc6102afef1345d62e1dc975f900145092"
+        }
+      ],
+      "source": "A separate live run on Metal testnet, 29 October (the clearing run log): a buyer deposits once and pays each query by signed receipt. A load test on 30 October (the clearing load run log) paid 2,000 of 2,000 at 4.24 a second",
+      "docs": [
+        {
+          "label": "Clearing",
+          "href": "https://docs.metalntwx.com/agents/clearing"
+        }
+      ]
+    },
+    {
+      "id": "receive",
+      "title": "Receive policy: money from strangers held",
+      "plain": "Purser can set the sweep wallet to accept money only from the business's own account. Anything else is held by Metal in quarantine; the CFO returns or accepts it with Face ID.",
+      "why": "Unknown money is a compliance problem, not a windfall. It never reaches the books or the bank until a person decides.",
+      "figure": "held, then returned",
+      "proofs": [
+        {
+          "label": "allowlist-only policy set on the sweep wallet · 0xf1a7fe96…0c37",
+          "href": "https://testnet.metalntwx.com/tx/0xf1a7fe9664053c9d2fdf1b2d11122bde5be0668da8afc8d4f17b08088e220c37"
+        },
+        {
+          "label": "a stranger's 0.02, held by Metal · 0x9076343b…20d3",
+          "href": "https://testnet.metalntwx.com/tx/0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3"
+        },
+        {
+          "label": "returned after the CFO's Face ID · 0x786686b6…fc3c",
+          "href": "https://testnet.metalntwx.com/tx/0x786686b6dd5112b80bbf84902c8b51f407459c3e3112a6a3d8a0e23bac60fc3c"
+        }
+      ],
+      "source": "A separate live run of Purser's own code on Metal testnet, 30 October (b1 world): the CFO approved the return with Face ID at 08:45 UTC",
+      "docs": [
+        {
+          "label": "Receive policy",
+          "href": "https://docs.metalntwx.com/reference/compliance/receive-policy"
+        }
+      ]
+    },
+    {
+      "id": "four-eyes",
+      "title": "Four eyes on chain",
+      "plain": "A Metal account with two owners, the CFO and the controller, and a threshold of two (a test account; Northwind's own account has one owner). Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
+      "why": "No single person, and no single stolen owner key, can change an agent's limits or move the account's money beyond what the agents' mandates allow. Agents still pay alone inside their mandates.",
+      "figure": "1 signature: reverted",
+      "proofs": [
+        {
+          "label": "CFO alone: reverted · 0xe0976c5a…69c3",
+          "href": "https://testnet.metalntwx.com/tx/0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3"
+        },
+        {
+          "label": "CFO and a stranger: reverted · 0x728a9c27…c43b",
+          "href": "https://testnet.metalntwx.com/tx/0x728a9c270614d5bbeb11540f897a3b29fab00e2275c84cbb4022c74d7149c43b"
+        },
+        {
+          "label": "CFO and controller: paid · 0xd98e94ff…d30d",
+          "href": "https://testnet.metalntwx.com/tx/0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d"
+        },
+        {
+          "label": "revoke by CFO alone: reverted · 0x3bf9f70e…3ab5",
+          "href": "https://testnet.metalntwx.com/tx/0x3bf9f70e0b7c4e3c9cef05eddc755d3a4218227251b3699ddaa77756ba303ab5"
+        }
+      ],
+      "source": "A separate live run on Metal testnet, 30 October (the four-eyes run log): a test account with two owners, the CFO and the controller, threshold 2",
+      "docs": [
+        {
+          "label": "Smart account",
+          "href": "https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account"
+        }
+      ]
+    },
+    {
+      "id": "compliance",
+      "title": "Compliance before a payout from the policy contract",
+      "plain": "Outgoing funds sit in a send-policy contract. They leave only with a decision Purser signed for exactly that payee, amount and moment, after screening the payee; without it the chain reverts.",
+      "why": "A sanctioned or unapproved payee cannot be paid from the contract, even by someone holding the payer key; only Purser's compliance key can clear a payment. Eleven attacks on it reverted on chain.",
+      "figure": "11 attacks reverted",
+      "proofs": [
+        {
+          "label": "screened payment: paid · 0xc2eb6814…f237",
+          "href": "https://testnet.metalntwx.com/tx/0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237"
+        },
+        {
+          "label": "replayed decision: reverted · 0x222385b5…2737",
+          "href": "https://testnet.metalntwx.com/tx/0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737"
+        },
+        {
+          "label": "redirected to the attacker: reverted · 0x03811931…e23a",
+          "href": "https://testnet.metalntwx.com/tx/0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a"
+        },
+        {
+          "label": "sanctioned payee: reverted · 0x91ed35a5…442e",
+          "href": "https://testnet.metalntwx.com/tx/0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e"
+        }
+      ],
+      "source": "A separate live run on Metal testnet, 30 October (the compliance run log): our send-policy contract, with test lists and a stand-in sanctioned address",
+      "docs": [
+        {
+          "label": "Programmable compliance",
+          "href": "https://docs.metalntwx.com/learn/compliance/programmable-compliance"
+        }
+      ]
+    },
+    {
+      "id": "certificates",
+      "title": "Finality certificates as evidence",
+      "plain": "For each payment the runner sees within about 2 hours, Purser stores the finality certificate Metal's RPC reports for its block: the header, and which validators signed. It checks the header and the quorum, and keeps it in the dispute pack, the audit report and verify.",
+      "why": "Proof of finality kept with the payment, not looked up later. Honest limit: the validators' signature is not verified (their keys are not published for testnet), and nodes keep certificates about 2 hours.",
+      "figure": "3 of 4 validators",
+      "proofs": [
+        {
+          "label": "a certified payment · 0xd98e94ff…d30d",
+          "href": "https://testnet.metalntwx.com/tx/0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d"
+        }
+      ],
+      "source": "The same live runs: all 26 of their transactions have a reported certificate",
+      "docs": [
+        {
+          "label": "Finality certificates",
+          "href": "https://docs.metalntwx.com/reference/interop/finality-certificates"
+        }
+      ]
+    },
+    {
+      "id": "dispute",
+      "title": "The Dispute desk",
+      "plain": "Northwind, as the seller, decides a customer's claim from what Metal lets it prove: the signed order, the chain check, the settlement and the hash of the data delivered.",
+      "why": "Agent commerce needs a fair way to settle \"we never ordered this\". Code checks each order against the evidence, Opus explains it, and a refund above the CFO's limits waits for Face ID.",
+      "figure": "12 orders checked",
+      "proofs": [
+        {
+          "label": "case DD-a88e8959",
+          "href": "#dispute"
+        }
+      ],
+      "source": "The recorded Northwind run's payments, checked afterwards on a copy of its ledger",
+      "docs": [
+        {
+          "label": "Verifying",
+          "href": "https://docs.metalntwx.com/agents/mandates#verifying"
+        },
+        {
+          "label": "Signed orders",
+          "href": "https://docs.metalntwx.com/agents/mandates#signed-orders"
+        }
+      ]
+    }
+  ],
+  "mandates": [
+    {
+      "role": "sourcing",
+      "agent": "Sourcing agent",
+      "job": "buys live stock checks from the warehouse API and pays the warehouse software",
+      "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
+      "payee": {
+        "name": "Stockline, a stand-in warehouse API we run",
+        "address": "0xcAbEcD2afd5b58B48cDcd56B5aB2eEc49f0c3711"
+      },
+      "cap": "0.04",
+      "budget": "12.00",
+      "used": "1.20",
+      "left": "10.80",
+      "expires_at": "2026-12-09T07:19:39.549Z",
+      "history": [
+        {
+          "at": "2026-10-29T21:41:38.128Z",
+          "what": "Bound by Northwind's owner",
+          "cap": "0.03",
+          "budget": "10.00",
+          "tx": {
+            "label": "0x25952ab9…60aa",
+            "href": "https://testnet.metalntwx.com/tx/0x25952ab99bf9ba1abd31050883bcb5aa8c2b6337d0e9b70f88656461f19260aa"
+          }
+        },
+        {
+          "at": "2026-10-30T07:19:39.549Z",
+          "what": "Replaced after the CFO's Face ID (P-0002); the old mandate revoked in the same transaction",
+          "cap": "0.04",
+          "budget": "12.00",
+          "tx": {
+            "label": "0xbc70858f…b5d7",
+            "href": "https://testnet.metalntwx.com/tx/0xbc70858fef5ca185cb8dffb860becac2fe0876888aa5ea57d8aee2700449b5d7"
+          }
+        }
+      ],
+      "count": 50,
+      "latest": [
+        {
+          "at": "2026-10-30T07:20:20.106Z",
+          "amount": "0.04",
+          "what": "stock check bought from Stockline",
+          "tx": {
+            "label": "0xf6b06a11…f555",
+            "href": "https://testnet.metalntwx.com/tx/0xf6b06a110202d82ee4554ef78643e157f18285460b3d4065607672ce1915f555"
+          }
+        },
+        {
+          "at": "2026-10-30T07:20:16.603Z",
+          "amount": "0.04",
+          "what": "stock check bought from Stockline",
+          "tx": {
+            "label": "0x0b8fa54c…1490",
+            "href": "https://testnet.metalntwx.com/tx/0x0b8fa54c62fa96b695c68a9a1b4349533ebd980dc74aec28caeead3d7e7b1490"
+          }
+        },
+        {
+          "at": "2026-10-30T07:20:13.310Z",
+          "amount": "0.04",
+          "what": "stock check bought from Stockline",
+          "tx": {
+            "label": "0xde99fed8…2817",
+            "href": "https://testnet.metalntwx.com/tx/0xde99fed8762a4937d3a863d1611fee33a8ba33e466e9a0be6f71efa7e3482817"
+          }
+        },
+        {
+          "at": "2026-10-30T07:20:09.925Z",
+          "amount": "0.04",
+          "what": "stock check bought from Stockline",
+          "tx": {
+            "label": "0x0c85d46a…03e0",
+            "href": "https://testnet.metalntwx.com/tx/0x0c85d46add156dc26b2a2c95c4a50d9249c936f8fe6f0af94a6de08035c003e0"
+          }
+        }
+      ],
+      "refusal": {
+        "at": "2026-10-30T07:08:31.940Z",
+        "reason": "mandate_cap_exceeded",
+        "plain": "Stockline (a stand-in supplier we run) doubled its price. The next purchase was refused against the on-chain mandate: the payment was above the mandate's cap per payment. Nothing moved and the customer was not charged; Purser priced the options, Opus reviewed them, and the CFO approved a new mandate with Face ID."
+      }
+    },
+    {
+      "role": "support",
+      "agent": "Support agent",
+      "job": "pays for ads and settles retailers' claims",
+      "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
+      "payee": {
+        "name": "Summit Outfitters, a simulated customer",
+        "address": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25"
+      },
+      "cap": "0.10",
+      "budget": "4.00",
+      "used": "0.15",
+      "left": "3.85",
+      "expires_at": "2026-12-08T21:41:43.644Z",
+      "history": [
+        {
+          "at": "2026-10-29T21:41:43.644Z",
+          "what": "Bound by Northwind's owner",
+          "cap": "0.10",
+          "budget": "4.00",
+          "tx": {
+            "label": "0x1b3308e2…f7d1",
+            "href": "https://testnet.metalntwx.com/tx/0x1b3308e2c59d278acafeb2d06a796cbf81241a32daf56758914d936680e5f7d1"
+          }
+        }
+      ],
+      "count": 3,
+      "latest": [
+        {
+          "at": "2026-10-30T07:21:53.363Z",
+          "amount": "0.05",
+          "what": "refund of sale 13, back to the customer's account",
+          "tx": {
+            "label": "0xa0c537b4…70ad",
+            "href": "https://testnet.metalntwx.com/tx/0xa0c537b44c103df51ffa07865f6f3d51d4cc12eff5cb4140565e02a0c2d470ad"
+          }
+        },
+        {
+          "at": "2026-10-30T07:21:47.729Z",
+          "amount": "0.05",
+          "what": "refund of sale 10, back to the customer's account",
+          "tx": {
+            "label": "0x512fdb1d…a97b",
+            "href": "https://testnet.metalntwx.com/tx/0x512fdb1d9680e74d8a735d9d9596211d266904018f816104f2a5c13f838fa97b"
+          }
+        },
+        {
+          "at": "2026-10-30T07:21:43.542Z",
+          "amount": "0.05",
+          "what": "refund of sale 7, back to the customer's account",
+          "tx": {
+            "label": "0xcf11b76d…bed1",
+            "href": "https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1"
+          }
+        }
+      ],
+      "refusal": null
+    },
+    {
+      "role": "treasury",
+      "agent": "Treasury agent",
+      "job": "pays the manufacturer by SWIFT, sweeps earnings on Metal once final, books them at Airwallex, and pays the bookkeeping",
+      "account": "0x828c7DE12cab8149AA516958433F6EEe23aEC875",
+      "payee": {
+        "name": "Northwind's sweep wallet",
+        "address": "0x1fB9a22f89D6Df92abF20efDe0E7d4cC5f0455A5"
+      },
+      "cap": "4.00",
+      "budget": "4.00",
+      "used": "1.35",
+      "left": "2.65",
+      "expires_at": "2026-12-09T07:19:34.192Z",
+      "history": [
+        {
+          "at": "2026-10-29T21:41:50.361Z",
+          "what": "Bound by Northwind's owner",
+          "cap": "6.00",
+          "budget": "6.00",
+          "tx": {
+            "label": "0xb89ea437…7585",
+            "href": "https://testnet.metalntwx.com/tx/0xb89ea43765c42ed0325ed5b66c691790df93224dae26bcc6e2030d65aefd7585"
+          }
+        },
+        {
+          "at": "2026-10-30T07:19:34.192Z",
+          "what": "Replaced after the CFO's Face ID (P-0002); the old mandate revoked in the same transaction",
+          "cap": "4.00",
+          "budget": "4.00",
+          "tx": {
+            "label": "0x2909b164…8aed",
+            "href": "https://testnet.metalntwx.com/tx/0x2909b164c50779c342783309943901472cf1c966402c550d0d28f5ab86a08aed"
+          }
+        }
+      ],
+      "count": 1,
+      "latest": [
+        {
+          "at": "2026-10-30T07:22:13.665Z",
+          "amount": "1.35",
+          "what": "earnings swept to the sweep wallet",
+          "tx": {
+            "label": "0x808f9133…a94f",
+            "href": "https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f"
+          }
+        }
+      ],
+      "refusal": null
+    },
+    {
+      "role": "customer",
+      "agent": "Summit's buying agent",
+      "job": "Summit Outfitters, a simulated customer, buys Northwind's stock checks under a mandate its own owner bound",
+      "account": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+      "payee": {
+        "name": "Northwind Outdoor",
+        "address": "0x828c7DE12cab8149AA516958433F6EEe23aEC875"
+      },
+      "cap": "0.10",
+      "budget": "5.00",
+      "used": "2.70",
+      "left": "2.30",
+      "expires_at": "2026-12-08T21:41:57.725Z",
+      "history": [
+        {
+          "at": "2026-10-29T21:41:57.725Z",
+          "what": "Bound by Summit's owner",
+          "cap": "0.10",
+          "budget": "5.00",
+          "tx": {
+            "label": "0x6a4622a9…59a6",
+            "href": "https://testnet.metalntwx.com/tx/0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6"
+          }
+        }
+      ],
+      "count": 50,
+      "latest": [
+        {
+          "at": "2026-10-30T07:20:21.376Z",
+          "amount": "0.07",
+          "what": "stock check 50 bought from Northwind",
+          "tx": {
+            "label": "0x2b0231e7…c7ea",
+            "href": "https://testnet.metalntwx.com/tx/0x2b0231e7af8e59c7a64e072019349872068cc593096ab2b24bcde9b3c473c7ea"
+          }
+        },
+        {
+          "at": "2026-10-30T07:20:17.810Z",
+          "amount": "0.07",
+          "what": "stock check 49 bought from Northwind",
+          "tx": {
+            "label": "0xbf14b805…22b9",
+            "href": "https://testnet.metalntwx.com/tx/0xbf14b805d93648cbd276d5b6136b4ec91d9bb9a9106a5f327a0237a3a8be22b9"
+          }
+        },
+        {
+          "at": "2026-10-30T07:20:14.326Z",
+          "amount": "0.07",
+          "what": "stock check 48 bought from Northwind",
+          "tx": {
+            "label": "0xbd23c74f…d71e",
+            "href": "https://testnet.metalntwx.com/tx/0xbd23c74f88acce344414d60c414627220a97dcb4a9b254e929b92164be72d71e"
+          }
+        },
+        {
+          "at": "2026-10-30T07:20:10.981Z",
+          "amount": "0.07",
+          "what": "stock check 47 bought from Northwind",
+          "tx": {
+            "label": "0x90006023…b356",
+            "href": "https://testnet.metalntwx.com/tx/0x90006023dd6531b11eb02b519fb47bb6646508e0929b95a4f912db6145f6b356"
+          }
+        }
+      ],
+      "refusal": null
+    }
+  ],
+  "dispute": {
+    "case_id": "DD-a88e8959",
+    "claim": "never_ordered",
+    "text": "Our agent never placed orders 5 to 16. Please refund all of them.",
+    "customer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+    "opened_at": "2026-10-30T08:32:14.869Z",
+    "packs": [
+      {
+        "sale_id": 5,
+        "seq": 5,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:20.740Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0x2a81d430d7ad08d9c009088b9ce965d30b5d6697c179cf85fe94f14f0922f08a",
+        "request": "GET /v1/stock?seq=5",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "PIPS6b3Iw1wcVayIKnAD2A",
+          "first_use_sale": 5
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "dc5531775ed246ac836b3d408810a6a0658bd062e2ef6802f211b21c3ec49f24",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:20.740Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa4526835ee0633f2ce2e9f2b2dc26322b8c3620839f",
+          "tx": "0x2a81d430d7ad08d9c009088b9ce965d30b5d6697c179cf85fe94f14f0922f08a"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      },
+      {
+        "sale_id": 6,
+        "seq": 6,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:24.548Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0xaf863cecec9e99cd8d7e2108e5289c6edf27eaa663a5d02e0cd7d2f58f833e50",
+        "request": "GET /v1/stock?seq=6",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "2P4tXmq2kudMA2_3-ZCmdQ",
+          "first_use_sale": 6
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "9c8b7c9aa9990fbdeeaf579745a92515030b319e4c8157d802965f5b1dd20b5b",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:24.548Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa4571e0d12d306769c645cafc2bc2aac19148fabd45",
+          "tx": "0xaf863cecec9e99cd8d7e2108e5289c6edf27eaa663a5d02e0cd7d2f58f833e50"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      },
+      {
+        "sale_id": 7,
+        "seq": 7,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:28.354Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0x5362e5e7e9aee4d92a95bcf2f637939f0cca1acf5848748c500ccc2af2be82be",
+        "request": "GET /v1/stock?seq=7",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "buTwazDWho4Vx2pbR-sePA",
+          "first_use_sale": 7
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "dfb5c3569822585811277d3e1d927502055e218b4661b3179089116aa2ef42bb",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:28.354Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa45b07f1ec211e57cba417a45da1357a7ac9517b3dc",
+          "tx": "0x5362e5e7e9aee4d92a95bcf2f637939f0cca1acf5848748c500ccc2af2be82be"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 5
+      },
+      {
+        "sale_id": 8,
+        "seq": 8,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:31.870Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0x294576a13d8a04c71f1ab542ccebed8d65931db409e138766e47dc1c140fffd9",
+        "request": "GET /v1/stock?seq=8",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "lX7TJa0v79pGJ1NxFez0fg",
+          "first_use_sale": 8
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "1f3c6de5a3b2aee9202ed534340043c2b8dbe1c7381a7b8affa2f44630b83907",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:31.870Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa4529a52bd691be85a204f031c9ec542fb4b3a05a40",
+          "tx": "0x294576a13d8a04c71f1ab542ccebed8d65931db409e138766e47dc1c140fffd9"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      },
+      {
+        "sale_id": 9,
+        "seq": 9,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:35.093Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0xb7451dbf2b4d3c621a2dbe4082bec3b0c1763244646399d19d1fe8c40b92a282",
+        "request": "GET /v1/stock?seq=9",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "8SBi54Tj4euSJe83PPwZKA",
+          "first_use_sale": 9
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "ee416f9e322fea92d124703de3f310cac6c0fb5d4241dd46368d7e71382faf98",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:35.093Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa45ca9feee9c9d4f28d673f48992c64707a1ef947a7",
+          "tx": "0xb7451dbf2b4d3c621a2dbe4082bec3b0c1763244646399d19d1fe8c40b92a282"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      },
+      {
+        "sale_id": 10,
+        "seq": 10,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:38.579Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0xff9aaa36168e043c1a40e4d858f75499fba4fda57b89c9bbd2a356d56971c64f",
+        "request": "GET /v1/stock?seq=10",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "Db0AzC_HoxiIxT5Mv8y3jQ",
+          "first_use_sale": 10
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "7cf8769e4e4e091f2e7aa2d9a2e75024befde032d3be13fb9cb9b74e928790bf",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:38.579Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa45ded69ebe287f1fbb7e21b096841295c563117495",
+          "tx": "0xff9aaa36168e043c1a40e4d858f75499fba4fda57b89c9bbd2a356d56971c64f"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 5
+      },
+      {
+        "sale_id": 11,
+        "seq": 11,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:41.872Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0xe9e765bb66eed6654e78f3a015d60d787e7d2810a01902eefc133c3386ac37d6",
+        "request": "GET /v1/stock?seq=11",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "WJqM5J4uxEN0pf8w11__sw",
+          "first_use_sale": 11
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "5f0679075d0b4092f752cc30f9e0a8d3747910ee048ee3e62dc8c30888feeb5d",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:41.872Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa454fd286dc8ec16742cd99db8717fc11bac59f39c9",
+          "tx": "0xe9e765bb66eed6654e78f3a015d60d787e7d2810a01902eefc133c3386ac37d6"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      },
+      {
+        "sale_id": 12,
+        "seq": 12,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:45.346Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0xb941d7db8b78e0bd9a4b3405b0af069d3e472b0899ee537a18eb9ca2611cd0c4",
+        "request": "GET /v1/stock?seq=12",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "yrPDOIWU9m4KRkIHz3Gs1w",
+          "first_use_sale": 12
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "8c7b85396fc2e925b2c5352866b95f7d2c2aa78ec15e965c310e556a2586b9b6",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:45.346Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa4565fce79e6455d9a5f15ee57c0dc4c79ba40d6c73",
+          "tx": "0xb941d7db8b78e0bd9a4b3405b0af069d3e472b0899ee537a18eb9ca2611cd0c4"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      },
+      {
+        "sale_id": 13,
+        "seq": 13,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:48.890Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0x147281a44d35a4a3b56c04b272e63bd1ce7cdd67dd5db7a4eb755c8c18716676",
+        "request": "GET /v1/stock?seq=13",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "BSKP9ePHC_tYmDLxGcBnaw",
+          "first_use_sale": 13
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "d022485046ca46aa86d34d8d16b6f84e7d83e7ee788780963d172116903f1b60",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:48.890Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa4531d0ae09388b297a54c65016ed93472d547960ba",
+          "tx": "0x147281a44d35a4a3b56c04b272e63bd1ce7cdd67dd5db7a4eb755c8c18716676"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 5
+      },
+      {
+        "sale_id": 14,
+        "seq": 14,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:52.392Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0x3167d81015e3e1613bb2f8de8f6d28e5d932e4d498d9e46b5e8c59e2e5b0742e",
+        "request": "GET /v1/stock?seq=14",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "0TgkWEagUrjowIXiVr31wA",
+          "first_use_sale": 14
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "8cc1081f24ed1d740b8696cb7e774f9d80fa69621c2f4db0d25998692b270f2e",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:52.392Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa45eb857f79c312fe701ca57b9175558d8870119b46",
+          "tx": "0x3167d81015e3e1613bb2f8de8f6d28e5d932e4d498d9e46b5e8c59e2e5b0742e"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      },
+      {
+        "sale_id": 15,
+        "seq": 15,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:55.793Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0xe20e14284212a1c4db1ddce86908693201df58026188660557eada96dd8de45a",
+        "request": "GET /v1/stock?seq=15",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "w7sl0AFp21FR7lmWB9qenw",
+          "first_use_sale": 15
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "8c0aa541d67606bce376df40c064c48bf56646457071ea98ceebf596a5f76d5d",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:55.793Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa459469f66d0e6465b947a21d40b391a63721ec58c0",
+          "tx": "0xe20e14284212a1c4db1ddce86908693201df58026188660557eada96dd8de45a"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      },
+      {
+        "sale_id": 16,
+        "seq": 16,
+        "charged_cents": 5,
+        "paid_at": "2026-10-30T07:06:59.027Z",
+        "payer": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+        "tx": "0x320447bb3fff39f0aa083502fc7e76f2548b33b609ff28550af2ce91ba1e4109",
+        "request": "GET /v1/stock?seq=16",
+        "order": {
+          "present": true,
+          "valid": true,
+          "amount_cents": 5,
+          "pay_to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+          "resource": "GET /v1/stock",
+          "nonce": "XtnzrFw3893jmdWxYr7TQw",
+          "first_use_sale": 16
+        },
+        "mandate": {
+          "within": true,
+          "payer_is_customer": true,
+          "principal": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+          "bound_tx": "0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6",
+          "detail": "all steps pass"
+        },
+        "delivery": {
+          "body_sha256": "dccad0d4a63e77eee1521eedec14d853e64b187e48441adbfcf0522c98602fb5",
+          "matches": true,
+          "delivered_at": "2026-10-30T07:06:59.027Z"
+        },
+        "settlement": {
+          "settlement_id": "eip155:63825:eip3009:0x000000000000000000000000000000000000b5d5:0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25:0x2ff041f02fb951d257d2fa459a77108e44f1a9e4af2876d73e79463ada78e2bb",
+          "tx": "0x320447bb3fff39f0aa083502fc7e76f2548b33b609ff28550af2ce91ba1e4109"
+        },
+        "human": {
+          "owner_bound": true,
+          "passkey": null
+        },
+        "data_wrong": false,
+        "refunded_cents": 0
+      }
+    ],
+    "decision": {
+      "claim": "never_ordered",
+      "refund_cents": 0,
+      "per_sale": [
+        {
+          "sale_id": 5,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 6,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 7,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 8,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 9,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 10,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 11,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 12,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 13,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 14,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 15,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        },
+        {
+          "sale_id": 16,
+          "refund_cents": 0,
+          "why": "Not refunded: your agent gave us a signed order for 0.05 to us (GET /v1/stock), and the payment was verified on chain inside the mandate your account bound."
+        }
+      ],
+      "refund_to": "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25",
+      "outcome": "rejected"
+    },
+    "route": "none",
+    "proposal_id": null,
+    "refunds": [],
+    "explanation": "Thank you for raising this. We reviewed each of sales 5 to 16 against the evidence. None of these payments was refunded, and the total refunded by this decision is 0.00 test USD to the paying account 0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25. You said your agent never placed these orders. The records show otherwise. For every sale from 5 through 16 (GET /v1/stock, sequence 5 to 16, each charged 0.05 test USD), the evidence is the same: (1) Your agent gave us a valid signed order for 0.05 to us. (2) The on-chain check confirmed the payment was inside the mandate your account bound. (3) The payment settled on chain, and each sale's transaction ID is listed in the decision record. (4) The data we delivered matches the expected hash. Because a valid signed order, an in-mandate payment and a confirmed delivery exist for each sale, the decision made by code was a refund of 0.00 for each one. If you believe your agent's signing key or mandate was used without your permission, please let us know so the matter can be reviewed further. This explanation does not change the decision.",
+    "explained_by": "claude-opus-5-5"
+  }
+}

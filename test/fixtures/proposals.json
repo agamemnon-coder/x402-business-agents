@@ -1,0 +1,284 @@
+{
+  "source": "rehearsal 2 ledger, 2026-10-29 (Metal testnet, Airwallex sandbox)",
+  "names": {
+    "0xdcbc07d01307321fa176971410413118f53d0510": "Tidemark Data",
+    "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7": "Kestrel Quant",
+    "0x3295f4b497de8d2340c9595c0fdf4ffc99dd713b": "Feedstock Labs",
+    "0xce0608283020d48550190aa6562923184020a6ed": "Tidemark sweep wallet"
+  },
+  "proposals": [
+    {
+      "proposal_id": "P-0001",
+      "kind": "mandate_replace",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "mandate_replace",
+        "proposal_id": "P-0001",
+        "expires_at": "2026-10-29T07:28:03Z",
+        "option": "A",
+        "query_price": "0.05",
+        "upstream_price": "0.04",
+        "margin": "0.01",
+        "total_budget": "20.00",
+        "steps": [
+          {
+            "order": "1",
+            "agent": "treasury",
+            "principal": "0xdcbc07d01307321fa176971410413118f53d0510",
+            "cap": "4.00",
+            "budget": "4.00",
+            "payees": [
+              "0xce0608283020d48550190aa6562923184020a6ed"
+            ],
+            "expires_at": "2026-12-08T06:28:05Z",
+            "credential_hash": "0xd853bc0cf02f7817704a3636dfbedcf423ca24d4a92f0241717dd1ce8483d205",
+            "replaces_credential_hash": "0x47357773f49fa5d9af1455efee0171268616d22c129961d8201f26d4b6b3f689",
+            "spent_at_proposal": "0.00"
+          },
+          {
+            "order": "2",
+            "agent": "sourcing",
+            "principal": "0xdcbc07d01307321fa176971410413118f53d0510",
+            "cap": "0.04",
+            "budget": "12.00",
+            "payees": [
+              "0x3295f4b497de8d2340c9595c0fdf4ffc99dd713b"
+            ],
+            "expires_at": "2026-12-08T06:28:05Z",
+            "credential_hash": "0xbe237db2d9605abc7b59a5b3e49b704c417b1f1dd6df2a7fb40727e53b11ea76",
+            "replaces_credential_hash": "0x3221d2f3d17284356f0f85b5b6fecb2084565a389a425bf65fdfe3c96f52fbc4",
+            "spent_at_proposal": "0.80"
+          }
+        ],
+        "evidence": [
+          {
+            "type": "supplier_notice",
+            "ref": "fixtures/feedstock-price-notice.txt",
+            "sha256": "f516825c56a3daf07a7490f675ea3b5ba1d383b49e78e913326e61ccc216c9b9"
+          },
+          {
+            "type": "live_offer",
+            "ref": "upstream price 0.04",
+            "sha256": "a888fe9e2469182b8e3e3bca241d3189dc144349bc2d0ac64c56c444276e9763"
+          },
+          {
+            "type": "refusal",
+            "ref": "upstream_purchase:41:mandate_cap_exceeded",
+            "sha256": "6020598fe3283d0322b60b2a3c264c888d0b332581a3d5cb72fcf2bdb2b5e3b6"
+          }
+        ]
+      },
+      "terms_sha256": "205ceb2c5bfd512be00ac2d408796337c7d0d6f5fe106c4ede88cae5405679ef"
+    },
+    {
+      "proposal_id": "P-0002",
+      "kind": "mandate_replace",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "mandate_replace",
+        "proposal_id": "P-0002",
+        "expires_at": "2026-10-29T07:28:03Z",
+        "option": "B",
+        "query_price": "0.07",
+        "upstream_price": "0.04",
+        "margin": "0.03",
+        "total_budget": "20.00",
+        "steps": [
+          {
+            "order": "1",
+            "agent": "treasury",
+            "principal": "0xdcbc07d01307321fa176971410413118f53d0510",
+            "cap": "4.00",
+            "budget": "4.00",
+            "payees": [
+              "0xce0608283020d48550190aa6562923184020a6ed"
+            ],
+            "expires_at": "2026-12-08T06:28:05Z",
+            "credential_hash": "0xd853bc0cf02f7817704a3636dfbedcf423ca24d4a92f0241717dd1ce8483d205",
+            "replaces_credential_hash": "0x47357773f49fa5d9af1455efee0171268616d22c129961d8201f26d4b6b3f689",
+            "spent_at_proposal": "0.00"
+          },
+          {
+            "order": "2",
+            "agent": "sourcing",
+            "principal": "0xdcbc07d01307321fa176971410413118f53d0510",
+            "cap": "0.04",
+            "budget": "12.00",
+            "payees": [
+              "0x3295f4b497de8d2340c9595c0fdf4ffc99dd713b"
+            ],
+            "expires_at": "2026-12-08T06:28:05Z",
+            "credential_hash": "0xbe237db2d9605abc7b59a5b3e49b704c417b1f1dd6df2a7fb40727e53b11ea76",
+            "replaces_credential_hash": "0x3221d2f3d17284356f0f85b5b6fecb2084565a389a425bf65fdfe3c96f52fbc4",
+            "spent_at_proposal": "0.80"
+          }
+        ],
+        "evidence": [
+          {
+            "type": "supplier_notice",
+            "ref": "fixtures/feedstock-price-notice.txt",
+            "sha256": "f516825c56a3daf07a7490f675ea3b5ba1d383b49e78e913326e61ccc216c9b9"
+          },
+          {
+            "type": "live_offer",
+            "ref": "upstream price 0.04",
+            "sha256": "a888fe9e2469182b8e3e3bca241d3189dc144349bc2d0ac64c56c444276e9763"
+          },
+          {
+            "type": "refusal",
+            "ref": "upstream_purchase:41:mandate_cap_exceeded",
+            "sha256": "6020598fe3283d0322b60b2a3c264c888d0b332581a3d5cb72fcf2bdb2b5e3b6"
+          }
+        ]
+      },
+      "terms_sha256": "cadd01e7813345fb5f8f04f151b6747c1d7410026dab1966111d1364cdc5f76c"
+    },
+    {
+      "proposal_id": "P-0003",
+      "kind": "refund_batch",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "refund_batch",
+        "proposal_id": "P-0003",
+        "expires_at": "2026-10-29T07:34:24Z",
+        "dispute_id": "D-89719658",
+        "customer": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+        "refunds": [
+          {
+            "sale_id": "5",
+            "payment_id": "refund-5",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          },
+          {
+            "sale_id": "6",
+            "payment_id": "refund-6",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          },
+          {
+            "sale_id": "8",
+            "payment_id": "refund-8",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          },
+          {
+            "sale_id": "9",
+            "payment_id": "refund-9",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          },
+          {
+            "sale_id": "11",
+            "payment_id": "refund-11",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          },
+          {
+            "sale_id": "12",
+            "payment_id": "refund-12",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          },
+          {
+            "sale_id": "14",
+            "payment_id": "refund-14",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          },
+          {
+            "sale_id": "15",
+            "payment_id": "refund-15",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          },
+          {
+            "sale_id": "16",
+            "payment_id": "refund-16",
+            "to": "0x5ab2a56a249ff9d0892846a8ac40aa65f1ccdbb7",
+            "amount": "0.05"
+          }
+        ],
+        "total": "0.45",
+        "reason": "customer request: refund all; evidence shows the orders were placed and the data correct",
+        "evidence": [
+          {
+            "type": "dispute_email",
+            "ref": "fixtures/kestrel-dispute-email.txt",
+            "sha256": "89719658fdd8859035ac2aaac28fdb13d9de5419da56d28c543c62d88e5ada48"
+          },
+          {
+            "type": "supplier_corrections",
+            "ref": "fixtures/feedstock-corrections.txt",
+            "sha256": "1e2b5996a6a3d4eb234a36970e7b2f6505eb7ce72471d76d53303b07ef89bf20"
+          },
+          {
+            "type": "order_verification",
+            "ref": "12 orders, verifyMandatePayment",
+            "sha256": "f41dad2d0c0e78c3ebd6ce61ccd1368697b137e4b2e865d1363d8cc03be257d7"
+          },
+          {
+            "type": "data_check",
+            "ref": "6 fields compared",
+            "sha256": "cc677c841f7781bfc44338f54de4441e9fb46f090dc13a92c94df2d7940298f6"
+          }
+        ]
+      },
+      "terms_sha256": "8c6e081c7749fafb47bc10817b967088c2870871f66c76480f7314c1c0c6f41c"
+    },
+    {
+      "proposal_id": "P-0004",
+      "kind": "invoice_payment",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "invoice_payment",
+        "proposal_id": "P-0004",
+        "expires_at": "2026-10-29T06:44:52Z",
+        "invoice_no": "LIC-2026-11",
+        "vendor": "Lizenzhaus Beispiel GmbH",
+        "amount": "1850.00",
+        "currency": "EUR",
+        "fee_max": "20.00",
+        "beneficiary_id": "1322d7e4-5102-4858-ac2f-912d0ad5b999",
+        "beneficiary_name": "Lizenzhaus Beispiel GmbH",
+        "iban_last4": "3000",
+        "bic": "COBADEFFXXX",
+        "method": "SWIFT",
+        "reference": "LIC-2026-11",
+        "reason": "professional_business_services",
+        "transfer_request_id": "3179db31-8ade-420e-bedc-3e20bc7e0003",
+        "conversion": {
+          "request_id": "4839fd2b-b597-46f3-ac6c-98e3d25c901b",
+          "quote_id": "cf42feb7-a7d1-3344-8f34-06d0ad5a9370",
+          "client_rate": "1.125922",
+          "valid_to": "2026-10-29T06:49:53.000Z",
+          "buy_currency": "EUR",
+          "buy_amount": "370.00",
+          "sell_currency": "USD",
+          "sell_amount": "416.59"
+        },
+        "balances_before": {
+          "eur_available": "9997005.91",
+          "usd_available": "10024178.98"
+        },
+        "floors": {
+          "eur_floor": "500.00",
+          "eur_obligations": "9995005.91",
+          "usd_floor": "10019177.63"
+        },
+        "after": {
+          "eur_free": "0.00",
+          "usd_available": "10023762.39"
+        },
+        "evidence": [
+          {
+            "type": "invoice",
+            "ref": "LIC-2026-11",
+            "sha256": "f81a493a23f01a7432f284378aff21d7e68d30da4d35e607752ccfc030ddcbda"
+          }
+        ]
+      },
+      "terms_sha256": "7da6454a3e523680812e12280ee676490b08041eec1199550895722cf1b80025"
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "ran_at": "2026-10-31T16:47:54.308Z",
+  "network": "Metal testnet",
+  "account": "0xc296728c3471469E3960A68A0a9006Bd2C24bbaB",
+  "owners": {
+    "cfo": "0x64fdAb49F7B2a7292044aEa04f47C9b3325b8b1b",
+    "controller": "0x2d59e0b7d85DcA851392E552d865f6754Ce4A6AB"
+  },
+  "threshold": 2,
+  "stranger": "0x8d6D05ffB4EE53882331CA552A13f6D50ae6245D",
+  "payee": "0xdFB1bEfd56dBe9A9C10CE4ec7d609B0c9d217d5E",
+  "mandate": "0x08763c62191b2a433faa5770c7c8a76d79b14d5a89dbf539c4fc7c4e0af4936e",
+  "steps": [
+    {
+      "step": "create the business account: owners CFO and controller, threshold 2",
+      "outcome": "done",
+      "tx": "0x28834407ec759d169215ec857c8e71a84d243943aca35ff06c1923b9effde539",
+      "detail": "account 0xc296728c3471469E3960A68A0a9006Bd2C24bbaB",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996156,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "fund the account to 3.00 test USD",
+      "outcome": "done",
+      "tx": "0x31ee8202fe6c2ebd0cfdc26528b3e9445fd39c36bfb81c90963c49ab704d42bb",
+      "detail": "",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996183,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "bind the mandate with the CFO's signature alone",
+      "outcome": "refused",
+      "tx": null,
+      "detail": "the account refused it: error: the call to 0xc296728c3471469E3960A68A0a9006Bd2C24bbaB would fail: Execution reverted for an unknown reason.",
+      "finality": null
+    },
+    {
+      "step": "bind the mandate with the CFO's and the controller's signatures",
+      "outcome": "done",
+      "tx": "0x57232bf445f5368c6e5f6268ccbe540c7063b5c31b618020887fd463ae4dd1d5",
+      "detail": "mandate 0x08763c62191b2a43…",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996275,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "the agent pays 0.05 inside its mandate, no owner signs",
+      "outcome": "done",
+      "tx": "0xf0361474de3ba1ad71829e9d69159218a0ecefc4395f5978900abe89fc7de818",
+      "detail": "paid with the mandate key alone",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996315,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "the agent tries 1.00, above its 0.05 cap",
+      "outcome": "refused",
+      "tx": "0x24e62abbaf38e1ad71a7e221ba483d86a3289f7d70e9d563d7179e9c4ff2b5cf",
+      "detail": "refused: mandate_cap_exceeded (the amount is above the mandate's per-payment cap)",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996371,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "pay 1.00 from the account, signed by the CFO alone",
+      "outcome": "reverted",
+      "tx": "0x351ff2d5a6e16585674aaaf1a2846c2a067df35af09354ebeaeba6f8d6059604",
+      "detail": "reverted on chain; used 237580 of the 614599 gas the two-owner payment needs; the account's reason: Execution reverted for an unknown reason.",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996415,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "pay 1.00 from the account, signed by the CFO and a stranger's key",
+      "outcome": "reverted",
+      "tx": "0x0efa224d190a342cbf386f01c17878b546c58dfd3db1f3a3a7db228c13468e88",
+      "detail": "reverted on chain; used 45105 of the 614599 gas the two-owner payment needs; the account's reason: Execution reverted for an unknown reason.",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996435,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "pay 1.00 from the account, signed by the CFO and the controller",
+      "outcome": "done",
+      "tx": "0x16c605cfe5615c80a140561a7a5baa6478ce3afe8694d7ed71b9fc5ea83b1d88",
+      "detail": "the payee received 1.00",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996456,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "revoke the mandate with the CFO's signature alone",
+      "outcome": "reverted",
+      "tx": "0x8f42fd4176c42201cbc1d1737f41ab5f0d67d1b7504ced8f5554dedc6afc80ac",
+      "detail": "reverted on chain; used 237722 of the 595111 gas the two-owner revoke needs; the account's reason: Execution reverted for an unknown reason.",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996484,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "revoke the mandate with the CFO's and the controller's signatures",
+      "outcome": "done",
+      "tx": "0xf99aeece3a81818f06adb073187320c013a815f96497c042e02edb4aea378f83",
+      "detail": "revoked",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996503,
+        "signers": 3,
+        "participants": 4
+      }
+    },
+    {
+      "step": "the agent tries 0.05 after the revoke",
+      "outcome": "refused",
+      "tx": "0x738123e3e1482c041cee01b2ed483e8688f74cc9e23a9fa61a849be2727205c9",
+      "detail": "refused; mandate status: revoked yes",
+      "finality": {
+        "status": "REPORTED",
+        "block": 10996543,
+        "signers": 3,
+        "participants": 4
+      }
+    }
+  ]
+}

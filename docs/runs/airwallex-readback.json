@@ -1,0 +1,152 @@
+{
+  "read_at": "2026-11-01T07:41:58.495Z",
+  "method": "GET only, Airwallex sandbox",
+  "found": [
+    {
+      "id": "101475c7-493b-3442-9734-3b2c0ce83f6f",
+      "kind": "quote",
+      "status": "found",
+      "amount": "362.85 EUR",
+      "shown_in": [
+        "docs/airwallex.md"
+      ]
+    },
+    {
+      "id": "0650049f-acb1-476e-a72f-c4de56d5b7b1",
+      "kind": "conversion",
+      "status": "SETTLED",
+      "amount": "370 EUR for 416.92 USD",
+      "shown_in": [
+        "docs/airwallex.md",
+        "docs/requirements-matrix.md"
+      ]
+    },
+    {
+      "id": "1322d7e4-5102-4858-ac2f-912d0ad5b999",
+      "kind": "beneficiary",
+      "status": "exists",
+      "amount": "-",
+      "shown_in": [
+        "docs/airwallex.md"
+      ]
+    },
+    {
+      "id": "260638bd-3400-4a6f-b170-268ecc1ffc5b",
+      "kind": "transfer",
+      "status": "PAID",
+      "amount": "1850 EUR",
+      "shown_in": [
+        "docs/airwallex.md",
+        "docs/requirements-matrix.md"
+      ]
+    },
+    {
+      "id": "26954165-5c6d-4796-91bd-c9aa356e1ea9",
+      "kind": "transfer",
+      "status": "PAID",
+      "amount": "1850 EUR",
+      "shown_in": [
+        "docs/airwallex.md"
+      ]
+    },
+    {
+      "id": "c443a5da-aebb-486d-9101-5cf9ea0e3bae",
+      "kind": "transfer",
+      "status": "PAID",
+      "amount": "1850 EUR",
+      "shown_in": [
+        "docs/airwallex.md"
+      ]
+    },
+    {
+      "id": "e49d68f2-bcc2-4a0d-ab22-abca60ea6509",
+      "kind": "deposit",
+      "status": "SETTLED",
+      "amount": "1.35 USD",
+      "shown_in": [
+        "docs/airwallex.md",
+        "docs/requirements-matrix.md"
+      ]
+    },
+    {
+      "id": "03d9d67d-449a-482b-9281-e2acf4fe058c",
+      "kind": "deposit",
+      "status": "SETTLED",
+      "amount": "1.35 USD",
+      "shown_in": [
+        "docs/airwallex.md",
+        "docs/requirements-matrix.md"
+      ]
+    },
+    {
+      "id": "4d508b0b-ef38-41d3-b96e-f6cc3f5cfeb4",
+      "kind": "transfer",
+      "status": "PAID",
+      "amount": "1850 EUR",
+      "shown_in": [
+        "docs/metal-award.md",
+        "docs/data-qa.md",
+        "docs/demo/snapshot.json"
+      ]
+    },
+    {
+      "id": "7edb809a-48d4-440e-ab1f-3805645fd605",
+      "kind": "card transaction",
+      "status": "FAILED",
+      "amount": "-19.99 EUR",
+      "shown_in": [
+        "docs/data-qa.md",
+        "docs/demo/snapshot.json"
+      ]
+    },
+    {
+      "id": "08736b6e-0f62-41f8-9e4c-6f5a8cbff3c7",
+      "kind": "conversion",
+      "status": "SETTLED",
+      "amount": "370 EUR for 418.4 USD",
+      "shown_in": [
+        "docs/data-qa.md",
+        "docs/demo/snapshot.json"
+      ]
+    },
+    {
+      "id": "56366c9d-e537-428f-8681-9c1a8c43c838",
+      "kind": "deposit",
+      "status": "SETTLED",
+      "amount": "1.35 USD",
+      "shown_in": [
+        "docs/data-qa.md",
+        "docs/demo/snapshot.json"
+      ]
+    }
+  ],
+  "not_found": [
+    {
+      "id": "01a18bb9-6320-7000-8874-90025a882c13",
+      "shown_in": [
+        "docs/data-qa.md"
+      ]
+    },
+    {
+      "id": "01a18bb9-4682-7000-bd95-43a3a930b03b",
+      "shown_in": [
+        "docs/data-qa.md",
+        "docs/demo/snapshot.json"
+      ]
+    },
+    {
+      "id": "01a18bb9-571a-7000-a390-0e6d4b0e3132",
+      "shown_in": [
+        "docs/data-qa.md",
+        "docs/demo/snapshot.json"
+      ]
+    },
+    {
+      "id": "01a18bbb-6607-7000-ac01-0b4d20104e8e",
+      "shown_in": [
+        "docs/data-qa.md",
+        "docs/demo/snapshot.json"
+      ]
+    }
+  ]
+}

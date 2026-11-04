@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Purser · Company Cards for AI Agents</title>
+<style>
+@font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f1f3f6; --text: #0b1220; --muted: #4b5563; --faint: #6b7280;
+  --border: #e5e8ec; --accent: #4f46e5; --accent-soft: #eef0ff;
+  --ok: #0f8a4f; --ok-soft: #e7f6ee; --warn: #b45309; --warn-soft: #fdf1e3; --bad: #c8261b; --bad-soft: #fdecea;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .05); color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0c11; --surface: #12151c; --surface-2: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+    --border: #222734; --accent: #8b87ff; --accent-soft: #1b1d3a;
+    --ok: #3ccf7e; --ok-soft: #0f2419; --warn: #f2a34a; --warn-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
+    --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a0c11; --surface: #12151c; --surface-2: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+  --border: #222734; --accent: #8b87ff; --accent-soft: #1b1d3a;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --warn: #f2a34a; --warn-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312;
+  --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+/* Presentation mode (?present): larger text, no "how it works" folds, for a screen or a recording. */
+html.present details.how { display: none; }
+@media (min-width: 1000px) { html.present body { zoom: 1.25; } }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+/* The same top bar as the dashboard (src/dashboard/page.html). */
+.top { display: flex; align-items: center; gap: 28px; min-height: 64px; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; text-decoration: none; color: var(--text); white-space: nowrap; }
+.brand .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+.top .nav { display: flex; gap: 4px; overflow-x: auto; min-width: 0; }
+@media (max-width: 900px) { .top .nav { mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } }
+.top .nav a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: 14px; padding: 8px 12px; border-radius: 8px; white-space: nowrap; }
+.top .nav a.on { color: var(--text); background: color-mix(in srgb, var(--muted) 14%, transparent); }
+@media (max-width: 640px) { .top { padding: 8px 16px; gap: 8px 16px; } .top .nav a { padding: 6px 8px; font-size: 13px; } }
+header:not(.top) { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 24px 14px; }
+header .row { display: flex; gap: 8px 16px; align-items: baseline; flex-wrap: wrap; max-width: 1080px; margin: 0 auto; }
+header h1 { margin: 0; font-size: 20px; }
+header .tag { color: var(--muted); font-size: 16px; font-weight: 400; margin: 0; }
+.replay { max-width: 1080px; margin: 8px auto 0; font-size: 12.5px; color: var(--muted); }
+.replay b { color: var(--text); font-weight: 600; }
+main { max-width: 1080px; margin: 0 auto; padding: 18px 24px 40px; }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.steps button { font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+.steps button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .steps button.on { color: #0a0c11; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps button.on { color: #0a0c11; } }
+.steps button.done { color: var(--text); }
+article { background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--accent); border-radius: 12px; box-shadow: var(--shadow); padding: 22px 26px; min-height: 360px; }
+article.ok { border-left-color: var(--ok); } article.refusal { border-left-color: var(--bad); } article.approval { border-left-color: var(--warn); }
+.meta { display: flex; gap: 10px; align-items: center; color: var(--faint); font-size: 13px; }
+.rail { font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 1px 7px; background: var(--surface-2); }
+article h2 { font-size: 24px; line-height: 1.25; margin: 10px 0 8px; letter-spacing: -.01em; }
+article p.text { font-size: 16px; margin: 0 0 16px; max-width: 75ch; }
+.signoff { display: flex; gap: 12px; align-items: flex-start; background: var(--warn-soft); border-radius: 10px; padding: 12px 14px; margin: 0 0 16px; }
+.signoff .icon { font-size: 22px; line-height: 1; }
+.signoff b { display: block; }
+.signoff span { color: var(--muted); font-size: 14px; }
+details.how { margin: 0 0 14px; font-size: 14px; color: var(--muted); max-width: 75ch; }
+details.how summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.how p { margin: 6px 0 0; }
+.replay details { display: inline; }
+.replay summary { display: inline; cursor: pointer; color: var(--accent); }
+.replay details p { margin: 6px 0 0; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+td { padding: 7px 8px; border-top: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+td:first-child { color: var(--muted); width: 38%; }
+td a { color: var(--accent); text-decoration: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+td a:hover { text-decoration: underline; }
+.controls { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.controls button { font: inherit; font-weight: 600; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+.controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .controls button.primary { color: #0a0c11; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .controls button.primary { color: #0a0c11; } }
+.controls .where { color: var(--faint); font-size: 13px; margin-left: auto; }
+.bar { height: 4px; background: var(--border); border-radius: 999px; margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 30px; font-size: 12.5px; color: var(--faint); }
+@media (max-width: 640px) {
+  header, main, footer { padding-left: 16px; padding-right: 16px; }
+  header nav { margin-left: 0; width: 100%; }
+  article { padding: 18px 16px; }
+  article h2 { font-size: 20px; }
+  td:first-child { width: 42%; }
+}
+.kit11note { max-width: 1080px; margin: 6px auto 0; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="top"><a class="brand" href="./"><span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></span>Purser</a><nav class="nav" aria-label="Main"><a href="./">Overview</a><a href="try">Try it</a><a href="metal">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo" class="on" aria-current="page">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
+<header>
+  <div class="row"><h1 class="tag">Every AI agent its own company card, with limits the CFO sets</h1></div>
+  <p class="kit11note">Kit 11 · x402 Business Agents: three agents, one Metal account. The Sourcing agent buys upstream data per query, the Support agent refunds customers in disputes, the Treasury agent watches spending, sweeps to Airwallex and pays the EUR licence fee.</p>
+  <p class="replay" id="replay"></p>
+</header>
+<main>
+  <div class="steps" id="steps" role="tablist" aria-label="Steps"></div>
+  <article id="step" aria-live="polite"></article>
+  <div class="bar" aria-hidden="true"><i id="bar"></i></div>
+  <div class="controls">
+    <button id="prev">← Back</button>
+    <button class="primary" id="next">Next →</button>
+    <button id="play">Play the story</button>
+    <span class="where num" id="where"></span>
+  </div>
+</main>
+<footer id="foot"></footer>
+<script type="application/json" id="story-data">__STORY_JSON__</script>
+<script>
+(function () {
+  if (/[?&]present(=|&|$)/.test(location.search)) document.documentElement.classList.add("present");
+  "use strict";
+  // Every string from the recording is rendered with textContent; links only to the Metal explorer.
+  var S = JSON.parse(document.getElementById("story-data").textContent);
+  var steps = S.steps, i = 0, timer = null, SECONDS = 12;
+  var EXPLORER = "https://testnet.metalntwx.com/tx/";
+  // Money in the words a CFO uses: euros as €, Metal's USDZ as test USD; only amounts beside a currency change.
+  function words(t) {
+    var amt = "(-?\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})|-?\\d+\\.\\d{2})";
+    var grp = function (a) { a = a.replace(/,/g, ""); var neg = a.charAt(0) === "-"; if (neg) a = a.slice(1); var p = a.split("."); return (neg ? "−" : "") + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + p[1]; };
+    var e = function (_m, a) { var g = grp(a); return g.charAt(0) === "−" ? "−€" + g.slice(1) : "€" + g; };
+    return String(t)
+      .replace(new RegExp(amt + " \\*?USDZ\\b", "g"), function (_m, a) { return grp(a) + " test USD"; })
+      .replace(/\*?USDZ\b/g, "test USD")
+      // "30.00 / 100.00 → 50.00 / 100.00 EUR": the currency written once after a range applies to every amount in it.
+      .replace(new RegExp("((?:" + amt + "(?: / | → ))+" + amt + ") EUR\\b", "g"), function (m) { return m.slice(0, -4).replace(new RegExp(amt, "g"), e); })
+      .replace(new RegExp("\\bEUR " + amt + "(?![\\d.])", "g"), e)
+      .replace(new RegExp(amt + " EUR\\b", "g"), e);
+  }
+  function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k != null) n.appendChild(typeof k === "string" ? document.createTextNode(words(k)) : k); }); return n; }
+  var when = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" });
+
+  var rp = document.getElementById("replay");
+  // The steps follow the story, not the clock: the run started at its earliest step.
+  var firstAt = steps.reduce(function (m, s) { var t = Date.parse(s.at); return isNaN(t) ? m : Math.min(m, t); }, Date.parse(S.recorded_at));
+  rp.appendChild(el("b", "", ["Recorded run, started " + when.format(new Date(firstAt))]));
+  // Recordings made before the rename carry no company: they were made with the earlier example company.
+  rp.appendChild(document.createTextNode(" · " + (S.company || "Tidemark Data, the earlier example company") + " · test money, real systems "));
+  rp.appendChild(el("details", "", [el("summary", "", ["details"]), el("p", "", ["Every step really happened, live on Metal testnet and in the Airwallex sandbox; the Dispute desk case ran afterwards on a copy of the run's ledger. This page only plays it back, so it cannot fail on stage. Amounts on Metal are Metal's test dollars, shown as test USD."])]));
+  document.getElementById("foot").textContent = "Saved " + when.format(new Date(S.recorded_at)) + ", after the last step, from the run's audit log (" + S.audit.rows + " rows, head " + S.audit.head.slice(0, 12) + "…). Built with Claude Code.";
+
+  var nav = document.getElementById("steps");
+  steps.forEach(function (s, k) {
+    var b = el("button", "", [(k + 1) + ". " + (s.tab || s.rail)]);
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-label", "Step " + (k + 1) + ": " + s.title);
+    b.addEventListener("click", function () { stop(); show(k); });
+    nav.appendChild(b);
+  });
+
+  function show(k) {
+    i = Math.max(0, Math.min(steps.length - 1, k));
+    var s = steps[i];
+    var rows = s.facts.map(function (f) {
+      var v = f.href && f.href.indexOf(EXPLORER) === 0 ? (function () { var a = el("a", "", [f.value + " ↗"]); a.href = f.href; a.target = "_blank"; a.rel = "noopener noreferrer"; return a; })() : f.value;
+      return el("tr", "", [el("td", "", [f.label]), el("td", "num", [v])]);
+    });
+    var art = document.getElementById("step");
+    art.className = s.tone;
+    // replaceChildren would print a null as the text "null": only real nodes go in.
+    art.replaceChildren.apply(art, [
+      el("div", "meta", [el("span", "rail", [s.rail]), "Step " + (i + 1) + " of " + steps.length]),
+      el("h2", "", [s.title]),
+      el("p", "text", [s.text]),
+      s.approval ? el("div", "signoff", [el("span", "icon", ["✓"]), el("div", "", [el("b", "", [s.approval.who + " approved " + s.approval.proposal]), el("span", "", [s.approval.what])])]) : null,
+      s.details ? el("details", "how", [el("summary", "", ["How it works"]), el("p", "", [s.details])]) : null,
+      rows.length ? el("table", "", [el("tbody", "", rows)]) : null
+    ].filter(function (n) { return n != null; }));
+    Array.prototype.forEach.call(nav.children, function (b, k2) { b.className = k2 === i ? "on" : k2 < i ? "done" : ""; b.setAttribute("aria-selected", k2 === i ? "true" : "false"); });
+    document.getElementById("where").textContent = (i + 1) + " / " + steps.length;
+    document.getElementById("prev").disabled = i === 0;
+    document.getElementById("next").disabled = i === steps.length - 1;
+  }
+  function tick(start) {
+    var bar = document.getElementById("bar");
+    var t0 = performance.now();
+    (function frame(now) {
+      if (timer !== start) return;
+      var f = Math.min(1, (now - t0) / (SECONDS * 1000));
+      bar.style.width = (f * 100).toFixed(1) + "%";
+      if (f < 1) return requestAnimationFrame(frame);
+      if (i < steps.length - 1) { show(i + 1); tick(start); } else stop();
+    })(t0);
+  }
+  function play() { if (i === steps.length - 1) show(0); timer = {}; document.getElementById("play").textContent = "Pause"; tick(timer); }
+  function stop() { timer = null; document.getElementById("play").textContent = "Play the story"; document.getElementById("bar").style.width = "0"; }
+  document.getElementById("prev").addEventListener("click", function () { stop(); show(i - 1); });
+  document.getElementById("next").addEventListener("click", function () { stop(); show(i + 1); });
+  document.getElementById("play").addEventListener("click", function () { timer ? stop() : play(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "ArrowRight") { stop(); show(i + 1); } if (e.key === "ArrowLeft") { stop(); show(i - 1); } });
+  var m = /[?&]step=(\d+)/.exec(location.search);
+  show(m ? Number(m[1]) - 1 : 0);
+  if (/[?&]autoplay(=1)?(&|$)/.test(location.search)) play();
+})();
+</script>
+</body>
+</html>

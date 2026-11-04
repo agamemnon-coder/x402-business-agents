@@ -1,0 +1,30 @@
+# Accepted gitleaks findings, by fingerprint. Each is a fake value in a test, not a secret.
+# test/adversarial.test.ts in 6a2e981 used literal fake values ("...-SECRET-n") to prove no key reaches a model;
+# the test now builds them at run time.
+6a2e98161544974dcf2c359d4bddfe52b2a20e2d:test/adversarial.test.ts:generic-api-key:114
+6a2e98161544974dcf2c359d4bddfe52b2a20e2d:test/adversarial.test.ts:generic-api-key:115
+# src/claude/reader.ts in 3683803: `const apiKey = env.KIT11_ANTHROPIC_API_KEY;` reads a variable, it holds no key.
+368380353dcc8a301333a616f97c1394c4290e3b:src/claude/reader.ts:generic-api-key:40
+# Found by the whole-history scan (2026-10-29), all checked by hand:
+# src/lib/redact.ts in 1a5c7e3: the list of environment variable NAMES the redactor looks up; no values.
+1a5c7e398a64a5c192631b4a38505c8cb39f9846:src/lib/redact.ts:generic-api-key:7
+# .gitleaksignore in 220e947: the comment above that quotes the reader.ts line.
+220e947a3b5d51f9e1c59038d4cb161c5fbc3ebf:.gitleaksignore:generic-api-key:6
+# test/dashboard.test.ts in f40bff8: a made-up passkey credential id ("AbCdEf123456") in a test.
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/dashboard.test.ts:generic-api-key:131
+# test/fixtures/proposals.json in f40bff8: credential_hash and replaces_credential_hash are public hashes of mandate
+# credentials (anchored on chain by the mandate replace), not keys.
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:34
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:35
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:48
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:49
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:97
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:98
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:111
+f40bff8cbc3b569bfe664c0f8bafe5ddb5770895:test/fixtures/proposals.json:generic-api-key:112
+# test/clearing-wallet.test.ts in 0fa6aad held Hardhat's public default test keys (accounts #1 and #2) as literals;
+# the test now derives its throwaway keys at run time.
+0fa6aad8621683823849e09f04f0a317cfffbb7c:test/clearing-wallet.test.ts:generic-api-key:38
+0fa6aad8621683823849e09f04f0a317cfffbb7c:test/clearing-wallet.test.ts:generic-api-key:39
+# A public contract address (OpenZeppelin WebAuthn verifier on Metal testnet); 'PASSKEY' in the name looks like a key to the generic rule.
+de13a51c69a6230bbfd891213481258de2b5adc3:src/metal/passkeyRelay.ts:generic-api-key:13

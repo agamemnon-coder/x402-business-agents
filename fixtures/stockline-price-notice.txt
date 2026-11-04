@@ -1,0 +1,13 @@
+From: billing@stockline.example
+To: ops@northwind-outdoor.example
+Subject: Price change for stock checks
+Date: Fri, 30 Oct 2026 10:12:00 +0000
+
+Hello Northwind team,
+
+Our warehouse sync costs have gone up. From 30 October 2026, 10:30 UTC, each
+stock check on /v1/stock-check costs 0.04 *USDZ instead of 0.02 *USDZ. The price in our
+x402 offer changes at the same moment; nothing else about the route changes.
+
+Kind regards,
+Stockline billing

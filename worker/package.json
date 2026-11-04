@@ -1,0 +1,11 @@
+{
+  "name": "x402-business-agents-relay",
+  "private": true,
+  "description": "The Cloudflare Worker that relays between the CFO's phone and the runner. Deployed with npm run relay:deploy from the repo root.",
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261029.1",
+    "wrangler": "4.155.0"
+  }
+}

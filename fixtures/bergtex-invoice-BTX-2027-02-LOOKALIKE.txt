@@ -1,0 +1,19 @@
+Bergtex Texitl GmbH
+Textilweg 4, 72760 Reutlingen, Germany
+
+INVOICE BTX-2027-02
+Date: 2 February 2027
+Due date: 16 February 2027
+
+Bill to: Northwind Outdoor
+
+Description                                   Amount
+Down jackets, production lot February 2027    EUR 1,850.00
+
+Total due                                     EUR 1,850.00
+
+Pay by SWIFT to:
+Account name: Bergtex Texitl GmbH
+IBAN: DE02 1001 0010 0123 4567 89
+BIC: PBNKDEFFXXX
+Payment reference: BTX-2027-02

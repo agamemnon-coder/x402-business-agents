@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purser live</title>
+<style>
+@font-face { font-family: Inter; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root { --bg: #f6f7fb; --surface: #ffffff; --text: #0d1220; --muted: #5d6578; --border: #e4e7ef; --accent: #5b4cf0; --accent-soft: #ecebfe; --ok: #0f8a4f; --ok-soft: #e7f6ee; --bad: #c8261b; --bad-soft: #fdecea; --wait: #b45309; --wait-soft: #fdf3e6; --sunken: #f1f3f8; --awx: #ff4f1f; --awx-soft: #fff1ec; --mtl: #111827; --mtl-soft: #eef0f4; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0a0c11; --surface: #12151d; --text: #eef0f6; --muted: #98a0b3; --border: #232838; --accent: #8f85ff; --accent-soft: #1d1a3d; --ok: #3ccf7e; --ok-soft: #0f2419; --bad: #ff6b5f; --bad-soft: #2c1312; --wait: #f2a34a; --wait-soft: #2a1d0c; --sunken: #181c26; --awx: #ff7a52; --awx-soft: #2a160f; --mtl: #e9ebf1; --mtl-soft: #1b1f2a; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+.top { display: flex; align-items: center; gap: 12px; padding: 14px 28px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
+.brand { font-weight: 800; font-size: 18px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; }
+.brand i { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); display: inline-block; }
+.chip { font-size: 12.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; }
+.top nav { margin-left: auto; display: flex; gap: 16px; font-size: 14px; flex-wrap: wrap; }
+.top nav a { color: var(--muted); text-decoration: none; font-weight: 600; } .top nav a:hover { color: var(--accent); }
+.count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 22px 28px 0; }
+/* The rig: agents on the left, the two rails across, the CFO's phone on the right. */
+.rig { display: grid; grid-template-columns: 214px minmax(0, 1fr) 176px; gap: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 20px; align-items: stretch; }
+.cast { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.who { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--sunken); color: var(--muted); font-size: 14px; font-weight: 650; transition: all .35s ease; }
+.who b { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--border); color: var(--surface); font-size: 12px; font-weight: 900; transition: background .35s; }
+.who.on { color: var(--text); background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.who.on b { background: var(--accent); color: #fff; }
+.lanes { display: flex; flex-direction: column; gap: 18px; justify-content: center; min-width: 0; }
+.lane { transition: opacity .4s ease; }
+.lane.off { opacity: .38; }
+.lane .hd { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.lg { display: inline-flex; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; }
+.lg img { height: 18px; width: auto; display: block; }
+.lane .hd small { color: var(--muted); font-size: 13px; font-weight: 600; }
+.track { position: relative; height: 74px; border-radius: 16px; overflow: hidden; }
+.awx .track { background: repeating-linear-gradient(90deg, var(--awx-soft) 0 22px, transparent 22px 30px), var(--awx-soft); border: 2px solid var(--awx); }
+.mtl .track { background: repeating-linear-gradient(90deg, var(--mtl-soft) 0 22px, transparent 22px 30px), var(--mtl-soft); border: 2px solid var(--mtl); }
+.lane.off .track { border-color: var(--border); }
+.legend { display: flex; flex-direction: column; gap: 14px; }
+.legend .hd { display: flex; align-items: center; gap: 10px; } .legend .hd small { color: var(--muted); font-size: 13px; font-weight: 600; }
+.legend[hidden], .lane[hidden], .dest[hidden] { display: none; }
+.note { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; font-size: 15px; font-weight: 800; padding: 9px 14px; border-radius: 999px; background: var(--accent); color: #fff; white-space: nowrap; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.dest { position: absolute; right: 0; top: 0; bottom: 0; width: 15%; min-width: 92px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; z-index: 2; text-align: center; font-size: 13px; font-weight: 750; background: var(--surface); border-left: 1px solid var(--border); padding: 0 6px; line-height: 1.2; }
+.dest b { display: block; } .dest small { display: block; font-size: 11.5px; font-weight: 800; color: var(--ok); opacity: 0; } .dest small.in { color: var(--accent); }
+.gate { position: absolute; left: 58%; top: 0; bottom: 0; width: 8px; opacity: 0; }
+.gate i { position: absolute; inset: 0; border-radius: 4px; background: var(--bad); }
+.gate.held i { background: var(--wait); }
+.gate span { position: absolute; left: 14px; top: 6px; white-space: nowrap; font-size: 12.5px; font-weight: 800; color: var(--bad); background: var(--surface); border-radius: 8px; padding: 3px 8px; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.gate.held span { color: var(--wait); }
+.gate.early { left: 30%; }
+.gatecap { display: none; margin-top: 6px; font-size: 12.5px; font-weight: 800; color: var(--bad); opacity: 0; } .gatecap.held { color: var(--wait); }
+.tok { position: absolute; top: 50%; left: 0; transform: translateY(-50%); opacity: 0; font-size: 15px; font-weight: 800; padding: 9px 14px; border-radius: 999px; background: var(--ok); color: #fff; white-space: nowrap; font-variant-numeric: tabular-nums; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.tok.in { background: var(--accent); }
+.tok.declined, .tok.refused, .tok.blocked { background: var(--bad); }
+.tok.held { background: var(--wait); }
+.tok.r2 { top: 30%; } .tok.r3 { top: 70%; }
+.phone { border: 2px solid var(--border); border-radius: 28px; padding: 14px 12px; background: var(--sunken); display: flex; flex-direction: column; gap: 10px; justify-content: center; position: relative; min-height: 230px; }
+.phone::before { content: ""; position: absolute; top: 9px; left: 50%; width: 46px; height: 6px; margin-left: -23px; border-radius: 3px; background: var(--border); }
+.phone .who-cfo { font-size: 12.5px; color: var(--muted); font-weight: 700; text-align: center; }
+.phone .idle { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.4; }
+.phone .ask { opacity: 0; background: var(--surface); border-radius: 14px; padding: 10px; font-size: 13px; line-height: 1.35; font-weight: 650; border: 1px solid var(--border); }
+.phone .ask b { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; background: var(--ok); color: #fff; border-radius: 999px; padding: 6px 8px; font-size: 13px; }
+.phone.on { border-color: var(--accent); }
+.phone .ask b.nofid { background: var(--sunken); color: var(--muted); border: 1px solid var(--border); }
+/* The scene's words, its big number and its proof. */
+.story { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 22px; margin-top: 18px; align-items: start; }
+.story h1 { font-size: 38px; line-height: 1.1; letter-spacing: -.025em; margin: 0 0 8px; }
+.story .line { font-size: 19px; line-height: 1.45; color: var(--muted); margin: 0; }
+.big { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 18px; }
+.big .v { font-size: 44px; font-weight: 850; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.big .l { color: var(--muted); font-size: 14.5px; margin-top: 6px; line-height: 1.4; }
+.pf { display: inline-flex; gap: 6px; align-items: center; margin: 8px 6px 0 0; font: 600 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--sunken); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; color: var(--muted); text-decoration: none; overflow-wrap: anywhere; }
+.pf em { font: 700 12px Inter, system-ui, sans-serif; font-style: normal; color: var(--text); }
+a.pf { color: var(--accent); }
+.models { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.model { font-size: 13px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin-top: 14px; }
+.fact { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; overflow-wrap: anywhere; }
+.fact .k { font-size: 12px; color: var(--muted); } .fact .v { font-size: 14px; font-weight: 650; margin-top: 2px; }
+.fact a { color: var(--accent); text-decoration: none; }
+.src { font-size: 12.5px; color: var(--muted); margin-top: 12px; }
+.logos { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+.logos span { font-size: 13px; color: var(--muted); }
+.logos img { height: 24px; width: auto; display: block; }
+.logos .lg.dark { background: #191919; border-color: #191919; }
+.bar { max-width: 1320px; margin: 0 auto; padding: 18px 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ticks { flex: 1; display: flex; gap: 4px; min-width: 200px; }
+.tick { flex: 1; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; cursor: pointer; border: 0; padding: 0; }
+.tick i { display: block; height: 100%; width: 0; background: var(--accent); }
+.tick.awx i { background: var(--awx); } .tick.mtl i { background: var(--mtl); }
+button.ctl, select.ctl { font: inherit; font-size: 14px; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; cursor: pointer; min-height: 40px; }
+.honest { max-width: 1320px; margin: 0 auto; padding: 0 28px 28px; font-size: 12.5px; color: var(--muted); }
+.list { max-width: 900px; margin: 0 auto; padding: 28px; }
+.list section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin-bottom: 12px; }
+.list h2 { margin: 0 0 6px; font-size: 20px; }
+@keyframes up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade { animation: up .5s ease both; }
+@media (max-width: 900px) {
+  .rig { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 12px; }
+  /* The agents wrap rather than scroll out of view (design review: "Tr…" was cut off at 390 px). */
+  .cast { flex-direction: row; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
+  .who { padding: 7px 10px; font-size: 12.5px; white-space: nowrap; }
+  .who b { width: 20px; height: 20px; font-size: 10px; }
+  .phone { min-height: 0; border-radius: 16px; padding: 10px 12px; flex-direction: row; align-items: center; flex-wrap: wrap; }
+  .phone::before { display: none; }
+  .phone .ask { flex: 1; min-width: 200px; }
+  .story { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .top { padding: 12px 16px; } .top nav { margin-left: 0; width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 14px; mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } .top nav a { white-space: nowrap; }
+  .wrap { padding: 14px 16px 0; } .bar, .honest { padding-left: 16px; padding-right: 16px; }
+  .track { height: 96px; } .tok { font-size: 13px; padding: 6px 10px; top: 34%; } .tok.r2 { top: 20%; } .tok.r3 { top: 48%; }
+  .note { font-size: 13px; padding: 6px 10px; }
+  .dest { top: auto; height: 30px; width: 100%; min-width: 0; left: 0; flex-direction: row; flex-wrap: wrap; gap: 2px 10px; border-left: 0; border-top: 1px solid var(--border); font-size: 11.5px; }
+  .gate { bottom: 30px; } .gate span { display: none; } .gatecap { display: block; }
+  .story h1 { font-size: 26px; } .story .line { font-size: 16px; } .big .v { font-size: 34px; }
+}
+/* Presentation mode (?present): no controls or links on screen, a little larger. */
+html.present .bar button, html.present .bar select, html.present .top nav { display: none; }
+@media (min-width: 1100px) { html.present .story h1 { font-size: 46px; } html.present .big .v { font-size: 56px; } html.present .story .line { font-size: 22px; } html.present .track { height: 86px; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<script type="application/json" id="live-data">__LIVE_JSON__</script>
+<header class="top"><a class="brand" href="/"><i></i>Purser live</a><span class="chip" id="company"></span><span class="chip">Recorded runs · test money</span><span class="count" id="count"></span>
+  <nav aria-label="Pages"><a href="./">Overview</a><a href="try">Try it</a><a href="metal">Metal</a><a href="live" aria-current="page">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
+<main id="main"></main>
+<script>
+(function () {
+  var T = JSON.parse(document.getElementById("live-data").textContent);
+  var scenes = T.scenes, main = document.getElementById("main");
+  var q = new URLSearchParams(location.search);
+  if (q.has("present")) document.documentElement.classList.add("present");
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("company").textContent = T.company;
+  function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k != null) n.appendChild(typeof k === "string" ? document.createTextNode(k) : k); }); return n; }
+  function txt(tag, cls, s) { return el(tag, cls, [String(s)]); }
+  function proofChip(p) {
+    var kids = [txt("em", "", p.label), p.value];
+    var a = el(p.href ? "a" : "span", "pf", kids);
+    if (p.href) { a.href = p.href; a.target = "_blank"; a.rel = "noopener"; }
+    return a;
+  }
+  function logo(src, alt, cls) { var im = document.createElement("img"); im.src = src; im.alt = alt; im.height = 18; return el("span", "lg" + (cls ? " " + cls : ""), [im]); }
+
+  // Reduced motion: every scene as a still list, nothing moves.
+  if (reduce || q.get("still") === "1") {
+    main.appendChild(el("div", "list", scenes.map(function (s) {
+      return el("section", "", [txt("h2", "", s.title), txt("p", "", s.line),
+        s.big ? el("div", "big", [txt("div", "v", s.big.value), txt("div", "l", s.big.label)]) : null,
+        el("div", "", s.proofs.map(proofChip)),
+        s.models.length ? el("div", "models", s.models.map(function (m) { return txt("span", "model", m.model + ": " + m.did); })) : null,
+        el("div", "facts", s.facts.map(function (x) { return el("div", "fact", [txt("div", "k", x.label), txt("div", "v", x.value)]); })),
+        txt("p", "src", "Source: " + s.source)]);
+    })));
+    footer();
+    return;
+  }
+
+  // The rig, drawn once; each scene sets who acts, which lane is on, what moves and what the phone shows.
+  // The stranger in plain words (src/live/timeline.ts, STRANGER): an address that is not a customer.
+  var ACTORS = [["Sourcing agent", "So"], ["Support agent", "Su"], ["Treasury agent", "Tr"], ["Summit's agent", "Sm"], ["An unknown address (not a customer)", "?"]];
+  var ACTOR_OF = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent", customer: "Summit's agent", stranger: "An unknown address (not a customer)" };
+  var cast = el("aside", "cast", ACTORS.map(function (a) { var n = el("div", "who", [txt("b", "", a[1]), a[0]]); n.dataset.name = a[0]; return n; }));
+  function lane(cls, src, alt, w, caption) {
+    var im = document.createElement("img"); im.src = src; im.alt = alt; im.width = w; im.height = 18;
+    var track = el("div", "track", [txt("div", "dest", "")]);
+    var l = el("div", "lane " + cls, [el("div", "hd", [el("span", "lg", [im]), txt("small", "", caption)]), track]);
+    return { root: l, track: track, dest: track.firstChild };
+  }
+  var L = {
+    airwallex: lane("awx", "assets/logo-airwallex.png", "Airwallex", 131, "Company cards, FX and SWIFT payouts"),
+    metal: lane("mtl", "assets/logo-metal.svg", "Metal", 57, "Mandates, pay per request, receive policy: on chain"),
+  };
+  // A scene where nothing happens on either rail names the two rails, without empty boxes.
+  function railName(src, alt, w, caption) { var im = document.createElement("img"); im.src = src; im.alt = alt; im.width = w; im.height = 18; return el("div", "hd", [el("span", "lg", [im]), txt("small", "", caption)]); }
+  var legend = el("div", "legend", [railName("assets/logo-airwallex.png", "Airwallex", 131, "Company cards, FX and SWIFT payouts"), railName("assets/logo-metal.svg", "Metal", 57, "Mandates, pay per request, receive policy: on chain")]);
+  var phoneAsk = el("div", "ask", ["", el("b", "", ["Face ID ✓"])]);
+  var phone = el("div", "phone", [txt("div", "who-cfo", "CFO's phone"), txt("div", "idle", "Nothing to approve: the agents stay inside their limits."), phoneAsk]);
+  var rig = el("section", "rig", [cast, el("div", "lanes", [L.airwallex.root, L.metal.root, legend]), phone]);
+  rig.setAttribute("aria-label", "Agents, the Airwallex and Metal rails, and the CFO's phone");
+  var story = el("section", "story", []);
+  story.setAttribute("aria-live", "polite");
+  main.appendChild(el("div", "wrap", [rig, story]));
+  var ticks = scenes.map(function (s, i) { var b = el("button", "tick" + (s.rail === "airwallex" ? " awx" : s.rail === "metal" ? " mtl" : ""), [el("i", "", [])]); b.type = "button"; b.setAttribute("aria-label", "Go to " + s.title); b.addEventListener("click", function () { go(i); }); return b; });
+  var play = txt("button", "ctl", "Pause"); play.type = "button";
+  var speed = txt("button", "ctl", "1×"); speed.type = "button";
+  var pick = el("select", "ctl", scenes.map(function (s, i) { var o = txt("option", "", (i + 1) + ". " + s.title); o.value = String(i); return o; }));
+  pick.setAttribute("aria-label", "Skip to a scene");
+  main.appendChild(el("div", "bar", [play, speed, el("div", "ticks", ticks), pick]));
+  footer();
+
+  var STOP = { declined: 1, refused: 1, held: 1, blocked: 1 };
+  function moveOn(m, k, s) {
+    var lane = L[m.lane], row = " r" + (k % 3 + 1);
+    var tok = txt("div", "tok " + m.outcome + (s.moves.length > 2 ? row : ""), m.amount);
+    lane.track.appendChild(tok);
+    var t0 = m.at * 1000, early = m.outcome === "blocked";
+    // A stopped payment hits the gate (at 58% of the lane, or 30% for Purser's own block) and bounces back.
+    var gateAt = early ? 30 : 58, stopAt = "calc(" + gateAt + "% - 84px)", back = "calc(" + gateAt + "% - 118px)", rest = "calc(" + gateAt + "% - 108px)";
+    var frames = m.outcome === "in"
+      ? [{ left: "84%", opacity: 0 }, { left: "78%", opacity: 1, offset: 0.1 }, { left: "2%", opacity: 1, offset: 0.9 }, { left: "0%", opacity: 0 }]
+      : STOP[m.outcome]
+        ? [{ left: "0%", opacity: 0 }, { left: "2%", opacity: 1, offset: 0.08 }, { left: stopAt, opacity: 1, offset: 0.55 }, { left: back, opacity: 1, offset: 0.75 }, { left: rest, opacity: 1 }]
+        : [{ left: "0%", opacity: 0 }, { left: "2%", opacity: 1, offset: 0.08 }, { left: "74%", opacity: 1, offset: 0.9 }, { left: "80%", opacity: 0 }];
+    tok.animate(frames, { duration: STOP[m.outcome] ? 1900 : 1600, delay: t0, fill: "both", easing: "cubic-bezier(.3,.7,.3,1)" });
+    if (m.gate) {
+      var g = el("div", "gate" + (m.outcome === "held" ? " held" : "") + (early ? " early" : ""), [el("i"), txt("span", "", m.gate)]);
+      lane.track.appendChild(g);
+      g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: t0 + 950, fill: "both" });
+      // On a phone the words go under the lane.
+      var cap = txt("div", "gatecap" + (m.outcome === "held" ? " held" : ""), "✕ " + m.gate);
+      lane.root.appendChild(cap);
+      cap.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: t0 + 950, fill: "both" });
+    }
+  }
+  var i = Math.max(0, scenes.findIndex(function (s) { return s.id === q.get("scene"); }));
+  var rate = 1, paused = q.get("autoplay") === "0", timer = null, started = 0, left = 0;
+  function render() {
+    var s = scenes[i];
+    document.getElementById("count").textContent = "Scene " + (i + 1) + " of " + scenes.length;
+    var acting = {};
+    if (ACTOR_OF[s.actor]) acting[ACTOR_OF[s.actor]] = 1;
+    s.moves.forEach(function (m) { acting[m.from] = 1; });
+    Array.prototype.forEach.call(cast.children, function (n) { n.classList.toggle("on", !!acting[n.dataset.name] || s.kind === "title"); });
+    ticks.forEach(function (t, k) { var bar = t.firstChild; bar.style.transition = "none"; bar.style.width = k < i ? "100%" : "0"; });
+    pick.value = String(i);
+    // The lanes: a rail is drawn only in a scene where something happens on it (money moves, or a note such as a
+    // mandate replaced on chain); no empty boxes. Each lane's end names who is paid.
+    var notes = s.notes || [];
+    ["airwallex", "metal"].forEach(function (name) {
+      var mine = s.moves.filter(function (m) { return m.lane === name; });
+      var said = notes.filter(function (n) { return n.lane === name; });
+      L[name].root.hidden = !mine.length && !said.length;
+      L[name].dest.hidden = !mine.length;
+      Array.prototype.slice.call(L[name].root.querySelectorAll(".tok, .gate, .gatecap, .note")).forEach(function (n) { n.remove(); });
+      said.forEach(function (n) {
+        var t = txt("div", "note", n.text);
+        L[name].track.appendChild(t);
+        t.animate([{ opacity: 0, transform: "translate(-50%, -50%) scale(.92)" }, { opacity: 1, transform: "translate(-50%, -50%)" }], { duration: 450, delay: n.at * 1000, fill: "both" });
+      });
+      // The far end names the other party; what arrived there (or came from there) is tallied as it lands.
+      var others = mine.map(function (m) { return m.outcome === "in" ? m.from : m.to; }).filter(function (v, k, a) { return a.indexOf(v) === k; });
+      L[name].dest.replaceChildren(txt("b", "", others.length ? others.join(" · ") : (name === "airwallex" ? "Merchants, banks" : "Suppliers, customers")));
+      var tally = {};
+      mine.forEach(function (m) {
+        if (m.outcome !== "ok" && m.outcome !== "in") return;
+        var key = m.outcome + " " + m.amount;
+        if (!tally[key]) { tally[key] = { n: 0, m: m }; }
+        tally[key].n++;
+      });
+      Object.keys(tally).forEach(function (key) {
+        var t = tally[key], line = txt("small", t.m.outcome === "in" ? "in" : "", (t.n > 1 ? t.n + " × " : "") + t.m.amount + (t.m.outcome === "in" ? " in ✓" : " paid ✓"));
+        L[name].dest.appendChild(line);
+        line.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: t.m.at * 1000 + 1400, fill: "both" });
+      });
+    });
+    legend.hidden = s.moves.length > 0 || notes.length > 0;
+    s.moves.forEach(function (m, k) { moveOn(m, k, s); });
+    phone.classList.toggle("on", !!s.phone || s.actor === "cfo");
+    phoneAsk.firstChild.textContent = s.phone ? s.phone.text : "";
+    phoneAsk.lastChild.textContent = s.phone && !s.phone.faceId ? "No Face ID needed (within policy)" : "Face ID ✓";
+    phoneAsk.lastChild.classList.toggle("nofid", !!s.phone && !s.phone.faceId);
+    phone.children[1].hidden = !!s.phone;
+    phoneAsk.hidden = !s.phone;
+    if (s.phone) phoneAsk.animate([{ opacity: 0, transform: "scale(.9)" }, { opacity: 1, transform: "none" }], { duration: 450, delay: s.phone.at * 1000, fill: "both" });
+    // The words, the big number, the proof and the Claude chips.
+    var words = [txt("h1", "fade", s.title), txt("p", "line fade", s.line)];
+    if (s.models.length) words.push(el("div", "models", s.models.map(function (m) { return txt("span", "model", "Claude " + m.model + ": " + m.did); })));
+    words.push(el("div", "facts", s.facts.map(function (x) {
+      var v = x.href ? el("a", "", [x.value]) : document.createTextNode(x.value);
+      if (x.href) { v.href = x.href; v.target = "_blank"; v.rel = "noopener"; }
+      return el("div", "fact", [txt("div", "k", x.label), el("div", "v", [v])]);
+    })));
+    var side = [];
+    if (s.big) side.push(el("div", "big fade", [txt("div", "v", s.big.value), txt("div", "l", s.big.label), el("div", "", s.proofs.map(proofChip))]));
+    // "Powered by" and "Agents built on Claude" only for a run in which the agents really decided; the 30 October
+    // recording predates the autonomous agents, so there Claude read the documents (T.claude, src/live/timeline.ts).
+    if (s.kind === "end") side.push(T.claude === "decided"
+      ? el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), txt("span", "", "Powered by"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "Agents built on Claude (Anthropic API)")])
+      : el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "Claude read the documents")]),
+      txt("p", "src", T.claude === "decided" ? "\"Built on\" and \"Powered by\" name the services Purser uses. They are not an endorsement." : "\"Built on\" names the services Purser uses; the Claude logo names the model that read the documents. Neither is an endorsement."));
+    side.push(txt("p", "src", "Source: " + s.source));
+    story.replaceChildren(el("div", "", words), el("div", "", side));
+    applyRate();
+    // A scene opened while paused shows its finished picture, not the empty first frame.
+    if (paused) (document.getAnimations ? document.getAnimations() : []).forEach(function (a) { if (isFinite(a.effect.getTiming().iterations)) a.finish(); });
+    left = s.seconds * 1000;
+    schedule();
+  }
+  function applyRate() { (document.getAnimations ? document.getAnimations() : []).forEach(function (a) { a.playbackRate = rate; if (paused) a.pause(); else a.play(); }); }
+  function schedule() {
+    clearTimeout(timer);
+    var bar = ticks[i].firstChild;
+    if (paused) { var done = 1 - left / (scenes[i].seconds * 1000); bar.style.transition = "none"; bar.style.width = (done * 100) + "%"; return; }
+    started = Date.now();
+    bar.style.transition = "none"; bar.style.width = ((1 - left / (scenes[i].seconds * 1000)) * 100) + "%";
+    requestAnimationFrame(function () { bar.style.transition = "width " + (left / rate) + "ms linear"; bar.style.width = "100%"; });
+    // ?hold: the scene plays and stays (for a recording that lingers on it); otherwise the next one follows.
+    if (q.has("hold")) return;
+    timer = setTimeout(function () { if (i < scenes.length - 1) go(i + 1); else { paused = true; play.textContent = "Replay"; } }, left / rate);
+  }
+  function go(k) { i = k; render(); }
+  play.addEventListener("click", function () {
+    if (play.textContent === "Replay") { paused = false; play.textContent = "Pause"; go(0); return; }
+    if (paused) { paused = false; play.textContent = "Pause"; applyRate(); schedule(); }
+    else { left -= (Date.now() - started) * rate; paused = true; play.textContent = "Play"; clearTimeout(timer); applyRate(); schedule(); }
+  });
+  speed.addEventListener("click", function () { if (!paused) left -= (Date.now() - started) * rate; rate = rate === 1 ? 2 : 1; speed.textContent = rate + "×"; applyRate(); schedule(); });
+  pick.addEventListener("change", function () { go(Number(pick.value)); });
+  if (paused) play.textContent = "Play";
+  render();
+
+  function footer() {
+    document.body.appendChild(txt("p", "honest", "Recorded runs with test money: Airwallex sandbox and Metal testnet. Card charges, the airline and the customer are sandbox simulations; every number is from a recorded run (" + T.run + "), and each scene names its source."));
+  }
+})();
+</script>
+</body>
+</html>

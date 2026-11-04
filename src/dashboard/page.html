@@ -1,0 +1,1929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<title>Purser · Company cards for AI agents</title>
+<style>
+@font-face { font-family: "Inter"; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root {
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  /* One accent; green, amber and red only for status. */
+  --bg: #f6f7f9; --surface: #ffffff; --sunken: #f1f3f6; --text: #0b1220; --muted: #4b5563; --faint: #6b7280;
+  --border: #e5e8ec; --accent: #4f46e5; --accent-ink: #ffffff; --accent-soft: #eef0ff;
+  --ok: #0f8a4f; --ok-soft: #e7f6ee; --wait: #b45309; --wait-soft: #fdf1e3; --bad: #c8261b; --bad-soft: #fdecea; --bad-ink: #ffffff;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, .06); --shadow: 0 1px 3px rgba(16, 24, 40, .08), 0 8px 24px rgba(16, 24, 40, .06);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0c11; --surface: #12151c; --sunken: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+  --border: #222734; --accent: #8b87ff; --accent-ink: #0a0c11; --accent-soft: #1b1d3a;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --wait: #f2a34a; --wait-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312; --bad-ink: #0a0c11;
+  --shadow-sm: none; --shadow: 0 0 0 1px #1b2030; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0a0c11; --surface: #12151c; --sunken: #0e1117; --text: #e9ebf1; --muted: #b0b7c3; --faint: #9ca3af;
+  --border: #222734; --accent: #8b87ff; --accent-ink: #0a0c11; --accent-soft: #1b1d3a;
+  --ok: #3ccf7e; --ok-soft: #0f2419; --wait: #f2a34a; --wait-soft: #2a1e0e; --bad: #ff6b5f; --bad-soft: #2c1312; --bad-ink: #0a0c11;
+  --shadow-sm: none; --shadow: 0 0 0 1px #1b2030; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 400 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+button { font: inherit; }
+
+/* Top bar and navigation, shared by every screen. */
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 28px; height: 64px; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: -.01em; text-decoration: none; white-space: nowrap; }
+.brand .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.brand .mark svg { width: 16px; height: 16px; }
+.hero .why + .ctas { margin-top: 22px; }
+.kitline { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--muted); max-width: 640px; }
+.tour h2 { margin: 0 0 18px; }
+.tsteps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.tsteps li { display: flex; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.tsteps .tn { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: var(--accent); color: var(--accent-ink); }
+.tsteps h3 { margin: 2px 0 6px; font-size: 15px; } .tsteps p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.tsteps a { font-size: 13.5px; font-weight: 600; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 1100px) { .tsteps { grid-template-columns: 1fr; } }
+.dtabs { display: flex; gap: 4px; padding: 8px 24px; border-bottom: 1px solid var(--border); background: var(--bg); overflow-x: auto; }
+.dtabs a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: 14px; padding: 7px 12px; border-radius: 8px; white-space: nowrap; }
+.dtabs a.on { color: var(--text); background: var(--sunken); }
+@media (max-width: 560px) { .dtabs { padding: 6px 12px; } .dtabs a { font-size: 13px; padding: 6px 9px; } }
+.nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; }
+.nav a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: 14px; padding: 8px 12px; border-radius: 8px; white-space: nowrap; }
+.nav a.on { color: var(--text); background: var(--sunken); }
+.top .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.live.on .dot { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+.live.rec .dot { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 14px/1 var(--font); padding: 12px 16px; min-height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.stop { border-color: var(--bad); color: var(--bad); background: transparent; min-height: 40px; padding: 9px 14px; font-size: 13px; }
+/* In a recording the stop shows where it is but is not armed: gray, not red (design review). */
+.btn.stop:disabled { border-color: var(--border); color: var(--faint); cursor: not-allowed; }
+.recbanner details { margin-left: auto; font-size: 13px; color: var(--muted); }
+.recbanner details summary { cursor: pointer; }
+.btn.sm { min-height: 36px; padding: 8px 12px; font-size: 13px; }
+.note { max-width: 1200px; margin: 0 auto; padding: 10px 32px 0; font-size: 12.5px; color: var(--faint); }
+.note summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 28px; }
+.note summary::-webkit-details-marker { display: none; }
+.note summary svg { width: 14px; height: 14px; }
+.note p { margin: 4px 0 0; max-width: 90ch; }
+
+/* Status pills. */
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--sunken); color: var(--muted); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.wait { background: var(--wait-soft); color: var(--wait); } .pill.bad { background: var(--bad-soft); color: var(--bad); } .pill.acc { background: var(--accent-soft); color: var(--accent); }
+
+/* The emergency stop band. */
+.frozen { background: var(--bad); color: var(--bad-ink); padding: 12px 32px; display: flex; gap: 12px; align-items: center; font-weight: 600; flex-wrap: wrap; }
+.frozen small { font-weight: 400; opacity: .9; }
+.frozen.offline { background: var(--wait-soft); color: var(--text); font-weight: 500; }
+.frozen.offline a { color: var(--accent); font-weight: 600; margin-left: auto; }
+
+/* Dashboard. */
+.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 32px 48px; }
+.head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.head h1 { margin: 0; font-size: 28px; letter-spacing: -.02em; font-weight: 700; }
+.head .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.recbanner { display: flex; gap: 10px; align-items: center; background: var(--accent-soft); color: var(--text); border-radius: 12px; padding: 12px 16px; font-size: 14px; margin-bottom: 24px; }
+.recbanner svg { color: var(--accent); }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 32px; }
+.kpi .of { font-size: 14px; color: var(--muted); margin-top: 2px; min-height: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .bar { margin-top: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+.kpi .lab { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; min-width: 0; }
+.kpi .lab > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.kpi .lab .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; }
+.kpi .lab .ic svg { width: 16px; height: 16px; }
+.kpi.ok .ic { background: var(--ok-soft); color: var(--ok); } .kpi.wait .ic { background: var(--wait-soft); color: var(--wait); } .kpi.bad .ic { background: var(--bad-soft); color: var(--bad); }
+.kpi .v { font-size: 34px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; padding-top: 14px; white-space: nowrap; }
+.kpi .note2 { color: var(--faint); font-size: 13px; margin-top: auto; padding-top: 10px; }
+.kpi .short { display: none; }
+.sect { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
+.sect h2 { font-size: 18px; letter-spacing: -.01em; margin: 0; font-weight: 650; display: flex; align-items: center; gap: 10px; }
+.sect h2 .rail { font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
+.sect .hint { color: var(--faint); font-size: 13px; }
+.sect .more { margin-left: auto; font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600; min-height: 32px; display: inline-flex; align-items: center; }
+.sect.flush { margin: 0 0 12px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin-bottom: 40px; }
+.tablewrap { overflow-x: auto; margin-bottom: 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); }
+table.agents { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.agents th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.agents td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; white-space: nowrap; }
+table.agents tr:last-child td { border-bottom: 0; }
+table.agents td .sub { display: block; color: var(--faint); font-size: 12.5px; }
+.cc.frozen-card { filter: grayscale(1); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-bottom: 40px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; margin-bottom: 24px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); padding: 18px 20px 20px; min-width: 0; overflow-wrap: anywhere; }
+.empty { color: var(--muted); font-size: 14px; display: flex; gap: 10px; align-items: center; padding: 8px 0; }
+.empty svg { color: var(--ok); }
+
+/* A company card, drawn as a card. */
+.cc { position: relative; aspect-ratio: 1.586; border-radius: 16px; padding: 18px 20px; color: #fff; overflow: hidden; display: flex; flex-direction: column;
+  background: radial-gradient(120% 140% at 100% 0%, rgba(139,135,255,.38), transparent 55%), linear-gradient(135deg, #14161d 0%, #232633 70%, #2c3040 100%);
+  box-shadow: 0 10px 30px rgba(17, 19, 24, .22), inset 0 0 0 1px rgba(255,255,255,.06); }
+.cc .row1 { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; opacity: .85; font-weight: 500; }
+.cc .row1 .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc .who { margin-top: auto; font-weight: 650; font-size: 16px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cc .buys { font-size: 13px; opacity: .8; margin-top: 2px; }
+.cc .row2 { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; }
+.cc .pan { font: 500 15px/1 var(--mono); letter-spacing: .12em; opacity: .92; }
+.cc .brandmark { font-weight: 500; font-size: 12px; opacity: .8; }
+.cc.frozen-card::after { content: "Frozen at Airwallex"; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10,12,17,.6); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 13px; }
+.limit { margin-top: 16px; }
+.bar { height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); width: 0; transition: width .8s ease; }
+.bar i.hi { background: var(--wait); }
+.limit .txt { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.limit .txt b { color: var(--text); font-weight: 600; }
+.only { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.only svg.i { width: 14px; height: 14px; }
+.txs { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.txs li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.txs li svg { width: 15px; height: 15px; color: var(--ok); }
+.txs li.no svg { color: var(--bad); }
+.txs li .m { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.txs li .a { margin-left: auto; color: var(--text); font-weight: 600; white-space: nowrap; }
+.txs li.no .a { color: var(--bad); }
+
+/* An on-chain mandate, drawn with the same weight as a card. */
+.mt { position: relative; border-radius: 16px; padding: 18px 20px; color: #fff; overflow: hidden; display: flex; flex-direction: column; min-height: 170px;
+  background: radial-gradient(120% 140% at 0% 0%, rgba(60,207,126,.22), transparent 55%), linear-gradient(135deg, #0f1712 0%, #17231c 65%, #1d2c24 100%);
+  box-shadow: 0 10px 30px rgba(15, 23, 18, .22), inset 0 0 0 1px rgba(255,255,255,.06); }
+.mt .row1 { display: flex; justify-content: space-between; align-items: center; font-size: 12px; opacity: .85; font-weight: 500; }
+.mt .row1 span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.mt .row1 svg { width: 14px; height: 14px; }
+.mt .who { margin-top: auto; font-weight: 650; font-size: 16px; }
+.mt .cap { font-size: 13px; opacity: .85; margin-top: 2px; }
+.mt .row2 { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; font-size: 12px; opacity: .85; }
+.facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; font-size: 13px; }
+.facts li { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
+.facts li b { color: var(--text); font-weight: 600; text-align: right; }
+.fine { margin: 10px 0 0; font-size: 12.5px; color: var(--faint); line-height: 1.45; }
+
+/* Waiting for the CFO. */
+.ask { border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-top: 12px; }
+.ask .what { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.ask .title { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin: 8px 0 4px; }
+.ask .summary { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
+.ask .review { font-size: 13.5px; background: var(--sunken); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; }
+.ask .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ask .exp { margin-left: auto; font-size: 13px; color: var(--wait); font-weight: 600; white-space: nowrap; }
+.ask.advise-reject { border-color: var(--bad); }
+.closed { margin-top: 16px; }
+.closed h3 { font-size: 13px; color: var(--faint); font-weight: 600; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .05em; }
+.closed .d { display: flex; gap: 10px; align-items: center; font-size: 13.5px; padding: 6px 0; border-top: 1px solid var(--border); }
+.closed .d .by { color: var(--faint); }
+.closed .d .pill { margin-left: auto; }
+
+/* Activity. */
+.feed { list-style: none; margin: 4px 0 0; padding: 0; max-height: 640px; overflow: auto; }
+.feed li { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 4px; border-top: 1px solid var(--border); }
+.feed li:first-child { border-top: 0; }
+.feed .ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--sunken); color: var(--muted); }
+.feed .ic svg { width: 17px; height: 17px; }
+.feed .kind { font-size: 12px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; }
+.feed .t { font-size: 14.5px; overflow-wrap: anywhere; }
+.feed .who { color: var(--faint); font-size: 12.5px; margin-top: 2px; }
+.feed .proof { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.money .k.sub { font-size: 12px; margin-top: 4px; }
+.txlink { display: inline-block; margin-top: 10px; font-size: 12.5px; color: var(--accent); text-decoration: none; }
+.txlink:hover { text-decoration: underline; }
+.txl { font: 500 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); text-decoration: none; }
+.feed .proof a { color: var(--accent); text-decoration: none; }
+.feed .proof .mono { font-size: 12px; }
+.feed .r { font-size: 12.5px; color: var(--faint); white-space: nowrap; padding-top: 2px; }
+.feed li.bad { box-shadow: inset 3px 0 0 var(--bad); padding-left: 12px; } .feed li.bad .ic { color: var(--bad); background: var(--bad-soft); }
+.feed li.ok .ic { color: var(--ok); background: var(--ok-soft); }
+.feed li.wait .ic { color: var(--wait); background: var(--wait-soft); }
+.feed li.bank .ic { color: var(--accent); background: var(--accent-soft); }
+.feed li.fresh { animation: arrive .5s ease; }
+.feed li.bad.fresh { animation: shake .45s 1; }
+@keyframes arrive { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+details.tech { margin-top: 4px; font-size: 12.5px; color: var(--faint); }
+details.tech summary { cursor: pointer; color: var(--muted); min-height: 28px; display: inline-flex; align-items: center; }
+details.tech .refs { display: flex; gap: 12px; flex-wrap: wrap; }
+details.tech a { color: var(--accent); text-decoration: none; }
+
+/* Treasury and refusals. */
+.money { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.money .m { background: var(--sunken); border-radius: 12px; padding: 14px; }
+.money .m .k { font-size: 13px; color: var(--muted); }
+.money .m .v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; }
+/* Claude's official logo has white letters: it sits on a dark ground in both themes, colours unchanged. */
+.claudelogo { display: inline-flex; align-items: center; background: #191919; border-radius: 999px; padding: 7px 14px; }
+.claudelogo img { height: 16px; width: auto; display: block; }
+.panel.claude, .panel.ask { margin-top: 20px; }
+/* Design 4.3: the Dispute desk as an evidence board, the counts before the rows. */
+.evboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 12px 0 16px; }
+.evboard .ev { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); min-width: 0; }
+.evboard .ev .k { font-size: 12.5px; color: var(--muted); }
+.evboard .ev .v { font-size: 20px; font-weight: 700; margin-top: 2px; }
+.evboard .ev.decision { border-color: var(--accent); background: var(--accent-soft); }
+@media (max-width: 900px) { .evboard { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Design 4.1: the control tower. Money in | the agents | money out, the P&L below; every figure links to its proof. */
+.tower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "agents agents" "in out" "pnl pnl"; gap: 14px; margin: 8px 0 20px; }
+.tower > .tcol.tin { grid-area: in; } .tower > .tcol.tag { grid-area: agents; } .tower > .tcol.tout { grid-area: out; } .tower > .tpnl { grid-area: pnl; }
+[id] { scroll-margin-top: 72px; }
+.tower h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+.tcol { min-width: 0; }
+.tflow { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; box-shadow: var(--shadow-sm); }
+.tflow .k { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.tflow .v { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.tflow .v small { font-size: 12px; font-weight: 500; color: var(--faint); margin-left: 4px; }
+.tflow .n { font-size: 12px; color: var(--faint); }
+.tflow a, .tagent a, .tenf a { font-size: 12px; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+.tflow a:hover, .tagent a:hover, .tenf a:hover { text-decoration: underline; }
+.tagents-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tagent { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; box-shadow: var(--shadow-sm); min-width: 0; }
+.tagent .nm { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-weight: 700; }
+.tagent .st { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--ok-soft); color: var(--ok); }
+.tagent .st.paused, .tagent .st.stopped { background: var(--bad-soft); color: var(--bad); }
+.meter { margin-top: 10px; }
+.meter .ml { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); gap: 6px; white-space: nowrap; }
+.meter .ml span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.meter .bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--text) 14%, transparent); overflow: hidden; margin-top: 4px; }
+.meter .bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.meter.warn .bar i { background: var(--wait); }
+.tagent .last { margin-top: 10px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 8px; }
+.tagent .last b { color: var(--text); font-weight: 600; }
+.tagent .last { display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+.tflow .mono, .tenf .mono { font-size: 12px; color: var(--faint); }
+.tpnl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tpnl .pl { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; font-size: 13.5px; }
+.tpnl .pl b { font-size: 16px; }
+.encols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.tenf { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.tenf .who { font-weight: 700; display: flex; justify-content: space-between; }
+.tenf .when { font-size: 12px; color: var(--faint); }
+.tenf .reason { font-size: 13.5px; color: var(--text); margin-top: 4px; overflow-wrap: break-word; }
+.tenf .code { font: 11px var(--mono); color: var(--faint); overflow-wrap: anywhere; margin-top: 2px; }
+@media (max-width: 900px) { .tower { grid-template-columns: minmax(0, 1fr); grid-template-areas: "agents" "in" "out" "pnl"; } .tagents-grid, .encols, .tpnl { grid-template-columns: minmax(0, 1fr); } }
+.agentchat { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
+.agentchat li { border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; font-size: 14px; overflow-wrap: anywhere; }
+.agentchat li.world { background: var(--sunken); }
+.agentchat .who { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); margin-bottom: 2px; }
+.agentchat .by { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--border); }
+.agentchat .by.claude { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.chat { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.chat li { max-width: 80%; padding: 10px 14px; border-radius: 14px; background: var(--sunken); font-size: 14.5px; }
+.chat li.you { align-self: flex-end; background: var(--accent-soft); }
+.chat li .who { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.panel.claude .money { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* The finance view: the Books tab. */
+.books-ok { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+/* Airwallex's webhooks on the Overview: one line per event, the ledger's verdict under it. */
+#awx-hooks { margin: 16px 0; }
+.hooklist { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+.hooklist li { display: flex; flex-direction: column; gap: 2px; padding: 7px 0; border-top: 1px solid var(--border); min-width: 0; overflow-wrap: anywhere; }
+.hooklist li span { font-family: var(--mono); font-size: 12.5px; }
+.hooklist li small { color: var(--muted); }
+.hooklist li.bad small { color: var(--bad); font-weight: 600; }
+.panel.bk { margin-top: 16px; }
+.withclaude { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); }
+.panel.split { margin-bottom: 16px; }
+.splitgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.splitgrid .m { background: var(--sunken); border-radius: 12px; padding: 14px 16px; }
+.splitgrid .m .k { font-weight: 700; } .splitgrid .m .v { font-size: 14px; margin: 4px 0; } .splitgrid .m .sub { color: var(--muted); font-size: 13px; }
+.splitgrid .m.code { border: 1px dashed var(--border); background: transparent; }
+@media (max-width: 760px) { .splitgrid { grid-template-columns: 1fr 1fr; } }
+.kitrole { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--accent); }
+.never { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); }
+details.panel.bk.fold > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 2px 0; }
+details.panel.bk.fold h3 { font-size: 14px; margin: 16px 0 0; }
+details.panel.bk.fold .hint { display: block; margin-top: 8px; }
+.panel.bk table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+.panel.bk th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; padding: 6px 4px; }
+.panel.bk td { border-top: 1px solid var(--border); padding: 7px 4px; vertical-align: top; }
+.panel.bk td.num, .panel.bk th.num { text-align: right; white-space: nowrap; }
+@media (max-width: 560px) {
+  .panel.bk table.wide thead { display: none; }
+  .panel.bk table.wide tr { display: block; border-top: 1px solid var(--border); padding: 6px 0; }
+  .panel.bk table.wide td { display: flex; justify-content: space-between; gap: 12px; border-top: 0; padding: 2px 0; }
+  .panel.bk table.wide td::before { content: attr(data-label); color: var(--muted); }
+  .panel.bk table.wide td.num { text-align: right; }
+}
+/* The Dispute desk tab. */
+.okc { color: var(--ok, #0f7a3d); font-weight: 600; } .badc { color: var(--bad); font-weight: 600; }
+.warnc { color: var(--wait); font-weight: 600; }
+.panel.bk table.wide tr.wrongrow td { background: var(--wait-soft); }
+.panel.bk table.wide tr.wrongrow td:first-child { box-shadow: inset 4px 0 0 var(--wait); }
+.dtally { font-weight: 700; font-size: 15px; margin: 8px 0 2px; }
+.dbubble { max-width: 560px; background: var(--sunken); border: 1px solid var(--border); border-radius: 16px 16px 16px 4px; padding: 10px 14px; margin: 8px 0; font-size: 14px; line-height: 1.45; }
+.dbubble .from { font-size: 12px; font-weight: 600; color: var(--muted); }
+.agentdec { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; padding: 10px 14px; margin: 10px 0; font-size: 14px; }
+.agentdec .who { font-weight: 700; color: var(--accent); }
+ul.said { margin: 4px 0 8px; padding-left: 20px; } ul.said li { margin: 3px 0; }
+.review-box details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.darchive > summary, details.doldcase > summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+details.doldcase { margin-top: 10px; } details.doldcase > summary { font-weight: 500; color: var(--muted); }
+.panel.bk td:first-child { white-space: nowrap; }
+@media (max-width: 560px) { .panel.bk table.wide td { flex-wrap: wrap; } .panel.bk table.wide td .why { flex-basis: 100%; text-align: left; } .panel.bk td:first-child { white-space: normal; } }
+.review-box { background: var(--sunken); border-radius: 12px; padding: 12px 14px; margin-top: 12px; font-size: 14px; }
+.review-box p { margin: 0 0 6px; }
+/* Presentation mode (?present): larger, calmer, for a screen or a recording. Nothing is hidden that changes the story. */
+html.present .feed-sys, html.present .foot, html.present .hint { display: none !important; }
+@media (min-width: 1000px) { html.present body { zoom: 1.2; } }
+/* F, the Agents page. */
+.agents-how { margin: 0 0 16px; }
+.agent { margin-top: 16px; }
+.agent .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.agent .top h2 { margin: 0; font-size: 20px; }
+.agent .job { color: var(--muted); font-size: 14px; margin: 4px 0 12px; }
+.agent .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.agent .facts .m { background: var(--sunken); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; }
+.agent .facts .k { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+.agent .facts .v { font-weight: 600; }
+.agent .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 14px; }
+.agent h3 { font-size: 14px; margin: 0 0 6px; }
+.agent ul.plain { margin: 0; padding-left: 18px; font-size: 14px; }
+.agent ul.plain li { margin: 3px 0; }
+.agent table.settings { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13.5px; }
+.agent table.settings td { border-top: 1px solid var(--border); padding: 7px 4px; vertical-align: top; }
+.agent table.settings td.now { text-align: right; font-weight: 600; white-space: nowrap; }
+.agent .acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.agent code { font-size: 12.5px; background: var(--sunken); padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .agent .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agent .two { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .agent .facts { grid-template-columns: 1fr; }
+  .agent table.settings td { display: block; border-top: 0; padding: 2px 0; }
+  .agent table.settings tr { display: block; border-top: 1px solid var(--border); padding: 6px 0; }
+  .agent table.settings td.now { text-align: left; white-space: normal; }
+}
+.panel.claude table.agents { margin-top: 14px; }
+.panel.claude .note { color: var(--muted); font-size: 13.5px; margin: 14px 0 0; }
+@media (max-width: 700px) { .panel.claude .money { grid-template-columns: minmax(0, 1fr); } }
+.money .m .v.neg { color: var(--bad); }
+.rows { margin-top: 12px; display: grid; gap: 6px; font-size: 13.5px; }
+.rows div { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
+.rows b { color: var(--text); font-weight: 600; text-align: right; }
+.sub2 { font-size: 13px; font-weight: 650; color: var(--text); margin: 18px 0 0; display: flex; align-items: center; gap: 8px; }
+.refusal { padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px; }
+.refusal:first-of-type { border-top: 0; }
+.refusal .what { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.refusal .what svg { color: var(--bad); width: 16px; height: 16px; }
+.refusal .reason { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+.refusal .meta { color: var(--faint); font-size: 12.5px; }
+.foot { color: var(--faint); font-size: 12.5px; display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+
+/* The emergency stop confirmation. */
+dialog.scrim { border: 0; padding: 16px; background: transparent; max-width: none; max-height: none; width: 100%; height: 100%; margin: 0; }
+dialog.scrim[open] { display: grid; place-items: center; }
+dialog.scrim::backdrop { background: rgba(10,12,17,.5); }
+.dialog { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); max-width: 440px; width: 100%; padding: 24px; }
+.dialog .ic { width: 44px; height: 44px; border-radius: 12px; background: var(--bad-soft); color: var(--bad); display: grid; place-items: center; margin-bottom: 14px; }
+.dialog h2 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
+.dialog p { margin: 0 0 10px; color: var(--muted); font-size: 14.5px; }
+.dialog .row { display: flex; gap: 10px; margin-top: 18px; }
+.dialog .row .btn { flex: 1; }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: var(--bad-ink); }
+/* 4.1 The agent trace: one decision as a timeline. */
+.feed .proof button.trace-btn { font: inherit; font-size: 12px; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.dialog.trace { max-width: 680px; max-height: min(86vh, 900px); overflow: auto; }
+.trace .sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 12px 0 4px; }
+.trace .sum div { background: var(--sunken); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); }
+.trace .sum b { display: block; color: var(--text); font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.trace ol { list-style: none; margin: 14px 0 0; padding: 0; border-left: 2px solid var(--border); }
+.trace li { position: relative; padding: 0 0 14px 16px; }
+.trace li::before { content: ""; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.trace li.bad::before { background: var(--bad); }
+.trace li.decision::before { background: var(--ok); }
+.trace .k { font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--faint); }
+.trace .x { font-size: 14px; overflow-wrap: anywhere; }
+.trace .c { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.trace li.bad .c { color: var(--bad); }
+.trace .m { font-size: 12px; color: var(--faint); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.trace .m a { color: var(--accent); }
+.trace .said { margin-top: 10px; font-size: 13.5px; color: var(--muted); border-left: 3px solid var(--border); padding-left: 10px; overflow-wrap: anywhere; }
+
+/* The landing page, for guests. */
+.section { max-width: 1200px; margin: 0 auto; padding: 72px 32px; }
+.signin { max-width: 880px; }
+.signin .steps { display: grid; gap: 16px; margin: 32px 0; }
+.signin .item { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; }
+.signin .item h3 { margin: 12px 0 6px; font-size: 17px; }
+.signin .item p, .signin .callout p { margin: 0; color: var(--muted); line-height: 1.55; }
+.signin .item .ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--sunken); color: var(--accent, var(--text)); }
+.signin .callout { display: flex; gap: 12px; align-items: flex-start; background: var(--sunken); border-radius: 12px; padding: 16px 20px; }
+.signin code { font-family: var(--mono, ui-monospace, monospace); font-size: .92em; }
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 64px; align-items: center; padding-top: 64px; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 6px 12px; border-radius: 999px; }
+.eyebrow svg { width: 15px; height: 15px; }
+.hero h1 { font-size: 56px; line-height: 1.05; letter-spacing: -.035em; margin: 20px 0; font-weight: 750; }
+h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; margin: 16px 0; font-weight: 750; }
+.lead { font-size: 19px; line-height: 1.55; color: var(--muted); margin: 0 0 32px; max-width: 34em; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+.ctas .btn { font-size: 15px; padding: 14px 20px; }
+.built { margin-top: 36px; display: flex; align-items: center; gap: 18px; color: var(--faint); font-size: 13px; flex-wrap: wrap; }
+/* The sponsors' official logos, unchanged, on a white ground in both themes. */
+.built .logos { display: inline-flex; align-items: center; gap: 16px; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 9px 18px; }
+.built .logos img { height: 18px; width: auto; display: block; }
+.built .sep { width: 1px; height: 18px; background: #e5e8ec; }
+.stage { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); padding: 28px; }
+.stage .cc { max-width: 380px; }
+.stage .limitrow { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin: 16px 0 8px; }
+.stage .limitrow b { color: var(--text); }
+.stage .bar i { width: 60%; animation: raise 12s infinite; }
+@keyframes raise { 0%, 38% { width: 60%; } 46%, 100% { width: 100%; } }
+.flow { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 8px; }
+.flow li { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); font-size: 14.5px; opacity: .32; animation: show 12s infinite; }
+.flow li > svg { color: var(--muted); }
+.flow li .amt { margin-left: auto; font-weight: 650; white-space: nowrap; padding-left: 8px; }
+.flow li.bad { box-shadow: inset 3px 0 0 var(--bad); } .flow li.bad > svg { color: var(--bad); }
+.flow li.ok > svg, .flow li.face > svg { color: var(--ok); }
+.flow li:nth-child(2) { animation-delay: 1.2s; } .flow li:nth-child(3) { animation-delay: 2.6s; } .flow li:nth-child(4) { animation-delay: 4s; } .flow li:nth-child(5) { animation-delay: 5.4s; }
+.flow li.bad { animation-name: show, shake; animation-duration: 12s, .45s; animation-delay: 1.2s, 1.6s; animation-iteration-count: infinite, 1; }
+/* Every step of the story is on the card from the start (no empty panel); each lights up in turn. */
+@keyframes show { 0% { opacity: .32; } 4%, 88% { opacity: 1; } 96%, 100% { opacity: .32; } }
+.still .flow li, .still .stage .bar i { animation: none; opacity: 1; transform: none; } .still .stage .bar i { width: 100%; }
+/* D23: the money flow, moving. Only events from the ledger (or a labelled replay of one); each with its proof. */
+.mf { margin: 0 0 20px; padding: 16px; }
+.mf-stage { position: relative; display: grid; gap: 10px 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "cust nw src sup" "cust nw spt awx" "cust nw tre mer" "ret nw tre pay"; margin: 6px 0 12px; }
+.mf-n { position: relative; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); min-width: 0; transition: border-color .3s, box-shadow .3s; }
+.mf-n b { display: block; font-size: 13.5px; } .mf-n small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.35; }
+.mf-n.rail-metal { border-left: 4px solid #111827; } .mf-n.rail-awx { border-left: 4px solid #ff4f42; }
+:root[data-theme="dark"] .mf-n.rail-metal { border-left-color: #e9ebf1; } :root[data-theme="dark"] .mf-cap .chip.rail-metal { border-color: #e9ebf1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mf-n.rail-metal { border-left-color: #e9ebf1; } :root:not([data-theme="light"]) .mf-cap .chip.rail-metal { border-color: #e9ebf1; } }
+.mf-n.lit { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.mf-n.hit { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+.mf-n[data-x]::after { content: attr(data-x); position: absolute; top: 8px; right: 10px; font: 700 11px var(--font); color: var(--bad); }
+.mf-n[data-n="customer"] { grid-area: cust; } .mf-n[data-n="northwind"] { grid-area: nw; } .mf-n[data-n="sourcing"] { grid-area: src; } .mf-n[data-n="support"] { grid-area: spt; }
+.mf-n[data-n="retailer"] { grid-area: ret; } .mf-n[data-n="treasury"] { grid-area: tre; } .mf-n[data-n="suppliers"] { grid-area: sup; } .mf-n[data-n="airwallex"] { grid-area: awx; } .mf-n[data-n="merchant"] { grid-area: mer; } .mf-n[data-n="payee"] { grid-area: pay; }
+.mf-n[data-n="customer"], .mf-n[data-n="northwind"] { display: flex; flex-direction: column; justify-content: center; }
+.mf-tok { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; font: 700 12px var(--font); padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+  background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow); opacity: 0; }
+.mf-tok.usdz { background: #111827; color: #fff; } .mf-tok.eur { background: #ff4f42; color: #fff; }
+:root[data-theme="dark"] .mf-tok.usdz { background: #e9ebf1; color: #0a0c11; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mf-tok.usdz { background: #e9ebf1; color: #0a0c11; } }
+.mf-tok.bad { background: var(--bad); color: var(--bad-ink); }
+.mf-wall { position: absolute; z-index: 3; width: 6px; border-radius: 3px; background: var(--bad); opacity: 0; pointer-events: none; }
+.mf-wall b { position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); font: 700 11px var(--font); color: var(--bad); white-space: nowrap; background: var(--surface); padding: 0 4px; border-radius: 4px; }
+.mf-cap { border-top: 1px solid var(--border); padding-top: 10px; min-height: 92px; }
+.mf-cap .l1 { font-size: 15px; font-weight: 600; } .mf-cap .l1 .amt { font-variant-numeric: tabular-nums; }
+.mf-cap .l2 { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .mf-cap .chip { display: inline-block; flex: 0 1 auto; max-width: 100%; font-size: 12px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; color: var(--muted); }
+.mf-cap .chip.rail-metal { border-color: #111827; color: var(--text); } .mf-cap .chip.rail-awx { border-color: #ff4f42; color: var(--text); }
+.mf-cap .l3 { font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; } .mf-cap .l3 .req { font-size: 12px; } .mf-cap .l3 .drv { font-size: 12px; font-style: italic; } .mf-cap .ref { font-size: 13px; color: var(--bad); font-weight: 600; margin-top: 4px; overflow-wrap: anywhere; }
+.mf-cap .mf-proof { font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; } .mf-cap .mf-proof a { color: var(--accent); }
+.mf-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.mf-ctl button { font: 600 13px var(--font); border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 11px; cursor: pointer; min-height: 34px; }
+.mf-ctl .cnt { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mf-dots { display: flex; gap: 3px; flex-wrap: wrap; flex: 1 1 160px; } .mf-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border); cursor: pointer; }
+.mf-dots i.on { background: var(--accent); } .mf-dots i.bad { box-shadow: inset 0 0 0 2px var(--bad); }
+@media (max-width: 760px) {
+  .mf-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "cust nw" "src sup" "spt awx" "tre mer" "ret pay"; }
+}
+@media (prefers-reduced-motion: reduce) { .mf-tok, .mf-wall { display: none; } .mf-n { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .flow li, .stage .bar i, .feed li.fresh { animation: none; opacity: 1; transform: none; } .stage .bar i { width: 100%; } }
+.rails h2 { font-size: 32px; letter-spacing: -.02em; margin: 0 0 10px; }
+.rails .lead { max-width: 760px; }
+.hero .why, #landing .why { font-size: 15px; line-height: 1.55; color: var(--muted); max-width: 640px; margin: 14px 0 0; border-left: 3px solid var(--accent); padding-left: 12px; }
+.why b { color: var(--text); }
+.rails-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }
+.rail { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px 22px 8px; }
+.rail header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.rail .logo { display: inline-flex; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; }
+.rail .logo img { height: 20px; width: auto; display: block; }
+.rail .what { color: var(--muted); font-size: 14px; font-weight: 600; }
+.rail ul { list-style: none; margin: 0; padding: 0; }
+.railextra { margin: 6px 0 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.railextra h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.railextra li { font-size: 14px; line-height: 1.5; color: var(--text); padding: 4px 0; }
+.railextra code { font-size: 12px; }
+.rail li { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.rail li:last-child { border-bottom: 0; }
+.rail li b { display: block; font-size: 15px; }
+.rail li span.d { display: block; color: var(--muted); font-size: 14px; margin-top: 3px; line-height: 1.5; }
+.rail li .pf { display: inline-flex; align-items: center; gap: 6px; margin-top: 7px; font: 500 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); text-decoration: none; background: var(--sunken); border-radius: 999px; padding: 3px 10px; }
+.rail li .pf.id { color: var(--muted); }
+.rail li .sim { margin-left: 8px; font-size: 12px; color: var(--faint); }
+.rails-grid.dash { margin: 0 0 28px; }
+.railnote { color: var(--faint); font-size: 12.5px; margin-top: 14px; max-width: 900px; }
+.raillink { display: block; margin-top: 12px; font-weight: 700; font-size: 14px; color: var(--accent); text-decoration: none; }
+@media (max-width: 760px) { .rails-grid { grid-template-columns: 1fr; } .rails h2 { font-size: 26px; } }
+.proof { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
+.proof .section { padding: 36px 32px; }
+.proof .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
+.proof .v { font-size: 36px; font-weight: 750; letter-spacing: -.03em; line-height: 1.1; }
+.proof .l { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.proof .src { margin-top: 20px; font-size: 12.5px; color: var(--faint); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.proof .src svg { width: 14px; height: 14px; }
+.proof .src a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.metal { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 64px; align-items: center; }
+.mandate { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); padding: 24px; }
+.mandate .mh { display: flex; align-items: center; gap: 10px; font-weight: 650; }
+.mandate .mh .pill { margin-left: auto; }
+.mandate dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 16px 0 20px; font-size: 14px; }
+.mandate dt { color: var(--muted); } .mandate dd { margin: 0; font-weight: 600; }
+.pay { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 14.5px; margin-top: 8px; }
+.pay > svg { color: var(--ok); } .pay.bad { box-shadow: inset 3px 0 0 var(--bad); } .pay.bad > svg { color: var(--bad); }
+.pay .amt { margin-left: auto; font-weight: 650; white-space: nowrap; }
+.pay small { display: block; color: var(--faint); font-size: 12px; margin-top: 2px; }
+.clear { margin-top: 16px; font-size: 14px; color: var(--muted); display: flex; gap: 8px; align-items: flex-start; }
+.clear svg { color: var(--accent); margin-top: 2px; }
+.textlink { color: var(--accent); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.sec h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 8px; }
+.sec .subl { color: var(--muted); margin: 0 0 28px; }
+.sec .rules { color: var(--muted); margin: 24px 0 0; max-width: 72ch; }
+.sec .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.sec .item { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+.sec .item .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 14px; }
+.sec .item h3 { font-size: 15.5px; margin: 0 0 6px; letter-spacing: -.01em; }
+.sec .item p { margin: 0; font-size: 14px; color: var(--muted); }
+.lfoot { max-width: 1200px; margin: 0 auto; padding: 24px 32px 48px; color: var(--faint); font-size: 13px; display: flex; gap: 16px; flex-wrap: wrap; }
+.lfoot a { color: var(--muted); }
+
+@media (max-width: 1000px) {
+  .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .proof .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sec .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  table.agents thead { display: none; }
+  table.agents, table.agents tbody, table.agents tr, table.agents td { display: block; width: 100%; }
+  table.agents tr { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  table.agents tr:last-child { border-bottom: 0; }
+  table.agents td { border: 0; padding: 3px 16px; white-space: normal; display: flex; align-items: baseline; gap: 4px; }
+  table.agents td:first-child { display: block; padding-bottom: 6px; }
+  table.agents td:not(:first-child)::before { content: attr(data-label); color: var(--muted); font-size: 13px; margin-right: auto; }
+  table.agents td .sub { display: inline; margin-left: 4px; }
+  .top { padding: 8px 16px; gap: 4px 12px; height: auto; flex-wrap: wrap; } .top .nav { order: 9; width: 100%; overflow-x: auto; mask-image: linear-gradient(to right, #000 85%, transparent); -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); } .top .nav a { padding: 6px 8px; font-size: 13px; } .live .lbl { display: none; }
+  .note { padding: 10px 16px 0; } .frozen { padding: 12px 16px; }
+  .wrap { padding: 16px 16px 40px; }
+  .kpis { gap: 8px; } .kpi { padding: 14px 12px; } .kpi .v { font-size: 32px; } .kpi .note2 { display: none; } .kpi .lab { font-size: 12.5px; } .kpi .lab .ic { display: none; }
+  .kpi .long { display: none; } .kpi .short { display: inline; }
+  .grid3 { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  /* On a phone the cards and mandates swipe sideways, one at a time. */
+  .grid4.swipe { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+  .grid4.swipe > * { flex: 0 0 86%; scroll-snap-align: start; min-width: 0; }
+  .kpi .v { font-size: 26px; }
+  .cc { aspect-ratio: 2.1; padding: 16px 18px; } .mt { min-height: 150px; }
+  .feed li { grid-template-columns: 32px minmax(0, 1fr); } .feed li .r { grid-column: 2; padding-top: 0; }
+  .ask .row .btn.primary { flex: 1 1 100%; }
+  .section { padding: 40px 16px; } .hero { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-top: 32px; }
+  .hero h1 { font-size: 38px; } h2.big, h1.big { font-size: 30px; } .lead { font-size: 17px; }
+  .ctas .btn { flex: 1 1 100%; }
+  .stage, .mandate { padding: 18px; }
+  .proof .section { padding: 28px 16px; } .proof .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; } .proof .v { font-size: 30px; }
+  .metal { grid-template-columns: minmax(0, 1fr); gap: 28px; } .metal .copy { order: -1; }
+  .sec .row { grid-template-columns: minmax(0, 1fr); }
+  .lfoot { padding: 16px 16px 40px; }
+  .money { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body data-mode="relay">
+<header class="top">
+  <a class="brand" href="./" id="brand"><span class="mark" data-icon="feather"></span><span id="brand-name">Purser</span></a>
+  <nav class="nav" id="nav" aria-label="Main"></nav>
+  <div class="right">
+    <span class="live" id="live" hidden><span class="dot"></span><span class="lbl">Connecting</span></span>
+    <a class="btn" id="signin-link" href="?signin" hidden><span data-icon="scan-face"></span>CFO sign-in</a>
+    <button class="btn stop" id="stop" type="button" hidden><span data-icon="octagon-x"></span>Emergency stop</button>
+  </div>
+</header>
+<div class="dtabs" id="dtabs" role="navigation" aria-label="Dashboard sections" hidden></div>
+<details class="note" id="note"><summary><span data-icon="info"></span>Test money, real systems: Airwallex sandbox and Metal testnet · details</summary>
+  <p>One CFO policy for both rails: Airwallex cards and bank transfers, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, amounts are in USDZ, Metal's test dollars, shown here as "test USD". The step from test USD to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate.</p></details>
+<div class="frozen" id="frozen" hidden></div>
+<div class="frozen" id="stopped" hidden></div>
+<div class="frozen offline" id="offline" role="status" hidden><span data-icon="info"></span><span>The runner is offline, so this page is not live. Nothing can be paid or approved until it is back.</span><a href="demo">Watch the recorded run →</a></div>
+
+<!-- How the CFO gets in: no password, a private link to view and a passkey to approve. -->
+<section class="section signin" id="signin" hidden>
+  <h1 class="big">How the CFO signs in</h1>
+  <p class="lead">There is no password and no account to break into. Two things open Purser, and both stay on the CFO's own devices.</p>
+  <div class="steps">
+    <div class="item"><span class="ic" data-icon="link-2"></span><h3>1. A private link to look</h3><p>The runner on the company's own machine prints a viewer link. Its key sits after the <code>#</code>, so the browser keeps it and never sends it to a server. Open it once on the laptop or the phone. A new relay secret gives a new link and locks out every old one.</p></div>
+    <div class="item"><span class="ic" data-icon="scan-face"></span><h3>2. Face ID to decide</h3><p>Approving needs the CFO's passkey: Face ID or Touch ID on the phone, bound to this site. It signs the exact terms (amount, payee, fee), and the runner checks that signature against the key it pinned when the CFO enrolled. A copied link can look, but never approve.</p></div>
+    <div class="item"><span class="ic" data-icon="shield-check"></span><h3>3. Enrolment you confirm</h3><p>A new passkey only counts after the CFO reads its fingerprint off the phone and confirms it on the runner. A second approver for large amounts is added the same way.</p></div>
+  </div>
+  <div class="callout"><span data-icon="info"></span><p>You are a guest, so there is nothing to sign in to here. Everything the CFO sees is in the <a href="?recorded">recorded CFO dashboard</a>, and the <a href="demo">demo</a> walks through one real run step by step. To run it yourself, the README has the steps.</p></div>
+</section>
+
+<!-- For guests: what this is, and the way to the recorded run. -->
+<div id="landing" hidden>
+  <section class="section hero">
+    <div>
+      <p class="kitline" id="kitline">Kit 11 · x402 Business Agents: three agents (Sourcing, Support, Treasury) on one Metal account, rebalancing when supplier costs rise — plus Airwallex for cards, FX and the euro licence fee.</p>
+      <span class="eyebrow"><span data-icon="shield-check"></span>For CFOs of companies that run AI agents</span>
+      <h1>Your AI agents spend through Airwallex and Metal. The CFO stays in control.</h1>
+      <p class="lead">Each agent gets its own Airwallex company card and its own Metal mandate. You set the limits once; Airwallex and the chain enforce them. Anything more waits for your Face ID.</p>
+      <p class="why"><b>Why Airwallex customers need this:</b> Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, buys software, pays suppliers abroad and sells across currencies. As AI agents take over that work, each needs its own card and limits, and the CFO one place for the exceptions.</p>
+      <div class="ctas"><a class="btn primary" href="#tour"><span data-icon="presentation"></span>Judge tour · 3 minutes</a><a class="btn" href="try"><span data-icon="sparkles"></span>Try it yourself</a><a class="btn" href="?autonomy" id="autonomy-cta" hidden><span data-icon="bot"></span>See the agents decide</a><a class="btn" href="film"><span data-icon="play"></span>Watch</a></div>
+      <div class="built">Built on <span class="logos"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"><span class="sep"></span><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span></div>
+      <p class="withclaude"><b>Agents built on Claude (Anthropic API).</b> Built with Claude, and measured: Haiku sorts, Sonnet reads (on 5 harder documents, 3 runs each, Haiku alone misread 1 of 15 readings), Opus advises. Metal and Airwallex enforce the limits.</p>
+    </div>
+    <div class="stage" aria-label="A card purchase from the recorded run">
+      <div class="cc"><div class="row1"><span>Sourcing agent</span><span>Virtual</span></div><div class="who">Warehouse software</div><div class="buys">Airwallex Issuing</div><div class="row2"><span class="pan" id="hero-pan">•••• 8120</span><span class="brandmark">virtual Visa</span></div></div>
+      <div class="limitrow num"><span>Limit per purchase</span><b>€30 → €50</b></div>
+      <div class="bar" aria-hidden="true"><i></i></div>
+      <ol class="flow">
+        <li class="ok"><span data-icon="circle-check"></span>Buys a warehouse software plan<span class="amt num">€19.99</span></li>
+        <li class="bad"><span data-icon="ban"></span>Over its €30 limit: declined by Airwallex<span class="amt num">€45.00</span></li>
+        <li class="face"><span data-icon="scan-face"></span>Asks for more; the CFO approves<span class="amt"><span class="pill ok">Face ID</span></span></li>
+        <li><span data-icon="sliders-horizontal"></span>The card's limit follows: €50</li>
+        <li class="ok"><span data-icon="circle-check"></span>Approved by Airwallex<span class="amt num">€45.00</span></li>
+      </ol>
+    </div>
+  </section>
+  <!-- The judge tour: five steps, one sentence each, each with its proof; the middle three are the idea's three moments (price rise, dispute, euro bill). -->
+  <section class="section" id="l-tower-wrap" aria-labelledby="h-ltower" hidden>
+    <h2 id="h-ltower">The CFO's control tower</h2>
+    <p class="lead" id="l-tower-src">Money in, the three agents inside their limits, money out: from the recorded live run, every figure with its proof.</p>
+    <div class="tower" id="l-tower" aria-label="Control tower, recorded run">
+      <div class="tcol tag"><h2>The agents, inside your limits</h2><div class="tagents-grid" id="l-t-agents"></div></div>
+      <div class="tcol tin"><h2>Money in</h2><div id="l-t-in"></div></div>
+      <div class="tcol tout"><h2>Money out</h2><div id="l-t-out"></div></div>
+      <div class="tpnl" id="l-t-pnl"></div>
+    </div>
+    <section class="panel" id="l-enforced" aria-label="Enforced by"><div class="sect flush"><h2>Enforced by</h2><span class="hint">who stopped each payment that went over a limit, with its proof</span></div><div class="encols" id="l-enforced-body"></div></section>
+  </section>
+  <section class="section tour" id="tour" aria-labelledby="h-tour">
+    <h2 id="h-tour">Judge tour: five steps, three minutes</h2>
+    <ol class="tsteps">
+      <li><span class="tn">1</span><div><h3>The problem</h3><p>AI agents are starting to spend company money; one shared card or wallet gives no limit per agent and no one place for the exceptions.</p><a href="film">Watch the film <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">2</span><div><h3>The price rise: Metal refuses</h3><p>The supplier doubles its price, Metal refuses the payment against the on-chain mandate, and the CFO moves budget between the mandates within the same 20.00 with Face ID.</p><a href="demo?step=3">The refusal and the CFO's choice <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">3</span><div><h3>The dispute: every order checked</h3><p>A simulated customer (we filed for it) disputes 12 orders; each is checked against its signed order and the mandate on chain. All 12 hold, so nothing new is refunded.</p><a href="metal#dispute">The 12 orders and the evidence report <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">4</span><div><h3>The euro bill: Airwallex pays</h3><p>A euro invoice of €1,850.00 arrives: Purser converts only the €370.00 shortfall at Airwallex, the CFO signs the rate, the payee and the fee ceiling with Face ID, and Airwallex pays it by SWIFT.</p><a href="demo?step=6">The euro bill <span data-icon="arrow-right"></span></a></div></li>
+      <li><span class="tn">5</span><div><h3>Try it yourself</h3><p>Give an agent a task, or change the market and watch the Sourcing agent decide with Claude, inside the CFO's limits.</p><a href="try">Open Try it <span data-icon="arrow-right"></span></a></div></li>
+    </ol>
+  </section>
+  <section class="proof" aria-label="From the recorded live run">
+    <div class="section">
+      <div class="grid num">
+        <div><div class="v" id="p-alone">–</div><div class="l">payments inside the limits with no approval at the time (about half of them the simulated customer&rsquo;s agent buying from us)</div></div>
+        <div><div class="v" id="p-blocked">–</div><div class="l">stops: by the card, the chain, the fraud checks or the CFO</div></div>
+        <div><div class="v" id="p-over">–</div><div class="l">spent above a card's limit</div></div>
+        <div><div class="v" id="p-fakes">–</div><div class="l">fake invoices and AI tricks stopped</div></div>
+        <div><div class="v" id="p-faceid">–</div><div class="l">decisions signed with Face ID</div></div>
+      </div>
+      <div class="src"><span data-icon="database"></span><span id="p-src">From a recorded live run on Metal testnet and the Airwallex sandbox (test money).</span><a href="?recorded">Open the recorded CFO dashboard →</a></div>
+    </div>
+  </section>
+  <!-- The two rails: what Airwallex and Metal did in the recorded run, each with its proof. -->
+  <section class="section rails" aria-labelledby="h-rails" id="rails-sec" hidden>
+    <h2 id="h-rails">Where the money moves, and where the limits hold</h2>
+    <p class="lead">Purser is the control layer. The money moves on Airwallex and Metal, and they enforce the limits: a card declines at Airwallex, a payment is refused by Metal against the on-chain mandate. Everything below happened in the recorded run, except the block marked as separate runs and the Dispute desk case, run afterwards on a copy of its ledger.</p>
+    <div class="rails-grid">
+      <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="rail-awx"></ul><div class="railextra"><h3>Also live in the Airwallex sandbox, in separate runs on 30 October</h3><ul>
+        <li><b>Global Accounts:</b> four retailers' payments (simulated by the sandbox) into Northwind's EUR and GBP accounts; two matched to their invoices, one €10.00 short and one with no invoice went to the CFO.</li>
+        <li><b>Webhooks:</b> 23 Airwallex events subscribed, each signature-checked twice; two deposits matched or escalated by the webhook alone.</li>
+        <li><b>Single-use task cards:</b> one purchase each; a second charge was declined <code>CARD_CLOSED</code>, a wrong merchant <code>MERCHANT_CATEGORY_NOT_ALLOWED</code>.</li>
+      </ul></div></article>
+      <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="rail-mtl"></ul><a class="raillink" href="metal">How Purser uses Metal: every feature, the mandate inspector and the Dispute desk →</a></article>
+    </div>
+    <p class="railnote">Airwallex ids are the ones the Airwallex sandbox API returned (each checked again, read-only, on 30 October); Metal transactions open on the testnet explorer. Simulated by the sandbox: a merchant's card charge, a transfer's last steps (sent, paid), and the deposit that stands in for Metal earnings.</p>
+  </section>
+  <section class="section metal" id="metal">
+    <div class="mandate" aria-label="A mandate refusing a payment on chain, from the recorded run">
+      <div class="mh"><span data-icon="file-lock-2"></span>Mandate · sourcing agent<span class="pill acc">on Metal</span></div>
+      <dl class="num"><dt>Per payment</dt><dd>at most 0.03 test USD</dd><dt>In total</dt><dd>10.00 test USD</dd><dt>Pays only</dt><dd>Stockline (data supplier)</dd><dt>Enforced by</dt><dd>Metal, against the mandate on chain</dd></dl>
+      <div class="pay"><span data-icon="circle-check"></span><div>A stock check, paid per request</div><span class="amt num">0.02 test USD</span></div>
+      <div class="pay bad"><span data-icon="ban"></span><div>Price rose: refused against the on-chain mandate<small>over the mandate's cap · nothing moved</small></div><span class="amt num">0.04 test USD</span></div>
+      <div class="pay"><span data-icon="scan-face"></span><div>The CFO approved a new mandate with Face ID<small>0.04 a payment, 12.00 in total · the old mandate is revoked on chain</small></div></div>
+      <div class="clear"><span data-icon="receipt"></span>Or prepaid, by Metal clearing (a separate live run, 29 October): one deposit, then a signed receipt per request.</div>
+    </div>
+    <div class="copy">
+      <span class="eyebrow"><span data-icon="zap"></span>Pay per request on Metal</span>
+      <h2 class="big">For payments of a few cents each, a limit the chain enforces.</h2>
+      <p class="lead">Agents that buy data or API calls pay a few cents per request on Metal. Each pays under a mandate: a cap per payment, a total, one allowed payee and an end date. Ask for more than the mandate allows and Metal refuses against the on-chain mandate; the CFO decides with the same Face ID.</p>
+      <a class="textlink" href="demo?step=2">See it in the recorded run <span data-icon="arrow-right"></span></a>
+    </div>
+  </section>
+  <section class="section sec" id="security">
+    <h2>Safe by design, not by prompt</h2>
+    <p class="subl">Nothing an AI reads or writes can raise a limit or move money outside it. The limits sit at Airwallex and on the chain; exceptions need you.</p>
+    <div class="row">
+      <div class="item"><span class="ic" data-icon="scan-face"></span><h3>Face ID on the exact terms</h3><p>You sign the precise amount, payee and fee. Change one character and the signature no longer fits.</p></div>
+      <div class="item"><span class="ic" data-icon="users"></span><h3>Four eyes</h3><p>Optional: above a threshold, two people approve (off in the recorded run). On Metal, a 2-of-2 account refused one signature (test world).</p></div>
+      <div class="item"><span class="ic" data-icon="octagon-x"></span><h3>Emergency stop</h3><p>One Face ID stops every agent and freezes every card at Airwallex. (Tested on stand-ins; not yet run live.)</p></div>
+      <div class="item"><span class="ic" data-icon="shield-alert"></span><h3>Fakes and AI tricks blocked</h3><p>Changed bank details and hidden "pre-approved" lines are caught before any money moves.</p></div>
+      <div class="item"><span class="ic" data-icon="zap"></span><h3>Speed limits, and our own red team</h3><p id="redteam-line">An agent that pays too often or too much is stopped by code. Our red team attacks Purser; every attack must fail.</p></div>
+      <div class="item"><span class="ic" data-icon="file-check"></span><h3>A log you can check</h3><p>Every payment and approval in a hash-chained log you can re-check offline.</p></div>
+    </div>
+    <p class="rules" id="compliance-line"><b>Built for the rules, not certified.</b> In production Airwallex, the regulated provider, does KYB/KYC, card issuing and sanctions screening (the sandbox demo does not exercise KYC or screening); Metal enforces the limits on chain; Purser holds no funds of its own (its runner keeps the testnet owner key that binds the mandates), logs every AI step and keeps a person in charge, in the spirit of the EU AI Act, two-factor approval and minimal personal data.</p>
+  </section>
+  <footer class="lfoot"><span>Built for the Airwallex Agentic Banking Hackathon</span><a href="try">Try it</a><a href="metal">Purser on Metal</a><a href="film">Film</a><a href="demo">Demo</a><a href="month">A month in 90 seconds</a><a href="?recorded">Recorded CFO dashboard</a></footer>
+</div>
+
+<!-- The CFO's dashboard: live (local, or on the relay with the viewer key) or the recorded run. -->
+<main class="wrap" id="dash" hidden>
+  <div class="recbanner" id="recbanner" hidden><span data-icon="database"></span><span id="rec-text">Recorded run.</span></div>
+  <div id="agents-view" hidden>
+    <div class="head"><div><h1>Agents</h1><div class="sub">What each agent does, with which model, within your limits. Card limits come from your CFO policy; mandates change only with your Face ID.</div></div></div>
+    <p class="hint agents-how" id="agents-how"></p>
+    <div id="agents"></div>
+  </div>
+  <div id="books-view" hidden>
+    <div class="head"><div><h1>Books</h1><div class="sub">Double entry from the agents' journal: every payment a debit and a credit of the same amount, after an opening entry for the money that was there before the run (sandbox and testnet test money).</div></div></div>
+    <div id="books"></div>
+  </div>
+  <div id="disputes-view" hidden>
+    <div class="head"><div><h1>Dispute desk</h1><div class="sub">When a customer questions what its agent bought, Northwind decides from what it can prove: the order the agent signed, the payment checked on chain against the customer's mandate, the delivery. Code checks the proof; Claude explains.</div></div></div>
+    <div id="disputes"></div>
+  </div>
+  <div id="overview">
+  <div class="head"><div><h1>Overview</h1><div class="sub">Your AI agents spend through Airwallex and Metal. You stay in control: every limit below is yours.</div></div></div>
+  <section class="tower" id="tower" aria-label="Control tower" hidden>
+    <div class="tcol tag"><h2>The agents, inside your limits</h2><div class="tagents-grid" id="t-agents"></div></div>
+    <div class="tcol tin"><h2>Money in</h2><div id="t-in"></div></div>
+    <div class="tcol tout"><h2>Money out</h2><div id="t-out"></div></div>
+    <div class="tpnl" id="t-pnl"></div>
+  </section>
+  <section class="panel" id="enforced" aria-labelledby="h-enforced" hidden><div class="sect flush"><h2 id="h-enforced">Enforced by</h2><span class="hint">who stopped each payment that went over a limit, with its proof</span></div><div class="encols" id="enforced-body"></div></section>
+  <section class="kpis" id="kpis" aria-label="What the agents did, in money"></section>
+  <div class="sect"><h2>Company cards <span class="rail">Airwallex</span></h2><span class="hint">Virtual Visa per agent · limits set by your policy</span></div>
+  <section class="grid4 swipe" id="cards" aria-label="Company cards"></section>
+  <div class="sect"><h2>On-chain budgets <span class="rail">Metal</span></h2><span class="hint">A mandate per agent for paying per request · in test USD</span><a class="more" id="policy-link" href="policy" hidden>Edit CFO policy →</a></div>
+  <section class="grid4 swipe" id="budgets" aria-label="On-chain budgets"></section>
+  <div class="sect"><h2>Per agent</h2><span class="hint">What each agent may spend, and has spent, on both rails</span></div>
+  <div class="tablewrap"><table class="agents" id="agents-table" aria-label="Per agent"></table></div>
+  <div id="dash-rails" hidden><div class="sect"><h2>On each rail</h2><span class="hint">What Airwallex and Metal did, each with its proof</span></div>
+  <div class="rails-grid dash">
+    <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="drail-awx"></ul></article>
+    <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="drail-mtl"></ul></article>
+  </div></div>
+  <section class="panel" id="awx-hooks" aria-labelledby="h-hooks" hidden><div class="sect flush"><h2 id="h-hooks">Webhooks from Airwallex</h2><span class="hint">each one signed by Airwallex, checked at the relay and again here, then compared with the ledger</span></div><div id="awx-hooks-body"></div></section>
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-pending"><div class="sect flush"><h2 id="h-pending">Waiting for you</h2><span class="pill" id="pending-count">0</span></div><div id="pending"></div></section>
+    <section class="panel" aria-labelledby="h-feed"><div class="sect flush"><h2 id="h-feed">Activity</h2><span class="hint">newest first</span></div><ul class="feed" id="feed"></ul><details class="tech feed-sys" id="feed-sys-wrap" hidden><summary id="feed-sys-sum">System events</summary><ul class="feed" id="feed-sys"></ul></details></section>
+  </div>
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-treasury"><div class="sect flush"><h2 id="h-treasury">Treasury</h2><span class="hint" id="treasury-asof"></span></div><div id="treasury"></div></section>
+    <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused and blocked</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
+  </div>
+  <section class="panel ask" id="ask-panel" aria-labelledby="h-ask" hidden><div class="sect flush"><h2 id="h-ask">Ask Purser</h2><span class="hint">from the CFO policy page on your phone</span></div><ul class="chat" id="ask"></ul></section>
+  <section class="panel claude" id="claude-panel" aria-labelledby="h-claude" hidden><div class="sect flush"><h2 id="h-claude">Powered by Claude</h2><span class="claudelogo"><img src="assets/logo-claude.png" alt="Claude" width="73" height="16"></span></div><div id="claude"></div></section>
+  </div>
+  <div class="foot"><span id="auditline"></span><span id="passkey"></span></div>
+</main>
+
+<dialog class="scrim" id="stop-sheet" aria-labelledby="stop-title">
+  <div class="dialog">
+    <div class="ic" data-icon="octagon-x"></div>
+    <h2 id="stop-title">Freeze every agent and every card?</h2>
+    <p>Every agent payment is refused before anything is signed, and every company card is set to inactive at Airwallex.</p>
+    <p><b>You confirm with Face ID</b> on the next screen; nothing changes before that. Lifting the stop later needs a proposal and Face ID too.</p>
+    <div class="row"><button class="btn" type="button" id="stop-cancel">Cancel</button><a class="btn danger" id="stop-go" href="policy?freeze=on"><span data-icon="scan-face"></span>Continue to Face ID</a></div>
+  </div>
+</dialog>
+
+<dialog class="scrim" id="trace-sheet" aria-labelledby="trace-title">
+  <div class="dialog trace">
+    <h2 id="trace-title">Agent trace</h2>
+    <p id="trace-lead"></p>
+    <div class="sum" id="trace-sum"></div>
+    <div class="said" id="trace-said" hidden></div>
+    <ol id="trace-steps"></ol>
+    <p>Every step is a row of the audit chain; its hash is the row's own. Tokens and cost are what the Claude API reported.</p>
+    <div class="row"><button class="btn" type="button" id="trace-close">Close</button></div>
+  </div>
+</dialog>
+
+<script type="application/json" id="recorded-data">__RECORDED_JSON__</script>
+<script type="application/json" id="autonomy-data">__AUTONOMY_JSON__</script>
+<script type="application/json" id="agent-names">__AGENTS_JSON__</script>
+<script type="application/json" id="redteam-data">__REDTEAM_JSON__</script>
+<script>
+(function () {
+  if (/[?&]present(=|&|$)/.test(location.search)) document.documentElement.classList.add("present");
+  "use strict";
+  // Everything from the ledger is rendered as text (textContent); no ledger string ever becomes HTML. The only markup
+  // built here is the fixed icon set below.
+  var ICONS = __ICONS_JSON__;
+  var EXPLORER = "https://testnet.metalntwx.com/tx/";
+  var TX = /^0x[0-9a-fA-F]{64}$/;
+  var POLL_MS = 2000, STALE_MS = 6000, RUNNER_STALE_MS = 15000;
+  var lastOk = 0, lastData = null, seen = {};
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function icon(name) {
+    var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "i"); s.setAttribute("aria-hidden", "true");
+    // The icon set is fixed in this page (Lucide), as shapes and attributes; nothing is parsed as markup.
+    (ICONS[name] || ICONS["circle-dot"]).forEach(function (shape) {
+      var n = document.createElementNS("http://www.w3.org/2000/svg", shape[0]);
+      Object.keys(shape[1]).forEach(function (a) { n.setAttribute(a, shape[1][a]); });
+      s.appendChild(n);
+    });
+    return s;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-icon]"), function (n) { n.insertBefore(icon(n.getAttribute("data-icon")), n.firstChild); });
+
+  function el(tag, cls, kids) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    (kids || []).forEach(function (k) {
+      if (k === null || k === undefined || k === false) return;
+      n.appendChild(typeof k === "string" ? document.createTextNode(k) : k);
+    });
+    return n;
+  }
+  function txt(tag, cls, s) { return el(tag, cls, [s === null || s === undefined ? "" : String(s)]); }
+  function set(id, nodes) { var n = typeof id === "string" ? document.getElementById(id) : id; n.replaceChildren.apply(n, nodes.filter(function (x) { return x != null; })); }
+
+  // Money arrives as decimal strings; group without going through floats. Euros and dollars at Airwallex carry their
+  // sign; Metal's USDZ are test dollars and say so, never "$" beside "€".
+  function group(s) {
+    s = String(s); var neg = s.charAt(0) === "-"; if (neg) s = s.slice(1);
+    var p = s.split("."), i = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return (neg ? "−" : "") + i + (p.length > 1 ? "." + p[1] : "");
+  }
+  function eur(s) { var g = group(s); return g.charAt(0) === "−" ? "−€" + g.slice(1) : "€" + g; }
+  // Decimal strings to whole cents and back, without floats.
+  function toCents(s) { s = String(s); var neg = s.charAt(0) === "-"; if (neg) s = s.slice(1); var p = s.split("."); var c = Number(p[0]) * 100 + Number(((p[1] || "") + "00").slice(0, 2)); return neg ? -c : c; }
+  function centsStr(c) { var neg = c < 0; c = Math.abs(c); return (neg ? "-" : "") + Math.floor(c / 100) + "." + String(c % 100).padStart(2, "0"); }
+  function usd(s) { return "USD " + group(s); }
+  function tusd(s) { return group(s) + " test USD"; }
+  function fromC(c) { var n = Math.abs(c); return (c < 0 ? "-" : "") + Math.floor(n / 100) + "." + String(n % 100).padStart(2, "0"); }
+  function cents(s) { var m = /^(-?)(\d+)\.(\d{2})$/.exec(String(s)); return m ? (m[1] ? -1 : 1) * (Number(m[2]) * 100 + Number(m[3])) : 0; }
+  // Ledger text in the words a CFO uses: euros as €, chain money as test USD, outside agents by their name.
+  function plain(t) {
+    var amt = "(-?\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})|-?\\d+\\.\\d{2})", bare = function (a) { return a.replace(/,/g, ""); };
+    return String(t)
+      .replace(/\b(?:the )?ext:([a-z0-9-]+) agent's/g, function (_m, id) { return agentName("ext:" + id) + "'s"; })
+      .replace(/\bext:([a-z0-9-]+)/g, function (_m, id) { return agentName("ext:" + id); })
+      // Only amounts beside a currency are regrouped; ids, IBANs and dates stay as they are.
+      .replace(new RegExp(amt + " \\*?USDZ\\b", "g"), function (_m, a) { return tusd(bare(a)); })
+      .replace(/\*?USDZ\b/g, "test USD")
+      // The treasury's escalation, in the CFO's words: the same four amounts, read as a reserve after planned bills.
+      .replace(new RegExp("EUR is already " + amt + " below its floor plus commitments \\(available " + amt + ", floor " + amt + ", committed " + amt + "\\)", "g"), function (_m, short, avail, floor, planned) {
+        return "Euros are " + eur(bare(short)) + " short of the " + eur(bare(floor)) + " reserve after bills already planned (at Airwallex " + eur(bare(avail)) + ", set aside for planned bills " + eur(bare(planned)) + ")";
+      })
+      // "30.00 / 100.00 → 50.00 / 100.00 EUR": the currency written once after a range applies to every amount in it.
+      .replace(new RegExp("((?:" + amt + "(?: / | → ))+" + amt + ") EUR\\b", "g"), function (m) { return m.slice(0, -4).replace(new RegExp(amt, "g"), function (_m, a) { return eur(bare(a)); }); })
+      .replace(new RegExp("\\bEUR " + amt + "(?![\\d.])", "g"), function (_m, a) { return eur(bare(a)); })
+      .replace(new RegExp(amt + " EUR\\b", "g"), function (_m, a) { return eur(bare(a)); })
+      .replace(new RegExp("\\bUSD " + amt + "(?![\\d.])", "g"), function (_m, a) { return usd(bare(a)); })
+      .replace(new RegExp(amt + " USD\\b", "g"), function (_m, a) { return usd(bare(a)); });
+  }
+  var timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+  var dayFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
+  var whenFmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" });
+  function hm(iso) { var d = new Date(iso); return isNaN(d) ? "" : timeFmt.format(d); }
+  function day(iso) { var d = new Date(String(iso).length === 10 ? iso + "T00:00:00Z" : iso); return isNaN(d) ? "" : dayFmt.format(d); }
+  function countdown(iso) {
+    var ms = Date.parse(iso) - Date.now();
+    if (isNaN(ms)) return "";
+    if (ms <= 0) return "expired";
+    var m = Math.floor(ms / 60000), h = Math.floor(m / 60);
+    return "expires in " + (h ? h + " h " + (m % 60) + " min" : m + " min");
+  }
+  // Outside agents are named on their card; the executors and the system are not agents.
+  var AGENT_NAMES = {};
+  try { AGENT_NAMES = JSON.parse(document.getElementById("agent-names").textContent); } catch (e) {}
+  var NAMES = {}, SERVICES = { "awx-executor": "Airwallex executor", "metal-executor": "Metal executor", system: "System" };
+  function agentName(a) {
+    a = String(a);
+    if (a === "human") return "You";
+    if (NAMES[a]) return NAMES[a].charAt(0).toUpperCase() + NAMES[a].slice(1);
+    if (SERVICES[a]) return SERVICES[a];
+    if (AGENT_NAMES[a]) return AGENT_NAMES[a];
+    if (/^ext:/.test(a)) return a.slice(4).split("-").map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(" ") + " (outside agent)";
+    return a.charAt(0).toUpperCase() + a.slice(1) + " agent";
+  }
+  function countUp(id, to) {
+    var n = document.getElementById(id), from = Number(n.getAttribute("data-v") || "0");
+    n.setAttribute("data-v", String(to));
+    if (reduceMotion || from === to) { n.textContent = String(to); return; }
+    var t0 = performance.now();
+    (function frame(now) { var f = Math.min(1, (now - t0) / 700); n.textContent = String(Math.round(from + (to - from) * (1 - Math.pow(1 - f, 3)))); if (f < 1) requestAnimationFrame(frame); })(t0);
+  }
+
+  function renderCards(d) {
+    var cs = d.cards || [];
+    cs.forEach(function (c) { if (c.name) NAMES[c.agent] = c.name; });
+    if (!cs.length) { set("cards", [el("div", "panel empty", [icon("credit-card"), "No company cards issued yet."])]); return; }
+    set("cards", cs.map(function (c) {
+      var pct = Math.max(0, Math.min(100, cents(c.monthly) ? cents(c.spent_month) / cents(c.monthly) * 100 : 0));
+      var fill = el("i", pct >= 80 ? "hi" : ""); fill.style.width = pct.toFixed(1) + "%";
+      var txs = (c.recent || []).slice(0, 3).map(function (t) {
+        return el("li", t.approved ? "" : "no", [icon(t.approved ? "circle-check" : "ban"),
+          txt("span", "m", t.merchant + (t.approved ? "" : ": declined, " + t.reason)), txt("span", "a num", eur(t.amount))]);
+      });
+      return el("div", "", [
+        el("div", "cc" + (c.frozen ? " frozen-card" : ""), [
+          el("div", "row1", [txt("span", "nm", (function (n) { return n.charAt(0).toUpperCase() + n.slice(1); })(c.name || agentName(c.agent))), txt("span", "", "Virtual")]),
+          (function () { var w = txt("div", "who", c.buys ? c.buys.charAt(0).toUpperCase() + c.buys.slice(1) : "Company card"); w.title = w.textContent; return w; })(),
+          txt("div", "buys", "Airwallex Issuing"),
+          el("div", "row2", [txt("span", "pan", "•••• " + c.last4), txt("span", "brandmark", "virtual Visa")]),
+        ]),
+        el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", eur(c.spent_month)), " of " + eur(c.monthly) + (c.single_use ? ", one purchase" : " / month")]), txt("span", "", c.single_use ? "single use" : "max " + eur(c.per_tx))])]),
+        c.only ? el("div", "only", [icon("lock"), txt("span", "", "Only " + c.only)]) : null,
+        c.in_sync ? null : txt("div", "pill wait", "Updating the card at Airwallex…"),
+        txs.length ? el("ul", "txs", txs) : null,
+      ]);
+    }));
+  }
+
+  function renderBudgets(d) {
+    var b = d.budgets, nodes = b.agents.map(function (a) {
+      var pct = Math.max(0, Math.min(100, cents(a.budget) ? cents(a.spent) / cents(a.budget) * 100 : 0));
+      var fill = el("i", pct >= 80 ? "hi" : ""); fill.style.width = pct.toFixed(1) + "%";
+      var cap = a.policy_cap ? a.policy_cap : a.cap;
+      return el("div", "", [
+        el("div", "mt", [
+          el("div", "row1", [el("span", "", [icon("file-lock-2"), "Mandate"]), txt("span", "", "On Metal")]),
+          txt("div", "who", agentName(a.agent)),
+          txt("div", "cap", "At most " + tusd(cap) + " a payment" + (a.policy_cap && cents(a.policy_cap) < cents(a.cap) ? " (your policy; the mandate allows " + group(a.cap) + ")" : "")),
+          el("div", "row2", [txt("span", "", "Pays only " + a.payee), a.expires_on ? txt("span", "", "until " + day(a.expires_on)) : null]),
+        ]),
+        el("div", "limit", [el("div", "bar", [fill]), el("div", "txt num", [el("span", "", [txt("b", "", group(a.spent)), " of " + tusd(a.budget) + " used"]), txt("span", "", group(a.remaining) + " left")])]),
+        a.credentials > 1 ? el("ul", "facts", [el("li", "", ["Limits changed", txt("b", "", (a.credentials - 1) + "× with your Face ID")])]) : null,
+        a.last_tx && TX.test(a.last_tx) ? (function () { var l = txt("a", "txlink mono", "Latest payment on chain " + a.last_tx.slice(0, 10) + "… ↗"); l.href = EXPLORER + a.last_tx; l.target = "_blank"; l.rel = "noopener noreferrer"; return l; })() : null,
+      ]);
+    });
+    var cl = d.clearing;
+    if (cl) {
+      nodes.push(el("div", "", [
+        el("div", "mt", [
+          el("div", "row1", [el("span", "", [icon("receipt"), "Prepaid clearing"]), txt("span", "", "On Metal")]),
+          txt("div", "who", cl.customer + " (customer)"),
+          txt("div", "cap", cl.customer_spendable !== null ? tusd(cl.customer_spendable) + " left of " + group(cl.deposited) + " deposited" : "Deposited " + tusd(cl.deposited)),
+          el("div", "row2", [txt("span", "", "A signed receipt per request, no transaction each time")]),
+        ]),
+        el("ul", "facts", [
+          el("li", "", ["Paid by receipt", txt("b", "", tusd(cl.charged !== null ? cl.charged : cl.earned))]),
+          cl.withdrawn !== "0.00" ? el("li", "", ["Withdrawn to our account", txt("b", "", tusd(cl.withdrawn))]) : null,
+          el("li", "", ["Requests in this ledger", txt("b", "", cl.sales + " (" + tusd(cl.earned) + ")")]),
+        ]),
+        cl.charged !== null && cents(cl.charged) > cents(cl.earned)
+          ? txt("p", "fine", tusd(((cents(cl.charged) - cents(cl.earned)) / 100).toFixed(2)) + " of it came from receipts made before this ledger started.")
+          : null,
+        txt("p", "fine", "Prepaid clearing suits many small calls from one customer; a mandate suits open-ended spending with a cap per payment."),
+      ]));
+    }
+    set("budgets", nodes);
+    document.getElementById("policy-link").hidden = !d.relay;
+  }
+
+  function renderPending(d) {
+    var live = d.pending.filter(function (p) { return !p.expired; });
+    var cnt = document.getElementById("pending-count");
+    cnt.textContent = String(live.length); cnt.className = "pill" + (live.length ? " wait" : "");
+    var nodes = [];
+    if (!live.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing waits for you. The agents are inside their limits."]));
+    live.forEach(function (p) {
+      var advisedNo = !!(p.review && p.review.recommendation === "reject");
+      var exp = txt("span", "exp num", countdown(p.expires_at)); exp.setAttribute("data-expires", p.expires_at);
+      var review = d.recorded ? null : el("a", "btn primary", [icon("scan-face"), advisedNo ? "Review: reject recommended" : "Review and approve"]);
+      if (review) review.href = "approve/" + encodeURIComponent(p.proposal_id);
+      nodes.push(el("div", "ask" + (advisedNo ? " advise-reject" : ""), [
+        el("div", "what", [icon(/card|policy/.test(p.kind) ? "sliders-horizontal" : p.kind === "invoice_payment" ? "landmark" : "file-check"), (p.kind === "invoice_payment" ? "Bank transfer · SWIFT, not a card · " : "") + p.title + " · from " + agentName(p.created_by).toLowerCase()]),
+        txt("div", "title", plain(p.summary)),
+        p.review ? txt("p", "review", (p.review.model ? "Opus, advisory: " : "Review: ") + p.review.text) : null,
+        el("div", "row", [review, exp]),
+      ]));
+    });
+    if (d.decisions.length) {
+      nodes.push(el("div", "closed", [txt("h3", "", "Recently decided")].concat(d.decisions.slice(0, 4).map(function (x) {
+        var tone = x.status === "EXECUTED" ? "ok" : x.status === "REJECTED" || x.status === "FAILED" ? "bad" : "";
+        return el("div", "d", [txt("span", "", x.title), x.by ? txt("span", "by", x.by) : null, txt("span", "pill " + tone, x.status.charAt(0) + x.status.slice(1).toLowerCase().replace(/_/g, " "))]);
+      }))));
+    }
+    set("pending", nodes);
+  }
+
+  // What kind of money movement a row is, so a bank transfer never looks like a card payment.
+  function kindOf(f) {
+    var e = f.event;
+    if (/fraud|injection/.test(e)) return { icon: "shield-alert", label: "Blocked", cls: "bad" };
+    if (/^(transfer|invoice)\./.test(e)) return { icon: "landmark", label: "Bank transfer · SWIFT", cls: f.tone === "refusal" ? "bad" : "bank" };
+    if (/^fx\.|^conversion\./.test(e)) return { icon: "arrow-left-right", label: "Currency exchange", cls: "bank" };
+    if (/^credit\.|^deposit\./.test(e)) return { icon: "wallet", label: "Airwallex deposit", cls: "bank" };
+    if (/^card\.charge_declined/.test(e)) return { icon: "credit-card", label: "Card · declined", cls: "bad" };
+    if (/^card\./.test(e)) return { icon: "credit-card", label: "Card", cls: f.tone === "ok" ? "ok" : "" };
+    if (/^clearing\./.test(e) || /bajillion|clearing/.test(f.text)) return { icon: "receipt", label: "Metal clearing", cls: f.tone === "refusal" ? "bad" : "" };
+    if (/^(sale|upstream|refund|sweep|mandate|pull)\./.test(e)) return { icon: "link-2", label: "On Metal", cls: f.tone === "refusal" ? "bad" : f.tone === "ok" ? "ok" : "" };
+    if (/^proposal\.(approved|cosigned)/.test(e)) return { icon: "scan-face", label: "Face ID", cls: "ok" };
+    if (/^proposal\.(executed|executing)/.test(e)) return { icon: "circle-check", label: "Done", cls: "ok" };
+    if (/^proposal\.(rejected|failed)/.test(e)) return { icon: "ban", label: e === "proposal.rejected" ? "Rejected" : "Failed", cls: "bad" };
+    if (/^proposal\.(expired|superseded)/.test(e)) return { icon: "clock", label: "Closed", cls: "" };
+    if (/^proposal\./.test(e)) return { icon: /SWIFT|invoice/i.test(f.text) ? "landmark" : "clock", label: /SWIFT|invoice/i.test(f.text) ? "For you to decide · bank transfer" : "For you to decide", cls: f.tone === "refusal" ? "bad" : "wait" };
+    if (/^policy\./.test(e)) return { icon: "sliders-horizontal", label: "CFO policy", cls: "" };
+    if (/^claude\./.test(e)) return { icon: "sparkles", label: f.model ? f.model : "AI reading", cls: "" };
+    if (/^passkey\./.test(e)) return { icon: "shield-check", label: "Passkey", cls: "" };
+    return { icon: "circle-dot", label: "", cls: f.tone === "refusal" ? "bad" : "" };
+  }
+
+  // The CFO's feed shows business events; our own bookkeeping (AI readings, proposal states, syncs, merges) folds away.
+  var SYSTEM_EVENTS = { "claude.read": 1, "claude.fallback": 1, "claude.rejected": 1, "proposal.executing": 1, "proposal.executed": 1,
+    "setting.changed": 1, "card.purchase_started": 1, "card.adopted": 1, "card.limits_synced": 1, "card.controls_synced": 1,
+    "card.duplicate_merged": 1, "passkey.enrolment_opened": 1, "credit.locked": 1, "reconcile.done": 1, "treasury.seeded": 1,
+    "business.funded": 1, "sale.prepaid_not_offered": 1, "refund.already_paid": 1, "fx.rate_checked": 1 };
+  function isSystem(f) { return SYSTEM_EVENTS[f.event] === 1 || (f.event === "transfer.status" && !/PAID/.test(f.text)); }
+  function feedRow(f, first) {
+    var k = kindOf(f), refs = [];
+    if (f.tx && TX.test(f.tx)) { var a = txt("a", "mono", "Metal tx " + f.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; refs.push(a); }
+    if (f.awx_id) refs.push(txt("span", "mono", "Airwallex id " + String(f.awx_id).slice(0, 8) + "…"));
+    if (f.trace !== null && f.trace !== undefined && traceIndex[f.trace]) {
+      var tb = txt("button", "trace-btn", "Trace"); tb.type = "button"; tb.dataset.trace = String(f.trace);
+      tb.setAttribute("aria-label", "Open the agent trace for this decision");
+      refs.push(tb);
+    }
+    var when = txt("span", "r num", hm(f.ts)); when.title = "Audit log row #" + f.seq;
+    var li = el("li", k.cls + (!first && !seen[f.seq] ? " fresh" : ""), [
+      el("span", "ic", [icon(k.icon)]),
+      el("div", "", [
+        k.label ? txt("div", "kind", k.label) : null,
+        txt("div", "t", plain(f.text)),
+        el("div", "who", [agentName(f.actor)].concat(f.decided ? [" · Decided: " + f.decided] : []).concat(refs.length ? [" · ", el("span", "proof", refs)] : [])),
+      ]),
+      when,
+    ]);
+    seen[f.seq] = true;
+    return li;
+  }
+  var traceIndex = {};
+  function renderFeed(d) {
+    traceIndex = {};
+    (d.traces || []).forEach(function (t) { traceIndex[t.run_seq] = t; });
+    var body = document.getElementById("feed"), keep = body.scrollTop, first = !Object.keys(seen).length;
+    var biz = d.feed.filter(function (f) { return !isSystem(f); }), sys = d.feed.filter(isSystem);
+    set("feed", biz.map(function (f) { return feedRow(f, first); }));
+    document.getElementById("feed-sys-wrap").hidden = !sys.length;
+    document.getElementById("feed-sys-sum").textContent = sys.length + " system event" + (sys.length === 1 ? "" : "s") + ": AI readings, bookkeeping, syncs";
+    set("feed-sys", sys.map(function (f) { return feedRow(f, first); }));
+    body.scrollTop = keep;
+  }
+
+  function renderTreasury(d) {
+    var t = d.treasury, a = t.airwallex, nodes = [];
+    document.getElementById("treasury-asof").textContent = a ? "Airwallex balances checked at " + hm(a.as_of) : "";
+    if (a) {
+      nodes.push(el("div", "money num", [
+        // The company's own euros: the reserve it always keeps, plus what is free for new bills.
+        // What is left after planned bills, not the sandbox's millions of test money: available less what they set aside.
+        el("div", "m", [txt("div", "k", "Euros after planned bills"), txt("div", "v", eur(centsStr(toCents(a.eur.available) - toCents(a.eur.committed)))), txt("div", "k sub", "of " + eur(a.eur.available) + " test money in the sandbox; the demo plan sets the rest aside. The reserve is " + eur(a.eur.floor) + (String(a.eur.free).charAt(0) === "-" ? ", so none of this is free for new bills" : ""))]),
+        (String(a.eur.free).charAt(0) === "-"
+          // Below the reserve is not a negative balance: the euros are there, but bills already planned have claimed
+          // them. Shown as the shortfall, in words, never as a bare minus.
+          ? el("div", "m", [txt("div", "k", "Below the reserve"), txt("div", "v neg", eur(String(a.eur.free).slice(1))), txt("div", "k sub", "after bills already planned; a new bill restores the reserve first, so it goes to you")])
+          : el("div", "m", [txt("div", "k", "Free for new bills"), txt("div", "v", eur(a.eur.free)), txt("div", "k sub", "above the reserve, after bills already planned")])),
+      ]));
+      nodes.push(el("div", "rows num", [el("div", "", ["US dollars we may convert", txt("b", "", usd(a.usd.headroom))])]));
+      nodes.push(el("details", "tech", [txt("summary", "", "Sandbox totals"), el("div", "rows num", [
+        el("div", "", ["Euros at Airwallex", txt("b", "", eur(a.eur.available))]),
+        el("div", "", ["Set aside in the demo plan", txt("b", "", eur(a.eur.committed))]),
+        txt("p", "note", "The sandbox account holds millions in test money. The demo plan sets aside all but the reserve, so the reserve rule shows on screen as a real company would see it."),
+        el("div", "", ["US dollars / floor", txt("b", "", usd(a.usd.available) + " / " + group(a.usd.floor))]),
+      ])]));
+    } else nodes.push(el("div", "empty", [icon("wallet"), "No Airwallex balance read yet."]));
+    var m = t.metal;
+    nodes.push(el("div", "sub2", [icon("link-2"), "Earnings from data sales on Metal"]));
+    nodes.push(el("div", "rows num", [
+      el("div", "", ["Sales, less supplier and refunds", txt("b", "", tusd(m.net))]),
+      el("div", "", ["Swept once final on chain; booked at Airwallex as a simulated sandbox deposit", txt("b", "", tusd(m.swept))]),
+    ]));
+    // B1: payments to the sweep wallet from unknown senders, held by Metal's receive policy until the CFO decides.
+    var held = (m.quarantine || []).filter(function (q) { return q.status === "OPEN"; });
+    if ((m.quarantine || []).length) {
+      nodes.push(el("div", "sub2", [icon("shield-alert"), held.length ? "Held by Metal: from senders the sweep wallet does not accept" : "Payments Metal held from unknown senders"]));
+      nodes.push(el("div", "rows num", (m.quarantine || []).slice(0, 4).map(function (q) {
+        var state = q.status === "OPEN" ? "waits for you" : q.status === "RETURNED" ? "returned" : "accepted";
+        var from = q.from.slice(0, 6) + "…" + q.from.slice(-4) + " · " + state, l = null;
+        if (TX.test(q.tx)) { l = txt("a", "mono", from + " ↗"); l.href = EXPLORER + q.tx; l.target = "_blank"; l.rel = "noopener noreferrer"; }
+        return el("div", "", [l || from, txt("b", "", q.amount + " test USD")]);
+      })));
+    }
+    set("treasury", nodes);
+  }
+
+  function renderRefusals(d) {
+    // Blocks and refusals first; proposals that simply expired fold away below (nobody was stopped by them).
+    var expired = d.refusals.filter(function (r) { return /expired/i.test(r.what); });
+    var blocked = d.refusals.filter(function (r) { return !/expired/i.test(r.what); });
+    document.getElementById("refusals-count").textContent = String(d.counts ? d.counts.blocked : blocked.length);
+    var row = function (r) { return el("div", "refusal", [el("div", "what", [icon("ban"), plain(r.what)]), txt("div", "reason", plain(r.reason)), txt("div", "meta num", agentName(r.agent) + " · " + hm(r.ts))]); };
+    var nodes = blocked.slice(0, 10).map(row);
+    // The pill counts each stop once; the rows can differ (one document flagged twice, an invoice escalated for the reserve).
+    if (d.counts && blocked.length !== d.counts.blocked) nodes.push(txt("p", "hint", "The count is " + d.counts.blocked + " stops, each once; the list shows " + blocked.length + " events (a document seen twice is one stop, and an invoice escalated for the reserve is a question to you, not a stop)."));
+    if (!nodes.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing refused or blocked yet."]));
+    if (expired.length) nodes.push(el("details", "tech", [txt("summary", "", expired.length + " expired proposal" + (expired.length === 1 ? "" : "s") + ": nobody approved in time, nothing ran"), el("div", "", expired.slice(0, 10).map(row))]));
+    set("refusals", nodes);
+  }
+
+  // The top of the page in money. A recording made before the money summary existed shows the counts instead.
+  function bar(spent, limit) {
+    var pct = Math.max(0, Math.min(100, cents(limit) ? cents(spent) / cents(limit) * 100 : 0));
+    var fill = el("i", pct >= 80 ? "hi" : ""); fill.style.width = pct.toFixed(1) + "%";
+    return el("div", "bar", [fill]);
+  }
+  function kpi(cls, iconName, label, value, unit, note, extra) {
+    return el("div", "kpi " + cls, [el("div", "lab", [el("span", "ic", [icon(iconName)]), txt("span", "", label)]),
+      txt("div", "v num", value), txt("div", "of num", unit || ""), extra || null, note ? txt("div", "note2", note) : null]);
+  }
+  // What the stopped euros are made of, so the headline adds up.
+  function blockedNote(m, n) {
+    var parts = [];
+    if (m.blocked_fraud_n) parts.push(m.blocked_fraud_n + " fake invoice" + (m.blocked_fraud_n > 1 ? "s" : "") + " (" + eur(m.blocked_fraud_eur) + ")");
+    if (m.blocked_declined_n) parts.push(m.blocked_declined_n + " card decline" + (m.blocked_declined_n > 1 ? "s" : "") + (m.blocked_declined_later_paid_n ? " (" + m.blocked_declined_later_paid_n + " paid later, after a raise)" : ""));
+    if (cents(m.blocked_usdz)) parts.push("refusals on chain");
+    if (m.blocked_rejected_n) parts.push(m.blocked_rejected_n + " rejected by the CFO");
+    return n + " stops, all counted" + (parts.length ? ", among them " + parts.join(", ") : "") + ". The amount is what stayed out for good.";
+  }
+  function renderKpis(d) {
+    var m = d.money;
+    if (!m) {
+      set("kpis", [kpi("ok", "circle-check", "Done by the agents", String(d.counts.alone), "", "within their limits, no approval at the time"),
+        kpi("wait", "clock", "Waiting for you", String(d.counts.waiting), "", "each needs your Face ID"),
+        kpi("bad", "ban", "Blocked", String(d.counts.blocked), "", "refused before money moved")]);
+      return;
+    }
+    var waitMoney = [cents(m.waiting_eur) ? eur(m.waiting_eur) : null, cents(m.waiting_usdz) ? tusd(m.waiting_usdz) : null].filter(Boolean).join(" + ");
+    set("kpis", [
+      kpi("ok", "credit-card", "Card spend this month", eur(m.card_spent_eur), "of " + eur(m.card_limit_eur), "spent by the agents alone, inside the cards' limits", bar(m.card_spent_eur, m.card_limit_eur)),
+      kpi("ok", "file-lock-2", "On-chain spend", group(m.chain_spent_usdz), "of " + tusd(m.chain_limit_usdz), "paid under the mandates, per request", bar(m.chain_spent_usdz, m.chain_limit_usdz)),
+      kpi("wait", "scan-face", "Waiting for your Face ID", m.waiting ? String(m.waiting) : "Nothing", m.waiting ? (waitMoney || "proposals") : "", m.waiting ? "each one on the exact terms" : "the agents are inside their limits"),
+      kpi("bad", "shield-check", "Kept out for good", eur(m.blocked_eur), cents(m.blocked_usdz) ? "+ " + tusd(m.blocked_usdz) : "", blockedNote(m, d.counts.blocked)),
+    ]);
+  }
+  // One row per agent: both rails side by side.
+  function renderAgentsTable(d) {
+    var rows = {}, order = [];
+    // Task cards (Ask Purser) are not agents: they show in the cards grid and the Ask Purser panel only.
+    (d.cards || []).filter(function (c) { return c.agent.indexOf("task:") !== 0; }).forEach(function (c) { if (!rows[c.agent]) { rows[c.agent] = {}; order.push(c.agent); } rows[c.agent].card = c; });
+    d.budgets.agents.forEach(function (a) { if (!rows[a.agent]) { rows[a.agent] = {}; order.push(a.agent); } rows[a.agent].mandate = a; });
+    var stopped = (d.stopped || []).map(function (x) { return x.agent; });
+    var head = el("tr", "", ["Agent", "Card this month", "Card per purchase", "On chain used", "Per payment", "Status"].map(function (h) { return txt("th", "", h); }));
+    var body = order.map(function (id) {
+      var r = rows[id], c = r.card, a = r.mandate;
+      var status = d.frozen ? "Frozen (emergency stop)" : stopped.indexOf(id) >= 0 ? "Stopped (velocity limit)" : "Active";
+      return el("tr", "", [
+        el("td", "", [txt("b", "", agentName(id)), c && c.only ? txt("span", "sub", "Only " + c.only) : null]),
+        el("td", "num", c ? [eur(c.spent_month), txt("span", "sub", "of " + eur(c.monthly))] : ["—"]),
+        el("td", "num", [c ? eur(c.per_tx) : "—"]),
+        el("td", "num", a ? [tusd(a.spent), txt("span", "sub", "of " + group(a.budget))] : ["—"]),
+        el("td", "num", [a ? tusd(a.policy_cap && cents(a.policy_cap) < cents(a.cap) ? a.policy_cap : a.cap) : "—"]),
+        el("td", "", [txt("span", "pill " + (status === "Active" ? "ok" : "bad"), status)]),
+      ]);
+    });
+    var labels = ["Agent", "Card this month", "Card per purchase", "On chain used", "Per payment", "Status"];
+    body.forEach(function (tr) { Array.prototype.forEach.call(tr.children, function (td, i) { td.setAttribute("data-label", labels[i]); }); });
+    set("agents-table", [el("thead", "", [head]), el("tbody", "", body)]);
+  }
+
+  // Claude's part: what each model does, how fast, and what it costs (list price); nothing it says moves money.
+  // claude-haiku-5-5 → Haiku 5.5, as in the table above.
+  function modelWord(m) { var r = /^claude-([a-z]+)-(\d+)-(\d+)/.exec(m || ""); return r ? capFirst(r[1]) + " " + r[2] + "." + r[3] : m; }
+  function capFirst(t) { t = String(t || ""); return t.charAt(0).toUpperCase() + t.slice(1); }
+  function usdMicros(m) { return "$" + (m / 1e6).toFixed(m >= 10000 ? 2 : 4); }
+  function renderClaude(d) {
+    var c = d.claude, panel = document.getElementById("claude-panel");
+    var agentsOnPage = (d.agent_chat || []).length > 0;
+    panel.hidden = !c && !agentsOnPage;
+    if (!c && !agentsOnPage) return;
+    c = c || { calls: 0, fallbacks: 0, models: [] };
+    var nodes = [];
+    if (!c.calls) nodes.push(el("div", "empty", [icon("sparkles"), "No Claude calls in this run: the deterministic parsers decided" + (c.fallbacks ? " (" + c.fallbacks + " times)" : "") + "."]));
+    else {
+      nodes.push(el("div", "money num", [
+        el("div", "m", [txt("div", "k", "AI cost per €1,000 paid"), txt("div", "v", c.per_1000_eur_usd_micros == null ? "—" : usdMicros(c.per_1000_eur_usd_micros)), txt("div", "k sub", "in this run: card spend and euro transfers of " + eur(c.eur_paid) + "; the cost follows documents read, not euros")]),
+        el("div", "m", [txt("div", "k", "Per Claude call"), txt("div", "v", usdMicros(c.per_call_usd_micros)), txt("div", "k sub", c.calls + " calls, " + usdMicros(c.cost_usd_micros) + " in all")]),
+        el("div", "m", [txt("div", "k", "Checked by code"), txt("div", "v", "Every answer"), txt("div", "k sub", c.fallbacks ? c.fallbacks + " times the plain parser decided instead" : "a wrong shape falls back to the plain parser")]),
+      ]));
+      var labels = ["Model", "What it does", "Calls", "Average time", "Cost"];
+      var head = el("tr", "", labels.map(function (h) { return txt("th", "", h); }));
+      var body = c.models.map(function (m) {
+        var tr = el("tr", "", [
+          el("td", "", [txt("b", "", m.model)]), el("td", "", [m.role]), el("td", "num", [String(m.calls)]),
+          el("td", "num", [m.avg_latency_ms == null ? "not recorded" : (m.avg_latency_ms / 1000).toFixed(1) + " s"]), el("td", "num", [usdMicros(m.cost_usd_micros)]),
+        ]);
+        Array.prototype.forEach.call(tr.children, function (td, i) { td.setAttribute("data-label", labels[i]); });
+        return tr;
+      });
+      nodes.push(el("table", "agents", [el("thead", "", [head]), el("tbody", "", body)]));
+    }
+    // D19 block 4: the autonomous agents, what each decided (and who decided: Claude or code's fallback) and their chat.
+    var st = (d.agent_stats || []).filter(function (x) { return x.decisions > 0; }), chat = d.agent_chat || [];
+    if (st.length || chat.length) {
+      nodes.push(txt("h3", "", "The agents decide"));
+      if (st.length) {
+        var al = ["Agent", "Model", "Decisions", "Decided by Claude", "Fallback (code)", "Claude cost, last hour"];
+        var ah = el("tr", "", al.map(function (h) { return txt("th", "", h); }));
+        var ab = st.map(function (x) {
+          var tr = el("tr", "", [
+            el("td", "", [txt("b", "", capFirst(x.agent))]), el("td", "", [x.models.map(modelWord).join(", ") || "—"]), el("td", "num", [String(x.decisions)]),
+            el("td", "num", [String(x.by_claude)]), el("td", "num", [x.fallback + " (" + x.fallback_pct + "%)"]), el("td", "num", [usdMicros(x.cost_last_hour_usd_micros || 0)]),
+          ]);
+          Array.prototype.forEach.call(tr.children, function (td, i) { td.setAttribute("data-label", al[i]); });
+          return tr;
+        });
+        nodes.push(el("table", "agents", [el("thead", "", [ah]), el("tbody", "", ab)]));
+      }
+      if (chat.length) {
+        nodes.push(el("ul", "agentchat", chat.map(function (c) {
+          var head = [txt("span", "", hm(c.ts)), txt("b", "", c.who === "world" ? "The world" : capFirst(c.who))];
+          if (c.to) head.push(txt("span", "", "→ " + capFirst(c.to)));
+          if (c.kind === "decision") head.push(txt("span", "by " + (c.by === "claude" ? "claude" : ""), c.by === "claude" ? "Decided by Claude" + (c.model ? " · " + modelWord(c.model) : "") + " · Powered by Claude" : c.by === "idle" ? "Stopped (CFO's switch)" : "Fallback (code)"));
+          if (c.kind === "message") head.push(txt("span", "by " + (c.by === "claude" ? "claude" : ""), c.by === "claude" ? "Message · Powered by Claude" : c.by === "fallback" ? "Message · Fallback (code)" : "Message"));
+          return el("li", c.kind, [el("div", "who", head), c.text]);
+        })));
+      }
+    }
+    nodes.push(txt("p", "note", "Claude reads and advises; code checks every answer, and beyond the agents' limits, Purser's runner moves money only after it has verified your Face ID signature on the exact terms. Costs at Anthropic's list prices in US dollars. Built with Claude Code."));
+    set("claude", nodes);
+  }
+
+  function renderAsk(d) {
+    var msgs = d.ask || [], panel = document.getElementById("ask-panel");
+    panel.hidden = !msgs.length;
+    set("ask", msgs.map(function (m) {
+      var who = m.from === "purser" ? "Purser" : m.from === "you" ? "You" : m.from.charAt(0).toUpperCase() + m.from.slice(1);
+      var li = el("li", m.from === "purser" ? "purser" : "you", [txt("span", "who", who + " · " + hm(m.ts)), m.text]);
+      if (m.proposal_id) {
+        var a = txt("a", "textlink", m.proposal_id + " is under Waiting for you");
+        a.setAttribute("href", "#pending");
+        li.appendChild(el("div", "", [a]));
+      }
+      return li;
+    }));
+  }
+
+  // F, the Agents page: one panel per agent, from the snapshot's profiles (the CFO policy is their one source).
+  function renderAgents(d) {
+    var ps = d.agents || [], how = document.getElementById("agents-how");
+    var editable = !d.recorded && MODE !== "local";
+    how.textContent = d.recorded ? "Recorded run: the agents as they stood. Changing a setting is live only."
+      : MODE === "local" ? "Tighten a setting on your phone (Policy) with Face ID; it applies at once. Loosening is a proposal from the runner, approved with Face ID."
+      : "Tighten a setting here with Face ID; it applies at once. Loosening is a proposal from the runner, approved with Face ID.";
+    if (!ps.length) { set("agents", [el("div", "panel empty", [icon("bot"), d.recorded ? "This recording was made before the Agents page." : "No agents yet."])]); return; }
+    // Kit 11's names for the three roles, and what no agent may ever do (src/policy/principals.ts, src/claude/reader.ts).
+    var KIT = { sourcing: "Kit 11 job: buys upstream data per query; its card pays warehouse and data software", support: "Kit 11 job: refunds customers when a dispute holds; its card pays helpdesk software", treasury: "Kit 11 job: watches spending, sweeps earnings to Airwallex, pays the monthly licence fee in EUR" };
+    var NEVER = "Never: hold an owner key, see a card number, add a payee or bank account, raise its own limit, or approve.";
+    // How the work is split across Claude's models, with what each cost in this run (list prices).
+    var split = d.claude && d.claude.models && d.claude.models.length ? el("section", "panel split", [
+      el("div", "sect flush", [txt("h2", "", "How the work is split across Claude's models"), txt("span", "hint", d.claude.calls + " calls in this run, " + usdMicros(d.claude.cost_usd_micros).replace("$", "USD ") + " in all at Anthropic's list prices; Metal and Airwallex enforce the limits")]),
+      el("div", "splitgrid", d.claude.models.map(function (m) {
+        return el("div", "m", [txt("div", "k", m.model), txt("div", "v", m.role.charAt(0).toUpperCase() + m.role.slice(1)), txt("div", "sub", m.calls + " calls · " + usdMicros(m.cost_usd_micros).replace("$", "USD "))]);
+      }).concat([el("div", "m code", [txt("div", "k", "Code"), txt("div", "v", "Checks every answer and every agent's call"), txt("div", "sub", "limits, prices, budgets, the FX check")])])),
+    ]) : null;
+    var others = el("section", "panel split", [
+      el("div", "sect flush", [txt("h2", "", "Also on the same limits")]),
+      el("div", "two", [
+        el("div", "", [txt("h3", "", "An outside agent, over MCP"), txt("p", "sub", "Any agent that speaks MCP, Claude Code included, can ask for a company card, pay inside its limits and ask the CFO for more. Four tools, no keys; it never approves.")]),
+        el("div", "", [txt("h3", "", "Ask Purser"), txt("p", "sub", "A task in one sentence (a flight, a hotel, a train) becomes a single-use Airwallex card for that task, inside the CFO's policy; anything more waits for Face ID.")]),
+      ]),
+    ]);
+    set("agents", [split].concat(ps.map(function (a) {
+      var pill = a.status === "working" ? txt("span", "pill ok", "Working") : txt("span", "pill bad", a.status === "frozen" ? "Frozen (emergency stop)" : a.status === "paused" ? "Paused by you: mandate revoked, card frozen" : "Stopped");
+      var fact = function (k, v) { return el("div", "m", [txt("div", "k", k), el("div", "v", v)]); };
+      var facts = el("div", "facts", [
+        fact("Company card (Airwallex)", [eur(a.card.per_tx) + " a purchase · " + eur(a.card.monthly) + " a month", txt("div", "sub", "Only " + a.card.merchants.join(", ") + ", EUR")]),
+        fact("On chain (Metal mandate)", a.mandate ? [tusd(a.mandate.policy_cap || a.mandate.cap) + " a payment", txt("div", "sub", "budget " + group(a.mandate.budget) + " test USD" + (a.mandate.policy_cap ? "; mandate cap " + a.mandate.cap : ""))] : ["No mandate"]),
+        fact("Speed limit", [a.velocity.per_minute + " payments a minute", txt("div", "sub", (cents(a.velocity.usdz_per_hour) ? group(a.velocity.usdz_per_hour) + " test USD and " : "") + eur(a.velocity.eur_per_hour) + " an hour; over it, code stops the agent")]),
+        fact("Claude", a.models.map(function (m) { return el("div", "", [txt("b", "", m.model.replace("Claude ", "")), " " + m.job]); })),
+      ].concat((d.claude && d.claude.agents || []).filter(function (x) { return x.agent === a.id; }).map(function (x) {
+        // The agent's own decisions in this run (its Claude loop with tools), what they cost and how long one took.
+        return fact("Its own decisions", [x.runs + (x.runs === 1 ? " decision" : " decisions") + " · " + x.model, txt("div", "sub", usdMicros(x.cost_usd_micros).replace("$", "USD ") + " in all" + (x.median_latency_ms ? " · about " + Math.round(x.median_latency_ms / 1000) + " s each" : ""))]);
+      })));
+      var two = el("div", "two", [
+        el("div", "", [txt("h3", "", "On its own"), el("ul", "plain", a.alone.map(function (x) { return txt("li", "", x); }))]),
+        el("div", "", [txt("h3", "", "Waits for your Face ID"), el("ul", "plain", a.asks.map(function (x) { return txt("li", "", x); }))]),
+      ]);
+      var rows = a.settings.map(function (e) {
+        return el("tr", "", [el("td", "", [e.label]), txt("td", "now", e.display.replace(/\*?USDZ/g, "test USD"))]);
+      });
+      var acts = [];
+      if (editable) {
+        var edit = txt("a", "btn", "Change on your phone"); edit.href = "policy?agent=" + encodeURIComponent(a.id); acts.push(edit);
+        if (a.status === "working") { var stop = el("a", "btn danger", [icon("octagon-x"), "Stop this agent"]); stop.href = "policy?agent=" + encodeURIComponent(a.id) + "&stop=on"; acts.push(stop); }
+        // 4.2 With the agents on: pause one agent with Face ID. Its Metal mandate is revoked and its card frozen.
+        if (a.status === "working" && a.settings.some(function (e) { return e.key === "pause." + a.id; })) {
+          var pause = el("a", "btn danger", [icon("octagon-x"), "Pause this agent"]); pause.href = "policy?agent=" + encodeURIComponent(a.id) + "&pause=on"; acts.push(pause);
+        }
+      }
+      if (a.status === "paused" && !d.recorded) acts.push(el("div", "sub", "Resuming binds its mandate on chain again: a proposal from the runner, approved with Face ID (both of you, with four eyes on)."));
+      if (a.status === "stopped" && !d.recorded) acts.push(el("div", "sub", "Starting it again loosens the policy: a proposal from the runner, approved with Face ID."));
+      return el("section", "panel agent", [
+        el("div", "top", [icon("bot"), txt("h2", "", a.name), pill]),
+        KIT[a.id] ? txt("p", "kitrole", KIT[a.id]) : null,
+        txt("p", "job", a.job.charAt(0).toUpperCase() + a.job.slice(1) + "."),
+        facts, two, txt("p", "never", NEVER),
+        rows.length ? el("table", "settings", [el("tbody", "", rows)]) : null,
+        acts.length ? el("div", "acts", acts) : null,
+      ]);
+    })).concat([others]).filter(Boolean));
+  }
+  // The finance view: trial balance, cash moved per bank account, spend per cost centre, latest postings.
+  function renderBooks(d) {
+    var b = d.books;
+    if (!b) { set("books", [el("div", "panel empty", [icon("database"), "This recording was made before the Books tab."])]); return; }
+    var cur = function (c) { return c === "USDZ" ? "test USD" : c; };
+    var words = function (t) { return String(t).replace(/\*?USDZ/g, "test USD"); };
+    var amt = function (v, c) { return v === "" ? "" : (c === "EUR" ? eur(v) : group(v) + " " + cur(c)); };
+    var table = function (cls, heads, rows) {
+      var head = el("tr", "", heads.map(function (h) { return txt("th", h[1] ? "num" : "", h[0]); }));
+      var body = rows.map(function (r) { return el("tr", "", r.map(function (v, i) { var td = txt("td", heads[i][1] ? "num" : "", v); td.setAttribute("data-label", heads[i][0]); return td; })); });
+      return el("table", cls, [el("thead", "", [head]), el("tbody", "", body)]);
+    };
+    var panel = function (title, hint, node) { return el("section", "panel bk", [el("div", "sect flush", [txt("h2", "", title), hint ? txt("span", "hint", hint) : null]), node]); };
+    set("books", [
+      el("p", "books-ok", [txt("span", "pill " + (b.balanced ? "ok" : "bad"), b.balanced ? "Balanced" : "Not balanced"),
+        txt("span", "hint", b.balanced ? "Debits equal credits in every currency. FX conversions and the Metal-to-Airwallex bridge sit in 1590, money in transit, between currencies." : "Debits and credits differ: check the journal.")]),
+      // By default only what the run moved; the sandbox's opening balances (millions of test money) fold away.
+      panel("Result of the run", "income and costs the agents booked, per currency", table("wide", [["Account", 0], ["Currency", 0], ["Debit", 1], ["Credit", 1]],
+        b.trial.filter(function (t) { return /^[4-9]/.test(t.account); }).map(function (t) { var dr = t.balance_debit != null ? t.balance_debit : (t.balance.charAt(0) === "-" ? "" : t.balance), cr = t.balance_credit != null ? t.balance_credit : (t.balance.charAt(0) === "-" ? t.balance.slice(1) : ""); return [t.account + " " + words(t.name), cur(t.currency), amt(dr === "0.00" ? "" : dr, t.currency), amt(cr === "0.00" ? "" : cr, t.currency)]; }))),
+      panel("Bank accounts: money in and out during the run", "opening and closing balances are folded away below", table("wide", [["Account", 0], ["Currency", 0], ["In", 1], ["Out", 1]],
+        b.cash.map(function (c) { return [c.account + " " + words(c.name), cur(c.currency), c.in != null ? amt(c.in, c.currency) : "", c.out != null ? amt(c.out, c.currency) : amt(c.moved, c.currency)]; }))),
+      el("details", "panel bk fold", [txt("summary", "", "Opening balances and the full trial balance (sandbox test money)"),
+        txt("p", "hint", "Airwallex's sandbox starts each account with millions in test money, far more than a company would hold. The books record it once, as an opening entry against owner's equity (3000), so every later payment balances. The Overview's Treasury plans with a reserve and treats the rest as set aside."),
+        txt("h3", "", "Trial balance"), table("wide", [["Account", 0], ["Currency", 0], ["Debit", 1], ["Credit", 1]],
+        b.trial.map(function (t) { var dr = t.balance_debit != null ? t.balance_debit : (t.balance.charAt(0) === "-" ? "" : t.balance), cr = t.balance_credit != null ? t.balance_credit : (t.balance.charAt(0) === "-" ? t.balance.slice(1) : ""); return [t.account + " " + words(t.name), cur(t.currency), amt(dr === "0.00" ? "" : dr, t.currency), amt(cr, t.currency)]; })),
+        txt("h3", "", "Bank accounts, opening to closing"), table("wide", [["Account", 0], ["Currency", 0], ["Opening", 1], ["In", 1], ["Out", 1], ["Now", 1]],
+        b.cash.map(function (c) { return [c.account + " " + words(c.name), cur(c.currency), c.opening != null ? amt(c.opening, c.currency) : "", c.in != null ? amt(c.in, c.currency) : "", c.out != null ? amt(c.out, c.currency) : amt(c.moved, c.currency), c.closing != null ? amt(c.closing, c.currency) : ""]; })),
+      ]),
+      panel("Spend per cost centre", "per currency: euros on the cards and Airwallex, test USD on Metal", table("wide", [["Cost centre", 0], ["Currency", 0], ["Spent", 1]],
+        b.spend.map(function (x) { return [x.cost_centre + " " + x.name, cur(x.currency), amt(x.amount, x.currency)]; }))),
+      (d.card_spend && d.card_spend.rows.length ? panel("Card spend by merchant", "each agent's Airwallex card: what it paid where, declines apart" + (d.card_spend.suggestions.length ? "" : " · no subscriptions seen yet (the same amount again a month later)"),
+        el("div", "", [table("wide", [["Card", 0], ["Merchant", 0], ["Category", 0], ["Paid", 1], ["Charges", 1], ["Declined", 1]], d.card_spend.rows.map(function (r) {
+          return [r.agent, r.merchant + (r.subscription ? " · subscription" : ""), r.category, amt(r.total, r.currency), String(r.charges), String(r.declined)];
+        }))].concat(d.card_spend.suggestions.map(function (s) { return txt("p", "hint", s); })))) : null),
+      (d.receivables && d.receivables.receipts.length ? panel("Receivables: retailers' payments into the Global Accounts", "each payment matched to its invoice by reference; anything off goes to you · the retailers and their payments are sandbox simulations",
+        table("wide", [["Paid in", 0], ["Reference", 0], ["Amount", 1], ["Result", 0]], d.receivables.receipts.map(function (r) {
+          return [day(r.received_at), r.reference || "—", amt(r.amount, r.currency), ({ MATCHED: "✓ ", SHORT: "! ", OVER: "! ", WRONG_CURRENCY: "! ", UNMATCHED: "? " })[r.outcome] + r.detail];
+        }))) : null),
+      panel("Latest postings", b.postings.length + " of " + b.total_postings + " · the full journal exports as CSV on the runner", table("wide", [["Date", 0], ["Account", 0], ["What", 0], ["Debit", 1], ["Credit", 1]],
+        b.postings.map(function (p) { return [day(p.date), p.account + " " + words(p.account_name), words(p.description), amt(p.debit, p.currency), amt(p.credit, p.currency)]; }))),
+    ]);
+  }
+  // The Dispute desk: each case with its claim, outcome, the evidence per payment and the explanation.
+  // A Metal transaction as a short link to the testnet explorer.
+  function txLink(tx, label) {
+    if (!tx || !/^0x[0-9a-fA-F]{64}$/.test(tx)) return null;
+    var a = el("a", "txl", [(label ? label + " " : "") + tx.slice(0, 8) + "…" + tx.slice(-4) + " ↗"]); a.href = "https://testnet.metalntwx.com/tx/" + tx; a.target = "_blank"; a.rel = "noopener";
+    return el("div", "sub", [a]);
+  }
+  // Addresses on screen are shortened (0x1234…abcd); the full explanation, as recorded, is folded.
+  function shortHex(s) { return String(s || "").replace(/0x[0-9a-fA-F]{40,64}\b/g, function (m) { return m.slice(0, 6) + "…" + m.slice(-4); }); }
+  // At most three sentences or bullets: bullets as written, else the last three sentences of substance (greetings,
+  // the recap of amounts, the numbered evidence and closing lines left out; they are on the board above).
+  function shortText(t) {
+    t = String(t || "");
+    var bullets = t.split(/\n/).map(function (l) { return l.trim(); }).filter(function (l) { return /^[-*•]\s+/.test(l); }).map(function (l) { return l.replace(/^[-*•]\s+/, "").replace(/\*\*/g, ""); });
+    if (bullets.length) return bullets.slice(0, 3).map(shortHex);
+    var all = t.replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+(?=[A-Z(])/).filter(Boolean);
+    var keep = all.filter(function (s) { return !/^(thank|we reviewed|if you|this explanation|please)\b/i.test(s) && !/^\(\d+\)/.test(s) && !/: \(1\)/.test(s) && !/total refunded/i.test(s); });
+    return (keep.length ? keep.slice(-3) : all.slice(0, 3)).map(shortHex);
+  }
+  function renderDisputes(d) {
+    var cs = (d.disputes || []).slice().sort(function (a, b) { return (Date.parse(b.opened_at) || 0) - (Date.parse(a.opened_at) || 0); });
+    if (!cs.length) { set("disputes", [el("div", "panel empty", [icon("shield-check"), d.recorded ? "No dispute was opened in this recording." : "No disputes yet. A case opens here when a customer disputes an order."])]); return; }
+    var OUT = { rejected: "Not refunded", refund: "Refunded in full", partial_refund: "Partly refunded" };
+    var mark = function (ok, yes, no) { return txt("span", ok ? "okc" : "badc", (ok ? "✓ " : "✗ ") + (ok ? yes : no)); };
+    // The customer: named in the case, else the payee of the Support agent's mandate (the customer it refunds).
+    var support = ((d.budgets && d.budgets.agents) || []).filter(function (a) { return a.agent === "support"; })[0];
+    var wrongData = function (x) { return !!x.refunded_before || !!x.data_wrong; };
+    function tallyLine(c) {
+      var n = c.sales.length, wrong = c.sales.filter(wrongData);
+      var valid = c.sales.filter(function (x) { return !wrongData(x) && x.order.indexOf("signed") === 0 && x.chain && x.delivered; }).length;
+      var paid = wrong.filter(function (x) { return x.refunded_before || Number(x.refund) > 0; }).length, other = n - valid - wrong.length;
+      return [n + " disputed", valid + " proven valid"].concat(wrong.length ? [wrong.length + " wrong data, " + (paid === wrong.length ? "refunded" : paid + " refunded")] : [], other ? [other + " not proven"] : []).join(" · ");
+    }
+    function caseView(c) {
+      var name = c.customer_name || (support && support.payee) || null;
+      var agent = c.agent && c.agent.source === "claude" ? c.agent : null;
+      var head = el("div", "sect flush", [txt("h2", "", (name ? name + " · " : "") + c.case_id + ": “" + c.claim.charAt(0).toUpperCase() + c.claim.slice(1) + "”"), txt("span", "pill " + (c.outcome === "rejected" ? "ok" : "wait"), OUT[c.outcome] + " · " + group(c.refund) + " test USD")]);
+      var route = c.route === "approval" ? "Above the CFO's automatic limits: " + c.proposal_id + " waits for Face ID." : c.route === "auto" ? "Refunded at once, within the CFO's automatic limits, to the account that paid." : "Nothing to refund.";
+      var common = c.sales.every(function (x) { return x.why === c.sales[0].why; }) ? c.sales[0].why : null;
+      var rows = c.sales.map(function (x) {
+        var bad = wrongData(x);
+        var delivered = bad
+          ? el("td", "", [txt("span", "warnc", "✗ wrong data · supplier corrected" + (x.refunded_before ? " · refunded " + group(x.refunded_before.amount) : "")), x.refunded_before ? txLink(x.refunded_before.tx, "refund") : null])
+          : el("td", "", [mark(x.delivered, "as recorded", "differs from the record")]);
+        var tr = el("tr", bad ? "wrongrow" : "", [
+          el("td", "", [txt("b", "", String(x.sale_id)), el("div", "sub", [x.request])]),
+          txt("td", "num", group(x.charged)),
+          el("td", "", [mark(x.order.indexOf("signed") === 0, x.order, x.order)]),
+          el("td", "", [mark(x.chain, "inside the bound mandate", "outside it"), x.passkey ? el("div", "sub", ["owner confirmed with a passkey"]) : null, txLink(x.tx, "settled")]),
+          delivered,
+          el("td", "", [txt("b", "", group(x.refund)), x.refunded_before ? el("div", "sub", ["already refunded " + group(x.refunded_before.amount) + " earlier (wrong data)"]) : null, common ? null : el("div", "sub why", [x.why])]),
+        ]);
+        ["Payment", "Charged", "Signed order", "Chain check", "Delivered", "Refund"].forEach(function (l, i) { tr.children[i].setAttribute("data-label", l); });
+        return tr;
+      });
+      var head2 = el("tr", "", ["Payment", "Charged", "Signed order", "Chain check", "Delivered", "Refund"].map(function (h, i) { return txt("th", i === 1 ? "num" : "", h); }));
+      var them = c.customer_agent;
+      var before = c.sales.filter(function (x) { return x.refunded_before; });
+      return [head,
+        txt("p", "dtally", tallyLine(c)),
+        txt("p", "sub", agent ? "The Support agent decided with Claude; code checked every order against Metal." : "Code checks the proof; Claude explains."),
+        c.text ? el("p", "sub", ["The customer wrote: “" + c.text + "”"]) : null,
+        // Agent to agent: the customer's own agent's message, as a chat bubble.
+        them && them.text ? el("div", "dbubble", [txt("div", "from", them.name || ((name ? name + "'s" : "The customer's") + " agent")), shortHex(them.text)]) : null,
+        agent ? el("div", "agentdec", [txt("div", "who", "Support agent · Claude " + modelWord(agent.model) + " decided"),
+          el("ul", "said", shortText(agent.said).map(function (s) { return txt("li", "", s); })),
+          el("div", "sub", [[agent.tools && agent.tools.length ? "tools: " + agent.tools.join(" → ") : null, agent.cost_usd_micros != null ? "Claude cost USD " + (agent.cost_usd_micros / 1e6).toFixed(4) + " (list price)" : null, agent.request_id ? "request " + agent.request_id.slice(0, 6) + "…" + agent.request_id.slice(-4) : null].filter(Boolean).join(" · ")])]) : null,
+        txt("p", "", route),
+        (function () {
+          // The evidence board: each check counted over the disputed payments, then the decision.
+          var n = c.sales.length, cnt = function (f) { return c.sales.filter(f).length + " of " + n; };
+          var tile = function (k, v, cls) { return el("div", "ev" + (cls ? " " + cls : ""), [txt("div", "k", k), txt("div", "v num", v)]); };
+          return el("div", "evboard", [
+            tile("Orders signed by the customer's agent", cnt(function (x) { return x.order.indexOf("signed") === 0; })),
+            tile("Paid inside the mandate, checked on chain", cnt(function (x) { return x.chain; })),
+            tile("Delivered as recorded", cnt(function (x) { return x.delivered; })),
+            tile("Refunded earlier for wrong data", cnt(function (x) { return !!x.refunded_before; })),
+            tile("Decision: refund now", group(c.refund) + " test USD", "decision"),
+          ]);
+        })(),
+        common ? el("p", "sub", [(c.sales.length > 1 ? "For each payment: " : "") + common]) : null,
+        before.length ? el("p", "sub", [before.length + " of these " + c.sales.length + " payments had already been refunded in an earlier case, because the data delivered was wrong (the supplier corrected it). Delivered “as recorded” means the data matches what Northwind recorded when it delivered, not that it was right."]) : null,
+        el("table", "wide", [el("thead", "", [head2]), el("tbody", "", rows)]),
+        el("div", "review-box", [
+          txt("p", "", agent ? "The reply, in short" : "Claude's explanation, in short"),
+          el("ul", "said", shortText(c.explanation).map(function (s) { return txt("li", "", s); })),
+          before.length ? txt("p", "sub", "About this decision only: payments " + before.map(function (x) { return x.sale_id; }).join(", ") + " had already been refunded for wrong data (above).") : null,
+          txt("p", "sub", agent ? "Written by " + c.explained_by + "; shortened here." : "Explained by " + c.explained_by + "; shortened here. The decision and every amount are code's; the explanation is advice."),
+          el("details", "", [txt("summary", "", "The full explanation, as recorded"),
+            before.length ? el("p", "", [txt("b", "", "Already refunded before this claim: "), before.length + " of these payments, for wrong data. Where the explanation below says no payment was refunded, it means by this decision. Where it says the data matches the expected hash, it means the hash recorded at delivery, not that the data was right."]) : null,
+            txt("p", "", c.explanation)]),
+        ]),
+      ];
+    }
+    // The newest case in full; older ones (a run adds one) folded into an archive, one line each.
+    var older = cs.slice(1);
+    set("disputes", [el("section", "panel bk", caseView(cs[0])),
+      older.length ? el("details", "panel darchive", [txt("summary", "", "Earlier cases (" + older.length + ")")].concat(older.map(function (c) {
+        return el("details", "doldcase", [txt("summary", "", c.case_id + " · " + day(c.opened_at) + " · " + tallyLine(c)), el("div", "panel bk", caseView(c))]);
+      }))) : null]);
+  }
+  var wantAgents = /[?&]agents(=|&|$)/.test(location.search);
+  var wantBooks = !wantAgents && /[?&]books(=|&|$)/.test(location.search);
+  var wantDisputes = !wantAgents && !wantBooks && /[?&]disputes(=|&|$)/.test(location.search);
+  if (wantAgents || wantBooks || wantDisputes) { document.getElementById("overview").hidden = true; document.getElementById(wantAgents ? "agents-view" : wantBooks ? "books-view" : "disputes-view").hidden = false; }
+
+  // Airwallex's webhooks for cards, payouts, conversions and deposits: what arrived, and whether the ledger agrees.
+  function renderHooks(d) {
+    var h = d.airwallex_events, box = document.getElementById("awx-hooks");
+    if (!h || !h.total) { box.hidden = true; return; }
+    box.hidden = false;
+    var sum = h.by_object.map(function (b) { var l = b.label.toLowerCase(); return b.n + " " + (b.n === 1 && l !== "other" ? l.replace(/s$/, "") : l) + (b.disagree ? " (" + b.disagree + " the ledger cannot explain)" : ""); }).join(" · ");
+    var head = el("p", "books-ok", [txt("span", "pill " + (h.disagree ? "bad" : "ok"), h.disagree ? h.disagree + " to check" : "All match"), txt("span", "hint", h.total + " events: " + sum)]);
+    var rows = h.recent.map(function (r) {
+      var mark = r.agrees === false ? "! " : r.agrees === true ? "✓ " : "· ";
+      return el("li", r.agrees === false ? "bad" : "", [txt("span", "", hm(r.received_at) + "  " + r.name), txt("small", "", mark + plain(r.outcome))]);
+    });
+    document.getElementById("awx-hooks-body").replaceChildren(head, el("ul", "hooklist", rows));
+  }
+  // Design 4.1: the control tower and who enforced each refusal.
+  function proofA(p, word) {
+    if (!p) return null;
+    var a;
+    if (p.kind === "tx" && TX.test(p.ref)) { a = txt("a", "", (word || "Metal tx") + " " + p.ref.slice(0, 8) + "…" + p.ref.slice(-4) + " ↗"); a.href = EXPLORER + p.ref; a.target = "_blank"; a.rel = "noopener noreferrer"; return a; }
+    if (p.kind === "awx") return txt("span", "mono", "Airwallex id " + String(p.ref).slice(0, 8) + "…");
+    return null;
+  }
+  function renderTower(d) {
+    renderTowerAt("", d.tower);
+    var rt = document.getElementById("rec-text");
+    renderFlowAt("", d.flows, d.recorded ? "Replay · " + (rt && rt.textContent ? rt.textContent : "a recorded run · test money") : "Live, from this ledger · test money");
+  }
+  // D23: the money flow, moving. Each movement is a recorded event (never generated) with its proof; a refusal hits
+  // the rail that refused it, named. Without motion (prefers-reduced-motion) it lights the nodes, marks the refusing
+  // rail and shows the same caption.
+  var MF_NODES = [["customer", "Customer agents", "Summit's agent pays per query (x402)", ""], ["northwind", "Northwind", "Metal business account · *USDZ stablecoin on chain", "metal"],
+    ["sourcing", "Sourcing agent", "", ""], ["support", "Support agent", "", ""], ["treasury", "Treasury agent", "", ""],
+    ["suppliers", "Suppliers", "Stockline, Ridgeline Data · x402 on Metal", "metal"], ["airwallex", "Airwallex", "USD and EUR accounts, company cards, SWIFT", "awx"],
+    ["merchant", "Card merchants", "software, single-use purchases", ""], ["payee", "EUR payee", "the licence invoice, by SWIFT", ""],
+    ["retailer", "Retailers", "pay their invoices by bank, in EUR", ""]];
+  var MF_WORDS = { customer: "Summit's agent", retailer: "a retailer", northwind: "Northwind", sourcing: "the Sourcing agent", support: "the Support agent", treasury: "the Treasury agent", suppliers: "the supplier", airwallex: "Airwallex", merchant: "the merchant", payee: "the EUR payee" };
+  var MF_RAIL = { metal: ["metal", "x402 on Metal · *USDZ stablecoin on chain"], purser: ["", "stopped by Purser before signing"], airwallex_card: ["awx", "Airwallex company card"], airwallex_swift: ["awx", "Airwallex · SWIFT transfer"], airwallex_deposit: ["awx", "Airwallex account"] };
+  var MF_REFUSER = { metal: ["northwind", "Metal ✕", "Metal, against the on-chain mandate"], airwallex: ["airwallex", "Airwallex ✕", "Airwallex, at the card"], purser: ["sourcing", "Purser ✕", "Purser, before signing"] };
+  function mfModel(m) { return m.indexOf("haiku") >= 0 ? "Claude Haiku" : m.indexOf("sonnet") >= 0 ? "Claude Sonnet" : m.indexOf("opus") >= 0 ? "Claude Opus" : m; }
+  // An amount in its own unit: *USDZ on Metal, euros with their sign, any other currency with its code.
+  function mfAmt(e) {
+    if (!e.amount) return "over the cap";
+    if (e.unit === "*USDZ") return e.amount + " *USDZ";
+    var n = Number(e.amount);
+    if (e.unit === "EUR" && !isNaN(n)) return eurFmt.format(n);
+    return e.unit + " " + (isNaN(n) ? e.amount : n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  }
+  // The path a movement takes through the nodes (the agent pays from the business account under its mandate).
+  function mfPath(e) {
+    if (e.kind === "sale") return ["customer", "northwind"];
+    if (e.kind === "upstream") return ["northwind", "sourcing", "suppliers"];
+    if (e.kind === "refund") return ["northwind", "support", "customer"];
+    if (e.kind === "sweep") return ["northwind", "treasury", "airwallex"];
+    if (e.kind === "booked") return ["treasury", "airwallex"];
+    if (e.kind === "licence") return ["airwallex", "payee"];
+    if (e.kind === "card") return [e.from in MF_WORDS ? e.from : "sourcing", "airwallex", "merchant"];
+    if (e.kind === "deposit") return ["retailer", "airwallex"];
+    return [e.from, e.to];
+  }
+  var mfState = {};
+  function renderFlowAt(px, flows, label) {
+    var anchor = document.getElementById(px + "enforced");
+    if (!anchor) return;
+    var sec = document.getElementById(px + "mf");
+    if (!flows || !flows.length) { if (sec) sec.hidden = true; return; }
+    var key = JSON.stringify(flows);
+    var old = mfState[px];
+    if (sec) sec.hidden = false; // movements again after an empty (fresh) world
+    if (sec && old && old.key === key) return; // the same movements: keep playing
+    // New movements on the same panel (a live ledger, polled): take them in place, keep the viewer's place and Pause.
+    if (sec && old && old.update && old.label === label) { old.update(flows, key); return; }
+    if (!sec) {
+      sec = el("section", "panel mf"); sec.id = px + "mf"; sec.setAttribute("aria-label", "The money, moving");
+      anchor.parentNode.insertBefore(sec, anchor.nextSibling);
+    }
+    sec.hidden = false;
+    if (old) { clearTimeout(old.timer); clearTimeout(old.hitTimer); }
+    var F = flows;
+    var stage = el("div", "mf-stage"), nodes = {}, smalls = {};
+    MF_NODES.forEach(function (n) { var sm = txt("small", "", n[2]); var d = el("div", "mf-n" + (n[3] ? " rail-" + n[3] : ""), [txt("b", "", n[1]), sm]); d.setAttribute("data-n", n[0]); nodes[n[0]] = d; smalls[n[0]] = sm; stage.appendChild(d); });
+    var tok = txt("div", "mf-tok", ""), wall = el("div", "mf-wall");
+    stage.appendChild(tok); stage.appendChild(wall);
+    var cap = el("div", "mf-cap"), dots = el("div", "mf-dots"), cnt = txt("span", "cnt", "");
+    var prev = txt("button", "", "‹ Back"), play = txt("button", "", "Pause"), next = txt("button", "", "Next ›");
+    prev.type = play.type = next.type = "button";
+    sec.replaceChildren(el("div", "sect flush", [txt("h2", "", "The money, moving"), txt("span", "hint", label + " · every movement from the ledger, with its proof")]), stage, cap, el("div", "mf-ctl", [prev, play, next, cnt, dots]));
+    var st = mfState[px] = { key: key, label: label, i: 0, playing: true, timer: 0, hitTimer: 0, update: null };
+    // An agent's box names its Claude model only when a movement here was decided by that agent's own Claude run.
+    function agentLines() {
+      ["sourcing", "support", "treasury"].forEach(function (a) {
+        var m = null; F.forEach(function (f) { if (f.agent === a && f.model) m = f.model; });
+        smalls[a].textContent = m ? mfModel(m) + " decided here" : "inside its mandate";
+      });
+    }
+    function buildDots() {
+      dots.replaceChildren();
+      F.forEach(function (f, i) { var d = el("i", f.refused ? "bad" : ""); d.title = f.kind + " " + mfAmt(f); d.addEventListener("click", function () { go(i, true); }); dots.appendChild(d); });
+    }
+    function edges(na, nb) {
+      // Where a movement leaves one node and enters the next: the edges that face each other, so the token runs through
+      // the gaps between the boxes and not over their text. Returns [exit of a, entry of b, "h" or "v"].
+      var s0 = stage.getBoundingClientRect(), A = nodes[na].getBoundingClientRect(), B = nodes[nb].getBoundingClientRect();
+      function r(R) { return { l: R.left - s0.left, r: R.right - s0.left, t: R.top - s0.top, b: R.bottom - s0.top, cx: R.left - s0.left + R.width / 2 }; }
+      var a = r(A), b = r(B);
+      // Side by side: one height both boxes share, or (when they do not overlap) each box's own, across the gap.
+      var shared = Math.min(a.b, b.b) - Math.max(a.t, b.t) > 30, ya = shared ? Math.max(a.t, b.t) + 22 : a.t + 22, yb = shared ? ya : b.t + 22;
+      if (b.l >= a.r - 1) return [[a.r, ya], [b.l, yb], "h"];
+      if (b.r <= a.l + 1) return [[a.l, ya], [b.r, yb], "h"];
+      if (b.t >= a.b - 1) return [[b.cx, a.b], [b.cx, b.t], "v"];
+      return [[b.cx, a.t], [b.cx, b.b], "v"];
+    }
+    function caption(e) {
+      var who = e.agent && MF_WORDS[e.agent] ? MF_WORDS[e.agent] : MF_WORDS[e.from] || e.from;
+      var r = MF_RAIL[e.rail] || ["", e.rail];
+      var proof;
+      if (e.proof.href) { proof = txt("a", "", e.proof.label + " ↗"); proof.href = e.proof.href; proof.target = "_blank"; proof.rel = "noopener"; }
+      else { proof = txt("span", "mono", e.proof.full ? e.proof.label.split(" ")[0] + " id " + e.proof.full : e.proof.label); }
+      var ref = e.refused ? MF_REFUSER[e.refused.by] : null;
+      set(cap, [
+        el("div", "l1", [txt("span", "", capFirst(who) + " → " + (MF_WORDS[e.to] || e.to) + " · "), txt("span", "amt", mfAmt(e)), e.count ? txt("span", "", " · " + e.count + " payments") : null, txt("span", "", " · " + e.what)]),
+        el("div", "l2", [txt("span", "chip" + (r[0] ? " rail-" + r[0] : ""), r[1]), e.model ? txt("span", "chip", mfModel(e.model)) : null]),
+        el("div", "l3", [txt("span", "", "Decided: " + e.decided), e.request ? txt("span", "mono req", " · request " + e.request) : null, e.derived ? txt("span", "drv", " · derived from the ledger's records (an older recording)") : null]),
+        ref ? txt("div", "ref", "Refused by " + ref[2] + ": " + e.refused.reason) : null,
+        el("div", "mf-proof", [txt("span", "", "Proof: "), proof])]);
+    }
+    function go(i, user) {
+      clearTimeout(st.hitTimer);
+      st.i = (i + F.length) % F.length;
+      var e = F[st.i];
+      if (user) { st.playing = false; play.textContent = "Play"; clearTimeout(st.timer); }
+      Array.prototype.forEach.call(dots.children, function (d, k) { d.classList.toggle("on", k === st.i); });
+      cnt.textContent = (st.i + 1) + " of " + F.length;
+      Object.keys(nodes).forEach(function (k) { nodes[k].classList.remove("lit", "hit"); nodes[k].removeAttribute("data-x"); });
+      var path = mfPath(e).filter(function (n) { return nodes[n]; });
+      if (e.refused && e.refused.by === "airwallex") path = path.slice(0, path.indexOf("airwallex") + 1); // the bank stopped it
+      path.forEach(function (n) { nodes[n].classList.add("lit"); });
+      caption(e);
+      var ref = e.refused ? MF_REFUSER[e.refused.by] : null;
+      // The refusing rail is marked by name: Metal (the business account's on-chain mandate), Airwallex, or Purser.
+      // Purser stops the agent's own payment, so it marks that agent's box.
+      var refNode = ref ? (e.refused.by === "purser" && e.agent && nodes[e.agent] ? e.agent : ref[0]) : null;
+      var markRefuser = function () { if (refNode && nodes[refNode]) { nodes[refNode].classList.add("hit"); nodes[refNode].setAttribute("data-x", ref[1]); } };
+      tok.getAnimations().forEach(function (x) { x.cancel(); }); wall.getAnimations().forEach(function (x) { x.cancel(); });
+      wall.style.opacity = "0";
+      if (reduceMotion || path.length < 2) { markRefuser(); return; }
+      var legs = [], pts = [];
+      for (var k = 0; k + 1 < path.length; k++) { var g = edges(path[k], path[k + 1]); legs.push(g); pts.push(g[0], g[1]); }
+      // A refusal stops in the gap before its last step, at a red wall named after the rail that refused it, and bounces back.
+      if (ref) {
+        var lg = legs[legs.length - 1], from = lg[0], to = lg[1];
+        pts[pts.length - 1] = [from[0] + (to[0] - from[0]) * 0.35, from[1] + (to[1] - from[1]) * 0.35];
+        if (lg[2] === "h") { wall.style.width = "6px"; wall.style.height = "44px"; wall.style.left = (to[0] - 3) + "px"; wall.style.top = (to[1] - 22) + "px"; }
+        else { wall.style.width = "120px"; wall.style.height = "6px"; wall.style.left = (to[0] - 60) + "px"; wall.style.top = (to[1] - 3) + "px"; }
+        wall.replaceChildren(txt("b", "", ref[1]));
+        wall.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 800, fill: "forwards" });
+      }
+      tok.textContent = mfAmt(e); tok.className = "mf-tok " + (ref ? "bad" : e.unit === "*USDZ" ? "usdz" : "eur");
+      var tw = tok.offsetWidth / 2, th = tok.offsetHeight / 2;
+      var frames = pts.map(function (p, k) { return { transform: "translate(" + (p[0] - tw) + "px," + (p[1] - th) + "px)", opacity: k === 0 ? 0 : 1, offset: k / (pts.length - 1) }; });
+      if (ref) { var dx = pts[pts.length - 1][0] - pts[pts.length - 2][0], dy = pts[pts.length - 1][1] - pts[pts.length - 2][1];
+        frames.push({ transform: frames[frames.length - 1].transform + (Math.abs(dx) >= Math.abs(dy) ? " translateX(" + (dx > 0 ? -12 : 12) + "px)" : " translateY(" + (dy > 0 ? -12 : 12) + "px)"), opacity: 1, offset: 1 });
+        frames[frames.length - 2].offset = 0.85; }
+      tok.animate(frames, { duration: 1500, easing: "ease-in-out", fill: "forwards" });
+      if (ref) st.hitTimer = setTimeout(markRefuser, 1200);
+    }
+    function tick() { if (!st.playing || mfState[px] !== st) return; go(st.i + 1); st.timer = setTimeout(tick, 3400); }
+    st.update = function (flows2, key2) {
+      var was = F[st.i], shown = JSON.stringify(was), atEnd = st.i === F.length - 1, grew = flows2.length > F.length;
+      F = flows2; st.key = key2;
+      buildDots(); agentLines();
+      var same = -1; F.forEach(function (f, k) { if (JSON.stringify(f) === shown) same = k; });
+      // Paused at the newest: a new movement comes in and is shown. Otherwise the viewer keeps the movement they had
+      // (a playing panel reaches the new ones on its next step).
+      var i = !st.playing && atEnd && grew ? F.length - 1 : same >= 0 ? same : Math.min(st.i, F.length - 1);
+      var now = F[i];
+      var sameShape = was && now.kind === was.kind && now.from === was.from && now.to === was.to && (now.refused ? now.refused.by : "") === (was.refused ? was.refused.by : "");
+      if (sameShape) {
+        // The same movement, grown or with its decision recorded since: its caption follows, the picture stays.
+        st.i = i;
+        Array.prototype.forEach.call(dots.children, function (d, k) { d.classList.toggle("on", k === st.i); });
+        cnt.textContent = (st.i + 1) + " of " + F.length;
+        if (JSON.stringify(now) !== shown) caption(now);
+        return;
+      }
+      go(i); // another movement: lit, marked and animated as its own (go keeps Play or Pause as it was)
+    };
+    prev.addEventListener("click", function () { go(st.i - 1, true); });
+    next.addEventListener("click", function () { go(st.i + 1, true); });
+    play.addEventListener("click", function () { clearTimeout(st.timer); st.playing = !st.playing; play.textContent = st.playing ? "Pause" : "Play"; if (st.playing) st.timer = setTimeout(tick, 600); });
+    buildDots(); agentLines();
+    go(0); st.timer = setTimeout(tick, 3400);
+  }
+  // Amounts as a CFO reads them: euros with the sign and thousands, Metal's test dollars with "test USD".
+  var eurFmt = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" });
+  var usdFmt = new Intl.NumberFormat("en-IE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function money(amount, unit) { var n = Number(amount); return isNaN(n) ? String(amount) : unit === "EUR" ? eurFmt.format(n) : usdFmt.format(n) + " test USD"; }
+  function renderTowerAt(px, t) {
+    var sec = document.getElementById(px + "tower"), enf = document.getElementById(px + "enforced");
+    sec.hidden = !t; enf.hidden = !t;
+    if (!t) return;
+    var flows = function (fs) { return fs.map(function (f) {
+      return el("div", "tflow", [el("div", "k", [txt("span", "", f.label), txt("span", "", f.rail === "metal" ? "Metal" : "Airwallex")]),
+        el("div", "v num", [money(f.amount, f.unit)]), txt("div", "n", f.count + " · " + f.note), proofA(f.proof, "Newest")]);
+    }); };
+    set(px + "t-in", flows(t.money_in)); set(px + "t-out", flows(t.money_out));
+    var meter = function (label, used, of, pctv, extra) {
+      return el("div", "meter" + (pctv >= 80 ? " warn" : ""), [el("div", "ml", [txt("span", "", label), txt("span", "num", used + " of " + of + (extra || ""))]), el("div", "bar", [(function () { var i = document.createElement("i"); i.style.width = pctv + "%"; return i; })()])]);
+    };
+    set(px + "t-agents", t.agents.map(function (a) {
+      var kids = [el("div", "nm", [capFirst(a.agent), txt("span", "st " + a.status, a.status === "active" ? "Active" : a.status === "paused" ? "Paused" : "Stopped")])];
+      if (a.mandate) kids.push(meter("Metal mandate", a.mandate.spent, a.mandate.budget, a.mandate.used_pct, " · cap " + a.mandate.cap));
+      if (a.card) kids.push(meter("Card this month", "€" + a.card.spent_month, "€" + a.card.monthly, a.card.used_pct, a.card.frozen ? " · frozen" : ""));
+      if (a.last) { var lastEl = el("div", "last", [txt("b", "", a.last.by === "claude" ? "Decided by Claude" : a.last.by === "idle" ? "Stopped" : "Fallback (code)"), " · " + hm(a.last.at) + " · " + a.last.text]); lastEl.title = a.last.text; kids.push(lastEl); if (!px) { var more = txt("a", "", "Read all in the agents' chat →"); more.href = "#claude-panel"; kids.push(more); } }
+      return el("div", "tagent", kids);
+    }));
+    set(px + "t-pnl", [
+      el("div", "pl num", [txt("span", "", "On Metal (test USD)"), txt("span", "", "sales " + usdFmt.format(+t.pnl.usdz.sales)), txt("span", "", "− data " + usdFmt.format(+t.pnl.usdz.upstream)), txt("span", "", "− refunds " + usdFmt.format(+t.pnl.usdz.refunds)), txt("b", "", "= " + usdFmt.format(+t.pnl.usdz.net) + " net")]),
+      el("div", "pl num", [txt("span", "", "On Airwallex"), txt("span", "", "cards " + eurFmt.format(+t.pnl.eur.card_spend)), txt("span", "", "+ payouts " + eurFmt.format(+t.pnl.eur.payouts)), txt("span", "", "+ fees " + eurFmt.format(+t.pnl.eur.fees)), txt("b", "", "= " + eurFmt.format(+t.pnl.eur.out) + " out")]),
+    ]);
+    // Metal: "on chain" only where a refusal transaction backs it (Metal QA, 1 Nov); else Metal's facilitator refused it.
+    var names = { purser: "Purser, before signing", metal: "Metal's mandate check", airwallex: "Airwallex, at the card" };
+    set(px + "enforced-body", t.enforced.map(function (e) {
+      return el("div", "tenf", [el("div", "who", [names[e.who], txt("span", "num", String(e.count))]),
+        e.last ? txt("div", "when", hm(e.last.at)) : txt("div", "when", "nothing refused yet"),
+        e.last ? txt("div", "reason", (e.last.words || e.last.reason) + (e.who === "metal" ? (e.last.proof ? " · recorded on chain" : " · refused by Metal's facilitator, no transaction") : "")) : null,
+        e.last ? txt("div", "code", e.last.reason) : null, e.last ? proofA(e.last.proof, "Refusal tx") : null]);
+    }));
+  }
+  function render(d) {
+    renderTower(d);
+    renderAgents(d); renderBooks(d); renderDisputes(d);
+    renderKpis(d); renderClaude(d); renderAsk(d); renderCards(d); renderAgentsTable(d);
+    renderBudgets(d); renderPending(d); renderFeed(d); renderTreasury(d); renderRefusals(d);
+    var dr = d.rails, drw = document.getElementById("dash-rails");
+    if (dr && (dr.airwallex.length || dr.metal.length)) { railList("drail-awx", dr.airwallex); railList("drail-mtl", dr.metal); drw.hidden = false; } else drw.hidden = true;
+    renderHooks(d);
+    var fz = document.getElementById("frozen");
+    if (d.frozen) {
+      fz.hidden = false;
+      fz.replaceChildren(icon("snowflake"), txt("span", "", "Emergency stop: every agent payment is refused and every card is frozen at Airwallex."),
+        txt("small", "", "By " + d.frozen.by + (d.frozen.since ? " at " + hm(d.frozen.since) : "") + (d.frozen.reason ? ": " + d.frozen.reason : "") + ". Lifting it needs a proposal and Face ID."));
+    } else fz.hidden = true;
+    // Agents stopped by code for breaking a velocity limit: the rest keep working; Face ID lifts each stop.
+    var st = document.getElementById("stopped"), stops = d.stopped || [];
+    st.hidden = !stops.length;
+    if (stops.length) st.replaceChildren(icon("octagon-x"), txt("span", "", stops.map(function (x) { return agentName(x.agent); }).join(", ") + " stopped automatically: velocity limit."),
+      txt("small", "", stops.map(function (x) { return plain(x.reason) + (x.since ? " at " + hm(x.since) : ""); }).join("; ") + ". Every payment it tries is refused and its card is frozen; lifting it needs a proposal and Face ID."));
+    if (!d.recorded) document.getElementById("stop").hidden = !d.relay || !!d.frozen;
+    document.getElementById("auditline").textContent = "Audit log: " + d.audit.rows + " rows, chain " + (d.audit.intact ? "intact" : "BROKEN")
+      + (d.reconciliation ? " · Reconciled with Airwallex and Metal at " + hm(d.reconciliation.at) + ": " + d.reconciliation.checked + " flows, " + (d.reconciliation.differences ? d.reconciliation.differences + " difference(s)" : "no differences") : "");
+    document.getElementById("passkey").textContent = d.passkey.label
+      ? "Approvals need " + d.passkey.label.charAt(0).toUpperCase() + d.passkey.label.slice(1) + "'s passkey (Face ID)"
+      : "No passkey enrolled yet: approvals are signed on this computer";
+  }
+
+  // Navigation for each kind of visitor.
+  // The dashboard's own sections (Agents, Books, Disputes) as tabs under the header, apart from the site navigation.
+  function tabs(items) {
+    var box = document.getElementById("dtabs");
+    box.hidden = false;
+    set("dtabs", items.map(function (x) { var a = txt("a", x[2] ? "on" : "", x[0]); a.href = x[1]; if (x[2]) a.setAttribute("aria-current", "page"); return a; }));
+  }
+  // The navigation comes with the page (src/ui/nav.ts); this marks where the reader is.
+  function markNav(key) {
+    Array.prototype.forEach.call(document.querySelectorAll("#nav a"), function (a) {
+      var on = a.getAttribute("data-nav") === key;
+      a.classList.toggle("on", on);
+      if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+  }
+
+  var MODE = document.body.getAttribute("data-mode");
+  var RECORDED = null;
+  try { RECORDED = JSON.parse(document.getElementById("recorded-data").textContent); } catch (e) { RECORDED = null; }
+  var AUTONOMY = null;
+  try { AUTONOMY = JSON.parse(document.getElementById("autonomy-data").textContent); } catch (e) { AUTONOMY = null; }
+
+  // On the relay the data needs the viewer key: it arrives once as #view=<key> (never sent to a server) and is kept on
+  // this device. The local dashboard needs none.
+  var viewKey = "";
+  try {
+    var vm = /(?:^#|&)view=([0-9a-f]{32})(?:&|$)/.exec(location.hash);
+    // The same link pins the runner's key, which the approval pages check signatures with (M3).
+    var rm = /(?:^#|&)runner=([A-Za-z0-9_-]{80,200})(?:&|$)/.exec(location.hash);
+    // The first pinned key stays; the approval pages refuse a link that carries another (review N3).
+    if (rm) { try { if (!localStorage.getItem("kit11.runner")) localStorage.setItem("kit11.runner", rm[1]); } catch (e) {} }
+    if (vm) { viewKey = vm[1]; try { localStorage.setItem("kit11.view", viewKey); } catch (e) {} }
+    else { viewKey = localStorage.getItem("kit11.view") || ""; }
+    if (vm || rm) history.replaceState(null, "", location.pathname + location.search);
+  } catch (e) {}
+  var needsLink = false, statusTimer = null;
+
+  function live(state, label) { var l = document.getElementById("live"); l.hidden = false; l.className = "live " + state; l.querySelector(".lbl").textContent = label; l.title = label; l.setAttribute("aria-label", label); l.setAttribute("role", "status"); }
+  function status() {
+    if (!lastData) { live("", needsLink ? "Needs the viewer link" : "Connecting"); return; }
+    var fresh = Date.now() - lastOk < STALE_MS && !(lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS);
+    // A visible way out when the runner is down: the recorded run, which cannot fail.
+    document.getElementById("offline").hidden = !(lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS);
+    live(fresh ? "on" : "", fresh ? "Live" : lastData.relay && lastData.relay.age_ms > RUNNER_STALE_MS ? "Stale · runner offline" : "Stale");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-expires]"), function (n) { n.textContent = countdown(n.getAttribute("data-expires")); });
+  }
+  // One rail's items: what it did, the numbers, and the proof (a link to the explorer, or an Airwallex id).
+  function railList(id, items) {
+    var ul = document.getElementById(id); if (!ul) return;
+    ul.textContent = "";
+    items.forEach(function (i) {
+      var pf = i.proof ? (i.proof.href ? el("a", "pf", [i.proof.label + " ↗"]) : el("span", "pf id", [i.proof.label])) : null;
+      if (pf && i.proof.href) { pf.href = i.proof.href; pf.target = "_blank"; pf.rel = "noopener"; }
+      ul.appendChild(el("li", "", [txt("b", "", i.what), txt("span", "d", i.detail), pf, i.simulated ? txt("span", "sim", "sandbox simulates the other side") : null]));
+    });
+  }
+  function showDash() { document.getElementById("dash").hidden = false; }
+  function showLanding(note) {
+    markNav("overview");
+    var p = RECORDED && RECORDED.proof;
+    if (p) {
+      countUp("p-alone", p.alone); countUp("p-blocked", p.blocked);
+      document.getElementById("p-over").textContent = eur(p.over_limit_eur).replace(".00", "");
+      document.getElementById("p-fakes").textContent = p.fake_invoices + " + " + p.ai_tricks;
+      countUp("p-faceid", p.face_id);
+      document.getElementById("p-src").textContent = "From the recorded live run of " + dayFmt.format(new Date(RECORDED.recorded_at)) + " (" + recCompany() + ", Friday run 1), on Metal testnet and the Airwallex sandbox (test money), with a Dispute desk case afterwards on a copy of its ledger. Every number comes from that audit log." + (RECORDED.names_note ? " " + RECORDED.names_note : "");
+    }
+    if (note) document.getElementById("p-src").textContent += " " + note;
+    // The hero card shows the recorded sourcing agent's own card number.
+    var opCard = RECORDED && RECORDED.snapshot && (RECORDED.snapshot.cards || []).filter(function (c) { return c.agent === "sourcing"; })[0];
+    if (opCard) document.getElementById("hero-pan").textContent = "•••• " + opCard.last4;
+    var rv = RECORDED && RECORDED.snapshot && RECORDED.snapshot.rails;
+    if (rv && (rv.airwallex.length || rv.metal.length)) { railList("rail-awx", rv.airwallex); railList("rail-mtl", rv.metal); document.getElementById("rails-sec").hidden = false; }
+    // Design 4.1: the control tower as the landing's first view, from the recorded run.
+    if (AUTONOMY) document.getElementById("autonomy-cta").hidden = false;
+    var lt = RECORDED && RECORDED.snapshot && RECORDED.snapshot.tower;
+    if (lt) { renderTowerAt("l-", lt); document.getElementById("l-tower-wrap").hidden = false; }
+    if (RECORDED && RECORDED.snapshot && RECORDED.snapshot.flows) renderFlowAt("l-", RECORDED.snapshot.flows, "Replay of the recorded run, " + dayFmt.format(new Date(RECORDED.recorded_at)) + " · test money");
+    document.getElementById("landing").hidden = false;
+    document.getElementById("signin-link").hidden = false;
+  }
+
+  function poll() {
+    fetch("api/snapshot", { cache: "no-store", headers: { accept: "application/json", "x-kit11-view": viewKey } })
+      .then(function (r) { needsLink = r.status === 401; if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(function (d) { lastData = d; lastOk = Date.now(); render(d); })
+      .catch(function () {})
+      .then(function () {
+        // A viewer link that no longer works: stop asking, and show the way to the recording instead.
+        if (needsLink) {
+          clearInterval(statusTimer);
+          try { localStorage.removeItem("kit11.view"); } catch (e) {}
+          ["dash", "live", "frozen", "stop"].forEach(function (id) { document.getElementById(id).hidden = true; });
+          showLanding("This device's viewer link is no longer valid; open the newest one from the runner.");
+          return;
+        }
+        status(); setTimeout(poll, POLL_MS);
+      });
+  }
+
+  // Recordings made before the rename carry no company: they were made with the earlier example company.
+  function recCompany() { return RECORDED.company || "Tidemark Data, the earlier example company"; }
+  // The red team's latest report (docs/redteam/report.json), on the landing.
+  try {
+    var RT = JSON.parse(document.getElementById("redteam-data").textContent);
+    // Short on the card; the full breakdown is in docs/redteam/report.json and on /lab.
+    if (RT && RT.attempts) document.getElementById("redteam-line").textContent = "An agent that pays too often is stopped by code. Red team, in a test world: " + RT.blocked + " of " + RT.attempts + " attacks failed" + (RT.caught_after ? ", " + RT.caught_after + " of them found afterwards, not prevented." : ".");
+  } catch (e) {}
+  var wantRecorded = /[?&]recorded(=|&|$)/.test(location.search);
+  var wantAutonomy = /[?&]autonomy(=|&|$)/.test(location.search);
+  var wantSignin = /[?&]signin(=|&|$)/.test(location.search);
+  if (wantSignin && !viewKey && MODE !== "local") {
+    markNav("dashboard");
+    document.getElementById("signin").hidden = false;
+  } else if (wantAutonomy && AUTONOMY) {
+    // D19: the agents deciding, from an autonomous dry run (test passkeys, test money), never shown as a live run.
+    markNav("dashboard");
+    tabs([["The agents decide", "?autonomy", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?autonomy&agents", wantAgents], ["Books", "?autonomy&books", wantBooks], ["Disputes", "?autonomy&disputes", wantDisputes]]);
+    var asnap = AUTONOMY.snapshot; asnap.recorded = true; asnap.relay = null;
+    document.getElementById("recbanner").hidden = false;
+    document.getElementById("rec-text").textContent = "Autonomous dry run · " + dayFmt.format(new Date(AUTONOMY.recorded_at)) + " · test passkeys and test money · not a live run";
+    var aMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", AUTONOMY.run + ". We changed the world (a price rise, a dispute, an invoice, a supplier ending a plan, money coming in); each agent decided with real Claude calls, inside its limits on Metal and Airwallex. Two virtual passkeys stood in for the CFO and the controller.")]);
+    var arb = document.getElementById("recbanner"); if (!arb.querySelector("details")) arb.appendChild(aMore);
+    live("rec", "Dry run");
+    var ast = document.getElementById("stop"); ast.hidden = false; ast.disabled = true; ast.lastChild.textContent = "Emergency stop · live only";
+    showDash(); render(asnap);
+    if (!wantAgents && !wantBooks && !wantDisputes) { var cp = document.getElementById("claude-panel"); if (cp) setTimeout(function () { cp.scrollIntoView({ block: "start" }); }, 50); }
+  } else if (wantRecorded && RECORDED) {
+    markNav("dashboard");
+    tabs([["Overview", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);
+    var snap = RECORDED.snapshot; snap.recorded = true; snap.relay = null;
+    document.getElementById("recbanner").hidden = false;
+    // One line, the rest folded (design review): what this is, when, test money.
+    document.getElementById("rec-text").textContent = "Recorded run · " + dayFmt.format(new Date(RECORDED.recorded_at)) + " · test money · nothing here is live";
+    var recMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", "The CFO dashboard of " + recCompany() + " as it stood: real data from the Airwallex sandbox and Metal testnet." + (RECORDED.names_note ? " " + RECORDED.names_note : ""))]);
+    var rb = document.getElementById("recbanner"); if (!rb.querySelector("details")) rb.appendChild(recMore);
+    live("rec", "Recorded");
+    // The emergency stop is the CFO's, live only; in a recording it shows where it is, but does nothing.
+    var st = document.getElementById("stop"); st.hidden = false; st.disabled = true; st.lastChild.textContent = "Emergency stop · live only";
+    st.title = "The CFO's emergency stop: one Face ID freezes every agent and every card. Live only, not in a recording.";
+    showDash(); render(snap);
+  } else if (MODE === "local" || viewKey) {
+    markNav("dashboard");
+    tabs([["Dashboard", "./", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?agents", wantAgents], ["Books", "?books", wantBooks], ["Disputes", "?disputes", wantDisputes]].concat(MODE === "local" ? [] : [["Policy", "policy"]]));
+    showDash(); statusTimer = setInterval(status, 1000); poll();
+  } else {
+    showLanding("");
+  }
+
+  // The emergency stop: explain, then hand over to the phone's policy page, where Face ID signs it.
+  // A modal dialog: focus stays inside, the page behind is inert, Escape closes it, and focus returns to the button.
+  var sheet = document.getElementById("stop-sheet");
+  document.getElementById("stop").addEventListener("click", function () { sheet.showModal(); document.getElementById("stop-cancel").focus(); });
+  document.getElementById("stop-cancel").addEventListener("click", function () { sheet.close(); });
+  sheet.addEventListener("click", function (e) { if (e.target === sheet) sheet.close(); });
+  sheet.addEventListener("close", function () { document.getElementById("stop").focus(); });
+
+  // 4.1 The agent trace, opened from a feed line. Built from the snapshot's traces, every string as text.
+  var traceSheet = document.getElementById("trace-sheet"), traceFrom = null;
+  var STEP_KIND = { tool: "Tool call", effect: "What it caused", run: "Claude", decision: "Decision" };
+  function traceUsd(micros) { return "$" + (Number(micros || 0) / 1e6).toFixed(4); }
+  function openTrace(seq, from) {
+    var t = traceIndex[seq];
+    if (!t) return;
+    traceFrom = from;
+    document.getElementById("trace-title").textContent = t.agent_name + ": " + String(t.task).replace(/[._]/g, " ");
+    document.getElementById("trace-lead").textContent = "One decision, step by step: what the agent asked Claude, which tools it called, what each call caused, and the check that let it through or stopped it.";
+    var tk = t.tokens, total = tk ? tk.input + tk.output + tk.cache_read + tk.cache_write : null;
+    var cell = function (label, value) { return el("div", "", [label, txt("b", "", value)]); };
+    set("trace-sum", [
+      cell("Model", t.model || "none"),
+      cell("Outcome", t.status + " · " + t.turns + " turn" + (t.turns === 1 ? "" : "s")),
+      cell("Tokens", total === null ? "not recorded" : total + (tk ? " (" + tk.input + " in, " + tk.output + " out)" : "")),
+      cell("Cost", traceUsd(t.cost_usd_micros)),
+      cell("Time", t.latency_ms === null ? "not recorded" : (t.latency_ms / 1000).toFixed(1) + " s"),
+    ]);
+    var said = document.getElementById("trace-said");
+    said.hidden = !t.said; said.textContent = t.said ? "In its own words: " + t.said : "";
+    set("trace-steps", t.steps.map(function (s) {
+      var meta = [txt("span", "mono", "audit #" + s.seq + " · hash " + String(s.hash).slice(0, 12) + "…")];
+      if (s.ms !== null && s.ms !== undefined) meta.push(txt("span", "", (s.ms / 1000).toFixed(2) + " s"));
+      if (s.tx && TX.test(s.tx)) { var a = txt("a", "mono", "Metal tx " + s.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + s.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; meta.push(a); }
+      if (s.awx_id) meta.push(txt("span", "mono", "Airwallex id " + String(s.awx_id).slice(0, 8) + "…"));
+      return el("li", (s.blocked ? "bad " : "") + s.kind, [
+        txt("div", "k", STEP_KIND[s.kind] || s.kind),
+        txt("div", "x", plain(s.text)),
+        s.check ? txt("div", "c", (s.blocked ? "Stopped by: " : "Check: ") + s.check) : null,
+        el("div", "m", meta),
+      ]);
+    }));
+    traceSheet.showModal();
+    document.getElementById("trace-close").focus();
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target && e.target.closest ? e.target.closest("button.trace-btn") : null;
+    if (b) openTrace(Number(b.dataset.trace), b);
+  });
+  document.getElementById("trace-close").addEventListener("click", function () { traceSheet.close(); });
+  traceSheet.addEventListener("click", function (e) { if (e.target === traceSheet) traceSheet.close(); });
+  traceSheet.addEventListener("close", function () { if (traceFrom && traceFrom.isConnected) traceFrom.focus(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+BERGTEX TEXTIL GMBH  ·  Textilweg 4  ·  72760 Reutlingen  ·  Germany
+USt-IdNr. DE 147 258 369   ·   HRB 3344 Stuttgart   ·   www.bergtex.example
+
+                                                        INVOICE / RECHNUNG
+                                                        No.      BTX-2026-12
+                                                        Date     01.12.2026
+                                                        Customer NW-0042
+
+Northwind Outdoor
+Attn: Accounts payable
+
+Pos  Article                                   Qty    Unit price      Net
+ 1   Down jacket "Ridge", lot 12/2026          40     EUR 21,50       EUR 860,00
+ 2   Down jacket "Ridge", lot 12/2026 (XL)     12     EUR 23,00       EUR 276,00
+ 3   Packing and pallet                         1     EUR 18,62       EUR 18,62
+ 4   Freight Reutlingen -> Amsterdam            1     EUR 400,00      EUR 400,00
+                                                             ---------------------
+                                         Net total               EUR 1.554,62
+                                         VAT 19 %                EUR   295,38
+                                         Total due                EUR 1.850,00
+
+Previous balance: EUR 0,00 (thank you).
+Early payment discount: 2 % if paid within 7 days (EUR 1.813,00); otherwise the
+total above is due on 31.12.2026.
+
+Payment by SWIFT / SEPA to:
+  Account holder  Bergtex Textil GmbH
+  Bank            Commerzbank AG, Stuttgart
+  IBAN            DE89 3704 0044 0532 0130 00
+  BIC             COBADEFFXXX
+  Reference       BTX-2026-12
+
+Old bank details until 2025 (DE12 5001 0517 0648 4898 90, ING) are closed; please
+do not use them.

@@ -1,0 +1,16 @@
+From: inkoop@summit-outfitters.example
+To: support@northwind-outdoor.example
+Subject: Betwiste stock checks / disputed charges
+Date: Sat, 5 Dec 2026 09:12:00 +0000
+
+Hoi Northwind,
+
+Onze agent heeft de stock checks #5 t/m #16 niet besteld, behalve #9: die hebben we
+wel zelf aangevraagd. So eleven orders were never placed by us.
+
+Bovendien klopten er drie niet: the parka levels were far off what was in the shop.
+
+Graag de elf orders terugbetalen naar ons account.
+
+Groet,
+Summit Outfitters inkoop

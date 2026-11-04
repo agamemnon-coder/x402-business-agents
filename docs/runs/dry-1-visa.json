@@ -1,0 +1,104 @@
+{
+  "ran_at": "2026-10-31T08:55:26.483Z",
+  "merchant": "Packwise",
+  "authority": "127.0.0.1:4410",
+  "profile": "agent recognition per Visa's TAP spec (RFC 9421, tags agent-browser-auth / agent-payer-auth, 8-minute window, nonce replay block)",
+  "registry": "self-hosted, test keys; not Visa's directory",
+  "card_payments": "Airwallex sandbox simulated authorisations",
+  "steps": [
+    {
+      "step": "the Sourcing agent buys Packwise Starter (EUR 19.99), signed",
+      "expect": "recognised, approved by Airwallex",
+      "status": 200,
+      "result": {
+        "recognised": true,
+        "agent": "sourcing",
+        "approved": true,
+        "reason": null,
+        "transactionId": "01a1912b-ab53-7000-9a1a-9bbdf720c886"
+      }
+    },
+    {
+      "step": "the same signed request again",
+      "expect": "refused: nonce replay",
+      "status": 401,
+      "result": {
+        "recognised": false,
+        "approved": false,
+        "reason": "nonce already used: a replay"
+      }
+    },
+    {
+      "step": "no signature",
+      "expect": "refused",
+      "status": 401,
+      "result": {
+        "recognised": false,
+        "approved": false,
+        "reason": "no signature: not a recognised agent"
+      }
+    },
+    {
+      "step": "signed for another merchant, sent here",
+      "expect": "refused: the signature covers the other host",
+      "status": 401,
+      "result": {
+        "recognised": false,
+        "approved": false,
+        "reason": "signature refused (VerificationFailed): Signature verification failed"
+      }
+    },
+    {
+      "step": "a browsing signature at checkout",
+      "expect": "refused: wrong tag",
+      "status": 401,
+      "result": {
+        "recognised": false,
+        "approved": false,
+        "reason": "wrong tag agent-browser-auth: this route needs agent-payer-auth"
+      }
+    },
+    {
+      "step": "a stranger's key",
+      "expect": "refused: unknown key",
+      "status": 401,
+      "result": {
+        "recognised": false,
+        "approved": false,
+        "reason": "unknown key: not in the agent registry"
+      }
+    },
+    {
+      "step": "signed ten minutes ago",
+      "expect": "refused: expired",
+      "status": 401,
+      "result": {
+        "recognised": false,
+        "approved": false,
+        "reason": "signature refused (PolicyViolation): Signature has expired"
+      }
+    },
+    {
+      "step": "the Sourcing agent buys Packwise Pro (EUR 45.00), over its card limit",
+      "expect": "recognised, declined by Airwallex",
+      "status": 402,
+      "result": {
+        "recognised": true,
+        "agent": "sourcing",
+        "approved": false,
+        "reason": "declined by Airwallex: LIMIT_EXCEEDED",
+        "transactionId": "01a1912b-b591-7000-a889-c9f7cae5592b"
+      }
+    },
+    {
+      "step": "after the key is revoked",
+      "expect": "refused: revoked",
+      "status": 401,
+      "result": {
+        "recognised": false,
+        "approved": false,
+        "reason": "key revoked at 2026-10-31T08:55:26.475Z"
+      }
+    }
+  ]
+}

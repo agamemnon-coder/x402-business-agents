@@ -1,0 +1,218 @@
+{
+  "at": "2026-10-31T13:00:25.225Z",
+  "results": [
+    {
+      "id": "normal-purchase",
+      "title": "A purchase inside the limit",
+      "expected": "The Sourcing agent pays 19.99 EUR for its warehouse software; Airwallex approves it; no one is asked.",
+      "offline": "Airwallex is a stand-in; live: docs/runs/2026-10-29-cards.md",
+      "happened": "Airwallex approved 19.99 EUR at Packwise; 0 proposals wait",
+      "passed": true,
+      "evidence": [
+        "card transaction tx_9",
+        "audit #16 card.charge_approved"
+      ]
+    },
+    {
+      "id": "over-limit-raise",
+      "title": "Too expensive: declined, then a raise with Face ID",
+      "expected": "The 45.00 EUR plan is declined by Airwallex (over the 30.00 limit); the agent asks for more; after the CFO's Face ID the card has 50.00 and the same plan goes through.",
+      "offline": "Airwallex and the phone are stand-ins; live: docs/runs/2026-10-29-cards.md",
+      "happened": "first try declined (LIMIT_EXCEEDED); P-0002 approved with Face ID; card now 50 EUR per purchase; second try approved",
+      "passed": true,
+      "evidence": [
+        "P-0002",
+        "card transactions tx_9, tx_10"
+      ]
+    },
+    {
+      "id": "price-rise",
+      "title": "The supplier raises its price: refused, then options",
+      "expected": "A stock check at 0.04 is refused (the cap is 0.03); Purser offers options that stay inside the 20.00 the business allows, and nothing changes before the CFO approves one.",
+      "offline": "The refusal here is the CFO policy's, checked before signing; live, the chain itself refuses with mandate_cap_exceeded: docs/runs/2026-10-29-s1.md",
+      "happened": "policy_cap_exceeded: 0.04 is over the Sourcing agent's limit of 0.03; 2 options (keep the price, margin 0.01; raise the price, margin 0.03); new budgets total 20",
+      "passed": true,
+      "evidence": [
+        "P-0002"
+      ]
+    },
+    {
+      "id": "changed-bank-details",
+      "title": "A fake invoice with changed bank details",
+      "expected": "An invoice that asks to pay a new IBAN is blocked; the new account counts only after a request, a check by a person and the CFO's approval.",
+      "offline": "Airwallex is a stand-in; live: docs/runs/2026-10-29-fraud.md",
+      "happened": "the invoice is blocked: possible invoice fraud: the invoice asks for IBAN ...1000 (LT) and BIC CBVILT2XXXX; on file: IBAN ...3000 (DE) and BIC COBADEFFXXX; nothing is paid until a person verifies with Bergtex Textil GmbH on the phone number on file. The red team's lookalike invoice: blocked. Stopped by: the fraud check compares name, IBAN and BIC with the account on file; a change goes through a verified call and Face ID.",
+      "passed": true,
+      "evidence": [
+        "fixtures/bergtex-invoice-BTX-2027-01-BANKCHANGE.txt",
+        "red team attack bank-detail-change"
+      ]
+    },
+    {
+      "id": "ai-trick",
+      "title": "An AI trick hidden in an invoice",
+      "expected": "A line telling the AI the payment is pre-approved is flagged and changes nothing; nothing is paid without the CFO.",
+      "offline": "The model is a stand-in that obeys the trick; live: docs/runs/2026-10-29-injection.md",
+      "happened": "read as 1850.00 EUR to IBAN ...3000; planted instruction flagged. Stopped by: code checks every model reading against the document; documents are data, and every invoice payment waits for Face ID.",
+      "passed": true,
+      "evidence": [
+        "red team attack invoice-injection"
+      ]
+    },
+    {
+      "id": "duplicate-invoice",
+      "title": "The same invoice twice",
+      "expected": "The second copy of an invoice already paid is refused before anything moves.",
+      "offline": "Airwallex is a stand-in; live: the euro bill flow (npm run s3) checks the same",
+      "happened": "first copy: may be paid; second copy: invoice BTX-2026-11 is already paid",
+      "passed": true,
+      "evidence": [
+        "invoice BTX-2026-11"
+      ]
+    },
+    {
+      "id": "velocity-stop",
+      "title": "An agent pays too often: stopped by itself",
+      "expected": "Past its speed limit the agent is stopped automatically; only the CFO's Face ID lifts the stop.",
+      "offline": "Metal is a stand-in; live: docs/runs/2026-10-29-rehearsal-6.md",
+      "happened": "30 made, the rest refused; sourcing agent stopped. Stopped by: the speed limit stops the agent on the first payment over it; only Face ID lifts it. The Sourcing agent's limit is 30 payments a minute and 4.00 test USD an hour, set above the recorded run's busiest minute (18 payments).",
+      "passed": true,
+      "evidence": [
+        "red team attack velocity-burst"
+      ]
+    },
+    {
+      "id": "emergency-stop",
+      "title": "The emergency stop",
+      "expected": "One Face ID: every agent payment is refused before signing and every card is frozen at Airwallex; a purchase is declined.",
+      "offline": "Airwallex and the phone are stand-ins; not yet run live; the stop is covered by test/freeze.test.ts and this scenario",
+      "happened": "P-0002 approved; 4 of 4 cards frozen at Airwallex; a purchase: declined (CARD_INACTIVE); on chain: frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the Sourcing agent signs nothing",
+      "passed": true,
+      "evidence": [
+        "P-0002",
+        "audit #20 card.frozen",
+        "audit #21 card.frozen",
+        "audit #22 card.frozen"
+      ]
+    },
+    {
+      "id": "outside-agent",
+      "title": "An outside agent asks for a card",
+      "expected": "It cannot pay before the CFO approves; after Face ID it gets a card with exactly the approved limits and pays inside them.",
+      "offline": "Airwallex and the phone are stand-ins; live: docs/runs/2026-10-29-agent-api.md",
+      "happened": "before approval: ext:lab-buyer has no company card yet; ask for one and wait for the CFO's approval; P-0002 approved with a stand-in passkey; then 10.00: approved",
+      "passed": true,
+      "evidence": [
+        "P-0002",
+        "card transaction tx_11"
+      ]
+    },
+    {
+      "id": "reconciliation-difference",
+      "title": "The bank and the ledger disagree",
+      "expected": "A card charge at Airwallex that the ledger never saw shows up as a difference in the hourly reconciliation.",
+      "offline": "Airwallex is a stand-in; live: npm run reconcile",
+      "happened": "2 checked, 1 difference(s): card tx_unseen: ledger not recorded, Airwallex approved EUR 12.34 at Unknown merchant on the sourcing card",
+      "passed": true,
+      "evidence": [
+        "card transaction tx_unseen",
+        "audit #18 reconcile.done"
+      ]
+    },
+    {
+      "id": "ask-purser",
+      "title": "Ask Purser for a flight",
+      "expected": "\"Flight to Berlin, at most €250\" gives a single-use airline card at once (within the policy); one booking goes through, the card is closed after it, and a second charge is declined.",
+      "offline": "Airwallex is a stand-in; the single-use check live in the sandbox follows the Friday runs",
+      "happened": "Done, within your policy: a single-use flight card •••• 4010, at most 250.00 EUR, until 2026-11-10. I book it next. Booking 189.00: approved; second charge: declined (CARD_CLOSED)",
+      "passed": true,
+      "evidence": [
+        "task:T-0001",
+        "audit #21 card.closed"
+      ]
+    },
+    {
+      "id": "unknown-sender",
+      "title": "Money from an unknown sender",
+      "expected": "A payment into the sweep wallet from anyone but the business account is held by Metal in quarantine, shown to the CFO, and never reaches the bank on its own.",
+      "offline": "Metal's ReceivePolicy is a stand-in; live: docs/metal-award.md, section 5",
+      "happened": "credited to the wallet: no; held and recorded: 1; options for the CFO: 2; bridged: 0",
+      "passed": true,
+      "evidence": [
+        "audit #15 quarantine.held"
+      ]
+    },
+    {
+      "id": "dispute-never-ordered",
+      "title": "Dispute: \"our agent never ordered this\"",
+      "expected": "Each payment has a valid signed order from the customer's agent, inside the mandate its owner bound: the claim is rejected with that evidence, nothing is refunded.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "rejected; sale 1: refund 0.00; sale 2: refund 0.00",
+      "passed": true,
+      "evidence": [
+        "DD-d6d0560a",
+        "audit #16 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-wrong-price",
+      "title": "Dispute: \"the price was not what our agent agreed\"",
+      "expected": "The agent signed for 0.05 but was charged 0.07: the 0.02 difference is refunded at once, within the CFO's limits; a sale charged as signed is not.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "partial_refund (auto); sale 1: refund 0.02; sale 2: refund 0.00",
+      "passed": true,
+      "evidence": [
+        "DD-c2c1b259",
+        "audit #17 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-not-authorised",
+      "title": "Dispute: \"our agent was not authorised\"",
+      "expected": "The payment is inside the mandate the customer's owner bound on chain, and the chain refuses anything outside it; the owner also confirmed that mandate with a passkey (Purser's addition): the claim is rejected with both as evidence.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md; the customer's passkey is a software stand-in",
+      "happened": "rejected; sale 1: refund 0.00; owner bound: yes; passkey confirmation: verified (Summit Outfitters owner)",
+      "passed": true,
+      "evidence": [
+        "DD-70d6f4c7",
+        "audit #16 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-wrong-data",
+      "title": "Dispute: \"the data you delivered was wrong\"",
+      "expected": "Only the sale the supplier's correction shows was wrong is refunded; the other is not.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "partial_refund; sale 1: refund 0.05; sale 2: refund 0.00",
+      "passed": true,
+      "evidence": [
+        "DD-860cc863",
+        "audit #17 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-forged-order",
+      "title": "Dispute: a forged or reused order",
+      "expected": "An order that does not verify, and the second payment on a reused order, are refunded: the seller cannot stand behind them. The first use of a good order is not.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "partial_refund; sale 1: refund 0.00; sale 2: refund 0.05; sale 3: refund 0.05",
+      "passed": true,
+      "evidence": [
+        "DD-009760b2",
+        "audit #17 dispute.decided"
+      ]
+    },
+    {
+      "id": "dispute-double-charged",
+      "title": "Dispute: \"we were charged twice\"",
+      "expected": "Two charges for the same request: the second is refunded, the first kept.",
+      "offline": "The chain check and the refund are stand-ins; live with verifyMandatePayment: docs/runs/2026-10-30-dispute-desk.md",
+      "happened": "partial_refund; sale 1: refund 0.00; sale 2: refund 0.05",
+      "passed": true,
+      "evidence": [
+        "DD-b5551032",
+        "audit #17 dispute.decided"
+      ]
+    }
+  ]
+}

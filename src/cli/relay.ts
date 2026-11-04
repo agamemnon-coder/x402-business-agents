@@ -1,0 +1,242 @@
+// npm run relay [-- --enrol [--replace]] [-- --local] [-- --once]
+// Connects this ledger (KIT11_DB) to the relay Worker, so the dashboard and passkey approvals work on a phone at
+// one fixed address. Every approval the phone sends is verified here, against the pinned passkey and the exact
+// terms hash, before anything is decided; then the executor runs as with the local approval page.
+//   --enrol    opens a ten-minute window and prints a one-time code for enrolling the approver's passkey
+//   --replace  with --enrol: the new passkey replaces the enrolled one once it is enrolled
+//   --local    no Cloudflare: serves the same relay on http://localhost:4400 (KIT11_RELAY_PORT) for a laptop
+//   --once     one sync (and the executions it starts), then exit
+
+import { envWithoutOrigin } from "../provenance/origin.js";
+import { displayKey } from "../relay/sign.js";
+import { reconcile } from "../finance/reconcile.js";
+import { certifyPending } from "../metal/finality.js";
+import { reconcileSourcesFromEnv } from "../finance/sources.js";
+import { redactSecrets } from "../lib/redact.js";
+import { keyPath } from "../metal/agentCli.js";
+import { randomBytes } from "node:crypto";
+import { openDb } from "../db/open.js";
+import { execute } from "../executors/index.js";
+import { recoverHolds } from "../policy/holds.js";
+import { resumeInterrupted } from "../policy/saga.js";
+import { health, RECONCILE_EVERY_MS } from "../ops/health.js";
+import { openEnrolment } from "../passkey/ledger.js";
+import { relayConfig, viewerLink, type RelayConfig, mfaOn } from "../relay/config.js";
+import { startLocalRelay } from "../relay/local.js";
+import { RelayRunner } from "../relay/runner.js";
+import { Tools } from "../claude/tools.js";
+import { draftPolicyFromText, draftSummary } from "../policy/fromText.js";
+import { recoverTaskCards, relayAsk } from "../agents/askPurser.js";
+import { pollQuarantine } from "../policy/quarantine.js";
+import { LiveReceivePolicy } from "../metal/receivePolicy.js";
+import { issuingFromEnv } from "../airwallex/issuing.js";
+import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
+import { handleAirwallexHook } from "../policy/cardHooks.js";
+import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
+import { existsSync, readFileSync } from "node:fs";
+import { agentsOn, autonomyOn } from "../config/agents.js";
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+import { meetNewDeclines } from "../agents/declineTrigger.js";
+import { pausedCredential, pausesNotRevoked, syncPauses } from "../policy/pause.js";
+import { LivePauseChain } from "../metal/pauseChain.js";
+
+const args = process.argv.slice(2);
+const once = args.includes("--once");
+let cfg: RelayConfig;
+if (args.includes("--local")) {
+  // A fresh token each start, unless the caller keeps one across restarts (the dry run restarts the runner on purpose;
+  // a new token would void the phones' viewer link). The hosted relay keeps its own token anyway.
+  const kept = process.env.KIT11_LOCAL_RELAY_TOKEN ?? "";
+  if (kept && !/^[0-9a-f]{64}$/.test(kept)) throw new Error("KIT11_LOCAL_RELAY_TOKEN must be 64 hex characters");
+  const token = kept || randomBytes(32).toString("hex");
+  const { url } = await startLocalRelay({ port: Number(process.env.KIT11_RELAY_PORT ?? 4400), token });
+  cfg = { url, origin: url, rpId: new URL(url).hostname, token };
+} else {
+  cfg = await relayConfig();
+}
+
+const db = openDb();
+const label = process.env.KIT11_APPROVER ?? "max";
+const stamp = () => new Date().toISOString().slice(11, 19);
+console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${process.env.KIT11_DB ?? "data/kit11.sqlite"})`);
+const signer = displayKey(keyPath("relay-display-key.pem"));
+console.log(`viewer   ${viewerLink(cfg, signer.publicSpki)}  (open once on each device: it unlocks the dashboard and pins this runner's key; it approves nothing${mfaOn() ? "; with MFA on it reads only and expires after next week: the CFO's actions need a passkey sign-in" : ""})`);
+// D20: under MFA the viewer link changes every Monday; print the new one, so devices can renew without a restart.
+if (mfaOn()) {
+  let shown = viewerLink(cfg, signer.publicSpki);
+  setInterval(() => {
+    const next = viewerLink(cfg, signer.publicSpki);
+    if (next !== shown) { shown = next; console.log(`${stamp()} viewer   a new week, a new link (last week's still works for seven days): ${next}`); }
+  }, 3_600_000).unref();
+}
+if (args.includes("--enrol")) {
+  const { window, code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin, replace: args.includes("--replace") });
+  console.log(`ENROL    on the phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);
+}
+
+// Airwallex's webhooks reach the relay; with the secret here too, the runner checks each one again and records it.
+const hookSecret = existsSync(keyPath(WEBHOOK_SECRET_FILE)) ? readFileSync(keyPath(WEBHOOK_SECRET_FILE), "utf8").trim() : "";
+console.log(`webhooks ${hookSecret ? "on: card transactions arrive from Airwallex as they happen" : "off (npm run cards -- webhook); card transactions come from the poll"}`);
+// Block 5.2: with the agents on, a new card decline (from a webhook or the poll) starts the agent whose card it is.
+// One at a time; each decline is claimed once, so the CLI that caused it and this runner never both act on it.
+let declines: Promise<void> = Promise.resolve();
+const meetDeclines = () => {
+  if (!agentsOn()) return;
+  declines = declines.then(async () => {
+    for (const m of await meetNewDeclines(db, { by: "runner" })) console.log(`${stamp()} agent    ${m.source === "claude" ? "card decline met by the agent" : "card decline met by code"}${m.proposal_id ? `: ${m.proposal_id} waits for the CFO` : ": no raise"}`);
+  }).catch((e: Error) => console.log(`${stamp()} agent    card decline: ${redactSecrets(e.message).slice(0, 200)}`));
+};
+const onHook = hookSecret ? (h: Parameters<typeof handleAirwallexHook>[1]) => { const line = handleAirwallexHook(db, h, hookSecret); meetDeclines(); return line; } : undefined;
+// The CFO's policy in plain words from the phone (P2): Opus drafts, code checks, and only tightening can come this way.
+const draftPolicy = async (text: string) => {
+  const r = await draftPolicyFromText(db, new Tools(db), text, new Date(), { tightenOnly: true });
+  return { proposalId: r.proposal?.proposal_id ?? null, message: draftSummary(r) };
+};
+// Ask Purser (G): a chat message through the relay (the phone, or anyone with the viewer link) becomes, at most, a
+// task card proposal that waits for Face ID; it never issues a card itself (review 30 Oct, HIGH-1).
+const ask = (text: string, ticket: string) => relayAsk(db, new Tools(db))(text, ticket);
+const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, ask, log: (line) => console.log(`${stamp()} ${line}`) });
+let stopping = false;
+// D19: with the autonomous agents on, each agent runs as its own process beside the runner (npm run agent -- <name>);
+// their lines go to this log, prefixed. They stop with the runner.
+const agentProcs = autonomyOn() ? (["sourcing", "support", "treasury"] as const).map((n) => {
+  const child = spawn("npx", ["tsx", resolve(import.meta.dirname, "agent.ts"), n], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"] });
+  const out = (b: Buffer) => { for (const l of b.toString().split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) console.log(`agent    ${redactSecrets(l).slice(0, 400)}`); };
+  child.stdout.on("data", out);
+  child.stderr.on("data", out);
+  return child;
+}) : [];
+const stop = () => {
+  if (stopping) return;
+  stopping = true;
+  for (const c of agentProcs) c.kill("SIGTERM");
+  console.log(`${stamp()} stopping; waiting for running executions`);
+  // Deliver the last verdicts (an execution may just have finished) before leaving.
+  void runner.idle().then(() => runner.syncOnce()).catch(() => undefined).then(() => process.exit(0));
+};
+process.on("SIGINT", stop);
+process.on("SIGTERM", stop);
+
+// The agents' cards (K2): every few seconds, a limit the CFO changed goes to Airwallex, and new authorisations come
+// in (the webhook, once set up, brings them sooner). A failure here is logged and tried again; it never stops the relay.
+const issuing = issuingFromEnv();
+let cardsAt = 0;
+let cardsError = "";
+async function cardsTick(): Promise<void> {
+  if (!issuing || cardRows(db).length === 0 || Date.now() - cardsAt < 5000) return;
+  cardsAt = Date.now();
+  try {
+    const synced = await syncCardsIfChanged(db, issuing.rail);
+    if (synced.length) console.log(`${stamp()} cards    limits updated at Airwallex: ${synced.join(", ")}`);
+    const fresh = await pollCardTransactions(db, issuing.rail);
+    if (fresh) console.log(`${stamp()} cards    ${fresh} new card transaction(s) from Airwallex`);
+    if (fresh) meetDeclines();
+    const orphans = await recoverTaskCards(db, issuing.rail);
+    if (orphans) console.log(`${stamp()} cards    ${orphans} unfinished task card(s) frozen at Airwallex`);
+    cardsError = "";
+  } catch (e) {
+    const message = redactSecrets((e as Error).message);
+    if (message !== cardsError) console.error(`${stamp()} cards    ${message}`);
+    cardsError = message;
+  }
+}
+
+// The light reconciliation (finance item 5): a minute after start, then every hour (RECONCILE_EVERY_MS). Read-only;
+// a difference is logged, raises an alarm and is shown on the dashboard.
+let reconcileAt = Date.now() - RECONCILE_EVERY_MS + 60_000;
+async function reconcileTick(): Promise<void> {
+  if (Date.now() - reconcileAt < RECONCILE_EVERY_MS) return;
+  reconcileAt = Date.now();
+  try {
+    const r = await reconcile(db, reconcileSourcesFromEnv());
+    console.log(`${stamp()} reconcile ${r.checked} flows checked, ${r.differences.length} difference(s)${r.skipped.length ? `; not checked: ${r.skipped.join(", ")}` : ""}`);
+  } catch (e) {
+    console.error(`${stamp()} reconcile ${redactSecrets((e as Error).message)}`);
+  }
+}
+
+// Enterprise item 3: Metal's finality certificate for each new chain transaction in the ledger, every minute. Nodes keep
+// them about 2 hours on testnet, so this must not wait for the hourly reconciliation. Read-only towards the chain.
+let finalityAt = 0;
+async function finalityTick(): Promise<void> {
+  if (Date.now() - finalityAt < 60_000) return;
+  finalityAt = Date.now();
+  try {
+    const r = await certifyPending(db);
+    if (r.reported || r.not_kept || r.failed) console.log(`${stamp()} finality ${r.reported} reported certificate(s) stored${r.not_kept ? `, ${r.not_kept} no longer kept by the node` : ""}${r.failed ? `, ${r.failed} FAILED a check` : ""}`);
+  } catch (e) {
+    console.error(`${stamp()} finality ${redactSecrets((e as Error).message)}`);
+  }
+}
+
+// B1: payments to the sweep wallet held in quarantine by Metal's receive policy, once it is set up; every 30 s.
+let quarantineAt = 0;
+let quarantineError = "";
+async function quarantineTick(): Promise<void> {
+  if (Date.now() - quarantineAt < 30_000 || !db.prepare("SELECT 1 FROM audit_log WHERE event = 'receive_policy.set'").get()) return;
+  quarantineAt = Date.now();
+  try {
+    const held = await pollQuarantine(db, new LiveReceivePolicy());
+    if (held) console.log(`${stamp()} metal    ${held} payment(s) from an unknown sender held in quarantine; return or accept with Face ID`);
+    quarantineError = "";
+  } catch (e) {
+    const message = redactSecrets((e as Error).message);
+    if (message !== quarantineError) console.error(`${stamp()} metal    ${message}`);
+    quarantineError = message;
+  }
+}
+
+// After a crash (backend review B2): first settle or release the holds the ledger can explain, then finish every
+// money action left executing, from its last finished step. Nothing is sent twice: each step is keyed.
+{
+  const holds = recoverHolds(db);
+  if (holds.settled + holds.released + holds.open) console.log(`${stamp()} recover  holds: ${holds.settled} settled, ${holds.released} released, ${holds.open} still open`);
+  for (const r of await resumeInterrupted(db, execute)) console.log(`${stamp()} recover  ${r.id} resumed after a restart: ${redactSecrets(r.outcome)}`);
+  // 4.2 A pause whose revoke failed or was cut off by a crash: finish it now (review of 4.2). Purser refused the agent
+  // all along; this makes the chain refuse it too. A failure here stays a health alarm until it succeeds.
+  if (agentsOn() && pausesNotRevoked(db).length) {
+    try {
+      const done = await syncPauses(db, new LivePauseChain(() => "resume-sync", (agent) => pausedCredential(db, agent)));
+      if (done.length) console.log(`${stamp()} recover  paused agent(s) revoked on chain: ${done.join(", ")}`);
+    } catch (e) {
+      console.error(`${stamp()} recover  revoke of a paused agent failed: ${redactSecrets((e as Error).message)}`);
+    }
+  }
+}
+
+// Monitoring (B7): each alarm is logged once when it is raised and once when it clears; the relay's /health shows them.
+let standing = new Set<string>();
+function alarmsTick(): void {
+  const now = health(db);
+  const codes = new Set(now.alerts.map((a) => `${a.code}:${a.words}`));
+  for (const a of now.alerts) if (!standing.has(`${a.code}:${a.words}`)) console.error(`${stamp()} ALARM    ${a.severity}: ${a.words}`);
+  for (const c of standing) if (!codes.has(c)) console.log(`${stamp()} alarm    cleared: ${c.slice(c.indexOf(":") + 1)}`);
+  standing = codes;
+}
+
+let lastError = "";
+while (!stopping) {
+  alarmsTick();
+  await cardsTick();
+  await quarantineTick();
+  await reconcileTick();
+  await finalityTick();
+  try {
+    await runner.syncOnce();
+    if (lastError) console.log(`${stamp()} relay reachable again`);
+    lastError = "";
+    if (once) {
+      await runner.idle();
+      await runner.syncOnce();
+      break;
+    }
+  } catch (e) {
+    const message = (e as Error).message;
+    if (message !== lastError) console.error(`${stamp()} relay unreachable: ${message}`);
+    lastError = message;
+    if (once) process.exit(1);
+  }
+  await new Promise((r) => setTimeout(r, 2000));
+}
+process.exit(0);

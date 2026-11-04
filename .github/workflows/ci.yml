@@ -1,0 +1,71 @@
+# Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
+# test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), a juror's first run
+# (npm run judge on a fresh clone, then the guest pages in Chromium), and gitleaks on the pushed commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
+# No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      # The ISO 20022 export is validated against the official XSD with xmllint (test/iso20022.test.ts).
+      - name: xmllint
+        run: command -v xmllint || (sudo apt-get update && sudo apt-get install -y libxml2-utils)
+      - name: Tests with coverage, per area
+        run: npm run test:coverage
+      - run: npm run relay:pages
+      - name: Relay Worker type check
+        working-directory: worker
+        run: npm ci && npx tsc --noEmit && npm audit --audit-level=low
+      - run: npm audit --audit-level=low
+  # A juror's first run: a fresh clone, no keys, no network beyond npm. `npm run judge` must serve the recorded demo
+  # and the month, and the guest pages must render cleanly in Chromium at phone and laptop width, light and dark.
+  judge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm ci
+      - name: npm run judge (no keys, no ledger)
+        run: npm run judge -- --check
+      - run: npx playwright install --with-deps chromium
+      - name: Guest pages in Chromium (/, /demo, /month at 390 and 1440 px)
+        run: npx tsx test/browser/pages.check.ts test-results/pages
+      - name: Agent trace in Chromium (390 and 1440 px, light and dark)
+        run: npx tsx test/browser/trace.check.ts test-results/trace
+  secrets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # The gitleaks action lists a pull request's commits to scan them.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The action scans the pushed commits; this scans the whole history on every run.
+      - name: gitleaks, whole history
+        run: >
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3
+          git /repo --redact --verbose --no-banner --gitleaks-ignore-path /repo/.gitleaksignore

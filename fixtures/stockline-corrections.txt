@@ -1,0 +1,16 @@
+From: data@stockline.example
+To: ops@northwind-outdoor.example
+Subject: Correction notice, stock checks of 30 October
+Date: Fri, 30 Oct 2026 14:05:00 +0000
+
+A sync fault on our side published three stock checks for NW-PARKA-M at the
+Tilburg warehouse with 250 more units on hand than were there.
+The corrected values are:
+
+check 7:  on hand 93, reserved 11
+check 10: on hand 97, reserved 12
+check 13: on hand 99, reserved 12
+
+All other stock checks of that day were correct.
+
+Stockline data team

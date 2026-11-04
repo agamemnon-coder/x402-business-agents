@@ -1,0 +1,153 @@
+{
+  "ran_at": "2026-10-31T09:37:42.133Z",
+  "runs": 3,
+  "models": {
+    "classify": "claude-haiku-5-5",
+    "act": "claude-sonnet-5-5",
+    "review": "claude-opus-5-5"
+  },
+  "sets": {
+    "core": {
+      "title": "The agents' eval cases (src/evals/cases.ts)",
+      "cases": [
+        "normal",
+        "too-expensive",
+        "fraud",
+        "injection",
+        "double-payment",
+        "price-notice"
+      ],
+      "rows": [
+        {
+          "id": "purser",
+          "label": "Purser's split: Haiku sorts, Sonnet reads, Opus reviews",
+          "runs": 3,
+          "cases": 18,
+          "passed_by_model": 18,
+          "fallbacks": 0,
+          "calls": 42,
+          "cost_usd_micros": 42990,
+          "cost_per_run_usd_micros": 14330,
+          "p50_latency_ms": 1551,
+          "unpriced_calls": 0,
+          "problems": []
+        },
+        {
+          "id": "haiku",
+          "label": "Haiku for every role",
+          "runs": 3,
+          "cases": 18,
+          "passed_by_model": 18,
+          "fallbacks": 0,
+          "calls": 42,
+          "cost_usd_micros": 3342,
+          "cost_per_run_usd_micros": 1114,
+          "p50_latency_ms": 815,
+          "unpriced_calls": 0,
+          "problems": []
+        },
+        {
+          "id": "sonnet",
+          "label": "Sonnet for every role",
+          "runs": 3,
+          "cases": 18,
+          "passed_by_model": 18,
+          "fallbacks": 0,
+          "calls": 42,
+          "cost_usd_micros": 58598,
+          "cost_per_run_usd_micros": 19533,
+          "p50_latency_ms": 1597,
+          "unpriced_calls": 0,
+          "problems": []
+        },
+        {
+          "id": "opus",
+          "label": "Opus for every role",
+          "runs": 3,
+          "cases": 18,
+          "passed_by_model": 18,
+          "fallbacks": 0,
+          "calls": 42,
+          "cost_usd_micros": 125491,
+          "cost_per_run_usd_micros": 41831,
+          "p50_latency_ms": 2198,
+          "unpriced_calls": 0,
+          "problems": []
+        }
+      ]
+    },
+    "hard": {
+      "title": "Harder documents (src/evals/hard.ts): a long invoice with a discount line and closed old bank details, an invoice in German, an IBAN one digit off, a mixed-language dispute that leaves one order out of a range, a price notice in German",
+      "cases": [
+        "hard-messy-invoice",
+        "hard-german-invoice",
+        "hard-subtle-iban",
+        "hard-mixed-dispute",
+        "hard-german-notice"
+      ],
+      "rows": [
+        {
+          "id": "purser",
+          "label": "Purser's split: Haiku sorts, Sonnet reads, Opus reviews",
+          "runs": 3,
+          "cases": 15,
+          "passed_by_model": 15,
+          "fallbacks": 0,
+          "calls": 30,
+          "cost_usd_micros": 34687,
+          "cost_per_run_usd_micros": 11563,
+          "p50_latency_ms": 1222,
+          "unpriced_calls": 0,
+          "problems": []
+        },
+        {
+          "id": "haiku",
+          "label": "Haiku for every role",
+          "runs": 3,
+          "cases": 15,
+          "passed_by_model": 14,
+          "fallbacks": 0,
+          "calls": 30,
+          "cost_usd_micros": 3309,
+          "cost_per_run_usd_micros": 1103,
+          "p50_latency_ms": 828,
+          "unpriced_calls": 0,
+          "problems": [
+            {
+              "id": "hard-mixed-dispute",
+              "problem": "read orders [5,6,7,8,9,10,11,12,13,14,15,16], not #5-#16 without #9"
+            }
+          ]
+        },
+        {
+          "id": "sonnet",
+          "label": "Sonnet for every role",
+          "runs": 3,
+          "cases": 15,
+          "passed_by_model": 15,
+          "fallbacks": 0,
+          "calls": 30,
+          "cost_usd_micros": 47601,
+          "cost_per_run_usd_micros": 15867,
+          "p50_latency_ms": 1580,
+          "unpriced_calls": 0,
+          "problems": []
+        },
+        {
+          "id": "opus",
+          "label": "Opus for every role",
+          "runs": 3,
+          "cases": 15,
+          "passed_by_model": 15,
+          "fallbacks": 0,
+          "calls": 30,
+          "cost_usd_micros": 100037,
+          "cost_per_run_usd_micros": 33346,
+          "p50_latency_ms": 2099,
+          "unpriced_calls": 0,
+          "problems": []
+        }
+      ]
+    }
+  }
+}
