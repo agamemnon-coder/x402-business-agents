@@ -179,7 +179,8 @@ const JS = `
   setTimeout(next, 2600);
 })();`;
 
-export function homePage(run: AgentRun = agentRun()): string {
+/** opts.trySign: the bundle also carries /try/sign (TRY_SIGN_ENABLED), so the landing links to it; never otherwise. */
+export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean } = {}): string {
   const moments = heroMoments(run);
   const s1 = run.scenes.find((s) => s.n === 1);
   const body = `<main>
@@ -191,7 +192,7 @@ export function homePage(run: AgentRun = agentRun()): string {
   </div>
   <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div></div>
   <div class="act">
-    <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the agents</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div>
+    <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the agents</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a>${opts.trySign ? `<a class="btn" href="try/sign">${icon("scan-face", 18)}Sign with your own Face ID</a>` : ""}<a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div>
     <div class="built">Built on <span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${VISA_AWARD_ON ? '<span class="logo txt">Visa TAP</span>' : ""}</div>
   </div>
 </div></section>
