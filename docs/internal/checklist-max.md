@@ -2,13 +2,10 @@
 
 Claude zet alles klaar. Jij verstuurt. Deadline: 13 november, 19:29 (NL-tijd). Plan: inleveren op donderdag 12 november.
 
-> **TODO na de volgende deploy: `/try/sign` promoveren.** Nu (4 november) antwoordt
-> `https://kit11.max-31b.workers.dev/try/sign` met 404, omdat de relay nog niet met `TRY_SIGN_ENABLED=on` is gedeployd.
-> De README noemt het daarom alleen als "after the next deploy", zonder klikbare link; de klikbare link bovenaan is
-> `/try`. Zodra de deploy staat en `npx tsx test/browser/trysign.check.ts --live <url>` groen is:
-> 1. README, bovenaan: maak van de `/try/sign`-regel een klikbare link (naast `/try`) en haal "after the next deploy" weg;
-> 2. `docs/claims.md`, rij `/try/sign`: "deploy pending" → de deploydatum;
-> 3. `docs/video-script.md`: neem de `/try/sign`-scène (2:35–2:50) op; tot dan valt hij weg.
+> **`/try/sign` staat live sinds 4 november 2026** (Worker-deploy van commit `852b323`, met `TRY_SIGN_ENABLED=on`).
+> `npx tsx test/browser/trysign.check.ts --live` is groen tegen de gehoste site. De README zet "Try it yourself: sign with
+> your own Face ID" bovenaan met de link; `docs/claims.md` en `docs/security.md` noemen de datum. Nog open, voor de
+> video-agent: de `/try/sign`-scène in `docs/video-script.md` (2:35–2:50).
 
 Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal of in het Airwallex- of Cloudflare-scherm.
 

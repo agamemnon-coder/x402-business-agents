@@ -35,7 +35,9 @@ describe("the site after v4", () => {
   });
 
   it("shows no forbidden words on any page a visitor can reach (every page buildPages serves, the archive and the phone pages included)", () => {
-    const bad = [/warehouse software/i, /stand-in/i, /\bdry-1\d*/i, /Dev test/i, /Recorded 30 October/i, /read, plan and advise/i, /\bfather\b/i, /four eyes.{0,80}\b(optional|off)\b/i, /\b(optional|off)\b.{0,80}four eyes/i, /\b0 unsafe\b/i, /confirmed (that )?TAP counts/i];
+    const bad = [/warehouse software/i, /stand-in/i, /\bdry-1\d*/i, /Dev test/i, /Recorded 30 October/i, /read, plan and advise/i, /\bfather\b/i, /four eyes.{0,80}\b(optional|off)\b/i, /\b(optional|off)\b.{0,80}four eyes/i, /\b0 unsafe\b/i, /confirmed (that )?TAP counts/i,
+      // The old absolute claims (jury review, 4 Nov): the core sentence says who holds which limit instead.
+      /every limit/i, /can['’]t break/i];
     // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked).
     const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font"].includes(e[0]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
