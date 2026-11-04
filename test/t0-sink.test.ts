@@ -105,7 +105,7 @@ describe("after an executed proposal", () => {
     vi.stubEnv("T0_API_KEY", "t0-key-for-tests");
     vi.stubEnv("T0_BASE_URL", "https://t0.invalid");
     vi.stubEnv("HUB_DECISIONS_ENABLED", "");
-    const failing = vi.fn(async () => { throw new TypeError("fetch failed"); });
+    const failing = vi.fn(async (_url: unknown, _init?: unknown): Promise<Response> => { throw new TypeError("fetch failed"); });
     vi.stubGlobal("fetch", failing);
     try {
       const { execute } = await import("../src/executors/index.js");
