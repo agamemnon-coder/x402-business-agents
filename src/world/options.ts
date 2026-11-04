@@ -28,7 +28,11 @@ export function upstreamCacheOff(db: DB, env: Env = process.env): boolean {
 /** The free EUR this world's first treasury calibration leaves, in cents; null: the default. */
 export function freeEurTargetCents(db: DB): number | null {
   const v = getSetting(db, "world.free_eur_target", "");
-  return /^\d+\.\d{2}$/.test(v) ? toCents(v) : null;
+  if (!/^\d+\.\d{2}$/.test(v)) return null;
+  // The same bound setupWorld checks, here too: a target at or above the licence plus its fee ceiling is ignored (the
+  // default applies), so a value written some other way can never leave more free EUR than the world asked for.
+  const cents = toCents(v);
+  return cents < LICENCE_FEE_EUR_CENTS + SWIFT_FEE_MAX_EUR_CENTS ? cents : null;
 }
 
 /** Whether this world's Packwise card purchase goes through the TAP rail. */
