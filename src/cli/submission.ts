@@ -31,6 +31,8 @@ const SCREENS: [string, string][] = [
   ["6-books", "/?recorded&books"],
   ["15-watch", "/watch"],
   ["16-proof", "/proof"],
+  // The main run's card story (3 Nov): the TAP-signed card buy approved by Airwallex; the TAP run's decline labelled.
+  ["17-visa", "/visa"],
 ];
 
 const judge = await startJudge(0);
@@ -92,7 +94,7 @@ try {
   const deckShots: DeckShots = {
     landing: png("1-landing"), dashboard: png("2-dashboard"), metal: png("3-metal"), live: png("4-live"), disputes: png("5-disputes"), books: png("6-books"),
     rails: png("7-rails"), inspector: png("8-inspector"), fourEyes: png("9-four-eyes"), compliance: png("9-compliance"), try: png("10-try"),
-    overview: png("11-overview"), claude: png("12-claude"), result: png("13-result"), dispute: png("14-dispute"), watch: png("15-watch"), proof: png("16-proof"),
+    overview: png("11-overview"), claude: png("12-claude"), result: png("13-result"), dispute: png("14-dispute"), watch: png("15-watch"), proof: png("16-proof"), visa: png("17-visa"),
     // Moments of the film, taken above.
     refuse: png("live-refuse"), decline: png("live-decline"),
     phoneOptions: png("phone-options"), phoneConfirm: png("phone-confirm"),

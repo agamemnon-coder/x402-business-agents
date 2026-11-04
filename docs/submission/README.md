@@ -1,7 +1,7 @@
 # Submission pack (HackerEarth form)
 
-Copy each block into the form. Max submits; nothing here is sent by itself. Every figure comes from the recorded run
-and the reports in this repo (`src/submission/facts.ts`), and `test/submission.test.ts` checks this page against them.
+Copy each block into the form. Max submits; nothing here is sent by itself. The run figures come from the main run
+of 3 November (`docs/demo/main-run.json`; an earlier run is named with its date where one is cited) and the reports in this repo (`src/submission/facts.ts`), and `test/submission.test.ts` checks this page against them.
 Sources for each claim: [docs/claims.md](../claims.md), section "The submission pack".
 
 Fill in before submitting: the video link, the live link (the relay's address, kept out of the repo) and the repo link
@@ -56,9 +56,9 @@ agents.
 - **A company card per agent (Issuing).** Each agent has a DELEGATE cardholder and a virtual Visa card. The CFO policy
   sets its limits; its merchant categories, currency and end date are fixed per agent. Purser writes them all to the
   card and reads them back.
-  Airwallex enforces them: in the recorded run it declined a €45.00 charge (`LIMIT_EXCEEDED`) and a €19.99 charge at
-  the wrong kind of shop (`MERCHANT_CATEGORY_NOT_ALLOWED`). The CFO raised the limit with Face ID, Purser synced it to
-  the card, and the same charge went through.
+  Airwallex enforces them. In the main run the Sourcing agent asked for a card raise first (P-0006, EUR 30.00 → 46.00),
+  the CFO approved it with Face ID, Purser synced it to the card, and Airwallex approved the TAP-signed EUR 45.00
+  purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`). Separate run, not counted: Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November.
 - **Single-use task cards (separate live run).** One sentence (a flight, a hotel or a train, with an amount) becomes one card for that
   task, locked to its merchant category, the amount and a date. Within the CFO's policy it is issued at once; otherwise after Face ID.
 - **FX and a supplier payout.** A supplier's €1,850.00 invoice is read, checked against the payee on file, and paid
@@ -150,16 +150,11 @@ Second approver: a labelled test passkey in this demo. In production this is a s
 - 24 of 24 decisions by Claude, 0 fallbacks; 5 decisions signed with Face ID by the CFO; the books match the chain and
   Airwallex (`verify`, `reconcile` 0 differences, `data-qa` 217 of 217 checks, 110 money movements, 0 without an
   origin).
+- 2 stopped at a limit: Metal refused purchase #24 over the mandate cap, and the CFO rejected P-0004 with Face ID
+  (query #37, refused `mandate_revoked` while the mandate was being replaced, is not counted);
+- Separate run, not counted: Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November.
 
-### Proof from the recorded run
-
-From Friday run 1, 30 October 2026, with a Dispute desk case afterwards:
-- 106 payments inside the limits with no approval at the time, about half of them the simulated customer's agent
-  buying stock checks from Northwind;
-- 8 stops by the card, the chain, the fraud checks or the CFO (6 payments, 2 planted instructions); €3,719.99 kept
-  out for good;
-- 4 decisions signed with Face ID;
-- 194 audit rows, hash chain intact.
+### Red team and Scenario Lab
 
 Red team (35 scripted attacks plus 4 documents written by Claude Opus as the attacker, run against in-memory stand-ins
 for Airwallex, Metal and the phone): 39 of 39 attacks failed, 0 inconclusive; 37 were stopped before the attack

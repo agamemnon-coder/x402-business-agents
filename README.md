@@ -40,6 +40,11 @@ was changed during the run). Look the ids up yourself; the full log, with every 
 | Airwallex SWIFT transfer: EUR 240.00 licence (fee EUR 13.42) | transfer `03360bfa-afce-457b-89d1-e1097fbe3985` | created 11:31:21, PAID 11:31:24 (6 s after Face ID) |
 | Airwallex card: Packwise Pro (EUR 45.00), TAP-signed checkout, approved after the CFO raised the limit | authorization `01a1a12f-4113-7000-b76d-014677710007` | approved 11:33:07 |
 
+**2 stopped at a limit** in the main run: Metal refused purchase #24 over the mandate cap (the tx above), and the CFO
+rejected P-0004 with Face ID. Airwallex declined nothing in this run: Sourcing asked for the card raise (P-0006) first,
+and the purchase was approved. Not counted: query #37, refused `mandate_revoked` while the mandate was being replaced.\
+*Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
+
 **How it ran.** The Airwallex sandbox keys (`AIRWALLEX_CLIENT_ID`, `AIRWALLEX_API_KEY`), the Metal testnet endpoint
 (`METAL_RPC_URL`) and the Anthropic key (`KIT11_ANTHROPIC_API_KEY`) come from environment variables only. They are not
 in the code, and not in the run log; the recorder that wrote the recording refuses to include a secret. The code reads the Airwallex keys in one place,
@@ -184,13 +189,15 @@ calls a real service.
 ## The demo
 
 **Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/))
-or offline with `npm ci && npm run judge` (no keys, no network). Steps 2 and 3 are from the recorded run of 30 October
-(test money):
+or offline with `npm ci && npm run judge` (no keys, no network). Step 2 is from the main run of 3 November, step 3 from
+the recorded run of 30 October (test money):
 
 1. **The problem:** AI agents are starting to spend company money; one shared card or wallet gives no limit per agent
    and no one place for the exceptions. ([Watch](https://kit11.max-31b.workers.dev/film))
-2. **Airwallex declines the card** above its limit (`LIMIT_EXCEEDED`, €45.00 on a €30.00 card); after the CFO's Face
-   ID the limit follows (€30 → €50) and the same purchase is paid. ([the Airwallex ids](https://kit11.max-31b.workers.dev/airwallex))
+2. **The agent asks before its card would be declined** (main run, 3 November): the Sourcing agent asked for a card
+   raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the TAP-signed
+   EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`). ([the card buy](https://kit11.max-31b.workers.dev/visa))\
+   *Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
 3. **Metal refuses the higher price** against the on-chain mandate (`mandate_cap_exceeded`), and the CFO moves budget
    between the mandates within the same 20.00 with Face ID. ([the recorded run's dashboard](https://kit11.max-31b.workers.dev/?recorded))
 4. **The Dispute desk checks every order:** a simulated customer (we filed for it) disputes 12 orders; each is

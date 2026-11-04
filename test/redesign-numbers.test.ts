@@ -3,7 +3,9 @@
 // proof link is the record's, and the run is named by its own name. Breaks if a page shows a number the record lacks.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AGENT_RUN_1_FILE, agentRun, faceIdDecisions, fxOf, loadRecord, split, stops, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
+import { AGENT_RUN_1_FILE, agentRun, faceIdDecisions, fxOf, loadRecord, split, stoppedAtLimit, stops, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
+import { deckHtml, type DeckShots } from "../src/submission/deck.js";
+import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
 import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
@@ -17,6 +19,9 @@ const TAP_RAW = TAP ? readFileSync(new URL(`../${TAP.file}`, import.meta.url), "
 const NUM = /\d+(?:[.,]\d+)*/g;
 const norm = (n: string) => n.replace(/,(?=\d{3}\b)/g, "");
 const RECORD_NUMBERS = new Set(((RAW + TAP_RAW).match(NUM) ?? []).map(norm));
+/** Max, 4 Nov: the main run's figure, and the separate TAP run's decline on its own line directly below it. */
+const STOPPED = stoppedAtLimit(stops(record));
+const TAP_LINE = "Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November";
 
 /** Figures the pages count from the record, counted again here from the raw file. */
 function recount(r: RunRecord): string[] {
@@ -36,7 +41,7 @@ function recount(r: RunRecord): string[] {
   // Money on chain (not refused, counted by query), movements at Airwallex, and the Claude calls of all agents.
   const onChain = flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((n, f) => n + (f.count ?? 1), 0);
   const atAirwallex = flows.filter((f) => f.rail.startsWith("airwallex") && !f.refused).length + (r.ledger?.events.some((e) => e.event === "fx.converted") ? 1 : 0);
-  return [String(decisions), String(s.reduce((n, a) => n + a.by_claude, 0)), (cost / decisions / 1e6).toFixed(4), String(st.metal + st.airwallex + st.cfo),
+  return [String(decisions), String(s.reduce((n, a) => n + a.by_claude, 0)), (cost / decisions / 1e6).toFixed(4), String(st.metal + st.cfo + st.airwallex),
     // The cost per agent, as /proof writes it (USD to four places), and the dispute's valid orders (checked minus refunded).
     ...s.map((a) => (a.cost_usd_micros / 1e6).toFixed(4)), String(checked - refunded),
     // D3 and the one Face ID number, counted by their own functions (test/site-v4.test.ts counts them again).
@@ -96,18 +101,19 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(run.scenes[0]!.steps.map((s) => s.text).join(" ")).toMatch(/options in 40 s/);
   });
 
-  it("counts the Airwallex limit stop from the TAP run, labelled; Metal's let-through refusal once; the CFO's rejection", () => {
+  it("counts only the main run's stops (Metal at the cap, the CFO's rejection); the TAP run's decline on its own labelled line", () => {
     const t = run.tiles.find((x) => x.label.startsWith("stopped"))!;
     // At a limit: Metal at the cap; the payment refused because its mandate had just been replaced is told apart.
     const st = stops(record);
     expect(st.revoked).toBe(record.snapshot.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length);
-    expect(t.parts).toEqual([{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, { value: String(st.airwallex), label: "Airwallex · TAP run" }]);
-    expect(t.value).toBe(String(st.metal + st.cfo + st.airwallex));
-    expect([st.metal, st.cfo]).toEqual([1, 1]);
+    expect([st.metal, st.cfo, st.airwallex, st.revoked, st.tapDeclines]).toEqual([1, 1, 0, 1, 1]);
+    expect(t.parts).toEqual([{ value: "1", label: "Metal" }, { value: "1", label: "CFO" }]);
+    expect(t.value).toBe("2");
+    expect(t.note).toBe(TAP_LINE);
     if (st.revoked) expect(t.tip).toMatch(/mandate had just been replaced/);
     // At most two short lines on the card; the details in its tooltip.
     expect(t.explain.length).toBeLessThanOrEqual(60);
-    expect(t.tip).not.toMatch(/fee_unknown/);
+    expect(t.tip).not.toMatch(/fee_unknown|TAP/);
   });
 
   it("says a decision may be several Claude calls, beside the cost per decision", () => {
@@ -210,5 +216,48 @@ describe("the redesigned public pages", () => {
 
   it("claims no '0 unsafe' anywhere until sim-31 is checked (Max, 2 Nov)", () => {
     for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, zero: /\b0 unsafe\b/i.test(body.replace(/<[^>]+>/g, " ")) }).toEqual({ name, zero: false });
+  });
+});
+
+describe("one 'stopped at a limit' figure everywhere, from the main run (Max, 4 Nov)", () => {
+  const doc = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+  // Words as read: tags, Markdown emphasis and line breaks gone.
+  const text = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/[*\\]/g, "").replace(/\s+/g, " ");
+  const shots = new Proxy({}, { get: () => "" }) as DeckShots;
+  const SOURCES: [string, string][] = [
+    ["home", homePage()], ["proof", proofPage()],
+    ["README.md", doc("README.md")], ["docs/claims.md", doc("docs/claims.md")], ["docs/submission/README.md", doc("docs/submission/README.md")],
+    ["deck", deckHtml(packFacts(), shots, "")], ["docs/video-script.md", doc("docs/video-script.md")],
+  ];
+
+  it("is 2 in the main run's record: Metal at the cap and the CFO's rejection; neither #37 nor the TAP run counted", () => {
+    expect(STOPPED).toBe(2);
+    expect(tapLimitLine()).toBe(TAP_LINE);
+    expect(packFacts().main.stopped).toBe(STOPPED);
+  });
+
+  it("is the same figure on the site, the README, the claims, the deck, the submission README and the video script", () => {
+    for (const [name, raw] of SOURCES) {
+      const t = text(raw);
+      const figures = [...t.matchAll(/(\d+) stopped at a limit/gi)].map((m) => Number(m[1]));
+      expect({ name, figures: figures.length > 0, wrong: figures.filter((n) => n !== STOPPED) }).toEqual({ name, figures: true, wrong: [] });
+      // The TAP run's decline is there, on its own labelled line, after the figure.
+      expect({ name, line: t.includes(TAP_LINE) }).toEqual({ name, line: true });
+      expect({ name, after: t.lastIndexOf(TAP_LINE) > t.search(/\d+ stopped at a limit/i) }).toEqual({ name, after: true });
+    }
+  });
+
+  it("tells the main run's card story in the README, the submission README and the deck; the decline only as the TAP run's line", () => {
+    const c = packFacts().main.card_raise;
+    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/README.md", "deck"].includes(n))) {
+      const t = text(raw);
+      expect({ name, raise: t.includes(`${c.proposal}, EUR ${c.from} → ${c.to}`), auth: t.includes(c.auth.slice(0, 8)) }).toEqual({ name, raise: true, auth: true });
+      // No Airwallex decline from another run outside the labelled TAP line.
+      expect({ name, other: /30 October[^.]*declin|declin[^.]*30 October|in the recorded run it declined/i.test(t) }).toEqual({ name, other: false });
+    }
+  });
+
+  it("would catch a stray 3 or 4", () => {
+    expect([...text(doc("docs/claims.md").replace("2 stopped at a limit, both", "3 stopped at a limit, both")).matchAll(/(\d+) stopped at a limit/gi)].map((m) => m[1])).toContain("3");
   });
 });
