@@ -37,8 +37,9 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: KIT_LINE,
       title: "Purser",
       extra: `<p class="lead">${esc(HERO)}</p>
-        <div class="stats two">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude agents, ${m.fallbacks} fallbacks`)}${stat(String(m.alone), `payments inside the limits, no approval at the time (${m.sales} by the simulated customer's agent)`)}${stat(String(m.face_id), "decisions by the CFO with Face ID")}<div class="stat"><b>${m.stopped}</b><span>stopped at a limit (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO)</span>${m.tap_limit_line ? `<span class="note">${esc(m.tap_limit_line)}</span>` : ""}</div></div>
-        <p class="src">The main run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only. Audit log: ${m.audit_rows} rows, hash-chained, checkable offline. ${esc(m.payments_line)}.<br>${esc(VISA_AWARD_STATUS)}</p>
+        <div class="stats two">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude agents, ${m.fallbacks} fallbacks`)}${stat(String(m.alone), "payments inside the limits, with no approval at the time")}${stat(String(m.face_id), "decisions by the CFO with Face ID")}<div class="stat"><b>${m.stopped}</b><span>stopped at a limit (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO)</span></div></div>
+        ${m.tap_limit_line ? `<p class="sep"><b>Separate test, 2 November:</b> ${esc(m.tap_limit_line)}; not counted above.</p>` : ""}
+        <p class="src">The main run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only.<br>${esc(VISA_AWARD_STATUS)}</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
       pic: shot(s.landing, "Home, replaying the main run (3 November)"),
     },
@@ -99,7 +100,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       points: [
         `<b>The Treasury agent planned the EUR 240.00 licence itself.</b> After the CFO's Face ID: ${esc(m.fx_buy)} bought by FX for only the shortfall, then SWIFT, <b>PAID ${m.face_to_paid_s} s after Face ID</b> (fee ${esc(m.licence_fee)}).`,
         `<b>The agent asks first:</b> a card raise (${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}), signed by the CFO with Face ID; Airwallex then approved the TAP-signed EUR ${esc(m.card_raise.amount)} buy (<code>${esc(`${m.card_raise.auth.slice(0, 8)}…${m.card_raise.auth.slice(-4)}`)}</code>).`,
-        `<small>${esc(VISA_CLAIM)} ${esc(m.tap_limit_line)}.</small>`,
+        `<small>${esc(VISA_CLAIM)}</small>`,
       ],
       pic: shot(s.visa, "The main run, 3 November (/visa): the TAP-signed €45.00 card buy, approved by Airwallex; the decline beside it is the separate TAP run's, labelled"),
     },
@@ -116,10 +117,9 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
     },
     {
       kicker: "Agents built on Claude (Anthropic API), and measured",
-      title: "No model can raise a limit or move money outside it",
+      title: "Claude decides inside the limits",
       points: [
         `Each decision is a real Claude call with its request id, tokens and cost. In the main run: ${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks, ${m.claude_calls} calls, USD ${m.claude_usd} at list prices.`,
-        "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO. On harder documents Haiku alone misread 1 of 15; this split read all 15.",
         "Claude holds no key and approves nothing; code checks every decision before money moves.",
         `Red team, in a throwaway test world: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,
       ],
@@ -199,7 +199,11 @@ figcaption { font-size: 13px; color: #6b7280; margin-top: 10px; text-align: cent
 .stat { background: #f6f7f9; border-radius: 12px; padding: 16px 18px; }
 .stat b { display: block; font-size: 36px; letter-spacing: -.02em; }
 .stat span { font-size: 15px; color: #4b5563; line-height: 1.3; display: block; margin-top: 4px; }
-.stats.two { grid-template-columns: 1fr 1fr; }
+.stats.two { grid-template-columns: 1fr 1fr; gap: 10px; }
+.stats.two .stat { padding: 10px 14px; } .stats.two .stat b { font-size: 30px; } .stats.two .stat span { font-size: 14px; }
+section:first-child h1 { margin-bottom: 14px; } section:first-child .lead { font-size: 24px; margin-bottom: 12px; }
+.sep { font-size: 13.5px; color: #4b5563; margin: 10px 0 0; border-left: 3px solid #d1d5db; padding-left: 10px; line-height: 1.35; }
+li small { display: block; font-size: 16px; line-height: 1.4; color: #374151; }
 .stat .note { font-size: 12.5px; color: #6b7280; margin-top: 6px; }
 .diagram { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
 .diagram .row { display: flex; gap: 18px; }
