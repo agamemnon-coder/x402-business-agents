@@ -3,7 +3,7 @@
 // proof link is the record's, and the run is named by its own name. Breaks if a page shows a number the record lacks.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AGENT_RUN_1_FILE, agentRun, faceIdDecisions, fxOf, loadRecord, payments, split, stoppedAtLimit, stops, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
+import { AGENT_RUN_1_FILE, agentRun, disputeStory, faceIdDecisions, fxOf, loadRecord, payments, split, stoppedAtLimit, stops, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
 import { deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
@@ -326,5 +326,18 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
     expect(proofPage()).not.toMatch(/Safety count|variation runs/);
     expect(proofPage()).toContain('href="watch?scene=2"');
     expect(agentRun().scenes.find((x) => x.n === 2)!.title).toBe("The dispute");
+  });
+});
+
+describe("the dispute, one text everywhere (jury review, 4 Nov)", () => {
+  const STORY = "A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. \"Refund the other 9\" goes to the CFO, who rejects it with Face ID.";
+  const doc = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8").replace(/[ \t]*\n[ \t]*/g, " ");
+  it("is told from the run's own dispute case", () => {
+    expect(disputeStory(record)).toBe(STORY);
+    expect(agentRun().scenes.find((x) => x.n === 2)!.sentence).toBe(STORY);
+    expect(homePage().replace(/&quot;/g, '"').replace(/&#39;/g, "'")).toContain(STORY);
+  });
+  it("is the same text in the submission form", () => {
+    expect(doc("docs/submission/README.md")).toContain(STORY);
   });
 });

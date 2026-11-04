@@ -1,5 +1,5 @@
 // The public pages (Home, Watch, Proof, the partner pages and the CFO dashboard's replay) play one recorded agent run:
-// the main run, 3 November (docs/runs/2026-11-03-hoofdrun.md), recorded with `npm run autonomy-record` into
+// the main run, 3 November (docs/runs/2026-11-03-main-run.md), recorded with `npm run autonomy-record` into
 // docs/demo/main-run.json. Agent run 1 (2 November, docs/demo/agent-run.json) stays in the repo for the honest notes
 // that cite it. Without the main run's file the newest autonomous dry run (docs/demo/autonomy.json) is shown instead,
 // under its own name. Nothing is
@@ -379,7 +379,7 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     if (refunds.length) steps.push({ icon: "undo-2", text: `${refunds.length} wrong ones refunded`, tone: "ok", proof: refunds[0]!.proof });
     if (face) steps.push({ icon: "scan-face", text: `CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest`, tone: "face" });
     out.push({ n: 2, title: "The dispute", start: i2, steps, mini: orders.length ? { kind: "orders", orders, refunded } : null,
-      sentence: `A customer's agent disputes ${orders.length} orders → Support checks every signed order → refunds only the ${refunds.length} wrong ones${face ? ` → the CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest` : ""}.` });
+      sentence: disputeStory(r) || `A customer's agent disputes ${orders.length} orders → Support checks every signed order → refunds only the ${refunds.length} wrong ones${face ? ` → the CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest` : ""}.` });
   }
 
   // 3. Earnings and euros: the sweep after finality, booked at Airwallex; the euro bill and what Airwallex did with it.
@@ -450,6 +450,22 @@ export function tapLimitLine(): string {
   if (!tap || !x) return "";
   const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt));
   return `Airwallex declined ${x.currency} ${x.amount} over the card limit (LIMIT_EXCEEDED), separate TAP run, ${date}`;
+}
+
+/**
+ * The dispute in one text, the same on every surface (jury review, 4 Nov), from the run's own dispute case and
+ * refunds: "" unless the record holds a never-placed claim, every order signed, the Support agent's own refunds, and
+ * the CFO's Face ID rejection of the rest.
+ */
+export function disputeStory(r: RunRecord): string {
+  const d = (r.ledger as unknown as { disputes?: { claims: { claims: string[]; sale_refs: number[] }; evidence: { signed_order: boolean }[] }[] } | undefined)?.disputes?.[0];
+  const refunds = r.snapshot.flows.filter((f) => f.kind === "refund" && f.agent === "support" && !f.refused);
+  const rejected = r.ledger?.proposals.some((p) => p.kind === "refund_batch" && (p as { status?: string }).status === "REJECTED");
+  if (!d || !d.claims.claims.includes("never_placed") || !d.evidence.length || !d.evidence.every((e) => e.signed_order) || !refunds.length || !rejected) return "";
+  const n = d.claims.sale_refs.length, k = refunds.length;
+  const words = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+  const sum = (refunds.reduce((c, f) => c + Math.round(Number(f.amount) * 100), 0) / 100).toFixed(2);
+  return `A simulated customer disputes ${n} orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. ${words[k] ?? String(k)} orders had wrong data; the Support agent refunds those ${k} (${sum} test USD) itself. "Refund the other ${n - k}" goes to the CFO, who rejects it with Face ID.`;
 }
 
 /** The label of the separate TAP run's row ("Separate test, 2 November"), "" without that run. */

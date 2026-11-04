@@ -25,11 +25,12 @@ mkdirSync(out, { recursive: true });
 
 const SCREENS: [string, string][] = [
   ["1-landing", "/"],
-  ["2-dashboard", "/?recorded"],
+  // The CFO dashboard, its disputes and its books replay the main run (3 Nov), not the 30 October recording.
+  ["2-dashboard", "/?autonomy"],
   ["3-metal", "/metal"],
   ["4-live", "/live?scene=refuse&autoplay=0"],
-  ["5-disputes", "/?recorded&disputes"],
-  ["6-books", "/?recorded&books"],
+  ["5-disputes", "/?autonomy&disputes"],
+  ["6-books", "/?autonomy&books"],
   ["15-watch", "/watch"],
   ["16-proof", "/proof"],
   // The main run's card story (3 Nov): the TAP-signed card buy approved by Airwallex; the TAP run's decline labelled.
