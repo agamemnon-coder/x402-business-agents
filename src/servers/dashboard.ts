@@ -21,7 +21,7 @@ import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
 import { AGENT_DISPLAY, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
-import { loadRecord, runLabel } from "../redesign/run.js";
+import { loadRecord, replayRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
 import { trySignPage } from "../try/sign.js";
 import { watchPage } from "../redesign/watch.js";
@@ -51,11 +51,12 @@ const REDTEAM_JSON = (() => {
 const PAGE_TEMPLATE = withNav(readFileSync(new URL("../dashboard/page.html", import.meta.url), "utf8"), "overview");
 const RECORDED_FILE = new URL("../../docs/demo/snapshot.json", import.meta.url);
 // The agent run (the main run, 3 Nov; src/redesign/run.ts), recorded with npm run autonomy-record, for /?autonomy, with
-// its label, the world set-up and who the second approver was.
+// its label, the world set-up and who the second approver was. Replayed with its figures counted as Home, Watch and
+// Proof count them, and its lines worded as they word them (replayRecord; final review, 4 Nov).
 const AUTONOMY_JSON = (() => {
   try {
     const { record, standIn } = loadRecord();
-    return JSON.stringify({ ...record, label: runLabel(record), about: standIn ? "" : `${WORLD_SETUP} ${SECOND_APPROVER}` });
+    return JSON.stringify({ ...replayRecord(record), label: runLabel(record), about: standIn ? "" : `${WORLD_SETUP} ${SECOND_APPROVER}` });
   } catch { return "null"; }
 })();
 /** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
@@ -86,14 +87,21 @@ const cspFor = (page: string) => [
   "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
 
+/** "30 October": a recording's day, in words (UTC), the same on every device. */
+const dayLong = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
+/**
+ * /?recorded's label line: which run it is (final review, 4 Nov: it read "Recorded run · Oct 30, 2026", which a juror
+ * could take for the main run of 3 November).
+ */
+export const recordedLabel = (recorded: Pick<Recorded, "recorded_at">) => `Recorded run · the ${dayLong(recorded.recorded_at)} run, an earlier recording · test money · nothing here is live`;
 /**
  * The dashboard page: the icon set goes into its script (so before the CSP hash), and the recorded run a guest sees
- * (docs/demo/snapshot.json unless one is given) into its data block, "<" escaped.
+ * (docs/demo/snapshot.json unless one is given) into its data block with its label line, "<" escaped.
  */
 export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
   return PAGE_TEMPLATE
     .replace("__ICONS_JSON__", () => JSON.stringify(ICONS))
-    .replace("__RECORDED_JSON__", () => JSON.stringify(recorded).replace(/</g, "\\u003c"))
+    .replace("__RECORDED_JSON__", () => JSON.stringify({ ...recorded, label: recordedLabel(recorded) }).replace(/</g, "\\u003c"))
     .replace("__AUTONOMY_JSON__", () => AUTONOMY_JSON.replace(/</g, "\\u003c"))
     .replace("__AGENTS_JSON__", AGENTS_JSON)
     .replace("__REDTEAM_JSON__", () => REDTEAM_JSON)
@@ -140,15 +148,42 @@ export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
   return FILM_TEMPLATE.replace("__FILM_JSON__", () => JSON.stringify({ data, scenes: filmTimeline() }).replace(/</g, "\\u003c"));
 }
 
+/**
+ * What each copy of Try says about who reads a request (final review, 4 Nov): the hosted page asks Claude; the offline
+ * copy (npm run judge, the local server) asks no model and says so in its own words. Each copy carries only its own
+ * words, so the hosted page never says "offline copy" (it did, in spans only a stylesheet hid).
+ */
+const TRY_WORDS: Record<string, Record<"hosted" | "offline", string>> = {
+  __TRY_MODELS__: { hosted: "The models are real: Claude Haiku sorts your request and Claude Sonnet reads it, and you see what each call cost.", offline: "In this offline copy no model is asked: code alone reads your request. The hosted page asks Claude Haiku to sort it and Claude Sonnet to read it, and shows what each call cost." },
+  __TRY_FAIR_WHERE__: { hosted: "", offline: " on the hosted page" },
+  __TRY_LEAD__: { hosted: "A separate demo world: Claude reads your task, and code applies the CFO's limits. No money moves.", offline: "A separate demo world: in this offline copy code reads your task (the hosted page asks Claude), and code applies the CFO's limits. No money moves." },
+  __TRY_IDLE__: { hosted: "Pick an example or type your own: Claude Haiku sorts it and Claude Sonnet reads it. Northwind's limits apply either way.", offline: "Pick an example or type your own: in this offline copy, code alone reads it. Northwind's limits apply either way." },
+  // Offline, neutral: the recorded example (a real Claude call, labelled) fills this node's line when the page opens.
+  __TRY_NODE__: { hosted: "Purser: Claude reads, the rails enforce", offline: "Purser reads, the rails enforce" },
+  __TRY_NODE_SUB__: { hosted: "Haiku sorts · Sonnet reads · the CFO policy decides", offline: "No model in this offline copy · the CFO policy decides" },
+  __TRY_WORLD_LEAD__: { hosted: "Change the market; the Sourcing agent decides with Claude Haiku, inside its limits.", offline: "Change the market; the Sourcing agent decides inside its limits (with Claude Haiku on the hosted page)." },
+  __TRY_WORLD_IDLE__: { hosted: "Pick a change: the Sourcing agent decides with Claude Haiku.", offline: "Pick a change: in this offline copy no model is asked, so the Sourcing agent's fallback in code answers, labelled as such." },
+};
 /** Try Purser (src/try/): the page; its requests go to POST /api/try. */
-// It carries the recorded run's rails and AI tricks, so each answer can show the same flow as it ran live.
-export const TRY_PAGE = (() => {
-  const rec = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as { snapshot?: { rails?: unknown }; proof?: { ai_tricks?: number } };
+// It carries the recorded run's rails and AI tricks, so each answer can show the same flow as it ran live, and names
+// that run by its day.
+function tryPage(mode: "hosted" | "offline"): string {
+  const rec = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as { recorded_at: string; snapshot?: { rails?: unknown }; proof?: { ai_tricks?: number } };
   // The example shown before a visitor runs a try: one real Claude call, recorded once and labelled (src/try/example.json).
   const example = JSON.parse(readFileSync(new URL("../try/example.json", import.meta.url), "utf8")) as unknown;
-  const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null, worlds: WORLD_CHANGES.map(({ id, label, detail }) => ({ id, label, detail })), example };
-  return restyle(withNav(readFileSync(new URL("../try/try.html", import.meta.url), "utf8"), "try")).replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
-})();
+  const data = { rails: rec.snapshot?.rails ?? null, ai_tricks: rec.proof?.ai_tricks ?? null, worlds: WORLD_CHANGES.map(({ id, label, detail }) => ({ id, label, detail })), example,
+    // The offline copy's own words for what its script writes; none on the hosted page.
+    offline: mode === "offline" ? { thinking: "Code checks the words and reads the request…", example: ". Press Run it to try it here: in this offline copy code alone reads it." } : false };
+  const text = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let html = restyle(withNav(readFileSync(new URL("../try/try.html", import.meta.url), "utf8"), "try"));
+  for (const [key, words] of Object.entries(TRY_WORDS)) html = html.replace(key, () => text(words[mode]));
+  return html.replace("__TRY_PROOF_RUN__", () => text(`the run recorded on ${dayLong(rec.recorded_at)}`)).replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
+}
+/** The hosted page (the relay): Claude reads each request. */
+export const TRY_PAGE = tryPage("hosted");
+/** The offline copy (npm run judge, the local dashboard server): no model is asked, and the page says so. */
+export const TRY_PAGE_OFFLINE = tryPage("offline");
+// Both copies carry the same script and style, so one CSP answers for both.
 export const TRY_CSP = cspFor(TRY_PAGE);
 
 /** The recorded Dispute desk case of 30 October (docs/demo/metal.json), for its evidence report in the Archive. */
@@ -258,7 +293,7 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
 
   app.get("/try", (_req, res) => {
     res.setHeader("Content-Security-Policy", TRY_CSP);
-    res.type("html").send(TRY_PAGE);
+    res.type("html").send(TRY_PAGE_OFFLINE);
   });
   // Locally Try Purser reads with code alone: no model is asked from this server (the relay asks Claude, with limits).
   app.post("/api/try", express.json({ limit: "2kb" }), async (req, res) => {

@@ -1,15 +1,18 @@
 // npm run judge: the recorded demo and the simulated month, on this computer, with no keys and no network.
 // A fresh clone needs only `npm ci` first. It serves:
-//   /       Home, as on the hosted relay (with a query, such as ?recorded, the CFO dashboard's page)
+//   /       Home, as on the hosted relay (with a query, such as ?autonomy, the CFO dashboard's page)
 //   /demo   the recorded live run, step by step (docs/demo/story.json)
 //   /month  a month in 90 seconds (simulated, seeded)
-//   /?recorded  the CFO's dashboard as it stood at the end of a recorded live run (docs/demo/snapshot.json)
+//   /?autonomy  the main run's CFO dashboard (docs/demo/main-run.json, the run every page plays)
+//   /?recorded  the CFO's dashboard at the end of the 30 October run, an earlier recording (docs/demo/snapshot.json)
 // and opens the browser. `--no-open` only serves; `--check` serves, fetches each page once and exits.
 
 import { spawn } from "node:child_process";
 import type { Server } from "node:http";
 import express from "express";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { readFileSync } from "node:fs";
+import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
@@ -38,7 +41,7 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/live", page(LIVE_CSP, () => live));
   const film = filmPage();
   app.get("/film", page(FILM_CSP, () => film));
-  app.get("/try", page(TRY_CSP, () => TRY_PAGE));
+  app.get("/try", page(TRY_CSP, () => TRY_PAGE_OFFLINE));
   // Try Purser without keys: code reads the request; the hosted relay page asks Claude.
   app.post("/api/try", express.json({ limit: "2kb" }), async (req, res) => {
     const a = await localTryAnswer(req.body, "this offline copy asks no model; the hosted page does");
@@ -89,6 +92,35 @@ a{display:inline-block;margin-top:4px;padding:10px 16px;border-radius:8px;backgr
 <a href="/?recorded">Open the recorded run</a>
 </div></main></body></html>`;
 
+/** The pages `--check` fetches once each: every page a juror reaches, both CFO dashboards included. */
+export const CHECK_PATHS = ["/", "/home", "/watch", "/proof", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
+
+/**
+ * The menu printed at start. The main run's CFO dashboard comes first, and each dashboard is named by its own run, its
+ * day read from its record (final review, 4 Nov: /?recorded was offered as "the CFO dashboard at the end of the recorded
+ * run", which is the 30 October run, not the main run).
+ */
+export function judgeMenu(url: string): string[] {
+  const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
+  const main = day(loadRecord().record.recorded_at);
+  const earlier = day((JSON.parse(readFileSync(new URL("../../docs/demo/snapshot.json", import.meta.url), "utf8")) as { recorded_at: string }).recorded_at);
+  return [
+    `Purser, the recorded runs, offline (no keys, nothing live). Start here: ${url}/`,
+    `  ${url}/?autonomy     the main run's CFO dashboard (${main})`,
+    `  ${url}/metal         how Purser uses Metal, every proof linked to the explorer`,
+    `  ${url}/live          the working day on two rails, Airwallex and Metal`,
+    `  ${url}/try           type a task for an agent (offline, code reads it)`,
+    `  ${url}/airwallex     how Purser uses Airwallex, with this week's proof`,
+    `  ${url}/claude        how Purser uses Claude: each agent's model, cost and decisions`,
+    `  ${url}/visa          agent recognition, then the agent's own Airwallex Visa card`,
+    `  ${url}/demo          the run, step by step`,
+    `  ${url}/month         a simulated month in 90 seconds`,
+    `  ${url}/lab           the Scenario Lab, 18 stories`,
+    `  ${url}/?recorded     the CFO dashboard of the ${earlier} run (an earlier recording)`,
+    "Stop with Ctrl+C.",
+  ];
+}
+
 function openBrowser(url: string): void {
   const [cmd, args] = process.platform === "darwin" ? ["open", [url]] : process.platform === "win32" ? ["cmd", ["/c", "start", "", url]] : ["xdg-open", [url]];
   try {
@@ -103,7 +135,7 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
   const { server, url } = await startJudge(Number(process.env.PORT ?? 4311));
   if (args.includes("--check")) {
     let ok = true;
-    for (const path of ["/", "/home", "/watch", "/proof", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"]) {
+    for (const path of CHECK_PATHS) {
       const res = await fetch(`${url}${path}`);
       const body = await res.text();
       const good = res.status === 200 && body.length > 1000;
@@ -113,19 +145,6 @@ if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
     server.close();
     process.exit(ok ? 0 : 1);
   }
-  console.log([
-    `Purser, the recorded run, offline (no keys, nothing live). Start here: ${url}/`,
-    `  ${url}/metal         how Purser uses Metal, every proof linked to the explorer`,
-    `  ${url}/?recorded     the CFO dashboard at the end of the recorded run`,
-    `  ${url}/live          the working day on two rails, Airwallex and Metal`,
-    `  ${url}/try           type a task for an agent (offline, code reads it)`,
-    `  ${url}/airwallex     how Purser uses Airwallex, with this week's proof`,
-    `  ${url}/claude        how Purser uses Claude: each agent's model, cost and decisions`,
-    `  ${url}/visa          agent recognition, then the agent's own Airwallex Visa card`,
-    `  ${url}/demo          the run, step by step`,
-    `  ${url}/month         a simulated month in 90 seconds`,
-    `  ${url}/lab           the Scenario Lab, 18 stories`,
-    "Stop with Ctrl+C.",
-  ].join("\n"));
+  console.log(judgeMenu(url).join("\n"));
   if (!args.includes("--no-open")) openBrowser(`${url}/`);
 }

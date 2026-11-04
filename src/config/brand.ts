@@ -40,6 +40,12 @@ export const SECOND_APPROVER = "Second approver: a labelled test passkey in this
  * refusal is shown. The run's own ledger row carries the same text (upstream.let_through_refused).
  */
 export const DEFENSE_IN_DEPTH = "Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved.";
+/**
+ * A sandbox transfer's PAID, said wherever a page shows it (final review, 4 Nov): Purser itself moves the transfer to
+ * SENT, then PAID, through Airwallex's simulation API (src/executors/invoicePayment.ts settleInSandbox), so the
+ * settlement is simulated; the seconds from Face ID to PAID stay the measured time.
+ */
+export const SANDBOX_SETTLED = "in the sandbox, where the settlement is simulated";
 /** How the played run's world was set up (agent run 1 and the main run alike), said wherever the run is shown (Max, 2 Nov). */
 export const WORLD_SETUP = "World set-up: the alternative supplier (Ridgeline) is offline in this world, so the price rise forces a choice. The agents were not told what to do.";
 /** Four eyes, in one line, wherever a page names it. */

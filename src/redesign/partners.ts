@@ -5,9 +5,9 @@
 // never a Visa logo. No script. Also the clean 404 page.
 
 import { readFileSync } from "node:fs";
-import { SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
+import { SANDBOX_SETTLED, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
-import { agentRun, callBadge, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
+import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { esc, icon, page } from "./ui.js";
 
@@ -111,11 +111,28 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
     picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "after finality", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
-      node("circle-check", licence ? `${eur} PAID by SWIFT` : "Paid by SWIFT", licence ? `${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID · ` : ""}Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
+      node("circle-check", licence ? `${eur} PAID by SWIFT` : "Paid by SWIFT", licence ? `${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID, ${SANDBOX_SETTLED} · ` : ""}Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
     nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines), "card decline at the limit (TAP run)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
     line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
     folds: fold("The live proof, with every Airwallex id", p.airwallex) + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
-      + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."), ...money.filter((e) => e.earlier).map((e) => plainLi(earlierLine(e)))]),
+      + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."),
+        ...(licence ? [plainLi(`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`)] : []),
+        ...money.filter((e) => e.earlier).map((e) => plainLi(earlierLine(e)))]),
+  });
+}
+
+/**
+ * The separate TAP run's labels as /visa shows them under the main run's label (final review, 4 Nov). Its "No approval
+ * was asked for or given in this run" was read as the main run's, where the card buy came after the CFO's Face ID on
+ * the card raise; the labels only the TAP run had (Visa's reference proxy and registry) say so.
+ */
+export function visaLabels(run: AgentRun, tap: NonNullable<ReturnType<typeof tapRun>>): string[] {
+  const own = ownTap(run.record), raise = cardRaiseOf(run.record);
+  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt));
+  return tap.labels.map((l) => l.replace(/not a Visa-approved agent/g, "no approval by Visa of this agent")).map((l) => {
+    if (!own) return l;
+    if (/^No approval was asked for or given in this run\.$/.test(l)) return `In the separate TAP run (${day}) no approval was asked for or given.${raise ? ` In ${run.name} the card buy came after the CFO approved ${raise.proposal} with Face ID, which raised the card's limit per purchase from EUR ${raise.from} to EUR ${raise.to}.` : ""}`;
+    return /reference proxy|reference registry/.test(l) && !/^Signature/.test(l) ? `In the TAP run, ${l.replace(/^The /, "the ")}` : l;
   });
 }
 
@@ -131,13 +148,12 @@ export function visaPage(run: AgentRun = agentRun()): string {
       node("ban", decline ? `€${decline.amount} declined` : "Over the limit", tap && own ? `by Airwallex · ${tap.label.replace(/ · test money$/, "")}` : "by Airwallex, at the limit", "bad")].join(""),
     label: own ? undefined : tap?.label, nums: "", line: "The card's limit still holds: over it, Airwallex declines.",
     extra: `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_AWARD_STATUS)}</p>`,
-    folds: fold(own ? "The live proof" : "The live TAP run", p.visa) + fold("What this is, and is not", (tap?.labels ?? []).map((l) => plainLi(l.replace(/not a Visa-approved agent/g, "no approval by Visa of this agent")))),
+    folds: fold(own ? "The live proof" : "The live TAP run", p.visa) + fold("What this is, and is not", (tap ? visaLabels(run, tap) : []).map(plainLi)),
   });
 }
 
 export function claudePage(run: AgentRun = agentRun()): string {
   const p = partnerProof(run), sp = split(run.record), s = run.record.snapshot;
-  const says = run.events.filter((e): e is Extract<Ev, { k: "say" }> => e.k === "say");
   const calls = s.agent_stats.reduce((n, a) => n + a.claude_calls, 0);
   const requests = s.flows.filter((f) => f.request && f.model);
   const docs = [
@@ -153,7 +169,8 @@ export function claudePage(run: AgentRun = agentRun()): string {
     nums: nums([[`${sp.byClaude}/${sp.decisions}`, `decisions by Claude (${sp.fallbacks} fallbacks)`], [String(sp.routine), "routine payments by code"], [String(calls), "Claude calls, each with a request id"], [String(faceIdDecisions(run.record)), "Face ID decisions by the CFO"]]),
     line: SPLIT_LINE,
     folds: fold("Each agent: decisions, calls, cost", p.claude)
-      + fold("Every decision, with its Claude call", says.map((e) => `<li class="ok">${esc(`${e.agent[0]!.toUpperCase()}${e.agent.slice(1)}, ${e.at.slice(11, 16)} UTC: ${e.text.length > 140 ? `${e.text.slice(0, 140)}…` : e.text}`)}${e.call ? `<br><span class="call" title="${esc(e.call.requestIds.join(", "))}">${esc(callBadge(e.call))}</span>` : ""}</li>`))
+      // All the decisions the headline counts (final review, 4 Nov: the chat's 21 of 24), cut at a word, never inside a number.
+      + fold("Every decision, with its Claude call", decisionsOf(run.record).map((d) => `<li class="ok">${esc(`${d.agent[0]!.toUpperCase()}${d.agent.slice(1)}, ${d.at.slice(11, 16)} UTC: ${d.text.length > 140 ? `${d.text.slice(0, 140).replace(/\s+\S*$/, "")}…` : d.text}`)}${d.call ? `<br><span class="call" title="${esc(d.call.requestIds.join(", "))}">${esc(callBadge(d.call))}</span>` : ""}</li>`))
       + fold("Payments decided by Claude, with their request ids", requests.map((f) => `<li>${esc(`${f.what}: ${f.amount} ${f.unit === "EUR" ? "EUR" : "test USD"} · ${f.decided} · ${f.request}`)}</li>`))
       + fold("The Claude docs we built on", docs.map((d) => docsLi(d.title, d.docs))),
   });
