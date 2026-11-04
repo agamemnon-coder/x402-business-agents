@@ -1,215 +1,171 @@
 1
-00:00:00,300 --> 00:00:04,163
-AI agents are starting to spend company money:
+00:00:11,400 --> 00:00:13,750
+So who holds the pen?
 
 2
-00:00:04,213 --> 00:00:06,631
-software, suppliers, refunds.
+00:00:14,600 --> 00:00:17,750
+I'm Max Geurtsen, and this is Purser.
 
 3
-00:00:06,681 --> 00:00:09,693
-So every CFO asks the same question:
+00:00:19,500 --> 00:00:20,943
+An agent proposes.
 
 4
-00:00:09,743 --> 00:00:11,650
-who is holding the pen?
+00:00:20,993 --> 00:00:22,850
+Rules in code check it.
 
 5
-00:00:12,300 --> 00:00:14,948
-Give an agent a card number and
+00:00:23,000 --> 00:00:26,850
+Beyond the limits, a person signs with Face ID.
 
 6
-00:00:14,998 --> 00:00:18,168
-hope, or approve every cent yourself.
+00:00:27,000 --> 00:00:31,350
+Then Airwallex or Metal moves the money, into the books.
 
 7
-00:00:18,218 --> 00:00:21,213
-One is a risk no auditor signs off.
+00:00:32,500 --> 00:00:35,338
+On the third of November, three Claude
 
 8
-00:00:21,263 --> 00:00:23,650
-The other saves you nothing.
+00:00:35,388 --> 00:00:38,150
+agents ran a business, on test money.
 
 9
-00:00:24,300 --> 00:00:28,499
-Purser gives every AI agent its own company card and
+00:00:38,300 --> 00:00:42,150
+Their supplier doubled its price, past the mandate's cap.
 
 10
-00:00:28,549 --> 00:00:33,074
-its own on-chain mandate, with limits the CFO sets once.
+00:00:42,300 --> 00:00:44,963
+We let one purchase through on purpose:
 
 11
-00:00:33,124 --> 00:00:37,650
-Anything above those limits waits for the CFO's Face ID.
+00:00:45,013 --> 00:00:47,050
+Purser normally refuses first.
 
 12
-00:00:38,300 --> 00:00:41,162
-Watch. The sourcing agent buys software:
+00:00:47,200 --> 00:00:49,550
+Metal refused it, on chain.
 
 13
-00:00:41,212 --> 00:00:42,763
-approved by Airwallex.
+00:00:50,500 --> 00:00:53,650
+Then our simulated customer disputed twelve orders.
 
 14
-00:00:42,813 --> 00:00:47,130
-Then the Pro plan, forty-five euros, on a thirty euro limit:
+00:00:53,800 --> 00:00:57,150
+All twelve were signed by its own agent.
 
 15
-00:00:47,180 --> 00:00:49,314
-declined, by Airwallex itself.
+00:00:57,300 --> 00:01:00,450
+Support refunded the three with wrong data.
 
 16
-00:00:49,364 --> 00:00:51,061
-The agent asks for more.
+00:01:00,800 --> 00:01:02,510
+Refund the other nine?
 
 17
-00:00:51,111 --> 00:00:55,210
-The CFO checks the exact terms and approves with Face ID.
+00:01:02,560 --> 00:01:04,350
+Rejected, with Face ID.
 
 18
-00:00:55,260 --> 00:00:59,650
-The limit moves to fifty, and the same purchase goes through.
+00:01:05,400 --> 00:01:08,450
+The Treasury agent planned a euro payment.
 
 19
-00:01:00,300 --> 00:01:01,947
-A euro invoice arrives:
+00:01:08,600 --> 00:01:11,350
+The phone shows the exact terms.
 
 20
-00:01:01,997 --> 00:01:03,940
-eighteen hundred and fifty.
+00:01:20,600 --> 00:01:25,250
+Six seconds from Face ID to paid, in the Airwallex sandbox.
 
 21
-00:01:03,990 --> 00:01:08,146
-The treasury agent checks the reserve, takes a live quote
+00:01:25,400 --> 00:01:27,650
+That is the transfer id.
 
 22
-00:01:08,196 --> 00:01:12,278
-and converts only the missing three hundred and seventy.
+00:01:27,800 --> 00:01:29,750
+Look it up yourself.
 
 23
-00:01:12,328 --> 00:01:15,082
-One Face ID covers the rate, the payee
+00:01:32,600 --> 00:01:34,450
+Now it's your turn.
 
 24
-00:01:15,132 --> 00:01:17,149
-and the most the fee may be.
+00:01:34,600 --> 00:01:37,666
+Open your own test world, and sign an
 
 25
-00:01:17,199 --> 00:01:19,436
-Airwallex sends it by SWIFT; in
+00:01:37,716 --> 00:01:40,950
+agent's proposal with your own Face ID.
 
 26
-00:01:19,486 --> 00:01:21,650
-the sandbox it is marked paid.
+00:01:41,200 --> 00:01:45,150
+The server checks the signature against the exact terms.
 
 27
-00:01:22,300 --> 00:01:25,190
-On Metal, agents pay per request, cents at
+00:01:56,400 --> 00:01:59,250
+Why Face ID, and not a password?
 
 28
-00:01:25,240 --> 00:01:28,130
-a time, under mandates that live on chain.
+00:01:59,400 --> 00:02:01,598
+A password is the same for every
 
 29
-00:01:28,180 --> 00:01:30,930
-When the supplier doubles its price, the
+00:02:01,648 --> 00:02:04,478
+payment; Face ID signs these exact terms:
 
 30
-00:01:30,980 --> 00:01:33,940
-payment hits the mandate's cap and bounces:
+00:02:04,528 --> 00:02:07,850
+change anything, and the signature is worthless.
 
 31
-00:01:33,990 --> 00:01:37,230
-nothing moves, and the customer is not charged.
+00:02:08,500 --> 00:02:10,050
+All tests passing.
 
 32
-00:01:37,280 --> 00:01:40,940
-Purser prices two options, Opus reviews them, the CFO
+00:02:12,400 --> 00:02:14,270
+An audit log, hash-chained:
 
 33
-00:01:40,990 --> 00:01:44,440
-signs one, and the mandates are replaced on chain.
+00:02:14,320 --> 00:02:15,550
+check it yourself.
 
 34
-00:01:44,490 --> 00:01:48,640
-Mandates, x402, signed orders and payouts ran here; clearing
+00:02:16,400 --> 00:02:18,750
+Two stopped at a limit.
 
 35
-00:01:48,690 --> 00:01:51,650
-and a receive policy in separate live runs.
+00:02:20,400 --> 00:02:23,150
+Twenty-four of twenty-four decisions by Claude.
 
 36
-00:01:52,300 --> 00:01:55,861
-Then our simulated customer disputes twelve orders:
+00:02:24,500 --> 00:02:28,850
+Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID.
 
 37
-00:01:55,911 --> 00:01:59,259
-our agent never ordered this, refund everything.
+00:02:29,300 --> 00:02:30,494
+Ours, or simulated:
 
 38
-00:01:59,309 --> 00:02:02,233
-Northwind's Dispute desk checks the proof:
+00:02:30,544 --> 00:02:33,505
+the suppliers, the customer, the merchant, and
 
 39
-00:02:02,283 --> 00:02:05,065
-every order signed by their agent, every
+00:02:33,555 --> 00:02:36,450
+the second approver, a labelled test passkey.
 
 40
-00:02:05,115 --> 00:02:07,756
-payment inside their mandate on chain.
+00:02:37,500 --> 00:02:40,850
+A price shock, a dispute, a euro bill.
 
 41
-00:02:07,806 --> 00:02:08,959
-Twelve of twelve.
+00:02:41,000 --> 00:02:44,661
+Claude decided, the rails and the code held the
 
 42
-00:02:09,009 --> 00:02:11,650
-Claim rejected; nothing more refunded.
+00:02:44,711 --> 00:02:48,450
+limits, and I signed only what went beyond them.
 
 43
-00:02:12,300 --> 00:02:13,764
-Need something once?
-
-44
-00:02:13,814 --> 00:02:18,912
-Ask Purser: a flight to Berlin, at most one hundred and fifty euros.
-
-45
-00:02:18,962 --> 00:02:21,562
-Airwallex issues a single-use card.
-
-46
-00:02:21,612 --> 00:02:25,650
-The booking goes through; a second charge is declined.
-
-47
-00:02:26,300 --> 00:02:28,538
-Claude agents read, plan and advise;
-
-48
-00:02:28,588 --> 00:02:31,017
-Metal and Airwallex enforce the limits.
-
-49
-00:02:31,067 --> 00:02:33,878
-Thirty-nine red-team attacks in a test world:
-
-50
-00:02:33,928 --> 00:02:36,293
-all failed, two found only afterwards.
-
-51
-00:02:36,343 --> 00:02:39,980
-Four eyes, an emergency stop tested on stand-ins,
-
-52
-00:02:40,030 --> 00:02:42,650
-about nine cents of AI per thousand euros.
-
-53
-00:02:43,300 --> 00:02:49,934
-Purser. Agents move at machine speed, and the CFO keeps the pen.
-
-54
-00:02:49,984 --> 00:02:52,650
-Every payment has a proof.
+00:02:48,600 --> 00:02:50,550
+Purser, Starter Kit 11.
