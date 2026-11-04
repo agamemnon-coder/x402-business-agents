@@ -345,7 +345,7 @@ describe("one order, once, across disputes (an angrier second email is a new dis
     db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-0001', 'refund_batch', ?, ?, 'support', 'REJECTED', '2099-01-01T00:00:00Z', 'now')")
       .run(JSON.stringify({ dispute_id: "D-11111111", refunds: [{ sale_id: "2" }, { sale_id: "3" }] }), "a".repeat(64));
     const h = handledElsewhere(db, [1, 2, 3, 4], "D-22222222");
-    expect([...h.entries()]).toEqual([[1, "refunded under D-11111111"], [2, "sent to the CFO as P-0001"], [3, "sent to the CFO as P-0001"]]);
+    expect([...h.entries()]).toEqual([[1, "refunded under D-11111111"], [2, "sent to the CFO as P-0001 (REJECTED)"], [3, "sent to the CFO as P-0001 (REJECTED)"]]);
     // The earlier dispute's own orders are not "elsewhere" for itself (its restart carries them out).
     expect(handledElsewhere(db, [1, 2, 3], "D-11111111").size).toBe(0);
     await decideNothingNew(db, "D-22222222");
