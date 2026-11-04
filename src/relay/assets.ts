@@ -15,11 +15,18 @@ const PHONE_CSP = [
   "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
 
-export function buildPages(): Pages {
+/** The phone pages and their script and stylesheet, as the relay serves them (the judge serves the same files offline). */
+export function phonePages(): { approve: string; enrol: string; policy: string; client: string; css: string; csp: string } {
   const client = ts.transpileModule(read("../approve/client.ts"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: false },
     reportDiagnostics: false,
   }).outputText;
+  return { approve: read("../approve/page.html"), enrol: read("../approve/enrol.html"), policy: read("../approve/policy.html"), client, css: read("../approve/style.css"), csp: PHONE_CSP };
+}
+
+export function buildPages(): Pages {
+  const phone = phonePages();
+  const client = phone.client;
   return {
     dashboard: DASHBOARD_PAGE,
     month: monthPage(),
@@ -38,11 +45,11 @@ export function buildPages(): Pages {
     proof: PROOF_PAGE,
     notFound: NOT_FOUND_PAGE,
     redirects: REDIRECTS,
-    approve: read("../approve/page.html"),
-    enrol: read("../approve/enrol.html"),
-    policy: read("../approve/policy.html"),
+    approve: phone.approve,
+    enrol: phone.enrol,
+    policy: phone.policy,
     client,
-    css: read("../approve/style.css"),
+    css: phone.css,
     font: FONT.toString("base64"),
     images: Object.fromEntries(Object.entries(LOGOS).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])),
     csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, claude: CLAUDE_CSP, home: HOME_CSP, watch: WATCH_CSP, proof: PROOF_CSP, notFound: NOT_FOUND_CSP, approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },

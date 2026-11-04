@@ -536,6 +536,16 @@ const REPLAYED = "The relay sent an older signed state than this phone already s
 const UNSIGNED = "What the relay sent is not signed by the runner this phone knows. Nothing can be signed here. If you opened another run's viewer link on this phone before, it still holds that runner's key: open this run's viewer link in a private tab, or clear this site's data and open it again. Tell Claude if this stays.";
 
 const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave you once on this phone, then come back.";
+/** `npm run judge` serves these pages offline, with no runner behind them: it answers /api/… with { offline: true }
+ * (status 200, so a juror's browser logs no failed request). */
+const OFFLINE = "This is the offline copy (npm run judge): no runner is behind it, so nothing can be approved or changed here. With the runner on, this page holds the CFO's policy and the emergency stop, each signed with Face ID.";
+/** What the page shows when the relay did not hand over the approvals; offline, with the way back to the recording. */
+function notReached(status: number, data: Obj, what: string): HTMLElement[] {
+  if (data.offline !== true) return [txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : `Cannot reach the ${what}.`)];
+  const rec = el("a", "back", ["← The recorded CFO dashboard"]) as HTMLAnchorElement;
+  rec.href = "/?recorded";
+  return [txt("p", "warn-box", OFFLINE), rec];
+}
 
 /**
  * A guest without the viewer link: say what this page is and where to look instead, without asking the relay (which
@@ -933,8 +943,8 @@ async function approvePage(attempt = 0): Promise<void> {
   if (guestWithoutLink(app)) return;
   const id = decodeURIComponent(location.pathname.split("/").pop() ?? "");
   const { status, data } = await api("/api/approvals").catch(() => ({ status: 0, data: {} as Obj }));
-  if (status !== 200) {
-    app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the approval relay."));
+  if (status !== 200 || data.offline === true) {
+    app.replaceChildren(...notReached(status, data, "approval relay"));
     return;
   }
   if (runnerConflict) {
@@ -1118,8 +1128,8 @@ async function policyPage(): Promise<void> {
   const app = document.getElementById("app")!;
   if (guestWithoutLink(app)) return;
   const { status, data } = await api("/api/approvals").catch(() => ({ status: 0, data: {} as Obj }));
-  if (status !== 200) {
-    app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the relay."));
+  if (status !== 200 || data.offline === true) {
+    app.replaceChildren(...notReached(status, data, "relay"));
     return;
   }
   if (runnerConflict) {

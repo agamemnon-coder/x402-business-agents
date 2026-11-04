@@ -89,7 +89,16 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.screenshot({ path: join(shots, `signin-${tag}.png`), fullPage: true });
 
     // The CFO's phone pages, opened by a guest on the relay: no request that can only fail (a 401 is a console error),
-    // and a way on. The judge serves no phone pages, so this runs with --live only.
+    // and a way on. Offline the judge serves the same pages with no runner behind them: they say so, and link back.
+    if (liveAt < 0) {
+      for (const path of ["/policy?freeze=on", "/policy", "/approve/P-0001"]) {
+        await page.goto(`${base}${path}`, { waitUntil: "load" });
+        await page.waitForSelector(".warn-box", { timeout: 5000 }).catch(() => undefined);
+        await look(page, `${path} ${tag}`, w);
+        if (!(await page.isVisible("text=offline copy"))) fail(`${path} ${tag}: does not say it is the offline copy`);
+        if (!(await page.isVisible("a[href='/?recorded']"))) fail(`${path} ${tag}: no way back to the recorded dashboard`);
+      }
+    }
     if (liveAt >= 0) {
       for (const path of ["/policy", "/approve/P-0001"]) {
         await page.goto(`${base}${path}`, { waitUntil: "load" });

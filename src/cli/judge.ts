@@ -4,6 +4,7 @@
 //   /demo   the recorded live run, step by step (docs/demo/story.json)
 //   /month  a month in 90 seconds (simulated, seeded)
 //   /?recorded  the CFO's dashboard as it stood at the end of a recorded live run (docs/demo/snapshot.json)
+//   /policy, /approve/…  the phone pages, as the relay serves them; with no runner behind them they say so
 // and opens the browser. `--no-open` only serves; `--check` serves, fetches each page once and exits.
 
 import { spawn } from "node:child_process";
@@ -11,6 +12,7 @@ import type { Server } from "node:http";
 import express from "express";
 import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { localTryAnswer } from "../try/local.js";
+import { phonePages } from "../relay/assets.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
@@ -48,6 +50,16 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/claude", page(CLAUDE_CSP, () => CLAUDE_PAGE));
   const report = METAL_REPORT;
   if (report) app.get("/metal/report", page(METAL_REPORT_CSP, () => report));
+  // The phone pages a dashboard link opens (the emergency stop's /policy?freeze=on): the same files as the relay
+  // serves. Offline there is no runner behind them, so their one question, /api/…, is answered "offline".
+  const phone = phonePages();
+  app.get("/policy", page(phone.csp, () => phone.policy));
+  app.get("/enrol", page(phone.csp, () => phone.enrol));
+  app.get(/^\/approve\/.*/, page(phone.csp, () => phone.approve));
+  app.get("/assets/approve.js", (_req, res) => { res.type("text/javascript").send(phone.client); });
+  app.get("/assets/approve.css", (_req, res) => { res.type("text/css").send(phone.css); });
+  // 200, not 404: the page reads the answer, and a juror's console shows no failed request.
+  app.use("/api", (_req, res) => { res.status(200).json({ offline: true, error: "this offline copy has no runner" }); });
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
   for (const [name, logo] of Object.entries(LOGOS)) app.get(`/assets/${name}`, (_req, res) => { res.type(logo.type).send(logo.body); });
   // Nothing live here: anything else is the clean 404 page, with the four tabs.
