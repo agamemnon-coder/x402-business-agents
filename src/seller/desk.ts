@@ -5,6 +5,7 @@
 
 import { AUTO_REFUND, withOrigin } from "../provenance/origin.js";
 import type { Address } from "viem";
+import { disputeLimits, handledElsewhere } from "../agents/disputeSource.js";
 import { audit } from "../audit/log.js";
 import { attachReview } from "../claude/review.js";
 import type { Tools } from "../claude/tools.js";
@@ -73,6 +74,16 @@ function factsOf(c: Pick<DisputeCase, "claim" | "text" | "packs" | "decision">):
   ].join("\n");
 }
 
+/** The rules' decision without the sales another dispute handled (`handled`: handledElsewhere): each refunds nothing
+ *  here and says what handled it, as an already refunded sale does; the total and the outcome are this case's own. */
+function notAgain(d: DisputeDecision, packs: EvidencePack[], handled: Map<number, string>): DisputeDecision {
+  if (!d.per_sale.some((s) => s.refund_cents > 0 && handled.has(s.sale_id))) return d;
+  const per_sale = d.per_sale.map((s) => (s.refund_cents > 0 && handled.has(s.sale_id) ? { ...s, refund_cents: 0, why: `${s.why} Not refunded or proposed again here: ${handled.get(s.sale_id)}.` } : s));
+  const refund_cents = per_sale.reduce((n, s) => n + s.refund_cents, 0);
+  const charged = packs.reduce((n, p) => n + p.charged_cents, 0);
+  return { ...d, per_sale, refund_cents, outcome: refund_cents === 0 ? "rejected" : refund_cents >= charged ? "refund" : "partial_refund" };
+}
+
 /** Opens a case, decides it, and refunds or proposes. Running it again for the same claim on the same sales returns the stored case. */
 export async function openDisputeCase(
   db: DB, tools: Tools,
@@ -87,7 +98,9 @@ export async function openDisputeCase(
   const packs = (await evidenceFor(db, input.saleIds, input.customer, deps)).map((p) => ({
     ...p, refunded_cents: (db.prepare("SELECT COALESCE(SUM(amount_cents), 0) AS c FROM refunds WHERE sale_id = ? AND outcome IN ('PAID', 'PENDING', 'PROPOSED', 'HELD')").get(p.sale_id) as { c: number }).c,
   }));
-  const decision = decideDispute(input.claim, packs);
+  // One order is refunded, or put to the CFO, once across disputes (review 2, LOW-MEDIUM 2, as s2 does): a sale another
+  // dispute refunded, is refunding or put to the CFO in a live proposal is not refunded or proposed again here.
+  const decision = notAgain(decideDispute(input.claim, packs), packs, handledElsewhere(db, input.saleIds, caseId, now));
   const text = (input.text ?? "").slice(0, 2000);
   db.prepare("INSERT OR IGNORE INTO disputes (dispute_id, customer, email_sha256, claims_json, evidence_json, created_at) VALUES (?, ?, ?, ?, ?, ?)")
     .run(caseId, input.customer, sha256Hex(text || input.claim), JSON.stringify({ claim: input.claim, sale_ids: input.saleIds, text }), JSON.stringify(packs), now.toISOString());
@@ -99,7 +112,9 @@ export async function openDisputeCase(
   const refunds: DisputeCase["refunds"] = [];
   const evidence = [{ type: "dispute_evidence", ref: `${packs.length} payments: signed orders, verifyMandatePayment, settlements, delivery hashes`, sha256: sha256Hex(JSON.stringify(packs)) }];
   if (refundsDue.length) {
-    const r = routeRefundBatch(refundsDue.map((s) => s.refund_cents), refundThresholds(db));
+    // The automatic limit per dispute is the customer's, shared with its other disputes (disputeLimits, as s2 uses it):
+    // the desk and the email path together never refund one customer past it without the CFO.
+    const r = routeRefundBatch(refundsDue.map((s) => s.refund_cents), disputeLimits(refundThresholds(db), db, input.customer, caseId));
     if (r.route === "auto") {
       route = "auto";
       audit(db, "support", "refund.auto_approved", caseId, { sales: refundsDue.map((s) => String(s.sale_id)), rule: "each <= limit and batch <= limit" }, now);

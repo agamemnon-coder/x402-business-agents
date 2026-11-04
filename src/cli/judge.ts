@@ -1,6 +1,6 @@
 // npm run judge: the recorded demo and the simulated month, on this computer, with no keys and no network.
 // A fresh clone needs only `npm ci` first. It serves:
-//   /       the start page (the CFO's live dashboard needs the runner; a guest sees the way to the demo)
+//   /       Home, as on the hosted relay (with a query, such as ?recorded, the CFO dashboard's page)
 //   /demo   the recorded live run, step by step (docs/demo/story.json)
 //   /month  a month in 90 seconds (simulated, seeded)
 //   /?recorded  the CFO's dashboard as it stood at the end of a recorded live run (docs/demo/snapshot.json)
@@ -23,8 +23,12 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   };
   const demo = demoPage();
   const month = monthPage();
-  app.get("/", page(CSP, () => PAGE));
-  app.get("/home", page(HOME_CSP, () => HOME_PAGE));
+  // "/" as the relay answers it (worker/src/core.ts): Home itself, and with a query (?recorded, ?autonomy, ?signin…) the
+  // CFO dashboard's page.
+  const dashboard = page(CSP, () => PAGE);
+  const home = page(HOME_CSP, () => HOME_PAGE);
+  app.get("/", (req, res) => (new URL(req.originalUrl, "http://judge.local").search ? dashboard : home)(req, res));
+  app.get("/home", home);
   app.get("/watch", page(WATCH_CSP, () => WATCH_PAGE));
   app.get("/proof", page(PROOF_CSP, () => PROOF_PAGE));
   for (const [from, to] of Object.entries(REDIRECTS)) app.get(from, (_req, res) => { res.redirect(302, to); });

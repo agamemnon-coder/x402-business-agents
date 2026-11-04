@@ -362,4 +362,21 @@ describe("review 2 of fix-dry179: never close a replace that ran a step, nor on 
     expect(status(db, "P-0003")).toBe("NEEDS_REAPPROVAL");
     expect(status(db, fresh)).toBe("PENDING_APPROVAL");
   });
+
+  it("a failure while recording the guard's refusal still throws the guard's reason and leaves a trace", async () => {
+    const [p2] = propose();
+    approveBy(p2!, "test-cfo");
+    approveBy(p2!, "test-controller");
+    h.chain.set(T0.reference, { ...h.chain.get(T0.reference)!, spent: units(45) });
+    // Recording fails: the executions table it reads first is gone.
+    db.exec("DROP TABLE executions");
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(executeMandateReplace(db, p2!.id)).rejects.toThrow(SPENT_MOVED);
+    expect(err).toHaveBeenCalledWith(expect.stringMatching(/^P-0002: the guard's refusal could not be recorded: /));
+    err.mockRestore();
+    // Nothing closed (the safe old behaviour), and the ledger says why.
+    expect(status(db, p2!.id)).toBe("APPROVED");
+    const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'proposal.guard_refusal_unrecorded' AND subject = ?").get(p2!.id) as { payload_json: string };
+    expect(JSON.parse(row.payload_json)).toMatchObject({ error: SPENT_MOVED, why: expect.stringMatching(/executions/) });
+  });
 });

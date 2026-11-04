@@ -10,7 +10,7 @@
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
-import { carryOut, cfoResolution, decisionOf, finished, legacyDecision, recordDecision, type DecisionAudit } from "./disputeDecision.js";
+import { carryOut, cfoResolution, decisionOf, finished, legacyDecision, recordDecision, type DecisionAudit, type DisputeDecision } from "./disputeDecision.js";
 
 export { cfoResolution };
 
@@ -56,6 +56,18 @@ export function disputeDecided(db: DB, id: string): boolean {
 /** When the dispute was last handed to the CFO, or null. */
 export function escalatedAt(db: DB, id: string): string | null {
   return (db.prepare("SELECT ts FROM audit_log WHERE event = 'dispute.escalated' AND subject = ? ORDER BY seq DESC LIMIT 1").get(id) as { ts: string } | undefined)?.ts ?? null;
+}
+
+/**
+ * Whether code may carry out this recorded decision on its own (the Support agent's tool, the runner's start): not
+ * once its dispute went to the CFO (dispute.escalated) while the decision still has a refund to pay or a proposal to
+ * make (review 2, LOW 4: code carried it out again half an hour later, maybe while the CFO was deciding it). A person
+ * carries it out (npm run s2 -- --dispute <id>). A decision that is done but for its settlement row, or that pays and
+ * proposes nothing, is finished by code as before.
+ */
+export function codeMayCarryOut(db: DB, d: DisputeDecision): boolean {
+  const left = d.status === "DECIDED" && (d.plan.refunds.length > 0 || !!d.plan.escalate || !!d.plan.approval);
+  return !left || !escalatedAt(db, d.dispute_id);
 }
 
 /**
@@ -137,26 +149,30 @@ export function handledElsewhere(db: DB, saleIds: number[], disputeId: string, n
 /** A dispute with nothing to decide (its orders were all handled by earlier disputes, or none was sold): decided once,
  *  by code, with nothing new (no refund, no proposal), so it is never settled again nor blocks the disputes after it.
  *  `audits` are written in the decision's own transaction (decided once: a rerun writes none). Callers use
- *  decideHandledBefore or decideNoneSold, which say so where a person looks. */
-export async function decideNothingNew(db: DB, disputeId: string, note = "every order in it was handled by an earlier dispute", audits: DecisionAudit[] = []): Promise<void> {
-  recordDecision(db, disputeId, { source: "code", model: null, refunds: [], escalate: null, approval: null, agent_note: note }, audits);
-  await carryOut(db, disputeId, { refund: async () => { throw new Error("nothing to refund"); }, existing: () => null });
+ *  decideHandledBefore or decideNoneSold, which say so where a person looks. Returns whether this call decided it. */
+export async function decideNothingNew(db: DB, disputeId: string, note = "every order in it was handled by an earlier dispute", audits: DecisionAudit[] = []): Promise<boolean> {
+  const r = recordDecision(db, disputeId, { source: "code", model: null, refunds: [], escalate: null, approval: null, agent_note: note }, audits);
+  // Only a decision this call recorded is carried out here (review 2, LOW 5): when another process recorded the
+  // dispute's real decision first, that decision is its own to carry out, with its refunds and proposals; carrying it
+  // out here, with a refund that throws, would count a try against it and note failures that are not its own.
+  if (r.fresh) await carryOut(db, disputeId, { refund: async () => { throw new Error("nothing to refund"); }, existing: () => null });
+  return r.fresh;
 }
 
 /** Every order in the dispute was handled before (`handled`: "#7 (refunded under D-…)" each): decided once with
  *  nothing new, and recorded as dispute.handled_before, which the dashboard shows (late review, LOW-MEDIUM 3). */
-export async function decideHandledBefore(db: DB, d: { id: string; customer: string }, handled: string[]): Promise<void> {
-  await decideNothingNew(db, d.id, "every order in it was handled by an earlier dispute", [
+export async function decideHandledBefore(db: DB, d: { id: string; customer: string }, handled: string[]): Promise<boolean> {
+  return decideNothingNew(db, d.id, "every order in it was handled by an earlier dispute", [
     { actor: "support", event: "dispute.handled_before", payload: { customer: d.customer.slice(0, 80), handled: handled.slice(0, 50).map((h) => h.slice(0, 200)) } },
   ]);
 }
 
 /** None of the disputed numbers was sold to this customer: handed to the CFO (dispute.escalated, on the dashboard), then
  *  decided once with nothing to refund, so it is not settled again (late review, LOW-MEDIUM 3: never closed silently). */
-export async function decideNoneSold(db: DB, d: { id: string; customer: string }): Promise<void> {
-  if (decisionOf(db, d.id)) return;
+export async function decideNoneSold(db: DB, d: { id: string; customer: string }): Promise<boolean> {
+  if (decisionOf(db, d.id)) return false;
   escalateDispute(db, d, "no disputed number matched a sale");
-  await decideNothingNew(db, d.id, "none of the disputed numbers was sold to this customer");
+  return decideNothingNew(db, d.id, "none of the disputed numbers was sold to this customer");
 }
 
 /**

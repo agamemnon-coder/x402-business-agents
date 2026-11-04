@@ -596,10 +596,52 @@ const TASK_WORDS: Record<string, string> = {
 
 const agentWho = (id: string): string => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
 
+/** A refund the ledger holds under a dispute (refunds.dispute_id; one row per sale). */
+export interface DisputeRefund { sale_id: number; amount_cents: number; outcome: string }
+/** The refunds the ledger holds under a dispute, now. */
+export type RefundsUnder = (disputeId: string) => DisputeRefund[];
+
+/** The ledger's refunds by dispute, read once (review 2, MEDIUM 1). Undefined on a ledger that cannot say (no refunds
+ *  table or column): a row then says nothing about refunds, rather than something the ledger does not back. */
+export function refundsUnder(db: DB): RefundsUnder | undefined {
+  let rows: (DisputeRefund & { dispute_id: string })[];
+  try {
+    rows = db.prepare("SELECT dispute_id, sale_id, amount_cents, outcome FROM refunds WHERE dispute_id IS NOT NULL ORDER BY sale_id").all() as typeof rows;
+  } catch (e) {
+    if (/no such (table|column)/.test((e as Error).message)) return undefined;
+    throw e;
+  }
+  const by = new Map<string, DisputeRefund[]>();
+  for (const r of rows) by.set(r.dispute_id, [...(by.get(r.dispute_id) ?? []), { sale_id: r.sale_id, amount_cents: r.amount_cents, outcome: r.outcome }]);
+  return (id) => by.get(id) ?? [];
+}
+
+// Each refund outcome, in the escalation row's words and in this order; an amount is given where money was or may be
+// on its way (a REFUSED refund paid nothing). PROPOSED: started, its pull's outcome not recorded (it may have reached
+// Metal before a crash), so it is not called unsent.
+const UNDER_WORDS: [outcome: string, words: string, amount: boolean][] = [
+  ["PAID", "refunded", true], ["PENDING", "sent, not yet confirmed", true], ["HELD", "sent, held at Metal, not refunded yet", true],
+  ["PROPOSED", "started, outcome not yet recorded", true], ["REFUSED", "refused (nothing paid)", false],
+];
+
+/** A dispute's refunds as the ledger holds them, by outcome: "none", or each outcome's sales and amount. */
+function refundsUnderWords(refunds: DisputeRefund[], saleOf: (id: string) => { seq: number } | undefined): string {
+  const name = (r: DisputeRefund) => { const seq = saleOf(String(r.sale_id))?.seq; return seq ? `#${seq}` : `sale ${r.sale_id}`; };
+  // An outcome this list does not know is said as the ledger has it, never left out.
+  const known = UNDER_WORDS.map(([o]) => o);
+  const unknown = [...new Set(refunds.map((r) => r.outcome))].filter((o) => !known.includes(o)).map((o): [string, string, boolean] => [o, o.toLowerCase(), true]);
+  const parts = [...UNDER_WORDS, ...unknown].flatMap(([outcome, w, amount]) => {
+    const xs = refunds.filter((r) => r.outcome === outcome);
+    return xs.length ? [`${xs.map(name).join(", ")} ${w}${amount ? ` (${fromCents(xs.reduce((n, r) => n + r.amount_cents, 0))} USDZ)` : ""}`] : [];
+  });
+  return `refunds under it so far: ${parts.join("; ") || "none"}`;
+}
+
 /** Plain words for one audit row. Ids and hashes go in their own fields, never into the sentence's links. */
-/** A feed line; a money movement also says who decided it, from the origin recorded with it (D24) and nothing else. */
-export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined): Omit<FeedItem, "seq" | "ts" | "actor" | "event" | "trace"> {
-  const d = describeRow(r, saleOf);
+/** A feed line; a money movement also says who decided it, from the origin recorded with it (D24) and nothing else.
+ *  `refundsOf`: the ledger's refunds by dispute (refundsUnder), for the rows that state them. */
+export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined, refundsOf?: RefundsUnder): Omit<FeedItem, "seq" | "ts" | "actor" | "event" | "trace"> {
+  const d = describeRow(r, saleOf, refundsOf);
   if (!MONEY_EVENTS.has(r.event)) return d;
   const p = JSON.parse(r.payload_json) as Record<string, unknown>;
   if (!("origin" in p)) return d; // a ledger recorded before origins existed: the line stays as it was
@@ -607,7 +649,7 @@ export function describe(r: AuditRow, saleOf: (id: string) => { seq: number; pri
   return { ...d, decided: w.decided, model: d.model ?? w.model };
 }
 
-function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined): Omit<FeedItem, "seq" | "ts" | "actor" | "event" | "trace"> {
+function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: number } | undefined, refundsOf?: RefundsUnder): Omit<FeedItem, "seq" | "ts" | "actor" | "event" | "trace"> {
   const p = JSON.parse(r.payload_json) as P;
   const tx = TX.test(str(p.tx)) ? str(p.tx) : null;
   const s = str(r.subject);
@@ -805,7 +847,9 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "receivable.escalated": return out(`Global Account, to the CFO: ${str(p.detail)}`, "refusal", { awx_id: s || null });
     case "treasury.seeded": return out(`Airwallex sandbox seeded with ${str(p.currency)} ${str(p.amount)}`);
     case "invoice.escalated": return out(`Invoice ${s} escalated to a person: ${str(p.reason)}`, "refusal");
-    case "dispute.escalated": return out(`Dispute ${s} from ${str(p.customer)} sent to the CFO: code could not settle it (${str(p.reason)}); nothing was refunded for it`, "refusal");
+    // What was refunded under it is read from the ledger as it is now (review 2, MEDIUM 1: a settlement cut off after
+    // some refunds were paid lands here too); with no ledger at hand the row says nothing about refunds.
+    case "dispute.escalated": return out(`Dispute ${s} from ${str(p.customer)} sent to the CFO: code could not settle it (${str(p.reason)})${refundsOf ? `; ${refundsUnderWords(refundsOf(s), saleOf)}` : ""}`, "refusal");
     case "dispute.handled_before": return out(`Dispute ${s} from ${str(p.customer)}: every order in it was handled before (${(Array.isArray(p.handled) ? (p.handled as unknown[]) : []).map(str).join(", ")}); nothing new refunded or sent to the CFO`);
     case "dispute.resolved_by_cfo": return out(`Dispute ${s} marked resolved by the CFO: ${str(p.note)} Nothing was refunded by code for it`, "ok");
     case "document.injection_flagged": {
@@ -1128,6 +1172,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
       .map((s) => [String(s.sale_id), { seq: s.seq, price: s.price_cents }]),
   );
   const saleOf = (id: string) => salesById.get(id);
+  const refundsOf = refundsUnder(db);
   const chain = verifyAuditChain(db);
 
   type PRow = { proposal_id: string; kind: string; terms_json: string; terms_sha256: string; created_by: string; explanation: string | null; status: string; expires_at: string; created_at: string };
@@ -1149,7 +1194,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   // Airwallex can report one card authorisation under two ids; once merged, it is listed once.
   const merged = new Set(rows.filter((r) => r.event === "card.duplicate_merged").map((r) => r.subject));
   const refusals: Refusal[] = rows.filter((r) => REFUSAL_EVENTS.has(r.event) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).reverse().slice(0, 30).map((r) => {
-    const d = describe(r, saleOf);
+    const d = describe(r, saleOf, refundsOf);
     const agent = r.event === "velocity.tripped" && r.subject ? r.subject : Object.entries(AGENT_OF).find(([k]) => r.event.startsWith(k))?.[1] ?? r.actor;
     return { seq: r.seq, ts: r.ts, agent, what: REFUSAL_WHAT[r.event] ?? r.event, reason: d.text };
   });
@@ -1157,7 +1202,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   // Bookkeeping of our own (two ids for one card authorisation) stays in the audit log, not in the CFO's feed.
   const traces = agentTraces(db, rows);
   const traceOf = new Map(traces.flatMap((t) => t.steps.map((s) => [s.seq, t.run_seq] as const)));
-  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event) && !quietTool(r) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf), trace: traceOf.get(r.seq) ?? null }));
+  const feed: FeedItem[] = rows.filter((r) => !FEED_QUIET.has(r.event) && !quietTool(r) && !(r.event.startsWith("card.charge_") && merged.has(r.subject))).slice(-60).reverse().map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, ...describe(r, saleOf, refundsOf), trace: traceOf.get(r.seq) ?? null }));
 
   const budgetView = budgets(db, rows, roleOf);
   const cardView = cards(db, now);

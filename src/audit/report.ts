@@ -7,7 +7,7 @@ import PDFDocument from "pdfkit";
 import { finalityView, NOT_CHECKED } from "../metal/finality.js";
 import type { DB } from "../db/open.js";
 import { verifyAuditChain, type AuditRowStored, type ChainCheck } from "./log.js";
-import { approverName, describe, kindTitle, modelName, parseReview, REFUSAL_EVENTS, REFUSAL_WHAT, summarize } from "../dashboard/snapshot.js";
+import { approverName, describe, kindTitle, modelName, parseReview, refundsUnder, REFUSAL_EVENTS, REFUSAL_WHAT, summarize } from "../dashboard/snapshot.js";
 
 export interface ReportDecision {
   proposal_id: string;
@@ -155,8 +155,10 @@ export function buildAuditReport(db: DB, now = new Date(), label = "ledger"): Au
   });
 
   const count = (...events: string[]) => rows.filter((r) => events.includes(r.event)).length;
+  // A dispute sent to the CFO states the ledger's refunds under it, as on the dashboard (review 2, MEDIUM 1).
+  const refundsOf = refundsUnder(db);
   const refusals = rows.filter((r) => REFUSAL_EVENTS.has(r.event))
-    .map((r) => ({ at: r.ts, agent: r.actor, what: REFUSAL_WHAT[r.event] ?? r.event, reason: describe(r as never, () => undefined).text, rule: refusalRule(r.event, payload(r)) }));
+    .map((r) => ({ at: r.ts, agent: r.actor, what: REFUSAL_WHAT[r.event] ?? r.event, reason: describe(r as never, () => undefined, refundsOf).text, rule: refusalRule(r.event, payload(r)) }));
   const last = rows.at(-1);
   return {
     generated_at: now.toISOString(), label, chain, anchor: last ? `${last.seq}:${last.row_hash}` : "0:",

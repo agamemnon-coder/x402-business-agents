@@ -114,7 +114,7 @@ Samen altijd 20.00 test-USD. Dat staat vast in de code.
 36. **Hoe verdien je geld?** Een maandbedrag per bedrijf en per actieve agent. Geen percentage van betalingen.
 37. **Waarom nu?** Mastercard Agent Pay (april 2025), Visa Intelligent Commerce en Google AP2 (september 2025): agents gaan betalen. McKinsey schat $3–5 biljoen agent-handel in 2030.
 38. **Wie zijn je eerste klanten?** Kleine bedrijven die over grenzen handelen, op Airwallex zitten en AI-agents gebruiken.
-39. **Wat is nodig voor productie?** Sleutels in een KMS, Postgres met herstel, een pager op `/health`, en meer bedrijven per installatie. Daarna Metal mainnet.
+39. **Wat is nodig voor productie?** Sleutels in een KMS, Postgres met herstel, een pager op `/health/live`, en meer bedrijven per installatie. Daarna Metal mainnet.
 40. **Wat is het moeilijkste geweest?** Dat elke claim klopt. Elke betaling heeft een bewijs, en alles wat gesimuleerd is staat erbij.
 
 ### De Claude-agents (41–50)

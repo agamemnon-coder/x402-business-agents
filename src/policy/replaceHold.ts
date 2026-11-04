@@ -8,7 +8,8 @@
 // Open: waiting for approval (also with 1 of 2 signatures) or approved and not yet run, within its time; or being run
 // (EXECUTING), whatever its time: a restart resumes a replace a crash cut off without looking at its expiry, so the hold
 // stays until a restart resumes and finishes it (ops/health raises action_stuck for it meanwhile); and FAILED within its
-// time once a step of it ran (a DONE or STARTED execution row): the mandates are half replaced and a retry carries on. The hold lifts by itself when the proposal is executed,
+// time once a step of it ran (a DONE or STARTED execution row): the mandates are half replaced and a retry carries on
+// (ops/health raises replace_half_run once a step is DONE). The hold lifts by itself when the proposal is executed,
 // rejected, superseded, expires, or fails. A replace its executor's guard refuses (dry-179: "spent moved … a new one is
 // needed") is closed as NEEDS_REAPPROVAL with the reason, and so are the other options of the same change that the same
 // facts refuse (src/executors/mandateReplace.ts): before, it stayed APPROVED until its expiry and held for nothing. A

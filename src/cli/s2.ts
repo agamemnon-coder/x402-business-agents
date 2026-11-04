@@ -1,7 +1,8 @@
 // npm run s2 [-- --resume-only | --dispute D-xxxxxxxx | --resolve <id> --note "…"]: scenario S2, the disputed batch, live on Metal testnet.
 // --resolve (late review, L2): the CFO marks a dispute it holds (dispute.escalated, not decided) resolved, with a note;
 // moves no money, once. The only way to close a D-ev<id> dispute (no email code can read), and it clears /health.
-// --resume-only (the runner's start) only carries out a decision a restart cut off; it never opens or decides a dispute.
+// --resume-only (the runner's start) only carries out a decision a restart cut off; it never opens or decides a dispute,
+// and leaves one whose dispute is with the CFO to a person (--dispute <id> carries that out).
 // --dispute (the Support agent's settle_dispute, holdout H9): settles the dispute with that id that opened in this world,
 // read from its dispute.opened event; an id no event names is refused (unless only its recorded decision is carried
 // out). Without either, a person's run settles the fixture's dispute (fixtures/summit-dispute-email.txt), as before.
@@ -11,7 +12,7 @@ import { resolve } from "node:path";
 import type { Address } from "viem";
 import { checkData, refundsFor, salesFound, verifyOrders, type DataVerdict, type DisputeClaims, type OrderEvidence } from "../agents/disputes.js";
 import { auditSettlement, carryOut, decisionOf, decisionSummary, finished, legacyDecision, openDecisions, recordDecision, type DecisionAudit, type DecisionExec, type DecisionPlan, type Part } from "../agents/disputeDecision.js";
-import { decideHandledBefore, decideNoneSold, disputeKey, disputeLimits, handledElsewhere, openedDispute, resolveByCfo } from "../agents/disputeSource.js";
+import { codeMayCarryOut, decideHandledBefore, decideNoneSold, disputeKey, disputeLimits, escalatedAt, handledElsewhere, openedDispute, resolveByCfo } from "../agents/disputeSource.js";
 import { attachReview } from "../claude/review.js";
 import { agentsOn } from "../agents/loop.js";
 import { settleDispute } from "../agents/supportAgent.js";
@@ -70,7 +71,12 @@ function which(): { disputeId: string; email: string; ref: string } {
   if (process.argv.includes("--resume-only")) {
     // The newest decision a restart cut off, whichever dispute it is; else the fixture's (nothing to carry out).
     // A decision with refunds or proposals left (DECIDED) before one only waiting for its settlement row.
-    const undone = openDecisions(db).sort((a, b) => (a.status === b.status ? b.decided_at.localeCompare(a.decided_at) : a.status === "DECIDED" ? -1 : 1))[0];
+    // Not one whose dispute is with the CFO with refunds or proposals left (review 2, LOW 4): a person carries it out.
+    const open = openDecisions(db);
+    for (const d of open.filter((x) => !codeMayCarryOut(db, x))) {
+      console.log(`WITH THE CFO     ${d.dispute_id}: sent to the CFO at ${escalatedAt(db, d.dispute_id)}; code does not carry out its decision on its own: npm run s2 -- --dispute ${d.dispute_id} carries it out (nothing is decided again)`);
+    }
+    const undone = open.filter((x) => codeMayCarryOut(db, x)).sort((a, b) => (a.status === b.status ? b.decided_at.localeCompare(a.decided_at) : a.status === "DECIDED" ? -1 : 1))[0];
     if (undone) return source(undone.dispute_id) ?? { disputeId: undone.dispute_id, email: "", ref: "the dispute's stored record" };
   }
   return { disputeId: disputeKey(fixtureEmail), email: fixtureEmail, ref: FIXTURE_REF };
@@ -143,9 +149,10 @@ if (prior) {
     console.log(`HANDLED BEFORE   ${handled.join(", ")}: not decided again`);
     sales = sales.filter((x) => !elsewhere.has(x.sale_id));
     if (sales.length === 0) {
-      // Decided once with nothing new, and recorded as dispute.handled_before (the dashboard shows it).
-      await decideHandledBefore(db, who, handled);
-      console.log(`DECIDED          ${disputeId}: every order in it was handled by an earlier dispute; nothing new is refunded or sent to the CFO`);
+      // Decided once with nothing new, and recorded as dispute.handled_before (the dashboard shows it). Another
+      // process that decided it first keeps its decision (review 2, LOW 5): said so, nothing done here.
+      if (await decideHandledBefore(db, who, handled)) console.log(`DECIDED          ${disputeId}: every order in it was handled by an earlier dispute; nothing new is refunded or sent to the CFO`);
+      else console.log(`ALREADY DECIDED  ${disputeId}: ${decisionSummary(decisionOf(db, disputeId)!)}. Nothing is decided again.`);
       process.exit(0);
     }
   }
@@ -153,8 +160,8 @@ if (prior) {
     console.log("NOTHING TO SETTLE none of the disputed numbers was sold");
     // Handed to the CFO (dispute.escalated), then decided once with nothing to refund: never settled again, and the
     // disputes after it are not held up.
-    await decideNoneSold(db, who);
-    console.log(`TO THE CFO       ${disputeId}: no disputed number matched a sale; recorded as dispute.escalated`);
+    if (await decideNoneSold(db, who)) console.log(`TO THE CFO       ${disputeId}: no disputed number matched a sale; recorded as dispute.escalated`);
+    else console.log(`ALREADY DECIDED  ${disputeId}: ${decisionSummary(decisionOf(db, disputeId)!)}. Nothing is decided again.`);
     process.exit(0);
   }
   orders = await verifyOrders(sales, addr.customer);

@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { health, prometheus } from "../src/ops/health.js";
-import { publicHealth } from "../src/ops/publicHealth.js";
+import { recordDecision } from "../src/agents/disputeDecision.js";
+import { escalateDispute } from "../src/agents/disputeSource.js";
+import { LIVE_RUN_EXPECTED_MS, publicHealth, publicStatus, RECORDED_DEMO_WORDS } from "../src/ops/publicHealth.js";
 import { reserveSpend } from "../src/policy/holds.js";
 import { buildRelayState, stateHash } from "../src/relay/state.js";
 import { Relay, type Sql } from "../worker/src/core.js";
@@ -49,6 +51,41 @@ describe("monitoring (B7)", () => {
     expect(codes(db, min(11))).toEqual(["action_stuck"]);
   });
 
+  it("calls a mandate replace that failed after a step ran half run, and nothing else", () => {
+    const db = openDb(":memory:");
+    const ins = (id: string, status: string) => db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES (?, 'mandate_replace', '{}', ?, 'treasury', ?, '2099-01-01T00:00:00Z', ?)").run(id, `h-${id}`, status, now.toISOString());
+    const step = (id: string, no: number, status: string) => db.prepare("INSERT INTO executions (proposal_id, step_no, idempotency_key, status, request_redacted, updated_at) VALUES (?, ?, ?, ?, '{}', ?)").run(id, no, `${id}:${no}`, status, now.toISOString());
+    // Failed before any step was DONE (only STARTED): not half run.
+    ins("P-0001", "FAILED"); step("P-0001", 1, "STARTED");
+    // Executed: done, not half run.
+    ins("P-0002", "EXECUTED"); step("P-0002", 1, "DONE"); step("P-0002", 2, "DONE");
+    expect(codes(db)).toEqual([]);
+    // Failed after step 1 was bound on chain: half run.
+    ins("P-0003", "FAILED"); step("P-0003", 1, "DONE"); step("P-0003", 2, "STARTED");
+    audit(db, "system", "proposal.failed", "P-0003", { error: "rpc unreachable" }, now);
+    const a = health(db, min(1)).alerts;
+    expect(a.map((x) => x.code)).toEqual(["replace_half_run"]);
+    expect(a[0]).toMatchObject({ severity: "warning", since: now.toISOString() });
+    expect(a[0]!.words).toMatch(/P-0003 failed after 1 of its steps ran on chain/);
+  });
+
+  it("names who carries out an open dispute decision: a person for a dispute with the CFO, the runner's start for any other", () => {
+    const db = openDb(":memory:");
+    db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES ('D-1', '0xc', 'h', ?)").run(now.toISOString());
+    recordDecision(db, "D-1", { source: "claude", model: null, refunds: [{ seq: 7, cents: 5, origin: null }], escalate: { seqs: [5, 6], text: "Reject.", origin: null }, approval: null, agent_ran: true });
+    const words = () => health(db, now).alerts.find((a) => a.code === "dispute_decision_open")!.words;
+    expect(words()).toMatch(/; the runner's start or npm run s2 -- --resume-only finishes it, without deciding again\.$/);
+    // With the CFO (dispute.escalated) and a refund and a proposal left: the runner's start leaves it to a person
+    // (dispute review 2, LOW 4), so the alert names the person's command, never the runner's start or --resolve
+    // (which refuses a decided dispute).
+    escalateDispute(db, { id: "D-1", customer: "0xc" }, "the CFO decides the rest", now);
+    expect(words()).toMatch(/; it is with the CFO: npm run s2 -- --dispute D-1 carries it out, without deciding again\.$/);
+    expect(words()).not.toMatch(/runner's start|--resume-only|--resolve/);
+    // Carried out but for its settlement row: nothing left to pay or propose, so code finishes it, as before.
+    db.prepare("UPDATE dispute_decisions SET status = 'DONE', paid_json = '[7]', escalation_proposal = 'P-0004', audited = 0 WHERE dispute_id = 'D-1'").run();
+    expect(words()).toMatch(/the runner's start or npm run s2 -- --resume-only finishes it/);
+  });
+
   it("answers 503 on the public /health with alarm codes only, and runner_down when the runner stops syncing", async () => {
     expect(publicHealth(null, null)).toEqual({ status: 503, body: { status: "alert", runner: "unknown", alerts: [], checked_at: null } });
     const db = openDb(":memory:");
@@ -63,5 +100,69 @@ describe("monitoring (B7)", () => {
     clock = min(3);
     expect(await get()).toMatchObject({ status: 503, body: { runner: "down", alerts: ["runner_down"] } });
     expect(Object.keys((await get()).body).sort()).toEqual(["alerts", "checked_at", "runner", "status"]);
+  });
+});
+
+// First impression (4 Nov): between live runs the runner is off on purpose, and /health says so (200) instead of
+// raising runner_down for anyone who opens it; while a live run is expected it is the alarm, as above. /health/live is
+// the alarm at all times, for an uptime monitor and the CFO.
+describe("/health between live runs and during one", () => {
+  const relayAt = (opts: { liveRun?: boolean } = {}) => {
+    const mem = new Database(":memory:");
+    const sql: Sql = { exec(q, ...b) { const st = mem.prepare(q); const rows = st.reader ? st.all(...b) : (st.run(...b), []); return { toArray: () => rows }; } };
+    const clock = { at: now };
+    const relay = new Relay(sql, { relayToken: "t".repeat(64), now: () => clock.at, ...opts });
+    const sync = async (db: DB) => {
+      const state = buildRelayState(db, { rpId: "kit11.example", relayToken: "t".repeat(64) }, clock.at);
+      await relay.fetch(new Request("https://kit11.example/api/runner/sync", { method: "POST", headers: { authorization: `Bearer ${"t".repeat(64)}`, "content-type": "application/json" }, body: JSON.stringify({ state_hash: stateHash(state), state, acks: [] }) }));
+    };
+    const get = async (path: string) => { const r = await relay.fetch(new Request(`https://kit11.example${path}`)); return { status: r.status, body: await r.json() as Record<string, unknown> }; };
+    return { relay, clock, sync, get };
+  };
+
+  it("keeps the alarm while a live run is expected: the runner synced in the last 30 minutes, or a run is declared", () => {
+    const h = health(openDb(":memory:"), now);
+    for (const age of [0, 3 * 60_000, LIVE_RUN_EXPECTED_MS]) expect(publicStatus(h, age, { lastSync: now.toISOString() })).toEqual(publicHealth(h, age));
+    expect(publicStatus(h, 3 * 60_000)).toMatchObject({ status: 503, body: { status: "alert", runner: "down", alerts: ["runner_down"] } });
+    expect(publicStatus(h, LIVE_RUN_EXPECTED_MS + 1, { liveRun: true })).toEqual(publicHealth(h, LIVE_RUN_EXPECTED_MS + 1));
+    expect(publicStatus(null, null, { liveRun: true })).toEqual(publicHealth(null, null));
+  });
+
+  it("says \"Recorded demo\" with 200 between live runs, with the alarm codes of the runner's last sync", () => {
+    const db = openDb(":memory:");
+    expect(publicStatus(health(db, now), LIVE_RUN_EXPECTED_MS + 1, { lastSync: now.toISOString() })).toEqual({ status: 200, body: { status: "recorded_demo", words: RECORDED_DEMO_WORDS, runner: "off", alerts: [], checked_at: now.toISOString(), last_sync: now.toISOString() } });
+    expect(RECORDED_DEMO_WORDS).toBe("Recorded demo · the live runner runs during live runs");
+    // A relay no runner ever synced with: no live run here yet.
+    expect(publicStatus(null, null)).toEqual({ status: 200, body: { status: "recorded_demo", words: RECORDED_DEMO_WORDS, runner: "off", alerts: [], checked_at: null, last_sync: null } });
+    // Nothing moves while the runner is off, so an alarm that stood at its last sync still stands, and is shown.
+    set(db, "freeze", "on");
+    expect(publicStatus(health(db, now), LIVE_RUN_EXPECTED_MS + 1).body).toMatchObject({ status: "recorded_demo", alerts: ["emergency_stop"] });
+  });
+
+  it("on the relay: /health calm after 30 minutes without a sync, /health/live the alarm throughout, LIVE_RUN keeping /health strict", async () => {
+    const r = relayAt();
+    // Never synced: a calm /health, and /health/live does not call it ok.
+    expect(await r.get("/health")).toMatchObject({ status: 200, body: { status: "recorded_demo", words: RECORDED_DEMO_WORDS, runner: "off" } });
+    expect(await r.get("/health/live")).toEqual({ status: 503, body: { status: "alert", runner: "unknown", alerts: [], checked_at: null } });
+    await r.sync(openDb(":memory:"));
+    for (const path of ["/health", "/health/live"]) expect(await r.get(path)).toEqual({ status: 200, body: { status: "ok", runner: "up", alerts: [], checked_at: now.toISOString() } });
+    // The runner stops during a live run: both raise runner_down.
+    r.clock.at = min(3);
+    for (const path of ["/health", "/health/live"]) expect(await r.get(path)).toMatchObject({ status: 503, body: { status: "alert", runner: "down", alerts: ["runner_down"] } });
+    r.clock.at = min(30);
+    expect((await r.get("/health")).status).toBe(503);
+    // Past 30 minutes no live run is expected: /health is calm and says so; /health/live keeps the alarm.
+    r.clock.at = min(31);
+    expect(await r.get("/health")).toEqual({ status: 200, body: { status: "recorded_demo", words: RECORDED_DEMO_WORDS, runner: "off", alerts: [], checked_at: now.toISOString(), last_sync: now.toISOString() } });
+    expect(await r.get("/health/live")).toMatchObject({ status: 503, body: { status: "alert", runner: "down", alerts: ["runner_down"] } });
+    // A declared live run keeps /health the alarm however long the runner is silent.
+    const declared = relayAt({ liveRun: true });
+    await declared.sync(openDb(":memory:"));
+    declared.clock.at = min(24 * 60);
+    expect(await declared.get("/health")).toMatchObject({ status: 503, body: { status: "alert", runner: "down", alerts: ["runner_down"] } });
+    expect(await relayAt({ liveRun: true }).get("/health")).toMatchObject({ status: 503, body: { status: "alert", runner: "unknown" } });
+    // The runner back: live again at once.
+    await r.sync(openDb(":memory:"));
+    expect((await r.get("/health")).body).toMatchObject({ status: "ok", runner: "up" });
   });
 });

@@ -8,7 +8,7 @@ import { heldRefunds, heldThenRefused, lastReconciliation } from "../finance/rec
 import { frozen } from "../policy/rules.js";
 import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
-import { escalatedUndecided } from "../agents/disputeSource.js";
+import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -38,9 +38,14 @@ export function health(db: DB, now = new Date()): Health {
   if (frozen(db)) alerts.push({ code: "emergency_stop", severity: "critical", since: freeze?.ts ?? null, words: "The CFO pulled the emergency stop: no agent pays until it is lifted with Face ID." });
 
   // A dispute decision not fully carried out (a restart cut it off, or a refund was refused at payment): the runner's
-  // start finishes it (npm run s2 -- --resume-only); it is never decided again.
+  // start finishes it (npm run s2 -- --resume-only); it is never decided again. Not one whose dispute is with the CFO
+  // (dispute.escalated) with a refund or a proposal left: the runner's start leaves that to a person, who carries it out
+  // with npm run s2 -- --dispute <id> (the dispute review 2, LOW 4: codeMayCarryOut).
   // Critical once a refund could not be paid (it goes to the CFO as a proposal) or carrying out failed more than once.
-  for (const d of openDecisions(db)) alerts.push({ code: "dispute_decision_open", severity: d.handover.length || d.attempts >= HANDOVER_AFTER - 1 ? "critical" : "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; the runner's start or npm run s2 -- --resume-only finishes it, without deciding again.` });
+  for (const d of openDecisions(db)) {
+    const next = !codeMayCarryOut(db, d) ? `it is with the CFO: npm run s2 -- --dispute ${d.dispute_id} carries it out, without deciding again` : "the runner's start or npm run s2 -- --resume-only finishes it, without deciding again";
+    alerts.push({ code: "dispute_decision_open", severity: d.handover.length || d.attempts >= HANDOVER_AFTER - 1 ? "critical" : "warning", since: d.decided_at, words: `Dispute ${d.dispute_id} was decided at ${d.decided_at} but is not fully carried out${d.last_note ? ` (${d.last_note})` : ""}; ${next}.` });
+  }
   // A refund sent but held at Metal for over two hours is not refunded yet; one held and then refused was never refunded.
   for (const h of heldRefunds(db, now)) alerts.push({ code: "refund_held", severity: "warning", since: h.since, words: `Refund ${h.payment_id} (sale ${h.sale_id}) was sent but is held at Metal${h.since ? ` since ${h.since}` : ""}: not refunded yet. The hourly reconciliation looks it up on chain.` });
   for (const r of heldThenRefused(db)) alerts.push({ code: "refund_held_then_refused", severity: "critical", since: null, words: `Refund ${r.payment_id} (sale ${r.sale_id}) was held at Metal and then refused${r.reason ? ` (${r.reason})` : ""}: nothing was refunded for it.` });
@@ -59,6 +64,15 @@ export function health(db: DB, now = new Date()): Health {
   const stuck = db.prepare("SELECT p.proposal_id, MAX(a.ts) AS since FROM proposals p JOIN audit_log a ON a.subject = p.proposal_id AND a.event IN ('proposal.executing', 'proposal.resumed') WHERE p.status = 'EXECUTING' GROUP BY p.proposal_id").all() as { proposal_id: string; since: string }[];
   for (const s of stuck.filter((x) => now.getTime() - Date.parse(x.since) > STUCK_AFTER_MS)) {
     alerts.push({ code: "action_stuck", severity: "warning", since: s.since, words: `${s.proposal_id} has been executing since ${s.since}; a restart resumes it from its last finished step.` });
+  }
+  // dry-179 review: a mandate replace that failed after a step of it ran leaves the mandates half replaced. Its guard
+  // never closes it (src/executors/mandateReplace.ts) and the spending hold lifts at its expiry, so a person looks.
+  const halfRun = db.prepare(`SELECT p.proposal_id, (SELECT MAX(a.ts) FROM audit_log a WHERE a.subject = p.proposal_id AND a.event = 'proposal.failed') AS since,
+      (SELECT COUNT(*) FROM executions e WHERE e.proposal_id = p.proposal_id AND e.status = 'DONE') AS done
+    FROM proposals p WHERE p.kind = 'mandate_replace' AND p.status = 'FAILED'
+      AND EXISTS (SELECT 1 FROM executions e WHERE e.proposal_id = p.proposal_id AND e.status = 'DONE') ORDER BY p.proposal_id`).all() as { proposal_id: string; since: string | null; done: number }[];
+  for (const r of halfRun) {
+    alerts.push({ code: "replace_half_run", severity: "warning", since: r.since, words: `Mandate replace ${r.proposal_id} failed after ${r.done} of its steps ran on chain: the agents' mandates are half replaced. A retry carries on if its checks still hold; otherwise a person decides what is left.` });
   }
 
   const holdsOpen = has(db, "holds") ? (db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(cents), 0) AS cents, MIN(created_at) AS oldest FROM holds WHERE status = 'HELD'").get() as { n: number; cents: number; oldest: string | null }) : { n: 0, cents: 0, oldest: null };
