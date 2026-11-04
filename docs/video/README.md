@@ -1,6 +1,6 @@
 # The premiere: edit guide
 
-**Purser in 2:56**, a premiere-style film made from the main run of 3 November 2026 (world `main-1`,
+**Purser in 2:57**, a premiere-style film made from the main run of 3 November 2026 (world `main-1`,
 [run log](../runs/2026-11-03-main-run.md)). Dark, large and slow, letterboxed to 2.39:1. Every figure on screen is read
 from the run's record by code, and the render stops when one is missing. The script with every picture, line and
 source is [premiere-script.md](premiere-script.md); the voice-over to read aloud is [script.md](script.md); what Max
@@ -16,7 +16,7 @@ are also in this folder.
 | `clips/01-line.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip starts and ends on black, so you can cut between them anywhere. |
 | `clips/16-end-ai-voice.mp4` | The end card naming an AI voice in its credits. Use it instead of `16-end.mp4` only if the voice-over is AI-generated. |
 | `overlays/02-hook.png`, `overlays/08-faceid.png`, `overlays/10-try-sign.png`, `overlays/15-close.png` | Transparent 1920×1080 PNGs: the letterbox bars and the label for each recording slot. Put one on the track above the recording, for the slot's full length. |
-| `master.mp4` | All sixteen clips in order (2:56), silent, with stand-ins where the recordings go: the rough cut to edit against. |
+| `master.mp4` | All sixteen clips in order (2:57), silent, with stand-ins where the recordings go: the rough cut to edit against. |
 | `master-subtitled.mp4` | The same, with the English subtitles burned into the lower bar. |
 | `subtitles.srt` | The voice-over as English subtitles on the script's times (a copy is in this folder). |
 | `script.md`, `premiere-script.md` | The read-aloud script and the script table (copies are in this folder). |
@@ -42,12 +42,12 @@ line changes, render `13-specs` again.
 | 1:32 | `10-try-sign.mp4` | A mock of the live /try/sign page | **Max on /try/sign** with `overlays/10-try-sign.png` (or keep the mock) | Building again |
 | 1:48 | `11-one-cent.mp4` | +0.01, refused: “One cent. Worthless.” | | **Hard cut to silence**: no music, no voice |
 | 1:56 | `12-why-face-id.mp4` | Why Face ID, not a PIN | | The music comes back, softly |
-| 2:07 | `13-specs.mp4` | Four spec cards, 4 s each | | One card on each beat |
-| 2:23 | `14-real.mp4` | What's real, what's ours | | Steady, lower |
-| 2:36 | `15-close.mp4` | The closing line as a card, Max's name | **Max on camera** with `overlays/15-close.png`, or his voice over this card | Low, under Max's voice |
-| 2:50 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign | | The last swell; fade out with the picture |
+| 2:08 | `13-specs.mp4` | Four spec cards, 4 s each | | One card on each beat |
+| 2:24 | `14-real.mp4` | What's real, what's ours | | Steady, lower |
+| 2:37 | `15-close.mp4` | The closing line as a card, Max's name | **Max on camera** with `overlays/15-close.png`, or his voice over this card | Low, under Max's voice |
+| 2:51 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign | | The last swell; fade out with the picture |
 
-Without the AI hook, cut `02-hook.mp4`: the film is 2:48. With a 10-second hook it is 2:58. Never past 3:00.
+Without the AI hook, cut `02-hook.mp4`: the film is 2:49. With a 10-second hook it is 2:59. Never past 3:00.
 
 ## Max's recordings
 
@@ -56,7 +56,7 @@ Without the AI hook, cut `02-hook.mp4`: the film is 2:48. With a 10-second hook 
    `overlays/08-faceid.png` above it: the label says it was filmed after the run, on a test proposal, with test money.
    Keep that label on screen the whole time.
 2. **The opening and the closing line.** The opening is his voice over `03-pen.mp4` (“So who holds the pen? I'm Max
-   Geurtsen, and this is Purser.”). The closing (2:36) is Max on camera, with `overlays/15-close.png` (his name, lower
+   Geurtsen, and this is Purser.”). The closing (2:37) is Max on camera, with `overlays/15-close.png` (his name, lower
    left) above it; or only his voice over `15-close.mp4`, which shows the same line as text.
 3. **/try/sign (1:32, 16 s).** His own visit to the live page on his phone, signing with Face ID and then pressing
    “Try to tamper” ([opnames-max.md](opnames-max.md), 3). Use it with `overlays/10-try-sign.png`, or keep the rendered

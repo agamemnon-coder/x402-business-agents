@@ -103,65 +103,69 @@ agent's proposal with your own Face ID.
 The server checks the signature against the exact terms.
 
 27
-00:01:56,500 --> 00:01:59,350
+00:01:56,400 --> 00:01:59,250
 Why Face ID, and not a PIN?
 
 28
-00:01:59,500 --> 00:02:02,522
-Unlike a PIN, Face ID signs the exact terms:
+00:01:59,400 --> 00:02:01,328
+A PIN is the same for every
 
 29
-00:02:02,572 --> 00:02:06,850
-change anything after signing, and the signature is worthless.
+00:02:01,378 --> 00:02:04,333
+payment; Face ID signs these exact terms:
 
 30
-00:02:07,500 --> 00:02:09,050
-All tests passing.
+00:02:04,383 --> 00:02:07,850
+change anything, and the signature is worthless.
 
 31
-00:02:11,400 --> 00:02:13,270
-An audit log, hash-chained:
+00:02:08,500 --> 00:02:10,050
+All tests passing.
 
 32
-00:02:13,320 --> 00:02:14,550
-check it yourself.
+00:02:12,400 --> 00:02:14,270
+An audit log, hash-chained:
 
 33
-00:02:15,400 --> 00:02:17,750
-Two stopped at a limit.
+00:02:14,320 --> 00:02:15,550
+check it yourself.
 
 34
-00:02:19,400 --> 00:02:22,150
-Twenty-four of twenty-four decisions by Claude.
+00:02:16,400 --> 00:02:18,750
+Two stopped at a limit.
 
 35
-00:02:23,500 --> 00:02:27,850
-Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID.
+00:02:20,400 --> 00:02:23,150
+Twenty-four of twenty-four decisions by Claude.
 
 36
-00:02:28,300 --> 00:02:29,494
-Ours, or simulated:
+00:02:24,500 --> 00:02:28,850
+Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID.
 
 37
-00:02:29,544 --> 00:02:32,505
-the suppliers, the customer, the merchant, and
+00:02:29,300 --> 00:02:30,494
+Ours, or simulated:
 
 38
-00:02:32,555 --> 00:02:35,450
-the second approver, a labelled test passkey.
+00:02:30,544 --> 00:02:33,505
+the suppliers, the customer, the merchant, and
 
 39
-00:02:36,500 --> 00:02:39,850
-A price shock, a dispute, a euro bill.
+00:02:33,555 --> 00:02:36,450
+the second approver, a labelled test passkey.
 
 40
-00:02:40,000 --> 00:02:43,661
-Claude decided, the rails and the code held the
+00:02:37,500 --> 00:02:40,850
+A price shock, a dispute, a euro bill.
 
 41
-00:02:43,711 --> 00:02:47,450
-limits, and I signed only what went beyond them.
+00:02:41,000 --> 00:02:44,661
+Claude decided, the rails and the code held the
 
 42
-00:02:47,600 --> 00:02:49,550
+00:02:44,711 --> 00:02:48,450
+limits, and I signed only what went beyond them.
+
+43
+00:02:48,600 --> 00:02:50,550
 Purser, Starter Kit 11.

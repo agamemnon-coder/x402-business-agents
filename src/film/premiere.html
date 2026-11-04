@@ -375,9 +375,10 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       };
     },
     "12-why-face-id": function (L, S) {
-      var qn = put(L, E("div", "hl c acc", S.q), 0, 150);
-      var a1 = put(L, E("div", "hm c", S.a[0]), 0, 330), a2 = put(L, E("div", "hm c", S.a[1]), 0, 412);
-      return function (t) { rise(qn, t, .4); rise(a1, t, 3.4); rise(a2, t, 6.4); };
+      var qn = put(L, E("div", "hl c acc", S.q), 0, 132);
+      var at = [3.4, 5.8, 8.2];
+      var lines = S.a.map(function (s, i) { return put(L, E("div", "hm c", s), 0, 300 + i * 78); });
+      return function (t) { rise(qn, t, .4); lines.forEach(function (n, i) { rise(n, t, at[i]); }); };
     },
     "13-specs": function (L, S, ov, seconds) {
       var cards = S.cards.map(function (c) {

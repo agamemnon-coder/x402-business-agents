@@ -312,7 +312,7 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
     },
     "12-why-face-id": {
       q: "Why Face ID, not a PIN?",
-      a: ["Unlike a PIN, Face ID signs the hash of the exact terms:", "change anything after signing, and the signature is worthless."],
+      a: ["A PIN is the same for every payment;", "Face ID signs the hash of these exact terms:", "change anything after signing, and the signature is worthless."],
     },
     "13-specs": {
       cards: [
@@ -373,8 +373,8 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       { at: 9.2, who: "Voice", text: "The server checks the signature against the exact terms." },
     ],
     "12-why-face-id": [
-      { at: 0.5, who: "Voice", text: "Why Face ID, and not a PIN?" },
-      { at: 3.5, who: "Voice", text: "Unlike a PIN, Face ID signs the exact terms: change anything after signing, and the signature is worthless." },
+      { at: 0.4, who: "Voice", text: "Why Face ID, and not a PIN?" },
+      { at: 3.4, who: "Voice", text: "A PIN is the same for every payment; Face ID signs these exact terms: change anything, and the signature is worthless." },
     ],
     "13-specs": [
       { at: 0.5, who: "Voice", text: "All tests passing." },

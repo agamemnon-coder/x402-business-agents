@@ -201,7 +201,7 @@ describe("the /try/sign mock says what the live page says", () => {
 describe("the premiere's script", () => {
   it("fits in three minutes, with the optional hook as one clip to cut", () => {
     expect(premiereSeconds()).toBeLessThanOrEqual(180);
-    expect(premiereSeconds()).toBe(176);
+    expect(premiereSeconds()).toBe(177);
     expect(timeline.at(-1)!.start + timeline.at(-1)!.seconds).toBe(premiereSeconds());
     expect(PREMIERE_SCENES.find((s) => s.id === "02-hook")).toMatchObject({ kind: "slot", seconds: 8 });
     expect(PREMIERE_SCENES.filter((s) => s.kind === "slot").map((s) => s.id)).toEqual(["02-hook", "08-faceid", "15-close"]);
