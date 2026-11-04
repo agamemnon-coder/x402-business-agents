@@ -9,10 +9,13 @@
 //   --stills   a PNG of three moments of each scene in out/video/stills/, for a quick look, and nothing else
 //   --check    draws every scene in a browser and fails on a page error, and nothing else
 //   --film     the earlier film of the 30 October recording (src/video/plan.ts) into out/video/film/, as before
+//   --slot 08-faceid=<file>[@<start>-<end>], --slot 10-try-sign=<file>[@<start>-<end>]: Max's own portrait phone
+//              recordings, laid into a phone frame beside the scene's captions (src/film/slots.ts); without one the
+//              scene keeps its stand-in
 // Nothing here is live: the pages are the recordings, as npm run judge serves them.
 
-import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
 import express from "express";
@@ -20,14 +23,16 @@ import { chromium } from "playwright";
 import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { BEATS, scriptMarkdown, subtitlesSrt, totalSeconds, type Action, type Beat } from "../video/plan.js";
 import { PREMIERE_CSP, loadPremiere, premierePage } from "../film/premiere.js";
-import { MASTER_CLIPS, OVERLAYS, premiereAss, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline } from "../film/premiereScript.js";
+import { MASTER_CLIPS, OVERLAYS, pageScenes, premiereAss, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, sceneFade } from "../film/premiereScript.js";
+import { SLOT_RADIUS, maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed, type SlotFile } from "../film/slots.js";
 
 const FPS = 60;
 const root = resolve(import.meta.dirname, "../..");
 const film = process.argv.includes("--film");
 const out = resolve(root, process.env.VIDEO_OUT ?? "out/video", film ? "film" : ".");
 const check = process.argv.includes("--check");
-const only = new Set(process.argv.slice(2).filter((a) => !a.startsWith("--")));
+const args = parseSlotArgs(process.argv.slice(2));
+const only = new Set(args.rest.filter((a) => !a.startsWith("--")));
 // The premiere's figures, read from the main run's record now: a missing one stops everything before a frame is drawn.
 const premiere = loadPremiere();
 const timeline = premiereTimeline();
@@ -39,7 +44,7 @@ function server(): Promise<{ url: string; close: () => void }> {
   app.get("/", send(CSP, PAGE));
   app.get("/live", send(LIVE_CSP, livePage()));
   app.get("/film", send(FILM_CSP, filmPage()));
-  app.get("/premiere", send(PREMIERE_CSP, premierePage(premiere, timeline.map((x) => ({ id: x.id, start: x.start, seconds: x.seconds, kind: x.kind })))));
+  app.get("/premiere", send(PREMIERE_CSP, premierePage(premiere, pageScenes())));
   app.get("/demo", send(DEMO_CSP, demoPage()));
   app.get("/month", send(MONTH_CSP, monthPage()));
   app.get("/lab", send(LAB_CSP, labPage()));
@@ -185,6 +190,41 @@ async function checkPlan(browser: import("playwright").Browser, base: string): P
   return problems;
 }
 
+/** A recording's upright size (a phone's rotation applied) and length. */
+function probe(file: string): { w: number; h: number; duration: number } {
+  if (!existsSync(file)) throw new Error(`video: no recording at ${file}`);
+  const j = JSON.parse(execFileSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height:stream_side_data=rotation:format=duration", "-of", "json", file], { encoding: "utf8" })) as
+    { streams?: { width: number; height: number; side_data_list?: { rotation?: number }[] }[]; format?: { duration?: string } };
+  const st = j.streams?.[0];
+  if (!st) throw new Error(`video: ${file} has no video`);
+  const turned = Math.abs(st.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? 0) % 180 === 90;
+  return { w: turned ? st.height : st.width, h: turned ? st.width : st.height, duration: Number(j.format?.duration ?? 0) };
+}
+
+/** Each recording given with --slot: its scene, the box it fills, its window and how fast it plays. */
+const slots = new Map(args.slots.map((sl: SlotFile) => {
+  const scene = timeline.find((x) => x.id === sl.id)!;
+  const p = probe(sl.file);
+  const from = sl.from ?? 0, to = sl.to ?? p.duration;
+  if (to > p.duration + 0.05) throw new Error(`video: --slot ${sl.id}: the window ends at ${to} s, the recording at ${p.duration.toFixed(2)} s`);
+  const box = slotBox(sl.id, p.w / p.h);
+  return [sl.id, { ...sl, scene, box, from, seconds: to - from, speed: slotSpeed(to - from, scene.seconds) }] as const;
+}));
+
+/** Lays a recording into its scene's clip: cut to its window, into the frame the page drew, corners rounded, faded with the scene. */
+async function laySlot(id: string): Promise<void> {
+  const sl = slots.get(id as SlotFile["id"])!;
+  const clip = resolve(out, "clips", `${id}.mp4`), tmp = resolve(out, "clips", `${id}.with-recording.mp4`);
+  mkdirSync(resolve(out, "slots"), { recursive: true });
+  const mask = resolve(out, "slots", `mask-${sl.box.w}x${sl.box.h}.png`);
+  await ffmpeg(["-f", "lavfi", "-i", `color=c=black:s=${sl.box.w}x${sl.box.h},format=gray`, "-vf", `geq=lum='${maskExpr(SLOT_RADIUS)}'`, "-frames:v", "1", mask]);
+  await ffmpeg(["-i", clip, "-ss", String(sl.from), "-t", String(sl.seconds), "-i", sl.file, "-loop", "1", "-i", mask,
+    "-filter_complex", slotFilter({ box: sl.box, seconds: sl.scene.seconds, speed: sl.speed, fade: sceneFade(sl.scene) }), "-map", "[v]", "-an",
+    "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-t", String(sl.scene.seconds), "-movflags", "+faststart", tmp]);
+  renameSync(tmp, clip);
+  console.log(`slot     ${id}: ${sl.file} ${sl.from}–${sl.from + sl.seconds} s${sl.speed > 1 ? ` at ${sl.speed}× speed` : ""}, laid into its frame`);
+}
+
 /** --check for the premiere: every scene drawn at several moments, with no page error and its layer on screen. */
 async function checkPremiere(browser: import("playwright").Browser, base: string): Promise<number> {
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
@@ -293,12 +333,17 @@ if (process.argv.includes("--stills")) {
   await browser.close(); srv.close();
   process.exit(0);
 }
-const beats: Beat[] = film ? BEATS : premiereBeats(premiere);
+// A scene with a recording is drawn with an empty frame where the recording goes, then the recording is laid in.
+const beats: Beat[] = (film ? BEATS : premiereBeats(premiere)).map((b) => {
+  const sl = slots.get(b.id as SlotFile["id"]);
+  return sl ? { ...b, shots: b.shots.map((x) => ({ ...x, path: `${x.path}&rec=${sl.box.x},${sl.box.y},${sl.box.w},${sl.box.h}&recfor=${b.id}&speed=${sl.speed}` })) } : b;
+});
 const t0 = Date.now();
 for (const beat of beats) {
   if (only.size && !only.has(beat.id)) continue;
   const s = Date.now();
   await recordBeat(browser, srv.url, beat);
+  if (slots.has(beat.id as SlotFile["id"])) await laySlot(beat.id);
   console.log(`clip     ${beat.id}.mp4 (${beat.shots.reduce((a, x) => a + x.seconds, 0)} s) in ${Math.round((Date.now() - s) / 1000)} s`);
 }
 if (!film) await overlays(browser, srv.url);

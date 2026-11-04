@@ -75,16 +75,16 @@ The Treasury agent planned a euro payment.
 The phone shows the exact terms.
 
 20
-00:01:12,600 --> 00:01:17,250
+00:01:12,300 --> 00:01:16,650
 Six seconds from Face ID to paid, in the Airwallex sandbox.
 
 21
-00:01:17,400 --> 00:01:19,650
-That is the transfer id.
+00:01:16,800 --> 00:01:20,050
+In the sandbox, the settlement itself is simulated.
 
 22
-00:01:19,800 --> 00:01:21,750
-Look it up yourself.
+00:01:20,200 --> 00:01:23,350
+Every id is on the proof page.
 
 23
 00:01:24,600 --> 00:01:26,450

@@ -226,11 +226,11 @@ describe("review S3 and S5: the checks before anything is done", () => {
     const r = cli({ KIT11_DB: join(dir, "w.sqlite"), AIRWALLEX_CLIENT_ID: "stand-in", AIRWALLEX_API_KEY: "stand-in" });
     expect(r.status).toBe(2);
     expect(r.stderr).toMatch(/Anthropic key is not set/);
-  });
+  }, 60_000); // the CLI is a child process (node + tsx): its start-up alone can pass vitest's 5 s default under a loaded runner
   it("CLI: stops when TAP_REF_DIR is not a clone at 16d59bd, and creates no ledger", () => {
     const r = cli({ KIT11_DB: join(dir, "w.sqlite"), AIRWALLEX_CLIENT_ID: "stand-in", AIRWALLEX_API_KEY: "stand-in", KIT11_ANTHROPIC_API_KEY: "stand-in", TAP_REF_DIR: dir });
     expect(r.status).toBe(2);
     expect(r.stderr).toMatch(/clone at 16d59bd, tracked files unchanged/);
     expect(existsSync(join(dir, "w.sqlite"))).toBe(false);
-  });
+  }, 60_000);
 });
