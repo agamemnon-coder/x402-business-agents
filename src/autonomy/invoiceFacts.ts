@@ -13,10 +13,11 @@
 // The allowlist is code's own (holdout H6, dry-177): the payees seedTreasury records and the ledger's active
 // beneficiaries (payeeAllowlist), so a fresh world's first wake, before any Treasury flow ran, does not call the
 // licensor "an unlisted vendor". An invoice under an allowlisted name whose IBAN or BIC is not the one on file for
-// that name is flagged and not offered for planning; its own bank details are never repeated.
+// that name is flagged and not offered for planning; its own bank details are never repeated. So is one checkInvoice
+// would refuse by its own checks (review 2): a payee the CFO policy blocks, or an amount other than its contracted fee.
 
 import { ALLOWLISTED_PAYEES, invoiceAlreadyHandled, invoiceKey, measuredSwiftFeesCents, payeeAllowlist, treasuryState, type AllowlistedPayee } from "../agents/euroBill.js";
-import { ibanSha, parseInvoiceFallback } from "../agents/invoice.js";
+import { ibanSha, offContract, parseInvoiceFallback, payeeBlocked } from "../agents/invoice.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { feeReserveCents, feeReserveOverCap, planInvoice } from "../policy/treasury.js";
@@ -272,6 +273,13 @@ export function invoiceFacts(db: DB, now = new Date(), plans: PlannedInvoice | n
     const bank = bankOf(r.text);
     return bank && mine.some((p) => p.ibanSha256 === bank.ibanSha256 && p.bic === bank.bic) ? null : `its IBAN or BIC is not the one on file for ${r.vendor.trim()}`;
   };
+  /** What checkInvoice itself refuses of an allowlisted payee, with its own checks (review 2, LOW 3: else the facts
+   *  offered an invoice plan_invoice then refused): the CFO policy blocks the payee, or it asks other than its
+   *  contracted fee. */
+  const refused = (r: Received): string | null => {
+    const name = r.vendor.trim();
+    return payees.some((p) => p.name === name) ? payeeBlocked(db, name) ?? offContract(name, r.amount) : null;
+  };
   const planKey = plans && vouchedInvoiceNo(plans.invoice_no) && wellFormed(plans) ? invoiceKey(plans.invoice_no) : null;
   const match = planKey ? plannedMatch(db, plans) : null;
   const { byKey, unreadable } = received(db);
@@ -286,7 +294,7 @@ export function invoiceFacts(db: DB, now = new Date(), plans: PlannedInvoice | n
       const gate = tool ? match : null;
       const conflict = gate?.status === "differs" ? `a copy that came in differs from the invoice plan_invoice plans (${gate.fields})`
         : gate && gate.status !== "arrived" ? "code cannot read or vouch for the invoice plan_invoice plans"
-        : other ? `a copy that came in differs from the first copy (${diff(other, ref)})` : [ref, ...copies].map(offFile).find((x) => x) ?? null;
+        : other ? `a copy that came in differs from the first copy (${diff(other, ref)})` : [ref, ...copies].map(offFile).find((x) => x) ?? refused(ref);
       return { invoice_no: copies[0]!.invoice_no, vendor: named(ref.vendor), amount: ref.amount, currency: ref.currency, due_date: ref.due_date,
         handled: invoiceAlreadyHandled(db, ref.invoice_no, now, copies[0]!.invoice_no), lastPlan: lastPlanOf(ref.invoice_no), conflict };
     });
