@@ -10,9 +10,20 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { closeAsStale } from "../policy/approvals.js";
 import { hubDecisionsEnabled, hubEndpoint, hubPushEnabled } from "./config.js";
-import { fetchDecisions, pushRuns, type DecisionsRead, type HubDeps } from "./client.js";
+import { fetchDecisions, pushRuns, type DecisionsRead, type HubDecision, type HubDeps } from "./client.js";
 import type { HubOutcome } from "./gate.js";
 import { buildPushBody, lastConsult, runIdOf, worldId } from "./runs.js";
+
+/**
+ * The hub's decision on this run, if it counts: under this world's exact run id, with a readable `at` no earlier than
+ * the proposal itself. Anything else is no decision.
+ */
+export function decisionFor(decisions: Map<string, HubDecision>, runId: string, createdAt: string): { decision: HubDecision | undefined; ignored: string | null } {
+  const d = decisions.get(runId);
+  if (!d) return { decision: undefined, ignored: null };
+  if (d.at === undefined || !(Date.parse(d.at) >= Date.parse(createdAt))) return { decision: undefined, ignored: "no readable time, or decided before the proposal existed" };
+  return { decision: d, ignored: null };
+}
 
 const safeWord = (s: string | undefined) => (s && /^[a-z0-9_-]{1,32}$/i.test(s) ? s : null);
 
@@ -32,25 +43,39 @@ export async function consultHub(db: DB, proposalId: string, deps: HubDeps, read
   const got = read ?? await fetchDecisions(deps, hubEndpoint(env));
   const now = (deps.now ?? (() => new Date()))();
   if (!got.ok) {
+    // No fallback for a run the hub already held ("no decision yet"), nor for a restart's re-run of an approved proposal
+    // (src/policy/saga.ts): otherwise it would slip past the hub just because the hub went down. Only an execution a
+    // person just started falls back to the approval alone.
+    const before = lastConsult(db, p.proposal_id);
+    const held = before?.outcome === "none" && before.terms_sha256 === p.terms_sha256;
+    const restart = (db.prepare("SELECT event FROM audit_log WHERE subject = ? AND event IN ('proposal.resumed', 'hub.consulted') ORDER BY seq DESC LIMIT 1").get(p.proposal_id) as { event: string } | undefined)?.event === "proposal.resumed";
+    if (held || restart) {
+      const why = held ? "the hub held this run before and cannot be read now; nothing runs" : "a restart never runs a proposal on the fallback; it waits for the hub's decision";
+      audit(db, "system", "hub.consulted", p.proposal_id, { run_id: runId, outcome: "none", reason: got.reason, held: why, terms_sha256: p.terms_sha256 }, now);
+      deps.log?.(`hub      unreachable (${got.reason}) for ${p.proposal_id}: ${why}`);
+      return "none";
+    }
     // Fallback: the existing approval alone decides, as without the hub. Recorded, so the run shows the hub was not asked.
     audit(db, "system", "hub.consulted", p.proposal_id, { run_id: runId, outcome: "unreachable", reason: got.reason, terms_sha256: p.terms_sha256 }, now);
     deps.log?.(`hub      unreachable (${got.reason}) for ${p.proposal_id}: the Face ID approval alone decides`);
     return "unreachable";
   }
-  let d = got.decisions.get(runId);
-  let ignored: string | null = null;
-  if (d?.at !== undefined && !(Date.parse(d.at) >= Date.parse(p.created_at))) {
-    ignored = "decided before the proposal existed, or at no readable time";
-    d = undefined;
-  }
+  const { decision: d, ignored } = decisionFor(got.decisions, runId, p.created_at);
   const outcome: HubOutcome = d ? d.decision : "none";
   audit(db, "system", "hub.consulted", p.proposal_id, {
     run_id: runId, outcome, terms_sha256: p.terms_sha256,
     ...(d ? { by: safeWord(d.by), at: d.at ?? null } : {}), ...(ignored ? { ignored } : {}),
   }, now);
   if (outcome === "reject") {
-    closeAsStale(db, p.proposal_id, { error: "rejected on the hub (Cardputer); nothing runs, a new proposal is needed", by: "hub" }, {}, now);
-    deps.log?.(`hub      ${p.proposal_id} rejected on the hub: closed, nothing runs`);
+    // Closed for good only when nothing of it ever ran. A FAILED proposal with steps done (a half-replaced mandate)
+    // stays FAILED, so its holds stay in force; the recorded reject keeps the gate shut for it.
+    const begun = !!db.prepare("SELECT 1 FROM money_steps WHERE action_id = ?").get(p.proposal_id);
+    if (p.status === "APPROVED" && !begun) {
+      closeAsStale(db, p.proposal_id, { error: "rejected on the hub (Cardputer); nothing runs, a new proposal is needed", by: "hub" }, {}, now);
+      deps.log?.(`hub      ${p.proposal_id} rejected on the hub: closed, nothing runs`);
+    } else {
+      deps.log?.(`hub      ${p.proposal_id} rejected on the hub: nothing runs (kept ${p.status}, its holds stay)`);
+    }
   } else if (outcome === "none") {
     deps.log?.(`hub      ${p.proposal_id} approved with Face ID; waits for the hub's decision`);
   }
@@ -70,11 +95,15 @@ export class HubLoop {
 
   /** Proposals approved by a person whose last hub answer was "no decision yet". */
   waiting(): string[] {
-    const rows = this.db.prepare("SELECT proposal_id, terms_sha256 FROM proposals WHERE status = 'APPROVED' ORDER BY created_at").all() as { proposal_id: string; terms_sha256: string }[];
+    const rows = this.db.prepare("SELECT proposal_id, terms_sha256, created_at FROM proposals WHERE status = 'APPROVED' ORDER BY created_at").all() as { proposal_id: string; terms_sha256: string; created_at: string }[];
     return rows.filter((r) => {
       const c = lastConsult(this.db, r.proposal_id);
       return c?.outcome === "none" && c.terms_sha256 === r.terms_sha256 && !this.inflight.has(r.proposal_id);
     }).map((r) => r.proposal_id);
+  }
+
+  private createdAt(id: string): string {
+    return (this.db.prepare("SELECT created_at FROM proposals WHERE proposal_id = ?").get(id) as { created_at: string }).created_at;
   }
 
   /** Runs what the hub has decided on. Returns the ids handed to execute (their runs go on in the background). */
@@ -86,7 +115,8 @@ export class HubLoop {
     const read = await fetchDecisions(this.deps, hubEndpoint(env));
     if (!read.ok) return [];
     const world = worldId(this.db);
-    const decided = ids.filter((id) => read.decisions.has(runIdOf(world, id)));
+    // Only a decision that counts (src/hub/consult.ts decisionFor): an ignored one would only record "none" each tick.
+    const decided = ids.filter((id) => decisionFor(read.decisions, runIdOf(world, id), this.createdAt(id)).decision !== undefined);
     for (const id of decided) {
       this.inflight.add(id);
       void this.execute(this.db, id, read).then(

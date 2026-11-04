@@ -54,7 +54,7 @@ export async function pushRuns(db: DB, deps: HubDeps): Promise<{ ok: true; runs:
   }
 }
 
-/** One decision as the hub keeps it. Anything else in an entry makes that entry count as no decision. */
+/** One decision as the hub keeps it. An entry without a valid decision counts as none; unknown fields are dropped. */
 const DecisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
   at: z.string().max(40).optional(),

@@ -46,13 +46,13 @@ interface ProposalLike {
 }
 
 /**
- * This ledger's world: its file name and the start of its first audit row's hash. Two worlds never share it (the first
- * row carries its own time), so a decision the hub kept for another world's P-0005 never matches this one's.
+ * This ledger's world: "w-" and the start of its first audit row's hash. Two worlds never share it (the first row
+ * carries its own time), so a decision the hub kept for another world's P-0005 never matches this one's. Nothing of the
+ * ledger's file name goes out: it could name a person.
  */
 export function worldId(db: DB): string {
-  const name = (db.name || "memory").split(/[\\/]/).pop()!.replace(/\.sqlite$/, "").replace(/[^a-z0-9-]/gi, "").toLowerCase().slice(0, 12) || "memory";
   const first = db.prepare("SELECT row_hash FROM audit_log ORDER BY seq LIMIT 1").get() as { row_hash: string } | undefined;
-  return `${name}-${first ? first.row_hash.slice(0, 6) : "new"}`;
+  return `w-${first ? first.row_hash.slice(0, 10) : "new"}`;
 }
 
 export const runIdOf = (world: string, proposalId: string) => `${world}/${proposalId}`;

@@ -67,7 +67,7 @@ describe("the push body", () => {
     expect(Object.keys(body).sort()).toEqual(["mode", "runs", "title"]);
     expect(body.mode).toBe("dry-run");
     expect(body.title).toBe("Purser");
-    expect(body.runs).toEqual([{ id: expect.stringMatching(/^memory-[0-9a-f]{6}\/P-0001$/), agent: "treasury", what: "Invoice payment", amount: "240.00", currency: "EUR", check: "pass", rule: "invoice_payout_needs_person", human: "waiting" }]);
+    expect(body.runs).toEqual([{ id: expect.stringMatching(/^w-[0-9a-f]{10}\/P-0001$/), agent: "treasury", what: "Invoice payment", amount: "240.00", currency: "EUR", check: "pass", rule: "invoice_payout_needs_person", human: "waiting" }]);
     expect(id).toBe("P-0001");
   });
 

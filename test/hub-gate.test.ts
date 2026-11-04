@@ -124,7 +124,7 @@ describe("the hub gate (HUB_DECISIONS_ENABLED=on)", () => {
     db.pragma("foreign_keys = OFF");
     db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES ('req-other', 'btx-1', '240.00', 'EUR', 'SWIFT', '0.00', 'PAID', 'x', 'now')").run();
     db.pragma("foreign_keys = ON");
-    await consultHub(db, id, { ...deps(fakeHub({ decisions: { [runId(id)]: { decision: "approve" } } })), now: () => T0 });
+    await consultHub(db, id, { ...deps(fakeHub({ decisions: { [runId(id)]: { decision: "approve", at: "2026-11-04T10:00:05Z" } } })), now: () => T0 });
     const pre = vi.fn();
     // Fails if: the duplicate-invoice check is not part of the run's check.
     expect(() => beginExecution(db, id, pre, T0)).toThrow(/duplicate_invoice/);
@@ -160,6 +160,19 @@ describe("the hub gate (HUB_DECISIONS_ENABLED=on)", () => {
     expect(events("hub.consulted", id)).toEqual([expect.objectContaining({ outcome: "unreachable" })]);
   });
 
+  it("keeps a run the hub held waiting when the hub then goes down (a restart runs approved proposals again)", async () => {
+    const id = proposal(devTerms, { createdBy: "system" });
+    const hub = fakeHub();
+    await expect(execute(db, id, undefined, deps(hub))).rejects.toThrow(/waits for the hub/);
+    hub.state.mode = "down";
+    const { resumeInterrupted } = await import("../src/policy/saga.js");
+    const out = await resumeInterrupted(db, (d, pid) => execute(d, pid, undefined, deps(hub)));
+    // Fails if: an unreachable hub lets a run it had held execute on Face ID alone.
+    expect(out).toEqual([{ id, outcome: expect.stringContaining("waits for the hub") }]);
+    expect(status(id)).toBe("APPROVED");
+    expect(events("hub.consulted", id).map((e) => e.outcome)).toEqual(["none", "none"]);
+  });
+
   it("falls back the same way when no hub address or token is set", async () => {
     vi.stubEnv("HUB_URL", "");
     const id = proposal(devTerms, { createdBy: "system" });
@@ -172,7 +185,7 @@ describe("the hub gate (HUB_DECISIONS_ENABLED=on)", () => {
 
   it("ignores decisions for unknown run ids and for another world's run with the same proposal id", async () => {
     const id = proposal(devTerms, { createdBy: "system" });
-    const hub = fakeHub({ decisions: { "other-1-abcdef/P-0001": { decision: "approve" }, "P-0001": { decision: "approve" }, [runId("P-0999")]: { decision: "approve" } } });
+    const hub = fakeHub({ decisions: { "other-1-abcdef/P-0001": { decision: "approve", at: "2026-11-04T10:00:05Z" }, "P-0001": { decision: "approve", at: "2026-11-04T10:00:05Z" }, [runId("P-0999")]: { decision: "approve", at: "2026-11-04T10:00:05Z" } } });
     // Fails if: a decision under any other key than this world's exact run id counts.
     await expect(execute(db, id, undefined, deps(hub))).rejects.toThrow(/waits for the hub's decision/);
     expect(status(id)).toBe("APPROVED");
@@ -187,6 +200,39 @@ describe("the hub gate (HUB_DECISIONS_ENABLED=on)", () => {
     await expect(execute(db, b, undefined, deps(hub))).rejects.toThrow(/waits for the hub/);
     expect(events("hub.consulted", a)[0]).toMatchObject({ outcome: "none", ignored: expect.stringContaining("before the proposal") });
     expect([status(a), status(b)]).toEqual(["APPROVED", "APPROVED"]);
+  });
+
+  it("ignores a decision without a time", async () => {
+    const id = proposal(devTerms, { createdBy: "system" });
+    await expect(execute(db, id, undefined, deps(fakeHub({ decisions: { [runId(id)]: { decision: "approve" } } })))).rejects.toThrow(/waits for the hub/);
+    expect(status(id)).toBe("APPROVED");
+  });
+
+  it("does not fall back on a restart's re-run of an approved proposal while the hub is down", async () => {
+    const id = proposal(devTerms, { createdBy: "system" });
+    const { resumeInterrupted } = await import("../src/policy/saga.js");
+    const hub = fakeHub({ mode: "down" });
+    const out = await resumeInterrupted(db, (d, pid) => execute(d, pid, undefined, deps(hub)));
+    // Fails if: a restart executes on Face ID alone without a hub decision (an automatic execution).
+    expect(out).toEqual([{ id, outcome: expect.stringContaining("waits for the hub") }]);
+    expect(status(id)).toBe("APPROVED");
+    // Once the hub is back and approves, the loop runs it.
+    hub.state.mode = "ok";
+    hub.state.decisions = { [runId(id)]: { decision: "approve", at: "2026-11-04T10:01:00Z" } };
+    const loop = new HubLoop(db, deps(hub), (d, pid, read) => execute(d, pid, read, deps(hub)));
+    expect(await loop.tick()).toEqual([id]);
+    await vi.waitFor(() => expect(status(id)).toBe("EXECUTED"));
+  });
+
+  it("keeps a half-done FAILED proposal FAILED on a hub reject, so its holds stay", async () => {
+    const id = proposal(devTerms, { createdBy: "system" });
+    db.prepare("UPDATE proposals SET status = 'FAILED' WHERE proposal_id = ?").run(id);
+    db.prepare("INSERT INTO money_steps (action_id, n, step, key, status, updated_at) VALUES (?, 1, 'step-1', 'req-1', 'DONE', 'now')").run(id);
+    const hub = fakeHub({ decisions: { [runId(id)]: { decision: "reject", at: "2026-11-04T10:00:05Z" } } });
+    await expect(execute(db, id, undefined, deps(hub))).rejects.toThrow(/rejected on the hub/);
+    // Fails if: a hub reject closes a proposal that already moved something (a replace hold would be released).
+    expect(status(id)).toBe("FAILED");
+    expect(() => beginExecution(db, id, () => {}, new Date())).toThrow(/rejected on the hub/);
   });
 
   it("refuses at the gate itself while the hub has no decision on the run", async () => {
@@ -206,7 +252,7 @@ describe("the hub gate (HUB_DECISIONS_ENABLED=on)", () => {
 
   it("refuses a consult that is too old or was made on other terms", async () => {
     const id = proposal(devTerms, { createdBy: "system" });
-    const hub = fakeHub({ decisions: { [runId(id)]: { decision: "approve" } } });
+    const hub = fakeHub({ decisions: { [runId(id)]: { decision: "approve", at: "2026-11-04T10:00:05Z" } } });
     await consultHub(db, id, { ...deps(hub), now: () => T0 });
     const late = new Date(T0.getTime() + CONSULT_FRESH_MS + 1000);
     // Fails if: an old approve keeps counting for a later execution.
@@ -216,7 +262,7 @@ describe("the hub gate (HUB_DECISIONS_ENABLED=on)", () => {
 
   it("lets a restart resume an execution it gated when it began", async () => {
     const id = proposal(devTerms, { createdBy: "system" });
-    await consultHub(db, id, { ...deps(fakeHub({ decisions: { [runId(id)]: { decision: "approve" } } })), now: () => T0 });
+    await consultHub(db, id, { ...deps(fakeHub({ decisions: { [runId(id)]: { decision: "approve", at: "2026-11-04T10:00:05Z" } } })), now: () => T0 });
     beginExecution(db, id, () => {}, T0);
     resuming.add(id);
     try {
@@ -230,7 +276,7 @@ describe("the hub gate (HUB_DECISIONS_ENABLED=on)", () => {
   it("re-pushes the run with human approved after it executed", async () => {
     vi.stubEnv("HUB_PUSH_ENABLED", "on");
     const id = proposal(devTerms, { createdBy: "system" });
-    const hub = fakeHub({ decisions: { [runId(id)]: { decision: "approve" } } });
+    const hub = fakeHub({ decisions: { [runId(id)]: { decision: "approve", at: "2026-11-04T10:00:05Z" } } });
     await execute(db, id, undefined, deps(hub));
     await vi.waitFor(() => expect(hub.calls.some((c) => c.url.endsWith("/push/purser"))).toBe(true));
     const pushed = JSON.parse(hub.calls.find((c) => c.url.endsWith("/push/purser"))!.body!) as { runs: { id: string; human: string; check: string }[] };
@@ -270,7 +316,7 @@ describe("with HUB_DECISIONS_ENABLED off", () => {
   it("behaves as before: no hub call, no hub record, the approval alone runs it", async () => {
     vi.stubEnv("HUB_DECISIONS_ENABLED", "");
     const id = proposal(devTerms, { createdBy: "system" });
-    const hub = fakeHub({ decisions: { [runId(id)]: { decision: "reject" } } });
+    const hub = fakeHub({ decisions: { [runId(id)]: { decision: "reject", at: "2026-11-04T10:00:05Z" } } });
     await execute(db, id, undefined, deps(hub));
     // Fails if: the switch off still asks the hub, records anything, or lets the hub's reject count.
     expect(status(id)).toBe("EXECUTED");
