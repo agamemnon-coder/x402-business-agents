@@ -2,9 +2,9 @@
 
 Copy each block into the form. Max submits; nothing here is sent by itself. Every run figure comes from the main run
 of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-main-run.md`) and the reports in this repo
-(`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them. Anything from another run is under
-"Other live tests (separate worlds, dated)", with its date. Sources for each claim: [docs/claims.md](../claims.md),
-section "The submission pack".
+(`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them. Anything from another live run is
+under "Other live tests (separate worlds, dated)", with its date; what ran only on stand-ins is under "Tested on
+stand-ins (not live)". Sources for each claim: [docs/claims.md](../claims.md), section "The submission pack".
 
 Fill in before submitting: the video link. Max's steps: [checklist-max.md](checklist-max.md).
 
@@ -20,7 +20,7 @@ A supplier doubles its price. A customer disputes 12 orders. A €240 bill is du
 
 ## Description
 
-**Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award (see the note at the end).**
+**Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award (see the note under Visa).**
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
 small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
@@ -36,16 +36,20 @@ Airwallex card and its own Metal mandate. The CFO in this demo is Max, the build
 ### The main run (3 November)
 
 One live run, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, real Claude decisions and
-the CFO's real Face ID. Log: `docs/runs/2026-11-03-main-run.md`.
+the CFO's real Face ID. The second approval (four eyes, 2 of 2) came from a labelled virtual test passkey on the runner
+machine, pressed by our build tool, Claude Code, on Max's go; in production the second approver is a second person. The
+three runtime agents hold no owner key and no passkey. Log: `docs/runs/2026-11-03-main-run.md`.
 
 - **The price rise.** Stockline, the supplier, went from 0.02 to 0.04 a stock check, over the Sourcing mandate's 0.03
   cap. Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved
   (`mandate_cap_exceeded`, tx `0x2e92f9cb…1871`). Treasury's options 40 s after the refusal, within the same 20.00;
-  the CFO signed with Face ID (1 of 2), then the second approver (2 of 2), and both mandates were replaced on chain.
+  the CFO signed with Face ID (1 of 2), then the second approver, the labelled test passkey (2 of 2), and both mandates
+  were replaced on chain.
 - **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID.
 - **The euro bill.** The Treasury agent planned the EUR 240.00 licence itself (P-0005). After the CFO's Face ID,
   EUR 110.00 bought by FX for the shortfall (USD 124.29, conversion `3ca88196-05da-4d88-9caa-796f03704636`), then
-  SWIFT: transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID, fee EUR 13.42 (ceiling EUR 20.00).
+  SWIFT: transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID (settlement simulated in the
+  sandbox), fee EUR 13.42 (ceiling EUR 20.00).
 
 Each agent's budget, when bound → after the CFO's Face ID (test USD): Sourcing 10.00 → 14.00 (cap 0.03 → 0.04 a
 purchase); Support 4.00 (cap 0.10); Treasury 6.00 → 2.00. 20.00 between them before and after, held in code.
@@ -71,18 +75,25 @@ company card whose limits Airwallex enforces.
   the TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 - **FX and SWIFT for the €240 licence.** EUR 110.00 bought by FX for USD 124.29 on a locked quote (conversion
   `3ca88196-05da-4d88-9caa-796f03704636`), only the shortfall above the EUR reserve; then SWIFT, transfer
-  `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, PAID 6 s after Face ID. One Face ID covers the rate, the
-  payee and the most the fee may be (EUR 20.00). The transfer carries the approval's hash in its metadata.
+  `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, PAID 6 s after Face ID: in the sandbox Purser itself moves the
+  transfer to SENT and then PAID through Airwallex's simulation API, so that settlement is simulated. One Face ID covers
+  the rate, the payee and the most the fee may be (EUR 20.00). The transfer carries the approval's hash in its metadata.
 - **Earnings booked once final.** The 0.69 test USD swept on Metal after finality is booked at Airwallex exactly once,
   as a simulated sandbox deposit (`b3812e05-2afa-4698-8f64-429f9608e0a0`) whose reference is the testnet transaction.
+- **Webhooks, through our relay.** Airwallex posts each event to the relay's `/hooks/airwallex`, which checks
+  `x-signature` (HMAC-SHA256 over `x-timestamp` plus the raw body, before anything parses it; a timestamp more than five
+  minutes off is refused), keeps each event once by its id and answers without waiting for the runner
+  (`worker/src/core.ts`); the runner checks the HMAC again with its own copy of the secret and records each event id
+  once (`src/policy/cardHooks.ts`). Subscribed to 23 event types since 30 October; none arrived during the main run,
+  so the live proof is the 30 October run below (`docs/runs/2026-10-30-webhooks.md`).
 
 ### How we use Metal
 
 - **A mandate per agent.** Each agent that pays per request does it under its own on-chain mandate: a cap per payment,
   a total budget, one payee and an end date.
 - **A price rise refused against the mandate.** Metal refused the purchase over the cap itself (tx `0x2e92f9cb…1871`);
-  after the CFO's Face ID and the second signature, Purser replaced the Sourcing and Treasury mandates on chain; a
-  payment under the old mandate is refused (`mandate_revoked`).
+  after the CFO's Face ID and the second signature (the labelled test passkey), Purser replaced the Sourcing and
+  Treasury mandates on chain; a payment under the old mandate is refused (`mandate_revoked`).
 - **x402 with signed orders** for per-request sales, and **mandate pulls** for refunds and the earnings sweep.
 - **The Dispute desk.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID.
   Any seller on Metal can reuse it: `examples/metal-dispute-desk`.
@@ -91,13 +102,14 @@ company card whose limits Airwallex enforces.
 
 Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.
 
+*Visa Award: Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).*
+
 ### Where Claude is used
 
 In the main run the three agents (Sourcing on Haiku, Support on Sonnet, Treasury on Opus) made 24 decisions, all by
-Claude, 0 fallbacks, in 50 calls each with a request id, for USD 0.3170 at list prices. Claude holds no key and cannot
-use the CFO's passkey; in this demo the second approver is a labelled test passkey, signed on the CFO's go. In
-production this is a second person. Purser's code checks every payment against the policy, and only the CFO's Face ID
-moves money beyond the agents' limits.
+Claude, 0 fallbacks, in 50 calls each with a request id, for USD 0.3170 at list prices. No key reaches their Claude
+models, and no agent can approve. Purser's code checks every payment against the policy, and nothing moves money
+beyond the agents' limits without the CFO's Face ID.
 
 ### Controls
 
@@ -131,12 +143,14 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
 
 All money is test money: the Airwallex sandbox and Metal testnet. The cards, limits, conversion, transfer and mandates
 are real API and chain results. Simulated by the sandbox: the merchants' charges, the deposit that stands in for Metal
-earnings and the transfer's final status. Run by us: the customer Summit Outfitters and its agent, and Stockline, the
+earnings and the transfer's last steps (SENT, PAID), which Purser triggers through the sandbox's simulation API. Run
+by us: the customer Summit Outfitters and its agent, and Stockline, the
 warehouse API.
 
 ### Other live tests (separate worlds, dated)
 
-Not part of the main run; each in its own test world, with its own date.
+Not part of the main run; each ran live on the Airwallex sandbox or Metal testnet (test money), in its own test world,
+with its own date.
 
 - **Visa TAP run (2 November).** Visa's reference registry self-hosted with a test key, and our own TAP merchant;
   Airwallex approved one card buy and declined EUR 45.00 over the card limit (LIMIT_EXCEEDED).
@@ -159,17 +173,23 @@ Not part of the main run; each in its own test world, with its own date.
   - **Clearing under load.** 2,000 of 2,000 pay-per-call payments in 471.8 s (4.24 a second, p50 1.4 s, p95 8.1 s), at
     about $0.0007 of RPC calls per payment (an estimate from Metal's published rates, not a bill). A first run paid
     1,879 before one wallet was held by a lost answer; resending the same request fixed it.
-  - **Receive policy (dry run, 31 October):** the sweep wallet can be set to accept money only from the business
-    account; anything else waits in quarantine for the CFO.
+  - **Receive policy (30 October, its own test world):** the sweep wallet accepts money only from the business
+    account; a stranger's 0.02 was held in quarantine by Metal, recorded by Purser and returned only after the CFO's
+    Face ID.
+
+### Tested on stand-ins (not live)
+
+These ran against stand-ins for Airwallex, Metal, the phone or Claude, not on the live rails.
+
 - **Emergency stop.** One Face ID freezes every agent card at Airwallex and stops every agent payment (tested against
   stand-ins, not yet run live).
 - **Red team (30 October, in-memory stand-ins for Airwallex, Metal and the phone).** 35 scripted attacks plus 4
-  documents written by Claude Opus as the attacker: 39 of 39 attacks failed, 0 inconclusive; 37 were stopped before
-  the attack succeeded and 2 were found afterwards, not prevented (a hidden card charge by the reconciliation, a
-  rewritten log row by `npm run verify`). Three more runs on 31 October: 118 of 120 attacks failed and 2 were
-  inconclusive (nothing was paid or changed). Scenario Lab: 18 of 18 stories as expected (stand-ins).
-
-*Visa Award: Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).*
+  documents written by Claude Opus as the attacker: 37 of 39 stopped, 2 detected afterwards, not prevented (a hidden
+  card charge by the reconciliation, a rewritten log row by `npm run verify`), 0 inconclusive. Three more runs on 31
+  October (120 attacks): 112 stopped, 6 detected afterwards (the same two kinds in each run), 2 inconclusive (nothing
+  was paid or changed). On 2 November Claude Opus wrote 119 more tests: code judged 111 stopped, 5 got through and 3
+  inconclusive; all 5 were checked by hand and none is a breach (two reading bugs on Try were filed).
+- Scenario Lab: 18 of 18 stories as expected (stand-ins for Airwallex, Metal and Claude).
 
 ## Instructions
 

@@ -14,7 +14,7 @@ anything beyond them, with Face ID on the exact terms.
 - **The dispute:** 12 orders disputed, all signed by the customer's own agent; the Support agent refunded the 3 with
   wrong data; "refund the other 9" was rejected with Face ID.
 - **The euro bill:** EUR 240.00 by FX and SWIFT, PAID 6 s after Face ID (transfer
-  `03360bfa-afce-457b-89d1-e1097fbe3985`).
+  `03360bfa-afce-457b-89d1-e1097fbe3985`; settlement simulated in the sandbox).
 - 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks; 2 stopped at a
   limit.
 
@@ -37,5 +37,6 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 ## Real, and ours
 
 Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID; all money is test money. Ours or simulated: the
-suppliers, the customer, the merchant, and the second approver (a labelled test passkey). Sources for every claim:
+suppliers, the customer, the merchant, and the second approver (a labelled test passkey, pressed by our build tool,
+Claude Code, on Max's go; in production a second person). Sources for every claim:
 [docs/claims.md](../claims.md).
