@@ -1,0 +1,105 @@
+{
+  "note": "Sample terms of every kind the phone approval page describes, with the SHA-256 each hashed to before the approval-page redesign (4 November). test/approve-terms-hash.test.ts holds the page to these hashes.",
+  "samples": [
+    {
+      "name": "policy_change",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "policy_change",
+        "proposal_id": "C-0a1b2c3d",
+        "expires_at": "2026-10-30T14:10:00Z",
+        "changes": [
+          {
+            "key": "cap.sourcing",
+            "label": "Sourcing agent: most per payment",
+            "from": "",
+            "to": "0.03"
+          }
+        ],
+        "reason": "prices rising"
+      },
+      "terms_sha256": "f67a83e92456383ee5193e9be9835fc1fd49c9aa50cb3a8fd94f3e7ed36af9fe"
+    },
+    {
+      "name": "payee_change",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "payee_change",
+        "proposal_id": "P-0101",
+        "expires_at": "2026-11-04T12:00:00Z",
+        "vendor": "Feedstock Labs",
+        "old_iban_last4": "4410",
+        "new_iban": "DE89370400440532013000",
+        "new_bic": "COBADEFFXXX",
+        "verification": {
+          "by": "max",
+          "how": "called the number on the 2025 contract"
+        }
+      },
+      "terms_sha256": "c3b1d935cbc567f5d042939a63da18dfe15fe17cfec3662b29d82c605e457b8f"
+    },
+    {
+      "name": "quarantine_release",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "quarantine_release",
+        "proposal_id": "P-0102",
+        "expires_at": "2026-11-04T12:00:00Z",
+        "action": "return",
+        "amount": "1.00",
+        "originator": "0x1111111111111111111111111111111111111111",
+        "to": "0x1111111111111111111111111111111111111111",
+        "tx_hash": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+      },
+      "terms_sha256": "78612f14cc1e8169cf3000e642e0339fb9939b196b6f8d9f8821684d9563a78c"
+    },
+    {
+      "name": "task_card",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "task_card",
+        "proposal_id": "P-0103",
+        "expires_at": "2026-11-04T12:00:00Z",
+        "label": "Flight",
+        "amount": "250.00",
+        "merchant_categories": [
+          "4511"
+        ],
+        "valid_until": "2026-11-12T23:59:00Z",
+        "purpose": "a flight to Berlin on 12 November",
+        "asked_by": "cfo-at-runner"
+      },
+      "terms_sha256": "81eb0777be8b63a8264d7a2fa3deb3c9334e683a3c778951e01b4392d8864735"
+    },
+    {
+      "name": "agent_onboard",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "agent_onboard",
+        "proposal_id": "P-0104",
+        "expires_at": "2026-11-04T12:00:00Z",
+        "agent_id": "ext-research-01",
+        "display_name": "Research agent",
+        "purpose": "buys market data",
+        "card": {
+          "per_tx": "25.00",
+          "monthly": "200.00"
+        }
+      },
+      "terms_sha256": "eddbfb4850c3c0a431b8e4b90ae790edfa0b3af79ac3564b5a3036d53acf3531"
+    },
+    {
+      "name": "dev_test",
+      "terms": {
+        "schema": "kit11.approval-terms/v1",
+        "kind": "dev_test",
+        "proposal_id": "P-0105",
+        "expires_at": "2026-11-04T12:00:00Z",
+        "label": "DEV TEST: moves no money",
+        "purpose": "Max checks Face ID approval on his iPhone"
+      },
+      "terms_sha256": "29b8e7416803b6a25d276821089b5d29a0bdbf49a33c860edba95709191800bb"
+    }
+  ],
+  "owners_execute_sha256": "038cc27b103429c97f1eab7802be35cf69301f4a6d42b692aa800f2eab46c15a"
+}
