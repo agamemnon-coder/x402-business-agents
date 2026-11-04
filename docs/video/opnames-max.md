@@ -1,45 +1,58 @@
-# Opnames voor Max
+# Opnames voor Max (de premiere)
 
-Vier korte opnames. Alles is testgeld. Er komt nooit een sleutel of geheim in beeld.
+Drie opnames. Alles is testgeld. Er komt nooit een sleutel of iets privés in beeld.
+Waar elke opname in de film komt: [README.md](README.md).
 
-## 1. De opening (±25 s, je eigen stem en gezicht)
+## Eerst
 
-- Neem op met je telefoon of laptop. Zet de camera op ooghoogte, met licht van voren en een stille kamer.
-- Lees de regels van 0:00 en 0:15 uit `docs/video/hybrid-script.md`.
-- Zeg in de eerste zin wie je bent.
-- Neem het twee of drie keer op. De beste kiezen we samen.
+- Zet **Niet storen** aan, op je iPhone én op je laptop.
+- Niets privés in beeld: geen meldingen, geen e-mail, geen andere tabbladen, geen wachtwoorden of sleutels.
+- Gebruik Safari op je iPhone en sluit de andere tabbladen.
 
-## 2. Airwallex sandbox (±40 s, schermopname op je laptop)
+## 1. Face ID (±10 seconden)
 
-**Voor je begint**
-- Log in op de Airwallex sandbox-webapp, zoals altijd.
-- Sluit andere tabbladen. Verberg de bladwijzerbalk. Zet de zoom op 125%.
-- Open **nooit** Developer / API keys tijdens de opname.
-
-**Opnemen** (Mac: Shift-Cmd-5, dan "Neem hele scherm op")
-1. Ga naar Cards. Laat de drie kaarten van de agents zien (•••• 8120, 6882, 7786): 5 seconden.
-2. Open kaart •••• 8120. Laat de limiet zien en de transacties: 19,99 goedgekeurd, 45,00 geweigerd, 45,00 goedgekeurd. Rustig scrollen, 10 seconden.
-3. Ga naar de transfers. Open de SWIFT-betaling van EUR 1.850,00 met status PAID: 5 seconden.
-4. Ga naar de conversies. Laat USD → EUR 370,00 zien: 5 seconden.
-5. Stop de opname en stuur me het bestand.
-
-## 3. Face ID op je iPhone (±20 s)
-
-1. Stuur mij: **Klaar voor Face ID-opname**.
-2. Ik zet in een aparte testwereld een duidelijk gelabeld testvoorstel klaar en stuur je de link.
-   - Het is geen echte betaling.
-   - Ik keur zelf niets goed.
-3. Zet schermopname aan: Bedieningspaneel → opnameknop.
-4. Open de link. Laat het bedrag en "You are approving" 3 seconden zien.
-5. Keur goed met Face ID. Stop de opname.
+1. Stuur mij: **Klaar voor Face ID-opname**. Je krijgt een link naar een testvoorstel in een testwereld. Het is geen
+   echte betaling.
+2. Zet schermopname aan (Bedieningspaneel → opnameknop).
+3. Open de link. Laat het voorstel 3 seconden zien.
+4. Keur goed met Face ID. Stop de opname.
 
 Staat het Face ID-scherm niet in de opname? Film je telefoon dan met een tweede toestel.
+Geen link gekregen? Dan gebruiken we het Face ID-moment uit opname 3.
 
-## 4. De voice-over (±3:30, je eigen stem)
+## 2. De opening en de slotzin (je eigen stem en gezicht)
 
-- Lees alle andere regels uit `docs/video/hybrid-script.md`, rustig, ongeveer 120 woorden per minuut.
-- Gebruik een stille kamer. Houd de telefoon op 20 cm, iets naast je mond.
-- Neem elke regel apart op. Laat 1 seconde stilte voor en na.
-- Stuur me de bestanden. Ik zet ze onder de beelden.
+**Opening**, alleen je stem:
 
-De productbeelden (Try, dashboard, /metal, Dispute desk, Books) en de explorer neem ik automatisch op.
+> So who holds the pen? I'm Max Geurtsen, and this is Purser.
+
+**Slotzin**, op camera:
+
+> A price shock, a dispute, a euro bill. Claude decided, the rails and the code held the limits, and I signed only
+> what went beyond them. Purser, Starter Kit 11.
+
+- iPhone horizontaal, op ooghoogte, op een statief of een stapel boeken.
+- Licht van voren. Een stille kamer.
+- Kijk in de camera. Wacht 1 seconde voor je begint en na je laatste woord.
+- Neem elke zin drie keer op. We kiezen samen.
+- Video in 1080p (Instellingen → Camera → Neem video op).
+
+## 3. Ondertekenen op /try/sign (±30 seconden, schermopname op je iPhone)
+
+1. Zet schermopname aan.
+2. Open **https://kit11.max-31b.workers.dev/try/sign**.
+3. Tik **Start my test world**.
+4. Tik **Create a test passkey** en bevestig met Face ID.
+5. Scroll naar het voorstel met **Sign with Face ID**. Tik erop en bevestig met Face ID.
+6. Wacht op **Verified by the server**.
+7. Tik **Try to tamper: change the amount by 0.01** en wacht op **Refused**.
+8. Stop de opname.
+
+Dit is een testwereld met een testpasskey. Er gebeurt niets echts.
+
+## De andere zinnen (als je wilt)
+
+Wil je ook de andere zinnen inspreken? Ze staan in [script.md](script.md), met de tijd erbij. Neem elke zin apart op,
+met 1 seconde stilte ervoor en erna. Een AI-stem mag ook, maar dan staat dat in de aftiteling.
+
+Stuur alle bestanden naar mij. Ik zet ze in de film.

@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purser: the premiere</title>
+<style>
+@font-face { font-family: Inter; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+:root { --pic: #07080c; --surface: #12151d; --sunken: #191d27; --line: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #7d8799; --accent: #8b85ff; --ok: #3ccf82; --bad: #ff6b70; --wait: #f5b14a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+.tn { font-variant-numeric: tabular-nums; }
+#stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #000; overflow: hidden; }
+/* The picture: 2.39:1 inside 1920x1080, black bars above and below. */
+#pic { position: absolute; left: 0; top: 138px; width: 1920px; height: 804px; overflow: hidden; background: radial-gradient(1100px 620px at 78% 12%, #16152f 0%, rgba(7,8,12,0) 62%), radial-gradient(900px 520px at 8% 96%, #0b1f26 0%, rgba(7,8,12,0) 60%), var(--pic); }
+.bar { position: absolute; left: 0; width: 1920px; height: 138px; background: #000; z-index: 5; }
+.bar.top { top: 0; } .bar.bot { top: 942px; }
+html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { background: transparent; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+.layer { position: absolute; inset: 0; opacity: 0; visibility: hidden; will-change: opacity, transform; }
+.layer.black { background: #000; }
+.full { width: 1920px; height: 804px; }
+.a { position: absolute; will-change: opacity, transform; }
+.c { left: 0; width: 1920px; text-align: center; }
+.kick { font-size: 26px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); }
+.mega { font-size: 300px; font-weight: 800; letter-spacing: -.05em; line-height: .86; }
+.giant { font-size: 200px; font-weight: 800; letter-spacing: -.045em; line-height: .95; }
+.huge { font-size: 132px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.hl { font-size: 84px; font-weight: 800; letter-spacing: -.03em; line-height: 1.06; }
+.hm { font-size: 58px; font-weight: 750; letter-spacing: -.025em; line-height: 1.14; }
+.hs { font-size: 42px; font-weight: 650; letter-spacing: -.015em; line-height: 1.22; }
+.body { font-size: 34px; font-weight: 500; line-height: 1.36; }
+.small { font-size: 27px; font-weight: 500; line-height: 1.4; color: var(--muted); }
+.tiny { font-size: 22px; font-weight: 500; line-height: 1.45; color: var(--faint); }
+.mono { font-family: "DejaVu Sans Mono", ui-monospace, monospace; font-weight: 600; letter-spacing: -.01em; }
+.brk { word-break: break-all; }
+.idl { font-size: 35px; line-height: 1.25; }
+.muted { color: var(--muted); } .acc { color: var(--accent); } .okc { color: var(--ok); } .badc { color: var(--bad); } .waitc { color: var(--wait); }
+.pill { display: inline-flex; align-items: center; gap: 12px; padding: 14px 28px; border-radius: 999px; font-size: 30px; font-weight: 650; background: var(--surface); border: 1px solid var(--line); white-space: nowrap; }
+.pill.wait { background: rgba(245,177,74,.12); border-color: rgba(245,177,74,.55); color: #ffd79c; }
+.pill.bad { background: rgba(255,107,112,.12); border-color: rgba(255,107,112,.55); color: #ffb7b9; }
+.ovl { display: inline-block; padding: 10px 18px; border-radius: 10px; background: rgba(0,0,0,.62); border: 1px solid rgba(255,255,255,.28); color: #fff; font-size: 26px; font-weight: 650; white-space: nowrap; }
+.ovl.sub { font-size: 21px; font-weight: 500; color: #d5d9e2; }
+.lower { padding: 18px 28px 20px; border-radius: 14px; background: rgba(0,0,0,.62); border-left: 6px solid var(--accent); }
+.lower b { display: block; font-size: 40px; font-weight: 750; letter-spacing: -.015em; }
+.lower span { display: block; font-size: 24px; color: #d5d9e2; margin-top: 4px; }
+.slotframe { width: 1680px; height: 624px; border: 3px dashed #3a4152; border-radius: 28px; }
+/* The diagram. */
+.node { width: 280px; height: 236px; border-radius: 28px; background: var(--surface); border: 1px solid var(--line); padding: 26px 24px; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; }
+.node b { font-size: 38px; font-weight: 800; letter-spacing: -.02em; line-height: 1.08; }
+.node span { font-size: 23px; color: var(--muted); line-height: 1.3; }
+.node.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 70px rgba(139,133,255,.22); }
+.node .face { width: 64px; height: 64px; margin-bottom: auto; }
+.node .face b { font-size: 22px; }
+.arrow { height: 4px; background: var(--accent); border-radius: 2px; transform-origin: 0 50%; }
+.arrow::after { content: ""; position: absolute; right: -4px; top: -9px; border-top: 11px solid transparent; border-bottom: 11px solid transparent; border-left: 16px solid var(--accent); }
+/* The price gauge. */
+.track { width: 820px; height: 8px; border-radius: 4px; background: var(--sunken); }
+.capmark { width: 6px; height: 86px; border-radius: 3px; background: var(--wait); }
+.dot { width: 34px; height: 34px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 30px rgba(60,207,130,.6); }
+.dot.over { background: var(--bad); box-shadow: 0 0 34px rgba(255,107,112,.75); }
+/* The dispute. */
+.chip { width: 150px; height: 98px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.chip b { font-size: 36px; font-weight: 800; letter-spacing: -.02em; }
+.chip i { font-style: normal; font-size: 19px; font-weight: 600; color: var(--faint); min-height: 24px; }
+.chip.signed { border-color: rgba(60,207,130,.55); } .chip.signed i { color: var(--ok); }
+.chip.refund { border-color: var(--wait); background: rgba(245,177,74,.12); } .chip.refund i { color: var(--wait); }
+.stamp { font-size: 50px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; color: var(--bad); border: 8px solid var(--bad); border-radius: 20px; padding: 6px 28px; white-space: nowrap; }
+/* Phones. */
+.phone { width: 420px; height: 772px; border-radius: 64px; background: #050608; border: 10px solid #1e2331; box-shadow: 0 40px 90px rgba(0,0,0,.65); overflow: hidden; }
+.phone .scr { position: absolute; inset: 0; overflow: hidden; border-radius: 54px; background: #0a0c11; }
+.phone .notch { position: absolute; top: 12px; left: 50%; width: 118px; height: 32px; margin-left: -59px; border-radius: 16px; background: #000; z-index: 3; }
+.sheet { position: absolute; left: 22px; right: 22px; top: 64px; bottom: 26px; display: flex; flex-direction: column; gap: 14px; }
+.sheet .pid { font-size: 17px; font-weight: 700; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+.sheet .what { font-size: 29px; font-weight: 800; line-height: 1.16; letter-spacing: -.015em; }
+.sheet .row { display: flex; justify-content: space-between; gap: 12px; font-size: 19px; border-top: 1px solid var(--line); padding-top: 11px; }
+.sheet .row span { color: var(--muted); } .sheet .row b { text-align: right; font-weight: 650; }
+.sheet .hash { font-size: 17px; padding: 10px 12px; border-radius: 12px; background: var(--sunken); word-break: break-all; }
+.sheet .hash.lit { box-shadow: 0 0 0 2px var(--accent); }
+.btnp { text-align: center; padding: 18px; border-radius: 16px; font-size: 23px; font-weight: 800; background: var(--text); color: #0a0c11; margin-top: auto; }
+.btnp.lit { box-shadow: 0 0 0 4px rgba(139,133,255,.6); }
+.face { width: 150px; height: 150px; position: relative; }
+.face i { position: absolute; width: 30%; height: 30%; border-color: var(--accent); border-style: solid; border-width: 0; }
+.face i:nth-child(1) { left: 0; top: 0; border-left-width: 6px; border-top-width: 6px; border-top-left-radius: 18px; }
+.face i:nth-child(2) { right: 0; top: 0; border-right-width: 6px; border-top-width: 6px; border-top-right-radius: 18px; }
+.face i:nth-child(3) { left: 0; bottom: 0; border-left-width: 6px; border-bottom-width: 6px; border-bottom-left-radius: 18px; }
+.face i:nth-child(4) { right: 0; bottom: 0; border-right-width: 6px; border-bottom-width: 6px; border-bottom-right-radius: 18px; }
+.face b { position: absolute; left: 20%; top: 20%; width: 60%; height: 60%; border-radius: 50%; display: grid; place-items: center; font-size: 56px; color: #fff; background: var(--ok); opacity: 0; }
+.node .face i { border-width: 0; } .node .face i:nth-child(1) { border-left-width: 4px; border-top-width: 4px; border-top-left-radius: 10px; } .node .face i:nth-child(2) { border-right-width: 4px; border-top-width: 4px; border-top-right-radius: 10px; } .node .face i:nth-child(3) { border-left-width: 4px; border-bottom-width: 4px; border-bottom-left-radius: 10px; } .node .face i:nth-child(4) { border-right-width: 4px; border-bottom-width: 4px; border-bottom-right-radius: 10px; }
+.scan { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: grid; place-items: center; background: rgba(5,6,8,.72); opacity: 0; z-index: 4; }
+/* The /try/sign mock: the live page's dark theme, at phone width. */
+.pg { position: absolute; left: 0; top: 0; width: 400px; }
+.pg .tb { background: var(--text); color: #0a0c11; text-align: center; font-size: 14.5px; font-weight: 700; padding: 46px 12px 9px; }
+.pg .hdr { display: flex; align-items: center; gap: 9px; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 18px; font-weight: 800; }
+.pg .hdr svg { display: block; }
+.pg .in { padding: 18px 16px 0; display: flex; flex-direction: column; gap: 12px; }
+.pg .eb { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.pg .ph { font-size: 29px; font-weight: 800; letter-spacing: -.02em; line-height: 1.12; }
+.pg .card { background: #12151d; border: 1px solid var(--line); border-radius: 16px; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+.pg .who { display: flex; align-items: center; gap: 8px; font-size: 15.5px; font-weight: 700; flex-wrap: wrap; }
+.pg .who i { width: 30px; height: 30px; border-radius: 50%; background: #6d5bd0; }
+.pg .tag { font-size: 12.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--sunken); color: var(--muted); }
+.pg .says { font-size: 15.5px; line-height: 1.45; }
+.pg dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 14.5px; }
+.pg dt { color: var(--muted); } .pg dd { margin: 0; font-weight: 650; }
+.pg .chk { border-radius: 12px; padding: 10px 12px; background: var(--sunken); font-size: 14px; line-height: 1.4; }
+.pg .chk b { display: block; color: var(--accent); }
+.pg .note { font-size: 13.5px; color: var(--muted); }
+.pg .hash { font-size: 12.5px; background: var(--sunken); border-radius: 10px; padding: 8px 10px; word-break: break-all; }
+.pg .btn { text-align: center; padding: 13px; border-radius: 12px; font-size: 16px; font-weight: 750; background: var(--text); color: #0a0c11; }
+.pg .btn.alt { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.pg .btn.lit { box-shadow: 0 0 0 4px rgba(139,133,255,.65); }
+.pg .done { font-size: 15px; font-weight: 600; color: var(--ok); }
+.pg .res { margin: 14px 16px 0; background: #12151d; border: 1px solid var(--line); border-radius: 16px; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+.pg .res .rh { font-size: 22px; font-weight: 800; }
+.pg .ln { display: flex; gap: 10px; font-size: 16px; font-weight: 700; align-items: center; }
+.pg .ln i { font-style: normal; width: 24px; height: 24px; border-radius: 50%; background: rgba(60,207,130,.18); color: var(--ok); display: grid; place-items: center; font-size: 15px; }
+.pg .ln.lit { color: var(--ok); }
+/* The six seconds. */
+.sixrow { display: flex; align-items: baseline; gap: 28px; }
+.steps { width: 760px; }
+.step { display: flex; align-items: baseline; gap: 26px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 34px; font-weight: 600; }
+.step .mono { font-size: 30px; color: var(--muted); width: 190px; flex: none; }
+.step.paid { color: var(--ok); font-weight: 800; }
+/* The spec cards. */
+.spec { position: absolute; left: 0; top: 0; width: 1920px; height: 804px; display: flex; align-items: center; justify-content: center; gap: 52px; padding-bottom: 30px; }
+.spec .col { display: flex; flex-direction: column; gap: 16px; max-width: 960px; }
+.spec .lab { font-size: 72px; font-weight: 800; letter-spacing: -.03em; line-height: 1.06; }
+.bul { display: flex; gap: 22px; align-items: baseline; }
+.bul i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 50%; transform: translateY(-4px); }
+.bul i.real { background: var(--ok); } .bul i.ours { border: 3px solid var(--muted); }
+</style>
+</head>
+<body>
+<script type="application/json" id="premiere-data">__PREMIERE_JSON__</script>
+<h1 class="sr">Purser: the premiere</h1>
+<template id="mark-tpl"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0b1220"/><g transform="translate(4 4)" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></g></svg></template>
+<div id="stage"><div id="pic"></div><div class="bar top"></div><div class="bar bot"></div></div>
+<script>
+(function () {
+  "use strict";
+  // Every string on screen comes from the data block (src/film/premiere.ts builds it from the main run's record); this
+  // script only places it and moves it. It types in no figure (test/premiere.test.ts reads this script to check).
+  var D = JSON.parse(document.getElementById("premiere-data").textContent);
+  var stage = document.getElementById("stage"), pic = document.getElementById("pic");
+  var q = new URLSearchParams(location.search);
+  var overlay = q.get("overlay");
+  var credits = q.get("credits") === "ai" ? "ai" : "max";
+
+  function fit() { var s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = "translate(" + (innerWidth - 1920 * s) / 2 + "px," + (innerHeight - 1080 * s) / 2 + "px) scale(" + s + ")"; }
+  addEventListener("resize", fit); fit();
+
+  // ---- a small, pure animation kit: every frame is a function of the time t, so any moment can be drawn again ----
+  function E(tag, cls, text, kids) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (kids || []).forEach(function (k) { n.appendChild(k); }); return n; }
+  function put(parent, node, x, y) { node.classList.add("a"); node.style.left = x + "px"; node.style.top = y + "px"; parent.appendChild(node); return node; }
+  function clamp(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function prog(t, a, b) { return clamp((t - a) / (b - a)); }
+  function out3(p) { return 1 - Math.pow(1 - p, 3); }
+  function mix(a, b, p) { return a + (b - a) * p; }
+  // Appear: fade in and rise into place at t0 (slowly); optionally leave at t1.
+  function rise(n, t, t0, t1, dy) { var p = out3(prog(t, t0, t0 + .9)), o = p; if (t1 != null) o *= 1 - prog(t, t1, t1 + .5); n.style.opacity = o; n.style.transform = "translateY(" + (1 - p) * (dy == null ? 26 : dy) + "px)"; }
+  function fade(n, t, t0, t1) { var o = prog(t, t0, t0 + .7); if (t1 != null) o *= 1 - prog(t, t1, t1 + .5); n.style.opacity = o; }
+  function mark(size) { var s = document.getElementById("mark-tpl").content.firstElementChild.cloneNode(true); s.setAttribute("width", size); s.setAttribute("height", size); var w = E("div"); w.appendChild(s); return w; }
+  function faceGlyph(cls) { var f = E("div", "face" + (cls ? " " + cls : "")); for (var i = 0; i < 4; i++) f.appendChild(E("i")); f.appendChild(E("b", null, "✓")); return f; }
+  // A Face ID scan: the corners pulse, then a green tick.
+  function scan(f, t, t0) { var p = prog(t, t0, t0 + 1.1); f.style.transform = "scale(" + (1 + Math.sin(p * Math.PI * 3) * .06) + ")"; var b = f.querySelector("b"); b.style.opacity = prog(t, t0 + 1.1, t0 + 1.3); b.style.transform = "scale(" + mix(.5, 1, out3(prog(t, t0 + 1.1, t0 + 1.5))) + ")"; }
+  var TILT = -6;
+  function width(n, w) { n.style.width = w + "px"; return n; }
+  function slot(L, S) { put(L, E("div", "slotframe"), 120, 90); put(L, E("div", "kick c", "Recording slot"), 0, 300); put(L, E("div", "hm c", S.slot), 0, 346); put(L, E("div", "small c", S.note), 0, 430); }
+
+  // ---- the scenes, by id; their lengths and the voice-over are in src/film/premiereScript.ts ----
+  // Each builder gets the scene's layer, its strings and whether only the overlay is wanted (a recording slot's label
+  // over Max's own footage), and returns the function that draws the scene at a time t from its start.
+  var build = {
+    "01-line": function (L, S) {
+      L.classList.add("black");
+      var h = put(L, E("div", "hl c", S.line), 0, 352);
+      return function (t) { h.style.opacity = Math.min(prog(t, .15, 1.0), 1 - prog(t, 2.25, 2.9)); };
+    },
+    "02-hook": function (L, S, ov) {
+      var lab = put(L, E("div", "ovl", S.label), 48, 36);
+      if (ov) return function () {};
+      L.classList.add("black");
+      slot(L, S);
+      return function () { lab.style.opacity = 1; };
+    },
+    "03-pen": function (L, S) {
+      var qn = put(L, E("div", "hl c", S.question), 0, 352);
+      var mk = put(L, mark(132), 894, 118);
+      var ti = put(L, E("div", "giant c", S.title), 0, 300);
+      var su = put(L, E("div", "kick c", S.sub), 0, 532);
+      return function (t) {
+        rise(qn, t, .3, 3.3, 18);
+        var p = out3(prog(t, 3.9, 5.4)); mk.style.opacity = p; ti.style.opacity = p; ti.style.transform = "scale(" + mix(1.05, 1, p) + ")";
+        fade(su, t, 4.9);
+      };
+    },
+    "04-architecture": function (L, S) {
+      var k = put(L, E("div", "kick c", S.kicker), 0, 96);
+      var W = 280, G = 76, x0 = (1920 - (5 * W + 4 * G)) / 2, y = 228, at = [.5, 2.2, 4.1, 8.1, 10.0];
+      var nodes = S.nodes.map(function (n, i) { var d = E("div", "node", null, [E("b", null, n.t), E("span", null, n.s)]); if (i === 2) d.insertBefore(faceGlyph(), d.firstChild); return put(L, d, x0 + i * (W + G), y); });
+      var arrows = [0, 1, 2, 3].map(function (i) { return width(put(L, E("div", "arrow"), x0 + i * (W + G) + W + 12, y + 116), G - 30); });
+      var tag = put(L, E("div", "pill wait", S.t0), 0, y + 268);
+      var face = nodes[2].querySelector(".face");
+      return function (t) {
+        fade(k, t, .1);
+        nodes.forEach(function (n, i) { rise(n, t, at[i], null, 30); var on = t >= at[i] && (i === 4 || t < at[i + 1]); n.classList.toggle("on", on); });
+        arrows.forEach(function (a, i) { var p = out3(prog(t, at[i + 1] - .55, at[i + 1] - .05)); a.style.opacity = p > 0 ? 1 : 0; a.style.transform = "scaleX(" + p + ")"; });
+        scan(face, t, at[2] + .3);
+        tag.style.left = (x0 + 4 * (W + G) + W - tag.offsetWidth) + "px"; rise(tag, t, 10.9, null, 16);
+      };
+    },
+    "05-price-rise": function (L, S) {
+      var lb = put(L, E("div", "full"), 0, 0);
+      var k = put(lb, E("div", "kick", S.kicker), 140, 60);
+      var sup = put(lb, E("div", "hs muted", S.supplier + " " + S.rise), 140, 130);
+      var price = put(lb, E("div", "huge"), 140, 192);
+      var from = E("span", null, S.from), arrow = E("span", "muted", " → "), to = E("span", "badc", S.to);
+      price.appendChild(from); price.appendChild(arrow); price.appendChild(to);
+      var unit = put(lb, E("div", "small", S.unit), 144, 338);
+      var track = put(lb, E("div", "track"), 140, 470);
+      var max = Number(S.to) * 1.25, X = function (v) { return 140 + 820 * Number(v) / max; };
+      var cm = put(lb, E("div", "capmark"), X(S.capValue) - 3, 431);
+      var ct = put(lb, E("div", "small waitc", S.capTag), X(S.capValue) - 54, 384);
+      var dot = put(lb, E("div", "dot"), X(S.from) - 17, 457);
+      var cap = put(lb, width(E("div", "body muted", S.cap), 860), 140, 530);
+      var lt = put(lb, E("div", "pill wait", S.letThrough), 140, 636);
+      var ref = put(L, E("div", "hl badc", S.refused), 1060, 128);
+      var rea = put(L, E("div", "body muted", S.reason), 1064, 232);
+      var tl = put(L, E("div", "kick", S.txLabel), 1064, 330);
+      var tx = put(L, E("div", "hm mono", S.tx), 1060, 370);
+      var tf = put(L, width(E("div", "tiny mono brk", S.txFull), 700), 1064, 452);
+      var tw = put(L, E("div", "small", S.txWhere), 1064, 528);
+      var foot = put(L, width(E("div", "tiny", S.label), 1640), 140, 728);
+      return function (t) {
+        fade(k, t, .2);
+        lb.style.transform = "translateX(" + mix(380, 0, out3(prog(t, 14.3, 15.4))) + "px)";
+        rise(sup, t, .6); rise(price, t, .9); rise(unit, t, 1.3);
+        var r = out3(prog(t, 6.8, 8.6));
+        arrow.style.opacity = r; to.style.opacity = r;
+        fade(track, t, 3.0); fade(cm, t, 3.4); fade(ct, t, 3.4); fade(dot, t, 3.0); rise(cap, t, 3.6);
+        var v = mix(Number(S.from), Number(S.to), r); dot.style.left = (X(v) - 17) + "px"; dot.classList.toggle("over", v > Number(S.capValue));
+        rise(lt, t, 10.4);
+        rise(ref, t, 15.2); rise(rea, t, 15.5); rise(tl, t, 16.0); rise(tx, t, 16.1); rise(tf, t, 16.3); rise(tw, t, 16.4); fade(foot, t, 16.6);
+      };
+    },
+    "06-dispute": function (L, S) {
+      var k = put(L, E("div", "kick", S.kicker), 140, 56);
+      var cl = put(L, width(E("div", "hm", S.claim), 1640), 140, 100);
+      var chips = S.orders.map(function (o, i) { return put(L, E("div", "chip", null, [E("b", null, o), E("i", null, "")]), 140 + (i % 6) * 172, 226 + Math.floor(i / 6) * 118); });
+      var cnt = put(L, E("div", "giant okc tn", ""), 1240, 196);
+      var of = put(L, width(E("div", "body muted", S.signedOf), 560), 1248, 400);
+      var rl = put(L, width(E("div", "body waitc", S.refundLine), 1640), 140, 494);
+      var rest = put(L, E("div", "hm", S.rest), 140, 584);
+      var st = put(L, E("div", "stamp", S.rejected), 820, 572);
+      var wh = put(L, E("div", "small", S.rejectedWhen), 140, 672);
+      return function (t) {
+        fade(k, t, .1); rise(cl, t, .4);
+        var signed = 0;
+        chips.forEach(function (c, i) {
+          rise(c, t, 3.2 + i * .06, null, 16);
+          var s0 = 4.0 + i * .24, refunded = S.refunded.indexOf(S.orders[i]) >= 0 && t >= 7.6 + S.refunded.indexOf(S.orders[i]) * .35;
+          if (t >= s0) signed = i + 1;
+          c.classList.toggle("signed", t >= s0 && !refunded); c.classList.toggle("refund", refunded);
+          c.querySelector("i").textContent = refunded ? "refunded" : t >= s0 ? "✓ signed" : "";
+        });
+        cnt.textContent = signed ? String(signed) : ""; fade(cnt, t, 4.0); rise(of, t, 4.2);
+        rise(rl, t, 7.6); rise(rest, t, 10.9);
+        var sp = prog(t, 12.6, 13.0); st.style.opacity = sp; st.style.transform = "rotate(" + TILT + "deg) scale(" + mix(2.0, 1, out3(sp)) + ")";
+        rise(wh, t, 13.2);
+      };
+    },
+    "07-approval": function (L, S) {
+      var ph = put(L, E("div", "phone"), 300, 16);
+      var scr = E("div", "scr"); ph.appendChild(scr); scr.appendChild(E("div", "notch"));
+      var sh = E("div", "sheet", null, [E("div", "pid", S.pid), E("div", "what", S.what)]); scr.appendChild(sh);
+      var rows = S.rows.map(function (r) { var n = E("div", "row", null, [E("span", null, r[0]), E("b", null, r[1])]); sh.appendChild(n); return n; });
+      var hl = E("div", "pid", S.hashLabel); sh.appendChild(hl);
+      var hs = E("div", "hash mono", S.hash); sh.appendChild(hs);
+      var bt = E("div", "btnp", S.button); sh.appendChild(bt);
+      var s1 = put(L, E("div", "hl", S.side[0]), 880, 200), s2 = put(L, E("div", "hl acc", S.side[1]), 880, 300);
+      var cap = put(L, width(E("div", "small", S.caption), 900), 884, 440);
+      return function (t) {
+        rise(ph, t, .1, null, 40);
+        rows.forEach(function (r, i) { fade(r, t, .7 + i * .3); }); fade(hl, t, 2.2); fade(hs, t, 2.2); fade(bt, t, 2.6);
+        rise(s1, t, 3.4); rise(s2, t, 4.3); hs.classList.toggle("lit", t > 4.3); rise(cap, t, 5.0);
+        bt.classList.toggle("lit", t > 5.6 && Math.floor((t - 5.6) * 2) % 2 === 0);
+      };
+    },
+    "08-faceid": function (L, S, ov) {
+      var lab = put(L, E("div", "ovl", S.label), 48, 640), sub = put(L, E("div", "ovl sub", S.sub), 48, 700);
+      if (ov) return function () {};
+      L.classList.add("black");
+      slot(L, S);
+      var f = put(L, faceGlyph(), 885, 520);
+      return function (t) { lab.style.opacity = 1; sub.style.opacity = 1; f.style.opacity = .5; scan(f, t, 2); };
+    },
+    "09-six-seconds": function (L, S) {
+      var six = put(L, E("div", "sixrow", null, [E("span", "mega", S.big), E("span", "hl", S.unit)]), 140, 40);
+      var line = put(L, E("div", "hm muted", S.line), 146, 318);
+      var steps = S.steps.map(function (s, i) { var n = E("div", "step" + (i === S.steps.length - 1 ? " paid" : ""), null, [E("span", "mono", s[0]), E("span", null, s[1])]); return put(L, width(n, 760), 1020, 56 + i * 86); });
+      var tl = put(L, E("div", "kick", S.transferLabel), 140, 460);
+      var tr = put(L, E("div", "idl mono", S.transfer), 140, 502);
+      var de = put(L, E("div", "small", S.detail), 142, 572);
+      var lk = put(L, E("div", "hm acc", S.look), 1020, 472);
+      var wh = put(L, E("div", "small", S.where), 1022, 552);
+      var foot = put(L, E("div", "tiny", S.foot), 140, 724);
+      return function (t) {
+        rise(six, t, .3, null, 40); rise(line, t, 1.2);
+        steps.forEach(function (s, i) { rise(s, t, 2.0 + i * .6, null, 14); });
+        rise(tl, t, 5.4); rise(tr, t, 5.5); rise(de, t, 5.8);
+        rise(lk, t, 7.8); rise(wh, t, 8.4); fade(foot, t, 9.0);
+      };
+    },
+    "10-try-sign": function (L, S, ov) {
+      if (ov) { put(L, E("div", "ovl", S.label), 48, 36); put(L, E("div", "ovl sub", S.overlay + " · " + S.url), 48, 718); return function () {}; }
+      var ph = put(L, E("div", "phone"), 180, 16);
+      var scr = E("div", "scr"); ph.appendChild(scr); scr.appendChild(E("div", "notch"));
+      var pg = E("div", "pg"); scr.appendChild(pg);
+      pg.appendChild(E("div", "tb", S.label));
+      pg.appendChild(E("div", "hdr", null, [mark(26), E("span", null, "Purser")]));
+      var inner = E("div", "in"); pg.appendChild(inner);
+      inner.appendChild(E("div", "eb", S.eyebrow)); inner.appendChild(E("div", "ph", S.h1));
+      var dl = E("dl"); S.facts.forEach(function (f) { dl.appendChild(E("dt", null, f[0])); dl.appendChild(E("dd", null, f[1])); });
+      var sign = E("div", "btn", S.sign), done = E("div", "done", S.done);
+      var card = E("div", "card", null, [E("div", "who", null, [E("i"), E("span", null, S.agent), E("span", "tag", S.tag)]), E("div", "says", "“" + S.says + "”"), dl,
+        E("div", "chk", null, [E("b", null, S.check), E("span", null, S.waits)]), E("div", "note", S.hashNote), E("div", "hash mono", S.hash), sign, done]);
+      inner.appendChild(card);
+      var ver = E("div", "ln", null, [E("i", null, "✓"), E("span", null, S.verified)]), exe = E("div", "ln", null, [E("i", null, "✓"), E("span", null, S.executed)]);
+      var tam = E("div", "btn alt", S.tamper);
+      var res = E("div", "res", null, [E("div", "rh", S.signed), E("div", "hash mono", S.hash), ver, exe, tam]);
+      pg.appendChild(res);
+      var sc = E("div", "scan", null, [faceGlyph()]); scr.appendChild(sc);
+      var face = sc.firstChild;
+      var Y = [74, 268, 350, 432, 530];
+      var lines = S.side.map(function (s, i) { return put(L, E("div", i ? "hm" : "hl", s), 760, Y[i]); });
+      var url = put(L, E("div", "hs acc", S.url), 762, 176);
+      lines[4].classList.add("okc");
+      var lab = put(L, E("div", "pill", S.label), 760, 640);
+      var mn = put(L, E("div", "tiny", S.mockNote), 764, 726);
+      return function (t) {
+        rise(ph, t, .1, null, 40);
+        rise(lines[0], t, .6); rise(url, t, 1.6); rise(lines[1], t, 3.0); rise(lines[2], t, 4.6); rise(lines[3], t, 6.2); rise(lines[4], t, 9.4); fade(lab, t, 1.0); fade(mn, t, 1.4);
+        // Into the card, a press on "Sign with Face ID", the Face ID scan, then the result scrolled into view.
+        sign.style.display = t >= 8.2 ? "none" : ""; done.style.display = t >= 8.2 ? "" : "none";
+        var into = Math.max(0, card.offsetTop - 190), toRes = Math.max(0, res.offsetTop - 250);
+        var y = mix(0, into, out3(prog(t, 2.6, 4.2))); y = mix(y, toRes, out3(prog(t, 8.4, 9.8)));
+        pg.style.transform = "translateY(" + (-y) + "px)";
+        sign.classList.toggle("lit", t > 5.6 && t < 7.0);
+        sc.style.opacity = prog(t, 6.6, 6.9) * (1 - prog(t, 8.1, 8.4)); scan(face, t, 6.7);
+        res.style.opacity = prog(t, 8.2, 8.6);
+        ver.classList.toggle("lit", t > 10.2); exe.classList.toggle("lit", t > 11.0);
+        tam.classList.toggle("lit", t > 13.4);
+      };
+    },
+    "11-one-cent": function (L, S) {
+      L.classList.add("black");
+      var a = put(L, E("div", "huge c"), 0, 150);
+      // The two amounts differ only from where the cent changes: that part flips, in amber.
+      var d = 0; while (d < S.from.length && S.from[d] === S.to[d]) d++;
+      var keep = E("span", null, S.to.slice(0, d)), last = E("span", null, S.from.slice(d)), now = E("span", "waitc", S.to.slice(d));
+      a.appendChild(keep); a.appendChild(last); a.appendChild(now);
+      var plus = put(L, E("div", "hm c waitc", S.plus), 0, 304);
+      var hs = put(L, E("div", "small c mono", S.hashes), 0, 396);
+      var rf = put(L, E("div", "body c badc", S.refused), 0, 462);
+      var w = put(L, E("div", "hl c", S.last), 0, 590);
+      return function (t) {
+        var flip = t >= 2.0;
+        last.style.display = flip ? "none" : ""; now.style.display = flip ? "" : "none";
+        var dim = 1 - .62 * prog(t, 5.0, 5.8);
+        a.style.opacity = prog(t, 0, .25) * dim; a.style.transform = flip && t < 2.4 ? "scale(" + mix(1.04, 1, prog(t, 2.0, 2.4)) + ")" : "";
+        plus.style.opacity = prog(t, 1.0, 1.4) * dim; hs.style.opacity = prog(t, 2.7, 3.2) * dim; rf.style.opacity = prog(t, 3.5, 3.9) * dim;
+        rise(w, t, 5.0, null, 12);
+      };
+    },
+    "12-why-face-id": function (L, S) {
+      var qn = put(L, E("div", "hl c acc", S.q), 0, 150);
+      var a1 = put(L, E("div", "hm c", S.a[0]), 0, 330), a2 = put(L, E("div", "hm c", S.a[1]), 0, 412);
+      return function (t) { rise(qn, t, .4); rise(a1, t, 3.4); rise(a2, t, 6.4); };
+    },
+    "13-specs": function (L, S, ov, seconds) {
+      var cards = S.cards.map(function (c) {
+        var n = put(L, E("div", "spec"), 0, 0);
+        n.appendChild(E("div", "giant", c.big)); n.appendChild(E("div", "col", null, [E("div", "lab", c.label), E("div", "small", c.small)]));
+        return n;
+      });
+      var each = seconds / cards.length;
+      return function (t) {
+        cards.forEach(function (c, i) {
+          var t0 = i * each, o = prog(t, t0, t0 + .35) * (i === cards.length - 1 ? 1 : 1 - prog(t, t0 + each - .35, t0 + each));
+          c.style.opacity = o; c.style.transform = "translateY(" + (1 - out3(prog(t, t0, t0 + .5))) * 24 + "px)";
+        });
+      };
+    },
+    "14-real": function (L, S) {
+      var k = put(L, E("div", "kick c", S.kicker), 0, 60);
+      var rh = put(L, E("div", "hl okc", S.realHead), 240, 132), rn = put(L, E("div", "small", S.realNote), 244, 236);
+      var oh = put(L, E("div", "hl muted", S.oursHead), 1000, 132);
+      var item = function (text, cls) { return E("div", "bul hs", null, [E("i", cls), E("span", null, text)]); };
+      var ri = S.real.map(function (s, i) { return put(L, item(s, "real"), 244, 312 + i * 84); });
+      var oi = S.ours.map(function (s, i) { return put(L, width(item(s, "ours"), 840), 1004, 312 + i * 84); });
+      return function (t) {
+        fade(k, t, .1); rise(rh, t, .4); rise(rn, t, .7);
+        ri.forEach(function (n, i) { rise(n, t, 1.0 + i * .8, null, 14); });
+        rise(oh, t, 5.2); oi.forEach(function (n, i) { rise(n, t, 6.0 + i * 1.2, null, 14); });
+      };
+    },
+    "15-close": function (L, S, ov) {
+      var lw = put(L, E("div", "lower", null, [E("b", null, S.name), E("span", null, S.role)]), 48, 616);
+      if (ov) return function () {};
+      var l1 = put(L, E("div", "hm c", S.lines[0]), 0, 120), l2 = put(L, E("div", "hm c", S.lines[1]), 0, 240), l3 = put(L, E("div", "hm c", S.lines[2]), 0, 312);
+      var l4 = put(L, E("div", "hl c acc", S.lines[3]), 0, 430);
+      return function (t) { rise(l1, t, .5); rise(l2, t, 4.0); rise(l3, t, 7.6); rise(l4, t, 11.6); fade(lw, t, .8); };
+    },
+    "16-end": function (L, S) {
+      var mk = put(L, mark(104), 908, 56);
+      var ct = put(L, E("div", "hl c", S.cta), 0, 196);
+      var url = put(L, E("div", "hm c acc", S.url), 0, 318);
+      var ft = put(L, E("div", "small c", S.foot), 0, 432);
+      var mt = put(L, E("div", "kick c", S.mark), 0, 548);
+      var cr = put(L, E("div", "tiny c", S.credits[credits]), 0, 700);
+      return function (t) { fade(mk, t, .2); rise(ct, t, .4); rise(url, t, 1.1); fade(ft, t, 1.9); fade(mt, t, 2.3); fade(cr, t, 2.7); };
+    },
+  };
+
+  // The fade into and out of each scene (seconds); each clip starts and ends on black, so clips can be cut apart.
+  var FADES = { "01-line": [0, 0], "11-one-cent": [0, .45], "02-hook": [.3, .3], "08-faceid": [.3, .3] };
+  var scenes = D.scenes.map(function (sc) {
+    var L = E("div", "layer"); pic.appendChild(L);
+    var only = overlay === sc.id;
+    return { id: sc.id, start: sc.start, seconds: sc.seconds, L: L, f: FADES[sc.id] || [.45, .5], update: overlay && !only ? function () {} : build[sc.id](L, D.screen[sc.id], only, sc.seconds) };
+  });
+  var total = scenes.reduce(function (s, x) { return Math.max(s, x.start + x.seconds); }, 0);
+
+  function render(t) {
+    scenes.forEach(function (sc) {
+      var lt = t - sc.start, on = lt >= 0 && lt < sc.seconds;
+      if (!on) { sc.L.style.opacity = 0; sc.L.style.visibility = "hidden"; return; }
+      sc.L.style.visibility = "visible";
+      sc.L.style.opacity = Math.min(sc.f[0] ? prog(lt, 0, sc.f[0]) : 1, sc.f[1] ? 1 - prog(lt, sc.seconds - sc.f[1], sc.seconds - .02) : 1);
+      // A slow push-in, so the picture is never still.
+      sc.L.style.transform = "scale(" + mix(1, 1.02, clamp(lt / sc.seconds)) + ")";
+      sc.update(lt);
+    });
+  }
+  // ?overlay=<scene>: that recording slot's label and the letterbox bars only, on a transparent page (a PNG over
+  // Max's footage). ?t=seconds: one moment. ?manual: the caller sets the time for every frame (npm run video), so the
+  // film cannot drift from the recording. Otherwise it plays from ?from= (or the start).
+  if (overlay) {
+    document.documentElement.classList.add("overlay");
+    scenes.forEach(function (sc) { if (sc.id === overlay) { sc.L.style.opacity = 1; sc.L.style.visibility = "visible"; } });
+    return;
+  }
+  window.__film = function (t) { render(Math.min(Math.max(0, t), total - .001)); };
+  if (q.has("t")) { render(Number(q.get("t"))); return; }
+  if (q.has("manual")) { render(Number(q.get("from") || 0)); return; }
+  var from = Number(q.get("from") || 0), t0 = null;
+  function frame(now) { if (t0 === null) t0 = now; render(Math.min(from + (now - t0) / 1000, total - .001)); requestAnimationFrame(frame); }
+  render(from);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
