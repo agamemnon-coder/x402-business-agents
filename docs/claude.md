@@ -17,6 +17,25 @@ checked by code (`src/claude/reader.ts`): a wrong shape, a refusal or a failed c
 and an invoice reading that disagrees with the invoice's own lines is not used. The demo makes the same decisions
 with or without an API key.
 
+## Why these models, measured honestly
+
+We tested the split against one model for every role (`npm run model-bench`, real models, three runs per case;
+[docs/model-benchmark.md](model-benchmark.md)). What it shows, and what it does not:
+
+- **On the agents' everyday cases, Haiku alone is as good.** Haiku for every role passed 18 of 18, like the split,
+  at USD 0.0011 a run against USD 0.0143. We do not claim the bigger models are needed there.
+- **On harder documents, Haiku alone made one mistake that would cost money.** In a mixed-language dispute that
+  leaves one order out of a range, it read the range as if that order were in it. The split, Sonnet alone and Opus
+  alone read all 15 of 15. That is why Sonnet reads documents and Haiku only sorts them.
+- **Opus is the most expensive part and the least proven.** Its review is advice for a person, read before they sign;
+  it decides nothing. In the recorded run it cost $0.16 of $0.18. The benchmark does not show that Opus is needed for
+  that review: Sonnet for every role passed the same cases. We keep Opus there because a review happens once per
+  proposal, a person reads it, and on money they are about to sign the best explanation is worth a few cents. If cost
+  mattered more, Sonnet for the review is the measured alternative.
+
+Whatever model answers, code checks the answer before anything uses it, so a wrong reading falls back to a parser
+or stops for a person; it never pays.
+
 ## What it costs
 
 From the recorded run (Friday run 1, 30 October 2026, Northwind Outdoor; 23 Claude calls, priced at Anthropic's list

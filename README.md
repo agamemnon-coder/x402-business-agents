@@ -1,7 +1,7 @@
 # Purser
 
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml)
-**1333 tests** in 168 files pass at this commit (`npm test`); CI runs them, the judge pages and a secret scan on every push.
+**1335 tests** in 169 files pass at this commit (`npm test`); CI runs them, the judge pages and a secret scan on every push.
 
 **Your AI agents spend through Airwallex and Metal. The CFO stays in control.**
 
