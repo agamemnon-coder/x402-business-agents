@@ -1,7 +1,7 @@
 # Opnames voor Max (de premiere)
 
-Twee opnames: de opening en slotzin (2) en /try/sign (3). Het Face ID-shot (1) knippen we uit opname 3. Alles is
-testgeld. Er komt nooit een sleutel of iets privés in beeld.
+Drie opnames: de opening en slotzin (2), /try/sign (3) en de voice-over (4). Het Face ID-shot (1) knippen we uit
+opname 3. Alles is testgeld. Er komt nooit een sleutel of iets privés in beeld.
 Waar elke opname in de film komt: [README.md](README.md).
 
 ## Eerst
@@ -47,9 +47,11 @@ Staat het Face ID-scherm niet in je schermopname? Film je telefoon tijdens opnam
 
 Dit is een testwereld met een testpasskey. Er gebeurt niets echts.
 
-## De andere zinnen (als je wilt)
+## 4. De voice-over (je eigen stem)
 
-Wil je ook de andere zinnen inspreken? Ze staan in [script.md](script.md), met de tijd erbij. Neem elke zin apart op,
-met 1 seconde stilte ervoor en erna. Een AI-stem mag ook, maar dan staat dat in de aftiteling.
+Je spreekt de hele voice-over zelf in. De zinnen staan in [script.md](script.md), met de tijd erbij.
+
+- Een stille kamer. Houd de telefoon op 20 cm, iets naast je mond.
+- Rustig praten. Neem elke zin apart op, met 1 seconde stilte ervoor en erna.
 
 Stuur alle bestanden naar mij. Ik zet ze in de film.

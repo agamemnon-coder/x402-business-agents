@@ -247,7 +247,6 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
 
   const screen: PremiereData["screen"] = {
     "01-line": { line: "AI agents can now spend money." },
-    "02-hook": { slot: "Optional · an AI hook, at most 10 seconds", note: "Labelled “AI-generated” on screen. No logos.", label: "AI-generated" },
     "03-pen": { question: "So who holds the pen?", title: "Purser", sub: "Starter Kit 11" },
     "04-architecture": {
       kicker: "How Purser works",
