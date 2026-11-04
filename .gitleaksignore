@@ -43,3 +43,22 @@ c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-ke
 c34694e68c0061315403d7d8867f4f13b3e638c2:docs/demo/agent-run.json:generic-api-key:6250
 # test/dashboard-vs-chain.test.ts in 932420d: a made-up RPC URL on rpc.example.test, to prove the node URL is never printed
 932420dea14b9649470e014a058cd03b496a2c88:test/dashboard-vs-chain.test.ts:generic-api-key:190
+
+# Found by gitleaks 8.21.2 over every commit on every branch (freeze, 4 November), all checked by hand:
+# src/redteam/night.ts in e3e0c07: a key's name (keyId) next to a test key from a fixed seed, in the red-team night.
+e3e0c07cbf991f3da680856c3a4c31f441b1e107:src/redteam/night.ts:generic-api-key:101
+# test/agent-run-record.test.ts in c34694e: a made-up credential id that the secret detector must catch, in its own test.
+c34694e68c0061315403d7d8867f4f13b3e638c2:test/agent-run-record.test.ts:generic-api-key:18
+# docs/runs/visa-tap-live-2026-11-02.json in 1132b75: key_id: the public name of the TAP signing key (its suffix a hash of the public key), not a key.
+1132b75a9bff236eb4ca77e0624adbdcc7bb9eb8:docs/runs/visa-tap-live-2026-11-02.json:generic-api-key:14
+1132b75a9bff236eb4ca77e0624adbdcc7bb9eb8:docs/runs/visa-tap-live-2026-11-02.json:generic-api-key:34
+1132b75a9bff236eb4ca77e0624adbdcc7bb9eb8:docs/runs/visa-tap-live-2026-11-02.json:generic-api-key:62
+1132b75a9bff236eb4ca77e0624adbdcc7bb9eb8:docs/runs/visa-tap-live-2026-11-02.json:generic-api-key:78
+1132b75a9bff236eb4ca77e0624adbdcc7bb9eb8:docs/runs/visa-tap-live-2026-11-02.json:generic-api-key:104
+# test/visa-tap-merchant.test.ts in a9e7190: a key's name (keyId) next to a test key from a fixed seed.
+a9e71906d9d1695c074449cc07c438e3afe3677f:test/visa-tap-merchant.test.ts:generic-api-key:19
+# test/visa-tapsig.test.ts in b9b924f: an RFC 9421 signature-input example: the key's name, nonce and tag of a test signature.
+b9b924f2ed5a184e83af0002bc3d61d28c5ec85d:test/visa-tapsig.test.ts:generic-api-key:90
+b9b924f2ed5a184e83af0002bc3d61d28c5ec85d:test/visa-tapsig.test.ts:generic-api-key:91
+# test/dashboard.test.ts in bf69e68: a made-up passkey credential id ("AbCdEf12…") in a test.
+bf69e685373137f55b19a78bb43f65f378f2ff17:test/dashboard.test.ts:generic-api-key:134
