@@ -79,6 +79,7 @@
     "visa:tap-live": "tsx src/cli/visaTapLive.ts",
     "redteam": "tsx src/cli/redteam.ts",
     "reconcile": "tsx src/cli/reconcile.ts",
+    "smoke:sandbox": "tsx src/cli/smokeSandbox.ts",
     "data-qa": "tsx src/cli/dataQa.ts",
     "evals": "tsx src/cli/evals.ts",
     "model-bench": "tsx src/cli/modelBench.ts",
