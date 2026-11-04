@@ -154,6 +154,8 @@ export const TEST_WORLD = {
 } as const;
 const cents = (s: string) => { if (!/^\d+\.\d{2}$/.test(s)) throw new Error("not a decimal amount"); return Number(s.replace(".", "")); };
 const money = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
+/** For people: EUR 25,000.00. */
+const eur = (s: string) => `EUR ${s.replace(/\B(?=(\d{3})+\.)/g, ",")}`;
 
 interface FixedProposal { id: string; agent: string; says: string; payee: string; amount: string; reference: string }
 /** What the agent proposes: fixed text, the same for every visitor; no model is asked on this page. */
@@ -167,9 +169,9 @@ export type Check = { check: "fail"; rule: string } | { check: "pass"; waits: st
 export function checkPayment(amount: string, balance: string): Check {
   const after = cents(balance) - cents(amount);
   if (after < cents(TEST_WORLD.reserve_floor)) {
-    return { check: "fail", rule: `Reserve floor: the balance may not go below EUR ${TEST_WORLD.reserve_floor}; after this payment it would be EUR ${money(after)}.` };
+    return { check: "fail", rule: `Reserve floor: the balance may not go below ${eur(TEST_WORLD.reserve_floor)}; after this payment it would be ${eur(money(after))}.` };
   }
-  if (cents(amount) > cents(TEST_WORLD.alone_limit)) return { check: "pass", waits: `Above the EUR ${TEST_WORLD.alone_limit} an agent may pay alone, so it waits for a person's signature.` };
+  if (cents(amount) > cents(TEST_WORLD.alone_limit)) return { check: "pass", waits: `Above the ${eur(TEST_WORLD.alone_limit)} an agent may pay alone, so it waits for a person's signature.` };
   return { check: "pass", waits: "" };
 }
 

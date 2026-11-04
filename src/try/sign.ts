@@ -18,7 +18,7 @@ const CSS = `.testband { background: var(--text); color: var(--bg); text-align: 
 main { padding: 28px 0 24px; }
 .intro { max-width: 760px; margin-bottom: 24px; }
 .intro h1 { margin-bottom: 12px; }
-.flow { display: grid; gap: 16px; max-width: 760px; }
+.flow { display: grid; gap: 16px; max-width: 760px; list-style: none; margin: 0; padding: 0; }
 .step { padding: 20px; display: grid; gap: 12px; }
 .step h2 { font-size: 20px; letter-spacing: -.015em; display: flex; align-items: center; gap: 10px; }
 .step h2 .n { width: 30px; height: 30px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font-size: 15px; flex: none; }
@@ -27,6 +27,7 @@ main { padding: 28px 0 24px; }
 .muted { color: var(--muted); }
 .small { font-size: 15px; }
 .btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn[hidden] { display: none; }
 .status { font-size: 15.5px; color: var(--muted); min-height: 1.4em; overflow-wrap: anywhere; }
 .status.bad { color: var(--bad); font-weight: 600; }
 .status.ok { color: var(--ok); font-weight: 600; }

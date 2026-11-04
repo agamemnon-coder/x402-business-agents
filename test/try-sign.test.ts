@@ -25,7 +25,7 @@ describe("/try/sign: the visitor's test world", () => {
     expect(w.world.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(Date.parse(w.world.expires_at) - t0.getTime()).toBe(TRY_SIGN_TTL_MS);
     expect(w.proposals.map((p) => [p.proposal_id, p.check, p.status])).toEqual([["T-0001", "fail", "blocked"], ["T-0002", "pass", "waiting"]]);
-    expect(w.proposals[0]!.rule).toMatch(/^Reserve floor: .*25000\.00.*23500\.00/);
+    expect(w.proposals[0]!.rule).toBe("Reserve floor: the balance may not go below EUR 25,000.00; after this payment it would be EUR 23,500.00.");
     for (const p of w.proposals) {
       const terms = JSON.parse(p.canonical) as Record<string, string>;
       // The same canonical JSON (RFC 8785) the real terms use, and the hash is its SHA-256.
