@@ -40,6 +40,11 @@ was changed during the run). Look the ids up yourself; the full log, with every 
 | Airwallex SWIFT transfer: EUR 240.00 licence (fee EUR 13.42) | transfer `03360bfa-afce-457b-89d1-e1097fbe3985` | created 11:31:21, PAID 11:31:24 (6 s after Face ID) |
 | Airwallex card: Packwise Pro (EUR 45.00), TAP-signed checkout, approved after the CFO raised the limit | authorization `01a1a12f-4113-7000-b76d-014677710007` | approved 11:33:07 |
 
+**2 stopped at a limit** in the main run: Metal refused purchase #24 over the mandate cap (the tx above), and the CFO
+rejected P-0004 with Face ID. Airwallex declined nothing in this run: Sourcing asked for the card raise (P-0006) first,
+and the purchase was approved. Not counted: query #37, refused `mandate_revoked` while the mandate was being replaced.\
+*Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
+
 **How it ran.** The Airwallex sandbox keys (`AIRWALLEX_CLIENT_ID`, `AIRWALLEX_API_KEY`), the Metal testnet endpoint
 (`METAL_RPC_URL`) and the Anthropic key (`KIT11_ANTHROPIC_API_KEY`) come from environment variables only. They are not
 in the code, and not in the run log; the recorder that wrote the recording refuses to include a secret. The code reads the Airwallex keys in one place,

@@ -36,7 +36,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Airwallex Agentic Banking Hackathon · Metal Award",
       title: "Purser",
       extra: `<p class="lead">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</p>
-        <div class="stats">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude agents, ${m.fallbacks} fallbacks`)}${stat(String(m.alone), `payments inside the limits, no approval at the time (${m.sales} by the simulated customer's agent)`)}${stat(String(m.face_id), "decisions by the CFO with Face ID")}</div>
+        <div class="stats two">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude agents, ${m.fallbacks} fallbacks`)}${stat(String(m.alone), `payments inside the limits, no approval at the time (${m.sales} by the simulated customer's agent)`)}${stat(String(m.face_id), "decisions by the CFO with Face ID")}<div class="stat"><b>${m.stopped}</b><span>stopped at a limit (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO)</span>${m.tap_limit_line ? `<span class="note">${esc(m.tap_limit_line)}</span>` : ""}</div></div>
         <p class="src">The main run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only. Audit log: ${m.audit_rows} rows, hash-chained, checkable offline.</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
       pic: shot(s.landing, "Home, replaying the main run (3 November)"),
@@ -197,6 +197,8 @@ figcaption { font-size: 13px; color: #6b7280; margin-top: 10px; text-align: cent
 .stat { background: #f6f7f9; border-radius: 12px; padding: 16px 18px; }
 .stat b { display: block; font-size: 36px; letter-spacing: -.02em; }
 .stat span { font-size: 15px; color: #4b5563; line-height: 1.3; display: block; margin-top: 4px; }
+.stats.two { grid-template-columns: 1fr 1fr; }
+.stat .note { font-size: 12.5px; color: #6b7280; margin-top: 6px; }
 .diagram { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
 .diagram .row { display: flex; gap: 18px; }
 .box { background: #f6f7f9; border: 1px solid #e5e7eb; border-radius: 14px; padding: 18px 26px; font-size: 22px; font-weight: 600; text-align: center; min-width: 260px; }

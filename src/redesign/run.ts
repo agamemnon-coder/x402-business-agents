@@ -65,7 +65,7 @@ export type Mini =
   | { kind: "flow"; rows: { icon: string; text: string; tone: "ok" | "bad" | "face" }[] };
 export interface Step { icon: string; text: string; tone: "ok" | "bad" | "face" | "info"; proof?: Proof }
 export interface Scene { n: 1 | 2 | 3; title: string; start: number; steps: Step[]; sentence: string; mini: Mini | null }
-export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string }
+export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string; /** A separate labelled line directly below the figure. */ note?: string }
 export interface AgentCard { id: AgentId; name: string; short: string; model: string; family: string }
 
 export interface AgentRun {
@@ -417,11 +417,13 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
 }
 
 /**
- * Who stopped a payment at a limit: Metal against the on-chain mandate and the CFO with Face ID, in this run; Airwallex
- * at the card's limit, from the TAP run of the same day (labelled so). Not counted, because it is not a limit: an
- * Airwallex sandbox failure such as fee_unknown (`feeUnknown`).
+ * Who stopped a payment at a limit in the played run (the main run): Metal against the on-chain mandate, the CFO with
+ * Face ID, and Airwallex when one of this run's card charges was declined. Counted apart, never in the figure: the
+ * separate TAP run's card decline (`tapDeclines`, shown on its own labelled line, `tapLimitLine`); a payment under an
+ * old mandate refused because it had just been replaced (`revoked`); an Airwallex sandbox failure such as fee_unknown
+ * (`feeUnknown`), which is not a limit.
  */
-export function stops(r: RunRecord): { metal: number; revoked: number; airwallex: number; cfo: number; feeUnknown: number } {
+export function stops(r: RunRecord): { metal: number; revoked: number; airwallex: number; tapDeclines: number; cfo: number; feeUnknown: number } {
   const s = r.snapshot;
   // One attempt counts once: the main run's purchase let through to Metal has two rows (the facilitator's 402 and its
   // record on chain).
@@ -431,10 +433,23 @@ export function stops(r: RunRecord): { metal: number; revoked: number; airwallex
     // At a limit: over the mandate's cap. Apart: a payment under an old mandate refused because it had just been replaced.
     metal: capRefused.filter((f) => !twin(f)).length,
     revoked: s.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length,
-    airwallex: s.flows.filter((f) => f.refused?.by === "airwallex").length + (tapRun()?.steps.filter((x) => !x.approved && x.reason === "LIMIT_EXCEEDED").length ?? 0),
+    airwallex: s.flows.filter((f) => f.refused?.by === "airwallex").length,
+    tapDeclines: tapRun()?.steps.filter((x) => !x.approved && x.reason === "LIMIT_EXCEEDED").length ?? 0,
     cfo: s.decisions.filter((d) => d.status === "REJECTED").length,
     feeUnknown: s.refusals.filter((x) => /fee_unknown/.test(x.reason)).length,
   };
+}
+
+/** The one "stopped at a limit" figure: the played run's own stops only (never the TAP run's). */
+export const stoppedAtLimit = (st: ReturnType<typeof stops>) => st.metal + st.cfo + st.airwallex;
+
+/** The separate TAP run's card decline, on its own labelled line below the figure ("" without one). */
+export function tapLimitLine(): string {
+  const tap = tapRun();
+  const x = tap?.steps.find((y) => !y.approved && y.reason === "LIMIT_EXCEEDED");
+  if (!tap || !x) return "";
+  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt));
+  return `Airwallex declined ${x.currency} ${x.amount} over the card limit (LIMIT_EXCEEDED), separate TAP run, ${date}`;
 }
 
 /** Tools that mean an agent acted, not only looked: a decision without any of them is a routine check. */
@@ -580,10 +595,11 @@ export function agentRun(): AgentRun {
     { value: `${byClaude}/${decisions}`, label: "decisions made by Claude", explain: `Every time an agent decided something, it was a Claude call. ${fallbacks} fell back to code.`, href: "proof#claude" },
     { value: String(s.counts.alone), label: "payments inside the limits", explain: `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
-      value: String(st.metal + st.airwallex + st.cfo), label: "stopped at a limit", href: "proof#stops",
-      explain: "Metal and the CFO in this run; Airwallex in the TAP run.",
-      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run; by Airwallex at the card's limit in the TAP run.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
-      parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, { value: String(st.airwallex), label: "Airwallex · TAP run" }],
+      value: String(stoppedAtLimit(st)), label: "stopped at a limit", href: "proof#stops",
+      explain: st.airwallex ? "By Metal, the CFO and Airwallex in this run." : "By Metal and the CFO in this run.",
+      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run${st.airwallex ? "; by Airwallex at the card's limit" : ""}.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
+      parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, ...(st.airwallex ? [{ value: String(st.airwallex), label: "Airwallex" }] : [])],
+      ...(tapLimitLine() ? { note: tapLimitLine() } : {}),
     },
     { value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
     { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices; each decision may be several calls.", href: "proof#claude" },
@@ -591,6 +607,6 @@ export function agentRun(): AgentRun {
   return {
     file, standIn, name, recordedAt: r.recorded_at, kind: r.kind ?? "", record: r,
     label: runLabel(r), agents, events: ev, scenes: scenes(r, ev), tiles,
-    derived: { toOptions: String(timings(r).toOptions ?? ""), faceToPaid: String(timings(r).faceToPaid ?? ""), decisions: String(decisions), byClaude: String(byClaude), fallbacks: String(fallbacks), perDecision, stopped: String(st.metal + st.airwallex + st.cfo), cosigned: String(cosigned), sales: String(sales), faceId: String(faceIdDecisions(r)), routine: String(split(r).routine) },
+    derived: { toOptions: String(timings(r).toOptions ?? ""), faceToPaid: String(timings(r).faceToPaid ?? ""), decisions: String(decisions), byClaude: String(byClaude), fallbacks: String(fallbacks), perDecision, stopped: String(stoppedAtLimit(st)), cosigned: String(cosigned), sales: String(sales), faceId: String(faceIdDecisions(r)), routine: String(split(r).routine) },
   };
 }

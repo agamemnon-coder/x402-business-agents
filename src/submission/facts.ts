@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { INITIAL_MANDATES } from "../config/policy.js";
-import { faceIdDecisions, fxOf, letThroughOf, loadRecord, ownTap, split, stops, timings } from "../redesign/run.js";
+import { faceIdDecisions, fxOf, letThroughOf, loadRecord, ownTap, split, stoppedAtLimit, stops, tapLimitLine, timings } from "../redesign/run.js";
 
 const read = <T>(path: string) => JSON.parse(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")) as T;
 
@@ -44,6 +44,8 @@ export interface PackFacts {
 export interface MainRunFacts {
   decisions: number; by_claude: number; fallbacks: number; claude_calls: number; claude_usd: string; per_decision_usd: string;
   alone: number; sales: number; face_id: number; metal_refused: number; cfo_rejected: number; audit_rows: number;
+  /** "stopped at a limit": the main run's own stops only; the separate TAP run's decline is its own line (tap_limit_line). */
+  stopped: number; tap_limit_line: string;
   to_options_s: number; face_to_paid_s: number;
   let_through_tx: string; fx_buy: string; fx_sell: string; licence_transfer: string; licence_fee: string; sweep: string;
   refunded: string[]; disputed: number; tap_amount: string; tap_last4: string;
@@ -65,7 +67,7 @@ export function mainRunFacts(): MainRunFacts {
     decisions: sp.decisions, by_claude: sp.byClaude, fallbacks: sp.fallbacks, claude_calls: s.agent_stats.reduce((n, a) => n + a.claude_calls, 0),
     claude_usd: (cost / 1e6).toFixed(4), per_decision_usd: (cost / sp.decisions / 1e6).toFixed(4),
     alone: s.counts.alone, sales: s.flows.filter((f) => f.kind === "sale").reduce((n, f) => n + (f.count ?? 1), 0), face_id: faceIdDecisions(r),
-    metal_refused: st.metal, cfo_rejected: st.cfo, audit_rows: s.audit.rows, to_options_s: t.toOptions ?? 0, face_to_paid_s: t.faceToPaid ?? 0,
+    metal_refused: st.metal, cfo_rejected: st.cfo, stopped: stoppedAtLimit(st), tap_limit_line: tapLimitLine(), audit_rows: s.audit.rows, to_options_s: t.toOptions ?? 0, face_to_paid_s: t.faceToPaid ?? 0,
     let_through_tx: lt?.tx ?? "", fx_buy: fx?.buy ?? "", fx_sell: fx?.sell ?? "", licence_transfer: paid?.subject ?? "", licence_fee: String(fee?.payload.fee ?? ""),
     sweep: s.flows.find((f) => f.kind === "sweep" && !f.refused)?.amount ?? "",
     refunded: s.flows.filter((f) => f.kind === "refund" && !f.refused).map((f) => /#(\d+)/.exec(f.what)?.[1] ?? ""),

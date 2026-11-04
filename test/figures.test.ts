@@ -52,7 +52,8 @@ function expected(): Record<string, string | string[]> {
     [`decisions by Claude (${fallbacks} fallbacks)`]: [String(byClaude), `${byClaude}/${decisions}`],
     "routine payments by code": String(s.flows.filter((f) => !f.refused && (f.kind === "sale" || (f.kind === "upstream" && f.decided.startsWith("code")))).reduce((k, f) => k + n(f), 0)),
     "Face ID decisions": String(faceIds),
-    "stopped at a limit": String(metalRefusals + rejected + tapDeclines),
+    // The main run's own stops only; the separate TAP run's decline is a labelled line below it, not counted (Max, 4 Nov).
+    "stopped at a limit": String(metalRefusals + rejected + s.flows.filter((f) => f.refused?.by === "airwallex").length),
     "Claude cost per decision": `$${(sum((a) => a.cost_usd_micros) / decisions / 1e6).toFixed(4)}`,
     "payments on chain": String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
     "refused by Metal at the cap": String(metalRefusals),

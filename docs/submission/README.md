@@ -150,6 +150,9 @@ Second approver: a labelled test passkey in this demo. In production this is a s
 - 24 of 24 decisions by Claude, 0 fallbacks; 5 decisions signed with Face ID by the CFO; the books match the chain and
   Airwallex (`verify`, `reconcile` 0 differences, `data-qa` 217 of 217 checks, 110 money movements, 0 without an
   origin).
+- 2 stopped at a limit: Metal refused purchase #24 over the mandate cap, and the CFO rejected P-0004 with Face ID
+  (query #37, refused `mandate_revoked` while the mandate was being replaced, is not counted);
+- Separate run, not counted: Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November.
 
 ### Proof from the recorded run
 
