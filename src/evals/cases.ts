@@ -155,7 +155,9 @@ export async function runEvals(client?: Anthropic | null, models: Partial<Record
     const reads = (db.prepare("SELECT payload_json FROM audit_log WHERE event = 'claude.read' ORDER BY seq").all() as { payload_json: string }[])
       .map((r) => JSON.parse(r.payload_json) as { model?: string; latency_ms?: number; cost_usd_micros?: number | null });
     const calls = reads.map((r) => ({ model: String(r.model ?? ""), latency_ms: Number(r.latency_ms ?? 0), cost_usd_micros: r.cost_usd_micros ?? null }));
-    const fallbacks = (db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'claude.fallback'").get() as { n: number }).n;
+    // A reading code rejected (claude.rejected: it failed a check, e.g. it disagreed with the document's own lines) was
+    // replaced by the parser's too, so it counts as a parser reading, never as the model's.
+    const fallbacks = (db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event IN ('claude.fallback', 'claude.rejected')").get() as { n: number }).n;
     const used = [...new Set(calls.map((c) => c.model).filter(Boolean))];
     out.push({ id: k.id, title: k.title, pass: problems.length === 0, models: used, ...res, problems, fallbacks, calls });
   }

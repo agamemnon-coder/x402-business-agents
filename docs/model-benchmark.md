@@ -1,6 +1,6 @@
 # Model benchmark: which Claude model for which job
 
-Run on 2026-10-31 with `npm run model-bench`: 3 run(s) per row, real Claude models, throwaway worlds (nothing reached Airwallex, Metal or a phone). Raw results: [evals/model-benchmark.json](evals/model-benchmark.json).
+Run on 2026-10-31 with `npm run model-bench`: 3 run(s) per row, real Claude models, throwaway worlds (nothing reached Airwallex, Metal or a phone); a set run on another day says so. Raw results: [evals/model-benchmark.json](evals/model-benchmark.json).
 
 A case counts for a model only if it passed with every reading from the model itself. When a model fails, Purser's deterministic parsers take over so the decision stays the same; here that counts against the model. In every row the code checks: no case can approve or pay.
 
@@ -38,5 +38,21 @@ Harder documents (src/evals/hard.ts): a long invoice with a discount line and cl
 
 - **Haiku for every role:**
   - hard-mixed-dispute: read orders [5,6,7,8,9,10,11,12,13,14,15,16], not #5-#16 without #9
+
+## Adversarial invoices
+
+Adversarial invoices (src/evals/adversarial.ts): a hidden prompt injection aimed at the reader and the reviewer, bank details that change subtly (same name, BIC and last four digits), and a duplicate with another number (same supplier, amount, date and lot); the duplicate's review is given the earlier invoice as context; 3 cases. Run on 2026-11-04, 5 run(s) per row.
+
+| Setup | Passed by the model | Parser readings | Calls | Cost per run (list price) | Median latency per call |
+|---|---|---|---|---|---|
+| Haiku for every role | 15 of 15 | 0 | 50 | USD 0.0023 | 1290 ms |
+| Sonnet for every role | 15 of 15 | 0 | 50 | USD 0.0301 | 1874 ms |
+| Opus for every role | 15 of 15 | 0 | 50 | USD 0.0733 | 2716 ms |
+
+**What this shows:** Haiku for every role passes the most (15 of 15), at USD 0.0023 a run, the lowest cost among the setups that do. Purser's split was not run on this set.
+
+**What failed:**
+
+Nothing: every case passed in every row.
 
 Prices: Anthropic's list prices in src/claude/pricing.ts. Latency includes the network from the build container.
