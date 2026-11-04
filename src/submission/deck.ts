@@ -6,7 +6,7 @@
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
-import { KIT11_JOBS, SECOND_APPROVER, VISA_AWARD_STATUS } from "../config/brand.js";
+import { HERO, KIT11_JOBS, KIT_LINE, SECOND_APPROVER, VISA_AWARD_STATUS, VISA_CLAIM } from "../config/brand.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
 const dataUri = (p: string, type: string) => `data:${type};base64,${asset(p).toString("base64")}`;
@@ -18,7 +18,7 @@ export const TRY_URL = "https://kit11.max-31b.workers.dev/try";
 /** Screenshots by name (data URIs), as npm run submission takes them. */
 export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max" | "watch" | "proof" | "visa", string>;
 
-interface Slide { kicker: string; title: string; points?: string[]; extra?: string; pic: string }
+interface Slide { kicker: string; title: string; points?: string[]; extra?: string; pic: string; /** No picture: the text takes the whole slide. */ wide?: boolean }
 
 const list = (items: string[]) => (items.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul>` : "");
 const shot = (src: string, caption: string) => `<figure class="shot"><img src="${src}" alt=""><figcaption>${esc(caption)}</figcaption></figure>`;
@@ -33,11 +33,13 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-4)}`;
   const slides: Slide[] = [
     {
-      kicker: "Airwallex Agentic Banking Hackathon · Metal Award",
+      // The same award labels as Home's two pills (KIT_LINE); the Visa Award's status as the slide's one footnote.
+      kicker: KIT_LINE,
       title: "Purser",
-      extra: `<p class="lead">Your AI agents spend through Airwallex and Metal. The CFO stays in control.</p>
-        <div class="stats two">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude agents, ${m.fallbacks} fallbacks`)}${stat(String(m.alone), `payments inside the limits, no approval at the time (${m.sales} by the simulated customer's agent)`)}${stat(String(m.face_id), "decisions by the CFO with Face ID")}<div class="stat"><b>${m.stopped}</b><span>stopped at a limit (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO)</span>${m.tap_limit_line ? `<span class="note">${esc(m.tap_limit_line)}</span>` : ""}</div></div>
-        <p class="src">The main run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only. Audit log: ${m.audit_rows} rows, hash-chained, checkable offline.</p>
+      extra: `<p class="lead">${esc(HERO)}</p>
+        <div class="stats two">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude agents, ${m.fallbacks} fallbacks`)}${stat(String(m.alone), "payments inside the limits, with no approval at the time")}${stat(String(m.face_id), "decisions by the CFO with Face ID")}<div class="stat"><b>${m.stopped}</b><span>stopped at a limit (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO)</span></div></div>
+        ${m.tap_limit_line ? `<p class="sep"><b>Separate test, 2 November:</b> ${esc(m.tap_limit_line)}; not counted above.</p>` : ""}
+        <p class="src">The main run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only.<br>${esc(VISA_AWARD_STATUS)}</p>
         <div class="logos"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"><span class="with">with Claude</span></div>`,
       pic: shot(s.landing, "Home, replaying the main run (3 November)"),
     },
@@ -61,7 +63,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       ],
       extra: `<p class="quote">$3,046,598,558 in business email compromise losses, reported by victims to the FBI in 2025.<small>FBI IC3, 2025 Internet Crime Report</small></p>
         <p class="src">McKinsey: AI agents could mediate $3 trillion to $5 trillion of global consumer commerce by 2030 ("The agentic commerce opportunity", 17 October 2025). Sources: mastercard.com (Agent Pay, April 2025) · visa.com/en-us/solutions/intelligent-commerce · cloud.google.com/blog (AP2, 16 Sep 2025) · mckinsey.com/capabilities/quantumblack</p>`,
-      pic: shot(s.refuse, "Purser live: Metal's facilitator refuses a payment over the on-chain mandate; nothing moved"),
+      pic: shot(s.metal, "/metal, the main run (3 November): Metal refused the purchase over the on-chain mandate; nothing moved"),
     },
     {
       kicker: "How it works",
@@ -87,8 +89,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Scene 2 · The dispute · the Dispute desk",
       title: "The seller checks each payment against the chain",
       points: [
-        `In the main run a simulated customer (we run it) disputed ${m.disputed} orders; the Support agent checked each against its signed order and the mandate.`,
-        `It refunded only the ${m.refunded.length} with wrong data (orders ${m.refunded.slice(0, -1).join(", ")} and ${m.refunded.at(-1)}); "refund the other ${m.disputed - m.refunded.length}" went to the CFO, who rejected it with Face ID.`,
+        esc(m.dispute_story),
         "Any seller on Metal can reuse it: <code>examples/metal-dispute-desk</code>.",
       ],
       pic: shot(s.dispute, `The main run, 3 November (/watch): #${m.refunded.join(", #")} refunded, each on chain; "refund the other ${m.disputed - m.refunded.length}" rejected by Max with Face ID`),
@@ -99,27 +100,26 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       points: [
         `<b>The Treasury agent planned the EUR 240.00 licence itself.</b> After the CFO's Face ID: ${esc(m.fx_buy)} bought by FX for only the shortfall, then SWIFT, <b>PAID ${m.face_to_paid_s} s after Face ID</b> (fee ${esc(m.licence_fee)}).`,
         `<b>The agent asks first:</b> a card raise (${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}), signed by the CFO with Face ID; Airwallex then approved the TAP-signed EUR ${esc(m.card_raise.amount)} buy (<code>${esc(`${m.card_raise.auth.slice(0, 8)}…${m.card_raise.auth.slice(-4)}`)}</code>).`,
-        `<small>${esc(m.tap_limit_line)}. ${esc(VISA_AWARD_STATUS)}</small>`,
+        `<small>${esc(VISA_CLAIM)}</small>`,
       ],
       pic: shot(s.visa, "The main run, 3 November (/visa): the TAP-signed €45.00 card buy, approved by Airwallex; the decline beside it is the separate TAP run's, labelled"),
     },
     {
-      kicker: "For a bigger company",
+      kicker: "Other live tests (separate worlds, dated)",
       title: "More control moves on chain",
       points: [
         "<b>Four eyes</b>: a 2-of-2 account; one signature reverted on chain, both passed.",
         "<b>Compliance contract</b>: pays only with a signed screening decision; 11 attacks reverted.",
         "<b>Under load</b>: 2,000 of 2,000 clearing payments, 4.24 a second.",
       ],
-      extra: `<p class="src">Separate test worlds on Metal testnet, 30 October; not in the recorded run.</p>`,
+      extra: `<p class="src">Separate test worlds on Metal testnet, 30 October; not in the main run.</p>`,
       pic: pair(s.fourEyes, s.compliance, "The four-eyes and compliance cards on /metal"),
     },
     {
       kicker: "Agents built on Claude (Anthropic API), and measured",
-      title: "No model can raise a limit or move money outside it",
+      title: "Claude decides inside the limits",
       points: [
         `Each decision is a real Claude call with its request id, tokens and cost. In the main run: ${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks, ${m.claude_calls} calls, USD ${m.claude_usd} at list prices.`,
-        "Haiku sorts, Sonnet reads into checked fields, Opus advises the CFO. On harder documents Haiku alone misread 1 of 15; this split read all 15.",
         "Claude holds no key and approves nothing; code checks every decision before money moves.",
         `Red team, in a throwaway test world: ${rt.failed} of ${rt.attempts} attacks failed (${rt.after} found afterwards, not prevented).`,
       ],
@@ -147,7 +147,9 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Product, decisions, and every Face ID in the live runs.",
         "Built with Claude Code as the developer.",
       ],
-      pic: s.max ? `<figure class="photo"><img src="${s.max}" alt="Max"></figure>` : `<div class="photo empty">Photo of Max</div>`,
+      // No placeholder box: without Max's photo the text takes the whole slide.
+      pic: s.max ? `<figure class="photo"><img src="${s.max}" alt="Max"></figure>` : "",
+      wide: !s.max,
     },
     {
       kicker: "Try it",
@@ -197,7 +199,11 @@ figcaption { font-size: 13px; color: #6b7280; margin-top: 10px; text-align: cent
 .stat { background: #f6f7f9; border-radius: 12px; padding: 16px 18px; }
 .stat b { display: block; font-size: 36px; letter-spacing: -.02em; }
 .stat span { font-size: 15px; color: #4b5563; line-height: 1.3; display: block; margin-top: 4px; }
-.stats.two { grid-template-columns: 1fr 1fr; }
+.stats.two { grid-template-columns: 1fr 1fr; gap: 10px; }
+.stats.two .stat { padding: 10px 14px; } .stats.two .stat b { font-size: 30px; } .stats.two .stat span { font-size: 14px; }
+section:first-child h1 { margin-bottom: 14px; } section:first-child .lead { font-size: 24px; margin-bottom: 12px; }
+.sep { font-size: 13.5px; color: #4b5563; margin: 10px 0 0; border-left: 3px solid #d1d5db; padding-left: 10px; line-height: 1.35; }
+li small { display: block; font-size: 16px; line-height: 1.4; color: #374151; }
 .stat .note { font-size: 12.5px; color: #6b7280; margin-top: 6px; }
 .diagram { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
 .diagram .row { display: flex; gap: 18px; }
@@ -221,8 +227,9 @@ figcaption { font-size: 13px; color: #6b7280; margin-top: 10px; text-align: cent
 .small code { white-space: nowrap; }
 .photo { width: 100%; display: flex; justify-content: center; }
 .photo img { width: 420px; height: 520px; object-fit: cover; border-radius: 20px; box-shadow: 0 18px 40px rgba(15, 23, 42, .14); }
+section.wide { grid-template-columns: 1fr; } section.wide .text { max-width: 980px; } section.wide .pic { display: none; }
 .photo.empty { width: 420px; height: 520px; border: 2px dashed #c7d2fe; border-radius: 20px; align-items: center; color: #6b7280; font-size: 20px; background: #f6f7f9; }
 </style></head><body>
-${slides.map((x) => `<section><div class="text"><p class="kicker">${esc(x.kicker)}</p><h1>${esc(x.title)}</h1>${list(x.points ?? [])}${x.extra ?? ""}</div><div class="pic">${x.pic}</div></section>`).join("\n")}
+${slides.map((x) => `<section${x.wide ? ' class="wide"' : ""}><div class="text"><p class="kicker">${esc(x.kicker)}</p><h1>${esc(x.title)}</h1>${list(x.points ?? [])}${x.extra ?? ""}</div><div class="pic">${x.pic}</div></section>`).join("\n")}
 </body></html>`;
 }

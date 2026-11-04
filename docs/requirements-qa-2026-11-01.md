@@ -50,8 +50,8 @@ Legend: ✅ met, with evidence · 🟠 partly met, unverified, or still to do ·
 | ✅ | "with setup instructions" | README "For a juror" (`npm ci && npm run judge`), "Run it live", then `docs/run-it.md` and `.env.example`. CI runs on build/next (latest completed run: success). | `README.md`; `docs/run-it.md`; `.env.example`; `gh run list` (success on 1 Nov 06:08 UTC). **Only on `build/next`.** |
 | ✅ | Metal Award: "Requires use of Metal and Airwallex tooling" | Metal: `@metalntwx/metal-agent` CLI (account, mandate create/bind/replace/pull/verify), `metal-pay` (x402 `requireSignedOffer`, `verifyMandatePayment`), clearing, testnet. Airwallex: Issuing cards and limits, FX quote and conversion, beneficiary, SWIFT transfer, deposit simulation, webhooks, Global Accounts. | `docs/metal-award.md`; `docs/airwallex.md`; `docs/data-qa.md` (31 Oct: 7 Airwallex objects and 112 Metal payments plus 6 mandates read back, 0 differences); `docs/runs/2026-10-30-friday-1.md`. |
 | ✅ | Kit 11 track setup: "Funded Metal testnet wallet" | 20.00 *USDZ funded into the business account; RPC from the Metal console. | `docs/data-qa.md` (Metal funding `0x1fbcf64b…93e2`, match); `.env.example`. |
-| 🟠 | "Nov 13 Project submissions due." | Not submitted; the plan is Thu 12 Nov. The HackerEarth platform says the build phase ends Nov 15 18:29 UTC (see section 3). | `docs/submission/checklist-max.md`. |
-| 🟠 | Nov 15 finalists, Nov 19 Demo Day (remote optional) | The plan keeps the relay and sandbox up until 19 Nov. The relay is unhealthy today. | `docs/submission/checklist-max.md` § 7; `docs/submission/demo-day.md`. |
+| 🟠 | "Nov 13 Project submissions due." | Not submitted; the plan is Thu 12 Nov. The HackerEarth platform says the build phase ends Nov 15 18:29 UTC (see section 3). | `docs/internal/checklist-max.md`. |
+| 🟠 | Nov 15 finalists, Nov 19 Demo Day (remote optional) | The plan keeps the relay and sandbox up until 19 Nov. The relay is unhealthy today. | `docs/internal/checklist-max.md` § 7; `docs/submission/demo-day.md`. |
 | 🟠 | Eligibility: "aged 18 and over" | Not checkable from the repo. Max to confirm. | n/a |
 | ✅ | Team: "on your own or … a team of up to four" | Solo (Max Geurtsen). | `LICENSE`; `README.md`. |
 | ✅ | IP: own the IP, showcase permission | MIT licence (on build/next). | `LICENSE`. |
@@ -64,7 +64,7 @@ Legend: ✅ met, with evidence · 🟠 partly met, unverified, or still to do ·
 | 🟠 | "submit it on HackerEarth in tar/zip file format along with instructions to run the application and source code" | The zip exists with README, LICENSE and `.env.example`, but it is from 31 Oct 09:46 and so stale. | `out/submission/purser-source.zip`. |
 | ✅ | "the submission should be functional so that it can be reviewed by the judges" | `npm run judge` runs offline. | `README.md`; CI. |
 | ❌ | "all code needs to be in public domain (open source) so that it can be evaluated by the judges" | Private repo; LICENSE not on `main`. | GitHub API. |
-| ✅ | "all team members can login … and do application submission on HackerEarth" | Solo, so Max submits. | `checklist-max.md` § 6. |
+| ✅ | "all team members can login … and do application submission on HackerEarth" | Solo, so Max submits. | `docs/internal/checklist-max.md` § 6. |
 
 ### 2C. Judging areas and "what every submission shows" (source: Dan Kim on X, **not fetchable, HTTP 402**; wording from `docs/rules.md` and `docs/requirements-matrix.md`)
 
@@ -126,7 +126,7 @@ Legend: ✅ met, with evidence · 🟠 partly met, unverified, or still to do ·
 
 | Row | Problem | Fix |
 |---|---|---|
-| H2 (and `docs/rules.md` "Deadline", `checklist-max.md` "13 november, 19:29") | **Wrong source data.** HackerEarth event data now gives Build Phase end **Nov 15 18:29 UTC**, not Nov 13 18:29 UTC. The "19:29 NL" time has no current source. The microsite still says Nov 13 with no time. | Record both dates. Keep Nov 12 as the plan. Ask the organisers. |
+| H2 (and `docs/rules.md` "Deadline", `docs/internal/checklist-max.md` "13 november, 19:29") | **Wrong source data.** HackerEarth event data now gives Build Phase end **Nov 15 18:29 UTC**, not Nov 13 18:29 UTC. The "19:29 NL" time has no current source. The microsite still says Nov 13 with no time. | Record both dates. Keep Nov 12 as the plan. Ask the organisers. |
 | H1c | **Missing fact.** `main` has only the initial README. 355 commits are on `build/next`. "Make public" alone would show judges an empty repo. | Add: merge to `main` or set the default branch. |
 | H14 | **Missing fact.** `LICENSE` is not on `main`; GitHub shows "license: None". | As H1c. |
 | H13 | **Stale.** The zip is older than HEAD. | Rebuild on the final commit. |
@@ -134,7 +134,7 @@ Legend: ✅ met, with evidence · 🟠 partly met, unverified, or still to do ·
 | K5 | **Overstated (✅).** The flow's last step, "pay the licence fee", is not in a recorded live run. The matrix's own K1b says "not in the recorded run yet"; only dry run 12 paid it, with test passkeys and no ids. | 🟠 until a live run with ids. |
 | M2 | **Overstated and misclassified.** Marked ✅ although the row says Slack support was not used and no node is run. It is a partner description, not an award condition. | Mark it n/a or 🟠, or drop it. |
 | J2, J3, J5.x, J6.x | **Source still unverified.** The X article answers HTTP 402. The blog (verified) has no judging text. | Keep the caveat. Try to read the article in a logged-in browser. |
-| `docs/rules.md` "HTTP 500 … re-check its Rules tab and the Discussion tab" | **Outdated.** The page is now 200; there is no Rules tab; the discussion widget is off. `checklist-max.md` § 6 last bullet is obsolete. | Update. |
+| `docs/rules.md` "HTTP 500 … re-check its Rules tab and the Discussion tab" | **Outdated.** The page is now 200; there is no Rules tab; the discussion widget is off. `docs/internal/checklist-max.md` § 6 last bullet is obsolete. | Update. |
 | `docs/rules.md` "Dan Kim (VP at Airwallex, co-author of x402)" | "co-author of x402" is not supported by the blog, which gives "VP, Product Partnerships, Ecosystem & Developer Experience". | Drop or source it. |
 | † rows (J5.2, K3, K6c, K7f, …) | They cite 29 Oct rehearsal Airwallex ids, which have no independent read-only check. The Friday-run ids were verified by `docs/data-qa.md` on 31 Oct and could be cited instead. | Swap the ids (see section 4). |
 | **Missing rows** | Eligibility "aged 18 and over"; team "up to four"; Nov 15 finalists and Nov 19 Demo Day (keep the demo up); IP or showcase permission; Kit 11 setup "Funded Metal testnet wallet"; HackerEarth "functional so that it can be reviewed"; HackerEarth build-phase end Nov 15 18:29 UTC; video count (one); the submission-form fields; guide lines "Finish the demo with a financial action or an escalation to a person", "Keep amounts, limits, reserves, validation, duplicate protection, and state transitions in code", "If the agent should make the same choice every time, write the rule in code". | Add rows (all are met or tracked above). |

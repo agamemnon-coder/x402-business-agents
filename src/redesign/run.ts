@@ -1,5 +1,5 @@
 // The public pages (Home, Watch, Proof, the partner pages and the CFO dashboard's replay) play one recorded agent run:
-// the main run, 3 November (docs/runs/2026-11-03-hoofdrun.md), recorded with `npm run autonomy-record` into
+// the main run, 3 November (docs/runs/2026-11-03-main-run.md), recorded with `npm run autonomy-record` into
 // docs/demo/main-run.json. Agent run 1 (2 November, docs/demo/agent-run.json) stays in the repo for the honest notes
 // that cite it. Without the main run's file the newest autonomous dry run (docs/demo/autonomy.json) is shown instead,
 // under its own name. Nothing is
@@ -65,7 +65,7 @@ export type Mini =
   | { kind: "flow"; rows: { icon: string; text: string; tone: "ok" | "bad" | "face" }[] };
 export interface Step { icon: string; text: string; tone: "ok" | "bad" | "face" | "info"; proof?: Proof }
 export interface Scene { n: 1 | 2 | 3; title: string; start: number; steps: Step[]; sentence: string; mini: Mini | null }
-export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string; /** A separate labelled line directly below the figure. */ note?: string }
+export interface Tile { value: string; label: string; explain: string; href: string; parts?: { value: string; label: string }[]; /** The details, in the tooltip. */ tip?: string; /** A separate labelled line directly below the figure. */ note?: string; /** A result from another run: shown in its own labelled row below the tiles, never inside the card. */ separate?: string }
 export interface AgentCard { id: AgentId; name: string; short: string; model: string; family: string }
 
 export interface AgentRun {
@@ -379,7 +379,7 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     if (refunds.length) steps.push({ icon: "undo-2", text: `${refunds.length} wrong ones refunded`, tone: "ok", proof: refunds[0]!.proof });
     if (face) steps.push({ icon: "scan-face", text: `CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest`, tone: "face" });
     out.push({ n: 2, title: "The dispute", start: i2, steps, mini: orders.length ? { kind: "orders", orders, refunded } : null,
-      sentence: `A customer's agent disputes ${orders.length} orders → Support checks every signed order → refunds only the ${refunds.length} wrong ones${face ? ` → the CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest` : ""}.` });
+      sentence: disputeStory(r) || `A customer's agent disputes ${orders.length} orders → Support checks every signed order → refunds only the ${refunds.length} wrong ones${face ? ` → the CFO ${face.status === "REJECTED" ? "rejects" : "approves"} the rest` : ""}.` });
   }
 
   // 3. Earnings and euros: the sweep after finality, booked at Airwallex; the euro bill and what Airwallex did with it.
@@ -450,6 +450,35 @@ export function tapLimitLine(): string {
   if (!tap || !x) return "";
   const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt));
   return `Airwallex declined ${x.currency} ${x.amount} over the card limit (LIMIT_EXCEEDED), separate TAP run, ${date}`;
+}
+
+/**
+ * The dispute in one text, the same on every surface (jury review, 4 Nov), from the run's own dispute case and
+ * refunds: "" unless the record holds a never-placed claim, every order signed, the Support agent's own refunds, and
+ * the CFO's Face ID rejection of the rest.
+ */
+export function disputeStory(r: RunRecord): string {
+  const d = (r.ledger as unknown as { disputes?: { claims: { claims: string[]; sale_refs: number[] }; evidence: { signed_order: boolean }[] }[] } | undefined)?.disputes?.[0];
+  const refunds = r.snapshot.flows.filter((f) => f.kind === "refund" && f.agent === "support" && !f.refused);
+  const rejected = r.ledger?.proposals.some((p) => p.kind === "refund_batch" && (p as { status?: string }).status === "REJECTED");
+  if (!d || !d.claims.claims.includes("never_placed") || !d.evidence.length || !d.evidence.every((e) => e.signed_order) || !refunds.length || !rejected) return "";
+  const n = d.claims.sale_refs.length, k = refunds.length;
+  const words = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+  const sum = (refunds.reduce((c, f) => c + Math.round(Number(f.amount) * 100), 0) / 100).toFixed(2);
+  return `A simulated customer disputes ${n} orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. ${words[k] ?? String(k)} orders had wrong data; the Support agent refunds those ${k} (${sum} test USD) itself. "Refund the other ${n - k}" goes to the CFO, who rejects it with Face ID.`;
+}
+
+/** The label of the separate TAP run's row ("Separate test, 2 November"), "" without that run. */
+export function tapSeparateLabel(): string {
+  const tap = tapRun();
+  return tap ? `Separate test, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(tap.ranAt))}` : "";
+}
+
+/** The separate TAP run's decline as its own labelled row, below the figures and outside every card ("" without one). */
+export function separateRowHtml(text: string | undefined): string {
+  if (!text) return "";
+  const e = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  return `<p class="septest"><b>${e(tapSeparateLabel())}:</b> ${e(text)}; not counted in the figures above.</p>`;
 }
 
 /** Tools that mean an agent acted, not only looked: a decision without any of them is a routine check. */
@@ -567,6 +596,28 @@ export function faceIdDecisions(r: RunRecord): number {
   return new Set(r.ledger.events.filter((e) => /^proposal\.(approved|rejected)$/.test(e.event) && /\bmax\b/i.test(String(e.payload.approver ?? ""))).map((e) => e.subject)).size;
 }
 
+/**
+ * One breakdown of the run's payments, said the same way everywhere (jury review, 4 Nov): the payments inside the
+ * limits (the snapshot's `counts.alone`) as sales + supplier purchases + refunds + sweeps + card buys, the ones on
+ * Metal (all but the card buys), the routine ones by code (the sales and the code's supplier purchases), and what
+ * reconcile checks (the Metal payments, each SWIFT transfer and each card buy). `sums` is false when the parts do not
+ * add up to `counts.alone`; then no page shows the line.
+ */
+export function payments(r: RunRecord): { alone: number; sales: number; purchases: number; refunds: number; sweeps: number; cards: number; onChain: number; routine: number; transfers: number; reconciled: number; sums: boolean; line: string; onChainLine: string } {
+  const f = r.snapshot.flows.filter((x) => !x.refused);
+  const n = (kind: string) => f.filter((x) => x.kind === kind).reduce((k, x) => k + (x.count ?? 1), 0);
+  const [sales, purchases, refunds, sweeps, cards, transfers] = [n("sale"), n("upstream"), n("refund"), n("sweep"), n("card"), f.filter((x) => x.rail === "airwallex_swift").length];
+  const alone = r.snapshot.counts.alone;
+  const pl = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
+  const onChain = sales + purchases + refunds + sweeps;
+  return {
+    alone, sales, purchases, refunds, sweeps, cards, onChain, routine: split(r).routine, transfers, reconciled: onChain + transfers + cards,
+    sums: sales + purchases + refunds + sweeps + cards === alone,
+    line: `${alone} inside the limits = ${pl(sales, "sale")} + ${pl(purchases, "supplier purchase")} + ${pl(refunds, "refund")} + ${pl(sweeps, "sweep")} + ${pl(cards, "card buy")}`,
+    onChainLine: `${onChain} on Metal = the ${alone} inside the limits less the ${pl(cards, "card buy")}`,
+  };
+}
+
 /** D3: decisions by Claude (and fallbacks to code), and the routine payments per query that code made (buying and selling, not refused). */
 export function split(r: RunRecord): { byClaude: number; decisions: number; fallbacks: number; routine: number } {
   const st = r.snapshot.agent_stats;
@@ -591,15 +642,16 @@ export function agentRun(): AgentRun {
   });
   const cosigned = s.decisions.filter((d) => (d.by ?? "").includes("&")).length;
   const sales = s.flows.filter((f) => f.kind === "sale").reduce((n, f) => n + (f.count ?? 1), 0);
+  const pay = payments(r);
   const tiles: Tile[] = [
     { value: `${byClaude}/${decisions}`, label: "decisions made by Claude", explain: `Every time an agent decided something, it was a Claude call. ${fallbacks} fell back to code.`, href: "proof#claude" },
-    { value: String(s.counts.alone), label: "payments inside the limits", explain: `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
+    { value: String(s.counts.alone), label: "payments inside the limits", explain: pay.sums ? `${pay.line.replace(/^\d+ inside the limits = /, "")}, with no approval at the time; the sales are the simulated customer's agent buying from us.` : `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
       value: String(stoppedAtLimit(st)), label: "stopped at a limit", href: "proof#stops",
       explain: st.airwallex ? "By Metal, the CFO and Airwallex in this run." : "By Metal and the CFO in this run.",
       tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run${st.airwallex ? "; by Airwallex at the card's limit" : ""}.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
       parts: [{ value: String(st.metal), label: "Metal" }, { value: String(st.cfo), label: "CFO" }, ...(st.airwallex ? [{ value: String(st.airwallex), label: "Airwallex" }] : [])],
-      ...(tapLimitLine() ? { note: tapLimitLine() } : {}),
+      ...(tapLimitLine() ? { separate: tapLimitLine() } : {}),
     },
     { value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
     { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices; each decision may be several calls.", href: "proof#claude" },

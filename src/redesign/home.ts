@@ -3,8 +3,8 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { CORE_SENTENCE, KIT_LINE, VISA_AWARD_ON, VISA_AWARD_STATUS } from "../config/brand.js";
-import { agentRun, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
+import { CORE_SENTENCE, HERO, KIT_LINE, VISA_AWARD_ON, VISA_AWARD_STATUS } from "../config/brand.js";
+import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
 const CSS = `.hero { padding: 24px 0 44px; }
@@ -187,7 +187,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
 <section class="hero"><div class="wrap">
   <div class="copy">
     <div class="badges">${KIT_LINE.split(/ · (?=entered for)/).map((x, i) => `<span class="pill kit${i ? " award" : ""}">${esc(x)}</span>`).join("")}</div>
-    <h1 class="h-hero">AI agents that run a business. Limits they can't break.</h1>
+    <h1 class="h-hero">${esc(HERO)}</h1>
     <p class="lead">${esc(CORE_SENTENCE)}</p>
   </div>
   <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div></div>
@@ -203,7 +203,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
 </div></section>
 <section class="band" aria-labelledby="h-proof"><div class="wrap">
   <div class="sechead"><h2 class="h-sec" id="h-proof">Proof, from ${esc(run.name)}</h2><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
-  <div class="tiles">${run.tiles.map(tileHtml).join("")}</div>
+  <div class="tiles">${run.tiles.map(tileHtml).join("")}</div>${run.tiles.map((t) => separateRowHtml(t.separate)).join("")}
   <div class="partners">
     <a class="partner card" href="proof#metal"><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>Mandates and refusals on chain</a>
     <a class="partner card" href="proof#airwallex"><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>Cards, FX and SWIFT</a>
@@ -214,7 +214,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
 </div></section>
 </main>`;
   return page({
-    title: "Purser", description: "AI agents that run a business, with limits they can't break. Claude agents decide; Metal and Airwallex enforce every limit; the CFO approves the rest.", tab: "home", css: CSS, body, js: JS,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS, body, js: JS,
     data: { agents: run.agents, events: run.events, moments },
     source: `Source: ${run.file} (${run.name}).`,
   });
