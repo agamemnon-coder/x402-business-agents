@@ -37,6 +37,21 @@ describe("Airwallex client", () => {
     expect(await client.call("GET", "/balances/current")).toEqual({ ok: true });
   });
 
+  it("retries a read through a brief Airwallex outage (502, 503, 504), and gives up after a few tries", async () => {
+    const { client, calls } = mk([login, { status: 503, body: { message: "connection timeout" } }, { status: 502 }, { status: 200, body: { ok: true } }]);
+    expect(await client.call("GET", "/balances/current")).toEqual({ ok: true });
+    expect(calls.filter((c) => c.url.includes("/balances/current"))).toHaveLength(3);
+    const down = mk([login, ...Array.from({ length: 6 }, () => ({ status: 504 }))]);
+    await expect(down.client.call("GET", "/balances/current")).rejects.toMatchObject({ status: 504 });
+    expect(down.calls.filter((c) => c.url.includes("/balances/current"))).toHaveLength(5);
+  });
+
+  it("never resends a POST after a 5xx: it is ambiguous, and the caller looks it up by request_id", async () => {
+    const { client, calls } = mk([login, { status: 503, body: { message: "connection timeout" } }]);
+    await expect(client.call("POST", "/transfers/create", { request_id: "r1" })).rejects.toBeInstanceOf(AirwallexAmbiguous);
+    expect(calls.filter((c) => c.url.endsWith("/transfers/create"))).toHaveLength(1);
+  });
+
   it("turns a lost POST answer into an ambiguous outcome, never a resend", async () => {
     const { client, calls } = mk([login, new TypeError("socket hang up")]);
     await expect(client.call("POST", "/transfers/create", { request_id: "r1" })).rejects.toBeInstanceOf(AirwallexAmbiguous);
