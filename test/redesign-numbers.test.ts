@@ -337,7 +337,13 @@ describe("the dispute, one text everywhere (jury review, 4 Nov)", () => {
     expect(agentRun().scenes.find((x) => x.n === 2)!.sentence).toBe(STORY);
     expect(homePage().replace(/&quot;/g, '"').replace(/&#39;/g, "'")).toContain(STORY);
   });
-  it("is the same text in the submission form", () => {
+  it("is the same text in the submission form, the README and the deck", () => {
     expect(doc("docs/submission/README.md")).toContain(STORY);
+    expect(doc("README.md")).toContain(STORY);
+    const deck = deckHtml(packFacts(), new Proxy({}, { get: () => "" }) as DeckShots, "").replace(/&quot;/g, '"');
+    expect(deck).toContain(STORY);
+    // The deck: Home's award labels on slide 1, no photo placeholder on the team slide (jury review, 4 Nov).
+    expect(deck).toContain(`<p class="kicker">${KIT_LINE}</p>`);
+    expect(deck).not.toContain("Photo of Max");
   });
 });

@@ -87,3 +87,82 @@ A9 API version not pinned · B1 the resent-payout fix awaits review · C3 no enf
 emergency stop never pulled live · I3 velocity stop not triggered live · S2 pre-commit scan by procedure · S3 most
 rotations not exercised · D3 no retention period or deletion procedure. Also open from the headers check: the local
 approvals page's CSP allows `'unsafe-inline'` ([security.md](security.md#security-headers-and-rate-limits-checked-2-november)).
+
+## Guards in code
+
+*Moved here from the README (4 November).*
+
+The limits that hold money back, where each lives and which test asserts it. Numbers are in
+[src/config/policy.ts](../src/config/policy.ts); Claude never sets one. "No test" means no test asserts that rule
+(searched, not assumed). Tests run on stand-ins for Airwallex and Metal; where the real service enforces the rule,
+the row says so, and the live proof is the [sandbox run](../README.md#the-main-run-3-november).
+
+| Rule | Where in code | Test |
+|---|---|---|
+| **EUR reserve floor, at plan.** No plan when free EUR (available minus floor, commitments and payouts under way) is below zero | [`planInvoice`](../src/policy/treasury.ts) (`underfunded`); [`proposeInvoicePayment`](../src/agents/euroBill.ts) escalates | [policy.test.ts](../test/policy.test.ts) ("makes no plan when EUR is already below its floor plus commitments"); [euroBill.test.ts](../test/euroBill.test.ts) ("escalates, and quotes nothing, when committed EUR has already been spent") |
+| **EUR reserve floor, at execution.** Checked again on a fresh balance before the conversion and the payout, on a resume, and after each retry wait | [`executeInvoicePayment`](../src/executors/invoicePayment.ts) (precondition, resume check, `floorReason`) | Only the check after a retry wait is tested: [contract/airwallex.test.ts](../test/contract/airwallex.test.ts) ("after each wait the EUR floor is checked again"). The check before the conversion and the resume check: **no test** |
+| **USD reserve floor, at plan.** A locked FX quote is used only if selling its USD keeps USD at or above the floor | [`checkQuoteAgainstFloor`](../src/policy/treasury.ts), called in [`proposeInvoicePayment`](../src/agents/euroBill.ts) | [policy.test.ts](../test/policy.test.ts) ("escalates when the USD side would break its floor"); [euroBill.test.ts](../test/euroBill.test.ts) (F4b: no conversion, no proposal) |
+| **USD reserve floor, at execution.** Checked again before the conversion | [`executeInvoicePayment`](../src/executors/invoicePayment.ts) ("USD would now drop under its floor") | **No test** |
+| **Metal mandate cap per payment.** Metal refuses a payment over the mandate's cap on chain; Purser refuses it first | On chain: Metal (live proof: the refusal tx in [Sandbox proof](../README.md#the-main-run-3-november)). Purser's pre-check: [`purserRefusal`](../src/policy/holds.ts) (via `mandateCapRefusal`), run first by `reserveSpend` | [holds.test.ts](../test/holds.test.ts) ("refuses a payment over the mandate's cap per payment", Purser's side); [let-through.test.ts](../test/let-through.test.ts) (a Metal refusal `mandate_cap_exceeded` is recorded and nothing settles; Metal is a stand-in there) |
+| **CFO policy cap per payment** (`cap.<agent>`, none until the CFO sets one) | [`capRefusal`](../src/policy/rules.ts) | [executors-refunds.test.ts](../test/executors-refunds.test.ts) ("checks the CFO policy's per-refund limit before signing"); [policy-rules.test.ts](../test/policy-rules.test.ts) |
+| **Airwallex card limit per purchase** (default EUR 30.00 for Sourcing). Set on the card from the CFO policy; Airwallex itself declines the rest | [`cardLimits`](../src/policy/rules.ts); [`syncOne` / `syncCards`](../src/policy/cards.ts) | [cards.test.ts](../test/cards.test.ts) ("syncs every card on demand": the card's limits follow the policy; the 45.00 purchase over a 30.00 limit is declined `LIMIT_EXCEEDED` by the Airwallex stand-in). The real decline is in the live record, not in a test |
+| **Refunds: at most 0.10 each and 0.20 per dispute on their own**; above either, a proposal for Face ID | [`routeRefundBatch`](../src/policy/refunds.ts) (shared rule in [examples/metal-dispute-desk/src/refunds.ts](../examples/metal-dispute-desk/src/refunds.ts)); limits `REFUND_AUTO_*` in config, `approval.refund_each` / `approval.refund_per_dispute` in [rules.ts](../src/policy/rules.ts); used by [`openDisputeCase`](../src/seller/desk.ts) | [refunds.test.ts](../examples/metal-dispute-desk/test/refunds.test.ts) (one refund of 0.11 and a 0.25 batch go to a person); [dispute-case.test.ts](../test/dispute-case.test.ts) ("proposes a refund above the limits for Face ID": nothing paid); [policy-rules.test.ts](../test/policy-rules.test.ts) |
+| **Licence payout fee: EUR 20.00 ceiling.** The plan reserves it before converting; a fee above it is flagged. Airwallex does not quote the fee in advance, so a higher fee is recorded as `transfer.fee_over_ceiling`, not blocked | `SWIFT_FEE_MAX_EUR_CENTS` in config; [`planInvoice`](../src/policy/treasury.ts); [`feeWithinCeiling`](../src/executors/invoicePayment.ts) | [swift-fee-reserve.test.ts](../test/swift-fee-reserve.test.ts) (reserve and flag); [euroBill.test.ts](../test/euroBill.test.ts) ("converts only the 370.00 shortfall (fee ceiling 20.00)") |
+| **Licence amount: exactly EUR 240.00.** Any other amount from the licensor waits for a person | `CONTRACTED_EUR_CENTS` in config; [`checkInvoice`](../src/agents/invoice.ts) | [licence-fee.test.ts](../test/licence-fee.test.ts) ("stops any other amount from the licensor for a person") |
+| **Velocity, per minute and per hour.** One payment over a limit stops that agent and is not made; only Face ID lifts the stop. There is **no per-day** payment limit | [`velocityGate`](../src/policy/velocity.ts) (Metal, before signing); `velocityObserve` (card, as Airwallex reports it); limits `VELOCITY` in config | [velocity.test.ts](../test/velocity.test.ts) |
+| **Per day: only Ask Purser's task cards.** Issued at once only if fewer than 3 in 24 hours (and within the EUR 300 threshold) | [`withinPolicy`](../src/agents/askPurser.ts) | [review-oct30.test.ts](../test/review-oct30.test.ts) ("issues at most 3 cards a day within the policy") |
+| **Card limit per month** (default EUR 100.00 for Sourcing). Set on the card; Airwallex enforces it | [`cardLimits`](../src/policy/rules.ts); [`syncOne`](../src/policy/cards.ts) | [cards.test.ts](../test/cards.test.ts) (a monthly change is synced to the card). That Airwallex declines over the month: not tested here, only in the live service |
+| **Mandate budget (total per mandate) and the agents' shared total of 20.00** | [`budgetAndVelocity`](../src/policy/holds.ts) (`budget_exceeded`, `total_budget_exceeded`); on chain, the mandate's budget | [holds.test.ts](../test/holds.test.ts) ("refuses what would go over it", "keeps all agents together under the shared total") |
+| **Duplicate invoice.** Refused at plan (also for a cosmetically different number), and again inside the filing transaction and before any conversion | [`invoiceAlreadyHandled`](../src/agents/euroBill.ts) and `invoiceKey`; the same check as the `guard` of [`createProposal`](../src/policy/approvals.ts); [`executeInvoicePayment`](../src/executors/invoicePayment.ts) (another payout for the invoice) | [invoice-duplicate-key.test.ts](../test/invoice-duplicate-key.test.ts); [euroBill.test.ts](../test/euroBill.test.ts) (second copy, one already waiting, another payout at execution); [treasury-paid-review.test.ts](../test/treasury-paid-review.test.ts) ("createProposal's guard runs inside the write", with a stub guard) |
+| **Spending hold while a mandate replace is open.** No payment under a mandate that an open replace names | [`replaceHoldRefusal`](../src/policy/replaceHold.ts), run by [`purserRefusal`](../src/policy/holds.ts) and `holdBeyondCap` | [dry179-replace-hold.test.ts](../test/dry179-replace-hold.test.ts) |
+| **Four eyes.** Above the CFO's threshold (`approval.four_eyes_eur`), an invoice payment, a supplier's new bank details and a mandate replace need two different people, never the proposer. Off until the CFO sets a threshold | [`fourEyes`](../src/policy/fourEyes.ts); [`decide`](../src/policy/approvals.ts) | [four-eyes.test.ts](../test/four-eyes.test.ts) |
+| **Passkey only.** Once a passkey is enrolled, a typed hash prefix can only reject | [`decide`](../src/policy/approvals.ts) | [passkey-ledger.test.ts](../test/passkey-ledger.test.ts) (H1); [approvals-page.test.ts](../test/approvals-page.test.ts) |
+| **The hash on the terms.** A person approves the hash of the exact terms; a wrong prefix or changed terms run nothing | [`decide`](../src/policy/approvals.ts); [`beginExecution`](../src/policy/approvals.ts) | [approvals.test.ts](../test/approvals.test.ts) ("refuses a wrong prefix", "refuses terms changed after approval") |
+| **Approval expiry.** A late decision approves nothing; an approval void once the proposal expires | [`decide`](../src/policy/approvals.ts), `beginExecution`, `expireDue` | [approvals.test.ts](../test/approvals.test.ts) ("voids an approval once the proposal expires", F1, "expires stale proposals in one sweep") |
+| **Block 6: spend moved since the proposal.** A mandate replace is refused if the agent's spend changed after it was proposed | [`executeMandateReplace`](../src/executors/mandateReplace.ts) ("spent moved … a new one is needed") | [executors-mandate.test.ts](../test/executors-mandate.test.ts); [dry179-sequence.test.ts](../test/dry179-sequence.test.ts) |
+| **No owner keys for agents.** No agent, autonomy, Claude or /try module names an owner key; the owner's on-chain act runs only from the executor after an approved proposal | [`ownerSigner`](../src/executors/ownerSigner.ts); [`executeMandateReplace`](../src/executors/mandateReplace.ts) | [no-owner-key.test.ts](../test/no-owner-key.test.ts) |
+| **Hub gate (optional, `HUB_DECISIONS_ENABLED`).** An extra gate on top of the approval, never instead of it: an approved proposal runs only when the hub says `approve` for its exact run id and Purser's check is `pass`; a run whose check is `fail` never runs; a hub `reject` closes it; an unreachable hub falls back to the Face ID approval alone, and that is recorded | [`hubGateRefusal`](../src/hub/gate.ts), called in [`beginExecution`](../src/policy/approvals.ts), which every executor calls; the hub is asked in [`consultHub`](../src/hub/consult.ts) from [`execute`](../src/executors/index.ts) | [hub-gate.test.ts](../test/hub-gate.test.ts) (check fail plus approve never runs; unreachable falls back; another world's run id is ignored; flag off unchanged); [hub-push.test.ts](../test/hub-push.test.ts) (no secret, IBAN, account number, address or personal data in the push) |
+| **No threshold or amount in a prompt.** No agent prompt or tool description types in a number the policy holds; code passes such facts in | [src/config/policy.ts](../src/config/policy.ts), [src/policy/rules.ts](../src/policy/rules.ts); the prompts in src/agents, src/autonomy, src/claude | [prompt-no-thresholds.test.ts](../test/prompt-no-thresholds.test.ts) (checks the static prompt text; a value interpolated from code is a code fact) |
+
+### What needs a person (Face ID)
+
+ Anything beyond the limits above becomes a proposal; nothing moves until it is
+approved, and the hash, expiry and passkey rules apply to every one of them:
+
+- **Refund batches** over 0.10 a refund or 0.20 a dispute ([`refund_batch`](../src/seller/desk.ts)).
+- **Mandate replacements**, which rebalance the agents' budgets within the 20.00 total
+  ([`mandate_replace`](../src/agents/treasury.ts)); two people once four eyes is on.
+- **Invoice payouts**, including the licence ([`invoice_payment`](../src/agents/euroBill.ts)); two people above the
+  four-eyes threshold.
+- **Card limit raises** ([`proposeCardRaise`](../src/agents/cardBuyer.ts), a `policy_change`; tested in
+  [cards.test.ts](../test/cards.test.ts): nothing changes until it is approved and synced).
+- **Policy loosening** (a higher or removed limit, a lower floor, an unblocked payee, lifting a stop). The phone can
+  only tighten; a loosening is proposed on the runner and approved with Face ID
+  ([`loosens`](../src/policy/rules.ts); [passkey.test.ts](../test/passkey.test.ts), N2). Also:
+  [`task_card`](../src/agents/askPurser.ts) above the threshold, [`payee_change`](../src/policy/payeeChange.ts) and
+  [`owners_execute`](../src/metal/ownersExecute.ts) (always two owners).
+
+### Safety
+
+- **Idempotent money calls.** Every Airwallex write carries a request id that is stored before the call. After a timeout
+  or a lost answer, Purser looks the request id up first and adopts what it finds; it never sends blind a second time
+  ([src/executors/invoicePayment.ts](../src/executors/invoicePayment.ts), the `transfers` table;
+  [contract/airwallex.test.ts](../test/contract/airwallex.test.ts): "a lost answer, then duplicate_request_id on the resend:
+  the existing transfer is adopted, paid exactly once").
+- **Audit chain.** The audit log is append-only (the database refuses updates and deletes) and hash-chained: each row
+  holds the hash of the one before. `npm run verify` recomputes the chain from the genesis hash and re-checks every
+  passkey approval, credential and pull; `npm run verify-log` checks an exported log
+  ([src/audit/log.ts](../src/audit/log.ts), [src/cli/verify.ts](../src/cli/verify.ts); [audit.test.ts](../test/audit.test.ts)).
+- **Reconciliation.** Each Airwallex transfer and card transaction and each Metal payment is checked against the ledger
+  by id and amount, every hour while the runner runs; a difference is an audit row and an alarm, and nothing is fixed
+  automatically (`npm run reconcile`; [reconcile.test.ts](../test/reconcile.test.ts)).
+- **No secrets in the repository.** Keys come from environment variables only (Airwallex, Metal, Anthropic, T:0, the
+  hub); error text is passed through [`redactSecrets`](../src/lib/redact.ts) before it is stored, and the hub's address
+  and token are never logged.
+- **Sandbox and testnet only.** The Airwallex client refuses any base URL but the sandbox; Metal runs on testnet. All
+  money here is test money.
+- **A person signs.** Face ID on the exact terms hash; a typed hash prefix can only reject once a passkey is enrolled;
+  four eyes above the CFO's threshold. Second approver: a labelled test passkey in this demo. In production this is a
+  second person.
+- **Outside services never decide alone.** The hub can only add a "no": unreachable, it falls back to Face ID alone,
+  recorded. T:0 gets the books after a payment, in the background: a failure is logged and the payment is not affected.
