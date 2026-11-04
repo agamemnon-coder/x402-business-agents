@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { jcs } from "@metalntwx/metal-pay/mandates";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import {
-  canonical, FIXED_PROPOSALS, TRY_SIGN_MAX_WORLDS, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_WORLDS_PER_HOUR, readCbor, trySignRoute,
+  canonical, FIXED_PROPOSALS, TRY_SIGN_MAX_WORLDS, TRY_SIGN_PER_MINUTE, TRY_SIGN_TTL_MS, TRY_SIGN_WORLDS_PER_HOUR, TRY_SIGN_WORLDS_PER_HOUR_48, TRY_SIGN_IDLE_MS, prefix48, readCbor, trySignRoute,
 } from "../worker/src/trySign.js";
 
 import { BASE, call, challengeOf, desk, newWorld, RP, signBody, t0, withPasskey } from "./support/trySign.js";
@@ -204,6 +204,36 @@ describe("/try/sign: the visitor's test world", () => {
     expect((await call(desk().d, "sign", { token: "x".repeat(20_000) })).status).toBe(413);
     expect((await call(desk().d, "world", {}, { method: "GET" })).status).toBe(405);
     expect((await call(desk().d, "admin", {})).status).toBe(404);
+  });
+
+  it("abuse: one IPv6 /48 cannot fill every live world, idle worlds free their place, a chunked body is cut off", async () => {
+    // The review's attack: 50 /64s of one /48, 6 worlds each, filled all 300 places. Now the /48 stops at its limit.
+    const { d } = desk();
+    let made = 0;
+    for (let i = 0; i < 50; i++) for (let k = 0; k < TRY_SIGN_WORLDS_PER_HOUR; k++) if ((await call(d, "world", {}, { ip: `2001:db8:7:${i.toString(16)}::1` })).status === 201) made++;
+    expect(made).toBe(TRY_SIGN_WORLDS_PER_HOUR_48);
+    expect((await call(d, "world", {}, { ip: "2001:db8:8::1" })).status).toBe(201);
+    expect((await call(d, "world", {}, { ip: "192.0.2.77" })).status).toBe(201);
+    expect(prefix48("2001:db8:7:a::/64")).toBe("2001:db8:7::/48");
+    expect(prefix48("192.0.2.1")).toBeNull();
+
+    // A full house of worlds nobody made a passkey in: after TRY_SIGN_IDLE_MS they make room.
+    const idle = desk();
+    for (let i = 0; i < TRY_SIGN_MAX_WORLDS; i++) await call(idle.d, "world", {}, { ip: `10.${i >> 8}.${i & 255}.1` });
+    expect((await call(idle.d, "world", {}, { ip: "10.200.0.1" })).status).toBe(503);
+    idle.at(new Date(t0.getTime() + TRY_SIGN_IDLE_MS + 1));
+    expect((await call(idle.d, "world", {}, { ip: "10.200.0.1" })).status).toBe(201);
+    // A world with a passkey is not idle: it lives its hour.
+    const kept = desk();
+    const { w } = await withPasskey(kept.d);
+    kept.at(new Date(t0.getTime() + TRY_SIGN_IDLE_MS + 61_000));
+    await call(kept.d, "world", {}, { ip: "192.0.2.5" });
+    expect((kept.db.prepare("SELECT COUNT(*) AS n FROM ts_worlds WHERE id = ?").get(w.world.id) as { n: number }).n).toBe(1);
+
+    // No content-length (a stream): read up to the cap, then refused.
+    const big = new ReadableStream<Uint8Array>({ pull(c) { c.enqueue(new Uint8Array(4096).fill(32)); } });
+    const res = await desk().d.fetch(new Request(`${BASE}/api/try-sign/world`, { method: "POST", headers: { origin: BASE, "cf-connecting-ip": "192.0.2.6" }, body: big, duplex: "half" } as RequestInit));
+    expect(res.status).toBe(413);
   });
 
   it("holds no key and calls nothing outside: no fetch during a whole visit", async () => {

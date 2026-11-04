@@ -299,7 +299,7 @@ export function trySignPage(): string {
   <button class="btn" type="button" id="go-tamper" data-world="1">${icon("triangle-alert", 18)}Try to tamper: change the amount by 0.01</button>
   <div id="tamper" hidden><p class="small muted" id="t-what"></p><div class="line" id="t-line"><span id="t-icon"></span><span><b id="t-head"></b><span id="t-why" class="small"></span></span></div></div>
 </section>
-<p class="note">${esc("What is real here: the passkey, its signature and the server's check (the same verifier as the CFO's passkey sign-in). What is not: the world, its balance, the agent's words (fixed text) and the executor (a stand-in that only records). This world, its passkey record and its proposals live in their own store, apart from Northwind's: a test passkey can never approve a real proposal or sign in to the CFO's pages.")}</p>
+<p class="note">${esc("What is real here: the signature and the server's check of it (the same verifier as the CFO's passkey sign-in). The server checks the signature against the key your device registered; it does not check which device made that key (no attestation), so a key made in software would verify too. What is not: the world, its balance, the agent's words (fixed text) and the executor (a stand-in that only records). This world, its passkey record and its proposals live in their own store, apart from Northwind's: a test passkey is in no enrolled list, so it can never approve a real proposal or sign in to the CFO's pages.")}</p>
 </div></main>`;
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: a test world of your own, a test passkey, and a signature the server verifies. Nothing real moves.",

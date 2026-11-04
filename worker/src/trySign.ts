@@ -18,6 +18,13 @@ export const TRY_SIGN_TTL_MS = 60 * 60 * 1000;
 export const TRY_SIGN_MAX_WORLDS = 300;
 /** New test worlds per address (IPv6 by its /64) per hour. */
 export const TRY_SIGN_WORLDS_PER_HOUR = 6;
+/** New test worlds per IPv6 /48 per hour: one provider hands out a /48 of /64s, so the /64 limit alone lets one
+ * party fill every live world. */
+export const TRY_SIGN_WORLDS_PER_HOUR_48 = 18;
+/** A world that has not tried to register its passkey within this time is deleted early, freeing its place. */
+export const TRY_SIGN_IDLE_MS = 10 * 60 * 1000;
+/** Expired worlds and old hits are swept at most this often (each sweep scans the tables). */
+const PURGE_EVERY_MS = 60_000;
 /** Requests per address per minute, every kind together. */
 export const TRY_SIGN_PER_MINUTE = 30;
 /** Failed signatures or passkeys per address per hour before it is refused. */
@@ -55,6 +62,31 @@ async function sha256(data: Uint8Array | string): Promise<Uint8Array> {
 }
 const sha256Hex = async (text: string) => hex(await sha256(text));
 const same = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+/** The IPv6 /48 a /64 rate key lies in ("2001:db8:1:2::/64" → "2001:db8:1::/48"); null for IPv4. */
+export function prefix48(key: string): string | null {
+  if (!key.endsWith("::/64")) return null;
+  return `${key.slice(0, -"::/64".length).split(":").slice(0, 3).join(":")}::/48`;
+}
+
+/** The body as text, or null past max bytes; it stops reading there. */
+async function readCapped(req: Request, max: number): Promise<string | null> {
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) { await reader.cancel().catch(() => undefined); return null; }
+    parts.push(value);
+  }
+  const all = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) { all.set(p, at); at += p.byteLength; }
+  return new TextDecoder().decode(all);
+}
 
 // ── Canonical JSON (RFC 8785 for terms without numbers, as src/lib/terms.ts: money is a decimal string) ──
 
@@ -200,7 +232,13 @@ export class TrySignDesk {
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_creds (world TEXT NOT NULL, id TEXT NOT NULL, x TEXT NOT NULL, y TEXT NOT NULL, counter INTEGER NOT NULL, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_proposals (world TEXT NOT NULL, id TEXT NOT NULL, canonical TEXT NOT NULL, sha TEXT NOT NULL, check_json TEXT NOT NULL, status TEXT NOT NULL, execution TEXT, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_hits (ip TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL)");
+    // Every request counts hits and every sweep deletes by time: indexed, so neither scans the whole table.
+    this.sql.exec("CREATE INDEX IF NOT EXISTS ts_hits_by_ip ON ts_hits (ip, kind, at)");
+    this.sql.exec("CREATE INDEX IF NOT EXISTS ts_hits_by_at ON ts_hits (at)");
+    this.sql.exec("CREATE INDEX IF NOT EXISTS ts_worlds_by_expires ON ts_worlds (expires)");
   }
+
+  private lastPurge = -Infinity;
 
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
@@ -213,15 +251,17 @@ export class TrySignDesk {
     if (req.headers.get("origin") !== url.origin || req.headers.get("sec-fetch-site") === "cross-site") return answer(403, { error: "ask from the /try/sign page on this site" });
 
     const nowMs = this.now().getTime();
-    this.purge(nowMs);
     const ip = rateKey(req.headers.get("cf-connecting-ip") ?? "unknown");
+    // The limits first, so a refused request costs two indexed counts and no sweep.
     if (this.hits(ip, "fail", nowMs - 3_600_000) >= TRY_SIGN_FAILS_PER_HOUR) return answer(429, { error: "too many refused signatures from this address; wait an hour" });
     if (this.hits(ip, "req", nowMs - 60_000) >= TRY_SIGN_PER_MINUTE) return answer(429, { error: "a few requests a minute; wait a moment" });
     this.hit(ip, "req", nowMs);
+    if (nowMs - this.lastPurge >= PURGE_EVERY_MS) { this.lastPurge = nowMs; this.purge(nowMs); }
 
     if (Number(req.headers.get("content-length") ?? "0") > MAX_BODY) return answer(413, { error: "too large" });
-    const raw = await req.text();
-    if (enc.encode(raw).length > MAX_BODY) return answer(413, { error: "too large" });
+    // Read with a cap: a body sent without a length (chunked) is cut off at MAX_BODY, never held whole in memory.
+    const raw = await readCapped(req, MAX_BODY);
+    if (raw === null) return answer(413, { error: "too large" });
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return answer(400, { error: "send JSON" }); }
     if (!isObj(body)) return answer(400, { error: "send a JSON object" });
@@ -241,9 +281,9 @@ export class TrySignDesk {
     this.sql.exec("INSERT INTO ts_hits (ip, kind, at) VALUES (?, ?, ?)", ip, kind, at);
   }
 
-  /** Expired worlds go, with their passkeys and proposals; old hits go too. */
+  /** Expired worlds go, with their passkeys and proposals, and so do worlds left idle (no passkey tried); old hits go too. */
   private purge(nowMs: number): void {
-    const gone = (this.sql.exec("SELECT id FROM ts_worlds WHERE expires <= ?", nowMs).toArray() as { id: string }[]).map((r) => r.id);
+    const gone = (this.sql.exec("SELECT id FROM ts_worlds WHERE expires <= ? OR (reg_challenge IS NOT NULL AND created <= ?)", nowMs, nowMs - TRY_SIGN_IDLE_MS).toArray() as { id: string }[]).map((r) => r.id);
     for (const id of gone) {
       this.sql.exec("DELETE FROM ts_creds WHERE world = ?", id);
       this.sql.exec("DELETE FROM ts_proposals WHERE world = ?", id);
@@ -277,9 +317,14 @@ export class TrySignDesk {
     }
     // No await from here on: the limits are checked and the world written together, so tries at once cannot pass both.
     if (this.hits(ip, "world", nowMs - 3_600_000) >= TRY_SIGN_WORLDS_PER_HOUR) return answer(429, { error: `${TRY_SIGN_WORLDS_PER_HOUR} test worlds an hour from one address; use the one you have, or wait` });
-    const [{ n }] = this.sql.exec("SELECT COUNT(*) AS n FROM ts_worlds").toArray() as [{ n: number }];
-    if (n >= TRY_SIGN_MAX_WORLDS) return answer(503, { error: "many test worlds are open right now; try again in a few minutes" });
+    const net = prefix48(ip);
+    if (net && this.hits(net, "world", nowMs - 3_600_000) >= TRY_SIGN_WORLDS_PER_HOUR_48) return answer(429, { error: "many test worlds an hour from this network; use the one you have, or wait" });
+    // Room is counted among live worlds; when full, worlds left idle are swept now rather than at the next sweep.
+    const live = () => (this.sql.exec("SELECT COUNT(*) AS n FROM ts_worlds WHERE expires > ?", nowMs).toArray() as [{ n: number }])[0].n;
+    if (live() >= TRY_SIGN_MAX_WORLDS) { this.lastPurge = nowMs; this.purge(nowMs); }
+    if (live() >= TRY_SIGN_MAX_WORLDS) return answer(503, { error: "many test worlds are open right now; try again in a few minutes" });
     this.hit(ip, "world", nowMs);
+    if (net) this.hit(net, "world", nowMs);
     this.sql.exec("INSERT INTO ts_worlds (id, token_hash, ip, created, expires, reg_challenge, balance) VALUES (?, ?, ?, ?, ?, ?, ?)", id, tokenHash, ip, nowMs, expires, challenge, TEST_WORLD.balance);
     for (const [pid, c, sha, check] of rows) {
       this.sql.exec("INSERT INTO ts_proposals (world, id, canonical, sha, check_json, status, execution) VALUES (?, ?, ?, ?, ?, ?, NULL)", id, pid, c, sha, JSON.stringify(check), check.check === "fail" ? "blocked" : "waiting");
