@@ -1,0 +1,42 @@
+# Purser's own Semgrep rules (2 November). The public sets (p/typescript, p/nodejs, p/secrets, p/owasp-top-ten) missed
+# a shell command built from input in the canary test (an `exec` with an interpolated template string), so these close
+# that gap: no shell command with interpolated input. `db.exec(...)` / `this.sql.exec(...)` are SQL, not a shell, so only
+# a bare exec/execSync (imported from child_process) or one called on a child_process module object counts.
+rules:
+  - id: purser-shell-exec-interpolated
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: A shell command built from a template or concatenation can run injected input. Use spawn/spawnSync/execFile with an argument array.
+    patterns:
+      - pattern-either:
+          - pattern: '$F(`...${$X}...`, ...)'
+          - pattern: '$F($A + $B, ...)'
+          - pattern: '$CP.$F(`...${$X}...`, ...)'
+          - pattern: '$CP.$F($A + $B, ...)'
+      - metavariable-regex:
+          metavariable: $F
+          regex: ^(exec|execSync)$
+      - pattern-not: '$OBJ.$F(...)'
+  - id: purser-child-process-exec-interpolated
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: A shell command built from a template or concatenation can run injected input. Use spawn/spawnSync/execFile with an argument array.
+    patterns:
+      - pattern-either:
+          - pattern: '$CP.$F(`...${$X}...`, ...)'
+          - pattern: '$CP.$F($A + $B, ...)'
+      - metavariable-regex:
+          metavariable: $F
+          regex: ^(exec|execSync)$
+      - metavariable-regex:
+          metavariable: $CP
+          regex: ^(cp|childProcess|child_process|child)$
+  - id: purser-spawn-shell-true
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: spawn with shell true runs its arguments through a shell. Drop shell true and pass an argument array.
+    pattern-either:
+      - pattern: 'spawn($CMD, $ARGS, {..., shell: true, ...})'
+      - pattern: 'spawnSync($CMD, $ARGS, {..., shell: true, ...})'
+      - pattern: '$CP.spawn($CMD, $ARGS, {..., shell: true, ...})'
+      - pattern: '$CP.spawnSync($CMD, $ARGS, {..., shell: true, ...})'

@@ -1,7 +1,5 @@
 # The video
 
-**To record:** [final-cut.md](final-cut.md), the 2:55 cut with Max's voice, the real product and the proof. The animated film below is its source footage.
-
 `npm run video` records the film (2:53, one continuous animated piece) with no laptop and no screen recorder. The film
 is a page, `/film` (`src/film/film.html`), whose ten scenes and words are in `src/film/script.ts` and whose every number
 comes from the recorded runs (`src/film/film.ts` throws when a fact is missing); `src/video/plan.ts` turns the scenes

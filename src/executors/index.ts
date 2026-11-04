@@ -16,6 +16,10 @@ import { issuingFromEnv } from "../airwallex/issuing.js";
 import { syncCardsAfterPolicy } from "../policy/cards.js";
 import { executePayeeChange } from "../policy/payeeChange.js";
 import { executeAgentOnboard } from "../platform/externalAgents.js";
+import { consultHub } from "../hub/consult.js";
+import { pushRuns, type DecisionsRead, type HubDeps } from "../hub/client.js";
+import { hubPushEnabled } from "../hub/config.js";
+import { t0SinkFor } from "../accounting/t0Sink.js";
 
 /** D24: the origin of every money movement an approved proposal makes: its approval, and with four eyes the cosigner. */
 export function approvalOrigin(db: DB, proposalId: string): Origin | null {
@@ -25,11 +29,24 @@ export function approvalOrigin(db: DB, proposalId: string): Origin | null {
   return { actor: "cfo", proposal_id: proposalId, approval_id: String(a.approval_id), method: a.method, approver: a.approver, ...(co && co.approver !== a.approver ? { cosigner: co.approver } : {}) };
 }
 
+/** The live hub calls: global fetch, this process's environment, lines to the runner's log. */
+const liveHub: HubDeps = { fetch: (...a) => fetch(...a), log: (line) => console.log(line) };
+
 /** Runs an approved proposal by its kind. Every executor re-checks the approved hash itself. Everything it moves
- *  records the approval as its origin (D24); without an approval the executor refuses on its own check. */
-export async function execute(db: DB, proposalId: string): Promise<void> {
+ *  records the approval as its origin (D24); without an approval the executor refuses on its own check.
+ *  Phase D: with HUB_DECISIONS_ENABLED the hub is asked first (src/hub/consult.ts) and its answer recorded; the gate in
+ *  beginExecution then decides, on top of the approval, never instead of it. `read`: the hub's decisions as the
+ *  runner's hub loop just read them. With HUB_PUSH_ENABLED a run that executed is pushed again (never waited on). */
+export async function execute(db: DB, proposalId: string, read?: DecisionsRead, hub: HubDeps = liveHub): Promise<void> {
+  const asked = await consultHub(db, proposalId, hub, read);
+  // The gate in beginExecution refuses these too; stopping here also spares the executor's own reads.
+  if (asked === "reject") throw new Error(`${proposalId} was rejected on the hub; nothing runs`);
+  if (asked === "none") throw new Error(`${proposalId} is approved with Face ID and waits for the hub's decision; nothing runs yet`);
   const origin = approvalOrigin(db, proposalId);
-  return origin ? withOrigin(origin, () => executeApproved(db, proposalId)) : executeApproved(db, proposalId);
+  await (origin ? withOrigin(origin, () => executeApproved(db, proposalId)) : executeApproved(db, proposalId));
+  if (hubPushEnabled(hub.env ?? process.env)) void pushRuns(db, hub);
+  // Phase E (T0_ENABLED): the books go to T:0 after the action, in the background; T:0 never holds up or fails a payment.
+  void t0SinkFor(db).afterMoney();
 }
 
 async function executeApproved(db: DB, proposalId: string): Promise<void> {

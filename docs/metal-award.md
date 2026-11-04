@@ -40,7 +40,18 @@ receive policy did not run in the recorded run, so their cards name the separate
   sandbox deposit that names the real testnet transaction.
 
 What we do not use, and why: section 7. Receive policy with quarantine on the sweep wallet: section 5.
-The packages are pinned to the versions above.
+The packages are pinned to the versions above. Two things a reader of `package-lock.json` would find, stated here:
+
+- **Two versions of `metal-pay`.** Purser's own code uses `@metalntwx/metal-pay` 0.3.4. The `metal-agent` CLI 0.3.3,
+  which Purser calls for every bind, replace, pull, recorded refusal and `mandate verify`, pins its own
+  `metal-pay` 0.3.3 (`node_modules/@metalntwx/metal-agent/node_modules/…`). The diff from 0.3.3 to 0.3.4 holds a
+  clearing fix for held payments, rewritten secret scrubbing for RPC URLs and clone constants; none of it touches
+  mandates, refusals or signed orders, and the CLI does no clearing (Purser's clearing runs on 0.3.4). Purser scrubs
+  the CLI's output itself in any case (`src/metal/agentCli.ts`).
+- **Overrides.** `package.json` forces `@x402/*` 2.29.0 everywhere and gives `metal-agent` `zod` 4.6.7, where
+  metal-agent 0.3.3 declares `@x402/core` 2.28.0 and `zod` ^3.25.76. That combination is ours, not one Metal
+  shipped. It has worked for every CLI call on testnet this week (binds, replaces, pulls, recorded refusals,
+  verifies); the source is the Metal QA of the week ([section 3](metal-qa-2026-11-01-week.md)).
 
 ## 1. Accounts, *USDZ and the faucet
 

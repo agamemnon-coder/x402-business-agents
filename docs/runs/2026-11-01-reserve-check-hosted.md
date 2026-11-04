@@ -54,4 +54,4 @@ Steps run:
 The licence payment, for example: conversion EUR 253.48 for USD 286.80 SETTLED, transfer EUR 240.00 to Stockline Data
 GmbH PAID with the approval hash in its metadata, fee EUR 13.48 under the EUR 20.00 ceiling.
 
-What tomorrow adds that this could not: Max's and his father's real iPhones and Face ID, and the fresh reserve world.
+What tomorrow adds that this could not: Max's real iPhone and Face ID, with a labelled test passkey as the second approver (Second approver: a labelled test passkey in this demo. In production this is a second person.), and the fresh reserve world.

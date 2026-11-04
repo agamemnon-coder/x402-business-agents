@@ -51,6 +51,12 @@ describe("verify: Airwallex side", () => {
     expect(checks.map((c) => c.what.split(" ")[1])).toEqual(["conversion", "transfer", "fee"]);
   });
 
+  it("fails a transfer whose answer does not state the payee (adoption may proceed without it; verify does not pass it)", async () => {
+    const w = await paid();
+    delete (w.transfers[0] as { beneficiary_id?: string }).beneficiary_id;
+    expect(fails(await verifyAirwallex(w.db, airwallex(w)))).toEqual([expect.stringMatching(/transfer .*beneficiary_id undefined != /)]);
+  });
+
   it("fails a transfer whose metadata carries another hash", async () => {
     const w = await paid();
     w.transfers[0]!.metadata = { approval_sha256: "0".repeat(64) };

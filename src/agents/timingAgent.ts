@@ -26,6 +26,30 @@ export interface TimingFacts {
   usdFloor: string;
   quote: { sell: string; buy: string; rate: string; validTo: string } | null;
   after: { eurFree: string; usdAvailable: string };
+  /** The SWIFT fee ceiling code reserved beside the invoice (the terms' fee_max). */
+  feeMax: string;
+}
+
+/**
+ * Code's licence numbers (dry-179: Opus's advice, shown on Watch beside the plan, said the shortfall was EUR 90.00, not
+ * 110.00, because it left out the fee ceiling). Computed here, from the planned terms, so the agent quotes them and
+ * never sums them itself: EUR needed = the invoice + the fee ceiling; free EUR before = what the plan found free above
+ * the floor and the obligations; the shortfall = needed - free (0 when free covers it); FX buys exactly the shortfall.
+ */
+export function licenceNumbers(f: Pick<TimingFacts, "amount" | "feeMax" | "quote" | "after">): { needed: string; freeBefore: string; shortfall: string; fxBuy: string | null } {
+  const cents = (x: string) => Math.round(Number(x.replace(/[^0-9.]/g, "")) * 100);
+  const need = cents(f.amount) + cents(f.feeMax);
+  const buy = f.quote ? cents(f.quote.buy) : 0;
+  // The plan's after = free + buy - need (never below 0 once it converts exactly the shortfall), so free = after + need - buy.
+  const free = cents(f.after.eurFree) + need - buy;
+  const eur = (c: number) => (c / 100).toFixed(2);
+  return { needed: eur(need), freeBefore: eur(free), shortfall: eur(Math.max(0, need - free)), fxBuy: f.quote ? eur(buy) : null };
+}
+
+/** The numbers as one line of code's facts, for the agent to quote. */
+export function licenceNumbersLine(f: Pick<TimingFacts, "amount" | "feeMax" | "quote" | "after">): string {
+  const n = licenceNumbers(f);
+  return `Code's numbers for this payment (quote these; do not compute your own): invoice EUR ${f.amount} + SWIFT fee ceiling EUR ${f.feeMax} = EUR ${n.needed} needed; free EUR before the payment ${n.freeBefore}; shortfall EUR ${n.shortfall} (EUR needed minus free EUR)${n.fxBuy ? `; the FX converts exactly that: buy EUR ${n.fxBuy} for ${f.quote!.sell}` : "; no FX: the free EUR covers it"}.`;
 }
 
 export interface TimingAdvice { source: "claude" | "fallback"; timing: "pay_now" | "wait_until" | null; date: string | null; reason: string; run: AgentRun }
@@ -37,6 +61,7 @@ const SYSTEM = [
   "You are the Treasury agent of Northwind Outdoor. Code has planned a euro invoice payment: the FX quote for the shortfall is locked and the floors are checked; it waits for the CFO's Face ID.",
   "Read the position with read_position and the quote with read_quote, then advise with submit_advice: pay_now, or wait_until a date, with one or two sentences for the CFO on why.",
   "You advise; you cannot change the payment, its amount or its quote. The CFO decides with Face ID.",
+  "Any amount you name (the shortfall, the FX, the fee) is code's number as the facts give it, word for word; never compute one yourself.",
 ].join("\n");
 
 export async function adviseTiming(db: DB, f: TimingFacts, client: Anthropic | null = claudeClient(), model: string = MODELS.review): Promise<TimingAdvice> {
@@ -45,12 +70,12 @@ export async function adviseTiming(db: DB, f: TimingFacts, client: Anthropic | n
   const run = await runAgent(db, {
     agent: "treasury", task: `licence.timing.${f.proposalId}`, model, system: SYSTEM, maxTurns: 5, effort: "medium",
     unfinished: () => (timing ? null : "you have not advised yet: call submit_advice with pay_now or wait_until."),
-    prompt: `Invoice ${f.invoiceNo} from ${f.vendor}: EUR ${f.amount}, due ${f.dueDate}. Today is ${f.today}. The payment is planned as ${f.proposalId}.`,
+    prompt: `Invoice ${f.invoiceNo} from ${f.vendor}: EUR ${f.amount}, due ${f.dueDate}. Today is ${f.today}. The payment is planned as ${f.proposalId}.\n${licenceNumbersLine(f)}`,
     tools: [
       {
         name: "read_position", description: "Live balances at Airwallex, the CFO's floors and obligations, and the position after the payment as planned.",
         input: z.strictObject({}),
-        run: async () => ({ text: `EUR available ${f.eurAvailable} (floor ${f.eurFloor}, obligations ${f.eurObligations}); USD available ${f.usdAvailable} (floor ${f.usdFloor}). After the payment as planned: EUR free ${f.after.eurFree}, USD ${f.after.usdAvailable}.` }),
+        run: async () => ({ text: `EUR available ${f.eurAvailable} (floor ${f.eurFloor}, obligations ${f.eurObligations}); USD available ${f.usdAvailable} (floor ${f.usdFloor}). After the payment as planned: EUR free ${f.after.eurFree}, USD ${f.after.usdAvailable}. ${licenceNumbersLine(f)}` }),
       },
       {
         name: "read_quote", description: "The locked FX quote for the shortfall, if any, and how long it is valid.",

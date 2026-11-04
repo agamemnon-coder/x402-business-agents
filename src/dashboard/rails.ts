@@ -102,10 +102,21 @@ export function railsView(db: DB): RailsView {
     const first = one(db, "SELECT tx_hash FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY created_at LIMIT 1");
     if (n && Number(n.n) > 0) metal.push({ what: "The agent buys from its supplier", detail: `${String(n.n)} purchases, each under the Sourcing agent's mandate`, proof: tx(first?.tx_hash) });
   }
+  // Only real refusals over the mandate's cap: Purser's own before signing, and Metal's record of one on chain. A
+  // purchase the agent's buy policy chose not to make is not a cap refusal; a payment under a revoked mandate is Metal's
+  // own refusal, said apart.
   const refused = events(db, "upstream.refused");
-  if (refused.length) {
-    metal.push({ what: "Refused against the on-chain mandate", detail: `${refused.length} payment${refused.length > 1 ? "s" : ""} over the mandate's cap, checked by Metal's facilitator against the mandate on chain (${String(refused[0]!.p.reason)}): nothing moved; the Treasury agent proposed options to the CFO`, proof: null });
+  const overCap = refused.filter((r) => /^mandate_cap_exceeded|over the mandate's (per-payment )?cap/.test(String(r.p.reason ?? "")));
+  const byPurser = overCap.filter((r) => r.p.refused_by !== "metal");
+  const byMetal = overCap.filter((r) => r.p.refused_by === "metal");
+  const onChain = events(db, "upstream.refused_on_chain");
+  if (byPurser.length || byMetal.length || onChain.length) {
+    const parts = [`${byPurser.length} refused by Purser before signing`, `${onChain.length} recorded by Metal on chain`];
+    if (byMetal.length) parts.push(`${byMetal.length} refused by Metal's facilitator`);
+    metal.push({ what: "Refused over the mandate's cap", detail: `${parts.join(", ")} (mandate_cap_exceeded): nothing moved`, proof: tx(onChain[0]?.p.tx) });
   }
+  const revoked = refused.filter((r) => r.p.refused_by === "metal" && /mandate_revoked/.test(String(r.p.reason ?? "")));
+  if (revoked.length) metal.push({ what: "Refused under a revoked mandate", detail: `${revoked.length} payment${revoked.length > 1 ? "s" : ""} refused by Metal's facilitator: the old mandate was revoked by its replacement (a 402, nothing moved)`, proof: null });
   const replaced = events(db, "mandate.replaced");
   if (replaced.length) metal.push({ what: "Mandate replaced after Face ID", detail: `${replaced.length} replacement${replaced.length > 1 ? "s" : ""} approved by the CFO's passkey; the old mandate is revoked on chain`, proof: tx(replaced[0]!.p.tx) });
   if (has(db, "refunds")) {

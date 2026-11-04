@@ -31,6 +31,17 @@ export interface Pages {
   /** The recorded case's evidence report (no script); empty when no case was recorded. */
   metalReport: string;
   visa: string;
+  /** The partner pages (src/partners/), no script; absent in a bundle built before them. */
+  airwallex?: string;
+  claude?: string;
+  /** The redesign's public pages (Home, Watch, Proof), no key needed; absent in a bundle built before them. */
+  home?: string;
+  watch?: string;
+  proof?: string;
+  /** The clean 404 page (no script); absent in a bundle built before it. */
+  notFound?: string;
+  /** Old public addresses folded into the four tabs, and where they now go. */
+  redirects?: Record<string, string>;
   approve: string;
   enrol: string;
   /** The CFO policy editor. */
@@ -42,7 +53,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; notFound?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -71,7 +82,7 @@ const MAX_POLICY_TEXT = 2000;
 /** A chat message to Purser (Ask Purser): the runner reads it and proposes a task card for Face ID. */
 const MAX_ASK_TEXT = 500;
 
-const COMMON_HEADERS: Record<string, string> = {
+export const COMMON_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
@@ -97,6 +108,11 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
     },
   });
   if (path === "/") return page(pages.dashboard, pages.csp.dashboard);
+  if (path === "/home" && pages.home && pages.csp.home) return page(pages.home, pages.csp.home);
+  if (path === "/watch" && pages.watch && pages.csp.watch) return page(pages.watch, pages.csp.watch);
+  if (path === "/proof" && pages.proof && pages.csp.proof) return page(pages.proof, pages.csp.proof);
+  const moved = pages.redirects && Object.hasOwn(pages.redirects, path) ? pages.redirects[path] : undefined;
+  if (moved) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: moved } });
   if (path === "/month") return page(pages.month, pages.csp.month);
   if (path === "/demo") return page(pages.demo, pages.csp.demo);
   if (path === "/live") return page(pages.live, pages.csp.live);
@@ -105,6 +121,8 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/lab") return page(pages.lab, pages.csp.lab);
   if (path === "/metal") return page(pages.metal, pages.csp.metal);
   if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
+  if (path === "/airwallex" && pages.airwallex && pages.csp.airwallex) return page(pages.airwallex, pages.csp.airwallex);
+  if (path === "/claude" && pages.claude && pages.csp.claude) return page(pages.claude, pages.csp.claude);
   if (path === "/metal/report" && pages.metalReport) return page(pages.metalReport, pages.csp.metalReport);
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
@@ -123,6 +141,12 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   }
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });
   return null;
+}
+
+/** Any other address: the clean 404 page when the bundle has one, else plain text. */
+export function notFoundResponse(pages: Pages): Response {
+  if (pages.notFound && pages.csp.notFound) return new Response(pages.notFound, { status: 404, headers: { ...COMMON_HEADERS, "content-type": "text/html; charset=utf-8", "content-security-policy": pages.csp.notFound } });
+  return new Response("not found", { status: 404, headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
 }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -336,7 +360,7 @@ export class Relay {
     this.sql.exec("INSERT INTO sessions (id_hash, credential, expires) VALUES (?, ?, ?)", await sha256Hex(id), cred.id, now + SESSION_MS);
     return new Response(JSON.stringify({ signed_in: true, label: cred.label, expires_at: new Date(now + SESSION_MS).toISOString() }), {
       status: 200,
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": `kit11_session=${id}; HttpOnly; Secure; SameSite=Strict; Path=/api; Max-Age=${SESSION_MS / 1000}` },
+      headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8", "set-cookie": `kit11_session=${id}; HttpOnly; Secure; SameSite=Strict; Path=/api; Max-Age=${SESSION_MS / 1000}` },
     });
   }
 
@@ -400,7 +424,7 @@ export class Relay {
       // A runner too old to send health is "unknown", never "ok".
       const ok = raw && typeof raw.at === "string" && Array.isArray(raw.alerts) ? raw : null;
       const h = publicHealth(ok, state ? this.relayInfo(state).age_ms : null);
-      return new Response(JSON.stringify(h.body), { status: h.status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+      return new Response(JSON.stringify(h.body), { status: h.status, headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
     }
     // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,
     // so guessing is slowed and shows up (HF1). The runner's route has its own token and is not counted.

@@ -30,13 +30,13 @@ describe("an approved proposal: the CFO's approval", () => {
   it("with four eyes, also the person who signed first", () => {
     const db = openDb(":memory:");
     proposal(db, "P-2");
-    db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES ('P-2', 'c1', 'controller', 'dad', 'sha-P-2', 'a', 'y')").run();
+    db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES ('P-2', 'c1', 'controller', 'test-controller', 'sha-P-2', 'a', 'y')").run();
     db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES ('P-2', 'APPROVED', 'sha-P-2', 'max', 'passkey', '', 'z')").run();
-    expect(approvalOrigin(db, "P-2")).toMatchObject({ approver: "max", cosigner: "dad" });
+    expect(approvalOrigin(db, "P-2")).toMatchObject({ approver: "max", cosigner: "test-controller" });
     // The real shape after four eyes: the stored approver names both, and the first signer is the cosigner.
-    db.prepare("UPDATE approvals SET approver = 'dad (controller) + max (cfo)' WHERE proposal_id = 'P-2'").run();
-    db.prepare("UPDATE cosignatures SET approver = 'dad (controller)' WHERE proposal_id = 'P-2'").run();
-    expect(approvalOrigin(db, "P-2")).toMatchObject({ approver: "dad (controller) + max (cfo)", cosigner: "dad (controller)" });
+    db.prepare("UPDATE approvals SET approver = 'test-controller + max (cfo)' WHERE proposal_id = 'P-2'").run();
+    db.prepare("UPDATE cosignatures SET approver = 'test-controller' WHERE proposal_id = 'P-2'").run();
+    expect(approvalOrigin(db, "P-2")).toMatchObject({ approver: "test-controller + max (cfo)", cosigner: "test-controller" });
   });
 
   it("a rejected or undecided proposal has none, so nothing it could move would be credited to the CFO", () => {

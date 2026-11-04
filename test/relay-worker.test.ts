@@ -373,7 +373,13 @@ describe("pages", () => {
     expect(page("/metal")!.headers.get("content-security-policy")).toBe(pages.csp.metal);
     expect(await page("/metal/report")!.text()).toBe(pages.metalReport);
     expect(page("/metal/report")!.headers.get("content-security-policy")).toBe(pages.csp.metalReport);
-    const js = page("/assets/approve.js")!;
+    // The partner pages: served when the bundle has them, absent from an older bundle.
+    const partners: Pages = { ...pages, airwallex: "<!doctype html><title>awx</title>", claude: "<!doctype html><title>cl</title>", csp: { ...pages.csp, airwallex: "default-src 'none'; style-src 'sha256-awx'", claude: "default-src 'none'; style-src 'sha256-cl'" } };
+    const partner = (path: string) => pageResponse(new Request(`${BASE}${path}`), partners);
+    expect(await partner("/airwallex")!.text()).toBe(partners.airwallex);
+    expect(partner("/claude")!.headers.get("content-security-policy")).toBe(partners.csp.claude);
+    expect(page("/airwallex")?.status ?? 404).not.toBe(200);
+    const js =page("/assets/approve.js")!;
     expect(js.headers.get("content-type")).toMatch(/^text\/javascript/);
     expect(page("/assets/approve.css")!.headers.get("content-type")).toMatch(/^text\/css/);
     expect(page("/assets/logo-x.svg")!.headers.get("content-type")).toBe("image/svg+xml");

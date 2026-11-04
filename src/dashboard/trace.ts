@@ -40,6 +40,8 @@ export interface Trace {
   cost_usd_micros: number;
   latency_ms: number | null;
   claude_ms: number[];
+  /** D1: the Anthropic request id of each Claude call in this run, in order (public ids, not secrets). */
+  request_ids: string[];
   said: string;
   note: string | null;
   decision_seq: number | null;
@@ -65,6 +67,7 @@ const TOOL_CHECK: Record<string, string> = {
   read_position: "read only: live balances, floors and obligations",
   read_quote: "read only: the locked FX quote and its validity",
   submit_advice: "code's bounds on a wait (two days before the due date); advisory, the CFO decides with Face ID",
+  plan_invoice: "code's duplicate guard (never an invoice that is paid or has a plan waiting), the payee allowlist, the floors and the fee ceiling; moves no money, the CFO decides with Face ID",
   read_decline: "read only: Airwallex's decline and the card's limits",
   propose_raise: "code's bounds (covers the purchase, at most 1.25× it, a limit decline only), then the CFO's Face ID",
   no_raise: "proposes nothing; moves no money",
@@ -148,7 +151,9 @@ export function agentTraces(db: DB, all?: Row[]): Trace[] {
       run_seq: run.seq, agent, agent_name: (AGENT_DISPLAY as Record<string, { name: string }>)[agent]?.name ?? agent,
       task: str(run.subject), model: str(p.model), status: str(p.status), turns: num(p.turns) ?? 0,
       tokens: (p.tokens as Trace["tokens"]) ?? null, cost_usd_micros: num(p.cost_usd_micros) ?? 0, latency_ms: num(p.latency_ms),
-      claude_ms: Array.isArray(p.claude_ms) ? (p.claude_ms as number[]) : [], said: str(p.said), note: str(p.note) || null,
+      claude_ms: Array.isArray(p.claude_ms) ? (p.claude_ms as number[]) : [],
+      request_ids: Array.isArray(p.request_ids) ? (p.request_ids as unknown[]).filter((x): x is string => typeof x === "string" && /^req_[A-Za-z0-9]+$/.test(x)) : [],
+      said: str(p.said), note: str(p.note) || null,
       decision_seq: decision?.seq ?? null, steps,
     });
   }

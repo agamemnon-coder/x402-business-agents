@@ -561,3 +561,88 @@ Found before building (1 November, evening; sources in the research notes, repo 
   is: TAP's published example headers as test cases, plus a clean-room reading of the reference's verification
   steps (listed above) as negative and positive cases. The claim would then read "implements Visa's TAP agent
   recognition signature as specified", not "verified against Visa's open-source reference".
+
+Max, 2 November: "JA, gebruiken", reading the code's licence as MIT-like, on the condition that Claude reads
+LICENSE.md itself and reports first if it differs. It does (read again 2 November, 00:20 UTC):
+
+- The source files carry an MIT-style notice: `cdn-proxy/server.js` opens with "© 2025 Visa. Permission is hereby
+  granted, free of charge, … The above copyright notice and this permission notice shall be included …".
+- The repository's LICENSE.md still says, in full: "By using, downloading, or installing this code, you agree to the
+  terms and conditions contained in the Visa Developer Center Terms of Use (including the related Visa Trusted Agent
+  Protocol Product Terms). If you do not agree to such terms, do not download, use or install this code."
+- So the two texts differ. Reported to Max before any code is taken over; nothing from the reference is in this repo
+  or CI until he answers.
+
+Also found in the same reading of `cdn-proxy/server.js` (for the build once the licence is settled):
+
+- It verifies Ed25519 (registry `public_key` = the raw 32-byte key in base64, `alg="ed25519"`) as well as
+  RSA-PSS-SHA256 (PEM). Our agent's Ed25519 keys therefore need no RSA-PSS for the proxy; `merchant-backend` is read
+  before deciding whether RSA-PSS is needed there.
+- A second signature in the same headers breaks the unmodified proxy: it takes everything after `sig2=(…);` as
+  attributes (a later `keyId`, `nonce`, `created` would override sig2's) and uses the whole Signature-Input value as
+  `@signature-params`. So the `sig1` body binding proposed above cannot share the headers when the unmodified proxy
+  verifies. Options for Max: (a) the body is bound by our merchant's own Content-Digest check outside TAP (stated as
+  ours, not TAP's); (b) a patched proxy, labelled as Visa's reference with our changes.
+- It stores a nonce before it verifies the signature, so a forged request can use up a real nonce (a denial, not a
+  bypass). Ours stores it only after verification; the difference goes in the notes, not into a patch of Visa's code.
+
+Max, 2 November, morning: no yes to terms he has not read; a plain summary first. His preference either way: Visa's
+code does not go into our repo; the reference runs unchanged as a separate component, cloned at a fixed commit at
+test time, our agent signs and Visa's verifier checks. Body integrity: option (a), labelled "body integrity: our
+Content-Digest check on top of TAP". Summary given to Max (TAP Product Terms of 10 October 2025, read in full on
+2 November; the Developer Center Terms of Use as read on 1 November; not legal advice):
+
+1. Free: no fee is named. But using or downloading the code is accepting the Developer Center Terms and the TAP
+   Product Terms, and Visa can end that licence at any time (§6), after which use must stop.
+2. Public repo: the licence is non-transferable and not sublicensable; distribution is allowed only as part of an
+   application that implements the specification. Copying Visa's files into our public repo is not clearly allowed;
+   cloning them at test time (Max's preference) avoids distributing them, but not the acceptance of the terms.
+3. Hackathon or commercial: allowed for "developing, testing … selling or otherwise distributing" applications that
+   comply with the specification, on one condition: implementing "the most current version of the Specification in
+   its entirety in strict conformance". Purser implements the agent recognition signature only (the reference itself
+   implements no more), so whether that counts as "in its entirety" is open.
+4. To keep: the copyright and permission notice in any of their files; update at least yearly and within six months
+   of a Visa update; tell users and get any consents the law needs.
+5. Not allowed: changing their code or the specification beyond implementing or porting it (unpermitted changes
+   become Visa's property); the Visa logo or marks without written permission; saying "certified", "endorsed" or
+   "Visa-approved"; public statements about the agreement with Visa without its consent.
+
+**Correction (Max, 2 November, evening).** Airwallex changed answer (1) in #help from "Yes" to "TBD" and added Visa
+(@srahmatu) to the thread; answer (2) stays "Yes". From now on, everywhere: "Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa)." The technical claim stays as it is
+(it is proven): VISA_CLAIM in `src/config/brand.ts`. No page, doc or text says the organisers confirmed TAP counts as
+Visa tooling. No further investment in Visa until Visa answers; the Metal Award stays priority 1.
+
+### D26. Proof with the API budget: variation, holdouts, red team (Max, 2 November; starts after the reserve run)
+
+About $280 of Anthropic API credit is left for the product's own Claude calls. Plan for about $250, keeping $30 for
+Thursday, the extra run and /try while the jury looks: evals and variation about $80, red team with Opus as the
+attacker about $60, soak and dry runs about $50, Claude reviews of documents and claims about $30, /try day budget
+during judging about $30. A cost counter per block (from the cost already recorded per call), a warning at 80%, and
+spend per block in each evening report. Built: `src/claude/budget.ts` (blocks evals 80, redteam 60, soak 50, reviews 30, try 30; an unknown block is
+refused), the spend log `docs/runs/api-budget.jsonl`, and `npm run budget` (`test/api-budget.test.ts`). Per task the cheapest model that passes its eval.
+
+Variation (Max's choices): 40 worlds with simulated rails and 10 live worlds (Metal testnet and the Airwallex sandbox,
+random parameters, about 280 *USDZ from recycling and about 2 hours). Simulated-rail worlds run the same code paths
+and checks as live; only the Metal and Airwallex calls are replaced by a stand-in built from real responses of earlier
+runs. Calibration: 3 seeds run both simulated and live, decisions and outcomes compared (error codes, refusals, fees),
+and any difference reported. The report and the site show both counts apart ("40 simulated-rail worlds + 10 live
+worlds, 0 unsafe actions"). Holdouts: 10 unseen situations, at least 3 of them live, the clearest, for the "Claude
+agents" theme video.
+
+Order after the reserve run: the dry-138 points first (the dispute names only sold orders, Treasury's timing measured
+and in the draaiboek, the eval case, a fresh dry run); then the budget counters, variation, holdouts and the red team
+at night; QA and enterprise items by day. Nothing here touches Thursday's code after Wednesday 23:00.
+
+Max, 2 November, 10:15 NL:
+- **Test worlds (D26):** explicit permission to run dry runs, the soak, the variation test (10 live worlds), the
+  holdouts and the calibration in test worlds on Metal testnet and the Airwallex sandbox, including moving test money
+  (recycling from finished dry worlds and the faucet). Never live-1, the reserve worktree, the hosted relay or
+  Thursday's world; testnet and sandbox only, never real money; every transfer in the recycling log.
+- **TAP claim (D25), only after a green interop test AND the live TAP run** (Max, 2 November, replacing the earlier
+  text, which said "every card checkout" and "open-source"; neither was true: only the card-only merchant's checkout
+  goes through TAP, and Visa's reference has no open-source licence): "Our agents sign their card checkouts at TAP
+  merchants with Visa's Trusted Agent Protocol. Their signatures are accepted by Visa's public TAP reference verifier
+  (pinned commit 16d59bd). The TAP merchant in this demo is run by us. Body integrity, tag and payment checks are our
+  own layer on top." This exact text everywhere: claims.md, /visa, the description, the deck, the video. No "certified", "endorsed" or "Visa-approved", no
+  Visa logo. The review's design fixes are approved (checkout under /product/, the merchant re-verifies signature 1,
+  the registry on localhost with our pinned keys, duplicate headers refused, signature 2 covers the query, one skew).

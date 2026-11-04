@@ -28,9 +28,11 @@ export async function newAgentKey(agent: string): Promise<TapAgentKey> {
   return { agent, keyid, privateKey: pair.privateKey, publicJwk };
 }
 
-/** Registers (or replaces) an agent's public key for the merchant domains it may sign for, until notAfter (seconds). */
+/** Registers (or updates) an agent's public key for the merchant domains it may sign for, until notAfter (seconds). */
 export function registerAgent(db: DB, a: { agent: string; keyid: string; publicJwk: JsonWebKey; domains: string[]; notAfter: number }): void {
-  db.prepare("INSERT OR REPLACE INTO tap_agents (keyid, agent, public_jwk, domains_json, not_after, revoked_at) VALUES (?, ?, ?, ?, ?, NULL)")
+  // A revocation sticks: registering a revoked key id again updates the row but never clears revoked_at.
+  db.prepare(`INSERT INTO tap_agents (keyid, agent, public_jwk, domains_json, not_after, revoked_at) VALUES (?, ?, ?, ?, ?, NULL)
+    ON CONFLICT (keyid) DO UPDATE SET agent = excluded.agent, public_jwk = excluded.public_jwk, domains_json = excluded.domains_json, not_after = excluded.not_after`)
     .run(a.keyid, a.agent, JSON.stringify({ kty: a.publicJwk.kty, crv: a.publicJwk.crv, x: a.publicJwk.x }), JSON.stringify(a.domains.map((d) => d.toLowerCase())), a.notAfter);
 }
 

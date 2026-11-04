@@ -1,0 +1,72 @@
+# D25 interop test: our agent's TAP checkout against Visa's public TAP reference (github.com/visa/trusted-agent-protocol),
+# run unchanged at a pinned commit. Visa's code is never copied into this repo: it is cloned at test time into the
+# runner's temp directory, outside the checkout, and its agent registry (FastAPI) and CDN proxy (Express) run as they
+# are. The registry listens on 127.0.0.1:9002 with a fresh database (DATABASE_URL), the proxy on 3001; the proxy forwards
+# /product/* to port 3000, where test/interop/tap-interop.ts runs our merchant (src/visa/tapServer.ts, loopback only).
+# The script registers a fresh test key through the registry's API and runs the cases listed in it: our signatures
+# through the proxy, the proxy's own refusals, our merchant's refusals, the reference agent's own Ed25519 signer
+# (called headless) against our verifier, and our card rail through the proxy. No secrets: the test key is made per
+# run and never printed.
+name: tap-interop
+on:
+  push:
+    paths: ["src/visa/**", "src/db/**", "src/provenance/**", "src/agents/cardBuyer.ts", "test/interop/**", ".github/workflows/tap-interop.yml", "package.json", "package-lock.json"]
+  pull_request:
+    paths: ["src/visa/**", "src/db/**", "src/provenance/**", "src/agents/cardBuyer.ts", "test/interop/**", ".github/workflows/tap-interop.yml", "package.json", "package-lock.json"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  interop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # github.com/visa/trusted-agent-protocol, the commit D25 records (16d59bd).
+      TAP_REF_COMMIT: 16d59bdf3f8a542bc538d0962edbb80ea30a02af
+      # The proxy ships no lockfile: npm resolves its package.json ranges as they stood on this date (two weeks back).
+      TAP_REF_NPM_BEFORE: "2026-10-19"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # No npm cache: the reference's own npm install below would write into it.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.22.0
+      - run: npm ci
+      - name: Clone Visa's reference at the pinned commit, outside the repo
+        run: |
+          ref="$RUNNER_TEMP/tap-ref"
+          git clone --quiet https://github.com/visa/trusted-agent-protocol "$ref"
+          git -C "$ref" checkout --quiet --detach "$TAP_REF_COMMIT"
+          test "$(git -C "$ref" rev-parse HEAD)" = "$TAP_REF_COMMIT"
+          test -z "$(git -C "$ref" status --porcelain)"
+          echo "TAP_REF_DIR=$ref" >> "$GITHUB_ENV"
+      - name: Install the proxy's dependencies (its package.json as is, no dev dependencies, no install scripts)
+        run: |
+          cd "$TAP_REF_DIR/cdn-proxy"
+          npm install --omit=dev --no-audit --no-fund --ignore-scripts --before="$TAP_REF_NPM_BEFORE"
+      - name: Install what the registry and the reference signer import (hashed, wheels only)
+        # Not the reference's requirements files (unpinned, sdists allowed, a UI stack the test does not run): only the
+        # registry's and create_ed25519_signature's imports, at the versions the reference pins, from a committed
+        # hashed file (test/interop/tap-ref-requirements.txt). Python 3.12: pydantic 2.5.0 has no wheels for 3.13.
+        run: |
+          python3.12 -m venv "$RUNNER_TEMP/tap-venv"
+          "$RUNNER_TEMP/tap-venv/bin/pip" install --quiet --require-hashes --only-binary :all: -r test/interop/tap-ref-requirements.txt
+          echo "TAP_REF_PYTHON=$RUNNER_TEMP/tap-venv/bin/python" >> "$GITHUB_ENV"
+      - name: Start the registry (127.0.0.1:9002, fresh database) and the proxy (3001), unchanged
+        run: |
+          cd "$TAP_REF_DIR/agent-registry"
+          DATABASE_URL="sqlite:///$RUNNER_TEMP/tap-registry.db" nohup "$TAP_REF_PYTHON" -m uvicorn main:app --host 127.0.0.1 --port 9002 > "$RUNNER_TEMP/tap-registry.log" 2>&1 &
+          cd "$TAP_REF_DIR/cdn-proxy"
+          PORT=3001 nohup node server.js > "$RUNNER_TEMP/tap-proxy.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:9002/ > /dev/null 2>&1 && curl -fsS http://127.0.0.1:3001/test-proxy > /dev/null 2>&1; then exit 0; fi
+            sleep 1
+          done
+          echo "the reference did not start"; exit 1
+      - name: Interop cases (test/interop/tap-interop.ts)
+        run: npx tsx test/interop/tap-interop.ts
+      - name: Reference logs on failure
+        if: failure()
+        run: tail -n 150 "$RUNNER_TEMP/tap-registry.log" "$RUNNER_TEMP/tap-proxy.log" || true

@@ -7,27 +7,27 @@ Eén stap per regel; zeg "ok" als je klaar bent. Twijfel? Zeg "stop".
 ## Vooraf
 
 - iPhone boven 80 %, Face ID en iCloud-sleutelhanger aan, Niet storen aan, schermopname aan vóór stap 1.
-- Je vader naast je met zijn eigen iPhone. Links komen bij de start als bestand; alleen link 1 naar je vader (AirDrop).
+- Second approver: a labelled test passkey in this demo. In production this is a second person. Links komen bij de start als bestand; stuur ze nergens heen.
 
 ## Begin (zoals de reserve-run)
 
 1. Link 1 in een **privé Safari-tab**, open laten.
 2. Enrol-pagina, code, **10 seconden wachten**, Face ID.
-3. In de chat: **"Bevestig passkey XXXX-XXXX-XXXX-XXXX"**; ook voor je vader.
+3. In de chat: **"Bevestig passkey XXXX-XXXX-XXXX-XXXX"**; ook voor de test-passkey (Claude zet hem).
 4. **Vier ogen eerst aan:** P-0001 → tik de kaart → **Confirm with Face ID**.
 
 ## Jouw Face ID-momenten (met de agents aan)
 
 | Stap | Wat je ziet | Wat jij doet |
 |---|---|---|
-| 6 | Twee opties. **Optie A is altijd de laagste prijs, B de hoogste.** De bedragen kiest de Treasury agent zelf (in de dry runs meestal 14 / 2 / 4 en 0,05 of 0,07). | Eén optie heeft het label **"Treasury agent recommends this"**; in het bevestigingsscherm staat zijn advies. Kies die optie → **Confirm with Face ID**. Daarna je vader. |
+| 6 | Twee opties, meestal **±30–40 s** na de derde weggestuurde klant (gemeten in 2 runs). Is er na 2 minuten niets: gewoon wachten, Claude kijkt. **Optie A is altijd de laagste prijs, B de hoogste.** De bedragen kiest de Treasury agent zelf (in de dry runs meestal 14 / 2 / 4 en 0,05 of 0,07). | Eén optie heeft het label **"Treasury agent recommends this"**; in het bevestigingsscherm staat zijn advies. Kies die optie → **Confirm with Face ID**. Daarna tekent de test-passkey (Claude). |
 | 7 | Summit: "refund all 12". De **Support agent** heeft #7, #10, #13 al zelf terugbetaald; de rest vraagt jouw besluit. | **Reject** → **Reject with Face ID** |
-| 9 | Factuur Bergtex **€1.850,00** | Tik de kaart → **Confirm with Face ID**; daarna je vader |
+| 9 | Factuur Bergtex **€1.850,00** | Tik de kaart → **Confirm with Face ID**; daarna de test-passkey (Claude) |
 | 10 | Licentie Stockline **EUR 240,00** | Tik de kaart → **Confirm with Face ID** |
 | 11 | Kaartlimiet van €30 naar **€50** | Tik de kaart → **Confirm with Face ID** |
 | 12 | Noodknop aan en uit | Rode knop **Emergency stop** → Continue to Face ID → **Confirm with Face ID**; later uit: tik de kaart → **Confirm with Face ID** |
-| 12b | (alleen als blok 6 woensdag groen is) "Change Support agent: paused by the CFO (Metal mandate revoked, card frozen) from off to on" | **Confirm with Face ID**. Later hervatten: tik de kaart → **Confirm with Face ID**; daarna je vader |
-| 13 | Bankwijziging Bergtex: oud en nieuw IBAN | Tik de kaart → **Confirm with Face ID**; daarna je vader |
+| 12b | (alleen als blok 6 woensdag groen is) "Change Support agent: paused by the CFO (Metal mandate revoked, card frozen) from off to on" | **Confirm with Face ID**. Later hervatten: tik de kaart → **Confirm with Face ID**; daarna de test-passkey (Claude) |
+| 13 | Bankwijziging Bergtex: oud en nieuw IBAN | Tik de kaart → **Confirm with Face ID**; daarna de test-passkey (Claude) |
 
 **Elke keer:** bedrag, ontvanger en het begin van de hash gelijk aan wat Claude in de chat noemt. Zo niet: niet tikken,
 "stop". Verkeerd getikt: **Back**. Leeg scherm: de pagina probeert het 90 seconden zelf opnieuw.

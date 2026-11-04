@@ -78,6 +78,8 @@ export function refusalRule(event: string, p: P): string {
   if (event === "upstream.refused" || event === "refund.refused" || event === "sweep.refused") {
     if (reason.startsWith("frozen_by_cfo")) return "Emergency stop: every agent payment refused before signing";
     if (reason.startsWith("policy_cap_exceeded")) return "CFO policy limit, checked before anything is signed";
+    if (reason.startsWith("replace_pending")) return "A mandate replace is open: the agent spends nothing from that mandate until it is executed or closed";
+    if (reason.startsWith("buy_policy")) return "The Sourcing agent's own buy policy, checked before anything is signed";
     if (reason.startsWith("mandate_")) return "The agent's mandate, enforced by the account on chain";
     return "Payment refused before or on chain";
   }

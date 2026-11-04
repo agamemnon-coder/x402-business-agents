@@ -31,6 +31,7 @@ interface AwxTransfer {
   failure_reason?: string | null;
   fee_amount?: number | string | null;
   fee_currency?: string | null;
+  beneficiary_id?: string | null;
 }
 
 function toTransfer(t: AwxTransfer): Transfer {
@@ -44,7 +45,19 @@ function toTransfer(t: AwxTransfer): Transfer {
     failureType: t.failure_type ?? t.failure?.details?.type ?? t.failure?.code ?? null,
     failureReason: t.failure_reason ?? t.failure?.message ?? null,
     fee: t.fee_amount != null && t.fee_currency ? { cents: cents(t.fee_amount), currency: t.fee_currency } : null,
+    beneficiaryId: t.beneficiary_id ?? null,
   };
+}
+
+/**
+ * The one item of a GET /transfers?request_id=… answer, or undefined for an empty list. Throws when the list was not
+ * filtered by the request_id (another request_id in it, or more pages) or holds two: never read as "nothing".
+ */
+export function onlyRequestId<T extends { request_id?: unknown }>(r: { items?: T[]; has_more?: unknown } | null | undefined, requestId: string): T | undefined {
+  if (!r || !Array.isArray(r.items)) throw new Error("Airwallex's transfer list came without items");
+  if (r.has_more === true || r.items.some((x) => x.request_id !== requestId)) throw new Error("Airwallex's transfer list was not filtered by the request_id");
+  if (r.items.length > 1) throw new Error(`Airwallex lists more than one transfer under request_id ${requestId}`);
+  return r.items[0];
 }
 
 export class AirwallexRest implements AirwallexRail, SandboxSim {
@@ -191,8 +204,14 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
     return hit && toTransfer(hit);
   }
 
+  async findTransferByRequestIdStrict(requestId: string): Promise<Transfer | undefined> {
+    const r = await this.api.call<{ items?: AwxTransfer[]; has_more?: unknown }>("GET", "/transfers", undefined, { request_id: requestId });
+    const hit = onlyRequestId(r, requestId);
+    return hit && toTransfer(hit);
+  }
+
   async getTransfer(id: string): Promise<Transfer> {
-    return toTransfer(await this.api.call<AwxTransfer>("GET", `/transfers/${id}`));
+    return toTransfer(await this.api.call<AwxTransfer>("GET", `/transfers/${encodeURIComponent(id)}`));
   }
 
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {

@@ -22,6 +22,8 @@ export const CUSTOMER_MANDATE = { capCents: 10, budgetCents: 500 };
  */
 export const LICENCE_FEE_EUR_CENTS = 24_000;
 export const LICENSOR_NAME = "Stockline Data GmbH";
+/** The licence invoice `npm run licence` and the Treasury agent's plan_invoice plan (in fixtures/). */
+export const LICENCE_INVOICE_FIXTURE = "stockline-licence-SLL-2026-11.txt";
 /** Payees whose invoices must match a contracted amount in code exactly. */
 export const CONTRACTED_EUR_CENTS: Record<string, number> = { [LICENSOR_NAME]: LICENCE_FEE_EUR_CENTS };
 
@@ -40,10 +42,16 @@ export const REFUND_AUTO_PER_DISPUTE_CENTS = 20;
 /** A proposal lives 10 minutes, and never past its FX quote's expiry minus 30 seconds. */
 export const PROPOSAL_TTL_MS = 10 * 60 * 1000;
 export const QUOTE_SAFETY_MS = 30 * 1000;
+/**
+ * An invoice payment (the licence) waits 20 minutes for the CFO's Face ID (Max, 2 Nov: P-0006 expired at 10). An FX
+ * quote still caps it at the quote's expiry minus 30 seconds; other proposals keep PROPOSAL_TTL_MS.
+ */
+export const INVOICE_PROPOSAL_TTL_MS = 20 * 60 * 1000;
 
 /**
  * Ceiling for the Airwallex SWIFT payout fee, reserved before converting. Airwallex does not quote the fee
- * in advance (transfers/validate only answers "OK"); the sandbox charged EUR 13.47 on 2026-10-29.
+ * in advance (transfers/validate only answers "OK"); the sandbox charged EUR 13.47 on 2026-10-29 and EUR 13.36 to 13.40
+ * on 2026-11-02 (the stand-in charges SANDBOX_SWIFT_FEE_CENTS, src/redteam/airwallex.ts).
  */
 export const SWIFT_FEE_MAX_EUR_CENTS = 2000;
 export const EUR_FLOOR_CENTS = 2_500_000;

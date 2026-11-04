@@ -37,7 +37,7 @@ Need something once? Ask Purser: a flight to Berlin, at most one hundred and fif
 
 ## 2:26 Why you can trust it (17 s, clip `09-trust.mp4`)
 
-Claude agents read, plan and advise; Metal and Airwallex enforce the limits. Thirty-nine red-team attacks in a test world: all failed, two found only afterwards. Optional four eyes, an emergency stop tested on stand-ins, about nine cents of AI per thousand euros.
+Claude agents read, plan and advise; Metal and Airwallex enforce the limits. Thirty-nine red-team attacks in a test world: all failed, two found only afterwards. Four eyes, an emergency stop tested on stand-ins, about nine cents of AI per thousand euros.
 
 ## 2:43 Purser (10 s, clip `10-end.mp4`)
 

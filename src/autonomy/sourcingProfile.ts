@@ -19,11 +19,14 @@ import { buyPolicy } from "../agents/sourcing.js";
 import { mandatesNow } from "../agents/treasury.js";
 import { addresses, sellPrice, supplierPrice } from "../world/runtime.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
-import { buyPlan, proposeCardRaise } from "../agents/cardBuyer.js";
+import { proposeCardRaise } from "../agents/cardBuyer.js";
+import { buySoftwareOnCard } from "../visa/tapRail.js";
 import { maxRaiseCents } from "../agents/declineAgent.js";
 import { cardRows } from "../policy/cards.js";
 import { setSetting } from "../world/settings.js";
+import { upstreamCacheOff } from "../world/options.js";
 import { sendMessage } from "./bus.js";
+import { replaceHoldFact } from "../policy/replaceHold.js";
 import type { AgentProfile } from "./runtime.js";
 import type { AgentTool } from "../agents/loop.js";
 import { BUY_POLICY_DESCRIPTION, BUY_POLICY_INPUT, checkBuyPolicy, MARKET_DESCRIPTION, sourcingFallback, policyFrom, policyWords, sourcingBrief, SOURCING_DISPLAY, SOURCING_GOAL, SOURCING_RULES, type BuyPolicyInput, type SupplierView } from "./sourcingCore.js";
@@ -49,35 +52,74 @@ export interface SourcingWorld {
 export const SOFTWARE_PLANS = ["packwise-starter", "packwise-pro"] as const;
 export type SoftwarePlan = (typeof SOFTWARE_PLANS)[number];
 
+type InfoAnswer = { info: { price?: string; data_age_seconds?: number } } | { why: string; answered: boolean };
+
+async function askInfo(url: string, timeoutMs: number): Promise<InfoAnswer> {
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    const err = e as Error & { cause?: { code?: string } };
+    return { why: err.name === "TimeoutError" ? `no answer within ${timeoutMs / 1000} s` : err.cause?.code === "ECONNREFUSED" ? "nothing answers on its address" : "the connection failed", answered: false };
+  }
+  // An answer: an error status, or a body code can read. A 200 whose body is not a JSON object is an answer too.
+  if (!res.ok) { await res.body?.cancel().catch(() => {}); return { why: `answered HTTP ${res.status}`, answered: true }; }
+  const body = await res.json().catch(() => null) as { price?: string; data_age_seconds?: number } | null;
+  if (!body || typeof body !== "object") return { why: `answered ${res.status} with an unreadable body`, answered: true };
+  return { info: body };
+}
+
+/**
+ * Code's price check of one supplier: its free /v1/info. An error answer (503 while offline for maintenance) is the
+ * supplier's answer. No answer at all is checked once more after a pause: in agent run 1 one unanswered check, while the
+ * world's process was busy, read as "Stockline: not reachable now" while Stockline was serving (2 November).
+ */
+export async function checkSupplier(base: string, o: { timeoutMs?: number; pauseMs?: number } = {}): Promise<InfoAnswer> {
+  const url = `${base}/v1/info`, timeoutMs = o.timeoutMs ?? 5000;
+  const first = await askInfo(url, timeoutMs);
+  if ("info" in first || first.answered) return first;
+  await new Promise((r) => setTimeout(r, o.pauseMs ?? 1000));
+  const second = await askInfo(url, timeoutMs);
+  return "info" in second || second.answered ? second : { why: `${second.why}, checked twice`, answered: false };
+}
+
+/** One supplier as the Sourcing agent sees it: code's price check of its free /v1/info and its last 20 tries. */
+export async function supplierView(db: DB, id: SupplierId, base = `http://127.0.0.1:${SUPPLIERS[id].port}`, check: { timeoutMs?: number; pauseMs?: number } = {}): Promise<SupplierView> {
+  const s = SUPPLIERS[id];
+  const stats = (db.prepare(`SELECT
+      SUM(outcome = 'PAID') AS paid, SUM(outcome = 'REFUSED' AND refusal_reason NOT LIKE 'supplier_unavailable%') AS refused, SUM(refusal_reason LIKE 'supplier_unavailable%') AS unavailable
+    FROM (SELECT outcome, refusal_reason FROM upstream_purchases WHERE supplier = ? ORDER BY id DESC LIMIT 20)`).get(id) as { paid: number | null; refused: number | null; unavailable: number | null });
+  const a = await checkSupplier(base, check);
+  const info = "info" in a ? a.info : null;
+  return { id, name: s.name, price_cents: toCents(info?.price ?? supplierPrice(db, id)), data_age_seconds: info?.data_age_seconds ?? s.dataAgeSeconds, available: info !== null,
+    ...("why" in a ? { why: a.why } : {}), last20: { paid: stats.paid ?? 0, refused: stats.refused ?? 0, unavailable: stats.unavailable ?? 0 } };
+}
+
+/** The suppliers running in this world (Ridgeline Data only where it has a key), each as supplierView reads it. */
+export async function liveSuppliers(db: DB): Promise<SupplierView[]> {
+  const running: SupplierId[] = addresses(db).ridgeline ? ["stockline", "ridgeline"] : ["stockline"];
+  return Promise.all(running.map((id) => supplierView(db, id)));
+}
+
 /** The live world: the suppliers on localhost, the mandate from the chain, the price from the ledger. */
-export function liveSourcingWorld(db: DB): SourcingWorld {
-  const running = (): SupplierId[] => (addresses(db).ridgeline ? ["stockline", "ridgeline"] : ["stockline"]);
+export function liveSourcingWorld(db: DB, o: { issuing?: ReturnType<typeof issuingFromEnv> } = {}): SourcingWorld {
+  // Airwallex Issuing from the sandbox keys; a test passes its fake (the live wiring is otherwise the same).
+  const iss = o.issuing === undefined ? issuingFromEnv() : o.issuing;
   return {
-    suppliers: async () => Promise.all(running().map(async (id) => {
-      const s = SUPPLIERS[id];
-      const stats = (db.prepare(`SELECT
-          SUM(outcome = 'PAID') AS paid, SUM(outcome = 'REFUSED' AND refusal_reason NOT LIKE 'supplier_unavailable%') AS refused, SUM(refusal_reason LIKE 'supplier_unavailable%') AS unavailable
-        FROM (SELECT outcome, refusal_reason FROM upstream_purchases WHERE supplier = ? ORDER BY id DESC LIMIT 20)`).get(id) as { paid: number | null; refused: number | null; unavailable: number | null });
-      let info: { price?: string; data_age_seconds?: number } | null;
-      try {
-        info = await (await fetch(`http://127.0.0.1:${s.port}/v1/info`, { signal: AbortSignal.timeout(5000) })).json() as { price?: string; data_age_seconds?: number };
-      } catch { info = null; }
-      return { id, name: s.name, price_cents: toCents(info?.price ?? supplierPrice(db, id)), data_age_seconds: info?.data_age_seconds ?? s.dataAgeSeconds, available: info !== null,
-        last20: { paid: stats.paid ?? 0, refused: stats.refused ?? 0, unavailable: stats.unavailable ?? 0 } };
-    })),
+    suppliers: async () => liveSuppliers(db),
     mandate: async () => { const m = (await mandatesNow(db)).get("sourcing")!.now; return { capCents: m.capCents, budgetLeftCents: m.budgetCents - m.spentCents }; },
     sellCents: () => toCents(sellPrice(db)),
     // The company card, where it was issued (npm run cards -- setup) and the sandbox keys are set.
-    ...(issuingFromEnv() ? {
+    ...(iss ? {
       card: async () => { const c = cardRows(db).find((x) => x.agent === "sourcing"); return c ? { perTxCents: c.per_tx_cents, monthlyCents: c.monthly_cents } : null; },
       payReportOnTaskCard: async (taskId: string) => {
-        const iss = issuingFromEnv()!;
         const t = await bookOnTaskCard(db, iss.sim, taskId, { merchant: REPORT_OFFER.supplier, amount: fromCents(REPORT_OFFER.cardCents), mcc: REPORT_OFFER.mcc }, new Date(), iss.rail);
         return { approved: t.approved, text: t.approved ? "approved by Airwallex" : `declined by Airwallex (${t.failureReason ?? t.status})`, ref: t.transactionId };
       },
       askCardRaise: async (perPurchase: string, reason: string) => ({ proposal_id: proposeCardRaise(db, "sourcing", { perTx: perPurchase }, reason).proposal_id }),
       buyPlan: async (plan: SoftwarePlan) => {
-        const t = await buyPlan(db, issuingFromEnv()!.sim, plan);
+        // D25: with KIT11_TAP_RAIL=on the checkout is signed with TAP and checked by the merchant before the card is charged.
+        const t = await buySoftwareOnCard(db, iss.sim, plan);
         if (t.approved) return { approved: true, text: "approved by Airwallex", ref: t.transactionId };
         // D22: Airwallex's answer is the agent's to act on (ask_card_raise); its webhook or the poll records it too.
         return { approved: false, text: `declined by Airwallex (${t.failureReason}); your card's limit decides, and only the CFO can raise it: ask with ask_card_raise if you need this plan`, ref: t.transactionId };
@@ -89,7 +131,8 @@ export function liveSourcingWorld(db: DB): SourcingWorld {
 export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): AgentProfile {
   const describe = async (db: DB) => {
     const [suppliers, m, card] = await Promise.all([world.suppliers(), world.mandate(), world.card ? world.card() : Promise.resolve(null)]);
-    return sourcingBrief({ suppliers, capCents: m.capCents, budgetLeftCents: m.budgetLeftCents, sellCents: world.sellCents(), policy: buyPolicy(db), card });
+    const held = replaceHoldFact(db, "sourcing");
+    return sourcingBrief({ suppliers, capCents: m.capCents, budgetLeftCents: m.budgetLeftCents, sellCents: world.sellCents(), policy: buyPolicy(db), card, ...(upstreamCacheOff(db) ? { noCache: true } : {}), ...(held ? { held } : {}) });
   };
   return {
     name: "sourcing", display: SOURCING_DISPLAY, model: MODELS.classify, tickMs,
@@ -180,11 +223,13 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
           const [sup, m] = await Promise.all([world.suppliers(), world.mandate()]);
           const no = checkBuyPolicy(p, sup, m.capCents, world.sellCents());
           if (no) return no;
-          const next = policyFrom(p);
+          // A world without a cache (world.upstream_cache = off) stores no cache: the agent cannot turn it back on.
+          const noCache = upstreamCacheOff(db) && p.cache_seconds > 0;
+          const next = policyFrom(noCache ? { ...p, cache_seconds: 0 } : p);
           setSetting(db, "sourcing", "sourcing.buy_policy", JSON.stringify(next));
           // D24: who set the policy (the agent's Claude run), so every purchase under it can name that decision.
-          audit(db, "sourcing", "sourcing.policy_set", "buy_policy", { ...next, origin: (currentOrigin() as never) ?? null });
-          return { text: `Buy policy set: ${policyWords(next)}.` };
+          audit(db, "sourcing", "sourcing.policy_set", "buy_policy", { ...next, ...(noCache ? { cache_refused: p.cache_seconds } : {}), origin: (currentOrigin() as never) ?? null });
+          return { text: `Buy policy set: ${policyWords(next)}.${noCache ? ` Not the ${p.cache_seconds} s cache: this world serves no cached stock check, every query buys upstream once.` : ""}` };
         },
       },
     ];

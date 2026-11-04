@@ -72,6 +72,10 @@ describe("every money event carries the origin in force when it was written", ()
     expect(payloadOf(db, "agent.tool")).not.toHaveProperty("origin");
   });
 
+  it("names the payout retry's events and its alarms as money events, so each records its origin", () => {
+    for (const e of ["transfer.retry", "transfer.retry_stopped", "transfer.row_conflict", "transfer.left_open", "transfer.closed_unsent"]) expect(MONEY_EVENTS.has(e), e).toBe(true);
+  });
+
   it("names every movement the money flow shows, and the refusals", () => {
     for (const e of ["sale.delivered", "upstream.paid", "upstream.refused", "upstream.refused_on_chain", "refund.paid", "refund.refused", "sweep.paid", "sweep.refused", "credit.deposited", "transfer.created", "fx.converted", "card.purchase_started", "card.charge_approved", "card.charge_declined", "receivable.matched", "receivable.escalated", "mandate.replaced"]) {
       expect(MONEY_EVENTS.has(e), e).toBe(true);

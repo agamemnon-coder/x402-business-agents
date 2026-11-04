@@ -1,5 +1,5 @@
-// The story is no longer "code decides; the models only read and advise": Claude agents read, plan and advise (and,
-// once the agents are proven in a recorded run, act inside their mandates); Metal and Airwallex enforce the limits;
+// The story is no longer "code decides; the models only read and advise": Claude agents handle the exceptions (they
+// decide inside their mandates, as agent run 1 recorded); Metal and Airwallex enforce the limits;
 // the CFO approves anything beyond them. Breaks if the old line comes back anywhere a juror reads.
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -29,6 +29,6 @@ describe("the core line", () => {
   });
 
   it("says who enforces the limits on the trust beat", () => {
-    expect(SCENES.find((s) => s.id === "trust")!.voice).toMatch(/^Claude agents read, plan and advise; Metal and Airwallex enforce the limits\./);
+    expect(SCENES.find((s) => s.id === "trust")!.voice).toMatch(/^Claude agents handle the exceptions; Metal and Airwallex enforce the limits\./);
   });
 });

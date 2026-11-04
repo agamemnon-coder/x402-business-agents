@@ -18,6 +18,7 @@ import { heldCents, releaseHold, reserveSpend, settleHold } from "../policy/hold
 import { extractTerms } from "@metalntwx/metal-pay/mandates";
 import { capRefusal } from "../policy/rules.js";
 import { velocityGate } from "../policy/velocity.js";
+import { replaceHoldRefusal } from "../policy/replaceHold.js";
 
 const sum = (db: DB, sql: string) => (db.prepare(sql).get() as { s: number | null }).s ?? 0;
 
@@ -54,20 +55,23 @@ async function remaining(agent: "sourcing" | "support" | "treasury"): Promise<nu
   const m = await activeMandate(agent);
   return baseUnitsToCents(extractTerms(m.credential).constraints.budget) - baseUnitsToCents(await mandateSpent(m));
 }
-/** What a mandate may still spend: its budget less what the chain counts spent, less holds for payments under way. */
-async function available(db: DB, agent: "sourcing" | "support" | "treasury"): Promise<number> {
-  return (await remaining(agent)) - heldCents(db, agent);
+
+/** What planning a sweep reads from the chain; D26's simulated rails pass their own (default: Metal testnet). */
+export interface SweepReads {
+  balanceCents(business: Address): Promise<number>;
+  remaining(agent: "sourcing" | "support" | "treasury"): Promise<number>;
 }
+const liveReads: SweepReads = { balanceCents: async (a) => baseUnitsToCents(await usdzBalance(a)), remaining };
 
 /** Sweep the net earnings, but never below what the other mandates may still spend, nor past treasury's own budget. */
-export async function planSweep(db: DB, business: Address): Promise<SweepPlan | { refuse: string }> {
+export async function planSweep(db: DB, business: Address, reads: SweepReads = liveReads): Promise<SweepPlan | { refuse: string }> {
   const e = netEarnings(db);
   if (e.netCents <= 0) return { refuse: `nothing to sweep: net earnings ${fromCents(Math.max(0, e.netCents))}` };
-  const before = baseUnitsToCents(await usdzBalance(business));
+  const before = await reads.balanceCents(business);
   // The other agents' held payments are still in the business account until paid, so their whole remaining budget
   // stays committed; treasury's own holds (another sweep under way) come off what it may still move.
-  const committed = (await remaining("sourcing")) + (await remaining("support"));
-  const treasuryRemaining = await available(db, "treasury");
+  const committed = (await reads.remaining("sourcing")) + (await reads.remaining("support"));
+  const treasuryRemaining = (await reads.remaining("treasury")) - heldCents(db, "treasury");
   const amount = e.netCents;
   if (amount > treasuryRemaining) return { refuse: `sweep ${fromCents(amount)} exceeds treasury's remaining budget ${fromCents(treasuryRemaining)}` };
   if (before - amount < committed) return { refuse: `sweep would leave ${fromCents(before - amount)}, under the ${fromCents(committed)} the other mandates may still spend` };
@@ -98,9 +102,11 @@ async function sweepUnder(db: DB, paymentId: string, amountCents: number, to: Ad
   if (newAttempt) db.prepare("UPDATE sweeps SET origin_json = ? WHERE payment_id = ?").run(originJson(), paymentId);
   // The CFO policy's limit per sweep, the velocity limits, the mandate's budget and the agents' shared total, reserved
   // together before anything is signed (a hold). A pull already sent is counted by its ledger row: its retry only checks.
+  // An open mandate replace of the treasury mandate holds both (dry-179): the retry of a pull that never reached the
+  // chain would move the spend the replace carries.
   const inFlight = row.outcome === "PENDING" || row.outcome === "HELD";
   const refusal = inFlight
-    ? capRefusal(db, "treasury", amountCents) ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId)
+    ? capRefusal(db, "treasury", amountCents) ?? replaceHoldRefusal(db, "treasury") ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId)
     : reserveSpend(db, { agent: "treasury", rail: "metal", cents: amountCents, ref: paymentId, payee: "sweep" });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its

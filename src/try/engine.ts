@@ -6,6 +6,7 @@
 
 import { TASK_KINDS } from "../config/policy.js";
 import { findInjections } from "../policy/injection.js";
+import { moneyIn, numberTokens, readAllIn, readNumber, writtenAmount, centsWritten } from "../lib/numbers.js";
 
 export const TRY_MAX_CHARS = 280;
 
@@ -23,16 +24,35 @@ export interface Reading {
 const PER_UNIT = /\b(each|apiece|a piece|per (seat|licen[cs]e|user|item|unit|piece|card|ticket|night|person|room|copy))\b|\/(seat|user|item|night)\b/i;
 const TOTAL = /\b(at most|max(imum)?|in total|total|up to|budget|no more than)\b/i;
 
+/** Plural words after a number that are not things bought ("in 3 minutes", "5 times"). */
+const NOT_ITEMS = /^(seconds|secs|minutes|mins|hours|hrs|days|weeks|months|years|times|percent|tonnes|tons|kilos|kgs|metres|meters|kms|miles|lbs)$/i;
+/** "3 x", "x 2,500", or a number right before a plural ("4 gift cards", "2.500 SKUs", "3 nights"); the number is group 1, 2 or 3. */
+const COUNTED = /(?<![\w.,€$/:-])(\d[\d.,]*\d|\d)\s*(?:x|×)\s|(?:^|[\s(,])(?:x\s+|×\s*)(\d[\d.,]*\d|\d)(?!\w|[.,]\d)|(?<![\w.,€$/:-])(\d[\d.,]*\d|\d)\s+((?:[a-z-]+\s+){0,2}?)([a-z]+s)\b/gi;
+
+/** The most a model's count is taken for, as the model's own schema check (src/try/claude.ts) allows: defence in depth. */
+const MODEL_COUNT_MAX = 10_000;
+
+/** A count the message writes: a whole number, none, or the reason the number written cannot be one ("2,5 checks"). */
+export type Count = { n: number } | { n: null; why: string } | null;
+
 /**
- * How many the message itself says: the model's count when that number is written in the message, otherwise a number
- * written right before a plural ("4 gift cards", "3 nights") or "3 x". Never a count the person did not write.
+ * How many the message itself says: the model's count when that number is written in the message as a count,
+ * otherwise a number written right before a plural ("4 gift cards", "2.500 SKUs") or with an x ("3 x", "x 2,500").
+ * Read by the one reader (src/lib/numbers.ts): a count is whole, so "2.500 SKUs" is 2,500. Never a count the person did
+ * not write, and never the number of a time ("in 3 minutes").
  */
-export function quantityIn(text: string, modelSays?: number | null): number | null {
-  const written = (n: number) => new RegExp(`(^|[^\\d.,])${n}([^\\d.,]|$)`).test(text);
-  if (typeof modelSays === "number" && Number.isInteger(modelSays) && modelSays > 1 && modelSays < 10_000 && written(modelSays)) return modelSays;
-  const m = /\b(\d{1,4})\s*(?:x|×)\s|\b(\d{1,4})\s+(?:[a-z]+\s+){0,2}?[a-z]+s\b/i.exec(text);
-  const n = m ? Number(m[1] ?? m[2]) : NaN;
-  return Number.isInteger(n) && n > 1 ? n : null;
+export function countIn(text: string, modelSays?: number | null): Count {
+  const counts = readAllIn(text, "count");
+  const notTime = (end: number) => !NOT_ITEMS.test(/^\s*([a-z]+)/i.exec(text.slice(end))?.[1] ?? "");
+  if (typeof modelSays === "number" && Number.isInteger(modelSays) && modelSays > 1 && modelSays < MODEL_COUNT_MAX && counts.some((t) => t.currency === null && t.reading.ok && t.reading.value === modelSays && notTime(t.end))) return { n: modelSays };
+  for (const m of text.matchAll(COUNTED)) {
+    if (m[5] && NOT_ITEMS.test(m[5])) continue;
+    const raw = (m[1] ?? m[2] ?? m[3])!;
+    const r = readNumber(raw, "count");
+    if (!r.ok) return { n: null, why: r.why };
+    if (r.value > 1) return { n: r.value };
+  }
+  return null;
 }
 
 /** One model call, as the engine reports it. */
@@ -56,6 +76,8 @@ export interface TryResult {
   card: { label: string; last4: string; limit: string; only: string; until: string | null } | null;
   steps: TryStep[];
   costUsd: number;
+  /** A second request in the message that was not handled, named so it is never dropped silently; null when none. */
+  not_done: string | null;
   /** "claude" when the models read it; "plain" when code read it alone (no key here, or today's budget is spent). */
   mode: "claude" | "plain";
   rail: Rail;
@@ -88,19 +110,9 @@ export const DEMO_WORLD = {
 const DAY = 86_400_000;
 const eur = (cents: number) => `€${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-/** Every number the text writes, in cents, with "1.180" and "1,180.50" read the way people write them. */
+/** Every number the text writes, in cents, read by the one reader (src/lib/numbers.ts): "1.180", "1,180.50", "€12,99". */
 export function centsIn(text: string): number[] {
-  const out: number[] = [];
-  for (const m of text.matchAll(/\d[\d.,]*\d|\d/g)) {
-    let t = m[0];
-    const lastSep = Math.max(t.lastIndexOf("."), t.lastIndexOf(","));
-    // A last separator followed by exactly two digits is the decimal point; any other separator groups thousands.
-    if (lastSep >= 0 && t.length - lastSep - 1 === 2) t = t.slice(0, lastSep).replace(/[.,]/g, "") + "." + t.slice(lastSep + 1);
-    else t = t.replace(/[.,]/g, "");
-    const v = Math.round(Number(t) * 100);
-    if (Number.isFinite(v) && v > 0) out.push(v);
-  }
-  return out;
+  return centsWritten(text).filter((c) => c > 0);
 }
 
 /** Sorting and reading by code alone: the fallback when no model may be asked. */
@@ -114,25 +126,81 @@ export const plainModels: TryModels = {
       : /\b(buy|order|purchase|get)\b/.test(t) ? "purchase" : "unclear";
     return { value, model: "code", ms: 0, costUsd: 0 };
   },
-  async read(text) {
-    const m = /€\s*(\d[\d.,]*\d|\d)|(\d[\d.,]*\d|\d)\s*(?:€|eur\b|euros?\b)/i.exec(text);
+  async read(text, intent) {
+    // Euros, as the demo world's policy is set; a price per request (Metal) in USD, or written with two decimals.
+    const m = intent === "api_data" ? numberTokens(text).find((t) => t.currency === "USD" || (t.currency === null && /[.,]\d{2}$/.test(t.raw))) : numberTokens(text).find((t) => t.currency === "EUR");
     const date = /\b(20\d{2}-\d{2}-\d{2})\b/.exec(text)?.[1] ?? null;
-    return { value: { item: text.slice(0, 80), merchant: null, amount: m ? (m[1] ?? m[2])! : null, currency: m ? "EUR" : null, date, payee: null }, model: "code", ms: 0, costUsd: 0 };
+    return { value: { item: text.slice(0, 80), merchant: null, amount: m ? m.raw : null, currency: m ? (intent === "api_data" ? "USD" : "EUR") : null, date, payee: null }, model: "code", ms: 0, costUsd: 0 };
   },
 };
 
+const ACTION = /\b(buy|pay|renew|book|order|purchase|subscribe|run|get|reserve)\b/i;
+/** Words that start another request: "Also renew Notion", ", then book a hotel", "as well as". */
+const ALSO = /(?:[.;!?]+\s+|,\s*|\s+)(?=(?:and\s+)?(?:also|additionally|in addition|as well as)\b)|(?:[.;!?]+\s+|,\s*)(?=(?:and\s+)?(?:plus|then|after that)\b)|\s+and\s+(?=then\b)/gi;
+/** A verb that starts another request, after one that already asked for something: "Book a flight. Book a hotel too." */
+const NEXT_VERB = /(?:[.;!?]+\s+|,\s*(?:and\s+)?|\s+and\s+)(?=(?:please\s+)?(?:buy|renew|book|order|purchase|subscribe|reserve)\b)|[.;!?]+\s+(?=(?:please\s+)?(?:pay|run)\b(?!\s+(?:at most|up to|max|no more than|less than|with|by|using|it|that|for it)\b))/gi;
+
+/**
+ * One request at a time: the first request in the message, and the rest when the message asks for something more
+ * ("Figma seat 49,99 EUR. Also renew Notion at 1.050,00 EUR"). The rest is never dropped silently: the answer names it
+ * as not done. Code splits it, so the models read only the request that is handled.
+ */
+export function splitRequests(text: string): { first: string; rest: string | null } {
+  const cuts = [...[...text.matchAll(ALSO)].map((m) => ({ m, verb: false })), ...[...text.matchAll(NEXT_VERB)].map((m) => ({ m, verb: true }))].sort((a, b) => a.m.index - b.m.index);
+  for (const { m, verb } of cuts) {
+    const before = text.slice(0, m.index);
+    const rest = text.slice(m.index + m[0].length).trim();
+    if (!/\p{L}/u.test(before) || !/\p{L}{2}/u.test(rest) || (verb && !ACTION.test(before))) continue;
+    return { first: (before + (/^[.!?]+/.exec(m[0])?.[0] ?? "")).trim(), rest };
+  }
+  return { first: text, rest: null };
+}
+
+/** The amounts a message names as money: a number with a currency sign or code, or with exactly two decimals. */
+function amountsNamed(text: string) {
+  return moneyIn(text).filter((m) => m.currency !== null || /[.,]\d{2}$/.test(m.raw));
+}
+const money = (cents: number, currency: "EUR" | "USD" | null) => (currency === "USD" ? `$${(cents / 100).toFixed(2)}` : eur(cents));
+const listed = (xs: string[]) => (xs.length < 3 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+
+/**
+ * The amount a model (or the plain reader) read, checked against the words typed: the number must be written in the
+ * message, and it is read there, in its context (src/lib/numbers.ts), never from the model's copy alone. A number
+ * that is ambiguous or would need rounding comes back with the reason.
+ */
+function amountWritten(text: string, written: string): { cents: number } | { why: string } | null {
+  const raw = numberTokens(written)[0]?.raw;
+  if (raw === undefined) return null;
+  const there = moneyIn(text).find((m) => m.raw === raw);
+  if (there) return there.reading.ok ? { cents: there.reading.value } : { why: there.reading.why };
+  const alone = readNumber(written, "money");
+  if (!alone.ok) return { why: alone.why };
+  const w = writtenAmount(text, alone.value);
+  return w.ok ? { cents: alone.value } : w.why ? { why: w.why } : null;
+}
+
+const ZERO = "The amount must be more than zero";
+/** An amount read from the message, refused when it is zero: nothing is bought or paid for €0. */
+function amountWrittenAboveZero(text: string, written: string): { cents: number } | { why: string } | null {
+  const r = amountWritten(text, written);
+  return r && "cents" in r && r.cents <= 0 ? { why: `${written} is zero. ${ZERO}` } : r;
+}
+
 /** Handles one request in the demo world. `now` fixes the clock (for dates); `models` are Claude, or code alone. */
 export async function tryPurser(input: string, models: TryModels, now: Date, mode: "claude" | "plain" = "claude"): Promise<TryResult> {
-  const text = input.replace(/\r/g, "").trim().slice(0, TRY_MAX_CHARS);
+  const whole = input.replace(/\r/g, "").trim().slice(0, TRY_MAX_CHARS);
   const steps: TryStep[] = [];
   let cost = 0;
   let rail: Rail = null;
   let live: Live = null;
-  const done = (outcome: Outcome, headline: string, detail: string, card: TryResult["card"] = null): TryResult =>
-    ({ outcome, headline, detail, card, steps, costUsd: Math.round(cost * 1e6) / 1e6, mode, rail, live });
+  let notDone: string | null = null;
+  const done = (outcome: Outcome, headline: string, detail: string, card: TryResult["card"] = null): TryResult => ({
+    outcome, headline, detail: notDone ? `${detail} Not done: "${notDone}". Try handles one request at a time; send it as its own try.` : detail,
+    card, steps, costUsd: Math.round(cost * 1e6) / 1e6, mode, rail, live, not_done: notDone,
+  });
 
   // 1. Code first: a line aimed at the AI stops the request before any model reads it.
-  const planted = findInjections(text);
+  const planted = findInjections(whole);
   if (planted.length) {
     steps.push({ by: "code", title: "Checked for instructions aimed at the AI", detail: `Found: "${planted[0]!.excerpt.slice(0, 90)}". Limits come from the CFO policy, never from a message, so no model was asked and nothing was planned.`, tone: "bad" });
     live = "planted";
@@ -140,7 +208,37 @@ export async function tryPurser(input: string, models: TryModels, now: Date, mod
   }
   steps.push({ by: "code", title: "Checked for instructions aimed at the AI", detail: "None found.", tone: "ok" });
 
-  // 2. Haiku sorts the request; 3. Sonnet reads it into fields.
+  // 2. One request at a time, with one amount: code finds a second request, and names it as not done.
+  const { first: text, rest } = splitRequests(whole);
+  if (rest) {
+    notDone = rest;
+    steps.push({ by: "code", title: "Found more than one request", detail: `Try handles one request at a time. Handled: "${text}". Not done: "${rest}".`, tone: "bad" });
+  }
+  const named = amountsNamed(text);
+  const unreadable = named.find((m) => !m.reading.ok);
+  if (unreadable && !unreadable.reading.ok) {
+    steps.push({ by: "code", title: "Checked the amount", detail: `${unreadable.reading.why}.`, tone: "bad" });
+    return done("question", "Which amount?", `${unreadable.reading.why}. Nothing was done.`);
+  }
+  const amounts = [...new Map(named.map((m) => [m.reading.ok ? m.reading.value : -1, m.currency])).entries()];
+  if (amounts.some(([c]) => c <= 0)) {
+    steps.push({ by: "code", title: "Checked the amount", detail: `The message names an amount of zero. ${ZERO}.`, tone: "bad" });
+    return done("question", "How much may it cost?", `${ZERO}: nothing is bought or paid for ${money(0, amounts.find(([c]) => c <= 0)![1])}. Nothing was done.`);
+  }
+  if (amounts.length > 1) {
+    const shown = listed(amounts.map(([c, cur]) => money(c, cur)));
+    steps.push({ by: "code", title: "Checked the amount", detail: `The message names more than one amount: ${shown}.`, tone: "bad" });
+    return done("question", "Which amount?", `The message names more than one amount (${shown}). Try handles one request with one amount at a time, so nothing was done. Write the one amount it may cost, or send each as its own try.`);
+  }
+  const items = DEMO_WORLD.catalog.map((x) => ({ x, at: x.match.exec(text)?.index ?? -1 })).filter((h) => h.at >= 0).sort((a, b) => a.at - b.at);
+  const travel = /\b(flight|hotel|train)s?\s+(?:and|&|\+|plus)\s+(?:an?\s+|the\s+)?(flight|hotel|train)s?\b/i.exec(text);
+  if (items.length > 1 || (travel && travel[1]!.toLowerCase() !== travel[2]!.toLowerCase())) {
+    const what = items.length > 1 ? listed(items.map((h) => h.x.item)) : `a ${travel![1]!.toLowerCase()} and a ${travel![2]!.toLowerCase()}`;
+    steps.push({ by: "code", title: "Found more than one request", detail: `The message asks for ${what}.`, tone: "bad" });
+    return done("question", "One at a time", `The message asks for ${what}. Try handles one request at a time, so nothing was done. Send each as its own try.`);
+  }
+
+  // 3. Haiku sorts the request; 4. Sonnet reads it into fields.
   const c = await models.classify(text);
   cost += c.costUsd;
   const KIND: Record<Intent, string> = { flight: "a flight", hotel: "a hotel", train: "a train", software: "software", supplier_payment: "a supplier payment", api_data: "data, paid per request", purchase: "a purchase", unclear: "unclear" };
@@ -151,30 +249,43 @@ export async function tryPurser(input: string, models: TryModels, now: Date, mod
   const f = r.value;
   steps.push({ by: r.model, title: "Read the request", detail: [f.item && `item: ${f.item}`, f.merchant && `from: ${f.merchant}`, f.payee && `pay to: ${f.payee}`, f.amount && `amount: ${f.amount} ${f.currency ?? ""}`.trim(), f.date && `date: ${f.date}`].filter(Boolean).join(" · ") || "no fields", ms: r.ms, costUsd: r.costUsd });
 
-  // Pay per request on Metal: the sourcing agent's mandate, checked here as the chain checks it.
-  if (c.value === "api_data") return metalRequest(text, f, steps, (o, h, d) => { rail = "metal"; live = o === "paid" ? "x402" : h === "Refused by the chain" ? "chain_refused" : null; return done(o, h, d); });
-
-  // 4. Code checks the amount against the words typed: a model cannot add a number the CFO did not write.
-  let cents: number | null = null;
-  let priced = "";
-  if (f.amount !== null) {
-    const v = centsIn(f.amount)[0];
-    if (v !== undefined && centsIn(text).includes(v)) cents = v;
-    else steps.push({ by: "code", title: "Checked the amount", detail: `${f.amount} is not a number in the message, so it was not used.`, tone: "bad" });
+  // 5. Code checks the amount against the words typed: a model cannot add a number the CFO did not write, and a number
+  // is read where it is written, by the one reader (src/lib/numbers.ts).
+  const read = f.amount !== null ? amountWrittenAboveZero(text, f.amount) : null;
+  if (read && "why" in read) {
+    steps.push({ by: "code", title: "Checked the amount", detail: `${read.why}.`, tone: "bad" });
+    return done("question", "Which amount?", `${read.why}. Nothing was done.`);
   }
+  if (f.amount !== null && read === null) steps.push({ by: "code", title: "Checked the amount", detail: `${f.amount} is not a number in the message, so it was not used.`, tone: "bad" });
+  if (read && amounts.length === 1 && amounts[0]![0] !== read.cents) {
+    const shown = listed([money(read.cents, null), money(amounts[0]![0], amounts[0]![1])]);
+    steps.push({ by: "code", title: "Checked the amount", detail: `The message names more than one amount: ${shown}.`, tone: "bad" });
+    return done("question", "Which amount?", `The message names more than one amount (${shown}). Try handles one request with one amount at a time, so nothing was done. Write the one amount it may cost.`);
+  }
+
+  // Pay per request on Metal: the sourcing agent's mandate, checked here as the chain checks it.
+  if (c.value === "api_data") return metalRequest(text, f, read?.cents ?? null, steps, (o, h, d) => { rail = "metal"; live = o === "paid" ? "x402" : h === "Refused by the chain" ? "chain_refused" : null; return done(o, h, d); });
+
+  let cents: number | null = read ? read.cents : null;
+  let priced = "";
   if (cents !== null && f.currency && f.currency !== "EUR") {
     steps.push({ by: "code", title: "Checked the currency", detail: `Northwind's policy is set in euros; ${f.currency} needs a quote first.`, tone: "bad" });
     return done("question", "Ask in euros", "Write the most it may cost in euros, for example \"at most €250\".");
   }
   if (cents === null) {
-    const hit = DEMO_WORLD.catalog.find((x) => x.match.test(text));
+    const hit = items[0]?.x;
     if (hit) { cents = hit.cents; priced = ` (demo catalog price for ${hit.item})`; }
   }
   // How many: code multiplies a price per item by a count written in the message, and asks when it cannot tell.
-  const qty = quantityIn(text, f.quantity);
+  const count = countIn(text, f.quantity);
+  const qty = count?.n ?? null;
   const perUnit = PER_UNIT.test(text) || (f.per_unit === true && qty !== null);
   if (cents !== null && !TOTAL.test(text)) {
     const fromCatalog = priced !== "";
+    if (count && count.n === null && (perUnit || fromCatalog)) {
+      steps.push({ by: "code", title: "Checked the amount", detail: `${count.why}.`, tone: "bad" });
+      return done("question", "How many?", `${count.why}. Write how many as a whole number, for example "Buy 3 seats at €40 each".`);
+    }
     if (perUnit && qty === null) {
       steps.push({ by: "code", title: "Checked the amount", detail: `${eur(cents)} each, but the message does not say how many.`, tone: "bad" });
       return done("question", "How many?", `${eur(cents)} is a price per item. Write how many, for example "Buy 3 seats at €40 each", so code can work out the total.`);
@@ -271,7 +382,7 @@ const usdz = (cents: number) => `${(cents / 100).toFixed(2)} test USD`;
  * at most the mandate's cap a payment, inside what is left of its budget. These are the checks Metal itself makes on
  * chain; here code makes them on the demo world's copy of the mandate.
  */
-function metalRequest(text: string, f: Reading, steps: TryStep[], done: (o: Outcome, h: string, d: string) => TryResult): TryResult {
+function metalRequest(text: string, f: Reading, written: number | null, steps: TryStep[], done: (o: Outcome, h: string, d: string) => TryResult): TryResult {
   const m = DEMO_WORLD.metal;
   const payee = f.merchant ?? f.payee;
   if (payee && !new RegExp(`\\b${m.payee}\\b`, "i").test(payee)) {
@@ -283,9 +394,13 @@ function metalRequest(text: string, f: Reading, steps: TryStep[], done: (o: Outc
     return done("question", "Ask in test USD", `Write the price per request in USD, for example "${m.unit}s at $0.04 each".`);
   }
   // The price per request: as written in the message (code checks it is there), or Stockline's price.
-  const written = f.amount !== null ? centsIn(f.amount)[0] : undefined;
-  const unit = written !== undefined && centsIn(text).includes(written) ? written : m.priceCents;
-  const count = quantityIn(text, f.quantity) ?? 1;
+  const unit = written ?? m.priceCents;
+  const counted = countIn(text, f.quantity);
+  if (counted && counted.n === null) {
+    steps.push({ by: "code", title: "Checked the amount", detail: `${counted.why}.`, tone: "bad" });
+    return done("question", "How many?", `${counted.why}. Write how many ${m.unit}s as a whole number, for example "25 ${m.unit}s".`);
+  }
+  const count = counted?.n ?? 1;
   const total = unit * count;
   steps.push({ by: "code", title: "Checked the amount", detail: `${count > 1 ? `${count} × ${usdz(unit)} = ` : ""}${usdz(total)}${written === unit ? ", as written in the message" : ` (${m.payee}'s price per request)`}.`, tone: "ok" });
   const rule = `The ${m.agent.toLowerCase()}'s mandate: at most ${usdz(m.capCents)} a payment, ${usdz(m.budgetLeftCents)} left of its budget, ${m.payee} only.`;

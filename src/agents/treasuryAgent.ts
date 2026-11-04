@@ -151,7 +151,8 @@ function toPlan(f: PricePlanFacts, s: Submitted): PricePlan | string[] {
 
 const SYSTEM = [
   "You are the Treasury agent of Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query.",
-  "Three agents spend from one Metal account under on-chain mandates that together may bind at most 20.00 test USD: the Sourcing agent buys each stock check from the supplier Stockline, the Support agent refunds customers in disputes, and you sweep earnings to Airwallex.",
+  // The total is code's (TOTAL_BUDGET_CENTS), given as a fact, never typed into the prompt (test/prompt-no-thresholds.test.ts).
+  `Three agents spend from one Metal account under on-chain mandates that together may bind at most ${fromCents(TOTAL_BUDGET_CENTS)} test USD: the Sourcing agent buys each stock check from the supplier Stockline, the Support agent refunds customers in disputes, and you sweep earnings to Airwallex.`,
   "When Stockline raises its price, you decide how to answer it: the new budget for each mandate, the Sourcing agent's cap per purchase, and one or two sell prices per stock check for the CFO to choose from, with your advice.",
   "Kit 11's design: when supplier costs rise, Treasury rebalances the budgets inside the fixed total so the Sourcing agent can keep buying at the higher price; Treasury keeps what it needs for the sweep, and Support keeps its refund budget.",
   "Submit your plan with the submit_plan tool. Code checks it against the limits; if it refuses the plan, it tells you why, and you fix it and submit again.",
@@ -198,7 +199,7 @@ export async function designPriceRise(db: DB, f: PricePlanFacts, client: Anthrop
     agent: "treasury", task: "price_rise.plan", model, system: SYSTEM, prompt: prompt(f), maxTurns: MAX_TRIES + 1, effort: "medium",
     tools: [{
       name: "submit_plan",
-      description: "Submit your rebalance and sell-price options. Amounts in test USD with two decimals (e.g. \"12.00\", \"0.04\"). List the options from the lowest sell price to the highest (A is the lower) and give the letter you recommend in recommended_option. Code checks the plan and answers with its reasons if it refuses it.",
+      description: "Submit your rebalance and sell-price options. Amounts in test USD, each a string with exactly two decimals. List the options from the lowest sell price to the highest (A is the lower) and give the letter you recommend in recommended_option. Code checks the plan and answers with its reasons if it refuses it.",
       input: SubmitPlan,
       run: async (s: Submitted) => {
         attempts++;

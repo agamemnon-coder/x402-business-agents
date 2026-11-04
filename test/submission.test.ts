@@ -36,6 +36,21 @@ describe("the submission pack", () => {
     expect(f.metal.refunded_before).toHaveLength(3);
   });
 
+  it("states the main run's figures as its record has them (3 November)", () => {
+    const m = f.main;
+    expect([m.by_claude, m.decisions, m.fallbacks, m.claude_calls, m.claude_usd]).toEqual([24, 24, 0, 50, "0.3170"]);
+    expect(pack).toContain(`made ${m.decisions} decisions, all by Claude, ${m.fallbacks} fallbacks, in ${m.claude_calls} calls`);
+    expect(pack).toContain(`USD ${m.claude_usd} at list prices`);
+    expect(pack).toContain(`Treasury's options ${m.to_options_s} s after the refusal`);
+    expect(pack).toContain(`PAID ${m.face_to_paid_s} s after Face ID`);
+    expect(pack).toContain(`${m.fx_buy} bought by FX for the shortfall`);
+    expect(pack).toContain(`fee ${m.licence_fee}`);
+    expect(pack).toContain(`${m.face_id} decisions signed with Face ID by the CFO`);
+    expect(pack).toContain(`tx \`${m.let_through_tx.slice(0, 10)}…${m.let_through_tx.slice(-4)}\``);
+    expect(pack).toContain("Second approver: a labelled test passkey in this demo. In production this is a second person.");
+    expect(pack).toContain("Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved");
+  });
+
   it("states the red team and the Lab as their reports have them, never counting inconclusive as stopped", () => {
     const rt = f.redteam;
     expect(pack).toContain(`${rt.attempts - rt.documents} scripted attacks plus ${rt.documents} documents written by Claude Opus`);

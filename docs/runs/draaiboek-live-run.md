@@ -1,5 +1,7 @@
 # Draaiboek live run (de nieuwe hoofdopname)
 
+**Herstart van de container midden in de run:** volg [het herstelplan](herstelplan-herstart.md). Max en de controller doen niets en tikken niet opnieuw; Claude start de runner opnieuw, controleert met `verify` en meldt de volgende stap.
+
 Eén middag, ongeveer 60 minuten, testgeld (Airwallex-sandbox, Metal testnet). **Max is de CFO** (iPhone, Face ID).
 De **controller** is een tweede persoon met een eigen apparaat en een eigen passkey: vier ogen betekent twee
 verschillende mensen. Claude typt de commando's en keurt nooit iets goed. Max neemt het iPhone-scherm op.
