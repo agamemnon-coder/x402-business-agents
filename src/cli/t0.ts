@@ -9,11 +9,11 @@
 import { parseArgs } from "node:util";
 import { books, type Posting } from "../accounting/books.js";
 import {
-  buildEntries, compareOwnEntries, functionalCurrency, pushBooks, resolveAccounts, T0Client, t0AccountType, type T0Entry,
+  buildEntries, compareOwnEntries, functionalCurrency, pushBooks, recordT0Posting, resolveAccounts, T0Client, t0AccountType, t0Posted, type T0Entry,
 } from "../accounting/t0.js";
 import { CHART } from "../config/gl.js";
 import { T0_MAP_VERSION, T0_SANDBOX_MAP } from "../config/t0Map.js";
-import { openDb, type DB } from "../db/open.js";
+import { openDb } from "../db/open.js";
 import { redactSecrets } from "../lib/redact.js";
 
 const USAGE = "usage: npm run t0 -- accounts | push [--rate CUR=rate ...] [--dry-run] [--map sandbox] | compare [--rate CUR=rate ...] [--map sandbox]; --map sandbox uses src/config/t0Map.ts for our codes T:0 lacks";
@@ -68,11 +68,6 @@ async function entriesFor(postings: Posting[]): Promise<{ entries: T0Entry[]; cu
   return { entries: buildEntries(postings, map, currency, rates(), { atomsPerUnit, labels }), currency, numbers };
 }
 
-function postedTable(db: DB): Set<string> {
-  db.exec("CREATE TABLE IF NOT EXISTS t0_postings (je_number TEXT PRIMARY KEY, stable_id TEXT NOT NULL, t0_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, posted_at TEXT NOT NULL)");
-  return new Set((db.prepare("SELECT je_number FROM t0_postings").all() as { je_number: string }[]).map((r) => r.je_number));
-}
-
 async function accounts(): Promise<void> {
   const entities = await client.listEntities();
   console.log(`Entity: ${entities.map((e) => `${e.name}${e.country ? ` (${e.country})` : ""}`).join(", ") || "(none listed)"}`);
@@ -103,9 +98,7 @@ async function push(): Promise<void> {
     console.log(`DRY RUN: ${entries.length} entries in ${currency} built; nothing was posted`);
     return;
   }
-  const known = postedTable(db);
-  const record = db.prepare("INSERT OR REPLACE INTO t0_postings (je_number, stable_id, t0_id, idempotency_key, posted_at) VALUES (?, ?, ?, ?, ?)");
-  const r = await pushBooks(client, entries, known, (p, e) => record.run(p.je_number, p.stable_id, p.id, e.idempotencyKey, new Date().toISOString()));
+  const r = await pushBooks(client, entries, t0Posted(db), (p, e) => recordT0Posting(db, p, e));
   for (const p of r.posted) console.log(`POSTED   ${p.je_number}  T:0 ${p.id}`);
   for (const s of r.skipped) console.log(`SKIPPED  ${s.je_number}  ${s.reason}`);
   console.log(`${r.posted.length} posted, ${r.skipped.length} skipped, of ${entries.length} entries (${currency})`);

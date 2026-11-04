@@ -7,7 +7,7 @@
 //   --local    no Cloudflare: serves the same relay on http://localhost:4400 (KIT11_RELAY_PORT) for a laptop
 //   --once     one sync (and the executions it starts), then exit
 
-import { envWithoutOrigin } from "../provenance/origin.js";
+import { envWithoutOrigin, MONEY_EVENTS } from "../provenance/origin.js";
 import { displayKey } from "../relay/sign.js";
 import { reconcile } from "../finance/reconcile.js";
 import { certifyPending } from "../metal/finality.js";
@@ -46,6 +46,7 @@ import { osProcesses } from "../ops/processes.js";
 import { asWorldGroup, holdRunnerLock } from "../ops/runnerLock.js";
 import { openDecisions } from "../agents/disputeDecision.js";
 import { HubLoop } from "../hub/consult.js";
+import { t0Enabled, t0SinkFor } from "../accounting/t0Sink.js";
 import { hubDecisionsEnabled, hubPushEnabled } from "../hub/config.js";
 
 // One world, one runner, one process group (2 November: a stop reached only a wrapper, another world's runner ran on).
@@ -303,6 +304,18 @@ async function hubTick(): Promise<void> {
   }
 }
 
+// Phase E (T0_ENABLED): after money moved (a new money event in the audit log), the books go to T:0 in the background.
+// Idempotent per journal entry; a failure is logged and dropped, and the next movement tries again.
+const moneyEvents = [...MONEY_EVENTS];
+let lastMoneySeq = -1;
+function t0Tick(): void {
+  if (!t0Enabled()) return;
+  const seq = (db.prepare(`SELECT MAX(seq) AS s FROM audit_log WHERE event IN (${moneyEvents.map(() => "?").join(", ")})`).get(...moneyEvents) as { s: number | null }).s ?? 0;
+  if (seq === lastMoneySeq) return;
+  lastMoneySeq = seq;
+  void t0SinkFor(db, { log: (line) => console.log(`${stamp()} ${line}`) }).afterMoney();
+}
+
 let lastError = "";
 while (!stopping) {
   alarmsTick();
@@ -313,6 +326,7 @@ while (!stopping) {
   await settlementsTick();
   await finalityTick();
   await hubTick();
+  t0Tick();
   try {
     await runner.syncOnce();
     if (lastError) console.log(`${stamp()} relay reachable again`);

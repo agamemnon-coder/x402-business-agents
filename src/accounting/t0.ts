@@ -4,6 +4,7 @@
 // account_number = our code (src/config/gl.ts), and we look up each account's external_id at run time.
 // Plain fetch, no SDK. The key is only ever sent as the bearer token; it is never logged or put in an error.
 
+import type { DB } from "../db/open.js";
 import { createHash } from "node:crypto";
 import { CHART } from "../config/gl.js";
 import type { T0MapTarget } from "../config/t0Map.js";
@@ -435,6 +436,17 @@ export async function pushBooks(
     }
   }
   return result;
+}
+
+/** The je_numbers this ledger has posted to T:0 (the t0_postings table, made here when missing). */
+export function t0Posted(db: DB): Set<string> {
+  db.exec("CREATE TABLE IF NOT EXISTS t0_postings (je_number TEXT PRIMARY KEY, stable_id TEXT NOT NULL, t0_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, posted_at TEXT NOT NULL)");
+  return new Set((db.prepare("SELECT je_number FROM t0_postings").all() as { je_number: string }[]).map((r) => r.je_number));
+}
+
+/** Records one posted entry, so a later push skips it (t0Posted must have run on this ledger). */
+export function recordT0Posting(db: DB, p: T0PushResult["posted"][number], e: T0Entry, now = new Date()): void {
+  db.prepare("INSERT OR REPLACE INTO t0_postings (je_number, stable_id, t0_id, idempotency_key, posted_at) VALUES (?, ?, ?, ?, ?)").run(p.je_number, p.stable_id, p.id, e.idempotencyKey, now.toISOString());
 }
 
 // ---- Comparing ----

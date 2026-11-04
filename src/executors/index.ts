@@ -19,6 +19,7 @@ import { executeAgentOnboard } from "../platform/externalAgents.js";
 import { consultHub } from "../hub/consult.js";
 import { pushRuns, type DecisionsRead, type HubDeps } from "../hub/client.js";
 import { hubPushEnabled } from "../hub/config.js";
+import { t0SinkFor } from "../accounting/t0Sink.js";
 
 /** D24: the origin of every money movement an approved proposal makes: its approval, and with four eyes the cosigner. */
 export function approvalOrigin(db: DB, proposalId: string): Origin | null {
@@ -44,6 +45,8 @@ export async function execute(db: DB, proposalId: string, read?: DecisionsRead, 
   const origin = approvalOrigin(db, proposalId);
   await (origin ? withOrigin(origin, () => executeApproved(db, proposalId)) : executeApproved(db, proposalId));
   if (hubPushEnabled(hub.env ?? process.env)) void pushRuns(db, hub);
+  // Phase E (T0_ENABLED): the books go to T:0 after the action, in the background; T:0 never holds up or fails a payment.
+  void t0SinkFor(db).afterMoney();
 }
 
 async function executeApproved(db: DB, proposalId: string): Promise<void> {
