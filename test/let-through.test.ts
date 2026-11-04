@@ -95,7 +95,8 @@ describe("(a) Metal refuses the one purchase let through: nothing settles", () =
     expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'upstream.refused'").get() as { payload_json: string }).payload_json)).toMatchObject({ refused_by: "metal", reason: "mandate_cap_exceeded" });
     expect(n(db, "SELECT COUNT(*) AS n FROM upstream_purchases WHERE outcome = 'PAID'")).toBe(0);
     expect(n(db, "SELECT COUNT(*) AS n FROM sales")).toBe(0);
-    expect(db.prepare("SELECT status, cents FROM holds").all()).toEqual([{ status: "RELEASED", cents: 4 }]);
+    // The purchase's hold and the record pull's own hold, both released (Metal refused both).
+    expect(db.prepare("SELECT status, cents, ref LIKE 'record:%' AS record FROM holds ORDER BY rowid").all()).toEqual([{ status: "RELEASED", cents: 4, record: 0 }, { status: "RELEASED", cents: 4, record: 1 }]);
     // The customer's side, from the seller: 503, not settled.
     expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'sale.refused'").get() as { payload_json: string }).payload_json)).toMatchObject({ seq: 18, status: 503, settled: false, reason: "mandate_cap_exceeded" });
     // The record: let through, refused by Metal with Max's label, recorded on chain for the 0.04.
@@ -343,6 +344,29 @@ describe("(c) Metal accepts it anyway: an incident", () => {
     await b.buy(18);
     expect(JSON.parse((other.prepare("SELECT payload_json FROM audit_log WHERE event = 'upstream.refusal_not_recorded'").get() as { payload_json: string }).payload_json)).toMatchObject({ error: expect.stringMatching(/more than 0\.02 over the cap; no pull is sent/) });
     expect(stopped(other, "sourcing")).toBe(false);
+  });
+
+  it("a record pull that may have paid keeps its hold HELD, so the budget and the shared total count it", async () => {
+    const db = world();
+    const a = armed(db);
+    state.recordRefuses = false;
+    price(db, "0.04");
+    await a.buy(18);
+    expect(db.prepare("SELECT status, cents FROM holds WHERE ref LIKE 'record:%'").all()).toEqual([{ status: "HELD", cents: 4 }]);
+    expect(stopped(db, "sourcing")).toBe(true);
+  });
+
+  it("a record pull is not sent when it cannot be held (no budget left): no pull, no incident", async () => {
+    const db = world();
+    const a = new SourcingAgent(db, "http://127.0.0.1:1", SUPPLIER);
+    // Another payment already holds the whole 10.00 budget.
+    db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, reason, created_at, updated_at, policy_version, origin_json) VALUES ('other', 'sourcing', 'metal', 1000, 'HELD', NULL, ?, ?, 1, NULL)").run(new Date().toISOString(), new Date().toISOString());
+    price(db, "0.04");
+    await a.buy(18);
+    expect(state.onChain).toEqual([]);
+    expect(JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'upstream.refusal_not_recorded'").get() as { payload_json: string }).payload_json)).toMatchObject({ error: expect.stringMatching(/^not held, so no pull is sent to record it: budget_exceeded/) });
+    expect(n(db, "SELECT COUNT(*) AS n FROM holds WHERE ref LIKE 'record:%'")).toBe(0);
+    expect(stopped(db, "sourcing")).toBe(false);
   });
 
   it("a lost answer is an incident too: the hold stays HELD until the reconciliation resolves it", async () => {
