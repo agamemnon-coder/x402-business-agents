@@ -872,6 +872,8 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   backBtn.addEventListener("click", close);
   instead?.addEventListener("click", () => { clearTimeout(arm); openSheet(o, terms, { ...x, decision: "REJECTED" }); });
   confirm.addEventListener("click", async () => {
+    // Never on the page when blocked; a second guard all the same (review, 4 November).
+    if (blocked) return;
     confirm.disabled = true;
     backBtn.disabled = true;
     status.textContent = "Waiting for Face ID…";
