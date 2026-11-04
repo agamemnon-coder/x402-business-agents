@@ -101,18 +101,19 @@ describe("the recorded run's headline figures (landing, dashboard, README, claim
     expect(claims).toContain(`| Decisions signed with Face ID | ${a.face_id} |`);
     expect(claims).toContain(`| Fake invoices and AI tricks stopped | ${a.fake_invoices} + ${a.ai_tricks} |`);
     expect(claims).toContain(`| Audit log | ${a.rows} rows, hash chain intact`);
-    expect(claims).toContain(`| ${a.alone} with no approval at the time`);
-    expect(claims).toContain(`| ${a.blocked} stops: ${a.blocked - a.ai_tricks} payments and ${a.ai_tricks} planted instructions |`);
+    // The submission pack's rows for this run are an archive since 4 Nov (the form's run figures are the main run's).
+    expect(claims).toContain(`| Archive (30 October run): ${a.alone} with no approval at the time; ${a.blocked} stops (${a.blocked - a.ai_tricks} payments, ${a.ai_tricks} planted instructions) |`);
     expect(flat("docs/audit/README.md")).toContain(`stored: ${a.rows} rows`);
     expect(flat("docs/audit/README.md")).toContain(`--anchor ${a.rows}:${a.head}`);
     expect(flat("docs/metal-award.md")).toContain(`its ${a.rows}-row chain`);
     expect(flat("docs/requirements-matrix.md")).toContain(`the recorded Friday run: ${a.alone} alone, ${a.blocked} stops, ${a.face_id} Face ID decisions`);
   });
 
-  it("the form's proof list repeats them (6 payments and 2 planted instructions make the 8 stops)", () => {
+  it("the form no longer repeats them: its run figures are the main run's since 4 Nov (Max)", () => {
     const form = flat("docs/submission/README.md");
-    expect(form).toContain(`${a.blocked} stops by the card, the chain, the fraud checks or the CFO (${a.blocked - a.ai_tricks} payments, ${a.ai_tricks} planted instructions)`);
-    expect(form).toContain(`${eur(a.kept_out_cents)} kept out for good`);
+    expect(form).not.toContain(`${a.blocked} stops by the card, the chain, the fraud checks or the CFO`);
+    expect(form).not.toContain(`${eur(a.kept_out_cents)} kept out for good`);
+    expect(form).toContain("2 stopped at a limit");
   });
 });
 

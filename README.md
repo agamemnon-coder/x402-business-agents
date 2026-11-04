@@ -189,13 +189,15 @@ calls a real service.
 ## The demo
 
 **Judge tour (3 minutes)**, on the hosted site ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/))
-or offline with `npm ci && npm run judge` (no keys, no network). Steps 2 and 3 are from the recorded run of 30 October
-(test money):
+or offline with `npm ci && npm run judge` (no keys, no network). Step 2 is from the main run of 3 November, step 3 from
+the recorded run of 30 October (test money):
 
 1. **The problem:** AI agents are starting to spend company money; one shared card or wallet gives no limit per agent
    and no one place for the exceptions. ([Watch](https://kit11.max-31b.workers.dev/film))
-2. **Airwallex declines the card** above its limit (`LIMIT_EXCEEDED`, €45.00 on a €30.00 card); after the CFO's Face
-   ID the limit follows (€30 → €50) and the same purchase is paid. ([the Airwallex ids](https://kit11.max-31b.workers.dev/airwallex))
+2. **The agent asks before its card would be declined** (main run, 3 November): the Sourcing agent asked for a card
+   raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the TAP-signed
+   EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`). ([the card buy](https://kit11.max-31b.workers.dev/visa))\
+   *Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
 3. **Metal refuses the higher price** against the on-chain mandate (`mandate_cap_exceeded`), and the CFO moves budget
    between the mandates within the same 20.00 with Face ID. ([the recorded run's dashboard](https://kit11.max-31b.workers.dev/?recorded))
 4. **The Dispute desk checks every order:** a simulated customer (we filed for it) disputes 12 orders; each is

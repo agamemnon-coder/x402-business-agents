@@ -243,7 +243,17 @@ describe("one 'stopped at a limit' figure everywhere, from the main run (Max, 4 
       expect({ name, figures: figures.length > 0, wrong: figures.filter((n) => n !== STOPPED) }).toEqual({ name, figures: true, wrong: [] });
       // The TAP run's decline is there, on its own labelled line, after the figure.
       expect({ name, line: t.includes(TAP_LINE) }).toEqual({ name, line: true });
-      expect({ name, after: t.indexOf(TAP_LINE) > t.search(/\d+ stopped at a limit/i) }).toEqual({ name, after: true });
+      expect({ name, after: t.lastIndexOf(TAP_LINE) > t.search(/\d+ stopped at a limit/i) }).toEqual({ name, after: true });
+    }
+  });
+
+  it("tells the main run's card story in the README, the submission README and the deck; the decline only as the TAP run's line", () => {
+    const c = packFacts().main.card_raise;
+    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/README.md", "deck"].includes(n))) {
+      const t = text(raw);
+      expect({ name, raise: t.includes(`${c.proposal}, EUR ${c.from} → ${c.to}`), auth: t.includes(c.auth.slice(0, 8)) }).toEqual({ name, raise: true, auth: true });
+      // No Airwallex decline from another run outside the labelled TAP line.
+      expect({ name, other: /30 October[^.]*declin|declin[^.]*30 October|in the recorded run it declined/i.test(t) }).toEqual({ name, other: false });
     }
   });
 

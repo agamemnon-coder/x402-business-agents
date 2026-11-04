@@ -16,7 +16,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 export const TRY_URL = "https://kit11.max-31b.workers.dev/try";
 
 /** Screenshots by name (data URIs), as npm run submission takes them. */
-export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max" | "watch" | "proof", string>;
+export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max" | "watch" | "proof" | "visa", string>;
 
 interface Slide { kicker: string; title: string; points?: string[]; extra?: string; pic: string }
 
@@ -98,10 +98,10 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       title: "The euro bill, and a company card per agent",
       points: [
         `<b>The Treasury agent planned the EUR 240.00 licence itself.</b> After the CFO's Face ID: ${esc(m.fx_buy)} bought by FX for only the shortfall, then SWIFT, <b>PAID ${m.face_to_paid_s} s after Face ID</b> (fee ${esc(m.licence_fee)}).`,
-        `<b>A card buy signed with Visa TAP</b> in the same world: Airwallex approved €${esc(m.tap_amount.replace(/\.00$/, ""))} on the agent's card after the CFO raised its limit with Face ID. In the 30 October run Airwallex declined €45.00 over the limit itself.`,
-        `<small>${esc(VISA_AWARD_STATUS)}</small>`,
+        `<b>The agent asks first:</b> a card raise (${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}), signed by the CFO with Face ID; Airwallex then approved the TAP-signed EUR ${esc(m.card_raise.amount)} buy (<code>${esc(`${m.card_raise.auth.slice(0, 8)}…${m.card_raise.auth.slice(-4)}`)}</code>).`,
+        `<small>${esc(m.tap_limit_line)}. ${esc(VISA_AWARD_STATUS)}</small>`,
       ],
-      pic: shot(s.decline, "The 30 October run: Airwallex declines €45.00 over the limit; the CFO raises it with Face ID"),
+      pic: shot(s.visa, "The main run, 3 November (/visa): the TAP-signed €45.00 card buy, approved by Airwallex; the decline beside it is the separate TAP run's, labelled"),
     },
     {
       kicker: "For a bigger company",

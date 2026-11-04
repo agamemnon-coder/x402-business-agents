@@ -22,13 +22,20 @@ describe("the submission pack", () => {
     expect(raw).toMatch(/^### How we use Metal$/m);
   });
 
-  it("states the recorded run's figures as the recording has them", () => {
-    expect(pack).toContain(`From ${f.run}:`);
-    expect(pack).toContain(`${f.alone} payments inside the limits with no approval at the time`);
-    expect(pack).toContain(`${f.stopped} stops by the card, the chain, the fraud checks or the CFO`);
-    expect(pack).toContain(`${eur(f.kept_out_eur)} kept out for good`);
-    expect(pack).toContain(`${f.face_id} decisions signed with Face ID`);
-    expect(pack).toContain(`${f.audit_rows} audit rows`);
+  it("no longer heads with the 30 October run's figures; the card story and the stops are the main run's (Max, 4 Nov)", () => {
+    expect(pack).not.toContain(`From ${f.run}:`);
+    expect(pack).not.toContain(`${f.stopped} stops by the card, the chain, the fraud checks or the CFO`);
+    expect(pack).not.toContain(`${eur(f.kept_out_eur)} kept out for good`);
+    expect(pack).not.toMatch(/in the recorded run it declined/);
+    const c = f.main.card_raise;
+    expect(c).toEqual({ proposal: "P-0006", from: "30.00", to: "46.00", auth: "01a1a12f-4113-7000-b76d-014677710007", amount: "45.00" });
+    expect(pack).toContain(`asked for a card raise first (${c.proposal}, EUR ${c.from} → ${c.to})`);
+    expect(pack).toContain(`approved the TAP-signed EUR ${c.amount} purchase (authorization \`${c.auth}\`)`);
+    expect(pack).toContain(`${f.main.stopped} stopped at a limit`);
+    expect(pack).toContain(f.main.tap_limit_line);
+  });
+
+  it("states the earlier records it still cites, each named with its date", () => {
     expect(pack).toContain(`$${f.claude_per_1000_eur_usd} per €1,000`);
     expect(pack).toContain(`claimed its agent never placed ${f.metal.dispute_orders} orders`);
     expect(f.metal.dispute_refunded).toBe(0);
