@@ -4,6 +4,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { notFoundResponse, pageResponse, Relay } from "./core.js";
 import { TryDesk } from "./try.js";
+import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { PAGES } from "./pages.gen.js";
 
 export interface Env {
@@ -19,17 +20,17 @@ export interface Env {
 }
 
 export class RelayObject extends DurableObject<Env> {
-  private readonly relay: Relay;
-  private readonly tryDesk: TryDesk;
-
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    this.relay = new Relay(ctx.storage.sql, { relayToken: env.RELAY_TOKEN, webhookSecret: env.AIRWALLEX_WEBHOOK_SECRET, mfa: env.MFA_SESSIONS === "on" });
-    this.tryDesk = new TryDesk(ctx.storage.sql, { anthropicKey: env.ANTHROPIC_API_KEY });
-  }
+  // Each desk is made on its instance's first request, so an instance holds only its own desk's tables: the try-sign
+  // instance never has the relay's, and is handed no secret at all.
+  private relay?: Relay;
+  private tryDesk?: TryDesk;
+  private trySign?: TrySignDesk;
 
   override fetch(req: Request): Promise<Response> {
-    return new URL(req.url).pathname === "/api/try" ? this.tryDesk.fetch(req) : this.relay.fetch(req);
+    const path = new URL(req.url).pathname;
+    if (isTrySignPath(path)) return (this.trySign ??= new TrySignDesk(this.ctx.storage.sql)).fetch(req);
+    if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
+    return (this.relay ??= new Relay(this.ctx.storage.sql, { relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on" })).fetch(req);
   }
 }
 
@@ -38,6 +39,10 @@ export default {
     const page = pageResponse(req, PAGES);
     if (page) return page;
     const path = new URL(req.url).pathname;
+    // /try/sign's test worlds (TRY_SIGN_ENABLED, baked into the bundle): their own instance, their own tables; with
+    // the feature off every one of its paths is a 404, before the relay sees it.
+    const trySign = trySignRoute(path, PAGES);
+    if (trySign) return trySign === "desk" ? env.RELAY.get(env.RELAY.idFromName("try-sign")).fetch(req) : trySignNotFound();
     // Try Purser runs in its own instance: its storage and its load stay apart from the approvals.
     if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
     // /health is the relay's too: it knows when the runner last synced (B7).
