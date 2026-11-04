@@ -51,6 +51,24 @@ describe("monitoring (B7)", () => {
     expect(codes(db, min(11))).toEqual(["action_stuck"]);
   });
 
+  it("calls a mandate replace that failed after a step ran half run, and nothing else", () => {
+    const db = openDb(":memory:");
+    const ins = (id: string, status: string) => db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES (?, 'mandate_replace', '{}', ?, 'treasury', ?, '2099-01-01T00:00:00Z', ?)").run(id, `h-${id}`, status, now.toISOString());
+    const step = (id: string, no: number, status: string) => db.prepare("INSERT INTO executions (proposal_id, step_no, idempotency_key, status, request_redacted, updated_at) VALUES (?, ?, ?, ?, '{}', ?)").run(id, no, `${id}:${no}`, status, now.toISOString());
+    // Failed before any step was DONE (only STARTED): not half run.
+    ins("P-0001", "FAILED"); step("P-0001", 1, "STARTED");
+    // Executed: done, not half run.
+    ins("P-0002", "EXECUTED"); step("P-0002", 1, "DONE"); step("P-0002", 2, "DONE");
+    expect(codes(db)).toEqual([]);
+    // Failed after step 1 was bound on chain: half run.
+    ins("P-0003", "FAILED"); step("P-0003", 1, "DONE"); step("P-0003", 2, "STARTED");
+    audit(db, "system", "proposal.failed", "P-0003", { error: "rpc unreachable" }, now);
+    const a = health(db, min(1)).alerts;
+    expect(a.map((x) => x.code)).toEqual(["replace_half_run"]);
+    expect(a[0]).toMatchObject({ severity: "warning", since: now.toISOString() });
+    expect(a[0]!.words).toMatch(/P-0003 failed after 1 of its steps ran on chain/);
+  });
+
   it("names who carries out an open dispute decision: a person for a dispute with the CFO, the runner's start for any other", () => {
     const db = openDb(":memory:");
     db.prepare("INSERT INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES ('D-1', '0xc', 'h', ?)").run(now.toISOString());

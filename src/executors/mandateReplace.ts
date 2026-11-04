@@ -32,7 +32,11 @@ export async function executeMandateReplace(db: DB, proposalId: string, now = ne
     terms = guard(db, proposalId, facts, now);
   } catch (err) {
     if (err instanceof GuardRefusal) {
-      try { stopped(db, proposalId, facts, err); } catch { /* the guard's reason is what is thrown, whatever recording it did */ }
+      // The guard's reason is what is thrown, whatever recording it did; a failure to record is still left a trace.
+      try { stopped(db, proposalId, facts, err); } catch (e) {
+        console.error(`${proposalId}: the guard's refusal could not be recorded: ${(e as Error).message}`);
+        try { audit(db, "system", "proposal.guard_refusal_unrecorded", proposalId, { error: err.message.slice(0, 300), why: (e as Error).message.slice(0, 300) }); } catch { /* the console line stands */ }
+      }
     }
     throw err;
   }

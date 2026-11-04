@@ -65,6 +65,15 @@ export function health(db: DB, now = new Date()): Health {
   for (const s of stuck.filter((x) => now.getTime() - Date.parse(x.since) > STUCK_AFTER_MS)) {
     alerts.push({ code: "action_stuck", severity: "warning", since: s.since, words: `${s.proposal_id} has been executing since ${s.since}; a restart resumes it from its last finished step.` });
   }
+  // dry-179 review: a mandate replace that failed after a step of it ran leaves the mandates half replaced. Its guard
+  // never closes it (src/executors/mandateReplace.ts) and the spending hold lifts at its expiry, so a person looks.
+  const halfRun = db.prepare(`SELECT p.proposal_id, (SELECT MAX(a.ts) FROM audit_log a WHERE a.subject = p.proposal_id AND a.event = 'proposal.failed') AS since,
+      (SELECT COUNT(*) FROM executions e WHERE e.proposal_id = p.proposal_id AND e.status = 'DONE') AS done
+    FROM proposals p WHERE p.kind = 'mandate_replace' AND p.status = 'FAILED'
+      AND EXISTS (SELECT 1 FROM executions e WHERE e.proposal_id = p.proposal_id AND e.status = 'DONE') ORDER BY p.proposal_id`).all() as { proposal_id: string; since: string | null; done: number }[];
+  for (const r of halfRun) {
+    alerts.push({ code: "replace_half_run", severity: "warning", since: r.since, words: `Mandate replace ${r.proposal_id} failed after ${r.done} of its steps ran on chain: the agents' mandates are half replaced. A retry carries on if its checks still hold; otherwise a person decides what is left.` });
+  }
 
   const holdsOpen = has(db, "holds") ? (db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(cents), 0) AS cents, MIN(created_at) AS oldest FROM holds WHERE status = 'HELD'").get() as { n: number; cents: number; oldest: string | null }) : { n: 0, cents: 0, oldest: null };
   if (holdsOpen.oldest && now.getTime() - Date.parse(holdsOpen.oldest) > HOLD_STALE_AFTER_MS) {
