@@ -1,3 +1,5 @@
+Superseded: the final film (2:42) uses an AI voice and AI music from ElevenLabs; see docs/video/README.md.
+
 # Purser: video v0 (about 2:40), the three scenes from the idea
 
 Version 0, 1 November. It follows the idea Max submitted before the shortlist (`entries/airwallex/idea.md` in

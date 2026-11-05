@@ -1,4 +1,4 @@
-// The premiere (docs/video/premiere-script.md): Purser in a little over three minutes, a premiere-style film made from the main
+// The premiere (docs/video/premiere-script.md): Purser in 2:42, a premiere-style film made from the main
 // run of 3 November (docs/demo/main-run.json). Every number on screen and in the voice-over is read here, through
 // code, each with where it comes from: the run's record for everything about the run, the README's test line for the
 // test count, and the /try/sign page's own code for its mock. A number that cannot be found stops the build, so the
@@ -35,15 +35,21 @@ export interface MainRun {
     flows: Flow[];
     agent_stats: { agent: string; decisions: number; by_claude: number; fallback: number; models?: string[] }[];
     agents?: { id: string; name: string; job: string; alone: string[] }[];
+    /** The run's stops: each refusal row once (`counts.blocked` counts them). */
+    refusals?: { agent: string; what: string; reason: string }[];
+    counts?: { blocked?: number };
   };
+  proof?: { chain_refusals?: number; over_limit_eur?: string };
   ledger?: { events: LedgerEvent[]; proposals: Proposal[]; disputes: Dispute[] };
 }
 
 /** A figure the film shows or says, with where it comes from (the source column of the script). */
 export interface Fact { value: string; source: string }
 
-/** One line of the voice-over: when it starts (seconds into its scene), who says it, the words. */
-export interface VoiceLine { at: number; who: "Max" | "Voice"; text: string }
+/** Who reads the voice-over in the final film: an AI-generated voice (ElevenLabs), in the third person. */
+export const NARRATOR = "Narrator (AI voice, ElevenLabs)";
+/** One line of the voice-over: when it starts (seconds into its scene), who says it, the words, how long it takes. */
+export interface VoiceLine { at: number; who: typeof NARRATOR; text: string; seconds: number }
 
 export interface PremiereData {
   facts: Record<string, Fact>;
@@ -100,8 +106,8 @@ export function testBadge(readme: string): string | null {
   return /badge\/tests-(\d+)%20passing/.exec(readme)?.[1] ?? null;
 }
 
-/** Max's voice-over (docs/video/voice-script-max.md): each scene's line, as the script's table has it. */
-export const VOICE_SCRIPT_FILE = "docs/video/voice-script-max.md";
+/** The narrator's voice-over (docs/video/narrator-script.md): each scene's line, as the script's table has it. */
+export const VOICE_SCRIPT_FILE = "docs/video/narrator-script.md";
 export function voiceScript(md: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const row of md.split("\n")) {
@@ -240,15 +246,24 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
   const audit = r.snapshot.audit;
   need(audit?.intact ? audit.rows : null, "intact audit chain");
   fact("specs.auditRows", audit.rows, "record `snapshot.audit.rows`, with `intact: true`");
+  // The stops (Max, 5 November, second round): every refusal row the record counts, by who stopped it; the parts must
+  // add up to the record's own count, and Metal's to the record's refusals on chain, or nothing is rendered.
+  const rows = need(r.snapshot.refusals?.length ? r.snapshot.refusals : null, "refusal rows (`snapshot.refusals`)");
   const stops = {
-    metal: ev.filter((e) => e.event === "upstream.refused" && e.payload.refused_by === "metal" && e.payload.reason === "mandate_cap_exceeded").length,
-    cfo: ev.filter((e) => e.event === "proposal.rejected" && /\bmax\b/.test(String(e.payload.approver))).length,
-    airwallex: ev.filter((e) => e.event === "card.charge_declined").length,
+    claude: rows.filter((x) => x.agent === "sourcing" && /own buy policy/.test(x.reason)).length,
+    metal: rows.filter((x) => /refused on chain/.test(x.reason)).length,
+    cfo: rows.filter((x) => /^proposal rejected$/i.test(x.what) && /Face ID/.test(x.reason)).length,
+    planted: rows.filter((x) => /planted instruction/i.test(x.what)).length,
   };
-  fact("specs.stopped", need(stops.metal + stops.cfo + stops.airwallex || null, "payment stopped at a limit"), "record `ledger.events`: Metal's refusals at the cap (`upstream.refused`, `mandate_cap_exceeded`), the CFO's rejections (`proposal.rejected`), Airwallex's declines (`card.charge_declined`); a refusal of a just-replaced mandate (`mandate_revoked`) is not a limit");
-  fact("specs.stoppedMetal", stops.metal, "record `ledger.events` `upstream.refused` by Metal, `mandate_cap_exceeded`");
-  fact("specs.stoppedCfo", stops.cfo, "record `ledger.events` `proposal.rejected` with Max's passkey");
-  fact("specs.stoppedAirwallex", stops.airwallex, "record `ledger.events` `card.charge_declined`");
+  const blocked = need(r.snapshot.counts?.blocked, "the run's stops (`snapshot.counts.blocked`)");
+  need(stops.claude + stops.metal + stops.cfo + stops.planted === blocked ? true : null, "stops that add up to `snapshot.counts.blocked`");
+  need(stops.metal === r.proof?.chain_refusals ? true : null, "Metal's refusals, the same as `proof.chain_refusals`");
+  fact("specs.stops", blocked, "record `snapshot.counts.blocked` (the rows of `snapshot.refusals`, each once)");
+  fact("specs.stopsClaude", stops.claude, "record `snapshot.refusals`: the Sourcing agent's own buy policy (Claude chose not to buy over its cap; nothing signed)");
+  fact("specs.stopsMetal", stops.metal, "record `snapshot.refusals` refused on chain by Metal (over the mandate's cap, or on a mandate just replaced), the same as `proof.chain_refusals`");
+  fact("specs.stopsCfo", stops.cfo, "record `snapshot.refusals` \"Proposal rejected\" (Max · Face ID)");
+  fact("specs.stopsPlanted", stops.planted, "record `snapshot.refusals` \"Planted instruction ignored\" (a line aimed at the AI in the dispute document)");
+  fact("specs.overLimit", need(r.proof?.over_limit_eur !== undefined && Number(r.proof.over_limit_eur) === 0 ? "nothing" : null, "nothing paid over a limit (`proof.over_limit_eur`)"), "record `proof.over_limit_eur` (nothing)");
   const st = need(r.snapshot.agent_stats?.length ? r.snapshot.agent_stats : null, "agent statistics");
   fact("run.agents", st.length, "record `snapshot.agent_stats` (one row per agent)");
   const sum = (k: "decisions" | "by_claude" | "fallback") => st.reduce((n, a) => n + need(a[k], `${a.agent}'s ${k}`), 0);
@@ -346,13 +361,14 @@ export const SCENE_SECONDS: Record<string, number> = {
   "08-faceid": 8, "09-six": 10, "10-why": 10, "11-turn": 7, "12-tamper": 8, "13-proof": 13, "13b-value": 4, "14-real": 10, "15-close": 13, "16-end": 13,
 };
 
-/** How long a line takes at Max's calm pace, about 2.5 words a second (to the hundredth). */
+/** How long a line takes at the narrator's calm pace, about 2.5 words a second (to the hundredth). */
 export const speechSeconds = (text: string) => Math.round((text.split(/\s+/).filter(Boolean).length / 2.5) * 100) / 100;
 
 /**
  * A scene's line from the voice script, timed in its scene: it starts about 0.5 s in, and each "…" is a pause of about
  * 0.5 s ("… …" is the second of silence before "One cent. Worthless."). When the line is long for its scene, the pauses
- * shrink to a quarter second and then the line starts earlier; a line that still does not fit stops the build.
+ * shrink to a quarter second and then the line starts earlier; a line still too long at the scene's very start is read a
+ * little faster, at most 3 words a second (13b-value: eleven words in 4 s); one that still does not fit stops the build.
  */
 export function timeLine(id: string, line: string, seconds: number): VoiceLine[] {
   const parts: { text: string; pauses: number }[] = [];
@@ -371,10 +387,17 @@ export function timeLine(id: string, line: string, seconds: number): VoiceLine[]
   // The second of silence before "One cent. Worthless." is the scene's own; it never shrinks.
   if (end() > seconds - 0.05 && id !== "12-tamper" && n) p = Math.max(0.25, (seconds - 0.05 - s0 - speech) / n);
   if (end() > seconds - 0.05) s0 = Math.max(0, Math.round((seconds - 0.05 - speech - n * p) * 100) / 100);
-  if (end() > seconds + 1e-9) throw new Missing(`premiere: the voice script's ${id} line takes ${speech.toFixed(1)} s to say; its scene is ${seconds} s`);
+  // Too long even from the scene's start: read faster, to end 0.05 s before the cut, never faster than 3 words a second.
+  const words = parts.reduce((k, x) => k + x.text.split(/\s+/).filter(Boolean).length, 0);
+  let rate = 1;
+  if (end() > seconds + 1e-9) rate = speech / (seconds - 0.05 - s0 - n * p);
+  if (rate !== 1 && (rate < 1 || words / (speech / rate) > 3 + 1e-9)) throw new Missing(`premiere: the voice script's ${id} line takes ${speech.toFixed(1)} s to say; its scene is ${seconds} s`);
   const out: VoiceLine[] = [];
   let at = s0;
-  for (const x of parts) { at += x.pauses * p; out.push({ at: Math.round(at * 100) / 100, who: "Max", text: x.text }); at += speechSeconds(x.text); }
+  for (const x of parts) {
+    const said = Math.round((speechSeconds(x.text) / rate) * 100) / 100;
+    at += x.pauses * p; out.push({ at: Math.round(at * 100) / 100, who: NARRATOR, text: x.text, seconds: said }); at += said;
+  }
   return out;
 }
 
@@ -489,20 +512,14 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     "13-proof": {
       cards: [
         { big: `${v("specs.byClaude")}/${v("specs.decisions")}`, label: "decisions by Claude", small: `Sourcing ${v("specs.sourcing")} · Support ${v("specs.support")} · Treasury ${v("specs.treasury")} · ${v("specs.fallbacks")} fallbacks` },
-        // The stops (Max, 5 November: "1 + 1" was unclear): two stat blocks side by side, Metal's refusal and the CFO's
-        // rejection, each the record's figure, shown as it is (no count-up); Max's sentence as the caption.
-        { stops: true, head: "Stopped at a limit, in the main run",
-          blocks: [
-            { big: v("specs.stoppedMetal"), label: `${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} refused by Metal`, small: "over its on-chain cap" },
-            { big: v("specs.stoppedCfo"), label: `${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"} rejected by the CFO`, small: "with Face ID" },
-          ],
-          caption: stopsSentence(v("specs.stoppedMetal"), v("specs.stoppedCfo")),
-          small: n("specs.stoppedAirwallex") ? `Airwallex declined ${v("specs.stoppedAirwallex")}` : "" },
-        // The tests (the README's line, the same as its badge) and the audit log, side by side, counting up.
-        { pair: true, count: true,
-          blocks: [
-            { big: v("specs.tests"), label: "tests, all passing", small: "npx vitest run · CI runs the same suite" },
-            { big: v("specs.auditRows"), label: "audit rows, hash-chained", small: "chain intact · npm run verify" },
+        // The stops (Max, 5 November, second round: "1 + 1" told too little): all of the run's stops and who stopped
+        // them, each the record's figure, shown as it is (no count-up); the parts add up to the figure (premiereFacts).
+        { stops: true, figure: `${v("specs.stops")} stops`, sub: `${v("specs.overLimit")} paid over a limit`,
+          rows: [
+            { big: v("specs.stopsClaude"), label: "Claude skipped an overpriced check" },
+            { big: v("specs.stopsMetal"), label: "Metal refused a purchase" },
+            { big: v("specs.stopsCfo"), label: "the CFO rejected a proposal" },
+            { big: v("specs.stopsPlanted"), label: "planted instruction changed nothing" },
           ] },
       ],
     },
@@ -514,38 +531,40 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     },
     "15-close": {
       // The ending mirrors the intro (Max, 5 November): the three beats one by one, short and large; the closing line
-      // in three short sentences on two lines, Max's spoken words; then the intro's wordmark lockup.
+      // in three short sentences on two lines, the narrator's words; then the intro's wordmark lockup. Max's name and
+      // role lower left.
       beats: ["A price shock.", "A dispute.", "A euro bill."],
-      line: ["Claude decided. The rails and the code held the limits.", "I signed only what went beyond them."],
+      line: ["Claude decided. Airwallex and Metal held the limits.", "The CFO signed only what went beyond them."],
       title: "Purser", sub: "Starter Kit 11",
       name: "Max Geurtsen", role: "Purser · Starter Kit 11",
-      slot: "Recording slot · Max on camera, or his voice over this card",
     },
     "16-end": {
       cta: "Try it yourself", url: TRY_SIGN_URL, foot: "Test money only: the Airwallex sandbox and Metal testnet.",
       mark: "Purser · Starter Kit 11",
-      // The end credits (premiere v3): text only, no logos.
-      roll: END_CREDITS, credits: { max: `Voice: Max Geurtsen · ${MUSIC}`, ai: `Voice-over: an AI-generated voice · opening and closing: Max Geurtsen · ${MUSIC}` },
+      // The end credits: who does what (Max, 5 November), text only, no logos; the voice and the music as what they are.
+      head: "Who does what", roll: END_CREDITS, thanks: THANKS, credit: AI_CREDIT,
       last: "Test money only", short: TRY_SIGN_URL.replace(/^https:\/\//, ""),
     },
   };
 
-  // The voice-over: Max's script (docs/video/voice-script-max.md), word for word, each line timed in its scene. Every
+  // The voice-over: the narrator's script (docs/video/narrator-script.md), word for word, each line timed in its scene. Every
   // figure it says must be the record's: a script that says another stops the build.
   const lines = voiceScript(script);
   const dollars = (k: string) => need(/^(\d+)\.00$/.exec(v(k))?.[1], `${k} in whole dollars`);
   const says: Record<string, string[]> = {
     "01-hook": ["AI agents can now spend money.", "So who signs off?"],
-    "02-purser": ["I'm Max Geurtsen, and this is Purser."],
-    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card and its own Metal mandate"],
+    "02-purser": ["This is Purser, built by Max Geurtsen."],
+    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card, and its own Metal mandate"],
     "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price, past the Sourcing agent's cap`, "Metal refused it"],
     "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID"],
     "06-metal": [`${cap1(said("metal.payments"))} of them`, "No emulator"],
     "07-dispute": [`disputes ${said("dispute.count")} orders`, `Only the ${said("dispute.refundCount")} with wrong data`],
-    "09-six": [`${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} later`],
+    "09-six": [`${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} later`, "Airwallex pays the euro invoice by SWIFT, in its sandbox"],
     "12-tamper": ["Change one cent", "One cent. Worthless."],
-    "13-proof": [`${cap1(said("specs.byClaude"))} of ${said("specs.decisions")} decisions by Claude`, `Metal refused ${said("specs.stoppedMetal")} ${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} over its cap`, `I rejected ${said("specs.stoppedCfo")} ${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"}`],
-    "13b-value": ["The agents do the work."],
+    "13-proof": [`${v("specs.byClaude") === v("specs.decisions") ? "All" : `${cap1(said("specs.byClaude"))} of`} ${said("specs.decisions")} decisions by Claude`,
+      `${cap1(said("specs.stops"))} stops, ${v("specs.overLimit")} paid over a limit`, `${said("specs.stopsClaude")} skipped by Claude`, `${said("specs.stopsMetal")} refused by Metal`,
+      `${said("specs.stopsCfo")} rejected by the CFO`, `${said("specs.stopsPlanted")} planted ${n("specs.stopsPlanted") === 1 ? "instruction" : "instructions"} ignored`],
+    "13b-value": ["The agents do the work. The CFO signs only the exceptions."],
     "15-close": [CLOSING[0], `${CLOSING[1]} ${CLOSING[2]}`, CLOSING[3]],
   };
   const voice: PremiereData["voice"] = {};
@@ -561,8 +580,8 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
 
 /** The corner credits (Max, 4 November): who made it, and what it is built on, in words. */
 export const CREDITS = { left: "Max Geurtsen · Purser", right: "Built on Airwallex · Metal · Claude" } as const;
-/** The music, as the end card credits it (Mixkit track 124, Mixkit Stock Music Free License; the coordinator mixes it). */
-export const MUSIC = "Music: Techno Fest Vibes (Mixkit)";
+/** The voice and the music of the final film, as the end card credits them (Max, 5 November): both AI-generated. */
+export const AI_CREDIT = "Voice-over: an AI-generated voice (ElevenLabs) · Music: AI-generated (ElevenLabs)";
 
 /**
  * The background (Max, premiere v3: calm, enterprise): deep navy, a very faint static dot grid (one dot every `grid`
@@ -571,24 +590,24 @@ export const MUSIC = "Music: Techno Fest Vibes (Mixkit)";
  */
 export const BACKGROUND = { base: "#0a1020", grid: 36, dot: 0.07, drift: [0.5, 0.25], vignette: 0.55, fadeIn: 1 } as const;
 
-/** The end credits (premiere v3), text only: each row a heading and its line. */
+/**
+ * The end credits (Max, 5 November): who does what, text only, no logos, each line as docs/claims.md has it: what Max
+ * built, and what each partner provides in the run (the README's "Who does what").
+ */
 export const END_CREDITS: [string, string][] = [
-  ["Thank you", "Airwallex · Metal · Anthropic (Claude)"],
-  ["", "and the hackathon organisers and mentors"],
-  ["Built by", "Max Geurtsen"],
+  ["Built by Max Geurtsen", "Purser: the CFO's limits, Face ID approvals, the agents' tools, the audit log"],
+  ["Airwallex", "the agents' cards and card limits, FX, the SWIFT euro payout (sandbox)"],
+  ["Metal", "the on-chain mandates and the agents' payments (testnet)"],
+  ["Claude by Anthropic", "the three agents' decisions"],
 ];
+/** The thanks under the credits. */
+export const THANKS = "Thank you to Airwallex, Metal, Anthropic, and the hackathon organisers and mentors";
 
 /** Purser's core line (the README's first line), word for word, in the two lines the wordmark shows it. */
 export const CORE_LINE = ["Claude explains and proposes, the rules in code hold every limit,", "and a person signs before money moves beyond them."] as const;
 
-/** Max's sentence for the stops (5 November), as the other documents say it: "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal." */
-export function stopsSentence(metal: string, cfo: string): string {
-  const one = (x: string) => x === "1" || x === "one";
-  return `Metal refused ${metal} ${one(metal) ? "purchase" : "purchases"} over its cap; the CFO rejected ${cfo} ${one(cfo) ? "proposal" : "proposals"}.`;
-}
-
-/** Max's closing line (docs/video/max-opening-close.md, "Slot"), in the lines the fallback card shows. */
-export const CLOSING = ["A price shock, a dispute, a euro bill.", "Claude decided, the rails and the code held the limits,", "and I signed only what went beyond them.", "Purser. Starter Kit 11."] as const;
+/** The closing line (docs/video/narrator-script.md, 15-close), in the lines the closing card shows. */
+export const CLOSING = ["A price shock, a dispute, a euro bill.", "Claude decided, Airwallex and Metal held the limits,", "and the CFO signed only what went beyond them.", "Purser. Starter Kit 11."] as const;
 
 // ---- The page ----
 

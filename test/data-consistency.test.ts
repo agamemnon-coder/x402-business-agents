@@ -115,8 +115,9 @@ describe("the recorded run's headline figures (landing, dashboard, README, claim
       const form = flat(d);
       expect(form, d).not.toContain(`${a.blocked} stops by the card, the chain, the fraud checks or the CFO`);
       expect(form, d).not.toContain(`${eur(a.kept_out_cents)} kept out for good`);
-      // Max, 5 Nov (review round): who stopped what, said in words; the counts are the main run's (stops()).
-      expect(form, d).toContain("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal");
+      // Max, 5 Nov (second round): the main run's stops, all of them, in one sentence (stopStory()).
+      expect(form, d).toContain("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+      expect(form, d).not.toContain("over its cap; the CFO rejected");
     }
   });
 });

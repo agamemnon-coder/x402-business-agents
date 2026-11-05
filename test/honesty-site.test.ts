@@ -5,14 +5,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { publish } from "../src/autonomy/bus.js";
 import { CHECK_PATHS, judgeMenu, startJudge } from "../src/cli/judge.js";
-import { SANDBOX_SETTLED, SECOND_APPROVER, VISA_AWARD_STATUS, WORLD_SETUP } from "../src/config/brand.js";
+import { SANDBOX_SETTLED, SECOND_APPROVER, VISA_EXTRA_LINK, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 import { agentChat } from "../src/dashboard/agentStats.js";
 import { railsView } from "../src/dashboard/rails.js";
 import { describe as feedLine } from "../src/dashboard/snapshot.js";
 import { openDb } from "../src/db/open.js";
 import { homePage } from "../src/redesign/home.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { agentRun, cardRaiseOf, decisionsOf, letThroughOf, loadRecord, payments, stoppedAtLimit, stops, timings } from "../src/redesign/run.js";
+import { agentRun, cardRaiseOf, decisionsOf, letThroughOf, loadRecord, payments, stopStory, stops, stopsLine, timings } from "../src/redesign/run.js";
 import { buildPages } from "../src/relay/assets.js";
 import { PAGE, TRY_PAGE, TRY_PAGE_OFFLINE, recordedLabel } from "../src/servers/dashboard.js";
 import { deckHtml, type DeckShots } from "../src/submission/deck.js";
@@ -39,22 +39,27 @@ const replay = block<Replay>(PAGE, "autonomy-data");
 describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and Proof do", () => {
   const st = stops(record);
 
-  it("takes its stop figures from run.ts: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal; #24 counted once, #37 not counted", () => {
-    expect(stoppedAtLimit(st)).toBe(2);
+  it("takes its stop figures from run.ts (Max, 5 Nov): the 16 stops in one sentence; #24 counted once, #37 counted as Metal's", () => {
+    const story = stopStory(record), line = stopsLine(story);
+    expect(story.total).toBe(16);
     const f = replay.figures;
-    expect(f.stopped).toBe(stoppedAtLimit(st));
-    // "Enforced by": Metal once, at the cap, with the refusal's tx; not 3 (#24's two rows and #37).
+    expect(f.stopped).toBe(story.total);
+    // "Enforced by": Metal's refusals as the sentence counts them (#24 once, though it has two rows; and #37), the last
+    // shown the one at the cap, with the refusal's tx; not 3.
     const metal = replay.snapshot.tower.enforced.find((e) => e.who === "metal")!;
-    expect(metal.count).toBe(st.metal);
-    expect(metal.count).toBe(1);
+    expect(metal.count).toBe(story.metal);
+    expect(metal.count).toBe(st.metal + st.revoked);
+    expect(metal.count).toBe(2);
     expect(metal.last).toMatchObject({ reason: "mandate_cap_exceeded", proof: { kind: "tx", ref: letThroughOf(record)!.tx } });
     expect(metal.last!.words).toMatch(/let through on purpose/);
     expect(replay.snapshot.tower.enforced.find((e) => e.who === "airwallex")!.count).toBe(st.airwallex);
-    expect(f.keptOut).toBe("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal. Not counted: 1 more refused by Metal because its mandate had just been replaced. The amount is what stayed out for good.");
-    expect(f.refusedPill).toBe("1 + 1 at a limit");
-    expect(f.refusedNote).toBe("16 refusals in this run. At a limit, as on Home and Proof: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal. Not limits: 12 purchases the Sourcing agent's own buy policy declined (nothing signed), 1 refused by Metal because its mandate had just been replaced, 1 planted instruction ignored.");
-    expect(f.enforcedNote).toBe("In this run: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal. Not counted: 1 more refused by Metal because its mandate had just been replaced.");
-    expect(JSON.stringify(f)).not.toMatch(/all counted|\b16 stops\b|stopped at a limit/i);
+    const detail = " Metal's 2: 1 over the mandate's cap, 1 on a mandate that had just been replaced.";
+    expect(line).toBe("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    expect(f.keptOut).toBe(`${line}${detail} The amount is what stayed out for good.`);
+    expect(f.refusedPill).toBe("16 stops");
+    expect(f.refusedNote).toBe(`As on Home and Proof: ${line}${detail}`);
+    expect(f.enforcedNote).toBe(`In this run: ${line}${detail}`);
+    expect(JSON.stringify(f)).not.toMatch(/all counted|stopped at a limit|over its cap; the CFO|1 \+ 1/i);
   });
 
   it("shows those figures: the page's script reads them for the KPI, the refusals, Enforced by and Claude", () => {
@@ -226,12 +231,13 @@ describe("5. PAID in the sandbox, where the settlement is simulated", () => {
   });
 });
 
-describe("6. the Visa Award's status, said once, on /visa", () => {
-  it("is on /visa only; Home and Proof link to /visa", () => {
+describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, on /visa", () => {
+  it("is on /visa only; Home and Proof link to /visa as an extra, not an award entry; no page enters the Visa Award", () => {
     const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
-    expect(String(pages.visa)).toContain(VISA_AWARD_STATUS);
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_AWARD_STATUS) }).toEqual({ name, has: false });
-    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /<a [^>]*href="visa"[^>]*>[^<]*Visa Award[^<]*<\/a>/.test(html) }).toEqual({ name, link: true });
+    expect(String(pages.visa)).toContain(VISA_TAP_STATUS);
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_TAP_STATUS) }).toEqual({ name, has: false });
+    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/.test(html) && html.includes(VISA_EXTRA_LINK) }).toEqual({ name, link: true });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /entered for[^.<]{0,40}Visa Award|\+ Visa Award/i.test(body) }).toEqual({ name, entered: false });
   });
 });
 

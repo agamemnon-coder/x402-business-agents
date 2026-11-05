@@ -1,3 +1,5 @@
+Superseded: the final film (2:42) uses an AI voice and AI music from ElevenLabs; see docs/video/README.md.
+
 # Opening en slot: Max, op camera
 
 Concept. Pas de woorden gerust aan naar hoe jij het zegt; houd de kernzin en "Starter Kit 11" erin. Engels, want de

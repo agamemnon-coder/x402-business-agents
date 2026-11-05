@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { packFacts } from "../src/submission/facts.js";
-import { CORE_LINE, T0_STATUS, stopLine } from "../src/submission/deck.js";
+import { CORE_LINE, T0_STATUS, stopsLine } from "../src/submission/deck.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const raw = read("docs/submission/README.md");
@@ -39,7 +39,8 @@ describe("the submission pack", () => {
       expect(t).not.toContain(`${eur(f.kept_out_eur)} kept out for good`);
       expect(t).not.toMatch(/in the recorded run it declined/);
       // Max, 5 Nov (review round): who stopped what, in words, with the main run's counts.
-      expect(t).toContain(`Metal refused ${f.main.metal_refused} purchase over its cap; the CFO rejected ${f.main.cfo_rejected} proposal`);
+      expect(t).toContain(f.main.stop_line);
+      expect(f.main.stop_line).toBe(stopsLine(f.main.stops));
       expect(t).toContain(f.main.tap_limit_line);
     }
     const c = f.main.card_raise;
@@ -72,13 +73,16 @@ describe("the submission pack", () => {
     expect(description).not.toMatch(/30 October|31 October|Other live tests|red team|Scenario Lab/i);
   });
 
-  it("opens the synopsis with the hook, and says the Visa paragraph once, with the award status as one note", () => {
+  it("opens the synopsis with the hook, and says the Visa paragraph once, with TAP's status as one note (Metal Award only)", () => {
     const synopsis = raw.split("<!-- synopsis -->")[1]!.split("<!-- /synopsis -->")[0]!.trim();
     expect(synopsis.startsWith("A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.")).toBe(true);
     expect(synopsis).toContain(`the CFO signed ${f.main.face_id} times with Face ID`);
     for (const t of [pack, long]) {
       expect(t.match(/Trusted Agent Protocol/g)).toHaveLength(1);
-      expect(t.match(/whether TAP counts as Visa tooling is still being confirmed with Visa/g)).toHaveLength(1);
+      // Visa, 5 Nov: TAP is not eligible Visa tooling for this hackathon; Max's wording, once, and the entry is Metal only.
+      expect(t.match(/built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)/g)).toHaveLength(1);
+      expect(t).not.toMatch(/still being confirmed with Visa|entered for[^.]{0,40}Visa Award|\+ Visa Award/i);
+      expect(t).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award");
       expect(t).not.toMatch(/open[- ]source/i);
     }
   });
@@ -141,10 +145,12 @@ describe("the short Description (Max, 5 Nov)", () => {
   it("goes story, proof, real and simulated, links, with the core line and Max's lines word for word", () => {
     const at = (s: string) => { const i = flat.indexOf(s); expect({ s, found: i >= 0 }).toEqual({ s, found: true }); return i; };
     const order = [at("A supplier doubles its price."), at(CORE_LINE), at("Proof: the main run (3 November, world `main-1`)."), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
-      at(stopLine(f.main.metal_refused, f.main.cfo_rejected)), at("What is real and what is simulated."), at("Links.")];
+      at(f.main.stop_line), at("Who does what."), at("What is real and what is simulated."), at("Links.")];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     for (const line of [T0_STATUS, "Max's passkey (Face ID on his phone)", "Max plays the CFO", "Metal tx: on chain, checkable.", "Airwallex ids: published on /proof."]) at(line);
-    expect(flat.indexOf(f.main.tap_limit_line)).toBeGreaterThan(flat.indexOf(stopLine(f.main.metal_refused, f.main.cfo_rejected)));
+    expect(flat.indexOf(f.main.tap_limit_line)).toBeGreaterThan(flat.indexOf(f.main.stop_line));
+    // Who does what (Max, 5 Nov): what Max built, and what each partner provides, in words, no logos.
+    expect(flat).toContain("Who does what. Max Geurtsen built Purser (limits, approvals, agent tools, site, audit log, books, tests). Airwallex: cards and limits, FX, SWIFT. Metal: mandates, payments. Claude: the agents' decisions.");
   });
 
   it("links the site, /try/sign, /watch, /proof, the repo, the offline judge and the long text", () => {

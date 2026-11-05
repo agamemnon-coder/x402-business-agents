@@ -1,3 +1,5 @@
+Superseded: the final film (2:42) uses an AI voice and AI music from ElevenLabs; see docs/video/README.md.
+
 # Purser: the hybrid video (target ≤ 3:55, and a 60-second cut)
 
 **To fix before recording (31 Oct review):** this draft runs 4:10, over the 4:00 limit; cut 15 s and rebuild it from Thursday's run.

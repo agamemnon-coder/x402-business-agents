@@ -3,6 +3,7 @@
 // /?autonomy, as the README and the deck link them); the CFO's viewer link (#view=…, never sent to a server) goes on
 // from Home to the dashboard. The browser side of the same: test/browser/root.check.ts.
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
@@ -31,6 +32,11 @@ function forward(pathname: string, hash: string, kept: string | null | "blocked"
 }
 
 describe("/ for a guest", () => {
+  it("says the film's line as its heading (Max, 5 Nov): \"AI agents spend. You sign off.\", the core sentence under it", () => {
+    expect(HERO).toBe("AI agents spend. You sign off.");
+    expect(readFileSync(new URL("../docs/media/social-preview.html", import.meta.url), "utf8")).toContain("<h1>AI agents spend.<br><em>You sign off.</em></h1>");
+    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="lead">${CORE_SENTENCE}</p>`);
+  });
   it("is Home itself (no query), under Home's own CSP: no redirect, nothing of the CFO dashboard in the HTML", async () => {
     for (const path of ["/", "/?"]) {
       const r = get(path)!;

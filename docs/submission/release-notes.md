@@ -1,7 +1,8 @@
 # Purser v1.0-submission
 
 The version submitted to the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for
-the Metal Award, with a note for the Visa Award. Tag `v1.0-submission`.
+the Metal Award. Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for
+this hackathon (Visa, 5 Nov). Tag `v1.0-submission`.
 
 Three Claude agents run a small data business on test money through Metal (testnet) and Airwallex (sandbox). Metal
 holds each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves
@@ -16,7 +17,7 @@ anything beyond them, with Face ID on the exact terms.
 - **The euro bill:** EUR 240.00 by FX and SWIFT, PAID 6 s after Face ID (transfer
   `03360bfa-afce-457b-89d1-e1097fbe3985`; settlement simulated in the sandbox).
 - 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks.
-  Metal refused 1 purchase over its cap; the CFO rejected 1 proposal.
+  16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
 
 Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md).
 
@@ -39,7 +40,19 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 5 November: the stops are said in one sentence everywhere ("Metal refused 1 purchase over its cap; the CFO rejected 1
   proposal."), and the form's Description is short (the long text is
   [long-description.md](long-description.md)). /try/sign stays within a phone's width after the tamper. The premiere
-  film (v5) runs 2:42 on Max's voice script; the hook is "So who signs off?". 2363 tests in 248 files, all passing.
+  film (v5) runs 2:42; the hook is "So who signs off?". 2363 tests in 248 files, all passing.
+- 5 November, later: the stops are the run's full story ("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing."), counted from the record's refusal
+  rows and summed to its own count; the README and the form say who does what (what Max built, what Airwallex, Metal and
+  Claude provide); the film's proof card shows the 16 stops, and its end card credits the AI-generated voice and music
+  (ElevenLabs) and who does what. 2363 tests in 248 files, all passing.
+- 5 November, last: the film is 2:42 everywhere it is named, and its voice-over is what the end card says: an
+  AI-generated voice (ElevenLabs), a narrator in the third person (“This is Purser, built by Max Geurtsen.”), with
+  AI-generated music (ElevenLabs); the narrator's lines are `docs/video/narrator-script.md`, every figure in them still
+  checked against the record. Home's heading is the film's line, “AI agents spend. You sign off.”. 2365 tests in 248
+  files, all passing.
+- 5 November, Visa's answer: TAP is not available as Visa tooling for this hackathon (VIC or ICC only), so the entry
+  is the Metal Award only. The Kit line, Home's badge and the links on Home and Proof no longer name the Visa Award;
+  /visa keeps the TAP work as a labelled extra, with one status line. 2365 tests in 248 files, all passing.
 
 ## Real, and ours
 

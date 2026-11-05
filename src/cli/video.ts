@@ -1,5 +1,5 @@
 // npm run video [-- <clip id>...]: records the premiere (src/film/premiere.html, its script in
-// src/film/premiereScript.ts), Purser in two and a half minutes made from the main run of 3 November, one clip per
+// src/film/premiereScript.ts), Purser in 2:42 made from the main run of 3 November, one clip per
 // scene, at 1920x1080, letterboxed to 2.39:1 and exactly 60 frames a second. The browser runs on virtual time: each
 // frame moves the clock by 1/60 s and is captured, so nothing loads or stutters on screen. Each frame is drawn at twice
 // the size (3840x2160) and scaled down with lanczos, then encoded with x264 (preset slow, CRF 14), so small text stays
@@ -12,9 +12,9 @@
 //   --stills   a PNG of three moments of each scene in out/video/stills/, for a quick look, and nothing else
 //   --check    draws every scene in a browser and fails on a page error, and nothing else
 //   --film     the earlier film of the 30 October recording (src/video/plan.ts) into out/video/film/, as before
-//   --slot 08-faceid=<file>[@<start>-<end>], --slot 11-turn=<file>[@<start>-<end>]: Max's own portrait phone
-//              recordings, laid into a phone frame beside the scene's captions (src/film/slots.ts); without one the
-//              scene keeps its rendered picture (the Face ID reconstruction, the /try/sign mock)
+//   --slot 08-faceid=<file>[@<start>-<end>], --slot 11-turn=<file>[@<start>-<end>]: a portrait phone
+//              recording, laid into a phone frame beside the scene's captions (src/film/slots.ts); without one the
+//              scene keeps its rendered picture (the Face ID reconstruction, the /try/sign mock), as the final film does
 // VIDEO_PREVIEW=1 makes a quick preview instead: drawn at 1920x1080 (no supersampling) and encoded with x264 preset
 // veryfast at CRF 18, for a first look; it is not the deliverable.
 // Nothing here is live: the pages are the recordings, as npm run judge serves them.

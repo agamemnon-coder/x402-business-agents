@@ -1,6 +1,7 @@
 // The video (about three minutes): the voice-over script, the English subtitles and the shots, in one place, so the
-// words and the pictures cannot drift apart. `npm run video` records every shot at 1920x1080, 60 fps (src/cli/video.ts); Max reads
-// the script over the silent master.
+// words and the pictures cannot drift apart. `npm run video` records every shot at 1920x1080, 60 fps (src/cli/video.ts). This is the
+// earlier film of the 30 October recording (`npm run video -- --film`), not the submission video, which is the premiere
+// (src/film/premiere.ts, docs/video/README.md).
 
 import { FILM_SCENES, filmTimeline } from "../film/script.js";
 

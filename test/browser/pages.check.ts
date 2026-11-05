@@ -178,15 +178,16 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(au)) fail(`/?autonomy ${tag}: not labelled as the main run`);
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
     if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
-    // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov): Metal once at the cap (not 3),
-    // Max's sentence for the stops, "1 + 1" in the pill (not "16 stops, all counted"), all Claude calls said as such,
-    // #24 refused by Metal itself.
-    for (const want of [/Metal's mandate check\s+1\b/, /In this run: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\./, /Refused and blocked\s+1 \+ 1 at a limit/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
+    // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov; Max, 5 Nov): Metal's 2 (not 3:
+    // #24 once, and #37), the stops in one sentence, "16 stops" in the pill, all Claude calls said as such, #24 refused
+    // by Metal itself.
+    const STOPS = /16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
+    for (const want of [/Metal's mandate check\s+2\b/, new RegExp(`In this run: ${STOPS.source}`), /Refused and blocked\s+16 stops/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
       if (!want.test(au)) fail(`/?autonomy ${tag}: missing ${want}`);
     }
     // The KPI's note (hidden on a phone, as every KPI note is) says the same sentence.
-    if (w >= 1000 && !/Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\. Not counted: [^.]*\. The amount is what stayed out for good/.test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say Max's sentence for the stops`);
-    for (const bad of [/all counted/, /stopped at a limit/i, /Metal's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
+    if (w >= 1000 && !new RegExp(`${STOPS.source} Metal's 2: [^.]*\\. The amount is what stayed out for good`).test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say the stops' sentence`);
+    for (const bad of [/all counted/, /stopped at a limit/i, /Metal's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/, /over its cap; the CFO rejected|\b1 \+ 1\b/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
     if (!(await page.isVisible("#mf"))) fail(`/?autonomy ${tag}: no money flow`);
     // Somewhere in the run a movement was decided by an agent's own Claude call: its caption names the model.
     let named = false;
@@ -241,7 +242,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 
     // The partner pages (v4, C1): short (at most 150 words before anything is opened), the flow first, the run
     // labelled, the details folded and every fold readable once open, no Visa logo; /visa carries the claim and the
-    // Visa Award status word for word, and its honest labels in a fold.
+    // TAP status word for word (Visa, 5 Nov: not eligible Visa tooling), and its honest labels in a fold.
     for (const path of ["/metal", "/airwallex", "/visa", "/claude"]) {
       await page.goto(`${base}${path}`, { waitUntil: "load" });
       await look(page, `${path} ${tag}`, w);
@@ -255,7 +256,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
-      if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Entered for the Visa Award/.test(open) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
+      if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\), so Purser is entered for the Metal Award only\./.test(open) || /entered for[^.]{0,40}Visa Award/i.test(open) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);

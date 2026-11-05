@@ -13,9 +13,12 @@ Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal o
 
 ## 1. Video
 
-- Neem je twee opnames op volgens [opnames-max.md](../video/opnames-max.md): de opening en slotzin, en /try/sign op
-  je telefoon. Stuur de bestanden naar Claude; Claude zet ze in de film.
-- Upload de film op YouTube als **Niet vermeld** (unlisted). De regel is "under five minutes"; de film duurt 2:57.
+- Voor de film hoef je niets op te nemen: de voice-over is een AI-stem (ElevenLabs), een verteller in de derde
+  persoon, en de muziek is AI-gegenereerd (ElevenLabs); de eindkaart vermeldt beide. Zie
+  [docs/video/README.md](../video/README.md).
+- Upload de film op YouTube als **Niet vermeld** (unlisted). De regel is "under five minutes"; de film duurt 2:42.
+  Zet in de beschrijving: "Test money only: the Airwallex sandbox and Metal testnet" en "Voice-over: an AI-generated
+  voice (ElevenLabs) · Music: AI-generated (ElevenLabs)".
 - Zet de link in het formulier. Claude zet hem in [README.md](README.md).
 
 ## 2. Repo

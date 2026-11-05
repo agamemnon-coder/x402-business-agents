@@ -8,8 +8,8 @@
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
-import { NORTHWIND_LINE, VISA_AWARD_STATUS } from "../config/brand.js";
-import { agentRun, homeFilm, stopLine } from "../redesign/run.js";
+import { NORTHWIND_LINE, VISA_TAP_STATUS } from "../config/brand.js";
+import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -27,8 +27,8 @@ export const REPO_URL = "https://github.com/agamemnon-coder/x402-business-agents
 export const CORE_LINE = "Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.";
 /** What Purser does, in Max's words (review round, 5 Nov): on slide 2 and in the pitch at about 0:25. */
 export const RULE_LINE = "Inside its limits an agent pays alone; beyond them, the CFO signs.";
-/** Who stopped what at a limit in the main run, in Max's words (review round, 5 Nov); one sentence with the site's (run.ts). */
-export { stopLine };
+/** The main run's stops in one sentence (Max, 5 Nov), the site's own (run.ts stopsLine). */
+export { stopsLine };
 /** Metal's refusal of #24, said one way everywhere (review round, 5 Nov). */
 export const REFUSAL_LINE = "Metal refused it; the refusal is recorded on chain.";
 /**
@@ -72,7 +72,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       title: "Purser",
       wide: true,
       extra: `<p class="lead">${esc(CORE_LINE)}</p>
-        <div class="stats four">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude, ${m.fallbacks} fallbacks`)}${stat(`${m.metal_refused} + ${m.cfo_rejected}`, stopLine(m.metal_refused, m.cfo_rejected))}${stat(String(m.face_id), "Face ID decisions by the CFO")}${stat(`${m.face_to_paid_s} s`, "from Face ID to PAID; the settlement is simulated in the sandbox")}</div>
+        <div class="stats four">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude, ${m.fallbacks} fallbacks`)}${stat(m.stop_figure, m.stop_sub)}${stat(String(m.face_id), "Face ID decisions by the CFO")}${stat(`${m.face_to_paid_s} s`, "from Face ID to PAID; the settlement is simulated in the sandbox")}</div>
         <p class="src">One live run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only.</p>
         <p class="built">Built on Airwallex and Metal, with Claude.</p>`,
     },
@@ -123,7 +123,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Proof",
       title: "Every id is published",
       points: [
-        `<b>${esc(stopLine(m.metal_refused, m.cfo_rejected))}</b>`,
+        `<b>${esc(m.stop_line)}</b>${m.metal_detail ? ` Metal's ${m.stops.metal}: ${esc(m.metal_detail)}.` : ""}`,
         `On chain, checkable: Metal's refusal <code>${esc(short(m.let_through_tx))}</code>; the mandate replacements ${replaced.map((t) => `<code>${esc(short(t))}</code>`).join(", ")}; the sweep <code>${esc(short(sweepTx))}</code>`,
         `Published: FX <code>${esc(shortId(conversion))}</code>, SWIFT <code>${esc(shortId(m.licence_transfer))}</code>, deposit <code>${esc(shortId(deposit))}</code>`,
         `Card raise ${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}, then Airwallex authorization <code>${esc(shortId(m.card_raise.auth))}</code>`,
@@ -183,7 +183,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <dt>Offline, no keys</dt><dd><code>npm ci &amp;&amp; npm run judge</code></dd>
         </dl></div>
         <p class="src">Max Geurtsen · built with Claude Code · built on Airwallex and Metal, with Claude.</p>
-        <p class="oneline">${esc(VISA_AWARD_STATUS)}</p>`,
+        <p class="oneline">${esc(VISA_TAP_STATUS)}</p>`,
     },
   ];
   const font = asset("inter.woff2").toString("base64");

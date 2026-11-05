@@ -36,7 +36,7 @@ export interface RunRecord {
     tower: { agents: { agent: string; mandate: { cap: string; budget: string } | null }[] };
     rails: { metal: { what: string; detail: string; proof: { label: string; href: string | null } | null }[]; airwallex: { what: string; detail: string; proof: { label: string; href: string | null } | null }[] };
   };
-  proof: { face_id: number; chain_refusals: number; card_declines: number; ai_tricks: number };
+  proof: { face_id: number; chain_refusals: number; card_declines: number; ai_tricks: number; /** What was paid over a limit, in euros (the main run: "0.00"). */ over_limit_eur?: string };
   /** The run's ledger rows in full (src/demo/runLedger.ts); absent in records made before it. */
   ledger?: RunLedger;
 }
@@ -420,11 +420,11 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
 }
 
 /**
- * Who stopped a payment at a limit in the played run (the main run): Metal against the on-chain mandate, the CFO with
- * Face ID, and Airwallex when one of this run's card charges was declined. Counted apart, never in the figure: the
- * separate TAP run's card decline (`tapDeclines`, shown on its own labelled line, `tapLimitLine`); a payment under an
- * old mandate refused because it had just been replaced (`revoked`); an Airwallex sandbox failure such as fee_unknown
- * (`feeUnknown`), which is not a limit.
+ * Each rail's refusals from the run's flows, for the partner pages: Metal at the mandate's cap (`metal`, one attempt
+ * counted once) and under a mandate that had just been replaced (`revoked`), the CFO's rejections, Airwallex's card
+ * declines in this run, the separate TAP run's decline (`tapDeclines`, its own labelled line, `tapLimitLine`), and
+ * an Airwallex sandbox failure such as fee_unknown (`feeUnknown`), which is not a limit. The stops figure and sentence
+ * are stopStory()'s, from the record's own refusal rows.
  */
 export function stops(r: RunRecord): { metal: number; revoked: number; airwallex: number; tapDeclines: number; cfo: number; feeUnknown: number } {
   const s = r.snapshot;
@@ -443,19 +443,62 @@ export function stops(r: RunRecord): { metal: number; revoked: number; airwallex
   };
 }
 
-/** How many the played run's own limits stopped, in all (never the TAP run's); the pages say it as stopLine and stopFigure. */
-export const stoppedAtLimit = (st: ReturnType<typeof stops>) => st.metal + st.cfo + st.airwallex;
-
 /**
- * Who stopped what at a limit, in Max's words (review round, 5 Nov), one sentence on every surface: "Metal refused 1
- * purchase over its cap; the CFO rejected 1 proposal." The counts come from stops().
+ * The run's stops, all of them (Max, 5 Nov, second round: "1 + 1" told too little): every refusal row the record counts
+ * in \`snapshot.counts.blocked\`, by who stopped it. Claude (the Sourcing agent) skipped the overpriced checks under its
+ * own buy policy (nothing signed); Metal refused purchases (over the mandate's cap, or on a mandate that had
+ * just been replaced); the CFO rejected proposals with Face ID; a planted instruction in a document changed nothing.
+ * \`other\` is whatever none of these name (0 in the main run, said as "N other" so nothing is hidden); the parts sum
+ * to \`total\` (test/redesign-numbers.test.ts). The separate TAP run's decline is not counted (\`tapLimitLine\`).
  */
-export const stopLine = (metal: number, cfo: number, airwallex = 0) =>
-  `Metal refused ${metal} purchase${metal === 1 ? "" : "s"} over its cap; the CFO rejected ${cfo} proposal${cfo === 1 ? "" : "s"}${airwallex ? `; Airwallex declined ${airwallex} card charge${airwallex === 1 ? "" : "s"} at its limit` : ""}.`;
-/** stopLine for a run's stops. */
-export const stopsLine = (st: ReturnType<typeof stops>) => stopLine(st.metal, st.cfo, st.airwallex);
-/** The big figure above that sentence on a tile: "1 + 1" (Metal + the CFO, + Airwallex when it declined one). */
-export const stopFigure = (st: ReturnType<typeof stops>) => [st.metal, st.cfo, ...(st.airwallex ? [st.airwallex] : [])].join(" + ");
+export interface StopStory {
+  /** The record's own count, \`snapshot.counts.blocked\`. */
+  total: number;
+  claude: number; metal: number; metalCap: number; metalReplaced: number; cfo: number; planted: number; other: number;
+  /** The record's \`proof.over_limit_eur\` ("0.00": nothing paid over a limit), or null when the record has none. */
+  overLimitEur: string | null;
+}
+export function stopStory(r: RunRecord): StopStory {
+  const rows = r.snapshot.refusals;
+  const metalRows = rows.filter((x) => /refused on chain/.test(x.reason));
+  const claude = rows.filter((x) => x.agent === "sourcing" && /own buy policy/.test(x.reason)).length;
+  const cfo = rows.filter((x) => /^proposal rejected$/i.test(x.what) && /Face ID/.test(x.reason)).length;
+  const planted = rows.filter((x) => /planted instruction/i.test(x.what)).length;
+  const total = r.snapshot.counts.blocked;
+  return {
+    total, claude, metal: metalRows.length, cfo, planted,
+    metalCap: metalRows.filter((x) => /cap\b/.test(x.reason)).length,
+    metalReplaced: metalRows.filter((x) => /revoked by a replacement/.test(x.reason)).length,
+    other: total - claude - metalRows.length - cfo - planted,
+    overLimitEur: r.proof?.over_limit_eur ?? null,
+  };
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** The big figure: "16 stops". */
+export const stopFigure = (st: StopStory) => plural(st.total, "stop");
+/** The words under it: "nothing paid over a limit" (from \`proof.over_limit_eur\`), "" when the record does not say. */
+export const stopSub = (st: StopStory) => st.overLimitEur === null ? "" : Number(st.overLimitEur) === 0 ? "nothing paid over a limit" : `EUR ${st.overLimitEur} paid over a limit`;
+/** Who stopped what, in the sentence's order; a part only when its count is not 0. */
+export const stopParts = (st: StopStory) => [
+  st.claude ? `Claude skipped ${plural(st.claude, "overpriced check")}` : "",
+  st.metal ? `Metal refused ${plural(st.metal, "purchase")}` : "",
+  st.cfo ? `the CFO rejected ${plural(st.cfo, "proposal")}` : "",
+  st.planted ? `${plural(st.planted, "planted instruction")} changed nothing` : "",
+  st.other ? `${st.other} other` : "",
+].filter(Boolean);
+/**
+ * The stops in one sentence, the same on every surface (Max, 5 Nov): "16 stops, nothing paid over a limit: Claude
+ * skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted
+ * instruction changed nothing." Every count is stopStory()'s.
+ */
+export function stopsLine(st: StopStory): string {
+  const p = stopParts(st), sub = stopSub(st);
+  const list = p.length > 1 ? `${p.slice(0, -1).join(", ")}, and ${p[p.length - 1]}` : (p[0] ?? "");
+  return `${stopFigure(st)}${sub ? `, ${sub}` : ""}${list ? `: ${list}` : ""}.`;
+}
+/** Metal's refusals in detail (Proof, the claims): "1 over the mandate's cap, 1 on a mandate that had just been replaced". */
+export const metalDetail = (st: StopStory) => [st.metalCap ? `${st.metalCap} over the mandate's cap` : "", st.metalReplaced ? `${st.metalReplaced} on a mandate that had just been replaced` : ""].filter(Boolean).join(", ");
 
 /** The separate TAP run's card decline, on its own labelled line below the figure ("" without one). */
 export function tapLimitLine(): string {
@@ -693,27 +736,22 @@ interface Enforcer { who: string; count: number; last: { reason: string; words: 
  */
 export function replayRecord(r: RunRecord): RunRecord & { figures: ReplayFigures } {
   const s = r.snapshot, ev = r.ledger?.events ?? [];
-  const st = stops(r), stopped = stoppedAtLimit(st), line = stopsLine(st);
-  const notCounted = st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : "";
-  // The refusals the dashboard lists (it folds expired proposals away), each said as a limit or not.
-  const listed = s.refusals.filter((x) => !/expired/i.test(x.what));
-  const buyPolicy = listed.filter((x) => /own buy policy/.test(x.reason)).length, planted = listed.filter((x) => /planted instruction/i.test(x.what)).length;
-  const notLimits = [buyPolicy ? `${buyPolicy} purchase${buyPolicy === 1 ? "" : "s"} the Sourcing agent's own buy policy declined (nothing signed)` : "",
-    st.revoked ? `${st.revoked} refused by Metal because its mandate had just been replaced` : "", planted ? `${planted} planted instruction${planted === 1 ? "" : "s"} ignored` : ""].filter(Boolean);
-  const rest = listed.length - stopped - buyPolicy - st.revoked - planted;
-  if (rest > 0) notLimits.push(`${rest} other`);
+  // The stops as Home and Proof say them (Max, 5 Nov): all of the run's stops, one sentence, Metal's in detail.
+  const story = stopStory(r), stopped = story.total, line = stopsLine(story);
+  const metalNote = story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : "";
   // Claude: every call of the run (the agents' and the reader's, which sorts and reads documents and reviews proposals), and the agents' own as Proof counts them.
   const c = (s as unknown as { claude?: { calls: number; cost_usd_micros: number } | null }).claude;
   const agentCalls = s.agent_stats.reduce((n, a) => n + a.claude_calls, 0), agentMicros = s.agent_stats.reduce((n, a) => n + a.cost_usd_micros, 0);
   const usd = (m: number) => `$${(m / 1e6).toFixed(m >= 10000 ? 2 : 4)}`;
   const claude = c?.calls ? `${c.calls} Claude calls in all, ${usd(c.cost_usd_micros)}: the agents' own ${agentCalls} (USD ${(agentMicros / 1e6).toFixed(4)}, as on Proof) and ${c.calls - agentCalls} more that read documents or review proposals.` : "";
-  // Enforced by: Metal once at the cap, with its refusal's tx (#24 let through on purpose), as stops() counts it.
+  // Enforced by: Metal's refusals on chain as stopStory() counts them; the last shown is the one at the cap, with its
+  // refusal's tx (#24 let through on purpose).
   const cap = events(r).find((e): e is Extract<Ev, { k: "money" }> => e.k === "money" && (e.refused?.by === "metal" || e.refused?.by === "recorded") && e.refused.code !== "mandate_revoked" && !!e.proof.href);
   const tx = /0x[0-9a-fA-F]{64}/.exec(cap?.proof.href ?? "")?.[0];
   const tower = s.tower as typeof s.tower & { enforced?: Enforcer[] };
   const enforced = (tower.enforced ?? []).map((e): Enforcer => e.who === "metal"
-    ? { who: "metal", count: st.metal, last: cap ? { reason: cap.refused?.code ?? "mandate_cap_exceeded", words: `Over the mandate's cap per payment${cap.letThrough ? ", let through on purpose" : ""}`, at: cap.at, proof: tx ? { kind: "tx", ref: tx } : null } : null }
-    : e.who === "airwallex" ? { ...e, count: st.airwallex } : e);
+    ? { who: "metal", count: story.metal, last: cap ? { reason: cap.refused?.code ?? "mandate_cap_exceeded", words: `Over the mandate's cap per payment${cap.letThrough ? ", let through on purpose" : ""}`, at: cap.at, proof: tx ? { kind: "tx", ref: tx } : null } : null }
+    : e.who === "airwallex" ? { ...e, count: stops(r).airwallex } : e);
   // A purchase "refused before signing", as older records word every refusal: worded by its ledger row (who refused it);
   // a line the ledger does not confirm is left out, as Watch leaves out every such line (each is told by its own row).
   const chat = s.agent_chat.flatMap((x) => {
@@ -734,10 +772,10 @@ export function replayRecord(r: RunRecord): RunRecord & { figures: ReplayFigures
   return {
     ...r, snapshot,
     figures: {
-      stopped, refusedPill: `${stopFigure(st)} at a limit`, claude,
-      keptOut: `${line}${notCounted} The amount is what stayed out for good.`,
-      refusedNote: `${listed.length} refusals in this run. At a limit, as on Home and Proof: ${line}${notLimits.length ? ` Not limits: ${notLimits.join(", ")}.` : ""}`,
-      enforcedNote: `In this run: ${line}${notCounted}`,
+      stopped, refusedPill: stopFigure(story), claude,
+      keptOut: `${line}${metalNote} The amount is what stayed out for good.`,
+      refusedNote: `As on Home and Proof: ${line}${metalNote}`,
+      enforcedNote: `In this run: ${line}${metalNote}`,
     },
   };
 }
@@ -751,7 +789,7 @@ export function agentRun(): AgentRun {
   const fallbacks = s.agent_stats.reduce((n, a) => n + a.fallback, 0);
   const cost = s.agent_stats.reduce((n, a) => n + a.cost_usd_micros, 0);
   const perDecision = decisions ? (cost / decisions / 1e6).toFixed(4) : "0";
-  const st = stops(r);
+  const st = stops(r), story = stopStory(r);
   const name = runName(r);
   const agents = AGENTS.map((id): AgentCard => {
     const m = s.agent_stats.find((a) => a.agent === id)?.models[0] ?? null;
@@ -764,9 +802,9 @@ export function agentRun(): AgentRun {
     { value: `${byClaude}/${decisions}`, label: "decisions made by Claude", explain: `Every time an agent decided something, it was a Claude call. ${fallbacks} fell back to code.`, href: "proof#claude" },
     { value: String(s.counts.alone), label: "payments inside the limits", explain: pay.sums ? `${pay.line.replace(/^\d+ inside the limits = /, "")}, with no approval at the time; the sales are the simulated customer's agent buying from us.` : `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
-      value: stopFigure(st), label: stopsLine(st), href: "proof#stops",
-      explain: "Both in this run, each with its proof.",
-      tip: `By Metal against the on-chain mandate and by the CFO with Face ID in this run${st.airwallex ? "; by Airwallex at the card's limit" : ""}.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
+      value: stopFigure(story), label: stopSub(story), href: "proof#stops",
+      explain: stopsLine(story),
+      tip: `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
       ...(tapLimitLine() ? { separate: tapLimitLine() } : {}),
     },
     { value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
@@ -775,6 +813,6 @@ export function agentRun(): AgentRun {
   return {
     file, standIn, name, recordedAt: r.recorded_at, kind: r.kind ?? "", record: r,
     label: runLabel(r), agents, events: ev, scenes: scenes(r, ev), tiles,
-    derived: { toOptions: String(timings(r).toOptions ?? ""), faceToPaid: String(timings(r).faceToPaid ?? ""), decisions: String(decisions), byClaude: String(byClaude), fallbacks: String(fallbacks), perDecision, stopped: String(stoppedAtLimit(st)), cosigned: String(cosigned), sales: String(sales), faceId: String(faceIdDecisions(r)), routine: String(split(r).routine) },
+    derived: { toOptions: String(timings(r).toOptions ?? ""), faceToPaid: String(timings(r).faceToPaid ?? ""), decisions: String(decisions), byClaude: String(byClaude), fallbacks: String(fallbacks), perDecision, stopped: String(story.total), cosigned: String(cosigned), sales: String(sales), faceId: String(faceIdDecisions(r)), routine: String(split(r).routine) },
   };
 }

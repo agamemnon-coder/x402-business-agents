@@ -5,7 +5,7 @@ now uses the short Description in [README.md](README.md#description), which link
 main run of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-main-run.md`) and the reports in this repo
 (`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them, as it checks the short one.
 
-**Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award (see the note under Visa).**
+**Starter Kit 11 (x402 Business Agents), entered for the Metal Award (Visa TAP is an extra: see the note under Visa).**
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
 small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
@@ -91,7 +91,7 @@ company card whose limits Airwallex enforces.
 
 Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.
 
-*Visa Award: Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).*
+*Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov), so Purser is entered for the Metal Award only.*
 
 ### Where Claude is used
 
@@ -123,14 +123,17 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
 - on Metal testnet, checked against the chain on 5 November: the 4 mandates bound at setup and the 2 replacements,
   86 payments each with its own transaction, and 1 refusal on chain (#24,
   [tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871)); no emulator
-  and no clearing in this run. The EUR licence and the card buy ran on the Airwallex sandbox; the other 13 refusals
-  (12 by the agent's buy policy, #37 during the replace) are in the ledger, not on chain;
+  and no clearing in this run. The EUR licence and the card buy ran on the Airwallex sandbox; the other 13 refused
+  purchases (12 skipped by the agent's buy policy; #37, refused by Metal against its just-revoked mandate, with no
+  transaction of its own) are in the ledger, not as transactions on chain;
 - 24 of 24 decisions by Claude, 0 fallbacks; 5 decisions signed with Face ID by the CFO (P-0001, P-0002, P-0004,
   P-0005, P-0006);
 - the books match the chain and Airwallex: `verify` passes; `reconcile` checked 88 (the 86 Metal payments, the SWIFT
   transfer and the card buy), 0 differences; `data-qa` 217 of 217 checks; 110 money movements, 0 without an origin;
-- Metal refused 1 purchase over its cap; the CFO rejected 1 proposal: #24 over the mandate cap, and P-0004 with Face ID
-  (query #37, refused `mandate_revoked` while the mandate was being replaced, is not counted);
+- 16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+  Claude's 12: stock checks #25–#36, which the Sourcing agent chose not to buy over its cap; Metal's 2: 1 over the
+  mandate's cap (#24), 1 on a mandate that had just been replaced (#37, `mandate_revoked`); the CFO's 1: P-0004, with
+  Face ID; the planted instruction: a line aimed at the AI in the dispute document, treated as data;
 - Separate run, not counted: Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November.
 
 ### What is real and what is simulated

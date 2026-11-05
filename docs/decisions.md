@@ -646,3 +646,15 @@ Max, 2 November, 10:15 NL:
   own layer on top." This exact text everywhere: claims.md, /visa, the description, the deck, the video. No "certified", "endorsed" or "Visa-approved", no
   Visa logo. The review's design fixes are approved (checkout under /product/, the merchant re-verifies signature 1,
   the registry on localhost with our pinned keys, duplicate headers refused, signature 2 covers the query, one skew).
+
+### D27. Visa: TAP is not eligible; the entry is Metal only (Max, 5 November)
+
+On 5 November Visa answered in the hackathon Slack: TAP is not available as Visa tooling for this hackathon; the only
+Visa tooling for the builds is Visa Intelligent Commerce (VIC) or Intelligent Commerce Connect (ICC). So Purser is
+entered for the Metal Award only. `VISA_AWARD_ON` is off: the Kit line, Home's badge and the links on Home and Proof no
+longer name the Visa Award. The TAP work stays visible on /visa as a labelled extra (it is real: signatures accepted
+by Visa's public reference verifier at the pinned commit 16d59bd, in a separate test on 2 November), with Max's
+wording, once per surface: "Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa
+tooling for this hackathon (Visa, 5 Nov)." Still text only, no logo, never "certified", "endorsed" or "confirmed by
+Visa". VIC is explored separately on branch `vic`; nothing about it is claimed. This replaces the 2 November
+correction under D25.

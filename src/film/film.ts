@@ -1,4 +1,5 @@
-// The film: Purser in about three minutes, one continuous animation for the video (src/film/film.html, served at
+// The earlier film (30 October; not the submission video, which is the 2:42 premiere, src/film/premiere.ts): Purser in
+// about three minutes, one continuous animation (src/film/film.html, served at
 // /film and recorded by npm run video). Things happen on screen: a card is declined and then pays after Face ID, a
 // euro bill is converted and paid, payments bounce off a mandate on chain, twelve orders are checked one by one.
 // Every number comes from a recording (docs/demo/story.json and snapshot.json, the red team and Lab reports) or from

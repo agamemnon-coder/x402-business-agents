@@ -7,8 +7,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { PNG } from "pngjs";
 import jsQRModule from "jsqr";
 import { describe, expect, it } from "vitest";
-import { faceIdDecisions, loadRecord, payments, split, stoppedAtLimit, stops, timings } from "../src/redesign/run.js";
-import { CORE_LINE, METAL_LINE, QR_URL, REFUSAL_LINE, RULE_LINE, T0_SHORT, T0_STATUS, deckHtml, stopLine, type DeckShots } from "../src/submission/deck.js";
+import { faceIdDecisions, loadRecord, payments, split, stopStory, stopsLine, timings } from "../src/redesign/run.js";
+import { CORE_LINE, METAL_LINE, QR_URL, REFUSAL_LINE, RULE_LINE, T0_SHORT, T0_STATUS, deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
 import { QR_PNG, qrPng } from "../src/submission/qr.js";
 import { TRY_SIGN_URL } from "../src/film/premiere.js";
@@ -44,7 +44,7 @@ function pitchRows(): { sentence: string; source: string }[] {
     .map((c) => ({ sentence: words(c[c.length - 2]!).trim(), source: c[c.length - 1]! }));
 }
 
-const st = stops(record), t = timings(record), sp = split(record), pay = payments(record);
+const st = stopStory(record), t = timings(record), sp = split(record), pay = payments(record);
 /** The spoken rows of one version: 1 (30 s), 2 (3 min), 3 (5 min). */
 function section(n: 1 | 2 | 3): { sentence: string; source: string }[] {
   const all = SOURCES.pitch!, heads = ["## 1. ", "## 2. ", "## 3. ", "## Lines Max never says"];
@@ -61,14 +61,14 @@ describe("the pitch's sentences", () => {
     expect(rows.length).toBeGreaterThan(60);
   });
 
-  it("are at most 14 words each, the core line the only exception, and each names its source", () => {
-    const long = rows.filter((x) => x.sentence !== CORE_LINE && x.sentence.split(/\s+/).length > 14).map((x) => x.sentence);
+  it("are at most 14 words each, the core line and the stops' one sentence the only exceptions, and each names its source", () => {
+    const long = rows.filter((x) => x.sentence !== CORE_LINE && x.sentence !== stopsLine(st) && x.sentence.split(/\s+/).length > 14).map((x) => x.sentence);
     expect(long).toEqual([]);
     expect(rows.filter((x) => !x.source || /^[—-]$/.test(x.source)).map((x) => x.sentence)).toEqual([]);
   });
 
   it("use only numbers the record holds (or counts), the dates and the URL aside", () => {
-    const allowed = new Set([...(RAW.match(/\d+(?:\.\d+)?/g) ?? []), ...Object.values({ a: sp.decisions, b: stoppedAtLimit(st), c: t.faceToPaid, d: t.toOptions, e: faceIdDecisions(record), f: pay.onChain, g: packFacts().main.claude_usd }).map(String),
+    const allowed = new Set([...(RAW.match(/\d+(?:\.\d+)?/g) ?? []), ...Object.values({ a: sp.decisions, b: st.total, b1: st.claude, b2: st.metal, b3: st.cfo, b4: st.planted, c: t.faceToPaid, d: t.toOptions, e: faceIdDecisions(record), f: pay.onChain, g: packFacts().main.claude_usd }).map(String),
       // 2025: the year of the agent-payment protocols (docs/claims.md); 6: also the mandate transactions (README, Metal).
       "2025"]);
     const unknown = rows.flatMap((x) => (x.sentence.replace(/\S*workers\.dev\S*/g, " ").replace(/\/try\/sign|\/watch|\/proof/g, " ").match(/\d+(?:\.\d+)?/g) ?? []).filter((n) => !allowed.has(n)));
@@ -128,16 +128,16 @@ describe("the core line", () => {
 describe("one set of figures, the main run's record (3 November)", () => {
   const all = (re: RegExp, name: string) => [...TEXT[name]!.matchAll(re)];
 
-  it("the record still holds what the pitch is built on: 2 stopped (Metal 1, CFO 1), 24/24 by Claude, 6 s, 5 Face ID, 40 s", () => {
-    expect([stoppedAtLimit(st), st.metal, st.cfo, sp.byClaude, sp.decisions, t.faceToPaid, faceIdDecisions(record), t.toOptions]).toEqual([2, 1, 1, 24, 24, 6, 5, 40]);
+  it("the record still holds what the pitch is built on: 16 stops (Claude 12, Metal 2, CFO 1, 1 planted), 24/24 by Claude, 6 s, 5 Face ID, 40 s", () => {
+    expect([st.total, st.claude, st.metal, st.cfo, st.planted, st.overLimitEur, sp.byClaude, sp.decisions, t.faceToPaid, faceIdDecisions(record), t.toOptions]).toEqual([16, 12, 2, 1, 1, "0.00", 24, 24, 6, 5, 40]);
   });
 
-  it("says who stopped what in Max's words, with the record's counts, and never the bare figure (Max, 5 Nov)", () => {
-    const line = stopLine(st.metal, st.cfo);
-    expect(line).toBe("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal.");
+  it("says the stops in one sentence, with the record's counts, and never the old \"1 + 1\" (Max, 5 Nov)", () => {
+    const line = stopsLine(st);
+    expect(line).toBe("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     for (const name of Object.keys(TEXT)) {
-      expect({ name, figure: /\d+ stopped at a limit/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
-      for (const m of all(/Metal refused (\d+) purchases? over its cap; the CFO rejected (\d+) proposals?/g, name)) expect({ name, parts: [Number(m[1]), Number(m[2])] }).toEqual({ name, parts: [st.metal, st.cfo] });
+      expect({ name, figure: /\d+ stopped at a limit|over its cap; the CFO rejected|\b1 \+ 1\b/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
+      for (const m of all(/(\d+) stops, nothing paid over a limit: Claude skipped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
       if (["pitch", "deck", "spiekkaart", "form", "form (long)", "README"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
     }
   });
@@ -271,7 +271,8 @@ describe("the deck", () => {
     expect(words(slides[1]!)).toContain(RULE_LINE);
     expect(slides[3]).toContain("Only the 3 bad ones refunded");
     expect(slides[9]).toMatch(/<div class="qr small-qr"><svg><\/svg><\/div>/);
-    expect(slides[9]).toMatch(/<p class="oneline">Entered for the Visa Award/);
+    expect(slides[9]).toMatch(/<p class="oneline">Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\), so Purser is entered for the Metal Award only\.<\/p>/);
+    expect(DECK).not.toMatch(/entered for[^.<]{0,40}Visa Award|\+ Visa Award|still being confirmed with Visa/i);
     expect(DECK).not.toMatch(/TAP run|LIMIT_EXCEEDED/);
     expect(slides[7]).toMatch(/82 = the routine payments per query that code made; \$0\.0132 = Claude's cost per decision/);
   });
@@ -300,13 +301,13 @@ describe("the QR code to /try/sign", () => {
 
 describe("the hook (Max, 5 November): \"So who signs off?\"", () => {
   it("says the same hook everywhere, and nowhere the old pen", () => {
-    const film = ["src/film/premiere.ts", "src/film/premiere.html", "src/film/premiereScript.ts", "src/film/film.html", "src/film/script.ts", "docs/video/voice-script-max.md", "docs/video/script.md", "docs/video/subtitles-v5.srt"].map(read).join("\n");
+    const film = ["src/film/premiere.ts", "src/film/premiere.html", "src/film/premiereScript.ts", "src/film/film.html", "src/film/script.ts", "docs/video/narrator-script.md", "docs/video/script.md", "docs/video/subtitles-v5.srt"].map(read).join("\n");
     for (const [name, text] of [...Object.entries(SOURCES), ["film", film], ["live", read("src/live/timeline.ts")]] as const) {
       expect({ name, pen: /holds? the pen|keeps the pen/i.test(text) }).toEqual({ name, pen: false });
     }
     expect(TEXT.deck).toContain("AI agents can now spend money. So who signs off?");
     expect(TEXT.pitch).toContain("So who signs off?");
-    expect(read("docs/video/voice-script-max.md")).toContain("AI agents can now spend money. … So who signs off?");
+    expect(read("docs/video/narrator-script.md")).toContain("AI agents can now spend money. … So who signs off?");
   });
 });
 
@@ -322,7 +323,7 @@ describe("the cheat sheet", () => {
     expect(s).toContain("AI agents can now spend money. So who signs off? I'm Max Geurtsen, and this is Purser.");
     expect(s).toContain(`${CORE_LINE} On mine, signed before, I change the amount by one cent. The same signature is refused. One cent. Worthless.`);
     expect(s).toContain(`${RULE_LINE} In this demo, I play the CFO.`);
-    expect(s).toContain(stopLine(st.metal, st.cfo));
+    expect(s).toContain(stopsLine(st));
     expect(s).toContain("6 seconds from Face ID to PAID");
     expect(s).toContain("5 Face ID decisions");
     for (const u of ["kit11.max-31b.workers.dev/try/sign", "kit11.max-31b.workers.dev/watch", "kit11.max-31b.workers.dev/proof", "npm run judge"]) expect(s).toContain(u);
