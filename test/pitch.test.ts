@@ -271,7 +271,8 @@ describe("the deck", () => {
     expect(words(slides[1]!)).toContain(RULE_LINE);
     expect(slides[3]).toContain("Only the 3 bad ones refunded");
     expect(slides[9]).toMatch(/<div class="qr small-qr"><svg><\/svg><\/div>/);
-    expect(slides[9]).toMatch(/<p class="oneline">Entered for the Visa Award/);
+    expect(slides[9]).toMatch(/<p class="oneline">Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\), so Purser is entered for the Metal Award only\.<\/p>/);
+    expect(DECK).not.toMatch(/entered for[^.<]{0,40}Visa Award|\+ Visa Award|still being confirmed with Visa/i);
     expect(DECK).not.toMatch(/TAP run|LIMIT_EXCEEDED/);
     expect(slides[7]).toMatch(/82 = the routine payments per query that code made; \$0\.0132 = Claude's cost per decision/);
   });

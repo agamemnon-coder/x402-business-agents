@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, split, tapRun } from "../src/redesign/run.js";
-import { SECOND_APPROVER, SPLIT_LINE, VISA_AWARD_STATUS, VISA_CLAIM, WORLD_SETUP } from "../src/config/brand.js";
+import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 
 const pages = buildPages();
 const run = agentRun();
@@ -28,7 +28,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home about 60 words plus the Visa Award status; partner pages at most 150)", () => {
+  it("keeps every page within its text budget (Home about 60 words plus the Visa TAP link; partner pages at most 150)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     const budget: Record<string, number> = { home: 520, watch: 100, try: 180, proof: 480, metal: 150, airwallex: 150, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
@@ -129,14 +129,14 @@ describe("the site after v4", () => {
     const proof = pages.proof!;
     expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(4);
     expect(proof).toMatch(/<span class="logo txt">Visa TAP<\/span>/);
-    // The Visa paragraph is said once, on /visa (jury review, 4 Nov); the award status too (final review, 4 Nov): Proof
-    // links to /visa for it.
+    // The Visa paragraph is said once, on /visa (jury review, 4 Nov); TAP's status too (Visa, 5 Nov: not eligible Visa
+    // tooling): Proof links to /visa for it, as an extra, not an award entry.
     expect(proof).not.toContain(VISA_CLAIM);
-    expect(proof).not.toContain(VISA_AWARD_STATUS);
-    expect(proof).toMatch(/<a [^>]*href="visa"[^>]*>[^<]*Visa Award[^<]*<\/a>/);
+    expect(proof).not.toContain(VISA_TAP_STATUS);
+    expect(proof).toMatch(/<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/);
     expect(proof).toContain(SECOND_APPROVER);
     expect(pages.visa).toContain(VISA_CLAIM);
-    expect(pages.visa).toContain(VISA_AWARD_STATUS);
+    expect(pages.visa).toContain(VISA_TAP_STATUS);
   });
 
   it("makes the partner pages picture first, numbers next, details folded, and no Visa logo", () => {

@@ -1,7 +1,8 @@
 # Purser v1.0-submission
 
 The version submitted to the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for
-the Metal Award, with a note for the Visa Award. Tag `v1.0-submission`.
+the Metal Award. Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for
+this hackathon (Visa, 5 Nov). Tag `v1.0-submission`.
 
 Three Claude agents run a small data business on test money through Metal (testnet) and Airwallex (sandbox). Metal
 holds each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves
@@ -49,6 +50,9 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   AI-generated music (ElevenLabs); the narrator's lines are `docs/video/narrator-script.md`, every figure in them still
   checked against the record. Home's heading is the film's line, “AI agents spend. You sign off.”. 2365 tests in 248
   files, all passing.
+- 5 November, Visa's answer: TAP is not available as Visa tooling for this hackathon (VIC or ICC only), so the entry
+  is the Metal Award only. The Kit line, Home's badge and the links on Home and Proof no longer name the Visa Award;
+  /visa keeps the TAP work as a labelled extra, with one status line. 2365 tests in 248 files, all passing.
 
 ## Real, and ours
 

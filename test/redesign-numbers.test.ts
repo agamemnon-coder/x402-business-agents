@@ -9,8 +9,9 @@ import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
 import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_AWARD_STATUS, VISA_CLAIM } from "../src/config/brand.js";
+import { DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
+import { esc } from "../src/redesign/ui.js";
 
 const { file, record } = loadRecord();
 const RAW = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
@@ -187,14 +188,15 @@ describe("the redesigned public pages", () => {
     }
   });
 
-  it("carry Home's badge with the Visa Award entered, and Visa only as text, never certified or endorsed", () => {
-    expect(VISA_AWARD_ON).toBe(true);
-    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award");
-    expect(HOME_BADGE).toBe("Kit 11 · Metal Award + Visa Award · built on Airwallex, Metal, Claude");
-    // Two pills, each on one line: the kit, and the awards entered (never read as already won).
+  it("carry Home's badge with the Metal Award only (Visa, 5 Nov: TAP is not eligible Visa tooling), and Visa only as text, never certified or endorsed", () => {
+    expect(VISA_AWARD_ON).toBe(false);
+    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award");
+    expect(HOME_BADGE).toBe("Kit 11 · Metal Award · built on Airwallex, Metal, Claude");
+    // Two pills, each on one line: the kit, and the award entered (never read as already won).
     expect(homePage()).toContain(">Kit 11 · x402 Business Agents<");
-    expect(homePage()).toContain(">entered for the Metal Award + Visa Award<");
-    expect(homePage()).toMatch(/Visa TAP/);
+    expect(homePage()).toContain(">entered for the Metal Award<");
+    // The TAP work stays visible on Home as a labelled extra (text, no logo), linking to /visa.
+    expect(homePage()).toContain('<a class="partner card" href="visa"><span class="logo txt">Visa TAP</span>Extra: card checkouts signed with TAP</a>');
     for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
     expect(PAGES.visa).not.toMatch(/Dev test|reference code is not used/);
@@ -211,15 +213,16 @@ describe("the redesigned public pages", () => {
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 
-  it("the Visa Award status is Max's sentence, said once, on /visa (Home and Proof link to it), and no page says TAP was confirmed (2 Nov evening)", () => {
+  it("TAP's status is Max's wording (5 Nov), said once, on /visa (Home and Proof link to it as an extra), and no page enters Purser for the Visa Award", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
-    // Said once (final review, 4 Nov): on /visa; Home and Proof only link to /visa.
+    expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov), so Purser is entered for the Metal Award only.");
+    // Said once: on /visa; Home and Proof only link to /visa, labelled as an extra, not an award entry.
     for (const name of ["home", "proof", "visa"]) {
       const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
-      expect({ name, has: html.includes(VISA_AWARD_STATUS) }).toEqual({ name, has: name === "visa" });
-      if (name !== "visa") expect({ name, link: /<a [^>]*href="visa"[^>]*>[^<]*Visa Award[^<]*<\/a>/.test(html) }).toEqual({ name, link: true });
+      expect({ name, has: html.split(esc(VISA_TAP_STATUS)).length - 1 }).toEqual({ name, has: name === "visa" ? 1 : 0 });
+      if (name !== "visa") expect({ name, link: html.includes(`href="visa">${esc(VISA_EXTRA_LINK)}</a>`) }).toEqual({ name, link: true });
     }
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling/i.test(body.replace(VISA_AWARD_STATUS, "")) }).toEqual({ name, bad: false });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|entered for the (Metal Award and the |Metal Award \+ )?Visa Award|\+ Visa Award|Visa Award entry/i.test(body) }).toEqual({ name, bad: false });
   });
 
   it("labels the licence payment by who planned it: the Treasury agent itself in the main run; agent run 1's honest note is kept", () => {

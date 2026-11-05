@@ -5,10 +5,12 @@ export const PRODUCT = "Purser";
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
 /**
- * The Visa Award in the Kit line and "Visa TAP" (text, never a logo) in "Built on": on since the live TAP run and the
- * interop test were green in both directions (2 Nov, docs/runs/visa-tap-live-2026-11-02.json; Max's go).
+ * The Visa Award in the Kit line and Home's badge, and "Visa TAP" (text, never a logo) in "Built on": off since 5 Nov.
+ * Visa (hackathon Slack, 5 Nov): TAP is not available as Visa tooling for this hackathon; only Visa Intelligent
+ * Commerce (VIC) or Intelligent Commerce Connect (ICC) are. So Purser is entered for the Metal Award only
+ * (docs/decisions.md D27, docs/evidence/README.md). The TAP work stays on /visa as a labelled extra (VISA_TAP_STATUS).
  */
-export const VISA_AWARD_ON = true;
+export const VISA_AWARD_ON = false;
 /**
  * The Visa claim in plain words (jury review, 4 Nov), said once per surface (/visa, the README, the form, the deck);
  * nothing stronger anywhere. "Public reference verifier", never "open source": Visa's reference has no open-source
@@ -16,10 +18,13 @@ export const VISA_AWARD_ON = true;
  */
 export const VISA_CLAIM = "Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.";
 /**
- * The Visa Award's status, word for word (Max, 2 Nov evening): Airwallex changed answer (1) to "TBD" and added Visa;
- * answer (2) stays "Yes". Never "organisers confirmed TAP counts".
+ * TAP's status, on Max's wording (5 Nov, after Visa's answer in the hackathon Slack), said once per surface (/visa, the
+ * form, the deck): built and verified against Visa's public reference verifier, not eligible Visa tooling for this
+ * hackathon. Never "certified", "endorsed" or "confirmed by Visa".
  */
-export const VISA_AWARD_STATUS = "Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa).";
+export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov), so Purser is entered for the Metal Award only.";
+/** How Home and Proof link to /visa since 5 Nov: the TAP work as a labelled extra, not an award entry. */
+export const VISA_EXTRA_LINK = "Extra, not an award entry: Visa TAP and its status, on /visa";
 /** The big line under the heading: the kit, the track and the awards entered. */
 export const KIT_LINE = `Kit 11 · x402 Business Agents · entered for the Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""}`;
 /** Home's badge (Max's mega-prompt v4, C2), word for word: the kit, the awards entered, what it is built on. Visa TAP is a separate text badge, never a logo. */

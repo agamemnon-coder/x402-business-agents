@@ -21,7 +21,7 @@ beyond them, with Face ID on the exact terms.
 **Also:** [the site](https://kit11.max-31b.workers.dev/) replays the main run; [`/try`](https://kit11.max-31b.workers.dev/try)
 gives an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves.
 
-Starter Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award ([note](docs/submission/long-description.md#visa)). Northwind Outdoor,
+Starter Kit 11 · x402 Business Agents · entered for the Metal Award (Visa TAP is an extra: [note](docs/submission/long-description.md#visa)). Northwind Outdoor,
 the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
 
 ## Who does what
@@ -149,7 +149,7 @@ every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/r
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
 - [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
 - [docs/submission/long-description.md](docs/submission/long-description.md): the long form text it replaced, in full
-- [The Visa Award note](docs/submission/long-description.md#visa): what the organisers confirmed about our entry, and what is open
+- [The Visa TAP note](docs/submission/long-description.md#visa): built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov)
 
 All money here is test money: the Airwallex sandbox and Metal testnet. Built with Claude (Anthropic) as the developer,
 directed and reviewed by Max Geurtsen. Licence: MIT.

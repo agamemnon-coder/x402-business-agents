@@ -21,12 +21,12 @@ A supplier doubles its price. A customer disputes 12 orders. A €240 bill is du
 
 ## Description
 
-Characters: **3,975** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,953** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 
 <!-- description -->
-**Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award.**
+**Starter Kit 11 (x402 Business Agents), entered for the Metal Award.**
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Purser is for the CFO of a small company whose AI agents should spend company money only within limits the CFO sets.
 
@@ -42,7 +42,7 @@ Purser gives each AI agent its own Airwallex card and its own Metal on-chain man
 
 **Who does what.** Max Geurtsen built Purser (limits, approvals, agent tools, site, audit log, books, tests). Airwallex: cards and limits, FX, SWIFT. Metal: mandates, payments. Claude: the agents' decisions.
 
-**What is real and what is simulated.** All money is test money. Real: the Airwallex sandbox, Metal testnet, Claude and Max's Face ID. Metal tx: on chain, checkable. Airwallex ids: published on /proof. Simulated: the customer and its agent, the supplier, the merchants' charges, the transfer's last steps (SENT, PAID), and the second approver, a labelled test passkey (in production, a second person). T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), accepted by Visa's public reference verifier in a separate test on 2 November; whether TAP counts as Visa tooling is still being confirmed with Visa.
+**What is real and what is simulated.** All money is test money. Real: the Airwallex sandbox, Metal testnet, Claude and Max's Face ID. Metal tx: on chain, checkable. Airwallex ids: published on /proof. Simulated: the customer and its agent, the supplier, the merchants' charges, the transfer's last steps (SENT, PAID), and the second approver, a labelled test passkey (in production, a second person). T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. Visa TAP (each agent signs its card checkout with Visa's Trusted Agent Protocol; separate test, 2 November): built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).
 
 **Links.**
 - The site: https://kit11.max-31b.workers.dev/

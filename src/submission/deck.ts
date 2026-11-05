@@ -8,7 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
-import { NORTHWIND_LINE, VISA_AWARD_STATUS } from "../config/brand.js";
+import { NORTHWIND_LINE, VISA_TAP_STATUS } from "../config/brand.js";
 import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
@@ -183,7 +183,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <dt>Offline, no keys</dt><dd><code>npm ci &amp;&amp; npm run judge</code></dd>
         </dl></div>
         <p class="src">Max Geurtsen · built with Claude Code · built on Airwallex and Metal, with Claude.</p>
-        <p class="oneline">${esc(VISA_AWARD_STATUS)}</p>`,
+        <p class="oneline">${esc(VISA_TAP_STATUS)}</p>`,
     },
   ];
   const font = asset("inter.woff2").toString("base64");

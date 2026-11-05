@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { publish } from "../src/autonomy/bus.js";
 import { CHECK_PATHS, judgeMenu, startJudge } from "../src/cli/judge.js";
-import { SANDBOX_SETTLED, SECOND_APPROVER, VISA_AWARD_STATUS, WORLD_SETUP } from "../src/config/brand.js";
+import { SANDBOX_SETTLED, SECOND_APPROVER, VISA_EXTRA_LINK, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 import { agentChat } from "../src/dashboard/agentStats.js";
 import { railsView } from "../src/dashboard/rails.js";
 import { describe as feedLine } from "../src/dashboard/snapshot.js";
@@ -231,12 +231,13 @@ describe("5. PAID in the sandbox, where the settlement is simulated", () => {
   });
 });
 
-describe("6. the Visa Award's status, said once, on /visa", () => {
-  it("is on /visa only; Home and Proof link to /visa", () => {
+describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, on /visa", () => {
+  it("is on /visa only; Home and Proof link to /visa as an extra, not an award entry; no page enters the Visa Award", () => {
     const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
-    expect(String(pages.visa)).toContain(VISA_AWARD_STATUS);
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_AWARD_STATUS) }).toEqual({ name, has: false });
-    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /<a [^>]*href="visa"[^>]*>[^<]*Visa Award[^<]*<\/a>/.test(html) }).toEqual({ name, link: true });
+    expect(String(pages.visa)).toContain(VISA_TAP_STATUS);
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_TAP_STATUS) }).toEqual({ name, has: false });
+    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/.test(html) && html.includes(VISA_EXTRA_LINK) }).toEqual({ name, link: true });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /entered for[^.<]{0,40}Visa Award|\+ Visa Award/i.test(body) }).toEqual({ name, entered: false });
   });
 });
 

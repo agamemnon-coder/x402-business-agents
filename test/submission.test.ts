@@ -73,13 +73,16 @@ describe("the submission pack", () => {
     expect(description).not.toMatch(/30 October|31 October|Other live tests|red team|Scenario Lab/i);
   });
 
-  it("opens the synopsis with the hook, and says the Visa paragraph once, with the award status as one note", () => {
+  it("opens the synopsis with the hook, and says the Visa paragraph once, with TAP's status as one note (Metal Award only)", () => {
     const synopsis = raw.split("<!-- synopsis -->")[1]!.split("<!-- /synopsis -->")[0]!.trim();
     expect(synopsis.startsWith("A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.")).toBe(true);
     expect(synopsis).toContain(`the CFO signed ${f.main.face_id} times with Face ID`);
     for (const t of [pack, long]) {
       expect(t.match(/Trusted Agent Protocol/g)).toHaveLength(1);
-      expect(t.match(/whether TAP counts as Visa tooling is still being confirmed with Visa/g)).toHaveLength(1);
+      // Visa, 5 Nov: TAP is not eligible Visa tooling for this hackathon; Max's wording, once, and the entry is Metal only.
+      expect(t.match(/built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)/g)).toHaveLength(1);
+      expect(t).not.toMatch(/still being confirmed with Visa|entered for[^.]{0,40}Visa Award|\+ Visa Award/i);
+      expect(t).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award");
       expect(t).not.toMatch(/open[- ]source/i);
     }
   });

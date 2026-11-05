@@ -3,7 +3,7 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { CORE_SENTENCE, HERO, KIT_LINE, VISA_AWARD_ON } from "../config/brand.js";
+import { CORE_SENTENCE, HERO, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK } from "../config/brand.js";
 import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -229,9 +229,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
     <a class="partner card" href="proof#metal"><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>Mandates and refusals on chain</a>
     <a class="partner card" href="proof#airwallex"><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>Cards, FX and SWIFT</a>
     <a class="partner card" href="proof#claude"><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${esc(run.agents.map((a) => a.family).join(" · "))} decide</a>
-    ${VISA_AWARD_ON ? '<a class="partner card" href="visa"><span class="logo txt">Visa TAP</span>Card checkouts signed with TAP</a>' : ""}
+    <a class="partner card" href="visa"><span class="logo txt">Visa TAP</span>Extra: card checkouts signed with TAP</a>
   </div>
-  ${VISA_AWARD_ON ? '<p class="award-note"><a href="visa">The Visa Award entry and its status, on /visa</a></p>' : ""}
+  <p class="award-note"><a href="visa">${esc(VISA_EXTRA_LINK)}</a></p>
 </div></section>
 </main>`;
   return page({
