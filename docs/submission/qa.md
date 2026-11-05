@@ -13,14 +13,14 @@ the phone asks for, not something we prove.
 *Source: `docs/phone-approval.md`; the note on `/try/sign` (`src/try/sign.ts`); the film's `12-why-face-id`.*
 
 **2. What happens if an agent lies, or gets a prompt injection?**
-Inside its limits a lying agent can spend at most its mandate's cap and budget and its card's limits; beyond them,
-nothing moves without a person's signature on the exact terms. In the main run an instruction planted in the dispute
-(an address 0x…dEaD) was flagged and ignored, and Metal refused the one purchase we let through over the cap.
+Inside its limits a lying agent can spend at most its cap and budget; beyond them, nothing moves without a signature.
+In the main run an instruction planted in the dispute (an address 0x…dEaD) was flagged and ignored, and Metal refused
+the one purchase we let through over the cap; the refusal is recorded on chain.
 *Source: log, acceptance rows "dispute" and "5"; `docs/fraud-and-injection.md`; `docs/controls.md`.*
 
 **3. What actually ran live, and what was simulated?**
 Live, with test money: the Airwallex sandbox calls, the Metal testnet transactions, 24 of 24 Claude decisions and my
-passkey, with Face ID on my own phone (I play the CFO). Simulated or ours: the supplier, the customer and the
+passkey (Face ID on my phone); I play the CFO. Simulated or ours: the supplier, the customer and the
 merchant; the SWIFT SENT and PAID steps, which Purser moves through Airwallex's sandbox simulation API; and the second
 approver, a labelled test passkey.
 *Source: README, "What is real, what is mock"; log, "Approvals"; deck slide 7.*
@@ -49,9 +49,8 @@ limits per minute and per hour. There is no per-day limit yet.
 *Source: `docs/controls.md` ("Velocity, per minute and per hour", "Mandate budget"); `test/velocity.test.ts`.*
 
 **8. What if your server is compromised?**
-The rails refuse anything over their current limits, Metal over the on-chain mandate and Airwallex over the card limit,
-and raising a limit takes a proposal the CFO signs. But the runner host holds the keys, so a compromised host is out
-of scope today; keys move to a KMS before real money.
+The rails refuse anything over their current limits; changing a limit needs a signed proposal. The runner host holds
+the keys, though, so a compromised host is out of scope today; keys move to a KMS before real money.
 *Source: `docs/security.md`, "Accepted risks and what is out of scope"; log, acceptance row 5 and P-0006.*
 
 **9. Who is liable when an agent overspends?**
@@ -83,9 +82,9 @@ No: the hub push and gate are built and tested against a fake hub, not live. It 
 *Source: README, "Built, not yet live".*
 
 **Is T:0 live?**
-<!-- T0-STATUS -->T:0 posting is built and tested; the sandbox key was refused on 5 Nov; 95 entries are ready. They
-were built offline from the main run's books and nothing has been posted, so we claim nothing in T:0.<!-- /T0-STATUS -->
-*Source: [docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) (`401 CAPI11`); README, "Built, not yet live".*
+<!-- T0-STATUS -->T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. We claim nothing in T:0.<!-- /T0-STATUS -->
+*Source: [docs/runs/2026-11-03-t0-sandbox.md](../runs/2026-11-03-t0-sandbox.md) (`403 CAPI71`);
+[docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) (`401 CAPI11`); README, "Built, not yet live".*
 
 **Was the second approver a second person?**
 No: in the main run it was a labelled virtual test passkey, pressed by our build tool, Claude Code, on my go. In
@@ -98,28 +97,30 @@ API. The 6 seconds from Face ID to PAID are measured, but the settlement is simu
 *Source: README, "Earnings and euros"; record: `timings` (faceToPaid 6); `SANDBOX_SETTLED`.*
 
 **How much is really on chain?**
-<!-- METAL-ONCHAIN -->On Metal testnet: 6 mandate transactions, 86 payments each with its own transaction, and the refusal
-of #24; no emulator and no clearing in this run. The euro licence and the card buy ran on the Airwallex sandbox, and
-13 other refusals are in our ledger only.<!-- /METAL-ONCHAIN -->
+<!-- METAL-ONCHAIN -->On Metal testnet, on chain and checkable: 6 mandate transactions, 86 payments each with its own
+transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep), and the refusal of #24; no emulator and no clearing
+in this run. The euro licence and the card buy ran on the Airwallex sandbox (their ids are published on /proof), and 13
+other refusals are in our ledger only.<!-- /METAL-ONCHAIN -->
 *Source: README, "On Metal testnet, checked against the chain on 5 November".*
 
-**You let one purchase through on purpose. Isn't that staged?**
-Yes, on purpose and labelled: Purser would have refused it itself (`mandate_cap_exceeded`, 0.04 over the 0.03 cap),
-so we let one through to show the rail holds the limit too. Metal refused it, nothing moved, and the refusal is
-recorded on chain.
-*Source: log, acceptance row 5; `DEFENSE_IN_DEPTH` (the run's own label).*
+**Isn't letting one purchase through staged?**
+Yes, on purpose and labelled: we tested the second layer, because Purser would have refused it itself
+(`mandate_cap_exceeded`, 0.04 over the 0.03 cap). Metal refused it; the refusal is recorded on chain. Nothing moved.
+*Source: log, acceptance row 5 ("Purser would have refused (`mandate_cap_exceeded`, 0.04 over 0.03)"); `DEFENSE_IN_DEPTH`.*
 
-**Inside the limits, what is the worst case, and how fast does the CFO know?**
-At most each mandate's budget and each card's limits: 20.00 test USD across the three mandates in the main run, plus
-the cards. A breach of a velocity limit stops that agent and `/health` raises an alarm, but no pager is connected yet
-and there is no per-day limit.
-*Source: `docs/controls.md` (L4, I3, "Velocity, per minute and per hour"); `INITIAL_MANDATES`.*
+**Worst-case loss per day inside the limits, and how fast does the CFO know?**
+At most 20.00 test USD on Metal (the three mandates' budgets, 10.00 + 4.00 + 6.00, held to that total in code) plus
+EUR 300.00 on the cards (monthly limits 100.00 + 150.00 + 50.00), and those are totals, not daily figures: there is no
+daily ceiling. The CFO sees each payment in the dashboard's feed as it happens, and a velocity breach (Sourcing: 30
+payments a minute, 4.00 test USD or EUR 100.00 an hour) stops that agent and raises an alarm on `/health`; no pager is
+connected yet.
+*Source: `src/config/policy.ts` (`TOTAL_BUDGET_CENTS`, `INITIAL_MANDATES`, `CARDS`, `VELOCITY`); `docs/controls.md`
+(L4, I3).*
 
-**Why not Airwallex's own approvals and spend controls?**
-We use them: each agent's card limits are Airwallex's, and Airwallex enforces them. Airwallex's AgentOS docs tell
-builders to require manual approval for agents' tool calls; Purser is that approval, on the exact terms, across
-Airwallex and Metal, with an agent that proposes options.
-*Source: `docs/roadmap.md` (`developer-tools/ai/agentos`); README.*
+**Why not Airwallex's own spend controls and approvals?**
+We use them: each agent's card limit is Airwallex's, enforced by Airwallex. Purser adds one policy across Airwallex
+and Metal, each agent's mandate on chain, and a signature on the exact terms of each payment beyond the limits.
+*Source: README, third paragraph; `docs/roadmap.md` (Airwallex's AgentOS: "require manual approval for tool calls").*
 
 ## The top five, for the cheat sheet
 

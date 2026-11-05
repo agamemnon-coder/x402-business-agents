@@ -113,7 +113,8 @@ describe("the recorded run's headline figures (landing, dashboard, README, claim
     const form = flat("docs/submission/README.md");
     expect(form).not.toContain(`${a.blocked} stops by the card, the chain, the fraud checks or the CFO`);
     expect(form).not.toContain(`${eur(a.kept_out_cents)} kept out for good`);
-    expect(form).toContain("2 stopped at a limit");
+    // Max, 5 Nov (review round): who stopped what, said in words; the counts are the main run's (stops()).
+    expect(form).toContain("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal");
   });
 });
 

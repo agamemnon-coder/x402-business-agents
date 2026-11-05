@@ -39,14 +39,15 @@ moves beyond them. Sign one yourself: https://kit11.max-31b.workers.dev/try/sign
 ### The main run (3 November)
 
 One live run, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, real Claude decisions and
-the CFO's real Face ID. The second approval (four eyes, 2 of 2) came from a labelled virtual test passkey on the runner
+Max's passkey (Face ID on his phone); Max plays the CFO. The second approval (four eyes, 2 of 2) came from a labelled virtual test passkey on the runner
 machine, pressed by our build tool, Claude Code, on Max's go; in production the second approver is a second person. The
 three runtime agents hold no owner key and no passkey. Log: `docs/runs/2026-11-03-main-run.md`.
 
 - **The price rise.** Stockline, the supplier, went from 0.02 to 0.04 a stock check, over the Sourcing mandate's 0.03
-  cap. Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved
-  (`mandate_cap_exceeded`, tx `0x2e92f9cb…1871`). Treasury's options 40 s after the refusal, within the same 20.00;
-  the CFO signed with Face ID (1 of 2), then the second approver, the labelled test passkey (2 of 2), and both mandates
+  cap. Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved.
+  The refusal is recorded on chain (`mandate_cap_exceeded`, tx `0x2e92f9cb…1871`). Treasury's options 40 s after the
+  refusal, within the same 20.00: option A raises Sourcing's cap to 0.04 and keeps our price at 0.05; option B takes the
+  same cap and raises our price to 0.07. The CFO signed A with Face ID (1 of 2), then the second approver, the labelled test passkey (2 of 2), and both mandates
   were replaced on chain.
 - **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID.
 - **The euro bill.** The Treasury agent planned the EUR 240.00 licence itself (P-0005). After the CFO's Face ID,
@@ -143,14 +144,14 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
   P-0005, P-0006);
 - the books match the chain and Airwallex: `verify` passes; `reconcile` checked 88 (the 86 Metal payments, the SWIFT
   transfer and the card buy), 0 differences; `data-qa` 217 of 217 checks; 110 money movements, 0 without an origin;
-- 2 stopped at a limit: Metal refused purchase #24 over the mandate cap, and the CFO rejected P-0004 with Face ID
+- Metal refused 1 purchase over its cap; the CFO rejected 1 proposal: #24 over the mandate cap, and P-0004 with Face ID
   (query #37, refused `mandate_revoked` while the mandate was being replaced, is not counted);
 - Separate run, not counted: Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November.
 
 ### What is real and what is simulated
 
 All money is test money: the Airwallex sandbox and Metal testnet. The cards, limits, conversion, transfer and mandates
-are real API and chain results. Simulated by the sandbox: the merchants' charges, the deposit that stands in for Metal
+are real API and chain results. Built, not yet live: T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. Simulated by the sandbox: the merchants' charges, the deposit that stands in for Metal
 earnings and the transfer's last steps (SENT, PAID), which Purser triggers through the sandbox's simulation API. Run
 by us: the customer Summit Outfitters and its agent, and Stockline, the
 warehouse API.
