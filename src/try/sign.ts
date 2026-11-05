@@ -44,13 +44,28 @@ main { padding: 28px 0 24px; }
 .chk.fail { background: var(--bad-soft); color: var(--text); } .chk.fail b { color: var(--bad); }
 .chk.pass { background: var(--sunken); } .chk.pass b { color: var(--accent); }
 .chk.done { background: var(--ok-soft); } .chk.done b { color: var(--ok); }
-.hash { font: 600 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; word-break: break-all; background: var(--sunken); border-radius: 10px; padding: 8px 10px; }
+/* A hash, shortened (first 12 and last 8 characters), with a button that copies the whole of it. */
+.hash { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; background: var(--sunken); border-radius: 10px; padding: 6px 6px 6px 10px; }
+.hash code { flex: 1 1 auto; font: 600 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); }
+.hash .copy { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 650 14px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+.hash .copy.ok { color: var(--ok); }
+/* Mono text and hashes break anywhere: a hash or the canonical JSON is one long word, wider than a phone. */
+.hash code, details.terms pre { overflow-wrap: anywhere; word-break: break-all; }
 details.terms summary { cursor: pointer; font-size: 15px; font-weight: 600; color: var(--muted); }
-details.terms pre { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--sunken); border-radius: 10px; padding: 10px; }
-.result { padding: 20px; display: grid; gap: 14px; max-width: 760px; margin-top: 16px; }
-.result[hidden], .step[hidden], .props[hidden] { display: none; }
+details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--sunken); border-radius: 10px; padding: 10px; }
+/* Grid and flex children may shrink below their content (a long word), and a card never grows past its column. */
+.flow > *, .props > *, .step > *, .prop > *, .result > *, .chk > *, .line > *, .who > *, .facts > *, #tamper > * { min-width: 0; }
+.step, .prop { max-width: 100%; }
+.line > span, .chk span { overflow-wrap: anywhere; }
+#tamper { display: grid; gap: 10px; }
+/* The tamper's two lines (Max, 5 Nov: at 390 px they made the page 575 px wide): they wrap anywhere, hashes as above. */
+#t-what, #t-why { overflow-wrap: anywhere; }
+#t-why { display: grid; gap: 8px; margin-top: 2px; }
+.result { padding: 20px; display: grid; gap: 14px; max-width: min(760px, 100%); margin-top: 16px; }
+.result[hidden], .step[hidden], .props[hidden], #tamper[hidden], .facts[hidden] { display: none; }
 .line { display: flex; align-items: flex-start; gap: 10px; font-size: 16px; line-height: 1.45; }
 .line .i { margin-top: 2px; }
+.line > .i, #t-icon { flex: none; }
 .line.ok .i { color: var(--ok); } .line.bad .i { color: var(--bad); }
 .line b { display: block; }
 .note { font-size: 14.5px; color: var(--faint); max-width: 760px; margin: 18px 0 0; line-height: 1.5; }
@@ -73,6 +88,28 @@ const JS = `
   }
   function ic(name) { var s = document.createElement("span"); s.innerHTML = D.icons[name]; return s.firstChild; }
   function status(id, text, tone) { var n = $(id); n.textContent = text; n.className = "status" + (tone ? " " + tone : ""); }
+  // A hash as the page shows it: the first 12 and last 8 characters, the whole hash on hover and with Copy (the approval
+  // page likewise keeps the whole hash on hover). Copy that fails (no clipboard) shows the whole hash to select instead.
+  function shortHash(h) { return h.slice(0, 12) + "…" + h.slice(-8); }
+  function hashBox(h) {
+    var code = el("code", "", [shortHash(h)]);
+    code.title = h;
+    var b = el("button", "copy", ["Copy"]);
+    b.type = "button";
+    b.setAttribute("aria-label", "Copy the whole hash");
+    b.addEventListener("click", function () {
+      var done = function (ok) {
+        b.replaceChildren(ok ? ic("check") : "", ok ? "Copied" : "Select the hash");
+        b.classList.toggle("ok", ok);
+        if (!ok) code.textContent = h;
+      };
+      if (!navigator.clipboard) { done(false); return; }
+      navigator.clipboard.writeText(h).then(function () { done(true); }, function () { done(false); });
+    });
+    var box = el("div", "hash", [code, b]);
+    box.dataset.hash = h;
+    return box;
+  }
   function eur(s) { var p = String(s).split("."); return "EUR " + p[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, ",") + "." + (p[1] || "00"); }
 
   // Bytes.
@@ -196,7 +233,7 @@ const JS = `
     var st = el("p", "status", []);
     st.id = "st-" + p.proposal_id;
     kids.push(el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · waiting for a person"]), el("span", "", [p.waits])]));
-    kids.push(el("div", "", [el("p", "small muted", ["The hash of the exact terms, which your passkey signs" + (x.same ? " (checked on this device):" : ":")]), el("div", "hash", [x.mine])]));
+    kids.push(el("div", "", [el("p", "small muted", ["The hash of the exact terms, which your passkey signs" + (x.same ? " (checked on this device):" : ":")]), hashBox(x.mine)]));
     var pre = el("pre", "", [x.p.canonical]);
     kids.push(el("details", "terms", [el("summary", "", ["All terms (exactly what is hashed)"]), pre]));
     var b = el("button", "btn primary", [ic("scan-face"), "Sign with Face ID"]);
@@ -236,7 +273,7 @@ const JS = `
   }
 
   function showResult(x, d) {
-    $("r-hash").textContent = d.terms_sha256;
+    $("r-hash").replaceChildren(hashBox(d.terms_sha256));
     $("r-checks").textContent = "Checked with the relay's passkey verifier: " + d.checks.join(", ") + ".";
     var e = d.executed;
     $("r-exec").textContent = "Test transfer " + e.id + ": " + eur(e.amount) + " to " + e.payee + ". Test balance now " + eur(e.balance_after) + ". By the " + e.by + ".";
@@ -254,13 +291,16 @@ const JS = `
     t.amount = Math.floor(c / 100) + "." + String(c % 100).padStart(2, "0");
     var changed = canon(t);
     sha256(changed).then(function (h) {
-      $("t-what").textContent = "Amount " + eur(s.x.terms.amount) + " → " + eur(t.amount) + "; these terms hash to " + h + ".";
+      $("t-what").replaceChildren(el("p", "small muted", ["Amount " + eur(s.x.terms.amount) + " → " + eur(t.amount) + "; these terms hash to:"]), hashBox(h));
       return post("sign", { token: S.token, proposal_id: s.x.p.proposal_id, canonical: changed, credential: s.a }).then(function (r) {
         var refused = r.status !== 200;
         $("t-line").className = "line " + (refused ? "bad" : "ok");
         $("t-icon").replaceChildren(ic(refused ? "octagon-x" : "triangle-alert"));
         $("t-head").textContent = refused ? "Refused: the same signature does not verify for the changed terms" : "Accepted?! This should not happen.";
-        $("t-why").textContent = refused ? (r.data.error || ("error " + r.status)) : "";
+        // The server's own words, then the hash the signature was made for, shortened with Copy like the others.
+        var signedFor = refused && /^[0-9a-f]{64}$/.test(r.data.signed_sha256 || "") ? r.data.signed_sha256 : null;
+        $("t-why").replaceChildren(el("span", "", [refused ? (r.data.error || ("error " + r.status)) : ""]),
+          signedFor ? el("span", "muted", ["The signature was made for:"]) : null, signedFor ? hashBox(signedFor) : null);
         $("tamper").hidden = false;
       });
     });
@@ -293,17 +333,17 @@ export function trySignPage(): string {
 </ol>
 <section class="card result" id="result" hidden aria-live="polite">
   <h2 class="h-sec">Signed</h2>
-  <div><p class="small muted">The hash you signed (SHA-256 of the exact terms):</p><div class="hash" id="r-hash"></div></div>
+  <div><p class="small muted">The hash you signed (SHA-256 of the exact terms):</p><div id="r-hash"></div></div>
   <div class="line ok">${icon("shield-check", 22)}<span><b>Verified by the server</b><span id="r-checks" class="small muted"></span></span></div>
   <div class="line ok">${icon("circle-check", 22)}<span><b>Executed in your test world</b><span id="r-exec" class="small muted"></span></span></div>
   <button class="btn" type="button" id="go-tamper" data-world="1">${icon("triangle-alert", 18)}Try to tamper: change the amount by 0.01</button>
-  <div id="tamper" hidden><p class="small muted" id="t-what"></p><div class="line" id="t-line"><span id="t-icon"></span><span><b id="t-head"></b><span id="t-why" class="small"></span></span></div></div>
+  <div id="tamper" hidden><div id="t-what"></div><div class="line" id="t-line"><span id="t-icon"></span><div><b id="t-head"></b><div id="t-why" class="small"></div></div></div></div>
 </section>
 <p class="note">${esc("What is real here: your device's passkey signature over the hash, and the server's check of it (the same verifier as the CFO's passkey sign-in) against the public key your device registered. The server checks no attestation, so it cannot tell which authenticator made the key, and a key made in software would verify too; Face ID is what your device asks for, not something the server proves. What is not real: the world, its balance, the agent's words (fixed text) and the executor (a stand-in that only records). This world, its passkey record and its proposals live in their own store, apart from Northwind's: a test passkey is not enrolled anywhere else, so it can never approve a real proposal or sign in to the CFO's pages.")}</p>
 </div></main>`;
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: a test world of your own, a test passkey, and a signature the server verifies. Nothing real moves.",
-    tab: "try", css: CSS, body, js: JS, stage: false, data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check"]) },
+    tab: "try", css: CSS, body, js: JS, stage: false, data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check"]) },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [

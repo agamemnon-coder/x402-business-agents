@@ -41,6 +41,7 @@ function expected(): Record<string, string | string[]> {
   const revoked = s.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length;
   const tapDeclines = TAP.steps.filter((x) => !x.airwallex.approved && x.airwallex.failure_reason === "LIMIT_EXCEEDED").length;
   const rejected = s.decisions.filter((d) => d.status === "REJECTED").length;
+  const awxDeclines = s.flows.filter((f) => f.refused?.by === "airwallex").length;
   const dispute = s.traces.find((t) => t.agent === "support" && t.task.startsWith("dispute"))!;
   const orders = new Set(dispute.steps.filter((x) => x.tool === "verify_order").map((x) => JSON.stringify(x.input))).size;
   const refunds = s.flows.filter((f) => f.kind === "refund" && !f.refused).length;
@@ -53,7 +54,10 @@ function expected(): Record<string, string | string[]> {
     "routine payments by code": String(s.flows.filter((f) => !f.refused && (f.kind === "sale" || (f.kind === "upstream" && f.decided.startsWith("code")))).reduce((k, f) => k + n(f), 0)),
     "Face ID decisions": String(faceIds),
     // The main run's own stops only; the separate TAP run's decline is a labelled line below it, not counted (Max, 4 Nov).
-    "stopped at a limit": String(metalRefusals + rejected + s.flows.filter((f) => f.refused?.by === "airwallex").length),
+    // Max, 5 Nov: a big "1 + 1" with his sentence under it, the counts in both; a card declined at a limit in this run
+    // would add "+ n" and its own clause.
+    [`Metal refused ${metalRefusals} purchase${metalRefusals === 1 ? "" : "s"} over its cap; the CFO rejected ${rejected} proposal${rejected === 1 ? "" : "s"}${awxDeclines ? `; Airwallex declined ${awxDeclines} card charge${awxDeclines === 1 ? "" : "s"} at its limit` : ""}.`]:
+      [metalRefusals, rejected, ...(awxDeclines ? [awxDeclines] : [])].join(" + "),
     "Claude cost per decision": `$${(sum((a) => a.cost_usd_micros) / decisions / 1e6).toFixed(4)}`,
     "payments on chain": String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
     "refused by Metal at the cap": String(metalRefusals),

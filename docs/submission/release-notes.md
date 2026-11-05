@@ -15,8 +15,8 @@ anything beyond them, with Face ID on the exact terms.
   wrong data; "refund the other 9" was rejected with Face ID.
 - **The euro bill:** EUR 240.00 by FX and SWIFT, PAID 6 s after Face ID (transfer
   `03360bfa-afce-457b-89d1-e1097fbe3985`; settlement simulated in the sandbox).
-- 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks; 2 stopped at a
-  limit.
+- 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks.
+  Metal refused 1 purchase over its cap; the CFO rejected 1 proposal.
 
 Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md).
 
@@ -33,6 +33,13 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - `gitleaks` over every commit on every branch: no leaks (the checked false positives are listed in `.gitleaksignore`).
 - Every tx hash and id in the README, the submission pack, the claims, the site and the video script is in a run
   record.
+
+## Since the tag
+
+- 5 November: the stops are said in one sentence everywhere ("Metal refused 1 purchase over its cap; the CFO rejected 1
+  proposal."), and the form's Description is short (the long text is
+  [long-description.md](long-description.md)). /try/sign stays within a phone's width after the tamper, and the
+  premiere film has its animations. 2338 tests in 246 files, all passing.
 
 ## Real, and ours
 

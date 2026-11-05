@@ -31,6 +31,8 @@ const SOURCES: Record<string, string> = {
   spiekkaart: read("docs/internal/spiekkaart-demo.html"),
   deck: DECK,
   form: read("docs/submission/README.md"),
+  // The long form text the short Description replaced (5 Nov), linked from it: its figures are checked as before.
+  "form (long)": read("docs/submission/long-description.md"),
   README: read("README.md"),
 };
 const TEXT = Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [k, words(v)]));
@@ -136,15 +138,17 @@ describe("one set of figures, the main run's record (3 November)", () => {
     for (const name of Object.keys(TEXT)) {
       expect({ name, figure: /\d+ stopped at a limit/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
       for (const m of all(/Metal refused (\d+) purchases? over its cap; the CFO rejected (\d+) proposals?/g, name)) expect({ name, parts: [Number(m[1]), Number(m[2])] }).toEqual({ name, parts: [st.metal, st.cfo] });
-      if (["pitch", "deck", "spiekkaart", "form", "README"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
+      if (["pitch", "deck", "spiekkaart", "form", "form (long)", "README"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
     }
   });
 
   it("says Metal's refusal one way, and the passkey as Max's (Max, 5 Nov)", () => {
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, has: TEXT[name]!.includes(REFUSAL_LINE) }).toEqual({ name, has: true });
-    for (const name of ["form", "README"]) expect({ name, has: /the refusal is recorded on chain/i.test(TEXT[name]!) }).toEqual({ name, has: true });
-    for (const name of ["deck", "spiekkaart", "form", "README"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
-    for (const name of ["pitch", "deck", "spiekkaart", "form", "README", "qa"]) expect({ name, plays: /(Max|I)(, the builder,)? plays? the CFO/.test(TEXT[name]!) }).toEqual({ name, plays: true });
+    for (const name of ["form", "form (long)", "README"]) expect({ name, has: /the refusal is recorded on chain/i.test(TEXT[name]!) }).toEqual({ name, has: true });
+    for (const name of ["deck", "spiekkaart", "form", "form (long)", "README"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
+    // The form's short Description (Max, 5 Nov): Metal's tx "on chain, checkable", Airwallex's ids "published".
+    expect(TEXT.form).toContain("Metal tx: on chain, checkable. Airwallex ids: published on /proof.");
+    for (const name of ["pitch", "deck", "spiekkaart", "form", "form (long)", "README", "qa"]) expect({ name, plays: /(Max|I)(, the builder,)? plays? the CFO/.test(TEXT[name]!) }).toEqual({ name, plays: true });
     // "published" for the ids (Airwallex's cannot be looked up by a juror); Metal's are on chain, checkable.
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, public: /\bids? (?:is|are) public\b/i.test(TEXT[name]!) }).toEqual({ name, public: false });
     expect(TEXT.deck).toContain("Every id is published");
@@ -189,7 +193,7 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
 
   it("says the T:0 sentence word for word in the README, the form, the claims, docs/t0.md, the run logs and the Q&A", () => {
     expect(T0_STATUS).toBe("T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted.");
-    for (const p of ["README.md", "docs/submission/README.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-05-t0-live.md", "docs/runs/2026-11-03-t0-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(T0_STATUS) }).toEqual({ p, has: true });
+    for (const p of ["README.md", "docs/submission/README.md", "docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-05-t0-live.md", "docs/runs/2026-11-03-t0-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(T0_STATUS) }).toEqual({ p, has: true });
     // The codes as the run logs have them.
     expect(read("docs/runs/2026-11-03-t0-sandbox.md")).toMatch(/refused the first POST with `403 CAPI71`/);
     expect(read("docs/runs/2026-11-05-t0-live.md")).toMatch(/on 5 November[\s\S]*?`401 CAPI11`/i);

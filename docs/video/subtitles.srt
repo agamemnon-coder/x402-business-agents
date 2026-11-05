@@ -7,165 +7,193 @@ So who holds the pen?
 I'm Max Geurtsen, and this is Purser.
 
 3
-00:00:11,500 --> 00:00:12,943
-An agent proposes.
+00:00:11,300 --> 00:00:14,450
+Three Claude agents run a small company's money.
 
 4
-00:00:12,993 --> 00:00:14,850
-Rules in code check it.
+00:00:14,600 --> 00:00:18,150
+Sourcing buys data per query, over x402 on Metal.
 
 5
-00:00:15,000 --> 00:00:18,850
-Beyond the limits, a person signs with Face ID.
+00:00:18,300 --> 00:00:20,250
+Support handles disputes and refunds.
 
 6
-00:00:19,000 --> 00:00:23,350
-Then Airwallex or Metal moves the money, into the books.
+00:00:20,400 --> 00:00:22,050
+Treasury: FX, SWIFT, budgets.
 
 7
-00:00:24,500 --> 00:00:27,338
-On the third of November, three Claude
+00:00:22,200 --> 00:00:24,662
+Rails and code hold the limits.
 
 8
-00:00:27,388 --> 00:00:30,150
-agents ran a business, on test money.
+00:00:24,712 --> 00:00:26,850
+Beyond them, the CFO signs.
 
 9
-00:00:30,300 --> 00:00:34,150
-Their supplier doubled its price, past the mandate's cap.
+00:00:27,500 --> 00:00:28,943
+An agent proposes.
 
 10
-00:00:34,300 --> 00:00:36,963
-We let one purchase through on purpose:
+00:00:28,993 --> 00:00:30,850
+Rules in code check it.
 
 11
-00:00:37,013 --> 00:00:39,050
-Purser normally refuses first.
+00:00:31,000 --> 00:00:34,850
+Beyond the limits, a person signs with Face ID.
 
 12
-00:00:39,200 --> 00:00:41,550
-Metal refused it, on chain.
+00:00:35,000 --> 00:00:39,350
+Then Airwallex or Metal moves the money, into the books.
 
 13
-00:00:42,500 --> 00:00:45,650
-Then our simulated customer disputed twelve orders.
+00:00:40,500 --> 00:00:43,338
+On the third of November, three Claude
 
 14
-00:00:45,800 --> 00:00:49,150
-All twelve were signed by its own agent.
+00:00:43,388 --> 00:00:46,150
+agents ran a business, on test money.
 
 15
-00:00:49,300 --> 00:00:52,450
-Support refunded the three with wrong data.
+00:00:46,300 --> 00:00:50,150
+Their supplier doubled its price, past the mandate's cap.
 
 16
-00:00:52,800 --> 00:00:54,510
-Refund the other nine?
+00:00:50,300 --> 00:00:52,963
+We let one purchase through on purpose:
 
 17
-00:00:54,560 --> 00:00:56,350
-Rejected, with Face ID.
+00:00:53,013 --> 00:00:55,050
+Purser normally refuses first.
 
 18
-00:00:57,400 --> 00:01:00,450
-The Treasury agent planned a euro payment.
+00:00:55,200 --> 00:00:57,550
+Metal refused it, on chain.
 
 19
-00:01:00,600 --> 00:01:03,350
-The phone shows the exact terms.
+00:00:58,500 --> 00:01:01,650
+Then our simulated customer disputed twelve orders.
 
 20
-00:01:12,300 --> 00:01:16,650
-Six seconds from Face ID to paid, in the Airwallex sandbox.
+00:01:01,800 --> 00:01:05,150
+All twelve were signed by its own agent.
 
 21
-00:01:16,800 --> 00:01:20,050
-In the sandbox, the settlement itself is simulated.
+00:01:05,300 --> 00:01:08,450
+Support refunded the three with wrong data.
 
 22
-00:01:20,200 --> 00:01:23,350
-Every id is on the proof page.
+00:01:08,800 --> 00:01:10,510
+Refund the other nine?
 
 23
-00:01:24,600 --> 00:01:26,450
-Now it's your turn.
+00:01:10,560 --> 00:01:12,350
+Rejected, with Face ID.
 
 24
-00:01:26,600 --> 00:01:29,666
-Open your own test world, and sign an
+00:01:13,400 --> 00:01:16,450
+The Treasury agent planned a euro payment.
 
 25
-00:01:29,716 --> 00:01:32,950
-agent's proposal with your own Face ID.
+00:01:16,600 --> 00:01:19,350
+The phone shows the exact terms.
 
 26
-00:01:33,200 --> 00:01:37,150
-The server checks the signature against the exact terms.
+00:01:28,300 --> 00:01:32,650
+Six seconds from Face ID to paid, in the Airwallex sandbox.
 
 27
-00:01:48,400 --> 00:01:51,250
-Why Face ID, and not a password?
+00:01:32,800 --> 00:01:36,050
+In the sandbox, the settlement itself is simulated.
 
 28
-00:01:51,400 --> 00:01:53,598
-A password is the same for every
+00:01:36,200 --> 00:01:39,350
+Every id is on the proof page.
 
 29
-00:01:53,648 --> 00:01:56,478
-payment; Face ID signs these exact terms:
+00:01:40,600 --> 00:01:42,450
+Now it's your turn.
 
 30
-00:01:56,528 --> 00:01:59,850
-change anything, and the signature is worthless.
+00:01:42,600 --> 00:01:45,666
+Open your own test world, and sign an
 
 31
-00:02:00,500 --> 00:02:02,050
-All tests passing.
+00:01:45,716 --> 00:01:48,950
+agent's proposal with your own Face ID.
 
 32
-00:02:04,400 --> 00:02:06,270
-An audit log, hash-chained:
+00:01:49,200 --> 00:01:53,150
+The server checks the signature against the exact terms.
 
 33
-00:02:06,320 --> 00:02:07,550
-check it yourself.
+00:02:04,400 --> 00:02:07,250
+Why Face ID, and not a password?
 
 34
-00:02:08,400 --> 00:02:10,750
-Two stopped at a limit.
+00:02:07,400 --> 00:02:09,598
+A password is the same for every
 
 35
-00:02:12,400 --> 00:02:15,150
-Twenty-four of twenty-four decisions by Claude.
+00:02:09,648 --> 00:02:12,478
+payment; Face ID signs these exact terms:
 
 36
-00:02:16,500 --> 00:02:20,850
-Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID.
+00:02:12,528 --> 00:02:15,850
+change anything, and the signature is worthless.
 
 37
-00:02:21,300 --> 00:02:22,494
-Ours, or simulated:
+00:02:16,500 --> 00:02:18,050
+All tests passing.
 
 38
-00:02:22,544 --> 00:02:25,505
-the suppliers, the customer, the merchant, and
+00:02:20,400 --> 00:02:22,270
+An audit log, hash-chained:
 
 39
-00:02:25,555 --> 00:02:28,450
-the second approver, a labelled test passkey.
+00:02:22,320 --> 00:02:23,550
+check it yourself.
 
 40
-00:02:29,500 --> 00:02:32,850
-A price shock, a dispute, a euro bill.
+00:02:24,000 --> 00:02:26,300
+Metal refused one purchase over its
 
 41
-00:02:33,000 --> 00:02:36,661
-Claude decided, the rails and the code held the
+00:02:26,350 --> 00:02:28,650
+cap; the CFO rejected one proposal.
 
 42
-00:02:36,711 --> 00:02:40,450
-limits, and I signed only what went beyond them.
+00:02:28,800 --> 00:02:31,550
+Twenty-four of twenty-four decisions by Claude.
 
 43
-00:02:40,600 --> 00:02:42,550
+00:02:32,500 --> 00:02:36,850
+Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID.
+
+44
+00:02:37,300 --> 00:02:38,494
+Ours, or simulated:
+
+45
+00:02:38,544 --> 00:02:41,505
+the suppliers, the customer, the merchant, and
+
+46
+00:02:41,555 --> 00:02:44,450
+the second approver, a labelled test passkey.
+
+47
+00:02:45,500 --> 00:02:48,850
+A price shock, a dispute, a euro bill.
+
+48
+00:02:49,000 --> 00:02:52,661
+Claude decided, the rails and the code held the
+
+49
+00:02:52,711 --> 00:02:56,450
+limits, and I signed only what went beyond them.
+
+50
+00:02:56,600 --> 00:02:58,550
 Purser, Starter Kit 11.
