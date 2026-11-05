@@ -1,8 +1,7 @@
 # Purser
 
 **Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.**
-**[Sign one yourself](https://kit11.max-31b.workers.dev/try/sign)** · Film, 2:42: <!-- VIDEO-LINK -->_the link is
-added on submission day_ · [The run, replayed](https://kit11.max-31b.workers.dev/watch)
+**[Sign one yourself](https://kit11.max-31b.workers.dev/try/sign)** · [Film, 2:42](https://youtu.be/jaqO2M2V6NY) · [The run, replayed](https://kit11.max-31b.workers.dev/watch)
 
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2365 passing](https://img.shields.io/badge/tests-2365%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 

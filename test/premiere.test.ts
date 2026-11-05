@@ -515,7 +515,7 @@ describe("docs/video/ holds what the code writes", () => {
     const length = clock(premiereSeconds());
     expect([words, length]).toEqual([319, "2:42"]);
     expect(read("docs/claims.md")).toContain(`| Pace | The film is the premiere: ${words} words in ${length} (`);
-    expect(README).toContain(`· Film, ${length}: <!-- VIDEO-LINK -->`);
+    expect(README).toContain(`[Film, ${length}](https://youtu.be/jaqO2M2V6NY)`);
     expect(read("docs/submission/checklist-max.md")).toContain(`de film duurt ${length}.`);
     // The voice-over is an AI voice and the music AI-generated, both ElevenLabs; nowhere does Max voice the film.
     const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/opnames-max.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",

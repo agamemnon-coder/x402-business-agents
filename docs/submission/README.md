@@ -7,7 +7,7 @@ run; the long text ([long-description.md](long-description.md)) has every other 
 (separate worlds, dated)", with its date, and what ran only on stand-ins under "Tested on stand-ins (not live)". Sources
 for each claim: [docs/claims.md](../claims.md), section "The submission pack".
 
-Fill in before submitting: the video link. Max's steps: [checklist-max.md](checklist-max.md).
+The video link is in. Max's steps: [checklist-max.md](checklist-max.md).
 
 ## Title
 
@@ -66,8 +66,7 @@ Running it live (sandbox keys, a Metal RPC) is in [docs/run-it.md](../run-it.md)
 
 ## Links
 
-- Video (2:42; voice-over: an AI-generated voice, music: AI-generated, both ElevenLabs): _(Max fills in: the unlisted
-  YouTube link)_
+- Video (2:42; voice-over: an AI-generated voice, music: AI-generated, both ElevenLabs): <https://youtu.be/jaqO2M2V6NY>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try/sign>: sign a test proposal with your own Face ID, in a test
   world of your own; nothing real moves (live since 4 November 2026).
