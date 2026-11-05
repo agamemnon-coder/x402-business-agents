@@ -2,9 +2,11 @@
 
 **Purser in 2:42**, a premiere-style film made from the main run of 3 November 2026 (world `main-1`,
 [run log](../runs/2026-11-03-main-run.md)). Dark, large and slow, letterboxed to 2.39:1. Every figure on screen is read
-from the run's record by code, and the render stops when one is missing. Film v5: Max reads the whole voice-over from
-[voice-script-max.md](voice-script-max.md); the render has **no music and no audio track**, and the mix (voice, music,
-loudness) is done afterwards to the scene times in `scenes-v5.json`. The script with every picture, line and source is
+from the run's record by code, and the render stops when one is missing. Film v5, final cut (5 November): the
+voice-over is [voice-script-max.md](voice-script-max.md) read in an AI-generated voice (ElevenLabs), with AI-generated
+music (ElevenLabs); the end card credits both: “Voice-over: an AI-generated voice (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
+The render has **no music and no audio track**, and the mix (voice, music, loudness) is done afterwards to the scene
+times in `scenes-v5.json`. The script with every picture, line and source is
 [premiere-script.md](premiere-script.md); the voice-over with its times is [script.md](script.md).
 
 ## The files
@@ -16,18 +18,17 @@ CRF 14, so small text stays crisp). The words are also in this folder.
 | File | What it is |
 |---|---|
 | `clips/01-hook.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip fades in and out over the background, which runs on the film's own clock, so in order the clips join seamlessly; the hook is on black. |
-| `clips/16-end-ai-voice.mp4` | A spare end card whose credits name an AI-generated voice. Not used: Max reads the whole voice-over himself. |
 | `overlays/08-faceid.png`, `overlays/11-turn.png`, `overlays/15-close.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for a recording laid over that scene. Put one on the track above the recording, for the scene's full length. |
-| `master-v5.mp4` | **The deliverable picture:** all eighteen clips in order (2:42), no audio track, no burned-in subtitles. Only Max's closing (15) is a stand-in: the rendered ending, which also works under his voice alone. |
+| `master-v5.mp4` | **The deliverable picture:** all eighteen clips in order (2:42), no audio track, no burned-in subtitles. The closing (15) is the rendered ending, under the voice-over. |
 | `scenes-v5.json` | Each scene's `{id, start, end}` in seconds, for the mix (a copy is in this folder). |
-| `subtitles-v5.srt` | Max's voice-over as English subtitles, each line about half a second into its scene, for YouTube's captions (a copy is in this folder). Nothing is burned in. |
+| `subtitles-v5.srt` | The voice-over as English subtitles, each line about half a second into its scene, for YouTube's captions (a copy is in this folder). Nothing is burned in. |
 | `script.md`, `premiere-script.md` | The voice-over with its times, and the script table (copies are in this folder). |
 
 Again: `npm run video` for everything; `npm run video -- 13-proof` for one clip (the master is rebuilt when every clip
 is there); `npm run video -- --stills` for three PNGs of each scene in `out/video/stills/`; `npm run video -- --docs`
 for the files in this folder; `VIDEO_PREVIEW=1 npm run video` for a quick preview (drawn at 1×, x264 veryfast, CRF 18),
-not the deliverable. The proof cards read the README's test line (and its tests badge, which must agree) when they are
-rendered: after that line changes, render `13-proof` again.
+not the deliverable. The film still reads the README's test line and its tests badge, and renders nothing when they
+disagree; since 5 November the proof scene shows 24/24 and the run's stops, not the test count.
 
 ## Which clip goes where
 
@@ -49,21 +50,21 @@ The times are the scenes' (`scenes-v5.json`); the music is cut to them afterward
 | 1:24 | `10-why.mp4` | Why Face ID, not a password | |
 | 1:34 | `11-turn.mp4` | A mock of the live /try/sign page | Optional: **Max on /try/sign** with `overlays/11-turn.png` (or keep the mock) |
 | 1:41 | `12-tamper.mp4` | +0.01, refused; a second of silence; “One cent. Worthless.” at 1:46 | |
-| 1:49 | `13-proof.mp4` | 24/24 decisions by Claude (1:49); the stops (1:52, “Stopped at a limit, in the main run”, side by side); the tests beside the audit log (1:57) | |
+| 1:49 | `13-proof.mp4` | 24/24 decisions by Claude (1:49); the run's stops (1:51): the figure with “nothing paid over a limit”, then who stopped what in four rows, each as the voice names it | |
 | 2:02 | `13b-value.mp4` | “The agents do the work. The CFO signs only the exceptions.” | |
 | 2:06 | `14-real.mp4` | What's real, what's ours | |
 | 2:16 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (2:27); Max's name lower left | **Max on camera** with `overlays/15-close.png`, or his voice over this card |
-| 2:29 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 2:33 the end credits (9 s, text only): thank you to Airwallex, Metal, Anthropic (Claude) and the hackathon organisers and mentors; built by Max Geurtsen; voice and music; test money only; the end at 2:42 | |
+| 2:29 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 2:33 the end credits (9 s, text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role); thank you to Airwallex, Metal, Anthropic and the hackathon organisers and mentors; the AI-generated voice and music; test money only; the end at 2:42 | |
 
-## Max's recordings
+## Recordings
 
-Only his voice is needed: the Face ID (08) is rendered, a reconstruction of P-0005's approval sheet labelled as one
+No recording is needed: the Face ID (08) is rendered, a reconstruction of P-0005's approval sheet labelled as one
 (“Reconstruction of the approval screen · the real Face ID was at 11:31:18 UTC (main run)”), and /try/sign (11) is a
 mock of the live page drawn from its code.
 
-1. **The voice-over** in his own voice: one file per scene, the lines in [voice-script-max.md](voice-script-max.md),
-   each placed about half a second into its scene ([script.md](script.md) has the times). The closing (2:16) goes over
-   `15-close.mp4`, or Max on camera with `overlays/15-close.png` (his name, lower left) above it.
+1. **The voice-over:** an AI-generated voice (ElevenLabs), one file per scene, the lines in
+   [voice-script-max.md](voice-script-max.md), each placed about half a second into its scene ([script.md](script.md)
+   has the times). The closing (2:16) goes over `15-close.mp4`.
 2. **Optional: his own phone recordings.** `npm run video` still lays a portrait (9:16) recording into a rounded phone
    frame beside the scene's captions, with its honesty label, and rebuilds the master:
 
@@ -82,8 +83,8 @@ mock of the live page drawn from its code.
 
 Not in this render: the mix session adds it to `scenes-v5.json`.
 
-- **The track:** “Techno Fest Vibes” (Mixkit, track 124), under the Mixkit Stock Music Free License, stretched to
-  120 BPM. The end card credits it: “Music: Techno Fest Vibes (Mixkit)”.
+- **The track:** AI-generated (ElevenLabs). The end card credits it with the voice: “Voice-over: an AI-generated voice
+  (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
 - **The drop:** on the cut to `09-six` (1:14), where “6” counts up. Leave the second before “One cent. Worthless.”
   (1:45 to 1:46) silent.
 - Under a voice, keep the music 18 to 22 dB lower.
@@ -104,8 +105,8 @@ Not in this render: the mix session adds it to `scenes-v5.json`.
 recording and its overlay PNG as overlay layers, if any; voice and music as audio layers; export at 1080p, 60 fps.
 
 **Upload:** YouTube, visibility **Unlisted**. Add `subtitles-v5.srt` as English captions. In the description: “Test
-money only: the Airwallex sandbox and Metal testnet” and “Music: Techno Fest Vibes (Mixkit), Mixkit Stock Music Free
-License”.
+money only: the Airwallex sandbox and Metal testnet” and “Voice-over: an AI-generated voice (ElevenLabs) · Music:
+AI-generated (ElevenLabs)”.
 
 ## Before you upload
 
@@ -113,14 +114,14 @@ License”.
 - Nothing private on screen: no keys, e-mail addresses, notifications, other tabs or bookmarks.
 - The Face ID scene keeps its label (“Reconstruction of the approval screen …”), and a recording laid in keeps its own.
 - No logos of others anywhere (the rendered clips have none; check the recordings).
-- Max's own voice throughout, and `16-end.mp4` as the end card (not the spare).
+- The AI-generated voice and music, and `16-end.mp4` as the end card, which credits both.
 
 ## How the clips are made
 
 `src/film/premiere.ts` reads every figure from `docs/demo/main-run.json` (and the test count from the README's test
 line, and the /try/sign mock's figures from that page's code) and stops when one is missing; `src/film/premiere.html`
 draws each scene from those strings and types in no figure of its own; `src/film/premiereScript.ts` holds the scenes'
-times; the voice-over is Max's script, read by premiere.ts and checked against the record. `npm run video` (`src/cli/video.ts`) plays the page on a virtual
+times; the voice-over is the script in voice-script-max.md, read by premiere.ts and checked against the record. `npm run video` (`src/cli/video.ts`) plays the page on a virtual
 clock, one frame every 1/60 s, so every clip is exactly its length at 60 frames a second. `test/premiere.test.ts`
 counts the figures again from the record and fails on a difference, a missing figure, a figure typed into the page,
 or a file in this folder that the code would write differently.

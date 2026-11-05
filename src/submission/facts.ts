@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { INITIAL_MANDATES } from "../config/policy.js";
-import { cardRaiseOf, disputeStory, faceIdDecisions, fxOf, letThroughOf, loadRecord, ownTap, payments, split, stoppedAtLimit, stops, tapLimitLine, timings } from "../redesign/run.js";
+import { cardRaiseOf, disputeStory, faceIdDecisions, fxOf, letThroughOf, loadRecord, metalDetail, ownTap, payments, split, stopFigure, stopStory, stopSub, stopsLine, tapLimitLine, timings, type StopStory } from "../redesign/run.js";
 
 const read = <T>(path: string) => JSON.parse(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")) as T;
 
@@ -43,9 +43,11 @@ export interface PackFacts {
 
 export interface MainRunFacts {
   decisions: number; by_claude: number; fallbacks: number; claude_calls: number; claude_usd: string; per_decision_usd: string;
-  alone: number; sales: number; face_id: number; metal_refused: number; cfo_rejected: number; audit_rows: number;
-  /** The stops at a limit in all (said as stopLine: "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal."): the main run's own stops only; the separate TAP run's decline is its own line (tap_limit_line). */
-  stopped: number; tap_limit_line: string;
+  alone: number; sales: number; face_id: number; audit_rows: number;
+  /** The run's stops in all (`snapshot.counts.blocked`), by who stopped them (stopStory): the separate TAP run's decline is its own line (tap_limit_line). */
+  stopped: number; stops: StopStory; tap_limit_line: string;
+  /** The stops said as the pages say them: "16 stops", "nothing paid over a limit", the sentence, and Metal's in detail. */
+  stop_figure: string; stop_sub: string; stop_line: string; metal_detail: string;
   /** The main run's card story: the agent asked for the raise first (proposal, per-purchase limit from → to), the CFO approved it with Face ID, then Airwallex approved the charge (authorization). */
   card_raise: { proposal: string; from: string; to: string; auth: string; amount: string };
   to_options_s: number; face_to_paid_s: number;
@@ -63,7 +65,7 @@ export interface MainRunFacts {
 export function mainRunFacts(): MainRunFacts {
   const { record: r } = loadRecord();
   const s = r.snapshot, ev = r.ledger?.events ?? [];
-  const sp = split(r), st = stops(r), t = timings(r), fx = fxOf(r), tap = ownTap(r), lt = letThroughOf(r);
+  const sp = split(r), st = stopStory(r), t = timings(r), fx = fxOf(r), tap = ownTap(r), lt = letThroughOf(r);
   const cost = s.agent_stats.reduce((n, a) => n + a.cost_usd_micros, 0);
   const paid = ev.find((e) => e.event === "transfer.status" && e.payload.status === "PAID");
   const fee = ev.find((e) => e.event === "transfer.fee" && e.subject === paid?.subject);
@@ -76,7 +78,8 @@ export function mainRunFacts(): MainRunFacts {
     decisions: sp.decisions, by_claude: sp.byClaude, fallbacks: sp.fallbacks, claude_calls: s.agent_stats.reduce((n, a) => n + a.claude_calls, 0),
     claude_usd: (cost / 1e6).toFixed(4), per_decision_usd: (cost / sp.decisions / 1e6).toFixed(4),
     alone: s.counts.alone, sales: s.flows.filter((f) => f.kind === "sale").reduce((n, f) => n + (f.count ?? 1), 0), face_id: faceIdDecisions(r),
-    metal_refused: st.metal, cfo_rejected: st.cfo, stopped: stoppedAtLimit(st), tap_limit_line: tapLimitLine(),
+    stopped: st.total, stops: st, tap_limit_line: tapLimitLine(),
+    stop_figure: stopFigure(st), stop_sub: stopSub(st), stop_line: stopsLine(st), metal_detail: metalDetail(st),
     card_raise: { proposal: raise?.proposal ?? "", from: raise?.from ?? "", to: raise?.to ?? "", auth: charge?.subject ?? "", amount: String(charge?.payload.amount ?? "") }, audit_rows: s.audit.rows, to_options_s: t.toOptions ?? 0, face_to_paid_s: t.faceToPaid ?? 0,
     let_through_tx: lt?.tx ?? "", fx_buy: fx?.buy ?? "", fx_sell: fx?.sell ?? "", licence_transfer: paid?.subject ?? "", licence_fee: String(fee?.payload.fee ?? ""),
     sweep: s.flows.find((f) => f.kind === "sweep" && !f.refused)?.amount ?? "",

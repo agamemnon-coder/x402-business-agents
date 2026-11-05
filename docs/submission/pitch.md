@@ -13,7 +13,7 @@ trust it, the close. Demo Day timing, clicks and plan B per step: [demo-day.md](
 
 - **Log:** [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md), the main run's log.
 - **Record:** [docs/demo/main-run.json](../demo/main-run.json), read through `src/redesign/run.ts` (the function is
-  named in the row: `stops`, `timings`, `faceIdDecisions`, `split`, `disputeStory`, `fxOf`, `letThroughOf`).
+  named in the row: `stopStory`, `timings`, `faceIdDecisions`, `split`, `disputeStory`, `fxOf`, `letThroughOf`).
 - **README:** [README.md](../../README.md), "The main run" and "What is real, what is mock".
 - **Try:** `/try/sign`, its code in `worker/src/trySign.ts` (`FIXED_PROPOSALS`, `checkPayment`) and `src/try/sign.ts`.
 
@@ -29,11 +29,11 @@ Max says the figures as words ("twenty-four"); they are written as digits here s
 | 4 | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE`, `src/submission/deck.ts` (Max, 5 Nov); form text, Controls |
 | 5 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Metal testnet |
 | 6 | 24 of 24 decisions were made by Claude. | Record: `split` (24/24, 0 fallbacks) |
-| 7 | Metal refused 1 purchase over its cap; the CFO rejected 1 proposal. | Record: `stops` (Metal 1: #24 over the cap; CFO 1: P-0004) |
+| 7 | 16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: Claude 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
 | 8 | Every id is published. | `/proof`; README, "The main run" |
 | 9 | Sign one yourself, at kit11.max-31b.workers.dev/try/sign. | Try: live since 4 November |
 
-About 75 words: 30 seconds at a steady pace.
+About 90 words: 35 seconds at a steady pace (the stops take one sentence of 27 words, as every document says them).
 
 ## 2. The demo pitch (3 minutes, with the live demo)
 

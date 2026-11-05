@@ -83,16 +83,16 @@ Anything beyond the limits comes to my phone.
 I read the exact terms, and sign with Face ID.
 
 22
-00:01:14,500 --> 00:01:17,338
-Six seconds later, the euro invoice is
+00:01:14,500 --> 00:01:17,505
+Six seconds later, Airwallex pays the euro
 
 23
-00:01:17,388 --> 00:01:20,378
-paid by SWIFT, in the Airwallex sandbox.
+00:01:17,555 --> 00:01:19,905
+invoice by SWIFT, in its sandbox.
 
 24
-00:01:20,428 --> 00:01:22,050
-Every id is published.
+00:01:19,955 --> 00:01:21,650
+Every I.D. is published.
 
 25
 00:01:24,350 --> 00:01:26,847
@@ -123,57 +123,53 @@ Change one cent, and the same signature is refused.
 One cent. Worthless.
 
 32
-00:01:49,500 --> 00:01:52,670
-Twenty-four of twenty-four decisions by Claude.
+00:01:49,500 --> 00:01:51,863
+All twenty-four decisions by Claude.
 
 33
-00:01:52,720 --> 00:01:55,068
-Metal refused one purchase over its
+00:01:51,913 --> 00:01:54,611
+Sixteen stops, nothing paid over a limit:
 
 34
-00:01:55,118 --> 00:01:57,328
-cap, and I rejected one proposal.
+00:01:54,661 --> 00:01:58,029
+twelve skipped by Claude, two refused by Metal, one
 
 35
-00:01:57,378 --> 00:01:59,589
-Every test passes, and every step
+00:01:58,079 --> 00:02:01,850
+rejected by the CFO, and one planted instruction ignored.
 
 36
-00:01:59,639 --> 00:02:01,850
-sits in a hash-chained audit log.
-
-37
 00:02:02,000 --> 00:02:03,744
 The agents do the work.
 
-38
+37
 00:02:03,794 --> 00:02:05,850
 I sign only the exceptions.
 
-39
+38
 00:02:06,500 --> 00:02:10,680
 Real: the Airwallex sandbox, Metal testnet, Claude and Face ID.
 
-40
+39
 00:02:10,730 --> 00:02:14,776
 Ours: the customer, the supplier, and a test second approver.
 
-41
+40
 00:02:14,826 --> 00:02:15,850
 Test money only.
 
-42
-00:02:16,450 --> 00:02:19,750
+41
+00:02:16,500 --> 00:02:19,980
 A price shock, a dispute, a euro bill.
 
+42
+00:02:20,130 --> 00:02:24,149
+Claude decided, Airwallex and Metal held the limits, and
+
 43
-00:02:19,900 --> 00:02:23,486
-Claude decided, the rails and the code held the
+00:02:24,199 --> 00:02:27,200
+the CFO signed only what went beyond them.
 
 44
-00:02:23,536 --> 00:02:27,200
-limits, and I signed only what went beyond them.
-
-45
 00:02:27,350 --> 00:02:28,850
 Purser. Starter Kit 11.

@@ -18,14 +18,14 @@ A slip of the tongue? Just say that line again in the same file; we cut out the 
 | 06-metal | 86 payments on Metal (8) | Every Metal payment in this run is its own transaction on testnet. Eighty-six of them. No emulator. | 6 s |
 | 07-dispute | The dispute, 12 orders (10) | Then a customer disputes twelve orders, all signed by its own agent. Only the three with wrong data are refunded. | 7 s |
 | 08-faceid | The phone, Face ID (8) | Anything beyond the limits comes to my phone. I read the exact terms, and sign with Face ID. | 6 s |
-| 09-six | "6 seconds from Face ID to PAID" (10) | Six seconds later, the euro invoice is paid by SWIFT, in the Airwallex sandbox. Every id is published. | 7 s |
+| 09-six | "6 seconds from Face ID to PAID" (10) | Six seconds later, Airwallex pays the euro invoice by SWIFT, in its sandbox. Every I.D. is published. | 7 s |
 | 10-why | "Why Face ID, not a password?" (10) | Why Face ID, and not a password? A password is the same for every payment. My passkey signs the hash of these exact terms. | 8 s |
 | 11-turn | "Your turn" (7) | Now it's your turn. Open your own test world, make a passkey, and sign. | 5 s |
 | 12-tamper | EUR 1,850.01 (8) | Change one cent, and the same signature is refused. … … One cent. Worthless. | 5 s + 1 s silence |
-| 13-proof | 24/24, the stops, the tests (13) | Twenty-four of twenty-four decisions by Claude. Metal refused one purchase over its cap, and I rejected one proposal. Every test passes, and every step sits in a hash-chained audit log. | 11 s |
+| 13-proof | 24/24, then the stops (13) | All twenty-four decisions by Claude. Sixteen stops, nothing paid over a limit: twelve skipped by Claude, two refused by Metal, one rejected by the CFO, and one planted instruction ignored. | 12 s |
 | 13b-value | "The agents do the work. The CFO signs only the exceptions." (4) | The agents do the work. I sign only the exceptions. | 3 s |
 | 14-real | What's real, what's ours (10) | Real: the Airwallex sandbox, Metal testnet, Claude and Face ID. Ours: the customer, the supplier, and a test second approver. Test money only. | 8 s |
-| 15-close | Max on camera (13) | A price shock, a dispute, a euro bill. … Claude decided, the rails and the code held the limits, and I signed only what went beyond them. … Purser. Starter Kit 11. | 11 s |
+| 15-close | Max on camera (13) | A price shock, a dispute, a euro bill. … Claude decided, Airwallex and Metal held the limits, and the CFO signed only what went beyond them. … Purser. Starter Kit 11. | 11 s |
 
 About 2:00 of speech in a film of about 2:50: room to breathe, and music between the lines.
 
@@ -52,6 +52,16 @@ About 2:00 of speech in a film of about 2:50: room to breathe, and music between
   labelled test passkey co-signed it (four eyes), because that is what the run did.
 - **13b-value (new):** on screen Max's line "The agents do the work. The CFO signs only the exceptions."; spoken as "I sign
   only the exceptions", because Max plays the CFO and 4 s is short.
+- **5 November, the final film (AI voice):** the final film reads these lines in an AI-generated voice (ElevenLabs), with
+  AI-generated music (ElevenLabs); the end card credits both. Three lines changed with it:
+  - **09-six:** "Airwallex pays the euro invoice by SWIFT, in its sandbox": who pays, said; "I.D." so the voice says the
+    letters.
+  - **13-proof:** all the run's stops, as every page says them now, instead of "Metal refused one purchase over its cap,
+    and I rejected one proposal" (Max: "1 + 1" told too little). The figures are the record's (`snapshot.counts.blocked`
+    and its refusal rows; `proof.over_limit_eur`); the line about the tests and the audit log is gone, so the stops fit
+    in 13 s, and the tests card with it.
+  - **15-close:** "Airwallex and Metal held the limits, and the CFO signed": the partners hold the limits, and an AI
+    voice does not say "I".
 
 ## 15-close on camera
 

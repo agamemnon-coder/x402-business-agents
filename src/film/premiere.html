@@ -184,11 +184,17 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .otag span { font-size: 26px; font-weight: 650; color: var(--muted); }
 .signed b { display: block; font-size: 52px; font-weight: 800; color: var(--ok); letter-spacing: -.02em; }
 .signed span { display: block; font-size: 27px; color: var(--muted); margin-top: 4px; }
-/* The stops card: two stat blocks side by side under a heading, Max's sentence as the caption. */
+/* The stops card: the figure and what it means, then who stopped what, one row each. */
 .spec.stops { flex-direction: column; gap: 34px; }
-.pair { display: flex; gap: 80px; }
-.stat { width: 680px; padding: 30px 40px 34px; border-radius: 28px; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--accent); display: flex; flex-direction: column; gap: 10px; }
-.stat .giant { line-height: .9; }
+.shead { display: flex; align-items: baseline; gap: 34px; }
+.srows { display: flex; flex-direction: column; gap: 14px; }
+.srow { display: flex; align-items: baseline; gap: 36px; }
+.srow b { width: 150px; text-align: right; font-size: 80px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; color: var(--accent); }
+.srow span { font-size: 44px; font-weight: 650; letter-spacing: -.015em; }
+/* The end credits: who does what, a heading and its line on one row. */
+.crow { display: flex; align-items: baseline; justify-content: center; gap: 30px; }
+.crow b { flex: none; width: 520px; text-align: right; font-size: 40px; font-weight: 750; letter-spacing: -.015em; }
+.crow span { flex: none; width: 1220px; text-align: left; font-size: 31px; font-weight: 500; color: var(--muted); white-space: nowrap; }
 .bul { display: flex; gap: 22px; align-items: baseline; }
 .bul i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 50%; transform: translateY(-4px); }
 .bul i.real { background: var(--ok); } .bul i.ours { border: 3px solid var(--muted); }
@@ -208,7 +214,6 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   var stage = document.getElementById("stage"), pic = document.getElementById("pic");
   var q = new URLSearchParams(location.search);
   var overlay = q.get("overlay");
-  var credits = q.get("credits") === "ai" ? "ai" : "max";
 
   var BAR = 138;
   // ?rec=x,y,w,h&recfor=<scene>&speed=n: that scene frames Max's recording (laid in afterwards by ffmpeg).
@@ -636,15 +641,13 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var at = beats || S.cards.map(function (c, i) { return i * seconds / S.cards.length; });
       var cards = S.cards.map(function (c) {
         var n = put(L, E("div", "spec"), 0, 0);
-        if (c.blocks) {
-          // Two stat blocks side by side: the stops (each the record's figure as it is, Max's sentence as the caption),
-          // or the tests and the audit log (counting up).
+        if (c.rows) {
+          // The stops: the figure and what it means, then who stopped what, one row each (each the record's figure as it
+          // is, no count-up).
           n.classList.add("stops");
-          n.counts = [];
-          n.parts = c.blocks.map(function (b) { var g = E("div", "giant tn"); if (c.count) g.appendChild(n.counts[n.counts.length] = counter(null, b.big)); else g.textContent = b.big; return E("div", "stat", null, [g, E("div", "hs", b.label), E("div", "small", b.small)]); });
-          if (c.head) n.appendChild(E("div", "hm", c.head));
-          n.appendChild(E("div", "pair", null, n.parts));
-          if (c.caption) n.appendChild(n.cap = E("div", "small", c.caption + (c.small ? " · " + c.small : "")));
+          n.appendChild(E("div", "shead", null, [E("div", "huge tn", c.figure), E("div", "hs muted", c.sub)]));
+          n.parts = c.rows.map(function (r) { return E("div", "srow", null, [E("b", "tn", r.big), E("span", null, r.label)]); });
+          n.appendChild(E("div", "srows", null, n.parts));
           return n;
         }
         // The big figures count up.
@@ -658,7 +661,8 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
           var o = prog(t, t0, t0 + .3) * (i === cards.length - 1 ? 1 : 1 - prog(t, t1 - .3, t1));
           c.style.opacity = o; c.style.transform = "translateY(" + (1 - out3(prog(t, t0, t0 + .5))) * 24 + "px)";
           if (c.big) count(c.big, t, t0 + .05);
-          if (c.parts) { c.parts.forEach(function (p, k) { rise(p, t, t0 + .3 + k * .5, null, 20); }); if (c.cap) fade(c.cap, t, t0 + 1.4); c.counts.forEach(function (x, k) { count(x, t, t0 + .35 + k * .5); }); }
+          // The stops' rows come in as the voice names them (about 2.6 s after the figure, then every 1.7 s).
+          if (c.parts) c.parts.forEach(function (p, k) { rise(p, t, t0 + 2.6 + k * 1.7, null, 20); });
         });
       };
     },
@@ -702,14 +706,15 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var url = put(L, E("div", "hm c acc", S.url), 0, 318);
       var ft = put(L, E("div", "small c", S.foot), 0, 432);
       var mt = put(L, E("div", "kick c", S.mark), 0, 548);
-      // Then the end credits, text only: each row's heading and its line, the voice and the music, test money.
-      var roll = [], y = 130;
-      S.roll.forEach(function (r) {
-        if (r[0]) { roll.push(put(L, E("div", "kick c", r[0]), 0, y)); y += 44; roll.push(put(L, E("div", "hm c", r[1]), 0, y)); y += 106; }
-        else { y -= 26; roll.push(put(L, E("div", "body c muted", r[1]), 0, y)); y += 112; }
-      });
-      roll.push(put(L, E("div", "small c", S.credits[credits]), 0, y - 26)); y += 50;
-      roll.push(put(L, E("div", "kick c waitc", S.last), 0, y)); y += 70;
+      // Then the end credits, text only: who does what (a heading and its line on one row), the thanks, the voice and
+      // the music, test money.
+      var roll = [], y = 70;
+      roll.push(put(L, E("div", "kick c", S.head), 0, y)); y += 76;
+      S.roll.forEach(function (r) { roll.push(put(L, E("div", "crow c", null, [E("b", null, r[0]), E("span", null, r[1])]), 0, y)); y += 76; });
+      y += 24;
+      roll.push(put(L, E("div", "small c", S.thanks), 0, y)); y += 58;
+      roll.push(put(L, E("div", "small c", S.credit), 0, y)); y += 84;
+      roll.push(put(L, E("div", "kick c waitc", S.last), 0, y)); y += 58;
       roll.push(put(L, E("div", "small c acc", S.short), 0, y));
       var A = [mk, ct, url, ft, mt], out = 3.6, at = 4.3;
       return function (t) {

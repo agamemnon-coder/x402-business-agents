@@ -3,7 +3,7 @@
 // proof link is the record's, and the run is named by its own name. Breaks if a page shows a number the record lacks.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AGENT_RUN_1_FILE, agentRun, disputeStory, faceIdDecisions, fxOf, loadRecord, payments, split, stopFigure, stoppedAtLimit, stops, stopsLine, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
+import { AGENT_RUN_1_FILE, agentRun, disputeStory, faceIdDecisions, fxOf, loadRecord, metalDetail, payments, split, stopFigure, stopStory, stopSub, stops, stopsLine, tapLimitLine, tapRun, timings, type RunRecord } from "../src/redesign/run.js";
 import { deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
@@ -19,8 +19,8 @@ const TAP_RAW = TAP ? readFileSync(new URL(`../${TAP.file}`, import.meta.url), "
 const NUM = /\d+(?:[.,]\d+)*/g;
 const norm = (n: string) => n.replace(/,(?=\d{3}\b)/g, "");
 const RECORD_NUMBERS = new Set(((RAW + TAP_RAW).match(NUM) ?? []).map(norm));
-/** Max, 4 Nov: the main run's figure, and the separate TAP run's decline on its own line directly below it. */
-const STOPPED = stoppedAtLimit(stops(record));
+/** Max, 5 Nov: the main run's stops, all of them; the separate TAP run's decline on its own line directly below. */
+const STOPPED = stopStory(record).total;
 const TAP_LINE = "Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November";
 
 /** Figures the pages count from the record, counted again here from the raw file. */
@@ -28,7 +28,7 @@ function recount(r: RunRecord): string[] {
   const s = r.snapshot.agent_stats;
   const decisions = s.reduce((n, a) => n + a.decisions, 0);
   const cost = s.reduce((n, a) => n + a.cost_usd_micros, 0);
-  const st = stops(r);
+  const st = stopStory(r);
   const t = r.snapshot.traces.find((x) => x.agent === "support" && x.task.startsWith("dispute"));
   const checked = t ? new Set(t.steps.filter((x) => x.tool === "verify_order").map((x) => JSON.stringify(x.input))).size : 0;
   const refunded = r.snapshot.flows.filter((f) => f.agent === "support" && /refund/i.test(f.what) && !f.refused).length;
@@ -41,7 +41,7 @@ function recount(r: RunRecord): string[] {
   // Money on chain (not refused, counted by query), movements at Airwallex, and the Claude calls of all agents.
   const onChain = flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((n, f) => n + (f.count ?? 1), 0);
   const atAirwallex = flows.filter((f) => f.rail.startsWith("airwallex") && !f.refused).length + (r.ledger?.events.some((e) => e.event === "fx.converted") ? 1 : 0);
-  return [String(decisions), String(s.reduce((n, a) => n + a.by_claude, 0)), (cost / decisions / 1e6).toFixed(4), String(st.metal + st.cfo + st.airwallex),
+  return [String(decisions), String(s.reduce((n, a) => n + a.by_claude, 0)), (cost / decisions / 1e6).toFixed(4), String(st.total), String(st.claude), String(st.metal), String(st.cfo), String(st.planted),
     // The cost per agent, as /proof writes it (USD to four places), and the dispute's valid orders (checked minus refunded).
     ...s.map((a) => (a.cost_usd_micros / 1e6).toFixed(4)), String(checked - refunded),
     // D3 and the one Face ID number, counted by their own functions (test/site-v4.test.ts counts them again).
@@ -102,15 +102,26 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(run.scenes[0]!.steps.map((s) => s.text).join(" ")).toMatch(/options in 40 s/);
   });
 
-  it("counts only the main run's stops (Metal at the cap, the CFO's rejection); the TAP run's decline on its own labelled line", () => {
-    const t = run.tiles.find((x) => x.label.startsWith("Metal refused"))!;
-    // At a limit: Metal at the cap; the payment refused because its mandate had just been replaced is told apart.
+  it("counts all of the main run's stops, by who stopped them; the TAP run's decline on its own labelled line (Max, 5 Nov)", () => {
+    const t = run.tiles.find((x) => x.href === "proof#stops")!;
+    // The rails' own counts (the partner pages): Metal at the cap, and the purchase refused because its mandate had
+    // just been replaced, each one attempt once.
     const st = stops(record);
     expect(st.revoked).toBe(record.snapshot.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length);
     expect([st.metal, st.cfo, st.airwallex, st.revoked, st.tapDeclines]).toEqual([1, 1, 0, 1, 1]);
-    // Max, 5 Nov: a big "1 + 1" with his sentence under it, both from stops().
-    expect(t.value).toBe("1 + 1");
-    expect(t.label).toBe("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal.");
+    // The stops: every refusal row of the record, by who stopped it, adding up to its own count.
+    const story = stopStory(record);
+    expect(story).toEqual({ total: 16, claude: 12, metal: 2, metalCap: 1, metalReplaced: 1, cfo: 1, planted: 1, other: 0, overLimitEur: "0.00" });
+    expect(story.claude + story.metal + story.cfo + story.planted + story.other).toBe(record.snapshot.counts.blocked);
+    expect(record.snapshot.refusals).toHaveLength(record.snapshot.counts.blocked);
+    expect(story.metal).toBe(record.proof.chain_refusals);
+    expect(story.metalCap + story.metalReplaced).toBe(story.metal);
+    expect([story.metalCap, story.metalReplaced]).toEqual([st.metal, st.revoked]);
+    expect(story.cfo).toBe(record.snapshot.decisions.filter((d) => d.status === "REJECTED").length);
+    expect(story.planted).toBe((record.proof as { ai_tricks: number }).ai_tricks);
+    // Max, 5 Nov: "16 stops" with "nothing paid over a limit" under it, and the sentence.
+    expect([t.value, t.label]).toEqual(["16 stops", "nothing paid over a limit"]);
+    expect(t.explain).toBe(stopsLine(story));
     expect(t.parts).toBeUndefined();
     // Not inside the card: its own row, labelled as the separate test it was (agent X's review, 4 Nov).
     expect(t.note).toBeUndefined();
@@ -121,9 +132,9 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
       expect(html).not.toContain("Separate test, 2 November");
       expect(html).not.toContain(`<span class="note">${TAP_LINE}</span>`);
     }
-    if (st.revoked) expect(t.tip).toMatch(/mandate had just been replaced/);
-    // At most two short lines on the card; the details in its tooltip.
-    expect(t.explain.length).toBeLessThanOrEqual(60);
+    // Metal's two in detail, in the tooltip.
+    expect(t.tip).toContain(`Metal's 2: ${metalDetail(story)}.`);
+    expect(metalDetail(story)).toBe("1 over the mandate's cap, 1 on a mandate that had just been replaced");
     expect(t.tip).not.toMatch(/fee_unknown|TAP/);
   });
 
@@ -244,28 +255,36 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     ["deck", deckHtml(packFacts(), shots, "")], ["docs/video-script.md", doc("docs/video-script.md")],
   ];
 
-  it("is 2 in the main run's record: Metal at the cap and the CFO's rejection; neither #37 nor the TAP run counted", () => {
-    expect(STOPPED).toBe(2);
+  it("is 16 in the main run's record, nothing paid over a limit; the TAP run not counted", () => {
+    expect(STOPPED).toBe(16);
+    expect(STOPPED).toBe(record.snapshot.counts.blocked);
     expect(tapLimitLine()).toBe(TAP_LINE);
     expect(packFacts().main.stopped).toBe(STOPPED);
+    expect(packFacts().main.stop_line).toBe(stopsLine(stopStory(record)));
   });
 
-  /** Every "Metal refused N purchase(s) over its cap; the CFO rejected M proposal(s)" in a text, as [N, M]. */
-  const said = (t: string) => [...t.matchAll(/Metal refused (\d+) purchases? over its cap; the CFO rejected (\d+) proposals?/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  const LINE = "16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
+  /** Every "N stops, …: Claude skipped A …, Metal refused B …, the CFO rejected C …, and D planted …" in a text, as [N, A, B, C, D]. */
+  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: Claude skipped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
 
-  it("is Max's sentence on the site, the claims and the video script, with the record's counts (5 Nov)", () => {
-    const st = stops(record);
-    expect(stopsLine(st)).toBe("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal.");
-    for (const [name, raw] of SOURCES.filter(([n]) => ["home", "proof", "docs/claims.md", "docs/video-script.md"].includes(n))) {
+  it("is one sentence on the site, the claims, the forms, the deck and the video script, with the record's counts (5 Nov)", () => {
+    const st = stopStory(record);
+    expect(stopsLine(st)).toBe(LINE);
+    expect([stopFigure(st), stopSub(st)]).toEqual(["16 stops", "nothing paid over a limit"]);
+    const want = [st.total, st.claude, st.metal, st.cfo, st.planted];
+    for (const [name, raw] of SOURCES) {
       const t = text(raw);
       const counts = said(t);
-      expect({ name, said: counts.length > 0, wrong: counts.filter(([m, c]) => m !== st.metal || c !== st.cfo) }).toEqual({ name, said: true, wrong: [] });
-      // The TAP run's decline is there, on its own labelled line, after the sentence.
-      expect({ name, line: t.includes(TAP_LINE) }).toEqual({ name, line: true });
-      expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(stopsLine(st)) }).toEqual({ name, after: true });
+      expect({ name, said: counts.length > 0, wrong: counts.filter((c) => c.join() !== want.join()) }).toEqual({ name, said: true, wrong: [] });
+      // The old sentence is gone (the claims keep it once, as what the row "was").
+      expect({ name, old: t.replace(/\b[Ww]as:? "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\."|"1 \+ 1" told too little/g, "").match(/over its cap; the CFO rejected|\b1 \+ 1\b/g)?.length ?? 0 }).toEqual({ name, old: 0 });
+      // The TAP run's decline is there, on its own labelled line, after the sentence (the deck leaves that other run
+      // out: it overrides the 4 Nov rule for the deck).
+      if (name === "deck") expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
+      else expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(LINE) }).toEqual({ name, after: true });
     }
-    // On the site's tiles, a big "1 + 1" with the sentence under it.
-    for (const [name, raw] of SOURCES.filter(([n]) => ["home", "proof"].includes(n))) expect({ name, tile: text(raw).includes(`${stopFigure(st)} ${stopsLine(st)}`) }).toEqual({ name, tile: true });
+    // On the site's tiles, a big "16 stops" with "nothing paid over a limit" under it, then the sentence.
+    for (const [name, raw] of SOURCES.filter(([n]) => ["home", "proof"].includes(n))) expect({ name, tile: text(raw).includes(`${stopFigure(st)} ${stopSub(st)}`) }).toEqual({ name, tile: true });
   });
 
   it("no longer says \"stopped at a limit\" anywhere it is shown (Max, 5 Nov)", () => {
@@ -273,19 +292,10 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, old: /stopped at a limit/i.test(text(body)) }).toEqual({ name, old: false });
   });
 
-  it("is said in words in the README, the submission README and the deck, with the same counts (Max, 5 Nov)", () => {
-    // Max's review round, 5 Nov: "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal." instead of the
-    // bare figure. The README and the form keep the TAP run's decline on its own labelled line after it; the deck
-    // leaves that other run out (it overrides the 4 Nov rule for the deck).
-    const st = stops(record);
-    const words = `Metal refused ${st.metal} purchase over its cap; the CFO rejected ${st.cfo} proposal`;
-    expect(st.metal + st.cfo).toBe(STOPPED);
-    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/README.md", "docs/submission/long-description.md", "deck"].includes(n))) {
-      const t = text(raw);
-      expect({ name, words: t.includes(words), figure: /\d+ stopped at a limit/i.test(t) }).toEqual({ name, words: true, figure: false });
-      if (name !== "deck") expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(words) }).toEqual({ name, after: true });
-      else expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
-    }
+  it("says Metal's two in detail where they are told: the README, the claims, the Proof page", () => {
+    const d = metalDetail(stopStory(record));
+    for (const [name, raw] of SOURCES.filter(([n]) => ["proof", "docs/claims.md"].includes(n))) expect({ name, detail: text(raw).includes(d) }).toEqual({ name, detail: true });
+    expect(text(doc("README.md"))).toMatch(/Metal's 2: 1 over the mandate's cap \(#24[^)]*\), 1 on a mandate that had just been replaced \(#37/);
   });
 
   it("tells the main run's card story in the README, the long form text and the deck; the decline only as the TAP run's line", () => {
@@ -322,7 +332,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   });
 
   it("would catch a stray 3 or 4", () => {
-    expect(said(text(doc("docs/claims.md").replace("Metal refused 1 purchase over its cap", "Metal refused 3 purchases over its cap")))).toContainEqual([3, 1]);
+    expect(said(text(doc("docs/claims.md").replace("Metal refused 2 purchases on chain", "Metal refused 3 purchases on chain")))).toContainEqual([16, 12, 3, 1, 1]);
   });
 });
 

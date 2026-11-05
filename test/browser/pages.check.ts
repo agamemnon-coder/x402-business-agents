@@ -178,15 +178,16 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(au)) fail(`/?autonomy ${tag}: not labelled as the main run`);
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
     if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
-    // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov): Metal once at the cap (not 3),
-    // Max's sentence for the stops, "1 + 1" in the pill (not "16 stops, all counted"), all Claude calls said as such,
-    // #24 refused by Metal itself.
-    for (const want of [/Metal's mandate check\s+1\b/, /In this run: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\./, /Refused and blocked\s+1 \+ 1 at a limit/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
+    // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov; Max, 5 Nov): Metal's 2 (not 3:
+    // #24 once, and #37), the stops in one sentence, "16 stops" in the pill, all Claude calls said as such, #24 refused
+    // by Metal itself.
+    const STOPS = /16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
+    for (const want of [/Metal's mandate check\s+2\b/, new RegExp(`In this run: ${STOPS.source}`), /Refused and blocked\s+16 stops/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
       if (!want.test(au)) fail(`/?autonomy ${tag}: missing ${want}`);
     }
     // The KPI's note (hidden on a phone, as every KPI note is) says the same sentence.
-    if (w >= 1000 && !/Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\. Not counted: [^.]*\. The amount is what stayed out for good/.test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say Max's sentence for the stops`);
-    for (const bad of [/all counted/, /stopped at a limit/i, /Metal's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
+    if (w >= 1000 && !new RegExp(`${STOPS.source} Metal's 2: [^.]*\\. The amount is what stayed out for good`).test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say the stops' sentence`);
+    for (const bad of [/all counted/, /stopped at a limit/i, /Metal's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/, /over its cap; the CFO rejected|\b1 \+ 1\b/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
     if (!(await page.isVisible("#mf"))) fail(`/?autonomy ${tag}: no money flow`);
     // Somewhere in the run a movement was decided by an agent's own Claude call: its caption names the model.
     let named = false;

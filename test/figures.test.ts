@@ -40,8 +40,7 @@ function expected(): Record<string, string | string[]> {
   const ownTap = ev.some((e) => e.event === "tap.checkout_verified") && ev.some((e) => e.event === "card.charge_approved");
   const revoked = s.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length;
   const tapDeclines = TAP.steps.filter((x) => !x.airwallex.approved && x.airwallex.failure_reason === "LIMIT_EXCEEDED").length;
-  const rejected = s.decisions.filter((d) => d.status === "REJECTED").length;
-  const awxDeclines = s.flows.filter((f) => f.refused?.by === "airwallex").length;
+  const stopRows = (s as unknown as { refusals: unknown[] }).refusals.length;
   const dispute = s.traces.find((t) => t.agent === "support" && t.task.startsWith("dispute"))!;
   const orders = new Set(dispute.steps.filter((x) => x.tool === "verify_order").map((x) => JSON.stringify(x.input))).size;
   const refunds = s.flows.filter((f) => f.kind === "refund" && !f.refused).length;
@@ -53,11 +52,10 @@ function expected(): Record<string, string | string[]> {
     [`decisions by Claude (${fallbacks} fallbacks)`]: [String(byClaude), `${byClaude}/${decisions}`],
     "routine payments by code": String(s.flows.filter((f) => !f.refused && (f.kind === "sale" || (f.kind === "upstream" && f.decided.startsWith("code")))).reduce((k, f) => k + n(f), 0)),
     "Face ID decisions": String(faceIds),
-    // The main run's own stops only; the separate TAP run's decline is a labelled line below it, not counted (Max, 4 Nov).
-    // Max, 5 Nov: a big "1 + 1" with his sentence under it, the counts in both; a card declined at a limit in this run
-    // would add "+ n" and its own clause.
-    [`Metal refused ${metalRefusals} purchase${metalRefusals === 1 ? "" : "s"} over its cap; the CFO rejected ${rejected} proposal${rejected === 1 ? "" : "s"}${awxDeclines ? `; Airwallex declined ${awxDeclines} card charge${awxDeclines === 1 ? "" : "s"} at its limit` : ""}.`]:
-      [metalRefusals, rejected, ...(awxDeclines ? [awxDeclines] : [])].join(" + "),
+    // The main run's stops, all of them (Max, 5 Nov): every refusal row of the record once, with "nothing paid over a
+    // limit" under the figure only when the record says so; the separate TAP run's decline is a labelled line below
+    // it, not counted (Max, 4 Nov). Counted here from the raw rows, not the record's own count.
+    [Number((R.proof as { over_limit_eur?: string }).over_limit_eur) === 0 ? "nothing paid over a limit" : "paid over a limit"]: `${stopRows} stops`,
     "Claude cost per decision": `$${(sum((a) => a.cost_usd_micros) / decisions / 1e6).toFixed(4)}`,
     "payments on chain": String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
     "refused by Metal at the cap": String(metalRefusals),
