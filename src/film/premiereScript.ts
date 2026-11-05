@@ -180,7 +180,7 @@ export function premiereReadAloud(data: PremiereData): string {
 }
 
 /** One table cell: Markdown that stays in its cell. */
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
+const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, "<br>");
 
 /** What a scene shows, in words, from the strings the page draws. */
 function onScreen(id: string, sc: Record<string, unknown>): string {
