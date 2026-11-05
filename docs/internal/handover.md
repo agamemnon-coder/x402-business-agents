@@ -7,7 +7,7 @@ history herschrijven; Max nooit om sleutels in de chat vragen.
 
 ## Wat af is (op main)
 
-- Main staat op `91df0b1` (PR #24, de pitch, gemerged op 5 nov). CI groen.
+- Main staat op `b64a75b` (PR #24, de pitch, en PR #25, de juror review, allebei gemerged op 5 nov). CI groen.
 - De site draait op https://kit11.max-31b.workers.dev (de Worker van main `94014cd`, deploy van 4 nov). Sindsdien heeft
   geen PR de Worker veranderd, dus er is geen nieuwe deploy nodig.
 - Het pakket voor de inzending: `docs/submission/` (README met de formuliertekst, release-notes, checklist-max,
@@ -17,8 +17,9 @@ history herschrijven; Max nooit om sleutels in de chat vragen.
 
 ## Wat open staat
 
-1. **De juror review (PR [#25](https://github.com/agamemnon-coder/x402-business-agents/pull/25), branch `pitch-review`).** Max' 20 punten over de pitch, de Q&A, het deck en de spiekkaart (alleen
-   tekst). Na groene CI mergen, op Max' ok.
+1. **De juror review is gemerged** ([#25](https://github.com/agamemnon-coder/x402-business-agents/pull/25)). Nog open:
+   "2 stopped at a limit" staat nog op de site-tegels, in `docs/claims.md`, `docs/video-script.md` en filmkaart
+   13. Vraag Max of daar ook zijn nieuwe zin moet komen; voor de site is dan een deploy nodig, op Max' ok.
 2. **Film v3** (branch `premiere-v3`, nog geen PR):
    - Klaar: de render met de intro, de Face ID-scène, de achtergrond, de grijze credits en de aftiteling; 3:12, 1080p60.
    - Max heeft de master met muziek gekregen (`purser-film-v3.mp4`, muziek A op −20 LUFS, doorlopend, op de beat).
@@ -85,6 +86,6 @@ Status: gebouwd, niets geboekt. Eén zin overal: "T:0 bookkeeping is built; post
 
 ## Open PR's op dit moment
 
-- [#25](https://github.com/agamemnon-coder/x402-business-agents/pull/25) `pitch-review`: de juror review (alleen tekst). Mergen na groene CI, op Max' ok.
-- `premiere-v3` (film v3): lokale commits nog niet gepusht (Max: niets pushen); daarna main mergen en een PR maken.
-- Branch `handover`: dit bestand, lokaal.
+- Geen open PR's (#25 is gemerged).
+- `premiere-v3` (film v3) staat gepusht op `ddbd66a`. In de sessie van 5 nov werkte nog een agent aan animatie-upgrades 1–4 (het architectuurplaatje met een lichtpuls, de prijslijn door de cap, count-ups, push-ins); die commits komen erbij als ze klaar zijn. Daarna main mergen en een PR maken.
+- Branch `handover`: dit bestand.
