@@ -131,6 +131,11 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
   mandate was in place; 1 refused `mandate_revoked` while the mandate was being replaced, #37);
 - 87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy, with no approval at the
   time; 86 of them on Metal (all but the card buy);
+- on Metal testnet, checked against the chain on 5 November: the 4 mandates bound at setup and the 2 replacements,
+  86 payments each with its own transaction, and 1 refusal on chain (#24,
+  [tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871)); no emulator
+  and no clearing in this run. The EUR licence and the card buy ran on the Airwallex sandbox; the other 13 refusals
+  (12 by the agent's buy policy, #37 during the replace) are in the ledger, not on chain;
 - 24 of 24 decisions by Claude, 0 fallbacks; 5 decisions signed with Face ID by the CFO (P-0001, P-0002, P-0004,
   P-0005, P-0006);
 - the books match the chain and Airwallex: `verify` passes; `reconcile` checked 88 (the 86 Metal payments, the SWIFT
