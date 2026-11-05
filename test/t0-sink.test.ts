@@ -75,6 +75,17 @@ describe("t0SinkOnce", () => {
     expect(lines.join("\n")).not.toContain(fake.key);
   });
 
+  it("a key T:0 rejects (401 CAPI11, as on 5 November) is logged and dropped: nothing posted, nothing recorded", async () => {
+    const lines: string[] = [];
+    const rejected = new T0Client({ apiKey: "t0-rejected-key", fetch: fake.fetch, retryDelayMs: 0 });
+    const r = await t0SinkOnce(db, { env: env({ T0_API_KEY: "t0-rejected-key" }), client: rejected, books: fixedBooks, log: (l) => lines.push(l) });
+    expect(r).toMatchObject({ ran: true, ok: false, error: expect.stringContaining("401 CAPI11") });
+    expect(fake.posts()).toBe(0);
+    expect(lines.join("\n")).toContain("ignored (the payment is not affected)");
+    expect(lines.join("\n")).not.toContain("t0-rejected-key");
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 't0_postings'").get()).toBeUndefined();
+  });
+
   it("stops before any post on a missing rate or a bad T0_RATES, and logs it", async () => {
     const usd = doubleEntry([line({ source: "opening", ref: "f", gl_account: "3000", bank_account: "1201", amount: "5.00", currency: "USD", agent: "", cost_centre: "" })]);
     const r = await t0SinkOnce(db, { env: env(), client, books: () => ({ balanced: true, postings: usd }) });

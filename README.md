@@ -83,13 +83,20 @@ merchant is ours.
 - **Live, in the main run:** the Airwallex sandbox calls and Metal testnet transactions above, the Claude decisions and
   the CFO's Face ID. Test money only. The sandbox simulates a SWIFT transfer's last steps (SENT, PAID), the merchant's
   card charge and the deposit that stands in for Metal earnings at Airwallex.
+- **On Metal testnet, checked against the chain on 5 November:** the 4 mandates bound at setup that morning and the
+  2 replacements; 86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep);
+  1 refusal recorded on chain (#24, [tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871)).
+  No emulator and no clearing in this run. Not on Metal: the EUR licence (FX, SWIFT) and the card buy, on the Airwallex
+  sandbox; the other 13 refusals (12 by the Sourcing agent's buy policy, #37 by Metal during the replace) are in the
+  ledger, not on chain.
 - **Run by us:** Summit Outfitters (the customer) and its agent, Stockline (the supplier), the TAP merchant.
 - **Replayed:** Home, Watch and Proof on the hosted site, and `npm run judge` offline, play the main run's record.
 - **Stand-ins:** the automated tests and the Scenario Lab (`/lab`) run on stand-ins for Airwallex, Metal and Anthropic.
 - **Your own test world:** `/try/sign` (live since 4 November 2026) runs each visitor's world on stand-in executors with
   fixed proposals; your passkey's signature and the server's check of it are real.
 - **Built, not yet live:** the Cardputer hub push and gate (a fake hub in the tests);
-  the T:0 books sink (the shared sandbox key cannot post, `403 CAPI71`); the emergency stop and `npm run smoke:sandbox`
+  the T:0 books sink (nothing posted: the shared sandbox key could not post, `403 CAPI71`; on 5 November T:0 refused
+  its new read-write key, `401 CAPI11`, [record](docs/runs/2026-11-05-t0-live.md)); the emergency stop and `npm run smoke:sandbox`
   (on stand-ins).
 
 **Other live tests (separate worlds, dated):** the TAP run (2 November), four eyes on chain, the compliance contract
