@@ -3,8 +3,8 @@
 **Purser in 2:42**, a premiere-style film made from the main run of 3 November 2026 (world `main-1`,
 [run log](../runs/2026-11-03-main-run.md)). Dark, large and slow, letterboxed to 2.39:1. Every figure on screen is read
 from the run's record by code, and the render stops when one is missing. Film v5, final cut (5 November): the
-voice-over is [voice-script-max.md](voice-script-max.md) read in an AI-generated voice (ElevenLabs), with AI-generated
-music (ElevenLabs); the end card credits both: “Voice-over: an AI-generated voice (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
+voice-over is [narrator-script.md](narrator-script.md) read by an AI-generated voice (ElevenLabs), a narrator in the
+third person, with AI-generated music (ElevenLabs); the film needs no recording of Max. The end card credits both: “Voice-over: an AI-generated voice (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
 The render has **no music and no audio track**, and the mix (voice, music, loudness) is done afterwards to the scene
 times in `scenes-v5.json`. The script with every picture, line and source is
 [premiere-script.md](premiere-script.md); the voice-over with its times is [script.md](script.md).
@@ -18,7 +18,7 @@ CRF 14, so small text stays crisp). The words are also in this folder.
 | File | What it is |
 |---|---|
 | `clips/01-hook.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip fades in and out over the background, which runs on the film's own clock, so in order the clips join seamlessly; the hook is on black. |
-| `overlays/08-faceid.png`, `overlays/11-turn.png`, `overlays/15-close.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for a recording laid over that scene. Put one on the track above the recording, for the scene's full length. |
+| `overlays/08-faceid.png`, `overlays/11-turn.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for a recording laid over that scene, should one ever be laid in (the final film lays in none). |
 | `master-v5.mp4` | **The deliverable picture:** all eighteen clips in order (2:42), no audio track, no burned-in subtitles. The closing (15) is the rendered ending, under the voice-over. |
 | `scenes-v5.json` | Each scene's `{id, start, end}` in seconds, for the mix (a copy is in this folder). |
 | `subtitles-v5.srt` | The voice-over as English subtitles, each line about half a second into its scene, for YouTube's captions (a copy is in this folder). Nothing is burned in. |
@@ -35,7 +35,7 @@ disagree; since 5 November the proof scene shows 24/24 and the run's stops, not 
 The times are the scenes' (`scenes-v5.json`); the music is cut to them afterwards. **The drop goes on the cut to
 `09-six.mp4` (1:14).**
 
-| Time | Clip | What | Recording slot |
+| Time | Clip | What | Recording slot (none in the final film) |
 |---|---|---|---|
 | 0:00 | `01-hook.mp4` | Black, a beat of silence, then “AI agents can now spend money.” slams in; at 3.2 s a hard cut to “So who signs off?”, a pen stroke drawn under it | |
 | 0:06 | `02-purser.mp4` | The wordmark Purser, a line drawn under it, and the core line in two lines | |
@@ -48,25 +48,25 @@ The times are the scenes' (`scenes-v5.json`); the music is cut to them afterward
 | 1:06 | `08-faceid.mp4` | P-0005's approval sheet, its exact terms; Face ID, then “Approved”, labelled as a reconstruction with the real Face ID's time (11:31:18 UTC) | |
 | 1:14 | `09-six.mp4` | 6 seconds from Face ID to PAID, counting up from the cut; “In the sandbox, the settlement is simulated.”; the transfer id; “Every id is on /proof” | |
 | 1:24 | `10-why.mp4` | Why Face ID, not a password | |
-| 1:34 | `11-turn.mp4` | A mock of the live /try/sign page | Optional: **Max on /try/sign** with `overlays/11-turn.png` (or keep the mock) |
+| 1:34 | `11-turn.mp4` | A mock of the live /try/sign page, labelled as a mock | |
 | 1:41 | `12-tamper.mp4` | +0.01, refused; a second of silence; “One cent. Worthless.” at 1:46 | |
 | 1:49 | `13-proof.mp4` | 24/24 decisions by Claude (1:49); the run's stops (1:51): the figure with “nothing paid over a limit”, then who stopped what in four rows, each as the voice names it | |
 | 2:02 | `13b-value.mp4` | “The agents do the work. The CFO signs only the exceptions.” | |
 | 2:06 | `14-real.mp4` | What's real, what's ours | |
-| 2:16 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (2:27); Max's name lower left | **Max on camera** with `overlays/15-close.png`, or his voice over this card |
+| 2:16 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (2:27); Max's name lower left; under the narrator's closing line | |
 | 2:29 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 2:33 the end credits (9 s, text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role); thank you to Airwallex, Metal, Anthropic and the hackathon organisers and mentors; the AI-generated voice and music; test money only; the end at 2:42 | |
 
 ## Recordings
 
-No recording is needed: the Face ID (08) is rendered, a reconstruction of P-0005's approval sheet labelled as one
-(“Reconstruction of the approval screen · the real Face ID was at 11:31:18 UTC (main run)”), and /try/sign (11) is a
-mock of the live page drawn from its code.
+No recording is needed, and nobody records a voice: the Face ID (08) is rendered, a reconstruction of P-0005's
+approval sheet labelled as one (“Reconstruction of the approval screen · the real Face ID was at 11:31:18 UTC (main
+run)”), and /try/sign (11) is a mock of the live page drawn from its code.
 
-1. **The voice-over:** an AI-generated voice (ElevenLabs), one file per scene, the lines in
-   [voice-script-max.md](voice-script-max.md), each placed about half a second into its scene ([script.md](script.md)
-   has the times). The closing (2:16) goes over `15-close.mp4`.
-2. **Optional: his own phone recordings.** `npm run video` still lays a portrait (9:16) recording into a rounded phone
-   frame beside the scene's captions, with its honesty label, and rebuilds the master:
+1. **The voice-over:** an AI-generated voice (ElevenLabs), the narrator, in the third person; one file per scene, the
+   lines in [narrator-script.md](narrator-script.md), each placed about half a second into its scene
+   ([script.md](script.md) has the times). The closing (2:16) goes over `15-close.mp4`.
+2. **Not used in the final film: a phone recording.** `npm run video` can still lay a portrait (9:16) recording into a
+   rounded phone frame beside the scene's captions, with its honesty label, and rebuild the master:
 
    ```sh
    npm run video -- 11-turn --slot 11-turn=<trysign.mov>
@@ -75,9 +75,8 @@ mock of the live page drawn from its code.
 
    `@<start>-<end>` (seconds) takes a window. A window longer than its scene plays faster to fit, and the scene says
    so (“shown at 1.25× speed”); a shorter one holds its last frame. Without a file the scene keeps its rendered
-   picture. For /try/sign (1:34, 7 s): his visit to the live page, signing with Face ID ([opnames-max.md](opnames-max.md),
-   2); the tamper and its refusal then play large in `12-tamper.mp4`. In an editor instead, put the recording above
-   the clip and the scene's overlay PNG above it, for the scene's full length.
+   picture, as the final film does. In an editor instead, put the recording above the clip and the scene's overlay
+   PNG above it, for the scene's full length.
 
 ## Music
 
@@ -95,10 +94,9 @@ Not in this render: the mix session adds it to `scenes-v5.json`.
 
 1. New project; in Project Settings set the timeline to 1920×1080 and 60 frames a second **before** importing.
 2. Import `master-v5.mp4` on V1 (or the eighteen clips in order).
-3. Optional: Max on camera on V2 at 2:16 with `overlays/15-close.png` on V3, for the scene's full 13 s.
-4. The voice files on A1 at the times in [script.md](script.md); the music on A2, lowered under the voice.
-5. No subtitles in the picture: give YouTube the `.srt` (below).
-6. Deliver: the YouTube 1080p preset, H.264, 60 frames a second, at a high bitrate (the small text must stay crisp),
+3. The voice files (the narrator, ElevenLabs) on A1 at the times in [script.md](script.md); the music on A2, lowered under the voice.
+4. No subtitles in the picture: give YouTube the `.srt` (below).
+5. Deliver: the YouTube 1080p preset, H.264, 60 frames a second, at a high bitrate (the small text must stay crisp),
    and check the length: 2:42, under three minutes.
 
 **CapCut** (desktop or phone): a 1080p, 60 fps project; `master-v5.mp4` (or the clips in order) on the main track; a
@@ -121,7 +119,7 @@ AI-generated (ElevenLabs)”.
 `src/film/premiere.ts` reads every figure from `docs/demo/main-run.json` (and the test count from the README's test
 line, and the /try/sign mock's figures from that page's code) and stops when one is missing; `src/film/premiere.html`
 draws each scene from those strings and types in no figure of its own; `src/film/premiereScript.ts` holds the scenes'
-times; the voice-over is the script in voice-script-max.md, read by premiere.ts and checked against the record. `npm run video` (`src/cli/video.ts`) plays the page on a virtual
+times; the voice-over is the narrator's script in narrator-script.md, read by premiere.ts and checked against the record. `npm run video` (`src/cli/video.ts`) plays the page on a virtual
 clock, one frame every 1/60 s, so every clip is exactly its length at 60 frames a second. `test/premiere.test.ts`
 counts the figures again from the record and fails on a difference, a missing figure, a figure typed into the page,
 or a file in this folder that the code would write differently.
@@ -134,6 +132,7 @@ edges), text only, no logos. Every text colour is WCAG AA over the brightest poi
 test computes it), and the corner credits 4.6:1 on the black bar.
 
 Earlier drafts (`hybrid-script.md`, `script-v0.md`, `review-2026-11-02.md`) are kept for the record; the premiere
-replaces them. Max's own wording for the opening and the closing is in [max-opening-close.md](max-opening-close.md).
+replaces them, and so does the narrator script for [max-opening-close.md](max-opening-close.md), an early plan for Max
+to say the opening and the closing on camera.
 The earlier animated film of the 30 October recording still renders with `npm run video -- --film` (into
 `out/video/film/`); it is not the submission video.

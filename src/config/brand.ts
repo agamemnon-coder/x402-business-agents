@@ -26,8 +26,11 @@ export const KIT_LINE = `Kit 11 · x402 Business Agents · entered for the Metal
 export const HOME_BADGE = `Kit 11 · Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""} · built on Airwallex, Metal, Claude`;
 /** D3, in one sentence: who decides what. */
 export const SPLIT_LINE = "Claude decides the exceptions; routine buying and selling per query is code.";
-/** Home's heading (jury review, 4 Nov): no absolute claim; the CFO sets the limits, and the three layers below hold them. */
-export const HERO = "AI agents that run a business. Inside limits the CFO sets.";
+/**
+ * Home's heading (Max, 5 Nov: as the film and the social preview say it). No absolute claim: the core sentence under it
+ * says who holds which limit, and that the CFO approves anything beyond them.
+ */
+export const HERO = "AI agents spend. You sign off.";
 /**
  * The core sentence (jury review, 4 Nov), word for word, wherever the story is told in one line: who holds which
  * limit. Never "enforce every limit": the refund, FX and other thresholds are held by Purser's own code.

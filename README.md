@@ -1,10 +1,10 @@
 # Purser
 
 **Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.**
-**[Sign one yourself](https://kit11.max-31b.workers.dev/try/sign)** · Film, 3 minutes: <!-- VIDEO-LINK -->_the link is
+**[Sign one yourself](https://kit11.max-31b.workers.dev/try/sign)** · Film, 2:42: <!-- VIDEO-LINK -->_the link is
 added on submission day_ · [The run, replayed](https://kit11.max-31b.workers.dev/watch)
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2363 passing](https://img.shields.io/badge/tests-2363%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2365 passing](https://img.shields.io/badge/tests-2365%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
 small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
@@ -131,7 +131,7 @@ npm test          # the full suite, on stand-ins
 npm run judge     # the main run's replay, the CFO dashboard and the Scenario Lab, offline
 ```
 
-**2363 tests in 248 files, all passing** (`npx vitest run`, 5 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
+**2365 tests in 248 files, all passing** (`npx vitest run`, 5 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
 every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/run-it.md).
 
 ## Words

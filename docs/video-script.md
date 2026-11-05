@@ -5,8 +5,8 @@ table with every picture, line on screen, voice-over line and the source of each
 main run of 3 November 2026 (world `main-1`, [run log](runs/2026-11-03-main-run.md)). Test money throughout.
 
 - How to cut it, which clip goes where, and where the music hits and goes silent: [docs/video/README.md](video/README.md).
-- What Max records (his Face ID, the opening and the closing line, signing on `/try/sign`): [docs/video/opnames-max.md](video/opnames-max.md).
-- The voice-over with its times: [docs/video/script.md](video/script.md); the subtitles: `docs/video/subtitles.srt`.
+- The voice-over: an AI-generated voice (ElevenLabs), a narrator in the third person, reading [docs/video/narrator-script.md](video/narrator-script.md); the music is AI-generated (ElevenLabs). The film needs no recording of Max.
+- The voice-over with its times: [docs/video/script.md](video/script.md); the subtitles: `docs/video/subtitles-v5.srt`.
 
 The film is rendered by `npm run video` from `src/film/premiere.ts`, which reads every figure from the run's record
 (`docs/demo/main-run.json`) and stops when one is missing; `test/premiere.test.ts` counts each figure again from the

@@ -1,4 +1,4 @@
-// The premiere (docs/video/premiere-script.md): Purser in a little over three minutes, a premiere-style film made from the main
+// The premiere (docs/video/premiere-script.md): Purser in 2:42, a premiere-style film made from the main
 // run of 3 November (docs/demo/main-run.json). Every number on screen and in the voice-over is read here, through
 // code, each with where it comes from: the run's record for everything about the run, the README's test line for the
 // test count, and the /try/sign page's own code for its mock. A number that cannot be found stops the build, so the
@@ -46,8 +46,10 @@ export interface MainRun {
 /** A figure the film shows or says, with where it comes from (the source column of the script). */
 export interface Fact { value: string; source: string }
 
-/** One line of the voice-over: when it starts (seconds into its scene), who says it, the words. */
-export interface VoiceLine { at: number; who: "Max" | "Voice"; text: string }
+/** Who reads the voice-over in the final film: an AI-generated voice (ElevenLabs), in the third person. */
+export const NARRATOR = "Narrator (AI voice, ElevenLabs)";
+/** One line of the voice-over: when it starts (seconds into its scene), who says it, the words, how long it takes. */
+export interface VoiceLine { at: number; who: typeof NARRATOR; text: string; seconds: number }
 
 export interface PremiereData {
   facts: Record<string, Fact>;
@@ -104,8 +106,8 @@ export function testBadge(readme: string): string | null {
   return /badge\/tests-(\d+)%20passing/.exec(readme)?.[1] ?? null;
 }
 
-/** Max's voice-over (docs/video/voice-script-max.md): each scene's line, as the script's table has it. */
-export const VOICE_SCRIPT_FILE = "docs/video/voice-script-max.md";
+/** The narrator's voice-over (docs/video/narrator-script.md): each scene's line, as the script's table has it. */
+export const VOICE_SCRIPT_FILE = "docs/video/narrator-script.md";
 export function voiceScript(md: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const row of md.split("\n")) {
@@ -359,13 +361,14 @@ export const SCENE_SECONDS: Record<string, number> = {
   "08-faceid": 8, "09-six": 10, "10-why": 10, "11-turn": 7, "12-tamper": 8, "13-proof": 13, "13b-value": 4, "14-real": 10, "15-close": 13, "16-end": 13,
 };
 
-/** How long a line takes at Max's calm pace, about 2.5 words a second (to the hundredth). */
+/** How long a line takes at the narrator's calm pace, about 2.5 words a second (to the hundredth). */
 export const speechSeconds = (text: string) => Math.round((text.split(/\s+/).filter(Boolean).length / 2.5) * 100) / 100;
 
 /**
  * A scene's line from the voice script, timed in its scene: it starts about 0.5 s in, and each "…" is a pause of about
  * 0.5 s ("… …" is the second of silence before "One cent. Worthless."). When the line is long for its scene, the pauses
- * shrink to a quarter second and then the line starts earlier; a line that still does not fit stops the build.
+ * shrink to a quarter second and then the line starts earlier; a line still too long at the scene's very start is read a
+ * little faster, at most 3 words a second (13b-value: eleven words in 4 s); one that still does not fit stops the build.
  */
 export function timeLine(id: string, line: string, seconds: number): VoiceLine[] {
   const parts: { text: string; pauses: number }[] = [];
@@ -384,10 +387,17 @@ export function timeLine(id: string, line: string, seconds: number): VoiceLine[]
   // The second of silence before "One cent. Worthless." is the scene's own; it never shrinks.
   if (end() > seconds - 0.05 && id !== "12-tamper" && n) p = Math.max(0.25, (seconds - 0.05 - s0 - speech) / n);
   if (end() > seconds - 0.05) s0 = Math.max(0, Math.round((seconds - 0.05 - speech - n * p) * 100) / 100);
-  if (end() > seconds + 1e-9) throw new Missing(`premiere: the voice script's ${id} line takes ${speech.toFixed(1)} s to say; its scene is ${seconds} s`);
+  // Too long even from the scene's start: read faster, to end 0.05 s before the cut, never faster than 3 words a second.
+  const words = parts.reduce((k, x) => k + x.text.split(/\s+/).filter(Boolean).length, 0);
+  let rate = 1;
+  if (end() > seconds + 1e-9) rate = speech / (seconds - 0.05 - s0 - n * p);
+  if (rate !== 1 && (rate < 1 || words / (speech / rate) > 3 + 1e-9)) throw new Missing(`premiere: the voice script's ${id} line takes ${speech.toFixed(1)} s to say; its scene is ${seconds} s`);
   const out: VoiceLine[] = [];
   let at = s0;
-  for (const x of parts) { at += x.pauses * p; out.push({ at: Math.round(at * 100) / 100, who: "Max", text: x.text }); at += speechSeconds(x.text); }
+  for (const x of parts) {
+    const said = Math.round((speechSeconds(x.text) / rate) * 100) / 100;
+    at += x.pauses * p; out.push({ at: Math.round(at * 100) / 100, who: NARRATOR, text: x.text, seconds: said }); at += said;
+  }
   return out;
 }
 
@@ -521,12 +531,12 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     },
     "15-close": {
       // The ending mirrors the intro (Max, 5 November): the three beats one by one, short and large; the closing line
-      // in three short sentences on two lines, Max's spoken words; then the intro's wordmark lockup.
+      // in three short sentences on two lines, the narrator's words; then the intro's wordmark lockup. Max's name and
+      // role lower left.
       beats: ["A price shock.", "A dispute.", "A euro bill."],
       line: ["Claude decided. Airwallex and Metal held the limits.", "The CFO signed only what went beyond them."],
       title: "Purser", sub: "Starter Kit 11",
       name: "Max Geurtsen", role: "Purser · Starter Kit 11",
-      slot: "Recording slot · Max on camera, or his voice over this card",
     },
     "16-end": {
       cta: "Try it yourself", url: TRY_SIGN_URL, foot: "Test money only: the Airwallex sandbox and Metal testnet.",
@@ -537,14 +547,14 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     },
   };
 
-  // The voice-over: Max's script (docs/video/voice-script-max.md), word for word, each line timed in its scene. Every
+  // The voice-over: the narrator's script (docs/video/narrator-script.md), word for word, each line timed in its scene. Every
   // figure it says must be the record's: a script that says another stops the build.
   const lines = voiceScript(script);
   const dollars = (k: string) => need(/^(\d+)\.00$/.exec(v(k))?.[1], `${k} in whole dollars`);
   const says: Record<string, string[]> = {
     "01-hook": ["AI agents can now spend money.", "So who signs off?"],
-    "02-purser": ["I'm Max Geurtsen, and this is Purser."],
-    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card and its own Metal mandate"],
+    "02-purser": ["This is Purser, built by Max Geurtsen."],
+    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card, and its own Metal mandate"],
     "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price, past the Sourcing agent's cap`, "Metal refused it"],
     "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID"],
     "06-metal": [`${cap1(said("metal.payments"))} of them`, "No emulator"],
@@ -554,7 +564,7 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     "13-proof": [`${v("specs.byClaude") === v("specs.decisions") ? "All" : `${cap1(said("specs.byClaude"))} of`} ${said("specs.decisions")} decisions by Claude`,
       `${cap1(said("specs.stops"))} stops, ${v("specs.overLimit")} paid over a limit`, `${said("specs.stopsClaude")} skipped by Claude`, `${said("specs.stopsMetal")} refused by Metal`,
       `${said("specs.stopsCfo")} rejected by the CFO`, `${said("specs.stopsPlanted")} planted ${n("specs.stopsPlanted") === 1 ? "instruction" : "instructions"} ignored`],
-    "13b-value": ["The agents do the work."],
+    "13b-value": ["The agents do the work. The CFO signs only the exceptions."],
     "15-close": [CLOSING[0], `${CLOSING[1]} ${CLOSING[2]}`, CLOSING[3]],
   };
   const voice: PremiereData["voice"] = {};
@@ -596,7 +606,7 @@ export const THANKS = "Thank you to Airwallex, Metal, Anthropic, and the hackath
 /** Purser's core line (the README's first line), word for word, in the two lines the wordmark shows it. */
 export const CORE_LINE = ["Claude explains and proposes, the rules in code hold every limit,", "and a person signs before money moves beyond them."] as const;
 
-/** The closing line (docs/video/voice-script-max.md, 15-close), in the lines the fallback card shows. */
+/** The closing line (docs/video/narrator-script.md, 15-close), in the lines the closing card shows. */
 export const CLOSING = ["A price shock, a dispute, a euro bill.", "Claude decided, Airwallex and Metal held the limits,", "and the CFO signed only what went beyond them.", "Purser. Starter Kit 11."] as const;
 
 // ---- The page ----

@@ -300,13 +300,13 @@ describe("the QR code to /try/sign", () => {
 
 describe("the hook (Max, 5 November): \"So who signs off?\"", () => {
   it("says the same hook everywhere, and nowhere the old pen", () => {
-    const film = ["src/film/premiere.ts", "src/film/premiere.html", "src/film/premiereScript.ts", "src/film/film.html", "src/film/script.ts", "docs/video/voice-script-max.md", "docs/video/script.md", "docs/video/subtitles-v5.srt"].map(read).join("\n");
+    const film = ["src/film/premiere.ts", "src/film/premiere.html", "src/film/premiereScript.ts", "src/film/film.html", "src/film/script.ts", "docs/video/narrator-script.md", "docs/video/script.md", "docs/video/subtitles-v5.srt"].map(read).join("\n");
     for (const [name, text] of [...Object.entries(SOURCES), ["film", film], ["live", read("src/live/timeline.ts")]] as const) {
       expect({ name, pen: /holds? the pen|keeps the pen/i.test(text) }).toEqual({ name, pen: false });
     }
     expect(TEXT.deck).toContain("AI agents can now spend money. So who signs off?");
     expect(TEXT.pitch).toContain("So who signs off?");
-    expect(read("docs/video/voice-script-max.md")).toContain("AI agents can now spend money. … So who signs off?");
+    expect(read("docs/video/narrator-script.md")).toContain("AI agents can now spend money. … So who signs off?");
   });
 });
 

@@ -79,7 +79,7 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(statuses.map((e) => [e.actor, e.payload.status])).toEqual([["awx-executor", "SENT"], ["awx-executor", "PAID"]]);
     expect(read("src/executors/invoicePayment.ts")).toMatch(/async function settleInSandbox[\s\S]*?for \(const to of \["SENT", "PAID"\] as const\)[\s\S]*?sim\.transitionTransfer/);
     expect(read("src/airwallex/adapter.ts")).toContain("/simulation/transfers/${id}/transition");
-    // On screen, as a line of its own, and in the footnote; in the voice-over, Max's three lines as written.
+    // On screen, as a line of its own, and in the footnote; in the voice-over, the narrator's line as written.
     expect(screen("09-six")).toMatchObject({ simulated: "In the sandbox, the settlement is simulated.", look: "Every id is on /proof", where: "kit11.max-31b.workers.dev/proof" });
     expect(screen("09-six").foot).toBe("Purser moved the transfer to SENT and then PAID itself, through Airwallex's sandbox simulation API. Test money.");
     const s9 = timeline.find((s) => s.id === "09-six")!;
@@ -164,16 +164,21 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(log).toContain("| 11:24:07 | Treasury's options | P-0002 (A, recommended: cap 0.04, price 0.05) and P-0003 (B, price 0.07). Total stays 20.00. |");
     expect(log).toMatch(/\| 11:26:28 \/ 11:26:46 \| Four eyes \| Max signed P-0002 \(1 of 2\)/);
     // The voice says the record's total; a script that says another stops the build.
-    expect(data.voice["05b-treasury"]![0]!.text).toBe("Treasury proposes two ways to stay within the same twenty dollars. I pick one, with Face ID.");
-    expect(() => buildPremiere(raw(), README, read("docs/video/voice-script-max.md").replace("same twenty dollars", "same thirty dollars"))).toThrow(/05b-treasury line does not say "within the same twenty dollars"/);
+    expect(data.voice["05b-treasury"]![0]!.text).toBe("Treasury proposes two ways to stay within the same twenty dollars. The CFO picks one, with Face ID.");
+    expect(() => buildPremiere(raw(), README, read("docs/video/narrator-script.md").replace("same twenty dollars", "same thirty dollars"))).toThrow(/05b-treasury line does not say "within the same twenty dollars"/);
     const broken = raw();
     broken.ledger.proposals = broken.ledger.proposals.filter((x) => x.proposal_id !== "P-0003");
     expect(() => buildPremiere(broken, README)).toThrow(/option B/);
   });
 
-  it("the value line (v5, 13b): the agents do the work; on screen the CFO, in Max's voice I", () => {
+  it("the value line (v5, 13b): the agents do the work; the CFO, on screen and in the narrator's voice alike", () => {
     expect(screen("13b-value")).toEqual({ line: ["The agents do the work.", "The CFO signs only the exceptions."] });
-    expect(data.voice["13b-value"]!.map((l) => l.text)).toEqual(["The agents do the work. I sign only the exceptions."]);
+    expect(data.voice["13b-value"]!.map((l) => l.text)).toEqual(["The agents do the work. The CFO signs only the exceptions."]);
+    // Eleven words in 4 s: read a little faster than the calm pace, from the scene's start, never over 3 words a second.
+    const [l] = data.voice["13b-value"]!;
+    expect([l!.at, l!.seconds]).toEqual([0, 3.95]);
+    expect(11 / l!.seconds).toBeLessThanOrEqual(3);
+    expect(() => buildPremiere(raw(), README, read("docs/video/narrator-script.md").replace("The CFO signs only the exceptions. |", "The CFO signs only the exceptions. Every one of them, today. |"))).toThrow(/13b-value line takes/);
   });
   it("the stops card (Max, 5 November, second round: \"1 + 1\" told too little): the run's stops, who stopped what, nothing paid over a limit", () => {
     // Counted again here from the raw record: the refusal rows by who stopped them, the record's own count and proof.
@@ -224,7 +229,7 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(spoken(24)).toBe("twenty-four");
     expect(spoken(86)).toBe("eighty-six");
     expect(() => spoken(120)).toThrow();
-    const script = read("docs/video/voice-script-max.md");
+    const script = read("docs/video/narrator-script.md");
     for (const [from, to, id] of [["Eighty-six of them", "Eighty-five of them", "06-metal"], ["disputes twelve orders", "disputes eleven orders", "07-dispute"], ["Six seconds later", "Five seconds later", "09-six"], ["All twenty-four", "Twenty of twenty-four", "13-proof"], ["Sixteen stops", "Fifteen stops", "13-proof"], ["twelve skipped by Claude", "eleven skipped by Claude", "13-proof"], ["two refused by Metal", "one refused by Metal", "13-proof"]] as const) {
       expect(() => buildPremiere(raw(), README, script.replace(from, to))).toThrow(new RegExp(`${id} line does not say`));
     }
@@ -246,7 +251,7 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(agents.find((a) => a.id === "treasury")!.job).toContain("Airwallex FX and SWIFT");
     expect(r.ledger.proposals.filter((p) => p.created_by === "treasury").map((p) => p.kind)).toContain("mandate_replace");
     expect(screen("03-agents")).toMatchObject({ head: "Three Claude agents run a small company's money.", cardLabel: "Its own Airwallex card", mandateLabel: "Its own Metal mandate", note: "Each agent's limits as the run began · test money", limits: "The rails and the code hold the limits." });
-    expect(data.voice["03-agents"]!.map((l) => l.text)).toEqual(["Three Claude agents run a small company that sells live stock data. Each has its own Airwallex card and its own Metal mandate."]);
+    expect(data.voice["03-agents"]!.map((l) => l.text)).toEqual(["Three Claude agents run a small company that sells live stock data. Each has its own Airwallex card, and its own Metal mandate."]);
   });
 
   it("the intro's limits: each agent's own card and own mandate as the run began, the config's, as the record shows them", () => {
@@ -274,8 +279,8 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(CORE_LINE.join(" ")).toBe("Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.");
     expect(README).toContain(`**${CORE_LINE.join(" ")}**`);
     expect(screen("02-purser").core).toEqual(CORE_LINE);
-    // Max's spoken opening, word for word, from his script.
-    expect([...data.voice["01-hook"]!, ...data.voice["02-purser"]!].map((l) => l.text).join(" ")).toBe("AI agents can now spend money. So who signs off? I'm Max Geurtsen, and this is Purser.");
+    // The narrator's opening, word for word, from the script: in the third person, who built it.
+    expect([...data.voice["01-hook"]!, ...data.voice["02-purser"]!].map((l) => l.text).join(" ")).toBe("AI agents can now spend money. So who signs off? This is Purser, built by Max Geurtsen.");
     const page = read("src/film/premiere.html");
     expect(page).toContain('var h = put(L, E("div", "slam c", S.line), 0, 350);');
     expect(page).toMatch(/var Q = 3\.2;/);
@@ -399,8 +404,9 @@ describe("the premiere's script", () => {
     const order = ["09-six", "10-why", "11-turn", "12-tamper", "13-proof", "14-real", "15-close"].map((id) => timeline.findIndex((s) => s.id === id));
     expect([...order].sort((x, y) => x - y)).toEqual(order);
     for (const s of timeline) expect({ id: s.id, whole: Number.isInteger(s.start) && Number.isInteger(s.seconds) }).toEqual({ id: s.id, whole: true });
-    expect(PREMIERE_SCENES.filter((s) => s.kind === "slot").map((s) => s.id)).toEqual(["15-close"]);
-    expect(OVERLAYS).toEqual(["08-faceid", "11-turn", "15-close"]);
+    // The final film is the rendered clips only: no scene waits for a recording (5 November, the AI voice).
+    expect(PREMIERE_SCENES.filter((s) => s.kind === "slot" || s.slot).map((s) => s.id)).toEqual([]);
+    expect(OVERLAYS).toEqual(["08-faceid", "11-turn"]);
     // "AI-generated" only in the end card's credit for the voice and the music, nowhere else on screen.
     expect(JSON.stringify(data.screen).replace(String(screen("16-end").credit), "")).not.toMatch(/AI-generated|AI hook/);
   });
@@ -446,20 +452,22 @@ describe("the premiere's script", () => {
     for (const s of timeline) {
       const lines = data.voice[s.id] ?? [];
       lines.forEach((l, i) => {
-        const end = l.at + lineSeconds(l.text);
+        const end = l.at + l.seconds;
         const next = i + 1 < lines.length ? lines[i + 1]!.at : s.seconds;
         expect({ scene: s.id, line: l.text.slice(0, 30), fits: end <= next }).toEqual({ scene: s.id, line: l.text.slice(0, 30), fits: true });
       });
     }
   });
 
-  it("lets Max read the whole voice-over, his script word for word", () => {
-    for (const lines of Object.values(data.voice)) for (const l of lines) expect(l.who).toBe("Max");
-    const script = voiceScript(read("docs/video/voice-script-max.md"));
+  it("lets the narrator (an AI voice, ElevenLabs) read the whole voice-over, the script word for word, in the third person", () => {
+    for (const lines of Object.values(data.voice)) for (const l of lines) expect(l.who).toBe("Narrator (AI voice, ElevenLabs)");
+    // Nobody says "I", "my" or "me": the narrator is not Max.
+    expect(Object.values(data.voice).flat().map((l) => l.text).join(" ")).not.toMatch(/\b(I'm|my|me)\b|(^|\s)I[\s,]/);
+    const script = voiceScript(read("docs/video/narrator-script.md"));
     for (const [id, lines] of Object.entries(data.voice)) expect({ id, said: lines.map((l) => l.text).join(" ") }).toEqual({ id, said: script[id]!.replace(/\s*(?:…\s*)+/g, " ").trim() });
     expect(data.voice["15-close"]!.map((l) => l.text).join(" ")).toBe(CLOSING.join(" "));
     // Each line about half a second into its scene (a long one a little earlier).
-    for (const [id, lines] of Object.entries(data.voice)) expect({ id, early: lines[0]!.at <= 0.5 && lines[0]!.at >= (id === "13b-value" ? 0 : 0.3) }).toEqual({ id, early: true });
+    for (const [id, lines] of Object.entries(data.voice)) expect({ id, early: lines[0]!.at <= 0.5 && lines[0]!.at >= (id === "13b-value" || id === "08-faceid" ? 0 : 0.3) }).toEqual({ id, early: true });
   });
   it("times the subtitles in order, inside the film, carrying every word of the voice-over", () => {
     const cues = premiereSrt(data).trim().split(/\n\n/).map((c) => { const [, time, ...text] = c.split("\n"); const [a, b] = time!.split(" --> "); return { a: toSeconds(a!), b: toSeconds(b!), text: text.join(" ") }; });
@@ -493,13 +501,27 @@ describe("docs/video/ holds what the code writes", () => {
   // The film no longer shows the test count (13-proof is 24/24 and the stops, 5 November), so the script table does not
   // depend on the README's test line; the film still reads it and refuses to render when its badge disagrees.
   const table = read("docs/video/premiere-script.md");
-  const asWritten: PremiereData = buildPremiere(raw(), README, read("docs/video/voice-script-max.md"));
+  const asWritten: PremiereData = buildPremiere(raw(), README, read("docs/video/narrator-script.md"));
 
   it("premiere-script.md, subtitles-v5.srt and script.md: npm run video -- --docs writes them again", () => {
     expect(table).not.toMatch(/tests = `\d+`/);
     expect(table).toBe(premiereTable(asWritten));
     expect(read("docs/video/subtitles-v5.srt")).toBe(premiereSrt(asWritten));
     expect(read("docs/video/script.md")).toBe(premiereReadAloud(asWritten));
+  });
+
+  it("says the film's length and pace as the code has them, and its voice as what it is (5 November, the last round)", () => {
+    const words = voiceTimeline(asWritten).reduce((k, l) => k + l.text.split(/\s+/).length, 0);
+    const length = clock(premiereSeconds());
+    expect([words, length]).toEqual([319, "2:42"]);
+    expect(read("docs/claims.md")).toContain(`| Pace | The film is the premiere: ${words} words in ${length} (`);
+    expect(README).toContain(`· Film, ${length}: <!-- VIDEO-LINK -->`);
+    expect(read("docs/submission/checklist-max.md")).toContain(`de film duurt ${length}.`);
+    // The voice-over is an AI voice and the music AI-generated, both ElevenLabs; nowhere does Max voice the film.
+    const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/opnames-max.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",
+      "docs/submission/README.md", "docs/submission/release-notes.md", "docs/submission/checklist-max.md", "docs/video/premiere-script.md", "docs/video/script.md"];
+    for (const f of docs) expect({ f, max: /Max (records|reads|speaks|voices)\b|his (own )?voice|Max on camera|on Max's voice|\*\*Max:\*\*/i.test(read(f)) }).toEqual({ f, max: false });
+    for (const f of ["docs/video/README.md", "docs/video/narrator-script.md", "docs/submission/README.md", "docs/requirements-matrix.md"]) expect({ f, eleven: /AI-generated voice[^.]*ElevenLabs/.test(read(f).replace(/\s+/g, " ")) }).toEqual({ f, eleven: true });
   });
 
   it("the film itself reads the README's test line as it is now", () => {
@@ -710,7 +732,7 @@ describe("the premiere's animations (Max, 5 November): pulses, the price chart, 
   });
 });
 
-describe("Max's recordings, laid in by npm run video -- --slot", () => {
+describe("optional recordings (unused in the final film), laid in by npm run video -- --slot", () => {
   it("reads --slot with a window, and refuses what cannot work", () => {
     expect(parseSlotArgs(["13-proof", "--slot", "08-faceid=a b.mov@1.5-9", "--slot=11-turn=x.mp4", "--check"])).toEqual({
       slots: [{ id: "08-faceid", file: "a b.mov", from: 1.5, to: 9 }, { id: "11-turn", file: "x.mp4", from: null, to: null }], rest: ["13-proof", "--check"],

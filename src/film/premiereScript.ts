@@ -1,7 +1,8 @@
-// The premiere's script (film v5): its eighteen scenes in order, how long each runs, what the picture is, and which
-// scene is a recording slot Max fills (his closing line; his own Face ID and /try/sign recordings can still be laid in
-// with --slot). Max reads the whole voice-over (docs/video/voice-script-max.md); the music is mixed afterwards, to the
-// scene times in scenes-v5.json. The page (src/film/premiere.html)
+// The premiere's script (film v5, 2:42): its eighteen scenes in order, how long each runs and what the picture is. The
+// final film is the rendered clips only (a portrait phone recording can still be laid into 08 or 11 with --slot; the
+// final film uses none). The voice-over is the narrator's script (docs/video/narrator-script.md), read by an
+// AI-generated voice (ElevenLabs) in the third person; the music, AI-generated (ElevenLabs), is mixed afterwards, to
+// the scene times in scenes-v5.json. The page (src/film/premiere.html)
 // draws each scene for exactly its seconds; npm run video records one clip per scene from it and writes, from the same
 // data, the subtitles, the read-aloud script and the script table (docs/video/premiere-script.md), so the words, the
 // figures and the pictures cannot drift apart.
@@ -47,14 +48,13 @@ export const PREMIERE_SCENES: PremiereScene[] = [
   { id: "07-dispute", title: "The dispute", seconds: 10, kind: "render", music: "None in this render.",
     picture: "Twelve order chips, each checked “signed”; the three with wrong data turn “refunded”; the refund of the rest is stamped rejected with Face ID." },
   { id: "08-faceid", title: "Face ID", seconds: 8, kind: "render", music: "None in this render.", fade: [0.3, 0.3],
-    picture: "A rendered iPhone with P-0005's approval sheet, its exact terms and their hash from the record: “Confirm with Face ID” is pressed, the Face ID glyph scans, then “Approved”. A slow camera push-in on the phone. Labelled the whole time as a reconstruction, with the real Face ID's time. (A portrait recording of a real Face ID can still be laid in: `npm run video -- --slot 08-faceid=<file>@<start>-<end>`.)" },
+    picture: "A rendered iPhone with P-0005's approval sheet, its exact terms and their hash from the record: “Confirm with Face ID” is pressed, the Face ID glyph scans, then “Approved”. A slow camera push-in on the phone. Labelled the whole time as a reconstruction, with the real Face ID's time. The final film uses this reconstruction." },
   { id: "09-six", title: "6 seconds to PAID", seconds: 10, kind: "render", music: "None in this render; the drop goes on its cut.",
     picture: "The spec card: the seconds from Face ID to PAID, counting up to the record's figure from the cut, said plainly to be simulated in the sandbox; the five timestamps, SENT and PAID marked simulated; the transfer id; “Every id is on /proof”." },
   { id: "10-why", title: "Why Face ID, not a password", seconds: 10, kind: "render", music: "None in this render.",
     picture: "The question, then the answer in one sentence." },
   { id: "11-turn", title: "Your turn: /try/sign", seconds: 7, kind: "render", music: "None in this render.",
-    picture: "A mock of the live /try/sign page in a phone (drawn from its code) beside large captions; or Max's own portrait recording of the page in the same frame (`npm run video -- --slot 11-turn=<file>`; sped up to fit if longer, and then labelled so), or in an editor with the overlay `11-turn.png`.",
-    slot: "Max's iPhone: signing on the live /try/sign page (docs/video/opnames-max.md, 2); the rendered mock is the fallback" },
+    picture: "A mock of the live /try/sign page in a phone (drawn from its code) beside large captions, labelled as a mock. The final film uses this mock." },
   { id: "12-tamper", title: "One cent. Worthless.", seconds: 8, kind: "render", music: "None in this render; leave the second before “One cent. Worthless.” silent.", fade: [0, 0.45],
     picture: "A slow camera push-in: the amount changes by one cent, its hash changes completely, the same signature is refused; a second of silence; then “One cent. Worthless.”" },
   { id: "13-proof", title: "The proof", seconds: 13, kind: "render", music: "None in this render.", beats: [0, 2.6],
@@ -63,9 +63,8 @@ export const PREMIERE_SCENES: PremiereScene[] = [
     picture: "One large line: “The agents do the work. The CFO signs only the exceptions.”" },
   { id: "14-real", title: "What's real, what's ours", seconds: 10, kind: "render", music: "None in this render.",
     picture: "Two columns: real (test money) and ours or simulated." },
-  { id: "15-close", title: "Max's closing line", seconds: 13, kind: "slot", music: "None in this render.",
-    picture: "Max on camera with his name (overlay `15-close.png`), or his voice over the rendered ending, which mirrors the intro: the three beats one by one, the closing line in two lines, then the intro's wordmark lockup with “Starter Kit 11” under it.",
-    slot: "Max on camera, or his voice only (docs/video/opnames-max.md, 1)" },
+  { id: "15-close", title: "The closing line", seconds: 13, kind: "render", music: "None in this render.",
+    picture: "The rendered ending, under the narrator's closing line, mirrors the intro: the three beats one by one, the closing line in two lines, then the intro's wordmark lockup with “Starter Kit 11” under it; Max's name and role lower left." },
   { id: "16-end", title: "Try it yourself, and the credits", seconds: 13, kind: "render", music: "None in this render.", fade: [0.45, 1], credits: false,
     picture: "End card: “Try it yourself” and the /try/sign address, test money; after four seconds it gives way to the end credits (9 s, text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role), the thanks, the AI-generated voice and music, test money only." },
 ];
@@ -94,15 +93,16 @@ export function premiereBeats(data: PremiereData): Beat[] {
 
 /** The scenes in the master, in order. */
 export const MASTER_CLIPS = PREMIERE_SCENES.map((s) => s.id);
-/** The recording slots, each with its overlay (letterbox bars and label, a transparent PNG). */
-export const OVERLAYS = ["08-faceid", "11-turn", "15-close"] as const;
+/** The scenes a portrait recording can still be laid into, each with its overlay (letterbox bars and label, a
+ * transparent PNG). The final film lays in none. */
+export const OVERLAYS = ["08-faceid", "11-turn"] as const;
 
 /** The scene times for the mix (scenes-v5.json): each scene's id, start and end, in seconds. */
 export const scenesJson = () => premiereTimeline().map((s) => ({ id: s.id, start: s.start, end: s.start + s.seconds }));
 
 // ---- Words: a voice-over line lasts as long as it takes to say at an unhurried pace ----
 
-/** How long a line takes to say, at Max's calm pace (about 2.5 words a second). */
+/** How long a line takes to say, at the narrator's calm pace (about 2.5 words a second). */
 export const lineSeconds = speechSeconds;
 
 const stamp = (t: number) => {
@@ -141,7 +141,7 @@ export function voiceTimeline(data: PremiereData): { scene: string; who: VoiceLi
     const lines = data.voice[s.id] ?? [];
     lines.forEach((l, i) => {
       const next = i + 1 < lines.length ? s.start + lines[i + 1]!.at : s.start + s.seconds;
-      out.push({ scene: s.id, who: l.who, text: l.text, from: s.start + l.at, to: Math.min(next - 0.1, s.start + l.at + lineSeconds(l.text) + 0.4) });
+      out.push({ scene: s.id, who: l.who, text: l.text, from: s.start + l.at, to: Math.min(next - 0.1, s.start + l.at + l.seconds + 0.4) });
     });
   }
   return out;
@@ -175,13 +175,13 @@ export function premiereReadAloud(data: PremiereData): string {
   const lines = [
     `# Purser, the premiere: the voice-over (${clock(total)})`, "",
     "Generated by `npm run video` from `src/film/premiere.ts` (the words and figures) and `src/film/premiereScript.ts` (the times); the script with its pictures and sources is [premiere-script.md](premiere-script.md).",
-    `Each line starts at the time shown. ${words} words in ${clock(total)}: calm, with the silences left in. The final film reads every line, from [voice-script-max.md](voice-script-max.md), in an AI-generated voice (ElevenLabs), as the end card credits it; the times are the scenes' (scenes-v5.json), each line about half a second in.`, "",
+    `Each line starts at the time shown. ${words} words in ${clock(total)}: calm, with the silences left in. The narrator is an AI-generated voice (ElevenLabs), speaking in the third person; it reads every line of [narrator-script.md](narrator-script.md), and the music is AI-generated too (ElevenLabs), as the end card credits both. The times are the scenes' (scenes-v5.json), each line about half a second in.`, "",
   ];
   for (const s of premiereTimeline()) {
     const vs = data.voice[s.id] ?? [];
     lines.push(`## ${clock(s.start)} ${s.title} (${s.seconds} s, clip \`${s.id}.mp4\`)`, "");
     if (!vs.length) lines.push("*No voice-over.*", "");
-    for (const v of vs) lines.push(`- ${clock(s.start + v.at)}${v.who === "Max" ? " **Max:**" : ""} ${v.text}`);
+    for (const v of vs) lines.push(`- ${clock(s.start + v.at)} **${v.who}:** ${v.text}`);
     if (vs.length) lines.push("");
   }
   return lines.join("\n");
@@ -212,7 +212,7 @@ function onScreen(id: string, sc: Record<string, unknown>): string {
       .map((c) => (c.rows ? `**${c.figure}** · ${c.sub}: ${c.rows.map((r) => `**${r.big}** ${r.label}`).join(" | ")}` : `**${c.big}** ${c.label} (${c.small})`)).join("\n");
     case "13b-value": return `**${list(sc.line).join(" ")}**`;
     case "14-real": return `**${sc.realHead}** (${sc.realNote}): ${list(sc.real).join(", ")}\n**${sc.oursHead}:** ${list(sc.ours).join(", ")}`;
-    case "15-close": return `Fallback card: ${list(sc.beats).join(" / ")} → ${list(sc.line).join(" ")} → **${sc.title}** (the intro's wordmark) · ${sc.sub}\nName (on camera): ${sc.name} · ${sc.role}`;
+    case "15-close": return `${list(sc.beats).join(" / ")} → ${list(sc.line).join(" ")} → **${sc.title}** (the intro's wordmark) · ${sc.sub}\nLower left: ${sc.name} · ${sc.role}`;
     case "16-end": return `**${sc.cta}** · ${sc.url}\n${sc.foot}\n${sc.mark}\nEnd credits, ${sc.head}: ${(sc.roll as [string, string][]).map((r) => `**${r[0]}**: ${r[1]}`).join(" · ")} · ${sc.thanks} · ${q(sc.credit)} · ${sc.last}`;
     default: return "";
   }
@@ -235,13 +235,13 @@ export const factsUsed = (id: string) => USES[id] ?? [];
 
 /** No figure: where the scene's words come from instead. */
 const WORDS_FROM: Record<string, string> = {
-  "01-hook": "No figure. Max's opening (docs/video/max-opening-close.md).",
+  "01-hook": "No figure. The hook, as Max wrote it for the film (5 November).",
   "13b-value": "No figure. Max's line for the film (v5): the agents do the work, the CFO signs only the exceptions.",
-  "02-purser": "No figure. Max's opening (docs/video/max-opening-close.md); the core line under the wordmark is the README's first line, word for word.",
+  "02-purser": "No figure. Who built it, as the README's \"Who does what\" says; the core line under the wordmark is the README's first line, word for word.",
   "04-how": "No figure. The books: Purser's own double-entry books (src/accounting/); the film shows no booking in an outside accounting system.",
   "10-why": "No figure. The reason: docs/phone-approval.md (\"The passkey signs the SHA-256 of the exact terms … any change after signing makes it worthless\"); README.md, Words (\"the CFO's Face ID signs that hash\"). \"Password\", not \"PIN\": a passkey may itself be unlocked with the device's PIN, or Touch ID (README.md, Try it yourself); what counts is that it signs these exact terms, so the film does not say Face ID is required.",
   "14-real": "No figure. README.md, \"What is real, what is mock\"; docs/claims.md (the second approver: `SECOND_APPROVER` in src/config/brand.ts).",
-  "15-close": "No figure. The closing line (docs/video/voice-script-max.md, 15-close); what it says of the run: see the 13-proof and 05–09 rows, and the Face ID decisions below.",
+  "15-close": "No figure. The closing line (docs/video/narrator-script.md, 15-close); what it says of the run: see the 13-proof and 05–09 rows, and the Face ID decisions below.",
   "16-end": "No figure. The address: the hosted /try/sign (live since 4 November). The credits: who does what, as README.md (\"Who does what\") and docs/claims.md have it; the voice-over and the music of the final film, both AI-generated (ElevenLabs).",
 };
 
@@ -255,13 +255,13 @@ export function premiereTable(data: PremiereData): string {
     "at 1920×1080 and 60 frames a second, letterboxed to 2.39:1), writes the subtitles and the read-aloud script, and",
     "stops the build when a figure is missing from its source.", "",
     `One run only: the main run of 3 November 2026 in world \`main-1\` ([run log](../runs/2026-11-03-main-run.md)). Every figure about the run is read from its record, \`docs/demo/main-run.json\`; the test count from the README's test line; the /try/sign mock's figures from that page's own code. Test money throughout: the Airwallex sandbox and Metal testnet. Total ${clock(total)}.`, "",
-    "How to cut it, where the music goes and what Max records: [README.md](README.md) and [opnames-max.md](opnames-max.md).", "",
+    "How to cut it and where the music goes: [README.md](README.md). The voice-over is an AI-generated voice (ElevenLabs) reading [narrator-script.md](narrator-script.md) in the third person; the music is AI-generated (ElevenLabs); the film needs no recording of Max.", "",
     "| Time | Clip | Picture | Text on screen | Voice-over | Source of each figure |",
     "|---|---|---|---|---|---|",
   ];
   for (const s of premiereTimeline()) {
     const sc = data.screen[s.id] ?? {};
-    const vo = (data.voice[s.id] ?? []).map((v) => `${v.who === "Max" ? "**Max:** " : ""}${v.text}`).join("\n") || "—";
+    const vo = (data.voice[s.id] ?? []).map((v) => `**${v.who}:** ${v.text}`).join("\n") || "—";
     const used = factsUsed(s.id).map((k) => `${k.replace(/^\w+\./, "")} = \`${data.facts[k]!.value.length > 70 ? `${data.facts[k]!.value.slice(0, 67)}…` : data.facts[k]!.value}\`: ${data.facts[k]!.source}`);
     const src = used.length ? used.join("\n") : WORDS_FROM[s.id] ?? "";
     const pic = `${s.kind === "slot" ? "**Slot.** " : ""}${s.picture}${s.slot ? `\nRecording: ${s.slot}.` : ""}`;
@@ -272,7 +272,7 @@ export function premiereTable(data: PremiereData): string {
     `- **The stops (${data.facts["specs.stops"]!.value}, ${data.facts["specs.overLimit"]!.value} paid over a limit):** Claude ${data.facts["specs.stopsClaude"]!.value}, Metal ${data.facts["specs.stopsMetal"]!.value}, the CFO ${data.facts["specs.stopsCfo"]!.value}, the planted instruction ${data.facts["specs.stopsPlanted"]!.value}; the film stops when they do not add up to the record's count, or when Metal's differ from the record's refusals on chain. The site, the README and the form say the same sentence (\`test/premiere.test.ts\` compares it with \`src/redesign/run.ts\`). Not in the film, because it is another run's: the line the site shows below that figure, about the separate TAP run of 2 November.`,
     `- **The closing line** ("Claude decided, Airwallex and Metal held the limits, and the CFO signed only what went beyond them"): ${data.facts["specs.byClaude"]!.value} of ${data.facts["specs.decisions"]!.value} decisions by Claude; ${data.facts["run.faceIds"]!.value} decisions with Max's Face ID (${data.facts["run.faceIds"]!.source}).`,
     "- **The agents' limits (03b)** are each card's and each mandate's as the run began (src/config/policy.ts), checked against the record where it shows them; in the run the Sourcing agent's mandate was replaced (P-0002, 0.04 a payment) after the price rise, and its card raised to EUR 46.00 a purchase (P-0006).",
-    "- **Face ID (08) is a reconstruction:** the rendered approval sheet carries P-0005's exact terms from the record, and says on screen that it is a reconstruction and when the real Face ID was (the record's `proposal.approved`). Max's own recording of a real Face ID can still be laid in with `--slot`.",
+    "- **Face ID (08) is a reconstruction:** the rendered approval sheet carries P-0005's exact terms from the record, and says on screen that it is a reconstruction and when the real Face ID was (the record's `proposal.approved`).",
     "- **Face ID, not a password:** the reason is the docs' own (docs/phone-approval.md); \"password\", because a passkey may itself be unlocked with a PIN. The film does not say the server proves Face ID: /try/sign checks no attestation (docs/claims.md), so it says the server checks the signature.",
     "- **Kept out:** logos of others, any seal of approval, safety counts, and other runs' figures.", "");
   return lines.join("\n");

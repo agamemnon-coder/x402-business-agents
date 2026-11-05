@@ -8,27 +8,27 @@ So who signs off?
 
 3
 00:00:06,500 --> 00:00:09,650
-I'm Max Geurtsen, and this is Purser.
+This is Purser, built by Max Geurtsen.
 
 4
-00:00:10,500 --> 00:00:12,800
+00:00:10,500 --> 00:00:12,781
 Three Claude agents run a small
 
 5
-00:00:12,850 --> 00:00:15,453
+00:00:12,831 --> 00:00:15,413
 company that sells live stock data.
 
 6
-00:00:15,503 --> 00:00:19,850
-Each has its own Airwallex card and its own Metal mandate.
+00:00:15,463 --> 00:00:19,850
+Each has its own Airwallex card, and its own Metal mandate.
 
 7
-00:00:20,500 --> 00:00:23,406
+00:00:20,500 --> 00:00:23,279
 Inside its limits, an agent pays alone.
 
 8
-00:00:23,456 --> 00:00:27,650
-Beyond them, nothing moves until I sign the exact terms.
+00:00:23,329 --> 00:00:27,850
+Beyond them, nothing moves until the CFO signs the exact terms.
 
 9
 00:00:28,500 --> 00:00:32,870
@@ -43,12 +43,12 @@ We let one purchase through on purpose.
 Metal refused it, and the refusal is on chain.
 
 12
-00:00:40,500 --> 00:00:45,672
+00:00:40,500 --> 00:00:45,434
 Treasury proposes two ways to stay within the same twenty dollars.
 
 13
-00:00:45,722 --> 00:00:47,650
-I pick one, with Face ID.
+00:00:45,484 --> 00:00:47,850
+The CFO picks one, with Face ID.
 
 14
 00:00:48,500 --> 00:00:50,751
@@ -75,12 +75,12 @@ all signed by its own agent.
 Only the three with wrong data are refunded.
 
 20
-00:01:06,500 --> 00:01:10,109
-Anything beyond the limits comes to my phone.
+00:01:06,000 --> 00:01:09,787
+Anything beyond the limits goes to the CFO's phone.
 
 21
-00:01:10,159 --> 00:01:13,850
-I read the exact terms, and sign with Face ID.
+00:01:09,837 --> 00:01:13,850
+The CFO reads the exact terms, and signs with Face ID.
 
 22
 00:01:14,500 --> 00:01:17,505
@@ -95,16 +95,16 @@ invoice by SWIFT, in its sandbox.
 Every I.D. is published.
 
 25
-00:01:24,350 --> 00:01:26,847
+00:01:24,350 --> 00:01:26,826
 Why Face ID, and not a password?
 
 26
-00:01:26,897 --> 00:01:30,110
+00:01:26,876 --> 00:01:30,062
 A password is the same for every payment.
 
 27
-00:01:30,160 --> 00:01:33,850
-My passkey signs the hash of these exact terms.
+00:01:30,112 --> 00:01:33,850
+The passkey signs the hash of these exact terms.
 
 28
 00:01:34,500 --> 00:01:36,079
@@ -139,12 +139,12 @@ twelve skipped by Claude, two refused by Metal, one
 rejected by the CFO, and one planted instruction ignored.
 
 36
-00:02:02,000 --> 00:02:03,744
+00:02:02,000 --> 00:02:03,524
 The agents do the work.
 
 37
-00:02:03,794 --> 00:02:05,850
-I sign only the exceptions.
+00:02:03,574 --> 00:02:05,850
+The CFO signs only the exceptions.
 
 38
 00:02:06,500 --> 00:02:10,680

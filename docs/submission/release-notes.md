@@ -39,11 +39,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 5 November: the stops are said in one sentence everywhere ("Metal refused 1 purchase over its cap; the CFO rejected 1
   proposal."), and the form's Description is short (the long text is
   [long-description.md](long-description.md)). /try/sign stays within a phone's width after the tamper. The premiere
-  film (v5) runs 2:42 on Max's voice script; the hook is "So who signs off?". 2363 tests in 248 files, all passing.
+  film (v5) runs 2:42; the hook is "So who signs off?". 2363 tests in 248 files, all passing.
 - 5 November, later: the stops are the run's full story ("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing."), counted from the record's refusal
   rows and summed to its own count; the README and the form say who does what (what Max built, what Airwallex, Metal and
   Claude provide); the film's proof card shows the 16 stops, and its end card credits the AI-generated voice and music
   (ElevenLabs) and who does what. 2363 tests in 248 files, all passing.
+- 5 November, last: the film is 2:42 everywhere it is named, and its voice-over is what the end card says: an
+  AI-generated voice (ElevenLabs), a narrator in the third person (“This is Purser, built by Max Geurtsen.”), with
+  AI-generated music (ElevenLabs); the narrator's lines are `docs/video/narrator-script.md`, every figure in them still
+  checked against the record. Home's heading is the film's line, “AI agents spend. You sign off.”. 2365 tests in 248
+  files, all passing.
 
 ## Real, and ours
 

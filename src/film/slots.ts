@@ -1,4 +1,4 @@
-// Max's own recordings in the premiere (npm run video -- --slot 08-faceid=<file>[@<start>-<end>] --slot 11-turn=<file>):
+// Optional recordings in the premiere, unused in the final film (npm run video -- --slot 08-faceid=<file>[@<start>-<end>] --slot 11-turn=<file>):
 // portrait phone recordings, composed into a rounded phone frame beside the scene's captions. The page draws the scene
 // with an empty frame at the box below (?rec=x,y,w,h&recfor=<scene>); ffmpeg then lays the recording, cut to its
 // window, scaled to the box, its corners rounded by a mask, into that frame, fading with the scene. Without a file the

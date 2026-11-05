@@ -46,7 +46,7 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 |---|---|---|
 | **0:00 Hook** | AI agents can now spend money. | The film's first line (`01-hook`) |
 | | So who signs off? | The film (`01-hook`) |
-| | I'm Max Geurtsen, and this is Purser. | `docs/video/max-opening-close.md` |
+| | I'm Max Geurtsen, and this is Purser. | Max, live (the film's narrator, an AI voice, says “This is Purser, built by Max Geurtsen.”: `docs/video/narrator-script.md`) |
 | **0:15 Who and what** | Picture a small company that sells live stock data, per query. | `NORTHWIND_LINE`, `src/config/brand.ts` |
 | | Three Claude agents run it: Sourcing, Support and Treasury. | Record: `snapshot.agent_stats` (three agents) |
 | | Each has its own Airwallex card and its own Metal mandate. | README, third paragraph |

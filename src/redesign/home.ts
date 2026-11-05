@@ -10,6 +10,7 @@ import { esc, icon, page, stageHtml } from "./ui.js";
 const CSS = `.hero { padding: 24px 0 44px; }
 .hero .wrap { display: grid; gap: 20px; grid-template-areas: "copy" "stage" "act"; }
 .hero .copy { grid-area: copy; } .hero .show { grid-area: stage; min-width: 0; } .hero .act { grid-area: act; }
+.hero .h-hero { text-wrap: balance; }
 @media (min-width: 980px) { .hero { padding: 60px 0 76px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 600px); grid-template-areas: "copy stage" "act stage"; gap: 0 52px; align-items: center; } .hero .copy { align-self: end; } .hero .act { align-self: start; } }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .badges .pill.kit { background: var(--text); color: var(--bg); white-space: nowrap; }
