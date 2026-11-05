@@ -294,7 +294,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     },
     end: function (L) {
       var p = put(L, E("div", "h1", "Purser"), 140, 220); p.style.fontSize = "150px";
-      var s = put(L, E("div", "h2 muted", "Agents move at machine speed. The CFO keeps the pen."), 140, 420); s.style.width = "1500px";
+      var s = put(L, E("div", "h2 muted", "Agents move at machine speed. The CFO signs off."), 140, 420); s.style.width = "1500px";
       // "Powered by Claude" only for a recording in which the agents decided; the 30 October one predates them.
       var decided = d.claude === "decided";
       var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep")].concat(decided ? [E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])] : [E("span", "cl", null, [(function () { var i = logo("logo-claude.png", 34); i.alt = "Claude"; return i; })()]), E("span", "w", "read the documents")])), 140, 640);

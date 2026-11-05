@@ -8,7 +8,7 @@ Nothing below is built unless it says so. What is built is in the README and `do
 
 ## What stays the same at every step
 
-- **The CFO keeps the pen.** Agents propose; code checks; only the CFO's passkey approves what is over a limit.
+- **The CFO signs off.** Agents propose; code checks; only the CFO's passkey approves what is over a limit.
 - **Limits live in the rails, not in a prompt.** The card issuer, the payout rail or the chain refuses what the
   policy does not allow, whatever an agent says.
 - **Every movement of money has a proof and an approval** in a hash-chained audit log, coded to a GL account and a

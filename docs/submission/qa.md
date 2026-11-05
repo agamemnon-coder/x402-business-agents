@@ -10,7 +10,7 @@ not know: "Good question. I'll check and send it to you." Never guess.
 A password is the same for every payment; a passkey signs the hash of these exact terms, so changing one cent makes
 the signature worthless. The server checks that signature, not your face: it checks no attestation, so Face ID is what
 the phone asks for, not something we prove.
-*Source: `docs/phone-approval.md`; the note on `/try/sign` (`src/try/sign.ts`); the film's `12-why-face-id`.*
+*Source: `docs/phone-approval.md`; the note on `/try/sign` (`src/try/sign.ts`); the film's `10-why`.*
 
 **2. What happens if an agent lies, or gets a prompt injection?**
 Inside its limits a lying agent can spend at most its cap and budget; beyond them, nothing moves without a signature.

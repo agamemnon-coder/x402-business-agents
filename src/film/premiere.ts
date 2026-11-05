@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { FIXED_PROPOSALS, TEST_WORLD, canonical, checkPayment, proposalTerms } from "../../worker/src/trySign.js";
 import { TRY_SIGN_LABEL } from "../try/sign.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
+import { CARDS, INITIAL_MANDATES } from "../config/policy.js";
 
 /** The run the premiere tells, and nothing else. */
 export const MAIN_RUN_FILE = "docs/demo/main-run.json";
@@ -92,6 +93,22 @@ export function testLine(readme: string): { tests: string; files: string } {
   const m = /\*\*(\d[\d,]*) tests in (\d[\d,]*) files, all passing\*\*/.exec(readme);
   if (!m) throw new Missing("premiere: the README has no test line (\"**N tests in M files, all passing**\"); nothing is rendered without it");
   return { tests: m[1]!.replace(/,/g, ""), files: m[2]!.replace(/,/g, "") };
+}
+
+/** The README's tests badge ("badge/tests-2342%20passing"), when it has one: the film shows nothing it disagrees with. */
+export function testBadge(readme: string): string | null {
+  return /badge\/tests-(\d+)%20passing/.exec(readme)?.[1] ?? null;
+}
+
+/** Max's voice-over (docs/video/voice-script-max.md): each scene's line, as the script's table has it. */
+export const VOICE_SCRIPT_FILE = "docs/video/voice-script-max.md";
+export function voiceScript(md: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const row of md.split("\n")) {
+    const c = /^\| (\d\d[a-z]?-[a-z-]+) \| [^|]* \| ([^|]+) \| [^|]* \|$/.exec(row.trim());
+    if (c) out[c[1]!] = c[2]!.trim();
+  }
+  return out;
 }
 
 // ---- The /try/sign mock: the live page's own words and figures ----
@@ -216,8 +233,9 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
   fact("paid.conversion", fx.subject, `record \`ledger.events\` \`fx.converted\` (seq ${fx.seq})`);
 
   // The figures on the spec cards.
-  const t = testLine(readme);
-  fact("specs.tests", t.tests, "README.md's test line, read when the film is built (CI runs the same suite)");
+  const t = testLine(readme), badge = testBadge(readme);
+  if (badge !== null && badge !== t.tests) throw new Missing(`premiere: the README's tests badge (${badge}) and its test line (${t.tests}) disagree; nothing is rendered until they match`);
+  fact("specs.tests", t.tests, "README.md's test line, read when the film is built; its tests badge must say the same (CI runs the same suite)");
   fact("specs.files", t.files, "README.md's test line");
   const audit = r.snapshot.audit;
   need(audit?.intact ? audit.rows : null, "intact audit chain");
@@ -257,6 +275,58 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
   fact("team.treasuryJob", /FX and SWIFT/.test(tre.job) && proposals.some((p) => p.kind === "mandate_replace" && p.created_by === "treasury" && p.terms.total_budget) ? "FX, SWIFT, budgets" : null,
     "record `snapshot.agents` (treasury: \"Airwallex FX and SWIFT\") and `ledger.proposals` (its `mandate_replace` plans, each with the agents' `total_budget`)");
 
+  // Every Metal payment in the run, each its own transaction on Metal testnet (06-metal): the record's flows on the
+  // Metal rail that went through, counted; the mandate transactions: one per mandate bound at setup (the agents' and the
+  // simulated customer's) and one per replacement with its tx; the refusal recorded on chain.
+  const metalPaid = r.snapshot.flows.filter((f) => (f as { rail?: string }).rail === "metal" && !f.refused && /^https:\/\/testnet\.metal/.test(f.proof.href ?? ""));
+  fact("metal.payments", need(metalPaid.reduce((k, f) => k + (f.count ?? 1), 0) || null, "payment on Metal"), "record `snapshot.flows` on the Metal rail, not refused, each with its testnet tx (counted, `count` per row)");
+  const budgets = (r.snapshot as { budgets?: { agents?: unknown[]; counterparty?: unknown } }).budgets;
+  const replacedTx = ev.filter((e) => e.event === "mandate.replaced" && typeof e.payload.tx === "string");
+  fact("metal.mandates", need(budgets?.agents?.length ? budgets.agents.length + (budgets.counterparty ? 1 : 0) + replacedTx.length : null, "Metal mandates"),
+    `record \`snapshot.budgets\` (${budgets?.agents?.length ?? 0} agents' mandates and the customer's, bound at setup) and \`ledger.events\` \`mandate.replaced\` with a tx (${replacedTx.length})`);
+  fact("metal.chainRefusals", need(ev.filter((e) => e.event === "upstream.refused_on_chain").length || null, "refusal on chain"), "record `ledger.events` `upstream.refused_on_chain` (counted)");
+
+  // Treasury's two options after the price rise (05b-treasury): A and B, the same total; A signed by Max with Face ID,
+  // co-signed by a labelled test passkey (four eyes).
+  const opt = (o: string) => need(proposals.find((p) => p.kind === "mandate_replace" && p.created_by === "treasury" && p.terms.option === o), `Treasury's option ${o}`);
+  const A = opt("A"), B = opt("B");
+  const sourcingStep = (p: Proposal) => need((p.terms.steps as { agent: string; cap: string }[] | undefined)?.find((x) => x.agent === "sourcing"), `${p.proposal_id}'s step for the Sourcing agent`);
+  const sale = need(r.snapshot.flows.find((f) => f.kind === "sale" && !f.refused && Date.parse(f.at) < Date.parse(A.created_at)), "sale before Treasury's options");
+  const priceBefore = (Number(sale.amount) / (sale.count ?? 1)).toFixed(2);
+  const cosigned = one("proposal.cosigned", (e) => e.subject === A.proposal_id && /\bmax\b/.test(String(e.payload.approver)) && e.payload.method === "passkey");
+  const aApproved = one("proposal.approved", (e) => e.subject === A.proposal_id);
+  fact("treasury.a", A.proposal_id, "record `ledger.proposals` (Treasury's `mandate_replace`, option A)");
+  fact("treasury.b", B.proposal_id, "record `ledger.proposals` (Treasury's `mandate_replace`, option B)");
+  fact("treasury.aCap", sourcingStep(A).cap, `record \`ledger.proposals\` ${A.proposal_id} terms (the Sourcing agent's step, its cap)`);
+  fact("treasury.aPrice", need(A.terms.query_price === priceBefore ? A.terms.query_price : null, `${A.proposal_id}'s price, unchanged`), `record \`ledger.proposals\` ${A.proposal_id} terms \`query_price\`, the same as the sales before (${priceBefore})`);
+  fact("treasury.bPrice", B.terms.query_price, `record \`ledger.proposals\` ${B.proposal_id} terms \`query_price\``);
+  fact("treasury.total", need(A.terms.total_budget === B.terms.total_budget ? A.terms.total_budget : null, "the same total in both options"), `record \`ledger.proposals\` ${A.proposal_id} and ${B.proposal_id} terms \`total_budget\``);
+  fact("treasury.at", hms(A.created_at), `record \`ledger.proposals\` ${A.proposal_id} \`created_at\`, UTC`);
+  fact("treasury.signedAt", hms(cosigned.ts), `record \`ledger.events\` \`proposal.cosigned\` (seq ${cosigned.seq}), Max's passkey, UTC`);
+  fact("treasury.cosigner", need(/test-controller/.test(String(aApproved.payload.approver)) ? "a labelled test passkey" : null, `${A.proposal_id}'s second approver`), `record \`ledger.events\` \`proposal.approved\` (seq ${aApproved.seq}): "${String(aApproved.payload.approver)}"; the test-controller is a labelled test passkey (docs/claims.md)`);
+
+  // The limits that hold each agent (the intro), as the run began: its own Airwallex card and its own Metal mandate.
+  // The starting values are the config's (src/config/policy.ts), and the record must agree with them wherever it shows
+  // them: a card whose limits were synced in the run started from the config's (\`card.limits_synced\` from), any other
+  // card is the config's at the end too (\`snapshot.cards\`); the mandate let through to Metal was bound at the config's
+  // cap (\`upstream.let_through\` bound_cap), and a mandate never replaced is the config's at the end (\`snapshot.budgets\`).
+  const money = (c: number) => fromCents(c);
+  for (const a of ["sourcing", "support", "treasury"] as const) {
+    const cfg = CARDS[a], start = `${money(cfg.perTxCents)} / ${money(cfg.monthlyCents)}`;
+    const synced = ev.find((e) => e.event === "card.limits_synced" && e.subject === a);
+    const card = (r.snapshot as { cards?: { agent: string; per_tx: string; monthly: string }[] }).cards?.find((c) => c.agent === a);
+    const cardOk = synced ? synced.payload.from === start : card ? `${card.per_tx} / ${card.monthly}` === start : false;
+    fact(`team.${a}Card`, cardOk ? `EUR ${money(cfg.perTxCents)} a purchase · ${money(cfg.monthlyCents)} a month` : null,
+      synced ? `src/config/policy.ts \`CARDS\` (${a}), as the run began; record \`ledger.events\` \`card.limits_synced\` (seq ${synced.seq}) from "${start}"` : `src/config/policy.ts \`CARDS\` (${a}); record \`snapshot.cards\` (${a}: ${start}, unchanged in the run)`);
+    const m = INITIAL_MANDATES[a];
+    const replaced = ev.some((e) => e.event === "mandate.replaced" && e.subject === a);
+    const bound = a === "sourcing" ? lt.payload.bound_cap : null;
+    const end = (r.snapshot as { budgets?: { agents?: { agent: string; cap: string; budget: string }[] } }).budgets?.agents?.find((x) => x.agent === a);
+    const mandateOk = bound != null ? bound === money(m.capCents) : !replaced ? !!end && end.cap === money(m.capCents) && end.budget === money(m.budgetCents) : true;
+    fact(`team.${a}Mandate`, mandateOk ? `${money(m.capCents)} test USD a payment · ${money(m.budgetCents)} in all` : null,
+      `src/config/policy.ts \`INITIAL_MANDATES\` (${a}), as the run began; ${bound != null ? `record \`ledger.events\` \`upstream.let_through\` (seq ${lt.seq}): bound_cap ${String(bound)}` : !replaced ? "record `snapshot.budgets` (unchanged in the run)" : "replaced in the run by P-0002 (record `mandate.replaced`)"}`);
+  }
+
   // The /try/sign mock: the live page's own proposal and its tamper step (+0.01), from the page's code.
   const m = trySignExample();
   fact("try.proposal", m.p.id, "`FIXED_PROPOSALS` in worker/src/trySign.ts (the page's own proposal)");
@@ -270,8 +340,46 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
 
 // ---- What each scene shows and says ----
 
+/** Each scene's length in seconds (film v5, Max): the script (premiereScript.ts) checks its scenes against these. */
+export const SCENE_SECONDS: Record<string, number> = {
+  "01-hook": 6, "02-purser": 4, "03-agents": 10, "04-how": 8, "05-price": 12, "05b-treasury": 8, "06-metal": 8, "07-dispute": 10,
+  "08-faceid": 8, "09-six": 10, "10-why": 10, "11-turn": 7, "12-tamper": 8, "13-proof": 13, "13b-value": 4, "14-real": 10, "15-close": 13, "16-end": 13,
+};
+
+/** How long a line takes at Max's calm pace, about 2.5 words a second (to the hundredth). */
+export const speechSeconds = (text: string) => Math.round((text.split(/\s+/).filter(Boolean).length / 2.5) * 100) / 100;
+
+/**
+ * A scene's line from the voice script, timed in its scene: it starts about 0.5 s in, and each "…" is a pause of about
+ * 0.5 s ("… …" is the second of silence before "One cent. Worthless."). When the line is long for its scene, the pauses
+ * shrink to a quarter second and then the line starts earlier; a line that still does not fit stops the build.
+ */
+export function timeLine(id: string, line: string, seconds: number): VoiceLine[] {
+  const parts: { text: string; pauses: number }[] = [];
+  const re = /((?:\s*…)+)\s*/g;
+  let last = 0, m: RegExpExecArray | null, pending = 0;
+  while ((m = re.exec(line))) {
+    const text = line.slice(last, m.index).trim();
+    if (text) parts.push({ text, pauses: pending });
+    pending = (m[1]!.match(/…/g) ?? []).length;
+    last = m.index + m[0].length;
+  }
+  parts.push({ text: line.slice(last).trim(), pauses: pending });
+  const speech = parts.reduce((k, x) => k + speechSeconds(x.text), 0), n = parts.reduce((k, x) => k + x.pauses, 0);
+  let s0 = 0.5, p = 0.5;
+  const end = () => s0 + speech + n * p;
+  // The second of silence before "One cent. Worthless." is the scene's own; it never shrinks.
+  if (end() > seconds - 0.05 && id !== "12-tamper" && n) p = Math.max(0.25, (seconds - 0.05 - s0 - speech) / n);
+  if (end() > seconds - 0.05) s0 = Math.max(0, Math.round((seconds - 0.05 - speech - n * p) * 100) / 100);
+  if (end() > seconds + 1e-9) throw new Missing(`premiere: the voice script's ${id} line takes ${speech.toFixed(1)} s to say; its scene is ${seconds} s`);
+  const out: VoiceLine[] = [];
+  let at = s0;
+  for (const x of parts) { at += x.pauses * p; out.push({ at: Math.round(at * 100) / 100, who: "Max", text: x.text }); at += speechSeconds(x.text); }
+  return out;
+}
+
 /** The film's data: the facts, the strings on screen and the voice-over. Throws when a figure is missing. */
-export function buildPremiere(r: MainRun, readme: string): PremiereData {
+export function buildPremiere(r: MainRun, readme: string, script: string = readFileSync(new URL(`../../${VOICE_SCRIPT_FILE}`, import.meta.url), "utf8")): PremiereData {
   const F = premiereFacts(r, readme);
   const v = (k: string) => need(F[k], k).value;
   const n = (k: string) => Number(v(k));
@@ -279,19 +387,25 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
   const m = trySignExample();
   const site = TRY_SIGN_URL.replace(/^https:\/\//, "").replace(/\/try\/sign$/, "");
 
-  // P-0005's terms as its approval sheet shows them (07, and the reconstruction on 08).
+  // P-0005's terms as its approval sheet shows them (the reconstruction on 08).
   const approvalRows = [["Invoice", v("licence.invoice")], ["Buy first", `${v("licence.fxBuy")} for ${v("licence.fxSell")}`], ["Fee at most", v("licence.feeMax")], ["Planned by", `${v("licence.by")} · Claude ${v("licence.model")}`], ["Expires", `${v("licence.expires")} UTC`]];
 
   const screen: PremiereData["screen"] = {
-    "01-line": { line: "AI agents can now spend money." },
-    "03-pen": { question: "So who holds the pen?", title: "Purser", sub: "Starter Kit 11" },
-    "03b-agents": {
+    // The hook (Max, 5 November): the line slams in on black; the question, large, a pen stroke drawn under it.
+    "01-hook": { line: "AI agents can now spend money.", question: "So who signs off?" },
+    // A straight cut to the wordmark, the core line under it word for word (the README's first line), in two lines.
+    "02-purser": { title: "Purser", core: CORE_LINE, sub: "Starter Kit 11" },
+    "03-agents": {
       head: `${cap1(said("run.agents"))} ${v("specs.byClaude") === v("specs.decisions") ? "Claude " : ""}agents run a small company's money.`,
-      agents: (["sourcing", "support", "treasury"] as const).map((a) => ({ name: AGENT_DISPLAY[a].name, model: v(`team.${a}Model`), job: v(`team.${a}Job`) })),
-      limits: "The rails and the code hold the limits.", beyond: "Anything beyond them, the CFO signs with Face ID.",
+      agents: (["sourcing", "support", "treasury"] as const).map((a) => ({ name: AGENT_DISPLAY[a].name, model: v(`team.${a}Model`), job: v(`team.${a}Job`), card: v(`team.${a}Card`), mandate: v(`team.${a}Mandate`) })),
+      cardLabel: "Its own Airwallex card", mandateLabel: "Its own Metal mandate", note: "Each agent's limits as the run began · test money",
+      limits: "The rails and the code hold the limits.",
     },
-    "04-architecture": {
+    "04-how": {
       kicker: "How Purser works",
+      // The refused payment (Max, 5 November: the red pulse alone read as a stray dot): the box it stops at flashes
+      // red and says so under it, then both fade.
+      refusedTag: "Refused at the limit",
       nodes: [
         { t: "Agent", s: "a Claude agent proposes" },
         { t: "Rules", s: "code checks the limits" },
@@ -300,7 +414,7 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
         { t: "Books", s: "every movement, double-entry" },
       ],
     },
-    "05-price-rise": {
+    "05-price": {
       kicker: `The main run · ${v("run.day")} · test money`,
       supplier: v("price.supplier"), rise: "raised its price",
       from: v("price.old"), to: v("price.new"), unit: "test USD a stock check",
@@ -310,7 +424,23 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       txLabel: "The refusal, on chain", tx: short(v("price.tx")), txFull: v("price.tx"), txWhere: `${v("price.explorer")} · ${v("price.txAt")} UTC`,
       label: v("price.label"),
     },
-    "06-dispute": {
+    // Treasury's two options (Max, v5), each from its proposal's terms; A signed with Face ID, four eyes said honestly.
+    "05b-treasury": {
+      kicker: `The Treasury agent's two options · ${v("treasury.at")} UTC`,
+      options: [
+        { tag: "A", id: v("treasury.a"), lines: [`The Sourcing agent's cap to ${v("treasury.aCap")}`, `Our price stays ${v("treasury.aPrice")}`] },
+        { tag: "B", id: v("treasury.b"), lines: [`Our price to ${v("treasury.bPrice")}`] },
+      ],
+      within: `Within the same ${v("treasury.total")}`, unit: "test USD",
+      signed: "Signed", signedWhen: `${v("treasury.a")} · Face ID, ${v("treasury.signedAt")} UTC`,
+      second: `four eyes · second approver: ${v("treasury.cosigner")}`,
+    },
+    // Every Metal payment its own transaction (Max, v5): the record's count; the render stops without it.
+    "06-metal": {
+      big: v("metal.payments"), label: "payments", line: "each its own transaction on Metal testnet · no emulator",
+      small: `+ ${v("metal.mandates")} mandate transactions · ${v("metal.chainRefusals")} ${n("metal.chainRefusals") === 1 ? "refusal" : "refusals"} on chain`,
+    },
+    "07-dispute": {
       kicker: `The dispute · ${v("dispute.customer")}, a simulated customer`,
       claim: `“${v("dispute.claim")}”`,
       orders: v("dispute.orders").split(" "), refunded: v("dispute.refunded").split(" "),
@@ -318,26 +448,19 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       refundLine: `${v("dispute.refundCount")} with wrong data: refunded by the Support agent · ${v("dispute.refundTotal")} test USD`,
       rest: `“Refund the other ${v("dispute.rest")}”`, rejected: "Rejected · Face ID", rejectedWhen: `${v("dispute.proposal")} · the CFO, ${v("dispute.rejectedAt")} UTC`,
     },
-    "07-approval": {
-      pid: `${v("licence.proposal")} · waits for your Face ID`,
-      what: `Pay ${v("licence.vendor")} ${v("licence.amount")} by ${v("licence.method")}`,
-      rows: approvalRows,
-      hashLabel: "Terms hash", hash: short(v("licence.hash"), 16, 8), button: "Confirm with Face ID",
-      side: ["The exact terms.", "And their hash."], caption: `Drawn from ${v("licence.proposal")}'s exact terms in the record, planned by the ${v("licence.by")}.`,
-    },
     "08-faceid": {
-      // The reconstruction: P-0005's approval sheet, its exact terms from the record (as on 07), Face ID, then approved.
+      // The reconstruction: P-0005's approval sheet, its exact terms from the record, Face ID, then approved.
       pid: `${v("licence.proposal")} · waits for your Face ID`, pidDone: `${v("licence.proposal")} · approved`,
       what: `Pay ${v("licence.vendor")} ${v("licence.amount")} by ${v("licence.method")}`, rows: approvalRows,
       hashLabel: "Terms hash", hash: short(v("licence.hash"), 16, 8), button: "Confirm with Face ID", approved: "Approved",
-      side: ["Face ID.", "Approved."], when: `${v("licence.proposal")} · the CFO, ${v("paid.faceAt")} UTC`,
+      side: ["The exact terms.", "Face ID.", "Approved."], when: `${v("licence.proposal")} · the CFO, ${v("paid.faceAt")} UTC`,
       recon: `Reconstruction of the approval screen · the real Face ID was at ${v("paid.faceAt")} UTC (main run)`,
       // A real recording laid in with --slot, and its overlay for an editor: labelled as what it is.
       label: "Max's iPhone · real Face ID · filmed after the run, on a test proposal (test money)",
       sub: `In the main run: ${v("licence.proposal")} approved with Face ID at ${v("paid.faceAt")} UTC`,
       recHead: "Real Face ID.", recLine: "On Max's own iPhone, filmed after the run on a test proposal, with test money.",
     },
-    "09-six-seconds": {
+    "09-six": {
       big: v("paid.seconds"), unit: n("paid.seconds") === 1 ? "second" : "seconds", line: "from Face ID to PAID",
       simulated: "In the sandbox, the settlement is simulated.",
       steps: [[v("paid.faceAt"), "Face ID"], [v("paid.fxAt"), `FX · ${v("licence.fxBuy")} for ${v("licence.fxSell")}`], [v("paid.createdAt"), `${v("licence.method")} · ${v("licence.amount")}`], [v("paid.sentAt"), "SENT (simulated)"], [v("paid.paidAt"), "PAID (simulated)"]],
@@ -345,7 +468,12 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       look: "Every id is on /proof", where: `${site}/proof`,
       foot: `Purser moved the transfer to ${v("paid.simulated")} itself, through Airwallex's sandbox simulation API. Test money.`,
     },
-    "10-try-sign": {
+    "10-why": {
+      q: "Why Face ID, not a password?",
+      // The passkey signs; Face ID unlocks it (the claims, /try/sign).
+      a: ["A password is the same for every payment;", "the passkey behind Face ID signs the hash of these exact terms:", "change anything after signing, and the signature is worthless."],
+    },
+    "11-turn": {
       label: TRY_SIGN_LABEL, url: TRY_SIGN_URL.replace(/^https:\/\//, ""), ...TRY_SIGN_WORDS,
       agent: m.p.agent, says: m.p.says, facts: [["Pay", m.p.payee], ["Amount", v("try.amount")], ["Reference", m.p.reference], ["Proposal", v("try.proposal")]],
       waits: m.waits, hash: v("try.hash"),
@@ -353,34 +481,44 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       mockNote: "A mock of the live page, drawn from its code",
       overlay: "Max's iPhone · the live page",
     },
-    "11-one-cent": {
+    "12-tamper": {
       from: v("try.amount"), plus: "+0.01", to: v("try.tampered"),
       hashes: `Terms hash ${short(v("try.hash"), 8, 4)} → ${short(v("try.tamperedHash"), 8, 4)}`,
       refused: TRY_SIGN_WORDS.refused, last: "One cent. Worthless.",
     },
-    "12-why-face-id": {
-      q: "Why Face ID, not a password?",
-      a: ["A password is the same for every payment;", "Face ID signs the hash of these exact terms:", "change anything after signing, and the signature is worthless."],
-    },
-    "13-specs": {
+    "13-proof": {
       cards: [
-        { big: v("specs.tests"), label: "tests, all passing", small: "npx vitest run · CI runs the same suite on every push" },
-        { big: v("specs.auditRows"), label: "audit rows, hash-chained", small: "chain intact · check it yourself: npm run verify" },
-        // The two stops said as what they were (Max, 5 November): Metal's refusal and the CFO's rejection, each the
-        // record's figure; small figures, shown as they are (no count-up).
-        { big: `${v("specs.stoppedMetal")} + ${v("specs.stoppedCfo")}`, plain: true,
-          label: `Metal refused ${v("specs.stoppedMetal")} ${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} over its cap; the CFO rejected ${v("specs.stoppedCfo")} ${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"}.`,
-          small: `${n("specs.stoppedAirwallex") ? `Airwallex declined ${v("specs.stoppedAirwallex")} · ` : ""}in the main run` },
         { big: `${v("specs.byClaude")}/${v("specs.decisions")}`, label: "decisions by Claude", small: `Sourcing ${v("specs.sourcing")} · Support ${v("specs.support")} · Treasury ${v("specs.treasury")} · ${v("specs.fallbacks")} fallbacks` },
+        // The stops (Max, 5 November: "1 + 1" was unclear): two stat blocks side by side, Metal's refusal and the CFO's
+        // rejection, each the record's figure, shown as it is (no count-up); Max's sentence as the caption.
+        { stops: true, head: "Stopped at a limit, in the main run",
+          blocks: [
+            { big: v("specs.stoppedMetal"), label: `${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} refused by Metal`, small: "over its on-chain cap" },
+            { big: v("specs.stoppedCfo"), label: `${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"} rejected by the CFO`, small: "with Face ID" },
+          ],
+          caption: stopsSentence(v("specs.stoppedMetal"), v("specs.stoppedCfo")),
+          small: n("specs.stoppedAirwallex") ? `Airwallex declined ${v("specs.stoppedAirwallex")}` : "" },
+        // The tests (the README's line, the same as its badge) and the audit log, side by side, counting up.
+        { pair: true, count: true,
+          blocks: [
+            { big: v("specs.tests"), label: "tests, all passing", small: "npx vitest run · CI runs the same suite" },
+            { big: v("specs.auditRows"), label: "audit rows, hash-chained", small: "chain intact · npm run verify" },
+          ] },
       ],
     },
+    "13b-value": { line: ["The agents do the work.", "The CFO signs only the exceptions."] },
     "14-real": {
       kicker: "What's real, what's ours",
       realHead: "Real", real: ["the Airwallex sandbox", "Metal testnet", "Claude", "Face ID"], realNote: "test money only",
       oursHead: "Ours or simulated", ours: ["the suppliers", "the customer", "the merchant", "the second approver: a labelled test passkey"],
     },
     "15-close": {
-      lines: CLOSING, name: "Max Geurtsen", role: "Purser · Starter Kit 11",
+      // The ending mirrors the intro (Max, 5 November): the three beats one by one, short and large; the closing line
+      // in three short sentences on two lines, Max's spoken words; then the intro's wordmark lockup.
+      beats: ["A price shock.", "A dispute.", "A euro bill."],
+      line: ["Claude decided. The rails and the code held the limits.", "I signed only what went beyond them."],
+      title: "Purser", sub: "Starter Kit 11",
+      name: "Max Geurtsen", role: "Purser · Starter Kit 11",
       slot: "Recording slot · Max on camera, or his voice over this card",
     },
     "16-end": {
@@ -392,68 +530,34 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
     },
   };
 
-  const voice: PremiereData["voice"] = {
-    "03-pen": [{ at: 0.4, who: "Max", text: "So who holds the pen?" }, { at: 3.6, who: "Max", text: "I'm Max Geurtsen, and this is Purser." }],
-    "03b-agents": [
-      { at: 0.3, who: "Voice", text: String(screen["03b-agents"]!.head) },
-      { at: 3.6, who: "Voice", text: `Sourcing ${v("team.sourcingJob").replace(/^B/, "b")}.` },
-      { at: 7.3, who: "Voice", text: `Support ${v("team.supportJob").replace(/^H/, "h")}.` },
-      { at: 9.4, who: "Voice", text: `Treasury: ${v("team.treasuryJob")}.` },
-      { at: 11.2, who: "Voice", text: "Rails and code hold the limits. Beyond them, the CFO signs." },
-    ],
-    "04-architecture": [
-      { at: 0.5, who: "Voice", text: "An agent proposes. Rules in code check it." },
-      { at: 4.0, who: "Voice", text: "Beyond the limits, a person signs with Face ID." },
-      { at: 8.0, who: "Voice", text: "Then Airwallex or Metal moves the money, into the books." },
-    ],
-    "05-price-rise": [
-      { at: 0.5, who: "Voice", text: `${cap1(dayWords(v("run.day")))}, ${said("run.agents")} ${v("specs.byClaude") === v("specs.decisions") ? "Claude " : ""}agents ran a business, on test money.` },
-      { at: 6.3, who: "Voice", text: `Their supplier ${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubled" : "raised"} its price, past the mandate's cap.` },
-      { at: 10.3, who: "Voice", text: "We let one purchase through on purpose: Purser normally refuses first." },
-      { at: 15.2, who: "Voice", text: "Metal refused it, on chain." },
-    ],
-    "06-dispute": [
-      { at: 0.5, who: "Voice", text: `Then our simulated customer disputed ${said("dispute.count")} orders.` },
-      { at: 3.8, who: "Voice", text: `${cap1(n("dispute.signed") === n("dispute.count") ? `all ${said("dispute.count")}` : `${said("dispute.signed")} of them`)} were signed by its own agent.` },
-      { at: 7.3, who: "Voice", text: `Support refunded the ${said("dispute.refundCount")} with wrong data.` },
-      { at: 10.8, who: "Voice", text: `Refund the other ${said("dispute.rest")}? Rejected, with Face ID.` },
-    ],
-    "07-approval": [
-      { at: 0.4, who: "Voice", text: `The ${v("licence.by")} planned a euro payment.` },
-      { at: 3.6, who: "Voice", text: "The phone shows the exact terms." },
-    ],
-    "09-six-seconds": [
-      { at: 0.3, who: "Voice", text: `${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} from Face ID to paid, in the Airwallex sandbox.` },
-      { at: 4.8, who: "Voice", text: "In the sandbox, the settlement itself is simulated." },
-      { at: 8.2, who: "Voice", text: "Every id is on the proof page." },
-    ],
-    "10-try-sign": [
-      { at: 0.6, who: "Voice", text: "Now it's your turn." },
-      { at: 2.6, who: "Voice", text: "Open your own test world, and sign an agent's proposal with your own Face ID." },
-      { at: 9.2, who: "Voice", text: "The server checks the signature against the exact terms." },
-    ],
-    "12-why-face-id": [
-      { at: 0.4, who: "Voice", text: "Why Face ID, and not a password?" },
-      { at: 3.4, who: "Voice", text: "A password is the same for every payment; Face ID signs these exact terms: change anything, and the signature is worthless." },
-    ],
-    "13-specs": [
-      { at: 0.5, who: "Voice", text: "All tests passing." },
-      { at: 4.4, who: "Voice", text: "An audit log, hash-chained: check it yourself." },
-      { at: 8.0, who: "Voice", text: `Metal refused ${said("specs.stoppedMetal")} ${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} over its cap; the CFO rejected ${said("specs.stoppedCfo")} ${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"}.` },
-      { at: 12.8, who: "Voice", text: `${cap1(said("specs.byClaude"))} of ${said("specs.decisions")} decisions by Claude.` },
-    ],
-    "14-real": [
-      { at: 0.5, who: "Voice", text: "Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID." },
-      { at: 5.3, who: "Voice", text: "Ours, or simulated: the suppliers, the customer, the merchant, and the second approver, a labelled test passkey." },
-    ],
-    "15-close": [
-      { at: 0.5, who: "Max", text: CLOSING[0]! },
-      { at: 4.0, who: "Max", text: `${CLOSING[1]!} ${CLOSING[2]!}` },
-      { at: 11.6, who: "Max", text: CLOSING[3]! },
-    ],
+  // The voice-over: Max's script (docs/video/voice-script-max.md), word for word, each line timed in its scene. Every
+  // figure it says must be the record's: a script that says another stops the build.
+  const lines = voiceScript(script);
+  const dollars = (k: string) => need(/^(\d+)\.00$/.exec(v(k))?.[1], `${k} in whole dollars`);
+  const says: Record<string, string[]> = {
+    "01-hook": ["AI agents can now spend money.", "So who signs off?"],
+    "02-purser": ["I'm Max Geurtsen, and this is Purser."],
+    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card and its own Metal mandate"],
+    "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price, past the Sourcing agent's cap`, "Metal refused it"],
+    "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID"],
+    "06-metal": [`${cap1(said("metal.payments"))} of them`, "No emulator"],
+    "07-dispute": [`disputes ${said("dispute.count")} orders`, `Only the ${said("dispute.refundCount")} with wrong data`],
+    "09-six": [`${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} later`],
+    "12-tamper": ["Change one cent", "One cent. Worthless."],
+    "13-proof": [`${cap1(said("specs.byClaude"))} of ${said("specs.decisions")} decisions by Claude`, `Metal refused ${said("specs.stoppedMetal")} ${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} over its cap`, `I rejected ${said("specs.stoppedCfo")} ${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"}`],
+    "13b-value": ["The agents do the work."],
+    "15-close": [CLOSING[0], `${CLOSING[1]} ${CLOSING[2]}`, CLOSING[3]],
   };
+  const voice: PremiereData["voice"] = {};
+  for (const [id, seconds] of Object.entries(SCENE_SECONDS)) {
+    if (id === "16-end") continue;
+    const line = need(lines[id], `voice line for ${id} in ${VOICE_SCRIPT_FILE}`);
+    for (const w of says[id] ?? []) if (!line.includes(w)) throw new Missing(`premiere: the voice script's ${id} line does not say "${w}", as the record has it`);
+    voice[id] = timeLine(id, line, seconds);
+  }
   return { facts: F, screen, voice, credits: CREDITS };
 }
+
 
 /** The corner credits (Max, 4 November): who made it, and what it is built on, in words. */
 export const CREDITS = { left: "Max Geurtsen · Purser", right: "Built on Airwallex · Metal · Claude" } as const;
@@ -474,17 +578,17 @@ export const END_CREDITS: [string, string][] = [
   ["Built by", "Max Geurtsen"],
 ];
 
-/** Max's closing line (docs/video/max-opening-close.md, "Slot"), in the lines the fallback card shows. */
-export const CLOSING = ["A price shock, a dispute, a euro bill.", "Claude decided, the rails and the code held the limits,", "and I signed only what went beyond them.", "Purser, Starter Kit 11."] as const;
+/** Purser's core line (the README's first line), word for word, in the two lines the wordmark shows it. */
+export const CORE_LINE = ["Claude explains and proposes, the rules in code hold every limit,", "and a person signs before money moves beyond them."] as const;
 
-/** "3 November 2026" as it is said: "on the third of November". */
-function dayWords(day: string): string {
-  const m = need(/^(\d{1,2}) (\w+) \d{4}$/.exec(day), `a day in "${day}"`);
-  const ORD = ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth"];
-  const d = Number(m[1]);
-  const ord = d <= 20 ? ORD[d]! : d === 30 ? "thirtieth" : `${d < 30 ? "twenty" : "thirty"}-${ORD[d % 10]}`;
-  return `on the ${ord} of ${m[2]}`;
+/** Max's sentence for the stops (5 November), as the other documents say it: "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal." */
+export function stopsSentence(metal: string, cfo: string): string {
+  const one = (x: string) => x === "1" || x === "one";
+  return `Metal refused ${metal} ${one(metal) ? "purchase" : "purchases"} over its cap; the CFO rejected ${cfo} ${one(cfo) ? "proposal" : "proposals"}.`;
 }
+
+/** Max's closing line (docs/video/max-opening-close.md, "Slot"), in the lines the fallback card shows. */
+export const CLOSING = ["A price shock, a dispute, a euro bill.", "Claude decided, the rails and the code held the limits,", "and I signed only what went beyond them.", "Purser. Starter Kit 11."] as const;
 
 // ---- The page ----
 
@@ -503,11 +607,11 @@ export const PREMIERE_CSP = [
 /** The record and the README, read now (the film is built when it is recorded). */
 export function loadPremiere(root = new URL("../../", import.meta.url)): PremiereData {
   const record = JSON.parse(readFileSync(new URL(MAIN_RUN_FILE, root), "utf8")) as MainRun;
-  return buildPremiere(record, readFileSync(new URL("README.md", root), "utf8"));
+  return buildPremiere(record, readFileSync(new URL("README.md", root), "utf8"), readFileSync(new URL(VOICE_SCRIPT_FILE, root), "utf8"));
 }
 
 /** The film page, its data inside it ("<" escaped); the scenes' times come from the script (premiereScript.ts). */
-export function premierePage(data: PremiereData, scenes: { id: string; start: number; seconds: number; kind: string; fade: [number, number]; credits: boolean }[]): string {
+export function premierePage(data: PremiereData, scenes: { id: string; start: number; seconds: number; kind: string; fade: [number, number]; credits: boolean; beats?: number[] }[]): string {
   // The background starts with the first scene after the opening line (the first that carries the corner credits).
   const background = { ...BACKGROUND, start: scenes.find((s) => s.credits)?.start ?? 0 };
   return TEMPLATE.replace("__PREMIERE_JSON__", () => JSON.stringify({ screen: data.screen, scenes, credits: data.credits, background }).replace(/</g, "\\u003c"));

@@ -38,8 +38,8 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 
 - 5 November: the stops are said in one sentence everywhere ("Metal refused 1 purchase over its cap; the CFO rejected 1
   proposal."), and the form's Description is short (the long text is
-  [long-description.md](long-description.md)). /try/sign stays within a phone's width after the tamper, and the
-  premiere film has its animations. 2349 tests in 248 files, all passing.
+  [long-description.md](long-description.md)). /try/sign stays within a phone's width after the tamper. The premiere
+  film (v5) runs 2:42 on Max's voice script; the hook is "So who signs off?". 2363 tests in 248 files, all passing.
 
 ## Real, and ours
 

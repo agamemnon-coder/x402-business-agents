@@ -24,7 +24,7 @@ export const FILM_SCENES: FilmScene[] = [
   { id: "trust", title: "Why you can trust it", seconds: 17,
     voice: "Claude agents handle the exceptions; Metal and Airwallex enforce the limits. Thirty-nine red-team attacks in a test world: all failed, two found only afterwards. Four eyes, an emergency stop tested on simulated rails, about nine cents of AI per thousand euros." },
   { id: "end", title: "Purser", seconds: 10,
-    voice: "Purser. Agents move at machine speed, and the CFO keeps the pen. Every payment has a proof." },
+    voice: "Purser. Agents move at machine speed, and the CFO signs off. Every payment has a proof." },
 ];
 
 /** Each scene with the second it starts. */
