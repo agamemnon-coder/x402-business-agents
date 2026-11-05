@@ -86,6 +86,6 @@ Status: gebouwd, niets geboekt. Eén zin overal: "T:0 bookkeeping is built; post
 
 ## Open PR's op dit moment
 
-- Geen open PR's (#25 is gemerged).
-- `premiere-v3` (film v3) staat gepusht op `ddbd66a`. In de sessie van 5 nov werkte nog een agent aan animatie-upgrades 1–4 (het architectuurplaatje met een lichtpuls, de prijslijn door de cap, count-ups, push-ins); die commits komen erbij als ze klaar zijn. Daarna main mergen en een PR maken.
-- Branch `handover`: dit bestand.
+- [#26](https://github.com/agamemnon-coder/x402-business-agents/pull/26) `handover`: dit bestand (draft, alleen docs).
+- [#27](https://github.com/agamemnon-coder/x402-business-agents/pull/27) `premiere-v3`: film v3 (draft, WIP).
+- `premiere-v3` (film v3) staat gepusht op `ddbd66a`. In de sessie van 5 nov werkte nog een agent aan animatie-upgrades 1–4 (het architectuurplaatje met een lichtpuls, de prijslijn door de cap, count-ups, push-ins); die commits komen erbij als ze klaar zijn. Daarna main mergen en #27 klaarzetten.
