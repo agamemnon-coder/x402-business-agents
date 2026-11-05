@@ -34,6 +34,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - Every tx hash and id in the README, the submission pack, the claims, the site and the video script is in a run
   record.
 
+## Since the tag
+
+- 5 November: the stops are said in one sentence everywhere ("Metal refused 1 purchase over its cap; the CFO rejected 1
+  proposal."), and the form's Description is short (the long text is
+  [long-description.md](long-description.md)). 2326 tests in 246 files, all passing.
+
 ## Real, and ours
 
 Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID; all money is test money. Ours or simulated: the

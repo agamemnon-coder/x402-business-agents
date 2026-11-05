@@ -240,6 +240,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   const SOURCES: [string, string][] = [
     ["home", homePage()], ["proof", proofPage()],
     ["README.md", doc("README.md")], ["docs/claims.md", doc("docs/claims.md")], ["docs/submission/README.md", doc("docs/submission/README.md")],
+    ["docs/submission/long-description.md", doc("docs/submission/long-description.md")],
     ["deck", deckHtml(packFacts(), shots, "")], ["docs/video-script.md", doc("docs/video-script.md")],
   ];
 
@@ -279,7 +280,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     const st = stops(record);
     const words = `Metal refused ${st.metal} purchase over its cap; the CFO rejected ${st.cfo} proposal`;
     expect(st.metal + st.cfo).toBe(STOPPED);
-    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/README.md", "deck"].includes(n))) {
+    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/README.md", "docs/submission/long-description.md", "deck"].includes(n))) {
       const t = text(raw);
       expect({ name, words: t.includes(words), figure: /\d+ stopped at a limit/i.test(t) }).toEqual({ name, words: true, figure: false });
       if (name !== "deck") expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(words) }).toEqual({ name, after: true });
@@ -287,9 +288,11 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     }
   });
 
-  it("tells the main run's card story in the README, the submission README and the deck; the decline only as the TAP run's line", () => {
+  it("tells the main run's card story in the README, the long form text and the deck; the decline only as the TAP run's line", () => {
     const c = packFacts().main.card_raise;
-    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/README.md", "deck"].includes(n))) {
+    // The short Description (Max, 5 Nov) leaves the card story to the long text it links; it names no other decline either.
+    expect(/30 October[^.]*declin|declin[^.]*30 October|in the recorded run it declined/i.test(text(doc("docs/submission/README.md")))).toBe(false);
+    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/long-description.md", "deck"].includes(n))) {
       const t = text(raw);
       expect({ name, raise: t.includes(`${c.proposal}, EUR ${c.from} → ${c.to}`), auth: t.includes(c.auth.slice(0, 8)) }).toEqual({ name, raise: true, auth: true });
       // No Airwallex decline from another run outside the labelled TAP line.

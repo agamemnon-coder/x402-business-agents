@@ -110,11 +110,14 @@ describe("the recorded run's headline figures (landing, dashboard, README, claim
   });
 
   it("the form no longer repeats them: its run figures are the main run's since 4 Nov (Max)", () => {
-    const form = flat("docs/submission/README.md");
-    expect(form).not.toContain(`${a.blocked} stops by the card, the chain, the fraud checks or the CFO`);
-    expect(form).not.toContain(`${eur(a.kept_out_cents)} kept out for good`);
-    // Max, 5 Nov (review round): who stopped what, said in words; the counts are the main run's (stops()).
-    expect(form).toContain("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal");
+    // The short Description and the long text it replaced on 5 Nov (docs/submission/long-description.md).
+    for (const d of ["docs/submission/README.md", "docs/submission/long-description.md"]) {
+      const form = flat(d);
+      expect(form, d).not.toContain(`${a.blocked} stops by the card, the chain, the fraud checks or the CFO`);
+      expect(form, d).not.toContain(`${eur(a.kept_out_cents)} kept out for good`);
+      // Max, 5 Nov (review round): who stopped what, said in words; the counts are the main run's (stops()).
+      expect(form, d).toContain("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal");
+    }
   });
 });
 
@@ -140,7 +143,7 @@ describe("Claude's cost and the red team, where the docs repeat them", () => {
   it("the red team's scripted attacks are counted as the report has them", () => {
     const rt = json<{ attempts: number; blocked: number; inconclusive: number; caught_after: number; results: { id: string }[] }>("docs/redteam/report.json");
     const scripted = rt.results.filter((r) => r.id !== "document").length;
-    for (const d of ["docs/security.md", "docs/hardening.md", "docs/claims.md", "docs/submission/README.md"]) expect(flat(d), d).toContain(`${scripted} scripted attacks`);
+    for (const d of ["docs/security.md", "docs/hardening.md", "docs/claims.md", "docs/submission/long-description.md"]) expect(flat(d), d).toContain(`${scripted} scripted attacks`);
     expect(flat("docs/hardening.md")).toContain(`${rt.attempts} attempts, all failed`);
     expect(flat("docs/claims.md")).toContain(`${rt.blocked} of ${rt.attempts} failed, ${rt.inconclusive} inconclusive: ${rt.blocked - rt.caught_after} stopped before anything moved, ${rt.caught_after} found afterwards`);
   });
@@ -185,8 +188,9 @@ describe("the separate test worlds' figures against their run files", () => {
   const compliance = json<Run>("docs/runs/compliance-policy.json");
   const fourEyes = json<Run>("docs/runs/four-eyes.json");
   const n = (v: number) => v.toLocaleString("en-GB");
-  const form = flat("docs/submission/README.md");
-  const docs = ["docs/submission/README.md", "docs/claims.md", "docs/controls-matrix.md", "docs/requirements-matrix.md", "docs/metal-award.md"];
+  // The separate test worlds are in the long form text since the Description was shortened (Max, 5 Nov).
+  const form = flat("docs/submission/long-description.md");
+  const docs = ["docs/submission/README.md", "docs/submission/long-description.md", "docs/claims.md", "docs/controls-matrix.md", "docs/requirements-matrix.md", "docs/metal-award.md"];
 
   const attacks = compliance.steps.filter((s) => s.step.startsWith("attack:"));
   const certified = [...compliance.steps, ...fourEyes.steps].filter((s) => s.finality?.status === "REPORTED");
