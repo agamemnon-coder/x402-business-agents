@@ -1,17 +1,17 @@
-// The submission deck (awards item 6; pitch round, 5 Nov): ten 16:9 slides as one HTML page, printed to PDF by
-// npm run submission. Dark, calm, one message per slide, in the pitch's order (docs/submission/pitch.md): the line,
-// the problem, how it works, the run in three beats, the jury's own signature (QR to /try/sign), the proof, what is
-// real and what is not, Claude, what comes next, the links. Every figure comes from packFacts() and the main run's
-// record through src/redesign/run.ts, the same functions the pages use; test/pitch.test.ts checks the deck against the
-// record. The font, the logos, the screenshots and the QR code are embedded, so the PDF needs no network.
+// The submission deck (awards item 6; pitch round, 5 Nov; Max's review round, 5 Nov): ten 16:9 slides as one HTML
+// page, printed to PDF by npm run submission. Dark, calm, one message per slide, in the pitch's order
+// (docs/submission/pitch.md): the line, the problem, how it works, the run in three beats, the jury's own signature
+// (QR to /try/sign), the proof, what is real and what is not, Claude, the road to production, the links. Every figure
+// comes from packFacts() and the main run's record through src/redesign/run.ts, the same functions the pages use;
+// test/pitch.test.ts checks the deck against the record. The font, the screenshots and the QR code are embedded, so the
+// PDF needs no network. No logos: "Built on Airwallex and Metal" as text (Max, 5 Nov).
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
-import { KIT_LINE, NORTHWIND_LINE, VISA_AWARD_STATUS } from "../config/brand.js";
+import { NORTHWIND_LINE, VISA_AWARD_STATUS } from "../config/brand.js";
 import { agentRun, homeFilm } from "../redesign/run.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
-const dataUri = (p: string, type: string) => `data:${type};base64,${asset(p).toString("base64")}`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /** The public page an agent task is typed into. */
@@ -25,12 +25,21 @@ export const REPO_URL = "https://github.com/agamemnon-coder/x402-business-agents
  * (test/core-line.test.ts).
  */
 export const CORE_LINE = "Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.";
-/** T:0, in the README's words since 5 November (docs/runs/2026-11-05-t0-live.md): built, not yet live. */
-export const T0_STATUS = "Built, not yet live: the T:0 books sink (nothing posted: the shared sandbox key could not post, 403 CAPI71; on 5 November T:0 refused its new read-write key, 401 CAPI11).";
-/** What of the main run is on Metal testnet, in the README's words (checked against the chain on 5 November). */
-export const METAL_ONCHAIN = "On Metal testnet, checked against the chain on 5 November: the 4 mandates bound at setup that morning and the 2 replacements; 86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep); 1 refusal recorded on chain (#24). No emulator and no clearing in this run.";
-/** The rest of the README's Metal line: what of the main run is not on Metal. */
-export const NOT_ON_METAL = "Not on Metal: the EUR licence (FX, SWIFT) and the card buy, on the Airwallex sandbox; the other 13 refusals (12 by the Sourcing agent's buy policy, #37 by Metal during the replace) are in the ledger, not on chain.";
+/** What Purser does, in Max's words (review round, 5 Nov): on slide 2 and in the pitch at about 0:25. */
+export const RULE_LINE = "Inside its limits an agent pays alone; beyond them, the CFO signs.";
+/** Who stopped what at a limit in the main run, in Max's words (review round, 5 Nov); the counts come from stops(). */
+export const stopLine = (metal: number, cfo: number) => `Metal refused ${metal} purchase${metal === 1 ? "" : "s"} over its cap; the CFO rejected ${cfo} proposal${cfo === 1 ? "" : "s"}.`;
+/** Metal's refusal of #24, said one way everywhere (review round, 5 Nov). */
+export const REFUSAL_LINE = "Metal refused it; the refusal is recorded on chain.";
+/**
+ * T:0, one sentence everywhere (README, form, claims, docs/t0.md, the run log; review round, 5 Nov): 403 CAPI71 on
+ * 3 Nov (docs/runs/2026-11-03-t0-sandbox.md), 401 CAPI11 on 5 Nov (docs/runs/2026-11-05-t0-live.md).
+ */
+export const T0_STATUS = "T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted.";
+/** The T:0 sentence without its error codes, for a slide (the codes are in docs/submission/qa.md). */
+export const T0_SHORT = "T:0 bookkeeping is built; posting failed, so nothing is posted.";
+/** What of the main run is on Metal testnet (README, checked against the chain on 5 Nov), in one sentence for a slide. */
+export const METAL_LINE = "Metal testnet: 86 payments and 6 mandate transactions, on chain, checkable; no clearing in this run.";
 
 /** Screenshots by name (data URIs), as npm run submission takes them. */
 export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max" | "watch" | "proof" | "visa", string>;
@@ -46,22 +55,26 @@ const shortId = (h: string) => `${h.slice(0, 8)}…${h.slice(-4)}`;
 export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const rt = f.redteam, m = f.main;
   const film = homeFilm(agentRun());
-  const ev = agentRun().record.ledger?.events ?? [];
+  const record = agentRun().record;
+  const ev = record.ledger?.events ?? [];
   const replaced = ev.filter((e) => e.event === "mandate.replaced").map((e) => String(e.payload.tx ?? ""));
   const sweepTx = String(ev.find((e) => e.event === "sweep.paid")?.payload.tx ?? "");
   const deposit = String(ev.find((e) => e.event === "credit.deposited")?.payload.deposit_id ?? "");
   const conversion = String(ev.find((e) => e.event === "fx.converted")?.subject ?? "");
   const rest = m.disputed - m.refunded.length;
-  const refundSum = (agentRun().record.snapshot.flows.filter((x) => x.kind === "refund" && !x.refused).reduce((n, x) => n + Math.round(Number(x.amount) * 100), 0) / 100).toFixed(2);
+  // Treasury's two options after the price rise, from their proposals' own terms (P-0002 option A, P-0003 option B).
+  const option = (o: string) => record.ledger?.proposals.find((p) => p.kind === "mandate_replace" && p.terms?.option === o)?.terms as { query_price?: string; total_budget?: string; steps?: { agent: string; cap: string }[] } | undefined;
+  const optA = option("A"), optB = option("B");
+  const capOf = (o: typeof optA) => o?.steps?.find((x) => x.agent === "sourcing")?.cap ?? "";
   const slides: Slide[] = [
     {
-      kicker: KIT_LINE,
+      kicker: "Purser · Starter Kit 11 · x402 Business Agents",
       title: "Purser",
       wide: true,
       extra: `<p class="lead">${esc(CORE_LINE)}</p>
-        <div class="stats four">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude, ${m.fallbacks} fallbacks`)}${stat(String(m.stopped), `stopped at a limit (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO)`)}${stat(String(m.face_id), "Face ID decisions by the CFO")}${stat(`${m.face_to_paid_s} s`, "from Face ID to PAID; the settlement is simulated in the sandbox")}</div>
+        <div class="stats four">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude, ${m.fallbacks} fallbacks`)}${stat(`${m.metal_refused} + ${m.cfo_rejected}`, stopLine(m.metal_refused, m.cfo_rejected))}${stat(String(m.face_id), "Face ID decisions by the CFO")}${stat(`${m.face_to_paid_s} s`, "from Face ID to PAID; the settlement is simulated in the sandbox")}</div>
         <p class="src">One live run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only.</p>
-        <div class="logos"><span class="ground"><img src="${dataUri("logos/airwallex.png", "image/png")}" alt="Airwallex" height="22"></span><span class="ground"><img src="${dataUri("logos/metal.svg", "image/svg+xml")}" alt="Metal" height="22"></span><span class="with">with Claude</span></div>`,
+        <p class="built">Built on Airwallex and Metal, with Claude.</p>`,
     },
     {
       kicker: "The problem",
@@ -70,7 +83,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       points: [
         "An agent pays as fast as it is told to, also by a fake invoice.",
         "A limit written in a prompt can be talked out of.",
-        "The limit has to live in the rails and in code, with a person above it.",
+        `<b>Purser: ${esc(RULE_LINE)}</b>`,
       ],
     },
     {
@@ -82,7 +95,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <div class="box"><b>Rules</b><small>code holds every limit</small></div><span class="arrow">→</span>
           <div class="box accent"><b>Person</b><small>Face ID on the exact terms, beyond the limits</small></div><span class="arrow">→</span>
           <div class="box"><b>Airwallex · Metal</b><small>cards, FX, SWIFT · mandates, x402</small></div><span class="arrow">→</span>
-          <div class="box"><b>Books</b><small>double-entry, hash-chained audit log; <!-- T0-STATUS -->T:0: built, not yet live<!-- /T0-STATUS --></small></div>
+          <div class="box"><b>Books</b><small>double-entry, hash-chained audit log; <!-- T0-STATUS -->T:0: built, nothing posted<!-- /T0-STATUS --></small></div>
         </div>
         <p class="kit">Northwind Outdoor, ${esc(NORTHWIND_LINE)}. Three agents (${m.kit11.map((k) => esc(k.agent.replace(/ agent$/, ""))).join(", ")}), 20.00 test USD between them.</p>`,
     },
@@ -91,10 +104,11 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       title: "One live run, three beats",
       wide: true,
       extra: `<div class="beats">
-        <div><em>1 · The price rise</em><b>Metal refused it.</b><p>${esc(film?.supplier ?? "The supplier")} ${esc(film?.old ?? "")} → ${esc(film?.price ?? "")}, over the ${esc(film?.cap ?? "")} cap. One purchase let through on purpose; Metal refused it, and the refusal is recorded on chain.</p><p>Treasury's options ${m.to_options_s} s later; the CFO signed with Face ID, a labelled test passkey 2 of 2.</p></div>
-        <div><em>2 · The dispute</em><b>Only the ${m.refunded.length} wrong orders refunded.</b><p>${m.disputed} orders disputed, every one signed by the customer's own agent.</p><p>Support refunded the ${m.refunded.length} with wrong data (${esc(refundSum)} test USD); "refund the other ${rest}" rejected by the CFO with Face ID.</p></div>
-        <div><em>3 · The euro bill</em><b>PAID ${m.face_to_paid_s} s after Face ID.</b><p>The Treasury agent planned the EUR 240.00 licence; ${esc(m.fx_buy)} bought by FX for only the shortfall.</p><p>SWIFT PAID ${esc("in the sandbox, where the settlement is simulated")}.</p></div>
-      </div>`,
+        <div><em>1 · The price rise</em><b>${esc(film?.supplier ?? "The supplier")} ${esc(film?.old ?? "")} → ${esc(film?.price ?? "")}, over the ${esc(film?.cap ?? "")} cap</b><p>${esc(REFUSAL_LINE)}</p></div>
+        <div><em>2 · The dispute</em><b>Only the ${m.refunded.length} bad ones refunded</b><p>${m.disputed} orders disputed; "refund the other ${rest}" rejected by the CFO with Face ID.</p></div>
+        <div><em>3 · The euro bill</em><b>PAID ${m.face_to_paid_s} s after Face ID</b><p>${esc(m.fx_buy)} bought by FX for only the shortfall; settlement simulated in the sandbox.</p></div>
+      </div>
+      <p class="options"><b>Treasury's options, within the same ${esc(optA?.total_budget ?? "")}:</b> A: Sourcing's cap ${esc(capOf(optA))}, our price stays ${esc(optA?.query_price ?? "")} · B: the same cap, our price ${esc(optB?.query_price ?? "")}. The CFO signed A.</p>`,
     },
     {
       kicker: "Try it yourself",
@@ -109,14 +123,12 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "Proof",
       title: "Every id is published",
       points: [
-        `<b>${m.stopped} stopped at a limit</b> (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO). Metal's refusal: <code>${esc(short(m.let_through_tx))}</code>`,
-        `Mandates replaced on chain: ${replaced.map((t) => `<code>${esc(short(t))}</code>`).join(", ")}`,
-        `Refunds #${m.refunded.join(", #")} on chain; sweep <code>${esc(short(sweepTx))}</code>, deposit <code>${esc(shortId(deposit))}</code>`,
-        `FX <code>${esc(shortId(conversion))}</code>; SWIFT transfer <code>${esc(shortId(m.licence_transfer))}</code>`,
-        `Card raise ${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}; Airwallex authorization <code>${esc(shortId(m.card_raise.auth))}</code>`,
+        `<b>${esc(stopLine(m.metal_refused, m.cfo_rejected))}</b>`,
+        `On chain, checkable: Metal's refusal <code>${esc(short(m.let_through_tx))}</code>; the mandate replacements ${replaced.map((t) => `<code>${esc(short(t))}</code>`).join(", ")}; the sweep <code>${esc(short(sweepTx))}</code>`,
+        `Published: FX <code>${esc(shortId(conversion))}</code>, SWIFT <code>${esc(shortId(m.licence_transfer))}</code>, deposit <code>${esc(shortId(deposit))}</code>`,
+        `Card raise ${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}, then Airwallex authorization <code>${esc(shortId(m.card_raise.auth))}</code>`,
         `${m.audit_rows} audit rows, hash-chained: <code>npm run verify</code>`,
       ],
-      extra: `<p class="sep">${esc(m.tap_limit_line)}; <b>not counted above</b>.</p>`,
       pic: shot(s.dispute, `The main run, 3 November (/watch): #${m.refunded.join(", #")} refunded, each on chain; "refund the other ${rest}" rejected by Max with Face ID`),
     },
     {
@@ -125,17 +137,15 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       wide: true,
       extra: `<div class="cols">
         <div><h2>Real, with test money</h2><ul>
-          <li>The Airwallex sandbox: cards, FX, SWIFT, the deposit.</li>
-          <li class="fine"><!-- METAL-ONCHAIN -->${esc(METAL_ONCHAIN)}<!-- /METAL-ONCHAIN --></li>
+          <li>The Airwallex sandbox: cards, FX, SWIFT and the deposit.</li>
+          <li><!-- METAL-ONCHAIN -->${esc(METAL_LINE)}<!-- /METAL-ONCHAIN --></li>
           <li>Claude: ${m.by_claude} of ${m.decisions} decisions, each with its request id.</li>
-          <li>Max's passkey, with Face ID on his own phone (Max plays the CFO).</li></ul></div>
+          <li>Max's passkey (Face ID on his phone); Max plays the CFO.</li></ul></div>
         <div><h2>Ours, simulated or not yet live</h2><ul>
           <li>The supplier, the customer and the TAP merchant are run by us.</li>
-          <li class="fine">${esc(NOT_ON_METAL)}</li>
-          <li>SWIFT SENT and PAID: moved by Purser through Airwallex's sandbox simulation API.</li>
-          <li>The second approver: a labelled virtual test passkey, pressed by our build tool (Claude Code) on Max's go.</li>
-          <li>Built, not yet live: the Cardputer hub.</li>
-          <li><!-- T0-STATUS -->${esc(T0_STATUS)}<!-- /T0-STATUS --></li>
+          <li>SWIFT SENT and PAID are moved by Purser through the sandbox's simulation API.</li>
+          <li>The second approver was a labelled test passkey, pressed by Claude Code on Max's go.</li>
+          <li>Built, not yet live: the Cardputer hub. <!-- T0-STATUS -->${esc(T0_SHORT)}<!-- /T0-STATUS --></li>
           <li>Red team on stand-ins: ${rt.before} of ${rt.attempts} attacks stopped, ${rt.after} more detected afterwards, not prevented.</li></ul></div>
       </div>`,
     },
@@ -148,17 +158,14 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Our benchmark: Haiku alone is as good on everyday cases, and misread one harder dispute.",
         "Claude holds no key and approves nothing; code checks each proposal first.",
       ],
-      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 82 routine payments per query made by code; $0.0132 of Claude per decision"),
+      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 82 = the routine payments per query that code made; $0.0132 = Claude's cost per decision"),
     },
     {
-      kicker: "Business model (plan) and roadmap",
-      title: "A monthly fee per active agent",
-      points: [
-        "Priced per company and per active agent; no cut of payments.",
-        "First customers: small cross-border companies on Airwallex that run AI agents.",
-      ],
-      pic: `<div class="timeline">
-        <div><b>Now</b><span>Airwallex sandbox · Metal testnet · one company per ledger</span></div>
+      kicker: "The road to production",
+      title: "From test rails to production",
+      wide: true,
+      extra: `<div class="timeline row3">
+        <div><b>Now</b><span>Airwallex sandbox · Metal testnet · test money · one company per ledger</span></div>
         <div><b>Next</b><span>keys in a KMS · Postgres · a pager on /health · many companies</span></div>
         <div><b>Then</b><span>Metal mainnet · four eyes by default · more Airwallex rails</span></div>
       </div>`,
@@ -169,13 +176,14 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       wide: true,
       extra: `<p class="lead">${esc(CORE_LINE)}</p>
         <div class="end"><div class="qr small-qr">${qrSvg}</div><dl class="links">
-          <dt>Sign one yourself</dt><dd>${esc(QR_URL.replace(/^https:\/\//, ""))}</dd>
+          <dt>Try it in the Q&amp;A</dt><dd>${esc(QR_URL.replace(/^https:\/\//, ""))}</dd>
           <dt>Watch the run</dt><dd>kit11.max-31b.workers.dev/watch</dd>
           <dt>Every id</dt><dd>kit11.max-31b.workers.dev/proof</dd>
           <dt>Code</dt><dd>${esc(REPO_URL.replace(/^https:\/\//, ""))}</dd>
           <dt>Offline, no keys</dt><dd><code>npm ci &amp;&amp; npm run judge</code></dd>
         </dl></div>
-        <p class="src">Max Geurtsen · built with Claude Code · built on Airwallex and Metal, with Claude.<br>${esc(VISA_AWARD_STATUS)}</p>`,
+        <p class="src">Max Geurtsen · built with Claude Code · built on Airwallex and Metal, with Claude.</p>
+        <p class="oneline">${esc(VISA_AWARD_STATUS)}</p>`,
     },
   ];
   const font = asset("inter.woff2").toString("base64");
@@ -206,9 +214,6 @@ code { font-size: .8em; background: #1b2240; color: #d7dbff; padding: 1px 6px; b
 .stat { background: #141a2e; border: 1px solid #232b45; border-radius: 14px; padding: 16px 18px; }
 .stat b { display: block; font-size: 44px; letter-spacing: -.02em; color: #ffffff; }
 .stat span { font-size: 15px; color: #b6bdd3; line-height: 1.35; display: block; margin-top: 6px; }
-.logos { display: flex; gap: 18px; align-items: center; margin-top: 14px; }
-.ground { background: #ffffff; border-radius: 8px; padding: 8px 14px; display: inline-flex; }
-.with { font-size: 19px; font-weight: 600; color: #b6bdd3; }
 .flow { display: flex; align-items: stretch; gap: 10px; margin: 10px 0 30px; }
 .box { flex: 1; background: #141a2e; border: 1px solid #232b45; border-radius: 14px; padding: 22px 16px; text-align: center; }
 .box b { display: block; font-size: 25px; color: #ffffff; } .box small { display: block; font-size: 16px; color: #b6bdd3; margin-top: 8px; line-height: 1.35; }
@@ -218,8 +223,8 @@ code { font-size: .8em; background: #1b2240; color: #d7dbff; padding: 1px 6px; b
 .beats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 .beats > div { background: #141a2e; border: 1px solid #232b45; border-top: 6px solid #8b93ff; border-radius: 14px; padding: 20px 20px 16px; }
 .beats em { font-style: normal; font-size: 16px; color: #a5abff; font-weight: 600; display: block; }
-.beats b { display: block; font-size: 30px; line-height: 1.15; margin: 8px 0 12px; color: #ffffff; }
-.beats p { font-size: 19px; line-height: 1.4; color: #c9cfe2; margin: 0 0 10px; }
+.beats b { display: block; font-size: 28px; line-height: 1.2; margin: 8px 0 14px; color: #ffffff; }
+.beats p { font-size: 20px; line-height: 1.4; color: #c9cfe2; margin: 0; }
 .qrslide { display: flex; gap: 56px; align-items: center; }
 .qr { background: #ffffff; border-radius: 22px; padding: 22px; flex: none; }
 .qr svg { width: 400px; height: 400px; display: block; }
@@ -229,15 +234,18 @@ figure { margin: 0; width: 100%; }
 figcaption { font-size: 13px; color: #9aa4bf; margin-top: 10px; text-align: center; }
 .shot img { width: 100%; max-height: 540px; object-fit: cover; object-position: top; border-radius: 14px; border: 1px solid #232b45; display: block; }
 section:not(.wide) li { font-size: 19px; margin-bottom: 10px; }
-.sep { font-size: 14px; color: #9aa4bf; margin: auto 0 0; border-left: 3px solid #3a4366; padding-left: 10px; line-height: 1.4; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
 .cols > div { background: #141a2e; border: 1px solid #232b45; border-radius: 14px; padding: 22px 24px; }
-.cols li { font-size: 16.5px; line-height: 1.38; margin-bottom: 8px; } .cols li.fine { font-size: 14px; color: #c9cfe2; }
+.cols li { font-size: 18.5px; line-height: 1.38; margin-bottom: 10px; }
 .timeline { display: grid; gap: 16px; width: 100%; }
 .timeline > div { border-left: 8px solid #8b93ff; background: #141a2e; border-radius: 0 12px 12px 0; padding: 22px 26px; }
 .timeline > div:nth-child(2) { border-color: #6366f1; } .timeline > div:nth-child(3) { border-color: #3b3fb8; }
 .timeline b { display: block; font-size: 26px; color: #ffffff; } .timeline span { display: block; font-size: 18px; color: #b6bdd3; margin-top: 6px; }
 .end { display: flex; gap: 40px; align-items: center; } .small-qr { padding: 12px; border-radius: 14px; } .small-qr svg { width: 170px; height: 170px; }
+.built { margin-top: 14px; font-size: 22px; font-weight: 600; color: #b6bdd3; }
+.options { margin-top: 22px; font-size: 21px; line-height: 1.4; color: #e8ecf6; background: #141a2e; border: 1px solid #232b45; border-radius: 14px; padding: 16px 20px; }
+.oneline { font-size: 12.5px; color: #9aa4bf; white-space: nowrap; margin: 4px 0 0; }
+.timeline.row3 { grid-template-columns: repeat(3, 1fr); } .timeline.row3 > div { border-radius: 0 12px 12px 0; padding: 26px 26px; } .timeline.row3 span { font-size: 22px; line-height: 1.4; }
 .links { display: grid; grid-template-columns: 240px 1fr; gap: 10px 20px; font-size: 24px; margin: 10px 0 0; }
 .links dt { color: #9aa4bf; } .links dd { margin: 0; font-weight: 600; color: #ffffff; }
 </style></head><body>
