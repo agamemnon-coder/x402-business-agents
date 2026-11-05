@@ -27,9 +27,11 @@ zes uur stil, daarna in twee minuten weer op). Alle programma's stoppen tegelijk
    (dry-6, dry-12; `test/resume-approved.test.ts`). Een geschil dat al besloten was, wordt niet opnieuw besloten: het
    besluit staat in het grootboek vóór er iets betaald wordt, en de Support-agent (of `npm run s2`) betaalt alleen wat
    van dát besluit nog openstond, elke refund één keer (`test/dispute-decided-once.test.ts`). De runner doet dat zelf bij
-   de start (`npm run s2 -- --resume-only`); tot het klaar is staat er een melding op /health. Een refund die niet meer
-   binnen de automatische limieten past of definitief geweigerd wordt, betaalt code niet: die gaat als één voorstel naar
-   de CFO (Face ID).
+   de start (`npm run s2 -- --resume-only`); tot het klaar is staat er een melding op /health/live (en op /health
+   zolang er een live run loopt). Ligt een besloten geschil bij de CFO (er staat nog een refund of voorstel open), dan
+   rondt de start het niet af: `npm run s2 -- --dispute <id>` voert het uit, zonder opnieuw te besluiten. Een refund
+   die niet meer binnen de automatische limieten past of definitief geweigerd wordt, betaalt code niet: die gaat als
+   één voorstel naar de CFO (Face ID).
 3. `npm run verify` op de wereld: niets twee keer betaald, elke goedkeuring met een passkey.
 4. Max laten weten: de laatste stap uit het log, wat er is hervat, en de volgende stap. Max zegt "ok".
 5. Een voorstel dat in de tussentijd verliep: opnieuw voorstellen (een nieuw P-nummer) en opnieuw laten goedkeuren.

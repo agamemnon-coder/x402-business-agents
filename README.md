@@ -18,21 +18,24 @@ beyond them, with Face ID on the exact terms.
 **Also:** [the site](https://kit11.max-31b.workers.dev/) replays the main run; [`/try`](https://kit11.max-31b.workers.dev/try)
 gives an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves.
 
-Starter Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award ([note](#links)). Northwind Outdoor,
+Starter Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award ([note](docs/submission/README.md#visa)). Northwind Outdoor,
 the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
 
 ## The main run (3 November)
 
 World `main-1`, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, frozen commit `35e1cac`.
 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks. The CFO (Max, the
-builder) signed on his own phone with Face ID; the second approver is a labelled test passkey in this demo, in
-production a second person. Log: [docs/runs/2026-11-03-main-run.md](docs/runs/2026-11-03-main-run.md); record:
+builder) signed on his own phone with Face ID. The second approval (four eyes on P-0002, 2 of 2) came from a labelled
+virtual test passkey on the runner machine, pressed by our build tool, Claude Code, on Max's go; in production the
+second approver is a second person. The three runtime agents hold no owner key and no passkey, and no key reaches their
+Claude models. Log: [docs/runs/2026-11-03-main-run.md](docs/runs/2026-11-03-main-run.md); record:
 [docs/demo/main-run.json](docs/demo/main-run.json); replayed on [/watch](https://kit11.max-31b.workers.dev/watch).
 
 **1. The price rise** ([watch](https://kit11.max-31b.workers.dev/watch?scene=1)). Stockline went from 0.02 to 0.04 a
-stock check, over the Sourcing mandate's 0.03 cap. Metal refused purchase #24 itself, `mandate_cap_exceeded` (let
-through on purpose; Purser normally refuses first): tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`
-(11:23:33). Treasury's options came 40 s later, within the same 20.00; after four eyes, both mandates were replaced on
+stock check, over the Sourcing mandate's 0.03 cap. Metal refused purchase #24 itself at 11:23:27, `mandate_cap_exceeded`
+(let through on purpose; Purser normally refuses first), recorded on chain in tx
+`0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871` (11:23:33). Treasury's options came at 11:24:07,
+40 s after Metal's refusal and 34 s after that tx, within the same 20.00; after four eyes, both mandates were replaced on
 chain: Treasury `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` (11:26:54), Sourcing
 `0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790` (11:26:59).
 
@@ -49,7 +52,8 @@ with Face ID at 11:29:37.
 `0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4`, booked at Airwallex as deposit
 `b3812e05-2afa-4698-8f64-429f9608e0a0`. The Treasury agent planned the EUR 240.00 licence itself; after the CFO's
 Face ID, EUR 110.00 bought by FX for USD 124.29 (conversion `3ca88196-05da-4d88-9caa-796f03704636`), then SWIFT:
-transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, PAID 11:31:24, 6 s after Face ID. The Sourcing agent
+transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, PAID 11:31:24, 6 s after Face ID (settlement simulated
+in the sandbox: Purser itself moves the transfer to SENT and PAID through Airwallex's simulation API). The Sourcing agent
 asked for a card raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the
 TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 
@@ -101,7 +105,7 @@ npm test          # the full suite, on stand-ins
 npm run judge     # the main run's replay, the CFO dashboard and the Scenario Lab, offline
 ```
 
-**2181 tests in 241 files, all passing** (`npx vitest run` on this branch, 4 November); CI runs the same suite on
+**2291 tests in 245 files, all passing** (`npx vitest run` at the tag `v1.0-submission`, 4 November); CI runs the same suite on
 every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/run-it.md).
 
 ## Words
@@ -109,7 +113,8 @@ every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/r
 - **Mandate:** an agent's on-chain spending permission on Metal: a cap per payment, a total budget, one payee, an end date.
 - **x402:** HTTP 402 "Payment Required" as a protocol: each data query is paid on Metal before it is answered.
 - **Terms hash:** the SHA-256 of a proposal's exact terms; the CFO's Face ID signs that hash, and nothing else runs.
-- **Four eyes:** above the CFO's threshold, two different people must sign; the proposer never approves.
+- **Four eyes:** above the CFO's threshold, two approvers must each sign with their own passkey (in production two
+  different people; in the main run the second was the labelled test passkey above); the proposer never approves.
 
 ## Links
 
@@ -118,8 +123,7 @@ every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/r
 - [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
 - [docs/submission/README.md](docs/submission/README.md): the submission text
-- Visa Award: Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP
-  counts as Visa tooling is still being confirmed with Visa).
+- [The Visa Award note](docs/submission/README.md#visa): what the organisers confirmed about our entry, and what is open
 
 All money here is test money: the Airwallex sandbox and Metal testnet. Built with Claude (Anthropic) as the developer,
 directed and reviewed by Max Geurtsen. Licence: MIT.

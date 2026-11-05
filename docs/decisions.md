@@ -607,8 +607,8 @@ Content-Digest check on top of TAP". Summary given to Max (TAP Product Terms of 
    become Visa's property); the Visa logo or marks without written permission; saying "certified", "endorsed" or
    "Visa-approved"; public statements about the agreement with Visa without its consent.
 
-**Correction (Max, 2 November, evening).** Airwallex changed answer (1) in #help from "Yes" to "TBD" and added Visa
-(@srahmatu) to the thread; answer (2) stays "Yes". From now on, everywhere: "Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa)." The technical claim stays as it is
+**Correction (Max, 2 November, evening).** Airwallex changed answer (1) in #help from "Yes" to "TBD" and added someone
+from Visa to the thread; answer (2) stays "Yes". From now on, everywhere: "Entered for the Visa Award (organisers confirmed one project may enter both Visa and Metal; whether TAP counts as Visa tooling is still being confirmed with Visa)." The technical claim stays as it is
 (it is proven): VISA_CLAIM in `src/config/brand.ts`. No page, doc or text says the organisers confirmed TAP counts as
 Visa tooling. No further investment in Visa until Visa answers; the Metal Award stays priority 1.
 

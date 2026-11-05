@@ -82,8 +82,10 @@ describe("the submission pack", () => {
   it("states the red team and the Lab as their reports have them, never counting inconclusive as stopped", () => {
     const rt = f.redteam;
     expect(pack).toContain(`${rt.attempts - rt.documents} scripted attacks plus ${rt.documents} documents written by Claude Opus`);
-    expect(pack).toContain(`${rt.failed} of ${rt.attempts} attacks failed, ${rt.inconclusive} inconclusive; ${rt.before} were stopped before the attack succeeded`);
-    expect(pack).toContain(`${rt.after} were found afterwards, not prevented`);
+    // Final review, 4 Nov: not "39 of 39 attacks failed": 2 of them were only detected afterwards (stand-ins).
+    expect(pack).toContain(`${rt.before} of ${rt.attempts} stopped, ${rt.after} detected afterwards, not prevented`);
+    expect(pack).toContain(`by \`npm run verify\`), ${rt.inconclusive} inconclusive`);
+    expect(pack).not.toContain(`${rt.failed} of ${rt.attempts} attacks failed`);
     expect(rt.before + rt.after + rt.inconclusive).toBeLessThanOrEqual(rt.attempts);
     expect(pack).toContain(`Scenario Lab: ${f.lab.passed} of ${f.lab.total} stories as expected`);
   });
