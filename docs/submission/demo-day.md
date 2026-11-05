@@ -1,42 +1,133 @@
-# Demo Day: 3 minuten live, en wat te doen als het misgaat
+# Demo Day: the runbook
 
-Voor Max. Volg de judge tour op de site: dezelfde vijf stappen als in de README en de video. Zeg per stap één zin
-en laat het bewijs zien. Lees de zinnen niet voor; ken ze.
+For Max. Demo Day is **19 November 2026 in San Francisco, remote participation optional**; finalists are selected on
+**15 November** (microsite, read 5 November). The words come from [pitch.md](pitch.md) (3-minute version), the answers
+from [qa.md](qa.md), the one page to keep beside the laptop is `docs/internal/spiekkaart-demo.pdf`. Every figure on
+screen is the main run's (3 November 2026); nothing here is run live with money.
 
-## Vooraf (10 minuten voor je begint)
+## 1. What we know, and what Max asks Dan Kim
 
-- **Laptop:** `npm ci && npm run judge` draait lokaal, zonder sleutels en zonder internet. Dat is je reserve.
-- **Browser:** tabbladen open op de hosted site: `/#tour`, `/demo?step=1`, `/demo?step=3`, `/metal#dispute` en `/try`.
-  Gebruik een privévenster, zodat er geen oude sleutels in de browser zitten.
-- **Video:** het bestand staat lokaal op de laptop (niet alleen online), in de 60-seconden- en de volle versie.
-- **Telefoon:** stil en opgeladen. Je keurt op Demo Day niets live goed; de Face ID zit in de opname.
+Checked on 5 November: [airwallex.hackerearth.com](https://airwallex.hackerearth.com/) (timeline, FAQ) and the
+[HackerEarth page](https://www.hackerearth.com/community/challenges/hackathon/agentic-banking-hackathon/) (build phase
+until 15 November 2026, 1:29 PM America/New_York = 18:29 UTC). Neither says how the final is run. Slack `#announcements`
+is not readable from here: Max checks it first.
 
-## De 3 minuten
-
-| Tijd | Wat je laat zien | Wat je zegt |
+| Topic | Known | Source |
 |---|---|---|
-| 0:00 | Landing, de Kit 11-regel bovenaan | "Purser is Kit 11: drie agents, Sourcing, Support en Treasury, op één Metal-account. Elke agent heeft zijn eigen Airwallex-kaart. De CFO zet de limieten." |
-| 0:20 | Tour stap 1, het probleem | "AI-agents gaan bedrijfsgeld uitgeven. Met één gedeelde kaart heb je geen limiet per agent en geen plek voor de uitzonderingen." |
-| 0:40 | Stap 2: `/demo?step=1` | "Boven de limiet weigert Airwallex zelf de kaart. Na mijn Face ID volgt de limiet, en dezelfde aankoop gaat door. Dit zijn de echte Airwallex-id's uit de sandbox." |
-| 1:20 | Stap 3: `/demo?step=3` | "De leverancier verdubbelt zijn prijs. Metal weigert de betaling tegen het mandaat op de chain. De Treasury agent stelt opties voor binnen dezelfde 20, Opus geeft advies, en ik kies er één met Face ID." |
-| 2:00 | Stap 4: `/metal#dispute` | "Een gesimuleerde klant betwist 12 orders. Elke order wordt gecontroleerd tegen de getekende order en het mandaat op de chain. 3 met foute data waren al terugbetaald; de andere 9 worden afgewezen, met bewijs." |
-| 2:30 | Stap 5: `/try`, typ "Pay our supplier €1,180" | "Probeer het zelf: Claude leest de taak, de code kiest het spoor en checkt de limieten." |
-| 2:50 | Slot | "Gebouwd op Airwallex en Metal, met Claude. Testgeld, echte systemen. Dank je wel." |
+| Finalists | Selected 15 November; "The eight strongest teams will advance to Demo Day." | microsite; Dan Kim, 5 Oct (`docs/rules.md`) |
+| Demo Day | 19 November, San Francisco, "remote participation optional" | microsite |
+| Judging | "a demo day in front of judges from fintech and venture"; "Mentors and judging are available to remote teams too." | microsite, About and FAQ |
+| Format, minutes, platform, time zone | **Not published** | — |
 
-## Als het live misgaat
+**Questions for Dan Kim** (Slack DM or `#announcements`; send them once finalists are known, or now if he is open to it):
 
-| Wat gaat mis | Wat je doet | Wat je zegt |
+1. Is the final judged live, or do the judges watch our recorded video?
+2. How many minutes for the demo, and how many for questions?
+3. Remote: which platform (Zoom, Google Meet, StreamYard, other)? Do we share our own screen, or play a file you hold?
+4. What time on 19 November, and in which time zone? (San Francisco is UTC−8 then; 9:00 there is 18:00 in the Netherlands.)
+5. May the judges scan a QR code and try the product on their own phones during the demo?
+6. Is there a tech check before, and when?
+7. In person: is there a laptop and HDMI or USB-C, and Wi-Fi we can use?
+8. Do you want the deck as a PDF beforehand, and by when?
+
+Until he answers, prepare for the hardest case: **live, remote, 3 minutes, own screen shared**, with the 30-second
+version ready if time is cut and the 5-minute version if there is more.
+
+## 2. The jury's criteria, and where the pitch meets them
+
+The criteria word for word, from [docs/rules.md](../rules.md) (Dan Kim, 5 October; no weights published). The
+microsite's FAQ adds the deliverables: "A working demo, a short video walkthrough under five minutes, and a link to
+your repository with setup instructions."
+
+| Criterion (verbatim) | Moment in the 3-minute pitch | Proof (link or id) |
 |---|---|---|
-| Geen internet, of de site laadt niet | Ga naar de laptop: `npm run judge` laat precies dezelfde pagina's zien. | "Hetzelfde, maar offline: de opname draait lokaal." |
-| `/try` geeft een melding dat het budget op is | Laat de melding zien en ga door. | "Bij drukte leest de code het verzoek zelf; zo houden we de kosten vast." |
-| Een pagina hapert | Open de video op de laptop, vanaf de stap waar je was. | "Ik laat het je in de video zien." |
-| Iemand vraagt om iets live goed te keuren | Doe het niet op het podium. | "Elke goedkeuring zit in de opname, met mijn Face ID. Live laat ik niets betalen." |
-| Een vraag die je niet weet | Wees eerlijk. | "Goede vraag. Dat zoek ik op en stuur ik je na." |
+| Finance and product value | 0:15 who and what (the CFO of a small company); 2:50 the core line | [/](https://kit11.max-31b.workers.dev/); deck slides 2–3 |
+| Airwallex relevance and financial context | 0:35, beat 3: FX for only the shortfall, SWIFT PAID 6 s after Face ID (simulated settlement) | conversion `3ca88196-05da-4d88-9caa-796f03704636`; transfer `03360bfa-afce-457b-89d1-e1097fbe3985`; authorization `01a1a12f-4113-7000-b76d-014677710007` |
+| Agentic behaviour and controls | 0:35, beat 1: Metal refuses; Treasury proposes options 40 s later; four eyes | tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`; P-0002 |
+| Technical execution | 2:30: every id on /proof, `npm run verify`, 2291 tests | [/proof](https://kit11.max-31b.workers.dev/proof); 412 audit rows, hash-chained |
+| "(1) a working end-to-end workflow for a clear user" | The whole run: 0:35–1:50 | [/watch](https://kit11.max-31b.workers.dev/watch) |
+| "(2) Airwallex used for a necessary financial action" | Beat 3: the euro licence paid by SWIFT, euros bought by FX | transfer `03360bfa…3985` |
+| "(3) financial context influencing what the agent decides" | Beat 1: the price rise; Treasury's two options within the same 20 | P-0002, P-0003 |
+| "(4) clear controls: what the agent can do, what requires approval, how it handles an exception" | Beats 1 and 2: Metal's cap, the refunds by Support itself, "refund the other 9" rejected with Face ID; 1:50 the jury signs | P-0004; [/try/sign](https://kit11.max-31b.workers.dev/try/sign) |
 
-## Drie zinnen die je altijd kunt zeggen
+## 3. The runbook, minute by minute (3 minutes)
 
-- "Binnen de limiet betaalt de agent zelf; daarbuiten beslist de CFO met Face ID."
-- "Airwallex en de chain dwingen de limieten af, niet een prompt."
-- "Alles wat gesimuleerd is, staat erbij: de klant-agent, de stortingen in de sandbox, de red team en het Lab tegen nep-versies, en de agentherkenning als dev test."
+Screen shared: one browser window, the tabs below in this order, zoom 110 %. Max says the sentences from
+[pitch.md](pitch.md); the first words of each step are here so he knows where he is.
 
-Meer vragen en antwoorden: [docs/internal/uitleg-voor-max.md](../internal/uitleg-voor-max.md).
+| Time (length) | Max says | On screen (URL, scene) | Click | Plan B |
+|---|---|---|---|---|
+| 0:00 (15 s) | "AI agents can now spend money. So who holds the pen? I'm Max Geurtsen, and this is Purser." | Deck, slide 1 (the core line, the four figures) | — | Deck as PDF; the deck needs no network |
+| 0:15 (20 s) | "Picture the CFO of a small company. … Airwallex holds each card's limit." | Deck, slide 3 (agent → rules → person → Airwallex · Metal → books) | Next slide | Same |
+| 0:35 (25 s) | "This is a replay of our main run, on 3 November. The supplier doubles its price … I sign one with Face ID … a labelled test passkey." | Tab 2: [/watch?scene=1](https://kit11.max-31b.workers.dev/watch?scene=1), scene 1 "The price rise"; point at Metal's refusal and its tx | Tab 2; it plays from scene 1 | Site slow or down: tab 7, `npm run judge` on `http://localhost:4311/watch?scene=1`. `/watch` stutters: clip `out/video/clips/05-price-rise.mp4` |
+| 1:00 (25 s) | "Then a customer disputes 12 orders … I reject it with Face ID." | `/watch`, scene 2 "The dispute": 12 orders signed, #7, #10, #13 refunded, P-0004 rejected | Chip **2** | Clip `06-dispute.mp4`; Face ID moment: clip `08-faceid.mp4` |
+| 1:25 (25 s) | "Last, a 240 euro licence is due … simulated by Airwallex's sandbox." | `/watch`, scene 3 "Earnings and euros": EUR 110.00 by FX, then the EUR 240.00 licence "PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated" | Chip **3** | Clip `09-six-seconds.mp4` |
+| 1:50 (40 s) | "Now you hold the pen. Take out your phone and scan this code. …" | Deck, slide 5 (QR, `kit11.max-31b.workers.dev/try/sign`); then tab 4, [/try/sign](https://kit11.max-31b.workers.dev/try/sign), already signed once by Max | Back to the deck, slide 5; wait 15 s; tab 4: **Try to tamper: change the amount by 0.01** | QR or `/try/sign` fails for the jury: Max shows it on his own phone (camera on the phone, or hold it up); else clips `10-try-sign.mp4` and `11-one-cent.mp4` |
+| 2:30 (20 s) | "Every id from the run is public, on /proof. … the second approver." | Tab 3: [/proof](https://kit11.max-31b.workers.dev/proof); then tab 6, the terminal with `npm run verify` already run | Tab 3, scroll once; tab 6 | `/proof` down: `http://localhost:4311/proof`; terminal fails: deck slide 6 (the ids) |
+| 2:50 (10 s) | "Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. Purser." | Deck, slide 10 (the line and the links) | Tab 1, last slide | — |
+
+**Face ID live?** Not needed: the CFO's Face ID is in the record. Only `/try/sign` asks for a passkey live. Face ID
+refuses on Max's phone: try once more, then clip `08-faceid.mp4`, and say "Same moment, recorded."
+
+**Sound or screen sharing drops:** send the deck PDF in the chat (or hold it up in the room) and talk over it; every
+figure is on the slides. Say: "Let me walk you through the slides while the screen comes back."
+
+**If time is cut to 1 minute:** the 30-second pitch from [pitch.md](pitch.md), then the QR slide.
+
+## 4. Start-up list (30 minutes before)
+
+- [ ] Laptop on the charger; notifications off (Do Not Disturb, Slack and mail closed); browser zoom 110 %.
+- [ ] One browser window, a private one (no old keys), these tabs in this order:
+  1. the deck: `docs/submission/purser-deck.pdf` (full screen, slide 1);
+  2. [/watch?scene=1](https://kit11.max-31b.workers.dev/watch?scene=1);
+  3. [/proof](https://kit11.max-31b.workers.dev/proof);
+  4. [/try/sign](https://kit11.max-31b.workers.dev/try/sign), with a test world started and one proposal signed (it
+     lasts an hour: start it within the hour before);
+  5. Home: [kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/);
+  6. the terminal, in the repo, `npm run verify` run once, its result on screen;
+  7. `http://localhost:4311/watch` from `npm run judge` (already started in a second terminal, as reserve).
+- [ ] The clips (`out/video/clips/`) open in a player, paused, in the order of the plan B column.
+- [ ] Phone above 80 %, Do Not Disturb on, Face ID works (unlock once).
+- [ ] The phone's hotspot ready as reserve internet (name and password known; tested once that day).
+- [ ] The cheat sheet (`docs/internal/spiekkaart-demo.pdf`) printed, beside the laptop.
+- [ ] Nothing private on screen: no `.env`, no relay token, no viewer link, no mail. The terminal shows only the repo.
+
+## 5. Rehearsal: three times, with a stopwatch
+
+Max rehearses three times, once with the screen shared to a friend or recorded (QuickTime or OBS). After each run, he
+writes the times below. Where a step runs over by more than 5 s, cut a sentence there (the shortest one that still
+leaves the figure in), and note it in the last column.
+
+| Step | Target | Run 1 | Run 2 | Run 3 | Too long? What was cut |
+|---|---|---|---|---|---|
+| Hook | 0:15 | | | | |
+| Who and what | 0:20 | | | | |
+| Beat 1, the price rise | 0:25 | | | | |
+| Beat 2, the dispute | 0:25 | | | | |
+| Beat 3, the euros | 0:25 | | | | |
+| The jury signs | 0:40 | | | | |
+| Why trust it | 0:20 | | | | |
+| Close | 0:10 | | | | |
+| **Total** | **3:00** | | | | |
+
+Also, once:
+
+- [ ] **Read the pitch out loud** (3-minute version) before the first rehearsal. Mark every sentence you stumble on; it
+  gets shorter (tell Claude which ones).
+- [ ] **The QR code, four ways:** scan slide 5 from the laptop screen and from a print of
+  `docs/media/try-sign-qr.png`, each with an iPhone and an Android phone. Each must open
+  `https://kit11.max-31b.workers.dev/try/sign`. Write the result here:
+
+| Phone | From the screen | From paper |
+|---|---|---|
+| iPhone | | |
+| Android | | |
+
+- [ ] **Plan B once:** turn Wi-Fi off mid-rehearsal and switch to `npm run judge` and the clips, so the switch is known.
+
+## 6. Three sentences that always work
+
+- "Inside the limits the agent pays alone; beyond them, a person signs with Face ID."
+- "Metal and Airwallex hold the limits in the rails, not in a prompt."
+- "Everything simulated is labelled: the supplier, the customer, the merchant, the second approver, and the SWIFT
+  settlement in the sandbox."
