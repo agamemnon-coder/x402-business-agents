@@ -48,5 +48,5 @@ dollar, "test USD" on the pages.
 
 ## Promised and not done yet
 
-- The plan named "a video under 5 minutes": the film is cut at 3:12 from the main run
+- The plan named "a video under 5 minutes": the film is cut at 2:30 from the main run
   ([docs/video/README.md](video/README.md)); its link goes into the form when Max has recorded his lines.

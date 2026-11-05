@@ -1,5 +1,5 @@
 // npm run video [-- <clip id>...]: records the premiere (src/film/premiere.html, its script in
-// src/film/premiereScript.ts), Purser in a little over three minutes made from the main run of 3 November, one clip per
+// src/film/premiereScript.ts), Purser in two and a half minutes made from the main run of 3 November, one clip per
 // scene, at 1920x1080, letterboxed to 2.39:1 and exactly 60 frames a second. The browser runs on virtual time: each
 // frame moves the clock by 1/60 s and is captured, so nothing loads or stutters on screen. Each frame is drawn at twice
 // the size (3840x2160) and scaled down with lanczos, then encoded with x264 (preset slow, CRF 14), so small text stays
@@ -14,6 +14,8 @@
 //   --slot 08-faceid=<file>[@<start>-<end>], --slot 10-try-sign=<file>[@<start>-<end>]: Max's own portrait phone
 //              recordings, laid into a phone frame beside the scene's captions (src/film/slots.ts); without one the
 //              scene keeps its rendered picture (the Face ID reconstruction, the /try/sign mock)
+// VIDEO_PREVIEW=1 makes a quick preview instead: drawn at 1920x1080 (no supersampling) and encoded with x264 preset
+// veryfast at CRF 18, for a first look; it is not the deliverable.
 // Nothing here is live: the pages are the recordings, as npm run judge serves them.
 
 import { execFileSync, spawn } from "node:child_process";
@@ -33,6 +35,9 @@ const FPS = 60;
 const X264 = ["-c:v", "libx264", "-preset", "slow", "-crf", "14", "-pix_fmt", "yuv420p", "-r", String(FPS)];
 /** The premiere is drawn at twice its size (3840x2160) and scaled down to 1920x1080 with lanczos. */
 const PREMIERE_SCALE = 2;
+/** VIDEO_PREVIEW=1: a quick look (1x, a fast preset), not the deliverable. */
+const PREVIEW = process.env.VIDEO_PREVIEW === "1";
+const ENCODE = PREVIEW ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(FPS)] : X264;
 const root = resolve(import.meta.dirname, "../..");
 const film = process.argv.includes("--film");
 const out = resolve(root, process.env.VIDEO_OUT ?? "out/video", film ? "film" : ".");
@@ -127,9 +132,9 @@ async function recordBeat(browser: import("playwright").Browser, base: string, b
   const file = resolve(out, "clips", `${beat.id}.mp4`);
   // The premiere's page lays itself out at 1920x1080 and is drawn at twice that; the earlier film's pages at 1440x810.
   const premierePage = !film;
-  const view = premierePage ? { width: 1920, height: 1080, scale: PREMIERE_SCALE } : { width: VW, height: VH, scale: 1920 / VW };
+  const view = premierePage ? { width: 1920, height: 1080, scale: PREVIEW ? 1 : PREMIERE_SCALE } : { width: VW, height: VH, scale: 1920 / VW };
   const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
-    "-vf", "scale=1920:1080:flags=lanczos", ...X264, "-movflags", "+faststart", file], { stdio: ["pipe", "inherit", "inherit"] });
+    "-vf", "scale=1920:1080:flags=lanczos", ...ENCODE, "-movflags", "+faststart", file], { stdio: ["pipe", "inherit", "inherit"] });
   for (const shot of beat.shots) {
     const ctx = await browser.newContext({ viewport: { width: view.width, height: view.height }, deviceScaleFactor: view.scale, bypassCSP: true, colorScheme: "light", reducedMotion: "no-preference" });
     const page = await ctx.newPage();

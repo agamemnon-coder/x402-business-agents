@@ -25,43 +25,45 @@ export interface PremiereScene {
   fade?: [number, number];
   /** The corner credits in the top bar ("Max Geurtsen · Purser", "Built on …"): on every scene but these. */
   credits?: false;
+  /** Where each card starts, in seconds from the scene's start (the spec cards: one card on each beat). */
+  beats?: number[];
 }
 
 export const PREMIERE_SCENES: PremiereScene[] = [
-  { id: "01-line", title: "One line", seconds: 3, kind: "render", music: "Silence.", fade: [0, 0], credits: false,
-    picture: "Black. One line of white text fades in and out." },
-  { id: "03-pen", title: "Who holds the pen?", seconds: 8, kind: "render", music: "The music starts, low and slow.",
-    picture: "The question, then the title Purser with Purser's own pen mark." },
-  { id: "03b-agents", title: "Three Claude agents", seconds: 16, kind: "render", music: "Low and slow, a soft pulse under each agent.",
-    picture: "Three cards, one per agent, each with its Claude model and its job, read from the record; then the limits line, with the Face ID glyph." },
-  { id: "04-architecture", title: "How Purser works", seconds: 13, kind: "render", music: "Slowly building.",
+  { id: "01-line", title: "One line", seconds: 2, kind: "render", music: "Silence: a beat of black, then the line slams in.", fade: [0, 0], credits: false,
+    picture: "Black, a beat of silence, then one line slams in, large; a hard cut." },
+  { id: "03-pen", title: "Who holds the pen?", seconds: 8, kind: "render", music: "The music starts on the cut to the wordmark (0:04), low and confident.", fade: [0, 0.5],
+    picture: "A hard cut to the question, large, a pen stroke drawing itself under it; at 2 s a straight cut to the wordmark Purser with Purser's own pen mark, a drawn line under it, and the core line in two lines." },
+  { id: "03b-agents", title: "Three Claude agents", seconds: 8, kind: "render", music: "Low, a soft pulse under each card.",
+    picture: "Three cards come in 0.7 s apart, one per agent: its name, its Claude model and its job, and the limits that hold it: its own Airwallex card and its own Metal mandate, each with the record's figures as the run began; then the limits line." },
+  { id: "04-architecture", title: "How Purser works", seconds: 10, kind: "render", music: "Slowly building.",
     picture: "The diagram builds left to right: agent → rules → person → Airwallex or Metal → books, a payment travelling along it as a soft light pulse; then a second pulse turns red and stops at Airwallex or Metal: the refusal. No logos." },
-  { id: "05-price-rise", title: "The price rise, refused by Metal", seconds: 18, kind: "render", music: "Building.",
+  { id: "05-price-rise", title: "The price rise, refused by Metal", seconds: 16, kind: "render", music: "Building.",
     picture: "The supplier's price as a line chart, rising from the old price to the new one across the mandate's cap (dashed); Metal's refusal appears as it crosses; the honest label; the refusal's transaction on chain." },
-  { id: "06-dispute", title: "The dispute", seconds: 15, kind: "render", music: "Steady.",
+  { id: "06-dispute", title: "The dispute", seconds: 12, kind: "render", music: "Steady.",
     picture: "Twelve order chips, each checked “signed”; the three with wrong data turn “refunded”; the refund of the rest is stamped rejected with Face ID." },
-  { id: "07-approval", title: "The approval card", seconds: 7, kind: "render", music: "Thins out.",
+  { id: "07-approval", title: "The approval card", seconds: 6, kind: "render", music: "Thins out.",
     picture: "A phone with the licence payment's approval card, drawn from its exact terms in the record, “Confirm with Face ID” at the bottom." },
-  { id: "08-faceid", title: "Face ID", seconds: 8, kind: "render", music: "Almost silent: let the Face ID moment breathe.", fade: [0.3, 0.3],
+  { id: "08-faceid", title: "Face ID", seconds: 6, kind: "render", music: "Almost silent: let the Face ID moment breathe.", fade: [0.3, 0.3],
     picture: "A rendered iPhone with P-0005's approval sheet (its exact terms from the record, as in 07): “Confirm with Face ID” is pressed, the Face ID glyph scans, then “Approved”. A slow camera push-in on the phone. Labelled the whole time as a reconstruction, with the real Face ID's time. (A portrait recording of a real Face ID can still be laid in: `npm run video -- --slot 08-faceid=<file>@<start>-<end>`.)" },
-  { id: "09-six-seconds", title: "6 seconds to PAID", seconds: 12, kind: "render", music: "The first hit, on “6 seconds”.",
-    picture: "The spec card: the seconds from Face ID to PAID, counting up to the record's figure, said plainly to be simulated in the sandbox; the five timestamps, SENT and PAID marked simulated; the transfer id; “Every id is on /proof”." },
-  { id: "10-try-sign", title: "Your turn: /try/sign", seconds: 16, kind: "render", music: "Building again.",
+  { id: "09-six-seconds", title: "6 seconds to PAID", seconds: 10, kind: "render", music: "The first hit, on “6 seconds”: the cut itself, as the figure counts up.",
+    picture: "The spec card: the seconds from Face ID to PAID, counting up to the record's figure from the cut, said plainly to be simulated in the sandbox; the five timestamps, SENT and PAID marked simulated; the transfer id; “Every id is on /proof”." },
+  { id: "10-try-sign", title: "Your turn: /try/sign", seconds: 10, kind: "render", music: "Building again.",
     picture: "A mock of the live /try/sign page in a phone (drawn from its code) beside large captions; or Max's own portrait recording of the page in the same frame (`npm run video -- --slot 10-try-sign=<file>`; sped up to fit if longer, and then labelled so), or in an editor with the overlay `10-try-sign.png`.",
     slot: "Max's iPhone: signing on the live /try/sign page (docs/video/opnames-max.md, 3); the rendered mock is the fallback" },
-  { id: "11-one-cent", title: "One cent. Worthless.", seconds: 8, kind: "render", music: "Hard cut to silence: no music, no voice.", fade: [0, 0.45],
-    picture: "A slow camera push-in: the amount changes by one cent, its hash changes completely, the same signature is refused. “One cent. Worthless.”" },
-  { id: "12-why-face-id", title: "Why Face ID, not a password", seconds: 12, kind: "render", music: "The music comes back, softly.",
+  { id: "11-one-cent", title: "One cent. Worthless.", seconds: 6, kind: "render", music: "Hard cut to silence: no music, no voice.", fade: [0, 0.45],
+    picture: "A slow camera push-in: the amount changes by one cent, its hash changes completely, the same signature is refused. At 4 s: “One cent. Worthless.”" },
+  { id: "12-why-face-id", title: "Why Face ID, not a password", seconds: 10, kind: "render", music: "The music comes back, softly.",
     picture: "The question, then the answer in one sentence." },
-  { id: "13-specs", title: "Spec cards", seconds: 16, kind: "render", music: "Rhythmic: one card on each beat.",
-    picture: "Four fast cards, the big figures counting up to the record's: the tests, the hash-chained audit log, Metal's refusal and the CFO's rejection side by side, decisions by Claude." },
-  { id: "14-real", title: "What's real, what's ours", seconds: 13, kind: "render", music: "Steady, lower.",
+  { id: "13-specs", title: "Spec cards", seconds: 14, kind: "render", music: "Rhythmic: one card on each beat (0, 2, 4 and 10 s into the scene).", beats: [0, 2, 4, 10],
+    picture: "Four fast cards, the big figures counting up to the record's: the tests, the hash-chained audit log, then the stops: two stat blocks side by side under “Stopped at a limit, in the main run”, Metal's refusal and the CFO's rejection, with Max's sentence as the caption; decisions by Claude." },
+  { id: "14-real", title: "What's real, what's ours", seconds: 10, kind: "render", music: "Steady, lower.",
     picture: "Two columns: real (test money) and ours or simulated." },
   { id: "15-close", title: "Max's closing line", seconds: 14, kind: "slot", music: "Low, under Max's voice.",
     picture: "Max on camera with his name (overlay `15-close.png`), or his voice over the rendered card with the closing line.",
     slot: "Max on camera, or his voice only (docs/video/opnames-max.md, 2)" },
-  { id: "16-end", title: "Try it yourself, and the credits", seconds: 13, kind: "render", music: "The last swell, resolving under the credits; fade out with the picture.", fade: [0.45, 1], credits: false,
-    picture: "End card: “Try it yourself” and the /try/sign address, test money; after four seconds it gives way to the end credits (9 s, text only, no logos): thank you, built by, voice and music, test money only." },
+  { id: "16-end", title: "Try it yourself, and the credits", seconds: 8, kind: "render", music: "The last swell, resolving under the credits; fade out with the picture.", fade: [0.45, 1], credits: false,
+    picture: "End card: “Try it yourself” and the /try/sign address, test money; after under three seconds it gives way to the end credits (text only, no logos): thank you, built by, voice and music, test money only." },
 ];
 
 /** Each scene with the second it starts in the film. */
@@ -73,7 +75,7 @@ export const premiereSeconds = () => PREMIERE_SCENES.reduce((n, s) => n + s.seco
 /** A scene's fades, in and out (seconds). */
 export const sceneFade = (s: PremiereScene): [number, number] => s.fade ?? [0.45, 0.5];
 /** What the page needs of each scene: when it runs, its fades, and whether the corner credits show. */
-export const pageScenes = () => premiereTimeline().map((s) => ({ id: s.id, start: s.start, seconds: s.seconds, kind: s.kind, fade: sceneFade(s), credits: s.credits !== false }));
+export const pageScenes = () => premiereTimeline().map((s) => ({ id: s.id, start: s.start, seconds: s.seconds, kind: s.kind, fade: sceneFade(s), credits: s.credits !== false, ...(s.beats ? { beats: s.beats } : {}) }));
 /** "2:56". */
 export const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
@@ -188,8 +190,8 @@ function onScreen(id: string, sc: Record<string, unknown>): string {
   const list = (a: unknown) => (a as unknown[]).map((x) => (Array.isArray(x) ? x.join(": ") : String(x)));
   switch (id) {
     case "01-line": return q(sc.line);
-    case "03-pen": return `${q(sc.question)} → **${sc.title}** · ${sc.sub}`;
-    case "03b-agents": return [`**${sc.head}**`, ...(sc.agents as { name: string; model: string; job: string }[]).map((a) => `**${a.name}** · ${a.model}: ${a.job}`), `${sc.limits} ${sc.beyond}`].join("\n");
+    case "03-pen": return `${q(sc.question)} → **${sc.title}** · ${list(sc.core).join(" ")} · ${sc.sub}`;
+    case "03b-agents": return [`**${sc.head}**`, ...(sc.agents as { name: string; model: string; job: string; card: string; mandate: string }[]).map((a) => `**${a.name}** · ${a.model}: ${a.job} · ${sc.cardLabel}: ${a.card} · ${sc.mandateLabel}: ${a.mandate}`), `${sc.note}`, `${sc.limits}`].join("\n");
     case "04-architecture": return (sc.nodes as { t: string; s: string }[]).map((x) => `**${x.t}** (${x.s})`).join(" → ");
     case "05-price-rise": return [sc.kicker, `${sc.supplier} ${sc.rise}: **${sc.from} → ${sc.to}** ${sc.unit}`, sc.cap, q(sc.letThrough), `**${sc.refused}** ${sc.reason}`, `${sc.txLabel}: \`${sc.txFull}\` (${sc.txWhere})`, `Footnote, the run's own label: ${q(sc.label)}`].join("\n");
     case "06-dispute": return [sc.kicker, q(sc.claim), `Orders ${list(sc.orders).join(" ")}: ${sc.signed}`, `${list(sc.refunded).join(", ")}: ${sc.refundLine}`, `${sc.rest} → **${sc.rejected}** (${sc.rejectedWhen})`].join("\n");
@@ -199,7 +201,8 @@ function onScreen(id: string, sc: Record<string, unknown>): string {
     case "10-try-sign": return [`Label ${q(sc.label)} · ${sc.url}`, `Phone (mock): ${q(sc.h1)}; ${sc.agent} (${sc.tag}): ${q(sc.says)}`, ...list(sc.facts), `${q(sc.check)}; ${q(sc.sign)} → ${q(sc.verified)}, ${q(sc.executed)} → ${q(sc.tamper)}`, `Captions: ${list(sc.side).join(" ")}`, `Under the phone: ${sc.mockNote}`].join("\n");
     case "11-one-cent": return [`**${sc.from}** ${sc.plus} → **${sc.to}**`, sc.hashes, q(sc.refused), `**${q(sc.last)}**`].join("\n");
     case "12-why-face-id": return `**${sc.q}**\n${list(sc.a).join(" ")}`;
-    case "13-specs": return (sc.cards as { big: string; label: string; small: string }[]).map((c) => `**${c.big}** ${c.label} (${c.small})`).join("\n");
+    case "13-specs": return (sc.cards as { big?: string; label?: string; small?: string; stops?: boolean; head?: string; blocks?: { big: string; label: string; small: string }[]; caption?: string }[])
+      .map((c) => (c.stops ? `${c.head}: ${c.blocks!.map((b) => `**${b.big}** ${b.label} (${b.small})`).join(" | ")}; caption ${q(c.caption)}${c.small ? ` (${c.small})` : ""}` : `**${c.big}** ${c.label} (${c.small})`)).join("\n");
     case "14-real": return `**${sc.realHead}** (${sc.realNote}): ${list(sc.real).join(", ")}\n**${sc.oursHead}:** ${list(sc.ours).join(", ")}`;
     case "15-close": return `Fallback card: ${list(sc.lines).join(" ")}\nName (on camera): ${sc.name} · ${sc.role}`;
     case "16-end": return `**${sc.cta}** · ${sc.url}\n${sc.foot}\n${sc.mark}\nEnd credits: ${(sc.roll as [string, string][]).map((r) => r.filter(Boolean).join(" ")).join(" · ")} · ${q((sc.credits as { max: string }).max)} (or, with an AI voice, clip \`16-end-ai-voice.mp4\`: ${q((sc.credits as { ai: string }).ai)}) · ${sc.last}`;
@@ -209,7 +212,7 @@ function onScreen(id: string, sc: Record<string, unknown>): string {
 
 /** The facts each scene shows or says, by key (the source column). */
 const USES: Record<string, string[]> = {
-  "03b-agents": ["run.agents", "specs.byClaude", "specs.decisions", "team.sourcingModel", "team.sourcingJob", "team.supportModel", "team.supportJob", "team.treasuryModel", "team.treasuryJob"],
+  "03b-agents": ["run.agents", "specs.byClaude", "specs.decisions", "team.sourcingModel", "team.sourcingJob", "team.sourcingCard", "team.sourcingMandate", "team.supportModel", "team.supportJob", "team.supportCard", "team.supportMandate", "team.treasuryModel", "team.treasuryJob", "team.treasuryCard", "team.treasuryMandate"],
   "05-price-rise": ["run.day", "run.agents", "price.supplier", "price.old", "price.new", "price.cap", "price.query", "price.reason", "price.tx", "price.txAt", "price.explorer", "price.label"],
   "06-dispute": ["dispute.customer", "dispute.claim", "dispute.orders", "dispute.count", "dispute.signed", "dispute.refunded", "dispute.refundCount", "dispute.refundTotal", "dispute.rest", "dispute.proposal", "dispute.rejectedAt"],
   "07-approval": ["licence.proposal", "licence.vendor", "licence.amount", "licence.method", "licence.invoice", "licence.fxBuy", "licence.fxSell", "licence.feeMax", "licence.by", "licence.model", "licence.expires", "licence.hash"],
@@ -224,7 +227,7 @@ export const factsUsed = (id: string) => USES[id] ?? [];
 /** No figure: where the scene's words come from instead. */
 const WORDS_FROM: Record<string, string> = {
   "01-line": "Max's structure (no figure).",
-  "03-pen": "No figure. Max's opening (docs/video/max-opening-close.md).",
+  "03-pen": "No figure. Max's opening (docs/video/max-opening-close.md); the core line under the wordmark is the README's first line, word for word.",
   "04-architecture": "No figure. The books: Purser's own double-entry books (src/accounting/); the film shows no booking in an outside accounting system.",
   "12-why-face-id": "No figure. The reason: docs/phone-approval.md (\"The passkey signs the SHA-256 of the exact terms … any change after signing makes it worthless\"); README.md, Words (\"the CFO's Face ID signs that hash\"). \"Password\", not \"PIN\": a passkey may itself be unlocked with the device's PIN, or Touch ID (README.md, Try it yourself); what counts is that it signs these exact terms, so the film does not say Face ID is required.",
   "14-real": "No figure. README.md, \"What is real, what is mock\"; docs/claims.md (the second approver: `SECOND_APPROVER` in src/config/brand.ts).",
@@ -256,9 +259,10 @@ export function premiereTable(data: PremiereData): string {
   }
   lines.push("", "## Checked against the run", "",
     `- **${data.facts["paid.seconds"]!.value} seconds from Face ID to PAID:** ${data.facts["paid.seconds"]!.source}. The run log's timings say the same. PAID is the sandbox's status, and the settlement is simulated: Purser moves the transfer to SENT and then PAID itself, through Airwallex's sandbox simulation API (\`settleInSandbox\`, src/executors/invoicePayment.ts). The scene says so on screen and in the voice-over, and points to /proof instead of asking anyone to look the sandbox id up.`,
-    `- **Metal ${data.facts["specs.stoppedMetal"]!.value} + the CFO ${data.facts["specs.stoppedCfo"]!.value}:** the spec card says the two stops as what they were (Metal refused a purchase over its cap; the CFO rejected a proposal), with Airwallex ${data.facts["specs.stoppedAirwallex"]!.value}; together the ${data.facts["specs.stopped"]!.value} stopped at a limit that the site, the README and the video script count (\`test/premiere.test.ts\` compares it with \`src/redesign/run.ts\`). Not in the film, because it is another run's: the line the site shows below that figure, about the separate TAP run of 2 November.`,
+    `- **The stops (Metal ${data.facts["specs.stoppedMetal"]!.value}, the CFO ${data.facts["specs.stoppedCfo"]!.value}):** the spec card shows the two stops side by side as what they were (a purchase refused by Metal over its cap; a proposal rejected by the CFO with Face ID), Max's sentence as its caption, with Airwallex ${data.facts["specs.stoppedAirwallex"]!.value}; together the ${data.facts["specs.stopped"]!.value} stopped at a limit that the site, the README and the video script count (\`test/premiere.test.ts\` compares it with \`src/redesign/run.ts\`). Not in the film, because it is another run's: the line the site shows below that figure, about the separate TAP run of 2 November.`,
     `- **The tests:** the README's test line, read when the film is built (${data.facts["specs.tests"]!.value} tests in ${data.facts["specs.files"]!.value} files when this file was generated). Render the spec cards again after the README's line changes: \`npm run video -- 13-specs\`.`,
     `- **Max's closing line** ("Claude decided … I signed only what went beyond them"): ${data.facts["specs.byClaude"]!.value} of ${data.facts["specs.decisions"]!.value} decisions by Claude; ${data.facts["run.faceIds"]!.value} decisions with Max's Face ID (${data.facts["run.faceIds"]!.source}).`,
+    "- **The agents' limits (03b)** are each card's and each mandate's as the run began (src/config/policy.ts), checked against the record where it shows them; in the run the Sourcing agent's mandate was replaced (P-0002, 0.04 a payment) after the price rise, and its card raised to EUR 46.00 a purchase (P-0006).",
     "- **Face ID (08) is a reconstruction:** the rendered approval sheet carries P-0005's exact terms from the record, and says on screen that it is a reconstruction and when the real Face ID was (the record's `proposal.approved`). Max's own recording of a real Face ID can still be laid in with `--slot`.",
     "- **Face ID, not a password:** the reason is the docs' own (docs/phone-approval.md); \"password\", because a passkey may itself be unlocked with a PIN. The film does not say the server proves Face ID: /try/sign checks no attestation (docs/claims.md), so it says the server checks the signature.",
     "- **Kept out:** logos of others, any seal of approval, safety counts, and other runs' figures.", "");

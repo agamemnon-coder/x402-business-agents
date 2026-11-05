@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { FIXED_PROPOSALS, TEST_WORLD, canonical, checkPayment, proposalTerms } from "../../worker/src/trySign.js";
 import { TRY_SIGN_LABEL } from "../try/sign.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
+import { CARDS, INITIAL_MANDATES } from "../config/policy.js";
 
 /** The run the premiere tells, and nothing else. */
 export const MAIN_RUN_FILE = "docs/demo/main-run.json";
@@ -257,6 +258,28 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
   fact("team.treasuryJob", /FX and SWIFT/.test(tre.job) && proposals.some((p) => p.kind === "mandate_replace" && p.created_by === "treasury" && p.terms.total_budget) ? "FX, SWIFT, budgets" : null,
     "record `snapshot.agents` (treasury: \"Airwallex FX and SWIFT\") and `ledger.proposals` (its `mandate_replace` plans, each with the agents' `total_budget`)");
 
+  // The limits that hold each agent (the intro), as the run began: its own Airwallex card and its own Metal mandate.
+  // The starting values are the config's (src/config/policy.ts), and the record must agree with them wherever it shows
+  // them: a card whose limits were synced in the run started from the config's (\`card.limits_synced\` from), any other
+  // card is the config's at the end too (\`snapshot.cards\`); the mandate let through to Metal was bound at the config's
+  // cap (\`upstream.let_through\` bound_cap), and a mandate never replaced is the config's at the end (\`snapshot.budgets\`).
+  const money = (c: number) => fromCents(c);
+  for (const a of ["sourcing", "support", "treasury"] as const) {
+    const cfg = CARDS[a], start = `${money(cfg.perTxCents)} / ${money(cfg.monthlyCents)}`;
+    const synced = ev.find((e) => e.event === "card.limits_synced" && e.subject === a);
+    const card = (r.snapshot as { cards?: { agent: string; per_tx: string; monthly: string }[] }).cards?.find((c) => c.agent === a);
+    const cardOk = synced ? synced.payload.from === start : card ? `${card.per_tx} / ${card.monthly}` === start : false;
+    fact(`team.${a}Card`, cardOk ? `EUR ${money(cfg.perTxCents)} a purchase · ${money(cfg.monthlyCents)} a month` : null,
+      synced ? `src/config/policy.ts \`CARDS\` (${a}), as the run began; record \`ledger.events\` \`card.limits_synced\` (seq ${synced.seq}) from "${start}"` : `src/config/policy.ts \`CARDS\` (${a}); record \`snapshot.cards\` (${a}: ${start}, unchanged in the run)`);
+    const m = INITIAL_MANDATES[a];
+    const replaced = ev.some((e) => e.event === "mandate.replaced" && e.subject === a);
+    const bound = a === "sourcing" ? lt.payload.bound_cap : null;
+    const end = (r.snapshot as { budgets?: { agents?: { agent: string; cap: string; budget: string }[] } }).budgets?.agents?.find((x) => x.agent === a);
+    const mandateOk = bound != null ? bound === money(m.capCents) : !replaced ? !!end && end.cap === money(m.capCents) && end.budget === money(m.budgetCents) : true;
+    fact(`team.${a}Mandate`, mandateOk ? `${money(m.capCents)} test USD a payment · ${money(m.budgetCents)} in all` : null,
+      `src/config/policy.ts \`INITIAL_MANDATES\` (${a}), as the run began; ${bound != null ? `record \`ledger.events\` \`upstream.let_through\` (seq ${lt.seq}): bound_cap ${String(bound)}` : !replaced ? "record `snapshot.budgets` (unchanged in the run)" : "replaced in the run by P-0002 (record `mandate.replaced`)"}`);
+  }
+
   // The /try/sign mock: the live page's own proposal and its tamper step (+0.01), from the page's code.
   const m = trySignExample();
   fact("try.proposal", m.p.id, "`FIXED_PROPOSALS` in worker/src/trySign.ts (the page's own proposal)");
@@ -284,11 +307,14 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
 
   const screen: PremiereData["screen"] = {
     "01-line": { line: "AI agents can now spend money." },
-    "03-pen": { question: "So who holds the pen?", title: "Purser", sub: "Starter Kit 11" },
+    // The hook (Max, 5 November): the question on its own, large, a pen stroke drawn under it; a straight cut to the
+    // wordmark with the core line under it, word for word (the README's first line), in two lines.
+    "03-pen": { question: "Who holds the pen?", title: "Purser", core: CORE_LINE, sub: "Starter Kit 11" },
     "03b-agents": {
       head: `${cap1(said("run.agents"))} ${v("specs.byClaude") === v("specs.decisions") ? "Claude " : ""}agents run a small company's money.`,
-      agents: (["sourcing", "support", "treasury"] as const).map((a) => ({ name: AGENT_DISPLAY[a].name, model: v(`team.${a}Model`), job: v(`team.${a}Job`) })),
-      limits: "The rails and the code hold the limits.", beyond: "Anything beyond them, the CFO signs with Face ID.",
+      agents: (["sourcing", "support", "treasury"] as const).map((a) => ({ name: AGENT_DISPLAY[a].name, model: v(`team.${a}Model`), job: v(`team.${a}Job`), card: v(`team.${a}Card`), mandate: v(`team.${a}Mandate`) })),
+      cardLabel: "Its own Airwallex card", mandateLabel: "Its own Metal mandate", note: "Each agent's limits as the run began · test money",
+      limits: "The rails and the code hold the limits.",
     },
     "04-architecture": {
       kicker: "How Purser works",
@@ -366,11 +392,15 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       cards: [
         { big: v("specs.tests"), label: "tests, all passing", small: "npx vitest run · CI runs the same suite on every push" },
         { big: v("specs.auditRows"), label: "audit rows, hash-chained", small: "chain intact · check it yourself: npm run verify" },
-        // The two stops said as what they were (Max, 5 November): Metal's refusal and the CFO's rejection, each the
-        // record's figure; small figures, shown as they are (no count-up).
-        { big: `${v("specs.stoppedMetal")} + ${v("specs.stoppedCfo")}`, plain: true,
-          label: `Metal refused ${v("specs.stoppedMetal")} ${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} over its cap; the CFO rejected ${v("specs.stoppedCfo")} ${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"}.`,
-          small: `${n("specs.stoppedAirwallex") ? `Airwallex declined ${v("specs.stoppedAirwallex")} · ` : ""}in the main run` },
+        // The stops (Max, 5 November: "1 + 1" was unclear): two stat blocks side by side, Metal's refusal and the CFO's
+        // rejection, each the record's figure, shown as it is (no count-up); Max's sentence as the caption.
+        { stops: true, head: "Stopped at a limit, in the main run",
+          blocks: [
+            { big: v("specs.stoppedMetal"), label: `${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} refused by Metal`, small: "over its on-chain cap" },
+            { big: v("specs.stoppedCfo"), label: `${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"} rejected by the CFO`, small: "with Face ID" },
+          ],
+          caption: stopsSentence(v("specs.stoppedMetal"), v("specs.stoppedCfo")),
+          small: n("specs.stoppedAirwallex") ? `Airwallex declined ${v("specs.stoppedAirwallex")}` : "" },
         { big: `${v("specs.byClaude")}/${v("specs.decisions")}`, label: "decisions by Claude", small: `Sourcing ${v("specs.sourcing")} · Support ${v("specs.support")} · Treasury ${v("specs.treasury")} · ${v("specs.fallbacks")} fallbacks` },
       ],
     },
@@ -393,58 +423,54 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
   };
 
   const voice: PremiereData["voice"] = {
-    "03-pen": [{ at: 0.4, who: "Max", text: "So who holds the pen?" }, { at: 3.6, who: "Max", text: "I'm Max Geurtsen, and this is Purser." }],
+    "03-pen": [{ at: 0.1, who: "Max", text: "So who holds the pen?" }, { at: 2.2, who: "Max", text: "I'm Max Geurtsen, and this is Purser." }],
     "03b-agents": [
-      { at: 0.3, who: "Voice", text: String(screen["03b-agents"]!.head) },
-      { at: 3.6, who: "Voice", text: `Sourcing ${v("team.sourcingJob").replace(/^B/, "b")}.` },
-      { at: 7.3, who: "Voice", text: `Support ${v("team.supportJob").replace(/^H/, "h")}.` },
-      { at: 9.4, who: "Voice", text: `Treasury: ${v("team.treasuryJob")}.` },
-      { at: 11.2, who: "Voice", text: "Rails and code hold the limits. Beyond them, the CFO signs." },
+      { at: 0.2, who: "Voice", text: `${cap1(said("run.agents"))} ${v("specs.byClaude") === v("specs.decisions") ? "Claude " : ""}agents, each with its own card and mandate.` },
+      { at: 4.4, who: "Voice", text: "The rails and the code hold the limits." },
     ],
     "04-architecture": [
-      { at: 0.5, who: "Voice", text: "An agent proposes. Rules in code check it." },
-      { at: 4.0, who: "Voice", text: "Beyond the limits, a person signs with Face ID." },
-      { at: 8.0, who: "Voice", text: "Then Airwallex or Metal moves the money, into the books." },
+      { at: 0.2, who: "Voice", text: "An agent proposes. Rules in code check it." },
+      { at: 3.5, who: "Voice", text: "Beyond the limits, a person signs." },
+      { at: 6.0, who: "Voice", text: "Airwallex or Metal moves the money, into the books." },
     ],
     "05-price-rise": [
-      { at: 0.5, who: "Voice", text: `${cap1(dayWords(v("run.day")))}, ${said("run.agents")} ${v("specs.byClaude") === v("specs.decisions") ? "Claude " : ""}agents ran a business, on test money.` },
-      { at: 6.3, who: "Voice", text: `Their supplier ${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubled" : "raised"} its price, past the mandate's cap.` },
-      { at: 10.3, who: "Voice", text: "We let one purchase through on purpose: Purser normally refuses first." },
-      { at: 15.2, who: "Voice", text: "Metal refused it, on chain." },
+      { at: 0.2, who: "Voice", text: `${cap1(dayWords(v("run.day")))}, ${said("run.agents")} ${v("specs.byClaude") === v("specs.decisions") ? "Claude " : ""}agents ran a business, on test money.` },
+      { at: 5.9, who: "Voice", text: `Their supplier ${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubled" : "raised"} its price, past the mandate's cap.` },
+      { at: 9.6, who: "Voice", text: "We let one through on purpose; Purser normally refuses first." },
+      { at: 13.7, who: "Voice", text: "Metal refused it, on chain." },
     ],
     "06-dispute": [
-      { at: 0.5, who: "Voice", text: `Then our simulated customer disputed ${said("dispute.count")} orders.` },
-      { at: 3.8, who: "Voice", text: `${cap1(n("dispute.signed") === n("dispute.count") ? `all ${said("dispute.count")}` : `${said("dispute.signed")} of them`)} were signed by its own agent.` },
-      { at: 7.3, who: "Voice", text: `Support refunded the ${said("dispute.refundCount")} with wrong data.` },
-      { at: 10.8, who: "Voice", text: `Refund the other ${said("dispute.rest")}? Rejected, with Face ID.` },
+      { at: 0.2, who: "Voice", text: `Our simulated customer disputed ${said("dispute.count")} orders.` },
+      { at: 2.7, who: "Voice", text: `${cap1(n("dispute.signed") === n("dispute.count") ? `all ${said("dispute.count")}` : `${said("dispute.signed")} of them`)} were signed by its own agent.` },
+      { at: 6.0, who: "Voice", text: `Support refunded the ${said("dispute.refundCount")} with wrong data.` },
+      { at: 8.9, who: "Voice", text: `The other ${said("dispute.rest")}? Rejected, with Face ID.` },
     ],
     "07-approval": [
-      { at: 0.4, who: "Voice", text: `The ${v("licence.by")} planned a euro payment.` },
-      { at: 3.6, who: "Voice", text: "The phone shows the exact terms." },
+      { at: 0.2, who: "Voice", text: `The ${v("licence.by")} planned a euro payment.` },
+      { at: 3.1, who: "Voice", text: "The phone shows the exact terms." },
     ],
     "09-six-seconds": [
-      { at: 0.3, who: "Voice", text: `${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} from Face ID to paid, in the Airwallex sandbox.` },
-      { at: 4.8, who: "Voice", text: "In the sandbox, the settlement itself is simulated." },
-      { at: 8.2, who: "Voice", text: "Every id is on the proof page." },
+      { at: 0.2, who: "Voice", text: `${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} from Face ID to paid.` },
+      { at: 3.2, who: "Voice", text: "In the sandbox, the settlement is simulated." },
+      { at: 6.3, who: "Voice", text: "Every id is on the proof page." },
     ],
     "10-try-sign": [
-      { at: 0.6, who: "Voice", text: "Now it's your turn." },
-      { at: 2.6, who: "Voice", text: "Open your own test world, and sign an agent's proposal with your own Face ID." },
-      { at: 9.2, who: "Voice", text: "The server checks the signature against the exact terms." },
+      { at: 0.2, who: "Voice", text: "Your turn: open your own test world, and sign with your own Face ID." },
+      { at: 6.0, who: "Voice", text: "The server checks the signature against the exact terms." },
     ],
     "12-why-face-id": [
-      { at: 0.4, who: "Voice", text: "Why Face ID, and not a password?" },
-      { at: 3.4, who: "Voice", text: "A password is the same for every payment; Face ID signs these exact terms: change anything, and the signature is worthless." },
+      { at: 0.2, who: "Voice", text: "Why Face ID, not a password?" },
+      { at: 2.8, who: "Voice", text: "A password is the same every time; Face ID signs these exact terms. Change anything: worthless." },
     ],
     "13-specs": [
-      { at: 0.5, who: "Voice", text: "All tests passing." },
-      { at: 4.4, who: "Voice", text: "An audit log, hash-chained: check it yourself." },
-      { at: 8.0, who: "Voice", text: `Metal refused ${said("specs.stoppedMetal")} ${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} over its cap; the CFO rejected ${said("specs.stoppedCfo")} ${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"}.` },
-      { at: 12.8, who: "Voice", text: `${cap1(said("specs.byClaude"))} of ${said("specs.decisions")} decisions by Claude.` },
+      { at: 0.2, who: "Voice", text: "All tests passing." },
+      { at: 2.2, who: "Voice", text: "An audit log, hash-chained." },
+      { at: 4.2, who: "Voice", text: stopsSentence(said("specs.stoppedMetal"), said("specs.stoppedCfo")) },
+      { at: 10.2, who: "Voice", text: `${cap1(said("specs.byClaude"))} of ${said("specs.decisions")} decisions by Claude.` },
     ],
     "14-real": [
-      { at: 0.5, who: "Voice", text: "Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID." },
-      { at: 5.3, who: "Voice", text: "Ours, or simulated: the suppliers, the customer, the merchant, and the second approver, a labelled test passkey." },
+      { at: 0.2, who: "Voice", text: "Real: the Airwallex sandbox, Metal testnet, Claude, Face ID." },
+      { at: 3.9, who: "Voice", text: "Ours or simulated: suppliers, customer, merchant, and the second approver, a labelled test passkey." },
     ],
     "15-close": [
       { at: 0.5, who: "Max", text: CLOSING[0]! },
@@ -473,6 +499,15 @@ export const END_CREDITS: [string, string][] = [
   ["", "and the hackathon organisers and mentors"],
   ["Built by", "Max Geurtsen"],
 ];
+
+/** Purser's core line (the README's first line), word for word, in the two lines the wordmark shows it. */
+export const CORE_LINE = ["Claude explains and proposes, the rules in code hold every limit,", "and a person signs before money moves beyond them."] as const;
+
+/** Max's sentence for the stops (5 November), as the other documents say it: "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal." */
+export function stopsSentence(metal: string, cfo: string): string {
+  const one = (x: string) => x === "1" || x === "one";
+  return `Metal refused ${metal} ${one(metal) ? "purchase" : "purchases"} over its cap; the CFO rejected ${cfo} ${one(cfo) ? "proposal" : "proposals"}.`;
+}
 
 /** Max's closing line (docs/video/max-opening-close.md, "Slot"), in the lines the fallback card shows. */
 export const CLOSING = ["A price shock, a dispute, a euro bill.", "Claude decided, the rails and the code held the limits,", "and I signed only what went beyond them.", "Purser, Starter Kit 11."] as const;
@@ -507,7 +542,7 @@ export function loadPremiere(root = new URL("../../", import.meta.url)): Premier
 }
 
 /** The film page, its data inside it ("<" escaped); the scenes' times come from the script (premiereScript.ts). */
-export function premierePage(data: PremiereData, scenes: { id: string; start: number; seconds: number; kind: string; fade: [number, number]; credits: boolean }[]): string {
+export function premierePage(data: PremiereData, scenes: { id: string; start: number; seconds: number; kind: string; fade: [number, number]; credits: boolean; beats?: number[] }[]): string {
   // The background starts with the first scene after the opening line (the first that carries the corner credits).
   const background = { ...BACKGROUND, start: scenes.find((s) => s.credits)?.start ?? 0 };
   return TEMPLATE.replace("__PREMIERE_JSON__", () => JSON.stringify({ screen: data.screen, scenes, credits: data.credits, background }).replace(/</g, "\\u003c"));
