@@ -260,7 +260,7 @@ describe("the deck", () => {
     expect(DECK).toMatch(/html, body \{ background: #0b1020; \}/);
     expect(DECK).toMatch(/<div class="qr"><svg><\/svg><\/div><div><p class="url">kit11\.max-31b\.workers\.dev\/try\/sign<\/p>/);
     expect(DECK).not.toMatch(/<img[^>]*(visa|Visa)/);
-    for (const title of ["Purser", "AI agents can now spend money. So who holds the pen?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not", "From test rails to production"]) expect(DECK).toContain(`<h1>${title}</h1>`);
+    for (const title of ["Purser", "AI agents can now spend money. So who signs off?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not", "From test rails to production"]) expect(DECK).toContain(`<h1>${title}</h1>`);
   });
 
   it("follows Max's review (5 Nov): no logos, not opening with the awards, the rule on slide 2, the QR again on slide 10, no TAP run", () => {
@@ -298,6 +298,18 @@ describe("the QR code to /try/sign", () => {
   });
 });
 
+describe("the hook (Max, 5 November): \"So who signs off?\"", () => {
+  it("says the same hook everywhere, and nowhere the old pen", () => {
+    const film = ["src/film/premiere.ts", "src/film/premiere.html", "src/film/premiereScript.ts", "src/film/film.html", "src/film/script.ts", "docs/video/voice-script-max.md", "docs/video/script.md", "docs/video/subtitles-v5.srt"].map(read).join("\n");
+    for (const [name, text] of [...Object.entries(SOURCES), ["film", film], ["live", read("src/live/timeline.ts")]] as const) {
+      expect({ name, pen: /holds? the pen|keeps the pen/i.test(text) }).toEqual({ name, pen: false });
+    }
+    expect(TEXT.deck).toContain("AI agents can now spend money. So who signs off?");
+    expect(TEXT.pitch).toContain("So who signs off?");
+    expect(read("docs/video/voice-script-max.md")).toContain("AI agents can now spend money. … So who signs off?");
+  });
+});
+
 describe("the cheat sheet", () => {
   it("is one A4 page, printed from its HTML", () => {
     const pdf = new URL("../docs/internal/spiekkaart-demo.pdf", import.meta.url);
@@ -307,7 +319,7 @@ describe("the cheat sheet", () => {
 
   it("has the opening and the close word for word, the three figures and the URLs", () => {
     const s = TEXT.spiekkaart!;
-    expect(s).toContain("AI agents can now spend money. So who holds the pen? I'm Max Geurtsen, and this is Purser.");
+    expect(s).toContain("AI agents can now spend money. So who signs off? I'm Max Geurtsen, and this is Purser.");
     expect(s).toContain(`${CORE_LINE} On mine, signed before, I change the amount by one cent. The same signature is refused. One cent. Worthless.`);
     expect(s).toContain(`${RULE_LINE} In this demo, I play the CFO.`);
     expect(s).toContain(stopLine(st.metal, st.cfo));

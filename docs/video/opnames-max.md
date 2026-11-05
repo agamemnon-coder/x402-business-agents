@@ -11,7 +11,7 @@ Alles is testgeld. Er komt nooit een sleutel of iets privés in beeld. Waar elke
 Je spreekt de hele voice-over zelf in. De zinnen staan in [script.md](script.md), met de tijd erbij. De opening
 (0:02) en de slotzin (2:08) zitten erin:
 
-> So who holds the pen? I'm Max Geurtsen, and this is Purser.
+> So who signs off? I'm Max Geurtsen, and this is Purser.
 
 > A price shock, a dispute, a euro bill. Claude decided, the rails and the code held the limits, and I signed only
 > what went beyond them. Purser, Starter Kit 11.

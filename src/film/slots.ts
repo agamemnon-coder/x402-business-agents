@@ -1,11 +1,11 @@
-// Max's own recordings in the premiere (npm run video -- --slot 08-faceid=<file>[@<start>-<end>] --slot 10-try-sign=<file>):
+// Max's own recordings in the premiere (npm run video -- --slot 08-faceid=<file>[@<start>-<end>] --slot 11-turn=<file>):
 // portrait phone recordings, composed into a rounded phone frame beside the scene's captions. The page draws the scene
 // with an empty frame at the box below (?rec=x,y,w,h&recfor=<scene>); ffmpeg then lays the recording, cut to its
 // window, scaled to the box, its corners rounded by a mask, into that frame, fading with the scene. Without a file the
 // scene keeps its rendered picture: the Face ID reconstruction (08) or the /try/sign mock (10).
 
 /** The scenes that take a phone recording. */
-export const SLOT_SCENES = ["08-faceid", "10-try-sign"] as const;
+export const SLOT_SCENES = ["08-faceid", "11-turn"] as const;
 export type SlotScene = (typeof SLOT_SCENES)[number];
 
 export interface SlotFile { id: SlotScene; file: string; from: number | null; to: number | null }

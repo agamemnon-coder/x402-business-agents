@@ -176,6 +176,14 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .spec { position: absolute; left: 0; top: 0; width: 1920px; height: 804px; display: flex; align-items: center; justify-content: center; gap: 52px; padding-bottom: 30px; }
 .spec .col { display: flex; flex-direction: column; gap: 16px; max-width: 960px; }
 .spec .lab { font-size: 72px; font-weight: 800; letter-spacing: -.03em; line-height: 1.06; }
+/* Treasury's two options. */
+.opt { border-radius: 28px; background: var(--surface); border: 1px solid var(--line); padding: 30px 38px 32px; display: flex; flex-direction: column; gap: 12px; }
+.opt.on { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok), 0 0 70px rgba(60,207,130,.18); }
+.otag { display: flex; align-items: baseline; gap: 18px; }
+.otag b { font-size: 96px; font-weight: 800; line-height: .9; letter-spacing: -.03em; }
+.otag span { font-size: 26px; font-weight: 650; color: var(--muted); }
+.signed b { display: block; font-size: 52px; font-weight: 800; color: var(--ok); letter-spacing: -.02em; }
+.signed span { display: block; font-size: 27px; color: var(--muted); margin-top: 4px; }
 /* The stops card: two stat blocks side by side under a heading, Max's sentence as the caption. */
 .spec.stops { flex-direction: column; gap: 34px; }
 .pair { display: flex; gap: 80px; }
@@ -280,39 +288,37 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   // Each builder gets the scene's layer, its strings and whether only the overlay is wanted (a recording slot's label
   // over Max's own footage), and returns the function that draws the scene at a time t from its start.
   var build = {
-    "01-line": function (L, S) {
+    "01-hook": function (L, S) {
+      // All on black: a beat of silence, the line slams in, large; at Q a hard cut to the question, large, a pen stroke
+      // drawing itself under it.
       L.classList.add("black");
-      // A beat of black, then the line slams in, large; the scene ends on a hard cut.
+      var Q = 3.2;
       var h = put(L, E("div", "slam c", S.line), 0, 350);
-      return function (t) { h.style.opacity = prog(t, .45, .55); h.style.transform = "scale(" + mix(1.08, 1, out3(prog(t, .45, .7))) + ")"; };
-    },
-    "03-pen": function (L, S) {
-      // The question, large and at once (a hard cut from the line), a pen stroke drawing itself under it; at CUT a
-      // straight cut to the wordmark: Purser's mark, the name wiped in, a line drawn under it, the core line.
-      var CUT = 2;
       var qg = put(L, E("div", "full"), 0, 0);
       var qn = put(qg, E("div", "huge c", S.question), 0, 298);
       var PW = 760, pen = svgEl("svg", "pen", { width: PW, height: 44, viewBox: [0, 0, PW, 44].join(" ") });
       var stroke = svgEl("path", null, { d: ["M", 8, 30, "C", PW * .3, 12, PW * .62, 40, PW - 8, 16].join(" "), pathLength: 1 });
       stroke.style.strokeDasharray = [1, 1].join(" ");
       pen.appendChild(stroke); put(qg, pen, (1920 - PW) / 2, 448);
-      var wg = put(L, E("div", "full"), 0, 0);
-      var lock = lockup(wg, S.title, 92);
-      var c1 = put(wg, E("div", "core c", S.core[0]), 0, 414), c2 = put(wg, E("div", "core c", S.core[1]), 0, 472);
-      var su = put(wg, E("div", "kick c", S.sub), 0, 610);
       return function (t) {
-        var after = t >= CUT;
-        qg.style.opacity = after ? 0 : 1; wg.style.opacity = after ? 1 : 0;
-        qn.style.opacity = prog(t, 0, .2); qn.style.transform = "translateY(" + (1 - out3(prog(t, 0, .45))) * 14 + "px)";
-        stroke.style.strokeDashoffset = 1 - inOut(prog(t, .45, 1.25));
-        lock(t, CUT);
-        rise(c1, t, CUT + .9, null, 16); rise(c2, t, CUT + 1.3, null, 16); fade(su, t, CUT + 2.0);
+        var before = t < Q;
+        h.style.opacity = before ? prog(t, .4, .5) : 0; h.style.transform = "scale(" + mix(1.08, 1, out3(prog(t, .4, .65))) + ")";
+        qg.style.opacity = before ? 0 : 1;
+        qn.style.opacity = prog(t, Q, Q + .2); qn.style.transform = "translateY(" + (1 - out3(prog(t, Q, Q + .45))) * 14 + "px)";
+        stroke.style.strokeDashoffset = 1 - inOut(prog(t, Q + .45, Q + 1.25));
       };
     },
-    "03b-agents": function (L, S) {
+    "02-purser": function (L, S) {
+      // A straight cut to the wordmark: Purser's mark, the name wiped in, a line drawn under it; the core line.
+      var lock = lockup(L, S.title, 92);
+      var c1 = put(L, E("div", "core c", S.core[0]), 0, 414), c2 = put(L, E("div", "core c", S.core[1]), 0, 472);
+      var su = put(L, E("div", "kick c", S.sub), 0, 610);
+      return function (t) { lock(t, 0); rise(c1, t, .7, null, 16); rise(c2, t, 1.0, null, 16); fade(su, t, 1.6); };
+    },
+    "03-agents": function (L, S) {
       // The cards come in 0.7 s apart; each says its agent's name, model and job, and the limits that hold it.
       var h = put(L, E("div", "hm c", S.head), 0, 26);
-      var W = 540, G = 40, x0 = (1920 - (3 * W + 2 * G)) / 2, at = [.5, 1.2, 1.9], LIM = 4.4;
+      var W = 540, G = 40, x0 = (1920 - (3 * W + 2 * G)) / 2, at = [.3, 1.0, 1.7], ON = .6, LIM = 6.6;
       // A limit's value, one line per figure ("EUR 30.00 a purchase", "100.00 a month").
       var lim = function (label, value) { return E("div", "lim", null, [E("i", null, label)].concat(value.split(" · ").map(function (v) { return E("em", null, v); }))); };
       var cards = S.agents.map(function (a, i) {
@@ -324,13 +330,14 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var note = put(L, E("div", "tiny c", S.note), 0, 728);
       return function (t) {
         rise(h, t, .1, null, 18);
-        cards.forEach(function (c, i) { rise(c, t, at[i], null, 30); c.lims.forEach(function (l, k) { fade(l, t, at[i] + .3 + k * .2); l.classList.toggle("lit", t >= LIM + i * .15); }); });
+        // Each card lit for 3 s in turn (Max, v5: 3 s a card), then the limits line.
+        cards.forEach(function (c, i) { rise(c, t, at[i], null, 30); c.lims.forEach(function (l, k) { fade(l, t, at[i] + .3 + k * .2); l.classList.toggle("lit", t >= LIM + i * .15); }); c.classList.toggle("on", t >= ON + i * 3 && t < ON + (i + 1) * 3); });
         fade(note, t, 2.6); rise(ln, t, LIM);
       };
     },
-    "04-architecture": function (L, S) {
+    "04-how": function (L, S) {
       var k = put(L, E("div", "kick c", S.kicker), 0, 96);
-      var W = 280, G = 76, x0 = (1920 - (5 * W + 4 * G)) / 2, y = 228, at = [.2, 1.5, 3.5, 6.0, 7.2];
+      var W = 280, G = 76, x0 = (1920 - (5 * W + 4 * G)) / 2, y = 228, at = [.2, 1.0, 2.6, 4.0, 4.8];
       var nodes = S.nodes.map(function (n, i) { var d = E("div", "node", null, [E("b", null, n.t), E("span", null, n.s)]); if (i === 2) d.insertBefore(faceGlyph(), d.firstChild); return put(L, d, x0 + i * (W + G), y); });
       var arrows = [0, 1, 2, 3].map(function (i) { return width(put(L, E("div", "arrow"), x0 + i * (W + G) + W + 12, y + 116), G - 30); });
       var face = nodes[2].querySelector(".face");
@@ -338,7 +345,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       // Then a second one sets off, turns red on its way to Airwallex or Metal and stops there: the refusal (05).
       var PY = y + 118, edge = function (i) { return x0 + i * (W + G) + W; }, next = function (i) { return x0 + (i + 1) * (W + G); };
       var pulse = function () { return put(L, E("div", "pulse", null, [E("i"), E("i")]), 0, PY - 11); };
-      var p1 = pulse(), p2 = pulse(), T2 = at[4] + .2, HOP = .4, STOP = 14;
+      var p1 = pulse(), p2 = pulse(), T2 = at[4] + .2, HOP = .35, STOP = 14;
       // Where the red pulse stops (the third hop's end): the box flashes red for 0.4 s, the tag comes in under it, and
       // pulse and tag fade out together within a second.
       var ARR = T2 + 2 * HOP + HOP * .9, GONE = ARR + .6;
@@ -366,7 +373,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         }
       };
     },
-    "05-price-rise": function (L, S) {
+    "05-price": function (L, S) {
       var lb = put(L, E("div", "full"), 0, 0);
       var k0 = put(lb, E("div", "kick", S.kicker), 140, 60);
       var sup = put(lb, E("div", "hs muted", S.supplier + " " + S.rise), 140, 130);
@@ -403,34 +410,66 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var foot = put(L, width(E("div", "tiny", S.label), 1640), 140, 728);
       // The line: flat from 3.0 s, the rise with "doubled its price, past the mandate's cap", then flat at the new
       // price. Metal's refusal appears the moment the line crosses the cap (TC).
-      var R0 = 6.4, R1 = 8.2, TC = R0 + (R1 - R0) * Math.acos(1 - 2 * k) / Math.PI;
+      var R0 = 2.6, R1 = 4.0, TC = R0 + (R1 - R0) * Math.acos(1 - 2 * k) / Math.PI;
       function tip(t) {
-        if (t < R0) return [mix(0, xr0, inOut(prog(t, 2.8, R0))), Y(from)];
+        if (t < R0) return [mix(0, xr0, inOut(prog(t, 1.2, R0))), Y(from)];
         if (t < R1) { var e = inOut(prog(t, R0, R1)); return [mix(xr0, xr1, e), Y(mix(from, to, e))]; }
         return [mix(xr1, xe, out3(prog(t, R1, R1 + 1.2))), Y(to)];
       }
       return function (t) {
         fade(k0, t, .2);
-        lb.style.transform = "translateX(" + mix(380, 0, inOut(prog(t, 4.6, 5.8))) + "px)";
-        rise(sup, t, .6); rise(price, t, .9); rise(unit, t, 1.3);
+        lb.style.transform = "translateX(" + mix(380, 0, inOut(prog(t, 1.4, 2.4))) + "px)";
+        rise(sup, t, .3); rise(price, t, .5); rise(unit, t, .8);
         var r = out3(prog(t, R0, R1));
         arrow.style.opacity = r; toS.style.opacity = r;
-        fade(axis, t, 2.6); fade(capl, t, 3.0); fade(ct, t, 3.0); rise(cap, t, 3.2);
+        fade(axis, t, 1.0); fade(capl, t, 1.2); fade(ct, t, 1.2); rise(cap, t, 1.3);
         var p = tip(t), d;
         if (p[0] <= xc && t < TC) d = p[0] <= xr0 ? p[0] : xr0 + seg([xr0, Y(from)], p);
         else d = lu + (p[0] <= xr1 ? seg([xc, yc], p) : seg([xc, yc], [xr1, Y(to)]) + p[0] - xr1);
         under.style.strokeDashoffset = Math.max(0, lu - d); over.style.strokeDashoffset = Math.max(0, lo - (d - lu));
-        under.style.opacity = t >= 2.8 ? 1 : 0; over.style.opacity = t >= TC ? 1 : 0;
-        dot.style.opacity = prog(t, 2.8, 3.2); dot.style.transform = "translate(" + (CX + p[0] - 17) + "px," + (CY + p[1] - 17) + "px)";
+        under.style.opacity = t >= 1.2 ? 1 : 0; over.style.opacity = t >= TC ? 1 : 0;
+        dot.style.opacity = prog(t, 1.2, 1.6); dot.style.transform = "translate(" + (CX + p[0] - 17) + "px," + (CY + p[1] - 17) + "px)";
         dot.classList.toggle("over", t >= TC);
         var w = prog(t, TC, TC + 1.1); ring.style.opacity = w > 0 && w < 1 ? .8 * (1 - w) : 0; ring.style.transform = "scale(" + mix(1, 3.2, out3(w)) + ")";
         fade(endv, t, R1 + .6);
         rise(ref, t, TC); rise(rea, t, TC + .4);
-        rise(lt, t, 9.7);
-        rise(tl, t, 13.6); rise(tx, t, 13.7); rise(tf, t, 13.9); rise(tw, t, 14.0); fade(foot, t, 14.3);
+        rise(lt, t, 4.8);
+        rise(tl, t, 7.8); rise(tx, t, 7.9); rise(tf, t, 8.1); rise(tw, t, 8.2); fade(foot, t, 8.6);
       };
     },
-    "06-dispute": function (L, S) {
+    "05b-treasury": function (L, S) {
+      // Treasury's two plans side by side, each within the same total; then A is signed with Face ID (its time from the
+      // record) and B steps back; four eyes said small and honestly.
+      var k = put(L, E("div", "kick c", S.kicker), 0, 52);
+      var W = 700, G = 80, x0 = (1920 - (2 * W + G)) / 2, SIGN = 4.6;
+      var cards = S.options.map(function (o, i) {
+        var c = put(L, E("div", "opt", null, [E("div", "otag", null, [E("b", null, o.tag), E("span", null, o.id)])].concat(o.lines.map(function (l) { return E("div", "hs", l); })).concat([E("div", "small", S.within + " " + S.unit)])), x0 + i * (W + G), 112);
+        return width(c, W);
+      });
+      var f = put(L, faceGlyph("mini"), x0 + W - 116, 140);
+      var sg = put(L, E("div", "signed", null, [E("b", null, "✓ " + S.signed), E("span", null, S.signedWhen)]), x0, 520);
+      var co = put(L, E("div", "tiny c", S.second), 0, 728);
+      return function (t) {
+        fade(k, t, .1);
+        cards.forEach(function (c, i) { rise(c, t, .4 + i * .7, null, 26); });
+        cards[0].classList.toggle("on", t >= SIGN); cards[1].style.opacity = t >= SIGN ? Math.min(cards[1].style.opacity, 1 - .55 * prog(t, SIGN, SIGN + .5)) : cards[1].style.opacity;
+        fade(f, t, SIGN); scan(f, t, SIGN + .1);
+        rise(sg, t, SIGN + 1.3, null, 16); fade(co, t, SIGN + 1.8);
+      };
+    },
+    "06-metal": function (L, S) {
+      // The run's Metal payments, each its own transaction on testnet, counted up to the record's figure.
+      var n = put(L, E("div", "spec"), 0, 0);
+      var g = E("div", "giant tn"), big = counter(null, S.big); g.appendChild(big);
+      var lab = E("div", "lab", S.label), line = E("div", "hs", S.line), sm = E("div", "small", S.small);
+      var col = E("div", "col", null, [lab, line, sm]); col.style.maxWidth = "none"; line.style.whiteSpace = "nowrap";
+      n.appendChild(g); n.appendChild(col);
+      return function (t) {
+        n.style.opacity = prog(t, 0, .3); n.style.transform = "translateY(" + (1 - out3(prog(t, 0, .5))) * 24 + "px)";
+        count(big, t, .1); fade(line, t, .9); fade(sm, t, 2.4);
+      };
+    },
+    "07-dispute": function (L, S) {
       var k = put(L, E("div", "kick", S.kicker), 140, 56);
       var cl = put(L, width(E("div", "hm", S.claim), 1640), 140, 100);
       var chips = S.orders.map(function (o, i) { return put(L, E("div", "chip", null, [E("b", null, o), E("i", null, "")]), 140 + (i % 6) * 172, 226 + Math.floor(i / 6) * 118); });
@@ -444,33 +483,16 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         fade(k, t, .1); rise(cl, t, .4);
         var signed = 0;
         chips.forEach(function (c, i) {
-          rise(c, t, 2.4 + i * .05, null, 16);
-          var s0 = 2.9 + i * .2, refunded = S.refunded.indexOf(S.orders[i]) >= 0 && t >= 6.1 + S.refunded.indexOf(S.orders[i]) * .3;
+          rise(c, t, 1.0 + i * .04, null, 16);
+          var s0 = 1.6 + i * .2, refunded = S.refunded.indexOf(S.orders[i]) >= 0 && t >= 5.4 + S.refunded.indexOf(S.orders[i]) * .3;
           if (t >= s0) signed = i + 1;
           c.classList.toggle("signed", t >= s0 && !refunded); c.classList.toggle("refund", refunded);
           c.querySelector("i").textContent = refunded ? "refunded" : t >= s0 ? "✓ signed" : "";
         });
-        cnt.textContent = signed ? String(signed) : ""; fade(cnt, t, 2.9); rise(of, t, 3.1);
-        rise(rl, t, 6.1); rise(rest, t, 9.0);
-        var sp = prog(t, 10.2, 10.6); st.style.opacity = sp; st.style.transform = "rotate(" + TILT + "deg) scale(" + mix(2.0, 1, out3(sp)) + ")";
-        rise(wh, t, 10.8);
-      };
-    },
-    "07-approval": function (L, S) {
-      var ph = put(L, E("div", "phone"), 300, 16);
-      var scr = E("div", "scr"); ph.appendChild(scr); scr.appendChild(E("div", "notch"));
-      var sh = E("div", "sheet", null, [E("div", "pid", S.pid), E("div", "what", S.what)]); scr.appendChild(sh);
-      var rows = S.rows.map(function (r) { var n = E("div", "row", null, [E("span", null, r[0]), E("b", null, r[1])]); sh.appendChild(n); return n; });
-      var hl = E("div", "pid", S.hashLabel); sh.appendChild(hl);
-      var hs = E("div", "hash mono", S.hash); sh.appendChild(hs);
-      var bt = E("div", "btnp", S.button); sh.appendChild(bt);
-      var s1 = put(L, E("div", "hl", S.side[0]), 880, 200), s2 = put(L, E("div", "hl acc", S.side[1]), 880, 300);
-      var cap = put(L, width(E("div", "small", S.caption), 900), 884, 440);
-      return function (t) {
-        rise(ph, t, .1, null, 40);
-        rows.forEach(function (r, i) { fade(r, t, .5 + i * .2); }); fade(hl, t, 1.5); fade(hs, t, 1.5); fade(bt, t, 1.8);
-        rise(s1, t, 2.6); rise(s2, t, 3.3); hs.classList.toggle("lit", t > 3.3); rise(cap, t, 3.8);
-        bt.classList.toggle("lit", t > 4.4 && Math.floor((t - 4.4) * 2) % 2 === 0);
+        cnt.textContent = signed ? String(signed) : ""; fade(cnt, t, 1.6); rise(of, t, 1.8);
+        rise(rl, t, 5.4); rise(rest, t, 7.0);
+        var sp = prog(t, 7.6, 8.0); st.style.opacity = sp; st.style.transform = "rotate(" + TILT + "deg) scale(" + mix(2.0, 1, out3(sp)) + ")";
+        rise(wh, t, 8.2);
       };
     },
     "08-faceid": function (L, S, ov, seconds, rec) {
@@ -490,24 +512,26 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var sh = E("div", "sheet", null, [pid, E("div", "what", S.what)]); scr.appendChild(sh);
       S.rows.forEach(function (r) { sh.appendChild(E("div", "row", null, [E("span", null, r[0]), E("b", null, r[1])])); });
       sh.appendChild(E("div", "pid", S.hashLabel));
-      var hs = E("div", "hash mono lit", S.hash); sh.appendChild(hs);
+      var hs = E("div", "hash mono", S.hash); sh.appendChild(hs);
       var bt = E("div", "btnp", S.button); sh.appendChild(bt);
       var sc = E("div", "scan", null, [faceGlyph()]); scr.appendChild(sc);
       var face = sc.firstChild;
-      var s1 = put(L, E("div", "hl", S.side[0]), 880, 200), s2 = put(L, E("div", "hl okc", S.side[1]), 880, 300);
-      var wh = put(L, E("div", "small", S.when), 884, 410);
+      var s1 = put(L, E("div", "hl", S.side[0]), 880, 150), s2 = put(L, E("div", "hl acc", S.side[1]), 880, 250), s3 = put(L, E("div", "hl okc", S.side[2]), 880, 350);
+      var wh = put(L, E("div", "small", S.when), 884, 460);
       var rc = put(L, width(E("div", "tiny", S.recon), 940), 884, 712);
       L.push = { to: 1.04, x: 510, y: 402 };
       return function (t) {
         rc.style.opacity = prog(t, 0, .3);
-        bt.classList.toggle("lit", t > .5 && t < 1.0);
-        sc.style.opacity = prog(t, .9, 1.1) * (1 - prog(t, 2.4, 2.7)); scan(face, t, 1.0);
-        var ok = t >= 2.5;
+        // "… and sign with Face ID": the press, the scan, then approved.
+        hs.classList.toggle("lit", t > 1.6);
+        bt.classList.toggle("lit", t > 4.6 && t < 5.1);
+        sc.style.opacity = prog(t, 5.0, 5.2) * (1 - prog(t, 6.5, 6.8)); scan(face, t, 5.1);
+        var ok = t >= 6.6;
         bt.textContent = ok ? "✓ " + S.approved : S.button; bt.classList.toggle("done", ok); pid.textContent = ok ? S.pidDone : S.pid;
-        rise(s1, t, .4); rise(s2, t, 2.6); rise(wh, t, 3.1);
+        rise(s1, t, 1.6); rise(s2, t, 5.0); rise(s3, t, 6.6); rise(wh, t, 7.0);
       };
     },
-    "09-six-seconds": function (L, S) {
+    "09-six": function (L, S) {
       var big = counter("mega", S.big);
       var six = put(L, E("div", "sixrow", null, [big, E("span", "hl", S.unit)]), 140, 40);
       var line = put(L, E("div", "hm muted", S.line), 146, 318);
@@ -530,7 +554,13 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         rise(lk, t, 6.3); rise(wh, t, 6.7); fade(foot, t, 7.2);
       };
     },
-    "10-try-sign": function (L, S, ov, seconds, rec) {
+    "10-why": function (L, S) {
+      var qn = put(L, E("div", "hl c acc", S.q), 0, 132);
+      var at = [3.2, 6.4, 8.4];
+      var lines = S.a.map(function (s, i) { return put(L, E("div", "hm c", s), 0, 300 + i * 78); });
+      return function (t) { rise(qn, t, .2); lines.forEach(function (n, i) { rise(n, t, at[i]); }); };
+    },
+    "11-turn": function (L, S, ov, seconds, rec) {
       if (ov) { put(L, E("div", "ovl", S.label), 48, 36); put(L, E("div", "ovl sub", S.overlay + " · " + S.url), 48, 718); return function () {}; }
       if (rec) {
         ring(L, rec);
@@ -539,7 +569,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         rl[4].classList.add("okc");
         var ru = put(L, E("div", "hs acc", S.url), 762, 176), rp = put(L, E("div", "pill", S.label), 760, 640);
         var rn = put(L, E("div", "tiny", S.overlay + (rec.speed > 1 ? " · shown at " + rec.speed + "× speed" : "")), 764, 726);
-        return function (t) { rise(rl[0], t, .3); rise(ru, t, 1.0); rise(rl[1], t, 1.9); rise(rl[2], t, 2.9); rise(rl[3], t, 3.9); rise(rl[4], t, 6.0); fade(rp, t, .6); fade(rn, t, .9); };
+        return function (t) { rise(rl[0], t, .3); rise(ru, t, .9); rise(rl[1], t, 2.0); rise(rl[2], t, 2.9); rise(rl[3], t, 3.8); rise(rl[4], t, 5.4); fade(rp, t, .6); fade(rn, t, .9); };
       }
       var ph = put(L, E("div", "phone"), 180, 16);
       var scr = E("div", "scr"); ph.appendChild(scr); scr.appendChild(E("div", "notch"));
@@ -567,20 +597,20 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var mn = put(L, E("div", "tiny", S.mockNote), 764, 726);
       return function (t) {
         rise(ph, t, .1, null, 40);
-        rise(lines[0], t, .3); rise(url, t, 1.0); rise(lines[1], t, 1.9); rise(lines[2], t, 2.9); rise(lines[3], t, 3.9); rise(lines[4], t, 6.0); fade(lab, t, .6); fade(mn, t, .9);
+        rise(lines[0], t, .3); rise(url, t, .9); rise(lines[1], t, 2.0); rise(lines[2], t, 2.9); rise(lines[3], t, 3.8); rise(lines[4], t, 5.4); fade(lab, t, .6); fade(mn, t, .9);
         // Into the card, a press on "Sign with Face ID", the Face ID scan, then the result scrolled into view.
-        sign.style.display = t >= 5.3 ? "none" : ""; done.style.display = t >= 5.3 ? "" : "none";
+        sign.style.display = t >= 4.3 ? "none" : ""; done.style.display = t >= 4.3 ? "" : "none";
         var into = Math.max(0, card.offsetTop - 190), toRes = Math.max(0, res.offsetTop - 250);
-        var y = mix(0, into, out3(prog(t, 1.6, 2.6))); y = mix(y, toRes, out3(prog(t, 5.4, 6.4)));
+        var y = mix(0, into, out3(prog(t, 1.2, 2.0))); y = mix(y, toRes, out3(prog(t, 4.4, 5.2)));
         pg.style.transform = "translateY(" + (-y) + "px)";
-        sign.classList.toggle("lit", t > 3.5 && t < 4.4);
-        sc.style.opacity = prog(t, 4.2, 4.4) * (1 - prog(t, 5.2, 5.4)); scan(face, t, 4.25);
-        res.style.opacity = prog(t, 5.3, 5.6);
-        ver.classList.toggle("lit", t > 6.6); exe.classList.toggle("lit", t > 7.2);
-        tam.classList.toggle("lit", t > 8.4);
+        sign.classList.toggle("lit", t > 2.8 && t < 3.5);
+        sc.style.opacity = prog(t, 3.3, 3.5) * (1 - prog(t, 4.2, 4.4)); scan(face, t, 3.35);
+        res.style.opacity = prog(t, 4.3, 4.6);
+        ver.classList.toggle("lit", t > 5.4); exe.classList.toggle("lit", t > 5.9);
+        tam.classList.toggle("lit", t > 6.4);
       };
     },
-    "11-one-cent": function (L, S) {
+    "12-tamper": function (L, S) {
       L.classList.add("black");
       var a = put(L, E("div", "huge c"), 0, 150);
       // The two amounts differ only from where the cent changes: that part flips, in amber.
@@ -593,31 +623,28 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var w = put(L, E("div", "hl c", S.last), 0, 590);
       L.push = { to: 1.04, x: 960, y: 402 };
       return function (t) {
-        var flip = t >= 1.2, W = 4;
+        var flip = t >= 1.2, W = 5.1;
         last.style.display = flip ? "none" : ""; now.style.display = flip ? "" : "none";
         var dim = 1 - .62 * prog(t, W - .2, W + .5);
         a.style.opacity = prog(t, 0, .25) * dim; a.style.transform = flip && t < 1.6 ? "scale(" + mix(1.04, 1, prog(t, 1.2, 1.6)) + ")" : "";
-        plus.style.opacity = prog(t, .6, .9) * dim; hs.style.opacity = prog(t, 1.7, 2.1) * dim; rf.style.opacity = prog(t, 2.4, 2.8) * dim;
+        plus.style.opacity = prog(t, .6, .9) * dim; hs.style.opacity = prog(t, 1.8, 2.2) * dim; rf.style.opacity = prog(t, 2.8, 3.2) * dim;
         rise(w, t, W, null, 12);
       };
     },
-    "12-why-face-id": function (L, S) {
-      var qn = put(L, E("div", "hl c acc", S.q), 0, 132);
-      var at = [2.8, 4.4, 6.0];
-      var lines = S.a.map(function (s, i) { return put(L, E("div", "hm c", s), 0, 300 + i * 78); });
-      return function (t) { rise(qn, t, .2); lines.forEach(function (n, i) { rise(n, t, at[i]); }); };
-    },
-    "13-specs": function (L, S, ov, seconds, rec, beats) {
+    "13-proof": function (L, S, ov, seconds, rec, beats) {
       // One card on each beat (the script's beats; evenly spread without them).
       var at = beats || S.cards.map(function (c, i) { return i * seconds / S.cards.length; });
       var cards = S.cards.map(function (c) {
         var n = put(L, E("div", "spec"), 0, 0);
-        if (c.stops) {
-          // The stops: two stat blocks side by side, each the record's figure as it is; Max's sentence as the caption.
+        if (c.blocks) {
+          // Two stat blocks side by side: the stops (each the record's figure as it is, Max's sentence as the caption),
+          // or the tests and the audit log (counting up).
           n.classList.add("stops");
-          n.parts = c.blocks.map(function (b) { return E("div", "stat", null, [E("div", "giant tn", b.big), E("div", "hs", b.label), E("div", "small", b.small)]); });
-          n.appendChild(E("div", "hm", c.head)); n.appendChild(E("div", "pair", null, n.parts));
-          n.appendChild(n.cap = E("div", "small", c.caption + (c.small ? " · " + c.small : "")));
+          n.counts = [];
+          n.parts = c.blocks.map(function (b) { var g = E("div", "giant tn"); if (c.count) g.appendChild(n.counts[n.counts.length] = counter(null, b.big)); else g.textContent = b.big; return E("div", "stat", null, [g, E("div", "hs", b.label), E("div", "small", b.small)]); });
+          if (c.head) n.appendChild(E("div", "hm", c.head));
+          n.appendChild(E("div", "pair", null, n.parts));
+          if (c.caption) n.appendChild(n.cap = E("div", "small", c.caption + (c.small ? " · " + c.small : "")));
           return n;
         }
         // The big figures count up.
@@ -631,9 +658,13 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
           var o = prog(t, t0, t0 + .3) * (i === cards.length - 1 ? 1 : 1 - prog(t, t1 - .3, t1));
           c.style.opacity = o; c.style.transform = "translateY(" + (1 - out3(prog(t, t0, t0 + .5))) * 24 + "px)";
           if (c.big) count(c.big, t, t0 + .05);
-          if (c.parts) { c.parts.forEach(function (p, k) { rise(p, t, t0 + .3 + k * .5, null, 20); }); fade(c.cap, t, t0 + 1.4); }
+          if (c.parts) { c.parts.forEach(function (p, k) { rise(p, t, t0 + .3 + k * .5, null, 20); }); if (c.cap) fade(c.cap, t, t0 + 1.4); c.counts.forEach(function (x, k) { count(x, t, t0 + .35 + k * .5); }); }
         });
       };
+    },
+    "13b-value": function (L, S) {
+      var l1 = put(L, E("div", "hl c", S.line[0]), 0, 250), l2 = put(L, E("div", "hl c acc", S.line[1]), 0, 360);
+      return function (t) { rise(l1, t, .1, null, 16); rise(l2, t, .8, null, 16); };
     },
     "14-real": function (L, S) {
       var k = put(L, E("div", "kick c", S.kicker), 0, 60);
@@ -653,7 +684,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       if (ov) return function () {};
       // The ending mirrors the intro: the three beats one by one, short and large; the closing line in two lines; then
       // the intro's wordmark lockup, "Starter Kit 11" small under it. Each step clears before the next.
-      var BEATS = [.5, 1.4, 2.4], LINE = [4.0, 7.8], WORD = 11.4;
+      var BEATS = [.5, 1.4, 2.4], LINE = [3.9, 7.8], WORD = 11.3;
       var bs = S.beats.map(function (b, i) { return put(L, E("div", "huge c", b), 0, 86 + i * 150); });
       var l1 = put(L, E("div", "hm c", S.line[0]), 0, 236), l2 = put(L, E("div", "hm c acc", S.line[1]), 0, 320);
       var wg = put(L, E("div", "full"), 0, 0), lock = lockup(wg, S.title, 92);
@@ -680,11 +711,11 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       roll.push(put(L, E("div", "small c", S.credits[credits]), 0, y - 26)); y += 50;
       roll.push(put(L, E("div", "kick c waitc", S.last), 0, y)); y += 70;
       roll.push(put(L, E("div", "small c acc", S.short), 0, y));
-      var A = [mk, ct, url, ft, mt], out = 2.4, at = 2.9;
+      var A = [mk, ct, url, ft, mt], out = 3.6, at = 4.3;
       return function (t) {
-        fade(mk, t, .1, out); rise(ct, t, .2, out); rise(url, t, .6, out); fade(ft, t, 1.0, out); fade(mt, t, 1.2, out);
+        fade(mk, t, .2, out); rise(ct, t, .4, out); rise(url, t, 1.1, out); fade(ft, t, 1.9, out); fade(mt, t, 2.3, out);
         A.forEach(function (n) { n.style.visibility = t < out + .6 ? "visible" : "hidden"; });
-        roll.forEach(function (n, i) { rise(n, t, at + i * .18, null, 14); });
+        roll.forEach(function (n, i) { rise(n, t, at + i * .3, null, 14); });
       };
     },
   };

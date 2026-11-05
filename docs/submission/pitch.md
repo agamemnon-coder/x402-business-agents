@@ -23,8 +23,8 @@ Max says the figures as words ("twenty-four"); they are written as digits here s
 
 | # | Max says | Source |
 |---|---|---|
-| 1 | AI agents will spend company money. | Problem; the film's first line (`01-line`) |
-| 2 | So who holds the pen? | The film's question (`03-pen`) |
+| 1 | AI agents will spend company money. | Problem; the film's first line (`01-hook`) |
+| 2 | So who signs off? | The film's question (`01-hook`) |
 | 3 | Purser gives each agent its own Airwallex card and its own Metal mandate. | README, third paragraph |
 | 4 | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE`, `src/submission/deck.ts` (Max, 5 Nov); form text, Controls |
 | 5 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Metal testnet |
@@ -44,8 +44,8 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 
 | When | Max says | Source |
 |---|---|---|
-| **0:00 Hook** | AI agents can now spend money. | The film's first line (`01-line`) |
-| | So who holds the pen? | The film (`03-pen`) |
+| **0:00 Hook** | AI agents can now spend money. | The film's first line (`01-hook`) |
+| | So who signs off? | The film (`01-hook`) |
 | | I'm Max Geurtsen, and this is Purser. | `docs/video/max-opening-close.md` |
 | **0:15 Who and what** | Picture a small company that sells live stock data, per query. | `NORTHWIND_LINE`, `src/config/brand.ts` |
 | | Three Claude agents run it: Sourcing, Support and Treasury. | Record: `snapshot.agent_stats` (three agents) |
@@ -68,13 +68,13 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | | PAID, 6 seconds after my Face ID. | Record: `timings` (faceToPaid 6) |
 | **1:50 Said plainly** | Said plainly: the second approver was a test passkey, and the sandbox simulates settlement. | `SECOND_APPROVER`; Log, "Approvals"; `SANDBOX_SETTLED`; README (Purser moves SENT and PAID through the sandbox's simulation API) |
 | | Every id is published on /proof; check it with npm run verify. | `/proof`; Record: `snapshot.audit` (412 rows, intact); README |
-| **2:05 The jury signs** | Now you hold the pen: scan this, now or during the questions. | Deck, slides 5 and 10; `docs/media/try-sign-qr.png` |
+| **2:05 The jury signs** | Now you sign off: scan this, now or during the questions. | Deck, slides 5 and 10; `docs/media/try-sign-qr.png` |
 | | Your own test world; nothing real moves. | Try: `TRY_SIGN_LABEL` |
 | | A rule blocks one payment; you sign the other with your passkey. | Try: `checkPayment` (reserve floor blocks T-0001; T-0002 waits for a signature) |
 | | Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. | The core line (Max, 5 Nov); `CORE_LINE`, `src/submission/deck.ts` |
 | | On mine, signed before, I change the amount by one cent. | Try: "Try to tamper: change the amount by 0.01" (Max's tab, signed before the demo) |
 | | The same signature is refused. | Try: "Refused: the same signature does not verify for the changed terms" |
-| | One cent. Worthless. | The film (`11-one-cent`) |
+| | One cent. Worthless. | The film (`12-tamper`) |
 
 About 280 words: 2:00 of speech; the rest is clicks on /watch and the pause while the jury scans. If a rehearsal runs
 over, cut first "Your own test world; nothing real moves." (the slide says it), then "Last, a 240 euro licence is due."
@@ -139,7 +139,7 @@ own signature and "One cent. Worthless." stay last.
 | We take no cut of the payments. | Same plan |
 | Why now? | `docs/claims.md`, market facts |
 | In 2025, Mastercard and Google launched protocols for agents that pay. | `docs/claims.md` (Agent Pay, April 2025; AP2, 16 September 2025) |
-| Agents can pay now; the pen still has to stay with a person. | Core message; `docs/roadmap.md`, "The CFO keeps the pen" |
+| Agents can pay now; the pen still has to stay with a person. | Core message; `docs/roadmap.md`, "The CFO signs off" |
 
 About 640 words in all: 4:30 of speech, plus the demo.
 

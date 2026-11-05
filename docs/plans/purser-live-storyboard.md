@@ -19,7 +19,7 @@ Bottom, a running ledger line and a clock (09:00 to 18:00, compressed).
 | 0:50–0:58 | Ask Purser | A chat bubble: "Flight to Berlin, at most €250". A single-use card appears, pays Skyline Air 189.00, then greys out: "used, closed". | task card rows (after the live check) |
 | 0:58–1:06 | The euro bill | Treasury agent: "Convert only the missing euros." USD to EUR at the checked rate, SWIFT to the manufacturer: PAID. | FX, transfer |
 | 1:06–1:12 | Money from a stranger | A coin from an unknown address stops at a glass wall: "held by Metal in quarantine; the CFO decides". | quarantine row |
-| 1:12–1:15 | End card | "Every euro has a proof. The CFO keeps the pen." Links: the dashboard, the demo, the Lab. | — |
+| 1:12–1:15 | End card | "Every euro has a proof. The CFO signs off." Links: the dashboard, the demo, the Lab. | — |
 
 Honesty on screen: a small fixed label "Recorded run, test money (Airwallex sandbox, Metal testnet). Card charges and
 the airline are sandbox simulations." The speed control (pause, 1x, 2x) and a "skip to" list for jurors.

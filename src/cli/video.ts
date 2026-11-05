@@ -5,13 +5,14 @@
 // the size (3840x2160) and scaled down with lanczos, then encoded with x264 (preset slow, CRF 14), so small text stays
 // crisp. Every figure comes from the run's record through src/film/premiere.ts, which stops the build when one is
 // missing. Writes to out/video/: clips/, overlays/ (a transparent PNG per recording slot), the silent master
-// (master.mp4, no burned-in subtitles), subtitles.srt (for YouTube), script.md (the voice-over) and premiere-script.md
+// (master-v5.mp4, no audio and no burned-in subtitles), scenes-v5.json (each scene's start and end, for the mix),
+// subtitles-v5.srt (for YouTube), script.md (the voice-over) and premiere-script.md
 // (the script table).
-//   --docs     writes docs/video/premiere-script.md, subtitles.srt and script.md, and nothing else
+//   --docs     writes docs/video/premiere-script.md, subtitles-v5.srt, scenes-v5.json and script.md, and nothing else
 //   --stills   a PNG of three moments of each scene in out/video/stills/, for a quick look, and nothing else
 //   --check    draws every scene in a browser and fails on a page error, and nothing else
 //   --film     the earlier film of the 30 October recording (src/video/plan.ts) into out/video/film/, as before
-//   --slot 08-faceid=<file>[@<start>-<end>], --slot 10-try-sign=<file>[@<start>-<end>]: Max's own portrait phone
+//   --slot 08-faceid=<file>[@<start>-<end>], --slot 11-turn=<file>[@<start>-<end>]: Max's own portrait phone
 //              recordings, laid into a phone frame beside the scene's captions (src/film/slots.ts); without one the
 //              scene keeps its rendered picture (the Face ID reconstruction, the /try/sign mock)
 // VIDEO_PREVIEW=1 makes a quick preview instead: drawn at 1920x1080 (no supersampling) and encoded with x264 preset
@@ -27,7 +28,7 @@ import { chromium } from "playwright";
 import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { BEATS, scriptMarkdown, subtitlesSrt, totalSeconds, type Action, type Beat } from "../video/plan.js";
 import { PREMIERE_CSP, loadPremiere, premierePage } from "../film/premiere.js";
-import { MASTER_CLIPS, OVERLAYS, pageScenes, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, sceneFade } from "../film/premiereScript.js";
+import { MASTER_CLIPS, OVERLAYS, pageScenes, scenesJson, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, sceneFade } from "../film/premiereScript.js";
 import { SLOT_RADIUS, maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed, type SlotFile } from "../film/slots.js";
 
 const FPS = 60;
@@ -35,6 +36,8 @@ const FPS = 60;
 const X264 = ["-c:v", "libx264", "-preset", "slow", "-crf", "14", "-pix_fmt", "yuv420p", "-r", String(FPS)];
 /** The premiere is drawn at twice its size (3840x2160) and scaled down to 1920x1080 with lanczos. */
 const PREMIERE_SCALE = 2;
+/** The premiere's master (film v5): silent, no audio track; the mix adds the voice and the music to scenes-v5.json. */
+const MASTER = "master-v5.mp4";
 /** VIDEO_PREVIEW=1: a quick look (1x, a fast preset), not the deliverable. */
 const PREVIEW = process.env.VIDEO_PREVIEW === "1";
 const ENCODE = PREVIEW ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(FPS)] : X264;
@@ -297,7 +300,7 @@ async function stills(browser: import("playwright").Browser, base: string): Prom
     await page.waitForTimeout(60);
     await page.screenshot({ path: resolve(out, "stills", file) });
   };
-  // "05-price-rise@12.5": that scene at that second (from its start); a bare id: three moments of it.
+  // "05-price@12.5": that scene at that second (from its start); a bare id: three moments of it.
   const at = [...only].filter((a) => a.includes("@")).map((a) => a.split("@") as [string, string]);
   for (const [id, sec] of at) {
     const s = timeline.find((x) => x.id === id);
@@ -316,14 +319,15 @@ async function stills(browser: import("playwright").Browser, base: string): Prom
 /** The premiere's words, written next to the clips (and, with --docs, into docs/video/). */
 function writeWords(dir: string): void {
   mkdirSync(dir, { recursive: true });
-  writeFileSync(resolve(dir, "subtitles.srt"), premiereSrt(premiere));
+  writeFileSync(resolve(dir, "subtitles-v5.srt"), premiereSrt(premiere));
+  writeFileSync(resolve(dir, "scenes-v5.json"), `${JSON.stringify(scenesJson(), null, 2)}\n`);
   writeFileSync(resolve(dir, "script.md"), premiereReadAloud(premiere));
   writeFileSync(resolve(dir, "premiere-script.md"), premiereTable(premiere));
 }
 
 if (process.argv.includes("--docs")) {
   writeWords(resolve(root, "docs/video"));
-  console.log("docs     docs/video/premiere-script.md, subtitles.srt and script.md");
+  console.log("docs     docs/video/premiere-script.md, subtitles-v5.srt, scenes-v5.json and script.md");
   process.exit(0);
 }
 
@@ -370,8 +374,8 @@ srv.close();
 const inMaster = film ? BEATS.map((b) => b.id) : MASTER_CLIPS;
 if (inMaster.every((id) => existsSync(resolve(out, "clips", `${id}.mp4`)))) {
   writeFileSync(resolve(out, "clips.txt"), inMaster.map((id) => `file 'clips/${id}.mp4'`).join("\n") + "\n");
-  await ffmpeg(["-f", "concat", "-safe", "0", "-i", resolve(out, "clips.txt"), "-c", "copy", "-movflags", "+faststart", resolve(out, "master.mp4")]);
+  await ffmpeg(["-f", "concat", "-safe", "0", "-i", resolve(out, "clips.txt"), "-c", "copy", "-movflags", "+faststart", resolve(out, film ? "master.mp4" : MASTER)]);
   // The earlier film keeps its subtitled copy; the premiere's master is delivered clean.
   if (film) await ffmpeg(["-i", resolve(out, "master.mp4"), "-vf", `subtitles=${resolve(out, "subtitles.srt")}:force_style='FontName=Inter,FontSize=22,Outline=2,Shadow=0,MarginV=36'`, ...X264, "-movflags", "+faststart", resolve(out, "master-subtitled.mp4")]);
-  console.log(`master   ${film ? "out/video/film" : "out/video"}/master.mp4${film ? " and master-subtitled.mp4" : ""}, ${film ? totalSeconds() : premiereSeconds()} s, in ${Math.round((Date.now() - t0) / 1000)} s`);
+  console.log(`master   ${film ? "out/video/film/master.mp4" : `${out}/${MASTER}`}${film ? " and master-subtitled.mp4" : ""}, ${film ? totalSeconds() : premiereSeconds()} s, in ${Math.round((Date.now() - t0) / 1000)} s`);
 }

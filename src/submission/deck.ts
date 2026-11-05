@@ -78,7 +78,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
     },
     {
       kicker: "The problem",
-      title: "AI agents can now spend money. So who holds the pen?",
+      title: "AI agents can now spend money. So who signs off?",
       wide: true,
       points: [
         "An agent pays as fast as it is told to, also by a fake invoice.",

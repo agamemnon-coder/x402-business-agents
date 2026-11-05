@@ -1,0 +1,92 @@
+[
+  {
+    "id": "01-hook",
+    "start": 0,
+    "end": 6
+  },
+  {
+    "id": "02-purser",
+    "start": 6,
+    "end": 10
+  },
+  {
+    "id": "03-agents",
+    "start": 10,
+    "end": 20
+  },
+  {
+    "id": "04-how",
+    "start": 20,
+    "end": 28
+  },
+  {
+    "id": "05-price",
+    "start": 28,
+    "end": 40
+  },
+  {
+    "id": "05b-treasury",
+    "start": 40,
+    "end": 48
+  },
+  {
+    "id": "06-metal",
+    "start": 48,
+    "end": 56
+  },
+  {
+    "id": "07-dispute",
+    "start": 56,
+    "end": 66
+  },
+  {
+    "id": "08-faceid",
+    "start": 66,
+    "end": 74
+  },
+  {
+    "id": "09-six",
+    "start": 74,
+    "end": 84
+  },
+  {
+    "id": "10-why",
+    "start": 84,
+    "end": 94
+  },
+  {
+    "id": "11-turn",
+    "start": 94,
+    "end": 101
+  },
+  {
+    "id": "12-tamper",
+    "start": 101,
+    "end": 109
+  },
+  {
+    "id": "13-proof",
+    "start": 109,
+    "end": 122
+  },
+  {
+    "id": "13b-value",
+    "start": 122,
+    "end": 126
+  },
+  {
+    "id": "14-real",
+    "start": 126,
+    "end": 136
+  },
+  {
+    "id": "15-close",
+    "start": 136,
+    "end": 149
+  },
+  {
+    "id": "16-end",
+    "start": 149,
+    "end": 162
+  }
+]

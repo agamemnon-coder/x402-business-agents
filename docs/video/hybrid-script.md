@@ -15,7 +15,7 @@ Footage legend: **[MAX]** Max on camera or voice only; **[LIVE]** `/live?present
 | Time | Footage | Words (Max) |
 |---|---|---|
 | 0:00 | [MAX] | I'm Max. *(One sentence on who you are.)* Last year, victims reported over three billion dollars in losses to the FBI from business email compromise: fake invoices and changed bank details. *(On screen: "FBI IC3, 2025 Internet Crime Report: $3,046,598,558".)* |
-| 0:15 | [MAX] | Now AI agents are starting to read those emails and pay those invoices. So who holds the pen? |
+| 0:15 | [MAX] | Now AI agents are starting to read those emails and pay those invoices. So who signs off? |
 | 0:22 | [LIVE] title; on screen: "Kit 11 · three agents, one Metal account · the Sourcing, Support and Treasury agents" | Purser. Your AI agents spend through Airwallex and Metal. The CFO stays in control. |
 | 0:30 | [LIVE] card | On Airwallex, each agent has its own company card. Over its limit, Airwallex itself declines it. The CFO raises the limit with Face ID, and the same purchase goes through. |
 | 0:45 | [LIVE] refuse | On Metal, agents pay per request under mandates that live on chain. The supplier doubles its price: the payment bounces off the mandate. Nothing moves. |
@@ -58,7 +58,7 @@ What is simulated, said on screen where it shows:
 | 0:28 | [PHONE] Face ID | Only the CFO approves: exact terms, Face ID. |
 | 0:36 | [PAGE] `/metal#dispute` | And every order can be proven: twelve of twelve disputed orders, verified on chain. |
 | 0:46 | [PAGE] `/try` | Try it yourself. |
-| 0:52 | [MAX] | Purser. Agents move fast; the CFO keeps the pen. |
+| 0:52 | [MAX] | Purser. Agents move fast; the CFO signs off. |
 
 ## Before it goes out
 

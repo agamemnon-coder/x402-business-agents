@@ -1,0 +1,179 @@
+1
+00:00:00,500 --> 00:00:03,250
+AI agents can now spend money.
+
+2
+00:00:03,400 --> 00:00:05,350
+So who signs off?
+
+3
+00:00:06,500 --> 00:00:09,650
+I'm Max Geurtsen, and this is Purser.
+
+4
+00:00:10,500 --> 00:00:12,800
+Three Claude agents run a small
+
+5
+00:00:12,850 --> 00:00:15,453
+company that sells live stock data.
+
+6
+00:00:15,503 --> 00:00:19,850
+Each has its own Airwallex card and its own Metal mandate.
+
+7
+00:00:20,500 --> 00:00:23,406
+Inside its limits, an agent pays alone.
+
+8
+00:00:23,456 --> 00:00:27,650
+Beyond them, nothing moves until I sign the exact terms.
+
+9
+00:00:28,500 --> 00:00:32,870
+Our supplier doubles its price, past the Sourcing agent's cap.
+
+10
+00:00:32,920 --> 00:00:35,650
+We let one purchase through on purpose.
+
+11
+00:00:35,800 --> 00:00:39,750
+Metal refused it, and the refusal is on chain.
+
+12
+00:00:40,500 --> 00:00:45,672
+Treasury proposes two ways to stay within the same twenty dollars.
+
+13
+00:00:45,722 --> 00:00:47,650
+I pick one, with Face ID.
+
+14
+00:00:48,500 --> 00:00:50,751
+Every Metal payment in this run
+
+15
+00:00:50,801 --> 00:00:53,275
+is its own transaction on testnet.
+
+16
+00:00:53,325 --> 00:00:55,650
+Eighty-six of them. No emulator.
+
+17
+00:00:56,500 --> 00:00:59,401
+Then a customer disputes twelve orders,
+
+18
+00:00:59,451 --> 00:01:01,520
+all signed by its own agent.
+
+19
+00:01:01,570 --> 00:01:04,850
+Only the three with wrong data are refunded.
+
+20
+00:01:06,500 --> 00:01:10,109
+Anything beyond the limits comes to my phone.
+
+21
+00:01:10,159 --> 00:01:13,850
+I read the exact terms, and sign with Face ID.
+
+22
+00:01:14,500 --> 00:01:17,338
+Six seconds later, the euro invoice is
+
+23
+00:01:17,388 --> 00:01:20,378
+paid by SWIFT, in the Airwallex sandbox.
+
+24
+00:01:20,428 --> 00:01:22,050
+Every id is published.
+
+25
+00:01:24,350 --> 00:01:26,847
+Why Face ID, and not a password?
+
+26
+00:01:26,897 --> 00:01:30,110
+A password is the same for every payment.
+
+27
+00:01:30,160 --> 00:01:33,850
+My passkey signs the hash of these exact terms.
+
+28
+00:01:34,500 --> 00:01:36,079
+Now it's your turn.
+
+29
+00:01:36,129 --> 00:01:40,450
+Open your own test world, make a passkey, and sign.
+
+30
+00:01:41,500 --> 00:01:45,450
+Change one cent, and the same signature is refused.
+
+31
+00:01:46,100 --> 00:01:47,650
+One cent. Worthless.
+
+32
+00:01:49,500 --> 00:01:52,670
+Twenty-four of twenty-four decisions by Claude.
+
+33
+00:01:52,720 --> 00:01:55,068
+Metal refused one purchase over its
+
+34
+00:01:55,118 --> 00:01:57,328
+cap, and I rejected one proposal.
+
+35
+00:01:57,378 --> 00:01:59,589
+Every test passes, and every step
+
+36
+00:01:59,639 --> 00:02:01,850
+sits in a hash-chained audit log.
+
+37
+00:02:02,000 --> 00:02:03,744
+The agents do the work.
+
+38
+00:02:03,794 --> 00:02:05,850
+I sign only the exceptions.
+
+39
+00:02:06,500 --> 00:02:10,680
+Real: the Airwallex sandbox, Metal testnet, Claude and Face ID.
+
+40
+00:02:10,730 --> 00:02:14,776
+Ours: the customer, the supplier, and a test second approver.
+
+41
+00:02:14,826 --> 00:02:15,850
+Test money only.
+
+42
+00:02:16,450 --> 00:02:19,750
+A price shock, a dispute, a euro bill.
+
+43
+00:02:19,900 --> 00:02:23,486
+Claude decided, the rails and the code held the
+
+44
+00:02:23,536 --> 00:02:27,200
+limits, and I signed only what went beyond them.
+
+45
+00:02:27,350 --> 00:02:28,850
+Purser. Starter Kit 11.
