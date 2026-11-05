@@ -25,6 +25,17 @@ describe("planning a task card (code decides)", () => {
     expect(p).toEqual({ ok: true, task: { kind: "flight", label: "Flight", mccs: ["4511"], amountCents: 25000, validUntil: "2026-11-12T23:59:59.000Z", purpose: "Berlin trade fair" } });
   });
 
+  // CodeQL (incomplete multi-character sanitization): a nested tag must not leave a "<" or ">" in the card's purpose.
+  it("leaves no < or > in the purpose, even from a nested tag", () => {
+    for (const purpose of ["<scr<script>ipt>", "<b>Berlin</b> fair", "a <img src=x onerror=alert(1)> b", "<<>>"]) {
+      const p = planTask(MSG, read({ purpose }), now);
+      expect(p.ok).toBe(true);
+      if (p.ok) expect(p.task.purpose).not.toMatch(/[<>]/);
+    }
+    const kept = planTask(MSG, read({ purpose: "<b>Berlin</b> trade fair" }), now);
+    expect(kept.ok && kept.task.purpose).toBe("Berlin trade fair");
+  });
+
   // Breaks if the model's amount is trusted: it must be written in the CFO's own message.
   it("refuses an amount that is not in the message, whatever the model read", () => {
     const p = planTask(MSG, read({ amount_eur: "2500.00" }), now);

@@ -1091,6 +1091,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   function modelWord(m) { var r = /^claude-([a-z]+)-(\d+)-(\d+)/.exec(m || ""); return r ? capFirst(r[1]) + " " + r[2] + "." + r[3] : m; }
   function capFirst(t) { t = String(t || ""); return t.charAt(0).toUpperCase() + t.slice(1); }
   function usdMicros(m) { return "$" + (m / 1e6).toFixed(m >= 10000 ? 2 : 4); }
+  function usdOfMicros(m) { return "USD " + (m / 1e6).toFixed(m >= 10000 ? 2 : 4); }
   function renderClaude(d) {
     var c = d.claude, panel = document.getElementById("claude-panel");
     var agentsOnPage = (d.agent_chat || []).length > 0;
@@ -1176,9 +1177,9 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var NEVER = "Never: hold an owner key, see a card number, add a payee or bank account, raise its own limit, or approve.";
     // How the work is split across Claude's models, with what each cost in this run (list prices).
     var split = d.claude && d.claude.models && d.claude.models.length ? el("section", "panel split", [
-      el("div", "sect flush", [txt("h2", "", "How the work is split across Claude's models"), txt("span", "hint", d.claude.calls + " calls in this run, " + usdMicros(d.claude.cost_usd_micros).replace("$", "USD ") + " in all at Anthropic's list prices; Metal and Airwallex enforce the limits")]),
+      el("div", "sect flush", [txt("h2", "", "How the work is split across Claude's models"), txt("span", "hint", d.claude.calls + " calls in this run, " + usdOfMicros(d.claude.cost_usd_micros) + " in all at Anthropic's list prices; Metal and Airwallex enforce the limits")]),
       el("div", "splitgrid", d.claude.models.map(function (m) {
-        return el("div", "m", [txt("div", "k", m.model), txt("div", "v", m.role.charAt(0).toUpperCase() + m.role.slice(1)), txt("div", "sub", m.calls + " calls · " + usdMicros(m.cost_usd_micros).replace("$", "USD "))]);
+        return el("div", "m", [txt("div", "k", m.model), txt("div", "v", m.role.charAt(0).toUpperCase() + m.role.slice(1)), txt("div", "sub", m.calls + " calls · " + usdOfMicros(m.cost_usd_micros))]);
       }).concat([el("div", "m code", [txt("div", "k", "Code"), txt("div", "v", "Checks every answer and every agent's call"), txt("div", "sub", "limits, prices, budgets, the FX check")])])),
     ]) : null;
     var others = el("section", "panel split", [
@@ -1198,7 +1199,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         fact("Claude", a.models.map(function (m) { return el("div", "", [txt("b", "", m.model.replace("Claude ", "")), " " + m.job]); })),
       ].concat((d.claude && d.claude.agents || []).filter(function (x) { return x.agent === a.id; }).map(function (x) {
         // The agent's own decisions in this run (its Claude loop with tools), what they cost and how long one took.
-        return fact("Its own decisions", [x.runs + (x.runs === 1 ? " decision" : " decisions") + " · " + x.model, txt("div", "sub", usdMicros(x.cost_usd_micros).replace("$", "USD ") + " in all" + (x.median_latency_ms ? " · about " + Math.round(x.median_latency_ms / 1000) + " s each" : ""))]);
+        return fact("Its own decisions", [x.runs + (x.runs === 1 ? " decision" : " decisions") + " · " + x.model, txt("div", "sub", usdOfMicros(x.cost_usd_micros) + " in all" + (x.median_latency_ms ? " · about " + Math.round(x.median_latency_ms / 1000) + " s each" : ""))]);
       })));
       var two = el("div", "two", [
         el("div", "", [txt("h3", "", "On its own"), el("ul", "plain", a.alone.map(function (x) { return txt("li", "", x); }))]),
