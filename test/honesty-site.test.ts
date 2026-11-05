@@ -257,8 +257,9 @@ describe("7. copy slips", () => {
     expect(t).toContain(`${pay.sales} sales + ${pay.purchases} supplier purchases. In all, ${pay.line}.`);
   });
 
-  it("says 'separate TAP run, 2 November' once on Home, Proof and in the deck", () => {
-    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage(), deck: deckHtml(packFacts(), shots, "") })) {
+  it("says 'separate TAP run, 2 November' once on Home and Proof; the deck leaves that other run out (Max, 5 Nov)", () => {
+    expect(deckHtml(packFacts(), shots, "")).not.toMatch(/TAP run|2 November|LIMIT_EXCEEDED/);
+    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) {
       expect({ name, label: /Separate test, 2 November/.test(html) }).toEqual({ name, label: false });
       const rows = html.match(/<p class="(?:septest|sep)">[\s\S]*?<\/p>/g) ?? [];
       expect({ name, rows: rows.length > 0 }).toEqual({ name, rows: true });

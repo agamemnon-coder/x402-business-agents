@@ -247,14 +247,29 @@ describe("one 'stopped at a limit' figure everywhere, from the main run (Max, 4 
     expect(packFacts().main.stopped).toBe(STOPPED);
   });
 
-  it("is the same figure on the site, the README, the claims, the deck, the submission README and the video script", () => {
-    for (const [name, raw] of SOURCES) {
+  it("is the same figure on the site, the claims and the video script", () => {
+    for (const [name, raw] of SOURCES.filter(([n]) => ["home", "proof", "docs/claims.md", "docs/video-script.md"].includes(n))) {
       const t = text(raw);
       const figures = [...t.matchAll(/(\d+) stopped at a limit/gi)].map((m) => Number(m[1]));
       expect({ name, figures: figures.length > 0, wrong: figures.filter((n) => n !== STOPPED) }).toEqual({ name, figures: true, wrong: [] });
       // The TAP run's decline is there, on its own labelled line, after the figure.
       expect({ name, line: t.includes(TAP_LINE) }).toEqual({ name, line: true });
       expect({ name, after: t.lastIndexOf(TAP_LINE) > t.search(/\d+ stopped at a limit/i) }).toEqual({ name, after: true });
+    }
+  });
+
+  it("is said in words in the README, the submission README and the deck, with the same counts (Max, 5 Nov)", () => {
+    // Max's review round, 5 Nov: "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal." instead of the
+    // bare figure. The README and the form keep the TAP run's decline on its own labelled line after it; the deck
+    // leaves that other run out (it overrides the 4 Nov rule for the deck).
+    const st = stops(record);
+    const words = `Metal refused ${st.metal} purchase over its cap; the CFO rejected ${st.cfo} proposal`;
+    expect(st.metal + st.cfo).toBe(STOPPED);
+    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/README.md", "deck"].includes(n))) {
+      const t = text(raw);
+      expect({ name, words: t.includes(words), figure: /\d+ stopped at a limit/i.test(t) }).toEqual({ name, words: true, figure: false });
+      if (name !== "deck") expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(words) }).toEqual({ name, after: true });
+      else expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
     }
   });
 
@@ -349,11 +364,13 @@ describe("the dispute, one text everywhere (jury review, 4 Nov)", () => {
     // Pitch round, 5 Nov: the deck's beat says the story in two short lines (the juror's review: one message per
     // slide, readable on a shared screen), with the story's own figures, counted from the record.
     const m = packFacts().main;
-    expect(deck).toContain(`${m.disputed} orders disputed, every one signed by the customer's own agent.`);
-    expect(deck).toContain(`Support refunded the ${m.refunded.length} with wrong data (0.15 test USD); "refund the other ${m.disputed - m.refunded.length}" rejected by the CFO with Face ID.`);
+    expect(deck).toContain(`Only the ${m.refunded.length} bad ones refunded`);
+    expect(deck).toContain(`${m.disputed} orders disputed; "refund the other ${m.disputed - m.refunded.length}" rejected by the CFO with Face ID.`);
     expect(STORY).toContain(`refunds those ${m.refunded.length} (0.15 test USD) itself. "Refund the other ${m.disputed - m.refunded.length}"`);
-    // The deck: Home's award labels on slide 1, no photo placeholder on the team slide (jury review, 4 Nov).
-    expect(deck).toContain(`<p class="kicker">${KIT_LINE}</p>`);
+    // The deck: slide 1 does not open with the awards (Max, 5 Nov; it overrides the jury review of 4 Nov); no photo
+    // placeholder on the team slide.
+    expect(deck).not.toContain(`<p class="kicker">${KIT_LINE}</p>`);
+    expect(deck).toContain('<p class="kicker">Purser · Starter Kit 11 · x402 Business Agents</p>');
     expect(deck).not.toContain("Photo of Max");
   });
 });

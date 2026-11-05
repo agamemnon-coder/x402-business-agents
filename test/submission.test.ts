@@ -31,7 +31,8 @@ describe("the submission pack", () => {
     expect(c).toEqual({ proposal: "P-0006", from: "30.00", to: "46.00", auth: "01a1a12f-4113-7000-b76d-014677710007", amount: "45.00" });
     expect(pack).toContain(`asked for a card raise first (${c.proposal}, EUR ${c.from} → ${c.to})`);
     expect(pack).toContain(`approved the TAP-signed EUR ${c.amount} purchase (authorization \`${c.auth}\`)`);
-    expect(pack).toContain(`${f.main.stopped} stopped at a limit`);
+    // Max, 5 Nov (review round): who stopped what, in words, with the main run's counts.
+    expect(pack).toContain(`Metal refused ${f.main.metal_refused} purchase over its cap; the CFO rejected ${f.main.cfo_rejected} proposal`);
     expect(pack).toContain(f.main.tap_limit_line);
   });
 

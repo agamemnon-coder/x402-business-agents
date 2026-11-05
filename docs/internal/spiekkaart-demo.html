@@ -6,47 +6,49 @@
 <!-- Max's cheat sheet for Demo Day (19 Nov). One A4; npm run submission prints it to spiekkaart-demo.pdf.
      Figures: the main run, 3 Nov (docs/demo/main-run.json); test/pitch.test.ts checks them. -->
 <style>
-@page { size: A4; margin: 11mm 12mm; }
+@page { size: A4; margin: 8mm 11mm; }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size: 10.2pt; line-height: 1.32; color: #0b1220; }
+body { margin: 0; font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size: 9.4pt; line-height: 1.26; color: #0b1220; }
 h1 { font-size: 17pt; margin: 0 0 1mm; }
-h2 { font-size: 10.5pt; margin: 3.2mm 0 1.2mm; text-transform: uppercase; letter-spacing: .04em; color: #3b3fb8; }
+h2 { font-size: 9.8pt; margin: 2.2mm 0 0.8mm; text-transform: uppercase; letter-spacing: .04em; color: #3b3fb8; }
 p { margin: 0 0 1.2mm; }
 .sub { color: #4b5563; font-size: 9pt; }
-.say { font-size: 11.5pt; font-weight: 600; border-left: 3mm solid #3b3fb8; padding: 1mm 0 1mm 3mm; margin: 1mm 0 1.5mm; }
+.say { font-size: 10.6pt; font-weight: 600; border-left: 3mm solid #3b3fb8; padding: 0.8mm 0 0.8mm 3mm; margin: 0.8mm 0 1mm; }
 .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
-.nums div { border: 0.3mm solid #c7cbe0; border-radius: 2mm; padding: 2mm 3mm; }
-.nums b { display: block; font-size: 20pt; line-height: 1; }
+.nums div { border: 0.3mm solid #c7cbe0; border-radius: 2mm; padding: 1.4mm 3mm; }
+.nums b { display: block; font-size: 17pt; line-height: 1; }
 .nums span { font-size: 9pt; color: #374151; }
 .top { display: grid; grid-template-columns: 1fr 34mm; gap: 4mm; align-items: start; }
 .top img { width: 34mm; height: 34mm; }
-table { width: 100%; border-collapse: collapse; font-size: 9.2pt; }
-td { border-top: 0.2mm solid #d1d5db; padding: 0.9mm 1.5mm 0.9mm 0; vertical-align: top; }
+table { width: 100%; border-collapse: collapse; font-size: 8.7pt; }
+td { border-top: 0.2mm solid #d1d5db; padding: 0.6mm 1.5mm 0.6mm 0; vertical-align: top; }
 td:first-child { width: 27mm; font-weight: 600; white-space: nowrap; }
-ol { margin: 0; padding-left: 5mm; font-size: 9.2pt; } li { margin: 0 0 1mm; }
+ol { margin: 0; padding-left: 5mm; font-size: 8.8pt; } li { margin: 0 0 0.6mm; }
 code { font-size: 8.8pt; }
-.never { font-size: 8.8pt; color: #374151; }
+.never { font-size: 8.4pt; color: #374151; }
 </style>
 </head>
 <body>
 <div class="top"><div>
 <h1>Spiekkaart · Purser · Demo Day</h1>
-<p class="sub">De hoofdrun, 3 november 2026, testgeld. Volgorde: hook → wie/wat → run op /watch (3 scènes) → jury tekent (QR) → waarom vertrouwen → slot. Draaiboek: <code>docs/submission/demo-day.md</code>.</p>
+<p class="sub">De hoofdrun, 3 november 2026, testgeld. Volgorde: hook → wie/wat → run op /watch (3 scènes, géén disclaimers) → "Said plainly" + /proof → kernzin → tamper → einde. Draaiboek: <code>docs/submission/demo-day.md</code>.</p>
 
 <h2>Opening (letterlijk)</h2>
 <p class="say">AI agents can now spend money. So who holds the pen? I'm Max Geurtsen, and this is Purser.</p>
 </div><img src="../media/try-sign-qr.png" alt="QR to /try/sign"></div>
 
+<h2>Rond 0:25 (letterlijk)</h2>
+<p class="say">Inside its limits an agent pays alone; beyond them, the CFO signs. In this demo, I play the CFO.</p>
 <h2>Slot (letterlijk)</h2>
-<p class="say">Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. Purser.</p>
+<p class="say">Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. On mine, signed before, I change the amount by one cent. The same signature is refused. One cent. Worthless.</p>
 
-<h2>Drie getallen</h2>
+<h2>Drie getallen (alleen deze)</h2>
 <div class="nums">
-  <div><b>2</b><span>2 stopped at a limit: Metal 1 (#24, on chain), CFO 1 (P-0004)</span></div>
+  <div><b>1 + 1</b><span>Metal refused 1 purchase over its cap; the CFO rejected 1 proposal. (#24; P-0004)</span></div>
   <div><b>6 s</b><span>6 seconds from Face ID to PAID; de settlement is gesimuleerd in de sandbox</span></div>
   <div><b>5</b><span>5 Face ID decisions door jou (P-0001, P-0002, P-0004, P-0005, P-0006)</span></div>
 </div>
-<p class="sub">Verder: 24 of 24 decisions by Claude, 0 fallbacks · Treasury's options 40 s na Metal's weigering · EUR 110.00 via FX, alleen het tekort · 412 audit rows.</p>
+<p class="sub">Verder: 24 of 24 decisions by Claude, 0 fallbacks · "Metal refused it; the refusal is recorded on chain." · Optie A: cap 0.04, prijs blijft 0.05 · optie B: zelfde cap, prijs 0.07 (binnen dezelfde 20.00) · EUR 110.00 via FX, alleen het tekort · 412 audit rows.</p>
 
 <h2>URL's</h2>
 <table>
@@ -60,7 +62,7 @@ code { font-size: 8.8pt; }
 <table>
 <tr><td>Site traag/weg</td><td><code>npm run judge</code> offline, dezelfde pagina's op localhost:4311.</td></tr>
 <tr><td>/watch hapert</td><td>Clip uit <code>out/video/clips/</code>: 05-price-rise, 06-dispute, 09-six-seconds.</td></tr>
-<tr><td>QR of /try/sign faalt</td><td>Laat het zelf zien op je telefoon; anders clips 10-try-sign en 11-one-cent.</td></tr>
+<tr><td>QR of /try/sign faalt</td><td>Tamper zelf op je vooraf getekende tab; anders clips 10-try-sign en 11-one-cent. QR staat ook op slide 10: "try it during the questions".</td></tr>
 <tr><td>Face ID weigert</td><td>Nog één keer; dan clip 08-faceid: "Same moment, recorded."</td></tr>
 <tr><td>Geluid/scherm weg</td><td>Deck-PDF in de chat; praat over de slides, alle getallen staan erop.</td></tr>
 <tr><td>Tijd ingekort</td><td>De 30-secondenversie (pitch.md, §1), dan de QR-slide.</td></tr>
@@ -69,13 +71,13 @@ code { font-size: 8.8pt; }
 <h2>Top-5 Q&amp;A (docs/submission/qa.md)</h2>
 <ol>
 <li><b>Why Face ID, not a password?</b> A password is the same for every payment; a passkey signs the hash of these exact terms, so one cent more makes it worthless.</li>
-<li><b>What was live, what simulated?</b> Live: Airwallex sandbox, Metal testnet, 24 of 24 Claude decisions, my passkey (Face ID). Simulated: supplier, customer, merchant, SWIFT SENT/PAID, and the second approver, a labelled test passkey.</li>
+<li><b>What was live, what simulated?</b> Live: Airwallex sandbox, Metal testnet, 24 of 24 Claude decisions, Max's passkey (Face ID on his phone). Simulated: supplier, customer, merchant, SWIFT SENT/PAID, and the second approver, a labelled test passkey.</li>
 <li><b>Why three models?</b> Honestly, Haiku alone passed our everyday cases too; on a harder dispute it misread one order, so Sonnet reads documents. Opus is the least proven part.</li>
-<li><b>Server compromised?</b> Metal and Airwallex still refuse over the mandate and the card limit. A compromised runner host is out of scope today; keys go to a KMS first.</li>
+<li><b>Server compromised?</b> The rails refuse anything over their current limits; changing a limit needs a signed proposal. A compromised runner host is out of scope today; keys go to a KMS first.</li>
 <li><b>Can the jury's passkey touch the real CFO?</b> No: the test world and its passkey live in their own store and are enrolled nowhere else.</li>
 </ol>
 
 <h2>Eerlijk, als ze doorvragen</h2>
-<p class="never"><!-- T0-STATUS -->T:0: "T:0 posting is built and tested; the sandbox key was refused on 5 Nov; 95 entries are ready."<!-- /T0-STATUS --> · Cardputer: built, not yet live. · Tweede goedkeurder: een gelabelde test-passkey, ingedrukt door Claude Code op jouw go. · <!-- METAL-ONCHAIN -->Metal: 86 payments, each its own transaction, plus 6 mandate transactions and the refusal of #24; no clearing in this run.<!-- /METAL-ONCHAIN --> · Nooit: "code decides", "safe", "Finalist", "Shortlisted".</p>
+<p class="never"><!-- T0-STATUS -->"T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted."<!-- /T0-STATUS --> · Cardputer: built, not yet live. · Tweede goedkeurder: een gelabelde test-passkey, ingedrukt door Claude Code op jouw go. · <!-- METAL-ONCHAIN -->Metal: 86 payments, each its own transaction, plus 6 mandate transactions and the refusal of #24, on chain, checkable; no clearing in this run. Airwallex-id's: "published".<!-- /METAL-ONCHAIN --> · Nooit: "code decides", "safe", "Finalist", "Shortlisted".</p>
 </body>
 </html>
