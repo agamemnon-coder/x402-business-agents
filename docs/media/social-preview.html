@@ -8,7 +8,7 @@
   - The card is an example from a /try/sign test world: the fixed test proposal (EUR 1,850.00 to a test payee), the same
     terms with the amount plus 0.01, and their SHA-256 terms hashes in an example world (as in the film's one-cent scene).
     Nothing real moved.
-  - Text only: no logos of others.
+  - Text only, no logos of others; the one image is Purser's own mark (the feather, src/ui/brand/favicon.svg, as mark).
 -->
 <html lang="en">
 <head>
@@ -24,19 +24,21 @@
   .glow { position: absolute; inset: 0;
           background: radial-gradient(ellipse at 22% 38%, rgba(110, 120, 255, .18), transparent 58%),
                       radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .55)); }
-  .brand { position: absolute; left: 80px; top: 64px; font-size: 26px; font-weight: 700; letter-spacing: -.3px; }
-  .brand span { color: var(--muted); font-weight: 500; margin-left: 10px; font-size: 20px; }
+  .brand { position: absolute; left: 80px; top: 60px; display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 700; letter-spacing: -.3px; }
+  .brand img { width: 40px; height: 40px; border-radius: 10px; }
+  .brand span { color: var(--muted); font-weight: 500; margin-left: 2px; font-size: 20px; }
   .head { position: absolute; left: 80px; top: 136px; width: 600px; }
   h1 { margin: 0; font-size: 72px; line-height: 1.06; font-weight: 800; letter-spacing: -2.2px; }
   h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent2));
           -webkit-background-clip: text; background-clip: text; color: transparent; }
   .pen { margin: 26px 0 0 2px; width: 200px; height: 6px; border-radius: 3px;
          background: linear-gradient(90deg, var(--accent), var(--accent2)); }
-  .chips { position: absolute; left: 80px; bottom: 76px; display: flex; gap: 12px; flex-wrap: wrap; width: 620px; }
+  .chips { position: absolute; left: 80px; bottom: 48px; display: flex; gap: 12px; flex-wrap: wrap; width: 720px; }
   .chip { font-size: 19px; font-weight: 500; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line);
           background: rgba(255, 255, 255, .04); color: var(--ink); white-space: nowrap; }
   .chip b { font-weight: 700; }
-  .card { position: absolute; right: 80px; top: 132px; width: 470px; padding: 30px 32px; border-radius: 22px;
+  .chip.try { border-color: rgba(139, 135, 255, .7); background: rgba(139, 135, 255, .16); font-weight: 700; }
+  .card { position: absolute; right: 80px; top: 120px; width: 470px; padding: 30px 32px; border-radius: 22px;
           background: rgba(17, 24, 44, .92); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0, 0, 0, .45); }
   .label { font-size: 14px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
   .amount { margin-top: 14px; font-size: 46px; font-weight: 800; letter-spacing: -1px; }
@@ -44,28 +46,31 @@
   .amount .cent { color: var(--red); }
   .hash { margin-top: 18px; font: 500 17px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
   .hash b { color: var(--ink); font-weight: 600; }
-  .refused { margin-top: 18px; font-size: 18px; color: var(--red); font-weight: 600; }
+  .verified { margin-top: 18px; font-size: 18px; color: var(--green); font-weight: 600; }
+  .refused { margin-top: 8px; font-size: 18px; color: var(--red); font-weight: 600; }
   .worthless { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 36px; font-weight: 800;
                letter-spacing: -.8px; }
 </style>
 </head>
 <body>
   <div class="glow"></div>
-  <div class="brand">Purser <span>Starter Kit 11</span></div>
+  <div class="brand"><img src="{{mark}}" alt="">Purser <span>Starter Kit 11</span></div>
   <div class="head">
     <h1>AI agents spend.<br><em>You sign off.</em></h1>
     <div class="pen"></div>
   </div>
   <div class="chips">
     <div class="chip"><b>{{metal.payments}}</b> payments, each its own tx on Metal testnet</div>
+    <div class="chip try">Try it: /try/sign</div>
     <div class="chip">Face ID on the exact terms</div>
-    <div class="chip">Built on Airwallex and Metal</div>
+    <div class="chip">Live on the Airwallex sandbox</div>
   </div>
   <div class="card">
     <div class="label">Signed terms · one cent changed</div>
     <div class="amount"><s>EUR 1,850.00</s>EUR 1,850.0<span class="cent">1</span></div>
     <div class="hash">hash <b>ba96ad6f…6544</b> → <b>29234e4b…892a</b></div>
-    <div class="refused">Refused: the same signature does not verify</div>
+    <div class="verified">✓ Signature verified for the original terms</div>
+    <div class="refused">✕ Refused: the same signature does not verify</div>
     <div class="worthless">One cent. Worthless.</div>
   </div>
 </body>

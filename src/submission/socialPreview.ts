@@ -7,6 +7,8 @@ import { readFileSync } from "node:fs";
 export const SOCIAL_HTML = "docs/media/social-preview.html";
 export const SOCIAL_PNG = "docs/media/social-preview.png";
 export const SOCIAL_SIZE = { width: 1280, height: 640 } as const;
+/** Purser's own mark (the feather), the only image on the preview. */
+export const SOCIAL_MARK = "src/ui/brand/favicon.svg";
 const MAIN_RUN = "docs/demo/main-run.json";
 
 interface Flow { rail?: string; refused?: boolean; count?: number; proof?: { href?: string } }
@@ -23,8 +25,8 @@ export function metalPaymentCount(r: Record): number {
 }
 
 /** The template with its {{placeholders}} filled from the record; throws when a figure is missing. */
-export function socialPreviewHtml(template: string, record: Record, fontUrl: string): string {
-  const facts: { [k: string]: string } = { "metal.payments": String(metalPaymentCount(record) || ""), font: fontUrl };
+export function socialPreviewHtml(template: string, record: Record, fontUrl: string, markUrl: string): string {
+  const facts: { [k: string]: string } = { "metal.payments": String(metalPaymentCount(record) || ""), font: fontUrl, mark: markUrl };
   return template.replace(/\{\{([\w.]+)\}\}/g, (_, key: string) => {
     const v = facts[key];
     if (!v) throw new Error(`social preview: no value for {{${key}}}`);

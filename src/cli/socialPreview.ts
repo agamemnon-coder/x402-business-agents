@@ -3,11 +3,12 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright";
-import { SOCIAL_HTML, SOCIAL_PNG, SOCIAL_SIZE, loadRecord, socialPreviewHtml } from "../submission/socialPreview.js";
+import { SOCIAL_HTML, SOCIAL_MARK, SOCIAL_PNG, SOCIAL_SIZE, loadRecord, socialPreviewHtml } from "../submission/socialPreview.js";
 
 const root = new URL("../../", import.meta.url);
 const font = `data:font/woff2;base64,${readFileSync(new URL("src/ui/inter.woff2", root)).toString("base64")}`;
-const html = socialPreviewHtml(readFileSync(new URL(SOCIAL_HTML, root), "utf8"), loadRecord(root), font);
+const mark = `data:image/svg+xml;base64,${readFileSync(new URL(SOCIAL_MARK, root)).toString("base64")}`;
+const html = socialPreviewHtml(readFileSync(new URL(SOCIAL_HTML, root), "utf8"), loadRecord(root), font, mark);
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: SOCIAL_SIZE, deviceScaleFactor: 1 });
