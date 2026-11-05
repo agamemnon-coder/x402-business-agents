@@ -33,6 +33,9 @@ that sells live stock data to retailers per query (here one simulated customer, 
 and pays its suppliers. It has Kit 11's three agents, the Sourcing, Support and Treasury agent, each with its own
 Airwallex card and its own Metal mandate. The CFO in this demo is Max, the builder, on his own phone.
 
+**In one line:** Claude explains and proposes, the rules in code hold every limit, and a person signs before money
+moves beyond them. Sign one yourself: https://kit11.max-31b.workers.dev/try/sign
+
 ### The main run (3 November)
 
 One live run, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, real Claude decisions and
