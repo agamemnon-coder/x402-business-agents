@@ -561,7 +561,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
     },
     "10-why": function (L, S) {
       var qn = put(L, E("div", "hl c acc", S.q), 0, 132);
-      var at = [3.2, 6.4, 8.4];
+      var at = [2.0, 4.2, 6.2]; // the last line holds about 3 s before the cut (Max, 5 Nov: at 1:33 it left too fast to read)
       var lines = S.a.map(function (s, i) { return put(L, E("div", "hm c", s), 0, 300 + i * 78); });
       return function (t) { rise(qn, t, .2); lines.forEach(function (n, i) { rise(n, t, at[i]); }); };
     },
