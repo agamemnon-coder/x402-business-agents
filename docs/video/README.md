@@ -1,6 +1,6 @@
 # The premiere: edit guide
 
-**Purser in 2:49**, a premiere-style film made from the main run of 3 November 2026 (world `main-1`,
+**Purser in 3:12**, a premiere-style film made from the main run of 3 November 2026 (world `main-1`,
 [run log](../runs/2026-11-03-main-run.md)). Dark, large and slow, letterboxed to 2.39:1. Every figure on screen is read
 from the run's record by code, and the render stops when one is missing. The script with every picture, line and
 source is [premiere-script.md](premiere-script.md); the voice-over to read aloud is [script.md](script.md); what Max
@@ -8,17 +8,17 @@ records is in [opnames-max.md](opnames-max.md).
 
 ## The files
 
-`npm run video` makes everything below in `out/video/` (not in git; about 25 minutes on the dev machine). The words
-are also in this folder.
+`npm run video` makes everything below in `out/video/` (not in git; about an hour on the dev machine: every frame is
+drawn at 3840×2160 and scaled down with lanczos, then encoded with x264 at preset slow, CRF 14, so small text stays
+crisp). The words are also in this folder.
 
 | File | What it is |
 |---|---|
-| `clips/01-line.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip fades in and out over the moving background, which runs on the film's own clock, so in order the clips join seamlessly; the opening line is on black. There is no clip 02: the hook was cut, and the other clips keep their numbers. |
+| `clips/01-line.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip fades in and out over the background, which runs on the film's own clock, so in order the clips join seamlessly; the opening line is on black. There is no clip 02: the hook was cut, and the other clips keep their numbers; the agents' intro is `03b-agents.mp4`, right after the pen. |
 | `clips/16-end-ai-voice.mp4` | A spare end card whose credits name an AI-generated voice. Not used: Max reads the whole voice-over himself. |
-| `overlays/08-faceid.png`, `overlays/10-try-sign.png`, `overlays/15-close.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for each recording slot. Put one on the track above the recording, for the slot's full length. |
-| `master.mp4` | All fifteen clips in order (2:49), silent, with stand-ins where the recordings go: the rough cut to edit against. |
-| `master-subtitled.mp4` | The same, with the English subtitles burned into the lower bar. |
-| `subtitles.srt` | The voice-over as English subtitles on the script's times (a copy is in this folder). |
+| `overlays/08-faceid.png`, `overlays/10-try-sign.png`, `overlays/15-close.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for a recording laid over that scene. Put one on the track above the recording, for the scene's full length. |
+| `master.mp4` | **The deliverable picture:** all sixteen clips in order (3:12), silent, no burned-in subtitles. Only Max's closing (15) is a stand-in: the card with his line, which also works under his voice alone. |
+| `subtitles.srt` | The voice-over as English subtitles on the script's times, for YouTube's captions (a copy is in this folder). Nothing is burned in. |
 | `script.md`, `premiere-script.md` | The read-aloud script and the script table (copies are in this folder). |
 
 Again: `npm run video` for everything; `npm run video -- 13-specs` for one clip (the master is rebuilt when every clip
@@ -30,59 +30,64 @@ line changes, render `13-specs` again.
 
 | Time | Clip | What | Recording slot | Music |
 |---|---|---|---|---|
+Every cut is on a whole second: cut the music to these times.
+
+| Time | Clip | What | Recording slot | Music |
+|---|---|---|---|---|
 | 0:00 | `01-line.mp4` | “AI agents can now spend money.” on black | | Silence |
 | 0:03 | `03-pen.mp4` | “So who holds the pen?”, then the title | Max's voice: the opening | The music starts, low and slow |
-| 0:11 | `04-architecture.mp4` | The diagram: agent → rules → person → Airwallex or Metal → books (T:0: built, not yet live) | | Slowly building |
-| 0:24 | `05-price-rise.mp4` | The price rise; let through on purpose; Metal refuses; the tx | | Building |
-| 0:42 | `06-dispute.mp4` | Twelve orders, three refunded, “refund the other 9” rejected with Face ID | | Steady |
-| 0:57 | `07-approval.mp4` | The approval card (P-0005's exact terms) | | Thins out |
-| 1:04 | `08-faceid.mp4` | Stand-in for the Face ID | **Max's Face ID** with `overlays/08-faceid.png` | Almost silent: let the Face ID breathe |
-| 1:12 | `09-six-seconds.mp4` | 6 seconds from Face ID to PAID; “In the sandbox, the settlement is simulated.”; the transfer id; “Every id is on /proof” | | **The first hit**, on “6 seconds” |
-| 1:24 | `10-try-sign.mp4` | A mock of the live /try/sign page | **Max on /try/sign** with `overlays/10-try-sign.png` (or keep the mock) | Building again |
-| 1:40 | `11-one-cent.mp4` | +0.01, refused: “One cent. Worthless.” | | **Hard cut to silence**: no music, no voice |
-| 1:48 | `12-why-face-id.mp4` | Why Face ID, not a password | | The music comes back, softly |
-| 2:00 | `13-specs.mp4` | Four spec cards, 4 s each | | One card on each beat |
-| 2:16 | `14-real.mp4` | What's real, what's ours | | Steady, lower |
-| 2:29 | `15-close.mp4` | The closing line as a card, Max's name | **Max on camera** with `overlays/15-close.png`, or his voice over this card | Low, under Max's voice |
-| 2:43 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign | | The last swell; fade out with the picture |
+| 0:11 | `03b-agents.mp4` | Three Claude agents: Sourcing (Claude Haiku 5.5), Support (Claude Sonnet 5.5), Treasury (Claude Opus 5.5), each with its job; then “The rails and the code hold the limits.” | | Low and slow, a soft pulse under each agent |
+| 0:27 | `04-architecture.mp4` | The diagram: agent → rules → person → Airwallex or Metal → books | | Slowly building |
+| 0:40 | `05-price-rise.mp4` | The price rise; let through on purpose; Metal refuses; the tx | | Building |
+| 0:58 | `06-dispute.mp4` | Twelve orders, three refunded, “refund the other 9” rejected with Face ID | | Steady |
+| 1:13 | `07-approval.mp4` | The approval card (P-0005's exact terms) | | Thins out |
+| 1:20 | `08-faceid.mp4` | Face ID on the same sheet, then “Approved”, labelled as a reconstruction with the real Face ID's time (11:31:18 UTC) | | Almost silent: let the Face ID breathe |
+| 1:28 | `09-six-seconds.mp4` | 6 seconds from Face ID to PAID; “In the sandbox, the settlement is simulated.”; the transfer id; “Every id is on /proof” | | **The first hit**, on “6 seconds” |
+| 1:40 | `10-try-sign.mp4` | A mock of the live /try/sign page | Optional: **Max on /try/sign** with `overlays/10-try-sign.png` (or keep the mock) | Building again |
+| 1:56 | `11-one-cent.mp4` | +0.01, refused: “One cent. Worthless.” | | **Hard cut to silence**: no music, no voice |
+| 2:04 | `12-why-face-id.mp4` | Why Face ID, not a password | | The music comes back, softly |
+| 2:16 | `13-specs.mp4` | Four spec cards, 4 s each | | One card on each beat |
+| 2:32 | `14-real.mp4` | What's real, what's ours | | Steady, lower |
+| 2:45 | `15-close.mp4` | The closing line as a card, Max's name | **Max on camera** with `overlays/15-close.png`, or his voice over this card | Low, under Max's voice |
+| 2:59 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 3:03 the end credits (9 s, text only): thank you to Airwallex, Metal, Anthropic (Claude) and the hackathon organisers and mentors; built by Max Geurtsen; voice and music; test money only | | The last swell, resolving under the credits; fade out with the picture (1 s) |
 
 ## Max's recordings
 
-The quickest way is to let `npm run video` lay them in: his portrait (9:16) phone recordings go into a rounded phone
-frame beside the scene's captions, with their honesty labels, and the master is rebuilt.
+Only his voice is needed: the Face ID (08) is rendered, a reconstruction of P-0005's approval sheet labelled as one
+(“Reconstruction of the approval screen · the real Face ID was at 11:31:18 UTC (main run)”), and /try/sign (10) is a
+mock of the live page drawn from its code.
 
-```sh
-npm run video -- 08-faceid 10-try-sign --slot 08-faceid=<trysign.mov>@<start>-<end> --slot 10-try-sign=<trysign.mov>
-```
+1. **The voice-over** in his own voice, with the opening and the closing line in it: [script.md](script.md), each line
+   with the second it starts ([opnames-max.md](opnames-max.md), 1). The opening is over `03-pen.mp4` (“So who holds
+   the pen? I'm Max Geurtsen, and this is Purser.”); the closing (2:45) over `15-close.mp4`, which shows the same line
+   as text, or with Max on camera and `overlays/15-close.png` (his name, lower left) above it.
+2. **Optional: his own phone recordings.** `npm run video` still lays a portrait (9:16) recording into a rounded phone
+   frame beside the scene's captions, with its honesty label, and rebuilds the master:
 
-`@<start>-<end>` (seconds) takes a window: for 08, the few seconds of the Face ID sheet in his /try/sign recording. A
-window longer than its scene plays faster to fit, and the scene says so (“shown at 1.25× speed”); a shorter one holds
-its last frame. Without a file a scene keeps its stand-in. In an editor instead:
+   ```sh
+   npm run video -- 10-try-sign --slot 10-try-sign=<trysign.mov>
+   npm run video -- 08-faceid --slot 08-faceid=<faceid.mov>@<start>-<end>
+   ```
 
-1. **Face ID (1:04, 8 s).** His iPhone approving a test proposal with Face ID, cut from his /try/sign recording
-   (3 below; [opnames-max.md](opnames-max.md), 1): the Face ID sheet only, not the page's terms, which are not P-0005's.
-   Put it on the track above `08-faceid.mp4`, scale it so the phone fills the picture between the bars, and put
-   `overlays/08-faceid.png` above it: the label says it was filmed after the run, on a test proposal, with test money.
-   Keep that label on screen the whole time.
-2. **The opening and the closing line.** The opening is his voice over `03-pen.mp4` (“So who holds the pen? I'm Max
-   Geurtsen, and this is Purser.”). The closing (2:29) is Max on camera, with `overlays/15-close.png` (his name, lower
-   left) above it; or only his voice over `15-close.mp4`, which shows the same line as text.
-3. **/try/sign (1:24, 16 s).** His own visit to the live page on his phone, signing with Face ID and then pressing
-   “Try to tamper” ([opnames-max.md](opnames-max.md), 3). Use it with `overlays/10-try-sign.png`, or keep the rendered
-   mock, or cut between the two. The tamper and its refusal then play again, large, in `11-one-cent.mp4`.
-4. **The other lines** are in [script.md](script.md), each with the second it starts. Max reads them too, in his own
-   voice ([opnames-max.md](opnames-max.md), 4); the end card is `16-end.mp4`.
+   `@<start>-<end>` (seconds) takes a window. A window longer than its scene plays faster to fit, and the scene says
+   so (“shown at 1.25× speed”); a shorter one holds its last frame. Without a file the scene keeps its rendered
+   picture. For /try/sign (1:40, 16 s): his visit to the live page, signing with Face ID and then pressing “Try to
+   tamper” ([opnames-max.md](opnames-max.md), 2); the tamper and its refusal then play again, large, in
+   `11-one-cent.mp4`. In an editor instead, put the recording above the clip and the scene's overlay PNG above it, for
+   the scene's full length.
 
 ## Music
 
-Royalty-free and slowly building, one track for the whole film, cut so it hits at 1:12 and stops dead at 1:40.
+Royalty-free and slowly building, one track for the whole film, cut so it hits at 1:28 and stops dead at 1:56.
 
 - **The track:** “Techno Fest Vibes” (Mixkit, track 124), under the Mixkit Stock Music Free License, stretched to
   120 BPM. The end card credits it: “Music: Techno Fest Vibes (Mixkit)”.
 - **Where it hits and where it goes silent:** see the table above. In short: silence for the first line; low from the
-  title; building through the diagram and the price rise; thin under the approval card and the Face ID; the first hit
-  on “6 seconds”; building on /try/sign; **silence from 1:40 to 1:48** (“One cent. Worthless.” stands alone); back,
-  softly, for the password line; on the beat for the spec cards; low under Max's closing; the last swell on the end card.
+  title and under the three agents; building through the diagram and the price rise; thin under the approval card and
+  the Face ID; the first hit on “6 seconds” (1:28); building on /try/sign; **silence from 1:56 to 2:04** (“One cent.
+  Worthless.” stands alone); back, softly, for the password line; on the beat for the spec cards (2:16, 2:20, 2:24,
+  2:28); low under Max's closing; the last swell on the end card, resolving under the credits, out with the picture at
+  3:12.
 - Under a voice, keep the music 18 to 22 dB lower.
 
 ## Cutting it
@@ -90,26 +95,25 @@ Royalty-free and slowly building, one track for the whole film, cut so it hits a
 **DaVinci Resolve**
 
 1. New project; in Project Settings set the timeline to 1920×1080 and 60 frames a second **before** importing.
-2. Import the fifteen clips and put them on V1 in order (or `master.mp4` as one piece, to cut against).
-3. Recordings on V2 at their slot (table above), scaled into the picture between the bars; the overlay PNG on V3 for
-   the slot's full length.
+2. Import `master.mp4` on V1 (or the sixteen clips in order).
+3. Optional: Max on camera on V2 at 2:45 with `overlays/15-close.png` on V3, for the scene's full 14 s.
 4. Voice-over on A1 at the times in [script.md](script.md); the music on A2, lowered under the voice; nothing at
-   1:40–1:48.
-5. Subtitles: File → Import → Subtitle, `subtitles.srt`; or leave them off and give YouTube the `.srt` (below).
-6. Deliver: the YouTube 1080p preset, H.264, 60 frames a second (30 is fine if a phone recording is 30), and check
-   the length: 3:00 or less.
+   1:56–2:04.
+5. No subtitles in the picture: give YouTube the `.srt` (below).
+6. Deliver: the YouTube 1080p preset, H.264, 60 frames a second, at a high bitrate (the small text must stay crisp),
+   and check the length: 3:12, under the hackathon's five minutes.
 
-**CapCut** (desktop or phone): a 1080p, 60 fps project; the clips in order on the main track; recordings and the
-overlay PNGs as overlay layers; voice and music as audio layers; export at 1080p, 60 fps.
+**CapCut** (desktop or phone): a 1080p, 60 fps project; `master.mp4` (or the clips in order) on the main track; a
+recording and its overlay PNG as overlay layers, if any; voice and music as audio layers; export at 1080p, 60 fps.
 
 **Upload:** YouTube, visibility **Unlisted**. Add `subtitles.srt` as English captions. In the description: “Test money
 only: the Airwallex sandbox and Metal testnet” and “Music: Techno Fest Vibes (Mixkit), Mixkit Stock Music Free License”.
 
 ## Before you upload
 
-- 3:00 or less.
+- 3:12, under five minutes.
 - Nothing private on screen: no keys, e-mail addresses, notifications, other tabs or bookmarks.
-- Every recording slot keeps its label: the Face ID's “test proposal (test money)” and the /try/sign test world.
+- The Face ID scene keeps its label (“Reconstruction of the approval screen …”), and a recording laid in keeps its own.
 - No logos of others anywhere (the rendered clips have none; check the recordings).
 - Max's own voice throughout, and `16-end.mp4` as the end card (not the spare).
 
@@ -123,12 +127,12 @@ clock, one frame every 1/60 s, so every clip is exactly its length at 60 frames 
 counts the figures again from the record and fails on a difference, a missing figure, a figure typed into the page,
 or a file in this folder that the code would write differently.
 
-**The look.** Behind the text: an animated radial gradient in four colours (#4c1d95, #0f5e63, #1e1b4b, #3730a3,
-turning slowly, as ffmpeg's `gradients` source at speed 0.01), drawn small and scaled up, with light grain,
-screen-blended at 42% over the picture only, never the bars; it fades in from 0:03, so the opening line stays on
-black. In the top bar, 0:03 to 2:43: “Max Geurtsen · Purser” left and “Built on Airwallex · Metal · Claude” right
-(Inter Medium 24 px, white at 72%, 64 px from the edges), text only, no logos. Every text colour was measured against
-the brightest point of that background on seven frames: 5.0:1 or better (WCAG AA); the credits 10.6:1 on the bar.
+**The look.** Behind the text, calm and still: deep navy (#0a1020), a very faint static dot grid (a dot every 36 px,
+white at 7%), a soft vignette, and a drift of half a pixel a second, hardly seen; in the picture only, never the bars.
+It fades in from 0:03, so the opening line stays on black. In the top bar, 0:03 to 2:59, quiet: “Max Geurtsen ·
+Purser” left and “Built on Airwallex · Metal · Claude” right (Inter Medium 20 px, grey: white at 46%, 64 px from the
+edges), text only, no logos. Every text colour is WCAG AA over the brightest point of that background (a dot; the
+test computes it), and the corner credits 4.6:1 on the black bar.
 
 Earlier drafts (`hybrid-script.md`, `script-v0.md`, `review-2026-11-02.md`) are kept for the record; the premiere
 replaces them. Max's own wording for the opening and the closing is in [max-opening-close.md](max-opening-close.md).

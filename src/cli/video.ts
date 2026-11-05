@@ -1,17 +1,19 @@
 // npm run video [-- <clip id>...]: records the premiere (src/film/premiere.html, its script in
-// src/film/premiereScript.ts), Purser in under three minutes made from the main run of 3 November, one clip per scene,
-// at 1920x1080, letterboxed to 2.39:1 and exactly 60 frames a second. The browser runs on virtual time: each frame moves
-// the clock by 1/60 s and is captured, so nothing loads or stutters on screen. Every figure comes from the run's record
-// through src/film/premiere.ts, which stops the build when one is missing. Writes to out/video/: clips/, overlays/ (a
-// transparent PNG per recording slot), the silent master (with stand-ins in the slots), a master with burned-in
-// subtitles, subtitles.srt, script.md (the voice-over) and premiere-script.md (the script table).
+// src/film/premiereScript.ts), Purser in a little over three minutes made from the main run of 3 November, one clip per
+// scene, at 1920x1080, letterboxed to 2.39:1 and exactly 60 frames a second. The browser runs on virtual time: each
+// frame moves the clock by 1/60 s and is captured, so nothing loads or stutters on screen. Each frame is drawn at twice
+// the size (3840x2160) and scaled down with lanczos, then encoded with x264 (preset slow, CRF 14), so small text stays
+// crisp. Every figure comes from the run's record through src/film/premiere.ts, which stops the build when one is
+// missing. Writes to out/video/: clips/, overlays/ (a transparent PNG per recording slot), the silent master
+// (master.mp4, no burned-in subtitles), subtitles.srt (for YouTube), script.md (the voice-over) and premiere-script.md
+// (the script table).
 //   --docs     writes docs/video/premiere-script.md, subtitles.srt and script.md, and nothing else
 //   --stills   a PNG of three moments of each scene in out/video/stills/, for a quick look, and nothing else
 //   --check    draws every scene in a browser and fails on a page error, and nothing else
 //   --film     the earlier film of the 30 October recording (src/video/plan.ts) into out/video/film/, as before
 //   --slot 08-faceid=<file>[@<start>-<end>], --slot 10-try-sign=<file>[@<start>-<end>]: Max's own portrait phone
 //              recordings, laid into a phone frame beside the scene's captions (src/film/slots.ts); without one the
-//              scene keeps its stand-in
+//              scene keeps its rendered picture (the Face ID reconstruction, the /try/sign mock)
 // Nothing here is live: the pages are the recordings, as npm run judge serves them.
 
 import { execFileSync, spawn } from "node:child_process";
@@ -23,10 +25,14 @@ import { chromium } from "playwright";
 import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { BEATS, scriptMarkdown, subtitlesSrt, totalSeconds, type Action, type Beat } from "../video/plan.js";
 import { PREMIERE_CSP, loadPremiere, premierePage } from "../film/premiere.js";
-import { MASTER_CLIPS, OVERLAYS, pageScenes, premiereAss, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, sceneFade } from "../film/premiereScript.js";
+import { MASTER_CLIPS, OVERLAYS, pageScenes, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, sceneFade } from "../film/premiereScript.js";
 import { SLOT_RADIUS, maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed, type SlotFile } from "../film/slots.js";
 
 const FPS = 60;
+/** The encoder for every clip: x264, preset slow, CRF 14 (small text stays crisp), 4:2:0, exactly 60 fps. */
+const X264 = ["-c:v", "libx264", "-preset", "slow", "-crf", "14", "-pix_fmt", "yuv420p", "-r", String(FPS)];
+/** The premiere is drawn at twice its size (3840x2160) and scaled down to 1920x1080 with lanczos. */
+const PREMIERE_SCALE = 2;
 const root = resolve(import.meta.dirname, "../..");
 const film = process.argv.includes("--film");
 const out = resolve(root, process.env.VIDEO_OUT ?? "out/video", film ? "film" : ".");
@@ -119,10 +125,13 @@ function within<T>(what: string, p: Promise<T>): Promise<T> {
 
 async function recordBeat(browser: import("playwright").Browser, base: string, beat: Beat): Promise<string> {
   const file = resolve(out, "clips", `${beat.id}.mp4`);
+  // The premiere's page lays itself out at 1920x1080 and is drawn at twice that; the earlier film's pages at 1440x810.
+  const premierePage = !film;
+  const view = premierePage ? { width: 1920, height: 1080, scale: PREMIERE_SCALE } : { width: VW, height: VH, scale: 1920 / VW };
   const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
-    "-vf", "scale=1920:1080", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart", file], { stdio: ["pipe", "inherit", "inherit"] });
+    "-vf", "scale=1920:1080:flags=lanczos", ...X264, "-movflags", "+faststart", file], { stdio: ["pipe", "inherit", "inherit"] });
   for (const shot of beat.shots) {
-    const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: 1920 / VW, bypassCSP: true, colorScheme: "light", reducedMotion: "no-preference" });
+    const ctx = await browser.newContext({ viewport: { width: view.width, height: view.height }, deviceScaleFactor: view.scale, bypassCSP: true, colorScheme: "light", reducedMotion: "no-preference" });
     const page = await ctx.newPage();
     page.on("crash", () => console.error(`video: the page crashed (${beat.id} ${shot.path})`));
     await page.goto(base + shot.path, { waitUntil: "load" });
@@ -152,8 +161,10 @@ async function recordBeat(browser: import("playwright").Browser, base: string, b
       const w = (await within(`${beat.id} frame ${f}: where`, page.evaluate(`window.__v.where(${JSON.stringify(cam.sel)})`))) as { sx: number; sy: number; r: Box | null };
       const goal = cam.sel && w.r ? fit(w.r, cam.scale) : FULL;
       now = mix(cam.from, goal, ease(Math.min(1, (f - cam.start) / (ZOOM_SECONDS * FPS))));
-      const clip = { x: w.sx + now.x, y: w.sy + now.y, width: now.w, height: now.h, scale: 1920 / now.w };
-      const { data } = await within(`${beat.id} ${shot.path} frame ${f}: the screenshot`, cdp.send("Page.captureScreenshot", { format: "jpeg", quality: 93, clip }));
+      // The premiere: the whole viewport at its device scale (a clip's scale sets the output size: 3840x2160). The film:
+      // the camera's crop, at 1920 wide.
+      const clip = premierePage ? { x: 0, y: 0, width: view.width, height: view.height, scale: view.scale } : { x: w.sx + now.x, y: w.sy + now.y, width: now.w, height: now.h, scale: 1920 / now.w };
+      const { data } = await within(`${beat.id} ${shot.path} frame ${f}: the screenshot`, cdp.send("Page.captureScreenshot", { format: "jpeg", quality: premierePage ? 95 : 93, clip }));
       if (process.env.VIDEO_TRACE && f % 60 === 0) console.log(`  ${beat.id} ${shot.path} ${f / FPS} s`);
       if (!ff.stdin.write(Buffer.from(data, "base64"))) await new Promise((ok) => ff.stdin.once("drain", ok));
     }
@@ -220,7 +231,7 @@ async function laySlot(id: string): Promise<void> {
   await ffmpeg(["-f", "lavfi", "-i", `color=c=black:s=${sl.box.w}x${sl.box.h},format=gray`, "-vf", `geq=lum='${maskExpr(SLOT_RADIUS)}'`, "-frames:v", "1", mask]);
   await ffmpeg(["-i", clip, "-ss", String(sl.from), "-t", String(sl.seconds), "-i", sl.file, "-loop", "1", "-i", mask,
     "-filter_complex", slotFilter({ box: sl.box, seconds: sl.scene.seconds, speed: sl.speed, fade: sceneFade(sl.scene) }), "-map", "[v]", "-an",
-    "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-t", String(sl.scene.seconds), "-movflags", "+faststart", tmp]);
+    ...X264, "-t", String(sl.scene.seconds), "-movflags", "+faststart", tmp]);
   renameSync(tmp, clip);
   console.log(`slot     ${id}: ${sl.file} ${sl.from}–${sl.from + sl.seconds} s${sl.speed > 1 ? ` at ${sl.speed}× speed` : ""}, laid into its frame`);
 }
@@ -319,7 +330,8 @@ if (film) {
   writeFileSync(resolve(out, "script.md"), scriptMarkdown());
 } else {
   writeWords(out);
-  writeFileSync(resolve(out, "subtitles.ass"), premiereAss(premiere));
+  // No burned-in subtitles any more (premiere v3): the master is clean, subtitles.srt goes to YouTube.
+  for (const old of ["subtitles.ass", "master-subtitled.mp4"]) rmSync(resolve(out, old), { force: true });
 }
 const srv = await server();
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
@@ -354,7 +366,7 @@ const inMaster = film ? BEATS.map((b) => b.id) : MASTER_CLIPS;
 if (inMaster.every((id) => existsSync(resolve(out, "clips", `${id}.mp4`)))) {
   writeFileSync(resolve(out, "clips.txt"), inMaster.map((id) => `file 'clips/${id}.mp4'`).join("\n") + "\n");
   await ffmpeg(["-f", "concat", "-safe", "0", "-i", resolve(out, "clips.txt"), "-c", "copy", "-movflags", "+faststart", resolve(out, "master.mp4")]);
-  const burn = film ? `subtitles=${resolve(out, "subtitles.srt")}:force_style='FontName=Inter,FontSize=22,Outline=2,Shadow=0,MarginV=36'` : `ass=${resolve(out, "subtitles.ass")}`;
-  await ffmpeg(["-i", resolve(out, "master.mp4"), "-vf", burn, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart", resolve(out, "master-subtitled.mp4")]);
-  console.log(`master   ${film ? "out/video/film" : "out/video"}/master.mp4 and master-subtitled.mp4, ${film ? totalSeconds() : premiereSeconds()} s, in ${Math.round((Date.now() - t0) / 1000)} s`);
+  // The earlier film keeps its subtitled copy; the premiere's master is delivered clean.
+  if (film) await ffmpeg(["-i", resolve(out, "master.mp4"), "-vf", `subtitles=${resolve(out, "subtitles.srt")}:force_style='FontName=Inter,FontSize=22,Outline=2,Shadow=0,MarginV=36'`, ...X264, "-movflags", "+faststart", resolve(out, "master-subtitled.mp4")]);
+  console.log(`master   ${film ? "out/video/film" : "out/video"}/master.mp4${film ? " and master-subtitled.mp4" : ""}, ${film ? totalSeconds() : premiereSeconds()} s, in ${Math.round((Date.now() - t0) / 1000)} s`);
 }

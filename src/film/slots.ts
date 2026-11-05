@@ -2,7 +2,7 @@
 // portrait phone recordings, composed into a rounded phone frame beside the scene's captions. The page draws the scene
 // with an empty frame at the box below (?rec=x,y,w,h&recfor=<scene>); ffmpeg then lays the recording, cut to its
 // window, scaled to the box, its corners rounded by a mask, into that frame, fading with the scene. Without a file the
-// scene keeps its stand-in.
+// scene keeps its rendered picture: the Face ID reconstruction (08) or the /try/sign mock (10).
 
 /** The scenes that take a phone recording. */
 export const SLOT_SCENES = ["08-faceid", "10-try-sign"] as const;
