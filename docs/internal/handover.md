@@ -59,8 +59,11 @@ Status: gebouwd, niets geboekt. Eén zin overal: "T:0 bookkeeping is built; post
 - **Stap 3 (alleen na Max' go):** de commando's in `docs/runs/2026-11-05-t0-live.md`, "To finish once T:0 accepts the
   key": `accounts`, dry-run (95 entries), push (95 posted), push opnieuw (0 posted, 95 skipped), `compare`. Allemaal met
   `KIT11_DB` op een kopie van de hoofdrun-ledger.
-- **De ledger van de hoofdrun staat niet in git** (`data/` staat in `.gitignore`). Het is `data/main-1.sqlite` van
-  3 nov, sha256 `09895aa2c454…`. Een nieuwe container heeft hem niet. Die staat nu alleen in de scratchpad van de sessie van 5 nov. Voorstel, wacht op Max' ok: zet hem in de privé-repo `agamemnon-coder/x402-business-agents-keys`, of laat Max hem van zijn eigen machine uploaden. Zonder deze ledger kan de T:0-boeking niet draaien, want de `PUR-`nummers hangen af van deze postings. Controleer de sha256 vóór gebruik.
+- **De ledger van de hoofdrun** (`data/main-1.sqlite` van 3 nov, sha256 `09895aa2c454…`) staat niet in de publieke repo,
+  en daar hoort hij ook nooit in. Hij staat in de privé-repo `agamemnon-coder/x402-business-agents-keys`, branch
+  `claude/charming-maxwell-pezr3l`, `main-1/ledger/main-1.sqlite`. Hij is gescand op geheimen: alleen passkey-credential-id's
+  gevonden, en die zijn publiek. Kopieer hem eruit en zet `KIT11_DB` op de kopie.
+- **Status 5 nov:** ook met de juiste sleutel in de omgeving geeft T:0 401 CAPI11 (Max). De boeking wacht op Justin.
 - **Daarna:** een run-log in `docs/runs/` zonder sleutel of account-ids; de T:0-zin overal aanpassen naar "posted"
   (README, formulier, claims, deck, pitch, Q&A, spiekkaart, `docs/t0.md`), met tests; het bericht aan Justin met onze
   19 GL-accounts.
