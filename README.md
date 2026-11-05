@@ -73,7 +73,7 @@ in the sandbox: Purser itself moves the transfer to SENT and PAID through Airwal
 asked for a card raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the
 TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 
-**16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.**
+**16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.**
 Claude's 12: stock checks #25–#36, which the Sourcing agent (Claude Haiku) chose not to buy while Stockline asked
 0.04, over its 0.03 cap; nothing signed, no customer charged. Metal's 2: 1 over the mandate's cap (#24, its refusal
 recorded in the tx above), 1 on a mandate that had just been replaced (#37, `mandate_revoked`, no tx of its own). The

@@ -507,7 +507,7 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
         { stops: true, figure: `${v("specs.stops")} stops`, sub: `${v("specs.overLimit")} paid over a limit`,
           rows: [
             { big: v("specs.stopsClaude"), label: "Claude skipped an overpriced check" },
-            { big: v("specs.stopsMetal"), label: "Metal refused on chain" },
+            { big: v("specs.stopsMetal"), label: "Metal refused a purchase" },
             { big: v("specs.stopsCfo"), label: "the CFO rejected a proposal" },
             { big: v("specs.stopsPlanted"), label: "planted instruction changed nothing" },
           ] },

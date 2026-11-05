@@ -16,7 +16,7 @@ anything beyond them, with Face ID on the exact terms.
 - **The euro bill:** EUR 240.00 by FX and SWIFT, PAID 6 s after Face ID (transfer
   `03360bfa-afce-457b-89d1-e1097fbe3985`; settlement simulated in the sandbox).
 - 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks.
-  16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+  16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
 
 Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md).
 
@@ -40,7 +40,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   proposal."), and the form's Description is short (the long text is
   [long-description.md](long-description.md)). /try/sign stays within a phone's width after the tamper. The premiere
   film (v5) runs 2:42 on Max's voice script; the hook is "So who signs off?". 2363 tests in 248 files, all passing.
-- 5 November, later: the stops are the run's full story ("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted instruction changed nothing."), counted from the record's refusal
+- 5 November, later: the stops are the run's full story ("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing."), counted from the record's refusal
   rows and summed to its own count; the README and the form say who does what (what Max built, what Airwallex, Metal and
   Claude provide); the film's proof card shows the 16 stops, and its end card credits the AI-generated voice and music
   (ElevenLabs) and who does what. 2363 tests in 248 files, all passing.

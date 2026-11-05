@@ -263,9 +263,9 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     expect(packFacts().main.stop_line).toBe(stopsLine(stopStory(record)));
   });
 
-  const LINE = "16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
+  const LINE = "16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
   /** Every "N stops, …: Claude skipped A …, Metal refused B …, the CFO rejected C …, and D planted …" in a text, as [N, A, B, C, D]. */
-  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: Claude skipped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
+  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: Claude skipped (\d+) overpriced checks?, Metal refused (\d+) purchases?, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
 
   it("is one sentence on the site, the claims, the forms, the deck and the video script, with the record's counts (5 Nov)", () => {
     const st = stopStory(record);
@@ -332,7 +332,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   });
 
   it("would catch a stray 3 or 4", () => {
-    expect(said(text(doc("docs/claims.md").replace("Metal refused 2 purchases on chain", "Metal refused 3 purchases on chain")))).toContainEqual([16, 12, 3, 1, 1]);
+    expect(said(text(doc("docs/claims.md").replace("Metal refused 2 purchases", "Metal refused 3 purchases")))).toContainEqual([16, 12, 3, 1, 1]);
   });
 });
 

@@ -21,7 +21,7 @@ A supplier doubles its price. A customer disputes 12 orders. A €240 bill is du
 
 ## Description
 
-Characters: **3,984** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,975** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 
@@ -38,7 +38,7 @@ Purser gives each AI agent its own Airwallex card and its own Metal on-chain man
 2. **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID. Refunds #7, #10 and #13, each on chain; the rejection is P-0004.
 3. **The euro bill.** The Treasury agent planned the EUR 240.00 licence itself (P-0005). After the CFO's Face ID, EUR 110.00 bought by FX for USD 124.29 (conversion `3ca88196-05da-4d88-9caa-796f03704636`), then SWIFT: transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID (settlement simulated in the sandbox).
 
-16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. Not counted: Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November.
+16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. Not counted: Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November.
 
 **Who does what.** Max Geurtsen built Purser (limits, approvals, agent tools, site, audit log, books, tests). Airwallex: cards and limits, FX, SWIFT. Metal: mandates, payments. Claude: the agents' decisions.
 

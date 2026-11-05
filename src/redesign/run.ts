@@ -446,7 +446,7 @@ export function stops(r: RunRecord): { metal: number; revoked: number; airwallex
 /**
  * The run's stops, all of them (Max, 5 Nov, second round: "1 + 1" told too little): every refusal row the record counts
  * in \`snapshot.counts.blocked\`, by who stopped it. Claude (the Sourcing agent) skipped the overpriced checks under its
- * own buy policy (nothing signed); Metal refused purchases on chain (over the mandate's cap, or on a mandate that had
+ * own buy policy (nothing signed); Metal refused purchases (over the mandate's cap, or on a mandate that had
  * just been replaced); the CFO rejected proposals with Face ID; a planted instruction in a document changed nothing.
  * \`other\` is whatever none of these name (0 in the main run, said as "N other" so nothing is hidden); the parts sum
  * to \`total\` (test/redesign-numbers.test.ts). The separate TAP run's decline is not counted (\`tapLimitLine\`).
@@ -482,14 +482,14 @@ export const stopSub = (st: StopStory) => st.overLimitEur === null ? "" : Number
 /** Who stopped what, in the sentence's order; a part only when its count is not 0. */
 export const stopParts = (st: StopStory) => [
   st.claude ? `Claude skipped ${plural(st.claude, "overpriced check")}` : "",
-  st.metal ? `Metal refused ${plural(st.metal, "purchase")} on chain` : "",
+  st.metal ? `Metal refused ${plural(st.metal, "purchase")}` : "",
   st.cfo ? `the CFO rejected ${plural(st.cfo, "proposal")}` : "",
   st.planted ? `${plural(st.planted, "planted instruction")} changed nothing` : "",
   st.other ? `${st.other} other` : "",
 ].filter(Boolean);
 /**
  * The stops in one sentence, the same on every surface (Max, 5 Nov): "16 stops, nothing paid over a limit: Claude
- * skipped 12 overpriced checks, Metal refused 2 purchases on chain, the CFO rejected 1 proposal, and 1 planted
+ * skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted
  * instruction changed nothing." Every count is stopStory()'s.
  */
 export function stopsLine(st: StopStory): string {

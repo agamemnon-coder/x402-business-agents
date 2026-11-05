@@ -189,7 +189,7 @@ describe("the premiere's figures are the main run's record's", () => {
       stops: true, figure: "16 stops", sub: "nothing paid over a limit",
       rows: [
         { big: "12", label: "Claude skipped an overpriced check" },
-        { big: "2", label: "Metal refused on chain" },
+        { big: "2", label: "Metal refused a purchase" },
         { big: "1", label: "the CFO rejected a proposal" },
         { big: "1", label: "planted instruction changed nothing" },
       ],
