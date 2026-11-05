@@ -7,9 +7,11 @@ history herschrijven; Max nooit om sleutels in de chat vragen.
 
 ## Wat af is (op main)
 
-- Main staat op `b64a75b` (PR #24, de pitch, en PR #25, de juror review, allebei gemerged op 5 nov). CI groen.
-- De site draait op https://kit11.max-31b.workers.dev (de Worker van main `94014cd`, deploy van 4 nov). Sindsdien heeft
-  geen PR de Worker veranderd, dus er is geen nieuwe deploy nodig.
+- Main staat op `778bc8c` (5 nov). Gemerged: #24 (pitch), #25 (juror review), #27 (film v3 met animaties), #28 (/try/sign op
+  de telefoon), #29 (stops-zin overal, formulier 3.821 tekens). CI groen; 2338 tests in 246 files.
+- De site draait op https://kit11.max-31b.workers.dev: de Worker van main `656061d`, deploy van 5 nov (versie
+  `0d591eae`). De vier checks na de deploy en de live /try/sign-check (390 px na de tamper) zijn groen. #27 raakt de
+  Worker niet, dus er is geen nieuwe deploy nodig.
 - Het pakket voor de inzending: `docs/submission/` (README met de formuliertekst, release-notes, checklist-max,
   pitch, qa, demo-day, `purser-deck.pdf`), `docs/media/try-sign-qr.png` en `docs/internal/spiekkaart-demo.pdf`.
 - Metal: de getallen en zinnen staan in de README; ze zijn geverifieerd op chain 63825.
@@ -17,29 +19,18 @@ history herschrijven; Max nooit om sleutels in de chat vragen.
 
 ## Wat open staat
 
-1. **De juror review is gemerged** ([#25](https://github.com/agamemnon-coder/x402-business-agents/pull/25)). Nog open:
-   "2 stopped at a limit" staat nog op de site-tegels, in `docs/claims.md`, `docs/video-script.md` en filmkaart
-   13. Vraag Max of daar ook zijn nieuwe zin moet komen; voor de site is dan een deploy nodig, op Max' ok.
-2. **Film v3** (branch `premiere-v3`, nog geen PR):
-   - Klaar: de render met de intro, de Face ID-scène, de achtergrond, de grijze credits en de aftiteling; 3:12, 1080p60.
-   - Max heeft de master met muziek gekregen (`purser-film-v3.mp4`, muziek A op −20 LUFS, doorlopend, op de beat).
-   - Nog te doen:
-     - main mergen in `premiere-v3`;
-     - het testgetal in de README gelijkzetten met de echte telling (`npx vitest run`), daarna `npm run video -- 13-specs`
-       en `npm run video -- --docs`;
-     - de kaart "2 stopped at a limit" in `13-specs` gelijktrekken met Max' nieuwe zin, als hij dat ook in de film wil
-       (punt 6 van de review);
-     - een PR maken en mergen.
-   - Het eindbestand komt van Max: zijn voice-over over de master (`docs/video/script.md`, `opnames-max.md`).
-3. **T:0** (zie hieronder).
-4. **De README-link naar de video:** de placeholder `<!-- VIDEO-LINK -->` vervangen zodra Max de YouTube-link (unlisted)
+1. **Max' voice-over** over de film: `docs/video/script.md`. De regel bij kaart 13 is nieuw ("Metal refused one purchase
+   over its cap; the CFO rejected one proposal."). Het eindbestand komt van Max: zijn stem over de master, met muziek A
+   (Mixkit "Techno Fest Vibes", 120 BPM, doorlopend, −20 LUFS). Zie `docs/video/README.md`.
+2. **T:0** (zie hieronder): wacht op Justin.
+3. **De README-link naar de video:** de placeholder `<!-- VIDEO-LINK -->` vervangen zodra Max de YouTube-link (unlisted)
    heeft.
-5. **De lengte van het formulier:** de Description is ±14.500 tekens. Er is een melding van een limiet van 10.000. Max
-   kijkt naar het echte formulier; daarna inkorten.
-6. **Na alle merges:**
+4. **De limiet van het formulier:** Max checkt die. De Description is 3.821 tekens; een test houdt hem onder 4.000.
+5. **Na de laatste wijziging:**
    - een fresh-clone-check (`npm ci && npm test && npm run judge -- --check`);
-   - het testgetal overal gelijk (README, claims, release notes, film);
-   - de tag `v1.0-submission` alleen verzetten met Max' ok (de tag staat al; een nieuwe tag kan ook, bijv. `v1.1-submission`).
+   - het testgetal overal gelijk: README, claims, release notes "Since the tag", demo-day en filmkaart 13
+     (`npm run video -- 13-specs`);
+   - de tag `v1.0-submission` alleen verzetten met Max' ok, of een nieuwe tag zetten (bijv. `v1.1-submission`).
 
 ## T:0: de taak
 
@@ -90,5 +81,5 @@ Status: gebouwd, niets geboekt. Eén zin overal: "T:0 bookkeeping is built; post
 ## Open PR's op dit moment
 
 - [#26](https://github.com/agamemnon-coder/x402-business-agents/pull/26) `handover`: dit bestand (draft, alleen docs).
-- [#27](https://github.com/agamemnon-coder/x402-business-agents/pull/27) `premiere-v3`: film v3 (draft, WIP).
-- `premiere-v3` (film v3) staat gepusht op `ddbd66a`. In de sessie van 5 nov werkte nog een agent aan animatie-upgrades 1–4 (het architectuurplaatje met een lichtpuls, de prijslijn door de cap, count-ups, push-ins); die commits komen erbij als ze klaar zijn. Daarna main mergen en #27 klaarzetten.
+- [x402-business-agents-keys#1](https://github.com/agamemnon-coder/x402-business-agents-keys/pull/1): de ledger van de
+  hoofdrun in de privé-repo (draft).
