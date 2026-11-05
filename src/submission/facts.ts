@@ -44,7 +44,7 @@ export interface PackFacts {
 export interface MainRunFacts {
   decisions: number; by_claude: number; fallbacks: number; claude_calls: number; claude_usd: string; per_decision_usd: string;
   alone: number; sales: number; face_id: number; metal_refused: number; cfo_rejected: number; audit_rows: number;
-  /** "stopped at a limit": the main run's own stops only; the separate TAP run's decline is its own line (tap_limit_line). */
+  /** The stops at a limit in all (said as stopLine: "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal."): the main run's own stops only; the separate TAP run's decline is its own line (tap_limit_line). */
   stopped: number; tap_limit_line: string;
   /** The main run's card story: the agent asked for the raise first (proposal, per-purchase limit from → to), the CFO approved it with Face ID, then Airwallex approved the charge (authorization). */
   card_raise: { proposal: string; from: string; to: string; auth: string; amount: string };

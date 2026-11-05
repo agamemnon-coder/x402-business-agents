@@ -22,7 +22,7 @@ beyond them, with Face ID on the exact terms.
 **Also:** [the site](https://kit11.max-31b.workers.dev/) replays the main run; [`/try`](https://kit11.max-31b.workers.dev/try)
 gives an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves.
 
-Starter Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award ([note](docs/submission/README.md#visa)). Northwind Outdoor,
+Starter Kit 11 · x402 Business Agents · entered for the Metal Award + Visa Award ([note](docs/submission/long-description.md#visa)). Northwind Outdoor,
 the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
 
 ## The main run (3 November)
@@ -117,7 +117,7 @@ npm test          # the full suite, on stand-ins
 npm run judge     # the main run's replay, the CFO dashboard and the Scenario Lab, offline
 ```
 
-**2332 tests in 246 files, all passing** (`npx vitest run`, 5 November); CI runs the same suite on
+**2326 tests in 246 files, all passing** (`npx vitest run`, 5 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
 every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/run-it.md).
 
 ## Words
@@ -134,8 +134,9 @@ every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/r
 - [docs/claims.md](docs/claims.md): every claim in this repo and its source
 - [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
-- [docs/submission/README.md](docs/submission/README.md): the submission text
-- [The Visa Award note](docs/submission/README.md#visa): what the organisers confirmed about our entry, and what is open
+- [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
+- [docs/submission/long-description.md](docs/submission/long-description.md): the long form text it replaced, in full
+- [The Visa Award note](docs/submission/long-description.md#visa): what the organisers confirmed about our entry, and what is open
 
 All money here is test money: the Airwallex sandbox and Metal testnet. Built with Claude (Anthropic) as the developer,
 directed and reviewed by Max Geurtsen. Licence: MIT.
