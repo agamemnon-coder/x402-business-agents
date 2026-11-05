@@ -5,7 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import { SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
-import { agentRun, faceIdDecisions, family, letThroughOf, ownTap, payments, sandboxRails, separateRowHtml, runName, split, stoppedAtLimit, stops, tapLimitLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
+import { agentRun, faceIdDecisions, family, letThroughOf, ownTap, payments, sandboxRails, separateRowHtml, runName, split, stopFigure, stops, stopsLine, tapLimitLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { esc, icon, page } from "./ui.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
@@ -53,7 +53,7 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 @media (min-width: 900px) { .more { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .more .card { padding: 16px 20px; scroll-margin-top: 80px; display: grid; gap: 6px; align-content: start; }
 .more h3 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
-.more h3 .n { font-variant-numeric: tabular-nums; color: var(--accent); }
+.more h3 .n { font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; flex: none; }
 .more p { margin: 0; color: var(--muted); font-size: 15.5px; }`;
 
 const JS = `(function () { var h = location.hash.slice(1); if (!h) return; var t = document.getElementById(h); if (!t) return; t.querySelectorAll("details").forEach(function (d) { d.open = true; }); })();`;
@@ -178,7 +178,7 @@ function moreCards(run: AgentRun): string {
     `<li><a class="pf" href="film">The film</a></li>`, `<li><a class="pf" href="month">A month in 90 seconds (simulated)</a></li>`, `<li><a class="pf" href="lab">The Scenario Lab</a></li>`,
   ];
   return `<div class="more">
-${box("stops", "ban", "stopped at a limit", String(stoppedAtLimit(st)), `${st.metal} Metal · ${st.cfo} CFO${st.airwallex ? ` · ${st.airwallex} Airwallex` : ""}, in this run.${st.revoked ? ` ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}`, separateRowHtml(tapLimitLine()) /* the separate TAP run's decline: its own labelled row, not counted */ + fold("Show each one", [...stopItems, ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`Not counted, not a limit: ${e.what}, refused by Metal because its mandate had just been replaced`, "", e.proof.href ? e.proof : null))]))}
+${box("stops", "ban", stopsLine(st), stopFigure(st), `In this run.${st.revoked ? ` Not counted: ${st.revoked} more refused by Metal because its mandate had just been replaced.` : ""}`, separateRowHtml(tapLimitLine()) /* the separate TAP run's decline: its own labelled row, not counted */ + fold("Show each one", [...stopItems, ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`Not counted, not a limit: ${e.what}, refused by Metal because its mandate had just been replaced`, "", e.proof.href ? e.proof : null))]))}
 ${box("faceid", "scan-face", "Face ID decisions", String(faceIdDecisions(r)), `Proposals the CFO decided on his phone${faces.some((f) => f.status === "COSIGNED") ? "; the mandate change needed a second signature too" : ""}. ${SECOND_APPROVER}`, fold(`Show the ${faces.length} signatures: ${faceIdDecisions(r)} decisions + ${faces.length - faceIdDecisions(r)} co-signature${faces.length - faceIdDecisions(r) === 1 ? "" : "s"}`, faceItems))}
 ${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), "The sandbox could not price the fee: nothing paid, not a limit.", fold("Show what followed", earlier.map((e) => li(earlierLine(e), "no", { label: e.proof.label, href: null })))) : ""}
 ${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=2"])}
@@ -198,7 +198,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
     // What the routine payments are, then the one breakdown they belong to (final review, 4 Nov: "…purchases of: 87…").
     { cls: "code", value: String(sp.routine), label: "routine payments by code", explain: "", href: "#metal", ...(pay.sums && sp.routine === pay.sales + pay.purchases ? { note: `${pay.sales} sales + ${pay.purchases} supplier purchases. In all, ${pay.line}.` } : {}) },
     { cls: "face", value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: "", href: "#faceid" },
-    { cls: "stop", value: String(stoppedAtLimit(st)), label: "stopped at a limit", explain: "", href: "#stops", ...(tapLimitLine() ? { separate: tapLimitLine() } : {}) },
+    { cls: "stop", value: stopFigure(st), label: stopsLine(st), explain: "", href: "#stops", ...(tapLimitLine() ? { separate: tapLimitLine() } : {}) },
     { cls: "", value: `$${run.derived.perDecision}`, label: "Claude cost per decision", explain: "", href: "#claude" },
   ];
   const body = `<main class="proofp"><div class="wrap">

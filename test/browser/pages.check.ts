@@ -179,13 +179,14 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
     if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
     // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov): Metal once at the cap (not 3),
-    // 2 stopped at a limit (not "16 stops, all counted"), all Claude calls said as such, #24 refused by Metal itself.
-    for (const want of [/Metal's mandate check\s+1\b/, /Stopped at a limit in this run: 2 \(1 Metal · 1 CFO\)/, /Refused and blocked\s+2 at a limit/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
+    // Max's sentence for the stops, "1 + 1" in the pill (not "16 stops, all counted"), all Claude calls said as such,
+    // #24 refused by Metal itself.
+    for (const want of [/Metal's mandate check\s+1\b/, /In this run: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\./, /Refused and blocked\s+1 \+ 1 at a limit/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
       if (!want.test(au)) fail(`/?autonomy ${tag}: missing ${want}`);
     }
-    // The KPI's note (hidden on a phone, as every KPI note is) says the same figure.
-    if (w >= 1000 && !/2 stopped at a limit \(1 Metal · 1 CFO\)/.test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say 2 stopped at a limit`);
-    for (const bad of [/all counted/, /Metal's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
+    // The KPI's note (hidden on a phone, as every KPI note is) says the same sentence.
+    if (w >= 1000 && !/Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\. Not counted: [^.]*\. The amount is what stayed out for good/.test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say Max's sentence for the stops`);
+    for (const bad of [/all counted/, /stopped at a limit/i, /Metal's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
     if (!(await page.isVisible("#mf"))) fail(`/?autonomy ${tag}: no money flow`);
     // Somewhere in the run a movement was decided by an agent's own Claude call: its caption names the model.
     let named = false;
