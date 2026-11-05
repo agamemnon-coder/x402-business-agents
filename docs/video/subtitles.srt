@@ -155,41 +155,45 @@ An audit log, hash-chained:
 check it yourself.
 
 40
-00:02:24,400 --> 00:02:26,750
-Two stopped at a limit.
+00:02:24,000 --> 00:02:26,300
+Metal refused one purchase over its
 
 41
-00:02:28,400 --> 00:02:31,150
-Twenty-four of twenty-four decisions by Claude.
+00:02:26,350 --> 00:02:28,650
+cap; the CFO rejected one proposal.
 
 42
+00:02:28,800 --> 00:02:31,550
+Twenty-four of twenty-four decisions by Claude.
+
+43
 00:02:32,500 --> 00:02:36,850
 Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID.
 
-43
+44
 00:02:37,300 --> 00:02:38,494
 Ours, or simulated:
 
-44
+45
 00:02:38,544 --> 00:02:41,505
 the suppliers, the customer, the merchant, and
 
-45
+46
 00:02:41,555 --> 00:02:44,450
 the second approver, a labelled test passkey.
 
-46
+47
 00:02:45,500 --> 00:02:48,850
 A price shock, a dispute, a euro bill.
 
-47
+48
 00:02:49,000 --> 00:02:52,661
 Claude decided, the rails and the code held the
 
-48
+49
 00:02:52,711 --> 00:02:56,450
 limits, and I signed only what went beyond them.
 
-49
+50
 00:02:56,600 --> 00:02:58,550
 Purser, Starter Kit 11.

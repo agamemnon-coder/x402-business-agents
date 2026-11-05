@@ -76,11 +76,23 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .node .face b { font-size: 22px; }
 .arrow { height: 4px; background: var(--accent); border-radius: 2px; transform-origin: 0 50%; }
 .arrow::after { content: ""; position: absolute; right: -4px; top: -9px; border-top: 11px solid transparent; border-bottom: 11px solid transparent; border-left: 16px solid var(--accent); }
-/* The price gauge. */
-.track { width: 820px; height: 8px; border-radius: 4px; background: var(--sunken); }
-.capmark { width: 6px; height: 86px; border-radius: 3px; background: var(--wait); }
+/* A payment on its way through the diagram: a soft light pulse; the refused one turns red where it stops. */
+.pulse { width: 22px; height: 22px; border-radius: 50%; opacity: 0; }
+.pulse i { position: absolute; inset: 0; border-radius: 50%; background: #e4e2ff; box-shadow: 0 0 16px 6px rgba(155,150,255,.5); }
+.pulse i + i { background: var(--bad); box-shadow: 0 0 20px 8px rgba(255,107,112,.55); opacity: 0; }
+/* The price chart: the price as a line, the mandate's cap as a dashed line across it. */
+.chart { overflow: visible; }
+.chart .axis { stroke: var(--line); stroke-width: 2; }
+.chart .capl { stroke: var(--wait); stroke-width: 3; stroke-dasharray: 12 10; }
+.chart .under { fill: none; stroke: var(--ok); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.chart .over { fill: none; stroke: var(--bad); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
 .dot { width: 34px; height: 34px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 30px rgba(60,207,130,.6); }
 .dot.over { background: var(--bad); box-shadow: 0 0 34px rgba(255,107,112,.75); }
+.ripple { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--bad); opacity: 0; }
+/* A count-up: the final figure holds the width (hidden), the counting figure sits over it, right-aligned. */
+.cu { position: relative; display: inline-block; }
+.cu .ghost { visibility: hidden; }
+.cu .val { position: absolute; right: 0; top: 0; }
 /* The dispute. */
 .chip { width: 150px; height: 98px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .chip b { font-size: 36px; font-weight: 800; letter-spacing: -.02em; }
@@ -205,6 +217,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   function clamp(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
   function prog(t, a, b) { return clamp((t - a) / (b - a)); }
   function out3(p) { return 1 - Math.pow(1 - p, 3); }
+  function inOut(p) { return (1 - Math.cos(Math.PI * p)) / 2; }
   function mix(a, b, p) { return a + (b - a) * p; }
   // Appear: fade in and rise into place at t0 (slowly); optionally leave at t1.
   function rise(n, t, t0, t1, dy) { var p = out3(prog(t, t0, t0 + .9)), o = p; if (t1 != null) o *= 1 - prog(t, t1, t1 + .5); n.style.opacity = o; n.style.transform = "translateY(" + (1 - p) * (dy == null ? 26 : dy) + "px)"; }
@@ -215,6 +228,19 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   function scan(f, t, t0) { var p = prog(t, t0, t0 + 1.1); f.style.transform = "scale(" + (1 + Math.sin(p * Math.PI * 3) * .06) + ")"; var b = f.querySelector("b"); b.style.opacity = prog(t, t0 + 1.1, t0 + 1.3); b.style.transform = "scale(" + mix(.5, 1, out3(prog(t, t0 + 1.1, t0 + 1.5))) + ")"; }
   var TILT = -6;
   function width(n, w) { n.style.width = w + "px"; return n; }
+  // A count-up for a big figure: from zero to the record's figure in under a second, easing out, then exactly the
+  // record's string at rest. Only the first run of digits counts ("24/24" counts up to 24 of 24).
+  var COUNT = .8;
+  function counter(cls, text) { var n = E("span", "cu tn" + (cls ? " " + cls : ""), null, [E("span", "ghost", text), E("span", "val", text)]); n.target = text; return n; }
+  function count(n, t, t0) {
+    var p = prog(t, t0, t0 + COUNT), v = n.lastChild;
+    if (p >= 1) { v.textContent = n.target; return; }
+    var e = out3(p);
+    v.textContent = n.target.replace(/\d+/, function (d) { return String(Math.round(Number(d) * e)); });
+  }
+  // SVG, in the namespace of the page's own mark (no address typed here).
+  var SVG = document.getElementById("mark-tpl").content.firstElementChild.namespaceURI;
+  function svgEl(tag, cls, attrs) { var n = document.createElementNS(SVG, tag); if (cls) n.setAttribute("class", cls); Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k, attrs[k]); }); return n; }
   // The frame around a recording's box (stage pixels; the picture starts below the top bar).
   function ring(L, rec) { L.classList.add("still"); var r = put(L, E("div", "ring"), rec.x - 10, rec.y - BAR - 10); r.style.width = rec.w + 20 + "px"; r.style.height = rec.h + 20 + "px"; return r; }
 
@@ -256,28 +282,60 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var nodes = S.nodes.map(function (n, i) { var d = E("div", "node", null, [E("b", null, n.t), E("span", null, n.s)]); if (i === 2) d.insertBefore(faceGlyph(), d.firstChild); return put(L, d, x0 + i * (W + G), y); });
       var arrows = [0, 1, 2, 3].map(function (i) { return width(put(L, E("div", "arrow"), x0 + i * (W + G) + W + 12, y + 116), G - 30); });
       var face = nodes[2].querySelector(".face");
+      // The payment as a soft light pulse: the first rides each arrow as it is drawn, into the next box, on to the books.
+      // Then a second one sets off, turns red on its way to Airwallex or Metal and stops there: the refusal (05).
+      var PY = y + 118, edge = function (i) { return x0 + i * (W + G) + W; }, next = function (i) { return x0 + (i + 1) * (W + G); };
+      var pulse = function () { return put(L, E("div", "pulse", null, [E("i"), E("i")]), 0, PY - 11); };
+      var p1 = pulse(), p2 = pulse(), T2 = at[4] + .5, HOP = .5, STOP = 14;
+      function place(n, x, o, red) { n.style.transform = "translateX(" + (x - 11) + "px)"; n.style.opacity = o; n.lastChild.style.opacity = red; }
       return function (t) {
         fade(k, t, .1);
-        nodes.forEach(function (n, i) { rise(n, t, at[i], null, 30); var on = t >= at[i] && (i === 4 || t < at[i + 1]); n.classList.toggle("on", on); });
+        nodes.forEach(function (n, i) { rise(n, t, at[i], null, 30); var on = t >= at[i] && (i === 4 ? t < T2 : t < at[i + 1]); n.classList.toggle("on", on); });
         arrows.forEach(function (a, i) { var p = out3(prog(t, at[i + 1] - .55, at[i + 1] - .05)); a.style.opacity = p > 0 ? 1 : 0; a.style.transform = "scaleX(" + p + ")"; });
         scan(face, t, at[2] + .3);
+        // The first pulse: on the arrow being drawn (if any), fading in off one box and into the next.
+        p1.style.opacity = 0;
+        arrows.forEach(function (a, i) {
+          var p = prog(t, at[i + 1] - .55, at[i + 1] - .05);
+          if (p > 0 && p < 1) place(p1, mix(edge(i) + 12, next(i) - 10, out3(p)), Math.min(prog(p, 0, .2), 1 - prog(p, .75, 1)), 0);
+        });
+        // The second pulse: through rules and person, then to Airwallex or Metal, red by the time it stops at the box.
+        p2.style.opacity = 0;
+        if (t >= T2) {
+          var h = Math.min(Math.floor((t - T2) / HOP), 2), p = prog(t - T2 - h * HOP, 0, h < 2 ? HOP * .64 : HOP * .9);
+          if (h < 2) place(p2, mix(edge(h) + 12, next(h) - 10, inOut(p)), Math.min(prog(p, 0, .2), 1 - prog(p, .8, 1)), 0);
+          else place(p2, mix(edge(h) + 12, next(h) - STOP, out3(p)), prog(p, 0, .2), inOut(prog(p, .2, 1)));
+        }
       };
     },
     "05-price-rise": function (L, S) {
       var lb = put(L, E("div", "full"), 0, 0);
-      var k = put(lb, E("div", "kick", S.kicker), 140, 60);
+      var k0 = put(lb, E("div", "kick", S.kicker), 140, 60);
       var sup = put(lb, E("div", "hs muted", S.supplier + " " + S.rise), 140, 130);
       var price = put(lb, E("div", "huge"), 140, 192);
-      var from = E("span", null, S.from), arrow = E("span", "muted", " → "), to = E("span", "badc", S.to);
-      price.appendChild(from); price.appendChild(arrow); price.appendChild(to);
+      var fromS = E("span", null, S.from), arrow = E("span", "muted", " → "), toS = E("span", "badc", S.to);
+      price.appendChild(fromS); price.appendChild(arrow); price.appendChild(toS);
       var unit = put(lb, E("div", "small", S.unit), 144, 338);
-      var track = put(lb, E("div", "track"), 140, 470);
-      var max = Number(S.to) * 1.25, X = function (v) { return 140 + 820 * Number(v) / max; };
-      var cm = put(lb, E("div", "capmark"), X(S.capValue) - 3, 431);
-      var ct = put(lb, E("div", "small waitc", S.capTag), X(S.capValue) - 54, 384);
-      var dot = put(lb, E("div", "dot"), X(S.from) - 17, 457);
-      var cap = put(lb, width(E("div", "body muted", S.cap), 860), 140, 530);
-      var lt = put(lb, E("div", "pill wait", S.letThrough), 140, 636);
+      // The price as a line chart: flat at the old price, then up to the new one, across the mandate's cap (dashed).
+      // Every level is the record's (S.from, S.capValue, S.to); the chart has no time axis, only the order of events.
+      var from = Number(S.from), to = Number(S.to), capV = Number(S.capValue), pad = (to - from) * .3;
+      var CW = 820, CH = 132, CX = 140, CY = 386, Y = function (v) { return CH * (to + pad - v) / (to - from + 2 * pad); };
+      var xr0 = CW * .42, xr1 = CW * .53, xe = CW * .9, k = (capV - from) / (to - from), xc = mix(xr0, xr1, k), yc = Y(capV);
+      var chart = svgEl("svg", "chart", { width: CW, height: CH, viewBox: [0, 0, CW, CH].join(" ") });
+      put(lb, chart, CX, CY);
+      var axis = svgEl("line", "axis", { x1: 0, y1: CH, x2: CW, y2: CH }), capl = svgEl("line", "capl", { x1: 0, y1: yc, x2: CW, y2: yc });
+      var under = svgEl("polyline", "under", { points: [[0, Y(from)], [xr0, Y(from)], [xc, yc]].join(" ") });
+      var over = svgEl("polyline", "over", { points: [[xc, yc], [xr1, Y(to)], [xe, Y(to)]].join(" ") });
+      [axis, capl, under, over].forEach(function (n) { chart.appendChild(n); });
+      var seg = function (a, b) { return Math.hypot(b[0] - a[0], b[1] - a[1]); };
+      var lu = xr0 + seg([xr0, Y(from)], [xc, yc]), lo = seg([xc, yc], [xr1, Y(to)]) + (xe - xr1);
+      under.style.strokeDasharray = lu + " " + lu; over.style.strokeDasharray = lo + " " + lo;
+      var ct = put(lb, E("div", "small waitc", S.capTag), CX, CY + yc - 44);
+      var endv = put(lb, E("div", "small badc", S.to), CX + xe + 22, CY + Y(to) - 19);
+      var ring = put(lb, E("div", "ripple"), CX + xc - 17, CY + yc - 17);
+      var dot = put(lb, E("div", "dot"), 0, 0);
+      var cap = put(lb, width(E("div", "body muted", S.cap), 860), 140, 540);
+      var lt = put(lb, E("div", "pill wait", S.letThrough), 140, 644);
       var ref = put(L, E("div", "hl badc", S.refused), 1060, 128);
       var rea = put(L, E("div", "body muted", S.reason), 1064, 232);
       var tl = put(L, E("div", "kick", S.txLabel), 1064, 330);
@@ -285,16 +343,33 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var tf = put(L, width(E("div", "tiny mono brk", S.txFull), 700), 1064, 452);
       var tw = put(L, E("div", "small", S.txWhere), 1064, 528);
       var foot = put(L, width(E("div", "tiny", S.label), 1640), 140, 728);
+      // The line: flat from 3.0 s, the rise with "doubled its price, past the mandate's cap", then flat at the new
+      // price. Metal's refusal appears the moment the line crosses the cap (TC).
+      var R0 = 6.8, R1 = 8.6, TC = R0 + (R1 - R0) * Math.acos(1 - 2 * k) / Math.PI;
+      function tip(t) {
+        if (t < R0) return [mix(0, xr0, inOut(prog(t, 3.0, R0))), Y(from)];
+        if (t < R1) { var e = inOut(prog(t, R0, R1)); return [mix(xr0, xr1, e), Y(mix(from, to, e))]; }
+        return [mix(xr1, xe, out3(prog(t, R1, R1 + 1.2))), Y(to)];
+      }
       return function (t) {
-        fade(k, t, .2);
-        lb.style.transform = "translateX(" + mix(380, 0, out3(prog(t, 14.3, 15.4))) + "px)";
+        fade(k0, t, .2);
+        lb.style.transform = "translateX(" + mix(380, 0, inOut(prog(t, 5.0, 6.4))) + "px)";
         rise(sup, t, .6); rise(price, t, .9); rise(unit, t, 1.3);
-        var r = out3(prog(t, 6.8, 8.6));
-        arrow.style.opacity = r; to.style.opacity = r;
-        fade(track, t, 3.0); fade(cm, t, 3.4); fade(ct, t, 3.4); fade(dot, t, 3.0); rise(cap, t, 3.6);
-        var v = mix(Number(S.from), Number(S.to), r); dot.style.left = (X(v) - 17) + "px"; dot.classList.toggle("over", v > Number(S.capValue));
+        var r = out3(prog(t, R0, R1));
+        arrow.style.opacity = r; toS.style.opacity = r;
+        fade(axis, t, 2.8); fade(capl, t, 3.4); fade(ct, t, 3.4); rise(cap, t, 3.6);
+        var p = tip(t), d;
+        if (p[0] <= xc && t < TC) d = p[0] <= xr0 ? p[0] : xr0 + seg([xr0, Y(from)], p);
+        else d = lu + (p[0] <= xr1 ? seg([xc, yc], p) : seg([xc, yc], [xr1, Y(to)]) + p[0] - xr1);
+        under.style.strokeDashoffset = Math.max(0, lu - d); over.style.strokeDashoffset = Math.max(0, lo - (d - lu));
+        under.style.opacity = t >= 3.0 ? 1 : 0; over.style.opacity = t >= TC ? 1 : 0;
+        dot.style.opacity = prog(t, 3.0, 3.4); dot.style.transform = "translate(" + (CX + p[0] - 17) + "px," + (CY + p[1] - 17) + "px)";
+        dot.classList.toggle("over", t >= TC);
+        var w = prog(t, TC, TC + 1.1); ring.style.opacity = w > 0 && w < 1 ? .8 * (1 - w) : 0; ring.style.transform = "scale(" + mix(1, 3.2, out3(w)) + ")";
+        fade(endv, t, R1 + .6);
+        rise(ref, t, TC); rise(rea, t, TC + .4);
         rise(lt, t, 10.4);
-        rise(ref, t, 15.2); rise(rea, t, 15.5); rise(tl, t, 16.0); rise(tx, t, 16.1); rise(tf, t, 16.3); rise(tw, t, 16.4); fade(foot, t, 16.6);
+        rise(tl, t, 15.2); rise(tx, t, 15.3); rise(tf, t, 15.5); rise(tw, t, 15.6); fade(foot, t, 16.0);
       };
     },
     "06-dispute": function (L, S) {
@@ -364,6 +439,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var s1 = put(L, E("div", "hl", S.side[0]), 880, 200), s2 = put(L, E("div", "hl okc", S.side[1]), 880, 300);
       var wh = put(L, E("div", "small", S.when), 884, 410);
       var rc = put(L, width(E("div", "tiny", S.recon), 940), 884, 712);
+      L.push = { to: 1.04, x: 510, y: 402 };
       return function (t) {
         rc.style.opacity = prog(t, 0, .3);
         bt.classList.toggle("lit", t > .6 && t < 1.2);
@@ -374,7 +450,8 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       };
     },
     "09-six-seconds": function (L, S) {
-      var six = put(L, E("div", "sixrow", null, [E("span", "mega", S.big), E("span", "hl", S.unit)]), 140, 40);
+      var big = counter("mega", S.big);
+      var six = put(L, E("div", "sixrow", null, [big, E("span", "hl", S.unit)]), 140, 40);
       var line = put(L, E("div", "hm muted", S.line), 146, 318);
       // Said plainly, not only in the footnote: in the sandbox the settlement is simulated (SENT and PAID are Purser's
       // own calls to Airwallex's simulation API).
@@ -387,7 +464,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var wh = put(L, E("div", "small", S.where), 1022, 562);
       var foot = put(L, width(E("div", "tiny", S.foot), 1640), 140, 724);
       return function (t) {
-        rise(six, t, .2, null, 40); rise(line, t, 1.0);
+        rise(six, t, .2, null, 40); count(big, t, .2); rise(line, t, 1.0);
         steps.forEach(function (s, i) { rise(s, t, 1.6 + i * .5, null, 14); });
         rise(sim, t, 4.8);
         rise(tl, t, 5.8); rise(tr, t, 5.9); rise(de, t, 6.2);
@@ -455,6 +532,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var hs = put(L, E("div", "small c mono", S.hashes), 0, 396);
       var rf = put(L, E("div", "body c badc", S.refused), 0, 462);
       var w = put(L, E("div", "hl c", S.last), 0, 590);
+      L.push = { to: 1.04, x: 960, y: 402 };
       return function (t) {
         var flip = t >= 2.0;
         last.style.display = flip ? "none" : ""; now.style.display = flip ? "" : "none";
@@ -473,7 +551,9 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
     "13-specs": function (L, S, ov, seconds) {
       var cards = S.cards.map(function (c) {
         var n = put(L, E("div", "spec"), 0, 0);
-        n.appendChild(E("div", "giant", c.big)); n.appendChild(E("div", "col", null, [E("div", "lab", c.label), E("div", "small", c.small)]));
+        // The big figures count up; a card marked plain (small figures, "1 + 1") shows its figure as it is.
+        var g = E("div", "giant tn"); if (c.plain) g.textContent = c.big; else g.appendChild(n.big = counter(null, c.big));
+        n.appendChild(g); n.appendChild(E("div", "col", null, [E("div", "lab", c.label), E("div", "small", c.small)]));
         return n;
       });
       var each = seconds / cards.length;
@@ -481,6 +561,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         cards.forEach(function (c, i) {
           var t0 = i * each, o = prog(t, t0, t0 + .35) * (i === cards.length - 1 ? 1 : 1 - prog(t, t0 + each - .35, t0 + each));
           c.style.opacity = o; c.style.transform = "translateY(" + (1 - out3(prog(t, t0, t0 + .5))) * 24 + "px)";
+          if (c.big) count(c.big, t, t0 + .05);
         });
       };
     },
@@ -543,8 +624,13 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       if (!on) { sc.L.style.opacity = 0; sc.L.style.visibility = "hidden"; return; }
       sc.L.style.visibility = "visible";
       sc.L.style.opacity = Math.min(sc.f[0] ? prog(lt, 0, sc.f[0]) : 1, sc.f[1] ? 1 - prog(lt, sc.seconds - sc.f[1], sc.seconds - .02) : 1);
-      // A slow push-in, so the picture is never still (not around a recording, which must stay in its frame).
-      sc.L.style.transform = sc.L.classList.contains("still") ? "" : "scale(" + mix(1, 1.02, clamp(lt / sc.seconds)) + ")";
+      // A slow push-in, so the picture is never still (not around a recording, which must stay in its frame). A scene
+      // may ask for a camera push of its own (L.push: eased, towards a point): the Face ID phone (08), the one cent (11).
+      // The layer is inside the picture, so the letterbox bars and the corner credits never move.
+      var P = sc.L.push;
+      if (sc.L.classList.contains("still")) sc.L.style.transform = "";
+      else if (P) { sc.L.style.transformOrigin = P.x + "px " + P.y + "px"; sc.L.style.transform = "scale(" + mix(1, P.to, inOut(clamp(lt / sc.seconds))) + ")"; }
+      else sc.L.style.transform = "scale(" + mix(1, 1.02, clamp(lt / sc.seconds)) + ")";
       sc.update(lt);
     });
   }

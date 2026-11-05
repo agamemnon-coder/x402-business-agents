@@ -366,7 +366,11 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       cards: [
         { big: v("specs.tests"), label: "tests, all passing", small: "npx vitest run · CI runs the same suite on every push" },
         { big: v("specs.auditRows"), label: "audit rows, hash-chained", small: "chain intact · check it yourself: npm run verify" },
-        { big: v("specs.stopped"), label: "stopped at a limit", small: `Metal ${v("specs.stoppedMetal")} · the CFO ${v("specs.stoppedCfo")}${n("specs.stoppedAirwallex") ? ` · Airwallex ${v("specs.stoppedAirwallex")}` : ""} · in the main run` },
+        // The two stops said as what they were (Max, 5 November): Metal's refusal and the CFO's rejection, each the
+        // record's figure; small figures, shown as they are (no count-up).
+        { big: `${v("specs.stoppedMetal")} + ${v("specs.stoppedCfo")}`, plain: true,
+          label: `Metal refused ${v("specs.stoppedMetal")} ${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} over its cap; the CFO rejected ${v("specs.stoppedCfo")} ${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"}.`,
+          small: `${n("specs.stoppedAirwallex") ? `Airwallex declined ${v("specs.stoppedAirwallex")} · ` : ""}in the main run` },
         { big: `${v("specs.byClaude")}/${v("specs.decisions")}`, label: "decisions by Claude", small: `Sourcing ${v("specs.sourcing")} · Support ${v("specs.support")} · Treasury ${v("specs.treasury")} · ${v("specs.fallbacks")} fallbacks` },
       ],
     },
@@ -435,8 +439,8 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
     "13-specs": [
       { at: 0.5, who: "Voice", text: "All tests passing." },
       { at: 4.4, who: "Voice", text: "An audit log, hash-chained: check it yourself." },
-      { at: 8.4, who: "Voice", text: `${cap1(said("specs.stopped"))} stopped at a limit.` },
-      { at: 12.4, who: "Voice", text: `${cap1(said("specs.byClaude"))} of ${said("specs.decisions")} decisions by Claude.` },
+      { at: 8.0, who: "Voice", text: `Metal refused ${said("specs.stoppedMetal")} ${n("specs.stoppedMetal") === 1 ? "purchase" : "purchases"} over its cap; the CFO rejected ${said("specs.stoppedCfo")} ${n("specs.stoppedCfo") === 1 ? "proposal" : "proposals"}.` },
+      { at: 12.8, who: "Voice", text: `${cap1(said("specs.byClaude"))} of ${said("specs.decisions")} decisions by Claude.` },
     ],
     "14-real": [
       { at: 0.5, who: "Voice", text: "Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID." },

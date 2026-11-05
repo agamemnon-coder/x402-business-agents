@@ -106,14 +106,18 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(String(screen("07-approval").hash)).toBe(`${fact("licence.hash").slice(0, 16)}…${fact("licence.hash").slice(-8)}`);
   });
 
-  it("the spec cards: the README's test line, 412 audit rows (chain intact), 2 stopped at a limit, 24/24 by Claude", () => {
+  it("the spec cards: the README's test line, 412 audit rows (chain intact), Metal 1 + the CFO 1, 24/24 by Claude", () => {
     const t = /\*\*(\d+) tests in (\d+) files, all passing\*\*/.exec(README)!;
-    const cards = screen("13-specs").cards as { big: string; label: string; small: string }[];
+    const cards = screen("13-specs").cards as { big: string; label: string; small: string; plain?: boolean }[];
     const st = r.snapshot.agent_stats;
-    expect(cards.map((c) => c.big)).toEqual([t[1], String(r.snapshot.audit.rows), "2", `${st.reduce((n, a) => n + a.by_claude, 0)}/${st.reduce((n, a) => n + a.decisions, 0)}`]);
-    expect(cards.map((c) => c.big).slice(1)).toEqual(["412", "2", "24/24"]);
+    const metal = ev.filter((e) => e.event === "upstream.refused" && e.payload.refused_by === "metal" && e.payload.reason === "mandate_cap_exceeded").length;
+    const cfo = ev.filter((e) => e.event === "proposal.rejected").length;
+    expect(cards.map((c) => c.big)).toEqual([t[1], String(r.snapshot.audit.rows), `${metal} + ${cfo}`, `${st.reduce((n, a) => n + a.by_claude, 0)}/${st.reduce((n, a) => n + a.decisions, 0)}`]);
+    expect(cards.map((c) => c.big).slice(1)).toEqual(["412", "1 + 1", "24/24"]);
     expect(r.snapshot.audit.intact).toBe(true);
-    expect(cards[2]!.small).toBe("Metal 1 · the CFO 1 · in the main run");
+    // Max (5 November): the two stops said as what they were, no longer "2 stopped at a limit".
+    expect(cards[2]).toEqual({ big: "1 + 1", plain: true, label: "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal.", small: "in the main run" });
+    expect(JSON.stringify(data.screen) + JSON.stringify(data.voice)).not.toMatch(/stopped at a limit/i);
     expect(cards[3]!.small).toBe("Sourcing 11 · Support 4 · Treasury 9 · 0 fallbacks");
   });
 
@@ -125,7 +129,7 @@ describe("the premiere's figures are the main run's record's", () => {
 
   it("says the figures the same way in the voice-over", () => {
     const said = Object.values(data.voice).flat().map((l) => l.text).join(" ");
-    for (const w of ["twelve orders", "All twelve were signed", "the three with wrong data", "Refund the other nine", "Six seconds from Face ID to paid", "Two stopped at a limit", "Twenty-four of twenty-four decisions by Claude", "three Claude agents", "doubled its price"]) expect(said).toContain(w);
+    for (const w of ["twelve orders", "All twelve were signed", "the three with wrong data", "Refund the other nine", "Six seconds from Face ID to paid", "Metal refused one purchase over its cap; the CFO rejected one proposal.", "Twenty-four of twenty-four decisions by Claude", "three Claude agents", "doubled its price"]) expect(said).toContain(w);
     expect(spoken(24)).toBe("twenty-four");
     expect(() => spoken(120)).toThrow();
   });
@@ -432,6 +436,71 @@ describe("the premiere's look (Max, 4 November)", () => {
   it("credits the music on the end card and in the edit guide", () => {
     expect(String((screen("16-end").credits as { max: string }).max)).toBe("Voice: Max Geurtsen · Music: Techno Fest Vibes (Mixkit)");
     expect(read("docs/video/README.md")).toMatch(/Techno Fest Vibes[^\n]*Mixkit[^\n]*\n?[^\n]*Mixkit Stock Music Free License/);
+  });
+});
+
+describe("the premiere's animations (Max, 5 November): pulses, the price chart, count-ups, the camera push-ins", () => {
+  const template = read("src/film/premiere.html");
+  const script = /<script>([\s\S]*?)<\/script>/.exec(template)![1]!;
+  const scene = (id: string) => new RegExp(`\n {4}"${id}": function[\\s\\S]*?\n {4}\\},`).exec(script)![0];
+  // The page's own count-up, run here as the page runs it (its helpers taken from the page's script).
+  const part = (re: RegExp) => re.exec(script)![0];
+  const counting = new Function("n", "t", "t0", [
+    part(/function clamp\(v\) \{[^\n]*\}/), part(/function prog\(t, a, b\) \{[^\n]*\}/), part(/function out3\(p\) \{[^\n]*\}/),
+    part(/var COUNT = [.\d]+;/), part(/function count\(n, t, t0\) \{[\s\S]*?\n {2}\}/), "count(n, t, t0); return n.lastChild.textContent;",
+  ].join("\n")) as (n: { target: string; lastChild: { textContent: string } }, t: number, t0: number) => string;
+  const COUNT = Number(/var COUNT = ([.\d]+);/.exec(script)![1]);
+
+  it("counts each big figure up in under a second, never past it, and rests on exactly the record's string", () => {
+    const bigs = [String(screen("09-six-seconds").big), ...(screen("13-specs").cards as { big: string; plain?: boolean }[]).filter((c) => !c.plain).map((c) => c.big)];
+    expect(bigs.slice(0, 1).concat(bigs.slice(2))).toEqual(["6", "412", "24/24"]);
+    expect(COUNT).toBeLessThan(1);
+    for (const big of bigs) {
+      const n = { target: big, lastChild: { textContent: "" } };
+      const shown = Array.from({ length: 61 }, (_, f) => counting(n, f / 60, 0));
+      const first = (s: string) => Number(/\d+/.exec(s)![0]);
+      expect({ big, rest: shown.slice(Math.ceil(COUNT * 60)) }).toEqual({ big, rest: Array(61 - Math.ceil(COUNT * 60)).fill(big) });
+      for (let f = 1; f < shown.length; f++) expect(first(shown[f]!)).toBeGreaterThanOrEqual(first(shown[f - 1]!));
+      expect(Math.max(...shown.map(first))).toBe(first(big));
+      // Only the first figure counts ("24/24" counts up to 24 of 24).
+      expect(shown.every((s) => s.replace(/^\d+/, "") === big.replace(/^\d+/, ""))).toBe(true);
+    }
+    expect(scene("09-six-seconds")).toContain('counter("mega", S.big)');
+    expect(scene("13-specs")).toContain("counter(null, c.big)");
+  });
+
+  it("draws the price as a line across the cap from the record's levels, and Metal's refusal appears as it crosses", () => {
+    const s5 = scene("05-price-rise");
+    expect(s5).toContain("var from = Number(S.from), to = Number(S.to), capV = Number(S.capValue)");
+    expect(s5).toContain("rise(ref, t, TC)");
+    // The crossing: the cap's share of the rise, eased (in-out) over the rise; it falls inside the voice's line
+    // "… doubled its price, past the mandate's cap.".
+    const [r0, r1] = /var R0 = ([.\d]+), R1 = ([.\d]+),/.exec(s5)!.slice(1).map(Number) as [number, number];
+    const k = (Number(fact("price.cap")) - Number(fact("price.old"))) / (Number(fact("price.new")) - Number(fact("price.old")));
+    const tc = r0 + (r1 - r0) * Math.acos(1 - 2 * k) / Math.PI;
+    const line = data.voice["05-price-rise"]!.find((l) => /past the mandate's cap/.test(l.text))!;
+    expect(tc).toBeGreaterThan(line.at);
+    expect(tc).toBeLessThan(line.at + lineSeconds(line.text));
+  });
+
+  it("sends a light pulse through the diagram and stops a red one at Airwallex or Metal, the boxes unchanged", () => {
+    const s4 = scene("04-architecture");
+    expect(s4).toContain('var d = E("div", "node", null, [E("b", null, n.t), E("span", null, n.s)]);');
+    expect(s4).toMatch(/var p1 = pulse\(\), p2 = pulse\(\)/);
+    // The red pulse stops before the fourth box (index 3: Airwallex or Metal), never reaching the books.
+    expect(s4).toContain("Math.min(Math.floor((t - T2) / HOP), 2)");
+    expect((screen("04-architecture").nodes as { t: string }[])[3]!.t).toBe("Airwallex or Metal");
+  });
+
+  it("pushes the camera in slowly on the Face ID phone and the one cent only, inside the letterbox", () => {
+    const pushes = [...script.matchAll(/\n {4}"([\w-]+)": function[\s\S]*?\n {4}\},/g)].filter((m) => /L\.push = /.test(m[0])).map((m) => m[1]);
+    expect(pushes).toEqual(["08-faceid", "11-one-cent"]);
+    for (const m of script.matchAll(/L\.push = \{ to: ([.\d]+)/g)) { expect(Number(m[1])).toBeGreaterThanOrEqual(1.03); expect(Number(m[1])).toBeLessThanOrEqual(1.05); }
+    // The scenes' layers are inside the picture; the bars and the corner credits are outside it, so they never move.
+    expect(script).toContain('var L = E("div", "layer"); pic.appendChild(L);');
+    expect(template).toMatch(/<div id="stage"><div id="pic">[\s\S]*?<\/div><\/div><\/div><div class="bar top"><\/div><div class="bar bot"><\/div><div class="credit" id="cl">/);
+    // A recording laid in keeps still in its frame.
+    expect(script).toMatch(/if \(sc\.L\.classList\.contains\("still"\)\) sc\.L\.style\.transform = "";/);
   });
 });
 

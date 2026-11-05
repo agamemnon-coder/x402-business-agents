@@ -116,7 +116,7 @@ npm test          # the full suite, on stand-ins
 npm run judge     # the main run's replay, the CFO dashboard and the Scenario Lab, offline
 ```
 
-**2321 tests in 246 files, all passing** (`npx vitest run`, 5 November); CI runs the same suite on
+**2325 tests in 246 files, all passing** (`npx vitest run`, 5 November); CI runs the same suite on
 every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/run-it.md).
 
 ## Words
