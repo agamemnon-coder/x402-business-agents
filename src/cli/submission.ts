@@ -3,18 +3,19 @@
 //   docs/submission/screens/7-* .. 13-*  close-ups for the deck, one panel each (rails, inspector, enterprise cards,
 //                                        Try Purser, overview, Claude, the run's result)
 //   docs/submission/screens/14-dispute   the main run's dispute on /watch, at the CFO's rejection of the refund batch
-//   docs/submission/purser-deck.pdf      sixteen slides, one picture each (src/submission/deck.ts); the phone screens
-//                                        (screens/phone-*.png) come from test/browser/approve.check.ts, a dev-test world
+//   docs/submission/purser-deck.pdf      ten dark slides in the pitch's order (src/submission/deck.ts)
+//   docs/media/try-sign-qr.png           the QR code to /try/sign, as on the deck's QR slide (src/submission/qr.ts)
+//   docs/internal/spiekkaart-demo.pdf    Max's one-page cheat sheet for Demo Day, from spiekkaart-demo.html
 //   out/submission/purser-source.zip     git archive of the current commit: code and docs, no keys, no ledger
 // Nothing is sent anywhere; Max uploads them.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-import QRCode from "qrcode";
 import { startJudge } from "./judge.js";
-import { deckHtml, TRY_URL, type DeckShots } from "../submission/deck.js";
+import { deckHtml, type DeckShots } from "../submission/deck.js";
+import { QR_PNG, qrPng, qrSvg } from "../submission/qr.js";
 import { packFacts } from "../submission/facts.js";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -112,11 +113,18 @@ try {
     // Max's photo for the team slide, when he has added it (docs/submission/screens/max.jpg); a placeholder until then.
     max: existsSync(resolve(shots, "max.jpg")) ? `data:image/jpeg;base64,${readFileSync(resolve(shots, "max.jpg")).toString("base64")}` : "",
   };
-  const qr = await QRCode.toString(TRY_URL, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
+  const qr = await qrSvg();
+  writeFileSync(resolve(root, QR_PNG), await qrPng());
+  console.log(QR_PNG);
   const deck = await browser.newPage();
   await deck.setContent(deckHtml(packFacts(), deckShots, qr), { waitUntil: "load" });
   await deck.pdf({ path: resolve(root, "docs/submission/purser-deck.pdf"), width: "1280px", height: "720px", printBackground: true, preferCSSPageSize: true });
   console.log("purser-deck.pdf");
+  // Max's cheat sheet: one A4 from its HTML source (docs/internal/spiekkaart-demo.html), the QR code beside it.
+  const card = await browser.newPage();
+  await card.goto(`file://${resolve(root, "docs/internal/spiekkaart-demo.html")}`, { waitUntil: "load" });
+  await card.pdf({ path: resolve(root, "docs/internal/spiekkaart-demo.pdf"), format: "A4", printBackground: true, preferCSSPageSize: true });
+  console.log("docs/internal/spiekkaart-demo.pdf");
 } finally {
   await browser.close();
   judge.server.close();

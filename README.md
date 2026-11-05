@@ -1,5 +1,9 @@
 # Purser
 
+**Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.**
+**[Sign one yourself](https://kit11.max-31b.workers.dev/try/sign)** · Film, 3 minutes: <!-- VIDEO-LINK -->_the link is
+added on submission day_ · [The run, replayed](https://kit11.max-31b.workers.dev/watch)
+
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
