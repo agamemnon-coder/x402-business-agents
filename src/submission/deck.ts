@@ -28,7 +28,9 @@ export const CORE_LINE = "Claude explains and proposes, the rules in code hold e
 /** T:0, in the README's words since 5 November (docs/runs/2026-11-05-t0-live.md): built, not yet live. */
 export const T0_STATUS = "Built, not yet live: the T:0 books sink (nothing posted: the shared sandbox key could not post, 403 CAPI71; on 5 November T:0 refused its new read-write key, 401 CAPI11).";
 /** What of the main run is on Metal testnet, in the README's words (checked against the chain on 5 November). */
-export const METAL_ONCHAIN = "On Metal testnet, checked against the chain on 5 November: the 4 mandates bound at setup that morning and the 2 replacements; 86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep); 1 refusal recorded on chain (#24). No emulator and no clearing in this run. Not on Metal: the EUR licence (FX, SWIFT) and the card buy, on the Airwallex sandbox; the other 13 refusals (12 by the Sourcing agent's buy policy, #37 by Metal during the replace) are in the ledger, not on chain.";
+export const METAL_ONCHAIN = "On Metal testnet, checked against the chain on 5 November: the 4 mandates bound at setup that morning and the 2 replacements; 86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep); 1 refusal recorded on chain (#24). No emulator and no clearing in this run.";
+/** The rest of the README's Metal line: what of the main run is not on Metal. */
+export const NOT_ON_METAL = "Not on Metal: the EUR licence (FX, SWIFT) and the card buy, on the Airwallex sandbox; the other 13 refusals (12 by the Sourcing agent's buy policy, #37 by Metal during the replace) are in the ledger, not on chain.";
 
 /** Screenshots by name (data URIs), as npm run submission takes them. */
 export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max" | "watch" | "proof" | "visa", string>;
@@ -50,6 +52,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const deposit = String(ev.find((e) => e.event === "credit.deposited")?.payload.deposit_id ?? "");
   const conversion = String(ev.find((e) => e.event === "fx.converted")?.subject ?? "");
   const rest = m.disputed - m.refunded.length;
+  const refundSum = (agentRun().record.snapshot.flows.filter((x) => x.kind === "refund" && !x.refused).reduce((n, x) => n + Math.round(Number(x.amount) * 100), 0) / 100).toFixed(2);
   const slides: Slide[] = [
     {
       kicker: KIT_LINE,
@@ -88,9 +91,9 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       title: "One live run, three beats",
       wide: true,
       extra: `<div class="beats">
-        <div><em>1 · The price rise</em><b>Metal refused it.</b><p>${esc(film?.supplier ?? "The supplier")} went from ${esc(film?.old ?? "")} to ${esc(film?.price ?? "")} a stock check, over the ${esc(film?.cap ?? "")} cap. One purchase was let through on purpose; Metal refused it on chain (tx <code>${esc(short(m.let_through_tx))}</code>). Treasury's options came ${m.to_options_s} s later; the CFO signed with Face ID (1 of 2), a labelled test passkey signed 2 of 2.</p></div>
-        <div><em>2 · The dispute</em><b>${rest} refunds rejected.</b><p>${esc(m.dispute_story)}</p></div>
-        <div><em>3 · The euro bill</em><b>PAID ${m.face_to_paid_s} s after Face ID.</b><p>The Treasury agent planned the EUR 240.00 licence itself. After the CFO's Face ID: ${esc(m.fx_buy)} bought by FX for only the shortfall, then SWIFT, fee ${esc(m.licence_fee)}. PAID ${esc("in the sandbox, where the settlement is simulated")}.</p></div>
+        <div><em>1 · The price rise</em><b>Metal refused it.</b><p>${esc(film?.supplier ?? "The supplier")} ${esc(film?.old ?? "")} → ${esc(film?.price ?? "")}, over the ${esc(film?.cap ?? "")} cap. One purchase let through on purpose; Metal refused it, and the refusal is recorded on chain.</p><p>Treasury's options ${m.to_options_s} s later; the CFO signed with Face ID, a labelled test passkey 2 of 2.</p></div>
+        <div><em>2 · The dispute</em><b>Only the ${m.refunded.length} wrong orders refunded.</b><p>${m.disputed} orders disputed, every one signed by the customer's own agent.</p><p>Support refunded the ${m.refunded.length} with wrong data (${esc(refundSum)} test USD); "refund the other ${rest}" rejected by the CFO with Face ID.</p></div>
+        <div><em>3 · The euro bill</em><b>PAID ${m.face_to_paid_s} s after Face ID.</b><p>The Treasury agent planned the EUR 240.00 licence; ${esc(m.fx_buy)} bought by FX for only the shortfall.</p><p>SWIFT PAID ${esc("in the sandbox, where the settlement is simulated")}.</p></div>
       </div>`,
     },
     {
@@ -104,7 +107,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
     },
     {
       kicker: "Proof",
-      title: "Every id is public",
+      title: "Every id is published",
       points: [
         `<b>${m.stopped} stopped at a limit</b> (${m.metal_refused} by Metal, ${m.cfo_rejected} by the CFO). Metal's refusal: <code>${esc(short(m.let_through_tx))}</code>`,
         `Mandates replaced on chain: ${replaced.map((t) => `<code>${esc(short(t))}</code>`).join(", ")}`,
@@ -125,9 +128,10 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <li>The Airwallex sandbox: cards, FX, SWIFT, the deposit.</li>
           <li class="fine"><!-- METAL-ONCHAIN -->${esc(METAL_ONCHAIN)}<!-- /METAL-ONCHAIN --></li>
           <li>Claude: ${m.by_claude} of ${m.decisions} decisions, each with its request id.</li>
-          <li>The CFO's Face ID, on his own phone.</li></ul></div>
+          <li>Max's passkey, with Face ID on his own phone (Max plays the CFO).</li></ul></div>
         <div><h2>Ours, simulated or not yet live</h2><ul>
           <li>The supplier, the customer and the TAP merchant are run by us.</li>
+          <li class="fine">${esc(NOT_ON_METAL)}</li>
           <li>SWIFT SENT and PAID: moved by Purser through Airwallex's sandbox simulation API.</li>
           <li>The second approver: a labelled virtual test passkey, pressed by our build tool (Claude Code) on Max's go.</li>
           <li>Built, not yet live: the Cardputer hub.</li>
@@ -144,7 +148,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Our benchmark: Haiku alone is as good on everyday cases, and misread one harder dispute.",
         "Claude holds no key and approves nothing; code checks each proposal first.",
       ],
-      pic: shot(s.proof, "Proof: who decided what in the main run, each with its proof"),
+      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 82 routine payments per query made by code; $0.0132 of Claude per decision"),
     },
     {
       kicker: "Business model (plan) and roadmap",
@@ -164,13 +168,13 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       title: "Purser",
       wide: true,
       extra: `<p class="lead">${esc(CORE_LINE)}</p>
-        <dl class="links">
+        <div class="end"><div class="qr small-qr">${qrSvg}</div><dl class="links">
           <dt>Sign one yourself</dt><dd>${esc(QR_URL.replace(/^https:\/\//, ""))}</dd>
           <dt>Watch the run</dt><dd>kit11.max-31b.workers.dev/watch</dd>
           <dt>Every id</dt><dd>kit11.max-31b.workers.dev/proof</dd>
           <dt>Code</dt><dd>${esc(REPO_URL.replace(/^https:\/\//, ""))}</dd>
           <dt>Offline, no keys</dt><dd><code>npm ci &amp;&amp; npm run judge</code></dd>
-        </dl>
+        </dl></div>
         <p class="src">Max Geurtsen · built with Claude Code · built on Airwallex and Metal, with Claude.<br>${esc(VISA_AWARD_STATUS)}</p>`,
     },
   ];
@@ -215,7 +219,7 @@ code { font-size: .8em; background: #1b2240; color: #d7dbff; padding: 1px 6px; b
 .beats > div { background: #141a2e; border: 1px solid #232b45; border-top: 6px solid #8b93ff; border-radius: 14px; padding: 20px 20px 16px; }
 .beats em { font-style: normal; font-size: 16px; color: #a5abff; font-weight: 600; display: block; }
 .beats b { display: block; font-size: 30px; line-height: 1.15; margin: 8px 0 12px; color: #ffffff; }
-.beats p { font-size: 15.5px; line-height: 1.45; color: #c9cfe2; margin: 0; }
+.beats p { font-size: 19px; line-height: 1.4; color: #c9cfe2; margin: 0 0 10px; }
 .qrslide { display: flex; gap: 56px; align-items: center; }
 .qr { background: #ffffff; border-radius: 22px; padding: 22px; flex: none; }
 .qr svg { width: 400px; height: 400px; display: block; }
@@ -228,11 +232,12 @@ section:not(.wide) li { font-size: 19px; margin-bottom: 10px; }
 .sep { font-size: 14px; color: #9aa4bf; margin: auto 0 0; border-left: 3px solid #3a4366; padding-left: 10px; line-height: 1.4; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
 .cols > div { background: #141a2e; border: 1px solid #232b45; border-radius: 14px; padding: 22px 24px; }
-.cols li { font-size: 17px; line-height: 1.4; margin-bottom: 9px; } .cols li.fine { font-size: 14.5px; color: #c9cfe2; }
+.cols li { font-size: 16.5px; line-height: 1.38; margin-bottom: 8px; } .cols li.fine { font-size: 14px; color: #c9cfe2; }
 .timeline { display: grid; gap: 16px; width: 100%; }
 .timeline > div { border-left: 8px solid #8b93ff; background: #141a2e; border-radius: 0 12px 12px 0; padding: 22px 26px; }
 .timeline > div:nth-child(2) { border-color: #6366f1; } .timeline > div:nth-child(3) { border-color: #3b3fb8; }
 .timeline b { display: block; font-size: 26px; color: #ffffff; } .timeline span { display: block; font-size: 18px; color: #b6bdd3; margin-top: 6px; }
+.end { display: flex; gap: 40px; align-items: center; } .small-qr { padding: 12px; border-radius: 14px; } .small-qr svg { width: 170px; height: 170px; }
 .links { display: grid; grid-template-columns: 240px 1fr; gap: 10px 20px; font-size: 24px; margin: 10px 0 0; }
 .links dt { color: #9aa4bf; } .links dd { margin: 0; font-weight: 600; color: #ffffff; }
 </style></head><body>

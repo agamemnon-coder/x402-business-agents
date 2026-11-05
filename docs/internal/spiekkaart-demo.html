@@ -69,7 +69,7 @@ code { font-size: 8.8pt; }
 <h2>Top-5 Q&amp;A (docs/submission/qa.md)</h2>
 <ol>
 <li><b>Why Face ID, not a password?</b> A password is the same for every payment; a passkey signs the hash of these exact terms, so one cent more makes it worthless.</li>
-<li><b>What was live, what simulated?</b> Live: Airwallex sandbox, Metal testnet, 24 of 24 Claude decisions, my Face ID. Simulated: supplier, customer, merchant, SWIFT SENT/PAID, and the second approver, a labelled test passkey.</li>
+<li><b>What was live, what simulated?</b> Live: Airwallex sandbox, Metal testnet, 24 of 24 Claude decisions, my passkey (Face ID). Simulated: supplier, customer, merchant, SWIFT SENT/PAID, and the second approver, a labelled test passkey.</li>
 <li><b>Why three models?</b> Honestly, Haiku alone passed our everyday cases too; on a harder dispute it misread one order, so Sonnet reads documents. Opus is the least proven part.</li>
 <li><b>Server compromised?</b> Metal and Airwallex still refuse over the mandate and the card limit. A compromised runner host is out of scope today; keys go to a KMS first.</li>
 <li><b>Can the jury's passkey touch the real CFO?</b> No: the test world and its passkey live in their own store and are enrolled nowhere else.</li>

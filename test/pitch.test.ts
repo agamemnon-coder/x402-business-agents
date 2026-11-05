@@ -7,7 +7,7 @@ import { PNG } from "pngjs";
 import jsQRModule from "jsqr";
 import { describe, expect, it } from "vitest";
 import { faceIdDecisions, loadRecord, payments, split, stoppedAtLimit, stops, timings } from "../src/redesign/run.js";
-import { CORE_LINE, METAL_ONCHAIN, QR_URL, T0_STATUS, deckHtml, type DeckShots } from "../src/submission/deck.js";
+import { CORE_LINE, METAL_ONCHAIN, NOT_ON_METAL, QR_URL, T0_STATUS, deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
 import { QR_PNG, qrPng } from "../src/submission/qr.js";
 import { TRY_SIGN_URL } from "../src/film/premiere.js";
@@ -139,6 +139,7 @@ describe("T:0 and Metal, in the README's words (5 Nov)", () => {
 
   it("the deck's lines are the README's", () => {
     expect(readme).toContain(METAL_ONCHAIN);
+    expect(readme).toContain(`${METAL_ONCHAIN} ${NOT_ON_METAL}`);
     expect(readme).toContain(T0_STATUS.replace(/^Built, not yet live: /, "").replace(/\)\.$/, ""));
   });
 
@@ -177,7 +178,7 @@ describe("the deck", () => {
     expect(DECK).toMatch(/html, body \{ background: #0b1020; \}/);
     expect(DECK).toMatch(/<div class="qr"><svg><\/svg><\/div><div><p class="url">kit11\.max-31b\.workers\.dev\/try\/sign<\/p>/);
     expect(DECK).not.toMatch(/<img[^>]*(visa|Visa)/);
-    for (const title of ["Purser", "AI agents can now spend money. So who holds the pen?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is public", "What is real, and what is not"]) expect(DECK).toContain(`<h1>${title}</h1>`);
+    for (const title of ["Purser", "AI agents can now spend money. So who holds the pen?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not"]) expect(DECK).toContain(`<h1>${title}</h1>`);
   });
 
   it("names the second approver and the sandbox's SWIFT steps as they were", () => {

@@ -342,11 +342,16 @@ describe("the dispute, one text everywhere (jury review, 4 Nov)", () => {
     expect(agentRun().scenes.find((x) => x.n === 2)!.sentence).toBe(STORY);
     expect(homePage().replace(/&quot;/g, '"').replace(/&#39;/g, "'")).toContain(STORY);
   });
-  it("is the same text in the submission form, the README and the deck", () => {
+  it("is the same text in the submission form and the README, and the same figures in the deck's one-line beat", () => {
     expect(doc("docs/submission/README.md")).toContain(STORY);
     expect(doc("README.md")).toContain(STORY);
     const deck = deckHtml(packFacts(), new Proxy({}, { get: () => "" }) as DeckShots, "").replace(/&quot;/g, '"');
-    expect(deck).toContain(STORY);
+    // Pitch round, 5 Nov: the deck's beat says the story in two short lines (the juror's review: one message per
+    // slide, readable on a shared screen), with the story's own figures, counted from the record.
+    const m = packFacts().main;
+    expect(deck).toContain(`${m.disputed} orders disputed, every one signed by the customer's own agent.`);
+    expect(deck).toContain(`Support refunded the ${m.refunded.length} with wrong data (0.15 test USD); "refund the other ${m.disputed - m.refunded.length}" rejected by the CFO with Face ID.`);
+    expect(STORY).toContain(`refunds those ${m.refunded.length} (0.15 test USD) itself. "Refund the other ${m.disputed - m.refunded.length}"`);
     // The deck: Home's award labels on slide 1, no photo placeholder on the team slide (jury review, 4 Nov).
     expect(deck).toContain(`<p class="kicker">${KIT_LINE}</p>`);
     expect(deck).not.toContain("Photo of Max");

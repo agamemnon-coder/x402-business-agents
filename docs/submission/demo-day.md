@@ -41,11 +41,11 @@ your repository with setup instructions."
 
 | Criterion (verbatim) | Moment in the 3-minute pitch | Proof (link or id) |
 |---|---|---|
-| Finance and product value | 0:15 who and what (the CFO of a small company); 2:50 the core line | [/](https://kit11.max-31b.workers.dev/); deck slides 2–3 |
-| Airwallex relevance and financial context | 0:35, beat 3: FX for only the shortfall, SWIFT PAID 6 s after Face ID (simulated settlement) | conversion `3ca88196-05da-4d88-9caa-796f03704636`; transfer `03360bfa-afce-457b-89d1-e1097fbe3985`; authorization `01a1a12f-4113-7000-b76d-014677710007` |
-| Agentic behaviour and controls | 0:35, beat 1: Metal refuses; Treasury proposes options 40 s later; four eyes | tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`; P-0002 |
+| Finance and product value | 0:15 who and what (the CFO of a small company that sells stock data per query); 2:50 the core line | [/](https://kit11.max-31b.workers.dev/); deck slides 2–3 |
+| Airwallex relevance and financial context | 0:40, beat 3: FX for only the shortfall, SWIFT PAID 6 s after Face ID (simulated settlement) | conversion `3ca88196-05da-4d88-9caa-796f03704636`; transfer `03360bfa-afce-457b-89d1-e1097fbe3985`; authorization `01a1a12f-4113-7000-b76d-014677710007` |
+| Agentic behaviour and controls | 0:40, beat 1: Metal refuses; Treasury proposes options 40 s later; four eyes | tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`; P-0002 |
 | Technical execution | 2:30: every id on /proof, `npm run verify`, 2291 tests | [/proof](https://kit11.max-31b.workers.dev/proof); 412 audit rows, hash-chained |
-| "(1) a working end-to-end workflow for a clear user" | The whole run: 0:35–1:50 | [/watch](https://kit11.max-31b.workers.dev/watch) |
+| "(1) a working end-to-end workflow for a clear user" | The whole run: 0:40–1:50 | [/watch](https://kit11.max-31b.workers.dev/watch) |
 | "(2) Airwallex used for a necessary financial action" | Beat 3: the euro licence paid by SWIFT, euros bought by FX | transfer `03360bfa…3985` |
 | "(3) financial context influencing what the agent decides" | Beat 1: the price rise; Treasury's two options within the same 20 | P-0002, P-0003 |
 | "(4) clear controls: what the agent can do, what requires approval, how it handles an exception" | Beats 1 and 2: Metal's cap, the refunds by Support itself, "refund the other 9" rejected with Face ID; 1:50 the jury signs | P-0004; [/try/sign](https://kit11.max-31b.workers.dev/try/sign) |
@@ -58,13 +58,13 @@ Screen shared: one browser window, the tabs below in this order, zoom 110 %. Max
 | Time (length) | Max says | On screen (URL, scene) | Click | Plan B |
 |---|---|---|---|---|
 | 0:00 (15 s) | "AI agents can now spend money. So who holds the pen? I'm Max Geurtsen, and this is Purser." | Deck, slide 1 (the core line, the four figures) | — | Deck as PDF; the deck needs no network |
-| 0:15 (20 s) | "Picture the CFO of a small company. … Airwallex holds each card's limit." | Deck, slide 3 (agent → rules → person → Airwallex · Metal → books) | Next slide | Same |
-| 0:35 (25 s) | "This is a replay of our main run, on 3 November. The supplier doubles its price … I sign one with Face ID … a labelled test passkey." | Tab 2: [/watch?scene=1](https://kit11.max-31b.workers.dev/watch?scene=1), scene 1 "The price rise"; point at Metal's refusal and its tx | Tab 2; it plays from scene 1 | Site slow or down: tab 7, `npm run judge` on `http://localhost:4311/watch?scene=1`. `/watch` stutters: clip `out/video/clips/05-price-rise.mp4` |
-| 1:00 (25 s) | "Then a customer disputes 12 orders … I reject it with Face ID." | `/watch`, scene 2 "The dispute": 12 orders signed, #7, #10, #13 refunded, P-0004 rejected | Chip **2** | Clip `06-dispute.mp4`; Face ID moment: clip `08-faceid.mp4` |
-| 1:25 (25 s) | "Last, a 240 euro licence is due … simulated by Airwallex's sandbox." | `/watch`, scene 3 "Earnings and euros": EUR 110.00 by FX, then the EUR 240.00 licence "PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated" | Chip **3** | Clip `09-six-seconds.mp4` |
-| 1:50 (40 s) | "Now you hold the pen. Take out your phone and scan this code. …" | Deck, slide 5 (QR, `kit11.max-31b.workers.dev/try/sign`); then tab 4, [/try/sign](https://kit11.max-31b.workers.dev/try/sign), already signed once by Max | Back to the deck, slide 5; wait 15 s; tab 4: **Try to tamper: change the amount by 0.01** | QR or `/try/sign` fails for the jury: Max shows it on his own phone (camera on the phone, or hold it up); else clips `10-try-sign.mp4` and `11-one-cent.mp4` |
-| 2:30 (20 s) | "Every id from the run is public, on /proof. … the second approver." | Tab 3: [/proof](https://kit11.max-31b.workers.dev/proof); then tab 6, the terminal with `npm run verify` already run | Tab 3, scroll once; tab 6 | `/proof` down: `http://localhost:4311/proof`; terminal fails: deck slide 6 (the ids) |
-| 2:50 (10 s) | "Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. Purser." | Deck, slide 10 (the line and the links) | Tab 1, last slide | — |
+| 0:15 (25 s) | "Picture the CFO of a small company. … Inside those limits, the agent pays alone. Beyond them, I sign the exact terms with Face ID." | Deck, slide 3 (agent → rules → person → Airwallex · Metal → books) | Next slide (twice) | Same |
+| 0:40 (25 s) | "This is a replay of our main run, on 3 November. The supplier doubles its price … Option A raises the cap to 0.04 and our own price to 0.05. I sign it with Face ID, and a second approver signs too." | Tab 2: [/watch?scene=1](https://kit11.max-31b.workers.dev/watch?scene=1), scene 1 "The price rise"; point at Metal's refusal and its tx | Tab 2; it plays from scene 1 | Site slow or down: tab 7, `npm run judge` on `http://localhost:4311/watch?scene=1`. `/watch` stutters: clip `out/video/clips/05-price-rise.mp4` |
+| 1:05 (20 s) | "Then a customer disputes 12 orders … Its demand to refund the other 9, I reject with Face ID." | `/watch`, scene 2 "The dispute": 12 orders signed, #7, #10, #13 refunded, P-0004 rejected | Chip **2** | Clip `06-dispute.mp4`; Face ID moment: clip `08-faceid.mp4` |
+| 1:25 (25 s) | "Last, a 240 euro licence is due … SWIFT shows PAID 6 seconds after my Face ID; the sandbox simulates settlement." | `/watch`, scene 3 "Earnings and euros": EUR 110.00 by FX, then the EUR 240.00 licence "PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated" | Chip **3** | Clip `09-six-seconds.mp4` |
+| 1:50 (40 s) | "Now you hold the pen. Take out your phone and scan this code. … While you scan, I change the amount on mine by one cent. The same signature is refused. One cent. Worthless." | Deck, slide 5 (QR, `kit11.max-31b.workers.dev/try/sign`); after 10 s, tab 4: [/try/sign](https://kit11.max-31b.workers.dev/try/sign), signed once by Max beforehand | Deck slide 5; after 10 s tab 4: **Try to tamper: change the amount by 0.01**. Do not wait for the jury to finish: they can sign during the Q&A (the QR is on slide 10 too) | QR or `/try/sign` fails for the jury: Max shows it on his own phone (hold it up, or its screen in the call); else clips `10-try-sign.mp4` and `11-one-cent.mp4` |
+| 2:30 (20 s) | "Every id is published on /proof; the Metal ones are on chain. … Simulated: supplier, customer, merchant, and the second approver, a test passkey." | Tab 3: [/proof](https://kit11.max-31b.workers.dev/proof); then tab 6, the terminal with `npm run verify` already run | Tab 3, scroll once; tab 6 | `/proof` down: `http://localhost:4311/proof`; terminal fails: deck slide 6 (the ids) |
+| 2:50 (10 s) | "Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. Purser." | Deck, slide 10 (the line, the QR again, the links) | Tab 1, last slide; leave it up for the Q&A | — |
 
 **Face ID live?** Not needed: the CFO's Face ID is in the record. Only `/try/sign` asks for a passkey live. Face ID
 refuses on Max's phone: try once more, then clip `08-faceid.mp4`, and say "Same moment, recorded."
@@ -101,9 +101,9 @@ leaves the figure in), and note it in the last column.
 | Step | Target | Run 1 | Run 2 | Run 3 | Too long? What was cut |
 |---|---|---|---|---|---|
 | Hook | 0:15 | | | | |
-| Who and what | 0:20 | | | | |
+| Who and what | 0:25 | | | | |
 | Beat 1, the price rise | 0:25 | | | | |
-| Beat 2, the dispute | 0:25 | | | | |
+| Beat 2, the dispute | 0:20 | | | | |
 | Beat 3, the euros | 0:25 | | | | |
 | The jury signs | 0:40 | | | | |
 | Why trust it | 0:20 | | | | |

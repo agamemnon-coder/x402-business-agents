@@ -29,11 +29,12 @@ Max says the figures as words ("twenty-four"); they are written as digits here s
 | 4 | Inside those limits, the agent pays alone. | Form text, Controls ("The agent may: pay inside its card limits and its mandate, alone") |
 | 5 | Beyond them, the CFO signs the exact terms with Face ID. | README; `docs/phone-approval.md` (the passkey signs the SHA-256 of the exact terms) |
 | 6 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Metal testnet |
-| 7 | 24 of 24 decisions were made by Claude, and 2 stopped at a limit. | Record: `split` (24/24), `stops` (Metal 1, CFO 1) |
-| 8 | Every id is public. | `/proof`; README, "The main run" |
-| 9 | Sign one yourself, at kit11.max-31b.workers.dev/try/sign. | Try: live since 4 November |
+| 7 | 24 of 24 decisions were made by Claude. | Record: `split` (24/24, 0 fallbacks) |
+| 8 | 2 stopped at a limit: one by Metal, one by the CFO. | Record: `stops` (Metal 1: #24 over the cap; CFO 1: P-0004 rejected) |
+| 9 | Every id is published. | `/proof`; README, "The main run" |
+| 10 | Sign one yourself, at kit11.max-31b.workers.dev/try/sign. | Try: live since 4 November |
 
-About 70 words, 30 seconds with pauses.
+About 80 words: 30 seconds at a steady pace.
 
 ## 2. The demo pitch (3 minutes, with the live demo)
 
@@ -45,40 +46,40 @@ The times may shift; the order may not. What is on screen at each step: [demo-da
 | | So who holds the pen? | The film (`03-pen`) |
 | | I'm Max Geurtsen, and this is Purser. | `docs/video/max-opening-close.md` |
 | **0:15 Who and what** | Picture the CFO of a small company. | Form text: "Purser is for the CFO or controller of a small company" |
-| | Three Claude agents run its business: Sourcing, Support and Treasury. | Record: `snapshot.agent_stats` (three agents) |
-| | Between them, they hold 20 test dollars. | README, first lines; `INITIAL_MANDATES` in `src/config/policy.ts` (10.00 + 4.00 + 6.00) |
-| | Metal holds each agent's budget on chain; Airwallex holds each card's limit. | `CORE_SENTENCE`, `src/config/brand.ts` |
-| **0:35 The run, on /watch** | This is a replay of our main run, on 3 November. | Log; `/watch` label "Replay of the main run, 3 Nov 11:16–11:33 UTC" |
+| | It sells live stock data to retailers, per query. | `NORTHWIND_LINE`, `src/config/brand.ts` |
+| | Three Claude agents run it, Sourcing, Support and Treasury, on 20 test dollars. | Record: `snapshot.agent_stats` (three agents); `INITIAL_MANDATES` (10.00 + 4.00 + 6.00) |
+| | Purser gives each agent its own Airwallex card and Metal mandate. | README, third paragraph |
+| | Inside those limits, the agent pays alone. | Form text, Controls ("The agent may: pay inside its card limits and its mandate, alone") |
+| | Beyond them, I sign the exact terms with Face ID. | `docs/phone-approval.md`; Log: Max is the CFO in the run |
+| **0:40 The run, on /watch** | This is a replay of our main run, on 3 November. | Log; `/watch` label "Replay of the main run, 3 Nov 11:16–11:33 UTC" |
 | | The supplier doubles its price, past the Sourcing agent's cap. | Record: Stockline 0.02 → 0.04, cap 0.03 (`homeFilm`) |
-| | We let one purchase through on purpose. | Record: `letThroughOf` (`upstream.let_through`, seq 114) |
-| | Metal refused it, on chain: here is the transaction. | Record: tx `0x2e92f9cb…1871` (seq 119) |
+| | We let one purchase through on purpose. | Record: `letThroughOf` (`upstream.let_through`, seq 114); `DEFENSE_IN_DEPTH` |
+| | Metal refused it, and the refusal is recorded on chain. | Record: 402 `mandate_cap_exceeded`; tx `0x2e92f9cb…1871` (seq 119) |
 | | 40 seconds later, Treasury proposes two options within the same 20. | Record: `timings` (toOptions 40); P-0002 and P-0003 |
-| | I sign one with Face ID, and a second approver signs too. | Record: P-0002 cosigned 1 of 2, then 2 of 2 |
-| | In this demo, that second approver is a labelled test passkey. | `SECOND_APPROVER`, `src/config/brand.ts`; Log, "Approvals" |
+| | Option A raises the cap to 0.04 and our own price to 0.05. | Log, 11:24:07: P-0002 (A, recommended: cap 0.04, price 0.05) |
+| | I sign it with Face ID, and a second approver signs too. | Record: P-0002 cosigned 1 of 2, then 2 of 2 |
 | | Then a customer disputes 12 orders, claiming its agent never placed them. | Record: `disputeStory` (12 orders, `never_placed`) |
 | | Every order carries that agent's signature. | Record: `disputeStory` (every order `signed_order`) |
 | | Support refunds the 3 with wrong data, by itself. | Record: refunds #7, #10, #13, 0.15 test USD |
-| | Refund the other 9? | Record: P-0004, `refund_batch` |
-| | I reject it with Face ID. | Record: P-0004 rejected by Max, 11:29:37 |
+| | Its demand to refund the other 9, I reject with Face ID. | Record: P-0004 (`refund_batch`) rejected by Max, 11:29:37 |
 | | Last, a 240 euro licence is due. | Record: P-0005, EUR 240.00 |
 | | Treasury plans it, and Airwallex converts only the shortfall: 110 euros. | Record: `fxOf` (EUR 110.00 for USD 124.29) |
-| | SWIFT shows PAID 6 seconds after my Face ID. | Record: `timings` (faceToPaid 6) |
-| | That settlement is simulated by Airwallex's sandbox. | `SANDBOX_SETTLED`; README: Purser moves SENT and PAID through the sandbox's simulation API |
+| | SWIFT shows PAID 6 seconds after my Face ID; the sandbox simulates settlement. | Record: `timings` (faceToPaid 6); `SANDBOX_SETTLED`; README: Purser moves SENT and PAID through the sandbox's simulation API |
 | **1:50 The jury signs** | Now you hold the pen. | The hook's question, answered; Try: the jury signs itself |
 | | Take out your phone and scan this code. | Deck, slide 5; `docs/media/try-sign-qr.png` |
 | | You get your own test world, and nothing real moves. | Try: `TRY_SIGN_LABEL` |
-| | A rule blocks one payment; you sign the other with Face ID. | Try: `checkPayment` (reserve floor blocks T-0001; T-0002 waits for a signature) |
-| | Now I change the amount by one cent. | Try: "Try to tamper: change the amount by 0.01" |
+| | A rule blocks one payment; you sign the other with your passkey. | Try: `checkPayment` (reserve floor blocks T-0001; T-0002 waits for a signature) |
+| | While you scan, I change the amount on mine by one cent. | Try: "Try to tamper: change the amount by 0.01" (Max's tab, signed before) |
 | | The same signature is refused. | Try: "Refused: the same signature does not verify for the changed terms" |
 | | One cent. Worthless. | The film (`11-one-cent`) |
-| **2:30 Why trust it** | Every id from the run is public, on /proof. | `/proof`; README, "The main run" |
-| | The audit log is hash-chained; run npm run verify yourself. | Record: `snapshot.audit` (412 rows, intact); README |
-| | Real: the Airwallex sandbox, Metal testnet, Claude and my Face ID. | README, "What is real, what is mock" |
-| | Ours or simulated: the supplier, the customer, the merchant, the second approver. | README, "Run by us"; `SECOND_APPROVER` |
+| **2:30 Why trust it** | Every id is published on /proof; the Metal ones are on chain. | `/proof`; README, "On Metal testnet, checked against the chain on 5 November" |
+| | Check the hash-chained audit log yourself, with npm run verify. | Record: `snapshot.audit` (412 rows, intact); README |
+| | Real: the Airwallex sandbox, Metal testnet, Claude, and my passkey. | README, "What is real, what is mock" |
+| | Simulated: supplier, customer, merchant, and the second approver, a test passkey. | README, "Run by us"; `SECOND_APPROVER`; Log, "Approvals" |
 | **2:50 Close** | Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. | The core line (Max, 5 Nov); `CORE_LINE`, `src/submission/deck.ts` |
 | | Purser. | The film's close (`15-close`) |
 
-About 330 words: 2:20 of speech, plus the clicks on /watch and the time the jury needs to scan.
+About 340 words: 2:25 of speech; the rest is clicks on /watch and the pause while the jury scans. If a rehearsal runs over, cut first "Every order carries that agent's signature.", then "Now you hold the pen."
 
 ## 3. The full pitch (5 minutes, when there is time)
 
@@ -94,7 +95,7 @@ run, the road to production and the business case after "Why trust it". The clos
 | Rules in code check every limit before anything moves. | `docs/controls.md` (executor pre-checks) |
 | Beyond a limit, a person signs the exact terms with Face ID. | `docs/phone-approval.md` |
 | Then Airwallex or Metal moves the money, and the books record it. | README; `npm run books` |
-| <!-- T0-STATUS -->Posting those books to T:0 is built, not yet live.<!-- /T0-STATUS --> | README, "Built, not yet live" (T:0 refused the new key on 5 November, `401 CAPI11`); [docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) |
+| <!-- T0-STATUS -->Posting those books to T:0 is built, not yet live; nothing is posted.<!-- /T0-STATUS --> | README, "Built, not yet live" (the shared sandbox key could not post, `403 CAPI71`; on 5 November T:0 refused its new read-write key, `401 CAPI11`); [docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) |
 
 ### 3b. Why three models (after the run; 30 s; deck slide 8)
 
@@ -141,7 +142,7 @@ run, the road to production and the business case after "Why trust it". The clos
 | In 2025, Mastercard and Google launched protocols for agents that pay. | `docs/claims.md` (Agent Pay, April 2025; AP2, 16 September 2025) |
 | Agents can pay now; the pen still has to stay with a person. | Core message; `docs/roadmap.md`, "The CFO keeps the pen" |
 
-About 610 words in all: 4:20 of speech, plus the demo.
+About 640 words in all: 4:30 of speech, plus the demo.
 
 ## Lines Max never says
 

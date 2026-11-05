@@ -13,16 +13,17 @@ the phone asks for, not something we prove.
 *Source: `docs/phone-approval.md`; the note on `/try/sign` (`src/try/sign.ts`); the film's `12-why-face-id`.*
 
 **2. What happens if an agent lies, or gets a prompt injection?**
-The agent holds no key and approves nothing, so a lie can only become a proposal that the rules check and a person
-signs. In the main run an instruction planted in the dispute (an address 0x…dEaD) was flagged and ignored, and Metal's
-on-chain cap held the one purchase we let through on purpose.
-*Source: log, acceptance rows "dispute" and "5"; `docs/fraud-and-injection.md`; README.*
+Inside its limits a lying agent can spend at most its mandate's cap and budget and its card's limits; beyond them,
+nothing moves without a person's signature on the exact terms. In the main run an instruction planted in the dispute
+(an address 0x…dEaD) was flagged and ignored, and Metal refused the one purchase we let through over the cap.
+*Source: log, acceptance rows "dispute" and "5"; `docs/fraud-and-injection.md`; `docs/controls.md`.*
 
 **3. What actually ran live, and what was simulated?**
 Live, with test money: the Airwallex sandbox calls, the Metal testnet transactions, 24 of 24 Claude decisions and my
-Face ID. Simulated or ours: the supplier, the customer and the merchant; the SWIFT SENT and PAID steps, which Purser
-moves through Airwallex's sandbox simulation API; and the second approver, a labelled test passkey.
-*Source: README, "What is real, what is mock"; deck slide 7.*
+passkey, with Face ID on my own phone (I play the CFO). Simulated or ours: the supplier, the customer and the
+merchant; the SWIFT SENT and PAID steps, which Purser moves through Airwallex's sandbox simulation API; and the second
+approver, a labelled test passkey.
+*Source: README, "What is real, what is mock"; log, "Approvals"; deck slide 7.*
 
 **4. Why do you need Airwallex and Metal both?**
 Metal carries the agents' own per-query payments under an on-chain mandate per agent: 86 payments in the main run,
@@ -38,7 +39,7 @@ and Sonnet is the measured cheaper alternative.
 
 **6. How does this scale to a real company with 50 agents?**
 Each agent gets its own mandate, card and limits, and code also holds a shared total and velocity limits per agent,
-so adding agents adds rows, not risk. Today it is one company per ledger on test rails; Postgres, keys in a KMS and
+so each new agent comes with its own bounded limits. Today it is one company per ledger on test rails; Postgres, keys in a KMS and
 many companies are the next step, not built.
 *Source: `docs/controls.md` (budgets, velocity); `docs/roadmap.md`; deck slide 9.*
 
@@ -48,10 +49,10 @@ limits per minute and per hour. There is no per-day limit yet.
 *Source: `docs/controls.md` ("Velocity, per minute and per hour", "Mandate budget"); `test/velocity.test.ts`.*
 
 **8. What if your server is compromised?**
-The rails still hold their own limits: Metal refuses over the on-chain mandate and Airwallex over the card limit,
-whatever our server asks. A compromised runner host is out of scope today, because it holds the keys; that is why keys
-move to a KMS before real money.
-*Source: `docs/security.md`, "Accepted risks and what is out of scope"; log, acceptance row 5.*
+The rails refuse anything over their current limits, Metal over the on-chain mandate and Airwallex over the card limit,
+and raising a limit takes a proposal the CFO signs. But the runner host holds the keys, so a compromised host is out
+of scope today; keys move to a KMS before real money.
+*Source: `docs/security.md`, "Accepted risks and what is out of scope"; log, acceptance row 5 and P-0006.*
 
 **9. Who is liable when an agent overspends?**
 Inside a limit, the company is, because the CFO set that limit; beyond it nothing moves without the CFO's signature on
@@ -82,8 +83,8 @@ No: the hub push and gate are built and tested against a fake hub, not live. It 
 *Source: README, "Built, not yet live".*
 
 **Is T:0 live?**
-<!-- T0-STATUS -->T:0 posting is built and tested; the sandbox key was refused on 5 Nov; 95 entries are ready. Nothing
-has been posted, so we claim nothing in T:0.<!-- /T0-STATUS -->
+<!-- T0-STATUS -->T:0 posting is built and tested; the sandbox key was refused on 5 Nov; 95 entries are ready. They
+were built offline from the main run's books and nothing has been posted, so we claim nothing in T:0.<!-- /T0-STATUS -->
 *Source: [docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) (`401 CAPI11`); README, "Built, not yet live".*
 
 **Was the second approver a second person?**
@@ -101,6 +102,24 @@ API. The 6 seconds from Face ID to PAID are measured, but the settlement is simu
 of #24; no emulator and no clearing in this run. The euro licence and the card buy ran on the Airwallex sandbox, and
 13 other refusals are in our ledger only.<!-- /METAL-ONCHAIN -->
 *Source: README, "On Metal testnet, checked against the chain on 5 November".*
+
+**You let one purchase through on purpose. Isn't that staged?**
+Yes, on purpose and labelled: Purser would have refused it itself (`mandate_cap_exceeded`, 0.04 over the 0.03 cap),
+so we let one through to show the rail holds the limit too. Metal refused it, nothing moved, and the refusal is
+recorded on chain.
+*Source: log, acceptance row 5; `DEFENSE_IN_DEPTH` (the run's own label).*
+
+**Inside the limits, what is the worst case, and how fast does the CFO know?**
+At most each mandate's budget and each card's limits: 20.00 test USD across the three mandates in the main run, plus
+the cards. A breach of a velocity limit stops that agent and `/health` raises an alarm, but no pager is connected yet
+and there is no per-day limit.
+*Source: `docs/controls.md` (L4, I3, "Velocity, per minute and per hour"); `INITIAL_MANDATES`.*
+
+**Why not Airwallex's own approvals and spend controls?**
+We use them: each agent's card limits are Airwallex's, and Airwallex enforces them. Airwallex's AgentOS docs tell
+builders to require manual approval for agents' tool calls; Purser is that approval, on the exact terms, across
+Airwallex and Metal, with an agent that proposes options.
+*Source: `docs/roadmap.md` (`developer-tools/ai/agentos`); README.*
 
 ## The top five, for the cheat sheet
 
