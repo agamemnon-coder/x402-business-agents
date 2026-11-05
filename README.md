@@ -28,19 +28,20 @@ the example company, is an outdoor wholesaler that sells live stock data to reta
 ## The main run (3 November)
 
 World `main-1`, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, frozen commit `35e1cac`.
-24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks. The CFO (Max, the
-builder) signed on his own phone with Face ID. The second approval (four eyes on P-0002, 2 of 2) came from a labelled
+24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks. Max, the builder,
+plays the CFO and signed with his passkey (Face ID on his phone). The second approval (four eyes on P-0002, 2 of 2) came from a labelled
 virtual test passkey on the runner machine, pressed by our build tool, Claude Code, on Max's go; in production the
 second approver is a second person. The three runtime agents hold no owner key and no passkey, and no key reaches their
 Claude models. Log: [docs/runs/2026-11-03-main-run.md](docs/runs/2026-11-03-main-run.md); record:
 [docs/demo/main-run.json](docs/demo/main-run.json); replayed on [/watch](https://kit11.max-31b.workers.dev/watch).
 
 **1. The price rise** ([watch](https://kit11.max-31b.workers.dev/watch?scene=1)). Stockline went from 0.02 to 0.04 a
-stock check, over the Sourcing mandate's 0.03 cap. Metal refused purchase #24 itself at 11:23:27, `mandate_cap_exceeded`
-(let through on purpose; Purser normally refuses first), recorded on chain in tx
+stock check, over the Sourcing mandate's 0.03 cap. Purchase #24 was let through on purpose (Purser normally refuses first). Metal
+refused it; the refusal is recorded on chain: `mandate_cap_exceeded` at 11:23:27, tx
 `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871` (11:23:33). Treasury's options came at 11:24:07,
-40 s after Metal's refusal and 34 s after that tx, within the same 20.00; after four eyes, both mandates were replaced on
-chain: Treasury `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` (11:26:54), Sourcing
+40 s after Metal's refusal and 34 s after that tx, within the same 20.00: option A (P-0002) raises Sourcing's cap to
+0.04 and keeps our price at 0.05; option B (P-0003) takes the same cap and raises our price to 0.07. The CFO signed A;
+after four eyes, both mandates were replaced on chain: Treasury `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` (11:26:54), Sourcing
 `0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790` (11:26:59).
 
 **2. The dispute** ([watch](https://kit11.max-31b.workers.dev/watch?scene=2)). A simulated customer disputes 12 orders,
@@ -61,7 +62,8 @@ in the sandbox: Purser itself moves the transfer to SENT and PAID through Airwal
 asked for a card raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the
 TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 
-**2 stopped at a limit:** Metal refused purchase #24 over the mandate cap, and the CFO rejected P-0004 with Face ID.
+**Metal refused 1 purchase over its cap; the CFO rejected 1 proposal:** #24 over the mandate cap, and P-0004 with
+Face ID.
 Not counted: query #37, refused `mandate_revoked` while the mandate was being replaced.\
 *Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
 
@@ -85,7 +87,7 @@ merchant is ours.
 ## What is real, what is mock
 
 - **Live, in the main run:** the Airwallex sandbox calls and Metal testnet transactions above, the Claude decisions and
-  the CFO's Face ID. Test money only. The sandbox simulates a SWIFT transfer's last steps (SENT, PAID), the merchant's
+  Max's passkey (Face ID on his phone). Test money only. The sandbox simulates a SWIFT transfer's last steps (SENT, PAID), the merchant's
   card charge and the deposit that stands in for Metal earnings at Airwallex.
 - **On Metal testnet, checked against the chain on 5 November:** the 4 mandates bound at setup that morning and the
   2 replacements; 86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep);
@@ -99,8 +101,7 @@ merchant is ours.
 - **Your own test world:** `/try/sign` (live since 4 November 2026) runs each visitor's world on stand-in executors with
   fixed proposals; your passkey's signature and the server's check of it are real.
 - **Built, not yet live:** the Cardputer hub push and gate (a fake hub in the tests);
-  the T:0 books sink (nothing posted: the shared sandbox key could not post, `403 CAPI71`; on 5 November T:0 refused
-  its new read-write key, `401 CAPI11`, [record](docs/runs/2026-11-05-t0-live.md)); the emergency stop and `npm run smoke:sandbox`
+  the T:0 books sink: T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. ([record](docs/runs/2026-11-05-t0-live.md)); the emergency stop and `npm run smoke:sandbox`
   (on stand-ins).
 
 **Other live tests (separate worlds, dated):** the TAP run (2 November), four eyes on chain, the compliance contract
