@@ -29,7 +29,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 
 ## Checked at this tag
 
-- 2332 tests in 246 files, all passing; typecheck, lint and `npm run judge -- --check` clean; CI green.
+- 2291 tests in 245 files, all passing; typecheck, lint and `npm run judge -- --check` clean; CI green.
 - `gitleaks` over every commit on every branch: no leaks (the checked false positives are listed in `.gitleaksignore`).
 - Every tx hash and id in the README, the submission pack, the claims, the site and the video script is in a run
   record.
@@ -38,7 +38,8 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 
 - 5 November: the stops are said in one sentence everywhere ("Metal refused 1 purchase over its cap; the CFO rejected 1
   proposal."), and the form's Description is short (the long text is
-  [long-description.md](long-description.md)). 2326 tests in 246 files, all passing.
+  [long-description.md](long-description.md)). /try/sign stays within a phone's width after the tamper, and the
+  premiere film has its animations. 2338 tests in 246 files, all passing.
 
 ## Real, and ours
 
