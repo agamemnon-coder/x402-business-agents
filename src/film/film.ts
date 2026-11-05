@@ -55,7 +55,7 @@ export function buildFilm(story: Story, recorded: Recorded, reports: { redteam: 
   const approved = fact("card", /^Approved by Airwallex/);
   const raise = fact("card", /^Limit raised/).match(/^([\d.]+) \/ [\d.]+ → ([\d.]+)/);
   const ops = need(snap.cards.find((c) => c.agent === "sourcing"), "the sourcing agent's card");
-  const cards = snap.cards.map((c) => ({ name: c.name, last4: c.last4, perTx: c.agent === "sourcing" && raise ? raise[1]! : c.per_tx, only: c.only.split(" · ")[0]!.replace(/^Software/, "Software").replace(/ \(MCC \d+\)/, "") }));
+  const cards = snap.cards.map((c) => ({ name: c.name, last4: c.last4, perTx: c.agent === "sourcing" && raise ? raise[1]! : c.per_tx, only: c.only.split(" · ")[0]!.replace(/ \(MCC \d+\)/, "") }));
   const names: Record<string, string> = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent" };
   // The mandates as the day starts: the sourcing agent's from the story (the price rise replaces it later); the
   // support agent's never changes. The treasury agent's is left out: it too is replaced during the day.

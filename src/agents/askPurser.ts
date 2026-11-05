@@ -84,7 +84,7 @@ export function readTaskFallback(text: string, now: Date): TaskReading {
   return { kind: kindOf(text), amount_eur: cents === undefined ? null : fromCents(cents), purpose: text, date: dateOf(text, now) };
 }
 
-const plain = (s: string) => s.replace(/<[^>]*>/g, "").replace(/[^\p{L}\p{N}\p{P}\p{Zs}€$£]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+const plain = (s: string) => s.replace(/<[^>]*>/g, "").replace(/[<>]/g, " ").replace(/[^\p{L}\p{N}\p{P}\p{Zs}€$£]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 120);
 
 /** What Purser does with a message and its reading: a task card's terms, or a reply saying why not. */
 export function planTask(text: string, reading: TaskReading, now: Date): TaskPlan {
