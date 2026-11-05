@@ -36,7 +36,7 @@ Every scene starts on an even second: the music (120 BPM, a bar every 2 s) is cu
 | 0:00 | `01-line.mp4` | Black, a beat of silence, then “AI agents can now spend money.” slams in, large; a hard cut | | Silence |
 | 0:02 | `03-pen.mp4` | “Who holds the pen?”, large, a pen stroke drawing itself under it; at 0:04 a straight cut to the wordmark Purser, a line drawn under it, and the core line in two lines | Max's voice: the opening | Silence under the question; **the music starts on the cut to the wordmark (0:04)** |
 | 0:10 | `03b-agents.mp4` | Three Claude agents, their cards 0.7 s apart: Sourcing (Claude Haiku 5.5), Support (Claude Sonnet 5.5), Treasury (Claude Opus 5.5), each with its job, its own Airwallex card and its own Metal mandate (the limits as the run began); then “The rails and the code hold the limits.” (0:14) | | Low, a soft pulse under each card |
-| 0:18 | `04-architecture.mp4` | The diagram: agent → rules → person → Airwallex or Metal → books | | Slowly building |
+| 0:18 | `04-architecture.mp4` | The diagram: agent → rules → person → Airwallex or Metal → books; then a refused payment: the Airwallex or Metal box flashes red, “Refused at the limit” under it, both gone within a second | | Slowly building |
 | 0:28 | `05-price-rise.mp4` | The price rise; let through on purpose; Metal refuses; the tx | | Building |
 | 0:44 | `06-dispute.mp4` | Twelve orders, three refunded, “refund the other 9” rejected with Face ID | | Steady |
 | 0:56 | `07-approval.mp4` | The approval card (P-0005's exact terms) | | Thins out |
@@ -47,7 +47,7 @@ Every scene starts on an even second: the music (120 BPM, a bar every 2 s) is cu
 | 1:34 | `12-why-face-id.mp4` | Why Face ID, not a password | | The music comes back, softly |
 | 1:44 | `13-specs.mp4` | Four spec cards: the tests (1:44), the audit log (1:46), the stops (1:48, 6 s: “Stopped at a limit, in the main run”, a purchase refused by Metal and a proposal rejected by the CFO side by side, Max's sentence under them), decisions by Claude (1:54) | | One card on each beat: 1:44, 1:46, 1:48, 1:54 |
 | 1:58 | `14-real.mp4` | What's real, what's ours | | Steady, lower |
-| 2:08 | `15-close.mp4` | The closing line as a card, Max's name | **Max on camera** with `overlays/15-close.png`, or his voice over this card | Low, under Max's voice |
+| 2:08 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, then the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (2:19); Max's name lower left | **Max on camera** with `overlays/15-close.png`, or his voice over this card | Low, under Max's voice |
 | 2:22 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from about 2:25 the end credits (text only): thank you to Airwallex, Metal, Anthropic (Claude) and the hackathon organisers and mentors; built by Max Geurtsen; voice and music; test money only | | The last swell, resolving under the credits; fade out with the picture (1 s), the end at 2:30 |
 
 ## Max's recordings

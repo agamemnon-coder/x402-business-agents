@@ -60,7 +60,7 @@ export const PREMIERE_SCENES: PremiereScene[] = [
   { id: "14-real", title: "What's real, what's ours", seconds: 10, kind: "render", music: "Steady, lower.",
     picture: "Two columns: real (test money) and ours or simulated." },
   { id: "15-close", title: "Max's closing line", seconds: 14, kind: "slot", music: "Low, under Max's voice.",
-    picture: "Max on camera with his name (overlay `15-close.png`), or his voice over the rendered card with the closing line.",
+    picture: "Max on camera with his name (overlay `15-close.png`), or his voice over the rendered ending, which mirrors the intro: the three beats one by one, the closing line in two lines, then the intro's wordmark lockup with “Starter Kit 11” under it.",
     slot: "Max on camera, or his voice only (docs/video/opnames-max.md, 2)" },
   { id: "16-end", title: "Try it yourself, and the credits", seconds: 8, kind: "render", music: "The last swell, resolving under the credits; fade out with the picture.", fade: [0.45, 1], credits: false,
     picture: "End card: “Try it yourself” and the /try/sign address, test money; after under three seconds it gives way to the end credits (text only, no logos): thank you, built by, voice and music, test money only." },
@@ -192,7 +192,7 @@ function onScreen(id: string, sc: Record<string, unknown>): string {
     case "01-line": return q(sc.line);
     case "03-pen": return `${q(sc.question)} → **${sc.title}** · ${list(sc.core).join(" ")} · ${sc.sub}`;
     case "03b-agents": return [`**${sc.head}**`, ...(sc.agents as { name: string; model: string; job: string; card: string; mandate: string }[]).map((a) => `**${a.name}** · ${a.model}: ${a.job} · ${sc.cardLabel}: ${a.card} · ${sc.mandateLabel}: ${a.mandate}`), `${sc.note}`, `${sc.limits}`].join("\n");
-    case "04-architecture": return (sc.nodes as { t: string; s: string }[]).map((x) => `**${x.t}** (${x.s})`).join(" → ");
+    case "04-architecture": return `${(sc.nodes as { t: string; s: string }[]).map((x) => `**${x.t}** (${x.s})`).join(" → ")}\nThe refused payment: the Airwallex or Metal box flashes red, ${q(sc.refusedTag)} under it`;
     case "05-price-rise": return [sc.kicker, `${sc.supplier} ${sc.rise}: **${sc.from} → ${sc.to}** ${sc.unit}`, sc.cap, q(sc.letThrough), `**${sc.refused}** ${sc.reason}`, `${sc.txLabel}: \`${sc.txFull}\` (${sc.txWhere})`, `Footnote, the run's own label: ${q(sc.label)}`].join("\n");
     case "06-dispute": return [sc.kicker, q(sc.claim), `Orders ${list(sc.orders).join(" ")}: ${sc.signed}`, `${list(sc.refunded).join(", ")}: ${sc.refundLine}`, `${sc.rest} → **${sc.rejected}** (${sc.rejectedWhen})`].join("\n");
     case "07-approval": return [`Phone: ${sc.pid}; ${q(sc.what)}`, ...list(sc.rows), `${sc.hashLabel} \`${sc.hash}\`; button ${q(sc.button)}`, `Beside it: ${list(sc.side).join(" ")}`, `Caption: ${sc.caption}`].join("\n");
@@ -204,7 +204,7 @@ function onScreen(id: string, sc: Record<string, unknown>): string {
     case "13-specs": return (sc.cards as { big?: string; label?: string; small?: string; stops?: boolean; head?: string; blocks?: { big: string; label: string; small: string }[]; caption?: string }[])
       .map((c) => (c.stops ? `${c.head}: ${c.blocks!.map((b) => `**${b.big}** ${b.label} (${b.small})`).join(" | ")}; caption ${q(c.caption)}${c.small ? ` (${c.small})` : ""}` : `**${c.big}** ${c.label} (${c.small})`)).join("\n");
     case "14-real": return `**${sc.realHead}** (${sc.realNote}): ${list(sc.real).join(", ")}\n**${sc.oursHead}:** ${list(sc.ours).join(", ")}`;
-    case "15-close": return `Fallback card: ${list(sc.lines).join(" ")}\nName (on camera): ${sc.name} · ${sc.role}`;
+    case "15-close": return `Fallback card: ${list(sc.beats).join(" / ")} → ${list(sc.line).join(" ")} → **${sc.title}** (the intro's wordmark) · ${sc.sub}\nName (on camera): ${sc.name} · ${sc.role}`;
     case "16-end": return `**${sc.cta}** · ${sc.url}\n${sc.foot}\n${sc.mark}\nEnd credits: ${(sc.roll as [string, string][]).map((r) => r.filter(Boolean).join(" ")).join(" · ")} · ${q((sc.credits as { max: string }).max)} (or, with an AI voice, clip \`16-end-ai-voice.mp4\`: ${q((sc.credits as { ai: string }).ai)}) · ${sc.last}`;
     default: return "";
   }

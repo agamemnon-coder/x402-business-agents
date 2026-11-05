@@ -565,6 +565,41 @@ describe("the premiere's animations (Max, 5 November): pulses, the price chart, 
     expect((screen("04-architecture").nodes as { t: string }[])[3]!.t).toBe("Airwallex or Metal");
   });
 
+  it("makes the refusal legible (Max, 5 November): where the red pulse stops, the box flashes red and says so, then both fade", () => {
+    const s4 = scene("04-architecture");
+    expect(screen("04-architecture").refusedTag).toBe("Refused at the limit");
+    // The red pulse arrives at the end of its third hop; the box flashes red for 0.4 s from then.
+    expect(s4).toContain("var ARR = T2 + 2 * HOP + HOP * .9, GONE = ARR + .6;");
+    expect(s4).toContain('nodes[3].classList.toggle("bad", t >= ARR && t < ARR + .4);');
+    // The pulse and the tag fade out together, within a second of the arrival, before the scene ends.
+    expect(s4).toContain("tag.style.opacity = prog(t, ARR, ARR + .2) * (1 - prog(t, GONE, GONE + .4));");
+    expect(s4).toContain("prog(p, 0, .2) * (1 - prog(t, GONE, GONE + .4))");
+    const at = /at = \[([^\]]+)\]/.exec(s4)![1]!.split(",").map(Number);
+    const [t2, hop] = [at[4]! + Number(/T2 = at\[4\] \+ ([.\d]+)/.exec(s4)![1]), Number(/HOP = ([.\d]+)/.exec(s4)![1])];
+    const arr = t2 + 2 * hop + hop * 0.9, gone = arr + 0.6 + 0.4;
+    expect(gone - arr).toBeLessThanOrEqual(1);
+    expect(gone).toBeLessThanOrEqual(timeline.find((s) => s.id === "04-architecture")!.seconds - 0.4);
+    expect(read("src/film/premiere.html")).toMatch(/\.node\.bad \{ border-color: var\(--bad\);/);
+  });
+
+  it("ends as the intro began (Max, 5 November): three beats, the closing line in two lines, the intro's wordmark lockup", () => {
+    const s15 = scene("15-close");
+    expect(screen("15-close")).toMatchObject({ beats: ["A price shock.", "A dispute.", "A euro bill."], title: "Purser", sub: "Starter Kit 11", name: "Max Geurtsen", role: "Purser · Starter Kit 11" });
+    expect(screen("15-close").line).toEqual(["Claude decided. The rails and the code held the limits.", "I signed only what went beyond them."]);
+    // Max's spoken closing as short sentences on screen: the same words, but for the "and" before "I signed".
+    const words = (x: string) => x.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/);
+    const spokenWords = words(CLOSING.join(" ")).filter((w, i, all) => !(w === "and" && all[i - 1] === "limits"));
+    expect(words([...(screen("15-close").beats as string[]), ...(screen("15-close").line as string[]), "Purser, Starter Kit 11."].join(" "))).toEqual(spokenWords);
+    // The intro's lockup, drawn by the same code, and no longer the purple "Purser, Starter Kit 11." line.
+    expect(s15).toContain("lock = lockup(wg, S.title, 92)");
+    expect(scene("03-pen")).toContain("var lock = lockup(wg, S.title, 92);");
+    expect(s15).not.toMatch(/hl c acc/);
+    // The name card stays lower left; each step comes in after its words begin to be said.
+    expect(s15).toContain('put(L, E("div", "lower", null, [E("b", null, S.name), E("span", null, S.role)]), 48, 616);');
+    const lines = data.voice["15-close"]!;
+    expect(Number(/WORD = ([.\d]+)/.exec(s15)![1])).toBeLessThanOrEqual(lines[2]!.at);
+  });
+
   it("pushes the camera in slowly on the Face ID phone and the one cent only, inside the letterbox", () => {
     const pushes = [...script.matchAll(/\n {4}"([\w-]+)": function[\s\S]*?\n {4}\},/g)].filter((m) => /L\.push = /.test(m[0])).map((m) => m[1]);
     expect(pushes).toEqual(["08-faceid", "11-one-cent"]);

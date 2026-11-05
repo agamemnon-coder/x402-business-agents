@@ -318,6 +318,9 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
     },
     "04-architecture": {
       kicker: "How Purser works",
+      // The refused payment (Max, 5 November: the red pulse alone read as a stray dot): the box it stops at flashes
+      // red and says so under it, then both fade.
+      refusedTag: "Refused at the limit",
       nodes: [
         { t: "Agent", s: "a Claude agent proposes" },
         { t: "Rules", s: "code checks the limits" },
@@ -410,7 +413,12 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
       oursHead: "Ours or simulated", ours: ["the suppliers", "the customer", "the merchant", "the second approver: a labelled test passkey"],
     },
     "15-close": {
-      lines: CLOSING, name: "Max Geurtsen", role: "Purser · Starter Kit 11",
+      // The ending mirrors the intro (Max, 5 November): the three beats one by one, short and large; the closing line
+      // in three short sentences on two lines, Max's spoken words; then the intro's wordmark lockup.
+      beats: ["A price shock.", "A dispute.", "A euro bill."],
+      line: ["Claude decided. The rails and the code held the limits.", "I signed only what went beyond them."],
+      title: "Purser", sub: "Starter Kit 11",
+      name: "Max Geurtsen", role: "Purser · Starter Kit 11",
       slot: "Recording slot · Max on camera, or his voice over this card",
     },
     "16-end": {

@@ -84,6 +84,8 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .node b { font-size: 38px; font-weight: 800; letter-spacing: -.02em; line-height: 1.08; }
 .node span { font-size: 23px; color: var(--muted); line-height: 1.3; }
 .node.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 70px rgba(139,133,255,.22); }
+.node.bad { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad), 0 0 70px rgba(255,107,112,.3); }
+.rtag { text-align: center; }
 .node .face { width: 64px; height: 64px; margin-bottom: auto; }
 .node .face b { font-size: 22px; }
 .arrow { height: 4px; background: var(--accent); border-radius: 2px; transform-origin: 0 50%; }
@@ -255,6 +257,19 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
     var e = out3(p);
     v.textContent = n.target.replace(/\d+/, function (d) { return String(Math.round(Number(d) * e)); });
   }
+  // The wordmark lockup (the intro, and the ending mirrors it): Purser's mark, the name wiped in, a line drawn under
+  // it. Placed at y in the parent; returns the function that draws it, revealed from t0.
+  function lockup(parent, title, y) {
+    var name = E("b", null, title), mk = mark(170);
+    put(parent, E("div", "word", null, [mk, name]), 0, y);
+    var RW = 620, rule = put(parent, width(E("div", "rule"), RW), (1920 - RW) / 2, y + 260);
+    return function (t, t0) {
+      var w = out3(prog(t, t0, t0 + .7));
+      mk.style.opacity = prog(t, t0, t0 + .25); mk.style.transform = "scale(" + mix(.9, 1, w) + ")";
+      name.style.clipPath = "inset(" + [0, (1 - w) * 100 + "%", 0, 0].join(" ") + ")";
+      rule.style.transform = "scaleX(" + inOut(prog(t, t0 + .4, t0 + 1.2)) + ")";
+    };
+  }
   // SVG, in the namespace of the page's own mark (no address typed here).
   var SVG = document.getElementById("mark-tpl").content.firstElementChild.namespaceURI;
   function svgEl(tag, cls, attrs) { var n = document.createElementNS(SVG, tag); if (cls) n.setAttribute("class", cls); Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k, attrs[k]); }); return n; }
@@ -282,9 +297,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       stroke.style.strokeDasharray = [1, 1].join(" ");
       pen.appendChild(stroke); put(qg, pen, (1920 - PW) / 2, 448);
       var wg = put(L, E("div", "full"), 0, 0);
-      var name = E("b", null, S.title), mk = mark(170);
-      var word = put(wg, E("div", "word", null, [mk, name]), 0, 92);
-      var RW = 620, rule = put(wg, width(E("div", "rule"), RW), (1920 - RW) / 2, 352);
+      var lock = lockup(wg, S.title, 92);
       var c1 = put(wg, E("div", "core c", S.core[0]), 0, 414), c2 = put(wg, E("div", "core c", S.core[1]), 0, 472);
       var su = put(wg, E("div", "kick c", S.sub), 0, 610);
       return function (t) {
@@ -292,10 +305,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         qg.style.opacity = after ? 0 : 1; wg.style.opacity = after ? 1 : 0;
         qn.style.opacity = prog(t, 0, .2); qn.style.transform = "translateY(" + (1 - out3(prog(t, 0, .45))) * 14 + "px)";
         stroke.style.strokeDashoffset = 1 - inOut(prog(t, .45, 1.25));
-        var w = out3(prog(t, CUT, CUT + .7));
-        mk.style.opacity = prog(t, CUT, CUT + .25); mk.style.transform = "scale(" + mix(.9, 1, w) + ")";
-        name.style.clipPath = "inset(" + [0, (1 - w) * 100 + "%", 0, 0].join(" ") + ")";
-        rule.style.transform = "scaleX(" + inOut(prog(t, CUT + .4, CUT + 1.2)) + ")";
+        lock(t, CUT);
         rise(c1, t, CUT + .9, null, 16); rise(c2, t, CUT + 1.3, null, 16); fade(su, t, CUT + 2.0);
       };
     },
@@ -328,11 +338,17 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       // Then a second one sets off, turns red on its way to Airwallex or Metal and stops there: the refusal (05).
       var PY = y + 118, edge = function (i) { return x0 + i * (W + G) + W; }, next = function (i) { return x0 + (i + 1) * (W + G); };
       var pulse = function () { return put(L, E("div", "pulse", null, [E("i"), E("i")]), 0, PY - 11); };
-      var p1 = pulse(), p2 = pulse(), T2 = at[4] + .5, HOP = .4, STOP = 14;
+      var p1 = pulse(), p2 = pulse(), T2 = at[4] + .2, HOP = .4, STOP = 14;
+      // Where the red pulse stops (the third hop's end): the box flashes red for 0.4 s, the tag comes in under it, and
+      // pulse and tag fade out together within a second.
+      var ARR = T2 + 2 * HOP + HOP * .9, GONE = ARR + .6;
+      var tag = put(L, width(E("div", "rtag", null, [E("span", "pill bad", S.refusedTag)]), W + 120), x0 + 3 * (W + G) - 60, y + 236 + 26);
       function place(n, x, o, red) { n.style.transform = "translateX(" + (x - 11) + "px)"; n.style.opacity = o; n.lastChild.style.opacity = red; }
       return function (t) {
         fade(k, t, .1);
         nodes.forEach(function (n, i) { rise(n, t, at[i], null, 30); var on = t >= at[i] && (i === 4 ? t < T2 : t < at[i + 1]); n.classList.toggle("on", on); });
+        nodes[3].classList.toggle("bad", t >= ARR && t < ARR + .4);
+        tag.style.opacity = prog(t, ARR, ARR + .2) * (1 - prog(t, GONE, GONE + .4)); tag.style.transform = "translateY(" + (1 - out3(prog(t, ARR, ARR + .35))) * 10 + "px)";
         arrows.forEach(function (a, i) { var p = out3(prog(t, at[i + 1] - .55, at[i + 1] - .05)); a.style.opacity = p > 0 ? 1 : 0; a.style.transform = "scaleX(" + p + ")"; });
         scan(face, t, at[2] + .3);
         // The first pulse: on the arrow being drawn (if any), fading in off one box and into the next.
@@ -346,7 +362,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         if (t >= T2) {
           var h = Math.min(Math.floor((t - T2) / HOP), 2), p = prog(t - T2 - h * HOP, 0, h < 2 ? HOP * .64 : HOP * .9);
           if (h < 2) place(p2, mix(edge(h) + 12, next(h) - 10, inOut(p)), Math.min(prog(p, 0, .2), 1 - prog(p, .8, 1)), 0);
-          else place(p2, mix(edge(h) + 12, next(h) - STOP, out3(p)), prog(p, 0, .2), inOut(prog(p, .2, 1)));
+          else place(p2, mix(edge(h) + 12, next(h) - STOP, out3(p)), prog(p, 0, .2) * (1 - prog(t, GONE, GONE + .4)), inOut(prog(p, .2, 1)));
         }
       };
     },
@@ -635,9 +651,19 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
     "15-close": function (L, S, ov) {
       var lw = put(L, E("div", "lower", null, [E("b", null, S.name), E("span", null, S.role)]), 48, 616);
       if (ov) return function () {};
-      var l1 = put(L, E("div", "hm c", S.lines[0]), 0, 120), l2 = put(L, E("div", "hm c", S.lines[1]), 0, 240), l3 = put(L, E("div", "hm c", S.lines[2]), 0, 312);
-      var l4 = put(L, E("div", "hl c acc", S.lines[3]), 0, 430);
-      return function (t) { rise(l1, t, .5); rise(l2, t, 4.0); rise(l3, t, 7.6); rise(l4, t, 11.6); fade(lw, t, .8); };
+      // The ending mirrors the intro: the three beats one by one, short and large; the closing line in two lines; then
+      // the intro's wordmark lockup, "Starter Kit 11" small under it. Each step clears before the next.
+      var BEATS = [.5, 1.4, 2.4], LINE = [4.0, 7.8], WORD = 11.4;
+      var bs = S.beats.map(function (b, i) { return put(L, E("div", "huge c", b), 0, 86 + i * 150); });
+      var l1 = put(L, E("div", "hm c", S.line[0]), 0, 236), l2 = put(L, E("div", "hm c acc", S.line[1]), 0, 320);
+      var wg = put(L, E("div", "full"), 0, 0), lock = lockup(wg, S.title, 92);
+      var su = put(wg, E("div", "kick c", S.sub), 0, 404);
+      return function (t) {
+        bs.forEach(function (b, i) { rise(b, t, BEATS[i], LINE[0] - .5, 18); });
+        rise(l1, t, LINE[0], WORD - .6, 16); rise(l2, t, LINE[1], WORD - .6, 16);
+        wg.style.opacity = t >= WORD ? 1 : 0; lock(t, WORD); fade(su, t, WORD + 1.0);
+        fade(lw, t, .8);
+      };
     },
     "16-end": function (L, S) {
       var mk = put(L, mark(104), 908, 56);
