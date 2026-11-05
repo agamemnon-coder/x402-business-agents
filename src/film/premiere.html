@@ -6,7 +6,7 @@
 <title>Purser: the premiere</title>
 <style>
 @font-face { font-family: Inter; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
-:root { --pic: #07080c; --surface: #12151d; --sunken: #191d27; --line: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #98a2b4; --accent: #9b96ff; --ok: #3ccf82; --bad: #ff6b70; --wait: #f5b14a; }
+:root { --pic: #0a1020; --surface: #121a2a; --sunken: #18213a; --line: #27314a; --text: #eef1f6; --muted: #a4adbd; --faint: #98a2b4; --accent: #9b96ff; --ok: #3ccf82; --bad: #ff6b70; --wait: #f5b14a; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
@@ -14,15 +14,16 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 #stage { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #000; overflow: hidden; }
 /* The picture: 2.39:1 inside 1920x1080, black bars above and below. */
 #pic { position: absolute; left: 0; top: 138px; width: 1920px; height: 804px; overflow: hidden; background: var(--pic); }
-/* The background (the coordinator's preview, built natively): an animated radial gradient in four colours, drawn
-   small and scaled up so it has no banding, with light grain, screen-blended at 42% over the picture only, never the
-   letterbox bars. It fades in after the opening line. Text stays at WCAG AA or better over it. */
+/* The background (Max, premiere v3: calm, enterprise): the deep navy of the picture, a very faint static dot grid
+   (one dot every 36 px, white at 7%), a soft vignette, and a drift so slow it is hardly seen; in the picture only,
+   never the letterbox bars. It fades in after the opening line. Text stays at WCAG AA or better over it. */
 #bg { position: absolute; inset: 0; overflow: hidden; }
-#grad { position: absolute; left: 0; top: 0; width: 1920px; height: 804px; mix-blend-mode: screen; opacity: 0; }
-#grain { position: absolute; left: -40px; top: -38px; width: 2000px; height: 880px; opacity: 0; mix-blend-mode: soft-light; image-rendering: pixelated; }
+#dots { position: absolute; left: -72px; top: -72px; width: 2064px; height: 948px; opacity: 0; background-image: radial-gradient(circle, rgba(255,255,255,.07) 1.3px, transparent 1.8px); background-size: 36px 36px; }
+#vig { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse 75% 85% at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,.55) 100%); }
 html.overlay #bg { display: none; }
-/* The corner credits, in the top bar: never near the subtitles in the lower bar. Text only. */
-.credit { position: absolute; top: 0; height: 138px; display: flex; align-items: center; font-size: 24px; font-weight: 500; color: rgba(255,255,255,.72); z-index: 6; opacity: 0; white-space: nowrap; }
+/* The corner credits, in the top bar: never near the subtitles in the lower bar. Text only, quiet: grey (white at 46%,
+   4.6:1 on the black bar, still WCAG AA), 20 px. */
+.credit { position: absolute; top: 0; height: 138px; display: flex; align-items: center; font-size: 20px; font-weight: 500; color: rgba(255,255,255,.46); z-index: 6; opacity: 0; white-space: nowrap; }
 #cl { left: 64px; } #cr { right: 64px; }
 /* Max's own portrait recording goes inside this frame (npm run video -- --slot …): the page draws the frame only. */
 .ring { border: 10px solid #1e2331; border-radius: 54px; box-shadow: 0 40px 90px rgba(0,0,0,.65); }
@@ -57,7 +58,15 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .lower { padding: 18px 28px 20px; border-radius: 14px; background: rgba(0,0,0,.62); border-left: 6px solid var(--accent); }
 .lower b { display: block; font-size: 40px; font-weight: 750; letter-spacing: -.015em; }
 .lower span { display: block; font-size: 24px; color: #d5d9e2; margin-top: 4px; }
-.slotframe { width: 1680px; height: 624px; border: 3px dashed #3a4152; border-radius: 28px; }
+/* The three agents. */
+.agent { width: 500px; height: 300px; border-radius: 28px; background: var(--surface); border: 1px solid var(--line); padding: 32px 34px; display: flex; flex-direction: column; gap: 16px; }
+.agent b { font-size: 42px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.agent .model { align-self: flex-start; padding: 8px 18px; border-radius: 999px; font-size: 25px; font-weight: 650; color: var(--accent); background: rgba(155,150,255,.1); border: 1px solid rgba(155,150,255,.4); }
+.agent span { font-size: 32px; font-weight: 550; line-height: 1.3; }
+.agent.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 70px rgba(139,133,255,.22); }
+.face.mini { width: 76px; height: 76px; }
+.face.mini i { border-width: 0; } .face.mini i:nth-child(1) { border-left-width: 5px; border-top-width: 5px; border-top-left-radius: 12px; } .face.mini i:nth-child(2) { border-right-width: 5px; border-top-width: 5px; border-top-right-radius: 12px; } .face.mini i:nth-child(3) { border-left-width: 5px; border-bottom-width: 5px; border-bottom-left-radius: 12px; } .face.mini i:nth-child(4) { border-right-width: 5px; border-bottom-width: 5px; border-bottom-right-radius: 12px; }
+.face.mini b { font-size: 28px; }
 /* The diagram. */
 .node { width: 280px; height: 236px; border-radius: 28px; background: var(--surface); border: 1px solid var(--line); padding: 26px 24px; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; }
 .node b { font-size: 38px; font-weight: 800; letter-spacing: -.02em; line-height: 1.08; }
@@ -92,6 +101,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .sheet .hash.lit { box-shadow: 0 0 0 2px var(--accent); }
 .btnp { text-align: center; padding: 18px; border-radius: 16px; font-size: 23px; font-weight: 800; background: var(--text); color: #0a0c11; margin-top: auto; }
 .btnp.lit { box-shadow: 0 0 0 4px rgba(139,133,255,.6); }
+.btnp.done { background: var(--ok); color: #04130b; }
 .face { width: 150px; height: 150px; position: relative; }
 .face i { position: absolute; width: 30%; height: 30%; border-color: var(--accent); border-style: solid; border-width: 0; }
 .face i:nth-child(1) { left: 0; top: 0; border-left-width: 6px; border-top-width: 6px; border-top-left-radius: 18px; }
@@ -149,7 +159,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 <script type="application/json" id="premiere-data">__PREMIERE_JSON__</script>
 <h1 class="sr">Purser: the premiere</h1>
 <template id="mark-tpl"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0b1220"/><g transform="translate(4 4)" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></g></svg></template>
-<div id="stage"><div id="pic"><div id="bg"><canvas id="grad" width="240" height="101"></canvas><canvas id="grain" width="1000" height="440"></canvas></div></div><div class="bar top"></div><div class="bar bot"></div><div class="credit" id="cl"></div><div class="credit" id="cr"></div></div>
+<div id="stage"><div id="pic"><div id="bg"><div id="dots"></div><div id="vig"></div></div></div><div class="bar top"></div><div class="bar bot"></div><div class="credit" id="cl"></div><div class="credit" id="cr"></div></div>
 <script>
 (function () {
   "use strict";
@@ -165,27 +175,13 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   // ?rec=x,y,w,h&recfor=<scene>&speed=n: that scene frames Max's recording (laid in afterwards by ffmpeg).
   var rec = null;
   if (q.get("rec")) { var rv = q.get("rec").split(",").map(Number); rec = { x: rv[0], y: rv[1], w: rv[2], h: rv[3], id: q.get("recfor"), speed: Number(q.get("speed") || 1) }; }
-  // The background's grain: a fixed field of noise from a seeded generator, moved a little on every frame.
-  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var r = Math.imul(seed ^ seed >>> 15, 1 | seed); r = r + Math.imul(r ^ r >>> 7, 61 | r) ^ r; return ((r ^ r >>> 14) >>> 0) / 4294967296; }; }
-  (function () {
-    var c = document.getElementById("grain"), g = c.getContext("2d"), img = g.createImageData(c.width, c.height), next = rng(7);
-    for (var i = 0; i < img.data.length; i += 4) { var v = Math.floor(next() * 256); img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
-    g.putImageData(img, 0, 0);
-  })();
-  var grad = document.getElementById("grad"), gc = grad.getContext("2d"), grain = document.getElementById("grain"), B = D.background;
-  // The background at film time t, as ffmpeg's gradients source draws a radial one: colour stops spread from one point
-  // to another, the two points turning slowly about the centre; faded in from B.from, with the grain moving a little.
+  var dots = document.getElementById("dots"), vig = document.getElementById("vig"), B = D.background;
+  // The background at film time t: the dot grid drifts a fraction of a pixel a frame (by whole grid steps it is the
+  // same picture, so it wraps without a jump); grid and vignette fade in from B.start.
   function background(t) {
-    var w = grad.width, h = grad.height, a = t * B.turn, cx = w / 2, cy = h / 2;
-    var turn = function (p) { var x = p[0] * w - cx, y = p[1] * h - cy; return [cx + x * Math.cos(a) - y * Math.sin(a), cy + x * Math.sin(a) + y * Math.cos(a)]; };
-    var p0 = turn(B.from0), p1 = turn(B.to0), r = Math.max(1, Math.hypot(p1[0] - p0[0], p1[1] - p0[1]));
-    var g = gc.createRadialGradient(p0[0], p0[1], 0, p0[0], p0[1], r);
-    B.colors.forEach(function (c, i) { g.addColorStop(i / (B.colors.length - 1), c); });
-    gc.fillStyle = g; gc.fillRect(0, 0, w, h);
     var on = prog(t, B.start, B.start + B.fadeIn);
-    grad.style.opacity = B.opacity * on; grain.style.opacity = B.grain * on;
-    var j = rng(Math.round(t * 60) + 1);
-    grain.style.transform = "translate(" + Math.round((j() - .5) * 60) + "px," + Math.round((j() - .5) * 60) + "px)";
+    dots.style.opacity = vig.style.opacity = on;
+    dots.style.transform = "translate(" + (-(t * B.drift[0]) % B.grid) + "px," + (-(t * B.drift[1]) % B.grid) + "px)";
   }
   // The corner credits at film time t: on every scene that has them, fading only where they start or stop.
   var cl = document.getElementById("cl"), cr = document.getElementById("cr");
@@ -221,7 +217,6 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
   function width(n, w) { n.style.width = w + "px"; return n; }
   // The frame around a recording's box (stage pixels; the picture starts below the top bar).
   function ring(L, rec) { L.classList.add("still"); var r = put(L, E("div", "ring"), rec.x - 10, rec.y - BAR - 10); r.style.width = rec.w + 20 + "px"; r.style.height = rec.h + 20 + "px"; return r; }
-  function slot(L, S) { put(L, E("div", "slotframe"), 120, 90); put(L, E("div", "kick c", "Recording slot"), 0, 300); put(L, E("div", "hm c", S.slot), 0, 346); put(L, E("div", "small c", S.note), 0, 430); }
 
   // ---- the scenes, by id; their lengths and the voice-over are in src/film/premiereScript.ts ----
   // Each builder gets the scene's layer, its strings and whether only the overlay is wanted (a recording slot's label
@@ -243,19 +238,29 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         fade(su, t, 4.9);
       };
     },
+    "03b-agents": function (L, S) {
+      var h = put(L, E("div", "hm c", S.head), 0, 64);
+      var W = 500, G = 50, x0 = (1920 - (3 * W + 2 * G)) / 2, at = [3.4, 7.1, 9.2, 11.0];
+      var cards = S.agents.map(function (a, i) { return put(L, E("div", "agent", null, [E("b", null, a.name), E("div", "model", a.model), E("span", null, a.job)]), x0 + i * (W + G), 186); });
+      var lim = put(L, E("div", "hs c", S.limits), 0, 540), bey = put(L, E("div", "hs c acc", S.beyond), 0, 604);
+      var f = put(L, faceGlyph("mini"), 922, 684);
+      return function (t) {
+        rise(h, t, .3);
+        cards.forEach(function (c, i) { rise(c, t, at[i], null, 30); c.classList.toggle("on", t >= at[i] && t < at[i + 1]); });
+        rise(lim, t, 11.2); rise(bey, t, 12.2); fade(f, t, 12.4); scan(f, t, 12.8);
+      };
+    },
     "04-architecture": function (L, S) {
       var k = put(L, E("div", "kick c", S.kicker), 0, 96);
       var W = 280, G = 76, x0 = (1920 - (5 * W + 4 * G)) / 2, y = 228, at = [.5, 2.2, 4.1, 8.1, 10.0];
       var nodes = S.nodes.map(function (n, i) { var d = E("div", "node", null, [E("b", null, n.t), E("span", null, n.s)]); if (i === 2) d.insertBefore(faceGlyph(), d.firstChild); return put(L, d, x0 + i * (W + G), y); });
       var arrows = [0, 1, 2, 3].map(function (i) { return width(put(L, E("div", "arrow"), x0 + i * (W + G) + W + 12, y + 116), G - 30); });
-      var tag = put(L, E("div", "pill wait", S.t0), 0, y + 268);
       var face = nodes[2].querySelector(".face");
       return function (t) {
         fade(k, t, .1);
         nodes.forEach(function (n, i) { rise(n, t, at[i], null, 30); var on = t >= at[i] && (i === 4 || t < at[i + 1]); n.classList.toggle("on", on); });
         arrows.forEach(function (a, i) { var p = out3(prog(t, at[i + 1] - .55, at[i + 1] - .05)); a.style.opacity = p > 0 ? 1 : 0; a.style.transform = "scaleX(" + p + ")"; });
         scan(face, t, at[2] + .3);
-        tag.style.left = (x0 + 4 * (W + G) + W - tag.offsetWidth) + "px"; rise(tag, t, 10.9, null, 16);
       };
     },
     "05-price-rise": function (L, S) {
@@ -344,12 +349,29 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         var sp = rec.speed > 1 ? put(L, E("div", "tiny", "Shown at " + rec.speed + "× speed"), x, 560) : null;
         return function (t) { rise(h, t, .3); rise(l, t, 1.0); rise(u, t, 1.6); if (sp) fade(sp, t, 1.8); };
       }
-      var lab = put(L, E("div", "ovl", S.label), 48, 640), sub = put(L, E("div", "ovl sub", S.sub), 48, 700);
-      if (ov) return function () {};
-      L.classList.add("black");
-      slot(L, S);
-      var f = put(L, faceGlyph(), 885, 520);
-      return function (t) { lab.style.opacity = 1; sub.style.opacity = 1; f.style.opacity = .5; scan(f, t, 2); };
+      if (ov) { put(L, E("div", "ovl", S.label), 48, 640); put(L, E("div", "ovl sub", S.sub), 48, 700); return function () {}; }
+      // The reconstruction: P-0005's sheet as on 07, "Confirm with Face ID" pressed, the scan, then approved.
+      var ph = put(L, E("div", "phone"), 300, 16);
+      var scr = E("div", "scr"); ph.appendChild(scr); scr.appendChild(E("div", "notch"));
+      var pid = E("div", "pid", S.pid);
+      var sh = E("div", "sheet", null, [pid, E("div", "what", S.what)]); scr.appendChild(sh);
+      S.rows.forEach(function (r) { sh.appendChild(E("div", "row", null, [E("span", null, r[0]), E("b", null, r[1])])); });
+      sh.appendChild(E("div", "pid", S.hashLabel));
+      var hs = E("div", "hash mono lit", S.hash); sh.appendChild(hs);
+      var bt = E("div", "btnp", S.button); sh.appendChild(bt);
+      var sc = E("div", "scan", null, [faceGlyph()]); scr.appendChild(sc);
+      var face = sc.firstChild;
+      var s1 = put(L, E("div", "hl", S.side[0]), 880, 200), s2 = put(L, E("div", "hl okc", S.side[1]), 880, 300);
+      var wh = put(L, E("div", "small", S.when), 884, 410);
+      var rc = put(L, width(E("div", "tiny", S.recon), 940), 884, 712);
+      return function (t) {
+        rc.style.opacity = prog(t, 0, .3);
+        bt.classList.toggle("lit", t > .6 && t < 1.2);
+        sc.style.opacity = prog(t, 1.1, 1.35) * (1 - prog(t, 2.9, 3.2)); scan(face, t, 1.3);
+        var ok = t >= 3.0;
+        bt.textContent = ok ? "✓ " + S.approved : S.button; bt.classList.toggle("done", ok); pid.textContent = ok ? S.pidDone : S.pid;
+        rise(s1, t, .5); rise(s2, t, 3.1); rise(wh, t, 3.7);
+      };
     },
     "09-six-seconds": function (L, S) {
       var six = put(L, E("div", "sixrow", null, [E("span", "mega", S.big), E("span", "hl", S.unit)]), 140, 40);
@@ -488,8 +510,21 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var url = put(L, E("div", "hm c acc", S.url), 0, 318);
       var ft = put(L, E("div", "small c", S.foot), 0, 432);
       var mt = put(L, E("div", "kick c", S.mark), 0, 548);
-      var cr = put(L, E("div", "tiny c", S.credits[credits]), 0, 700);
-      return function (t) { fade(mk, t, .2); rise(ct, t, .4); rise(url, t, 1.1); fade(ft, t, 1.9); fade(mt, t, 2.3); fade(cr, t, 2.7); };
+      // Then the end credits, text only: each row's heading and its line, the voice and the music, test money.
+      var roll = [], y = 130;
+      S.roll.forEach(function (r) {
+        if (r[0]) { roll.push(put(L, E("div", "kick c", r[0]), 0, y)); y += 44; roll.push(put(L, E("div", "hm c", r[1]), 0, y)); y += 106; }
+        else { y -= 26; roll.push(put(L, E("div", "body c muted", r[1]), 0, y)); y += 112; }
+      });
+      roll.push(put(L, E("div", "small c", S.credits[credits]), 0, y - 26)); y += 50;
+      roll.push(put(L, E("div", "kick c waitc", S.last), 0, y)); y += 70;
+      roll.push(put(L, E("div", "small c acc", S.short), 0, y));
+      var A = [mk, ct, url, ft, mt], out = 3.6, at = 4.3;
+      return function (t) {
+        fade(mk, t, .2, out); rise(ct, t, .4, out); rise(url, t, 1.1, out); fade(ft, t, 1.9, out); fade(mt, t, 2.3, out);
+        A.forEach(function (n) { n.style.visibility = t < out + .6 ? "visible" : "hidden"; });
+        roll.forEach(function (n, i) { rise(n, t, at + i * .3, null, 14); });
+      };
     },
   };
 

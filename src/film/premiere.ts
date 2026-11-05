@@ -1,4 +1,4 @@
-// The premiere (docs/video/premiere-script.md): Purser in under three minutes, a premiere-style film made from the main
+// The premiere (docs/video/premiere-script.md): Purser in a little over three minutes, a premiere-style film made from the main
 // run of 3 November (docs/demo/main-run.json). Every number on screen and in the voice-over is read here, through
 // code, each with where it comes from: the run's record for everything about the run, the README's test line for the
 // test count, and the /try/sign page's own code for its mock. A number that cannot be found stops the build, so the
@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { FIXED_PROPOSALS, TEST_WORLD, canonical, checkPayment, proposalTerms } from "../../worker/src/trySign.js";
 import { TRY_SIGN_LABEL } from "../try/sign.js";
+import { AGENT_DISPLAY } from "../config/brand.js";
 
 /** The run the premiere tells, and nothing else. */
 export const MAIN_RUN_FILE = "docs/demo/main-run.json";
@@ -31,7 +32,8 @@ export interface MainRun {
   snapshot: {
     audit: { rows: number; head: string; intact: boolean };
     flows: Flow[];
-    agent_stats: { agent: string; decisions: number; by_claude: number; fallback: number }[];
+    agent_stats: { agent: string; decisions: number; by_claude: number; fallback: number; models?: string[] }[];
+    agents?: { id: string; name: string; job: string; alone: string[] }[];
   };
   ledger?: { events: LedgerEvent[]; proposals: Proposal[]; disputes: Dispute[] };
 }
@@ -71,6 +73,11 @@ const cents = (s: string) => { if (!/^\d+\.\d{2}$/.test(s)) throw new Missing(`p
 const fromCents = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
 const short = (h: string, a = 10, b = 4) => `${h.slice(0, a)}…${h.slice(-b)}`;
 const family = (model: unknown) => need(/claude-(haiku|sonnet|opus)/i.exec(String(model ?? ""))?.[1], `a Claude model in "${String(model)}"`).replace(/^./, (c) => c.toUpperCase());
+/** "Haiku 5.5" from a model id in the record ("claude-haiku-5-5"). */
+const modelName = (model: unknown) => {
+  const m = need(/^claude-(haiku|sonnet|opus)-(\d+)-(\d+)$/.exec(String(model ?? "")), `a Claude model id in "${String(model)}"`);
+  return `${cap1(m[1]!)} ${m[2]}.${m[3]}`;
+};
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
 const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
 /** A small count as it is said: "twelve", "twenty-four". */
@@ -232,6 +239,24 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
   fact("specs.fallbacks", sum("fallback"), "record `snapshot.agent_stats[].fallback` (summed)");
   for (const a of ["sourcing", "support", "treasury"]) fact(`specs.${a}`, need(st.find((x) => x.agent === a), `${a} agent's statistics`).decisions, `record \`snapshot.agent_stats\` (${a})`);
 
+  // The team (the intro): each agent's one Claude model and its job, as the record has them. A job is said in the
+  // film's few words only when the record's own description of that agent says it.
+  const team = need(r.snapshot.agents?.length ? r.snapshot.agents : null, "agents (`snapshot.agents`)");
+  const member = (a: string) => need(team.find((x) => x.id === a), `${a} agent in \`snapshot.agents\``);
+  for (const a of ["sourcing", "support", "treasury"]) {
+    const models = need(st.find((x) => x.agent === a)?.models, `${a} agent's model`);
+    fact(`team.${a}Model`, `Claude ${modelName(models.length === 1 ? models[0] : null)}`, `record \`snapshot.agent_stats\` (${a}: its one model, \`${models[0]}\`)`);
+  }
+  const src = need(member("sourcing"), "Sourcing agent");
+  fact("team.sourcingJob", /buys upstream data per query/.test(src.job) && src.alone.some((x) => /on chain \(x402\)/.test(x)) && r.snapshot.flows.some((f) => f.kind === "upstream" && /^https:\/\/testnet\.metal/.test(f.proof.href ?? "")) ? "Buys data per query, over x402 on Metal" : null,
+    "record `snapshot.agents` (sourcing: \"buys upstream data per query\"; alone: \"on chain (x402)\") and `snapshot.flows` (its purchases, on Metal testnet)");
+  const sup = member("support");
+  fact("team.supportJob", /refunds customers when a dispute holds/.test(sup.job) && proposals.some((p) => p.kind === "refund_batch" && p.created_by === "support") ? "Handles disputes and refunds" : null,
+    "record `snapshot.agents` (support: \"refunds customers when a dispute holds\") and `ledger.proposals` (its `refund_batch`)");
+  const tre = member("treasury");
+  fact("team.treasuryJob", /FX and SWIFT/.test(tre.job) && proposals.some((p) => p.kind === "mandate_replace" && p.created_by === "treasury" && p.terms.total_budget) ? "FX, SWIFT, budgets" : null,
+    "record `snapshot.agents` (treasury: \"Airwallex FX and SWIFT\") and `ledger.proposals` (its `mandate_replace` plans, each with the agents' `total_budget`)");
+
   // The /try/sign mock: the live page's own proposal and its tamper step (+0.01), from the page's code.
   const m = trySignExample();
   fact("try.proposal", m.p.id, "`FIXED_PROPOSALS` in worker/src/trySign.ts (the page's own proposal)");
@@ -250,12 +275,21 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
   const F = premiereFacts(r, readme);
   const v = (k: string) => need(F[k], k).value;
   const n = (k: string) => Number(v(k));
+  const said = (k: string) => spoken(n(k));
   const m = trySignExample();
   const site = TRY_SIGN_URL.replace(/^https:\/\//, "").replace(/\/try\/sign$/, "");
+
+  // P-0005's terms as its approval sheet shows them (07, and the reconstruction on 08).
+  const approvalRows = [["Invoice", v("licence.invoice")], ["Buy first", `${v("licence.fxBuy")} for ${v("licence.fxSell")}`], ["Fee at most", v("licence.feeMax")], ["Planned by", `${v("licence.by")} · Claude ${v("licence.model")}`], ["Expires", `${v("licence.expires")} UTC`]];
 
   const screen: PremiereData["screen"] = {
     "01-line": { line: "AI agents can now spend money." },
     "03-pen": { question: "So who holds the pen?", title: "Purser", sub: "Starter Kit 11" },
+    "03b-agents": {
+      head: `${cap1(said("run.agents"))} ${v("specs.byClaude") === v("specs.decisions") ? "Claude " : ""}agents run a small company's money.`,
+      agents: (["sourcing", "support", "treasury"] as const).map((a) => ({ name: AGENT_DISPLAY[a].name, model: v(`team.${a}Model`), job: v(`team.${a}Job`) })),
+      limits: "The rails and the code hold the limits.", beyond: "Anything beyond them, the CFO signs with Face ID.",
+    },
     "04-architecture": {
       kicker: "How Purser works",
       nodes: [
@@ -265,7 +299,6 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
         { t: "Airwallex or Metal", s: "moves the test money" },
         { t: "Books", s: "every movement, double-entry" },
       ],
-      t0: "T:0: built, not yet live",
     },
     "05-price-rise": {
       kicker: `The main run · ${v("run.day")} · test money`,
@@ -288,12 +321,18 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
     "07-approval": {
       pid: `${v("licence.proposal")} · waits for your Face ID`,
       what: `Pay ${v("licence.vendor")} ${v("licence.amount")} by ${v("licence.method")}`,
-      rows: [["Invoice", v("licence.invoice")], ["Buy first", `${v("licence.fxBuy")} for ${v("licence.fxSell")}`], ["Fee at most", v("licence.feeMax")], ["Planned by", `${v("licence.by")} · Claude ${v("licence.model")}`], ["Expires", `${v("licence.expires")} UTC`]],
+      rows: approvalRows,
       hashLabel: "Terms hash", hash: short(v("licence.hash"), 16, 8), button: "Confirm with Face ID",
       side: ["The exact terms.", "And their hash."], caption: `Drawn from ${v("licence.proposal")}'s exact terms in the record, planned by the ${v("licence.by")}.`,
     },
     "08-faceid": {
-      slot: "Recording slot · Max's iPhone · Face ID", note: "Max films the Face ID approval on his own phone.",
+      // The reconstruction: P-0005's approval sheet, its exact terms from the record (as on 07), Face ID, then approved.
+      pid: `${v("licence.proposal")} · waits for your Face ID`, pidDone: `${v("licence.proposal")} · approved`,
+      what: `Pay ${v("licence.vendor")} ${v("licence.amount")} by ${v("licence.method")}`, rows: approvalRows,
+      hashLabel: "Terms hash", hash: short(v("licence.hash"), 16, 8), button: "Confirm with Face ID", approved: "Approved",
+      side: ["Face ID.", "Approved."], when: `${v("licence.proposal")} · the CFO, ${v("paid.faceAt")} UTC`,
+      recon: `Reconstruction of the approval screen · the real Face ID was at ${v("paid.faceAt")} UTC (main run)`,
+      // A real recording laid in with --slot, and its overlay for an editor: labelled as what it is.
       label: "Max's iPhone · real Face ID · filmed after the run, on a test proposal (test money)",
       sub: `In the main run: ${v("licence.proposal")} approved with Face ID at ${v("paid.faceAt")} UTC`,
       recHead: "Real Face ID.", recLine: "On Max's own iPhone, filmed after the run on a test proposal, with test money.",
@@ -342,14 +381,22 @@ export function buildPremiere(r: MainRun, readme: string): PremiereData {
     },
     "16-end": {
       cta: "Try it yourself", url: TRY_SIGN_URL, foot: "Test money only: the Airwallex sandbox and Metal testnet.",
-      credits: { max: `Voice: Max Geurtsen · ${MUSIC}`, ai: `Voice-over: an AI-generated voice · opening and closing: Max Geurtsen · ${MUSIC}` },
       mark: "Purser · Starter Kit 11",
+      // The end credits (premiere v3): text only, no logos.
+      roll: END_CREDITS, credits: { max: `Voice: Max Geurtsen · ${MUSIC}`, ai: `Voice-over: an AI-generated voice · opening and closing: Max Geurtsen · ${MUSIC}` },
+      last: "Test money only", short: TRY_SIGN_URL.replace(/^https:\/\//, ""),
     },
   };
 
-  const said = (k: string) => spoken(n(k));
   const voice: PremiereData["voice"] = {
     "03-pen": [{ at: 0.4, who: "Max", text: "So who holds the pen?" }, { at: 3.6, who: "Max", text: "I'm Max Geurtsen, and this is Purser." }],
+    "03b-agents": [
+      { at: 0.3, who: "Voice", text: String(screen["03b-agents"]!.head) },
+      { at: 3.6, who: "Voice", text: `Sourcing ${v("team.sourcingJob").replace(/^B/, "b")}.` },
+      { at: 7.3, who: "Voice", text: `Support ${v("team.supportJob").replace(/^H/, "h")}.` },
+      { at: 9.4, who: "Voice", text: `Treasury: ${v("team.treasuryJob")}.` },
+      { at: 11.2, who: "Voice", text: "Rails and code hold the limits. Beyond them, the CFO signs." },
+    ],
     "04-architecture": [
       { at: 0.5, who: "Voice", text: "An agent proposes. Rules in code check it." },
       { at: 4.0, who: "Voice", text: "Beyond the limits, a person signs with Face ID." },
@@ -410,11 +457,18 @@ export const CREDITS = { left: "Max Geurtsen · Purser", right: "Built on Airwal
 export const MUSIC = "Music: Techno Fest Vibes (Mixkit)";
 
 /**
- * The background (the coordinator's preview, made with ffmpeg's `gradients` source, type radial, four colours, speed
- * 0.01 a frame at its default 25 fps: 0.25 of a turn's radian a second), screen-blended at 42% with light grain. The
- * two points are fractions of the picture; they turn about its centre. It fades in when the opening line has ended.
+ * The background (Max, premiere v3: calm, enterprise): deep navy, a very faint static dot grid (one dot every `grid`
+ * px, white at `dot`), a soft vignette, and a drift so slow it is hardly seen (`drift` px a second). It fades in when the
+ * opening line has ended. Every text colour stays at WCAG AA over its brightest point (test/premiere.test.ts).
  */
-export const BACKGROUND = { colors: ["#4c1d95", "#0f5e63", "#1e1b4b", "#3730a3"], turn: 0.25, from0: [0.32, 0.4], to0: [0.92, 0.88], opacity: 0.42, grain: 0.06, fadeIn: 1 } as const;
+export const BACKGROUND = { base: "#0a1020", grid: 36, dot: 0.07, drift: [0.5, 0.25], vignette: 0.55, fadeIn: 1 } as const;
+
+/** The end credits (premiere v3), text only: each row a heading and its line. */
+export const END_CREDITS: [string, string][] = [
+  ["Thank you", "Airwallex · Metal · Anthropic (Claude)"],
+  ["", "and the hackathon organisers and mentors"],
+  ["Built by", "Max Geurtsen"],
+];
 
 /** Max's closing line (docs/video/max-opening-close.md, "Slot"), in the lines the fallback card shows. */
 export const CLOSING = ["A price shock, a dispute, a euro bill.", "Claude decided, the rails and the code held the limits,", "and I signed only what went beyond them.", "Purser, Starter Kit 11."] as const;

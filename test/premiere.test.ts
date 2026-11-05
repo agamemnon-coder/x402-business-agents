@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BACKGROUND, CLOSING, MAIN_RUN_FILE, TRY_SIGN_URL, TRY_SIGN_WORDS, buildPremiere, premiereFacts, premierePage, spoken, testLine, trySignExample, type MainRun, type PremiereData } from "../src/film/premiere.js";
+import { BACKGROUND, CLOSING, END_CREDITS, MAIN_RUN_FILE, TRY_SIGN_URL, TRY_SIGN_WORDS, buildPremiere, premiereFacts, premierePage, spoken, testLine, trySignExample, type MainRun, type PremiereData } from "../src/film/premiere.js";
 import { MASTER_CLIPS, OVERLAYS, PREMIERE_SCENES, clock, factsUsed, pageScenes, lineSeconds, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, voiceTimeline } from "../src/film/premiereScript.js";
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/submission/deck.js";
@@ -83,9 +83,9 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(screen("09-six-seconds").foot).toBe("Purser moved the transfer to SENT and then PAID itself, through Airwallex's sandbox simulation API. Test money.");
     const s9 = timeline.find((s) => s.id === "09-six-seconds")!;
     expect(data.voice["09-six-seconds"]!.map((l) => [clock(s9.start + l.at), l.text])).toEqual([
-      ["1:12", "Six seconds from Face ID to paid, in the Airwallex sandbox."],
-      ["1:16", "In the sandbox, the settlement itself is simulated."],
-      ["1:20", "Every id is on the proof page."],
+      ["1:28", "Six seconds from Face ID to paid, in the Airwallex sandbox."],
+      ["1:32", "In the sandbox, the settlement itself is simulated."],
+      ["1:36", "Every id is on the proof page."],
     ]);
     // A sandbox transfer id cannot be looked up publicly: nothing asks anyone to.
     expect(JSON.stringify(data.screen) + JSON.stringify(data.voice) + premiereTable(data)).not.toMatch(/look it up/i);
@@ -130,6 +130,35 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(() => spoken(120)).toThrow();
   });
 
+  it("the intro: three Claude agents, each with its one model and its job, as the record has them", () => {
+    const st = r.snapshot.agent_stats as { agent: string; models: string[] }[];
+    const agents = (r.snapshot as unknown as { agents: { id: string; job: string; alone: string[] }[] }).agents;
+    expect(st.map((a) => [a.agent, a.models])).toEqual([["sourcing", ["claude-haiku-5-5"]], ["support", ["claude-sonnet-5-5"]], ["treasury", ["claude-opus-5-5"]]]);
+    expect(screen("03b-agents").agents).toEqual([
+      { name: "Sourcing agent", model: "Claude Haiku 5.5", job: "Buys data per query, over x402 on Metal" },
+      { name: "Support agent", model: "Claude Sonnet 5.5", job: "Handles disputes and refunds" },
+      { name: "Treasury agent", model: "Claude Opus 5.5", job: "FX, SWIFT, budgets" },
+    ]);
+    // Each job in the film's words is the record's own description of that agent, and what the agent did in the run.
+    expect(agents.find((a) => a.id === "sourcing")!.job).toContain("buys upstream data per query");
+    expect(agents.find((a) => a.id === "sourcing")!.alone.join(" ")).toContain("on chain (x402)");
+    expect(agents.find((a) => a.id === "support")!.job).toContain("refunds customers when a dispute holds");
+    expect(agents.find((a) => a.id === "treasury")!.job).toContain("Airwallex FX and SWIFT");
+    expect(r.ledger.proposals.filter((p) => p.created_by === "treasury").map((p) => p.kind)).toContain("mandate_replace");
+    expect(screen("03b-agents")).toMatchObject({ head: "Three Claude agents run a small company's money.", limits: "The rails and the code hold the limits.", beyond: "Anything beyond them, the CFO signs with Face ID." });
+    expect(data.voice["03b-agents"]!.map((l) => l.text)).toEqual([
+      "Three Claude agents run a small company's money.", "Sourcing buys data per query, over x402 on Metal.", "Support handles disputes and refunds.",
+      "Treasury: FX, SWIFT, budgets.", "Rails and code hold the limits. Beyond them, the CFO signs.",
+    ]);
+  });
+
+  it("the Face ID scene is a labelled reconstruction of P-0005's approval sheet, at the real Face ID's time", () => {
+    const approved = byEvent("proposal.approved").find((e) => e.subject === "P-0005")!;
+    expect(screen("08-faceid")).toMatchObject({ what: screen("07-approval").what, rows: screen("07-approval").rows, hash: screen("07-approval").hash, button: "Confirm with Face ID", approved: "Approved" });
+    expect(screen("08-faceid").recon).toBe(`Reconstruction of the approval screen · the real Face ID was at ${approved.ts.slice(11, 19)} UTC (main run)`);
+    expect(screen("08-faceid").recon).toBe("Reconstruction of the approval screen · the real Face ID was at 11:31:18 UTC (main run)");
+  });
+
   it("lists a source for every figure a scene uses", () => {
     for (const s of PREMIERE_SCENES) for (const k of factsUsed(s.id)) expect({ scene: s.id, k, source: !!data.facts[k]?.source }).toEqual({ scene: s.id, k, source: true });
   });
@@ -148,6 +177,10 @@ describe("the premiere refuses to render when a figure is missing", () => {
     ["the Support agent's refunds", (r) => { r.ledger.events = r.ledger.events.filter((e) => e.event !== "refund.paid"); }, /refund by the Support agent/],
     ["the CFO's rejection", (r) => { r.ledger.events = r.ledger.events.filter((e) => e.event !== "proposal.rejected"); }, /proposal\.rejected/],
     ["the agents' statistics", (r) => { r.snapshot.agent_stats = []; }, /agent statistics/],
+    ["an agent's model", (r) => { delete r.snapshot.agent_stats[1]!.models; }, /support agent's model/],
+    ["an agent with two models", (r) => { r.snapshot.agent_stats[0]!.models = ["claude-haiku-5-5", "claude-opus-5-5"]; }, /Claude model id/],
+    ["the agents' descriptions", (r) => { delete r.snapshot.agents; }, /snapshot\.agents/],
+    ["a job the record does not say", (r) => { r.snapshot.agents!.find((a) => a.id === "treasury")!.job = "watches spending"; }, /team\.treasuryJob/],
     ["an intact audit chain", (r) => { r.snapshot.audit.intact = false; }, /intact audit chain/],
     ["the ledger", (r) => { delete (r as Partial<MainRun>).ledger; }, /ledger/],
     ["a refund the totals do not add up to", (r) => { r.ledger.disputes[0]!.claims.sale_refs.push(99); }, /do not add up/],
@@ -186,7 +219,7 @@ describe("the premiere's page", () => {
   });
 
   it("draws every scene of the script, and nothing else", () => {
-    const built = [...script.matchAll(/^ {4}"(\d\d-[a-z0-9-]+)": function/gm)].map((m) => m[1]);
+    const built = [...script.matchAll(/^ {4}"(\d\d[a-z]?-[a-z0-9-]+)": function/gm)].map((m) => m[1]);
     expect(built).toEqual(PREMIERE_SCENES.map((s) => s.id));
     for (const s of PREMIERE_SCENES) expect({ s: s.id, screen: !!data.screen[s.id] }).toEqual({ s: s.id, screen: true });
   });
@@ -227,14 +260,16 @@ describe("the /try/sign mock says what the live page says", () => {
 });
 
 describe("the premiere's script", () => {
-  it("fits in three minutes: 2:49, the line on black and then the pen, no hook (cut, Max, 4 Nov)", () => {
-    expect(premiereSeconds()).toBeLessThanOrEqual(180);
-    expect(premiereSeconds()).toBe(169);
+  it("runs 3:12, under the hackathon's five minutes: the line on black, the pen, the 16-second intro, no hook", () => {
+    expect(premiereSeconds()).toBeLessThan(300);
+    expect(premiereSeconds()).toBe(192);
     expect(timeline.at(-1)!.start + timeline.at(-1)!.seconds).toBe(premiereSeconds());
-    expect(timeline.slice(0, 2).map((s) => [s.id, s.start])).toEqual([["01-line", 0], ["03-pen", 3]]);
+    expect(timeline.slice(0, 4).map((s) => [s.id, s.start, s.seconds])).toEqual([["01-line", 0, 3], ["03-pen", 3, 8], ["03b-agents", 11, 16], ["04-architecture", 27, 13]]);
+    // Every cut on a whole second (the music is cut to them).
+    for (const s of timeline) expect({ id: s.id, whole: Number.isInteger(s.start) && Number.isInteger(s.seconds) }).toEqual({ id: s.id, whole: true });
     expect(PREMIERE_SCENES.map((s) => s.id).filter((id) => id.startsWith("02"))).toEqual([]);
     expect(Object.keys(data.screen).filter((id) => id.startsWith("02"))).toEqual([]);
-    expect(PREMIERE_SCENES.filter((s) => s.kind === "slot").map((s) => s.id)).toEqual(["08-faceid", "15-close"]);
+    expect(PREMIERE_SCENES.filter((s) => s.kind === "slot").map((s) => s.id)).toEqual(["15-close"]);
     expect(OVERLAYS).toEqual(["08-faceid", "10-try-sign", "15-close"]);
     expect(JSON.stringify(data.screen).replace(String((screen("16-end").credits as { ai: string }).ai), "")).not.toMatch(/AI-generated|AI hook/);
   });
@@ -283,9 +318,8 @@ describe("the premiere's script", () => {
   it("claims nothing the run does not support", () => {
     const words = JSON.stringify(data.screen) + JSON.stringify(data.voice) + premiereTable(data);
     expect(words).not.toMatch(/code decides|certif|0 unsafe|never fails|cannot be broken|guarantee/i);
-    // T:0: built, not live; the film never shows a T:0 booking as done.
-    const t0 = [...(JSON.stringify(data.screen) + JSON.stringify(data.voice)).matchAll(/T:0[^"]*/g)].map((m) => m[0]);
-    expect(t0).toEqual(["T:0: built, not yet live"]);
+    // T:0 is not in the film at all (premiere v3), not even as "not live".
+    expect(words).not.toMatch(/T:0/);
     // The server checks the signature; it does not prove Face ID (no attestation on /try/sign).
     expect(JSON.stringify(data.voice["10-try-sign"])).not.toMatch(/proves?|verif(y|ies) (your )?Face ID/i);
     // Who is real and who is ours, as the README says it.
@@ -320,7 +354,7 @@ describe("docs/video/ holds what the code writes", () => {
     for (const o of OVERLAYS) expect({ overlay: o, named: guide.includes(`overlays/${o}.png`) }).toEqual({ overlay: o, named: true });
     // The guide's times are typed by hand: each row's time is its clip's start in the timeline, and the lengths
     // without the hook and with a 10-second one are the script's.
-    const rows = [...guide.matchAll(/^\| (\d:\d\d) \| `(\d\d-[a-z-]+)\.mp4` \|/gm)].map((m) => [m[2], m[1]]);
+    const rows = [...guide.matchAll(/^\| (\d:\d\d) \| `(\d\d[a-z]?-[a-z-]+)\.mp4` \|/gm)].map((m) => [m[2], m[1]]);
     expect(rows).toEqual(timeline.map((s) => [s.id, clock(s.start)]));
     expect(guide).toContain(`**Purser in ${clock(premiereSeconds())}**`);
     expect(guide).not.toMatch(/AI hook|02-hook|without the hook|10-second hook/i);
@@ -346,30 +380,53 @@ describe("the premiere's look (Max, 4 November)", () => {
   const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
   const lum = (c: number[]) => 0.2126 * lin(c[0]!) + 0.7152 * lin(c[1]!) + 0.0722 * lin(c[2]!);
 
-  it("draws the coordinator's background: four colours, screen at 42%, inside the picture only, from 0:03", () => {
-    expect(BACKGROUND).toMatchObject({ colors: ["#4c1d95", "#0f5e63", "#1e1b4b", "#3730a3"], opacity: 0.42 });
-    expect(template).toMatch(/<div id="pic"><div id="bg"><canvas id="grad"/);
-    expect(template).toMatch(/#grad \{[^}]*mix-blend-mode: screen/);
+  it("draws a calm background: deep navy, a faint static dot grid, a vignette, a hardly seen drift, from 0:03", () => {
+    expect(BACKGROUND).toMatchObject({ base: "#0a1020", grid: 36, dot: 0.07 });
+    expect(colour("pic")).toBe(BACKGROUND.base);
+    expect(template).toMatch(/<div id="pic"><div id="bg"><div id="dots"><\/div><div id="vig"><\/div><\/div><\/div>/);
+    // The page's CSS is the constant's: one dot every grid px, white at dot.
+    expect(template).toContain(`radial-gradient(circle, rgba(255,255,255,${String(BACKGROUND.dot).replace(/^0/, "")}) 1.3px, transparent 1.8px); background-size: ${BACKGROUND.grid}px ${BACKGROUND.grid}px;`);
+    expect(template).toContain(`rgba(0,0,0,${String(BACKGROUND.vignette).replace(/^0/, "")}) 100%`);
+    // No flowing gradient, no grain; the drift is under a pixel a second.
+    expect(template).not.toMatch(/<canvas|grain|createRadialGradient|mix-blend-mode/);
+    expect(Math.hypot(...BACKGROUND.drift)).toBeLessThan(1);
     expect(pageScenes().find((x) => x.credits)!.start).toBe(3);
   });
 
-  it("keeps every text colour at WCAG AA over the brightest point of the background (grain allowed for)", () => {
-    // Screen-blended at 42% over the picture's base colour, then 25% more for the grain: the brightest the background gets.
+  it("keeps every text colour at WCAG AA over the brightest point of the background", () => {
+    // The brightest point: a dot, white at `dot` over the base (the vignette only darkens).
     const base = rgb(colour("pic"));
-    const brightest = Math.max(...BACKGROUND.colors.map((c) => lum(rgb(c).map((v, i) => base[i]! + BACKGROUND.opacity * (1 - (1 - base[i]!) * (1 - v) - base[i]!))))) * 1.25;
+    const brightest = lum(base.map((v) => v + BACKGROUND.dot * (1 - v)));
     for (const name of ["text", "muted", "faint", "accent", "ok", "bad", "wait"]) {
       const ratio = (lum(rgb(colour(name))) + 0.05) / (brightest + 0.05);
       expect({ name, aa: ratio >= 4.5 }).toEqual({ name, aa: true });
     }
   });
 
-  it("shows the corner credits in the top bar, 0:03 to 2:43, text only (no logos of others)", () => {
+  it("shows the corner credits in the top bar, 0:03 to 2:59, quiet (grey, 20 px) and text only (no logos of others)", () => {
     expect(data.credits).toEqual({ left: "Max Geurtsen · Purser", right: "Built on Airwallex · Metal · Claude" });
     const on = pageScenes().filter((x) => x.credits);
-    expect([clock(on[0]!.start), clock(on.at(-1)!.start + on.at(-1)!.seconds)]).toEqual(["0:03", "2:43"]);
+    expect([clock(on[0]!.start), clock(on.at(-1)!.start + on.at(-1)!.seconds)]).toEqual(["0:03", "2:59"]);
     expect(pageScenes().filter((x) => !x.credits).map((x) => x.id)).toEqual(["01-line", "16-end"]);
-    expect(template).toMatch(/\.credit \{ position: absolute; top: 0; height: 138px; display: flex; align-items: center; font-size: 24px; font-weight: 500; color: rgba\(255,255,255,\.72\)/);
+    const m = /\.credit \{ position: absolute; top: 0; height: 138px; display: flex; align-items: center; font-size: 20px; font-weight: 500; color: rgba\(255,255,255,(\.\d+)\)/.exec(template);
+    expect(m).toBeTruthy();
+    // White at 40 to 46%: grey on the black bar, and still WCAG AA there.
+    const alpha = Number(m![1]);
+    expect(alpha).toBeGreaterThanOrEqual(0.4);
+    expect(alpha).toBeLessThanOrEqual(0.46);
+    expect((lum([alpha, alpha, alpha]) + 0.05) / 0.05).toBeGreaterThanOrEqual(4.5);
     expect(template).toMatch(/#cl \{ left: 64px; \} #cr \{ right: 64px; \}/);
+  });
+
+  it("ends with the credits, text only: thank you, built by, the voice and the music, test money only", () => {
+    const end = timeline.find((s) => s.id === "16-end")!;
+    expect(end.seconds).toBe(13);
+    expect(END_CREDITS).toEqual([["Thank you", "Airwallex · Metal · Anthropic (Claude)"], ["", "and the hackathon organisers and mentors"], ["Built by", "Max Geurtsen"]]);
+    expect(screen("16-end")).toMatchObject({ roll: END_CREDITS, last: "Test money only", short: "kit11.max-31b.workers.dev/try/sign" });
+    // The credits come in at 4.3 s and stay to the end: 8 to 10 seconds on screen.
+    expect(template).toContain("var A = [mk, ct, url, ft, mt], out = 3.6, at = 4.3;");
+    expect(end.seconds - 4.3).toBeGreaterThanOrEqual(8);
+    expect(end.seconds - 4.3).toBeLessThanOrEqual(10);
   });
 
   it("credits the music on the end card and in the edit guide", () => {
@@ -401,6 +458,15 @@ describe("Max's recordings, laid in by npm run video -- --slot", () => {
     for (const part of ["setpts=(PTS-STARTPTS)/1.25", "scale=394:700:force_original_aspect_ratio=increase,crop=394:700", "tpad=stop_mode=clone", "alphamerge", "fade=t=out:st=15.500:d=0.5:alpha=1", "overlay=190:190"]) expect(f).toContain(part);
     expect(maskExpr(44)).toMatch(/^255\*not\(lt\(X,44\)\*lt\(Y,44\)\*gt\(hypot/);
     expect(read("src/film/premiere.html")).toContain('"Shown at " + rec.speed + "× speed"');
+  });
+
+  it("renders sharp and delivers a clean master: drawn at twice the size, lanczos, x264 slow at CRF 14, no burned-in subtitles", () => {
+    const cli = read("src/cli/video.ts");
+    expect(cli).toContain("const PREMIERE_SCALE = 2;");
+    expect(cli).toContain('"scale=1920:1080:flags=lanczos"');
+    expect(cli).toContain('const X264 = ["-c:v", "libx264", "-preset", "slow", "-crf", "14", "-pix_fmt", "yuv420p", "-r", String(FPS)];');
+    expect(cli).not.toMatch(/"-preset", "medium"|"-crf", "20"|ass=/);
+    expect(cli).toMatch(/if \(film\) await ffmpeg\(\[[^\n]*master-subtitled\.mp4/);
   });
 
   it("keeps the honesty labels when a recording is laid in", () => {
