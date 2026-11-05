@@ -9,7 +9,7 @@
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
 import { NORTHWIND_LINE, VISA_AWARD_STATUS } from "../config/brand.js";
-import { agentRun, homeFilm } from "../redesign/run.js";
+import { agentRun, homeFilm, stopLine } from "../redesign/run.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -27,8 +27,8 @@ export const REPO_URL = "https://github.com/agamemnon-coder/x402-business-agents
 export const CORE_LINE = "Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.";
 /** What Purser does, in Max's words (review round, 5 Nov): on slide 2 and in the pitch at about 0:25. */
 export const RULE_LINE = "Inside its limits an agent pays alone; beyond them, the CFO signs.";
-/** Who stopped what at a limit in the main run, in Max's words (review round, 5 Nov); the counts come from stops(). */
-export const stopLine = (metal: number, cfo: number) => `Metal refused ${metal} purchase${metal === 1 ? "" : "s"} over its cap; the CFO rejected ${cfo} proposal${cfo === 1 ? "" : "s"}.`;
+/** Who stopped what at a limit in the main run, in Max's words (review round, 5 Nov); one sentence with the site's (run.ts). */
+export { stopLine };
 /** Metal's refusal of #24, said one way everywhere (review round, 5 Nov). */
 export const REFUSAL_LINE = "Metal refused it; the refusal is recorded on chain.";
 /**

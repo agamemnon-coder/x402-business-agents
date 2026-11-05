@@ -39,7 +39,7 @@ const replay = block<Replay>(PAGE, "autonomy-data");
 describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and Proof do", () => {
   const st = stops(record);
 
-  it("takes its stop figures from run.ts: 2 stopped at a limit (1 Metal, 1 CFO); #24 counted once, #37 not counted", () => {
+  it("takes its stop figures from run.ts: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal; #24 counted once, #37 not counted", () => {
     expect(stoppedAtLimit(st)).toBe(2);
     const f = replay.figures;
     expect(f.stopped).toBe(stoppedAtLimit(st));
@@ -50,11 +50,11 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
     expect(metal.last).toMatchObject({ reason: "mandate_cap_exceeded", proof: { kind: "tx", ref: letThroughOf(record)!.tx } });
     expect(metal.last!.words).toMatch(/let through on purpose/);
     expect(replay.snapshot.tower.enforced.find((e) => e.who === "airwallex")!.count).toBe(st.airwallex);
-    expect(f.keptOut).toBe("2 stopped at a limit (1 Metal · 1 CFO). Not counted: 1 more refused by Metal because its mandate had just been replaced. The amount is what stayed out for good.");
-    expect(f.refusedPill).toBe("2 at a limit");
-    expect(f.refusedNote).toBe("16 refusals in this run; 2 stopped a payment at a limit (1 Metal · 1 CFO), as on Home and Proof. Not limits: 12 purchases the Sourcing agent's own buy policy declined (nothing signed), 1 refused by Metal because its mandate had just been replaced, 1 planted instruction ignored.");
-    expect(f.enforcedNote).toBe("Stopped at a limit in this run: 2 (1 Metal · 1 CFO). Not counted: 1 more refused by Metal because its mandate had just been replaced.");
-    expect(JSON.stringify(f)).not.toMatch(/all counted|\b16 stops\b/);
+    expect(f.keptOut).toBe("Metal refused 1 purchase over its cap; the CFO rejected 1 proposal. Not counted: 1 more refused by Metal because its mandate had just been replaced. The amount is what stayed out for good.");
+    expect(f.refusedPill).toBe("1 + 1 at a limit");
+    expect(f.refusedNote).toBe("16 refusals in this run. At a limit, as on Home and Proof: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal. Not limits: 12 purchases the Sourcing agent's own buy policy declined (nothing signed), 1 refused by Metal because its mandate had just been replaced, 1 planted instruction ignored.");
+    expect(f.enforcedNote).toBe("In this run: Metal refused 1 purchase over its cap; the CFO rejected 1 proposal. Not counted: 1 more refused by Metal because its mandate had just been replaced.");
+    expect(JSON.stringify(f)).not.toMatch(/all counted|\b16 stops\b|stopped at a limit/i);
   });
 
   it("shows those figures: the page's script reads them for the KPI, the refusals, Enforced by and Claude", () => {

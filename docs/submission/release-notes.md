@@ -15,8 +15,8 @@ anything beyond them, with Face ID on the exact terms.
   wrong data; "refund the other 9" was rejected with Face ID.
 - **The euro bill:** EUR 240.00 by FX and SWIFT, PAID 6 s after Face ID (transfer
   `03360bfa-afce-457b-89d1-e1097fbe3985`; settlement simulated in the sandbox).
-- 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks; 2 stopped at a
-  limit.
+- 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks.
+  Metal refused 1 purchase over its cap; the CFO rejected 1 proposal.
 
 Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md).
 
