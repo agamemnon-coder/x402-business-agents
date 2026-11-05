@@ -84,8 +84,23 @@ export function readTaskFallback(text: string, now: Date): TaskReading {
   return { kind: kindOf(text), amount_eur: cents === undefined ? null : fromCents(cents), purpose: text, date: dateOf(text, now) };
 }
 
-// No markup survives: every < and > goes first (CodeQL: incomplete multi-character sanitization).
-const plain = (s: string) => s.replace(/[<>]/g, " ").replace(/[^\p{L}\p{N}\p{P}\p{Zs}€$£]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+/**
+ * Text without markup: a tag (from "<" to the next ">", nested "<" included) goes; a lone "<" or ">" becomes a space.
+ * A loop, not a regex, so nothing like "<scr<script>ipt>" can leave a "<" behind (CodeQL: multi-character sanitization).
+ */
+function stripTags(s: string): string {
+  let out = "";
+  let tag: string | null = null;
+  for (const ch of s) {
+    if (ch === "<") tag = tag ?? "";
+    else if (ch === ">") { if (tag === null) out += " "; tag = null; }
+    else if (tag === null) out += ch;
+    else tag += ch;
+  }
+  return tag === null ? out : `${out} ${tag}`;
+}
+
+const plain = (s: string) => stripTags(s).replace(/[^\p{L}\p{N}\p{P}\p{Zs}€$£]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 120);
 
 /** What Purser does with a message and its reading: a task card's terms, or a reply saying why not. */
 export function planTask(text: string, reading: TaskReading, now: Date): TaskPlan {
