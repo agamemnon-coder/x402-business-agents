@@ -350,4 +350,105 @@ function treasuryShortfall(): AgentCase {
   };
 }
 
-export const FACT_CASES: AgentCase[] = [sourcingBusy(), treasuryRidgelineDown(), treasuryPaid(), treasuryShortfall()];
+/**
+ * Case 5 (reliability run rel-1, 6 November, 05:45:52 UTC): Packwise ends Starter; Pro costs 45.00 EUR over the
+ * Sourcing card's 30.00 a purchase. Haiku bought nothing, asked no raise, and wrote to the Treasury agent instead, which
+ * cannot raise a card limit; Treasury told it to wait for the CFO, who had nothing to approve, so the plan was never
+ * bought. Passes when the wake ends with the raise before the CFO (ask_card_raise, before buying or after the decline),
+ * or with the plan bought; a message to Treasury alone does not pass.
+ */
+function sourcingPackwiseRaise(): AgentCase {
+  return {
+    id: "sourcing-packwise-raise", agent: "sourcing", kind: "hard", model: "haiku",
+    what: "rel-1, 05:45: Packwise Pro (45.00 EUR) over the card's 30.00 a purchase: the agent itself asks the CFO for the raise (ask_card_raise), not the Treasury agent",
+    run: async (model: string, client: Anthropic) => {
+      const db = openDb(":memory:");
+      const sup = await standInSuppliers("0.04");
+      try {
+        const at = new Date("2026-11-06T05:45:52.329Z");
+        // rel-1's ledger at that moment: the agent's own last five decisions word for word, and its talk with Treasury
+        // about the mandate cap (asked of Treasury, rightly: a mandate change goes through Treasury's rebalance).
+        remember(db, "sourcing", [
+          [new Date("2026-11-06T05:42:09.917Z"), "Stockline's price rose to 0.04 per check, above my 0.03 per-purchase cap, and Ridgeline is still down for maintenance until 17:36 UTC. I'm keeping upstream buying paused (policy: none), so customer queries are refused rather than bought over my mandate. I'm not making any purchases or software changes; I'll wait for Treasury's answer on the cap and revisit when Ridgeline returns."],
+          [new Date("2026-11-06T05:42:43.392Z"), "Nothing changed since the last wake, so I'm keeping upstream buying paused (policy: none). Stockline is at 0.04 per check, above my 0.03 cap, and Ridgeline is in maintenance until 17:36 UTC. My mandate is on hold until the CFO decides P-0002 or P-0003 (expire 06:42 UTC). I made no purchases or software changes and will revisit once the mandate is replaced or Ridgeline returns."],
+          [new Date("2026-11-06T05:42:58.356Z"), "Mandate cap now shows 0.04 per purchase with 13.66 left, so I set the buy policy to Stockline only, max 0.04, no cache. That keeps the 0.01 margin at the 0.05 sell price, the minimum I must hold. Ridgeline is still in maintenance until 17:36 UTC, and I made no software or report purchases."],
+          [new Date("2026-11-06T05:43:13.921Z"), "Market check: Stockline is at 0.04 per check, within the new 0.04 mandate cap, and the 0.05 sell price leaves a 0.01 margin, which meets the minimum. The buy policy is already set to Stockline, max 0.04, no cache, so I'm leaving it in place. Ridgeline is still down for maintenance (503) until 17:36 UTC, so I made no changes to software or reports."],
+          [new Date("2026-11-06T05:43:34.629Z"), "Kept the buy policy on Stockline at max 0.04, no cache. The 0.04 cap and 0.01 margin at the 0.05 sell price meet the mandate and the minimum. Ridgeline is still down (HTTP 503) until 17:36 UTC. Market shows 13.62 budget left while Treasury reported 14.00 with 0.34 spent (13.66); I did not change the mandate. No software or report purchases."],
+        ]);
+        sendMessage(db, "sourcing", "treasury", "Sourcing: Stockline has moved to 0.04 a check, above my 0.03 per-purchase cap (Metal refused one at mandate_cap_exceeded). Ridgeline is in maintenance until 17:36 UTC. I have paused upstream buying (policy none) to avoid refused attempts. If you want Stockline served at 0.04 (margin 0.01 at our 0.05 price), I need the per-purchase cap raised to at least 0.04; the CFO decides.", new Date("2026-11-06T05:41:56.985Z"), "claude");
+        sendMessage(db, "treasury", "sourcing", "Treasury: I sent the CFO a rebalance with two options, P-0002 and P-0003. Option A keeps the price at 0.05, raises your cap to 0.04, and raises your budget from 10.00 to 14.00 (4.00 comes from Treasury, so the total stays 20.00). Option B raises the price to 0.07. Keep buying paused until the CFO signs. Once the cap is 0.04, Stockline works again, and Ridgeline (0.03) is due back at 17:36 UTC.", new Date("2026-11-06T05:42:05.850Z"), "claude");
+        const read = sendMessage(db, "treasury", "sourcing", "The rebalance is in effect: your cap is now 0.04 per stock check and your budget is 14.00 (0.34 spent). Stockline at 0.04 fits inside it, so you can run stock checks again. Query price stays 0.05. Ridgeline (0.03) is still down.", new Date("2026-11-06T05:43:07.204Z"), "claude");
+        advance(db, "sourcing", { eventId: 0, messageId: read }, new Date("2026-11-06T05:43:34.629Z"));
+        publish(db, "supplier.notice", { supplier: "Packwise", text: "Packwise ends its Starter plan this month. Your warehouse software continues only on the Pro plan, 45.00 EUR a month (Pro plan, monthly (more warehouses, live sync)). Without a plan, warehouse sync stops at the end of the month." }, "sourcing", "system", at);
+        const asked: string[] = [], bought: string[] = [];
+        const perTx = 3000;
+        const world = {
+          suppliers: () => Promise.all([supplierView(db, "stockline", sup.base.stockline), supplierView(db, "ridgeline", sup.base.ridgeline)]),
+          mandate: async () => ({ capCents: 4, budgetLeftCents: 1334 }),
+          sellCents: () => 5,
+          card: async () => ({ perTxCents: perTx, monthlyCents: 10000 }),
+          askCardRaise: async (per: string) => { asked.push(per); return { proposal_id: "P-0006" }; },
+          buyPlan: async (plan: string) => {
+            const cents = plan === "packwise-pro" ? 4500 : 1999;
+            if (cents > perTx) return { approved: false, text: "declined by Airwallex (LIMIT_EXCEEDED); your card's limit decides, and only the CFO can raise it: ask with ask_card_raise if you need this plan", ref: "awx-eval-declined" };
+            bought.push(plan);
+            return { approved: true, text: "approved by Airwallex", ref: "awx-eval" };
+          },
+        };
+        const w = await wake(db, { ...sourcingProfile(world), model }, { client, now: new Date(at.getTime() + 1000) });
+        const calls = w?.run?.calls ?? [];
+        const toTreasury = calls.filter((c) => c.tool === "send_message").length;
+        return {
+          pass: w?.source === "claude" && (asked.length === 1 || bought.includes("packwise-pro")),
+          words: said(w?.run ?? null),
+          run: { ...(w?.run ?? emptyRun()), costMicros: costIn(db) },
+          detail: `${w?.source ?? "no wake"}; tools ${calls.map((c) => c.tool).join(", ") || "none"}; ${asked.length ? `asked the CFO for ${asked[0]}` : "asked the CFO for nothing"}${toTreasury ? `; wrote to Treasury ${toTreasury}×` : ""}; "${(w?.summary ?? "").slice(0, 300)}"`,
+        };
+      } finally { await sup.close().catch(() => {}); }
+    },
+  };
+}
+
+/** The Treasury agent points an agent at its own card-raise tool, or tells it to ask the CFO itself. */
+export const POINTS_AT_OWN_RAISE = /ask_card_raise|\b(ask|request|propose|take|put|bring|raise|send|file|submit)\b[^.]{0,70}\b(yourself|on your own tool|with your own tool|straight to the cfo|to the cfo directly|with the cfo directly|directly (to|with) the cfo)\b|\b(raise|take|put|bring) (it|this|that|the [^.]{0,40}request) (with|to) the cfo\b|\bonly you can (ask|request)\b/i;
+
+/**
+ * Case 6 (rel-1, 05:46:04 UTC): the Sourcing agent writes to Treasury that Packwise Pro (45.00 EUR) is over its card's
+ * 30.00 and asks whether to get it raised. Opus answered that it cannot raise card limits, that it had "passed it on"
+ * in its report, and that Sourcing should not buy until the CFO approves a raise: nothing waited for the CFO, only the
+ * Sourcing agent's own ask_card_raise could put one there, and the plan was never bought. Passes when Treasury's answer
+ * points Sourcing at asking the CFO itself.
+ */
+function treasuryCardRaise(): AgentCase {
+  return {
+    id: "treasury-card-raise", agent: "treasury", kind: "hard", model: "opus",
+    what: "rel-1, 05:46: Sourcing asks Treasury about a card raise for Packwise Pro (45.00 over 30.00): Treasury cannot raise it and must point Sourcing at asking the CFO itself (ask_card_raise), not tell it to wait",
+    run: async (model: string, client: Anthropic) => {
+      const db = openDb(":memory:");
+      const sup = await standInSuppliers("0.04");
+      try {
+        setSupplierPrice(db, "stockline", "0.04");
+        remember(db, "treasury", [[new Date("2026-11-06T05:45:40Z"), "I planned the Stockline licence invoice SLL-2026-11 (EUR 240.00, due 15 November). It's waiting for your Face ID as P-0005. Nothing has been paid yet."]]);
+        advance(db, "treasury", { eventId: 0, messageId: 0 }, new Date("2026-11-06T05:45:40Z"));
+        sendMessage(db, "sourcing", "treasury", "Sourcing status 05:45 UTC: Stockline is at 0.04 per check, within the 0.04 cap, so I'm serving customers from it at a 0.01 margin. Ridgeline is still down (HTTP 503) until 17:36 UTC. Packwise ends Starter this month; the Pro plan is 45.00 EUR/month, above my 30.00 EUR per-purchase card limit. I'm not buying it yet. If warehouse sync should continue, the CFO would need to approve a card raise to at least 45.00 EUR before month end. Please tell me if you want that raised.", new Date("2026-11-06T05:45:53.637Z"), "claude");
+        const sim = {
+          mandates: async () => [{ agent: "sourcing", capCents: 4, budgetCents: 1400, spentCents: 66 }, { agent: "support", capCents: 10, budgetCents: 400, spentCents: 15 }, { agent: "treasury", capCents: 200, budgetCents: 200, spentCents: 51 }],
+          proposePriceRise: async () => [], client, sweep: async () => ({ ok: false, text: "No sweep in this eval." }), planInvoice: async () => ({ ok: false, text: "No invoice in this eval." }),
+        } as TreasurySim;
+        const deps: FlowDeps = { runFlow: () => ({ ok: false, text: "no flow runs in this eval" }), sim,
+          suppliers: (d: DB) => Promise.all([supplierView(d, "stockline", sup.base.stockline), supplierView(d, "ridgeline", sup.base.ridgeline)]) };
+        const w = await wake(db, { ...treasuryProfile(30 * 60_000, deps), model }, { client, now: new Date("2026-11-06T05:46:00Z") });
+        const toSourcing = (w?.run?.calls ?? []).filter((c) => c.tool === "send_message").map((c) => String((c.input as { text?: unknown }).text ?? ""));
+        const pointed = toSourcing.some((t) => POINTS_AT_OWN_RAISE.test(t));
+        return {
+          pass: w?.source === "claude" && pointed,
+          words: said(w?.run ?? null),
+          run: { ...(w?.run ?? emptyRun()), costMicros: costIn(db) },
+          detail: `${w?.source ?? "no wake"}; ${toSourcing.length ? `told Sourcing: "${toSourcing.join(" | ").slice(0, 300)}"` : "sent Sourcing nothing"}; ${pointed ? "pointed it at its own raise" : "did not point it at its own raise"}`,
+        };
+      } finally { await sup.close().catch(() => {}); }
+    },
+  };
+}
+
+export const FACT_CASES: AgentCase[] = [sourcingBusy(), treasuryRidgelineDown(), treasuryPaid(), treasuryShortfall(), sourcingPackwiseRaise(), treasuryCardRaise()];

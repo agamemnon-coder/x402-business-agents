@@ -62,3 +62,9 @@ b9b924f2ed5a184e83af0002bc3d61d28c5ec85d:test/visa-tapsig.test.ts:generic-api-ke
 b9b924f2ed5a184e83af0002bc3d61d28c5ec85d:test/visa-tapsig.test.ts:generic-api-key:91
 # test/dashboard.test.ts in bf69e68: a made-up passkey credential id ("AbCdEf12…") in a test.
 bf69e685373137f55b19a78bb43f65f378f2ff17:test/dashboard.test.ts:generic-api-key:134
+# Reliability runs (6 Nov): not secrets. The record names the environment VARIABLE ("KIT11_ANTHROPIC_API_KEY", the name,
+# never its value), and an agent's public key id ("sourcing-xs-…", an identifier, not a credential).
+f4191d6fea9e1df8e7fddaca9b66e6ee19884a67:docs/demo/reliability.json:generic-api-key:491
+f4191d6fea9e1df8e7fddaca9b66e6ee19884a67:docs/demo/reliability.json:generic-api-key:947
+c23119640b6104d732c53addbe4ea3a8a1dd6e6f:docs/demo/reliability.json:generic-api-key:23
+f0c548f8f380f9bccc58521b710870523621be3b:src/cli/reliability.ts:generic-api-key:497

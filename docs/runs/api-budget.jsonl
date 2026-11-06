@@ -382,3 +382,11 @@
 {"block":"evals","usd_micros":280450,"what":"dry run dry-180 (Thursday world, 3 agents, live; from the ledger agent.run calls)","at":"2026-11-03T05:47:42.000Z"}
 {"block":"evals","usd_micros":316966,"what":"main run (hoofdrun) main-1, 3 agents, live; from the ledger agent.run calls","at":"2026-11-03T11:36:46.000Z"}
 {"block":"evals","usd_micros":528085,"what":"model-bench adversarial (haiku, sonnet, opus), 5 run(s) each","at":"2026-11-04T07:34:30.126Z"}
+{"block":"evals","usd_micros":7089,"what":"agent-evals sourcing-packwise-raise haiku ×10","at":"2026-11-06T05:58:53.249Z"}
+{"block":"evals","usd_micros":23091,"what":"agent-evals sourcing-packwise-raise haiku ×20","at":"2026-11-06T06:02:32.940Z"}
+{"block":"evals","usd_micros":304037,"what":"agent-evals treasury-card-raise opus ×10","at":"2026-11-06T06:05:35.099Z"}
+{"block":"evals","usd_micros":303751,"what":"agent-evals treasury-card-raise opus ×10","at":"2026-11-06T06:08:05.236Z"}
+{"block":"evals","usd_micros":10855,"what":"agent-evals sourcing-packwise-raise haiku ×10","at":"2026-11-06T06:10:13.377Z"}
+{"block":"evals","usd_micros":223048,"what":"agent-evals treasury-card-raise opus ×10","at":"2026-11-06T06:11:34.091Z"}
+{"block":"evals","usd_micros":295642,"what":"reliability run rel-1 (fresh world, 3 agents, live; from the ledger agent.run calls)","at":"2026-11-06T05:55:56.000Z"}
+{"block":"evals","usd_micros":311095,"what":"reliability run rel-1b (fresh world, 3 agents, live; from the ledger agent.run calls)","at":"2026-11-06T06:24:58.000Z"}

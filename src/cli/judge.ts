@@ -8,6 +8,7 @@
 // and opens the browser. `--no-open` only serves; `--check` serves, fetches each page once and exits.
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import type { Server } from "node:http";
 import express from "express";
 import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
@@ -57,6 +58,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   if (report) app.get("/metal/report", page(METAL_REPORT_CSP, () => report));
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
   for (const [name, logo] of Object.entries(LOGOS)) app.get(`/assets/${name}`, (_req, res) => { res.type(logo.type).send(logo.body); });
+  // As on the relay: /favicon.ico is Purser's mark, so a page with no icon link asks for nothing missing.
+  app.get("/favicon.ico", (_req, res) => { res.type(LOGOS["favicon.svg"]!.type).send(LOGOS["favicon.svg"]!.body); });
   // The CFO's own pages (policy, approvals, passkey enrolment) need the runner and a passkey. Offline they say so and
   // point at the recording, so a juror who follows the emergency stop's link (policy?freeze=on) never meets a 404.
   const liveOnly = (_req: express.Request, res: express.Response) => {
@@ -76,7 +79,6 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   return { server, url: `http://localhost:${typeof addr === "object" && addr ? addr.port : port}` };
 }
 
-const LIVE_ONLY_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 const LIVE_ONLY_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Purser · live only</title><style>
 body{margin:0;font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f6f7f9;color:#14171f}
@@ -91,6 +93,8 @@ a{display:inline-block;margin-top:4px;padding:10px 16px;border-radius:8px;backgr
 <p>The recorded run shows every decision the CFO signed, with its proof.</p>
 <a href="/?recorded">Open the recorded run</a>
 </div></main></body></html>`;
+/** Its one inline style by hash, not 'unsafe-inline' (A3). */
+const LIVE_ONLY_CSP = `default-src 'none'; style-src 'sha256-${createHash("sha256").update(/<style>([\s\S]*?)<\/style>/.exec(LIVE_ONLY_PAGE)![1]!, "utf8").digest("base64")}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 /** The pages `--check` fetches once each: every page a juror reaches, both CFO dashboards included. */
 export const CHECK_PATHS = ["/", "/home", "/watch", "/proof", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];

@@ -76,7 +76,7 @@ describe("viewer key (M2)", () => {
     const { r } = relay();
     const { state } = runnerState({ enrolled: true });
     for (const res of [await push(r, state), await get(r, "/api/snapshot"), await get(r, "/api/snapshot", {}), await get(r, "/nothing")]) {
-      expect(res.headers.get("strict-transport-security")).toBe("max-age=31536000");
+      expect(res.headers.get("strict-transport-security")).toBe("max-age=31536000; includeSubDomains");
       expect(res.headers.get("x-content-type-options")).toBe("nosniff");
       expect(res.headers.get("cache-control")).toBe("no-store");
     }
