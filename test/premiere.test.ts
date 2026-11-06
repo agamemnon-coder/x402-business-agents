@@ -277,7 +277,9 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(screen("01-hook")).toEqual({ line: "AI agents can now spend money.", question: "So who signs off?" });
     expect(screen("02-purser")).toMatchObject({ title: "Purser", sub: "Starter Kit 11" });
     expect(CORE_LINE.join(" ")).toBe("Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.");
-    expect(README).toContain(`**${CORE_LINE.join(" ")}**`);
+    // The film was recorded on 5 November with this line; on 6 November Max moved the README's core line to the
+    // three locks, so the film keeps its own line and the README carries the new one.
+    expect(README).toContain("**Claude agents propose and pay; Purser's code, Airwallex and Metal each hold a limit; above them, the CFO signs the exact terms with Face ID.**");
     expect(screen("02-purser").core).toEqual(CORE_LINE);
     // The narrator's opening, word for word, from the script: in the third person, who built it.
     expect([...data.voice["01-hook"]!, ...data.voice["02-purser"]!].map((l) => l.text).join(" ")).toBe("AI agents can now spend money. So who signs off? This is Purser, built by Max Geurtsen.");

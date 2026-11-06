@@ -19,7 +19,7 @@ beyond them, with Face ID on the exact terms.
 small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
 every id below.
 
-**Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.**
+**Claude agents propose and pay; Purser's code, Airwallex and Metal each hold a limit; above them, the CFO signs the exact terms with Face ID.**
 
 **Try it yourself: [sign with your own Face ID](https://kit11.max-31b.workers.dev/try/sign).** In a test world of your
 own, an agent proposes two payments: a rule blocks one (the page shows which of three locks stopped it: Purser's policy,
