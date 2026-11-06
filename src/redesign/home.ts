@@ -3,7 +3,7 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, FILM_LINK, FILM_URL, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, PROOF_HEADING, PROOF_SENTENCES, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
+import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, FILM_LINK, FILM_URL, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, PROOF_HEADING, PROOF_SENTENCES, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE, CFO_VIEW_LINK, CFO_VIEW_URL } from "../config/brand.js";
 import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -273,7 +273,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
   </div>
   <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div></div>
   <div class="act">
-    <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the agents</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a>${opts.trySign ? `<a class="btn" href="try/sign">${icon("scan-face", 18)}Sign with your own Face ID</a>` : ""}<a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div>
+    <div class="ctas"><a class="btn primary" href="watch">${icon("play", 18)}Watch the agents</a><a class="btn" href="try">${icon("sparkles", 18)}Try it</a>${opts.trySign ? `<a class="btn" href="try/sign">${icon("scan-face", 18)}Sign with your own Face ID</a>` : ""}<a class="btn" href="proof">${icon("shield-check", 18)}Proof</a><a class="btn" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 18)}${esc(CFO_VIEW_LINK)}</a></div>
     <div class="built">Built on <span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${VISA_AWARD_ON ? '<span class="logo txt">Visa TAP</span>' : ""}</div>
   </div>
 </div></section>

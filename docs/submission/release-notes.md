@@ -207,6 +207,18 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   and the approval, each linked to the line that defines it (a test fails if a link stops pointing at its symbol), and
   "Verify it yourself in 3 commands" (`npm ci`, `npm test`, `npm run judge -- --check`, plus
   `npm run verify-receipt -- receipt.json`), each with what it proves. 2632 tests in 267 files, all passing (with main's).
+- 6 November, /proof puts the strongest proof first (Max's last round, item 2): each partner card opens with its
+  claims, each one a link. Airwallex: "The hash the CFO signed is in Airwallex's own record of the SWIFT payment" and
+  "3 of 3 cards carry the CFO's policy", to their anchors on /airwallex; Metal: "#24 refused on chain" and "86
+  payments, each its own tx", to Metal's testnet explorer; Claude: "24/24, 0 fallbacks" and "a reliability run found a
+  hand-off fault; fixed: 6/10 → 10/10", with a note that 6/10 → 10/10 is the eval rebuilt from rel-1's moment, before
+  and after the fix, and that rel-1b then passed every step. Every number is read from its record. The TAP remark under
+  the figures is gone: TAP is on /visa and in the footer link. 2647 tests in 268 files, all passing (with main's).
+- 6 November, the CFO's view, visible (Max's last round, item 4): "See the CFO's view" on Home and in Proof's head, to
+  the CFO dashboard's replay of the main run (/?autonomy: public, read-only, no viewer key). It opens at its top with
+  one line: "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." Before the
+  link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
+  HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2657 tests in 269 files, all passing (with main's).
 - 6 November, /try/sign step 0, "Set the policy" (Max's item 1): "One policy → three locks", interactive. In the
   visitor's test world, each agent's CFO policy (limit per purchase and per month, merchant categories, currencies,
   end date, "may pay alone up to", and the company's reserve floor) and, beside it, three panels computed on the server
@@ -219,7 +231,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   its amounts are *USDZ (test USD), the policy's numbers unconverted; and "may pay alone up to" works: raised and
   signed, a payment at or below it runs without a signature by the same stand-in, its card saying "paid alone under
   your new policy" (above it, or once it is lowered again, a payment not yet run waits for a signature). No call to
-  Airwallex, Metal or Claude. 2707 tests in 269 files, all passing (with main's).
+  Airwallex, Metal or Claude. 2732 tests in 271 files, all passing (with main's).
 
 ## Real, and ours
 

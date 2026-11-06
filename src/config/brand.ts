@@ -170,5 +170,15 @@ export const PROOF_SENTENCES: readonly { partner: "Airwallex" | "Metal" | "Claud
   { partner: "Metal", anchor: "metal", text: "Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey)." },
   { partner: "Claude", anchor: "claude", text: "Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step." },
 ];
+/**
+ * The CFO's view (Max's last round, item 4): Home and Proof link to the CFO dashboard's replay of the main run
+ * (/?autonomy: read-only, public, its data inside the page, no viewer key), and that view opens with CFO_VIEW_LINE,
+ * Max's words (his stricter wording: "each limit the CFO set", what the view shows from the CFO policy; never "every
+ * limit", which the site's tests ban).
+ * test/cfo-view.test.ts audits that page for anything private.
+ */
+export const CFO_VIEW_LINK = "See the CFO's view";
+export const CFO_VIEW_URL = "./?autonomy";
+export const CFO_VIEW_LINE = "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set.";
 /** The heading over PROOF_SENTENCES wherever they are listed. */
 export const PROOF_HEADING = "The proof, one sentence per partner";
