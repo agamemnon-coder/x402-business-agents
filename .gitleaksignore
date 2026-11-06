@@ -64,6 +64,8 @@ b9b924f2ed5a184e83af0002bc3d61d28c5ec85d:test/visa-tapsig.test.ts:generic-api-ke
 bf69e685373137f55b19a78bb43f65f378f2ff17:test/dashboard.test.ts:generic-api-key:134
 # Reliability runs (6 Nov): not secrets. The record names the environment VARIABLE ("KIT11_ANTHROPIC_API_KEY", the name,
 # never its value), and an agent's public key id ("sourcing-xs-…", an identifier, not a credential).
+# The field is called key_source since 6 Nov, so new commits no longer match; these lines stay because gitleaks scans
+# the whole history, and those commits stay in it (no history rewrites).
 f4191d6fea9e1df8e7fddaca9b66e6ee19884a67:docs/demo/reliability.json:generic-api-key:491
 f4191d6fea9e1df8e7fddaca9b66e6ee19884a67:docs/demo/reliability.json:generic-api-key:947
 c23119640b6104d732c53addbe4ea3a8a1dd6e6f:docs/demo/reliability.json:generic-api-key:23
