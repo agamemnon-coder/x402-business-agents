@@ -134,6 +134,10 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup. The
   live call stays off until the Worker variable TRY_SIGN_HAIKU is exactly "on", which only Max sets ("fixed text (live
   model off)"); the deploy guard checks that no script sets it. 2548 tests in 258 files, all passing.
+- 6 November, /try/sign from 1024 px: the left column under the start button shows the three steps once more, one
+  line each with a short gloss ("A payment above its limit, with its exact terms." / "A test passkey signs the hash of
+  those terms." / "The server checks it; one cent changed and it fails."), beside "One policy → three locks". 2549
+  tests in 258 files, all passing.
 
 ## Real, and ours
 

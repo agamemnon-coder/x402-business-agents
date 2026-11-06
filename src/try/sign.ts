@@ -21,6 +21,12 @@ export const TRY_SIGN_LABEL = "Test world · test passkey · nothing real moves"
 
 /** The three steps, word for word (the progress indicator). */
 export const TRY_SIGN_STEPS = ["The agent proposes", "You sign with Face ID", "Purser verifies"] as const;
+/** From 1024 px, under the start button: each step once more, with a short gloss, word for word (Max, 6 Nov). */
+export const TRY_SIGN_STEP_GLOSS = [
+  "A payment above its limit, with its exact terms.",
+  "A test passkey signs the hash of those terms.",
+  "The server checks it; one cent changed and it fails.",
+] as const;
 
 /** The line under the start button, word for word (Max, 6 Nov). */
 export const TRY_SIGN_HOOK = "A Treasury agent wants to pay an invoice above its limit. You decide.";
@@ -99,8 +105,13 @@ ol.progress li .t { min-width: 0; overflow-wrap: anywhere; }
 .start { display: grid; gap: 8px; max-width: 760px; }
 .go { display: grid; gap: 8px; align-content: start; }
 /* A laptop (A4): the start screen's right column shows how one policy becomes three locks; below 1024 px it is hidden. */
-.diagram { display: none; }
+.diagram, .gosteps { display: none; }
 @media (min-width: 1024px) {
+  /* The left column, under the start button: the three steps, one line each with its gloss. */
+  .gosteps { display: grid; gap: 10px; list-style: none; margin: 14px 0 0; padding: 0; }
+  .gosteps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+  .gosteps .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 2px var(--accent); font: 700 14px/1 Inter, system-ui, sans-serif; }
+  .gosteps b { display: block; font-size: 16px; } .gosteps small { display: block; color: var(--muted); font-size: 14.5px; line-height: 1.4; }
   .start { max-width: 1200px; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 28px; align-items: start; }
   .diagram { display: grid; gap: 12px; padding: 20px; }
   .diagram .eyebrow { margin: 0; }
@@ -775,6 +786,9 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   <button class="btn primary big" type="button" id="go-world">${icon("play", 18)}Start: show me the proposal</button>
   <p class="hook" id="hook">${esc(TRY_SIGN_HOOK)}</p>
   <p class="status" id="w-status" aria-live="polite"></p>
+  <ol class="gosteps" aria-label="What happens">
+${TRY_SIGN_STEPS.map((s, i) => `    <li><span class="n">${i + 1}</span><span><b>${esc(s)}</b><small>${esc(TRY_SIGN_STEP_GLOSS[i]!)}</small></span></li>`).join("\n")}
+  </ol>
   </div>
   <aside class="card diagram" id="diagram" aria-label="One policy, three locks">
     <p class="eyebrow">One policy → three locks</p>

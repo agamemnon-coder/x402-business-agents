@@ -44,7 +44,7 @@ const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
-const { TAMPER_VERDICT, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TAMPER_VERDICT, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEP_GLOSS, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
 const { canonical } = await import("../../worker/src/trySign.js");
@@ -203,7 +203,18 @@ for (const [width, scheme] of RUNS) {
     check(!!startFill.diagram && startFill.diagram.left > width * 0.45 && startFill.diagram.bottom <= height && startFill.diagram.locks === 3,
       `${tag}: A4: the right column shows "one policy → three locks" (from x ${Math.round(startFill.diagram?.left ?? 0)}, three locks, above the fold)`);
     check(startFill.fill >= 0.4, `${tag}: A4: the start screen is not mostly empty (content covers ${Math.round(startFill.fill * 100)}% of the screen below the header)`);
-  } else check(startFill.diagram === null, `${tag}: below 1024 px the diagram is not shown`);
+    // The left column under the start button: the three steps, each with its gloss, filling the column beside the diagram.
+    const left = await page.evaluate(`(() => {
+      const ls = [...document.querySelectorAll("#s-world .gosteps li")].filter((l) => l.getClientRects().length > 0);
+      const go = document.querySelector("#s-world .go").getBoundingClientRect(), d = document.querySelector("#diagram").getBoundingClientRect();
+      return { lines: ls.map((l) => [l.querySelector("b").textContent, l.querySelector("small").textContent]), goBottom: go.bottom, goRight: go.right, dTop: d.top, dBottom: d.bottom, dLeft: d.left };
+    })()`) as { lines: [string, string][]; goBottom: number; goRight: number; dTop: number; dBottom: number; dLeft: number };
+    check(JSON.stringify(left.lines) === JSON.stringify(TRY_SIGN_STEPS.map((s, i) => [s, TRY_SIGN_STEP_GLOSS[i]])) && left.goRight <= left.dLeft && left.goBottom - left.dTop >= 0.7 * (left.dBottom - left.dTop),
+      `${tag}: A4: the left column shows the three steps with their glosses under the start button (to ${Math.round(left.goBottom)} px, the diagram to ${Math.round(left.dBottom)} px)`);
+  } else {
+    check(startFill.diagram === null, `${tag}: below 1024 px the diagram is not shown`);
+    check(await page.locator("#s-world .gosteps").isHidden(), `${tag}: below 1024 px the steps under the button are not shown (the progress bar says them)`);
+  }
   await page.screenshot({ path: join(shots, `${tag}-1-start.png`) });
 
   // Six requests a visit (world, passkey, signature, three tampers) and six visits: the relay's 30 a minute per address

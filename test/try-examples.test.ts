@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { cfoApproval, floorsHeld, tryLocks } from "../src/try/examples.js";
-import { TAMPER_FIELDS, TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEPS, WHATS_REAL, trySignPage } from "../src/try/sign.js";
+import { TAMPER_FIELDS, TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEP_GLOSS, TRY_SIGN_STEPS, WHATS_REAL, trySignPage } from "../src/try/sign.js";
 import { proposalTerms, FIXED_PROPOSALS } from "../worker/src/trySign.js";
 
 const read = <T>(p: string) => JSON.parse(readFileSync(new URL(`../${p}`, import.meta.url), "utf8")) as T;
@@ -111,6 +111,17 @@ describe("the page's frame: three steps, one line of disclaimer, \"What's real?\
     expect(ol).toContain('<li id="pg-1" class="on" aria-current="step">');
     expect(main.indexOf('id="go-world"')).toBeGreaterThan(main.indexOf("</ol>"));
     expect(main.indexOf('id="go-world"')).toBeLessThan(main.indexOf('id="s-props"'));
+  });
+
+  it("from 1024 px, under the start button: the three steps once more, one line each with a short gloss", () => {
+    const go = block(main, '<div class="go">', "div").whole;
+    const ol = block(go, '<ol class="gosteps"', "ol").whole;
+    expect(go.indexOf('id="go-world"')).toBeLessThan(go.indexOf('<ol class="gosteps"'));
+    const items = ol.split("<li>").slice(1).map((x) => [/<b>([^<]*)<\/b>/.exec(x)?.[1], /<small>([^<]*)<\/small>/.exec(x)?.[1]]);
+    expect(items).toEqual(TRY_SIGN_STEPS.map((s, i) => [s, TRY_SIGN_STEP_GLOSS[i]]));
+    for (const g of TRY_SIGN_STEP_GLOSS) expect(g.split(" ").length).toBeLessThanOrEqual(10);
+    // Hidden below 1024 px (the progress bar says the steps on a phone).
+    expect(page).toMatch(/\.diagram, \.gosteps \{ display: none; \}/);
   });
 
   it("one line of disclaimer at the top, the honest detail inside \"What's real?\"", () => {
