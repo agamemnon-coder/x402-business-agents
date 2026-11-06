@@ -247,6 +247,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   approvals, the audit chain's published links with their check, and a README on how to check it. "From the main run
   of 3 November, test money."; T:0: "Posting to T:0 is built; nothing posted (keys refused: 403 CAPI71 on 3 Nov, 401
   CAPI11 on 5 Nov)." A stored zip, written with Node's own CRC-32: no new dependency. 2773 tests in 273 files, all passing.
+- 6 November, "Unit economics (hypothesis)" (Max's last round, item 5.2; assumptions approved by Max): in
+  docs/business/model.md, what a company of 5 agents costs a month against the intended price, from the main run's
+  Claude cost per decision and a list of labelled assumptions (usage, Cloudflare hosting at its published prices, the
+  ECB's EUR/USD rate), with the gross margin at low, mid and high usage (77%, 48%, 52%). The price now includes
+  decisions, word for word everywhere: "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10
+  per extra agent; €3 per extra 100 decisions." One line says what Opus for every agent would cost (about 2.1×, the
+  run repriced), one what Claude decided (24 decisions; of the 88 payments (88 = 86 on Metal + 1 card charge + 1 SWIFT transfer), 82 were routine code). The deck's business
+  slide shows the same numbers ("Why this is a company" merged into it, so the deck stays at twelve).
+  src/business/unitEconomics.ts computes them; a test checks that none is unsourced. 2792 tests in 274 files,
+  all passing (with main's).
 - 6 November, the test suite makes 0 external calls: building the seller or a supplier no longer asks Metal's
   facilitator for its /supported list (test/support/facilitatorStandIn.ts, in test/clearing.test.ts and
   test/world-thursday.test.ts), and a vitest setup file removes every live key from the tests' environment and refuses
@@ -260,6 +270,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   Max approved 96 Airwallex calls at most (117 with one second attempt), 14 Claude calls, 0 Metal. A stand-in test's
   accidental Claude calls while preparing it are booked as an upper bound (at most 24 calls, 0.18 USD).
   2802 tests in 277 files, all passing (with main's and the network guard).
+- 6 November, the worst case (1.1) and the unit economics (5.2) merged with the network guard and awx-1's preparation:
+  2844 tests in 279 files, all passing.
+- 6 November, the worst case, set by policy (1.1): per agent and in all, per day and per month, computed from the
+  policy by Purser's own code: each card's monthly limit (EUR), each Metal mandate's budget (test USD) and the
+  Treasury agent's task cards without Face ID, on a line of their own (Max: "apart"). EUR and test USD apart, an EUR
+  total only at the main run's recorded rate (3 Nov). Clear at a glance (Max): the figure, two lines, and the rest behind
+  one closed fold, "How this is computed". At the top of the CFO's view, in step 0 of /try/sign (changing with the visitor's card limits) and in
+  the README; `worstCaseLine()` holds the form's sentence for its rewrite. No call to Airwallex, Metal or Claude.
+  2796 tests in 274 files, all passing (with main's).
 
 ## Real, and ours
 

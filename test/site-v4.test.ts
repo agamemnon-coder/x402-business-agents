@@ -41,7 +41,8 @@ describe("the site after v4", () => {
     // Home: 880 since section D's proof sentences (6 Nov): one sentence per partner, each with its numbers, in place of
     // the three short partner cards.
     // Proof: 560 since Max's last round (item 2), for each partner card opening with its strongest claims (the TAP lines gone).
-    const budget: Record<string, number> = { home: 880, watch: 100, try: 180, proof: 560, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
+    // Home: 890 since Max's last round (item 5.2), for the price with Claude decisions included.
+    const budget: Record<string, number> = { home: 890, watch: 100, try: 180, proof: 560, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

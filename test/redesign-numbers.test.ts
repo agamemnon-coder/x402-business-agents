@@ -9,7 +9,7 @@ import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
 import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
+import { DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
 import { esc } from "../src/redesign/ui.js";
 
@@ -60,7 +60,10 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(/\(commit [0-9a-f]{7,40}\)/g, " ")
   // /metal's separate runs, each dated with its own run record; their figures are checked against those records in
   // test/metal-story.test.ts.
-  .replace(/Beyond the kit: separate runs, each dated \(not the main run\)[\s\S]*?(?=The Metal features we use)/, " ");
+  .replace(/Beyond the kit: separate runs, each dated \(not the main run\)[\s\S]*?(?=The Metal features we use)/, " ")
+  // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
+  // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
+  .replace(PRICE_LINE, " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));

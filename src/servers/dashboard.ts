@@ -22,6 +22,8 @@ import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
 import { AGENT_DISPLAY, CFO_VIEW_LINE, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { EXPOSURE_HOW, exposureOf, exposureWords } from "../policy/exposure.js";
+import { exposurePolicyFromRecord, recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
 import { loadRecord, replayRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
 import { trySignPage } from "../try/sign.js";
@@ -124,8 +126,21 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
     // Under it, on that view only: "Trace any payment" (Max's last round, 1.2), to /trace.
     .replace("__TRACE_LINK__", () => TRACE_LINK)
     // And the month-end pack (1.3): one download, built from the record (DOWNLOADS).
-    .replace("__PACK_NAME__", () => PACK_NAME).replace("__PACK_LINK__", () => PACK_LINK);
+    .replace("__PACK_NAME__", () => PACK_NAME).replace("__PACK_LINK__", () => PACK_LINK)
+    // 1.1: under that line, the worst case the main run's policy allows (src/policy/exposure.ts), one block.
+    .replace("__CFO_EXPOSURE__", () => CFO_EXPOSURE);
 }
+/** The CFO's view's worst case: from the policy the main run ended with and the one rate it recorded (none: no block). */
+const CFO_EXPOSURE = (() => {
+  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  try {
+    const { record } = loadRecord();
+    const r = record as unknown as RecordForExposure;
+    const p = exposurePolicyFromRecord(r);
+    const w = exposureWords(exposureOf(p), p, recordedRate(r));
+    return `<p class="hl">${esc(w.headline)}</p><p>${esc(w.tasks)}</p><p>${esc(w.above)}</p><details class="how"><summary>${esc(EXPOSURE_HOW)}</summary><ul>${w.how.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details>`;
+  } catch { return ""; }
+})();
 /**
  * Words the public pages no longer use (Max, v4): older records and Lab results still carry them in their text, so the
  * pages that show those records say them in today's words. Display only; the records stay as they were written.

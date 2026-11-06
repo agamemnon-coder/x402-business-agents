@@ -28,7 +28,7 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
   const relay = new Relay(sqlOver(new Database(":memory:")), { relayToken: opts.token, mfa: mfaOn() });
   const pages = buildPages();
   // /try/sign's test worlds, as on the Worker: their own store (another in-memory database), only when the bundle has the page.
-  const trySign = pages.trySign ? new TrySignDesk(sqlOver(new Database(":memory:")), { fx: opts.trySignFx ?? null, agentLine: opts.trySignLine ?? null }) : null;
+  const trySign = pages.trySign ? new TrySignDesk(sqlOver(new Database(":memory:")), { fx: opts.trySignFx ?? null, agentLine: opts.trySignLine ?? null, rate: pages.exposureRate ?? null }) : null;
   let base = "";
   const server = createServer((req, res) => {
     const chunks: Buffer[] = [];

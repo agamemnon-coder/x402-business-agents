@@ -18,6 +18,9 @@ const base = liveAt >= 0 ? args[liveAt + 1]!.replace(/\/$/, "") : judge!.url;
 
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
+// 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
+const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
+const WORST = worstCaseWords();
 
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
@@ -111,6 +114,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.goto(`${base}/?recorded`, { waitUntil: "load" });
     await page.waitForTimeout(1500);
     await look(page, `/?recorded ${tag}`, w);
+    if (await page.locator("#cfo-expo").isVisible()) fail(`/?recorded ${tag}: the CFO's view's worst case shows on the recorded run too`);
     // Claude's costs are real US dollars (list prices); chain money must read "test USD" everywhere else.
     // The money flow (D23, Max 1 Nov) shows on purpose that Metal payments are the *USDZ stablecoin on chain: there,
     // and only there, "*USDZ" is the unit, always with its star and the word "stablecoin" beside it (checked below).
@@ -198,6 +202,14 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         return { text: l.innerText, shown: !l.hidden && r.height > 0, inView: r.top >= head - 2 && r.bottom <= innerHeight, first: !!(l.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), y: scrollY };
       })()`)) as { text: string; shown: boolean; inView: boolean; first: boolean; y: number };
       if (top.text !== "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." || !top.shown || !top.inView || !top.first) fail(`/?autonomy ${tag}: the CFO's line is not on top and in view (${JSON.stringify(top)})`);
+      // 1.1: right under it, one block with the worst case the main run's policy allows, as the README says it.
+      const expo = await page.locator("#cfo-expo");
+      const head = (await expo.locator(".hl").innerText()).trim();
+      if (!(await expo.isVisible()) || head !== WORST.headline || !((await expo.textContent()) ?? "").includes(WORST.how.at(-1)!)
+        || !(await page.evaluate(() => !!(document.getElementById("cfo-line")!.compareDocumentPosition(document.getElementById("cfo-expo")!) & Node.DOCUMENT_POSITION_FOLLOWING)))) fail(`/?autonomy ${tag}: the worst case block is not under the CFO's line, or not the README's words ("${head}")`);
+      // Clear at a glance (Max): the fold "How this is computed" closed, and at most 40 words in sight.
+      const seen = (await expo.innerText()).trim().split(/\s+/).length;
+      if (await expo.locator("details.how").evaluate((d) => (d as HTMLDetailsElement).open) || seen > 40) fail(`/?autonomy ${tag}: the worst case block shows ${seen} words, or its fold is open`);
       await page.screenshot({ path: join(shots, `autonomy-top-${tag}.png`) });
     }
     const au = await page.evaluate(() => document.body.innerText);

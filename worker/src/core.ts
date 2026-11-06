@@ -14,6 +14,8 @@ export interface Sql {
 
 export interface Pages {
   dashboard: string;
+  /** 1.1: the one EUR/USD rate the main run recorded (src/policy/exposureSources.ts), for /try/sign's worst case; null: none. */
+  exposureRate?: { usdPerEur: string; date: string; source: string } | null;
   /** The month replay (simulated, its data inside the page). */
   month: string;
   /** The public demo: a recorded live run played back (K5), its data inside the page. */

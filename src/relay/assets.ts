@@ -3,6 +3,8 @@
 // phone script with its TypeScript types stripped, and the Inter font. npm run relay:deploy writes them to worker/src/pages.gen.ts.
 
 import { readFileSync } from "node:fs";
+import { recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
+import { loadRecord } from "../redesign/run.js";
 import ts from "typescript";
 import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, WATCH_CSP, WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
@@ -23,6 +25,9 @@ const PHONE_CSP = [
  * TRY_SIGN_ENABLED is read here, once, where the bundle is built: on, the bundle carries /try/sign (whose presence
  * turns its API on in the Worker) and the landing's button to it; off, neither, so no page can link to a 404.
  */
+/** 1.1: the main run's recorded rate, for /try/sign's worst case (the Worker cannot read the record itself). */
+const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as unknown as RecordForExposure); } catch { return null; } })();
+
 export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
   const trySign = trySignOn(env);
   const home = trySign ? homeWithTrySign() : { page: HOME_PAGE, csp: HOME_CSP };
@@ -34,6 +39,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     // Every public page carries the same link-preview tags and favicon (jury QA, 6 Nov, Q5): the pages built in
     // src/servers/dashboard.ts carry them already (src/ui/meta.ts withMeta), the redesign's write their own.
     dashboard: DASHBOARD_PAGE,
+    exposureRate: EXPOSURE_RATE,
     month: monthPage(),
     demo: demoPage(),
     live: livePage(),

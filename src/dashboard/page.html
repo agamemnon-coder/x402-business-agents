@@ -98,6 +98,10 @@ button { font: inherit; }
 .recbanner svg { color: var(--accent); }
 .cfolinks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: -6px 0 16px; font-size: 15px; font-weight: 600; }
 .cfolinks a { color: var(--accent); text-decoration: none; }
+.cfoexpo { margin: 0 0 16px; padding: 14px 16px; border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; background: var(--surface); max-width: 46em; display: grid; gap: 4px; font-size: 15px; line-height: 1.45; }
+.cfoexpo[hidden] { display: none; }
+.cfoexpo p, .cfoexpo ul { margin: 0; } .cfoexpo .hl { font-weight: 750; font-size: 22px; line-height: 1.3; letter-spacing: -.01em; margin-bottom: 2px; }
+.cfoexpo details.how { margin-top: 4px; font-size: 14px; color: var(--muted); } .cfoexpo details.how summary { cursor: pointer; color: var(--accent); font-weight: 600; } .cfoexpo details.how ul { padding-left: 18px; margin-top: 6px; display: grid; gap: 4px; }
 .cfoline { margin: 0 0 14px; font-size: 20px; line-height: 1.4; font-weight: 700; letter-spacing: -.01em; color: var(--text); max-width: 46em; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 32px; }
 .kpi .of { font-size: 14px; color: var(--muted); margin-top: 2px; min-height: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -638,6 +642,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 <main class="wrap" id="dash" hidden>
   <p class="cfoline" id="cfo-line" hidden>__CFO_VIEW_LINE__</p>
   <p class="cfolinks" id="cfo-links" hidden><a href="trace">__TRACE_LINK__</a><a href="assets/__PACK_NAME__" download>__PACK_LINK__</a></p>
+  <div class="cfoexpo" id="cfo-expo" hidden>__CFO_EXPOSURE__</div>
   <div class="recbanner" id="recbanner" hidden><span data-icon="database"></span><span id="rec-text">Recorded run.</span></div>
   <div id="agents-view" hidden>
     <div class="head"><div><h1>Agents</h1><div class="sub">What each agent does, with which model, within your limits. Card limits come from your CFO policy; mandates change only with your Face ID.</div></div></div>
@@ -1754,6 +1759,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     // The CFO's view (Max's last round, item 4): one line on top, and the view opens at the top, where it is.
     document.getElementById("cfo-line").hidden = false;
     document.getElementById("cfo-links").hidden = false;
+    document.getElementById("cfo-expo").hidden = false;
   } else if (wantRecorded && RECORDED) {
     markNav("dashboard");
     tabs([["Overview", "?recorded", !wantAgents && !wantBooks && !wantDisputes], ["Agents", "?recorded&agents", wantAgents], ["Books", "?recorded&books", wantBooks], ["Disputes", "?recorded&disputes", wantDisputes]]);

@@ -11,6 +11,7 @@ import type { PackFacts } from "./facts.js";
 import { DIFFERENTIATORS, HERO, KIT11_RUN_LINE, NORTHWIND_LINE, PROOF_SENTENCES, TRY_IT, VISA_TAP_STATUS, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
 import { cardControlRows, hashTravel } from "../redesign/airwallexProof.js";
 import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
+import { INPUTS, USAGE_LABEL, figures, opusLine, paymentsLine, unitEconomics } from "../business/unitEconomics.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -77,6 +78,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const hash = hashTravel(record);
   const cards = cardControlRows(record);
   const tests = testCount();
+  const ue = unitEconomics(), uf = figures(ue);
   const slides: Slide[] = [
     {
       kicker: "Purser · Starter Kit 11 · x402 Business Agents",
@@ -204,12 +206,19 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       </div>`,
     },
     {
+      // Max's last round, item 5.2: "Why this is a company" and "Unit economics (hypothesis)" merged into one slide, so
+      // the deck stays at twelve. The problem and why Purser are on slides 2 and 3; who buys, the price and why now stay
+      // here, then the cost per company and the gross margin src/business/unitEconomics.ts computes (docs/business/model.md).
       kicker: "The business · a hypothesis",
-      title: "Why this is a company",
+      title: "Unit economics (hypothesis)",
       wide: true,
       extra: `<p class="small note">${esc(WHY_COMPANY_NOTE)}</p>
-        <ul class="biz">${WHY_COMPANY.map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)}</li>`).join("")}</ul>
-        <p class="src">Sources and reasoning: docs/business/ in the repository.</p>`,
+        <ul class="biz">${WHY_COMPANY.filter((l) => ["Who buys", "Intended pricing", "Why now"].includes(l.label)).map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)}</li>`).join("")}</ul>
+        <table class="ue"><thead><tr><th>Usage (hypothesis): decisions a month, per agent · per company of 5</th><th>Price per company</th><th>Cost per company</th><th>Gross margin</th></tr></thead><tbody>
+        ${ue.scenarios.map((x) => `<tr><td>${esc(`${USAGE_LABEL[x.usage]}: ${x.decisionsPerAgent.toLocaleString("en-GB")} · ${x.decisionsPerCompany.toLocaleString("en-GB")}`)}</td><td>${esc(x.priceEurText)}</td><td>${esc(x.costEurText)}</td><td><b class="${x.margin < 0 ? "bad" : "ok"}">${esc(x.marginText)}</b></td></tr>`).join("")}
+        </tbody></table>
+        <p class="uefoot">${esc(opusLine(ue))}<br>${esc(paymentsLine(ue))} Claude cost per decision, every call included: USD ${esc(uf.allInPerDecisionUsd)} at list prices.</p>
+        <p class="src">Assumptions: usage; hosting on Cloudflare at USD ${INPUTS.workersPlanUsd.value} a company a month; EUR 1 = USD ${INPUTS.usdPerEur.value} (ECB, 6 November 2026). Each with its source: docs/business/model.md, "Unit economics (hypothesis)".</p>`,
     },
     {
       kicker: "Roadmap · a plan, not a promise",
@@ -301,9 +310,13 @@ ul.why li { font-size: 25px; line-height: 1.32; font-weight: 600; color: #ffffff
 .pairs { display: grid; grid-template-columns: 200px 1fr; gap: 10px 14px; font-size: 18px; margin: 0; } .pairs dt { color: #9aa4bf; } .pairs dd { margin: 0; }
 .ok { color: #3ccf82; } .bad { color: #ff6b6b; }
 ul.cards li, ul.sec li, ul.biz li { font-size: 19px; line-height: 1.4; margin-bottom: 10px; }
-ul.biz { margin-top: 8px; } .note { margin: 0 0 10px; }
+ul.biz { margin-top: 8px; } ul.biz li { margin-bottom: 6px; } .note { margin: 0 0 10px; }
 .timeline.row3 span { font-size: 18px !important; }
 .small-lead { font-size: 24px; margin: 22px 0 14px; }
+table.ue { border-collapse: collapse; width: 100%; margin: 6px 0 12px; font-size: 19px; }
+table.ue th { text-align: left; font-size: 15px; font-weight: 600; color: #9aa4bf; padding: 0 14px 8px 0; }
+table.ue td { padding: 5px 14px 5px 0; border-top: 1px solid #232b45; } table.ue td b { font-size: 21px; }
+.uefoot { font-size: 17px; line-height: 1.4; color: #c9cfe2; margin: 0 0 8px; }
 .flow { margin: 14px 0 18px; } .flow .box { padding: 14px 12px; } .flow .box b { font-size: 21px; } .flow .box small { font-size: 14.5px; }
 </style></head><body>
 ${slides.map((x) => `<section${x.wide ? ' class="wide"' : ""}><div class="text"><p class="kicker">${esc(x.kicker)}</p><h1>${esc(x.title)}</h1>${list(x.points ?? [])}${x.extra ?? ""}</div>${x.wide ? "" : `<div class="pic">${x.pic ?? ""}</div>`}</section>`).join("\n")}
