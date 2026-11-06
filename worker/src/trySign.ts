@@ -17,7 +17,7 @@
 import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
-import { AGENT_LINE_ALL_PER_MINUTE, AGENT_LINE_DAILY_USD, AGENT_LINE_PER_HOUR, AGENT_LINE_RESERVE_USD, AGENT_LINE_SYSTEM, agentLineFacts, cleanLine, type SentenceSource, type Voice } from "./agentLine.js";
+import { AGENT_LINE_ALL_PER_MINUTE, AGENT_LINE_DAILY_USD, AGENT_LINE_PER_HOUR, AGENT_LINE_RESERVE_USD, AGENT_LINE_SYSTEM, agentLineFacts, agentLineGiven, checkLine, moneyForPeople, type SentenceSource, type Voice } from "./agentLine.js";
 
 /** A test world lives one hour, then everything in it is deleted. */
 export const TRY_SIGN_TTL_MS = 60 * 60 * 1000;
@@ -184,8 +184,8 @@ export const TEST_WORLD = {
 } as const;
 const cents = (s: string) => { if (!/^\d+\.\d{2}$/.test(s)) throw new Error("not a decimal amount"); return Number(s.replace(".", "")); };
 const money = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
-/** For people: EUR 25,000.00. */
-const eur = (s: string) => `EUR ${s.replace(/\B(?=(\d{3})+\.)/g, ",")}`;
+/** For people, as the page writes it: EUR 25,000.00. */
+const eur = (s: string) => moneyForPeople("EUR", s);
 
 interface FixedProposal { id: string; agent: string; says: string; payee: string; iban: string; amount: string; reference: string }
 /**
@@ -291,12 +291,13 @@ export class TrySignDesk {
   private readonly now: () => Date;
 
   private readonly fx: FxSource | null;
-  private readonly line: SentenceSource | null;
+  /** The sentence's source: Haiku (or a stand-in), "off" (the Worker's TRY_SIGN_HAIKU is not "on"), or none (no key). */
+  private readonly line: SentenceSource | "off" | null;
   /** The last live quote, shared only after a limit or a failure while it has time left (FX_REUSE_MIN_MS). */
   private lastQuote: FxQuote | null = null;
 
   /** It takes a SQL handle, a clock and, when the Worker has the sandbox key, the FX quote source; nothing else. */
-  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | null } = {}) {
+  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | "off" | null } = {}) {
     this.now = opts.now ?? (() => new Date());
     this.fx = opts.fx ?? null;
     this.line = opts.agentLine ?? null;
@@ -435,8 +436,10 @@ export class TrySignDesk {
    * writes them; nothing the visitor sent), within the day's budget and the limits; else the fixed sentence, labelled.
    */
   private async lineFor(ip: string, p: FixedProposal): Promise<{ says: string; voice: Voice }> {
-    const fixed = (reason: "budget" | "unavailable", why: string) => ({ says: p.says, voice: { source: "fixed", reason, why } as Voice });
+    const fixed = (reason: "budget" | "unavailable" | "mismatch" | "off", why: string) => ({ says: p.says, voice: { source: "fixed", reason, why } as Voice });
+    if (this.line === "off") return fixed("off", "the live model is off on this server");
     if (!this.line) return fixed("unavailable", "this server has no model key");
+    const line = this.line;
     const nowMs = this.now().getTime();
     const day = this.now().toISOString().slice(0, 10);
     const spent = () => (this.sql.exec("SELECT usd FROM ts_spend WHERE day = ?", day).toArray() as { usd: number }[])[0]?.usd ?? 0;
@@ -449,10 +452,13 @@ export class TrySignDesk {
     this.hit(ip, "line", nowMs);
     add(AGENT_LINE_RESERVE_USD);
     try {
-      const r = await this.line({ system: AGENT_LINE_SYSTEM, facts: agentLineFacts({ ...p, currency: TEST_WORLD.currency }, TEST_WORLD) });
+      const invoice = { ...p, currency: TEST_WORLD.currency };
+      const r = await line({ system: AGENT_LINE_SYSTEM, facts: agentLineFacts(invoice, TEST_WORLD) });
       add(r.costUsd - AGENT_LINE_RESERVE_USD);
-      const says = cleanLine(r.text);
-      if (!says) return fixed("unavailable", "the model's sentence was not one plain sentence");
+      // One plain sentence, and every amount in it one of the four it was given, written exactly as given.
+      const c = checkLine(r.text, agentLineGiven(invoice, TEST_WORLD));
+      if ("bad" in c) return c.bad === "shape" ? fixed("unavailable", "the model's sentence was not one plain sentence") : fixed("mismatch", "an amount in the model's sentence was not one of the amounts it was given, written exactly as given");
+      const says = c.says;
       return { says, voice: { source: "model", model: r.model, request_id: r.requestId && /^[A-Za-z0-9_-]{1,128}$/.test(r.requestId) ? r.requestId : null } };
     } catch {
       // A fixed reason only: never the API's words or the key.

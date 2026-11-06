@@ -36,6 +36,14 @@ export const TRY_SIGN_END = [
   { label: "Read the code", href: REPO_URL, icon: "external-link" },
 ] as const;
 
+/** Why the Treasury agent's sentence is the fixed one, as its pill says it, by the reason the server gives (worker/src/agentLine.ts). */
+export const VOICE_LABELS = {
+  off: "fixed text (live model off)",
+  budget: "fixed text (budget reached)",
+  mismatch: "fixed text (sentence did not match the terms)",
+  unavailable: "fixed text (model unavailable)",
+} as const;
+
 /** The fields a visitor may change to tamper, as the terms name them. */
 export const TAMPER_FIELDS = ["amount", "payee_iban", "currency", "fx.client_rate"] as const;
 
@@ -49,7 +57,7 @@ export const WHATS_REAL = {
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
     "The tamper: the server checks your changed terms against the same signature, for real, and refuses them.",
-    "The Treasury agent's sentence on the waiting payment is a live Claude Haiku call, labelled “Claude Haiku · live”: only the test world's invoice, balance, reserve floor and limit go in, never anything you type. The model only proposes; the limits, the checks and the approval are code and your passkey. Without it (no key on the server, the day's USD 1 budget or the rate limit reached, or no answer in 8 s) the fixed sentence is shown, labelled “fixed text”.",
+    "The Treasury agent's sentence on the waiting payment can be a live Claude Haiku call, labelled “Claude Haiku · live”, when the server has it on: only the test world's invoice, balance, reserve floor and limit go in, never anything you type. The model only proposes; the limits, the checks and the approval are code and your passkey. Code checks every amount in its sentence against the amounts it was given, written exactly as given. Without it (the live model off on the server, no key, the day's USD 1 budget or the rate limit reached, no answer in 8 s, or a sentence that does not match the terms) the fixed sentence is shown, labelled “fixed text”.",
     "The FX quote is live from the Airwallex sandbox (a test environment): read-only, nothing is converted, no money moves. It is in the terms, so the signature covers its quote id, and an expired quote is refused. Without a live quote (no sandbox key on the server, or the limit reached) the page shows the main run's recorded quote instead, labelled, and it is not in the signature.",
     "The receipt: receipt.json holds the exact terms, their hash, your passkey's signature, its public key and the algorithm. Anyone can check it offline, with no server: npm run verify-receipt -- receipt.json in the repository. Change one field or one cent and it fails. It proves that the holder of that key signed those terms, not who holds it.",
   ],
@@ -414,7 +422,7 @@ const JS = `
   // Who wrote the agent's sentence: Claude Haiku live, a labelled stand-in (local checks only), or the fixed text and why.
   function voiceLabel(v) {
     if (v && v.source === "model") return /^claude-haiku/.test(v.model) ? "Claude Haiku · live" : "Stand-in sentence (local check, not Claude)";
-    if (v) return v.reason === "budget" ? "fixed text (budget reached)" : "fixed text (model unavailable)";
+    if (v) return D.voiceLabels[v.reason] || D.voiceLabels.unavailable;
     return "fixed text, no model call";
   }
   function agentLine(p) {
@@ -807,7 +815,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: an agent proposes, you sign the exact terms with Face ID, Purser verifies. A test world of your own; nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false,
-    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END },
+    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, voiceLabels: VOICE_LABELS },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [

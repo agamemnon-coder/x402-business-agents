@@ -475,6 +475,33 @@ for (const [width, scheme] of RUNS) {
   await context.close();
 }
 
+// The agent's sentence is text on the page, never markup (A2 review). The server never passes markup on from the model
+// (test/try-agent-line.test.ts), so here the world's answer is rewritten in the browser to carry some, on both
+// proposals, and the page must show it as plain text: no element made, no script run.
+if (!args.live) {
+  const MARKUP = "Pay <b>x</b> now <img src=x onerror=alert(1)>.";
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, extraHTTPHeaders: { "cf-connecting-ip": "198.51.120.7" } });
+  const page = await context.newPage();
+  const dialogs: string[] = [];
+  page.on("dialog", (d: { message(): string; dismiss(): Promise<void> }) => { dialogs.push(d.message()); void d.dismiss(); });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.route("**/api/try-sign/world", async (route: any) => {
+    const res = await route.fetch();
+    const j = (await res.json()) as { proposals: { says: string }[] };
+    for (const p of j.proposals) p.says = MARKUP;
+    await route.fulfill({ response: res, body: JSON.stringify(j) });
+  });
+  await page.goto(`${local.url}/try/sign`);
+  await page.click("#go-world");
+  await page.waitForSelector("article.prop.sheet .says");
+  const says = (await page.locator(".says").evaluateAll((ns: Element[]) => ns.map((n) => ({ text: n.textContent, kids: n.children.length, html: n.innerHTML })))) as { text: string | null; kids: number; html: string }[];
+  check(says.length === 2 && says.every((x) => x.text === MARKUP && x.kids === 0 && x.html === MARKUP.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")),
+    `markup in the agent's sentence shows as text, escaped (${says.length} sentences; ${says.map((x) => x.kids).join(", ")} elements inside)`);
+  await page.waitForTimeout(500);
+  check(dialogs.length === 0 && await page.locator(".says img, .says b").count() === 0, `markup in the agent's sentence: no <b> or <img> made, no script run (${dialogs.length} dialogs)`);
+  await context.close();
+}
+
 await browser.close();
 local.server?.close();
 console.log(failures ? `\n${failures} check(s) failed` : `\nall checks passed; screenshots in ${shots}`);

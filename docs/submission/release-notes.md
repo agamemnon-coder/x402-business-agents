@@ -129,6 +129,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   false, reason}, so the visit logs 0 console errors; the quick tamper on one line, "Try another field" after the
   first refusal, then three buttons: the real run's P-0005 on /proof, the film, the code. 2538 tests in 258 files, all
   passing.
+- 6 November, the Haiku sentence after review: the amounts go in written the page's way ("EUR 1,850.00"), and code
+  checks every amount that comes back against the four it was given, exactly as given; else the fixed sentence,
+  labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup. The
+  live call stays off until the Worker variable TRY_SIGN_HAIKU is exactly "on", which only Max sets ("fixed text (live
+  model off)"); the deploy guard checks that no script sets it. 2548 tests in 258 files, all passing.
 
 ## Real, and ours
 

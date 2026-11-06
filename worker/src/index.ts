@@ -6,8 +6,7 @@ import { notFoundResponse, pageResponse, Relay } from "./core.js";
 import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
-import { claudeSentence } from "../../src/try/claude.js";
-import { AGENT_LINE_TIMEOUT_MS } from "./agentLine.js";
+import { agentLineSource } from "./agentLine.js";
 import { PAGES } from "./pages.gen.js";
 
 export interface Env {
@@ -21,6 +20,9 @@ export interface Env {
   /** Claude for Try Purser, and for /try/sign's Treasury agent sentence (Haiku): a Worker secret Max sets himself; no
    *  script in this repo sets it (test/try-fx.test.ts). Without it the pages read by code alone and show fixed text. */
   ANTHROPIC_API_KEY?: string;
+  /** /try/sign's live Haiku sentence: only exactly "on" turns it on, and only Max sets it, once the key is his to spend.
+   *  Unset (the default; no script or config in this repo sets it) or any other value: no model call, the fixed text. */
+  TRY_SIGN_HAIKU?: string;
   /**
    * /try/sign's live FX quote (read-only, sandbox only): a Worker secret Max sets himself, from a scoped sandbox key
    * (Conversion: Write only); no script in this repo sets it (test/try-fx.test.ts). The client id.
@@ -43,11 +45,11 @@ export class RelayObject extends DurableObject<Env> {
   override fetch(req: Request): Promise<Response> {
     const path = new URL(req.url).pathname;
     if (isTrySignPath(path)) {
-      const { AIRWALLEX_CLIENT_ID: id, AIRWALLEX_API_KEY: key, ANTHROPIC_API_KEY: model } = this.env;
+      const { AIRWALLEX_CLIENT_ID: id, AIRWALLEX_API_KEY: key } = this.env;
       return (this.trySign ??= new TrySignDesk(this.ctx.storage.sql, {
         fx: id && key ? new SandboxQuotes({ clientId: id, apiKey: key }) : null,
-        // Only a function that asks Haiku for one sentence: the desk never holds the key itself.
-        agentLine: model ? claudeSentence(model, fetch, AGENT_LINE_TIMEOUT_MS) : null,
+        // Only a function that asks Haiku for one sentence, and only with TRY_SIGN_HAIKU "on": the desk never holds the key.
+        agentLine: agentLineSource(this.env, fetch),
       })).fetch(req);
     }
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
