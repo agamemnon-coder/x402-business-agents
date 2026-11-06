@@ -8,6 +8,8 @@ import { describe, expect, it } from "vitest";
 import { FILM_URL, HERO } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
 import { OG_IMAGE, withMeta } from "../src/ui/meta.js";
+/** Escapes every regular-expression metacharacter, backslash included. */
+const reEscape = (s: string) => s.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
@@ -23,7 +25,7 @@ describe("every page's head (Q5)", () => {
     for (const [name, page] of html) {
       const h = head(page);
       const missing = [/<title>[^<]+<\/title>/, /<meta name="description" content="[^"]+">/, /<meta property="og:title" content="[^"]+">/, /<meta property="og:description" content="[^"]+">/,
-        new RegExp(`<meta property="og:image" content="${OG_IMAGE.replace(/[.]/g, "\\.")}">`), /<meta name="twitter:card" content="summary_large_image">/].filter((re) => !re.test(h)).map(String);
+        new RegExp(`<meta property="og:image" content="${reEscape(OG_IMAGE)}">`), /<meta name="twitter:card" content="summary_large_image">/].filter((re) => !re.test(h)).map(String);
       expect({ name, missing }).toEqual({ name, missing: [] });
       expect({ name, relative: /og:image" content="(?!https:)/.test(h) }).toEqual({ name, relative: false });
     }
@@ -53,7 +55,7 @@ describe("one tagline (Q8)", () => {
     expect(HERO).toBe("AI agents spend. You sign off.");
     expect(head(pages.home!)).toContain(`<meta property="og:title" content="Purser · ${HERO}">`);
     expect(read("README.md").split("\n")[0]).toBe(`# Purser · ${HERO}`);
-    expect(read("docs/submission/README.md")).toMatch(new RegExp(`## Title\\n\\nPurser · ${HERO.replace(/\./g, "\\.")}\\n`));
+    expect(read("docs/submission/README.md")).toMatch(new RegExp(`## Title\\n\\nPurser · ${reEscape(HERO)}\\n`));
     expect(read("src/submission/deck.ts")).toContain("title: HERO,");
     expect(pages.film).toContain(`"${HERO}"`);
     expect(pages.dashboard).toContain(`<title>Purser · ${HERO}</title>`);
