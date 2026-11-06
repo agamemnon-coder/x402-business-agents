@@ -198,6 +198,13 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   suite's size from the README, 412 audit rows, the red team and the Scenario Lab on stand-ins, CI), what is real, the
   business, the roadmap. `npm run submission -- --deck-only` renders the deck alone and each slide as a PNG in
   docs/evidence/deck/. 2619 tests in 266 files, all passing (with main's).
+- 6 November, /proof puts the strongest proof first (Max's last round, item 2): each partner card opens with its
+  claims, each one a link. Airwallex: "The hash the CFO signed is in Airwallex's own record of the SWIFT payment" and
+  "3 of 3 cards carry the CFO's policy", to their anchors on /airwallex; Metal: "#24 refused on chain" and "86
+  payments, each its own tx", to Metal's testnet explorer; Claude: "24/24, 0 fallbacks" and "a reliability run found a
+  hand-off fault; fixed: 6/10 → 10/10", with a note that 6/10 → 10/10 is the eval rebuilt from rel-1's moment, before
+  and after the fix, and that rel-1b then passed every step. Every number is read from its record. The TAP remark under
+  the figures is gone: TAP is on /visa and in the footer link. 2634 tests in 267 files, all passing.
 
 ## Real, and ours
 
