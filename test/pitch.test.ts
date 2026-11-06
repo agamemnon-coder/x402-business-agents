@@ -267,7 +267,7 @@ describe("the deck", () => {
     expect(DECK).toMatch(/html, body \{ background: #0b1020; \}/);
     expect(DECK).toMatch(/<div class="qr"><svg><\/svg><\/div><div><p class="url">kit11\.max-31b\.workers\.dev\/try\/sign<\/p>/);
     expect(DECK).not.toMatch(/<img[^>]*(visa|Visa)/);
-    for (const title of ["AI agents spend. You sign off.", "The hash the CFO signed is in Airwallex's record", "Checked in code, on every push", "Why this is a company", "AI agents can now spend money. So who signs off?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not", "From test rails to production"]) expect(DECK).toContain(`<h1>${title}</h1>`);
+    for (const title of ["AI agents spend. You sign off.", "The hash the CFO signed is in Airwallex's record", "Checked in code, on every push", "Unit economics (hypothesis)", "AI agents can now spend money. So who signs off?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not", "From test rails to production"]) expect(DECK).toContain(`<h1>${title}</h1>`);
   });
 
   it("follows Max's review (5 Nov) and section D's order (6 Nov): no logos, not opening with the awards, the rule on slide 2, the QR again on the last slide, no TAP run", () => {
