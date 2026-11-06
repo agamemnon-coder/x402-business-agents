@@ -142,6 +142,10 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
   guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2569 tests
   in 261 files, all passing (with main's).
+- 6 November, /proof's "Policy and card side by side" lands on /airwallex with the cards' fold open: the fold is
+  `#controls` and each card has its own anchor (`#card-sourcing`, …); a few lines of script, hashed into the page's
+  CSP, open the fold around whatever the link points at and scroll to it (Chromium and WebKit checked at 390 and
+  1440 px). 2573 tests in 262 files, all passing.
 
 ## Real, and ours
 
