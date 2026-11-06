@@ -225,6 +225,28 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     const wrongly = await page.evaluate(() => Array.from(document.querySelectorAll(".agentchat li")).filter((li) => /Fallback \(code\)/.test(li.textContent ?? "") && /Powered by Claude/.test(li.textContent ?? "")).length);
     if (wrongly) fail(`/?autonomy ${tag}: ${wrongly} code fallback lines say Powered by Claude`);
     await page.screenshot({ path: join(shots, `autonomy-${tag}.png`), fullPage: true });
+    // "Trace any payment" (Max's last round, 1.2): linked under the CFO's line, to /trace.
+    if (!(await page.isVisible('#cfo-links a[href="trace"]'))) fail(`/?autonomy ${tag}: no "Trace any payment" link`);
+
+    // /trace: the header with its computed count, the SWIFT transfer's chain when none is picked, and a picked payment's
+    // chain (the CSS :target swap, no script) with its explorer link, eight steps each.
+    await page.goto(`${base}/trace`, { waitUntil: "load" });
+    await look(page, `/trace ${tag}`, w);
+    {
+      const t = await page.evaluate(() => document.body.innerText);
+      if (!/Pick any of the 88 payments \(86 on Metal \+ 1 card charge \+ 1 SWIFT transfer\)\. Every step is shown; the audit rows themselves are summarised, not published\./.test(t)) fail(`/trace ${tag}: the header is not the computed one`);
+      if (!/Derived from the main run's ledger \(3 Nov\), sanitized, generated \d{4}-\d\d-\d\d\. The main run's record is unchanged\./.test(t)) fail(`/trace ${tag}: no label`);
+      const shown = async () => page.evaluate(() => Array.from(document.querySelectorAll(".pay")).filter((s) => (s as HTMLElement).offsetParent).map((s) => ({ id: s.id, steps: s.querySelectorAll("ol.steps > li").length })));
+      const first = await shown();
+      if (first.length !== 1 || first[0]!.id !== "transfer-03360bfa" || first[0]!.steps !== 8) fail(`/trace ${tag}: with none picked, not the SWIFT transfer's chain alone (${JSON.stringify(first)})`);
+      await page.screenshot({ path: join(shots, `trace-${tag}.png`), fullPage: true });
+      await page.click('a[href="#purchase-55"]');
+      const picked = await shown();
+      if (picked.length !== 1 || picked[0]!.id !== "purchase-55" || picked[0]!.steps !== 8) fail(`/trace ${tag}: picking a purchase does not show its chain alone (${JSON.stringify(picked)})`);
+      if (!(await page.isVisible('#purchase-55 a[href^="https://testnet.metalntwx.com/tx/0x"]'))) fail(`/trace ${tag}: the picked purchase has no explorer link`);
+      await look(page, `/trace#purchase-55 ${tag}`, w);
+      await page.screenshot({ path: join(shots, `trace-picked-${tag}.png`) });
+    }
 
     for (const q of ["", "?at=end"]) {
       await page.goto(`${base}/month${q}`, { waitUntil: "load" });

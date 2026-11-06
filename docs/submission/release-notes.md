@@ -219,6 +219,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   one line: "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." Before the
   link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
   HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2657 tests in 269 files, all passing (with main's).
+- 6 November, trace any payment (Max's last round, 1.2): /trace. Pick any of the 88 payments of the main run (88 = 86
+  on Metal + 1 card charge + 1 SWIFT transfer; 87 of them inside the limits, the SWIFT transfer through a proposal) and
+  see its chain: the policy, the decision (agent, model, request id), the lock that held it or the proposal, the
+  signature, the executor's hash check, the rail id, the booking line and the audit row; a step a payment does not have
+  says so and why. What the main run's record keeps only per group comes from a companion record,
+  docs/demo/main-run-trace.json, derived from the main run's ledger (3 Nov) with the same scrub as the record's ledger
+  rows; per audit row it publishes only seq, prev_hash and row_hash, so the chain's linkage and head are checkable and
+  each row's content is not. The main run's record is unchanged. Linked from the CFO's view and from /proof. 2678 tests
+  in 270 files, all passing.
 
 ## Real, and ours
 

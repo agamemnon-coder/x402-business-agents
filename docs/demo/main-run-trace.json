@@ -1,0 +1,5803 @@
+{
+ "schema": "purser.main-run-trace/v1",
+ "label": "Derived from the main run's ledger (3 Nov), sanitized, generated 2026-11-06.",
+ "generated": "2026-11-06",
+ "source": {
+  "record": "docs/demo/main-run.json",
+  "run": "the main run, 3 Nov",
+  "ledger_matches_record": true
+ },
+ "payments": [
+  {
+   "id": "purchase-1",
+   "kind": "purchase",
+   "ref": "1",
+   "at": "2026-11-03T11:15:23.931Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x64d22177140e07b30b4493eb6cab456c9af594383ffeb0f07599766073dd4c7d",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 13,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-1",
+   "kind": "sale",
+   "ref": "1",
+   "at": "2026-11-03T11:15:25.670Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 14,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-2",
+   "kind": "purchase",
+   "ref": "2",
+   "at": "2026-11-03T11:15:46.724Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xb2fbcfc409816191124573304f189d67c31493278b19603564eca52af1e1668d",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 16,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-2",
+   "kind": "sale",
+   "ref": "2",
+   "at": "2026-11-03T11:15:47.664Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x3212737162d2fcac7474bcb076e632015981521b112ab16eade124220268434e",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 17,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-3",
+   "kind": "purchase",
+   "ref": "3",
+   "at": "2026-11-03T11:16:06.507Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x02d5bf5b302a5dea04a80f4ef9da555300aa0a00067af96d5ae7e6d2c0c3e8fd",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 20,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-3",
+   "kind": "sale",
+   "ref": "3",
+   "at": "2026-11-03T11:16:07.494Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xc6e1f0b284b3d7d21124edf06cb1691e5d037819c147659f3b68741d4b000723",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 21,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-4",
+   "kind": "purchase",
+   "ref": "4",
+   "at": "2026-11-03T11:16:27.747Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xc3e7487eb6e8ac862d2bd029f992795c5bcbad2588a64899614e0d6ac13ec237",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 25,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-4",
+   "kind": "sale",
+   "ref": "4",
+   "at": "2026-11-03T11:16:28.701Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xee14c617291c39d0f41659d52ef2b397d6539b6911d9d027579c67266295eb44",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 29,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-5",
+   "kind": "purchase",
+   "ref": "5",
+   "at": "2026-11-03T11:16:49.885Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xba330558c8637a95f6aa4bd45c2d5ff3d297aed1747c547c7b12f66e6ac84c38",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 39,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-5",
+   "kind": "sale",
+   "ref": "5",
+   "at": "2026-11-03T11:16:51.073Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xff8debd3c0a4dea07b0eeceb84bb2bc22e23273ad534f9fe4ba199f78a0a9516",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 40,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-6",
+   "kind": "purchase",
+   "ref": "6",
+   "at": "2026-11-03T11:17:11.888Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x5f09a1fb8d8511834e8079a8e59e41d1559a87c9000c9d0a89bb11d1f2e1f594",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 42,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-6",
+   "kind": "sale",
+   "ref": "6",
+   "at": "2026-11-03T11:17:13.588Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xcfb214b1e950035b44f9785d0f7dbe55e8cdf59420247fb6d5f5928c9a03875d",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 43,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-7",
+   "kind": "purchase",
+   "ref": "7",
+   "at": "2026-11-03T11:17:33.888Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xd95bf33cb2ec1ac3c910011c94c023fd89849ec015590463359e385dcbb7900c",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 46,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-7",
+   "kind": "sale",
+   "ref": "7",
+   "at": "2026-11-03T11:17:34.836Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xb28b58314d55e69047f8c00251a630b2a02d812f43bb810f77836ed2c68307ac",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 47,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-8",
+   "kind": "purchase",
+   "ref": "8",
+   "at": "2026-11-03T11:17:56.028Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x2b3a31102b4f10c36bac7dd4b596428379d018e5a541754431f31b8b6f0a7159",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 49,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-8",
+   "kind": "sale",
+   "ref": "8",
+   "at": "2026-11-03T11:17:56.978Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x0536400e04ea60ea9d6f352266a68872661d33ee64c9e53453230846a9cd5dd0",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 50,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-9",
+   "kind": "purchase",
+   "ref": "9",
+   "at": "2026-11-03T11:18:17.651Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xc704078ef23e2af7cb03dd01ee6c1bb169a6ecff4ce3aaa7085b22f565596ded",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 52,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-9",
+   "kind": "sale",
+   "ref": "9",
+   "at": "2026-11-03T11:18:18.588Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xadb282a0a1779c1e407152416708a554232bb5de0b5bb97d302439924cdfc79d",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 53,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-10",
+   "kind": "purchase",
+   "ref": "10",
+   "at": "2026-11-03T11:18:39.595Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x5669f975b6c9fcd039453984f8c98811b31874186461a448d5c6d6c9baddbe41",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 55,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-10",
+   "kind": "sale",
+   "ref": "10",
+   "at": "2026-11-03T11:18:40.525Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x78e585580d066feaffc2540315565ed6eb221304152c7c74853972d6d5e5ac3c",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 56,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-11",
+   "kind": "purchase",
+   "ref": "11",
+   "at": "2026-11-03T11:18:59.513Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xe892abfd354543e27f777bd76bdbdb65b6c74e0402b301be00935fcff38fa884",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 58,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-11",
+   "kind": "sale",
+   "ref": "11",
+   "at": "2026-11-03T11:19:00.675Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x080cf1b07dfeb6608d5838450f2a39b4c7cd0bc9c6edff93906ec3ca87cc4e1c",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 59,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-12",
+   "kind": "purchase",
+   "ref": "12",
+   "at": "2026-11-03T11:19:20.046Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xb8fe41c81170039ee9937df0a35e504d01eb78c02f162c5087a06fbc363b9ffa",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 61,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-12",
+   "kind": "sale",
+   "ref": "12",
+   "at": "2026-11-03T11:19:21.463Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xd00cf2e49eb85619d999b667628d6a1683088515b95507910af1cde1b0d7de7a",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 62,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-13",
+   "kind": "purchase",
+   "ref": "13",
+   "at": "2026-11-03T11:19:42.143Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xa6b615ce2a980169d66875aec460890def1a331a4c840e178672f4435beec309",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 64,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-13",
+   "kind": "sale",
+   "ref": "13",
+   "at": "2026-11-03T11:19:43.085Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x6f7d1da8dc2d3e15166b766c5915c40b9b89a3ffe5e2ce123d6766d273b2f13c",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 65,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-14",
+   "kind": "purchase",
+   "ref": "14",
+   "at": "2026-11-03T11:20:03.087Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x67fb45900d3ee2704296d46eb7affa1e910f792982c0d49fe55a7e2123891836",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 67,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-14",
+   "kind": "sale",
+   "ref": "14",
+   "at": "2026-11-03T11:20:04.024Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x31ecebc2045bcdce45aeb87bf2dbc965e81f1a71e11ef8d8f81ee4ed6a642d3e",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 68,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-15",
+   "kind": "purchase",
+   "ref": "15",
+   "at": "2026-11-03T11:20:23.283Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x81897ab40485937d1b4e139636cbf268e453884a5fa16579285c6eed2906b4fe",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 70,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-15",
+   "kind": "sale",
+   "ref": "15",
+   "at": "2026-11-03T11:20:24.726Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x68ab794be6e6d0ca8c68e20d2d73804c5e75db6a2084856e22e21e118c9967be",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 71,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-16",
+   "kind": "purchase",
+   "ref": "16",
+   "at": "2026-11-03T11:20:42.963Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x5c3c0161742d0e65537a9732bf9bc1e220cda1485f52b72dfd70660ce201e986",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 73,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-16",
+   "kind": "sale",
+   "ref": "16",
+   "at": "2026-11-03T11:20:44.126Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x6e7516497ace3a3c74b322979ac37fe2deda20cdc8b32efc12c243808721874c",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 74,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-17",
+   "kind": "purchase",
+   "ref": "17",
+   "at": "2026-11-03T11:21:03.365Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x65fac96280f0b1097e3aa629e667f2f83490a490644cce8c1f45603f169b3518",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 77,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-17",
+   "kind": "sale",
+   "ref": "17",
+   "at": "2026-11-03T11:21:04.315Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x39c5c7b0006a84a548b7ddba155060b9acc4c55b243a06874e33744e532dee33",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 78,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-18",
+   "kind": "purchase",
+   "ref": "18",
+   "at": "2026-11-03T11:21:23.949Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x32c0e6918a7fa9439375acda943100cc63941d3c0623cc32f93c318c0aad1486",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 80,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-18",
+   "kind": "sale",
+   "ref": "18",
+   "at": "2026-11-03T11:21:25.087Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xbdb5b8f21a1a856b813d49a211dfcb8c8af904cac37982343b7d83058657b0a8",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 81,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-19",
+   "kind": "purchase",
+   "ref": "19",
+   "at": "2026-11-03T11:21:45.975Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xfd1db54e3a59b90984b850fece4735a4255ec975810be2d817f8c5b35cefb1d5",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 85,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-19",
+   "kind": "sale",
+   "ref": "19",
+   "at": "2026-11-03T11:21:46.919Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x6086aa0a65e0ffb4cb765aeaf4ca5e1cf2af1aaed17a9231f48aef3ac7cdc831",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 86,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-20",
+   "kind": "purchase",
+   "ref": "20",
+   "at": "2026-11-03T11:22:05.250Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xfacf21264a589d1caf93b3c0a5c4862a6592e78659114afec3361a9fa52036a8",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 90,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-20",
+   "kind": "sale",
+   "ref": "20",
+   "at": "2026-11-03T11:22:06.180Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x5717cfbc222837c34d68e5ca815b61ddd97303c30060c44355c44974825d8633",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 92,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-21",
+   "kind": "purchase",
+   "ref": "21",
+   "at": "2026-11-03T11:22:25.549Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0xad900a08b042207d9c185bc0babe46bd7291830895a3af6143fc7d576eb0cfa3",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 94,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-21",
+   "kind": "sale",
+   "ref": "21",
+   "at": "2026-11-03T11:22:27.060Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x182fbd2620c8efc6f2f31f6850581f48cd79b11d2cd13e60747f6ca577a56668",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 95,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-22",
+   "kind": "purchase",
+   "ref": "22",
+   "at": "2026-11-03T11:22:47.060Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x7860403ed99b0362dbe2219817f77fe6eaf5da0563163ddf1532508da151ebe2",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 97,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-22",
+   "kind": "sale",
+   "ref": "22",
+   "at": "2026-11-03T11:22:47.999Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xf23d83dc77d754a7ea984de3392f067e14ed03e45cb3e7b21db0c60fcd0c7b0b",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 98,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-23",
+   "kind": "purchase",
+   "ref": "23",
+   "at": "2026-11-03T11:23:08.904Z",
+   "amount": "0.02",
+   "currency": "USDZ",
+   "rail_id": "0x870e0c20f626494109eb47cc7399662aca4d7cddca92cf08c1c5ffd81f3ebc8f",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the default buy policy"
+   },
+   "audit": {
+    "seq": 107,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 2
+  },
+  {
+   "id": "sale-23",
+   "kind": "sale",
+   "ref": "23",
+   "at": "2026-11-03T11:23:09.828Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x5637860a1ea4a7a109a45d2347e19d38887adbdb5bfd2415f0c3dc5bc785f4aa",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 108,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "sweep-20261103-1",
+   "kind": "sweep",
+   "ref": "sweep-20261103-1",
+   "at": "2026-11-03T11:27:18.578Z",
+   "amount": "0.69",
+   "currency": "USDZ",
+   "rail_id": "0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4",
+   "origin": {
+    "actor": "agent",
+    "agent": "treasury",
+    "model": "claude-opus-5-5",
+    "request_id": "req_011CgfuyWuSqATSQ9hDMvyWY",
+    "run_id": "run-treasury-216-18a97a"
+   },
+   "audit": {
+    "seq": 236,
+    "event": "sweep.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 207
+  },
+  {
+   "id": "purchase-38",
+   "kind": "purchase",
+   "ref": "38",
+   "at": "2026-11-03T11:27:47.246Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x4fde2db7720fbd282c894affc11048c978ddd0223668a32ae521a2ded7232b04",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 255,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-24",
+   "kind": "sale",
+   "ref": "24",
+   "at": "2026-11-03T11:27:48.400Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x285281ea1e1aa1c8d7cfb84504fc251e79ce6072a461cf0a541d57a042da2724",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 256,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-39",
+   "kind": "purchase",
+   "ref": "39",
+   "at": "2026-11-03T11:28:06.965Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0xac6f03f2512f4720dc8dda773f969892776cd35664473482332062e3025d0efd",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 258,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-25",
+   "kind": "sale",
+   "ref": "25",
+   "at": "2026-11-03T11:28:07.897Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x108e9e743d26f030607e36526fec063ab613c115d783c904a2a9fa5dc9ca4136",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 259,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-40",
+   "kind": "purchase",
+   "ref": "40",
+   "at": "2026-11-03T11:28:26.755Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x0913353458e90e3e8402d81d70893df68d011f381ba13abd33ac0662dd912ed9",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 290,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-26",
+   "kind": "sale",
+   "ref": "26",
+   "at": "2026-11-03T11:28:27.972Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xf4bdd52d65aa032f49901788fb251805aca415238811b1d4eb2ee1defd86cf23",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 291,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "refund-7",
+   "kind": "refund",
+   "ref": "7",
+   "at": "2026-11-03T11:28:32.371Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d",
+   "origin": {
+    "actor": "agent",
+    "agent": "support",
+    "model": "claude-sonnet-5-5",
+    "request_id": "req_011Cgfv4sYJbgZNXBUgpXEKt",
+    "run_id": "run-support-261-a0ff2e"
+   },
+   "audit": {
+    "seq": 295,
+    "event": "refund.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 3
+  },
+  {
+   "id": "refund-10",
+   "kind": "refund",
+   "ref": "10",
+   "at": "2026-11-03T11:28:35.968Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5",
+   "origin": {
+    "actor": "agent",
+    "agent": "support",
+    "model": "claude-sonnet-5-5",
+    "request_id": "req_011Cgfv4sYJbgZNXBUgpXEKt",
+    "run_id": "run-support-261-a0ff2e"
+   },
+   "audit": {
+    "seq": 296,
+    "event": "refund.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 3
+  },
+  {
+   "id": "refund-13",
+   "kind": "refund",
+   "ref": "13",
+   "at": "2026-11-03T11:28:39.922Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510",
+   "origin": {
+    "actor": "agent",
+    "agent": "support",
+    "model": "claude-sonnet-5-5",
+    "request_id": "req_011Cgfv4sYJbgZNXBUgpXEKt",
+    "run_id": "run-support-261-a0ff2e"
+   },
+   "audit": {
+    "seq": 297,
+    "event": "refund.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 3
+  },
+  {
+   "id": "purchase-41",
+   "kind": "purchase",
+   "ref": "41",
+   "at": "2026-11-03T11:28:46.344Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x03c218ced23f5c3721a90d386f2dd044fe279c40b6b4b40f5c7b75c6ed88d2f0",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 299,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-27",
+   "kind": "sale",
+   "ref": "27",
+   "at": "2026-11-03T11:28:47.296Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xa2e3a329654845d5c8605ebebe82d34247dd4635482d7d973c745d0efbea8ed4",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 300,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-42",
+   "kind": "purchase",
+   "ref": "42",
+   "at": "2026-11-03T11:29:06.673Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x1b8c645f6ff693bade67a70a41b2a8ff99839a6ed37a4c251d8db4188fb6f744",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 310,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-28",
+   "kind": "sale",
+   "ref": "28",
+   "at": "2026-11-03T11:29:07.613Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x7e6d0104f163607f71429aea587063ebb223410acbcc5f57065b038aca001098",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 311,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-43",
+   "kind": "purchase",
+   "ref": "43",
+   "at": "2026-11-03T11:29:26.688Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0xfdfa0cfca372c97894127e78b9ede8946365850e09b1a01b30b8c10e166c4fb4",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 313,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-29",
+   "kind": "sale",
+   "ref": "29",
+   "at": "2026-11-03T11:29:28.415Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x6eba6d485b312b36288bc27aab9dfff1d68ddead1a5123373d57bc2ba0538caa",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 314,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-44",
+   "kind": "purchase",
+   "ref": "44",
+   "at": "2026-11-03T11:29:46.149Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x51f907258bd7493ef932cb65d0b84715d2ba4ed2939607a1c5f4f53494723170",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 317,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-30",
+   "kind": "sale",
+   "ref": "30",
+   "at": "2026-11-03T11:29:47.299Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xb64d78eaaaab1281ba2404432d5a4784f1600099d5e0ad92fb1fe60a948d82bc",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 318,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-45",
+   "kind": "purchase",
+   "ref": "45",
+   "at": "2026-11-03T11:30:06.721Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0xc7f59df339cf9f4ec578d8c2c809b3563e050727d76134c0f52c5ddc573a3b59",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 327,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-31",
+   "kind": "sale",
+   "ref": "31",
+   "at": "2026-11-03T11:30:07.683Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x88d59e383a70bce3f37b10a12e2f1440e2e59cf81d713b1b8aabfd88f1211d09",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 328,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-46",
+   "kind": "purchase",
+   "ref": "46",
+   "at": "2026-11-03T11:30:26.514Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x99c7d22d5c6b419afb3c05fc39463dde71f97bac73b18d73787ae1a47125ae0d",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 337,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-32",
+   "kind": "sale",
+   "ref": "32",
+   "at": "2026-11-03T11:30:27.857Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x9de16c5ce16a428d369307b1b2f020f6e70a854641172fa671104ade4a618fd3",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 338,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-47",
+   "kind": "purchase",
+   "ref": "47",
+   "at": "2026-11-03T11:30:46.431Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x8f3e8de3191fe3b9b2a568240cc7142520c4744386a73df798cf5014f3ae9b6e",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 349,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-33",
+   "kind": "sale",
+   "ref": "33",
+   "at": "2026-11-03T11:30:47.380Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xa86b5f049ac952a26b392329e950c28891550ae6bafd06dc9636305cbdceee11",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 352,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-48",
+   "kind": "purchase",
+   "ref": "48",
+   "at": "2026-11-03T11:31:04.805Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x3e4db1a771fd2faaffdef209e7bbfb68310ee1298787e17280f10079884beadb",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 357,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-34",
+   "kind": "sale",
+   "ref": "34",
+   "at": "2026-11-03T11:31:05.717Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x93b8a8b31fed1d9bbc9c57f05210db67551a1387d015532d64da2b57f454bcea",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 358,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-49",
+   "kind": "purchase",
+   "ref": "49",
+   "at": "2026-11-03T11:31:23.852Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x9312b362d919c0579dc22497d869fcd69d5c82b1563dcf9f613d92fa3251fede",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 365,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "transfer-03360bfa",
+   "kind": "transfer",
+   "ref": "03360bfa-afce-457b-89d1-e1097fbe3985",
+   "at": "2026-11-03T11:31:24.283Z",
+   "amount": "240.00",
+   "currency": "EUR",
+   "rail": "airwallex_swift",
+   "rail_id": "03360bfa-afce-457b-89d1-e1097fbe3985",
+   "approval_sha256": "797d4483594fc4f6585466f39bb3f9e4ad4200c85b82d5b7dc078527dcababcd",
+   "proposal_id": "P-0005",
+   "origin": {
+    "actor": "cfo",
+    "approval_id": "4",
+    "approver": "max",
+    "method": "passkey",
+    "proposal_id": "P-0005"
+   },
+   "audit": {
+    "seq": 363,
+    "event": "transfer.created"
+   },
+   "mandate_seq": null
+  },
+  {
+   "id": "sale-35",
+   "kind": "sale",
+   "ref": "35",
+   "at": "2026-11-03T11:31:24.805Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xd5f548251d6c1e174a8b27e1ce61d51301a3375d5fcf956c10b5713886a59134",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 369,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-50",
+   "kind": "purchase",
+   "ref": "50",
+   "at": "2026-11-03T11:31:42.524Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0xfab9cc3dc73a8526566ab5e16ac705f48483dd59fb4766c56c2ef6eb9ddac4c6",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 372,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-36",
+   "kind": "sale",
+   "ref": "36",
+   "at": "2026-11-03T11:31:43.443Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xf9be147f549664028372ade452a2fd650d3265c87dbd215b07083a2ad659e93f",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 373,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-51",
+   "kind": "purchase",
+   "ref": "51",
+   "at": "2026-11-03T11:32:01.252Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x3878ee902ac7238e1f989465af04de7a613ebd5061db2cdb78c55187ab833bcf",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 381,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-37",
+   "kind": "sale",
+   "ref": "37",
+   "at": "2026-11-03T11:32:02.451Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x871c658ef7dd9e8a8eaf6ff1034836d55cc54fe022b425ed412cce7aa7e94da5",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 382,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-52",
+   "kind": "purchase",
+   "ref": "52",
+   "at": "2026-11-03T11:32:20.772Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x1b82bda54c82cb48714fac20dd68c33644b1359ea8eeed8254788d778c9e2e1e",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 384,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-38",
+   "kind": "sale",
+   "ref": "38",
+   "at": "2026-11-03T11:32:21.954Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0xb4f04a35418ea5593f18c2436b33459818163661c5748e43f4f41c5b56c8cf0b",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 385,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-53",
+   "kind": "purchase",
+   "ref": "53",
+   "at": "2026-11-03T11:32:40.119Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0xd5a11eca1a5d2d94ada310eb382b3348a64819453d8384fe291dac3f1c56a2d8",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 387,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-39",
+   "kind": "sale",
+   "ref": "39",
+   "at": "2026-11-03T11:32:41.299Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x6b6ac4ab5fd312942eefc20f4a2fcf88ef67e3cc118ba8d77b457e85c808a61e",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 388,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "purchase-54",
+   "kind": "purchase",
+   "ref": "54",
+   "at": "2026-11-03T11:33:00.109Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0xf45301127515cc35511591538a221d95c16c6e87f387c9317a844572db93a1a6",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 397,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-40",
+   "kind": "sale",
+   "ref": "40",
+   "at": "2026-11-03T11:33:01.047Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x39a4a2e5f05b3093e656e3eaa34a316b93166d7d940c609838819186eb6d07ac",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 398,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  },
+  {
+   "id": "card-01a1a12f",
+   "kind": "card",
+   "ref": "01a1a12f-4113-7000-b76d-014677710007",
+   "at": "2026-11-03T11:33:11.059Z",
+   "amount": "45.00",
+   "currency": "EUR",
+   "rail": "airwallex_card",
+   "rail_id": "01a1a12f-4113-7000-b76d-014677710007",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "origin": {
+    "actor": "agent",
+    "agent": "sourcing",
+    "model": "claude-haiku-5-5",
+    "request_id": "req_011CgfvRo3XGRCvjof8kw57p",
+    "run_id": "run-sourcing-399-f269d3",
+    "tap": {
+     "awx_transaction_id": "01a1a12f-4113-7000-b76d-014677710007",
+     "key_id": "sourcing-HsPFvr0tERIp",
+     "sig1": "verified",
+     "sig2": "verified"
+    }
+   },
+   "audit": {
+    "seq": 403,
+    "event": "card.charge_approved"
+   },
+   "mandate_seq": null
+  },
+  {
+   "id": "purchase-55",
+   "kind": "purchase",
+   "ref": "55",
+   "at": "2026-11-03T11:33:18.725Z",
+   "amount": "0.04",
+   "currency": "USDZ",
+   "rail_id": "0x91f25465953772decefaf5934c17117abce91e7a368e88a8ee309afa08a27ead",
+   "origin": {
+    "actor": "code",
+    "agent": "sourcing",
+    "rule": "the Sourcing agent's buy policy",
+    "set_by": {
+     "actor": "agent",
+     "agent": "sourcing",
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011CgfuyPN21DjZiYTViKSYv",
+     "run_id": "run-sourcing-216-e16ce3"
+    }
+   },
+   "audit": {
+    "seq": 409,
+    "event": "upstream.paid"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 212
+  },
+  {
+   "id": "sale-41",
+   "kind": "sale",
+   "ref": "41",
+   "at": "2026-11-03T11:33:19.640Z",
+   "amount": "0.05",
+   "currency": "USDZ",
+   "rail_id": "0x6972c97d15381dac56ded0094d4c6d4f35aee9f477daae6412cdbaf905996bd0",
+   "origin": {
+    "actor": "external",
+    "party": "customer"
+   },
+   "audit": {
+    "seq": 410,
+    "event": "sale.delivered"
+   },
+   "rail": "metal",
+   "approval_sha256": null,
+   "proposal_id": null,
+   "mandate_seq": 5
+  }
+ ],
+ "mandates": [
+  {
+   "seq": 2,
+   "ts": "2026-11-03T06:05:56.936Z",
+   "event": "mandate.bound",
+   "agent": "sourcing",
+   "cap": "0.03",
+   "budget": "10.00",
+   "tx": "0xb7ef08bb4531c3cbd4b56f4307255b4d88f68d279c8073d9bc96d352fb3d44ad",
+   "mandate_hash": null,
+   "proposal_id": null
+  },
+  {
+   "seq": 3,
+   "ts": "2026-11-03T06:06:02.961Z",
+   "event": "mandate.bound",
+   "agent": "support",
+   "cap": "0.10",
+   "budget": "4.00",
+   "tx": "0x9cb933624be5946c890f77a33aceb2adde3d75d138890a6e1abb91fdad721808",
+   "mandate_hash": null,
+   "proposal_id": null
+  },
+  {
+   "seq": 4,
+   "ts": "2026-11-03T06:06:09.931Z",
+   "event": "mandate.bound",
+   "agent": "treasury",
+   "cap": "6.00",
+   "budget": "6.00",
+   "tx": "0x809e7a30aff19c19e0eb9f147267a60a97fee6872e3ad52195473db7b0f93a9f",
+   "mandate_hash": null,
+   "proposal_id": null
+  },
+  {
+   "seq": 5,
+   "ts": "2026-11-03T06:06:15.922Z",
+   "event": "mandate.bound",
+   "agent": "customer",
+   "cap": "0.10",
+   "budget": "5.00",
+   "tx": "0x9c7d37f248cd0037881c6becf0ef2e865769b411313ee267cf763f28b9e8a2f7",
+   "mandate_hash": null,
+   "proposal_id": null
+  },
+  {
+   "seq": 207,
+   "ts": "2026-11-03T11:26:54.573Z",
+   "event": "mandate.replaced",
+   "agent": "treasury",
+   "cap": "2.00",
+   "budget": "2.00",
+   "tx": "0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc",
+   "mandate_hash": "0x7fdc9dd3c34792cbd6be8f27fa226efb19507bad8bd110a3cb0c6972607735c7",
+   "proposal_id": "P-0002"
+  },
+  {
+   "seq": 212,
+   "ts": "2026-11-03T11:26:59.980Z",
+   "event": "mandate.replaced",
+   "agent": "sourcing",
+   "cap": "0.04",
+   "budget": "14.00",
+   "tx": "0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790",
+   "mandate_hash": "0x0e8d80d898c579b35a2b085a7d3fa2b121788ff2530d854e0ec45630f22ba80d",
+   "proposal_id": "P-0002"
+  }
+ ],
+ "journal": [
+  {
+   "date": "2026-11-03T06:05:47.521Z",
+   "source": "opening",
+   "ref": "funding",
+   "description": "Owner funds the business account on Metal",
+   "counterparty": "owner",
+   "agent": "",
+   "cost_centre": "",
+   "gl_account": "3000",
+   "gl_name": "Owner's equity: opening balances and owner funding",
+   "bank_account": "1210",
+   "amount": "20.00",
+   "currency": "USDZ",
+   "proof": "0x7d5a7a5906098210800f110177bc157ffcaa90a0a10f267ed30c1f622f7cad9e",
+   "approval": "",
+   "rule": "owner funding"
+  },
+  {
+   "date": "2026-11-03T11:27:26.516Z",
+   "source": "opening",
+   "ref": "balance:seed",
+   "description": "Airwallex EUR balance before the run (sandbox test money)",
+   "counterparty": "owner",
+   "agent": "",
+   "cost_centre": "",
+   "gl_account": "3000",
+   "gl_name": "Owner's equity: opening balances and owner funding",
+   "bank_account": "1200",
+   "amount": "9969505.94",
+   "currency": "EUR",
+   "proof": "Airwallex balance read 2026-11-03T11:27:26.516Z",
+   "approval": "",
+   "rule": "opening balance"
+  },
+  {
+   "date": "2026-11-03T11:27:26.516Z",
+   "source": "opening",
+   "ref": "balance:seed",
+   "description": "Airwallex USD balance before the run (sandbox test money)",
+   "counterparty": "owner",
+   "agent": "",
+   "cost_centre": "",
+   "gl_account": "3000",
+   "gl_name": "Owner's equity: opening balances and owner funding",
+   "bank_account": "1201",
+   "amount": "9995705.54",
+   "currency": "USD",
+   "proof": "Airwallex balance read 2026-11-03T11:27:26.516Z",
+   "approval": "",
+   "rule": "opening balance"
+  },
+  {
+   "date": "2026-11-03T11:15:23.931Z",
+   "source": "upstream",
+   "ref": "1",
+   "description": "Stock check bought from the warehouse API (1)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x64d22177140e07b30b4493eb6cab456c9af594383ffeb0f07599766073dd4c7d",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:15:25.670Z",
+   "source": "sale",
+   "ref": "1",
+   "description": "Stock check sold to a retailer 1",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:15:46.724Z",
+   "source": "upstream",
+   "ref": "2",
+   "description": "Stock check bought from the warehouse API (2)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xb2fbcfc409816191124573304f189d67c31493278b19603564eca52af1e1668d",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:15:47.664Z",
+   "source": "sale",
+   "ref": "2",
+   "description": "Stock check sold to a retailer 2",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x3212737162d2fcac7474bcb076e632015981521b112ab16eade124220268434e",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:16:06.507Z",
+   "source": "upstream",
+   "ref": "3",
+   "description": "Stock check bought from the warehouse API (3)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x02d5bf5b302a5dea04a80f4ef9da555300aa0a00067af96d5ae7e6d2c0c3e8fd",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:16:07.494Z",
+   "source": "sale",
+   "ref": "3",
+   "description": "Stock check sold to a retailer 3",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xc6e1f0b284b3d7d21124edf06cb1691e5d037819c147659f3b68741d4b000723",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:16:27.747Z",
+   "source": "upstream",
+   "ref": "4",
+   "description": "Stock check bought from the warehouse API (4)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xc3e7487eb6e8ac862d2bd029f992795c5bcbad2588a64899614e0d6ac13ec237",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:16:28.701Z",
+   "source": "sale",
+   "ref": "4",
+   "description": "Stock check sold to a retailer 4",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xee14c617291c39d0f41659d52ef2b397d6539b6911d9d027579c67266295eb44",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:16:49.885Z",
+   "source": "upstream",
+   "ref": "5",
+   "description": "Stock check bought from the warehouse API (5)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xba330558c8637a95f6aa4bd45c2d5ff3d297aed1747c547c7b12f66e6ac84c38",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:16:51.073Z",
+   "source": "sale",
+   "ref": "5",
+   "description": "Stock check sold to a retailer 5",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xff8debd3c0a4dea07b0eeceb84bb2bc22e23273ad534f9fe4ba199f78a0a9516",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:17:11.888Z",
+   "source": "upstream",
+   "ref": "6",
+   "description": "Stock check bought from the warehouse API (6)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x5f09a1fb8d8511834e8079a8e59e41d1559a87c9000c9d0a89bb11d1f2e1f594",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:17:13.588Z",
+   "source": "sale",
+   "ref": "6",
+   "description": "Stock check sold to a retailer 6",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xcfb214b1e950035b44f9785d0f7dbe55e8cdf59420247fb6d5f5928c9a03875d",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:17:33.888Z",
+   "source": "upstream",
+   "ref": "7",
+   "description": "Stock check bought from the warehouse API (7)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xd95bf33cb2ec1ac3c910011c94c023fd89849ec015590463359e385dcbb7900c",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:17:34.836Z",
+   "source": "sale",
+   "ref": "7",
+   "description": "Stock check sold to a retailer 7",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xb28b58314d55e69047f8c00251a630b2a02d812f43bb810f77836ed2c68307ac",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:17:56.028Z",
+   "source": "upstream",
+   "ref": "8",
+   "description": "Stock check bought from the warehouse API (8)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x2b3a31102b4f10c36bac7dd4b596428379d018e5a541754431f31b8b6f0a7159",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:17:56.978Z",
+   "source": "sale",
+   "ref": "8",
+   "description": "Stock check sold to a retailer 8",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x0536400e04ea60ea9d6f352266a68872661d33ee64c9e53453230846a9cd5dd0",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:18:17.651Z",
+   "source": "upstream",
+   "ref": "9",
+   "description": "Stock check bought from the warehouse API (9)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xc704078ef23e2af7cb03dd01ee6c1bb169a6ecff4ce3aaa7085b22f565596ded",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:18:18.588Z",
+   "source": "sale",
+   "ref": "9",
+   "description": "Stock check sold to a retailer 9",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xadb282a0a1779c1e407152416708a554232bb5de0b5bb97d302439924cdfc79d",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:18:39.595Z",
+   "source": "upstream",
+   "ref": "10",
+   "description": "Stock check bought from the warehouse API (10)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x5669f975b6c9fcd039453984f8c98811b31874186461a448d5c6d6c9baddbe41",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:18:40.525Z",
+   "source": "sale",
+   "ref": "10",
+   "description": "Stock check sold to a retailer 10",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x78e585580d066feaffc2540315565ed6eb221304152c7c74853972d6d5e5ac3c",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:18:59.513Z",
+   "source": "upstream",
+   "ref": "11",
+   "description": "Stock check bought from the warehouse API (11)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xe892abfd354543e27f777bd76bdbdb65b6c74e0402b301be00935fcff38fa884",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:19:00.675Z",
+   "source": "sale",
+   "ref": "11",
+   "description": "Stock check sold to a retailer 11",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x080cf1b07dfeb6608d5838450f2a39b4c7cd0bc9c6edff93906ec3ca87cc4e1c",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:19:20.046Z",
+   "source": "upstream",
+   "ref": "12",
+   "description": "Stock check bought from the warehouse API (12)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xb8fe41c81170039ee9937df0a35e504d01eb78c02f162c5087a06fbc363b9ffa",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:19:21.463Z",
+   "source": "sale",
+   "ref": "12",
+   "description": "Stock check sold to a retailer 12",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xd00cf2e49eb85619d999b667628d6a1683088515b95507910af1cde1b0d7de7a",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:19:42.143Z",
+   "source": "upstream",
+   "ref": "13",
+   "description": "Stock check bought from the warehouse API (13)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xa6b615ce2a980169d66875aec460890def1a331a4c840e178672f4435beec309",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:19:43.085Z",
+   "source": "sale",
+   "ref": "13",
+   "description": "Stock check sold to a retailer 13",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x6f7d1da8dc2d3e15166b766c5915c40b9b89a3ffe5e2ce123d6766d273b2f13c",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:20:03.087Z",
+   "source": "upstream",
+   "ref": "14",
+   "description": "Stock check bought from the warehouse API (14)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x67fb45900d3ee2704296d46eb7affa1e910f792982c0d49fe55a7e2123891836",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:20:04.024Z",
+   "source": "sale",
+   "ref": "14",
+   "description": "Stock check sold to a retailer 14",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x31ecebc2045bcdce45aeb87bf2dbc965e81f1a71e11ef8d8f81ee4ed6a642d3e",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:20:23.283Z",
+   "source": "upstream",
+   "ref": "15",
+   "description": "Stock check bought from the warehouse API (15)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x81897ab40485937d1b4e139636cbf268e453884a5fa16579285c6eed2906b4fe",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:20:24.726Z",
+   "source": "sale",
+   "ref": "15",
+   "description": "Stock check sold to a retailer 15",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x68ab794be6e6d0ca8c68e20d2d73804c5e75db6a2084856e22e21e118c9967be",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:20:42.963Z",
+   "source": "upstream",
+   "ref": "16",
+   "description": "Stock check bought from the warehouse API (16)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x5c3c0161742d0e65537a9732bf9bc1e220cda1485f52b72dfd70660ce201e986",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:20:44.126Z",
+   "source": "sale",
+   "ref": "16",
+   "description": "Stock check sold to a retailer 16",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x6e7516497ace3a3c74b322979ac37fe2deda20cdc8b32efc12c243808721874c",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:21:03.365Z",
+   "source": "upstream",
+   "ref": "17",
+   "description": "Stock check bought from the warehouse API (17)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x65fac96280f0b1097e3aa629e667f2f83490a490644cce8c1f45603f169b3518",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:21:04.315Z",
+   "source": "sale",
+   "ref": "17",
+   "description": "Stock check sold to a retailer 17",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x39c5c7b0006a84a548b7ddba155060b9acc4c55b243a06874e33744e532dee33",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:21:23.949Z",
+   "source": "upstream",
+   "ref": "18",
+   "description": "Stock check bought from the warehouse API (18)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x32c0e6918a7fa9439375acda943100cc63941d3c0623cc32f93c318c0aad1486",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:21:25.087Z",
+   "source": "sale",
+   "ref": "18",
+   "description": "Stock check sold to a retailer 18",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xbdb5b8f21a1a856b813d49a211dfcb8c8af904cac37982343b7d83058657b0a8",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:21:45.975Z",
+   "source": "upstream",
+   "ref": "19",
+   "description": "Stock check bought from the warehouse API (19)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xfd1db54e3a59b90984b850fece4735a4255ec975810be2d817f8c5b35cefb1d5",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:21:46.919Z",
+   "source": "sale",
+   "ref": "19",
+   "description": "Stock check sold to a retailer 19",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x6086aa0a65e0ffb4cb765aeaf4ca5e1cf2af1aaed17a9231f48aef3ac7cdc831",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:22:05.250Z",
+   "source": "upstream",
+   "ref": "20",
+   "description": "Stock check bought from the warehouse API (20)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xfacf21264a589d1caf93b3c0a5c4862a6592e78659114afec3361a9fa52036a8",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:22:06.180Z",
+   "source": "sale",
+   "ref": "20",
+   "description": "Stock check sold to a retailer 20",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x5717cfbc222837c34d68e5ca815b61ddd97303c30060c44355c44974825d8633",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:22:25.549Z",
+   "source": "upstream",
+   "ref": "21",
+   "description": "Stock check bought from the warehouse API (21)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xad900a08b042207d9c185bc0babe46bd7291830895a3af6143fc7d576eb0cfa3",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:22:27.060Z",
+   "source": "sale",
+   "ref": "21",
+   "description": "Stock check sold to a retailer 21",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x182fbd2620c8efc6f2f31f6850581f48cd79b11d2cd13e60747f6ca577a56668",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:22:47.060Z",
+   "source": "upstream",
+   "ref": "22",
+   "description": "Stock check bought from the warehouse API (22)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x7860403ed99b0362dbe2219817f77fe6eaf5da0563163ddf1532508da151ebe2",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:22:47.999Z",
+   "source": "sale",
+   "ref": "22",
+   "description": "Stock check sold to a retailer 22",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xf23d83dc77d754a7ea984de3392f067e14ed03e45cb3e7b21db0c60fcd0c7b0b",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:23:08.904Z",
+   "source": "upstream",
+   "ref": "23",
+   "description": "Stock check bought from the warehouse API (23)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x870e0c20f626494109eb47cc7399662aca4d7cddca92cf08c1c5ffd81f3ebc8f",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.02",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:23:09.828Z",
+   "source": "sale",
+   "ref": "23",
+   "description": "Stock check sold to a retailer 23",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x5637860a1ea4a7a109a45d2347e19d38887adbdb5bfd2415f0c3dc5bc785f4aa",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:27:18.578Z",
+   "source": "sweep",
+   "ref": "sweep-20261103-1",
+   "description": "Sweep earnings from Metal to Airwallex",
+   "counterparty": "own account",
+   "agent": "treasury",
+   "gl_account": "1590",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4",
+   "approval": "",
+   "rule": "sweep: own accounts",
+   "amount": "-0.69",
+   "cost_centre": "CC300",
+   "gl_name": "Money in transit (between own accounts)"
+  },
+  {
+   "date": "2026-11-03T11:27:24.268Z",
+   "source": "credit",
+   "ref": "b3812e05-2afa-4698-8f64-429f9608e0a0",
+   "description": "Sweep credited at Airwallex (1 *USDZ = 1 USD)",
+   "counterparty": "own account",
+   "agent": "treasury",
+   "gl_account": "1590",
+   "bank_account": "1201",
+   "currency": "USD",
+   "proof": "0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4",
+   "approval": "",
+   "rule": "sweep: own accounts",
+   "amount": "0.69",
+   "cost_centre": "CC300",
+   "gl_name": "Money in transit (between own accounts)"
+  },
+  {
+   "date": "2026-11-03T11:27:47.246Z",
+   "source": "upstream",
+   "ref": "38",
+   "description": "Stock check bought from the warehouse API (38)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x4fde2db7720fbd282c894affc11048c978ddd0223668a32ae521a2ded7232b04",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:27:48.400Z",
+   "source": "sale",
+   "ref": "24",
+   "description": "Stock check sold to a retailer 24",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x285281ea1e1aa1c8d7cfb84504fc251e79ce6072a461cf0a541d57a042da2724",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:28:06.965Z",
+   "source": "upstream",
+   "ref": "39",
+   "description": "Stock check bought from the warehouse API (39)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xac6f03f2512f4720dc8dda773f969892776cd35664473482332062e3025d0efd",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:28:07.897Z",
+   "source": "sale",
+   "ref": "25",
+   "description": "Stock check sold to a retailer 25",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x108e9e743d26f030607e36526fec063ab613c115d783c904a2a9fa5dc9ca4136",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:28:26.755Z",
+   "source": "upstream",
+   "ref": "40",
+   "description": "Stock check bought from the warehouse API (40)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x0913353458e90e3e8402d81d70893df68d011f381ba13abd33ac0662dd912ed9",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:28:27.972Z",
+   "source": "sale",
+   "ref": "26",
+   "description": "Stock check sold to a retailer 26",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xf4bdd52d65aa032f49901788fb251805aca415238811b1d4eb2ee1defd86cf23",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:28:32.371Z",
+   "source": "refund",
+   "ref": "1",
+   "description": "Refund of query 7",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "support",
+   "gl_account": "4100",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d",
+   "approval": "",
+   "rule": "refund: reduces revenue",
+   "amount": "-0.05",
+   "cost_centre": "CC200",
+   "gl_name": "Refunds to customers"
+  },
+  {
+   "date": "2026-11-03T11:28:35.968Z",
+   "source": "refund",
+   "ref": "2",
+   "description": "Refund of query 10",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "support",
+   "gl_account": "4100",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5",
+   "approval": "",
+   "rule": "refund: reduces revenue",
+   "amount": "-0.05",
+   "cost_centre": "CC200",
+   "gl_name": "Refunds to customers"
+  },
+  {
+   "date": "2026-11-03T11:28:39.922Z",
+   "source": "refund",
+   "ref": "3",
+   "description": "Refund of query 13",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "support",
+   "gl_account": "4100",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510",
+   "approval": "",
+   "rule": "refund: reduces revenue",
+   "amount": "-0.05",
+   "cost_centre": "CC200",
+   "gl_name": "Refunds to customers"
+  },
+  {
+   "date": "2026-11-03T11:28:46.344Z",
+   "source": "upstream",
+   "ref": "41",
+   "description": "Stock check bought from the warehouse API (41)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x03c218ced23f5c3721a90d386f2dd044fe279c40b6b4b40f5c7b75c6ed88d2f0",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:28:47.296Z",
+   "source": "sale",
+   "ref": "27",
+   "description": "Stock check sold to a retailer 27",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xa2e3a329654845d5c8605ebebe82d34247dd4635482d7d973c745d0efbea8ed4",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:29:06.673Z",
+   "source": "upstream",
+   "ref": "42",
+   "description": "Stock check bought from the warehouse API (42)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x1b8c645f6ff693bade67a70a41b2a8ff99839a6ed37a4c251d8db4188fb6f744",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:29:07.613Z",
+   "source": "sale",
+   "ref": "28",
+   "description": "Stock check sold to a retailer 28",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x7e6d0104f163607f71429aea587063ebb223410acbcc5f57065b038aca001098",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:29:26.688Z",
+   "source": "upstream",
+   "ref": "43",
+   "description": "Stock check bought from the warehouse API (43)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xfdfa0cfca372c97894127e78b9ede8946365850e09b1a01b30b8c10e166c4fb4",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:29:28.415Z",
+   "source": "sale",
+   "ref": "29",
+   "description": "Stock check sold to a retailer 29",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x6eba6d485b312b36288bc27aab9dfff1d68ddead1a5123373d57bc2ba0538caa",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:29:46.149Z",
+   "source": "upstream",
+   "ref": "44",
+   "description": "Stock check bought from the warehouse API (44)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x51f907258bd7493ef932cb65d0b84715d2ba4ed2939607a1c5f4f53494723170",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:29:47.299Z",
+   "source": "sale",
+   "ref": "30",
+   "description": "Stock check sold to a retailer 30",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xb64d78eaaaab1281ba2404432d5a4784f1600099d5e0ad92fb1fe60a948d82bc",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:30:06.721Z",
+   "source": "upstream",
+   "ref": "45",
+   "description": "Stock check bought from the warehouse API (45)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xc7f59df339cf9f4ec578d8c2c809b3563e050727d76134c0f52c5ddc573a3b59",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:30:07.683Z",
+   "source": "sale",
+   "ref": "31",
+   "description": "Stock check sold to a retailer 31",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x88d59e383a70bce3f37b10a12e2f1440e2e59cf81d713b1b8aabfd88f1211d09",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:30:26.514Z",
+   "source": "upstream",
+   "ref": "46",
+   "description": "Stock check bought from the warehouse API (46)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x99c7d22d5c6b419afb3c05fc39463dde71f97bac73b18d73787ae1a47125ae0d",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:30:27.857Z",
+   "source": "sale",
+   "ref": "32",
+   "description": "Stock check sold to a retailer 32",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x9de16c5ce16a428d369307b1b2f020f6e70a854641172fa671104ade4a618fd3",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:30:31.000Z",
+   "source": "fx",
+   "ref": "3ca88196-05da-4d88-9caa-796f03704636",
+   "counterparty": "Airwallex",
+   "agent": "treasury",
+   "gl_account": "1590",
+   "proof": "3ca88196-05da-4d88-9caa-796f03704636",
+   "approval": "P-0005",
+   "rule": "currency conversion: own accounts",
+   "description": "Convert USD to EUR",
+   "bank_account": "1201",
+   "currency": "USD",
+   "amount": "-124.29",
+   "cost_centre": "CC300",
+   "gl_name": "Money in transit (between own accounts)"
+  },
+  {
+   "date": "2026-11-03T11:30:31.000Z",
+   "source": "fx",
+   "ref": "3ca88196-05da-4d88-9caa-796f03704636",
+   "counterparty": "Airwallex",
+   "agent": "treasury",
+   "gl_account": "1590",
+   "proof": "3ca88196-05da-4d88-9caa-796f03704636",
+   "approval": "P-0005",
+   "rule": "currency conversion: own accounts",
+   "description": "Convert USD to EUR",
+   "bank_account": "1200",
+   "currency": "EUR",
+   "amount": "110.00",
+   "cost_centre": "CC300",
+   "gl_name": "Money in transit (between own accounts)"
+  },
+  {
+   "date": "2026-11-03T11:30:46.431Z",
+   "source": "upstream",
+   "ref": "47",
+   "description": "Stock check bought from the warehouse API (47)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x8f3e8de3191fe3b9b2a568240cc7142520c4744386a73df798cf5014f3ae9b6e",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:30:47.380Z",
+   "source": "sale",
+   "ref": "33",
+   "description": "Stock check sold to a retailer 33",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xa86b5f049ac952a26b392329e950c28891550ae6bafd06dc9636305cbdceee11",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:31:04.805Z",
+   "source": "upstream",
+   "ref": "48",
+   "description": "Stock check bought from the warehouse API (48)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x3e4db1a771fd2faaffdef209e7bbfb68310ee1298787e17280f10079884beadb",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:31:05.717Z",
+   "source": "sale",
+   "ref": "34",
+   "description": "Stock check sold to a retailer 34",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x93b8a8b31fed1d9bbc9c57f05210db67551a1387d015532d64da2b57f454bcea",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:31:23.852Z",
+   "source": "upstream",
+   "ref": "49",
+   "description": "Stock check bought from the warehouse API (49)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x9312b362d919c0579dc22497d869fcd69d5c82b1563dcf9f613d92fa3251fede",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:31:24.283Z",
+   "source": "transfer",
+   "ref": "4de3b1bb-c35f-4233-a8b5-02f6c10fe6d0",
+   "description": "Invoice SLL-2026-11",
+   "counterparty": "Stockline Data GmbH",
+   "agent": "treasury",
+   "gl_account": "6350",
+   "bank_account": "1200",
+   "currency": "EUR",
+   "proof": "03360bfa-afce-457b-89d1-e1097fbe3985",
+   "approval": "P-0005",
+   "rule": "supplier invoice, vendor Stockline Data GmbH",
+   "amount": "-240.00",
+   "cost_centre": "CC300",
+   "gl_name": "Data licence (Stockline, monthly)"
+  },
+  {
+   "date": "2026-11-03T11:31:24.283Z",
+   "source": "transfer",
+   "ref": "4de3b1bb-c35f-4233-a8b5-02f6c10fe6d0",
+   "description": "Transfer fee, invoice SLL-2026-11",
+   "counterparty": "Airwallex",
+   "agent": "treasury",
+   "gl_account": "6800",
+   "bank_account": "1200",
+   "currency": "EUR",
+   "proof": "03360bfa-afce-457b-89d1-e1097fbe3985",
+   "approval": "P-0005",
+   "rule": "transfer fee",
+   "amount": "-13.42",
+   "cost_centre": "CC300",
+   "gl_name": "Bank and transfer fees"
+  },
+  {
+   "date": "2026-11-03T11:31:24.805Z",
+   "source": "sale",
+   "ref": "35",
+   "description": "Stock check sold to a retailer 35",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xd5f548251d6c1e174a8b27e1ce61d51301a3375d5fcf956c10b5713886a59134",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:31:42.524Z",
+   "source": "upstream",
+   "ref": "50",
+   "description": "Stock check bought from the warehouse API (50)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xfab9cc3dc73a8526566ab5e16ac705f48483dd59fb4766c56c2ef6eb9ddac4c6",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:31:43.443Z",
+   "source": "sale",
+   "ref": "36",
+   "description": "Stock check sold to a retailer 36",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xf9be147f549664028372ade452a2fd650d3265c87dbd215b07083a2ad659e93f",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:32:01.252Z",
+   "source": "upstream",
+   "ref": "51",
+   "description": "Stock check bought from the warehouse API (51)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x3878ee902ac7238e1f989465af04de7a613ebd5061db2cdb78c55187ab833bcf",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:32:02.451Z",
+   "source": "sale",
+   "ref": "37",
+   "description": "Stock check sold to a retailer 37",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x871c658ef7dd9e8a8eaf6ff1034836d55cc54fe022b425ed412cce7aa7e94da5",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:32:20.772Z",
+   "source": "upstream",
+   "ref": "52",
+   "description": "Stock check bought from the warehouse API (52)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x1b82bda54c82cb48714fac20dd68c33644b1359ea8eeed8254788d778c9e2e1e",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:32:21.954Z",
+   "source": "sale",
+   "ref": "38",
+   "description": "Stock check sold to a retailer 38",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xb4f04a35418ea5593f18c2436b33459818163661c5748e43f4f41c5b56c8cf0b",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:32:40.119Z",
+   "source": "upstream",
+   "ref": "53",
+   "description": "Stock check bought from the warehouse API (53)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xd5a11eca1a5d2d94ada310eb382b3348a64819453d8384fe291dac3f1c56a2d8",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:32:41.299Z",
+   "source": "sale",
+   "ref": "39",
+   "description": "Stock check sold to a retailer 39",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x6b6ac4ab5fd312942eefc20f4a2fcf88ef67e3cc118ba8d77b457e85c808a61e",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:33:00.109Z",
+   "source": "upstream",
+   "ref": "54",
+   "description": "Stock check bought from the warehouse API (54)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0xf45301127515cc35511591538a221d95c16c6e87f387c9317a844572db93a1a6",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:33:01.047Z",
+   "source": "sale",
+   "ref": "40",
+   "description": "Stock check sold to a retailer 40",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x39a4a2e5f05b3093e656e3eaa34a316b93166d7d940c609838819186eb6d07ac",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  },
+  {
+   "date": "2026-11-03T11:33:11.059Z",
+   "source": "card",
+   "ref": "01a1a12f-4113-7000-b76d-014677710007",
+   "description": "Packwise, Pro plan, monthly (more warehouses, live sync)",
+   "counterparty": "Packwise",
+   "agent": "sourcing",
+   "gl_account": "6100",
+   "bank_account": "1200",
+   "currency": "EUR",
+   "proof": "01a1a12f-4113-7000-b76d-014677710007",
+   "approval": "",
+   "rule": "card, merchant category 5734",
+   "amount": "-45.00",
+   "cost_centre": "CC100",
+   "gl_name": "Software subscriptions (company cards)"
+  },
+  {
+   "date": "2026-11-03T11:33:18.725Z",
+   "source": "upstream",
+   "ref": "55",
+   "description": "Stock check bought from the warehouse API (55)",
+   "counterparty": "warehouse API",
+   "agent": "sourcing",
+   "gl_account": "5000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x91f25465953772decefaf5934c17117abce91e7a368e88a8ee309afa08a27ead",
+   "approval": "",
+   "rule": "upstream purchase: cost of data",
+   "amount": "-0.04",
+   "cost_centre": "CC100",
+   "gl_name": "Purchased stock data (warehouse API)"
+  },
+  {
+   "date": "2026-11-03T11:33:19.640Z",
+   "source": "sale",
+   "ref": "41",
+   "description": "Stock check sold to a retailer 41",
+   "counterparty": "0x7b71643913d05D14376562B3682dd1A45CCa6cdf",
+   "agent": "sourcing",
+   "gl_account": "4000",
+   "bank_account": "1210",
+   "currency": "USDZ",
+   "proof": "0x6972c97d15381dac56ded0094d4c6d4f35aee9f477daae6412cdbaf905996bd0",
+   "approval": "",
+   "rule": "data sale: revenue",
+   "amount": "0.05",
+   "cost_centre": "CC100",
+   "gl_name": "Revenue: stock data sales to retailers"
+  }
+ ],
+ "audit": {
+  "rows": 412,
+  "head": "f8d2a633d27316c3d2818a547ab0fb731532cfa25cd13b5ab6f00d635f223220",
+  "intact": true,
+  "links": [
+   {
+    "seq": 1,
+    "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "row_hash": "4e9b74f30475838397bd3edcbe536095bf44f377c0134da73506a6e552d34490"
+   },
+   {
+    "seq": 2,
+    "prev_hash": "4e9b74f30475838397bd3edcbe536095bf44f377c0134da73506a6e552d34490",
+    "row_hash": "e5ce21b923e00853d60df5c603c1262ab51be654ab1272fa3fa56a4b4167a2a2"
+   },
+   {
+    "seq": 3,
+    "prev_hash": "e5ce21b923e00853d60df5c603c1262ab51be654ab1272fa3fa56a4b4167a2a2",
+    "row_hash": "b1800a88f514a7244eca2fec2c034f08928508a158f67b0d860f65d938dcd6f8"
+   },
+   {
+    "seq": 4,
+    "prev_hash": "b1800a88f514a7244eca2fec2c034f08928508a158f67b0d860f65d938dcd6f8",
+    "row_hash": "a5a4b31b4f0538aa6635596642d4ef403da5d576471519ce8bfce86066a20b9f"
+   },
+   {
+    "seq": 5,
+    "prev_hash": "a5a4b31b4f0538aa6635596642d4ef403da5d576471519ce8bfce86066a20b9f",
+    "row_hash": "ac80d9bc73f439a49bb7af55218011eb888bde1386d599ac829db7a420db1fd8"
+   },
+   {
+    "seq": 6,
+    "prev_hash": "ac80d9bc73f439a49bb7af55218011eb888bde1386d599ac829db7a420db1fd8",
+    "row_hash": "5fb8610f27a43200ed337bf32dab7c09b1ffe88f8f444f7efa4c817608401624"
+   },
+   {
+    "seq": 7,
+    "prev_hash": "5fb8610f27a43200ed337bf32dab7c09b1ffe88f8f444f7efa4c817608401624",
+    "row_hash": "72233b8e29b0e37a744adf9e1592245ff0100a3f0f70e48bf771d5c7a5743b39"
+   },
+   {
+    "seq": 8,
+    "prev_hash": "72233b8e29b0e37a744adf9e1592245ff0100a3f0f70e48bf771d5c7a5743b39",
+    "row_hash": "cb948b754cd2031f560a3c32ff9ddcad3d3fa12e8cc04d5dc25d7b6ab70a8091"
+   },
+   {
+    "seq": 9,
+    "prev_hash": "cb948b754cd2031f560a3c32ff9ddcad3d3fa12e8cc04d5dc25d7b6ab70a8091",
+    "row_hash": "ea67695b30a360a6686ed7c9ccfeec198735092ad08d83edcdc11d42f20bf8fa"
+   },
+   {
+    "seq": 10,
+    "prev_hash": "ea67695b30a360a6686ed7c9ccfeec198735092ad08d83edcdc11d42f20bf8fa",
+    "row_hash": "87019ff5ac9d202a1d9a60f0c054825be6d7c6aa3ad339d50759289f77019880"
+   },
+   {
+    "seq": 11,
+    "prev_hash": "87019ff5ac9d202a1d9a60f0c054825be6d7c6aa3ad339d50759289f77019880",
+    "row_hash": "25031ea422cc98c1047adc6403e5b175b3901bf0a8c192237ccc140ac7b9f794"
+   },
+   {
+    "seq": 12,
+    "prev_hash": "25031ea422cc98c1047adc6403e5b175b3901bf0a8c192237ccc140ac7b9f794",
+    "row_hash": "9b1a28f84b0f3ef52bd909702e691c0e98b33a262fe302a97e1863f336528986"
+   },
+   {
+    "seq": 13,
+    "prev_hash": "9b1a28f84b0f3ef52bd909702e691c0e98b33a262fe302a97e1863f336528986",
+    "row_hash": "3b21841eb62d35074b037e8d96a51d16ba757d9212d7cdb8510e9c6b541bef62"
+   },
+   {
+    "seq": 14,
+    "prev_hash": "3b21841eb62d35074b037e8d96a51d16ba757d9212d7cdb8510e9c6b541bef62",
+    "row_hash": "3fae5bd90d992322c3a78ad891a6f0120027eabfbf2f091d0a40c953e2638ab9"
+   },
+   {
+    "seq": 15,
+    "prev_hash": "3fae5bd90d992322c3a78ad891a6f0120027eabfbf2f091d0a40c953e2638ab9",
+    "row_hash": "9f40a71ba518f2c50ff364b869eef6704f7db2583487b3a93cf3d58a632843a2"
+   },
+   {
+    "seq": 16,
+    "prev_hash": "9f40a71ba518f2c50ff364b869eef6704f7db2583487b3a93cf3d58a632843a2",
+    "row_hash": "040db27dc7fac9ceb2a489c42c0455a1ab980cef25fa2204010ce298c482d428"
+   },
+   {
+    "seq": 17,
+    "prev_hash": "040db27dc7fac9ceb2a489c42c0455a1ab980cef25fa2204010ce298c482d428",
+    "row_hash": "f199ac2072b620ab99df9623ba4801130cafe125425e571ffb3d2b6e14bdec58"
+   },
+   {
+    "seq": 18,
+    "prev_hash": "f199ac2072b620ab99df9623ba4801130cafe125425e571ffb3d2b6e14bdec58",
+    "row_hash": "fcfed80c94eaa98e5a6c6cacd1d8fa369e3941e56c34387e9f6d0d54d67276d3"
+   },
+   {
+    "seq": 19,
+    "prev_hash": "fcfed80c94eaa98e5a6c6cacd1d8fa369e3941e56c34387e9f6d0d54d67276d3",
+    "row_hash": "3dc32614e3a7acf4be32294062d5d9a9ec33a8cb78218a3a21a9226dbbc38880"
+   },
+   {
+    "seq": 20,
+    "prev_hash": "3dc32614e3a7acf4be32294062d5d9a9ec33a8cb78218a3a21a9226dbbc38880",
+    "row_hash": "f9adea89bce15e9e344ae380077a71fe3c3642dd31b6c27a21986ffd6dac197e"
+   },
+   {
+    "seq": 21,
+    "prev_hash": "f9adea89bce15e9e344ae380077a71fe3c3642dd31b6c27a21986ffd6dac197e",
+    "row_hash": "df6f557746dfce9c6d1ab2aafe6e7258217483b3dea45b1cd2288c4e4acf0cf5"
+   },
+   {
+    "seq": 22,
+    "prev_hash": "df6f557746dfce9c6d1ab2aafe6e7258217483b3dea45b1cd2288c4e4acf0cf5",
+    "row_hash": "250ce19857133df933b20bf58eb01533e96773471278d811242a8aa9930fa9be"
+   },
+   {
+    "seq": 23,
+    "prev_hash": "250ce19857133df933b20bf58eb01533e96773471278d811242a8aa9930fa9be",
+    "row_hash": "0f8bbb29a1ef4c6dfbe80c8213408ca97a64b3204317c4bcb5c0cd5dd147a644"
+   },
+   {
+    "seq": 24,
+    "prev_hash": "0f8bbb29a1ef4c6dfbe80c8213408ca97a64b3204317c4bcb5c0cd5dd147a644",
+    "row_hash": "d40123fc21f07f9b49af2a37b87eae60783304c0f81b450221f965dee7c49002"
+   },
+   {
+    "seq": 25,
+    "prev_hash": "d40123fc21f07f9b49af2a37b87eae60783304c0f81b450221f965dee7c49002",
+    "row_hash": "ab0c79fdebfa1be14d7f5d350ba81953e442de668e034edff1f00224dd5fd41b"
+   },
+   {
+    "seq": 26,
+    "prev_hash": "ab0c79fdebfa1be14d7f5d350ba81953e442de668e034edff1f00224dd5fd41b",
+    "row_hash": "e2e6d000eaac88069d3785bf4cf03b77169c592f1a74a2b03f3ae9a101b37629"
+   },
+   {
+    "seq": 27,
+    "prev_hash": "e2e6d000eaac88069d3785bf4cf03b77169c592f1a74a2b03f3ae9a101b37629",
+    "row_hash": "96510c96a4b7ab4c618785918c2ef873a10a73dcc55e6dd34f19de8ee298c4ea"
+   },
+   {
+    "seq": 28,
+    "prev_hash": "96510c96a4b7ab4c618785918c2ef873a10a73dcc55e6dd34f19de8ee298c4ea",
+    "row_hash": "7ce42f8dc5726eee912c2f41e44e9677ba397e15d2270a7762d6a4fef7a6b9be"
+   },
+   {
+    "seq": 29,
+    "prev_hash": "7ce42f8dc5726eee912c2f41e44e9677ba397e15d2270a7762d6a4fef7a6b9be",
+    "row_hash": "3969e535753532ab7c4e6731e43551de3a421634e1ec2dcc9c2bd3850d05a4b3"
+   },
+   {
+    "seq": 30,
+    "prev_hash": "3969e535753532ab7c4e6731e43551de3a421634e1ec2dcc9c2bd3850d05a4b3",
+    "row_hash": "c27f0a67994034d82a09eacf68c91ff64a5af25e28f9d4dce45b9c27156a6ea1"
+   },
+   {
+    "seq": 31,
+    "prev_hash": "c27f0a67994034d82a09eacf68c91ff64a5af25e28f9d4dce45b9c27156a6ea1",
+    "row_hash": "ec6dca1ac976c7198f42441dcb56199de6f18e9c2a670e80e7d74ee23acbefeb"
+   },
+   {
+    "seq": 32,
+    "prev_hash": "ec6dca1ac976c7198f42441dcb56199de6f18e9c2a670e80e7d74ee23acbefeb",
+    "row_hash": "19adb48facddaf85ff06d9b608e948dfb783d6147f594480f6be9382b6f55815"
+   },
+   {
+    "seq": 33,
+    "prev_hash": "19adb48facddaf85ff06d9b608e948dfb783d6147f594480f6be9382b6f55815",
+    "row_hash": "01944d8ba6114336c753a4983a3527925654d8f5607ae623bf3de041d6bba0ca"
+   },
+   {
+    "seq": 34,
+    "prev_hash": "01944d8ba6114336c753a4983a3527925654d8f5607ae623bf3de041d6bba0ca",
+    "row_hash": "192a1e8374f9973964acc8c3f096671d0ecdde53eb10790007dafda9feb45bb7"
+   },
+   {
+    "seq": 35,
+    "prev_hash": "192a1e8374f9973964acc8c3f096671d0ecdde53eb10790007dafda9feb45bb7",
+    "row_hash": "5ace6e6a9158c3c2ba823b204715e1b97788abb99f4ffc441e6d0f4460e4df1e"
+   },
+   {
+    "seq": 36,
+    "prev_hash": "5ace6e6a9158c3c2ba823b204715e1b97788abb99f4ffc441e6d0f4460e4df1e",
+    "row_hash": "73daf89984ce82012b767fec21b9fd3d7d7cb6439798ae972fc9f91290d79a9b"
+   },
+   {
+    "seq": 37,
+    "prev_hash": "73daf89984ce82012b767fec21b9fd3d7d7cb6439798ae972fc9f91290d79a9b",
+    "row_hash": "a676ec06b7f1e3bb56b6c73878e18a26736ea69d453eaa66c22c2820c74297ef"
+   },
+   {
+    "seq": 38,
+    "prev_hash": "a676ec06b7f1e3bb56b6c73878e18a26736ea69d453eaa66c22c2820c74297ef",
+    "row_hash": "98d1b3037d7e7ae1f57501ab4fc0d365a20f73c590f5bc7b5a7701adf7e0204c"
+   },
+   {
+    "seq": 39,
+    "prev_hash": "98d1b3037d7e7ae1f57501ab4fc0d365a20f73c590f5bc7b5a7701adf7e0204c",
+    "row_hash": "830284056b6b19bc36219ce7eb2f1954e62646193dca2d400f34203b599910a9"
+   },
+   {
+    "seq": 40,
+    "prev_hash": "830284056b6b19bc36219ce7eb2f1954e62646193dca2d400f34203b599910a9",
+    "row_hash": "84d88a1acb9b43cfa954b47abf8aeedac2cc54213cb8c6676f87484a2bad0f93"
+   },
+   {
+    "seq": 41,
+    "prev_hash": "84d88a1acb9b43cfa954b47abf8aeedac2cc54213cb8c6676f87484a2bad0f93",
+    "row_hash": "bae0d5ee94da7b1b8717fa95bf2c3b0a6f4a11015521b4438387da4ef6883458"
+   },
+   {
+    "seq": 42,
+    "prev_hash": "bae0d5ee94da7b1b8717fa95bf2c3b0a6f4a11015521b4438387da4ef6883458",
+    "row_hash": "8bd7aaeff88a19135a755924901cf8cd627449a17a5cb3fbb19d6d783c307357"
+   },
+   {
+    "seq": 43,
+    "prev_hash": "8bd7aaeff88a19135a755924901cf8cd627449a17a5cb3fbb19d6d783c307357",
+    "row_hash": "53570777537596f3f264e105b3d6a652f2464fb17d0c39291d304a8e4eb6d227"
+   },
+   {
+    "seq": 44,
+    "prev_hash": "53570777537596f3f264e105b3d6a652f2464fb17d0c39291d304a8e4eb6d227",
+    "row_hash": "63f2188dbff1b605654c6532eb3a86f279e4e5f60ef75380c2042ce6b49017f2"
+   },
+   {
+    "seq": 45,
+    "prev_hash": "63f2188dbff1b605654c6532eb3a86f279e4e5f60ef75380c2042ce6b49017f2",
+    "row_hash": "751b258d448cfe0636bb115efbd56eee13a540446f0166f5a01717a56d35d5db"
+   },
+   {
+    "seq": 46,
+    "prev_hash": "751b258d448cfe0636bb115efbd56eee13a540446f0166f5a01717a56d35d5db",
+    "row_hash": "b34d1d4c4c7c0f51abda579948a7768b7e46769ac71dc7dc43820085ce190cd4"
+   },
+   {
+    "seq": 47,
+    "prev_hash": "b34d1d4c4c7c0f51abda579948a7768b7e46769ac71dc7dc43820085ce190cd4",
+    "row_hash": "69cb40749af8f9f611c7c1e55c0021114a33e58b380e28a2076db5b072a8c42a"
+   },
+   {
+    "seq": 48,
+    "prev_hash": "69cb40749af8f9f611c7c1e55c0021114a33e58b380e28a2076db5b072a8c42a",
+    "row_hash": "8194c1b65098a204832e3daf74dc7284796767d93535fb352da5c854bd04c014"
+   },
+   {
+    "seq": 49,
+    "prev_hash": "8194c1b65098a204832e3daf74dc7284796767d93535fb352da5c854bd04c014",
+    "row_hash": "66e7013589c89f2fc5ff1d46975d237b52e6a916fc6463112bf4352484ab7e62"
+   },
+   {
+    "seq": 50,
+    "prev_hash": "66e7013589c89f2fc5ff1d46975d237b52e6a916fc6463112bf4352484ab7e62",
+    "row_hash": "c9141bc41547f637ae6d22050a3dcb9fd34eada308d86194c18e1d66b9a3f3d0"
+   },
+   {
+    "seq": 51,
+    "prev_hash": "c9141bc41547f637ae6d22050a3dcb9fd34eada308d86194c18e1d66b9a3f3d0",
+    "row_hash": "d459e8f0073612af0d0f748107947b2bf54d037b501a0b7fb05296032c1915be"
+   },
+   {
+    "seq": 52,
+    "prev_hash": "d459e8f0073612af0d0f748107947b2bf54d037b501a0b7fb05296032c1915be",
+    "row_hash": "05ba5d850e87888a14b992917e7771f52910ed40180b348c5a17d0c960e138f9"
+   },
+   {
+    "seq": 53,
+    "prev_hash": "05ba5d850e87888a14b992917e7771f52910ed40180b348c5a17d0c960e138f9",
+    "row_hash": "3d0ac32e8a150e1a4f52cbbe79eb7d8ae24a7c9c53b6f1da3ed397b6105b07cd"
+   },
+   {
+    "seq": 54,
+    "prev_hash": "3d0ac32e8a150e1a4f52cbbe79eb7d8ae24a7c9c53b6f1da3ed397b6105b07cd",
+    "row_hash": "55908faa6db2bb2af09412325d81c995cf90280e8bee8426f995c4c5c8577484"
+   },
+   {
+    "seq": 55,
+    "prev_hash": "55908faa6db2bb2af09412325d81c995cf90280e8bee8426f995c4c5c8577484",
+    "row_hash": "cfb7d379f456886d581be7b916f051a027886b83f8eda793bd3b8b14b3859991"
+   },
+   {
+    "seq": 56,
+    "prev_hash": "cfb7d379f456886d581be7b916f051a027886b83f8eda793bd3b8b14b3859991",
+    "row_hash": "a859a364068cb2de143ed9201acacdd53350104ab00824f257def1237ca2bbe5"
+   },
+   {
+    "seq": 57,
+    "prev_hash": "a859a364068cb2de143ed9201acacdd53350104ab00824f257def1237ca2bbe5",
+    "row_hash": "b70728ccc876185f0a972ebf86751753ba2aefa1d4fbc1920082635000bb3ca7"
+   },
+   {
+    "seq": 58,
+    "prev_hash": "b70728ccc876185f0a972ebf86751753ba2aefa1d4fbc1920082635000bb3ca7",
+    "row_hash": "5a27280353af9b4aca8cb57d99464fe2bedee3d3bb4d39d8293a8a3525b94b69"
+   },
+   {
+    "seq": 59,
+    "prev_hash": "5a27280353af9b4aca8cb57d99464fe2bedee3d3bb4d39d8293a8a3525b94b69",
+    "row_hash": "9205b7c4c740f8da939a37eea84c922ac65bbe9f4df93de34572a169c6a8395c"
+   },
+   {
+    "seq": 60,
+    "prev_hash": "9205b7c4c740f8da939a37eea84c922ac65bbe9f4df93de34572a169c6a8395c",
+    "row_hash": "4bd5847ae7bf8b66e13cfa2d21f4d2e96abce8f0d61794904354e6b0a022fdb4"
+   },
+   {
+    "seq": 61,
+    "prev_hash": "4bd5847ae7bf8b66e13cfa2d21f4d2e96abce8f0d61794904354e6b0a022fdb4",
+    "row_hash": "a91cc6d87401776c5c408552b57c96420b0626c009250a043116c45c513050d2"
+   },
+   {
+    "seq": 62,
+    "prev_hash": "a91cc6d87401776c5c408552b57c96420b0626c009250a043116c45c513050d2",
+    "row_hash": "8add51758fcc020d64bbd0364d6bc274cbc1ca1aab096a13b63df0ff1bbe9628"
+   },
+   {
+    "seq": 63,
+    "prev_hash": "8add51758fcc020d64bbd0364d6bc274cbc1ca1aab096a13b63df0ff1bbe9628",
+    "row_hash": "d55d43e595cba90d523d8fa0f2ea0d87cc5eeb8ec7bddf6fa960b14de4c1b51d"
+   },
+   {
+    "seq": 64,
+    "prev_hash": "d55d43e595cba90d523d8fa0f2ea0d87cc5eeb8ec7bddf6fa960b14de4c1b51d",
+    "row_hash": "f40eacaa420f29e1e80feed49318b50f756177b416b02469212e73274c41185f"
+   },
+   {
+    "seq": 65,
+    "prev_hash": "f40eacaa420f29e1e80feed49318b50f756177b416b02469212e73274c41185f",
+    "row_hash": "ee2b61b8bb187b9112ba5c269ecf153284a83b391077f22b965b48b93d9e83a3"
+   },
+   {
+    "seq": 66,
+    "prev_hash": "ee2b61b8bb187b9112ba5c269ecf153284a83b391077f22b965b48b93d9e83a3",
+    "row_hash": "1c43e79dcb0efe06c010c8ede2bdcaae321d06d8b8e5df3a668857ec9a882da9"
+   },
+   {
+    "seq": 67,
+    "prev_hash": "1c43e79dcb0efe06c010c8ede2bdcaae321d06d8b8e5df3a668857ec9a882da9",
+    "row_hash": "0a8e8be9507763565fd63636140e68a82fe4538e53ab7f39116e37d64ebf42f5"
+   },
+   {
+    "seq": 68,
+    "prev_hash": "0a8e8be9507763565fd63636140e68a82fe4538e53ab7f39116e37d64ebf42f5",
+    "row_hash": "3de3efb9fa9d1ab6b32005e7da52be9615f2c9716fa95cfe1e0b39d1d7066690"
+   },
+   {
+    "seq": 69,
+    "prev_hash": "3de3efb9fa9d1ab6b32005e7da52be9615f2c9716fa95cfe1e0b39d1d7066690",
+    "row_hash": "b0e482353da0da0348c5b695bf32335d6a6e1a0ea7b276ad7fb59726db71ab5e"
+   },
+   {
+    "seq": 70,
+    "prev_hash": "b0e482353da0da0348c5b695bf32335d6a6e1a0ea7b276ad7fb59726db71ab5e",
+    "row_hash": "37375435ec97a23a563343feebf064473efd2e94afecc0f15c2de08a3392e287"
+   },
+   {
+    "seq": 71,
+    "prev_hash": "37375435ec97a23a563343feebf064473efd2e94afecc0f15c2de08a3392e287",
+    "row_hash": "de58a7b5842c9e04aff8f37b2d6d9fbe92effa9f203cedbc7cbae2b30cae0017"
+   },
+   {
+    "seq": 72,
+    "prev_hash": "de58a7b5842c9e04aff8f37b2d6d9fbe92effa9f203cedbc7cbae2b30cae0017",
+    "row_hash": "fa8291ade703b7b86244ebba69e24fbbccc515bd07714fd44d81b3caa8678658"
+   },
+   {
+    "seq": 73,
+    "prev_hash": "fa8291ade703b7b86244ebba69e24fbbccc515bd07714fd44d81b3caa8678658",
+    "row_hash": "e400d4a4d8987c76e486cb2f3e83cb435715143f819a3d495d08effe2f8518fc"
+   },
+   {
+    "seq": 74,
+    "prev_hash": "e400d4a4d8987c76e486cb2f3e83cb435715143f819a3d495d08effe2f8518fc",
+    "row_hash": "f829fd55e54787baf7d39ae149aa65ebfa8a80b1cf8e8e9984dbac11ead00f9f"
+   },
+   {
+    "seq": 75,
+    "prev_hash": "f829fd55e54787baf7d39ae149aa65ebfa8a80b1cf8e8e9984dbac11ead00f9f",
+    "row_hash": "be7d0b0ead27164fc8e49cfb613149e98c2146e16b9bbd5015e1c09554330afd"
+   },
+   {
+    "seq": 76,
+    "prev_hash": "be7d0b0ead27164fc8e49cfb613149e98c2146e16b9bbd5015e1c09554330afd",
+    "row_hash": "ffdc8e54788264048c1ca307f0f6585bc00d73cd7c980feb9dd086d3cc02d582"
+   },
+   {
+    "seq": 77,
+    "prev_hash": "ffdc8e54788264048c1ca307f0f6585bc00d73cd7c980feb9dd086d3cc02d582",
+    "row_hash": "1535f0f3de9308c884b9167de66cdbec93c26f1e21606158e164fcfae6f2bab0"
+   },
+   {
+    "seq": 78,
+    "prev_hash": "1535f0f3de9308c884b9167de66cdbec93c26f1e21606158e164fcfae6f2bab0",
+    "row_hash": "c7ccd3d2d95b26d62ed066d325a368052f7fbbace6ab8961af89820e78410309"
+   },
+   {
+    "seq": 79,
+    "prev_hash": "c7ccd3d2d95b26d62ed066d325a368052f7fbbace6ab8961af89820e78410309",
+    "row_hash": "070fabd86b3b811b836d27e1f4295b67435c75a48624267de63af6de7572c219"
+   },
+   {
+    "seq": 80,
+    "prev_hash": "070fabd86b3b811b836d27e1f4295b67435c75a48624267de63af6de7572c219",
+    "row_hash": "0a7f8678a8566c33b5d800f6f6c3e7bb6386c702fbe179e8804f34b5f19a1232"
+   },
+   {
+    "seq": 81,
+    "prev_hash": "0a7f8678a8566c33b5d800f6f6c3e7bb6386c702fbe179e8804f34b5f19a1232",
+    "row_hash": "4c21cee24eda134c13c60f62380403c5dab1a4ff3cbc4bd4a9198581c1ac5a7e"
+   },
+   {
+    "seq": 82,
+    "prev_hash": "4c21cee24eda134c13c60f62380403c5dab1a4ff3cbc4bd4a9198581c1ac5a7e",
+    "row_hash": "3a57677a7da5efe87831981e0fc23dd22a9bf71716c3c83cef32e29ac2e64bf1"
+   },
+   {
+    "seq": 83,
+    "prev_hash": "3a57677a7da5efe87831981e0fc23dd22a9bf71716c3c83cef32e29ac2e64bf1",
+    "row_hash": "b5b0cddfdd8b4ae8a3830de04ba47c646173bd17b09ab5a0cf100aba518e99d7"
+   },
+   {
+    "seq": 84,
+    "prev_hash": "b5b0cddfdd8b4ae8a3830de04ba47c646173bd17b09ab5a0cf100aba518e99d7",
+    "row_hash": "99045d1d2e0a75784cccad224c624b22c5e3b8b6013bfeef2ce5468b5d172d57"
+   },
+   {
+    "seq": 85,
+    "prev_hash": "99045d1d2e0a75784cccad224c624b22c5e3b8b6013bfeef2ce5468b5d172d57",
+    "row_hash": "8b440b46199bb83ae6f6112f9f6d76f1899bd7b5a42358e8780f6f3d1538e93a"
+   },
+   {
+    "seq": 86,
+    "prev_hash": "8b440b46199bb83ae6f6112f9f6d76f1899bd7b5a42358e8780f6f3d1538e93a",
+    "row_hash": "b0cd17ecc13071556ca9e3ed0826d9d0cc4cad7dee437f087be12bc9243c5b5e"
+   },
+   {
+    "seq": 87,
+    "prev_hash": "b0cd17ecc13071556ca9e3ed0826d9d0cc4cad7dee437f087be12bc9243c5b5e",
+    "row_hash": "8d398b7f5478d42c7f776cde516f93c7fc273f993639bbfcf4ab9147ad7ae39c"
+   },
+   {
+    "seq": 88,
+    "prev_hash": "8d398b7f5478d42c7f776cde516f93c7fc273f993639bbfcf4ab9147ad7ae39c",
+    "row_hash": "443a043f867e87d2daf3b69c51503bc9037fbee0843f2a6df0c5bca3716de260"
+   },
+   {
+    "seq": 89,
+    "prev_hash": "443a043f867e87d2daf3b69c51503bc9037fbee0843f2a6df0c5bca3716de260",
+    "row_hash": "e383af71732595d693a9461b989c44fec0d509d15090de56257125eb6dc4c738"
+   },
+   {
+    "seq": 90,
+    "prev_hash": "e383af71732595d693a9461b989c44fec0d509d15090de56257125eb6dc4c738",
+    "row_hash": "fc440d149f365e8883d98bf407fe645594cbb8f38725cdaf35b0ffcc253f526b"
+   },
+   {
+    "seq": 91,
+    "prev_hash": "fc440d149f365e8883d98bf407fe645594cbb8f38725cdaf35b0ffcc253f526b",
+    "row_hash": "4393c24a5beb419b70cb35177a7645ee27ec6d86412d035a6dee23b7f9f03c83"
+   },
+   {
+    "seq": 92,
+    "prev_hash": "4393c24a5beb419b70cb35177a7645ee27ec6d86412d035a6dee23b7f9f03c83",
+    "row_hash": "29ca1f9dda665a9c362bcad60b4afcb43f36311a8fb7c228960b25b5ad1d46e0"
+   },
+   {
+    "seq": 93,
+    "prev_hash": "29ca1f9dda665a9c362bcad60b4afcb43f36311a8fb7c228960b25b5ad1d46e0",
+    "row_hash": "33df0dacf9a8e03b112aeb62cb3cc9b2553686e30c32e192824172a425548f54"
+   },
+   {
+    "seq": 94,
+    "prev_hash": "33df0dacf9a8e03b112aeb62cb3cc9b2553686e30c32e192824172a425548f54",
+    "row_hash": "cb7376286a1ac55a92648b48f1160ee339459f391e49ede339666bcb7c27abe4"
+   },
+   {
+    "seq": 95,
+    "prev_hash": "cb7376286a1ac55a92648b48f1160ee339459f391e49ede339666bcb7c27abe4",
+    "row_hash": "ead9d210f9854c049a734c007293c58df4a42851f93b66282a6c741937fc3952"
+   },
+   {
+    "seq": 96,
+    "prev_hash": "ead9d210f9854c049a734c007293c58df4a42851f93b66282a6c741937fc3952",
+    "row_hash": "aa817b8d1221e2aa5001d622822367f3b57f3d1d67fa8ef3cfc7020fb17f01dc"
+   },
+   {
+    "seq": 97,
+    "prev_hash": "aa817b8d1221e2aa5001d622822367f3b57f3d1d67fa8ef3cfc7020fb17f01dc",
+    "row_hash": "c7bf915b0bc1142f4fe56d6b7664a4e40a0267b4aa77281e3ba51ba3d70c11a3"
+   },
+   {
+    "seq": 98,
+    "prev_hash": "c7bf915b0bc1142f4fe56d6b7664a4e40a0267b4aa77281e3ba51ba3d70c11a3",
+    "row_hash": "760cb92e33dff5e28ce879804eeec5f1dd5f3638ee0a32807c6cfb0a6ac8ade2"
+   },
+   {
+    "seq": 99,
+    "prev_hash": "760cb92e33dff5e28ce879804eeec5f1dd5f3638ee0a32807c6cfb0a6ac8ade2",
+    "row_hash": "18e6eaf60cbb7ddbe2e854a443284db8f0d0f094db343463f5ec05d386c40fd1"
+   },
+   {
+    "seq": 100,
+    "prev_hash": "18e6eaf60cbb7ddbe2e854a443284db8f0d0f094db343463f5ec05d386c40fd1",
+    "row_hash": "33c965908fa8625bedf81cfcd9f475abebf4a2cdda6c061f005227b093acee5b"
+   },
+   {
+    "seq": 101,
+    "prev_hash": "33c965908fa8625bedf81cfcd9f475abebf4a2cdda6c061f005227b093acee5b",
+    "row_hash": "65a56060603b46544bfbbb596b3f580c36e06a61a22511cdeb91490c882501ac"
+   },
+   {
+    "seq": 102,
+    "prev_hash": "65a56060603b46544bfbbb596b3f580c36e06a61a22511cdeb91490c882501ac",
+    "row_hash": "d4057bac6a61a0e81c82396082cc59860f06d305e33c11b86c004a62fd3d63ac"
+   },
+   {
+    "seq": 103,
+    "prev_hash": "d4057bac6a61a0e81c82396082cc59860f06d305e33c11b86c004a62fd3d63ac",
+    "row_hash": "8994932f7b1b6b597b9a28e991d11bdd56a22d151ce2a188e190dc2775b8b544"
+   },
+   {
+    "seq": 104,
+    "prev_hash": "8994932f7b1b6b597b9a28e991d11bdd56a22d151ce2a188e190dc2775b8b544",
+    "row_hash": "79f3d161c1257f753632db1201c5a5ce05dbe40cadd23c8caee491324b62c920"
+   },
+   {
+    "seq": 105,
+    "prev_hash": "79f3d161c1257f753632db1201c5a5ce05dbe40cadd23c8caee491324b62c920",
+    "row_hash": "f3f03ebb6c69f6fabbd50bf68580ed0cb740b43ee3fefeebc389f02c4138e7b1"
+   },
+   {
+    "seq": 106,
+    "prev_hash": "f3f03ebb6c69f6fabbd50bf68580ed0cb740b43ee3fefeebc389f02c4138e7b1",
+    "row_hash": "74448a51ca1c2e41e4d5e6fe1d7339cada7359dd66f73dd29bcf78cc18a3c6f0"
+   },
+   {
+    "seq": 107,
+    "prev_hash": "74448a51ca1c2e41e4d5e6fe1d7339cada7359dd66f73dd29bcf78cc18a3c6f0",
+    "row_hash": "8d3ff7644528308396dbb07a37fe3338e2deb3ad9b7a78383624337d8d684b29"
+   },
+   {
+    "seq": 108,
+    "prev_hash": "8d3ff7644528308396dbb07a37fe3338e2deb3ad9b7a78383624337d8d684b29",
+    "row_hash": "391e694b9a5ab1023319f3b7cad6ed373ffd362c38f067a89fb65356fd548e51"
+   },
+   {
+    "seq": 109,
+    "prev_hash": "391e694b9a5ab1023319f3b7cad6ed373ffd362c38f067a89fb65356fd548e51",
+    "row_hash": "8434a16e878589276d92b92d1d45ffe6ca4166a9b5c8f0cdecf16bc97e63d6c2"
+   },
+   {
+    "seq": 110,
+    "prev_hash": "8434a16e878589276d92b92d1d45ffe6ca4166a9b5c8f0cdecf16bc97e63d6c2",
+    "row_hash": "d1ae05d7c642993433d94872a7194467547ccf9325cddbb42294df74f8b7ee9e"
+   },
+   {
+    "seq": 111,
+    "prev_hash": "d1ae05d7c642993433d94872a7194467547ccf9325cddbb42294df74f8b7ee9e",
+    "row_hash": "05092468da4438c66307fe6249f3afec4b14a07197df41efc371f71afc5f697a"
+   },
+   {
+    "seq": 112,
+    "prev_hash": "05092468da4438c66307fe6249f3afec4b14a07197df41efc371f71afc5f697a",
+    "row_hash": "6df009bc7cb417d4c8ed38acfe32d053d6959ba9d38f09fd595fb579b5685893"
+   },
+   {
+    "seq": 113,
+    "prev_hash": "6df009bc7cb417d4c8ed38acfe32d053d6959ba9d38f09fd595fb579b5685893",
+    "row_hash": "cc1153d5ded9010b49c670337c08247843d783f361bfe971c4ac16b8f93c1364"
+   },
+   {
+    "seq": 114,
+    "prev_hash": "cc1153d5ded9010b49c670337c08247843d783f361bfe971c4ac16b8f93c1364",
+    "row_hash": "d5a117e640c2d2252df8821d986e1938bcfc0de4b8942a7e8b230e2bf8992ed4"
+   },
+   {
+    "seq": 115,
+    "prev_hash": "d5a117e640c2d2252df8821d986e1938bcfc0de4b8942a7e8b230e2bf8992ed4",
+    "row_hash": "fc16bafb9fd4f3db65dc1d0c7cedcbde64616d624be0f67e3640b7d12170e7b2"
+   },
+   {
+    "seq": 116,
+    "prev_hash": "fc16bafb9fd4f3db65dc1d0c7cedcbde64616d624be0f67e3640b7d12170e7b2",
+    "row_hash": "59df7246a9e21903bf60d83710d3ac89f7213cac926acd38d3fc725d44980da5"
+   },
+   {
+    "seq": 117,
+    "prev_hash": "59df7246a9e21903bf60d83710d3ac89f7213cac926acd38d3fc725d44980da5",
+    "row_hash": "df9603bb5a4d72e03291bc6750214634d1781e672b9cf3c6a40be5e6fa5cf0a6"
+   },
+   {
+    "seq": 118,
+    "prev_hash": "df9603bb5a4d72e03291bc6750214634d1781e672b9cf3c6a40be5e6fa5cf0a6",
+    "row_hash": "55a14181966d22e8d3f411df8cbf67ea50af85cd2432e67367c907a3fe9e965b"
+   },
+   {
+    "seq": 119,
+    "prev_hash": "55a14181966d22e8d3f411df8cbf67ea50af85cd2432e67367c907a3fe9e965b",
+    "row_hash": "cdec7d8a5e4c04933fbb43e9799da219aa6568f7bd8d8d7ccb4a9027f7edb754"
+   },
+   {
+    "seq": 120,
+    "prev_hash": "cdec7d8a5e4c04933fbb43e9799da219aa6568f7bd8d8d7ccb4a9027f7edb754",
+    "row_hash": "e1b6782f7d6d4a39a43744cde3f45da8bd74e97fea1d3e37cb03441bffc79fd5"
+   },
+   {
+    "seq": 121,
+    "prev_hash": "e1b6782f7d6d4a39a43744cde3f45da8bd74e97fea1d3e37cb03441bffc79fd5",
+    "row_hash": "0521405cc3b25410845f38d7263e854de07e93dc8efa9f72ce75a2e44e142768"
+   },
+   {
+    "seq": 122,
+    "prev_hash": "0521405cc3b25410845f38d7263e854de07e93dc8efa9f72ce75a2e44e142768",
+    "row_hash": "7def3c7378d6e20561aa2450eff659c75c8c9e7cc8b50019b8c0cf6d077adcfa"
+   },
+   {
+    "seq": 123,
+    "prev_hash": "7def3c7378d6e20561aa2450eff659c75c8c9e7cc8b50019b8c0cf6d077adcfa",
+    "row_hash": "12afb57bf394d3fd28a2c5592ee7b953f841119f95e9c5d04daca13981c1b824"
+   },
+   {
+    "seq": 124,
+    "prev_hash": "12afb57bf394d3fd28a2c5592ee7b953f841119f95e9c5d04daca13981c1b824",
+    "row_hash": "042e664e7d6fd0754b9e790b4ac14108810052571bdfcb8a998f4f844ed54bb8"
+   },
+   {
+    "seq": 125,
+    "prev_hash": "042e664e7d6fd0754b9e790b4ac14108810052571bdfcb8a998f4f844ed54bb8",
+    "row_hash": "a7dd27866839711409c2e53b84d7207504a2358b0199a0268344bb01581df47f"
+   },
+   {
+    "seq": 126,
+    "prev_hash": "a7dd27866839711409c2e53b84d7207504a2358b0199a0268344bb01581df47f",
+    "row_hash": "976efdc662eb2ef8fa245e1607d97f8d45518e1f3688fb526559f0e2ffabe17e"
+   },
+   {
+    "seq": 127,
+    "prev_hash": "976efdc662eb2ef8fa245e1607d97f8d45518e1f3688fb526559f0e2ffabe17e",
+    "row_hash": "1104e6723c630434d000d9d1dbad93c0c0e524dc324ecfa513b38b9d7f3dba05"
+   },
+   {
+    "seq": 128,
+    "prev_hash": "1104e6723c630434d000d9d1dbad93c0c0e524dc324ecfa513b38b9d7f3dba05",
+    "row_hash": "d6e4e0171b9cfc4e83750fd5c7b62b3a9cb2862732c884d89d8d2de8533e4bf5"
+   },
+   {
+    "seq": 129,
+    "prev_hash": "d6e4e0171b9cfc4e83750fd5c7b62b3a9cb2862732c884d89d8d2de8533e4bf5",
+    "row_hash": "7f8519b90d77cbe358f2d66a944d0b1ebca97a121dfbc969da7ae315fcd1466a"
+   },
+   {
+    "seq": 130,
+    "prev_hash": "7f8519b90d77cbe358f2d66a944d0b1ebca97a121dfbc969da7ae315fcd1466a",
+    "row_hash": "9eb5b58e5d152c8d0255526ca596de69491e911e8090f037b3c0820bb1b90a84"
+   },
+   {
+    "seq": 131,
+    "prev_hash": "9eb5b58e5d152c8d0255526ca596de69491e911e8090f037b3c0820bb1b90a84",
+    "row_hash": "9e2833eaa6fdd96eeef548f8307c2d578515c47c7b6bed562c2d3128f55aad05"
+   },
+   {
+    "seq": 132,
+    "prev_hash": "9e2833eaa6fdd96eeef548f8307c2d578515c47c7b6bed562c2d3128f55aad05",
+    "row_hash": "20678e24baf1b0fa7ef53c9590315d86113b55bbe827085aa6a29f2ee224f228"
+   },
+   {
+    "seq": 133,
+    "prev_hash": "20678e24baf1b0fa7ef53c9590315d86113b55bbe827085aa6a29f2ee224f228",
+    "row_hash": "6af985500e8f4f172d24305c3d2ab450c8944cc026c5fdaf4729ba675520d675"
+   },
+   {
+    "seq": 134,
+    "prev_hash": "6af985500e8f4f172d24305c3d2ab450c8944cc026c5fdaf4729ba675520d675",
+    "row_hash": "0abe8b4d490399fd804bdb29c69cef73cb7da87097ad7cbaf6f19be05131eab8"
+   },
+   {
+    "seq": 135,
+    "prev_hash": "0abe8b4d490399fd804bdb29c69cef73cb7da87097ad7cbaf6f19be05131eab8",
+    "row_hash": "3bb442e056c65da8ecb41f0b417daec286d5ee3ebdc8136e5e02e2069f09d521"
+   },
+   {
+    "seq": 136,
+    "prev_hash": "3bb442e056c65da8ecb41f0b417daec286d5ee3ebdc8136e5e02e2069f09d521",
+    "row_hash": "8a6dffaf8e18ea587f899975f49488d4267d5007ea56f8ee84de29877d908b9d"
+   },
+   {
+    "seq": 137,
+    "prev_hash": "8a6dffaf8e18ea587f899975f49488d4267d5007ea56f8ee84de29877d908b9d",
+    "row_hash": "6ce1cb3aedb0d186de25990fff070a78a83860c4f41528dfdfa4aa2a971cc023"
+   },
+   {
+    "seq": 138,
+    "prev_hash": "6ce1cb3aedb0d186de25990fff070a78a83860c4f41528dfdfa4aa2a971cc023",
+    "row_hash": "ecc37f7b6d3ec0693bd2f633e5063b551235ca0464a845238dda305e11b052db"
+   },
+   {
+    "seq": 139,
+    "prev_hash": "ecc37f7b6d3ec0693bd2f633e5063b551235ca0464a845238dda305e11b052db",
+    "row_hash": "04e5c97e6c10660a06b9a48253cf630d22483216151962974443054667649966"
+   },
+   {
+    "seq": 140,
+    "prev_hash": "04e5c97e6c10660a06b9a48253cf630d22483216151962974443054667649966",
+    "row_hash": "67b3c8a613ca146b62f9966526cd48d359de5ae9b8d8c09cbd7dc09b1177a8f9"
+   },
+   {
+    "seq": 141,
+    "prev_hash": "67b3c8a613ca146b62f9966526cd48d359de5ae9b8d8c09cbd7dc09b1177a8f9",
+    "row_hash": "bbbf728d3a9b77781fe7e7263b3774376c0a18200dd0207893d9f564408aa66c"
+   },
+   {
+    "seq": 142,
+    "prev_hash": "bbbf728d3a9b77781fe7e7263b3774376c0a18200dd0207893d9f564408aa66c",
+    "row_hash": "13bd1932045a0e3b43246b26d499ddc1755cd8ad4326c8300b27e15bc3bdd077"
+   },
+   {
+    "seq": 143,
+    "prev_hash": "13bd1932045a0e3b43246b26d499ddc1755cd8ad4326c8300b27e15bc3bdd077",
+    "row_hash": "09328bc9201e5fbd373f22c5a05bd23c1a96ed2e0ab833e9a333024b01c95a10"
+   },
+   {
+    "seq": 144,
+    "prev_hash": "09328bc9201e5fbd373f22c5a05bd23c1a96ed2e0ab833e9a333024b01c95a10",
+    "row_hash": "c815a70897156067704c07e0dc9430543f78ab5cd8c0308920ada4768b41fb60"
+   },
+   {
+    "seq": 145,
+    "prev_hash": "c815a70897156067704c07e0dc9430543f78ab5cd8c0308920ada4768b41fb60",
+    "row_hash": "d68fd85ac0b53bc0d5e5b2b77bf736e68580e7cee47ee949923aaf4c8bd909d0"
+   },
+   {
+    "seq": 146,
+    "prev_hash": "d68fd85ac0b53bc0d5e5b2b77bf736e68580e7cee47ee949923aaf4c8bd909d0",
+    "row_hash": "d83fccdfc9aef21b54b760991b1d12c2a31874515b9baf3651123c8d508bfdf3"
+   },
+   {
+    "seq": 147,
+    "prev_hash": "d83fccdfc9aef21b54b760991b1d12c2a31874515b9baf3651123c8d508bfdf3",
+    "row_hash": "266eed56cb62623d23417b7c1c69dde8d32826bbbb3f1a0fe318a7cc239b7b5f"
+   },
+   {
+    "seq": 148,
+    "prev_hash": "266eed56cb62623d23417b7c1c69dde8d32826bbbb3f1a0fe318a7cc239b7b5f",
+    "row_hash": "187c1496280e48ab5bdf3453af4a3a31b0e13dcb897207c96386ee0bd9ec1b2c"
+   },
+   {
+    "seq": 149,
+    "prev_hash": "187c1496280e48ab5bdf3453af4a3a31b0e13dcb897207c96386ee0bd9ec1b2c",
+    "row_hash": "13ab1d4edac4764b866017e94f190d517d747511a05b249f0217280e16775bfe"
+   },
+   {
+    "seq": 150,
+    "prev_hash": "13ab1d4edac4764b866017e94f190d517d747511a05b249f0217280e16775bfe",
+    "row_hash": "730a7b83f16205722fe7609a62ac905640ee4948ff374d0c3ad27b640e212fa6"
+   },
+   {
+    "seq": 151,
+    "prev_hash": "730a7b83f16205722fe7609a62ac905640ee4948ff374d0c3ad27b640e212fa6",
+    "row_hash": "06b5541a86dd43ff69478e810af19cd31d7c6825aa8dfcfd61fe25c6a5edec9c"
+   },
+   {
+    "seq": 152,
+    "prev_hash": "06b5541a86dd43ff69478e810af19cd31d7c6825aa8dfcfd61fe25c6a5edec9c",
+    "row_hash": "3458ca31e58055f74b4999c925791a735ee57709858ecf0a7158e59405ee078a"
+   },
+   {
+    "seq": 153,
+    "prev_hash": "3458ca31e58055f74b4999c925791a735ee57709858ecf0a7158e59405ee078a",
+    "row_hash": "5d9ee234ea8a6d937208cd565188a749b68971af1f0cb66d8c096988d48c1f20"
+   },
+   {
+    "seq": 154,
+    "prev_hash": "5d9ee234ea8a6d937208cd565188a749b68971af1f0cb66d8c096988d48c1f20",
+    "row_hash": "2980011d8c4f825890bc553f5275c06b3f39ac7c90ad7f48d4160f3a3262bca6"
+   },
+   {
+    "seq": 155,
+    "prev_hash": "2980011d8c4f825890bc553f5275c06b3f39ac7c90ad7f48d4160f3a3262bca6",
+    "row_hash": "5e77e7c446247d6b939660e0b281f21e6e2aacd872289753c91be7ed682cbc2c"
+   },
+   {
+    "seq": 156,
+    "prev_hash": "5e77e7c446247d6b939660e0b281f21e6e2aacd872289753c91be7ed682cbc2c",
+    "row_hash": "2b74bbbd210dfbbd4c02e8ab0053dfd50096dd1e5298822264c8c4e996d07139"
+   },
+   {
+    "seq": 157,
+    "prev_hash": "2b74bbbd210dfbbd4c02e8ab0053dfd50096dd1e5298822264c8c4e996d07139",
+    "row_hash": "646e4909a7ba1ea403b6975bb6cdd2648b5f6d5c6e8b1ac6cdb6035fd70f8deb"
+   },
+   {
+    "seq": 158,
+    "prev_hash": "646e4909a7ba1ea403b6975bb6cdd2648b5f6d5c6e8b1ac6cdb6035fd70f8deb",
+    "row_hash": "4c545538df1c0d46838fad7de71fd628fb7b968614e77a1e32c5c3d3280a5077"
+   },
+   {
+    "seq": 159,
+    "prev_hash": "4c545538df1c0d46838fad7de71fd628fb7b968614e77a1e32c5c3d3280a5077",
+    "row_hash": "c2adb5bf2aefc1a8bca788ca5fe1e2ed9cc4691199c9e262c5bf4e69848e7116"
+   },
+   {
+    "seq": 160,
+    "prev_hash": "c2adb5bf2aefc1a8bca788ca5fe1e2ed9cc4691199c9e262c5bf4e69848e7116",
+    "row_hash": "e365186f42603fcef551eaad4c5646a63ef7ffba16ba27178a0c8e7b196d7d7a"
+   },
+   {
+    "seq": 161,
+    "prev_hash": "e365186f42603fcef551eaad4c5646a63ef7ffba16ba27178a0c8e7b196d7d7a",
+    "row_hash": "fa3d26f0981afe45416a1d11962a1edcf3b4eb93c74964e4cfd0f77e203f28c5"
+   },
+   {
+    "seq": 162,
+    "prev_hash": "fa3d26f0981afe45416a1d11962a1edcf3b4eb93c74964e4cfd0f77e203f28c5",
+    "row_hash": "a992bc1c76e1ed07467cf1267dabf69a305375013bb840e65ab4d06210a3b578"
+   },
+   {
+    "seq": 163,
+    "prev_hash": "a992bc1c76e1ed07467cf1267dabf69a305375013bb840e65ab4d06210a3b578",
+    "row_hash": "e842af83fa399b8cbab9b3d973d30fae3d9d6d4a488e27d91e1ae7c0c828fe45"
+   },
+   {
+    "seq": 164,
+    "prev_hash": "e842af83fa399b8cbab9b3d973d30fae3d9d6d4a488e27d91e1ae7c0c828fe45",
+    "row_hash": "4bb1b853e2720cc93c1b93205e54fc02a1d16ee83bd89a1e78f0ad3bcee3ac32"
+   },
+   {
+    "seq": 165,
+    "prev_hash": "4bb1b853e2720cc93c1b93205e54fc02a1d16ee83bd89a1e78f0ad3bcee3ac32",
+    "row_hash": "753493214a1ba95fab9832c02d89304adaea668d757841478fe4804c22aa1f49"
+   },
+   {
+    "seq": 166,
+    "prev_hash": "753493214a1ba95fab9832c02d89304adaea668d757841478fe4804c22aa1f49",
+    "row_hash": "e098f4af581f172adde96626f857bfc3eee1421549cfa5f46934616869260fb9"
+   },
+   {
+    "seq": 167,
+    "prev_hash": "e098f4af581f172adde96626f857bfc3eee1421549cfa5f46934616869260fb9",
+    "row_hash": "b4da75b36e4a8fb237d22bb79fad4c1b4b15d1958b6b633f4c59a8065fe21130"
+   },
+   {
+    "seq": 168,
+    "prev_hash": "b4da75b36e4a8fb237d22bb79fad4c1b4b15d1958b6b633f4c59a8065fe21130",
+    "row_hash": "98aa73d0fabe8e413f4b3d620483685551150ed7b363a154b48173099e9e708f"
+   },
+   {
+    "seq": 169,
+    "prev_hash": "98aa73d0fabe8e413f4b3d620483685551150ed7b363a154b48173099e9e708f",
+    "row_hash": "b9555219c3f0faab32f02610ecc86a036f907dfe6c8df66234fdaf6292580014"
+   },
+   {
+    "seq": 170,
+    "prev_hash": "b9555219c3f0faab32f02610ecc86a036f907dfe6c8df66234fdaf6292580014",
+    "row_hash": "b3e09a6ec4c85b51ccec77dc796941aaad62d2f6aac5b075f7b842b14d53f913"
+   },
+   {
+    "seq": 171,
+    "prev_hash": "b3e09a6ec4c85b51ccec77dc796941aaad62d2f6aac5b075f7b842b14d53f913",
+    "row_hash": "81a5b20f87b3740e3f46c39565257f00934103fec05a21a0b7e952a35ecc4e6a"
+   },
+   {
+    "seq": 172,
+    "prev_hash": "81a5b20f87b3740e3f46c39565257f00934103fec05a21a0b7e952a35ecc4e6a",
+    "row_hash": "7908235ef91ce986db45be9fc924a709fcd379a746749c22b2ba36f9457ece87"
+   },
+   {
+    "seq": 173,
+    "prev_hash": "7908235ef91ce986db45be9fc924a709fcd379a746749c22b2ba36f9457ece87",
+    "row_hash": "6d8e23feed128d8a0264afefe22c5d12d45f9b77b5dc4a2f8b397bb18572867d"
+   },
+   {
+    "seq": 174,
+    "prev_hash": "6d8e23feed128d8a0264afefe22c5d12d45f9b77b5dc4a2f8b397bb18572867d",
+    "row_hash": "a4ac0db01ac33a3da397f9499ff6a668d2155dcda7a7a9208533726ef8ca7851"
+   },
+   {
+    "seq": 175,
+    "prev_hash": "a4ac0db01ac33a3da397f9499ff6a668d2155dcda7a7a9208533726ef8ca7851",
+    "row_hash": "3a76707a1b7d42db0cfeb9df33f7e5403efc01dddb34d4a6a287320693c0f3d3"
+   },
+   {
+    "seq": 176,
+    "prev_hash": "3a76707a1b7d42db0cfeb9df33f7e5403efc01dddb34d4a6a287320693c0f3d3",
+    "row_hash": "e3208fa29a04e93c9ef079e923cab1e08e97042225922c3d0dddc805a7510775"
+   },
+   {
+    "seq": 177,
+    "prev_hash": "e3208fa29a04e93c9ef079e923cab1e08e97042225922c3d0dddc805a7510775",
+    "row_hash": "acd0856b68d998b6ce20da3a1caa55202d814600abe1ebe621ea4ed348d758d9"
+   },
+   {
+    "seq": 178,
+    "prev_hash": "acd0856b68d998b6ce20da3a1caa55202d814600abe1ebe621ea4ed348d758d9",
+    "row_hash": "9032407a75b526ac8df4e754cc6d32639b802d699565294059c166a892696bbc"
+   },
+   {
+    "seq": 179,
+    "prev_hash": "9032407a75b526ac8df4e754cc6d32639b802d699565294059c166a892696bbc",
+    "row_hash": "6f2238161ad69b45418373c600b1aa5c823a95971c8a13dcc444cd4cded582e0"
+   },
+   {
+    "seq": 180,
+    "prev_hash": "6f2238161ad69b45418373c600b1aa5c823a95971c8a13dcc444cd4cded582e0",
+    "row_hash": "3612478af0943ab6ba239a4bd655db15456f668a72ff2818f434be2b257c7da4"
+   },
+   {
+    "seq": 181,
+    "prev_hash": "3612478af0943ab6ba239a4bd655db15456f668a72ff2818f434be2b257c7da4",
+    "row_hash": "fa7da5b9afdfad77d063494eb861724782e8c1d1498545b4d62b697012e018ea"
+   },
+   {
+    "seq": 182,
+    "prev_hash": "fa7da5b9afdfad77d063494eb861724782e8c1d1498545b4d62b697012e018ea",
+    "row_hash": "bb0ca9a5d34a51ac40d461376b9ec1ea820e31a743931a5332d611ad5e13150d"
+   },
+   {
+    "seq": 183,
+    "prev_hash": "bb0ca9a5d34a51ac40d461376b9ec1ea820e31a743931a5332d611ad5e13150d",
+    "row_hash": "975157097394949b49490ec249ba162b141a42037ce6d12a673fc4f1e98bc8ed"
+   },
+   {
+    "seq": 184,
+    "prev_hash": "975157097394949b49490ec249ba162b141a42037ce6d12a673fc4f1e98bc8ed",
+    "row_hash": "c3cd1309dd6983cfdc91e8785704a9b6bc82bc30acb9eba7d202b3092ae04b8b"
+   },
+   {
+    "seq": 185,
+    "prev_hash": "c3cd1309dd6983cfdc91e8785704a9b6bc82bc30acb9eba7d202b3092ae04b8b",
+    "row_hash": "5aeef7e7f9e8a1421b341de2dda71da1104031c4346b35b0bea73fed8d29b4c4"
+   },
+   {
+    "seq": 186,
+    "prev_hash": "5aeef7e7f9e8a1421b341de2dda71da1104031c4346b35b0bea73fed8d29b4c4",
+    "row_hash": "f3d78fb2af14348fe9f0da2e903716583021c6e09b161d8882bf961032b8cd34"
+   },
+   {
+    "seq": 187,
+    "prev_hash": "f3d78fb2af14348fe9f0da2e903716583021c6e09b161d8882bf961032b8cd34",
+    "row_hash": "55a5f0776063db8d04649739a750d5da71d5c1d78af026eac0eaefe294a528df"
+   },
+   {
+    "seq": 188,
+    "prev_hash": "55a5f0776063db8d04649739a750d5da71d5c1d78af026eac0eaefe294a528df",
+    "row_hash": "33782f96ca1826a10a2a9925b45125eaf7496c7fd21f84d3b3f943edcb943f38"
+   },
+   {
+    "seq": 189,
+    "prev_hash": "33782f96ca1826a10a2a9925b45125eaf7496c7fd21f84d3b3f943edcb943f38",
+    "row_hash": "3e9de07fc532bd0bf5bf30eba9e33cba8af523ec0b327e7a2e2b8c737a2360b7"
+   },
+   {
+    "seq": 190,
+    "prev_hash": "3e9de07fc532bd0bf5bf30eba9e33cba8af523ec0b327e7a2e2b8c737a2360b7",
+    "row_hash": "a904bd917df548f5fb794551228fa6e2ce81c1f3288664bb9ad0cf25ff9b021c"
+   },
+   {
+    "seq": 191,
+    "prev_hash": "a904bd917df548f5fb794551228fa6e2ce81c1f3288664bb9ad0cf25ff9b021c",
+    "row_hash": "bd06033a45718f6d4d2c67f1c5aafa703eadb9597a43ab03345fa9e1103b3d7c"
+   },
+   {
+    "seq": 192,
+    "prev_hash": "bd06033a45718f6d4d2c67f1c5aafa703eadb9597a43ab03345fa9e1103b3d7c",
+    "row_hash": "678400fdab4ff60c2425a2a71c7b5575cf96f9e75cc80256e586fa5050e06c13"
+   },
+   {
+    "seq": 193,
+    "prev_hash": "678400fdab4ff60c2425a2a71c7b5575cf96f9e75cc80256e586fa5050e06c13",
+    "row_hash": "62e5c2ef4e9eb25603ba1d3bd7a9814392db8faae4a9b46499cf178d4c714f59"
+   },
+   {
+    "seq": 194,
+    "prev_hash": "62e5c2ef4e9eb25603ba1d3bd7a9814392db8faae4a9b46499cf178d4c714f59",
+    "row_hash": "042ba4f8385a180e0aae98fae2e3587e10ac519a9154c1bfec5a13dc30107a95"
+   },
+   {
+    "seq": 195,
+    "prev_hash": "042ba4f8385a180e0aae98fae2e3587e10ac519a9154c1bfec5a13dc30107a95",
+    "row_hash": "148f77c180b61d9cf0efa6b1a90a33a78aaa22ff9e69fb2bd10a871b85820f55"
+   },
+   {
+    "seq": 196,
+    "prev_hash": "148f77c180b61d9cf0efa6b1a90a33a78aaa22ff9e69fb2bd10a871b85820f55",
+    "row_hash": "4ebf0a02cd9e629ede84fca37297b77724b78026d219444d3d24ff1083dfdd12"
+   },
+   {
+    "seq": 197,
+    "prev_hash": "4ebf0a02cd9e629ede84fca37297b77724b78026d219444d3d24ff1083dfdd12",
+    "row_hash": "b5fc26965a5354bb4317b76d03dc869a701982d9aee47fd717bb9ad410d5c5f6"
+   },
+   {
+    "seq": 198,
+    "prev_hash": "b5fc26965a5354bb4317b76d03dc869a701982d9aee47fd717bb9ad410d5c5f6",
+    "row_hash": "579b3baeab9513c3359583b756c566dd09cee724f3ae212498a044e02197b9ae"
+   },
+   {
+    "seq": 199,
+    "prev_hash": "579b3baeab9513c3359583b756c566dd09cee724f3ae212498a044e02197b9ae",
+    "row_hash": "1002e5d10daa8a991a160632e53b9f613c03433853dc5d5b2240f287a2433f00"
+   },
+   {
+    "seq": 200,
+    "prev_hash": "1002e5d10daa8a991a160632e53b9f613c03433853dc5d5b2240f287a2433f00",
+    "row_hash": "073582a8fc8aa98d9e525328a0742aff0dec7672944b7d3310640cc50d1dedc3"
+   },
+   {
+    "seq": 201,
+    "prev_hash": "073582a8fc8aa98d9e525328a0742aff0dec7672944b7d3310640cc50d1dedc3",
+    "row_hash": "056d393841055a1ad96b90d6495319f7137f0e3bc3fd5a6fd679275b3718edc6"
+   },
+   {
+    "seq": 202,
+    "prev_hash": "056d393841055a1ad96b90d6495319f7137f0e3bc3fd5a6fd679275b3718edc6",
+    "row_hash": "31358aa094d421c77b98a74e95175c0b09f326788d8bce8c1b0e099a992253fc"
+   },
+   {
+    "seq": 203,
+    "prev_hash": "31358aa094d421c77b98a74e95175c0b09f326788d8bce8c1b0e099a992253fc",
+    "row_hash": "1b180558b52932d0a2a9d5b7fabbd156df5aeabb403a8e4d2a7ce96388b58400"
+   },
+   {
+    "seq": 204,
+    "prev_hash": "1b180558b52932d0a2a9d5b7fabbd156df5aeabb403a8e4d2a7ce96388b58400",
+    "row_hash": "02e8891aab6a66c54fd0d42ed1428acf7fd1c79c1be0eb527e931fa948420a37"
+   },
+   {
+    "seq": 205,
+    "prev_hash": "02e8891aab6a66c54fd0d42ed1428acf7fd1c79c1be0eb527e931fa948420a37",
+    "row_hash": "d9ab72fd8ff526cc68863a6fa5df01a2fa01c61b7ecffad5aab4369daa03f5fc"
+   },
+   {
+    "seq": 206,
+    "prev_hash": "d9ab72fd8ff526cc68863a6fa5df01a2fa01c61b7ecffad5aab4369daa03f5fc",
+    "row_hash": "7b15ef46ddd706cc9955aefe3049e130ca8f2bbffeb664dc630e7ad66fdbeb56"
+   },
+   {
+    "seq": 207,
+    "prev_hash": "7b15ef46ddd706cc9955aefe3049e130ca8f2bbffeb664dc630e7ad66fdbeb56",
+    "row_hash": "8b455c0c80d336c6ad0245a9ef028f1311836bcf41d2ada1ece32ee509d24f9c"
+   },
+   {
+    "seq": 208,
+    "prev_hash": "8b455c0c80d336c6ad0245a9ef028f1311836bcf41d2ada1ece32ee509d24f9c",
+    "row_hash": "8e4e7960f335b562fdc6be2f903c823d95e7ca92a73597a1d3cb23eae541b91f"
+   },
+   {
+    "seq": 209,
+    "prev_hash": "8e4e7960f335b562fdc6be2f903c823d95e7ca92a73597a1d3cb23eae541b91f",
+    "row_hash": "d49ab56e4dc5a4c2672a74baa72b689543c2a4e85647e9fdcfe59dc7bb50dcb2"
+   },
+   {
+    "seq": 210,
+    "prev_hash": "d49ab56e4dc5a4c2672a74baa72b689543c2a4e85647e9fdcfe59dc7bb50dcb2",
+    "row_hash": "f3d10019738163e959eeef954d4ab04bd24b767c82e7ef488ac382c46ec21525"
+   },
+   {
+    "seq": 211,
+    "prev_hash": "f3d10019738163e959eeef954d4ab04bd24b767c82e7ef488ac382c46ec21525",
+    "row_hash": "36121553d4ef06b813d52d7ccd5959c758f219adb210b63c3687ecc6fae32bb1"
+   },
+   {
+    "seq": 212,
+    "prev_hash": "36121553d4ef06b813d52d7ccd5959c758f219adb210b63c3687ecc6fae32bb1",
+    "row_hash": "eea2bc22532e57e9a5c288b33b779196ad94000f4dbc0bd7fb7d6ce71e89ceec"
+   },
+   {
+    "seq": 213,
+    "prev_hash": "eea2bc22532e57e9a5c288b33b779196ad94000f4dbc0bd7fb7d6ce71e89ceec",
+    "row_hash": "cb2e40bf4ab2ba071007e4583fda4bad78cd7b7182ba11bf189fee4174fbe3c6"
+   },
+   {
+    "seq": 214,
+    "prev_hash": "cb2e40bf4ab2ba071007e4583fda4bad78cd7b7182ba11bf189fee4174fbe3c6",
+    "row_hash": "b754aa08965bfa67f5db255cec4db8139ad420d0ceeb3326070993b2afae83e7"
+   },
+   {
+    "seq": 215,
+    "prev_hash": "b754aa08965bfa67f5db255cec4db8139ad420d0ceeb3326070993b2afae83e7",
+    "row_hash": "bb2ac913dfc60f415c27e9181e4c9cc5bda8a570f80e17f8febd3391dc4b92b6"
+   },
+   {
+    "seq": 216,
+    "prev_hash": "bb2ac913dfc60f415c27e9181e4c9cc5bda8a570f80e17f8febd3391dc4b92b6",
+    "row_hash": "2007766d5d400aab7026a4a0ee76938b99d289ac3eb83837b33e5a55f1c29a76"
+   },
+   {
+    "seq": 217,
+    "prev_hash": "2007766d5d400aab7026a4a0ee76938b99d289ac3eb83837b33e5a55f1c29a76",
+    "row_hash": "9baa5eaf7cd57246610fa3f0a776454c91d125cf70809186bfaf408e6c98e037"
+   },
+   {
+    "seq": 218,
+    "prev_hash": "9baa5eaf7cd57246610fa3f0a776454c91d125cf70809186bfaf408e6c98e037",
+    "row_hash": "bc9ef9d05a9a8281ec86977bf2c35dd51effebe25340b486dd57e6fc7f2f9bab"
+   },
+   {
+    "seq": 219,
+    "prev_hash": "bc9ef9d05a9a8281ec86977bf2c35dd51effebe25340b486dd57e6fc7f2f9bab",
+    "row_hash": "0f1b6802cfc767e7375811f0ece3900ca832253a87c1b504e3c7e14033c74503"
+   },
+   {
+    "seq": 220,
+    "prev_hash": "0f1b6802cfc767e7375811f0ece3900ca832253a87c1b504e3c7e14033c74503",
+    "row_hash": "f88ec90faf7b27eb1f47244c205f2eb1b09b7d7323f79dac1d242d73b8e05d57"
+   },
+   {
+    "seq": 221,
+    "prev_hash": "f88ec90faf7b27eb1f47244c205f2eb1b09b7d7323f79dac1d242d73b8e05d57",
+    "row_hash": "6a21a0bfddde9a56060d525f7e0973c97deeb43eb466ebabf9888072e413809b"
+   },
+   {
+    "seq": 222,
+    "prev_hash": "6a21a0bfddde9a56060d525f7e0973c97deeb43eb466ebabf9888072e413809b",
+    "row_hash": "f21ec1289b42035257815ff132d3ce3a866885f072f338417a3be094a22fc45c"
+   },
+   {
+    "seq": 223,
+    "prev_hash": "f21ec1289b42035257815ff132d3ce3a866885f072f338417a3be094a22fc45c",
+    "row_hash": "01b2be08d33ed7306fa575e7f1f6686a2d53fae7aadeeced0773c5550da0939c"
+   },
+   {
+    "seq": 224,
+    "prev_hash": "01b2be08d33ed7306fa575e7f1f6686a2d53fae7aadeeced0773c5550da0939c",
+    "row_hash": "e98ebbefbc67d1563894ca2b3a56637372480d7d368e68389ac7ef59c8304e7d"
+   },
+   {
+    "seq": 225,
+    "prev_hash": "e98ebbefbc67d1563894ca2b3a56637372480d7d368e68389ac7ef59c8304e7d",
+    "row_hash": "27644c51c19b16819b7bd9c8df16d33db9189d65f2c094f11043a33c45896e96"
+   },
+   {
+    "seq": 226,
+    "prev_hash": "27644c51c19b16819b7bd9c8df16d33db9189d65f2c094f11043a33c45896e96",
+    "row_hash": "6ebebe69af2ac0e540dd4c27cb7f0afadd3d932fef3ab4706f7d13d47bb996d1"
+   },
+   {
+    "seq": 227,
+    "prev_hash": "6ebebe69af2ac0e540dd4c27cb7f0afadd3d932fef3ab4706f7d13d47bb996d1",
+    "row_hash": "cce8bf6d4ecee31b30fd3a79f73bac42814d478c54896bf3298d7d7c90dd5831"
+   },
+   {
+    "seq": 228,
+    "prev_hash": "cce8bf6d4ecee31b30fd3a79f73bac42814d478c54896bf3298d7d7c90dd5831",
+    "row_hash": "8897290436c97f3cce34fabf154fd01c5f58a123a4f9c1d96bda3acc28ac49a2"
+   },
+   {
+    "seq": 229,
+    "prev_hash": "8897290436c97f3cce34fabf154fd01c5f58a123a4f9c1d96bda3acc28ac49a2",
+    "row_hash": "1bc899159865b8688432518ec26445d6a8db173e17018b81529167b7ce9828f6"
+   },
+   {
+    "seq": 230,
+    "prev_hash": "1bc899159865b8688432518ec26445d6a8db173e17018b81529167b7ce9828f6",
+    "row_hash": "fca97e416aeac3bac7cc342c96399c7bb56512267e16da1dda5a4cad4d495190"
+   },
+   {
+    "seq": 231,
+    "prev_hash": "fca97e416aeac3bac7cc342c96399c7bb56512267e16da1dda5a4cad4d495190",
+    "row_hash": "49eeb8e8c7ef2bd96d39779712230ab9b009d0fb1546d6329fe472513c6524fb"
+   },
+   {
+    "seq": 232,
+    "prev_hash": "49eeb8e8c7ef2bd96d39779712230ab9b009d0fb1546d6329fe472513c6524fb",
+    "row_hash": "80599d569c349d10397708136c0b2b94cbf72bb52add865240ff2d1176e11b7e"
+   },
+   {
+    "seq": 233,
+    "prev_hash": "80599d569c349d10397708136c0b2b94cbf72bb52add865240ff2d1176e11b7e",
+    "row_hash": "a06638a1218e7c467d78a6e970ff7135835e3c7c0e701339595e6fb3331e9847"
+   },
+   {
+    "seq": 234,
+    "prev_hash": "a06638a1218e7c467d78a6e970ff7135835e3c7c0e701339595e6fb3331e9847",
+    "row_hash": "1fbb7ce832ae46136c67f5d40ba4ebeafca22c7ac8b23efafdecc2138946e247"
+   },
+   {
+    "seq": 235,
+    "prev_hash": "1fbb7ce832ae46136c67f5d40ba4ebeafca22c7ac8b23efafdecc2138946e247",
+    "row_hash": "20a0741c563d29ac717f6db64122b68ef1439c3fbce3980b5a07a3069fd8b9fe"
+   },
+   {
+    "seq": 236,
+    "prev_hash": "20a0741c563d29ac717f6db64122b68ef1439c3fbce3980b5a07a3069fd8b9fe",
+    "row_hash": "95f7d3054ea3e2482c157c9823c20e65f9cf641453de4e8dd8761cc27e17fd5b"
+   },
+   {
+    "seq": 237,
+    "prev_hash": "95f7d3054ea3e2482c157c9823c20e65f9cf641453de4e8dd8761cc27e17fd5b",
+    "row_hash": "acb74c36e587637914b488ef7612f7b8f0c67594132395a4881fa81ac2c7a02c"
+   },
+   {
+    "seq": 238,
+    "prev_hash": "acb74c36e587637914b488ef7612f7b8f0c67594132395a4881fa81ac2c7a02c",
+    "row_hash": "703efba8d21d95f474f4f1433e21c7ae34864ef2365a49cbb64e7dbdede25f2d"
+   },
+   {
+    "seq": 239,
+    "prev_hash": "703efba8d21d95f474f4f1433e21c7ae34864ef2365a49cbb64e7dbdede25f2d",
+    "row_hash": "622fc49fad8a4866a8b346a48cdc70a943b9208d62aba254d9d37efae5fbc89e"
+   },
+   {
+    "seq": 240,
+    "prev_hash": "622fc49fad8a4866a8b346a48cdc70a943b9208d62aba254d9d37efae5fbc89e",
+    "row_hash": "b29e7de7256eb1c42dbda25475fe76a964719f6d1f7d9d39ca2320bb80721975"
+   },
+   {
+    "seq": 241,
+    "prev_hash": "b29e7de7256eb1c42dbda25475fe76a964719f6d1f7d9d39ca2320bb80721975",
+    "row_hash": "740792a5f54563a48a9de8231e84c8ea855885af3a1ecb0581963e446f7c8366"
+   },
+   {
+    "seq": 242,
+    "prev_hash": "740792a5f54563a48a9de8231e84c8ea855885af3a1ecb0581963e446f7c8366",
+    "row_hash": "bfdbfaca574e764c4efe93fe09ee62bc3840e79aea9f38c7acaf473881651eb7"
+   },
+   {
+    "seq": 243,
+    "prev_hash": "bfdbfaca574e764c4efe93fe09ee62bc3840e79aea9f38c7acaf473881651eb7",
+    "row_hash": "25ac51ff20109dfec42ee78ae34bfcd0033099d40916377419dae47c46b7ce97"
+   },
+   {
+    "seq": 244,
+    "prev_hash": "25ac51ff20109dfec42ee78ae34bfcd0033099d40916377419dae47c46b7ce97",
+    "row_hash": "04ec1b4b6e053e5ad1650bb7ee4e7d38415b048c62a174d0df4a5a39bc0adc13"
+   },
+   {
+    "seq": 245,
+    "prev_hash": "04ec1b4b6e053e5ad1650bb7ee4e7d38415b048c62a174d0df4a5a39bc0adc13",
+    "row_hash": "fcf46b64cd388974da9a9e60981629d8043576b9547099eff57ecf305197906f"
+   },
+   {
+    "seq": 246,
+    "prev_hash": "fcf46b64cd388974da9a9e60981629d8043576b9547099eff57ecf305197906f",
+    "row_hash": "2312fe012970c2b2153e7bbf489aafca48405a11e0eaaf90ba51a12aab679b07"
+   },
+   {
+    "seq": 247,
+    "prev_hash": "2312fe012970c2b2153e7bbf489aafca48405a11e0eaaf90ba51a12aab679b07",
+    "row_hash": "2e1556fa4af708e3b646b0babb444bcf712287043e160c157740825a9e148605"
+   },
+   {
+    "seq": 248,
+    "prev_hash": "2e1556fa4af708e3b646b0babb444bcf712287043e160c157740825a9e148605",
+    "row_hash": "04ef34b2a09300dff93c3443906f6a6b3dfcac405760e12da1c6da92bf60d6a8"
+   },
+   {
+    "seq": 249,
+    "prev_hash": "04ef34b2a09300dff93c3443906f6a6b3dfcac405760e12da1c6da92bf60d6a8",
+    "row_hash": "68bf6add411c1166a1942c718a60a0f963fe59fcfa0ece93a4b5111f847edcfe"
+   },
+   {
+    "seq": 250,
+    "prev_hash": "68bf6add411c1166a1942c718a60a0f963fe59fcfa0ece93a4b5111f847edcfe",
+    "row_hash": "41ee0dd9d2832ea8b5294bdc9a31ab3806a2c39d4c9365cdb677088862cf6813"
+   },
+   {
+    "seq": 251,
+    "prev_hash": "41ee0dd9d2832ea8b5294bdc9a31ab3806a2c39d4c9365cdb677088862cf6813",
+    "row_hash": "ecc140b003dd2d83db20d2bd0f989a0d533cadb27ebcbf101d430db845633252"
+   },
+   {
+    "seq": 252,
+    "prev_hash": "ecc140b003dd2d83db20d2bd0f989a0d533cadb27ebcbf101d430db845633252",
+    "row_hash": "953f14750c7b329fb9119b41b62cd194ca04bf8055c61f46acdf5244b3c833fb"
+   },
+   {
+    "seq": 253,
+    "prev_hash": "953f14750c7b329fb9119b41b62cd194ca04bf8055c61f46acdf5244b3c833fb",
+    "row_hash": "b2c96b9bbeeac4e83c3fd87872b35e564733164263aeb148947a38e2527d500e"
+   },
+   {
+    "seq": 254,
+    "prev_hash": "b2c96b9bbeeac4e83c3fd87872b35e564733164263aeb148947a38e2527d500e",
+    "row_hash": "ddc3a160e945ea0b1e737c0196eff2004627a72c01b67f773ea5b5945ecce9b6"
+   },
+   {
+    "seq": 255,
+    "prev_hash": "ddc3a160e945ea0b1e737c0196eff2004627a72c01b67f773ea5b5945ecce9b6",
+    "row_hash": "031431bc860a86a86576f9355724cea83839dd44469a4f9f71b9f1334d879079"
+   },
+   {
+    "seq": 256,
+    "prev_hash": "031431bc860a86a86576f9355724cea83839dd44469a4f9f71b9f1334d879079",
+    "row_hash": "f724a15839f7c21a30bdb5ad2aa9bba55e6845ed0343f9ced365a01dfc320e29"
+   },
+   {
+    "seq": 257,
+    "prev_hash": "f724a15839f7c21a30bdb5ad2aa9bba55e6845ed0343f9ced365a01dfc320e29",
+    "row_hash": "2a4f3c91ec56830599016395057552a7e65cbbd4f6ea87c483f456c44c554a86"
+   },
+   {
+    "seq": 258,
+    "prev_hash": "2a4f3c91ec56830599016395057552a7e65cbbd4f6ea87c483f456c44c554a86",
+    "row_hash": "61c64991c0a541312c6fbd10c42cb87fd96f19990821713350dfccf1e67cc626"
+   },
+   {
+    "seq": 259,
+    "prev_hash": "61c64991c0a541312c6fbd10c42cb87fd96f19990821713350dfccf1e67cc626",
+    "row_hash": "9d9ef71d3363b271b4dd33e71db05275ddcd799b9b7917017b6bb83724252ff7"
+   },
+   {
+    "seq": 260,
+    "prev_hash": "9d9ef71d3363b271b4dd33e71db05275ddcd799b9b7917017b6bb83724252ff7",
+    "row_hash": "2057fccf3da87a8498a86b4522d103285798629b44e847023612bae1d868c5dd"
+   },
+   {
+    "seq": 261,
+    "prev_hash": "2057fccf3da87a8498a86b4522d103285798629b44e847023612bae1d868c5dd",
+    "row_hash": "7b36c8259105906f293d9d15340e8a4dd8a278599d063ce4c96a26fc16e20daa"
+   },
+   {
+    "seq": 262,
+    "prev_hash": "7b36c8259105906f293d9d15340e8a4dd8a278599d063ce4c96a26fc16e20daa",
+    "row_hash": "2d0db2c59c3fbfb203a3f34edf52f7bfc78ddf90c50e1c7c627b86a8bc6d84f8"
+   },
+   {
+    "seq": 263,
+    "prev_hash": "2d0db2c59c3fbfb203a3f34edf52f7bfc78ddf90c50e1c7c627b86a8bc6d84f8",
+    "row_hash": "7deb4c898a0d6ce7ca9cf40ddbf29b7cb48f1629388abcd45857938210053ce3"
+   },
+   {
+    "seq": 264,
+    "prev_hash": "7deb4c898a0d6ce7ca9cf40ddbf29b7cb48f1629388abcd45857938210053ce3",
+    "row_hash": "31cde743458ce20a32be13e1d3dfbad6d674bfb06bc764f26c47ee51a979f503"
+   },
+   {
+    "seq": 265,
+    "prev_hash": "31cde743458ce20a32be13e1d3dfbad6d674bfb06bc764f26c47ee51a979f503",
+    "row_hash": "3306c83e11710393681b60b13e77a755596c07c3b4a3179bfdf1eaeed29976b3"
+   },
+   {
+    "seq": 266,
+    "prev_hash": "3306c83e11710393681b60b13e77a755596c07c3b4a3179bfdf1eaeed29976b3",
+    "row_hash": "d54b8a2e3a38519c5447372e2309fb0e49ce85b980e9dc4aae3afde6c463a1d8"
+   },
+   {
+    "seq": 267,
+    "prev_hash": "d54b8a2e3a38519c5447372e2309fb0e49ce85b980e9dc4aae3afde6c463a1d8",
+    "row_hash": "696e2cd5fbc9c152e68e7df4e9757c42a74f23ded9705afcf5b79b3cab672e58"
+   },
+   {
+    "seq": 268,
+    "prev_hash": "696e2cd5fbc9c152e68e7df4e9757c42a74f23ded9705afcf5b79b3cab672e58",
+    "row_hash": "37253531e218cc10f75beb022137b557814be9602aee87ee278525fab0e23095"
+   },
+   {
+    "seq": 269,
+    "prev_hash": "37253531e218cc10f75beb022137b557814be9602aee87ee278525fab0e23095",
+    "row_hash": "c757afdfbefef731c96cecc1e94fae3c56b2f040bf0003dd4482bbf478e4352e"
+   },
+   {
+    "seq": 270,
+    "prev_hash": "c757afdfbefef731c96cecc1e94fae3c56b2f040bf0003dd4482bbf478e4352e",
+    "row_hash": "c4d046e4ac58a639253f769588b589df227bb868c29861e4c8be0191f33ae059"
+   },
+   {
+    "seq": 271,
+    "prev_hash": "c4d046e4ac58a639253f769588b589df227bb868c29861e4c8be0191f33ae059",
+    "row_hash": "230599e319eb5e74a141ba8c9a0e772ce398c9e32ebb39b63388bad7eb2d068e"
+   },
+   {
+    "seq": 272,
+    "prev_hash": "230599e319eb5e74a141ba8c9a0e772ce398c9e32ebb39b63388bad7eb2d068e",
+    "row_hash": "5cc4f50da6fc404f3d651ff99298e709c381daebfe8effbf49db5e81ab3183f8"
+   },
+   {
+    "seq": 273,
+    "prev_hash": "5cc4f50da6fc404f3d651ff99298e709c381daebfe8effbf49db5e81ab3183f8",
+    "row_hash": "5ac8a85dfca51a6ba7f0fac68a341308c943bf3c6d3860e398bc151a8a3ff29f"
+   },
+   {
+    "seq": 274,
+    "prev_hash": "5ac8a85dfca51a6ba7f0fac68a341308c943bf3c6d3860e398bc151a8a3ff29f",
+    "row_hash": "5a9380f6e476448d7175062082741b308d322dc03cb8532a758cd33b476f3d23"
+   },
+   {
+    "seq": 275,
+    "prev_hash": "5a9380f6e476448d7175062082741b308d322dc03cb8532a758cd33b476f3d23",
+    "row_hash": "9024828d335efac8b3ea2ad3b69917cc4703e46377de0127455b3c403ad3a34f"
+   },
+   {
+    "seq": 276,
+    "prev_hash": "9024828d335efac8b3ea2ad3b69917cc4703e46377de0127455b3c403ad3a34f",
+    "row_hash": "9cd2022a64774e9b483099b8affb4dc487c05d1a3bd37229e1fb7637e887be51"
+   },
+   {
+    "seq": 277,
+    "prev_hash": "9cd2022a64774e9b483099b8affb4dc487c05d1a3bd37229e1fb7637e887be51",
+    "row_hash": "eb4dd84e0768d1855a546c8a1cebd63ac80833d638ae874f81e80e4272fb46eb"
+   },
+   {
+    "seq": 278,
+    "prev_hash": "eb4dd84e0768d1855a546c8a1cebd63ac80833d638ae874f81e80e4272fb46eb",
+    "row_hash": "1d98a0b139ce643beec7343847c1da50f68ae0690cab833ad522d17809a08ab3"
+   },
+   {
+    "seq": 279,
+    "prev_hash": "1d98a0b139ce643beec7343847c1da50f68ae0690cab833ad522d17809a08ab3",
+    "row_hash": "32b2a0cb909670f954e7e5c5416e4564cf5c43a5f87de6c2dca0e9f4ef341b01"
+   },
+   {
+    "seq": 280,
+    "prev_hash": "32b2a0cb909670f954e7e5c5416e4564cf5c43a5f87de6c2dca0e9f4ef341b01",
+    "row_hash": "4b27062351479b9734b18f0f556c0e90bd1d0abe027247f84f290cadddfb2898"
+   },
+   {
+    "seq": 281,
+    "prev_hash": "4b27062351479b9734b18f0f556c0e90bd1d0abe027247f84f290cadddfb2898",
+    "row_hash": "0f2ba504c9f3cbf14fcde66565ce62ff7972900c9cfd73431a45b0c1355a58b6"
+   },
+   {
+    "seq": 282,
+    "prev_hash": "0f2ba504c9f3cbf14fcde66565ce62ff7972900c9cfd73431a45b0c1355a58b6",
+    "row_hash": "968e13cd3765efbfb187db7f82bdfd76ca974a2618ce0b591206a697676a3ef7"
+   },
+   {
+    "seq": 283,
+    "prev_hash": "968e13cd3765efbfb187db7f82bdfd76ca974a2618ce0b591206a697676a3ef7",
+    "row_hash": "c4ef186dd26018de5708d9a50d56c02e28d2051cf63a56a262399633479d71e4"
+   },
+   {
+    "seq": 284,
+    "prev_hash": "c4ef186dd26018de5708d9a50d56c02e28d2051cf63a56a262399633479d71e4",
+    "row_hash": "1f01ee802bd3c6b72346144bbd46d2367b5a7c129370f3d948f347fe13d63885"
+   },
+   {
+    "seq": 285,
+    "prev_hash": "1f01ee802bd3c6b72346144bbd46d2367b5a7c129370f3d948f347fe13d63885",
+    "row_hash": "bb423f73e602d496f07edb4e75b6666cc610602f5ab04d8c9f83efc46f07b59c"
+   },
+   {
+    "seq": 286,
+    "prev_hash": "bb423f73e602d496f07edb4e75b6666cc610602f5ab04d8c9f83efc46f07b59c",
+    "row_hash": "b5a83379c26c702edbb94cf802a9414df63d1876c4e33bb52acd4c2b09e94c54"
+   },
+   {
+    "seq": 287,
+    "prev_hash": "b5a83379c26c702edbb94cf802a9414df63d1876c4e33bb52acd4c2b09e94c54",
+    "row_hash": "009f9499fa377edd72c5d94cb661420c1910330396a0ea1a66c123de83ae2a4c"
+   },
+   {
+    "seq": 288,
+    "prev_hash": "009f9499fa377edd72c5d94cb661420c1910330396a0ea1a66c123de83ae2a4c",
+    "row_hash": "2c00da5648f816faa690cbc7c6f81cc34035b4e6494c91d641657bf73f3e4c88"
+   },
+   {
+    "seq": 289,
+    "prev_hash": "2c00da5648f816faa690cbc7c6f81cc34035b4e6494c91d641657bf73f3e4c88",
+    "row_hash": "0c990d262c0e2c0fb7c9cab759ecebfc8f3ccd4d2d9ec93de58962c72eca44f0"
+   },
+   {
+    "seq": 290,
+    "prev_hash": "0c990d262c0e2c0fb7c9cab759ecebfc8f3ccd4d2d9ec93de58962c72eca44f0",
+    "row_hash": "adb14bdc52d7f6cd5f0ed38d4337c19b2febeb36bc0545b8bdd55a760fe05037"
+   },
+   {
+    "seq": 291,
+    "prev_hash": "adb14bdc52d7f6cd5f0ed38d4337c19b2febeb36bc0545b8bdd55a760fe05037",
+    "row_hash": "1253ea737ad6b481d8cd7c52e0d57b2867accc98c46cfc71367c2638f4cf6408"
+   },
+   {
+    "seq": 292,
+    "prev_hash": "1253ea737ad6b481d8cd7c52e0d57b2867accc98c46cfc71367c2638f4cf6408",
+    "row_hash": "99efbc5aa61f28ca026fefe3384883692604861bccee3af1e368a43b68cdb1da"
+   },
+   {
+    "seq": 293,
+    "prev_hash": "99efbc5aa61f28ca026fefe3384883692604861bccee3af1e368a43b68cdb1da",
+    "row_hash": "5f4e26d57d58635b9e3dc1d1b6cc453133282208374ba05b38b86ef1f9071cb5"
+   },
+   {
+    "seq": 294,
+    "prev_hash": "5f4e26d57d58635b9e3dc1d1b6cc453133282208374ba05b38b86ef1f9071cb5",
+    "row_hash": "52b61209192b866a57107801b00de619c67b2b4ddef910e6a170b97476766c37"
+   },
+   {
+    "seq": 295,
+    "prev_hash": "52b61209192b866a57107801b00de619c67b2b4ddef910e6a170b97476766c37",
+    "row_hash": "d990a4854f941dd3ec1d897bc881bf1d0b3c3cfa0ae0aeffde46e29b59823d65"
+   },
+   {
+    "seq": 296,
+    "prev_hash": "d990a4854f941dd3ec1d897bc881bf1d0b3c3cfa0ae0aeffde46e29b59823d65",
+    "row_hash": "8bc1b192dbc8dba28b992042004462bd3fba6af083244d5d5077b89ee9eed0f1"
+   },
+   {
+    "seq": 297,
+    "prev_hash": "8bc1b192dbc8dba28b992042004462bd3fba6af083244d5d5077b89ee9eed0f1",
+    "row_hash": "3049b59c33c4ca941f36ce8124c1da22c2be7fb9eb98668cdad1415febb78a23"
+   },
+   {
+    "seq": 298,
+    "prev_hash": "3049b59c33c4ca941f36ce8124c1da22c2be7fb9eb98668cdad1415febb78a23",
+    "row_hash": "03bd56e6dd40af2e1776a4fa52ff0ed0ab2dc7271f126894cd668c66b327300e"
+   },
+   {
+    "seq": 299,
+    "prev_hash": "03bd56e6dd40af2e1776a4fa52ff0ed0ab2dc7271f126894cd668c66b327300e",
+    "row_hash": "504072b064e952e19633a5b869f65daff7539fdb5ac2150b60bb09273fac4bb1"
+   },
+   {
+    "seq": 300,
+    "prev_hash": "504072b064e952e19633a5b869f65daff7539fdb5ac2150b60bb09273fac4bb1",
+    "row_hash": "598f4210b5d837d031478afff43f1baebbef098fc481509f1b633cd278a3e4b6"
+   },
+   {
+    "seq": 301,
+    "prev_hash": "598f4210b5d837d031478afff43f1baebbef098fc481509f1b633cd278a3e4b6",
+    "row_hash": "1b32f38db641094f616c4faa798fb14fe3e3e139e33ec46f50ee7b69a918c1ac"
+   },
+   {
+    "seq": 302,
+    "prev_hash": "1b32f38db641094f616c4faa798fb14fe3e3e139e33ec46f50ee7b69a918c1ac",
+    "row_hash": "e03491c265d7978436b9c966070fd4ae35617c2db02a21ebf5170f7d746a86a4"
+   },
+   {
+    "seq": 303,
+    "prev_hash": "e03491c265d7978436b9c966070fd4ae35617c2db02a21ebf5170f7d746a86a4",
+    "row_hash": "f1c8911988211a4e466baf66b74c6142eea6577e1ae253983fe4db18cc193b92"
+   },
+   {
+    "seq": 304,
+    "prev_hash": "f1c8911988211a4e466baf66b74c6142eea6577e1ae253983fe4db18cc193b92",
+    "row_hash": "531b437b474ef98114eba484f40a94a28f5a8741e460ae8882bdb343ca9e0428"
+   },
+   {
+    "seq": 305,
+    "prev_hash": "531b437b474ef98114eba484f40a94a28f5a8741e460ae8882bdb343ca9e0428",
+    "row_hash": "a7b785f7b07f614cc19ee74f965954eab6d334961f4a1a392b4e728123f2f396"
+   },
+   {
+    "seq": 306,
+    "prev_hash": "a7b785f7b07f614cc19ee74f965954eab6d334961f4a1a392b4e728123f2f396",
+    "row_hash": "13f3a9b2846ec25bbc9ea018413e60538557e0c2e17268d2f4930076a2be5c85"
+   },
+   {
+    "seq": 307,
+    "prev_hash": "13f3a9b2846ec25bbc9ea018413e60538557e0c2e17268d2f4930076a2be5c85",
+    "row_hash": "6aa4a98739bbdfa74e114c6fb05e915c13ad1bfc9c76f01eb1c986bcb1a4ec9c"
+   },
+   {
+    "seq": 308,
+    "prev_hash": "6aa4a98739bbdfa74e114c6fb05e915c13ad1bfc9c76f01eb1c986bcb1a4ec9c",
+    "row_hash": "a6d24f9dfcb7ce0b582b44cfe614b77323d18a60ad7766a083b2564dfb64660d"
+   },
+   {
+    "seq": 309,
+    "prev_hash": "a6d24f9dfcb7ce0b582b44cfe614b77323d18a60ad7766a083b2564dfb64660d",
+    "row_hash": "1d1f037c236fbcc9fd13b802b80952359b33ba4d490b29a739cafd087e3774a9"
+   },
+   {
+    "seq": 310,
+    "prev_hash": "1d1f037c236fbcc9fd13b802b80952359b33ba4d490b29a739cafd087e3774a9",
+    "row_hash": "454186fddcf45f0edee54bc9880de5c4239d901b8266e84a1e80ef02ad4e102d"
+   },
+   {
+    "seq": 311,
+    "prev_hash": "454186fddcf45f0edee54bc9880de5c4239d901b8266e84a1e80ef02ad4e102d",
+    "row_hash": "4446afdb2d78ec1935890afb06e92403c7bb11b2701d1683c78df3d8b844cdca"
+   },
+   {
+    "seq": 312,
+    "prev_hash": "4446afdb2d78ec1935890afb06e92403c7bb11b2701d1683c78df3d8b844cdca",
+    "row_hash": "d7332bb5c2a67ae2dbf0b8066da072e8f6a93bc32a97718dabc656211b5120be"
+   },
+   {
+    "seq": 313,
+    "prev_hash": "d7332bb5c2a67ae2dbf0b8066da072e8f6a93bc32a97718dabc656211b5120be",
+    "row_hash": "879147a7e4c34616357057b4ea7a8a4d780c01cecb15ce5a68bdd8c4caeccc51"
+   },
+   {
+    "seq": 314,
+    "prev_hash": "879147a7e4c34616357057b4ea7a8a4d780c01cecb15ce5a68bdd8c4caeccc51",
+    "row_hash": "63dc18536fe42449a65ff136c126bcb479ab623b186e82d8c5a421659b28e050"
+   },
+   {
+    "seq": 315,
+    "prev_hash": "63dc18536fe42449a65ff136c126bcb479ab623b186e82d8c5a421659b28e050",
+    "row_hash": "fcf36358917a75b82f8d21f1aa6205cb400046de6aa8732f0949a81edaeae209"
+   },
+   {
+    "seq": 316,
+    "prev_hash": "fcf36358917a75b82f8d21f1aa6205cb400046de6aa8732f0949a81edaeae209",
+    "row_hash": "96067dd67a69850aaa847d9b2edc25e8e36ccde069efca25d7a86b8bc8fdf7a3"
+   },
+   {
+    "seq": 317,
+    "prev_hash": "96067dd67a69850aaa847d9b2edc25e8e36ccde069efca25d7a86b8bc8fdf7a3",
+    "row_hash": "727075edf305f6ee1311068498d53346d68c289795b687ff61445e197b8d8d12"
+   },
+   {
+    "seq": 318,
+    "prev_hash": "727075edf305f6ee1311068498d53346d68c289795b687ff61445e197b8d8d12",
+    "row_hash": "a4bb85dbc0fe69ced0af4d4838e7a253f36ac9ac4d8490e29b42fca062a8ee61"
+   },
+   {
+    "seq": 319,
+    "prev_hash": "a4bb85dbc0fe69ced0af4d4838e7a253f36ac9ac4d8490e29b42fca062a8ee61",
+    "row_hash": "ef672167dd0f604fcdb692f00d7ea009924526101046eb4f2399c95b98a32c74"
+   },
+   {
+    "seq": 320,
+    "prev_hash": "ef672167dd0f604fcdb692f00d7ea009924526101046eb4f2399c95b98a32c74",
+    "row_hash": "39a26d927e7220190adc16ff9ff602f8fe8fa4ddf952037d0fce3c0548822743"
+   },
+   {
+    "seq": 321,
+    "prev_hash": "39a26d927e7220190adc16ff9ff602f8fe8fa4ddf952037d0fce3c0548822743",
+    "row_hash": "72559672dfc6f2f316b080bcc6c6571851f2e31e73af5d89fdad018146a5fa97"
+   },
+   {
+    "seq": 322,
+    "prev_hash": "72559672dfc6f2f316b080bcc6c6571851f2e31e73af5d89fdad018146a5fa97",
+    "row_hash": "70852f694f6ff43c33c832621ac7a9a0f782ad96caa2bef0da9375a5aa254a41"
+   },
+   {
+    "seq": 323,
+    "prev_hash": "70852f694f6ff43c33c832621ac7a9a0f782ad96caa2bef0da9375a5aa254a41",
+    "row_hash": "160104251ff4ac0f5a42d096cd85f26ae93f6700503cc151069dbd1cb835327c"
+   },
+   {
+    "seq": 324,
+    "prev_hash": "160104251ff4ac0f5a42d096cd85f26ae93f6700503cc151069dbd1cb835327c",
+    "row_hash": "0cfc89815862508bc86d891515a6335492987fca58881f45b3911651be2e4996"
+   },
+   {
+    "seq": 325,
+    "prev_hash": "0cfc89815862508bc86d891515a6335492987fca58881f45b3911651be2e4996",
+    "row_hash": "c7c4e420b3b991c92e75a48b23a9c72120d37471fa02cf6fa2367c1f4aef1932"
+   },
+   {
+    "seq": 326,
+    "prev_hash": "c7c4e420b3b991c92e75a48b23a9c72120d37471fa02cf6fa2367c1f4aef1932",
+    "row_hash": "40c2002201b4c603353ab9e3e6464b1c5a3c129c574fc53072b9c60a0bb6ba33"
+   },
+   {
+    "seq": 327,
+    "prev_hash": "40c2002201b4c603353ab9e3e6464b1c5a3c129c574fc53072b9c60a0bb6ba33",
+    "row_hash": "54b384aeb325ee982e577575aa5169ded12d939928e5370cdffa10227551702b"
+   },
+   {
+    "seq": 328,
+    "prev_hash": "54b384aeb325ee982e577575aa5169ded12d939928e5370cdffa10227551702b",
+    "row_hash": "1b460824482dee618c35cdd1901f9a4174caf4e8e5ca448aa22bf2efd9a09ff5"
+   },
+   {
+    "seq": 329,
+    "prev_hash": "1b460824482dee618c35cdd1901f9a4174caf4e8e5ca448aa22bf2efd9a09ff5",
+    "row_hash": "751ea4c417563770164e3058749b5b4e32320d23dbf5c823e7fe8a974c942916"
+   },
+   {
+    "seq": 330,
+    "prev_hash": "751ea4c417563770164e3058749b5b4e32320d23dbf5c823e7fe8a974c942916",
+    "row_hash": "f73d570d0b3daac2356bcdafafd24d689adac3e2909804d6ec4c5a2d3648624e"
+   },
+   {
+    "seq": 331,
+    "prev_hash": "f73d570d0b3daac2356bcdafafd24d689adac3e2909804d6ec4c5a2d3648624e",
+    "row_hash": "259fd07701b086bb66747868edfd3865a806b9c1032b58892887a9f7c3b18ef3"
+   },
+   {
+    "seq": 332,
+    "prev_hash": "259fd07701b086bb66747868edfd3865a806b9c1032b58892887a9f7c3b18ef3",
+    "row_hash": "bcfd5b80978e2b4ccaefb253cc69a7fc0acb3e79101fba952bfe52a5a7b307c9"
+   },
+   {
+    "seq": 333,
+    "prev_hash": "bcfd5b80978e2b4ccaefb253cc69a7fc0acb3e79101fba952bfe52a5a7b307c9",
+    "row_hash": "ade3048a257b9e45645b59212e3b61c7d756889565c2a65da963cf72014ae16b"
+   },
+   {
+    "seq": 334,
+    "prev_hash": "ade3048a257b9e45645b59212e3b61c7d756889565c2a65da963cf72014ae16b",
+    "row_hash": "7408c67eced6c9a23bd5c380c0423a6d5843783f73caa12931964d44a4eaa857"
+   },
+   {
+    "seq": 335,
+    "prev_hash": "7408c67eced6c9a23bd5c380c0423a6d5843783f73caa12931964d44a4eaa857",
+    "row_hash": "f6daf9584265dbb4bd073c8c4361336cb6be81e3b94217d886de49f15f57eab2"
+   },
+   {
+    "seq": 336,
+    "prev_hash": "f6daf9584265dbb4bd073c8c4361336cb6be81e3b94217d886de49f15f57eab2",
+    "row_hash": "f08ce4740f0724bf635801c232e3f9bccd2f938734c8883ce4b7682480ad473f"
+   },
+   {
+    "seq": 337,
+    "prev_hash": "f08ce4740f0724bf635801c232e3f9bccd2f938734c8883ce4b7682480ad473f",
+    "row_hash": "c4345fb39726dc9b19b2c16b5fff414e0755ac55be694faa68b9fa0c8a5c073b"
+   },
+   {
+    "seq": 338,
+    "prev_hash": "c4345fb39726dc9b19b2c16b5fff414e0755ac55be694faa68b9fa0c8a5c073b",
+    "row_hash": "91f7a99cd11bbcdec047d3b81c3b6f007e0c8350e52cdf07597ebc9713ddbd92"
+   },
+   {
+    "seq": 339,
+    "prev_hash": "91f7a99cd11bbcdec047d3b81c3b6f007e0c8350e52cdf07597ebc9713ddbd92",
+    "row_hash": "225a38da143c46fdc1b7abe1a738bad1dceb0e3a5fb5a1399feeadb0fc568616"
+   },
+   {
+    "seq": 340,
+    "prev_hash": "225a38da143c46fdc1b7abe1a738bad1dceb0e3a5fb5a1399feeadb0fc568616",
+    "row_hash": "0496e716cd86f79ba6ccf5a4aa9d26fc62805329c73ff5024d2d872372769107"
+   },
+   {
+    "seq": 341,
+    "prev_hash": "0496e716cd86f79ba6ccf5a4aa9d26fc62805329c73ff5024d2d872372769107",
+    "row_hash": "c5a6268ba246d2e42f4c66fb28286cbfc7eec0cf20de2ff5788febe7c4bc3473"
+   },
+   {
+    "seq": 342,
+    "prev_hash": "c5a6268ba246d2e42f4c66fb28286cbfc7eec0cf20de2ff5788febe7c4bc3473",
+    "row_hash": "a09404a1dfe13a3bda95829c042640a9f3c6af155a8754d484e08ff93b47c8a2"
+   },
+   {
+    "seq": 343,
+    "prev_hash": "a09404a1dfe13a3bda95829c042640a9f3c6af155a8754d484e08ff93b47c8a2",
+    "row_hash": "191a998a898f2ed03bf1ba0cef647d0ec8f8885d99e0ced9b54ee63748a21a02"
+   },
+   {
+    "seq": 344,
+    "prev_hash": "191a998a898f2ed03bf1ba0cef647d0ec8f8885d99e0ced9b54ee63748a21a02",
+    "row_hash": "fcc781fd40a5092dc5c16a3e2dfa3e1947cb5732ba7c76d3f2072af56ea2954d"
+   },
+   {
+    "seq": 345,
+    "prev_hash": "fcc781fd40a5092dc5c16a3e2dfa3e1947cb5732ba7c76d3f2072af56ea2954d",
+    "row_hash": "5129ad043bc8bb7914fa8ff253fbab2f3d5c04cbaf7e715a3e09aacf8bb49f61"
+   },
+   {
+    "seq": 346,
+    "prev_hash": "5129ad043bc8bb7914fa8ff253fbab2f3d5c04cbaf7e715a3e09aacf8bb49f61",
+    "row_hash": "c7d1a7b2ac288520501055c7851391ea3dee95f624d628b14bb73052e4b7e7c3"
+   },
+   {
+    "seq": 347,
+    "prev_hash": "c7d1a7b2ac288520501055c7851391ea3dee95f624d628b14bb73052e4b7e7c3",
+    "row_hash": "220808ecec8a23d6c1ccff70bac52ccc93163acd4957109012e64d826bd92cb2"
+   },
+   {
+    "seq": 348,
+    "prev_hash": "220808ecec8a23d6c1ccff70bac52ccc93163acd4957109012e64d826bd92cb2",
+    "row_hash": "cd5c52d0ce7d47fd14f6c57dc6939d065976166bf66f71a473bbc81640e50d80"
+   },
+   {
+    "seq": 349,
+    "prev_hash": "cd5c52d0ce7d47fd14f6c57dc6939d065976166bf66f71a473bbc81640e50d80",
+    "row_hash": "2966eb91ccc2d6d51e04dae3d81b42f625ef5b720e5af64fd92e7d6ec7607525"
+   },
+   {
+    "seq": 350,
+    "prev_hash": "2966eb91ccc2d6d51e04dae3d81b42f625ef5b720e5af64fd92e7d6ec7607525",
+    "row_hash": "08a363644230e6f27e9f5143c55255f930c07e806d9bac27b87c3c88fdc48061"
+   },
+   {
+    "seq": 351,
+    "prev_hash": "08a363644230e6f27e9f5143c55255f930c07e806d9bac27b87c3c88fdc48061",
+    "row_hash": "428bf3941236760b162a6b280a8d57e318ae2ae95cbcc2a40831874e17f445c8"
+   },
+   {
+    "seq": 352,
+    "prev_hash": "428bf3941236760b162a6b280a8d57e318ae2ae95cbcc2a40831874e17f445c8",
+    "row_hash": "1b511ab5251d5ecf8225e287574c9e97ebda1085b5348b98273b5978db608189"
+   },
+   {
+    "seq": 353,
+    "prev_hash": "1b511ab5251d5ecf8225e287574c9e97ebda1085b5348b98273b5978db608189",
+    "row_hash": "b9a063e51980d8d65aebe8a75c632a6e0d290824bc2bd9f325113b4e1d4eb787"
+   },
+   {
+    "seq": 354,
+    "prev_hash": "b9a063e51980d8d65aebe8a75c632a6e0d290824bc2bd9f325113b4e1d4eb787",
+    "row_hash": "30c17ca188e754324d2a8760a8c1a8f27c8370d630747bd4568be38e86979b63"
+   },
+   {
+    "seq": 355,
+    "prev_hash": "30c17ca188e754324d2a8760a8c1a8f27c8370d630747bd4568be38e86979b63",
+    "row_hash": "abcfe9f766bc8a4af2ce8be82f8ed4c57203da42464b2e2151b6b1bee7ffcfe6"
+   },
+   {
+    "seq": 356,
+    "prev_hash": "abcfe9f766bc8a4af2ce8be82f8ed4c57203da42464b2e2151b6b1bee7ffcfe6",
+    "row_hash": "99fa900fe9779b9735bb07024e372c31367587647d32613297523ffcb73ff135"
+   },
+   {
+    "seq": 357,
+    "prev_hash": "99fa900fe9779b9735bb07024e372c31367587647d32613297523ffcb73ff135",
+    "row_hash": "c607148e7e76b7001e20afb973500f0a68f851414a3f8f407716416c48a40c94"
+   },
+   {
+    "seq": 358,
+    "prev_hash": "c607148e7e76b7001e20afb973500f0a68f851414a3f8f407716416c48a40c94",
+    "row_hash": "c9b18aa4434e165ab2917a0eed89878c1cc4c17abafeeb96f4e11ea450c39ae9"
+   },
+   {
+    "seq": 359,
+    "prev_hash": "c9b18aa4434e165ab2917a0eed89878c1cc4c17abafeeb96f4e11ea450c39ae9",
+    "row_hash": "eb87c57c5dbdb0de6613c18a8e28b9a323d1a2331ab76688ca3c70bd4e54a299"
+   },
+   {
+    "seq": 360,
+    "prev_hash": "eb87c57c5dbdb0de6613c18a8e28b9a323d1a2331ab76688ca3c70bd4e54a299",
+    "row_hash": "7f2073ceca6be0333e29be149ba4342c577e3a5452fa24c988c5b1520f978695"
+   },
+   {
+    "seq": 361,
+    "prev_hash": "7f2073ceca6be0333e29be149ba4342c577e3a5452fa24c988c5b1520f978695",
+    "row_hash": "2218683891b09bc38cce4eaf1701effbd17d83154381b9977a9baa5fb3a10b8a"
+   },
+   {
+    "seq": 362,
+    "prev_hash": "2218683891b09bc38cce4eaf1701effbd17d83154381b9977a9baa5fb3a10b8a",
+    "row_hash": "81075bbde69640c3c5883a9f126427702e44788d92ccb52162446e445225ec4f"
+   },
+   {
+    "seq": 363,
+    "prev_hash": "81075bbde69640c3c5883a9f126427702e44788d92ccb52162446e445225ec4f",
+    "row_hash": "be0e04f62c2f2d2ecfed7fb84b05c1565f288974600319186f20a1ebacc18f1b"
+   },
+   {
+    "seq": 364,
+    "prev_hash": "be0e04f62c2f2d2ecfed7fb84b05c1565f288974600319186f20a1ebacc18f1b",
+    "row_hash": "7335be45773fb02d918fc9e02758a1661e08c08c3bf843b98a90318b68a128aa"
+   },
+   {
+    "seq": 365,
+    "prev_hash": "7335be45773fb02d918fc9e02758a1661e08c08c3bf843b98a90318b68a128aa",
+    "row_hash": "36e61148b5ba04c8235371f17ffd5f6b37e91dbb1b900dacd7bdcf1d6df473c9"
+   },
+   {
+    "seq": 366,
+    "prev_hash": "36e61148b5ba04c8235371f17ffd5f6b37e91dbb1b900dacd7bdcf1d6df473c9",
+    "row_hash": "e73141306b008857360f011b64fac9094bc3705e7254282cc1f7cd3674a29678"
+   },
+   {
+    "seq": 367,
+    "prev_hash": "e73141306b008857360f011b64fac9094bc3705e7254282cc1f7cd3674a29678",
+    "row_hash": "960f55c2a6276031f0e6b6e432debc89b2825597088110c75b4961140bbebe42"
+   },
+   {
+    "seq": 368,
+    "prev_hash": "960f55c2a6276031f0e6b6e432debc89b2825597088110c75b4961140bbebe42",
+    "row_hash": "1668b94069b24a81de65a1b201e316785c3bed6425a8b7e0e4e28d8b310a45f6"
+   },
+   {
+    "seq": 369,
+    "prev_hash": "1668b94069b24a81de65a1b201e316785c3bed6425a8b7e0e4e28d8b310a45f6",
+    "row_hash": "ee68902b5b4c5206a9912a8f7fa09c6be30bb4394f632f28483dd3073e83592b"
+   },
+   {
+    "seq": 370,
+    "prev_hash": "ee68902b5b4c5206a9912a8f7fa09c6be30bb4394f632f28483dd3073e83592b",
+    "row_hash": "e0b48631fa896a9d3aba73b2ba624fc38ce64d702fed734458d8fab47e8df33d"
+   },
+   {
+    "seq": 371,
+    "prev_hash": "e0b48631fa896a9d3aba73b2ba624fc38ce64d702fed734458d8fab47e8df33d",
+    "row_hash": "b8d713ca450211f6903d6d689109cd870f81da7f3eb0beeb4f0468e13276e7f1"
+   },
+   {
+    "seq": 372,
+    "prev_hash": "b8d713ca450211f6903d6d689109cd870f81da7f3eb0beeb4f0468e13276e7f1",
+    "row_hash": "5b8f0c0c8070a605343551362a6245c169abaa7eaa95230ce6206c8533036347"
+   },
+   {
+    "seq": 373,
+    "prev_hash": "5b8f0c0c8070a605343551362a6245c169abaa7eaa95230ce6206c8533036347",
+    "row_hash": "ff1eb78a3efe22d94b3aa8ef29c5efadf60f3dcd4614e185822fee021e49fe73"
+   },
+   {
+    "seq": 374,
+    "prev_hash": "ff1eb78a3efe22d94b3aa8ef29c5efadf60f3dcd4614e185822fee021e49fe73",
+    "row_hash": "8da18896bf9f79128b7f70f46554d42c25bfcc8d3a57ea3d865b9e1cb8409f37"
+   },
+   {
+    "seq": 375,
+    "prev_hash": "8da18896bf9f79128b7f70f46554d42c25bfcc8d3a57ea3d865b9e1cb8409f37",
+    "row_hash": "93f966607842b4e40686b6731c9b8c9bccd68b12fe2370e634d54a48c1aa39cb"
+   },
+   {
+    "seq": 376,
+    "prev_hash": "93f966607842b4e40686b6731c9b8c9bccd68b12fe2370e634d54a48c1aa39cb",
+    "row_hash": "e59abdd1d50fcef960c154621be57a8f3c53a1372e5aaee34c49c886bf663815"
+   },
+   {
+    "seq": 377,
+    "prev_hash": "e59abdd1d50fcef960c154621be57a8f3c53a1372e5aaee34c49c886bf663815",
+    "row_hash": "d4bc841529072939e8ba72d5c91229bee6ffd0e8f7022c2c1e21f90c9895a63e"
+   },
+   {
+    "seq": 378,
+    "prev_hash": "d4bc841529072939e8ba72d5c91229bee6ffd0e8f7022c2c1e21f90c9895a63e",
+    "row_hash": "f0425e5770448e0f01177025d3a5e2a30573b45a3e62791cfb81cefc9ecd81bc"
+   },
+   {
+    "seq": 379,
+    "prev_hash": "f0425e5770448e0f01177025d3a5e2a30573b45a3e62791cfb81cefc9ecd81bc",
+    "row_hash": "471f1e7d6a6a81d67f49ffe0f8fe5f7f06e774c3e6056c5462632d08da3fb2c9"
+   },
+   {
+    "seq": 380,
+    "prev_hash": "471f1e7d6a6a81d67f49ffe0f8fe5f7f06e774c3e6056c5462632d08da3fb2c9",
+    "row_hash": "a9b673677c2209039fe090b86f7865376dd60745311267c542378e8f0f8f71bb"
+   },
+   {
+    "seq": 381,
+    "prev_hash": "a9b673677c2209039fe090b86f7865376dd60745311267c542378e8f0f8f71bb",
+    "row_hash": "990198a68b0542a25b728af1bd903a4d98de9ecb825f2847edfef8941d6bc819"
+   },
+   {
+    "seq": 382,
+    "prev_hash": "990198a68b0542a25b728af1bd903a4d98de9ecb825f2847edfef8941d6bc819",
+    "row_hash": "8ef8a54a5ae27d167fb39018c8930fae9acdc73c087a5e7f7ad46f0d65bcd910"
+   },
+   {
+    "seq": 383,
+    "prev_hash": "8ef8a54a5ae27d167fb39018c8930fae9acdc73c087a5e7f7ad46f0d65bcd910",
+    "row_hash": "1d5e81cb15b14cd5adf0fa863c2acc83d4817d8e51f7b13e959849464fdf5d43"
+   },
+   {
+    "seq": 384,
+    "prev_hash": "1d5e81cb15b14cd5adf0fa863c2acc83d4817d8e51f7b13e959849464fdf5d43",
+    "row_hash": "3f3eb55b839b5c2dbe1d0573a4ef47e2cb4d184c7a0839ebf7a5db0d583039c9"
+   },
+   {
+    "seq": 385,
+    "prev_hash": "3f3eb55b839b5c2dbe1d0573a4ef47e2cb4d184c7a0839ebf7a5db0d583039c9",
+    "row_hash": "fec97c85092cebc34a8f730a041f5689eeefa9874176797135b6cc7b5d390d83"
+   },
+   {
+    "seq": 386,
+    "prev_hash": "fec97c85092cebc34a8f730a041f5689eeefa9874176797135b6cc7b5d390d83",
+    "row_hash": "63da0022106cd46407ba52ee7cc5e9856a198b6c23517010bc009c4a927e348c"
+   },
+   {
+    "seq": 387,
+    "prev_hash": "63da0022106cd46407ba52ee7cc5e9856a198b6c23517010bc009c4a927e348c",
+    "row_hash": "3f435b12dd0fad7fffed62785c75ca1a639ca8c7ad360b3c2c9607faac5e98f7"
+   },
+   {
+    "seq": 388,
+    "prev_hash": "3f435b12dd0fad7fffed62785c75ca1a639ca8c7ad360b3c2c9607faac5e98f7",
+    "row_hash": "bc96bd3ad0f396ba7c29178575bef9976b927bb2e6155bfd98a27725e2b40197"
+   },
+   {
+    "seq": 389,
+    "prev_hash": "bc96bd3ad0f396ba7c29178575bef9976b927bb2e6155bfd98a27725e2b40197",
+    "row_hash": "956d87b95e1970e6a30013ff86801e8db04b899615d9fce6bfb087130cbe0199"
+   },
+   {
+    "seq": 390,
+    "prev_hash": "956d87b95e1970e6a30013ff86801e8db04b899615d9fce6bfb087130cbe0199",
+    "row_hash": "5559e84022fef36391935dbcb46c02d0f617df38f62b66d2a9283159dff3dadf"
+   },
+   {
+    "seq": 391,
+    "prev_hash": "5559e84022fef36391935dbcb46c02d0f617df38f62b66d2a9283159dff3dadf",
+    "row_hash": "4aa5d7b73a691c1ab9cea71f98323ce4844eca6dbc5654d2010078d5aa1b643c"
+   },
+   {
+    "seq": 392,
+    "prev_hash": "4aa5d7b73a691c1ab9cea71f98323ce4844eca6dbc5654d2010078d5aa1b643c",
+    "row_hash": "e529771653daf8e300b185d1ba47ca104c7e48e777421273025e6e1f5aff9c0f"
+   },
+   {
+    "seq": 393,
+    "prev_hash": "e529771653daf8e300b185d1ba47ca104c7e48e777421273025e6e1f5aff9c0f",
+    "row_hash": "4291afe735b0ef1f30323996da9ef7e3ff707c3c73e73752f7bfc0169a1e0f49"
+   },
+   {
+    "seq": 394,
+    "prev_hash": "4291afe735b0ef1f30323996da9ef7e3ff707c3c73e73752f7bfc0169a1e0f49",
+    "row_hash": "75c41e822b180d0ec30a0db8f62c46ed595f89dbb13ef50b894487e4f351f17a"
+   },
+   {
+    "seq": 395,
+    "prev_hash": "75c41e822b180d0ec30a0db8f62c46ed595f89dbb13ef50b894487e4f351f17a",
+    "row_hash": "671cf1f9f9b823919e11e3625f213a296f0094427a592cbd259155255fb5d7b2"
+   },
+   {
+    "seq": 396,
+    "prev_hash": "671cf1f9f9b823919e11e3625f213a296f0094427a592cbd259155255fb5d7b2",
+    "row_hash": "2be9f7efb8251fbb7b0833491a1a0089997f1384ce559a419c0380d3e5e3b1f0"
+   },
+   {
+    "seq": 397,
+    "prev_hash": "2be9f7efb8251fbb7b0833491a1a0089997f1384ce559a419c0380d3e5e3b1f0",
+    "row_hash": "d703404d96fc3325e196b9453f4eee1ed4775513b6a68c5b1a6376498aac5586"
+   },
+   {
+    "seq": 398,
+    "prev_hash": "d703404d96fc3325e196b9453f4eee1ed4775513b6a68c5b1a6376498aac5586",
+    "row_hash": "7900a3a3d6d117f518bdd49595f2e1d528294a30dfe73c2bcdc671d0d39f2c10"
+   },
+   {
+    "seq": 399,
+    "prev_hash": "7900a3a3d6d117f518bdd49595f2e1d528294a30dfe73c2bcdc671d0d39f2c10",
+    "row_hash": "e0017c9ee9431369a2f3f5030b14cc4460c7cebb132d7ccb8f300945549d251e"
+   },
+   {
+    "seq": 400,
+    "prev_hash": "e0017c9ee9431369a2f3f5030b14cc4460c7cebb132d7ccb8f300945549d251e",
+    "row_hash": "303c2184788a8a4dc327cc60c3e75fe4bfd5f01859f3cad3c76697f43bdbbe48"
+   },
+   {
+    "seq": 401,
+    "prev_hash": "303c2184788a8a4dc327cc60c3e75fe4bfd5f01859f3cad3c76697f43bdbbe48",
+    "row_hash": "697e849afaa2822a370032f54564c2a6e293c085ee03f5dc259e2a6cf425eed9"
+   },
+   {
+    "seq": 402,
+    "prev_hash": "697e849afaa2822a370032f54564c2a6e293c085ee03f5dc259e2a6cf425eed9",
+    "row_hash": "381c87e0ff04185fa4d129409c930d13e746a71829beb9778b3524f78ae3f0c2"
+   },
+   {
+    "seq": 403,
+    "prev_hash": "381c87e0ff04185fa4d129409c930d13e746a71829beb9778b3524f78ae3f0c2",
+    "row_hash": "ce33f20b3044947283ac12dc41325b0b98b433e4b6b5bf98bd353a4c1cbc473d"
+   },
+   {
+    "seq": 404,
+    "prev_hash": "ce33f20b3044947283ac12dc41325b0b98b433e4b6b5bf98bd353a4c1cbc473d",
+    "row_hash": "844414e3fd5f2608475fc10cecf84076508899a680a114504621c7f3950c5fac"
+   },
+   {
+    "seq": 405,
+    "prev_hash": "844414e3fd5f2608475fc10cecf84076508899a680a114504621c7f3950c5fac",
+    "row_hash": "0f1efbb8598d881080ebb4adc06935f265834b09827fe6eefaae8f46ef0122cc"
+   },
+   {
+    "seq": 406,
+    "prev_hash": "0f1efbb8598d881080ebb4adc06935f265834b09827fe6eefaae8f46ef0122cc",
+    "row_hash": "3bfa0b5b28331be1208539e98409915fa7f3fe813ba31b43defc2537b8559b9a"
+   },
+   {
+    "seq": 407,
+    "prev_hash": "3bfa0b5b28331be1208539e98409915fa7f3fe813ba31b43defc2537b8559b9a",
+    "row_hash": "e07f42451f78c8f29fb166f4673c686dfd1e5d6f0ab7f17d40c23a82cc44adcf"
+   },
+   {
+    "seq": 408,
+    "prev_hash": "e07f42451f78c8f29fb166f4673c686dfd1e5d6f0ab7f17d40c23a82cc44adcf",
+    "row_hash": "c6f1ef4b8239fdfec8ed274feaf8eaf7555a0e1c5231aace57b5235290f892ea"
+   },
+   {
+    "seq": 409,
+    "prev_hash": "c6f1ef4b8239fdfec8ed274feaf8eaf7555a0e1c5231aace57b5235290f892ea",
+    "row_hash": "86a57067befb9c31fd107c729ff9067fdedd4bd065048741af40031af4d68416"
+   },
+   {
+    "seq": 410,
+    "prev_hash": "86a57067befb9c31fd107c729ff9067fdedd4bd065048741af40031af4d68416",
+    "row_hash": "3ad26be75b4c9158167f15b8d8b11380e5dd8a070f9e15b900625a3c747486cd"
+   },
+   {
+    "seq": 411,
+    "prev_hash": "3ad26be75b4c9158167f15b8d8b11380e5dd8a070f9e15b900625a3c747486cd",
+    "row_hash": "9df5b08cc3c8c3ab77ae1553a5c3c3059de8e9f964ad953060aa311fcebb9811"
+   },
+   {
+    "seq": 412,
+    "prev_hash": "9df5b08cc3c8c3ab77ae1553a5c3c3059de8e9f964ad953060aa311fcebb9811",
+    "row_hash": "f8d2a633d27316c3d2818a547ab0fb731532cfa25cd13b5ab6f00d635f223220"
+   }
+  ]
+ }
+}

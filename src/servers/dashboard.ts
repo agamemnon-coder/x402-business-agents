@@ -28,6 +28,7 @@ import { trySignPage } from "../try/sign.js";
 import { tryVerifyPage } from "../try/verify.js";
 import { watchPage } from "../redesign/watch.js";
 import { proofPage } from "../redesign/proof.js";
+import { TRACE_LINK, tracePage } from "../redesign/trace.js";
 import { restyle } from "../redesign/ui.js";
 import { withNav } from "../ui/nav.js";
 import { buildLiveTimeline } from "../live/timeline.js";
@@ -110,7 +111,9 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
     // The Overview's line: the core sentence, word for word (who holds which limit; never "every limit").
     .replace("__CORE_SENTENCE__", () => CORE_SENTENCE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
     // The CFO's view (/?autonomy) opens with this line (Max's last round, item 4); the page shows it on that view only.
-    .replace("__CFO_VIEW_LINE__", () => CFO_VIEW_LINE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+    .replace("__CFO_VIEW_LINE__", () => CFO_VIEW_LINE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+    // Under it, on that view only: "Trace any payment" (Max's last round, 1.2), to /trace.
+    .replace("__TRACE_LINK__", () => TRACE_LINK);
 }
 /**
  * Words the public pages no longer use (Max, v4): older records and Lab results still carry them in their text, so the
@@ -209,6 +212,9 @@ export const CLAUDE_PAGE = claudePage();
 const styleAndScriptCsp = (page: string) => ["default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? styleAndScriptCsp(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
+/** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
+export const TRACE_PAGE = tracePage();
+export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);
 /** The clean 404, for any address that is not a page; its links and assets absolute, since it answers at any depth. */
 export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 export const NOT_FOUND_CSP = styleOnlyCsp(NOT_FOUND_PAGE);
@@ -327,6 +333,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/airwallex", (_req, res) => {
     res.setHeader("Content-Security-Policy", AIRWALLEX_CSP);
     res.type("html").send(AIRWALLEX_PAGE);
+  });
+  app.get("/trace", (_req, res) => {
+    res.setHeader("Content-Security-Policy", TRACE_CSP);
+    res.type("html").send(TRACE_PAGE);
   });
   app.get("/claude", (_req, res) => {
     res.setHeader("Content-Security-Policy", CLAUDE_CSP);
