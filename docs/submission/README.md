@@ -55,12 +55,13 @@ not known yet. `test/submission.test.ts` checks this count and keeps the text un
 ## Instructions
 
 <!-- instructions -->
-1. First, sign one yourself (about 30 seconds): https://kit11.max-31b.workers.dev/try/sign. A test world of your own:
-   a rule blocks one payment, you sign the other's exact terms with your own passkey (Face ID, Touch ID or a PIN), and
-   the same signature is refused once one cent changes. Nothing real moves.
-2. Then the proof and the film: every id from the main run (3 November) on https://kit11.max-31b.workers.dev/proof, the
+1. Judge it in 3 minutes: https://kit11.max-31b.workers.dev/judge. Five steps, each with its time and a link.
+2. Or step by step. First, sign one yourself (about 30 seconds): https://kit11.max-31b.workers.dev/try/sign. A test
+   world of your own: a rule blocks one payment, you sign the other's exact terms with your own passkey (Face ID,
+   Touch ID or a PIN), and the same signature is refused once one cent changes. Nothing real moves.
+3. Then the proof and the film: every id from the main run (3 November) on https://kit11.max-31b.workers.dev/proof, the
    Metal ones checkable on Metal's testnet explorer; the film (2:42) at https://youtu.be/jaqO2M2V6NY.
-3. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
+4. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,
    the partner pages, the CFO dashboard and the Scenario Lab from the main run's record, fetches each page once and
    exits; `npm run judge` serves them and opens the browser). Running it live (sandbox keys, a Metal RPC):
