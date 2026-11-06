@@ -42,7 +42,9 @@ function parseArgs(argv: string[]): { live: boolean; base: string | null; shots:
 const args = parseArgs(process.argv.slice(2));
 const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
-const { TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { StandInLine } = await import("../support/lineStandIn.js");
+const lineStandIn = new StandInLine();
+const { TAMPER_VERDICT, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEP_GLOSS, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { TRY_IT } = await import("../../src/config/brand.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
@@ -67,7 +69,8 @@ if (args.base) {
   process.env.TRY_SIGN_ENABLED = "on";
   const { startLocalRelay } = await import("../../src/relay/local.js");
   // The FX quote from a labelled stand-in (no network in CI): it says "stand-in" wherever the page shows it.
-  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn });
+  // The agent's sentence from a labelled stand-in too (no model call in CI): the page says "Stand-in sentence".
+  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn, trySignLine: lineStandIn.source });
 }
 const require = createRequire(import.meta.url);
 // Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed).
@@ -170,7 +173,7 @@ for (const [width, scheme] of RUNS) {
   check(!(await page.locator("details.wr").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: "What's real?" is closed until asked`);
   await page.locator("details.wr > summary").click();
   const wr = await page.locator("details.wr").innerText();
-  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No payment or conversion at Airwallex, no Metal or Claude call, and no money moves/.test(wr),
+  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No payment or conversion at Airwallex, no Metal call, and no money moves/.test(wr),
     `${tag}: "What's real?" opens to the honest lines (test world, stand-in executor, no payment or conversion, the FX quote read-only; the signature and its check real)`);
   await page.locator("details.wr > summary").click();
   // The three steps, and the start button above the fold.
@@ -190,12 +193,39 @@ for (const [width, scheme] of RUNS) {
     return { header: alpha(h.backgroundColor), blur: h.backdropFilter, steps: alpha(o.backgroundColor) === 1 || alpha(o.boxShadow.split(") ")[0] + ")") === 1, shadow: o.boxShadow };
   })()`) as { header: number; blur: string; steps: boolean; shadow: string };
   check(opaque.header === 1 && (opaque.blur === "none" || opaque.blur === "") && /100vmax|\d{3,}px/.test(opaque.shadow), `${tag}: the sticky header and steps are opaque (header alpha ${opaque.header}, steps shadow ${opaque.shadow.slice(0, 40)}…)`);
+  // A4: from 1024 px the start screen's right column shows "one policy → three locks"; the screen is not mostly empty.
+  const startFill = await page.evaluate(`(() => {
+    const vis = (e) => e && e.getClientRects().length > 0 && getComputedStyle(e).display !== "none";
+    const boxes = [".intro", "ol.progress", "#s-world .go", "#diagram"].map((q) => document.querySelector(q)).filter(vis).map((e) => e.getBoundingClientRect());
+    const top = document.querySelector("header.top").getBoundingClientRect().bottom, H = innerHeight - top, W = innerWidth;
+    const area = boxes.reduce((a, b) => a + Math.max(0, Math.min(b.bottom, innerHeight) - Math.max(b.top, top)) * b.width, 0);
+    const d = document.querySelector("#diagram");
+    return { fill: area / (H * W), diagram: vis(d) ? { left: d.getBoundingClientRect().left, right: d.getBoundingClientRect().right, bottom: d.getBoundingClientRect().bottom, locks: d.querySelectorAll(".dlocks li").length } : null };
+  })()`) as { fill: number; diagram: { left: number; right: number; bottom: number; locks: number } | null };
+  if (width >= 1024) {
+    check(!!startFill.diagram && startFill.diagram.left > width * 0.45 && startFill.diagram.bottom <= height && startFill.diagram.locks === 3,
+      `${tag}: A4: the right column shows "one policy → three locks" (from x ${Math.round(startFill.diagram?.left ?? 0)}, three locks, above the fold)`);
+    check(startFill.fill >= 0.4, `${tag}: A4: the start screen is not mostly empty (content covers ${Math.round(startFill.fill * 100)}% of the screen below the header)`);
+    // The left column under the start button: the three steps, each with its gloss, filling the column beside the diagram.
+    const left = await page.evaluate(`(() => {
+      const ls = [...document.querySelectorAll("#s-world .gosteps li")].filter((l) => l.getClientRects().length > 0);
+      const go = document.querySelector("#s-world .go").getBoundingClientRect(), d = document.querySelector("#diagram").getBoundingClientRect();
+      return { lines: ls.map((l) => [l.querySelector("b").textContent, l.querySelector("small").textContent]), goBottom: go.bottom, goRight: go.right, dTop: d.top, dBottom: d.bottom, dLeft: d.left };
+    })()`) as { lines: [string, string][]; goBottom: number; goRight: number; dTop: number; dBottom: number; dLeft: number };
+    check(JSON.stringify(left.lines) === JSON.stringify(TRY_SIGN_STEPS.map((s, i) => [s, TRY_SIGN_STEP_GLOSS[i]])) && left.goRight <= left.dLeft && left.goBottom - left.dTop >= 0.7 * (left.dBottom - left.dTop),
+      `${tag}: A4: the left column shows the three steps with their glosses under the start button (to ${Math.round(left.goBottom)} px, the diagram to ${Math.round(left.dBottom)} px)`);
+  } else {
+    check(startFill.diagram === null, `${tag}: below 1024 px the diagram is not shown`);
+    check(await page.locator("#s-world .gosteps").isHidden(), `${tag}: below 1024 px the steps under the button are not shown (the progress bar says them)`);
+  }
   await page.screenshot({ path: join(shots, `${tag}-1-start.png`) });
 
   // Six requests a visit (world, passkey, signature, three tampers) and six visits: the relay's 30 a minute per address
   // (TRY_SIGN_PER_MINUTE) can answer 429 to the last ones; then the check waits out the minute, as a visitor would.
   // A short quote at 390 px: light, expiring before the passkey; dark, expiring once the passkey is made.
   if (!args.live && (tag === "390-light" || tag === "390-dark")) fxStandIn.validityMs = 12_000;
+  // At 360 px dark the model is down: the fixed sentence, labelled "fixed text (model unavailable)".
+  lineStandIn.fail = !args.live && tag === "360-dark";
   for (let attempt = 0; ; attempt++) {
     await page.click("#go-world");
     await page.waitForFunction(() => !document.getElementById("s-props")?.hidden || document.getElementById("w-status")?.classList.contains("bad"));
@@ -205,8 +235,7 @@ for (const [width, scheme] of RUNS) {
     console.log(`info  ${tag}: the relay asks to wait a minute (${said}); waiting`);
     await page.waitForTimeout(61_000);
   }
-  // The refused attempt's 429 is the browser's console error, not the page's.
-  errors.splice(0, errors.length, ...errors.filter((e) => !/status of 429/.test(e)));
+
   check(JSON.stringify(await steps()) === '["done","on","-"]', `${tag}: after the proposal, step 1 is done and step 2 under way`);
 
   // The quote's end (once, at 390 px light): a quote that expires shows "expired", the sign button goes off, and "Get a
@@ -248,6 +277,23 @@ for (const [width, scheme] of RUNS) {
 
   // (b): the approval sheet, as the CFO's.
   const waiting = page.locator("article.prop.sheet");
+  // The agent's sentence: who wrote it, said on the pill; the request id behind "more".
+  if (!args.live) {
+    const pill = waiting.locator(".who .pill");
+    const says = (await waiting.locator(".says").innerText()).trim();
+    if (tag === "360-dark") {
+      check((await pill.innerText()).trim() === "fixed text (model unavailable)" && await pill.getAttribute("data-voice") === "fixed-unavailable" && says === "Alpine Packaging's invoice is due Friday. It is more than I may pay alone, so I ask you.",
+        `${tag}: the model down: the fixed sentence, labelled "fixed text (model unavailable)"`);
+    } else {
+      check((await pill.innerText()).trim() === "Stand-in sentence (local check, not Claude)" && await pill.getAttribute("data-voice") === "model" && says === lineStandIn.text,
+        `${tag}: the agent's sentence from the (labelled) stand-in for Claude Haiku: "${says.slice(0, 40)}…"`);
+      await waiting.locator(".says + details.more > summary").click();
+      check(/^Request id req_stand-in-\d{4} \(stand-in\)\. The model was given only this test world's invoice, balance, reserve floor and limit, never your words\./.test((await waiting.locator(".says + details.more > p").innerText()).trim()),
+        `${tag}: "more" names the request id and what the model was given`);
+      await waiting.locator(".says + details.more > summary").click();
+    }
+    check((await page.locator("article.prop.blocked .who .pill").innerText()).trim() === "fixed text, no model call", `${tag}: the blocked proposal's sentence is fixed text, labelled`);
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const terms = JSON.parse((await waiting.locator("details.terms pre").textContent()) ?? "{}") as Record<string, any>;
   const sheetText = await waiting.innerText();
@@ -339,8 +385,57 @@ for (const [width, scheme] of RUNS) {
     `${tag}: the receipt carries what it needs and no world token`);
   check(await page.locator("#result .receipt details.more").count() === 1 && /^Check it offline with one command, no server: npm run verify-receipt -- receipt\.json\.$/.test((await page.locator("#result .receipt > p").innerText()).trim()),
     `${tag}: the receipt's explanation is one sentence, the rest behind "more"`);
+  // /try/verify (A3): "Verify this receipt here" opens the receipt in a page that checks it with WebCrypto, with no
+  // server call (its CSP allows no connection); one field changed, in the page or in the file, and it is invalid.
+  if (!args.live) {
+    const [vp] = await Promise.all([context.waitForEvent("page"), page.click("#r-verify")]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const v: any = vp;
+    v.on("pageerror", (e: Error) => errors.push(`verify: ${e.message}`));
+    v.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(`verify: ${m.text()}`); });
+    await v.waitForSelector("#v-verdict:not([hidden])");
+    await v.waitForLoadState("networkidle");
+    const calls: string[] = [];
+    v.on("request", (q: { url(): string }) => calls.push(q.url()));
+    const verdict = async () => ({ ok: await v.locator("#v-verdict").getAttribute("data-ok"), failed: await v.locator("#v-verdict").getAttribute("data-failed"), text: (await v.locator("#v-verdict").innerText()).trim() });
+    check((await v.locator("#v-lead").innerText()).trim() === "Don't trust our server: check it yourself." && new URL(v.url()).hash === "", `${tag}: /try/verify: "Don't trust our server: check it yourself."; the receipt came in the link's fragment, then cleared`);
+    const good = await verdict();
+    check(good.ok === "true" && good.text === "Signature valid for these terms", `${tag}: /try/verify: "${good.text}"`);
+    await v.screenshot({ path: join(shots, `${tag}-6-verify-valid.png`) });
+    await layout(v, tag, "/try/verify, valid", width);
+    await v.click("#v-flip");
+    await v.waitForFunction(() => document.getElementById("v-verdict")?.dataset.ok === "false");
+    const flipped = await verdict();
+    check(flipped.failed === "terms hash" && flipped.text === "Invalid: the terms hash check fails" && (await v.locator("#v-why").innerText()).includes("the terms were changed") && await v.locator("#v-terms dd.chg").count() === 1,
+      `${tag}: /try/verify: "Change one field" (amount + 0.01): "${flipped.text}"`);
+    await v.screenshot({ path: join(shots, `${tag}-7-verify-one-field-changed.png`) });
+    await layout(v, tag, "/try/verify, invalid", width);
+    await v.selectOption("#v-field", "payee_iban");
+    await v.waitForFunction(() => document.querySelector("#v-terms dd.chg")?.getAttribute("data-field") === "payee_iban");
+    check((await verdict()).failed === "terms hash", `${tag}: /try/verify: the IBAN changed instead: invalid, the terms hash check named`);
+    await v.click("#v-flip");
+    await v.waitForFunction(() => document.getElementById("v-verdict")?.dataset.ok === "true");
+    check((await verdict()).ok === "true", `${tag}: /try/verify: the toggle off: valid again`);
+    // The file itself, one field changed in it: invalid; the file as downloaded: valid.
+    const file = JSON.parse(readFileSync(saved, "utf8")) as { terms: Record<string, string> };
+    await v.setInputFiles("#v-file", { name: "receipt.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({ ...file, terms: { ...file.terms, currency: "USD" } })) });
+    await v.waitForFunction(() => document.getElementById("v-verdict")?.dataset.ok === "false");
+    check((await verdict()).failed === "terms hash" && (await v.locator("#v-status").innerText()).includes("receipt.json"), `${tag}: /try/verify: an uploaded receipt.json with the currency changed: invalid, the terms hash check named`);
+    await v.setInputFiles("#v-file", saved);
+    await v.waitForFunction(() => document.getElementById("v-verdict")?.dataset.ok === "true");
+    check((await verdict()).ok === "true", `${tag}: /try/verify: the downloaded receipt.json, uploaded: valid`);
+    check(calls.length === 0, `${tag}: /try/verify made no request while checking (${calls.length}${calls.length ? `: ${calls.slice(0, 3).join(", ")}` : ""})`);
+    await v.close();
+  }
   await shotAt(page, "#result", join(shots, `${tag}-4-signed-verified.png`));
   await layout(page, tag, "after signing", width);
+  // A5: after signing, few words: what shows in the result (a closed "more" shows nothing), at most about 150.
+  const words = ((await page.locator("#result").innerText()) as string).split(/\s+/).filter((w: string) => /[A-Za-z0-9]/.test(w)).length;
+  check(words <= 150, `${tag}: A5: ${words} visible words after signing (at most 150)`);
+  // A8: the quick tamper's label on one line.
+  const oneLine = await page.locator("#go-tamper").evaluate((b: HTMLElement) => { const span = [...b.querySelectorAll("span")].find((x) => x.getClientRects().length > 0)!; return { lines: span.getClientRects().length, fits: b.scrollWidth <= b.clientWidth + 1 }; }) as { lines: number; fits: boolean };
+  check(oneLine.lines === 1 && oneLine.fits, `${tag}: A8: the quick tamper ("${(await page.locator("#go-tamper").innerText()).trim()}") is on one line (${oneLine.lines} line${oneLine.lines === 1 ? "" : "s"})`);
+  check(await page.locator("#t-another").isHidden() && await page.locator("#t-end").isHidden(), `${tag}: before any tamper: no "Try another field", no end buttons`);
 
   // Tamper, field by field: the visitor's own edit, sent with the same signature, refused by the server.
   check(await page.locator("#t-send").isDisabled(), `${tag}: nothing to send until a field is changed`);
@@ -367,6 +462,7 @@ for (const [width, scheme] of RUNS) {
     check(head.startsWith("Refused") && why.trim() === `The server refused it: the signature was made for hash ${hash.slice(0, 12)}…, not for your terms (${(newH ?? "").slice(0, 12)}…).` && !/…\.|\.\.\.\./.test(why),
       `${tag}: tamper ${field}: the server refuses the same signature, said once (${why.slice(0, 60)}…)`);
     check((await page.locator("#t-verdict").innerText()).trim() === last && await page.locator("#t-verdict").isVisible(), `${tag}: tamper ${field}: it ends with "${last}"`);
+    check(await page.locator("#t-another").isVisible(), `${tag}: tamper ${field}: "Try another field" is shown after the refusal`);
   }
   // On a phone the tamper and its refusal fill the screen; on a laptop the whole result card fits.
   await shotAt(page, mobile ? "#tamper" : "#tamper-box", join(shots, `${tag}-5-tamper-refused.png`));
@@ -374,9 +470,49 @@ for (const [width, scheme] of RUNS) {
   // The terms, opened: the canonical JSON is one long line of text.
   await page.evaluate(`document.querySelectorAll("details").forEach((d) => { d.open = true; })`);
   await layout(page, tag, "with all terms open", width);
-  // The errors expected: the browser logs each refused tamper (HTTP 400) as a failed request.
-  const unexpected = errors.filter((e, i) => !(i >= beforeTamper && /status of 400/.test(e)));
-  check(unexpected.length === 0 && errors.length - beforeTamper === tampers.length, `${tag}: no console or CSP errors besides the ${tampers.length} refused tampers${unexpected.length ? `: ${unexpected.join(" | ")}` : ""}`);
+  // A7: after the tamper, three ways on: the real run's Face ID approval, the film, the code.
+  const ends = await page.locator("#t-end a").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
+  check(await page.locator("#t-end").isVisible() && JSON.stringify(ends) === JSON.stringify(TRY_SIGN_END.map((e) => ({ text: e.label, href: e.href }))),
+    `${tag}: A7: after the tamper, three buttons: ${ends.map((e) => `"${e.text}" (${e.href})`).join(", ")}`);
+  if (!args.live) {
+    const proof = await (await fetch(`${local.url}/proof`)).text();
+    check(/id="faceid"/.test(proof) && /P-0005/.test(proof.slice(proof.indexOf('id="faceid"'))), `${tag}: A7: /proof#faceid is the section with the CFO's Face ID approvals, P-0005 among them`);
+  }
+  // A8: "Try another field" puts the signed values back and readies the next field.
+  await page.click("#t-another");
+  check(await page.locator("#t-send").isDisabled() && /^Now change the /.test(await page.locator("#t-status").innerText()) && await page.evaluate("document.activeElement && document.activeElement.closest('.tf') !== null"),
+    `${tag}: A8: "Try another field": the signed values back, the next field focused (${await page.locator("#t-status").innerText()})`);
+  await shotAt(page, "#tamper", join(shots, `${tag}-5b-end.png`));
+  // A6: a refused signature is an answer (HTTP 200, verified false), so the whole visit logs no console error at all.
+  check(errors.length === 0, `${tag}: A6: 0 console errors across the whole visit (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
+  void beforeTamper;
+  await context.close();
+}
+
+// The agent's sentence is text on the page, never markup (A2 review). The server never passes markup on from the model
+// (test/try-agent-line.test.ts), so here the world's answer is rewritten in the browser to carry some, on both
+// proposals, and the page must show it as plain text: no element made, no script run.
+if (!args.live) {
+  const MARKUP = "Pay <b>x</b> now <img src=x onerror=alert(1)>.";
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, extraHTTPHeaders: { "cf-connecting-ip": "198.51.120.7" } });
+  const page = await context.newPage();
+  const dialogs: string[] = [];
+  page.on("dialog", (d: { message(): string; dismiss(): Promise<void> }) => { dialogs.push(d.message()); void d.dismiss(); });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.route("**/api/try-sign/world", async (route: any) => {
+    const res = await route.fetch();
+    const j = (await res.json()) as { proposals: { says: string }[] };
+    for (const p of j.proposals) p.says = MARKUP;
+    await route.fulfill({ response: res, body: JSON.stringify(j) });
+  });
+  await page.goto(`${local.url}/try/sign`);
+  await page.click("#go-world");
+  await page.waitForSelector("article.prop.sheet .says");
+  const says = (await page.locator(".says").evaluateAll((ns: Element[]) => ns.map((n) => ({ text: n.textContent, kids: n.children.length, html: n.innerHTML })))) as { text: string | null; kids: number; html: string }[];
+  check(says.length === 2 && says.every((x) => x.text === MARKUP && x.kids === 0 && x.html === MARKUP.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")),
+    `markup in the agent's sentence shows as text, escaped (${says.length} sentences; ${says.map((x) => x.kids).join(", ")} elements inside)`);
+  await page.waitForTimeout(500);
+  check(dialogs.length === 0 && await page.locator(".says img, .says b").count() === 0, `markup in the agent's sentence: no <b> or <img> made, no script run (${dialogs.length} dialogs)`);
   await context.close();
 }
 

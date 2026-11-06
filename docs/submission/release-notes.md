@@ -142,12 +142,34 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
   guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2569 tests
   in 261 files, all passing (with main's).
+- 6 November, /try/sign's Treasury agent speaks through Claude Haiku: the waiting payment's sentence is one real Haiku
+  call, given only the test world's invoice, balance, floor and limit (never a visitor's words), labelled "Claude
+  Haiku · live" with its request id behind "more"; USD 1 a day, 10 a minute for everyone, 6 an hour per address, 8 s;
+  otherwise the fixed sentence, labelled with why. The model only proposes: limits and approval stay in code and the
+  passkey. 2534 tests in 257 files, all passing.
+- 6 November, /try/verify: "Don't trust our server: check it yourself." receipt.json is checked in the browser with
+  WebCrypto, with verify-receipt's own checks (tested equal), and no server call (the page's CSP allows no
+  connection). "Signature valid for these terms", or "Invalid" with the failing check named; a "Change one field"
+  toggle and file upload. After signing, "Verify this receipt here" opens it. 2537 tests in 258 files, all passing.
+- 6 November, /try/sign shorter and wider: from 1024 px the start screen shows "One policy → three locks" on the
+  right; after signing at most about 150 words (118 on a phone); a refused signature answers HTTP 200 {verified:
+  false, reason}, so the visit logs 0 console errors; the quick tamper on one line, "Try another field" after the
+  first refusal, then three buttons: the real run's P-0005 on /proof, the film, the code. 2538 tests in 258 files, all
+  passing.
+- 6 November, the Haiku sentence after review: the amounts go in written the page's way ("EUR 1,850.00"), and code
+  checks every amount that comes back against the four it was given, exactly as given; else the fixed sentence,
+  labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup.
+  2589 tests in 262 files, all passing (with main's); 2592 in 263 with /try/verify.
+- 6 November, /try/sign from 1024 px: the left column under the start button shows the three steps once more, one
+  line each with a short gloss ("A payment above its limit, with its exact terms." / "A test passkey signs the hash of
+  those terms." / "The server checks it; one cent changed and it fails."), beside "One policy → three locks". 2594
+  tests in 263 files, all passing (with main's).
 - 6 November, the first screen (section D): the README, Home and the form's synopsis open the same way, from one
   source (`FIRST_SCREEN` in `src/config/brand.ts`): what Purser is in one sentence, the three sentences, then "Try it
   in 30 seconds." on its own line to /try/sign; only then the badges and the details. "Why this is a company": five
   lines from docs/business/ (the problem, who buys, the intended pricing as a hypothesis, why now with Airwallex's own
   post as the source, why Purser) on the README and Home, under one note that it is not validated with customers yet.
-  2577 tests in 262 files, all passing.
+  2602 tests in 264 files, all passing (with main's).
 - 6 November, the proof and the form (section D): one sentence per partner (`PROOF_SENTENCES` in
   `src/config/brand.ts`), word for word on the README, Home and the form, every number read from its record by
   `test/proof-sentences.test.ts`. Airwallex: the hash the CFO signed is in Airwallex's own record of the EUR 240.00
@@ -156,8 +178,8 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   eyes; second approver a labelled test passkey). Claude: 24 of 24 decisions, 0 fallbacks; rel-1 found a fault in how
   the agents hand off a card raise; after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and rel-1b
   passed every step. The form's Description now goes problem, solution, proof, Airwallex and Metal, business, what's
-  real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2582 tests in
-  263 files, all passing.
+  real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2607 tests in
+  265 files, all passing (with main's).
 
 ## Real, and ours
 

@@ -43,6 +43,8 @@ export interface Pages {
   /** /try/sign: a visitor signs with their own passkey in a test world (worker/src/trySign.ts). Present only in a bundle
    * built with TRY_SIGN_ENABLED on; without it the page and its API answer 404. */
   trySign?: string;
+  /** /try/verify: a receipt.json checked in the browser (src/try/verify.ts); with /try/sign only. */
+  tryVerify?: string;
   /** Old public addresses folded into the four tabs, and where they now go. */
   redirects?: Record<string, string>;
   approve: string;
@@ -56,7 +58,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; notFound?: string; trySign?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -139,6 +141,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/film") return page(pages.film, pages.csp.film);
   if (path === "/try") return page(pages.try, pages.csp.try);
   if (path === "/try/sign" && pages.trySign && pages.csp.trySign) return page(pages.trySign, pages.csp.trySign);
+  if (path === "/try/verify" && pages.tryVerify && pages.csp.tryVerify) return page(pages.tryVerify, pages.csp.tryVerify);
   if (path === "/lab") return page(pages.lab, pages.csp.lab);
   if (path === "/metal") return page(pages.metal, pages.csp.metal);
   if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
