@@ -156,7 +156,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   eyes; second approver a labelled test passkey). Claude: 24 of 24 decisions, 0 fallbacks; rel-1 found a fault in how
   the agents hand off a card raise; after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and rel-1b
   passed every step. The form's Description now goes problem, solution, proof, Airwallex and Metal, business, what's
-  real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2581 tests in
+  real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2582 tests in
   263 files, all passing.
 
 ## Real, and ours
