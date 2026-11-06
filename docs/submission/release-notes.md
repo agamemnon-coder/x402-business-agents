@@ -219,13 +219,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   one line: "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." Before the
   link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
   HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2657 tests in 269 files, all passing (with main's).
-- 6 November, "Unit economics (hypothesis)" (Max's last round, item 5.2; a draft until Max approves the assumptions):
-  in docs/business/model.md, what one agent costs a month against the intended price, from the main run's Claude cost
-  per decision and a list of labelled assumptions (usage, Cloudflare hosting at its published prices, the ECB's
-  EUR/USD rate), with the gross margin at low, mid and high usage, said plainly where it is negative. The deck's
-  business slide shows the same numbers ("Why this is a company" merged into it, so the deck stays at twelve).
-  src/business/unitEconomics.ts computes them; a test checks that none is unsourced. Not linked from the site.
-  2674 tests in 270 files, all passing.
+- 6 November, "Unit economics (hypothesis)" (Max's last round, item 5.2; assumptions approved by Max): in
+  docs/business/model.md, what a company of 5 agents costs a month against the intended price, from the main run's
+  Claude cost per decision and a list of labelled assumptions (usage, Cloudflare hosting at its published prices, the
+  ECB's EUR/USD rate), with the gross margin at low, mid and high usage (77%, 48%, 52%). The price now includes
+  decisions, word for word everywhere: "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10
+  per extra agent; €3 per extra 100 decisions." One line says what Opus for every agent would cost (about 2.1×, the
+  run repriced), one what Claude decided (24 decisions; 82 of the 88 payments were routine code). The deck's business
+  slide shows the same numbers ("Why this is a company" merged into it, so the deck stays at twelve).
+  src/business/unitEconomics.ts computes them; a test checks that none is unsourced. 2676 tests in 270 files,
+  all passing.
 
 ## Real, and ours
 
