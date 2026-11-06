@@ -7,6 +7,9 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DB } from "../src/db/open.js";
 
+// Metal's facilitator stood in: building the seller or a supplier asks its /supported (test/support/facilitatorStandIn.ts).
+vi.mock("@x402/core/server", async (orig) => (await import("./support/facilitatorStandIn.js")).standInServer(await orig<typeof import("@x402/core/server")>()));
+
 const state = vi.hoisted(() => ({ db: null as DB | null, attempts: [] as { cents: number; noticePending: boolean }[] }));
 
 vi.mock("../src/metal/mandate.js", async (orig) => ({

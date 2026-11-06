@@ -195,6 +195,20 @@ export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: Iss
   return syncCardsIfChanged(db, rail, now);
 }
 
+/**
+ * How often the runner polls every card's transactions (src/cli/relay.ts): every 5 s, unless the world sets
+ * KIT11_CARD_POLL_MS (at least 1000) or turns the poll off ("off": awx-1, where the webhooks bring every transaction and
+ * each poll is a counted Airwallex call; the run polls once at its close instead). Limits still sync either way.
+ */
+export function cardPollMs(env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env): number | null {
+  const v = env.KIT11_CARD_POLL_MS;
+  if (v === undefined || v === "") return 5000;
+  if (v === "off") return null;
+  if (!/^\d+$/.test(v)) throw new Error(`KIT11_CARD_POLL_MS is a number of milliseconds or "off", not ${JSON.stringify(v.slice(0, 20))}`);
+  if (Number(v) < 1000) throw new Error("KIT11_CARD_POLL_MS is at least 1000 (half the sandbox's rate limit is the client's own pace)");
+  return Number(v);
+}
+
 export type CardTxSource = "simulation" | "poll" | "webhook";
 
 /** D24: the purchase this charge answers, if any: the newest purchase started on this card for this amount within the

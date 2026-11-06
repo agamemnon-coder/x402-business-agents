@@ -22,7 +22,9 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
   quotes = new Map<string, Quote>();
   conversions: Conversion[] = [];
   beneficiaries: Beneficiary[] = [];
-  transfers: (Transfer & { metadata: string })[] = [];
+  transfers: (Transfer & { metadata: string; reference?: string })[] = [];
+  /** The approval hash each conversion carried in its metadata, by conversion id (as Airwallex keeps it). */
+  conversionMetadata = new Map<string, string>();
   calls: string[] = [];
   /** Lose the answer to the next transfer create (the transfer is still made). */
   loseNextTransferAnswer = false;
@@ -68,6 +70,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     this.bal.EUR.availableCents += q.buyAmountCents;
     const c = { conversionId: `conv_${++this.n}`, requestId: a.requestId, quoteId: q.quoteId, status: "SETTLED", buyAmountCents: q.buyAmountCents, sellAmountCents: q.sellAmountCents };
     this.conversions.push(c);
+    this.conversionMetadata.set(c.conversionId, a.approvalSha256);
     return c;
   }
   async findConversionByRequestId(requestId: string) { const c = this.conversions.find((x) => x.requestId === requestId); return c && { ...c }; }
@@ -84,7 +87,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     if (this.bal.EUR.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     this.bal.EUR.availableCents -= t.amountCents + fee;
     this.bal.EUR.reservedCents += t.amountCents + fee;
-    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId };
+    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId };
     this.transfers.push(tr);
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };
