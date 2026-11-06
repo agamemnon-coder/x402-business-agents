@@ -151,10 +151,19 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   WebCrypto, with verify-receipt's own checks (tested equal), and no server call (the page's CSP allows no
   connection). "Signature valid for these terms", or "Invalid" with the failing check named; a "Change one field"
   toggle and file upload. After signing, "Verify this receipt here" opens it. 2537 tests in 258 files, all passing.
+- 6 November, /try/sign shorter and wider: from 1024 px the start screen shows "One policy → three locks" on the
+  right; after signing at most about 150 words (118 on a phone); a refused signature answers HTTP 200 {verified:
+  false, reason}, so the visit logs 0 console errors; the quick tamper on one line, "Try another field" after the
+  first refusal, then three buttons: the real run's P-0005 on /proof, the film, the code. 2538 tests in 258 files, all
+  passing.
 - 6 November, the Haiku sentence after review: the amounts go in written the page's way ("EUR 1,850.00"), and code
   checks every amount that comes back against the four it was given, exactly as given; else the fixed sentence,
   labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup.
   2589 tests in 262 files, all passing (with main's); 2592 in 263 with /try/verify.
+- 6 November, /try/sign from 1024 px: the left column under the start button shows the three steps once more, one
+  line each with a short gloss ("A payment above its limit, with its exact terms." / "A test passkey signs the hash of
+  those terms." / "The server checks it; one cent changed and it fails."), beside "One policy → three locks". 2594
+  tests in 263 files, all passing (with main's).
 
 ## Real, and ours
 

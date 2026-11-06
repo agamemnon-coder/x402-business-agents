@@ -44,7 +44,7 @@ const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
-const { TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TAMPER_VERDICT, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEP_GLOSS, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
 const { canonical } = await import("../../worker/src/trySign.js");
@@ -190,6 +190,31 @@ for (const [width, scheme] of RUNS) {
     return { header: alpha(h.backgroundColor), blur: h.backdropFilter, steps: alpha(o.backgroundColor) === 1 || alpha(o.boxShadow.split(") ")[0] + ")") === 1, shadow: o.boxShadow };
   })()`) as { header: number; blur: string; steps: boolean; shadow: string };
   check(opaque.header === 1 && (opaque.blur === "none" || opaque.blur === "") && /100vmax|\d{3,}px/.test(opaque.shadow), `${tag}: the sticky header and steps are opaque (header alpha ${opaque.header}, steps shadow ${opaque.shadow.slice(0, 40)}…)`);
+  // A4: from 1024 px the start screen's right column shows "one policy → three locks"; the screen is not mostly empty.
+  const startFill = await page.evaluate(`(() => {
+    const vis = (e) => e && e.getClientRects().length > 0 && getComputedStyle(e).display !== "none";
+    const boxes = [".intro", "ol.progress", "#s-world .go", "#diagram"].map((q) => document.querySelector(q)).filter(vis).map((e) => e.getBoundingClientRect());
+    const top = document.querySelector("header.top").getBoundingClientRect().bottom, H = innerHeight - top, W = innerWidth;
+    const area = boxes.reduce((a, b) => a + Math.max(0, Math.min(b.bottom, innerHeight) - Math.max(b.top, top)) * b.width, 0);
+    const d = document.querySelector("#diagram");
+    return { fill: area / (H * W), diagram: vis(d) ? { left: d.getBoundingClientRect().left, right: d.getBoundingClientRect().right, bottom: d.getBoundingClientRect().bottom, locks: d.querySelectorAll(".dlocks li").length } : null };
+  })()`) as { fill: number; diagram: { left: number; right: number; bottom: number; locks: number } | null };
+  if (width >= 1024) {
+    check(!!startFill.diagram && startFill.diagram.left > width * 0.45 && startFill.diagram.bottom <= height && startFill.diagram.locks === 3,
+      `${tag}: A4: the right column shows "one policy → three locks" (from x ${Math.round(startFill.diagram?.left ?? 0)}, three locks, above the fold)`);
+    check(startFill.fill >= 0.4, `${tag}: A4: the start screen is not mostly empty (content covers ${Math.round(startFill.fill * 100)}% of the screen below the header)`);
+    // The left column under the start button: the three steps, each with its gloss, filling the column beside the diagram.
+    const left = await page.evaluate(`(() => {
+      const ls = [...document.querySelectorAll("#s-world .gosteps li")].filter((l) => l.getClientRects().length > 0);
+      const go = document.querySelector("#s-world .go").getBoundingClientRect(), d = document.querySelector("#diagram").getBoundingClientRect();
+      return { lines: ls.map((l) => [l.querySelector("b").textContent, l.querySelector("small").textContent]), goBottom: go.bottom, goRight: go.right, dTop: d.top, dBottom: d.bottom, dLeft: d.left };
+    })()`) as { lines: [string, string][]; goBottom: number; goRight: number; dTop: number; dBottom: number; dLeft: number };
+    check(JSON.stringify(left.lines) === JSON.stringify(TRY_SIGN_STEPS.map((s, i) => [s, TRY_SIGN_STEP_GLOSS[i]])) && left.goRight <= left.dLeft && left.goBottom - left.dTop >= 0.7 * (left.dBottom - left.dTop),
+      `${tag}: A4: the left column shows the three steps with their glosses under the start button (to ${Math.round(left.goBottom)} px, the diagram to ${Math.round(left.dBottom)} px)`);
+  } else {
+    check(startFill.diagram === null, `${tag}: below 1024 px the diagram is not shown`);
+    check(await page.locator("#s-world .gosteps").isHidden(), `${tag}: below 1024 px the steps under the button are not shown (the progress bar says them)`);
+  }
   await page.screenshot({ path: join(shots, `${tag}-1-start.png`) });
 
   // Six requests a visit (world, passkey, signature, three tampers) and six visits: the relay's 30 a minute per address
@@ -207,8 +232,7 @@ for (const [width, scheme] of RUNS) {
     console.log(`info  ${tag}: the relay asks to wait a minute (${said}); waiting`);
     await page.waitForTimeout(61_000);
   }
-  // The refused attempt's 429 is the browser's console error, not the page's.
-  errors.splice(0, errors.length, ...errors.filter((e) => !/status of 429/.test(e)));
+
   check(JSON.stringify(await steps()) === '["done","on","-"]', `${tag}: after the proposal, step 1 is done and step 2 under way`);
 
   // The quote's end (once, at 390 px light): a quote that expires shows "expired", the sign button goes off, and "Get a
@@ -402,6 +426,13 @@ for (const [width, scheme] of RUNS) {
   }
   await shotAt(page, "#result", join(shots, `${tag}-4-signed-verified.png`));
   await layout(page, tag, "after signing", width);
+  // A5: after signing, few words: what shows in the result (a closed "more" shows nothing), at most about 150.
+  const words = ((await page.locator("#result").innerText()) as string).split(/\s+/).filter((w: string) => /[A-Za-z0-9]/.test(w)).length;
+  check(words <= 150, `${tag}: A5: ${words} visible words after signing (at most 150)`);
+  // A8: the quick tamper's label on one line.
+  const oneLine = await page.locator("#go-tamper").evaluate((b: HTMLElement) => { const span = [...b.querySelectorAll("span")].find((x) => x.getClientRects().length > 0)!; return { lines: span.getClientRects().length, fits: b.scrollWidth <= b.clientWidth + 1 }; }) as { lines: number; fits: boolean };
+  check(oneLine.lines === 1 && oneLine.fits, `${tag}: A8: the quick tamper ("${(await page.locator("#go-tamper").innerText()).trim()}") is on one line (${oneLine.lines} line${oneLine.lines === 1 ? "" : "s"})`);
+  check(await page.locator("#t-another").isHidden() && await page.locator("#t-end").isHidden(), `${tag}: before any tamper: no "Try another field", no end buttons`);
 
   // Tamper, field by field: the visitor's own edit, sent with the same signature, refused by the server.
   check(await page.locator("#t-send").isDisabled(), `${tag}: nothing to send until a field is changed`);
@@ -428,6 +459,7 @@ for (const [width, scheme] of RUNS) {
     check(head.startsWith("Refused") && why.trim() === `The server refused it: the signature was made for hash ${hash.slice(0, 12)}…, not for your terms (${(newH ?? "").slice(0, 12)}…).` && !/…\.|\.\.\.\./.test(why),
       `${tag}: tamper ${field}: the server refuses the same signature, said once (${why.slice(0, 60)}…)`);
     check((await page.locator("#t-verdict").innerText()).trim() === last && await page.locator("#t-verdict").isVisible(), `${tag}: tamper ${field}: it ends with "${last}"`);
+    check(await page.locator("#t-another").isVisible(), `${tag}: tamper ${field}: "Try another field" is shown after the refusal`);
   }
   // On a phone the tamper and its refusal fill the screen; on a laptop the whole result card fits.
   await shotAt(page, mobile ? "#tamper" : "#tamper-box", join(shots, `${tag}-5-tamper-refused.png`));
@@ -435,9 +467,22 @@ for (const [width, scheme] of RUNS) {
   // The terms, opened: the canonical JSON is one long line of text.
   await page.evaluate(`document.querySelectorAll("details").forEach((d) => { d.open = true; })`);
   await layout(page, tag, "with all terms open", width);
-  // The errors expected: the browser logs each refused tamper (HTTP 400) as a failed request.
-  const unexpected = errors.filter((e, i) => !(i >= beforeTamper && /status of 400/.test(e)));
-  check(unexpected.length === 0 && errors.length - beforeTamper === tampers.length, `${tag}: no console or CSP errors besides the ${tampers.length} refused tampers${unexpected.length ? `: ${unexpected.join(" | ")}` : ""}`);
+  // A7: after the tamper, three ways on: the real run's Face ID approval, the film, the code.
+  const ends = await page.locator("#t-end a").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
+  check(await page.locator("#t-end").isVisible() && JSON.stringify(ends) === JSON.stringify(TRY_SIGN_END.map((e) => ({ text: e.label, href: e.href }))),
+    `${tag}: A7: after the tamper, three buttons: ${ends.map((e) => `"${e.text}" (${e.href})`).join(", ")}`);
+  if (!args.live) {
+    const proof = await (await fetch(`${local.url}/proof`)).text();
+    check(/id="faceid"/.test(proof) && /P-0005/.test(proof.slice(proof.indexOf('id="faceid"'))), `${tag}: A7: /proof#faceid is the section with the CFO's Face ID approvals, P-0005 among them`);
+  }
+  // A8: "Try another field" puts the signed values back and readies the next field.
+  await page.click("#t-another");
+  check(await page.locator("#t-send").isDisabled() && /^Now change the /.test(await page.locator("#t-status").innerText()) && await page.evaluate("document.activeElement && document.activeElement.closest('.tf') !== null"),
+    `${tag}: A8: "Try another field": the signed values back, the next field focused (${await page.locator("#t-status").innerText()})`);
+  await shotAt(page, "#tamper", join(shots, `${tag}-5b-end.png`));
+  // A6: a refused signature is an answer (HTTP 200, verified false), so the whole visit logs no console error at all.
+  check(errors.length === 0, `${tag}: A6: 0 console errors across the whole visit (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
+  void beforeTamper;
   await context.close();
 }
 

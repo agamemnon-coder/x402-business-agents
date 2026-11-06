@@ -595,11 +595,15 @@ export class TrySignDesk {
     if (!v.ok) {
       this.hit(ip, "fail", this.now().getTime());
       const why = v.why === "challenge" ? `the signature was made for ${signed && /^[0-9a-f]{64}$/.test(signed) ? `hash ${signed.slice(0, 12)}…` : "other terms"}; these terms hash to ${sha.slice(0, 12)}…` : v.why;
-      return answer(400, { error: `refused: the server's verifier did not accept this signature (${why})`, verified: false, why: v.why, terms_sha256: sha, signed_sha256: signed });
+      // A refused signature is an answer, not an error (A6): 200 with verified false and the reason, so the page shows
+      // it without the browser logging a failed request. Malformed requests and limits stay 4xx.
+      const reason = `refused: the server's verifier did not accept this signature (${why})`;
+      return answer(200, { verified: false, reason, error: reason, why: v.why, terms_sha256: sha, signed_sha256: signed });
     }
     if (terms !== p.canonical) {
       this.hit(ip, "fail", this.now().getTime());
-      return answer(409, { error: "refused: these are not this proposal's terms", verified: false, why: "terms", terms_sha256: sha });
+      const reason = "refused: these are not this proposal's terms";
+      return answer(200, { verified: false, reason, error: reason, why: "terms", terms_sha256: sha });
     }
     // Read again after the awaits above, then write with no await between: a replay racing this one finds it done.
     const now = this.now().getTime();
@@ -613,7 +617,10 @@ export class TrySignDesk {
       return answer(409, { error: "Quote expired. Get a fresh one and sign again.", expired_at: String(quote.valid_to_at), verified: true, why: "quote_expired", quote_expired: true, terms_sha256: sha });
     }
     const latest = (this.sql.exec("SELECT counter FROM ts_creds WHERE world = ? AND id = ?", world.id, cred.id).toArray() as { counter: number }[])[0]?.counter ?? 0;
-    if ((v.counter !== 0 || latest !== 0) && v.counter <= latest) return answer(400, { error: "refused: the signature counter did not move forward (a replay)", verified: false, why: "counter" });
+    if ((v.counter !== 0 || latest !== 0) && v.counter <= latest) {
+      const reason = "refused: the signature counter did not move forward (a replay)";
+      return answer(200, { verified: false, reason, error: reason, why: "counter" });
+    }
     const amount = (p.terms as { amount: string }).amount;
     const again = checkPayment(amount, w.balance);
     if (again.check === "fail") return answer(409, { error: `blocked by a rule: ${again.rule}`, blocked: true, verified: true });
