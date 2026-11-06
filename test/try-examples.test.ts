@@ -108,7 +108,7 @@ describe("the page's frame: three steps, one line of disclaimer, \"What's real?\
   });
 
   it("its one inline script parses (it lives in a template string, where a stray escape breaks it)", () => {
-    const js = /<script>([\s\S]*?)<\/script>/.exec(page)![1]!;
+    const js = block(page, "<script>", "script").inner;
     expect(() => new Function(js)).not.toThrow();
   });
 
