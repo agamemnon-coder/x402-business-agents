@@ -228,6 +228,38 @@ async function readCapped(req: Request, limit: number): Promise<string | null> {
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
+// The request schema (security task A1, 6 Nov): each body carries the keys the page sends and nothing else, each of
+// its type; a key it does not know is refused, not ignored. A missing token still answers 410 below (no such world).
+const PROPOSAL_ID = /^T-\d{4}$/;
+const b64u = (max: number) => (v: unknown) => typeof v === "string" && v.length <= max && B64URL.test(v);
+const optional = (ok: (v: unknown) => boolean) => (v: unknown) => v === undefined || ok(v);
+const CREDENTIAL = {
+  id: b64u(1024), rawId: optional(b64u(1024)), type: optional((v) => v === "public-key"), response: isObj,
+  clientExtensionResults: optional(isObj), authenticatorAttachment: optional((v) => v === "platform" || v === "cross-platform"),
+};
+const RESPONSE = {
+  passkey: {
+    clientDataJSON: b64u(8192), attestationObject: b64u(MAX_BODY),
+    transports: optional((v) => Array.isArray(v) && v.length <= 8 && v.every((t) => typeof t === "string" && t.length <= 32)),
+  },
+  sign: { clientDataJSON: b64u(8192), authenticatorData: b64u(8192), signature: b64u(2048), userHandle: optional(b64u(512)) },
+};
+const BODY: Record<string, Record<string, (v: unknown) => boolean>> = {
+  "/world": {},
+  "/passkey": { token: optional((v) => typeof v === "string"), credential: () => true },
+  "/sign": { token: optional((v) => typeof v === "string"), proposal_id: (v) => typeof v === "string" && PROPOSAL_ID.test(v), canonical: (v) => typeof v === "string" && v.length <= MAX_TERMS, credential: () => true },
+};
+const fits = (o: Record<string, unknown>, shape: Record<string, (v: unknown) => boolean>) =>
+  Object.keys(o).every((k) => Object.hasOwn(shape, k)) && Object.entries(shape).every(([k, ok]) => ok(o[k]));
+/** Whether a body has this endpoint's shape: its own keys only, each of its type (the credential's too). */
+export function wellFormed(sub: string, body: Record<string, unknown>): boolean {
+  const shape = BODY[sub];
+  if (!shape || !fits(body, shape)) return false;
+  if (sub === "/world") return true;
+  const c = body.credential;
+  return isObj(c) && fits(c, CREDENTIAL) && fits(c.response as Record<string, unknown>, sub === "/passkey" ? RESPONSE.passkey : RESPONSE.sign);
+}
+
 export class TrySignDesk {
   private readonly now: () => Date;
 
@@ -246,7 +278,17 @@ export class TrySignDesk {
     this.sql.exec("CREATE INDEX IF NOT EXISTS ts_worlds_created ON ts_worlds (created)");
   }
 
+  /** Never throws: anything unexpected answers a fixed 500, with no exception text, stack or path in it (A1). */
   async fetch(req: Request): Promise<Response> {
+    try {
+      return await this.handle(req);
+    } catch (e) {
+      console.error("try-sign: unexpected error", e instanceof Error ? e.name : typeof e);
+      return answer(500, { error: "the test world could not answer this; nothing was signed or run. Try again" });
+    }
+  }
+
+  private async handle(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
     if (!isTrySignPath(path)) return trySignNotFound();
@@ -273,10 +315,14 @@ export class TrySignDesk {
     let body: unknown;
     try { body = JSON.parse(raw); } catch { return answer(400, { error: "send JSON" }); }
     if (!isObj(body)) return answer(400, { error: "send a JSON object" });
+    const gone = () => answer(410, { error: "no such test world: it expired (a world lasts one hour, ten minutes without a passkey) or never existed; start a new one", expired: true });
+    // No token at all is no world (as before); anything else must have the endpoint's shape before it is looked at.
+    if (sub !== "/world" && body.token === undefined) return gone();
+    if (!wellFormed(sub, body)) return answer(400, { error: sub === "/sign" ? "malformed signature" : sub === "/passkey" ? "malformed passkey" : "send an empty JSON object" });
 
     if (sub === "/world") return this.newWorld(url, req.headers.get("cf-connecting-ip") ?? "unknown", nowMs);
     const world = await this.worldOf(body.token);
-    if (!world || world.expires <= this.now().getTime()) return answer(410, { error: "no such test world: it expired (a world lasts one hour, ten minutes without a passkey) or never existed; start a new one", expired: true });
+    if (!world || world.expires <= this.now().getTime()) return gone();
     if (sub === "/passkey") return this.registerPasskey(url, ip, world, body);
     return this.sign(url, ip, world, body);
   }
