@@ -270,6 +270,8 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   Max approved 96 Airwallex calls at most (117 with one second attempt), 14 Claude calls, 0 Metal. A stand-in test's
   accidental Claude calls while preparing it are booked as an upper bound (at most 24 calls, 0.18 USD).
   2802 tests in 277 files, all passing (with main's and the network guard).
+- 6 November, the worst case (1.1) and the unit economics (5.2) merged with the network guard and awx-1's preparation:
+  2844 tests in 279 files, all passing.
 - 6 November, the worst case, set by policy (1.1): per agent and in all, per day and per month, computed from the
   policy by Purser's own code: each card's monthly limit (EUR), each Metal mandate's budget (test USD) and the
   Treasury agent's task cards without Face ID, on a line of their own (Max: "apart"). EUR and test USD apart, an EUR
