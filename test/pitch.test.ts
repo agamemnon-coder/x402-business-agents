@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { PNG } from "pngjs";
 import jsQRModule from "jsqr";
 import { describe, expect, it } from "vitest";
+import { DIFFERENTIATORS } from "../src/config/brand.js";
 import { faceIdDecisions, loadRecord, payments, split, stopStory, stopsLine, timings } from "../src/redesign/run.js";
 import { CORE_LINE, METAL_LINE, QR_URL, REFUSAL_LINE, RULE_LINE, T0_SHORT, T0_STATUS, deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
@@ -118,9 +119,10 @@ describe("the pitch's sentences", () => {
 });
 
 describe("the core line", () => {
-  it("is word for word in the pitch, the runbook, the cheat sheet, the deck, the form and the README's first lines", () => {
-    for (const name of ["pitch", "demo-day", "spiekkaart", "deck", "form"]) expect({ name, has: TEXT[name]!.includes(CORE_LINE) }).toEqual({ name, has: true });
-    expect(words(SOURCES.README!.split("\n").slice(0, 5).join("\n"))).toContain(CORE_LINE);
+  it("is word for word in the pitch, the runbook, the cheat sheet and the deck; the README and the form open with the three sentences instead (jury review, 6 Nov)", () => {
+    for (const name of ["pitch", "demo-day", "spiekkaart", "deck"]) expect({ name, has: TEXT[name]!.includes(CORE_LINE) }).toEqual({ name, has: true });
+    const top = words(SOURCES.README!.split("\n").slice(0, 5).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
+    for (const d of DIFFERENTIATORS) expect(top).toContain(d);
     expect(SOURCES.README!.split("\n").slice(0, 5).join("\n")).toContain("https://kit11.max-31b.workers.dev/try/sign");
   });
 });
@@ -134,10 +136,10 @@ describe("one set of figures, the main run's record (3 November)", () => {
 
   it("says the stops in one sentence, with the record's counts, and never the old \"1 + 1\" (Max, 5 Nov)", () => {
     const line = stopsLine(st);
-    expect(line).toBe("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    expect(line).toBe("16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     for (const name of Object.keys(TEXT)) {
       expect({ name, figure: /\d+ stopped at a limit|over its cap; the CFO rejected|\b1 \+ 1\b/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
-      for (const m of all(/(\d+) stops, nothing paid over a limit: Claude skipped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
+      for (const m of all(/(\d+) stops, nothing paid over a limit: a buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
       if (["pitch", "deck", "spiekkaart", "form", "form (long)", "README"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
     }
   });
@@ -171,7 +173,7 @@ describe("one set of figures, the main run's record (3 November)", () => {
 
   it("says the Face ID decisions as the record counts them", () => {
     for (const name of Object.keys(TEXT)) for (const m of all(/(\d+) Face ID decisions|signed (\d+) times with Face ID|(\d+) decisions signed with Face ID/g, name)) expect({ name, n: Number(m[1] ?? m[2] ?? m[3]) }).toEqual({ name, n: faceIdDecisions(record) });
-    for (const name of ["deck", "spiekkaart"]) expect({ name, said: all(/(\d+) Face ID decisions/g, name).length > 0 }).toEqual({ name, said: true });
+    for (const name of ["deck", "spiekkaart"]) expect({ name, said: all(/(\d+) Face ID decisions|(\d+) decisions signed with Face ID/g, name).length > 0 }).toEqual({ name, said: true });
   });
 
   it("says the options' 40 s, the dispute's 12 and 9, and the euros as the record has them", () => {
@@ -193,7 +195,9 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
 
   it("says the T:0 sentence word for word in the README, the form, the claims, docs/t0.md, the run logs and the Q&A", () => {
     expect(T0_STATUS).toBe("T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted.");
-    for (const p of ["README.md", "docs/submission/README.md", "docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-05-t0-live.md", "docs/runs/2026-11-03-t0-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(T0_STATUS) }).toEqual({ p, has: true });
+    // Not in the form's short Description since 6 Nov (jury review, #7: no error codes there); the long text keeps it.
+    expect(words(read("docs/submission/README.md").split("<!-- description -->")[1]!.split("<!-- /description -->")[0]!)).not.toContain("CAPI");
+    for (const p of ["README.md", "docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-05-t0-live.md", "docs/runs/2026-11-03-t0-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(T0_STATUS) }).toEqual({ p, has: true });
     // The codes as the run logs have them.
     expect(read("docs/runs/2026-11-03-t0-sandbox.md")).toMatch(/refused the first POST with `403 CAPI71`/);
     expect(read("docs/runs/2026-11-05-t0-live.md")).toMatch(/on 5 November[\s\S]*?`401 CAPI11`/i);
@@ -274,7 +278,7 @@ describe("the deck", () => {
     expect(slides[9]).toMatch(/<p class="oneline">Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\), so Purser is entered for the Metal Award only\.<\/p>/);
     expect(DECK).not.toMatch(/entered for[^.<]{0,40}Visa Award|\+ Visa Award|still being confirmed with Visa/i);
     expect(DECK).not.toMatch(/TAP run|LIMIT_EXCEEDED/);
-    expect(slides[7]).toMatch(/82 = the routine payments per query that code made; \$0\.0132 = Claude's cost per decision/);
+    expect(slides[7]).toMatch(/86 Metal payments \+ 1 card charge; \$0\.0132 = Claude's cost per decision/);
   });
 
   it("names the second approver and the sandbox's SWIFT steps as they were", () => {

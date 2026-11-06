@@ -10,8 +10,11 @@ main run of 3 November 2026 (world `main-1`, [run log](runs/2026-11-03-main-run.
 
 The film is rendered by `npm run video` from `src/film/premiere.ts`, which reads every figure from the run's record
 (`docs/demo/main-run.json`) and stops when one is missing; `test/premiere.test.ts` counts each figure again from the
-record. This page names only the stops, which the other documents say in one sentence: **16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.**
-Metal's 2: 1 over the mandate's cap (the purchase let through on purpose), 1 on a mandate that had just been replaced;
+record. This page names only the stops, which the other documents say in one sentence: **16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.**
+The film itself (v3 on YouTube) says “twelve skipped by Claude”, which predates that wording (jury review, 6 November):
+Claude set the buy rule and code applied it to the 12; the film is not changed. Metal's 2: 1 over the mandate's cap
+(the purchase let through with our own check switched off once, to prove the chain holds the line), 1 on a mandate that
+had just been replaced;
 the CFO's 1: Max rejected “refund the other 9” with Face ID. The site shows one more line directly below that sentence, which the film leaves out because it is another
 run's, not counted: “Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November”.
 

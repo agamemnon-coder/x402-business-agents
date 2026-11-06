@@ -29,7 +29,7 @@ Max says the figures as words ("twenty-four"); they are written as digits here s
 | 4 | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE`, `src/submission/deck.ts` (Max, 5 Nov); form text, Controls |
 | 5 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Metal testnet |
 | 6 | 24 of 24 decisions were made by Claude. | Record: `split` (24/24, 0 fallbacks) |
-| 7 | 16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: Claude 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
+| 7 | 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
 | 8 | Every id is published. | `/proof`; README, "The main run" |
 | 9 | Sign one yourself, at kit11.max-31b.workers.dev/try/sign. | Try: live since 4 November |
 
@@ -54,7 +54,7 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | | In this demo, I play the CFO. | Log, "Approvals" (CFO = Max) |
 | **0:40 The run, on /watch** | A replay of our main run, 3 November. | Log; `/watch` label "Replay of the main run, 3 Nov 11:16–11:33 UTC" |
 | | The supplier doubles its price, past the Sourcing agent's cap. | Record: Stockline 0.02 → 0.04, cap 0.03 (`homeFilm`) |
-| | We let one purchase through on purpose. | Record: `letThroughOf` (`upstream.let_through`, seq 114); `DEFENSE_IN_DEPTH` |
+| | We switched off our own check once to prove the chain holds the line. | Record: `letThroughOf` (`upstream.let_through`, seq 114); `CHAIN_TEST`, `DEFENSE_IN_DEPTH` |
 | | Metal refused it; the refusal is recorded on chain. | `REFUSAL_LINE`; Record: 402 `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` (seq 119) |
 | | Treasury proposes two options within the same 20.00. | Record: P-0002 and P-0003, `total_budget` 20.00; `timings` (40 s after the refusal) |
 | | Option A: cap 0.04, and our price stays 0.05. | Record: P-0002 terms (option A, Sourcing cap 0.04, `query_price` 0.05) |

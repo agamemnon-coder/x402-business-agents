@@ -1,0 +1,966 @@
+[
+  {
+    "run": "rel-1",
+    "kind": "reliability run",
+    "label": "reliability run: the full Kit 11 flow in a fresh world, Airwallex sandbox and Metal testnet, test money only; approvals by labelled virtual test passkeys",
+    "passed": false,
+    "stopped_at": "20 TAP card purchase in this world",
+    "failures": [],
+    "commit": "f0c548f",
+    "started_at": "2026-11-06T05:34:33.229Z",
+    "ended_at": "2026-11-06T05:55:56.900Z",
+    "duration_minutes": 21.4,
+    "rails": {
+      "metal": "testnet",
+      "airwallex": "sandbox",
+      "money": "test money only",
+      "customer_supplier_merchants": "simulated (ours)"
+    },
+    "agents": {
+      "sourcing": "claude-haiku-5-5",
+      "support": "claude-sonnet-5-5",
+      "treasury": "claude-opus-5-5",
+      "claude_env_var": "KIT11_ANTHROPIC_API_KEY from the environment"
+    },
+    "signers": {
+      "cfo": "virtual test passkey (CFO role), test identity \"test-cfo\"",
+      "second_approver": "virtual test passkey (second approver role), test identity \"test-controller\"",
+      "fingerprints": {
+        "virtual test passkey (CFO role)": "064D-E748-F995-978B",
+        "virtual test passkey (second approver role)": "B231-508E-0FD1-E026"
+      },
+      "note": "No person signed in this run. Claude typed the world commands and approved nothing itself; the virtual test passkeys signed on the steps of the runbook."
+    },
+    "funding": {
+      "mode": "recycle",
+      "faucet_calls": 0,
+      "recycled_transfers": 4,
+      "from": "finished dry-N worlds (docs/runs/testgeld-recycling.md)"
+    },
+    "steps": [
+      {
+        "step": "V1 Health",
+        "seconds": 4,
+        "ok": true
+      },
+      {
+        "step": "V2 Bootstrap (fresh keys, faucet)",
+        "seconds": 67,
+        "ok": true
+      },
+      {
+        "step": "V3 Cards: each agent its company card at Airwallex",
+        "seconds": 7,
+        "ok": true
+      },
+      {
+        "step": "V4 Visa TAP key of the Sourcing agent, pinned for Packwise",
+        "seconds": 2,
+        "ok": true
+      },
+      {
+        "step": "V5 World options: upstream cache off, free EUR 150.00, TAP rail on",
+        "seconds": 2,
+        "ok": true
+      },
+      {
+        "step": "S1 world serve --every 15",
+        "seconds": 9,
+        "ok": true
+      },
+      {
+        "step": "S1b world ridgeline-maintenance",
+        "seconds": 2,
+        "ok": true
+      },
+      {
+        "step": "V6 Runner (local relay, real executors, the three agents)",
+        "seconds": 5,
+        "ok": true
+      },
+      {
+        "step": "V7 Passkeys: test-cfo and test-controller (virtual, labelled test identities)",
+        "seconds": 30,
+        "ok": true
+      },
+      {
+        "step": "V8 Four eyes above EUR 1,000 (P-0001, test-cfo alone)",
+        "seconds": 10,
+        "ok": true
+      },
+      {
+        "step": "S1c Sourcing's decision on Ridgeline's notice",
+        "seconds": 0,
+        "ok": true
+      },
+      {
+        "step": "S2b world let-one-through (armed before the rise, once #16 is sold)",
+        "seconds": 278,
+        "ok": true
+      },
+      {
+        "step": "S2 world price-rise 0.04 --silent",
+        "seconds": 34,
+        "ok": true
+      },
+      {
+        "step": "S3 Treasury's rebalance within 20.00, four eyes, replace",
+        "seconds": 61,
+        "ok": true
+      },
+      {
+        "step": "S4 world dispute (Support decides)",
+        "seconds": 100,
+        "ok": true
+      },
+      {
+        "step": "S5 world money-in (Treasury decides)",
+        "seconds": 15,
+        "ok": true
+      },
+      {
+        "step": "S6 world invoice (Treasury plans the licence)",
+        "seconds": 51,
+        "ok": true
+      },
+      {
+        "step": "S7 world packwise-pro (Sourcing, TAP on its card)",
+        "seconds": 435,
+        "ok": true
+      },
+      {
+        "step": "L Links: the viewer in one private tab, twice; the second-approver label",
+        "seconds": 1,
+        "ok": true
+      },
+      {
+        "step": "C Checks: verify, reconcile, data-qa, origins, dashboard-vs-chain, agent-summary",
+        "seconds": 145,
+        "ok": true
+      },
+      {
+        "step": "X npm run stop -- rel-1",
+        "seconds": 2,
+        "ok": true
+      }
+    ],
+    "checks": {
+      "verify": 0,
+      "reconcile": 0,
+      "data-qa": 0,
+      "origins": 0,
+      "dashboard-vs-chain": 0,
+      "agent-summary": 0,
+      "stop": 0
+    },
+    "acceptance": [
+      {
+        "item": "4 Upstream bought per query (cache off)",
+        "ok": true,
+        "evidence": "52 queries, 47 upstream paid, 5 refused, 0 cached, 47 sold"
+      },
+      {
+        "item": "5 The refusal at 0.04: let through once, refused by Metal itself, recorded on chain",
+        "ok": true,
+        "evidence": "Metal: mandate_cap_exceeded; on chain 0xa3a1645df98256c4ed037ab21013c4fd7ead12fb5a7914929ceed65a293e2085"
+      },
+      {
+        "item": "6 Error status for the customer, not settled",
+        "ok": true,
+        "evidence": "5 of 5 refused queries answered with an error, settled false"
+      },
+      {
+        "item": "9 Four eyes, labelled honestly",
+        "ok": true,
+        "evidence": "P-0002: 1 of 2 by virtual test passkey (CFO role), then 2 of 2 by virtual test passkey (CFO role) + virtual test passkey (second approver role); second-approver label on the page: true"
+      },
+      {
+        "item": "Flow: Treasury's options within 20.00, the replace on chain",
+        "ok": true,
+        "evidence": "options P-0002 EXECUTED, P-0003 SUPERSEDED; replace txs 2"
+      },
+      {
+        "item": "Flow: dispute, only the wrong data refunded (#7, #10, #13); refund the rest rejected by the CFO",
+        "ok": true,
+        "evidence": "refunded #10, #13, #7; P-0004 refund_batch REJECTED (by support)"
+      },
+      {
+        "item": "Flow: sweep after finality, the tx as the deposit reference",
+        "ok": true,
+        "evidence": "sweep 0x5287e9e319a0cf0671fbc6afb59dd49d33741117f880af5c6e42f294693982bb; deposit 2fc282ff-5ec5-4ea8-85e2-b1e64f9d9335"
+      },
+      {
+        "item": "17 EUR licence, planned by Treasury itself, PAID",
+        "ok": true,
+        "evidence": "P-0005 EXECUTED (by treasury); transfer 6c64ffac-17a0-403d-94e3-a26501431de4 PAID, fee EUR 13.40"
+      },
+      {
+        "item": "18/25 FX for the shortfall",
+        "ok": true,
+        "evidence": "89f33427-81be-474b-b018-6e813d4c577b: EUR 110.00 for USD 124.52"
+      },
+      {
+        "item": "20 TAP card purchase in this world",
+        "ok": false,
+        "evidence": "no approved card purchase"
+      },
+      {
+        "item": "§2 verify, reconcile, data-qa, origins, dashboard-vs-chain, stop all exit 0",
+        "ok": true,
+        "evidence": "verify, reconcile, data-qa, origins, dashboard-vs-chain, agent-summary, stop"
+      },
+      {
+        "item": "§2 Fallbacks under 10%, every Claude call with a request id",
+        "ok": true,
+        "evidence": "22 decisions, 0 fallbacks (0%), 41 calls, 0 without a request id"
+      },
+      {
+        "item": "§2 Audit chain intact",
+        "ok": true,
+        "evidence": "374 rows"
+      }
+    ],
+    "timings": {
+      "options_after_refusal_s": 67,
+      "replace_on_chain_after_options_s": 27,
+      "licence_invoice_to_paid_s": 51
+    },
+    "sales": {
+      "queries": 52,
+      "sold": 47,
+      "refused": 5,
+      "upstream_paid": 47,
+      "upstream_refused": 5,
+      "upstream_cached": 0
+    },
+    "decisions": {
+      "total": 22,
+      "by_claude": 22,
+      "fallback": 0,
+      "fallback_pct": 0,
+      "per_agent": {
+        "sourcing": {
+          "decisions": 9,
+          "fallback": 0,
+          "cost_usd": 0.006188,
+          "models": [
+            "claude-haiku-5-5"
+          ]
+        },
+        "support": {
+          "decisions": 4,
+          "fallback": 0,
+          "cost_usd": 0.050798,
+          "models": [
+            "claude-sonnet-5-5"
+          ]
+        },
+        "treasury": {
+          "decisions": 9,
+          "fallback": 0,
+          "cost_usd": 0.238656,
+          "models": [
+            "claude-opus-5-5"
+          ]
+        }
+      }
+    },
+    "claude": {
+      "calls": 41,
+      "calls_without_request_id": 0,
+      "cost_usd": 0.295642
+    },
+    "metal": {
+      "transactions": 108,
+      "by_event": {
+        "business.funded": 1,
+        "mandate.bound": 4,
+        "upstream.paid": 47,
+        "sale.delivered": 47,
+        "upstream.refused_on_chain": 1,
+        "mandate.replaced": 2,
+        "sweep.paid": 1,
+        "refund.paid": 3,
+        "account.created": 2
+      }
+    },
+    "airwallex": {
+      "cards": [
+        {
+          "agent": "sourcing",
+          "card_id": "114165f2-89ba-4261-8015-0ae03d946985",
+          "last4": "9752"
+        },
+        {
+          "agent": "support",
+          "card_id": "be7364a0-7286-4dc9-9613-a34feb9362c7",
+          "last4": "0000"
+        },
+        {
+          "agent": "treasury",
+          "card_id": "41242884-0124-4fd5-9b4d-9f663437b23c",
+          "last4": "3671"
+        }
+      ],
+      "conversions": [
+        {
+          "conversion_id": "89f33427-81be-474b-b018-6e813d4c577b",
+          "buy": "110.00",
+          "sell": "124.52",
+          "status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "6c64ffac-17a0-403d-94e3-a26501431de4",
+          "amount": "240.00",
+          "currency": "EUR",
+          "status": "PAID",
+          "fee": "EUR 13.40"
+        }
+      ],
+      "deposits": [
+        {
+          "deposit_id": "2fc282ff-5ec5-4ea8-85e2-b1e64f9d9335",
+          "amount": "0.51",
+          "reference": "0x5287e9e319a0cf0671fbc6afb59dd49d33741117f880af5c6e42f294693982bb"
+        }
+      ],
+      "card_transactions": []
+    },
+    "refusals": {
+      "purser_before_signing": 0,
+      "metal_on_the_rail": 2,
+      "metal_refusals_recorded_on_chain": 1,
+      "sourcing_buy_policy": 3,
+      "supplier": 0,
+      "airwallex_card_declines": 0,
+      "code_refused_agent_tool_calls": 0,
+      "cfo_rejections": 1,
+      "customer_answered_error_not_settled": 5
+    },
+    "signatures": [
+      {
+        "proposal": "P-0001",
+        "kind": "policy_change",
+        "decision": "approved",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T05:36:49.004Z"
+      },
+      {
+        "proposal": "P-0002",
+        "kind": "mandate_replace",
+        "decision": "1 of 2",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T05:42:43.959Z"
+      },
+      {
+        "proposal": "P-0002",
+        "kind": "mandate_replace",
+        "decision": "approved",
+        "signed_by": [
+          "virtual test passkey (CFO role)",
+          "virtual test passkey (second approver role)"
+        ],
+        "at": "2026-11-06T05:42:48.955Z"
+      },
+      {
+        "proposal": "P-0004",
+        "kind": "refund_batch",
+        "decision": "rejected",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T05:44:41.858Z"
+      },
+      {
+        "proposal": "P-0005",
+        "kind": "invoice_payment",
+        "decision": "approved",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T05:45:43.912Z"
+      }
+    ],
+    "flow": {
+      "let_through_refused_by_metal": {
+        "reason": "mandate_cap_exceeded",
+        "status": 402,
+        "label": "Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved."
+      },
+      "refusal_on_chain_tx": "0xa3a1645df98256c4ed037ab21013c4fd7ead12fb5a7914929ceed65a293e2085",
+      "options_from_treasury": [
+        "P-0002 EXECUTED",
+        "P-0003 SUPERSEDED"
+      ],
+      "replace_txs": [
+        "0xbb1f9b5df98e9d1317bc081f75f043371c68ad56b7e02fa71ad809c2a38fd65d",
+        "0x1d2b65a1c1a5c402e50d39937bfdd8918b20aa0304ec8ae377f80efed5d5404a"
+      ],
+      "dispute": {
+        "refunded": [
+          "#7",
+          "#10",
+          "#13"
+        ],
+        "escalated": {
+          "proposal": "P-0004",
+          "sales": [
+            "#5",
+            "#6",
+            "#8",
+            "#9",
+            "#11",
+            "#12",
+            "#14",
+            "#15",
+            "#16"
+          ]
+        }
+      },
+      "refunds_paid": [
+        {
+          "payment_id": "refund-7",
+          "tx": "0x84553f685b970237f89a913e87252b274fecea18e5c9759f75c932f384026185"
+        },
+        {
+          "payment_id": "refund-10",
+          "tx": "0x000859cefbcb97b736c5119ba22634be9f99383eacf9f8fed16474819eec0b47"
+        },
+        {
+          "payment_id": "refund-13",
+          "tx": "0x41543e83cdca9512accf9f7ef5405dc25ebf3767b2912e52f1c7c448a10007e9"
+        }
+      ],
+      "sweeps": [
+        {
+          "payment_id": "sweep-20261106-1",
+          "amount": "0.51",
+          "tx": "0x5287e9e319a0cf0671fbc6afb59dd49d33741117f880af5c6e42f294693982bb",
+          "outcome": "PAID"
+        }
+      ],
+      "finality_locked": 1,
+      "licence": [
+        "P-0005 EXECUTED (by treasury)"
+      ],
+      "software_bought": [],
+      "tap_checkout_verified": null,
+      "injection_flagged": 1,
+      "proposals": [
+        "P-0001 policy_change EXECUTED (by human)",
+        "P-0002 mandate_replace EXECUTED (by treasury)",
+        "P-0003 mandate_replace SUPERSEDED (by treasury)",
+        "P-0004 refund_batch REJECTED (by support)",
+        "P-0005 invoice_payment EXECUTED (by treasury)"
+      ]
+    },
+    "audit": {
+      "rows": 374,
+      "chain_intact": true,
+      "head": "3c4193b8823b15698cbea34451008f62ed7d9157b2e37bdb504af3b70688cf16",
+      "problem": null
+    }
+  },
+  {
+    "run": "rel-1b",
+    "kind": "reliability run",
+    "label": "reliability run: the full Kit 11 flow in a fresh world, Airwallex sandbox and Metal testnet, test money only; approvals by labelled virtual test passkeys",
+    "passed": true,
+    "stopped_at": null,
+    "failures": [],
+    "commit": "c231196",
+    "started_at": "2026-11-06T06:12:17.548Z",
+    "ended_at": "2026-11-06T06:24:58.239Z",
+    "duration_minutes": 12.7,
+    "rails": {
+      "metal": "testnet",
+      "airwallex": "sandbox",
+      "money": "test money only",
+      "customer_supplier_merchants": "simulated (ours)"
+    },
+    "agents": {
+      "sourcing": "claude-haiku-5-5",
+      "support": "claude-sonnet-5-5",
+      "treasury": "claude-opus-5-5",
+      "claude_env_var": "KIT11_ANTHROPIC_API_KEY from the environment"
+    },
+    "signers": {
+      "cfo": "virtual test passkey (CFO role), test identity \"test-cfo\"",
+      "second_approver": "virtual test passkey (second approver role), test identity \"test-controller\"",
+      "fingerprints": {
+        "virtual test passkey (CFO role)": "85ED-4D81-5C13-65D6",
+        "virtual test passkey (second approver role)": "3C0A-C12D-3F4D-4D63"
+      },
+      "note": "No person signed in this run. Claude typed the world commands and approved nothing itself; the virtual test passkeys signed on the steps of the runbook."
+    },
+    "funding": {
+      "mode": "recycle",
+      "faucet_calls": 0,
+      "recycled_transfers": 4,
+      "from": "finished dry-N worlds (docs/runs/testgeld-recycling.md)"
+    },
+    "steps": [
+      {
+        "step": "V1 Health",
+        "seconds": 4,
+        "ok": true
+      },
+      {
+        "step": "V2 Bootstrap (fresh keys, test money: recycled from finished dry-N worlds, no faucet)",
+        "seconds": 41,
+        "ok": true
+      },
+      {
+        "step": "V3 Cards: each agent its company card at Airwallex",
+        "seconds": 7,
+        "ok": true
+      },
+      {
+        "step": "V4 Visa TAP key of the Sourcing agent, pinned for Packwise",
+        "seconds": 1,
+        "ok": true
+      },
+      {
+        "step": "V5 World options: upstream cache off, free EUR 150.00, TAP rail on",
+        "seconds": 2,
+        "ok": true
+      },
+      {
+        "step": "S1 world serve --every 15",
+        "seconds": 5,
+        "ok": true
+      },
+      {
+        "step": "S1b world ridgeline-maintenance",
+        "seconds": 2,
+        "ok": true
+      },
+      {
+        "step": "V6 Runner (local relay, real executors, the three agents)",
+        "seconds": 5,
+        "ok": true
+      },
+      {
+        "step": "V7 Passkeys: test-cfo and test-controller (virtual, labelled test identities)",
+        "seconds": 31,
+        "ok": true
+      },
+      {
+        "step": "V8 Four eyes above EUR 1,000 (P-0001, test-cfo alone)",
+        "seconds": 11,
+        "ok": true
+      },
+      {
+        "step": "S1c Sourcing's decision on Ridgeline's notice",
+        "seconds": 0,
+        "ok": true
+      },
+      {
+        "step": "S2b world let-one-through (armed before the rise, once #16 is sold)",
+        "seconds": 252,
+        "ok": true
+      },
+      {
+        "step": "S2 world price-rise 0.04 --silent",
+        "seconds": 29,
+        "ok": true
+      },
+      {
+        "step": "S3 Treasury's rebalance within 20.00, four eyes, replace",
+        "seconds": 47,
+        "ok": true
+      },
+      {
+        "step": "S4 world dispute (Support decides)",
+        "seconds": 89,
+        "ok": true
+      },
+      {
+        "step": "S5 world money-in (Treasury decides)",
+        "seconds": 11,
+        "ok": true
+      },
+      {
+        "step": "S6 world invoice (Treasury plans the licence)",
+        "seconds": 43,
+        "ok": true
+      },
+      {
+        "step": "S7 world packwise-pro (Sourcing, TAP on its card)",
+        "seconds": 39,
+        "ok": true
+      },
+      {
+        "step": "L Links: the viewer in one private tab, twice; the second-approver label",
+        "seconds": 1,
+        "ok": true
+      },
+      {
+        "step": "C Checks: verify, reconcile, data-qa, origins, dashboard-vs-chain, agent-summary",
+        "seconds": 116,
+        "ok": true
+      },
+      {
+        "step": "X npm run stop -- rel-1b",
+        "seconds": 3,
+        "ok": true
+      }
+    ],
+    "checks": {
+      "verify": 0,
+      "reconcile": 0,
+      "data-qa": 0,
+      "origins": 0,
+      "dashboard-vs-chain": 0,
+      "agent-summary": 0,
+      "stop": 0
+    },
+    "acceptance": [
+      {
+        "item": "4 Upstream bought per query (cache off)",
+        "ok": true,
+        "evidence": "30 queries, 25 upstream paid, 5 refused, 0 cached, 25 sold"
+      },
+      {
+        "item": "5 The refusal at 0.04: let through once, refused by Metal itself, recorded on chain",
+        "ok": true,
+        "evidence": "Metal: mandate_cap_exceeded; on chain 0x1c84cc43e550386efbca10b9264dc98ab33c86f75a66d59825a476abdc2dfe4e"
+      },
+      {
+        "item": "6 Error status for the customer, not settled",
+        "ok": true,
+        "evidence": "5 of 5 refused queries answered with an error, settled false"
+      },
+      {
+        "item": "9 Four eyes, labelled honestly",
+        "ok": true,
+        "evidence": "P-0003: 1 of 2 by virtual test passkey (CFO role), then 2 of 2 by virtual test passkey (CFO role) + virtual test passkey (second approver role); second-approver label on the page: true"
+      },
+      {
+        "item": "Flow: Treasury's options within 20.00, the replace on chain",
+        "ok": true,
+        "evidence": "options P-0002 SUPERSEDED, P-0003 EXECUTED; replace txs 2"
+      },
+      {
+        "item": "Flow: dispute, only the wrong data refunded (#7, #10, #13); refund the rest rejected by the CFO",
+        "ok": true,
+        "evidence": "refunded #10, #13, #7; P-0004 refund_batch REJECTED (by support)"
+      },
+      {
+        "item": "Flow: sweep after finality, the tx as the deposit reference",
+        "ok": true,
+        "evidence": "sweep 0xa8f948d712eae104111ba29c0cbbcf8bb219c5fd2a73c46ec3118c1de33c54e4; deposit 4487ff44-5c1b-4081-9e19-fe62b6b9327a"
+      },
+      {
+        "item": "17 EUR licence, planned by Treasury itself, PAID",
+        "ok": true,
+        "evidence": "P-0005 EXECUTED (by treasury); transfer e08f5f76-baed-4a94-8039-3f246503c805 PAID, fee EUR 13.40"
+      },
+      {
+        "item": "18/25 FX for the shortfall",
+        "ok": true,
+        "evidence": "b7c71ab8-56f7-40e1-beaa-7c48762696fd: EUR 110.00 for USD 124.49"
+      },
+      {
+        "item": "20 TAP card purchase in this world",
+        "ok": true,
+        "evidence": "01a1af85-eaa9-7000-8984-bfcdcec399f6 EUR 45.00 approved by Airwallex"
+      },
+      {
+        "item": "§2 verify, reconcile, data-qa, origins, dashboard-vs-chain, stop all exit 0",
+        "ok": true,
+        "evidence": "verify, reconcile, data-qa, origins, dashboard-vs-chain, agent-summary, stop"
+      },
+      {
+        "item": "§2 Fallbacks under 10%, every Claude call with a request id",
+        "ok": true,
+        "evidence": "25 decisions, 0 fallbacks (0%), 49 calls, 0 without a request id"
+      },
+      {
+        "item": "§2 Audit chain intact",
+        "ok": true,
+        "evidence": "342 rows"
+      }
+    ],
+    "timings": {
+      "options_after_refusal_s": 59,
+      "replace_on_chain_after_options_s": 17,
+      "licence_invoice_to_paid_s": 43
+    },
+    "sales": {
+      "queries": 30,
+      "sold": 25,
+      "refused": 5,
+      "upstream_paid": 25,
+      "upstream_refused": 5,
+      "upstream_cached": 0
+    },
+    "decisions": {
+      "total": 25,
+      "by_claude": 25,
+      "fallback": 0,
+      "fallback_pct": 0,
+      "per_agent": {
+        "sourcing": {
+          "decisions": 11,
+          "fallback": 0,
+          "cost_usd": 0.009203,
+          "models": [
+            "claude-haiku-5-5"
+          ]
+        },
+        "support": {
+          "decisions": 4,
+          "fallback": 0,
+          "cost_usd": 0.050924,
+          "models": [
+            "claude-sonnet-5-5"
+          ]
+        },
+        "treasury": {
+          "decisions": 10,
+          "fallback": 0,
+          "cost_usd": 0.250968,
+          "models": [
+            "claude-opus-5-5"
+          ]
+        }
+      }
+    },
+    "claude": {
+      "calls": 49,
+      "calls_without_request_id": 0,
+      "cost_usd": 0.311095
+    },
+    "metal": {
+      "transactions": 64,
+      "by_event": {
+        "business.funded": 1,
+        "mandate.bound": 4,
+        "upstream.paid": 25,
+        "sale.delivered": 25,
+        "upstream.refused_on_chain": 1,
+        "mandate.replaced": 2,
+        "sweep.paid": 1,
+        "refund.paid": 3,
+        "account.created": 2
+      }
+    },
+    "airwallex": {
+      "cards": [
+        {
+          "agent": "sourcing",
+          "card_id": "6adb970e-4fd5-4f38-90ef-221c919cc767",
+          "last4": "1951"
+        },
+        {
+          "agent": "support",
+          "card_id": "e7745a89-2e77-4a24-b053-c4754d50a83a",
+          "last4": "3997"
+        },
+        {
+          "agent": "treasury",
+          "card_id": "7d6d1a57-26e1-4a3f-9906-702256ffc239",
+          "last4": "2242"
+        }
+      ],
+      "conversions": [
+        {
+          "conversion_id": "b7c71ab8-56f7-40e1-beaa-7c48762696fd",
+          "buy": "110.00",
+          "sell": "124.49",
+          "status": "SETTLED"
+        }
+      ],
+      "transfers": [
+        {
+          "transfer_id": "e08f5f76-baed-4a94-8039-3f246503c805",
+          "amount": "240.00",
+          "currency": "EUR",
+          "status": "PAID",
+          "fee": "EUR 13.40"
+        }
+      ],
+      "deposits": [
+        {
+          "deposit_id": "4487ff44-5c1b-4081-9e19-fe62b6b9327a",
+          "amount": "0.51",
+          "reference": "0xa8f948d712eae104111ba29c0cbbcf8bb219c5fd2a73c46ec3118c1de33c54e4"
+        }
+      ],
+      "card_transactions": [
+        {
+          "transaction_id": "01a1af85-eaa9-7000-8984-bfcdcec399f6",
+          "agent": "sourcing",
+          "merchant": "Packwise",
+          "amount": "EUR 45.00",
+          "approved": true,
+          "failure_reason": null
+        }
+      ]
+    },
+    "refusals": {
+      "purser_before_signing": 0,
+      "metal_on_the_rail": 2,
+      "metal_refusals_recorded_on_chain": 1,
+      "sourcing_buy_policy": 3,
+      "supplier": 0,
+      "airwallex_card_declines": 0,
+      "code_refused_agent_tool_calls": 0,
+      "cfo_rejections": 1,
+      "customer_answered_error_not_settled": 5
+    },
+    "signatures": [
+      {
+        "proposal": "P-0001",
+        "kind": "policy_change",
+        "decision": "approved",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T06:14:02.210Z"
+      },
+      {
+        "proposal": "P-0003",
+        "kind": "mandate_replace",
+        "decision": "1 of 2",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T06:19:19.273Z"
+      },
+      {
+        "proposal": "P-0003",
+        "kind": "mandate_replace",
+        "decision": "approved",
+        "signed_by": [
+          "virtual test passkey (CFO role)",
+          "virtual test passkey (second approver role)"
+        ],
+        "at": "2026-11-06T06:19:24.283Z"
+      },
+      {
+        "proposal": "P-0004",
+        "kind": "refund_batch",
+        "decision": "rejected",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T06:21:00.134Z"
+      },
+      {
+        "proposal": "P-0005",
+        "kind": "invoice_payment",
+        "decision": "approved",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T06:21:50.506Z"
+      },
+      {
+        "proposal": "P-0006",
+        "kind": "policy_change",
+        "decision": "approved",
+        "signed_by": [
+          "virtual test passkey (CFO role)"
+        ],
+        "at": "2026-11-06T06:22:19.927Z"
+      }
+    ],
+    "flow": {
+      "let_through_refused_by_metal": {
+        "reason": "mandate_cap_exceeded",
+        "status": 402,
+        "label": "Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved."
+      },
+      "refusal_on_chain_tx": "0x1c84cc43e550386efbca10b9264dc98ab33c86f75a66d59825a476abdc2dfe4e",
+      "options_from_treasury": [
+        "P-0002 SUPERSEDED",
+        "P-0003 EXECUTED"
+      ],
+      "replace_txs": [
+        "0x8906e40f2d992bdfe8819796bd80d4d773d7fcefeaead4ec5aaf5bb00ef3e33b",
+        "0xdb53b68cc623957fa3769d0234c06346006c0714869b190d332306c23200f606"
+      ],
+      "dispute": {
+        "refunded": [
+          "#7",
+          "#10",
+          "#13"
+        ],
+        "escalated": {
+          "proposal": "P-0004",
+          "sales": [
+            "#5",
+            "#6",
+            "#8",
+            "#9",
+            "#11",
+            "#12",
+            "#14",
+            "#15",
+            "#16"
+          ]
+        }
+      },
+      "refunds_paid": [
+        {
+          "payment_id": "refund-7",
+          "tx": "0xfc09a8abc55201f225bc2f246e410d32d3fcc352087b5ba5449468a9e5c75b7c"
+        },
+        {
+          "payment_id": "refund-10",
+          "tx": "0x42b2b7682b5f41a9c6f8f530afc38de2b55a143286f51a33efbcb4479f54012b"
+        },
+        {
+          "payment_id": "refund-13",
+          "tx": "0xb9b4565678cac0ce93f4d86e3dfd641537a3d13c36f874727d8a341cea065e57"
+        }
+      ],
+      "sweeps": [
+        {
+          "payment_id": "sweep-20261106-1",
+          "amount": "0.51",
+          "tx": "0xa8f948d712eae104111ba29c0cbbcf8bb219c5fd2a73c46ec3118c1de33c54e4",
+          "outcome": "PAID"
+        }
+      ],
+      "finality_locked": 1,
+      "licence": [
+        "P-0005 EXECUTED (by treasury)"
+      ],
+      "software_bought": [
+        {
+          "plan": "packwise-pro",
+          "rail": "airwallex_card",
+          "approved": true,
+          "ref": "01a1af85-eaa9-7000-8984-bfcdcec399f6"
+        }
+      ],
+      "tap_checkout_verified": {
+        "key_id": "sourcing-xs-jsDI52JtP"
+      },
+      "injection_flagged": 1,
+      "proposals": [
+        "P-0001 policy_change EXECUTED (by human)",
+        "P-0002 mandate_replace SUPERSEDED (by treasury)",
+        "P-0003 mandate_replace EXECUTED (by treasury)",
+        "P-0004 refund_batch REJECTED (by support)",
+        "P-0005 invoice_payment EXECUTED (by treasury)",
+        "P-0006 policy_change EXECUTED (by sourcing)"
+      ]
+    },
+    "audit": {
+      "rows": 342,
+      "chain_intact": true,
+      "head": "fb43660394169e23be4369e405885f13ec3a8701242e8b77c84e00458beff77b",
+      "problem": null
+    }
+  }
+]

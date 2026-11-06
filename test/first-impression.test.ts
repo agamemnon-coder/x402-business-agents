@@ -7,8 +7,8 @@ import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
-import { CORE_SENTENCE, HERO } from "../src/config/brand.js";
-import { CFO_FORWARD_JS } from "../src/redesign/home.js";
+import { CORE_SENTENCE, HERO, KIT11_RUN_LINE } from "../src/config/brand.js";
+import { CFO_FORWARD_JS, whyHtml } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 
@@ -32,10 +32,12 @@ function forward(pathname: string, hash: string, kept: string | null | "blocked"
 }
 
 describe("/ for a guest", () => {
-  it("says the film's line as its heading (Max, 5 Nov): \"AI agents spend. You sign off.\", the core sentence under it", () => {
+  it("says the film's line as its heading (Max, 5 Nov): \"AI agents spend. You sign off.\", the three sentences under it (jury review, 6 Nov)", () => {
     expect(HERO).toBe("AI agents spend. You sign off.");
     expect(readFileSync(new URL("../docs/media/social-preview.html", import.meta.url), "utf8")).toContain("<h1>AI agents spend.<br><em>You sign off.</em></h1>");
-    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="lead">${CORE_SENTENCE}</p>`);
+    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    ${whyHtml("try/sign")}\n    <p class="kitrun">${KIT11_RUN_LINE} <a href="https://youtu.be/jaqO2M2V6NY"`);
+    // The core sentence stays the page's description.
+    expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);
   });
   it("is Home itself (no query), under Home's own CSP: no redirect, nothing of the CFO dashboard in the HTML", async () => {
     for (const path of ["/", "/?"]) {

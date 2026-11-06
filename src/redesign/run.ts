@@ -363,8 +363,9 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     if (replan) steps.push({ icon: "bot", text: `${nameOf("treasury")} · ${family(replan.model)} replans${toOptions !== null ? `: options in ${toOptions} s` : ""}`, tone: "ok" });
     if (signed) steps.push({ icon: "scan-face", text: `${signed.signers.length} of ${signed.signers.length} signatures`, tone: "face" });
     if (replaced && newCap) steps.push({ icon: "circle-check", text: `Mandate replaced: cap ${newCap}`, tone: "ok" });
-    // The main run's #24: Purser let it through on purpose (defense in depth), so the sentence says so (final review, 4 Nov).
-    const parts = [`${supplier} raises its price to ${price}`, chain ? (chain.letThrough ? "one purchase is let through on purpose, and Metal refuses it on chain" : "refused, and recorded on chain") : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
+    // The main run's #24: Purser let it through on purpose (defense in depth), so the sentence says so (final review, 4 Nov),
+    // framed as the test it was (jury review, 6 Nov, #8: CHAIN_TEST).
+    const parts = [`${supplier} raises its price to ${price}`, chain ? (chain.letThrough ? "we switched off our own check once to prove the chain holds the line: Metal refused the purchase on chain" : "refused, and recorded on chain") : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
     out.push({ n: 1, title: "The price rise", start: i1, steps, sentence: `${parts.join(" → ")}.`, mini: price && capWas ? { kind: "price", from: supplier, old, price, cap: capWas, newCap, tx: chain?.proof ?? null, signers: signed?.signers.length ?? 0, ...(chain?.letThrough ? { byMetal: true } : {}) } : null });
   }
 
@@ -407,13 +408,9 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
       if (bill && face) steps.push({ icon: "scan-face", text: `${money(bill.amount, bill.unit)} licence: Face ID approved`, tone: "face" });
       if (bill) steps.push({ icon: bill.refused ? "ban" : "circle-check", text: bill.refused ? (bill.refused.by === "airwallex-sandbox" ? `Airwallex: ${bill.refused.reason}` : `Airwallex refused: ${bill.refused.reason}`) : "Paid by SWIFT", tone: bill.refused ? "bad" : "ok" });
     }
-    // The card-only buy signed with Visa TAP comes from the separate TAP run of the same day, under its own label.
-    const own = ownTap(r);
-    const tap = own ? null : tapRun();
-    const tapBuy = tap?.steps.find((x) => x.approved && x.model);
-    if (own) steps.push({ icon: "credit-card", text: `${SHORT_EUR(own.amount)} card buy, signed with Visa TAP`, tone: "ok" });
-    else if (tapBuy) steps.push({ icon: "credit-card", text: `TAP run: ${SHORT_EUR(tapBuy.amount)} card buy, Visa TAP`, tone: "ok" });
-    const parts = [sweep ? "Earnings swept after finality" : "", fx && bill && !bill.refused ? "euros for the shortfall bought by FX" : "", bill && !bill.refused && face ? "licence paid by SWIFT after Face ID" : "", bill && (bill.refused || !face) && face ? "licence approved with Face ID" : "", bill && (bill.refused || !face) ? (bill.refused ? (bill.refused.by === "airwallex-sandbox" ? "Airwallex's sandbox could not price the fee, nothing paid" : "Airwallex refused it, nothing paid") : "paid by SWIFT") : "", own ? "a card buy signed with Visa TAP" : tapBuy ? "a card buy signed with Visa TAP (TAP run)" : ""].filter(Boolean);
+    // Visa TAP is not on this card since the jury review (6 Nov, #7): TAP is not eligible Visa tooling for this hackathon,
+    // so it is a footer link to /visa on Home and Proof, and the scene tells the euro bill only.
+    const parts = [sweep ? "Earnings swept after finality" : "", fx && bill && !bill.refused ? "euros for the shortfall bought by FX" : "", bill && !bill.refused && face ? "licence paid by SWIFT after Face ID" : "", bill && (bill.refused || !face) && face ? "licence approved with Face ID" : "", bill && (bill.refused || !face) ? (bill.refused ? (bill.refused.by === "airwallex-sandbox" ? "Airwallex's sandbox could not price the fee, nothing paid" : "Airwallex refused it, nothing paid") : "paid by SWIFT") : ""].filter(Boolean);
     out.push({ n: 3, title: "Earnings and euros", start: i3, steps, sentence: `${parts.join(" → ")}.`, mini: steps.length ? { kind: "flow", rows: steps.filter((x) => x.icon !== "landmark").map((x) => ({ icon: x.icon, text: x.text, tone: x.tone === "info" ? "ok" : x.tone })) } : null });
   }
   return out;
@@ -445,9 +442,10 @@ export function stops(r: RunRecord): { metal: number; revoked: number; airwallex
 
 /**
  * The run's stops, all of them (Max, 5 Nov, second round: "1 + 1" told too little): every refusal row the record counts
- * in \`snapshot.counts.blocked\`, by who stopped it. Claude (the Sourcing agent) skipped the overpriced checks under its
- * own buy policy (nothing signed); Metal refused purchases (over the mandate's cap, or on a mandate that had
- * just been replaced); the CFO rejected proposals with Face ID; a planted instruction in a document changed nothing.
+ * in \`snapshot.counts.blocked\`, by who stopped it. A buy rule Claude set stopped the overpriced checks: the Sourcing
+ * agent (Claude) set its buy policy, and code applied it to each check (src/agents/sourcing.ts refuses every purchase
+ * while the policy says supplier "none"; jury review, 6 Nov, #6: not "Claude skipped"; nothing signed);
+ * Metal refused purchases (over the mandate's cap, or on a mandate that had just been replaced); the CFO rejected proposals with Face ID; a planted instruction in a document changed nothing.
  * \`other\` is whatever none of these name (0 in the main run, said as "N other" so nothing is hidden); the parts sum
  * to \`total\` (test/redesign-numbers.test.ts). The separate TAP run's decline is not counted (\`tapLimitLine\`).
  */
@@ -481,16 +479,16 @@ export const stopFigure = (st: StopStory) => plural(st.total, "stop");
 export const stopSub = (st: StopStory) => st.overLimitEur === null ? "" : Number(st.overLimitEur) === 0 ? "nothing paid over a limit" : `EUR ${st.overLimitEur} paid over a limit`;
 /** Who stopped what, in the sentence's order; a part only when its count is not 0. */
 export const stopParts = (st: StopStory) => [
-  st.claude ? `Claude skipped ${plural(st.claude, "overpriced check")}` : "",
+  st.claude ? `a buy rule Claude set stopped ${plural(st.claude, "overpriced check")}` : "",
   st.metal ? `Metal refused ${plural(st.metal, "purchase")}` : "",
   st.cfo ? `the CFO rejected ${plural(st.cfo, "proposal")}` : "",
   st.planted ? `${plural(st.planted, "planted instruction")} changed nothing` : "",
   st.other ? `${st.other} other` : "",
 ].filter(Boolean);
 /**
- * The stops in one sentence, the same on every surface (Max, 5 Nov): "16 stops, nothing paid over a limit: Claude
- * skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted
- * instruction changed nothing." Every count is stopStory()'s.
+ * The stops in one sentence, the same on every surface (Max, 5 Nov; jury review, 6 Nov, #6): "16 stops, nothing paid
+ * over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1
+ * proposal, and 1 planted instruction changed nothing." Every count is stopStory()'s.
  */
 export function stopsLine(st: StopStory): string {
   const p = stopParts(st), sub = stopSub(st);
@@ -652,25 +650,40 @@ export function faceIdDecisions(r: RunRecord): number {
 }
 
 /**
- * One breakdown of the run's payments, said the same way everywhere (jury review, 4 Nov): the payments inside the
- * limits (the snapshot's `counts.alone`) as sales + supplier purchases + refunds + sweeps + card buys, the ones on
- * Metal (all but the card buys), the routine ones by code (the sales and the code's supplier purchases), and what
- * reconcile checks (the Metal payments, each SWIFT transfer and each card buy). `sums` is false when the parts do not
- * add up to `counts.alone`; then no page shows the line.
+ * One breakdown of the run's payments, said the same way everywhere (jury review, 4 Nov; one canonical set since the
+ * jury review of 6 Nov, #5: no "87", no "82" beside "86" on a judge-facing surface): "86 Metal payments + 1 card
+ * charge" (`canonical`), all inside the limits (the snapshot's `counts.alone` is their sum), the Metal ones as sales +
+ * supplier purchases + refunds + sweeps (`metalParts`). Also: the routine ones by code (the sales and the code's
+ * supplier purchases, on /claude only, labelled) and what reconcile checks (the Metal payments, each SWIFT transfer and
+ * each card buy). `sums` is false when the parts do not add up to `counts.alone`; then no page shows the line.
  */
-export function payments(r: RunRecord): { alone: number; sales: number; purchases: number; refunds: number; sweeps: number; cards: number; onChain: number; routine: number; transfers: number; reconciled: number; sums: boolean; line: string; onChainLine: string } {
+export function payments(r: RunRecord): { alone: number; sales: number; purchases: number; refunds: number; sweeps: number; cards: number; onChain: number; routine: number; transfers: number; reconciled: number; sums: boolean; canonical: string; metalParts: string; line: string; onChainLine: string } {
   const f = r.snapshot.flows.filter((x) => !x.refused);
   const n = (kind: string) => f.filter((x) => x.kind === kind).reduce((k, x) => k + (x.count ?? 1), 0);
   const [sales, purchases, refunds, sweeps, cards, transfers] = [n("sale"), n("upstream"), n("refund"), n("sweep"), n("card"), f.filter((x) => x.rail === "airwallex_swift").length];
   const alone = r.snapshot.counts.alone;
   const pl = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
   const onChain = sales + purchases + refunds + sweeps;
+  const canonical = `${onChain} Metal payments${cards ? ` + ${pl(cards, "card charge")}` : ""}`;
+  const metalParts = `${pl(sales, "sale")} + ${pl(purchases, "supplier purchase")} + ${pl(refunds, "refund")} + ${pl(sweeps, "sweep")}`;
   return {
     alone, sales, purchases, refunds, sweeps, cards, onChain, routine: split(r).routine, transfers, reconciled: onChain + transfers + cards,
     sums: sales + purchases + refunds + sweeps + cards === alone,
-    line: `${alone} inside the limits = ${pl(sales, "sale")} + ${pl(purchases, "supplier purchase")} + ${pl(refunds, "refund")} + ${pl(sweeps, "sweep")} + ${pl(cards, "card buy")}`,
-    onChainLine: `${onChain} on Metal = the ${alone} inside the limits less the ${pl(cards, "card buy")}`,
+    canonical, metalParts,
+    line: `${canonical}, all inside the limits: ${metalParts} on Metal${cards ? `, and ${pl(cards, "card charge")} at Airwallex` : ""}`,
+    onChainLine: `${onChain} on Metal = ${metalParts}`,
   };
+}
+
+/**
+ * The CFO's Face ID, said one way (jury review, 6 Nov, #5): "5 decisions signed with Face ID (+1 co-signature)". The
+ * decisions are faceIdDecisions(); the co-signatures are the other signatures on the run's Face ID screens (the second
+ * approver's on the mandate change, a labelled test passkey in this demo).
+ */
+export function faceIdLine(decisions: number, signatures: number): { label: string; line: string } {
+  const co = Math.max(0, signatures - decisions);
+  const label = `decision${decisions === 1 ? "" : "s"} signed with Face ID${co ? ` (+${co} co-signature${co === 1 ? "" : "s"})` : ""}`;
+  return { label, line: `${decisions} ${label}` };
 }
 
 /** D3: decisions by Claude (and fallbacks to code), and the routine payments per query that code made (buying and selling, not refused). */
@@ -800,14 +813,15 @@ export function agentRun(): AgentRun {
   const pay = payments(r);
   const tiles: Tile[] = [
     { value: `${byClaude}/${decisions}`, label: "decisions made by Claude", explain: `Every time an agent decided something, it was a Claude call. ${fallbacks} fell back to code.`, href: "proof#claude" },
-    { value: String(s.counts.alone), label: "payments inside the limits", explain: pay.sums ? `${pay.line.replace(/^\d+ inside the limits = /, "")}, with no approval at the time; the sales are the simulated customer's agent buying from us.` : `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
+    // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge", not 87 or 82.
+    { value: String(pay.onChain), label: pay.canonical.replace(/^\d+ /, ""), explain: pay.sums ? `${pay.metalParts} on Metal, all inside the limits with no approval at the time; the sales are the simulated customer's agent buying from us.` : `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
       value: stopFigure(story), label: stopSub(story), href: "proof#stops",
       explain: stopsLine(story),
       tip: `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
       ...(tapLimitLine() ? { separate: tapLimitLine() } : {}),
     },
-    { value: String(faceIdDecisions(r)), label: "Face ID decisions", explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
+    { value: String(faceIdDecisions(r)), label: faceIdLine(faceIdDecisions(r), ev.filter((e) => e.k === "face").length).label, explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },
     { value: `$${perDecision}`, label: "Claude cost per decision", explain: "What the agents' Claude calls cost per decision, at Anthropic's list prices; each decision may be several calls.", href: "proof#claude" },
   ];
   return {

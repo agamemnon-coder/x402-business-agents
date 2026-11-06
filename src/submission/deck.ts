@@ -8,7 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
-import { NORTHWIND_LINE, VISA_TAP_STATUS } from "../config/brand.js";
+import { DIFFERENTIATORS, HERO, KIT11_RUN_LINE, NORTHWIND_LINE, VISA_TAP_STATUS } from "../config/brand.js";
 import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
@@ -69,10 +69,13 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const slides: Slide[] = [
     {
       kicker: "Purser · Starter Kit 11 · x402 Business Agents",
-      title: "Purser",
+      // The one tagline (jury QA, 6 Nov, Q8): Home's heading and the film's line.
+      title: HERO,
       wide: true,
-      extra: `<p class="lead">${esc(CORE_LINE)}</p>
-        <div class="stats four">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude, ${m.fallbacks} fallbacks`)}${stat(m.stop_figure, m.stop_sub)}${stat(String(m.face_id), "Face ID decisions by the CFO")}${stat(`${m.face_to_paid_s} s`, "from Face ID to PAID; the settlement is simulated in the sandbox")}</div>
+      // What only Purser has, first (jury review, 6 Nov, #1): the three sentences word for word, then the Kit 11 line.
+      extra: `<ul class="why">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+        <p class="kitrun">${esc(KIT11_RUN_LINE)}</p>
+        <div class="stats four">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude, ${m.fallbacks} fallbacks`)}${stat(m.stop_figure, m.stop_sub)}${stat(String(m.face_id), "decisions signed with Face ID (+1 co-signature)")}${stat(`${m.face_to_paid_s} s`, "from Face ID to PAID; the settlement is simulated in the sandbox")}</div>
         <p class="src">One live run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only.</p>
         <p class="built">Built on Airwallex and Metal, with Claude.</p>`,
     },
@@ -156,9 +159,9 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         `${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks, ${m.claude_calls} calls, USD ${m.claude_usd} at list prices.`,
         "Sourcing on Haiku, Support on Sonnet, Treasury on Opus.",
         "Our benchmark: Haiku alone is as good on everyday cases, and misread one harder dispute.",
-        "Claude holds no key and approves nothing; code checks each proposal first.",
+        "No key reaches Claude, and Claude approves nothing; code checks each proposal first.",
       ],
-      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 82 = the routine payments per query that code made; $0.0132 = Claude's cost per decision"),
+      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 86 Metal payments + 1 card charge; $0.0132 = Claude's cost per decision"),
     },
     {
       kicker: "The road to production",
@@ -242,6 +245,9 @@ section:not(.wide) li { font-size: 19px; margin-bottom: 10px; }
 .timeline > div:nth-child(2) { border-color: #6366f1; } .timeline > div:nth-child(3) { border-color: #3b3fb8; }
 .timeline b { display: block; font-size: 26px; color: #ffffff; } .timeline span { display: block; font-size: 18px; color: #b6bdd3; margin-top: 6px; }
 .end { display: flex; gap: 40px; align-items: center; } .small-qr { padding: 12px; border-radius: 14px; } .small-qr svg { width: 170px; height: 170px; }
+ul.why { list-style: none; padding: 0; margin: 0 0 6px; max-width: 1120px; }
+ul.why li { font-size: 25px; line-height: 1.32; font-weight: 600; color: #ffffff; border-left: 5px solid #8b93ff; padding-left: 16px; margin: 0 0 12px; }
+.kitrun { font-size: 21px; font-weight: 650; color: #a5abff; margin: 2px 0 0; }
 .built { margin-top: 14px; font-size: 22px; font-weight: 600; color: #b6bdd3; }
 .options { margin-top: 22px; font-size: 21px; line-height: 1.4; color: #e8ecf6; background: #141a2e; border: 1px solid #232b45; border-radius: 14px; padding: 16px 20px; }
 .oneline { font-size: 12.5px; color: #9aa4bf; white-space: nowrap; margin: 4px 0 0; }

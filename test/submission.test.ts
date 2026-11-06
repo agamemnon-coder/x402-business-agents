@@ -5,7 +5,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { packFacts } from "../src/submission/facts.js";
-import { CORE_LINE, T0_STATUS, stopsLine } from "../src/submission/deck.js";
+import { T0_STATUS, stopsLine } from "../src/submission/deck.js";
+import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE } from "../src/config/brand.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const raw = read("docs/submission/README.md");
@@ -41,8 +42,10 @@ describe("the submission pack", () => {
       // Max, 5 Nov (review round): who stopped what, in words, with the main run's counts.
       expect(t).toContain(f.main.stop_line);
       expect(f.main.stop_line).toBe(stopsLine(f.main.stops));
-      expect(t).toContain(f.main.tap_limit_line);
     }
+    // The separate TAP run's decline: in the long text, not in the form (jury review, 6 Nov, #7: TAP off the form).
+    expect(long).toContain(f.main.tap_limit_line);
+    expect(pack).not.toContain(f.main.tap_limit_line);
     const c = f.main.card_raise;
     expect(c).toEqual({ proposal: "P-0006", from: "30.00", to: "46.00", auth: "01a1a12f-4113-7000-b76d-014677710007", amount: "45.00" });
     expect(long).toContain(`asked for a card raise first (${c.proposal}, EUR ${c.from} → ${c.to})`);
@@ -66,17 +69,20 @@ describe("the submission pack", () => {
     expect(m.kit11.map((k) => `${k.bound}→${k.now}`)).toEqual(["10.00→14.00", "4.00→4.00", "6.00→2.00"]);
     expect(long).toContain("Sourcing 10.00 → 14.00 (cap 0.03 → 0.04 a purchase); Support 4.00 (cap 0.10); Treasury 6.00 → 2.00");
     // One payment breakdown, the site's own; 14 queries that got an error, counted.
-    expect(long).toContain("87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy");
+    // One canonical set (jury review, 6 Nov, #5): no 87 beside the 86.
+    for (const t of [pack, long]) {
+      expect(t).toContain("86 Metal payments + 1 card charge, all inside the limits");
+      expect(t).not.toMatch(/87 inside the limits/);
+    }
     expect(long).toContain("14 queries got an error and were not charged");
     expect(long.indexOf("### Other live tests (separate worlds, dated)")).toBeGreaterThan(long.indexOf("### Proof from the main run (3 November)"));
     // The short Description has no other run's figures: only the TAP run's decline, on its labelled line.
     expect(description).not.toMatch(/30 October|31 October|Other live tests|red team|Scenario Lab/i);
   });
 
-  it("opens the synopsis with the hook, and says the Visa paragraph once, with TAP's status as one note (Metal Award only)", () => {
+  it("opens the synopsis with the three sentences, then the Kit 11 line (jury review, 6 Nov), and says the Visa paragraph once, with TAP's status as one note (Metal Award only)", () => {
     const synopsis = raw.split("<!-- synopsis -->")[1]!.split("<!-- /synopsis -->")[0]!.trim();
-    expect(synopsis.startsWith("A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.")).toBe(true);
-    expect(synopsis).toContain(`the CFO signed ${f.main.face_id} times with Face ID`);
+    expect(synopsis).toBe(`${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE}`);
     for (const t of [pack, long]) {
       expect(t.match(/Trusted Agent Protocol/g)).toHaveLength(1);
       // Visa, 5 Nov: TAP is not eligible Visa tooling for this hackathon; Max's wording, once, and the entry is Metal only.
@@ -91,10 +97,14 @@ describe("the submission pack", () => {
     const m = f.main;
     expect([m.by_claude, m.decisions, m.fallbacks, m.claude_calls, m.claude_usd]).toEqual([24, 24, 0, 50, "0.3170"]);
     // The short Description.
-    expect(pack).toContain(`${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks; the CFO signed ${m.face_id} times with Face ID`);
+    expect(pack).toContain(`${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks; ${m.face_id} decisions signed with Face ID (+1 co-signature)`);
     expect(pack).toContain(`two options ${m.to_options_s} s after the refusal`);
-    expect(pack).toContain("the second approver, a labelled test passkey (in production, a second person)");
-    expect(pack).toContain("Purchase #24 was let through on purpose (Purser normally refuses first): Metal refused it; the refusal is recorded on chain");
+    // The caveats in one line in the form, the second approver in full in the long text (jury review, 6 Nov, #7).
+    expect(pack).toContain(CAVEAT_LINE);
+    expect(long).toContain("in production the second approver is a second person");
+    // The let-through framed as the test it was, both layers (jury review, 6 Nov, #8).
+    for (const t of [pack, long]) expect(t).toContain(CHAIN_TEST);
+    expect(pack).toContain(`${CHAIN_TEST} That was purchase #24; the refusal is recorded on chain`);
     for (const t of [pack, long]) {
       expect(t).toContain(`PAID ${m.face_to_paid_s} s after Face ID`);
       expect(t).toContain(`tx \`${m.let_through_tx.slice(0, 10)}…${m.let_through_tx.slice(-4)}\``);
@@ -142,13 +152,20 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(Number(stated?.[1]?.replace(/,/g, ""))).toBe(description.length);
   });
 
-  it("goes story, proof, real and simulated, links, with the core line and Max's lines word for word", () => {
+  it("goes the three sentences, the Kit 11 line, story, one caveat line, proof, real, links, with Max's lines word for word (jury review, 6 Nov)", () => {
     const at = (s: string) => { const i = flat.indexOf(s); expect({ s, found: i >= 0 }).toEqual({ s, found: true }); return i; };
-    const order = [at("A supplier doubles its price."), at(CORE_LINE), at("Proof: the main run (3 November, world `main-1`)."), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
-      at(f.main.stop_line), at("Who does what."), at("What is real and what is simulated."), at("Links.")];
+    // The three sentences first, word for word.
+    expect(flat.startsWith(DIFFERENTIATORS[0])).toBe(true);
+    const order = [...DIFFERENTIATORS.map(at), at(KIT11_RUN_LINE), at("A supplier doubles its price."), at(`${CAVEAT_LINE} Details →`), at("Proof: the main run (3 November, world `main-1`)."), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
+      at(f.main.stop_line), at("Who does what."), at("What is real."), at("Links.")];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    for (const line of [T0_STATUS, "Max's passkey (Face ID on his phone)", "Max plays the CFO", "Metal tx: on chain, checkable.", "Airwallex ids: published on /proof."]) at(line);
-    expect(flat.indexOf(f.main.tap_limit_line)).toBeGreaterThan(flat.indexOf(f.main.stop_line));
+    for (const line of ["Max's passkey (Face ID on his phone)", "Max plays the CFO", "Metal tx: on chain, checkable.", "Airwallex ids: published on /proof."]) at(line);
+    // The caveats are one line plus a link: no T:0 error codes, no Visa TAP, no TAP run in the form's Description (they
+    // stay in the long text and the claims).
+    expect(flat).not.toMatch(/CAPI\d+|T:0|Visa|TAP/);
+    expect(flat).toContain("Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated");
+    expect(long).toContain(T0_STATUS);
+    expect(longRaw).toMatch(/^### What is real and what is simulated$/m);
     // Who does what (Max, 5 Nov): what Max built, and what each partner provides, in words, no logos.
     expect(flat).toContain("Who does what. Max Geurtsen built Purser (limits, approvals, agent tools, site, audit log, books, tests). Airwallex: cards and limits, FX, SWIFT. Metal: mandates, payments. Claude: the agents' decisions.");
   });

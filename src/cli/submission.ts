@@ -3,6 +3,8 @@
 //   docs/submission/screens/7-* .. 13-*  close-ups for the deck, one panel each (rails, inspector, enterprise cards,
 //                                        Try Purser, overview, Claude, the run's result)
 //   docs/submission/screens/14-dispute   the main run's dispute on /watch, at the CFO's rejection of the refund batch
+//   docs/submission/screens/18-try-sign  /try/sign on a local relay: the exact terms signed and verified, then the same
+//                                        signature refused on the amount + 0.01 (the form's screenshot 6 since 6 Nov)
 //   docs/submission/purser-deck.pdf      ten dark slides in the pitch's order (src/submission/deck.ts)
 //   docs/media/try-sign-qr.png           the QR code to /try/sign, as on the deck's QR slide (src/submission/qr.ts)
 //   docs/internal/spiekkaart-demo.pdf    Max's one-page cheat sheet for Demo Day, from spiekkaart-demo.html
@@ -17,6 +19,7 @@ import { startJudge } from "./judge.js";
 import { deckHtml, type DeckShots } from "../submission/deck.js";
 import { QR_PNG, qrPng, qrSvg } from "../submission/qr.js";
 import { packFacts } from "../submission/facts.js";
+import { startLocalRelay } from "../relay/local.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const shots = resolve(root, "docs/submission/screens");
@@ -96,6 +99,36 @@ try {
     console.log(`screens/${name}.png  /film?t=${t}`);
   }
   await film.close();
+  // Sign one yourself (jury review, 6 Nov, #7: the form's screenshot 6, in place of /visa): a local relay with /try/sign
+  // on, Chromium's virtual authenticator as the visitor's passkey; a test world only, nothing reaches Airwallex or Metal.
+  {
+    process.env.TRY_SIGN_ENABLED = "on";
+    const relay = await startLocalRelay({ port: 0, token: "submission" });
+    try {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
+      const p = await ctx.newPage();
+      const cdp = await ctx.newCDPSession(p);
+      await cdp.send("WebAuthn.enable");
+      await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+      await p.goto(`${relay.url}/try/sign`, { waitUntil: "load" });
+      await p.click("#go-world");
+      await p.waitForSelector("#s-props:not([hidden])");
+      await p.click("#go-key");
+      await p.waitForFunction(() => document.getElementById("k-status")?.classList.contains("ok"));
+      await p.locator("article.prop", { hasText: "T-0002" }).locator("button[data-sign]").click();
+      await p.waitForSelector("#result:not([hidden])");
+      await p.click("#go-tamper");
+      await p.waitForSelector("#tamper:not([hidden])");
+      await p.waitForTimeout(900);
+      await p.evaluate(() => { const e = document.querySelector("#result")!; window.scrollTo({ top: e.getBoundingClientRect().top + window.scrollY - 84, behavior: "instant" }); });
+      await p.waitForTimeout(500);
+      await p.screenshot({ path: resolve(shots, "18-try-sign.png") });
+      console.log("screens/18-try-sign.png  /try/sign (local relay): signed and verified, then the tamper refused");
+      await ctx.close();
+    } finally {
+      relay.server.close();
+    }
+  }
   await page.goto(`${judge.url}/try?q=${encodeURIComponent("Pay our supplier €1,180")}`, { waitUntil: "load" });
   await page.waitForSelector(".outcome.show", { timeout: 15_000 });
   await page.waitForTimeout(800);
