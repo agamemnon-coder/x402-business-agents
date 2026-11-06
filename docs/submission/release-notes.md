@@ -142,6 +142,28 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
   guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2569 tests
   in 261 files, all passing (with main's).
+- 6 November, /try/sign's Treasury agent speaks through Claude Haiku: the waiting payment's sentence is one real Haiku
+  call, given only the test world's invoice, balance, floor and limit (never a visitor's words), labelled "Claude
+  Haiku · live" with its request id behind "more"; USD 1 a day, 10 a minute for everyone, 6 an hour per address, 8 s;
+  otherwise the fixed sentence, labelled with why. The model only proposes: limits and approval stay in code and the
+  passkey. 2534 tests in 257 files, all passing.
+- 6 November, /try/verify: "Don't trust our server: check it yourself." receipt.json is checked in the browser with
+  WebCrypto, with verify-receipt's own checks (tested equal), and no server call (the page's CSP allows no
+  connection). "Signature valid for these terms", or "Invalid" with the failing check named; a "Change one field"
+  toggle and file upload. After signing, "Verify this receipt here" opens it. 2537 tests in 258 files, all passing.
+- 6 November, /try/sign shorter and wider: from 1024 px the start screen shows "One policy → three locks" on the
+  right; after signing at most about 150 words (118 on a phone); a refused signature answers HTTP 200 {verified:
+  false, reason}, so the visit logs 0 console errors; the quick tamper on one line, "Try another field" after the
+  first refusal, then three buttons: the real run's P-0005 on /proof, the film, the code. 2538 tests in 258 files, all
+  passing.
+- 6 November, the Haiku sentence after review: the amounts go in written the page's way ("EUR 1,850.00"), and code
+  checks every amount that comes back against the four it was given, exactly as given; else the fixed sentence,
+  labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup.
+  2589 tests in 262 files, all passing (with main's); 2592 in 263 with /try/verify.
+- 6 November, /try/sign from 1024 px: the left column under the start button shows the three steps once more, one
+  line each with a short gloss ("A payment above its limit, with its exact terms." / "A test passkey signs the hash of
+  those terms." / "The server checks it; one cent changed and it fails."), beside "One policy → three locks". 2594
+  tests in 263 files, all passing (with main's).
 - 6 November, /proof's "Policy and card side by side" lands on /airwallex with the cards' fold open: the fold is
   `#controls` and each card has its own anchor (`#card-sourcing`, …); a few lines of script, hashed into the page's
   CSP, open the fold around whatever the link points at and scroll to it (Chromium and WebKit checked at 390 and

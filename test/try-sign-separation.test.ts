@@ -115,7 +115,7 @@ describe("/try/sign is apart from the CFO's world", () => {
     const db = new Database(":memory:");
     new TrySignDesk(sqlOver(db));
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all() as { name: string }[]).map((r) => r.name);
-    expect(tables).toEqual(["ts_creds", "ts_hits", "ts_proposals", "ts_worlds"]);
+    expect(tables).toEqual(["ts_creds", "ts_hits", "ts_lines", "ts_proposals", "ts_spend", "ts_worlds"]);
   });
 });
 

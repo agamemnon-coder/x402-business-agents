@@ -152,9 +152,9 @@ describe("1. challenges: random, single-use, short-lived; an approval's is its t
     expect(A.b.terms_sha256).not.toBe(B.b.terms_sha256);
     const old = auth.sign({ challenge: challengeOf(A.b.terms_sha256), origin: BASE, rpId: RP, counter: 1 });
     const r1 = await call(d, "sign", signBody(B.w.world.token, B.b, old));
-    expect([r1.status, ((await r1.json()) as { why: string }).why]).toEqual([400, "challenge"]);
+    expect([r1.status, ((await r1.json()) as { why: string }).why]).toEqual([200, "challenge"]);
     const r2 = await call(d, "sign", signBody(B.w.world.token, B.b, old, A.b.canonical));
-    expect([r2.status, ((await r2.json()) as { why: string }).why]).toEqual([409, "terms"]);
+    expect([r2.status, ((await r2.json()) as { why: string }).why]).toEqual([200, "terms"]);
   });
 
   it("the runner's enrolment challenge: 32 random bytes per window, ten minutes, then no window to enrol against", async () => {
@@ -265,7 +265,7 @@ describe("2. origin and RP id exact; user presence and verification required", (
       expect({ bad, status: res.status, why: ((await res.json()) as { why: string }).why }).toEqual({ bad, status: 400, why });
       const s = await withPasskey(d);
       const r2 = await call(d, "sign", signBody(s.w.world.token, s.b, s.auth.sign({ challenge: challengeOf(s.b.terms_sha256), origin: BASE, rpId: RP, counter: 1, ...bad })));
-      expect({ bad, status: r2.status, why: ((await r2.json()) as { why: string }).why }).toEqual({ bad, status: 400, why });
+      expect({ bad, status: r2.status, why: ((await r2.json()) as { why: string }).why }).toEqual({ bad, status: 200, why });
     }
     const { d } = desk();
     const w = await newWorld(d);
@@ -309,7 +309,7 @@ describe("3. the signature counter", () => {
     const b = w.proposals.find((p) => p.check === "pass")!;
     for (const counter of [7, 6, 0]) {
       const r = await call(d, "sign", signBody(w.world.token, b, auth.sign({ challenge: challengeOf(b.terms_sha256), origin: BASE, rpId: RP, counter })));
-      expect({ counter, status: r.status, why: ((await r.json()) as { why: string }).why }).toEqual({ counter, status: 400, why: "counter" });
+      expect({ counter, status: r.status, why: ((await r.json()) as { why: string }).why }).toEqual({ counter, status: 200, why: "counter" });
     }
     expect((await call(d, "sign", signBody(w.world.token, b, auth.sign({ challenge: challengeOf(b.terms_sha256), origin: BASE, rpId: RP, counter: 8 })))).status).toBe(200);
   });
@@ -404,7 +404,7 @@ describe("4. the signature is bound to the hash of the exact terms, field by fie
     const changed = jcs(withChange(terms, [field]));
     expect(shaHex(changed)).not.toBe(b.terms_sha256);
     const r = await call(d, "sign", signBody(w.world.token, b, assertion, changed));
-    expect(r.status).toBe(400);
+    expect(r.status).toBe(200);
     expect(await r.json()).toMatchObject({ verified: false, why: "challenge", terms_sha256: shaHex(changed), signed_sha256: b.terms_sha256 });
     expect(db.prepare("SELECT status FROM ts_proposals WHERE world = ? AND id = ?").get(w.world.id, b.proposal_id)).toEqual({ status: "waiting" });
     // Control: the same signature with the exact terms runs.
