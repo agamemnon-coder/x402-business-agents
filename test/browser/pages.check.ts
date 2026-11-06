@@ -31,6 +31,9 @@ const JUDGE_KEY = "purser.judge.v1";
 
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
+// 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
+const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
+const WORST = worstCaseWords();
 
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
@@ -124,6 +127,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.goto(`${base}/?recorded`, { waitUntil: "load" });
     await page.waitForTimeout(1500);
     await look(page, `/?recorded ${tag}`, w);
+    if (await page.locator("#cfo-expo").isVisible()) fail(`/?recorded ${tag}: the CFO's view's worst case shows on the recorded run too`);
     // Claude's costs are real US dollars (list prices); chain money must read "test USD" everywhere else.
     // The money flow (D23, Max 1 Nov) shows on purpose that Metal payments are the *USDZ stablecoin on chain: there,
     // and only there, "*USDZ" is the unit, always with its star and the word "stablecoin" beside it (checked below).
@@ -211,6 +215,14 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         return { text: l.innerText, shown: !l.hidden && r.height > 0, inView: r.top >= head - 2 && r.bottom <= innerHeight, first: !!(l.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), y: scrollY };
       })()`)) as { text: string; shown: boolean; inView: boolean; first: boolean; y: number };
       if (top.text !== "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." || !top.shown || !top.inView || !top.first) fail(`/?autonomy ${tag}: the CFO's line is not on top and in view (${JSON.stringify(top)})`);
+      // 1.1: right under it, one block with the worst case the main run's policy allows, as the README says it.
+      const expo = await page.locator("#cfo-expo");
+      const head = (await expo.locator(".hl").innerText()).trim();
+      if (!(await expo.isVisible()) || head !== WORST.headline || !((await expo.textContent()) ?? "").includes(WORST.how.at(-1)!)
+        || !(await page.evaluate(() => !!(document.getElementById("cfo-line")!.compareDocumentPosition(document.getElementById("cfo-expo")!) & Node.DOCUMENT_POSITION_FOLLOWING)))) fail(`/?autonomy ${tag}: the worst case block is not under the CFO's line, or not the README's words ("${head}")`);
+      // Clear at a glance (Max): the fold "How this is computed" closed, and at most 40 words in sight.
+      const seen = (await expo.innerText()).trim().split(/\s+/).length;
+      if (await expo.locator("details.how").evaluate((d) => (d as HTMLDetailsElement).open) || seen > 40) fail(`/?autonomy ${tag}: the worst case block shows ${seen} words, or its fold is open`);
       await page.screenshot({ path: join(shots, `autonomy-top-${tag}.png`) });
     }
     const au = await page.evaluate(() => document.body.innerText);
@@ -238,6 +250,37 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     const wrongly = await page.evaluate(() => Array.from(document.querySelectorAll(".agentchat li")).filter((li) => /Fallback \(code\)/.test(li.textContent ?? "") && /Powered by Claude/.test(li.textContent ?? "")).length);
     if (wrongly) fail(`/?autonomy ${tag}: ${wrongly} code fallback lines say Powered by Claude`);
     await page.screenshot({ path: join(shots, `autonomy-${tag}.png`), fullPage: true });
+    // "Trace any payment" (Max's last round, 1.2): linked under the CFO's line, to /trace.
+    if (!(await page.isVisible('#cfo-links a[href="trace"]'))) fail(`/?autonomy ${tag}: no "Trace any payment" link`);
+    // "Download the month-end pack" (1.3): beside it, a download of the zip the pages serve.
+    {
+      const link = page.locator('#cfo-links a[download]');
+      if (!(await link.isVisible()) || (await link.innerText()) !== "Download the month-end pack") fail(`/?autonomy ${tag}: no "Download the month-end pack" button`);
+      const href = await link.getAttribute("href");
+      const res = await fetch(new URL(href ?? "", `${base}/`));
+      const bytes = Buffer.from(await res.arrayBuffer());
+      if (res.status !== 200 || res.headers.get("content-type") !== "application/zip" || bytes.readUInt32LE(0) !== 0x04034b50) fail(`/?autonomy ${tag}: the pack ${href} is not a zip (${res.status} ${res.headers.get("content-type")})`);
+    }
+
+    // /trace: the header with its computed count, the SWIFT transfer's chain when none is picked, and a picked payment's
+    // chain (the CSS :target swap, no script) with its explorer link, eight steps each.
+    await page.goto(`${base}/trace`, { waitUntil: "load" });
+    await look(page, `/trace ${tag}`, w);
+    {
+      const t = await page.evaluate(() => document.body.innerText);
+      if (!/Pick any of the 88 payments \(86 on Metal \+ 1 card charge \+ 1 SWIFT transfer\)\. Every step is shown; the audit rows themselves are summarised, not published\./.test(t)) fail(`/trace ${tag}: the header is not the computed one`);
+      if (!/Derived from the main run's ledger \(3 Nov\), sanitized, generated \d{4}-\d\d-\d\d\. The main run's record is unchanged\./.test(t)) fail(`/trace ${tag}: no label`);
+      const shown = async () => page.evaluate(() => Array.from(document.querySelectorAll(".pay")).filter((s) => (s as HTMLElement).offsetParent).map((s) => ({ id: s.id, steps: s.querySelectorAll("ol.steps > li").length })));
+      const first = await shown();
+      if (first.length !== 1 || first[0]!.id !== "transfer-03360bfa" || first[0]!.steps !== 8) fail(`/trace ${tag}: with none picked, not the SWIFT transfer's chain alone (${JSON.stringify(first)})`);
+      await page.screenshot({ path: join(shots, `trace-${tag}.png`), fullPage: true });
+      await page.click('a[href="#purchase-55"]');
+      const picked = await shown();
+      if (picked.length !== 1 || picked[0]!.id !== "purchase-55" || picked[0]!.steps !== 8) fail(`/trace ${tag}: picking a purchase does not show its chain alone (${JSON.stringify(picked)})`);
+      if (!(await page.isVisible('#purchase-55 a[href^="https://testnet.metalntwx.com/tx/0x"]'))) fail(`/trace ${tag}: the picked purchase has no explorer link`);
+      await look(page, `/trace#purchase-55 ${tag}`, w);
+      await page.screenshot({ path: join(shots, `trace-picked-${tag}.png`) });
+    }
 
     for (const q of ["", "?at=end"]) {
       await page.goto(`${base}/month${q}`, { waitUntil: "load" });
@@ -337,6 +380,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // on its one line. Followed at 390 and 1440 px.
     {
       const cfo = page.locator(".phead a", { hasText: "See the CFO's view" });
+      // And beside it, "Trace any payment" and "Download the month-end pack" (Max's last round, 1.2 and 1.3).
+      if (!(await page.locator('.phead a[href="trace"]', { hasText: "Trace any payment" }).isVisible())) fail(`/proof ${tag}: no visible "Trace any payment"`);
+      if (!(await page.locator(".phead a[download]", { hasText: "Download the month-end pack" }).isVisible())) fail(`/proof ${tag}: no visible "Download the month-end pack"`);
       if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/proof ${tag}: no visible "See the CFO's view" to ./?autonomy in its head`);
       await page.locator(".phead").screenshot({ path: join(shots, `proof-head-${tag}.png`) });
       if (w === 390 || w === 1440) {

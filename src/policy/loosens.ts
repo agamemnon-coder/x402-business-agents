@@ -1,0 +1,21 @@
+// Whether a CFO policy change loosens the policy. Pure (no database, no Node modules), so the runner's rules
+// (src/policy/rules.ts re-exports it) and /try/sign's policy step (src/try/policy.ts) decide it with the same code.
+
+/**
+ * Whether a change makes the policy less strict: a higher or removed agent limit, a higher approval threshold, a
+ * lower reserve floor, or a payee unblocked. The phone may only tighten (review N2); loosening is proposed on the
+ * runner (npm run policy -- set) and then approved with Face ID like any proposal.
+ */
+export function loosens(c: { key: string; from: string; to: string }): boolean {
+  const cents = (v: string) => (/^\d+\.\d{2}$/.test(v) ? Number(v.replace(".", "")) : null);
+  const [from, to] = [cents(c.from), cents(c.to)];
+  if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
+  if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
+  // Four eyes: turning it off or raising the threshold loosens; turning it on or lowering it tightens.
+  if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
+  if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
+  if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
+  if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
+  if (c.key === "freeze" || c.key.startsWith("stop.") || c.key.startsWith("pause.")) return c.from === "on" && c.to !== "on";
+  return true;
+}

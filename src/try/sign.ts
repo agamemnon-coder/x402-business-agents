@@ -12,6 +12,11 @@ import { REPO_URL } from "../submission/deck.js";
 import { FILM_URL } from "../config/brand.js";
 import { cfoApproval, recordedQuote, tryLocks } from "./examples.js";
 import { RECEIPT_FORMAT } from "./receipt.js";
+import { AGENTS, MCC_WORDS } from "../config/policy.js";
+import { agentName } from "../config/brand.js";
+import { FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS, STEP0_CHAIN } from "./policy.js";
+import { worstCaseWords } from "../policy/exposureSources.js";
+import { EXPOSURE_HOW } from "../policy/exposure.js";
 
 /** The feature flag, read where the bundle is built: on, the page, its API and the links to it are in the bundle. */
 export const trySignOn = (env: NodeJS.ProcessEnv = process.env) => ["on", "1", "true"].includes(env.TRY_SIGN_ENABLED ?? "");
@@ -47,6 +52,32 @@ export const VOICE_LABELS = {
   unavailable: "fixed text (model unavailable)",
 } as const;
 
+/** Step 0, "Set the policy" (Max, item 1): its words, word for word (tests read them). */
+export const TRY_POLICY = {
+  title: "Set the policy",
+  /** The button step 0 is behind (Max, 6 Nov: closed by default, optional). */
+  open: "Optional: set the policy first",
+  /** Beside the agent's sentence on a payment that ran alone after a policy change: it was said before that change. */
+  saidBefore: "said before your policy change",
+  /** 1.1: the worst case block's heading, "Worst case" word for word (the /judge tour looks for it). */
+  worstCase: "Worst case, set by policy",
+  /** 1.1, decision B1: what the block counts on chain, since step 0 does not change Purser's mandates. */
+  worstCaseChain: STEP0_CHAIN === "purser" ? "Here: the card limits you set; on chain, Purser's own mandates, which step 0 does not change." : "Here: the card limits you set; on chain, your test world's mandate as panel 3 shows it.",
+  ifSigned: "If you sign it:",
+  lead: "One policy → three locks. Change one value and apply it: a stricter policy holds at once, a looser one only with your signature.",
+  panels: { purser: "Purser's rule", airwallex: "Airwallex card controls", metal: "Metal mandate" },
+  notSent: { airwallex: "What Purser would send; not sent", metal: "Not sent" },
+  state: { inForce: "In force", proposed: "Proposed: not in force until you sign" },
+  refused: "Refused: a looser policy needs your signature",
+  sign: "Sign the looser policy with Face ID",
+  source: "Computed on the server by Purser's own code (src/try/policy.ts): the card body as IssuingRest sends it (src/airwallex/cardBody.ts), the mandate's terms as the owner signer passes them to metal-agent (src/metal/credentialArgs.ts). Nothing is sent to Airwallex or Metal.",
+  metalUnit: "Amounts in *USDZ (test USD): the policy's numbers as they are, not converted from euros.",
+  metalNote: "Cap = the limit per purchase, budget = the limit per month, expiry = the end date.",
+} as const;
+
+/** 1.1: step 0's worst case before a world opens: the starting policy's, as the README and the CFO's view show it. */
+const STEP0_WORST = worstCaseWords();
+
 /** The fields a visitor may change to tamper, as the terms name them. */
 export const TAMPER_FIELDS = ["amount", "payee_iban", "currency", "fx.client_rate"] as const;
 
@@ -56,6 +87,7 @@ export const WHATS_REAL = {
     "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor. Its balance, its payees and their IBANs are test data (the IBANs' check digits are 00, which no real account has).",
     "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor is a stand-in that only records in your test world.",
     "The blocked payment and the lock that stops it are a simulation in your test world. The three examples it links to are real, each from the run it names.",
+    "Step 0, the policy: your test world's CFO policy and the three locks made of it (Purser's rule, the Airwallex card controls, the Metal mandate's terms), computed by Purser's own code and sent nowhere: nothing reaches Airwallex or Metal. As in Purser, a looser policy needs your passkey's signature and a stricter one applies at once. If you raise what the Treasury agent may pay alone and sign it, a payment at or below it runs without your signature, by the same stand-in, labelled “" + PAID_ALONE + "”.",
   ],
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
@@ -92,7 +124,7 @@ details.wr > summary::after { content: "▾"; font-size: 13px; } details.wr[open
 /* The site's header is translucent; here, where cards scroll under it and the steps, it is opaque (Max, 6 Nov). */
 header.top { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
 ol.progress { list-style: none; margin: 0 0 14px; padding: 8px 0; box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 760px; position: sticky; top: 64px; z-index: 30; background: var(--bg); }
-#s-props, .prop, #result, #tamper { scroll-margin-top: var(--stick, 150px); }
+#s-props, .prop, #result, #tamper, #p-status, #p-refused, #p-locks { scroll-margin-top: var(--stick, 150px); }
 ol.progress li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 14px; background: var(--sunken); color: var(--muted); font: 650 14.5px/1.25 Inter, system-ui, sans-serif; min-width: 0; }
 ol.progress li .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; }
 ol.progress li.on { background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 2px var(--accent); }
@@ -200,7 +232,53 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .ractions { display: flex; flex-wrap: wrap; gap: 8px; }
 .receipt code { font: 600 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--sunken); border-radius: 6px; padding: 1px 5px; overflow-wrap: anywhere; }
 
-.result[hidden], .props[hidden], #tamper[hidden], dl.world[hidden], #s-props[hidden] { display: none; }
+.result[hidden], .props[hidden], #tamper[hidden], dl.world[hidden], #s-props[hidden], .policy[hidden], .prefused[hidden], #pl-pay[hidden], #p-sign[hidden] { display: none; }
+/* Step 0: the policy, and the three locks made of it. */
+.policy { max-width: 760px; margin: 0 0 16px; padding: 0; }
+.policy > * { min-width: 0; }
+.pol > .popen { margin: 14px 18px; max-width: calc(100% - 36px); }
+#p-body[hidden] { display: none; }
+.phead { display: flex; align-items: center; gap: 12px; }
+.phead .n { width: 30px; height: 30px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font: 700 15px/1 Inter, system-ui, sans-serif; flex: none; }
+.phead .pt { display: grid; gap: 2px; min-width: 0; } .phead b { font-size: 18px; } .phead small { color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+.pill.said-before { white-space: normal; justify-self: start; margin-top: -4px; }
+.pill.alone { white-space: normal; background: var(--ok-soft, var(--accent-soft)); color: var(--ok); justify-self: start; }
+.pbody { display: grid; gap: 12px; padding: 0 18px 18px; }
+.pbody > *, .pform > *, .lk > *, .locks3 > *, .prefused > * { min-width: 0; }
+.ptop { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
+.ptop label, .pform label, .pform fieldset { display: grid; gap: 4px; font-size: 14px; font-weight: 650; color: var(--muted); }
+.pform { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
+.pexpo { display: grid; gap: 4px; border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+.pexpo > * { margin: 0; min-width: 0; overflow-wrap: anywhere; } .pexpo .hl { font-weight: 750; font-size: 20px; line-height: 1.3; letter-spacing: -.01em; }
+.pexpo details.how { font-size: 14px; color: var(--muted); } .pexpo details.how summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; } .pexpo details.how ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.pexpo #p-expo-next { color: var(--bad); font-weight: 650; } #p-expo-next[hidden] { display: none; }
+.polnote { white-space: normal; background: var(--accent-soft); color: var(--accent); justify-self: start; }
+.pform fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; margin: 0; }
+.pform fieldset legend { padding: 0 4px; }
+.pform .cks { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.pform label.ck { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text); min-height: 32px; }
+.pform input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+.ptop select, .pform input:not([type="checkbox"]) { font: 600 16px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; min-height: 46px; padding: 8px 10px; width: 100%; max-width: 100%; }
+.ptop select { font-family: Inter, system-ui, sans-serif; width: auto; }
+.pform .chg input:not([type="checkbox"]), .pform fieldset.chg { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.pacts { display: flex; flex-wrap: wrap; gap: 8px; }
+.prefused { display: grid; gap: 10px; border-radius: 14px; padding: 12px 14px; background: var(--bad-soft); }
+.locks3 { display: grid; gap: 12px; }
+.lk { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; align-content: start; background: var(--surface); }
+.lk-awx { border-top: 3px solid var(--awx); } .lk-metal { border-top: 3px solid var(--metal); } .lk-purser { border-top: 3px solid var(--accent); }
+.lkh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; } .lkh b { font-size: 16px; }
+.lkh .n { width: 24px; height: 24px; border-radius: 50%; background: var(--sunken); display: grid; place-items: center; font: 700 13px/1 Inter, system-ui, sans-serif; flex: none; }
+.lk .state { white-space: normal; } .lk .state.proposed { background: var(--bad-soft); color: var(--bad); }
+.lk .ns { margin: 0; font-size: 13.5px; font-weight: 700; color: var(--muted); }
+.lk .unit { margin: 0; font-size: 14px; font-weight: 650; color: var(--text); background: var(--sunken); border-radius: 8px; padding: 6px 10px; }
+.lk ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14.5px; line-height: 1.45; }
+.lk li.bad { color: var(--bad); } .lk li.ok { color: var(--ok); }
+.lk pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--sunken); border-radius: 10px; padding: 8px 10px; }
+.lk pre .ln.chg { background: var(--accent-soft); color: var(--text); font-weight: 700; }
+.lk dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 14.5px; }
+.lk dt { color: var(--muted); } .lk dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; } .lk dd.chg { color: var(--accent); }
+@media (min-width: 720px) { .pform { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pform fieldset { grid-column: span 2; } }
+@media (min-width: 1100px) { .policy { max-width: 1200px; } .pform { grid-template-columns: repeat(4, minmax(0, 1fr)); } .pform fieldset { grid-column: span 2; } .pform fieldset[data-pfield="currencies"] { grid-column: span 1; } .locks3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .line { display: flex; align-items: flex-start; gap: 10px; font-size: 16px; line-height: 1.45; }
 .line .i { margin-top: 2px; }
 .line > .i, #t-icon { flex: none; }
@@ -365,7 +443,7 @@ const JS = `
   function quoteExpired() {
     if (S.signed || !$("go-quote")) return;
     S.quoteGone = true;
-    [$("go-key")].concat([].slice.call(document.querySelectorAll("button[data-sign]"))).forEach(function (b) { if (b) b.disabled = true; });
+    [$("go-key")].concat([].slice.call(document.querySelectorAll("[data-fx] button[data-sign]"))).forEach(function (b) { if (b) b.disabled = true; });
     if (!$("go-quote").hidden) return;
     $("go-quote").hidden = false;
     status("q-status", "Quote expired. Get a fresh one and sign again.", "bad");
@@ -392,6 +470,7 @@ const JS = `
       $("s-world").hidden = true;
       S.timer = setInterval(tick, 1000);
       S.fx = r.data.fx;
+      openPolicy(r.data);
       return showProposals(r.data.proposals).then(function () {
         tick();
         progress(2);
@@ -400,38 +479,53 @@ const JS = `
     });
   });
 
-  function createPasskey(b) {
+  // The world's one passkey, made here or from the policy step: { ok }, or why not and whether to offer it again.
+  function makePasskey() {
     var o = S.options;
-    b.disabled = true;
-    status("k-status", "Waiting for your Face ID, Touch ID, Windows Hello or security key…");
-    navigator.credentials.create({ publicKey: {
+    return navigator.credentials.create({ publicKey: {
       challenge: fromB64u(o.challenge), rp: o.rp, user: { id: fromB64u(o.user.id), name: o.user.name, displayName: o.user.displayName },
       pubKeyCredParams: o.pubKeyCredParams, timeout: o.timeout, attestation: o.attestation, authenticatorSelection: o.authenticatorSelection
     } }).then(function (c) {
-      if (!c) { status("k-status", "Cancelled. No passkey was made.", "bad"); b.disabled = !!S.quoteGone; return; }
+      if (!c) return { ok: false, again: true, msg: "Cancelled. No passkey was made." };
       var body = { token: S.token, credential: { id: c.id, rawId: toB64u(c.rawId), type: c.type, response: { clientDataJSON: toB64u(c.response.clientDataJSON), attestationObject: toB64u(c.response.attestationObject) } } };
       return post("passkey", body).then(function (r) {
-        if (r.status !== 201) { status("k-status", "Not accepted: " + (r.data.error || ("error " + r.status)) + ".", "bad"); return; }
+        if (r.status !== 201) return { ok: false, again: false, msg: "Not accepted: " + (r.data.error || ("error " + r.status)) + "." };
         S.credId = c.id;
-        b.hidden = true;
-        status("k-status", "Your test passkey is made and registered in this world only (" + c.id.slice(0, 10) + "…). Now sign.", "ok");
-        document.querySelectorAll("button[data-sign]").forEach(function (x) { if (x.dataset.ready === "1") { x.disabled = !!S.quoteGone; x.classList.add("primary"); } });
+        if ($("go-key")) $("go-key").hidden = true;
+        if ($("k-status")) status("k-status", "Your test passkey is made and registered in this world only (" + c.id.slice(0, 10) + "…). Now sign.", "ok");
+        document.querySelectorAll("button[data-sign]").forEach(function (x) { if (x.dataset.ready === "1") { x.disabled = !!(S.quoteGone && x.closest("[data-fx]")); x.classList.add("primary"); } });
+        return { ok: true };
       });
-    }, function (e) { status("k-status", passkeyError(e), "bad"); b.disabled = !!S.quoteGone; });
+    }, function (e) { return { ok: false, again: true, msg: passkeyError(e) }; });
+  }
+  function createPasskey(b) {
+    b.disabled = true;
+    status("k-status", "Waiting for your Face ID, Touch ID, Windows Hello or security key…");
+    makePasskey().then(function (r) { if (!r.ok) { status("k-status", r.msg, "bad"); if (r.again) b.disabled = !!S.quoteGone; } });
   }
 
   function showProposals(list) {
-    var box = $("props");
+    // The result card lives among the proposals once shown: kept aside before they are drawn again (step 0 redraws them).
+    var box = $("props"), res = $("result");
     box.replaceChildren();
     return Promise.all(list.map(function (p) {
       var terms = JSON.parse(p.canonical);
       return sha256(canon(terms)).then(function (h) { return { p: p, terms: terms, mine: h, same: canon(terms) === p.canonical && h === p.terms_sha256 }; });
     })).then(function (rows) {
-      // The one waiting for a person first (the sheet the visitor signs), then the one a rule blocked.
-      rows.filter(function (x) { return x.p.check !== "fail"; }).forEach(function (x) { box.appendChild(sheet(x)); });
-      // The result shows right below the sheet it answers, before the blocked proposal.
-      box.appendChild($("result"));
-      rows.filter(function (x) { return x.p.check === "fail"; }).forEach(function (x) { box.appendChild(blocked(x)); });
+      // The ones a person may sign first (the one that waited when the world opened leads), then the ones a rule blocks.
+      // After a policy change (step 0) both may wait, or both be blocked; one that ran stays as it ran.
+      var open = rows.filter(function (x) { return x.p.check !== "fail" || x.p.status === "executed"; });
+      if (!S.primary && open.length) S.primary = open[0].p.proposal_id;
+      if (!S.firstCheck) { S.firstCheck = {}; rows.forEach(function (x) { S.firstCheck[x.p.proposal_id] = x.p.check; }); }
+      // A payment that ran alone is a finished flow, as a signed one is: every step done.
+      if (rows.some(function (x) { return x.p.status === "executed" && x.p.execution && x.p.execution.alone; })) progress(3, true);
+      open.sort(function (a, b) { return (a.p.proposal_id === S.primary ? 0 : 1) - (b.p.proposal_id === S.primary ? 0 : 1); });
+      // The passkey button and the quote's controls go on the first that has not run (one may have run alone).
+      var lead = open.filter(function (x) { return x.p.status !== "executed"; })[0];
+      open.forEach(function (x) { box.appendChild(sheet(x, x === lead)); });
+      // The result shows right below the sheets it answers, before the blocked proposals.
+      box.appendChild(res);
+      rows.filter(function (x) { return x.p.check === "fail" && x.p.status !== "executed"; }).forEach(function (x, i) { box.appendChild(blocked(x, i === 0)); });
       $("s-props").hidden = false;
     });
   }
@@ -468,31 +562,46 @@ const JS = `
   function fxLine(q) { return amt(q.buy_currency, q.buy_amount) + " for " + amt(q.sell_currency, q.sell_amount) + " at " + q.client_rate + " · quote " + q.quote_id.slice(0, 8) + "…"; }
 
   // The waiting proposal, as the CFO's approval sheet: what is approved, the exact terms, the hash, Face ID.
-  function sheet(x) {
-    var p = x.p, t = x.terms;
+  // Step 0: a payment whose check the visitor's policy turned around says so (was blocked, now passes; or the reverse).
+  function policyNote(p, was) {
+    if (S.firstCheck[p.proposal_id] !== was) return null;
+    var n = el("p", "pill polnote", [was === "fail" ? "Was blocked by a rule; the policy you set lets it pass" : "Was allowed; the stricter policy you set blocks it"]);
+    n.dataset.note = was === "fail" ? "now-allowed" : "now-blocked";
+    return n;
+  }
+  // The first sheet carries the passkey button and the quote's controls (their ids); others only their own signature.
+  function sheet(x, first) {
+    var p = x.p, t = x.terms, done = p.status === "executed", alone = done && !!(p.execution && p.execution.alone);
     var st = el("p", "status", []);
     st.id = "st-" + p.proposal_id;
     var facts = factsOf(p, t);
     var left = el("dd", "", []); left.dataset.left = "in";
     facts.append(el("dt", "", ["Proposal expires"]), left);
-    if (t.fx) { var ql = el("dd", "", []); ql.dataset.until = t.fx.valid_to_at; ql.id = "q-left"; facts.append(el("dt", "", ["Quote expires"]), ql); }
+    if (t.fx) { var ql = el("dd", "", []); ql.dataset.until = t.fx.valid_to_at; if (first && !done) ql.id = "q-left"; facts.append(el("dt", "", ["Quote expires"]), ql); }
     var kids = [
-      el("p", "eyebrow", ["You are approving · " + p.proposal_id]),
+      el("p", "eyebrow", [(alone ? "Paid alone · " : done ? "You approved · " : "You are approving · ") + p.proposal_id]), done ? null : policyNote(p, "fail"),
+      alone ? el("p", "pill alone", [D.policy.paidAlone]) : null,
       el("h3", "title", ["Pay " + t.payee + " " + amt(t.currency, t.amount)]),
-      agentLine(p), el("p", "says", [p.says]), voiceMore(p), facts,
-      el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · waiting for a person"]), el("span", "", [p.waits])]),
+      agentLine(p), el("p", "says", [p.says]), alone ? el("p", "pill said-before", [D.policy.saidBefore]) : null, voiceMore(p), facts,
+      alone ? el("div", "chk pass", [el("b", "", [ic("check"), "Check: pass · " + p.execution.rule]), el("span", "", ["No signature: the stand-in executor ran it in your test world (transfer " + p.execution.id + ", balance after " + eur(p.execution.balance_after) + "), bound to these terms' hash and to the policy change you signed."])])
+        : done ? el("div", "chk pass", [el("b", "", [ic("check"), "Check: pass · signed by you, run in your test world"])])
+        : p.waits ? el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · waiting for a person"]), el("span", "", [p.waits])])
+        : el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · within what the agent may pay alone"]), el("span", "", ["Under the policy you signed it would run alone, but its quote expired: get a new quote and it runs alone. Or sign it yourself."])]),
       el("div", "", [el("p", "small muted", ["The hash of the exact terms, which your passkey signs" + (x.same ? " (checked on this device):" : ":")]), hashBox(x.mine)]),
       el("details", "terms", [el("summary", "", ["All terms (exactly what is hashed)"]), el("pre", "", [p.canonical])])
     ];
     var key = el("button", "btn primary big", [ic("scan-face"), "Create your test passkey"]);
-    key.type = "button"; key.id = "go-key"; key.dataset.world = "1";
+    key.type = "button"; key.dataset.world = "1"; if (first) key.id = "go-key"; else key.hidden = true;
     key.addEventListener("click", function () { createPasskey(key); });
     var b = el("button", "btn big", [ic("scan-face"), "Sign with Face ID"]);
     b.type = "button"; b.dataset.sign = p.proposal_id; b.dataset.world = "1"; b.disabled = true;
-    var ks = el("p", "status", []); ks.id = "k-status"; ks.setAttribute("aria-live", "polite");
+    var ks = el("p", "status", []); if (first) ks.id = "k-status"; ks.setAttribute("aria-live", "polite");
     // New terms after a new quote: the passkey made before is kept, and the sheet says so.
-    if (S.credId) { ks.textContent = "Your test passkey is kept (" + S.credId.slice(0, 10) + "…). Sign the new terms."; ks.className = "status ok"; }
-    if (!x.same) {
+    if (S.credId) { ks.textContent = "Your test passkey is kept (" + S.credId.slice(0, 10) + "…)." + (done ? "" : " Sign these terms."); ks.className = "status ok"; }
+    if (done) {
+      b.hidden = true; key.hidden = true;
+      st.textContent = alone ? "" : "Signed, verified and executed in your test world."; st.className = "status ok";
+    } else if (!x.same) {
       kids.push(el("p", "status bad", ["The terms do not hash to the hash the server sent. Do not sign."]));
     } else {
       b.dataset.ready = "1";
@@ -500,16 +609,18 @@ const JS = `
     }
     if (S.credId) { key.hidden = true; if (b.dataset.ready === "1") { b.disabled = false; b.classList.add("primary"); } }
     var nq = el("button", "btn primary big", [ic("rotate-ccw"), "Get a new quote"]);
-    nq.type = "button"; nq.id = "go-quote"; nq.dataset.world = "1"; nq.hidden = true;
-    nq.addEventListener("click", function () { newQuote(nq); });
+    nq.type = "button"; nq.dataset.world = "1"; nq.hidden = true;
+    if (first && t.fx) { nq.id = "go-quote"; nq.addEventListener("click", function () { newQuote(nq); }); }
     var acts = el("div", "actions", [nq, key, b]);
-    acts.id = "s-key";
-    var qs = el("p", "status", []); qs.id = "q-status"; qs.setAttribute("aria-live", "polite");
+    if (first) acts.id = "s-key";
+    var qs = el("p", "status", []); if (first) qs.id = "q-status"; qs.setAttribute("aria-live", "polite");
     if (t.fx) kids.push(el("div", "", [el("p", "small muted", ["The live FX quote is part of these terms, so your signature covers its quote id and ends with it."]), more("Quote " + t.fx.quote_id + " from " + fxFrom(t.fx) + ": the Treasury agent holds USD and the invoice is in EUR, so it would buy " + amt(t.fx.buy_currency, t.fx.buy_amount) + " for " + amt(t.fx.sell_currency, t.fx.sell_amount) + " at " + t.fx.client_rate + ". Nothing is converted. Once the quote expires, the server refuses the signature: get a new quote and sign the new terms.")]));
     kids.push(el("div", "", [el("p", "small muted", ["First a test passkey for this world, then your signature."]), more("A random id, no name or e-mail, kept on your device for this site only; it opens this test world and nothing else. Face ID, Touch ID, Windows Hello, a security key, or your phone by QR code.")]), acts, qs, ks, st);
     kids.push(el("p", "basis", [D.cfo]));
     var a = el("article", "card prop sheet", kids);
     a.dataset.proposal = p.proposal_id;
+    if (alone) a.dataset.alone = "1";
+    if (t.fx && !done) a.dataset.fx = "1";
     return a;
   }
 
@@ -522,11 +633,16 @@ const JS = `
       S.fx = r.data.fx;
       var p = r.data.proposal, terms = JSON.parse(p.canonical);
       S.quoteGone = false;
+      // Within what the agent may pay alone (the limit you signed): with its new quote it ran alone.
+      if (r.data.paid_alone && r.data.paid_alone.length) {
+        policyState(r.data); worldFacts(r.data.world); S.base = renderLocks(S.locks[S.agent], false, S.base);
+        return showProposals(r.data.proposals);
+      }
       return sha256(canon(terms)).then(function (h) {
-        var old = document.querySelector(".prop.sheet");
-        var fresh = sheet({ p: p, terms: terms, mine: h, same: canon(terms) === p.canonical && h === p.terms_sha256 });
+        var old = document.querySelector('.prop.sheet[data-proposal="' + p.proposal_id + '"]');
+        var fresh = sheet({ p: p, terms: terms, mine: h, same: canon(terms) === p.canonical && h === p.terms_sha256 }, true);
         old.replaceWith(fresh);
-        $("fx-lock").replaceWith(lockQuote());
+        if ($("fx-lock")) $("fx-lock").replaceWith(lockQuote());
         tick();
         status("q-status", "A new quote, so new terms: sign them again.", "ok");
       });
@@ -556,7 +672,7 @@ const JS = `
   }
 
   // The blocked proposal: nothing to sign, and which of the three locks stopped it, each with its real example.
-  function blocked(x) {
+  function blocked(x, first) {
     var p = x.p, t = x.terms;
     var locks = el("div", "locks", [el("h3", "", ["Which lock stopped it"])]);
     D.locks.forEach(function (l) {
@@ -569,13 +685,13 @@ const JS = `
         el("span", "", [hit ? p.rule : l.what]),
         a,
         more("Real example, " + l.run + ": " + l.example)
-      ].concat(l.id === "airwallex" ? [lockQuote()] : []));
+      ].concat(l.id === "airwallex" && first ? [lockQuote()] : []));
       row.dataset.lock = l.id;
       locks.appendChild(row);
     });
     locks.appendChild(el("p", "small muted", ["Your blocked payment is a simulation in your test world; the examples are real, from the runs named."]));
     var a = el("article", "card prop blocked", [
-      el("p", "eyebrow", ["Blocked · " + p.proposal_id]),
+      el("p", "eyebrow", ["Blocked · " + p.proposal_id]), policyNote(p, "pass"),
       agentLine(p), el("p", "says", [p.says]), factsOf(p, t),
       el("div", "chk fail", [el("b", "", [ic("octagon-x"), "Check: fail · blocked by a rule"]), el("span", "", [p.rule]), el("span", "", ["Nothing to sign: no signature can approve this."])]),
       locks
@@ -625,6 +741,200 @@ const JS = `
     $("result").hidden = false;
     $("result").scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+
+  // ── Step 0: the policy (Max, item 1). The values in force and the three locks come from the server, computed there
+  // by Purser's own code; this page only shows them. A stricter change holds at once; a looser one is refused until the
+  // visitor signs its exact terms with the world's passkey, as a payment's.
+  var P = D.policy;
+  function show(v) { return Array.isArray(v) ? v.join(", ") : v; }
+  function inForce() { var a = S.policy.agents[S.agent], o = {}; P.fields.forEach(function (f) { o[f] = f === "reserve_floor" ? S.policy.reserve_floor : a[f]; }); return o; }
+  function pval(f) {
+    if (f === "mccs" || f === "currencies") return [].slice.call(document.querySelectorAll('input[name="pf-' + f + '"]:checked')).map(function (n) { return n.value; }).sort();
+    return $("pf-" + f).value.trim();
+  }
+  function fillForm() {
+    var v = inForce();
+    P.fields.forEach(function (f) {
+      if (f === "mccs" || f === "currencies") document.querySelectorAll('input[name="pf-' + f + '"]').forEach(function (n) { n.checked = v[f].indexOf(n.value) >= 0; });
+      else $("pf-" + f).value = v[f];
+    });
+    $("pf-end_date").min = S.bounds.end_date_min; $("pf-end_date").max = S.bounds.end_date_max;
+    pedited();
+  }
+  function cents(v) { return Number(v.replace(".", "")); }
+  // The form as the server reads it, checked here first for the visitor (the server checks it again).
+  function pset() {
+    var out = {}, err = null;
+    P.fields.forEach(function (f) {
+      var v = pval(f);
+      if (f === "mccs" || f === "currencies") { if (!v.length && !err) err = P.words[f] + ": choose at least one."; out[f] = v; return; }
+      if (f === "end_date") {
+        if ((!/^\\d{4}-\\d{2}-\\d{2}$/.test(v) || v < S.bounds.end_date_min || v > S.bounds.end_date_max) && !err) err = "End date: a date from " + S.bounds.end_date_min + " to " + S.bounds.end_date_max + ".";
+        out[f] = v; return;
+      }
+      v = v.replace(/,/g, "");
+      if (/^\\d{1,9}$/.test(v)) v = v + ".00"; else if (/^\\d{1,9}\\.\\d$/.test(v)) v = v + "0";
+      var min = f === "per_tx" || f === "monthly" ? S.bounds.limit_min : "0.00";
+      if ((!/^\\d{1,9}\\.\\d{2}$/.test(v) || cents(v) < cents(min) || cents(v) > cents(S.bounds.max)) && !err) err = P.words[f] + ": an amount from " + min + " to " + S.bounds.max + " EUR, like 25.00.";
+      out[f] = v;
+    });
+    if (!err && cents(out.per_tx) > cents(out.monthly)) err = "Limit per purchase: no higher than the limit per month.";
+    return { set: out, error: err };
+  }
+  function same(a, b) { return Array.isArray(a) ? a.join(",") === b.join(",") : a === b; }
+  function pedited() {
+    var r = pset(), v = inForce(), changed = P.fields.filter(function (f) { return !same(r.set[f], v[f]); });
+    P.fields.forEach(function (f) { document.querySelector('[data-pfield="' + f + '"]').classList.toggle("chg", changed.indexOf(f) >= 0); });
+    $("p-apply").disabled = !!r.error || !changed.length;
+    status("p-status", r.error || (changed.length ? "Changed: " + changed.map(function (f) { return P.words[f].toLowerCase(); }).join(", ") + ". Apply it: stricter holds at once, looser needs your signature." : "Change one value, then apply it."), r.error ? "bad" : "");
+    return r;
+  }
+  // A panel's text, line by line; a line not in the text it is compared with is marked as changed.
+  // The mandate's expires-in counts down by the second: not a change the visitor made, so it is not marked.
+  function steady(ln) { return ln.replace(/--expires-in \\d+/, "--expires-in"); }
+  function lines(pre, text, base) {
+    var old = base === undefined ? null : base.split("\\n").map(steady);
+    pre.replaceChildren.apply(pre, text.split("\\n").map(function (ln) { return el("span", "ln" + (old && old.indexOf(steady(ln)) < 0 ? " chg" : ""), [ln + "\\n"]); }));
+  }
+  function argText(a) { return /^[A-Za-z0-9_.,:\\/-]+$/.test(a) ? a : JSON.stringify(a); }
+  // The three locks for the agent shown: in force, or proposed (refused until signed); compared with base when given.
+  function renderLocks(l, proposed, base) {
+    var t = {
+      purser: JSON.stringify(l.purser.settings, null, 2),
+      awx: JSON.stringify({ authorization_controls: l.airwallex.authorization_controls }, null, 2),
+      args: "metal-agent " + l.metal.args.map(argText).join(" "),
+      metal: [l.metal.params.cap, l.metal.params.budget, l.metal.params.payee, l.metal.params.expires_at.slice(0, 16)].join("\\n")
+    };
+    lines($("pl-purser"), t.purser, base && base.purser);
+    lines($("pl-awx"), t.awx, base && base.awx);
+    lines($("pl-margs"), t.args, base && base.args);
+    $("pl-rules").replaceChildren.apply($("pl-rules"), l.purser.rules.map(function (r) { return el("li", "", [r]); }));
+    var pay = l.purser.payments || [];
+    $("pl-pay").replaceChildren.apply($("pl-pay"), pay.map(function (p) {
+      var li = el("li", p.check === "fail" ? "bad" : p.check === "executed" ? "" : "ok", [p.proposal_id + " · " + eur(p.amount) + ": " + (p.check === "fail" ? "blocked. " + p.rule : p.check === "executed" ? (p.alone ? D.policy.paidAlone + " (stand-in, test world)." : "ran (stand-in, test world).") : "passes. " + (p.waits || "Within what the agent may pay alone."))]);
+      li.dataset.proposal = p.proposal_id; li.dataset.check = p.check;
+      return li;
+    }));
+    $("pl-pay").hidden = !pay.length;
+    var m = l.metal.params, old = base ? base.metal.split("\\n") : null;
+    var dd = function (v, i, shown) { var d = el("dd", old && old[i] !== v ? "chg" : "", [shown || v]); d.dataset.value = v; return d; };
+    var at = m.payee.indexOf(","), addr = m.payee.slice(0, at);
+    $("pl-metal").replaceChildren(
+      el("dt", "", ["Cap (most per payment)"]), dd(m.cap, 0, m.cap + " *USDZ"), el("dt", "", ["Budget (most in all)"]), dd(m.budget, 1, m.budget + " *USDZ"),
+      el("dt", "", ["Payee"]), dd(m.payee, 2, m.payee.slice(at + 1) + " · " + addr.slice(0, 6) + "…" + addr.slice(-4)),
+      el("dt", "", ["Expiry"]), dd(m.expires_at.slice(0, 16), 3, m.expires_at.slice(0, 16).replace("T", " ") + " UTC (in " + Math.round(Number(m.expires_in_seconds) / 86400) + " days)")
+    );
+    document.querySelectorAll("#p-locks .state").forEach(function (n) { n.textContent = proposed ? P.state.proposed : P.state.inForce; n.classList.toggle("proposed", !!proposed); });
+    $("p-locks").dataset.state = proposed ? "proposed" : "in-force";
+    return t;
+  }
+  // 1.1: the worst case, as the server computed it (Purser's own code) for the policy in force.
+  function worstCase(x) {
+    if (!x) return;
+    $("p-expo-head").textContent = x.headline; $("p-expo-tasks").textContent = x.tasks;
+    var ul = $("p-expo-how");
+    ul.replaceChildren.apply(ul, x.how.concat([D.policy.worstCaseChain]).map(function (l) { return el("li", "", [l]); }));
+  }
+  function policyState(d) {
+    S.policy = d.policy; S.locks = d.locks; if (d.bounds) S.bounds = d.bounds;
+    worstCase(d.exposure);
+    $("p-ver").textContent = "Policy v" + d.policy_version;
+  }
+  function worldFacts(w) {
+    if (!w) return;
+    $("w-balance").textContent = eur(w.balance); $("w-floor").textContent = eur(w.reserve_floor); $("w-alone").textContent = eur(w.alone_limit);
+  }
+  function inForceView() { S.pending = null; $("p-refused").hidden = true; $("p-expo-next").hidden = true; S.base = renderLocks(S.locks[S.agent], false); }
+  function openPolicy(d) {
+    S.agent = "treasury"; $("p-agent").value = S.agent;
+    policyState(d); fillForm(); inForceView();
+    $("policy").hidden = false;
+  }
+  function policyApplied(d, signed) {
+    var before = S.base;
+    policyState(d);
+    S.pending = null; $("p-refused").hidden = true; $("p-expo-next").hidden = true;
+    S.base = renderLocks(S.locks[S.agent], false, before);
+    fillForm();
+    var ch = (d.changes || []).map(function (c) { return P.words[c.field].toLowerCase() + " " + show(c.from) + " → " + show(c.to); }).join("; ");
+    var ran = (d.paid_alone || []).map(function (id) { return " " + id + ": " + D.policy.paidAlone + "."; }).join("");
+    status("p-status", (signed ? "Signed and verified: the looser policy holds in your test world. " : "Stricter: it holds at once, no signature needed. ") + "Changed: " + ch + "." + ran, "ok");
+    // The result line, then the panels under it, just below the sticky step bar (--stick), not under it.
+    measureSticky();
+    $("p-status").scrollIntoView({ behavior: "smooth", block: "start" });
+    worldFacts(d.world);
+    return showProposals(d.proposals);
+  }
+  function policyRefused(d, agent, set) {
+    var terms = JSON.parse(d.canonical);
+    return sha256(canon(terms)).then(function (h) {
+      var ok = canon(terms) === d.canonical && h === d.terms_sha256;
+      policyState(d);
+      $("p-why").textContent = d.reason;
+      $("p-effect").textContent = d.alone_effect || ""; $("p-effect").hidden = !d.alone_effect;
+      $("p-hash").replaceChildren(el("p", "small muted", ["The hash of the exact terms of this change, which your passkey signs" + (ok ? " (checked on this device):" : ":")]), hashBox(h));
+      $("p-terms").textContent = d.canonical;
+      $("p-sign").hidden = !ok; $("p-sign").disabled = !ok;
+      status("p-sstatus", ok ? (S.credId ? "Sign it to make it hold, or undo your edits." : "Signing first makes your test passkey for this world, then signs.") : "The terms do not hash to the hash the server sent. Do not sign.", ok ? "" : "bad");
+      S.pending = ok ? { agent: agent, set: set, canonical: d.canonical, sha: h } : null;
+      $("p-refused").hidden = false;
+      status("p-status", "", "");
+      renderLocks(d.proposed[agent], true, S.base);
+      if (d.proposed_exposure) { $("p-expo-next").textContent = D.policy.ifSigned + " " + d.proposed_exposure.figure + "."; $("p-expo-next").hidden = false; }
+      measureSticky();
+      $("p-refused").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  P.fields.forEach(function (f) {
+    var ns = f === "mccs" || f === "currencies" ? document.querySelectorAll('input[name="pf-' + f + '"]') : [$("pf-" + f)];
+    [].forEach.call(ns, function (n) {
+      ["input", "change"].forEach(function (ev) { n.addEventListener(ev, function () { if (S.pending) inForceView(); pedited(); }); });
+    });
+  });
+  $("p-open").addEventListener("click", function () {
+    var body = $("p-body"), open = body.hidden;
+    body.hidden = !open; $("p-open").setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  $("p-agent").addEventListener("change", function () { S.agent = $("p-agent").value; fillForm(); inForceView(); });
+  $("p-reset").addEventListener("click", function () { fillForm(); inForceView(); });
+  $("p-apply").addEventListener("click", function () {
+    var r = pedited();
+    if (r.error) return;
+    var b = $("p-apply"), agent = S.agent;
+    b.disabled = true;
+    status("p-status", "Sending the change to your test world…");
+    post("policy", { token: S.token, agent: agent, set: r.set }).then(function (q) {
+      var d = q.data || {};
+      b.disabled = false;
+      if (q.status !== 200) { status("p-status", (d.error || ("error " + q.status)), "bad"); return; }
+      if (d.applied) return policyApplied(d, false);
+      if (d.needs_signature) return policyRefused(d, agent, r.set);
+      status("p-status", d.reason || "Nothing changed.", "");
+    });
+  });
+  $("p-sign").addEventListener("click", function () {
+    var pend = S.pending, btn = $("p-sign");
+    if (!pend) return;
+    btn.disabled = true;
+    if (!S.credId) status("p-sstatus", "First your test passkey for this world: waiting for your Face ID, Touch ID, Windows Hello or security key…");
+    (S.credId ? Promise.resolve({ ok: true }) : makePasskey()).then(function (k) {
+      if (!k.ok) { status("p-sstatus", k.msg, "bad"); btn.disabled = !k.again; return; }
+      status("p-sstatus", "Waiting for Face ID…");
+      return navigator.credentials.get({ publicKey: {
+        challenge: hexToBytes(pend.sha), rpId: location.hostname, allowCredentials: [{ type: "public-key", id: fromB64u(S.credId) }], userVerification: "required", timeout: 60000
+      } }).then(function (c) {
+        if (!c) { status("p-sstatus", "Cancelled. Nothing was signed.", "bad"); btn.disabled = false; return; }
+        status("p-sstatus", "Purser is checking your signature…");
+        return post("policy", { token: S.token, agent: pend.agent, set: pend.set, canonical: pend.canonical, credential: assertionOf(c) }).then(function (r) {
+          var d = r.data || {};
+          if (r.status === 200 && d.applied) { status("p-sstatus", "", ""); return policyApplied(d, true); }
+          status("p-sstatus", "Not accepted: " + (d.reason || d.error || ("error " + r.status)), "bad");
+          btn.disabled = false;
+        });
+      }, function (e) { status("p-sstatus", passkeyError(e), "bad"); btn.disabled = false; });
+    });
+  });
 
   // ── The receipt: everything needed to check the signature offline, and nothing secret (no world token). ──
   function receipt() {
@@ -803,6 +1113,36 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
 </div>
 <section id="s-props" hidden>
   <dl class="world" id="w-facts" hidden><div><dt>Test world</dt><dd id="w-id"></dd></div><div><dt>Balance</dt><dd id="w-balance"></dd></div><div><dt>Reserve floor</dt><dd id="w-floor"></dd></div><div><dt>An agent pays alone up to</dt><dd id="w-alone"></dd></div><div><dt>Deleted</dt><dd id="w-left" data-left="in"></dd></div></dl>
+<section class="card policy" id="policy" hidden>
+  <div class="pol" id="pol"><button class="btn popen" type="button" id="p-open" aria-expanded="false" aria-controls="p-body">${esc(TRY_POLICY.open)}</button>
+  <div class="pbody" id="p-body" hidden>
+    <div class="phead"><span class="n">0</span><span class="pt"><b id="p-head">${esc(TRY_POLICY.title)}</b><small>${esc(TRY_POLICY.lead)}</small></span></div>
+    <div class="pexpo" id="p-expo" aria-live="polite"><p class="hl" id="p-expo-head">${esc(STEP0_WORST.headline)}</p><p class="small" id="p-expo-tasks">${esc(STEP0_WORST.tasks)}</p><p class="small">${esc(STEP0_WORST.above)}</p><p class="small" id="p-expo-next" hidden></p><details class="how"><summary>${esc(EXPOSURE_HOW)}</summary><ul id="p-expo-how">${[...STEP0_WORST.how, TRY_POLICY.worstCaseChain].map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details></div>
+    <div class="ptop"><label>Agent<select id="p-agent" data-world="1">${AGENTS.map((a) => `<option value="${esc(a)}">${esc(agentName(a))}</option>`).join("")}</select></label><span class="pill" id="p-ver"></span></div>
+    <div class="pform" id="p-form">
+      ${(["per_tx", "monthly", "alone", "reserve_floor"] as const).map((f) => `<label data-pfield="${f}">${esc(FIELD_WORDS[f])} (EUR${f === "reserve_floor" ? ", the company's" : ""})<input id="pf-${f}" inputmode="decimal" autocomplete="off" spellcheck="false" data-world="1"></label>`).join("\n      ")}
+      <label data-pfield="end_date">${esc(FIELD_WORDS.end_date)}<input id="pf-end_date" type="date" data-world="1"></label>
+      <fieldset data-pfield="currencies"><legend>${esc(FIELD_WORDS.currencies)}</legend><div class="cks">${POLICY_CURRENCIES.map((c) => `<label class="ck"><input type="checkbox" name="pf-currencies" value="${esc(c)}" data-world="1">${esc(c)}</label>`).join("")}</div></fieldset>
+      <fieldset data-pfield="mccs"><legend>${esc(FIELD_WORDS.mccs)}</legend><div class="cks">${POLICY_MCCS.map((m) => `<label class="ck"><input type="checkbox" name="pf-mccs" value="${esc(m)}" data-world="1">${esc(m)} ${esc(MCC_WORDS[m] ?? "")}</label>`).join("")}</div></fieldset>
+    </div>
+    <div class="pacts"><button class="btn primary" type="button" id="p-apply" data-world="1" disabled>Apply the policy</button><button class="btn" type="button" id="p-reset" data-world="1">Undo my edits</button></div>
+    <p class="status" id="p-status" aria-live="polite"></p>
+    <div class="prefused" id="p-refused" hidden>
+      <div class="line bad">${icon("octagon-x", 22)}<span><b id="p-rhead">${esc(TRY_POLICY.refused)}</b><span id="p-why" class="small"></span></span></div>
+      <p class="small" id="p-effect" hidden></p>
+      <div id="p-hash"></div>
+      <details class="terms"><summary>All terms of this change (exactly what is hashed)</summary><pre id="p-terms"></pre></details>
+      <div class="actions"><button class="btn primary big" type="button" id="p-sign" data-world="1">${icon("scan-face", 18)}${esc(TRY_POLICY.sign)}</button></div>
+      <p class="status" id="p-sstatus" aria-live="polite"></p>
+    </div>
+    <div class="locks3" id="p-locks">
+      <article class="lk lk-purser" data-panel="purser"><div class="lkh"><span class="n">1</span><b>${esc(TRY_POLICY.panels.purser)}</b><span class="pill state"></span></div><p class="ns">Rules in code, checked before anything is signed</p><ul id="pl-rules"></ul><pre id="pl-purser"></pre><ul id="pl-pay" hidden></ul></article>
+      <article class="lk lk-awx" data-panel="airwallex"><div class="lkh"><span class="n">2</span><b>${esc(TRY_POLICY.panels.airwallex)}</b><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.airwallex)}</p><pre id="pl-awx"></pre></article>
+      <article class="lk lk-metal" data-panel="metal"><div class="lkh"><span class="n">3</span><b>${esc(TRY_POLICY.panels.metal)}</b><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.metal)}</p><p class="unit" id="pl-unit">${esc(TRY_POLICY.metalUnit)}</p><dl id="pl-metal"></dl><pre id="pl-margs"></pre><p class="small muted">${esc(TRY_POLICY.metalNote)}</p></article>
+    </div>
+    <p class="basis">${esc(TRY_POLICY.source)}</p>
+  </div></div>
+</section>
   <div class="props" id="props"></div>
 </section>
 <section class="card result" id="result" hidden aria-live="polite">
@@ -833,7 +1173,8 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: an agent proposes, you sign the exact terms with Face ID, Purser verifies. A test world of your own; nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false,
-    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, voiceLabels: VOICE_LABELS },
+    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, voiceLabels: VOICE_LABELS,
+      policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE, saidBefore: TRY_POLICY.saidBefore, worstCaseChain: TRY_POLICY.worstCaseChain, ifSigned: TRY_POLICY.ifSigned } },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [

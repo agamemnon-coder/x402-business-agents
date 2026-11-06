@@ -50,6 +50,8 @@ export class RelayObject extends DurableObject<Env> {
         fx: id && key ? new SandboxQuotes({ clientId: id, apiKey: key }) : null,
         // Only a function that asks Haiku for one sentence: the desk never holds the key itself.
         agentLine: agentLineSource(this.env, fetch),
+        // 1.1: the main run's recorded rate, built in with the pages, for step 0's worst case.
+        rate: PAGES.exposureRate ?? null,
       })).fetch(req);
     }
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);

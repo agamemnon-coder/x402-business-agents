@@ -3,7 +3,8 @@
 // agent does. Every authorisation Airwallex makes on a card is recorded once, from whichever source sees it first.
 
 import { currentOrigin, parseOrigin, type Origin } from "../provenance/origin.js";
-import { AGENTS, CARDS, type Agent, CARD_ACTIVE_DAYS, OUTSIDE_AGENT_MCCS, PLANS } from "../config/policy.js";
+import { AGENTS, CARDS, type Agent } from "../config/policy.js";
+import { agentCardControls } from "./cardRules.js";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
@@ -68,8 +69,7 @@ export function cardControls(agent: string, now: Date, db?: DB): CardControls {
     if (!t) throw new Error(`no task card ${agent}`);
     return { mccs: t.mccs.split(",").sort(), currencies: ["EUR"], activeTo: t.valid_until, singleUse: true };
   }
-  const mccs = agent.startsWith("ext:") ? OUTSIDE_AGENT_MCCS : Object.values(PLANS).filter((p) => p.agent === agent && !/on the .* card$/.test(p.label)).map((p) => p.mcc);
-  return { mccs: [...new Set(mccs)].sort(), currencies: ["EUR"], activeTo: new Date(now.getTime() + CARD_ACTIVE_DAYS * 86_400_000).toISOString() };
+  return agentCardControls(agent, now);
 }
 
 const controlWords = (c: Pick<CardControls, "mccs" | "currencies"> | null | undefined) =>
@@ -193,6 +193,20 @@ export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: Iss
   if (!keys.some((k) => k.startsWith("card.") || k.startsWith("stop.") || k.startsWith("pause.") || k === "freeze")) return [];
   if (!rail) throw new Error("the policy changed, but the Airwallex sandbox keys are not set, so the card is not updated yet");
   return syncCardsIfChanged(db, rail, now);
+}
+
+/**
+ * How often the runner polls every card's transactions (src/cli/relay.ts): every 5 s, unless the world sets
+ * KIT11_CARD_POLL_MS (at least 1000) or turns the poll off ("off": awx-1, where the webhooks bring every transaction and
+ * each poll is a counted Airwallex call; the run polls once at its close instead). Limits still sync either way.
+ */
+export function cardPollMs(env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env): number | null {
+  const v = env.KIT11_CARD_POLL_MS;
+  if (v === undefined || v === "") return 5000;
+  if (v === "off") return null;
+  if (!/^\d+$/.test(v)) throw new Error(`KIT11_CARD_POLL_MS is a number of milliseconds or "off", not ${JSON.stringify(v.slice(0, 20))}`);
+  if (Number(v) < 1000) throw new Error("KIT11_CARD_POLL_MS is at least 1000 (half the sandbox's rate limit is the client's own pace)");
+  return Number(v);
 }
 
 export type CardTxSource = "simulation" | "poll" | "webhook";

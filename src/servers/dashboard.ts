@@ -22,6 +22,8 @@ import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
 import { AGENT_DISPLAY, CFO_VIEW_LINE, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { EXPOSURE_HOW, exposureOf, exposureWords } from "../policy/exposure.js";
+import { exposurePolicyFromRecord, recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
 import { loadRecord, replayRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
 import { trySignPage } from "../try/sign.js";
@@ -29,6 +31,8 @@ import { tryVerifyPage } from "../try/verify.js";
 import { watchPage } from "../redesign/watch.js";
 import { proofPage } from "../redesign/proof.js";
 import { judgePage } from "../redesign/judge.js";
+import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
+import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { restyle } from "../redesign/ui.js";
 import { withNav } from "../ui/nav.js";
 import { buildLiveTimeline } from "../live/timeline.js";
@@ -64,6 +68,14 @@ const AUTONOMY_JSON = (() => {
 })();
 /** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
 export const FONT = readFileSync(new URL("../ui/inter.woff2", import.meta.url));
+/**
+ * Files to download, served as /assets/<name> beside the images: the main run's month-end pack (Max's last round, 1.3),
+ * built here from the record and its companion (src/accounting/monthPack.ts), the same bytes on every build.
+ */
+export const DOWNLOADS: Record<string, { type: string; body: Buffer }> = (() => {
+  const pack = monthEndPack(loadRecord().record, loadTrace());
+  return { [pack.name]: { type: "application/zip", body: pack.zip } };
+})();
 /** The sponsors' official logos (src/ui/logos/README.md), served as /assets/<name> for the landing's "Built on". */
 export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex.png", import.meta.url)) },
@@ -111,8 +123,25 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
     // The Overview's line: the core sentence, word for word (who holds which limit; never "every limit").
     .replace("__CORE_SENTENCE__", () => CORE_SENTENCE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
     // The CFO's view (/?autonomy) opens with this line (Max's last round, item 4); the page shows it on that view only.
-    .replace("__CFO_VIEW_LINE__", () => CFO_VIEW_LINE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+    .replace("__CFO_VIEW_LINE__", () => CFO_VIEW_LINE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+    // Under it, on that view only: "Trace any payment" (Max's last round, 1.2), to /trace.
+    .replace("__TRACE_LINK__", () => TRACE_LINK)
+    // And the month-end pack (1.3): one download, built from the record (DOWNLOADS).
+    .replace("__PACK_NAME__", () => PACK_NAME).replace("__PACK_LINK__", () => PACK_LINK)
+    // 1.1: under that line, the worst case the main run's policy allows (src/policy/exposure.ts), one block.
+    .replace("__CFO_EXPOSURE__", () => CFO_EXPOSURE);
 }
+/** The CFO's view's worst case: from the policy the main run ended with and the one rate it recorded (none: no block). */
+const CFO_EXPOSURE = (() => {
+  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  try {
+    const { record } = loadRecord();
+    const r = record as unknown as RecordForExposure;
+    const p = exposurePolicyFromRecord(r);
+    const w = exposureWords(exposureOf(p), p, recordedRate(r));
+    return `<p class="hl">${esc(w.headline)}</p><p>${esc(w.tasks)}</p><p>${esc(w.above)}</p><details class="how"><summary>${esc(EXPOSURE_HOW)}</summary><ul>${w.how.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details>`;
+  } catch { return ""; }
+})();
 /**
  * Words the public pages no longer use (Max, v4): older records and Lab results still carry them in their text, so the
  * pages that show those records say them in today's words. Display only; the records stay as they were written.
@@ -210,6 +239,9 @@ export const CLAUDE_PAGE = claudePage();
 const styleAndScriptCsp = (page: string) => ["default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? styleAndScriptCsp(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
+/** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
+export const TRACE_PAGE = tracePage();
+export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);
 /** The clean 404, for any address that is not a page; its links and assets absolute, since it answers at any depth. */
 export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 export const NOT_FOUND_CSP = styleOnlyCsp(NOT_FOUND_PAGE);
@@ -300,7 +332,7 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.type("font/woff2").send(FONT);
   });
   app.get("/assets/:name", (req, res, next) => {
-    const logo = LOGOS[String(req.params.name)];
+    const logo = LOGOS[String(req.params.name)] ?? DOWNLOADS[String(req.params.name)];
     if (!logo) return next();
     res.type(logo.type).send(logo.body);
   });
@@ -331,6 +363,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/airwallex", (_req, res) => {
     res.setHeader("Content-Security-Policy", AIRWALLEX_CSP);
     res.type("html").send(AIRWALLEX_PAGE);
+  });
+  app.get("/trace", (_req, res) => {
+    res.setHeader("Content-Security-Policy", TRACE_CSP);
+    res.type("html").send(TRACE_PAGE);
   });
   app.get("/claude", (_req, res) => {
     res.setHeader("Content-Security-Policy", CLAUDE_CSP);

@@ -21,7 +21,7 @@ AI agents can now spend company money; Purser lets them, through Airwallex and M
 
 ## Description
 
-Characters: **3,967** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,995** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 
@@ -45,7 +45,7 @@ not known yet. `test/submission.test.ts` checks this count and keeps the text un
 - Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey).
 - Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
 
-**The business (not validated with customers yet).** Intended pricing: €49 per company a month including 5 agents; €10 per extra agent (hypothesis). Who buys, why now (with its source) and why Purser: docs/business in the repo.
+**The business (not validated with customers yet).** Price: €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis. Who buys, why now and why Purser: docs/business in the repo.
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 

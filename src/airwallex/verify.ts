@@ -12,7 +12,7 @@ import type { InvoicePaymentTerms } from "../agents/euroBill.js";
 
 export type Check = { level: "ok" | "FAIL" | "note"; what: string; detail: string };
 
-type Get = (path: string, query?: Record<string, string>) => Promise<unknown>;
+export type Get = (path: string, query?: Record<string, string>) => Promise<unknown>;
 type Items<T> = { items: T[]; has_more?: boolean };
 type AwxDeposit = { id: string; amount: number | string; currency: string; reference?: string | null; status: string };
 type AwxConversion = { conversion_id: string; request_id: string; quote_id?: string; status: string; buy_amount: number | string; sell_amount: number | string; metadata?: Record<string, string> | null };

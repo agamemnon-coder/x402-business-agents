@@ -219,6 +219,66 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   one line: "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." Before the
   link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
   HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2657 tests in 269 files, all passing (with main's).
+- 6 November, /try/sign step 0, "Set the policy" (Max's item 1): "One policy → three locks", interactive. In the
+  visitor's test world, each agent's CFO policy (limit per purchase and per month, merchant categories, currencies,
+  end date, "may pay alone up to", and the company's reserve floor) and, beside it, three panels computed on the server
+  by Purser's own code: Purser's rule (its settings and the world's payment check), the Airwallex card controls as
+  IssuingRest sends them ("what Purser would send; not sent"), and the Metal mandate's terms as the owner signer passes
+  them to metal-agent ("not sent"). A stricter policy holds at once; a looser one (decided field by field) is refused
+  until the visitor signs its exact terms with the world's passkey, verified as a payment's signature. The new policy
+  holds for the rest of the visit: a lower floor, signed, lets the blocked T-0001 be signed and run; a higher one
+  blocks T-0002. Max's three choices: step 0 is behind a button, "Optional: set the policy first"; the Metal panel says
+  its amounts are *USDZ (test USD), the policy's numbers unconverted; and "may pay alone up to" works: raised and
+  signed, a payment at or below it runs without a signature by the same stand-in, its card saying "paid alone under
+  your new policy" (above it, or once it is lowered again, a payment not yet run waits for a signature). No call to
+  Airwallex, Metal or Claude. 2732 tests in 271 files, all passing (with main's).
+- 6 November, trace any payment (Max's last round, 1.2): /trace. Pick any of the 88 payments of the main run (88 = 86
+  on Metal + 1 card charge + 1 SWIFT transfer; 87 of them inside the limits, the SWIFT transfer through a proposal) and
+  see its chain: the policy, the decision (agent, model, request id), the lock that held it or the proposal, the
+  signature, the executor's hash check, the rail id, the booking line and the audit row; a step a payment does not have
+  says so and why. What the main run's record keeps only per group comes from a companion record,
+  docs/demo/main-run-trace.json, derived from the main run's ledger (3 Nov) with the same scrub as the record's ledger
+  rows; per audit row it publishes only seq, prev_hash and row_hash, so the chain's linkage and head are checkable and
+  each row's content is not. The main run's record is unchanged. Linked from the CFO's view and from /proof. 2754 tests in 272 files, all passing.
+- 6 November, the month-end pack (Max's last round, 1.3): "Download the month-end pack" on the CFO's view and /proof,
+  one zip for the main run, built with the pages from the record and its companion, byte for byte the same on every
+  build (`npm run month-end-pack` writes it too). Inside: the GL export with each line's rail id and approval hash, the
+  postings, the payments (88 = 86 on Metal + 1 card charge + 1 SWIFT transfer, the 88 flows reconcile checked), the
+  approvals, the audit chain's published links with their check, and a README on how to check it. "From the main run
+  of 3 November, test money."; T:0: "Posting to T:0 is built; nothing posted (keys refused: 403 CAPI71 on 3 Nov, 401
+  CAPI11 on 5 Nov)." A stored zip, written with Node's own CRC-32: no new dependency. 2773 tests in 273 files, all passing.
+- 6 November, "Unit economics (hypothesis)" (Max's last round, item 5.2; assumptions approved by Max): in
+  docs/business/model.md, what a company of 5 agents costs a month against the intended price, from the main run's
+  Claude cost per decision and a list of labelled assumptions (usage, Cloudflare hosting at its published prices, the
+  ECB's EUR/USD rate), with the gross margin at low, mid and high usage (77%, 48%, 52%). The price now includes
+  decisions, word for word everywhere: "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10
+  per extra agent; €3 per extra 100 decisions." One line says what Opus for every agent would cost (about 2.1×, the
+  run repriced), one what Claude decided (24 decisions; of the 88 payments (88 = 86 on Metal + 1 card charge + 1 SWIFT transfer), 82 were routine code). The deck's business
+  slide shows the same numbers ("Why this is a company" merged into it, so the deck stays at twelve).
+  src/business/unitEconomics.ts computes them; a test checks that none is unsourced. 2792 tests in 274 files,
+  all passing (with main's).
+- 6 November, the test suite makes 0 external calls: building the seller or a supplier no longer asks Metal's
+  facilitator for its /supported list (test/support/facilitatorStandIn.ts, in test/clearing.test.ts and
+  test/world-thursday.test.ts), and a vitest setup file removes every live key from the tests' environment and refuses
+  any request to a host that is not this machine, also in the child processes a test starts
+  (test/support/noNetwork.ts, test/support/no-network.cjs). Checked with a logging preload over the full suite: 0
+  attempts. 2736 tests in 272 files, all passing.
+- 6 November, awx-1 prepared, not run (Max's last round, item 2.1): the Airwallex-only run's plan and runbook
+  (docs/runs/awx-1-plan.md): every Airwallex call by step and endpoint (85 expected, 96 at most), the Claude estimate from
+  the main run's own costs, the abort criteria. `npm run awx-1` runs the scenario on the stand-ins with 0 network and
+  checks a–g, verify and reconcile; live it waits for Max's Face ID and a call guard keeps to the approved count.
+  Max approved 96 Airwallex calls at most (117 with one second attempt), 14 Claude calls, 0 Metal. A stand-in test's
+  accidental Claude calls while preparing it are booked as an upper bound (at most 24 calls, 0.18 USD).
+  2802 tests in 277 files, all passing (with main's and the network guard).
+- 6 November, the worst case (1.1) and the unit economics (5.2) merged with the network guard and awx-1's preparation:
+  2844 tests in 279 files, all passing.
+- 6 November, the worst case, set by policy (1.1): per agent and in all, per day and per month, computed from the
+  policy by Purser's own code: each card's monthly limit (EUR), each Metal mandate's budget (test USD) and the
+  Treasury agent's task cards without Face ID, on a line of their own (Max: "apart"). EUR and test USD apart, an EUR
+  total only at the main run's recorded rate (3 Nov). Clear at a glance (Max): the figure, two lines, and the rest behind
+  one closed fold, "How this is computed". At the top of the CFO's view, in step 0 of /try/sign (changing with the visitor's card limits) and in
+  the README; `worstCaseLine()` holds the form's sentence for its rewrite. No call to Airwallex, Metal or Claude.
+  2796 tests in 274 files, all passing (with main's).
 - 7 November, "Judge it in 3 minutes" (Max's last round, item 5.1): /judge, five steps for a juror with little time,
   each with a checkbox, a time (60 + 30 + 30 + 30 + 30 s) and one line of what they will see, each a link to a page
   that already exists: sign one and tamper one cent (/try/sign); set a looser policy and see the worst case change
@@ -228,6 +288,8 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   (localStorage, in try/catch); the page has no fetch and its CSP allows no connection. Linked once at the top of Home,
   the README and the form's instructions. test/judge-tour.test.ts fails while a step links to a route the site does
   not serve. 2671 tests in 270 files, all passing (with main's).
+- 7 November, /judge merged with the worst case, the unit economics, /trace, the month-end pack and awx-1's
+  preparation: every step's route now served. 2858 tests in 280 files, all passing.
 
 ## Real, and ours
 

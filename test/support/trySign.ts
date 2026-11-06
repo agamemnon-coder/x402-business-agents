@@ -13,9 +13,9 @@ export const t0 = new Date("2026-11-04T10:00:00Z");
 export function sqlOver(db: Database.Database): Sql {
   return { exec(q, ...b) { const st = db.prepare(q); const rows = st.reader ? st.all(...b) : (st.run(...b), []); return { toArray: () => rows }; } };
 }
-export function desk(db = new Database(":memory:"), fx: FxSource | null = null) {
+export function desk(db = new Database(":memory:"), fx: FxSource | null = null, rate: { usdPerEur: string; date: string; source: string } | null = null) {
   let clock = t0;
-  const d = new TrySignDesk(sqlOver(db), { now: () => clock, fx });
+  const d = new TrySignDesk(sqlOver(db), { now: () => clock, fx, rate });
   return { d, db, at: (t: Date) => { clock = t; } };
 }
 let ipN = 0;

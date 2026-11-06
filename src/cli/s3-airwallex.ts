@@ -8,8 +8,11 @@ import { resolve } from "node:path";
 import { proposeInvoicePayment, seedTreasury } from "../agents/euroBill.js";
 import { attachReview } from "../claude/review.js";
 import { Tools } from "../claude/tools.js";
+import { ClaudeReader, claudeClient } from "../claude/reader.js";
+import type Anthropic from "@anthropic-ai/sdk";
 import { bookCredit } from "../agents/sweep.js";
 import { AirwallexRest } from "../airwallex/adapter.js";
+import type { AirwallexRail } from "../airwallex/port.js";
 import { Airwallex, type AirwallexConfig } from "../airwallex/client.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
@@ -32,10 +35,15 @@ export async function runAirwallexSide(db: DB, cfg: AirwallexConfig, eventKey: s
  * it needs, only the shortfall converted on a locked quote, the SWIFT fee ceiling. Used for the manufacturer's invoice
  * (S3) and Kit 11's monthly licence fee (npm run licence). Nothing moves until the proposal is approved.
  */
-export async function planInvoice(db: DB, rest: AirwallexRest, s: Awaited<ReturnType<typeof seedTreasury>>, fixture: string): Promise<void> {
+export async function planInvoice(
+  db: DB, rest: AirwallexRail, s: Awaited<ReturnType<typeof seedTreasury>>, fixture: string,
+  // The Claude client for the reads, the review and the timing advice: the environment's by default; null runs code's
+  // own parser with no model (the stand-ins, src/awx/standIn.ts, never reach Claude whatever the environment holds).
+  o: { claude?: Anthropic | null; agents?: boolean } = {},
+): Promise<void> {
   const path = resolve(import.meta.dirname, `../../fixtures/${fixture}`);
   const text = readFileSync(path, "utf8");
-  const tools = new Tools(db);
+  const tools = o.claude === undefined ? new Tools(db) : new Tools(db, new ClaudeReader(db, o.claude));
   const kind = await tools.classify(text);
   if (kind.value.kind !== "invoice") throw new Error(`escalate: expected an invoice, ${kind.source} read ${kind.value.kind}`);
   const read = await tools.invoice(text);
@@ -64,14 +72,14 @@ export async function planInvoice(db: DB, rest: AirwallexRest, s: Awaited<Return
   }
   console.log(`                 after: EUR free ${t.after.eur_free}, USD ${t.after.usd_available} (floor ${t.floors.usd_floor})`);
   // Block 5.3: with the agents on, the Treasury agent reads the position and the quote and advises when to pay.
-  if (agentsOn()) {
+  if (o.agents ?? agentsOn()) {
     const today = new Date().toISOString().slice(0, 10);
     const a = await adviseTiming(db, {
       proposalId: out.proposal.proposal_id, invoiceNo: inv.invoice_no, vendor: inv.vendor, amount: t.amount, dueDate: inv.due_date, today,
       eurAvailable: t.balances_before.eur_available, eurFloor: t.floors.eur_floor, eurObligations: t.floors.eur_obligations, usdAvailable: t.balances_before.usd_available, usdFloor: t.floors.usd_floor,
       quote: t.conversion ? { sell: `${t.conversion.sell_currency} ${t.conversion.sell_amount}`, buy: `${t.conversion.buy_currency} ${t.conversion.buy_amount}`, rate: t.conversion.client_rate, validTo: t.conversion.valid_to } : null,
       after: { eurFree: t.after.eur_free, usdAvailable: t.after.usd_available }, feeMax: t.fee_max,
-    });
+    }, o.claude === undefined ? claudeClient() : o.claude);
     console.log(`TREASURY AGENT   ${a.source === "claude" ? `${a.run.model ?? "Claude"}: advises ${a.timing === "pay_now" ? "paying now" : `waiting until ${a.date}`}: "${a.reason}"` : "no advice (the agent did not decide); the proposal stands as code planned it"}`);
   }
   const review = await attachReview(db, tools, out.proposal, `Invoice ${inv.invoice_no} matches the allowlisted beneficiary. Free EUR before: ${fromCents(Math.max(0, s.eurAvailableCents - s.eurFloorCents - s.eurObligationsCents))}.`);
