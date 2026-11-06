@@ -2,7 +2,7 @@
 // (#6 the buy rule Claude set, #7 one caveat line and Visa TAP as a footer link, #8 the let-through framed as a test).
 // One source of truth: src/config/brand.ts (DIFFERENTIATORS, KIT11_RUN_LINE, CAVEAT_LINE, CHAIN_TEST). Breaks when a
 // surface drops a sentence, changes a word, puts something before it, or when the record no longer holds the 24.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_EXTRA_LINK, WHAT_IT_IS } from "../src/config/brand.js";
 import { homePage } from "../src/redesign/home.js";
@@ -160,9 +160,14 @@ describe("Visa TAP as a footer link on Home and Proof (jury review, 6 Nov, #7)",
     }
   });
 
-  it("the form's screenshot 6 is /try/sign signed and tampered, not /visa", () => {
+  it("the form's screenshots are the live site's, /try/sign signed and tampered among them, not /visa", () => {
     const list = between(form, "## Screenshots", "## Deck and zip");
-    expect(list).toMatch(/^6\. `screens\/18-try-sign\.png`: Sign one yourself \(\/try\/sign\)/m);
+    // Since D6 (6 Nov) the form's 8 screenshots come from the live site, in the form's order: the problem, try it (three,
+    // from one /try/sign world), the proof per partner, the business. Each file the list names is in the repository.
+    const named = [...list.matchAll(/^(\d)\. `(screens\/form\/[^`]+\.png)`/gm)].map((m) => [Number(m[1]), m[2]!] as const);
+    expect(named.map(([n]) => n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(named.map(([, f]) => f)).toEqual(["home", "try-sign-sheet", "try-sign-verified", "try-sign-tamper", "airwallex", "metal", "claude", "business"].map((x, i) => `screens/form/form-${i + 1}-${x}.png`));
+    for (const [, f] of named) expect({ f, there: existsSync(new URL(`../docs/submission/${f}`, import.meta.url)) }).toEqual({ f, there: true });
     expect(list).not.toContain("17-visa");
     expect(read("src/cli/submission.ts")).toContain('"18-try-sign.png"');
   });
