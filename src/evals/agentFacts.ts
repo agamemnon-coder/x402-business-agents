@@ -409,4 +409,46 @@ function sourcingPackwiseRaise(): AgentCase {
   };
 }
 
-export const FACT_CASES: AgentCase[] = [sourcingBusy(), treasuryRidgelineDown(), treasuryPaid(), treasuryShortfall(), sourcingPackwiseRaise()];
+/** The Treasury agent points an agent at its own card-raise tool, or tells it to ask the CFO itself. */
+export const POINTS_AT_OWN_RAISE = /ask_card_raise|\b(ask|request|propose)\b[^.]{0,40}\b(yourself|directly|on your own|your own)\b|\byou (can|could|should|need to|must|have to|'ll need to|will need to) (ask|request|propose|file|raise)\b[^.]{0,60}\b(cfo|raise|limit)\b|\bonly you can (ask|request)\b/i;
+
+/**
+ * Case 6 (rel-1, 05:46:04 UTC): the Sourcing agent writes to Treasury that Packwise Pro (45.00 EUR) is over its card's
+ * 30.00 and asks whether to get it raised. Opus answered that it cannot raise card limits, that it had "passed it on"
+ * in its report, and that Sourcing should not buy until the CFO approves a raise: nothing waited for the CFO, only the
+ * Sourcing agent's own ask_card_raise could put one there, and the plan was never bought. Passes when Treasury's answer
+ * points Sourcing at asking the CFO itself.
+ */
+function treasuryCardRaise(): AgentCase {
+  return {
+    id: "treasury-card-raise", agent: "treasury", kind: "hard", model: "opus",
+    what: "rel-1, 05:46: Sourcing asks Treasury about a card raise for Packwise Pro (45.00 over 30.00): Treasury cannot raise it and must point Sourcing at asking the CFO itself (ask_card_raise), not tell it to wait",
+    run: async (model: string, client: Anthropic) => {
+      const db = openDb(":memory:");
+      const sup = await standInSuppliers("0.04");
+      try {
+        setSupplierPrice(db, "stockline", "0.04");
+        remember(db, "treasury", [[new Date("2026-11-06T05:45:40Z"), "I planned the Stockline licence invoice SLL-2026-11 (EUR 240.00, due 15 November). It's waiting for your Face ID as P-0005. Nothing has been paid yet."]]);
+        advance(db, "treasury", { eventId: 0, messageId: 0 }, new Date("2026-11-06T05:45:40Z"));
+        sendMessage(db, "sourcing", "treasury", "Sourcing status 05:45 UTC: Stockline is at 0.04 per check, within the 0.04 cap, so I'm serving customers from it at a 0.01 margin. Ridgeline is still down (HTTP 503) until 17:36 UTC. Packwise ends Starter this month; the Pro plan is 45.00 EUR/month, above my 30.00 EUR per-purchase card limit. I'm not buying it yet. If warehouse sync should continue, the CFO would need to approve a card raise to at least 45.00 EUR before month end. Please tell me if you want that raised.", new Date("2026-11-06T05:45:53.637Z"), "claude");
+        const sim = {
+          mandates: async () => [{ agent: "sourcing", capCents: 4, budgetCents: 1400, spentCents: 66 }, { agent: "support", capCents: 10, budgetCents: 400, spentCents: 15 }, { agent: "treasury", capCents: 200, budgetCents: 200, spentCents: 51 }],
+          proposePriceRise: async () => [], client, sweep: async () => ({ ok: false, text: "No sweep in this eval." }), planInvoice: async () => ({ ok: false, text: "No invoice in this eval." }),
+        } as TreasurySim;
+        const deps: FlowDeps = { runFlow: () => ({ ok: false, text: "no flow runs in this eval" }), sim,
+          suppliers: (d: DB) => Promise.all([supplierView(d, "stockline", sup.base.stockline), supplierView(d, "ridgeline", sup.base.ridgeline)]) };
+        const w = await wake(db, { ...treasuryProfile(30 * 60_000, deps), model }, { client, now: new Date("2026-11-06T05:46:00Z") });
+        const toSourcing = (w?.run?.calls ?? []).filter((c) => c.tool === "send_message").map((c) => String((c.input as { text?: unknown }).text ?? ""));
+        const pointed = toSourcing.some((t) => POINTS_AT_OWN_RAISE.test(t));
+        return {
+          pass: w?.source === "claude" && pointed,
+          words: said(w?.run ?? null),
+          run: { ...(w?.run ?? emptyRun()), costMicros: costIn(db) },
+          detail: `${w?.source ?? "no wake"}; ${toSourcing.length ? `told Sourcing: "${toSourcing.join(" | ").slice(0, 300)}"` : "sent Sourcing nothing"}; ${pointed ? "pointed it at its own raise" : "did not point it at its own raise"}`,
+        };
+      } finally { await sup.close().catch(() => {}); }
+    },
+  };
+}
+
+export const FACT_CASES: AgentCase[] = [sourcingBusy(), treasuryRidgelineDown(), treasuryPaid(), treasuryShortfall(), sourcingPackwiseRaise(), treasuryCardRaise()];
