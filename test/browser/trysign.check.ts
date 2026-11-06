@@ -162,7 +162,7 @@ function expectedLocks(policy: FormPolicy, worldId: string) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const belowBar = async (page: any, id: string) => {
   await page.waitForTimeout(1200); // the page's own smooth scroll settles
-  return page.evaluate(`(() => ({ top: document.getElementById(${JSON.stringify(id)}).getBoundingClientRect().top, bar: document.querySelector("ol.progress").getBoundingClientRect().bottom }))()`) as Promise<{ top: number; bar: number }>;
+  return page.evaluate((elId: string) => ({ top: document.getElementById(elId)!.getBoundingClientRect().top, bar: document.querySelector("ol.progress")!.getBoundingClientRect().bottom }), id) as Promise<{ top: number; bar: number }>;
 };
 const panelsMatch = (pn: Awaited<ReturnType<typeof panels>>, ex: ReturnType<typeof expectedLocks>) =>
   pn.awx.trimEnd() === ex.awx && pn.purser.trimEnd() === ex.purser && pn.metal[0] === ex.cap && pn.metal[1] === ex.budget && pn.metal[2] === ex.payee && pn.args.startsWith(ex.args);

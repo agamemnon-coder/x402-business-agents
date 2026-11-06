@@ -51,7 +51,7 @@ async function policyStep(page: any, tag: string, errors: string[]): Promise<voi
   };
   const belowBar = async (id: string) => {
     await page.waitForTimeout(1200); // the page's own smooth scroll settles
-    return page.evaluate(`(() => ({ top: document.getElementById(${JSON.stringify(id)}).getBoundingClientRect().top, bar: document.querySelector("ol.progress").getBoundingClientRect().bottom }))()`) as Promise<{ top: number; bar: number }>;
+    return page.evaluate((elId: string) => ({ top: document.getElementById(elId)!.getBoundingClientRect().top, bar: document.querySelector("ol.progress")!.getBoundingClientRect().bottom }), id) as Promise<{ top: number; bar: number }>;
   };
   check(await page.locator("#policy").isVisible() && !(await page.locator("details#pol").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: step 0 "${TRY_POLICY.title}" is shown once the world is open, closed until asked`);
   await page.locator("details#pol > summary").click();
