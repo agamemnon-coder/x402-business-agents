@@ -410,7 +410,7 @@ function sourcingPackwiseRaise(): AgentCase {
 }
 
 /** The Treasury agent points an agent at its own card-raise tool, or tells it to ask the CFO itself. */
-export const POINTS_AT_OWN_RAISE = /ask_card_raise|\b(ask|request|propose)\b[^.]{0,40}\b(yourself|directly|on your own|your own)\b|\byou (can|could|should|need to|must|have to|'ll need to|will need to) (ask|request|propose|file|raise)\b[^.]{0,60}\b(cfo|raise|limit)\b|\bonly you can (ask|request)\b/i;
+export const POINTS_AT_OWN_RAISE = /ask_card_raise|\b(ask|request|propose|take|put|bring|raise|send|file|submit)\b[^.]{0,70}\b(yourself|on your own tool|with your own tool|straight to the cfo|to the cfo directly|with the cfo directly|directly (to|with) the cfo)\b|\b(raise|take|put|bring) (it|this|that|the [^.]{0,40}request) (with|to) the cfo\b|\bonly you can (ask|request)\b/i;
 
 /**
  * Case 6 (rel-1, 05:46:04 UTC): the Sourcing agent writes to Treasury that Packwise Pro (45.00 EUR) is over its card's
