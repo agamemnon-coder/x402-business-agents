@@ -5,7 +5,10 @@
 //   docs/submission/screens/14-dispute   the main run's dispute on /watch, at the CFO's rejection of the refund batch
 //   docs/submission/screens/18-try-sign  /try/sign on a local relay: the exact terms signed and verified, then the same
 //                                        signature refused on the amount + 0.01 (the form's screenshot 6 since 6 Nov)
-//   docs/submission/purser-deck.pdf      ten dark slides in the pitch's order (src/submission/deck.ts)
+//   docs/submission/purser-deck.pdf      twelve dark slides in the story's order (src/submission/deck.ts)
+//   docs/evidence/deck/slide-NN.png      each slide as a PNG, 1280 x 720 (section D, 6 Nov)
+// `npm run submission -- --deck-only` renders only the deck (PDF and PNGs) from the screenshots already in
+// docs/submission/screens, with no server and no browser visit: for a change to the deck's words alone.
 //   docs/media/try-sign-qr.png           the QR code to /try/sign, as on the deck's QR slide (src/submission/qr.ts)
 //   docs/internal/spiekkaart-demo.pdf    Max's one-page cheat sheet for Demo Day, from spiekkaart-demo.html
 //   out/submission/purser-source.zip     git archive of the current commit: code and docs, no keys, no ledger
@@ -41,12 +44,33 @@ const SCREENS: [string, string][] = [
   ["17-visa", "/visa"],
 ];
 
-const judge = await startJudge(0);
+const deckOnly = process.argv.includes("--deck-only");
+const judge = deckOnly ? null : await startJudge(0);
 const browser = await chromium.launch();
 try {
+  if (!deckOnly) await takeScreens();
+  await renderDeck();
+  if (!deckOnly) {
+    // Max's cheat sheet: one A4 from its HTML source (docs/internal/spiekkaart-demo.html), the QR code beside it.
+    const card = await browser.newPage();
+    await card.goto(`file://${resolve(root, "docs/internal/spiekkaart-demo.html")}`, { waitUntil: "load" });
+    await card.pdf({ path: resolve(root, "docs/internal/spiekkaart-demo.pdf"), format: "A4", printBackground: true, preferCSSPageSize: true });
+    console.log("docs/internal/spiekkaart-demo.pdf");
+  }
+} finally {
+  await browser.close();
+  judge?.server.close();
+}
+if (!deckOnly) {
+  execFileSync("git", ["archive", "--format=zip", "--prefix=purser/", "-o", resolve(out, "purser-source.zip"), "HEAD"], { cwd: root });
+  console.log("out/submission/purser-source.zip (the current commit; commit first so it is in)");
+}
+
+async function takeScreens(): Promise<void> {
+  const judgeUrl = judge!.url;
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
   for (const [name, path] of SCREENS) {
-    await page.goto(`${judge.url}${path}`, { waitUntil: "load" });
+    await page.goto(`${judgeUrl}${path}`, { waitUntil: "load" });
     await page.waitForTimeout(1200);
     await page.screenshot({ path: resolve(shots, `${name}.png`) });
     console.log(`screens/${name}.png  ${path}`);
@@ -66,7 +90,7 @@ try {
     ["13-result", "/?recorded&books", ["#books .panel.bk"]],
   ];
   for (const [name, path, sels] of CLOSEUPS) {
-    await page.goto(`${judge.url}${path}`, { waitUntil: "load" });
+    await page.goto(`${judgeUrl}${path}`, { waitUntil: "load" });
     await unstick();
     await page.waitForTimeout(1200);
     // A panel no longer on its page (the landing became Home on 2 Nov): the earlier close-up is kept as it was.
@@ -81,11 +105,11 @@ try {
   }
   // The dispute slide, from the main run (3 Nov): /watch's full run held at the CFO's Face ID rejection of the refund
   // batch, so the three refunds on chain sit just under it. The step is found in the page's own run data.
-  await page.goto(`${judge.url}/watch?full=1&autoplay=0`, { waitUntil: "load" });
+  await page.goto(`${judgeUrl}/watch?full=1&autoplay=0`, { waitUntil: "load" });
   const rejectAt = await page.evaluate(() => (JSON.parse(document.getElementById("run-data")!.textContent!) as { events: { k: string; status?: string; title?: string }[] }).events
     .findIndex((e) => e.k === "face" && e.status === "REJECTED" && /refund/i.test(e.title ?? "")));
   if (rejectAt < 0) throw new Error("the main run on /watch has no rejected refund batch");
-  await page.goto(`${judge.url}/watch?full=1&at=${rejectAt}&autoplay=0`, { waitUntil: "load" });
+  await page.goto(`${judgeUrl}/watch?full=1&at=${rejectAt}&autoplay=0`, { waitUntil: "load" });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: resolve(shots, "14-dispute.png") });
   console.log(`screens/14-dispute.png  /watch?full=1&at=${rejectAt}&autoplay=0`);
@@ -93,7 +117,7 @@ try {
   // mandate refusing the price rise. Taken here, not from a rendered video, so they always show the pages as they are.
   const film = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   for (const [name, t] of [["live-decline", 50], ["live-refuse", 95.5]] as const) {
-    await film.goto(`${judge.url}/film?t=${t}`, { waitUntil: "load" });
+    await film.goto(`${judgeUrl}/film?t=${t}`, { waitUntil: "load" });
     await film.waitForTimeout(900);
     await film.screenshot({ path: resolve(shots, `${name}.png`) });
     console.log(`screens/${name}.png  /film?t=${t}`);
@@ -129,12 +153,15 @@ try {
       relay.server.close();
     }
   }
-  await page.goto(`${judge.url}/try?q=${encodeURIComponent("Pay our supplier €1,180")}`, { waitUntil: "load" });
+  await page.goto(`${judgeUrl}/try?q=${encodeURIComponent("Pay our supplier €1,180")}`, { waitUntil: "load" });
   await page.waitForSelector(".outcome.show", { timeout: 15_000 });
   await page.waitForTimeout(800);
   await page.screenshot({ path: resolve(shots, "10-try.png") });
   console.log("screens/10-try.png  /try (offline: code reads the task)");
 
+}
+
+async function renderDeck(): Promise<void> {
   const png = (name: string) => `data:image/png;base64,${readFileSync(resolve(shots, `${name}.png`)).toString("base64")}`;
   const deckShots: DeckShots = {
     landing: png("1-landing"), dashboard: png("2-dashboard"), metal: png("3-metal"), live: png("4-live"), disputes: png("5-disputes"), books: png("6-books"),
@@ -153,14 +180,14 @@ try {
   await deck.setContent(deckHtml(packFacts(), deckShots, qr), { waitUntil: "load" });
   await deck.pdf({ path: resolve(root, "docs/submission/purser-deck.pdf"), width: "1280px", height: "720px", printBackground: true, preferCSSPageSize: true });
   console.log("purser-deck.pdf");
-  // Max's cheat sheet: one A4 from its HTML source (docs/internal/spiekkaart-demo.html), the QR code beside it.
-  const card = await browser.newPage();
-  await card.goto(`file://${resolve(root, "docs/internal/spiekkaart-demo.html")}`, { waitUntil: "load" });
-  await card.pdf({ path: resolve(root, "docs/internal/spiekkaart-demo.pdf"), format: "A4", printBackground: true, preferCSSPageSize: true });
-  console.log("docs/internal/spiekkaart-demo.pdf");
-} finally {
-  await browser.close();
-  judge.server.close();
+  // Each slide as a PNG (section D): one screenshot per <section>, at the slide's own size.
+  const pngs = resolve(root, "docs/evidence/deck");
+  mkdirSync(pngs, { recursive: true });
+  await deck.setViewportSize({ width: 1280, height: 720 });
+  const sections = deck.locator("section");
+  const n = await sections.count();
+  for (let i = 0; i < n; i++) {
+    await sections.nth(i).screenshot({ path: resolve(pngs, `slide-${String(i + 1).padStart(2, "0")}.png`) });
+  }
+  console.log(`docs/evidence/deck/slide-01..${String(n).padStart(2, "0")}.png`);
 }
-execFileSync("git", ["archive", "--format=zip", "--prefix=purser/", "-o", resolve(out, "purser-source.zip"), "HEAD"], { cwd: root });
-console.log("out/submission/purser-source.zip (the current commit; commit first so it is in)");
