@@ -9,7 +9,7 @@
 
 import { esc, icon, iconSet, page } from "../redesign/ui.js";
 import { REPO_URL } from "../submission/deck.js";
-import { cfoApproval, tryLocks } from "./examples.js";
+import { cfoApproval, recordedQuote, tryLocks } from "./examples.js";
 import { RECEIPT_FORMAT } from "./receipt.js";
 
 /** The feature flag, read where the bundle is built: on, the page, its API and the links to it are in the bundle. */
@@ -29,18 +29,19 @@ export const TRY_SIGN_SIGNED = "Signed and verified. This signature only fits th
 export const TAMPER_VERDICT = { cent: "One cent changed. The signature is worthless.", field: "One field changed. The signature is worthless." } as const;
 
 /** The fields a visitor may change to tamper, as the terms name them. */
-export const TAMPER_FIELDS = ["amount", "payee_iban", "currency"] as const;
+export const TAMPER_FIELDS = ["amount", "payee_iban", "currency", "fx.client_rate"] as const;
 
 /** What the "What's real?" expander says, line by line (tests read it). */
 export const WHATS_REAL = {
   simulated: [
     "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor. Its balance, its payees and their IBANs are test data (the IBANs' check digits are 00, which no real account has).",
-    "No Airwallex, Metal or Claude call, and no money moves: the agent's words are fixed text, and the executor is a stand-in that only records in your test world.",
+    "No payment or conversion at Airwallex, no Metal or Claude call, and no money moves: the agent's words are fixed text, and the executor is a stand-in that only records in your test world.",
     "The blocked payment and the lock that stops it are a simulation in your test world. The three examples it links to are real, each from the run it names.",
   ],
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
     "The tamper: the server checks your changed terms against the same signature, for real, and refuses them.",
+    "The FX quote is live from the Airwallex sandbox (a test environment): read-only, nothing is converted, no money moves. It is in the terms, so the signature covers its quote id, and an expired quote is refused. Without a live quote (no sandbox key on the server, or the limit reached) the page shows the main run's recorded quote instead, labelled, and it is not in the signature.",
     "The receipt: receipt.json holds the exact terms, their hash, your passkey's signature, its public key and the algorithm. Anyone can check it offline, with no server: npm run verify-receipt -- receipt.json in the repository. Change one field or one cent and it fails. It proves that the holder of that key signed those terms, not who holds it.",
   ],
   limits: [
@@ -144,6 +145,12 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .lock .lh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700; }
 .lock .tag { font-size: 13px; padding: 2px 9px; }
 .lock.hit { border-color: var(--bad); background: var(--bad-soft); } .lock.hit .tag { background: var(--bad); color: var(--on-bad); }
+/* The FX quote at the Airwallex lock: live and in this signature, or recorded and not. */
+.fxq { display: grid; gap: 4px; margin-top: 4px; padding: 10px 12px; border-radius: 12px; background: var(--awx-soft); font-size: 15px; line-height: 1.45; }
+.fxq .lh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700; }
+.fxq.live .tag { background: var(--ok); color: var(--surface); }
+.fxq.recorded { background: var(--sunken); } .fxq.recorded .tag { background: var(--border); color: var(--text); }
+.fxq > * { min-width: 0; overflow-wrap: anywhere; }
 .lock a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
 .lock a .i { flex: none; }
 /* Grid and flex children may shrink below their content (a long word), and a card never grows past its column. */
@@ -165,6 +172,7 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .tbox { border-top: 1px solid var(--border); padding-top: 14px; display: grid; gap: 10px; }
 .tbox h3 { font-size: 18px; margin: 0; }
 .tf { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.tf label[hidden] { display: none; }
 .tf label { display: grid; gap: 4px; font-size: 14px; font-weight: 650; color: var(--muted); }
 .tf input, .tf select { font: 600 16px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; min-height: 46px; padding: 8px 10px; width: 100%; }
 .tf .chg input, .tf .chg select { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad-soft); }
@@ -181,7 +189,7 @@ table.diff tr.chg td:first-child::after { content: " · changed"; color: var(--b
 #t-why { display: grid; gap: 8px; margin-top: 2px; }
 /* A laptop: the sheet and its result on the left, the blocked proposal and its locks beside them. */
 @media (min-width: 1100px) { .props, dl.world { max-width: 1200px; } .props { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; } .props > .blocked { grid-column: 2; grid-row: 1 / span 2; } }
-@media (min-width: 720px) { .tf { grid-template-columns: minmax(0, .9fr) minmax(0, 2.2fr) minmax(0, .8fr); } .hashes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .actions { grid-template-columns: max-content max-content; } }
+@media (min-width: 720px) { .tf { grid-template-columns: minmax(0, .9fr) minmax(0, 2.1fr) minmax(0, .7fr) minmax(0, .9fr); } .hashes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .actions { grid-template-columns: max-content max-content; } }
 @media (max-width: 640px) { .prop, .result { padding: 16px; }
   /* On a phone the passkey and Face ID buttons stay at the bottom of the screen while the sheet is read, as on the CFO's. */
   .sheet .actions { position: sticky; bottom: 0; z-index: 5; background: var(--surface); margin: 0 -15px; padding: 10px 15px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 18px -14px rgba(0, 0, 0, .35); } ol.progress li { padding: 6px 6px; font-size: 13px; gap: 6px; } ol.progress li .n { width: 22px; height: 22px; font-size: 12px; } dl.facts { grid-template-columns: 92px minmax(0, 1fr); padding: 12px; } .btn { width: 100%; justify-content: center; white-space: normal; height: auto; min-height: 48px; padding: 10px 18px; } .btn.big { min-height: 56px; } .stephead { font-size: 18px; } .intro h1 { font-size: 30px; } .intro .lead { font-size: 17px; } }`;
@@ -287,6 +295,20 @@ const JS = `
     }
     var m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000);
     document.querySelectorAll("[data-left]").forEach(function (n) { n.textContent = (n.dataset.left === "in" ? "in " : "") + m + " min " + String(s).padStart(2, "0") + " s"; });
+    // The quote's own countdown; once it has passed, the signature it would carry is worthless: get a new quote.
+    var gone = false;
+    document.querySelectorAll("[data-until]").forEach(function (n) {
+      var q = Date.parse(n.dataset.until) - Date.now();
+      if (q <= 0) { n.textContent = "expired"; gone = true; return; }
+      n.textContent = "in " + Math.floor(q / 60000) + " min " + String(Math.floor((q % 60000) / 1000)).padStart(2, "0") + " s";
+    });
+    if (gone) quoteExpired();
+  }
+  function quoteExpired() {
+    if (S.signed || !$("go-quote") || !$("go-quote").hidden) return;
+    $("go-quote").hidden = false;
+    document.querySelectorAll("button[data-sign]").forEach(function (b) { b.disabled = true; });
+    status("q-status", "Quote expired. Get a fresh one and sign again.", "bad");
   }
 
   if (!window.PublicKeyCredential || !navigator.credentials) {
@@ -309,6 +331,7 @@ const JS = `
       $("w-facts").hidden = false;
       $("s-world").hidden = true;
       S.timer = setInterval(tick, 1000);
+      S.fx = r.data.fx;
       return showProposals(r.data.proposals).then(function () {
         tick();
         progress(2);
@@ -361,8 +384,12 @@ const JS = `
       el("dt", "", ["IBAN"]), el("dd", "mono", [iban(t.payee_iban)]),
       el("dt", "", ["Reference"]), el("dd", "", [t.reference]),
       el("dt", "", ["Proposal"]), el("dd", "", [p.proposal_id])
-    ]);
+    ].concat(t.fx ? [el("dt", "", ["FX quote"]), el("dd", "", [fxLine(t.fx)])] : []));
   }
+  // Who gave the quote: the Airwallex sandbox, or (local checks only) a stand-in, said as such.
+  function fxFrom(q) { return q.source === "stand-in" ? "a stand-in (a local check, not Airwallex)" : "the Airwallex sandbox (a test environment)"; }
+  // A quote in one line: what would be bought, for what, at which rate, and the quote id (short).
+  function fxLine(q) { return amt(q.buy_currency, q.buy_amount) + " for " + amt(q.sell_currency, q.sell_amount) + " at " + q.client_rate + " · quote " + q.quote_id.slice(0, 8) + "…"; }
 
   // The waiting proposal, as the CFO's approval sheet: what is approved, the exact terms, the hash, Face ID.
   function sheet(x) {
@@ -372,6 +399,7 @@ const JS = `
     var facts = factsOf(p, t);
     var left = el("dd", "", []); left.dataset.left = "in";
     facts.append(el("dt", "", ["Expires"]), left);
+    if (t.fx) { var ql = el("dd", "", []); ql.dataset.until = t.fx.valid_to_at; ql.id = "q-left"; facts.append(el("dt", "", ["Quote expires"]), ql); }
     var kids = [
       el("p", "eyebrow", ["You are approving · " + p.proposal_id]),
       el("h3", "title", ["Pay " + t.payee + " " + amt(t.currency, t.amount)]),
@@ -392,13 +420,60 @@ const JS = `
       b.dataset.ready = "1";
       b.addEventListener("click", function () { sign(x, b, st); });
     }
-    var acts = el("div", "actions", [key, b]);
+    if (S.credId) { key.hidden = true; if (b.dataset.ready === "1") { b.disabled = false; b.classList.add("primary"); } }
+    var nq = el("button", "btn primary big", [ic("rotate-ccw"), "Get a new quote"]);
+    nq.type = "button"; nq.id = "go-quote"; nq.dataset.world = "1"; nq.hidden = true;
+    nq.addEventListener("click", function () { newQuote(nq); });
+    var acts = el("div", "actions", [nq, key, b]);
     acts.id = "s-key";
-    kids.push(el("div", "", [el("p", "small muted", ["First a test passkey for this world, then your signature."]), more("A random id, no name or e-mail, kept on your device for this site only; it opens this test world and nothing else. Face ID, Touch ID, Windows Hello, a security key, or your phone by QR code.")]), acts, ks, st);
+    var qs = el("p", "status", []); qs.id = "q-status"; qs.setAttribute("aria-live", "polite");
+    if (t.fx) kids.push(el("div", "", [el("p", "small muted", ["The live FX quote is part of these terms, so your signature covers its quote id and ends with it."]), more("Quote " + t.fx.quote_id + " from " + fxFrom(t.fx) + ": the Treasury agent holds USD and the invoice is in EUR, so it would buy " + amt(t.fx.buy_currency, t.fx.buy_amount) + " for " + amt(t.fx.sell_currency, t.fx.sell_amount) + " at " + t.fx.client_rate + ". Nothing is converted. Once the quote expires, the server refuses the signature: get a new quote and sign the new terms.")]));
+    kids.push(el("div", "", [el("p", "small muted", ["First a test passkey for this world, then your signature."]), more("A random id, no name or e-mail, kept on your device for this site only; it opens this test world and nothing else. Face ID, Touch ID, Windows Hello, a security key, or your phone by QR code.")]), acts, qs, ks, st);
     kids.push(el("p", "basis", [D.cfo]));
     var a = el("article", "card prop sheet", kids);
     a.dataset.proposal = p.proposal_id;
     return a;
+  }
+
+  // "Get a new quote": new terms (the new quote in them), checked on this device again, to sign again.
+  function newQuote(btn) {
+    btn.disabled = true;
+    status("q-status", "Asking the Airwallex sandbox for a new quote…");
+    post("quote", { token: S.token }).then(function (r) {
+      if (r.status !== 200) { status("q-status", "No new quote: " + (r.data.error || ("error " + r.status)).replace(/^no new live quote: /, "") + ".", "bad"); btn.disabled = false; return; }
+      S.fx = r.data.fx;
+      var p = r.data.proposal, terms = JSON.parse(p.canonical);
+      return sha256(canon(terms)).then(function (h) {
+        var old = document.querySelector(".prop.sheet");
+        var fresh = sheet({ p: p, terms: terms, mine: h, same: canon(terms) === p.canonical && h === p.terms_sha256 });
+        old.replaceWith(fresh);
+        $("fx-lock").replaceWith(lockQuote());
+        tick();
+        status("q-status", "A new quote, so new terms: sign them again.", "ok");
+      });
+    });
+  }
+
+  // At the Airwallex lock: the live quote used in this signature, or, without one, the main run's, labelled recorded.
+  function lockQuote() {
+    var f = S.fx, box;
+    if (f && f.status !== "unavailable") {
+      var q = f.quote, left = el("b", "", []);
+      left.dataset.until = q.valid_to_at;
+      box = el("div", "fxq live", [
+        el("div", "lh", [el("span", "tag", ["Used in this signature"]), q.source === "stand-in" ? "Stand-in quote (local check, not Airwallex)" : "Live quote, Airwallex sandbox"]),
+        el("span", "", [amt(q.buy_currency, q.buy_amount) + " for " + amt(q.sell_currency, q.sell_amount) + " at " + q.client_rate + ". Quote " + q.quote_id.slice(0, 8) + "…" + q.quote_id.slice(-4) + ", expires ", left, "."]),
+        more((q.source === "stand-in" ? "A stand-in gave this quote: a local check, not Airwallex." : "Read-only: Airwallex's sandbox (a test environment) was asked for a quote, and nothing was converted or paid.") + (f.status === "reused" ? " Shared: asked for a moment ago for another visitor, as many asked at once." : ""))
+      ]);
+    } else {
+      var r = D.recordedFx;
+      box = el("div", "fxq recorded", [
+        el("div", "lh", [el("span", "tag", ["Recorded, not live"]), "Not in this signature"]),
+        el("span", "", ["No live quote now (" + ((f && f.reason) || "none") + "). The main run's quote, " + r.run + ": " + amt(r.buy_currency, r.buy_amount) + " for " + amt(r.sell_currency, r.sell_amount) + " at " + r.client_rate + " (quote " + r.quote_id.slice(0, 8) + "…)."])
+      ]);
+    }
+    box.id = "fx-lock";
+    return box;
   }
 
   // The blocked proposal: nothing to sign, and which of the three locks stopped it, each with its real example.
@@ -415,7 +490,7 @@ const JS = `
         el("span", "", [hit ? p.rule : l.what]),
         a,
         more("Real example, " + l.run + ": " + l.example)
-      ]);
+      ].concat(l.id === "airwallex" ? [lockQuote()] : []));
       row.dataset.lock = l.id;
       locks.appendChild(row);
     });
@@ -445,6 +520,7 @@ const JS = `
       progress(3);
       status(st.id, "Purser is checking your signature…");
       return post("sign", { token: S.token, proposal_id: x.p.proposal_id, canonical: x.p.canonical, credential: a }).then(function (r) {
+        if (r.status !== 200 && r.data.why === "quote_expired") { progress(2); status(st.id, r.data.error, "bad"); $("go-quote").hidden = false; return; }
         if (r.status !== 200) { progress(2); status(st.id, "Not accepted: " + (r.data.error || ("error " + r.status)) + ".", "bad"); b.disabled = false; return; }
         S.signed = { x: x, a: a, d: r.data };
         b.hidden = true;
@@ -462,6 +538,8 @@ const JS = `
     $("r-exec").replaceChildren(el("span", "small muted", ["Test transfer " + e.id + ": " + eur(e.amount) + " to " + e.payee + "."]), more("Test balance now " + eur(e.balance_after) + ". By the " + e.by + "."));
     var t = x.terms;
     $("t-amount").value = t.amount; $("t-iban").value = iban(t.payee_iban); $("t-currency").value = t.currency;
+    document.querySelector('label[data-field="fx.client_rate"]').hidden = !t.fx;
+    if (t.fx) $("t-rate").value = t.fx.client_rate;
     edited();
     $("result").hidden = false;
     $("result").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -488,7 +566,10 @@ const JS = `
   });
 
   // ── Tamper: the visitor changes a field of the signed terms and sends them with the same signature. ──
-  var LABEL = { amount: "Amount", payee_iban: "IBAN", currency: "Currency" };
+  var LABEL = { amount: "Amount", payee_iban: "IBAN", currency: "Currency", "fx.client_rate": "FX rate" };
+  // A field by its path ("fx.client_rate" is the quote's rate), and the fields these terms have.
+  function get(t, k) { return k.split(".").reduce(function (o, x) { return o && o[x]; }, t); }
+  function fieldsOf(t) { return D.fields.filter(function (k) { return get(t, k) !== undefined && get(t, k) !== null; }); }
   function shown(k, v, t) { return k === "amount" ? amt(t.currency, v) : k === "payee_iban" ? iban(v) : v; }
   // The visitor's terms: the signed ones with the three fields as typed (amounts to two decimals, IBANs without spaces).
   function typed() {
@@ -501,16 +582,21 @@ const JS = `
     if (!/^[A-Z0-9]{1,34}$/.test(i)) return { error: "Type an IBAN: letters and digits, up to 34." };
     t.payee_iban = i;
     t.currency = $("t-currency").value;
-    return { terms: t, changed: D.fields.filter(function (k) { return t[k] !== s.x.terms[k]; }) };
+    if (t.fx) {
+      var rate = $("t-rate").value.trim();
+      if (!/^\\d{1,6}(\\.\\d{1,10})?$/.test(rate)) return { error: "Type a rate like 1.129677." };
+      t.fx.client_rate = rate;
+    }
+    return { terms: t, changed: fieldsOf(s.x.terms).filter(function (k) { return get(t, k) !== get(s.x.terms, k); }) };
   }
   function edited() {
     if (!S.signed) return;
     var r = typed();
-    D.fields.forEach(function (k) { var n = document.querySelector('label[data-field="' + k + '"]'); n.classList.toggle("chg", !!(r.changed && r.changed.indexOf(k) >= 0)); });
+    D.fields.forEach(function (k) { var n = document.querySelector('label[data-field="' + k + '"]'); if (n) n.classList.toggle("chg", !!(r.changed && r.changed.indexOf(k) >= 0)); });
     $("t-send").disabled = !!r.error || r.changed.length === 0;
-    status("t-status", r.error || (r.changed.length ? "Changed: " + r.changed.map(function (k) { return LABEL[k]; }).join(", ") + ". Send it with the signature you made." : "Change the amount, the IBAN or the currency."), r.error ? "bad" : "");
+    status("t-status", r.error || (r.changed.length ? "Changed: " + r.changed.map(function (k) { return LABEL[k]; }).join(", ") + ". Send it with the signature you made." : (S.signed.x.terms.fx ? "Change the amount, the IBAN, the currency or the FX rate." : "Change the amount, the IBAN or the currency.")), r.error ? "bad" : "");
   }
-  ["t-amount", "t-iban", "t-currency"].forEach(function (id) { $(id).addEventListener("input", edited); $(id).addEventListener("change", edited); });
+  ["t-amount", "t-iban", "t-currency", "t-rate"].forEach(function (id) { $(id).addEventListener("input", edited); $(id).addEventListener("change", edited); });
 
   function tamper() {
     var s = S.signed, r = typed();
@@ -520,8 +606,8 @@ const JS = `
     var changed = canon(r.terms);
     status("t-status", "Sending your terms with the same signature…");
     sha256(changed).then(function (h) {
-      var rows = D.fields.map(function (k) {
-        var tr = el("tr", r.changed.indexOf(k) >= 0 ? "chg" : "", [el("td", "", [LABEL[k]]), el("td", "", [shown(k, s.x.terms[k], s.x.terms)]), el("td", "", [shown(k, r.terms[k], r.terms)])]);
+      var rows = fieldsOf(s.x.terms).map(function (k) {
+        var tr = el("tr", r.changed.indexOf(k) >= 0 ? "chg" : "", [el("td", "", [LABEL[k]]), el("td", "", [shown(k, get(s.x.terms, k), s.x.terms)]), el("td", "", [shown(k, get(r.terms, k), r.terms)])]);
         tr.dataset.row = k;
         return tr;
       });
@@ -551,9 +637,9 @@ const JS = `
   function refusal(q) {
     var d = q.data || {};
     var hex = function (h) { return /^[0-9a-f]{64}$/.test(h || "") ? h.slice(0, 12) + "…" : null; };
-    if (d.why === "challenge" && hex(d.signed_sha256) && hex(d.terms_sha256)) return "The server refused it: the signature was made for hash " + hex(d.signed_sha256) + ", and your terms hash to " + hex(d.terms_sha256) + ".";
+    if (d.why === "challenge" && hex(d.signed_sha256) && hex(d.terms_sha256)) return "The server refused it: the signature was made for hash " + hex(d.signed_sha256) + ", not for your terms (" + hex(d.terms_sha256) + ").";
     var why = String(d.error || ("error " + q.status)).replace(/^refused:\\s*/i, "");
-    return "The server refused it: " + why + (/[.!?]$/.test(why) ? "" : ".");
+    return "The server refused it: " + why + (/[.!?…]$/.test(why) ? "" : ".");
   }
   // The last line: one cent, one field, or how many.
   function verdict(changed, was, now) {
@@ -570,6 +656,7 @@ const JS = `
     var c = Math.round(Number(t.amount) * 100) + 1;
     $("t-amount").value = Math.floor(c / 100) + "." + String(c % 100).padStart(2, "0");
     $("t-iban").value = iban(t.payee_iban); $("t-currency").value = t.currency;
+    if (t.fx) $("t-rate").value = t.fx.client_rate;
     edited();
     tamper();
   });
@@ -619,6 +706,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
       <label data-field="amount">Amount<input id="t-amount" inputmode="decimal" autocomplete="off" spellcheck="false" data-world="1"></label>
       <label data-field="payee_iban">IBAN<input id="t-iban" autocomplete="off" autocapitalize="characters" spellcheck="false" data-world="1"></label>
       <label data-field="currency">Currency<select id="t-currency" data-world="1"><option>EUR</option><option>USD</option><option>GBP</option><option>CHF</option></select></label>
+      <label data-field="fx.client_rate" hidden>FX rate<input id="t-rate" inputmode="decimal" autocomplete="off" spellcheck="false" data-world="1"></label>
     </div>
     <div class="tactions"><button class="btn primary" type="button" id="t-send" data-world="1" disabled>Send with the same signature</button><button class="btn" type="button" id="go-tamper" data-world="1">Try to tamper: change the amount by 0.01</button></div>
     <p class="status" id="t-status" aria-live="polite"></p>
@@ -629,12 +717,12 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: an agent proposes, you sign the exact terms with Face ID, Purser verifies. A test world of your own; nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false,
-    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT },
+    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote() },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [
       "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor; its balance, payees, IBANs and the agent's two proposals (fixed text, no model) are test data.",
-      "No Airwallex, Metal or Claude call, and no money moves: the executor only records, in your test world.",
+      "No payment or conversion at Airwallex, no Metal or Claude call, and no money moves: the executor only records, in your test world.",
       "Real: your device's passkey signature over the hash of the exact terms, and the server's check of it against the public key your device registered.",
     ],
   }).replace("<body>\n", () => `<body>\n<div class="testband" role="note">${icon("lock", 16)}${esc(TRY_SIGN_LABEL)}</div>\n`);

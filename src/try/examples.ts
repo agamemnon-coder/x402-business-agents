@@ -120,3 +120,14 @@ export function cfoApproval(r: RunRecord = loadRecord().record): CfoApproval {
   if (!out.vendor || !/^\d+\.\d{2}$/.test(out.amount) || !out.currency || !/^[0-9a-f]{64}$/.test(out.hash)) throw new Error(`/try/sign: ${p.proposal_id}'s terms are incomplete in the record`);
   return { ...out, line: `Modelled on the CFO's real approval sheet (${runName(r).replace(/^the /, "")}): ${out.proposal}, pay ${out.vendor} ${out.currency} ${out.amount}${out.method ? ` by ${out.method}` : ""}, signed with Face ID at ${out.at} UTC.` };
 }
+
+/** The main run's FX quote (P-0005's conversion, in its terms), shown at the Airwallex lock only when no live quote is to be had, labelled "recorded, not live". */
+export interface RecordedQuote { quote_id: string; buy_currency: string; buy_amount: string; sell_currency: string; sell_amount: string; client_rate: string; valid_to: string; run: string }
+export function recordedQuote(r: RunRecord = loadRecord().record): RecordedQuote {
+  const proposals = (r.ledger?.proposals ?? []) as unknown as { proposal_id: string; terms: { conversion?: Record<string, unknown> } }[];
+  const f = floorsHeld(r);
+  const c = need(proposals.find((x) => x.proposal_id === f.proposal)?.terms.conversion, `${f.proposal}'s conversion in its terms`);
+  const q = { quote_id: String(c.quote_id ?? ""), buy_currency: String(c.buy_currency ?? ""), buy_amount: String(c.buy_amount ?? ""), sell_currency: String(c.sell_currency ?? ""), sell_amount: String(c.sell_amount ?? ""), client_rate: String(c.client_rate ?? ""), valid_to: String(c.valid_to ?? "") };
+  if (`${q.buy_currency} ${q.buy_amount}` !== f.buy || `${q.sell_currency} ${q.sell_amount}` !== f.sell || !/^[0-9a-f-]{36}$/.test(q.quote_id)) throw new Error("/try/sign: the recorded quote and the FX row do not agree");
+  return { ...q, run: `${runName(r).replace(/^the /, "")}, ${dayMonth(f.at)}` };
+}
