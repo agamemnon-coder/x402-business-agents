@@ -184,7 +184,7 @@ describe("the quote in the terms (v3): the signature binds to it", () => {
     const t = termsOf(v.b);
     const changed = canonical({ ...t, fx: { ...t.fx!, [field]: field === "valid_to_at" ? "2026-11-04T11:00:00Z" : `${t.fx![field]}1` } } as never);
     const r = await call(v.d, "sign", signBody(v.w.world.token, v.b, sig, changed), { ip: v.ip });
-    expect([r.status, ((await r.json()) as { why: string }).why]).toEqual([400, "challenge"]);
+    expect([r.status, ((await r.json()) as { why: string }).why]).toEqual([200, "challenge"]);
     expect((await call(v.d, "sign", signBody(v.w.world.token, v.b, sig), { ip: v.ip })).status).toBe(200);
   });
 

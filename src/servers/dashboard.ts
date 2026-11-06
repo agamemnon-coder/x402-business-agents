@@ -25,6 +25,7 @@ import { AGENT_DISPLAY, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP } from "../c
 import { loadRecord, replayRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
 import { trySignPage } from "../try/sign.js";
+import { tryVerifyPage } from "../try/verify.js";
 import { watchPage } from "../redesign/watch.js";
 import { proofPage } from "../redesign/proof.js";
 import { restyle } from "../redesign/ui.js";
@@ -213,6 +214,9 @@ export const HOME_CSP = cspFor(HOME_PAGE);
 /** /try/sign (TRY_SIGN_ENABLED): the page, under the same kind of hash-based CSP; the bundle carries it only when on. */
 export const TRY_SIGN_PAGE = trySignPage();
 export const TRY_SIGN_CSP = cspFor(TRY_SIGN_PAGE);
+/** /try/verify checks a receipt in the browser and calls no server: its CSP allows no connection at all. */
+export const TRY_VERIFY_PAGE = tryVerifyPage();
+export const TRY_VERIFY_CSP = cspFor(TRY_VERIFY_PAGE).replace("connect-src 'self'", "connect-src 'none'");
 /** Home with its "Sign with your own Face ID" button: only in a bundle that also carries /try/sign. */
 export function homeWithTrySign(): { page: string; csp: string } {
   const page = homePage(undefined, { trySign: true });

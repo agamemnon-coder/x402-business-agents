@@ -71,6 +71,22 @@ describe("/try/sign: the visitor's test world", () => {
     expect(db.prepare("SELECT status FROM ts_proposals WHERE id = 'T-0002'").get()).toEqual({ status: "executed" });
   });
 
+  it("A6: a refused signature is an answer, not an error: 200, verified false, a reason; nothing runs; bad requests stay 4xx", async () => {
+    const { d, db } = desk();
+    const { w, auth, b } = await withPasskey(d);
+    const assertion = auth.sign({ challenge: challengeOf(b.terms_sha256), origin: BASE, rpId: RP, counter: 1 });
+    const changed = canonical({ ...(JSON.parse(b.canonical) as Record<string, string>), currency: "USD" });
+    const res = await call(d, "sign", signBody(w.world.token, b, assertion, changed));
+    const out = (await res.json()) as { verified: boolean; reason: string; executed?: unknown };
+    expect([res.status, out.verified, out.executed]).toEqual([200, false, undefined]);
+    expect(out.reason).toMatch(/^refused: the server's verifier did not accept this signature/);
+    expect((db.prepare("SELECT status FROM ts_proposals WHERE id = ?").get(b.proposal_id) as { status: string }).status).toBe("waiting");
+    // Not refusals but errors: a malformed body, no such world, a cross-site request.
+    expect((await call(d, "sign", { token: w.world.token, proposal_id: "T-0002", canonical: "x", credential: { id: "!" } })).status).toBe(400);
+    expect((await call(d, "sign", signBody("A".repeat(43), b, assertion))).status).toBe(410);
+    expect((await call(d, "sign", signBody(w.world.token, b, assertion), { origin: "https://evil.example" })).status).toBe(403);
+  });
+
   it("red team, tamper: the same signature with the amount changed by 0.01 is refused by the verifier", async () => {
     const { d, db } = desk();
     const { w, auth, b } = await withPasskey(d);
@@ -78,7 +94,7 @@ describe("/try/sign: the visitor's test world", () => {
     expect((await call(d, "sign", signBody(w.world.token, b, assertion))).status).toBe(200);
     const changed = canonical({ ...(JSON.parse(b.canonical) as Record<string, string>), amount: "1850.01" });
     const res = await call(d, "sign", signBody(w.world.token, b, assertion, changed));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     const out = (await res.json()) as { verified: boolean; why: string; error: string; terms_sha256: string; signed_sha256: string };
     expect(out).toMatchObject({ verified: false, why: "challenge", terms_sha256: sha(changed), signed_sha256: b.terms_sha256 });
     expect(out.error).toContain(`hash ${b.terms_sha256.slice(0, 12)}`);
@@ -86,10 +102,10 @@ describe("/try/sign: the visitor's test world", () => {
     const fresh = await withPasskey(d);
     const tampered = canonical({ ...(JSON.parse(fresh.b.canonical) as Record<string, string>), amount: "1850.01" });
     const r2 = await call(d, "sign", signBody(fresh.w.world.token, fresh.b, fresh.auth.sign({ challenge: challengeOf(fresh.b.terms_sha256), origin: BASE, rpId: RP, counter: 1 }), tampered));
-    expect(r2.status).toBe(400);
+    expect(r2.status).toBe(200);
     // Signed over the tampered terms themselves: the signature verifies, but they are not the proposal's terms.
     const r3 = await call(d, "sign", signBody(fresh.w.world.token, fresh.b, fresh.auth.sign({ challenge: challengeOf(sha(tampered)), origin: BASE, rpId: RP, counter: 2 }), tampered));
-    expect(r3.status).toBe(409);
+    expect(r3.status).toBe(200);
     expect(await r3.json()).toMatchObject({ verified: false, why: "terms" });
     expect(db.prepare("SELECT COUNT(*) AS n FROM ts_proposals WHERE status = 'executed'").get()).toEqual({ n: 1 });
   });
@@ -100,7 +116,7 @@ describe("/try/sign: the visitor's test world", () => {
     const once = auth.sign({ challenge: challengeOf(b.terms_sha256), origin: BASE, rpId: RP, counter: 5 });
     expect((await call(d, "sign", signBody(w.world.token, b, once))).status).toBe(200);
     const again = await call(d, "sign", signBody(w.world.token, b, once));
-    expect(again.status).toBe(400);
+    expect(again.status).toBe(200);
     expect(await again.json()).toMatchObject({ verified: false, why: "counter" });
     // An authenticator that keeps no counter (iCloud passkeys: 0 and 0): the proposal ran, so the replay is refused.
     const icloud = await withPasskey(d);
@@ -131,7 +147,7 @@ describe("/try/sign: the visitor's test world", () => {
     // A's passkey signs B's terms (bound to B's world id) and sends them as A's proposal: not A's terms.
     expect(A.b.terms_sha256).not.toBe(B.b.terms_sha256);
     const r3 = await call(d, "sign", signBody(A.w.world.token, A.b, A.auth.sign({ challenge: challengeOf(B.b.terms_sha256), origin: BASE, rpId: RP, counter: 3 }), B.b.canonical));
-    expect(r3.status).toBe(409);
+    expect(r3.status).toBe(200);
     expect(await r3.json()).toMatchObject({ why: "terms" });
   });
 
@@ -169,7 +185,7 @@ describe("/try/sign: the visitor's test world", () => {
     for (const [bad, why] of [[{ origin: "https://evil.example" }, "origin"], [{ rpId: "evil.example" }, "rp id"], [{ userVerified: false }, "user verification"]] as const) {
       const { w, auth, b } = await withPasskey(d);
       const res = await call(d, "sign", signBody(w.world.token, b, auth.sign({ challenge: challengeOf(b.terms_sha256), origin: BASE, rpId: RP, counter: 1, ...bad })));
-      expect({ bad, status: res.status, why: ((await res.json()) as { why: string }).why }).toEqual({ bad, status: 400, why });
+      expect({ bad, status: res.status, why: ((await res.json()) as { why: string }).why }).toEqual({ bad, status: 200, why });
     }
     // Another site's page, or no Origin at all, gets nothing.
     expect((await call(d, "world", {}, { origin: "https://evil.example" })).status).toBe(403);
