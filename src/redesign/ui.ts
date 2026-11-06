@@ -401,6 +401,25 @@ button.run { background: var(--text) !important; color: var(--bg) !important; }
 </style>`);
 }
 
+/**
+ * Opens the fold a link points into (D: /proof's "Policy and card side by side" → /airwallex#controls). When the page is
+ * opened, or its #hash changes, to an element that is a <details> or sits inside one, every closed <details> around it
+ * opens and the element is scrolled to. No browser does this for a <details> itself, and not all of them for what is
+ * inside one, so it is a few lines of script, hashed into the page's CSP like every inline script here.
+ */
+export const OPEN_TARGET_JS = `(function () {
+  function openTarget() {
+    var id; try { id = decodeURIComponent(location.hash.slice(1)); } catch (e) { return; }
+    var t = id && document.getElementById(id);
+    if (!t) return;
+    var opened = false;
+    for (var d = t.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) if (!d.open) { d.open = true; opened = true; }
+    if (opened) t.scrollIntoView({ block: "start" });
+  }
+  openTarget();
+  window.addEventListener("hashchange", openTarget);
+})();`;
+
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
 export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][] }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}

@@ -192,7 +192,8 @@ export const TRY_CSP = cspFor(TRY_PAGE);
 /** The recorded Dispute desk case of 30 October (docs/demo/metal.json), for its evidence report in the Archive. */
 const METAL_FILE = new URL("../../docs/demo/metal.json", import.meta.url);
 const metalData = () => JSON.parse(readFileSync(METAL_FILE, "utf8")) as { dispute: DisputeCase | null };
-// The partner pages (src/redesign/partners.ts): short, picture first, the details folded; no script, so a style-only policy.
+// The partner pages (src/redesign/partners.ts): short, picture first, the details folded; no script (but /airwallex's one,
+// below), so a style-only policy.
 const styleOnlyCsp = (page: string) => ["default-src 'none'", `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 export const METAL_PAGE = metalPage();
 export const METAL_CSP = styleOnlyCsp(METAL_PAGE);
@@ -200,7 +201,10 @@ export const VISA_PAGE = visaPage();
 export const VISA_CSP = styleOnlyCsp(VISA_PAGE);
 export const AIRWALLEX_PAGE = airwallexPage();
 export const CLAUDE_PAGE = claudePage();
-export const AIRWALLEX_CSP = styleOnlyCsp(AIRWALLEX_PAGE);
+// /airwallex has one inline script (OPEN_TARGET_JS: a link into its cards' fold opens it), hashed like its style; it
+// connects nowhere, so no connect-src.
+const styleAndScriptCsp = (page: string) => ["default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
+export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? styleAndScriptCsp(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
 /** The clean 404, for any address that is not a page; its links and assets absolute, since it answers at any depth. */
 export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
