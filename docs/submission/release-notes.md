@@ -216,7 +216,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   the figures is gone: TAP is on /visa and in the footer link. 2647 tests in 268 files, all passing (with main's).
 - 6 November, the CFO's view, visible (Max's last round, item 4): "See the CFO's view" on Home and in Proof's head, to
   the CFO dashboard's replay of the main run (/?autonomy: public, read-only, no viewer key). It opens at its top with
-  one line: "This is what the CFO opens: what the agents did, what waits for a signature, and every limit." Before the
+  one line: "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." Before the
   link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
   HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2657 tests in 269 files, all passing (with main's).
 

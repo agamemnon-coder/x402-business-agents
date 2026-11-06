@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
-import { CFO_VIEW_LINE, CORE_SENTENCE, HERO, KIT11_RUN_LINE, WHAT_IT_IS } from "../src/config/brand.js";
+import { CORE_SENTENCE, HERO, KIT11_RUN_LINE, WHAT_IT_IS } from "../src/config/brand.js";
 import { CFO_FORWARD_JS, tryLineHtml, whyHtml } from "../src/redesign/home.js";
 import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -105,10 +105,7 @@ describe("the honest core sentence", () => {
   it("leaves no \"every limit\" and no \"can't break\" on any page of the bundle as deployed, /try/sign included", () => {
     expect(pages.trySign).toBeTruthy();
     const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["font"].includes(e[0]));
-    // One exception, word for word: the CFO's view's top line (Max's last round, item 4), which says what the view shows
-    // ("and every limit"), not that anything enforces every limit; it is on the dashboard page only, once.
-    expect(pages.dashboard.split(CFO_VIEW_LINE)).toHaveLength(2);
-    for (const [name, text] of all) expect({ name, found: /every limit|can['’]t break|can\\u2019t break/i.exec(text.split(CFO_VIEW_LINE).join(" "))?.[0] ?? null }).toEqual({ name, found: null });
+    for (const [name, text] of all) expect({ name, found: /every limit|can['’]t break|can\\u2019t break/i.exec(text)?.[0] ?? null }).toEqual({ name, found: null });
   });
 });
 

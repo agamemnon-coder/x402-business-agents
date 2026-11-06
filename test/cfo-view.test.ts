@@ -55,7 +55,7 @@ describe("See the CFO's view: on Home and /proof, to the main run's dashboard re
   });
 
   it("opens with the line Max wrote, shown only on that view", () => {
-    expect(CFO_VIEW_LINE).toBe("This is what the CFO opens: what the agents did, what waits for a signature, and every limit.");
+    expect(CFO_VIEW_LINE).toBe("This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set.");
     for (const html of [PAGE, SERVED]) {
       const at = html.indexOf('<main class="wrap" id="dash" hidden>');
       expect(html.slice(at, at + 200)).toContain(`<p class="cfoline" id="cfo-line" hidden>${CFO_VIEW_LINE}</p>`);

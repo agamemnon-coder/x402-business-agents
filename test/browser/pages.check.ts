@@ -197,7 +197,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         const r = l.getBoundingClientRect(), head = document.querySelector("header.top").getBoundingClientRect().bottom;
         return { text: l.innerText, shown: !l.hidden && r.height > 0, inView: r.top >= head - 2 && r.bottom <= innerHeight, first: !!(l.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), y: scrollY };
       })()`)) as { text: string; shown: boolean; inView: boolean; first: boolean; y: number };
-      if (top.text !== "This is what the CFO opens: what the agents did, what waits for a signature, and every limit." || !top.shown || !top.inView || !top.first) fail(`/?autonomy ${tag}: the CFO's line is not on top and in view (${JSON.stringify(top)})`);
+      if (top.text !== "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." || !top.shown || !top.inView || !top.first) fail(`/?autonomy ${tag}: the CFO's line is not on top and in view (${JSON.stringify(top)})`);
       await page.screenshot({ path: join(shots, `autonomy-top-${tag}.png`) });
     }
     const au = await page.evaluate(() => document.body.innerText);
