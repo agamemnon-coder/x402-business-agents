@@ -155,7 +155,7 @@ table.diff tr.chg td:first-child::after { content: " · changed"; color: var(--b
 #t-why { display: grid; gap: 8px; margin-top: 2px; }
 /* A laptop: the sheet and its result on the left, the blocked proposal and its locks beside them. */
 @media (min-width: 1100px) { .props, dl.world { max-width: 1200px; } .props { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; } .props > .blocked { grid-column: 2; grid-row: 1 / span 2; } }
-@media (min-width: 720px) { .tf { grid-template-columns: 1fr 1.6fr .8fr; } .hashes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .actions { grid-template-columns: max-content max-content; } }
+@media (min-width: 720px) { .tf { grid-template-columns: minmax(0, .9fr) minmax(0, 2.2fr) minmax(0, .8fr); } .hashes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .actions { grid-template-columns: max-content max-content; } }
 @media (max-width: 640px) { .prop, .result { padding: 16px; }
   /* On a phone the passkey and Face ID buttons stay at the bottom of the screen while the sheet is read, as on the CFO's. */
   .sheet .actions { position: sticky; bottom: 0; z-index: 5; background: var(--surface); margin: 0 -15px; padding: 10px 15px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 18px -14px rgba(0, 0, 0, .35); } ol.progress li { padding: 6px 6px; font-size: 13px; gap: 6px; } ol.progress li .n { width: 22px; height: 22px; font-size: 12px; } dl.facts { grid-template-columns: 92px minmax(0, 1fr); padding: 12px; } .btn { width: 100%; justify-content: center; white-space: normal; height: auto; min-height: 48px; padding: 10px 18px; } .btn.big { min-height: 56px; } .stephead { font-size: 18px; } .intro h1 { font-size: 30px; } .intro .lead { font-size: 17px; } }`;
