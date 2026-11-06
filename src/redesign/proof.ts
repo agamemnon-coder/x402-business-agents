@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import { CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, separateRowHtml, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapLimitLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
+import { READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { esc, icon, page } from "./ui.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
@@ -54,7 +55,8 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .more .card { padding: 16px 20px; scroll-margin-top: 80px; display: grid; gap: 6px; align-content: start; }
 .more h3 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
 .more h3 .n { font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; flex: none; }
-.more p { margin: 0; color: var(--muted); font-size: 15.5px; }`;
+.more p { margin: 0; color: var(--muted); font-size: 15.5px; }
+${READBACK_CSS}`;
 
 const JS = `(function () { var h = location.hash.slice(1); if (!h) return; var t = document.getElementById(h); if (!t) return; t.querySelectorAll("details").forEach(function (d) { d.open = true; }); })();`;
 
@@ -197,6 +199,17 @@ ${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they w
 </div>`;
 }
 
+/**
+ * Airwallex, read back (section B): the hash the CFO signed beside the one Airwallex returns with the transfer, and each
+ * agent's card controls as Airwallex returns them beside the CFO policy, from the dated GET-only records in docs/runs.
+ */
+export function readBack(run: AgentRun): string {
+  const h = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
+  if (!h && !rows.length) return "";
+  return `<h2 class="sec" id="airwallex-readback">Airwallex, read back</h2>
+  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}</div>`;
+}
+
 export function proofPage(run: AgentRun = agentRun()): string {
   const r = run.record, sp = split(r), story = stopStory(r), pay = payments(r);
   const nums: (Tile & { cls: string })[] = [
@@ -213,6 +226,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>${nums.map((n) => separateRowHtml(n.separate)).join("")}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
+  ${readBack(run)}
   <h2 class="sec">Checks</h2>
   ${moreCards(run)}
 </div></main>`;

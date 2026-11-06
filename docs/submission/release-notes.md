@@ -111,6 +111,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   are limited per address and for everyone. Without Max's scoped key in the Worker's secrets the page shows the main
   run's recorded quote, labelled. The receipt carries the quote and verify-receipt reports it. Tested on Max's iPhone
   (Safari, Face ID) on 6 November: signed, tamper refused, receipt downloaded. 2521 tests in 256 files, all passing.
+- 6 November, Airwallex read back (section B): /proof and /airwallex show what the Airwallex sandbox itself returns for
+  the main run, read with GET only (nothing created, updated or cancelled) into two dated, sanitized records. "The hash
+  the CFO signed travels with the payment": the terms hash Max signed with Face ID for P-0005 next to the
+  `metadata.approval_sha256` Airwallex returns for transfer `03360bfa…3985`, matched in code
+  (`docs/runs/airwallex-transfer-approval-2026-11-06.json`). Each agent's card: the CFO policy rule next to the control
+  Airwallex enforces (limit per purchase and per month, merchant category, currency, end date), 3 of 3 cards matching;
+  on /airwallex one line at the top, each card side by side in a fold
+  (`docs/runs/airwallex-cards-2026-11-06.json`; no card number beyond its last four digits). Live after the Worker is
+  redeployed. 2529 tests in 257 files, all passing.
 - 6 November, the Metal story: /metal opens with the main run on one screen, each claim linked to Metal's testnet
   explorer and every figure read from the record (`src/redesign/metalStory.ts`): 3 mandates on chain, one per agent;
   86 Metal payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep; each matched on
@@ -121,7 +130,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   credential, so it is never paid twice (this did not occur in the main run: its 4 pulls, 1 sweep and 3 refunds, were each paid once with their own transaction, and none was retried across a mandate replace; a regression test, `test/metal-pull-after-replace.test.ts`, fails without the fix); a clearing wallet is kept for one Clearing deployment; a lost clearing answer
   is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
   its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
-  metal-pay already had what we asked for. 2549 tests in 259 files, all passing.
+  metal-pay already had what we asked for. 2557 tests in 260 files, all passing (after Airwallex read back).
 
 ## Real, and ours
 
