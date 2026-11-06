@@ -4,7 +4,7 @@
 import { existsSync } from "node:fs";
 import type { Address } from "viem";
 import { MANDATE_EXPIRES_IN_SECONDS } from "../config/policy.js";
-import { fromCents } from "../lib/money.js";
+import { credentialCreateArgs } from "../metal/credentialArgs.js";
 import { keyPath, metalAgent } from "../metal/agentCli.js";
 import type { MandateAgent } from "../metal/mandate.js";
 
@@ -27,12 +27,7 @@ export function issueReplacementCredential(spec: CredentialSpec, tag: string, ma
   const out = keyPath(`${spec.agent}.${tag}.credential.json`);
   if (existsSync(out)) return out;
   metalAgent([
-    "mandate", "credential", "create",
-    "--principal", spec.principal,
-    "--cap", fromCents(spec.capCents), "--budget", fromCents(spec.budgetCents),
-    ...spec.payees.flatMap((p) => ["--payee", `${p.address},${p.name}`]),
-    "--expires-in", String(MANDATE_EXPIRES_IN_SECONDS),
-    "--description", spec.description,
+    ...credentialCreateArgs({ ...spec, expiresInSeconds: MANDATE_EXPIRES_IN_SECONDS }),
     "--mandate-key-file", mandateKeyFile,
     "--key", keyPath(OWNER), "--out", out,
   ]);
