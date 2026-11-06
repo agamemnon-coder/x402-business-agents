@@ -80,17 +80,29 @@ not known yet. `test/submission.test.ts` checks this count and keeps the text un
 
 ## Screenshots
 
-`npm run submission` makes them from the pages that replay the main run (3 November), at 1440 × 900:
+From the live site (https://kit11.max-31b.workers.dev, main 60569ef, Worker 3e8cd078) on 6 November, 1280 px wide at
+2× (2560 px; 1600 px high, screens 2–4 as tall as their card), light mode, in the form's order: the problem, try it, the proof per partner, the business. Screens
+2–4 come from one test world on /try/sign (one live Airwallex FX quote, read-only, and one live Claude Haiku
+sentence; a test passkey; nothing real moves). The other pages replay the main run (3 November) and make no outside
+call.
 
-1. `screens/1-landing.png`: Home, the three moments and the run's numbers
-2. `screens/15-watch.png`: Watch, replaying the main run
-3. `screens/14-dispute.png`: the dispute on Watch, at the CFO's rejection of "refund the other 9"
-4. `screens/16-proof.png`: Proof, every id from the run
-5. `screens/3-metal.png`: How Purser uses Metal, with the refusal on chain
-6. `screens/18-try-sign.png`: Sign one yourself (/try/sign): the exact terms signed and verified, then the same
-   signature refused on the amount + 0.01
-7. `screens/2-dashboard.png`: the CFO dashboard at the end of the run
-8. `screens/6-books.png`: the books, from the same ledger
+1. `screens/form/form-1-home.png`: Home's first screen: what Purser is, the three sentences, "Try it in 30 seconds."
+2. `screens/form/form-2-try-sign-sheet.png`: /try/sign, the approval sheet: the Treasury agent's sentence by Claude
+   Haiku (live), the exact terms with the FX quote; beside it the payment a rule stopped, and which lock stopped it
+3. `screens/form/form-3-try-sign-verified.png`: signed with the test passkey and verified by the server: "Signed and
+   verified. This signature only fits these exact terms."
+4. `screens/form/form-4-try-sign-tamper.png`: the amount + 0.01 sent with the same signature: refused, the two hashes
+   side by side
+5. `screens/form/form-5-airwallex.png`: /airwallex: the hash the CFO signed beside the one Airwallex returns with the
+   EUR 240.00 SWIFT payment (match), then 3 of 3 cards matching the CFO policy, the cards' fold open
+6. `screens/form/form-6-metal.png`: /metal: 3 mandates on chain, 86 payments each its own transaction, #24 refused on
+   chain, the mandates replaced after Face ID
+7. `screens/form/form-7-claude.png`: /claude: 24 of 24 decisions by Claude, 0 fallbacks; Haiku, Sonnet, Opus
+8. `screens/form/form-8-business.png`: Home's "Why this is a company": the problem, who buys, the intended pricing, why
+   now, why Purser (not validated with customers yet)
+
+The earlier set, made by `npm run submission` from the pages that replay the main run (1440 × 900), stays in
+`screens/` for the deck.
 
 ## Deck and zip
 
