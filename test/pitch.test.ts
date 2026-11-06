@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { PNG } from "pngjs";
 import jsQRModule from "jsqr";
 import { describe, expect, it } from "vitest";
-import { DIFFERENTIATORS } from "../src/config/brand.js";
+import { DIFFERENTIATORS, PROOF_SENTENCES } from "../src/config/brand.js";
 import { faceIdDecisions, loadRecord, payments, split, stopStory, stopsLine, timings } from "../src/redesign/run.js";
 import { CORE_LINE, METAL_LINE, QR_URL, REFUSAL_LINE, RULE_LINE, T0_SHORT, T0_STATUS, deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
@@ -149,7 +149,10 @@ describe("one set of figures, the main run's record (3 November)", () => {
     for (const name of ["form", "form (long)", "README"]) expect({ name, has: /the refusal is recorded on chain/i.test(TEXT[name]!) }).toEqual({ name, has: true });
     for (const name of ["deck", "spiekkaart", "form", "form (long)", "README"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
     // The form's short Description (Max, 5 Nov): Metal's tx "on chain, checkable", Airwallex's ids "published".
-    expect(TEXT.form).toContain("Metal tx: on chain, checkable. Airwallex ids: published on /proof.");
+    // Since section D (6 Nov) the form says where each partner's proof is in one sentence each (PROOF_SENTENCES,
+    // test/proof-sentences.test.ts).
+    const formRaw = readFileSync(new URL("../docs/submission/README.md", import.meta.url), "utf8");
+    for (const p of PROOF_SENTENCES) expect(formRaw).toContain(p.text);
     for (const name of ["pitch", "deck", "spiekkaart", "form", "form (long)", "README", "qa"]) expect({ name, plays: /(Max|I)(, the builder,)? plays? the CFO/.test(TEXT[name]!) }).toEqual({ name, plays: true });
     // "published" for the ids (Airwallex's cannot be looked up by a juror); Metal's are on chain, checkable.
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, public: /\bids? (?:is|are) public\b/i.test(TEXT[name]!) }).toEqual({ name, public: false });

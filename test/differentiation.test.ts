@@ -90,7 +90,8 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
   it("open the form's synopsis (after what Purser is) and Description, word for word", () => {
     expect(between(form, "<!-- synopsis -->", "<!-- /synopsis -->")).toBe(`${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${TRY_IT}`);
     const desc = words(between(form, "<!-- description -->", "<!-- /description -->"));
-    expect(desc.startsWith(DIFFERENTIATORS[0])).toBe(true);
+    // Section D (6 Nov): the Description opens with the problem, then the solution and the three sentences.
+    expect(desc.startsWith("The problem. AI agents can now spend company money.")).toBe(true);
     let at = 0;
     for (const s of [...DIFFERENTIATORS, KIT11_RUN_LINE, CAVEAT_LINE]) { const i = desc.indexOf(s, at); expect({ s, found: i >= at }).toEqual({ s, found: true }); at = i; }
   });

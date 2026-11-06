@@ -36,7 +36,9 @@ describe("the site after v4", () => {
     // folded on /airwallex, Max's decision on #53).
     // Home: 760 since section D (6 Nov), for what Purser is in one sentence, "Try it in 30 seconds." on its own line and
     // "Why this is a company" (five lines from docs/business/, under one note that says it is not validated).
-    const budget: Record<string, number> = { home: 760, watch: 100, try: 180, proof: 520, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
+    // Home: 880 since section D's proof sentences (6 Nov): one sentence per partner, each with its numbers, in place of
+    // the three short partner cards.
+    const budget: Record<string, number> = { home: 880, watch: 100, try: 180, proof: 520, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
