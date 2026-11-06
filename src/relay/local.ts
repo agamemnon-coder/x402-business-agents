@@ -6,7 +6,7 @@ import { mfaOn } from "./config.js";
 import Database from "better-sqlite3";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { pageResponse, Relay, type Sql } from "../../worker/src/core.js";
+import { notFoundResponse, pageResponse, Relay, type Sql } from "../../worker/src/core.js";
 import { isTrySignPath, trySignNotFound, TrySignDesk } from "../../worker/src/trySign.js";
 import { buildPages } from "./assets.js";
 
@@ -40,7 +40,7 @@ export async function startLocalRelay(opts: { port: number; token: string }): Pr
           const path = new URL(request.url).pathname;
           const response = pageResponse(request, pages)
             ?? (isTrySignPath(path) ? await (trySign ? trySign.fetch(request) : trySignNotFound()) : null)
-            ?? (path.startsWith("/api/") || path === "/health" || path === "/health/live" ? await relay.fetch(request) : new Response("not found", { status: 404 }));
+            ?? (path.startsWith("/api/") || path === "/health" || path === "/health/live" ? await relay.fetch(request) : notFoundResponse(pages));
           res.writeHead(response.status, Object.fromEntries(response.headers));
           res.end(Buffer.from(await response.arrayBuffer()));
         } catch (e) {

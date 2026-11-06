@@ -1,0 +1,29 @@
+# Dependabot (A4): weekly update pull requests for the npm dependencies (the repo and the relay Worker, each with its
+# own lockfile) and for the GitHub Actions, which stay pinned to a full commit SHA (Dependabot updates the SHA and the
+# tag comment together). Minor and patch updates come grouped, one pull request per ecosystem; a major update comes
+# alone, for a person to read. Security updates are switched on separately, in the repository's settings.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /worker
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      worker-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
