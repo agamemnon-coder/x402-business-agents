@@ -158,11 +158,13 @@ details#controls { scroll-margin-top: 80px; }
 .awrow .lbl { display: none; color: var(--faint); font-size: 13.5px; font-weight: 600; margin-right: 6px; }
 @media (max-width: 700px) { .awhead { display: none; } .awrow { grid-template-columns: minmax(0, 1fr); } .awrow .lbl { display: inline; } }`;
 
+/** The hash block's anchor, on /airwallex and on /proof: Proof's Airwallex card links its hash claim here. */
+export const AWX_HASH_ID = "awx-hash";
 /** The hash block: the hash the CFO signed, the one Airwallex returns, and whether they match (computed). */
 export function hashBlockHtml(h: HashTravel | null): string {
   if (!h) return "";
   const by = h.method === "passkey" ? "Face ID" : h.method;
-  return `<div class="card" id="awx-hash"><h3>${icon("file-check", 18)}${esc(HASH_TRAVELS)}</h3>
+  return `<div class="card" id="${AWX_HASH_ID}"><h3>${icon("file-check", 18)}${esc(HASH_TRAVELS)}</h3>
 <div class="awh"><b>${esc(`The CFO signed, with ${by} (${h.proposalId}, ${h.signedAt.slice(11, 16)} UTC)`)}</b><code>${esc(h.signed)}</code></div>
 <div class="awh"><b>${esc(`Airwallex returns, in transfer ${h.transferId.slice(0, 8)}…'s metadata.approval_sha256`)}</b><code>${esc(h.carried ?? "none")}</code></div>
 ${badge(h.match, "Match: the same hash", "No match")}

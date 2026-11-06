@@ -56,6 +56,8 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // Other named records /proof cites, each with its own name and date: the variation test, the red team, the archive.
   .replace(/Variation test[\s\S]*?Red team[\s\S]*?\)\./, " ").replace(/\d+ of \d+ attacks failed \([^)]*\)[^.]*\. Against the agent loop: \d+ of \d+ held \([^)]*\)\./, " ")
   .replace(/Autonomous dry run dry-\d+[^<]*?(, \d{4}-\d{2}-\d{2})?/g, " ")
+  // A commit is a name, not a figure (Proof's reliability note names the fix's; test/proof-first.test.ts reads it from its records).
+  .replace(/\(commit [0-9a-f]{7,40}\)/g, " ")
   // /metal's separate runs, each dated with its own run record; their figures are checked against those records in
   // test/metal-story.test.ts.
   .replace(/Beyond the kit: separate runs, each dated \(not the main run\)[\s\S]*?(?=The Metal features we use)/, " ");
@@ -130,7 +132,9 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     // Not inside the card: its own row, labelled as the separate test it was (agent X's review, 4 Nov).
     expect(t.note).toBeUndefined();
     expect(t.separate).toBe(TAP_LINE);
-    for (const html of [homePage(), proofPage()]) {
+    // Proof leaves it out since Max's last round (item 2): TAP is on /visa, linked from Proof's footer.
+    expect(proofPage()).not.toContain(TAP_LINE);
+    for (const html of [homePage()]) {
       // The run and its date said once (final review, 4 Nov): no "Separate test, 2 November:" before the line that names them.
       expect(html).toContain(`<p class="septest">${TAP_LINE}; <b>not counted in the figures above</b>.</p>`);
       expect(html).not.toContain("Separate test, 2 November");
@@ -290,7 +294,8 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
       // The TAP run's decline is there, on its own labelled line, after the sentence (the deck leaves that other run
       // out: it overrides the 4 Nov rule for the deck).
       // The form's Description leaves it out too since 6 Nov (jury review, #7: no TAP there; the long text keeps it).
-      if (name === "deck" || name === "docs/submission/README.md") expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
+      // Proof leaves it out too since Max's last round (item 2): TAP only on /visa and in Proof's footer link.
+      if (name === "deck" || name === "docs/submission/README.md" || name === "proof") expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
       else expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(LINE) }).toEqual({ name, after: true });
     }
     // On the site's tiles, a big "16 stops" with "nothing paid over a limit" under it, then the sentence.

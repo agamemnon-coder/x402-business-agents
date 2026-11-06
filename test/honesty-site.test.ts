@@ -271,9 +271,10 @@ describe("7. copy slips", () => {
     expect(t).toContain(`${pay.metalParts} on Metal, all inside the limits.`);
   });
 
-  it("says 'separate TAP run, 2 November' once on Home and Proof; the deck leaves that other run out (Max, 5 Nov)", () => {
+  it("says 'separate TAP run, 2 November' once on Home; Proof and the deck leave that other run out (Max, 5 Nov; Proof since Max's last round, item 2)", () => {
     expect(deckHtml(packFacts(), shots, "")).not.toMatch(/TAP run|2 November|LIMIT_EXCEEDED/);
-    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) {
+    expect(proofPage()).not.toMatch(/class="(?:septest|sep)"|TAP run|LIMIT_EXCEEDED/);
+    for (const [name, html] of Object.entries({ home: homePage() })) {
       expect({ name, label: /Separate test, 2 November/.test(html) }).toEqual({ name, label: false });
       const rows = html.match(/<p class="(?:septest|sep)">[\s\S]*?<\/p>/g) ?? [];
       expect({ name, rows: rows.length > 0 }).toEqual({ name, rows: true });
