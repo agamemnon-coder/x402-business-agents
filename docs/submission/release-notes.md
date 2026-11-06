@@ -247,6 +247,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   approvals, the audit chain's published links with their check, and a README on how to check it. "From the main run
   of 3 November, test money."; T:0: "Posting to T:0 is built; nothing posted (keys refused: 403 CAPI71 on 3 Nov, 401
   CAPI11 on 5 Nov)." A stored zip, written with Node's own CRC-32: no new dependency. 2773 tests in 273 files, all passing.
+- 6 November, "Unit economics (hypothesis)" (Max's last round, item 5.2; assumptions approved by Max): in
+  docs/business/model.md, what a company of 5 agents costs a month against the intended price, from the main run's
+  Claude cost per decision and a list of labelled assumptions (usage, Cloudflare hosting at its published prices, the
+  ECB's EUR/USD rate), with the gross margin at low, mid and high usage (77%, 48%, 52%). The price now includes
+  decisions, word for word everywhere: "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10
+  per extra agent; €3 per extra 100 decisions." One line says what Opus for every agent would cost (about 2.1×, the
+  run repriced), one what Claude decided (24 decisions; of the 88 payments (88 = 86 on Metal + 1 card charge + 1 SWIFT transfer), 82 were routine code). The deck's business
+  slide shows the same numbers ("Why this is a company" merged into it, so the deck stays at twelve).
+  src/business/unitEconomics.ts computes them; a test checks that none is unsourced. 2792 tests in 274 files,
+  all passing (with main's).
 - 6 November, the test suite makes 0 external calls: building the seller or a supplier no longer asks Metal's
   facilitator for its /supported list (test/support/facilitatorStandIn.ts, in test/clearing.test.ts and
   test/world-thursday.test.ts), and a vitest setup file removes every live key from the tests' environment and refuses
