@@ -1,9 +1,32 @@
 # Demo Day: the runbook
 
 For Max. Demo Day is **19 November 2026 in San Francisco, remote participation optional**; finalists are selected on
-**15 November** (microsite, read 5 November). The words come from [pitch.md](pitch.md) (3-minute version), the answers
-from [qa.md](qa.md), the one page to keep beside the laptop is `docs/internal/spiekkaart-demo.pdf`. Every figure on
-screen is the main run's (3 November 2026); nothing here is run live with money.
+**15 November** (microsite, read 5 November). The words come from [pitch.md](pitch.md) ("Demo Day: the 3-minute
+pitch", live `/try/sign` first), the answers from [qa.md](qa.md), the one page to keep beside the laptop is
+[cheat-sheet.pdf](cheat-sheet.pdf). Every figure on screen is the main run's (3 November 2026) or a dated record's;
+nothing here moves money.
+
+## The Demo Day script: a fallback per step
+
+The 3-minute pitch in [pitch.md](pitch.md), step by step. The phone is mirrored to the shared screen (QuickTime
+Player, New Movie Recording, the iPhone as the camera, over the cable; test it in rehearsal). The laptop has the tabs
+of section 4 open, and `npm run judge` already running in a second terminal, so the offline replay is one click away.
+
+| Step | Time | Tap or show | If it fails |
+|---|---|---|---|
+| 1. The problem | 0:00–0:20 | Deck, slide 1 | The deck is a PDF and needs no network. Screen sharing drops: send the deck PDF in the chat and talk over it ("Let me walk you through the slides while the screen comes back.") |
+| 2. Start the test world | 0:20 | Phone, `/try/sign`: **Start: show me the proposal** | **Network down → the /watch replay**, served offline by `npm run judge` (tab 7, `http://localhost:4311/watch?scene=1`; the hosted `/watch` needs the network too). Say: "The network is down, so here is the recorded run; scan the QR afterwards." Then clips `11-turn.mp4` and `12-tamper.mp4` for the signature and the tamper. A busy answer ("many visitors…", "wait a moment"): the second device, its world started before |
+| 3. The two proposals | 0:25 | Point at the blocked card (the reserve floor), then scroll to the approval sheet | Nothing to fail: both are fixed text in the test world. If the page looks wrong, go to step 2's fallback |
+| 4. Sign with Face ID | 0:50 | **Create your test passkey** (Face ID), then **Sign with Face ID** (Face ID); wait for the green check | **Face ID fails → a second device, or the recorded run.** Try once more; then the laptop's `/try/sign` (tab 4, its own world, Touch ID); or clip `11-turn.mp4` and say: "Same moment, recorded." |
+| 5. The quote | 0:50–1:05 | The sheet's FX quote and its countdown | **The quote expires → show "Get a new quote" as a feature.** The page says "Quote expired. Get a fresh one and sign again." Tap **Get a new quote** and say: "The quote ran out, so the signature for it is worthless too. New quote, new terms: I sign again." Then sign. No live quote at all ("No live quote now"): the page shows the main run's recorded quote, labelled; say "the recorded quote" and go on |
+| 6. Tamper | 1:05–1:30 | **Try to tamper: change the amount by 0.01**; point at "Refused" and "One cent changed. The signature is worthless." | Clip `12-tamper.mp4`, or the screenshot `screens/18-try-sign.png` (signed, then the tamper refused) |
+| 7. Proof one: the hash in Airwallex | 1:30 | Laptop, tab 3, [/proof](https://kit11.max-31b.workers.dev/proof): "The hash the CFO signed travels with the payment." | Network down: `http://localhost:4311/proof` (`npm run judge`); else deck slide 6 (the ids) |
+| 8. Proof two: the refusal on Metal | 1:50 | Tab [/metal](https://kit11.max-31b.workers.dev/metal): #24's refusal and its tx | Network down: `http://localhost:4311/metal`; else deck slide 7 |
+| 9. Proof three: Claude 24/24 | 2:05 | Back to `/proof`, the Claude figure ("decisions by Claude (0 fallbacks)") | Deck, slide 1 (the four figures) |
+| 10. The business and the ask | 2:20–3:00 | Deck, slide 10 (the QR to `/try/sign`); leave it up for the questions | The QR does not scan: the short URL is under the code; read it out: kit11.max-31b.workers.dev/try/sign |
+
+**The earlier runbook** (section 3 below) plays the main run's replay instead of the live demo. Use it when the
+organisers ask for no live demo, or when the phone cannot be shown at all.
 
 ## 1. What we know, and what Max asks Dan Kim
 
@@ -44,13 +67,13 @@ your repository with setup instructions."
 | Finance and product value | 0:15 who and what (a small company that sells live stock data per query; the rule: inside its limits an agent pays alone, beyond them the CFO signs); 2:05 the core line | [/](https://kit11.max-31b.workers.dev/); deck slides 2–3 |
 | Airwallex relevance and financial context | 0:40, beat 3: FX for only the shortfall, SWIFT PAID 6 s after Face ID (simulated settlement) | conversion `3ca88196-05da-4d88-9caa-796f03704636`; transfer `03360bfa-afce-457b-89d1-e1097fbe3985`; authorization `01a1a12f-4113-7000-b76d-014677710007` |
 | Agentic behaviour and controls | 0:40, beat 1: Metal refuses; Treasury proposes options 40 s later; four eyes | tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`; P-0002 |
-| Technical execution | 1:50: every id published on /proof, the Metal ones on chain and checkable; `npm run verify`; 2557 tests | [/proof](https://kit11.max-31b.workers.dev/proof); 412 audit rows, hash-chained |
+| Technical execution | 1:50: every id published on /proof, the Metal ones on chain and checkable; `npm run verify`; 2568 tests | [/proof](https://kit11.max-31b.workers.dev/proof); 412 audit rows, hash-chained |
 | "(1) a working end-to-end workflow for a clear user" | The whole run: 0:40–1:50 | [/watch](https://kit11.max-31b.workers.dev/watch) |
 | "(2) Airwallex used for a necessary financial action" | Beat 3: the euro licence paid by SWIFT, euros bought by FX | transfer `03360bfa…3985` |
 | "(3) financial context influencing what the agent decides" | Beat 1: the price rise; Treasury's two options within the same 20.00: A, Sourcing's cap to 0.04 and our price stays 0.05; B, the same cap and our price up to 0.07 | P-0002 (option A, signed), P-0003 (option B, superseded) |
 | "(4) clear controls: what the agent can do, what requires approval, how it handles an exception" | Beats 1 and 2: Metal's cap, the refunds by Support itself, "refund the other 9" rejected with Face ID; 1:50 the jury signs | P-0004; [/try/sign](https://kit11.max-31b.workers.dev/try/sign) |
 
-## 3. The runbook, minute by minute (3 minutes)
+## 3. The runbook, minute by minute (3 minutes, the replay version)
 
 Screen shared: one browser window, the tabs below in this order, zoom 110 %. Max says the sentences from
 [pitch.md](pitch.md); the first words of each step are here so he knows where he is.
@@ -80,15 +103,19 @@ figure is on the slides. Say: "Let me walk you through the slides while the scre
   1. the deck: `docs/submission/purser-deck.pdf` (full screen, slide 1);
   2. [/watch?scene=1](https://kit11.max-31b.workers.dev/watch?scene=1);
   3. [/proof](https://kit11.max-31b.workers.dev/proof);
-  4. [/try/sign](https://kit11.max-31b.workers.dev/try/sign), with a test world started and one proposal signed (it
-     lasts an hour: start it within the hour before);
+  4. [/try/sign](https://kit11.max-31b.workers.dev/try/sign), with a test world started (it lasts an hour: start it
+     within the hour before): the Face ID fallback of the Demo Day script; for the replay version, also sign one
+     proposal in it;
   5. Home: [kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/);
   6. the terminal, in the repo, `npm run verify` run once, its result on screen;
   7. `http://localhost:4311/watch` from `npm run judge` (already started in a second terminal, as reserve).
 - [ ] The clips (`out/video/clips/`) open in a player, paused, in the order of the plan B column.
 - [ ] Phone above 80 %, Do Not Disturb on, Face ID works (unlock once).
 - [ ] The phone's hotspot ready as reserve internet (name and password known; tested once that day).
-- [ ] The cheat sheet (`docs/internal/spiekkaart-demo.pdf`) printed, beside the laptop.
+- [ ] The cheat sheet ([cheat-sheet.pdf](cheat-sheet.pdf)) printed, beside the laptop.
+- [ ] The iPhone mirrored to the screen, `/try/sign` open and **not started** (a world started at 0:20 gets a fresh
+  FX quote, good for up to 15 minutes); the mirror tested once that day.
+- [ ] A second device (the laptop, tab 4) with its own `/try/sign` world started, as the Face ID fallback.
 - [ ] Nothing private on screen: no `.env`, no relay token, no viewer link, no mail. The terminal shows only the repo.
 
 ## 5. Rehearsal: three times, with a stopwatch
@@ -108,6 +135,16 @@ leaves the figure in), and note it in the last column.
 | The jury signs, the tamper | 0:45 | | | | |
 | **Total** | **3:00** | | | | |
 
+The Demo Day script (the live version), the same way:
+
+| Part | Target | Run 1 | Run 2 | Run 3 | Too long? What was cut |
+|---|---|---|---|---|---|
+| The problem, and why now | 0:20 | | | | |
+| Live: sign, then tamper | 1:10 | | | | |
+| The proof | 0:50 | | | | |
+| The business and the ask | 0:40 | | | | |
+| **Total** | **3:00** | | | | |
+
 Also, once:
 
 - [ ] **Read the pitch out loud** (3-minute version) before the first rehearsal. Mark every sentence you stumble on; it
@@ -122,6 +159,8 @@ Also, once:
 | Android | | |
 
 - [ ] **Plan B once:** turn Wi-Fi off mid-rehearsal and switch to `npm run judge` and the clips, so the switch is known.
+- [ ] **The quote once:** start a world, wait 15 minutes, then sign: the server refuses ("Quote expired…"); tap
+  **Get a new quote** and sign again, saying the line from the script.
 
 ## 6. Three sentences that always work
 
