@@ -4,6 +4,7 @@ import { expect } from "vitest";
 import { FakeAuthenticator } from "../../src/redteam/authenticator.js";
 import { TrySignDesk } from "../../worker/src/trySign.js";
 import type { Sql } from "../../worker/src/core.js";
+import type { FxSource } from "../../worker/src/fxQuote.js";
 
 export const RP = "kit11.example.workers.dev";
 export const BASE = `https://${RP}`;
@@ -12,9 +13,9 @@ export const t0 = new Date("2026-11-04T10:00:00Z");
 export function sqlOver(db: Database.Database): Sql {
   return { exec(q, ...b) { const st = db.prepare(q); const rows = st.reader ? st.all(...b) : (st.run(...b), []); return { toArray: () => rows }; } };
 }
-export function desk(db = new Database(":memory:")) {
+export function desk(db = new Database(":memory:"), fx: FxSource | null = null) {
   let clock = t0;
-  const d = new TrySignDesk(sqlOver(db), { now: () => clock });
+  const d = new TrySignDesk(sqlOver(db), { now: () => clock, fx });
   return { d, db, at: (t: Date) => { clock = t; } };
 }
 let ipN = 0;

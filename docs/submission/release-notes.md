@@ -103,6 +103,14 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   checks it offline with Node's own crypto: the terms' hash, the challenge, the origin and RP id, user presence and
   verification, the ES256 signature. One changed field or one cent fails. The Worker's answer to a good signature now
   carries the public key it verified against. 2495 tests in 255 files, all passing.
+- 6 November, /try/sign's live FX quote: the waiting payment's terms carry a quote from the Airwallex sandbox (EUR
+  bought, USD sold; schema kit11.try-terms/v3), so the signature binds to the quote id; once the quote expires the
+  server refuses even a good signature ("Quote expired. Get a fresh one and sign again.") and the page offers a new
+  quote, which means new terms, signed again. The Worker may call only login and quote creation on the sandbox host
+  (a fixed table, tested: no conversion, no transfer); the key stays in the Worker, never in an answer or a log; quotes
+  are limited per address and for everyone. Without Max's scoped key in the Worker's secrets the page shows the main
+  run's recorded quote, labelled. The receipt carries the quote and verify-receipt reports it. Tested on Max's iPhone
+  (Safari, Face ID) on 6 November: signed, tamper refused, receipt downloaded. 2521 tests in 256 files, all passing.
 
 ## Real, and ours
 

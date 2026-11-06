@@ -114,7 +114,8 @@ describe("2. What's real?, on each page its own", () => {
     const r = words(html.slice(a, html.indexOf("</details>", a)));
     expect(a).toBeGreaterThan(0);
     expect(html).not.toContain('<details class="real"');
-    expect(r).toContain("No Airwallex, Metal or Claude call");
+    expect(r).toContain("No payment or conversion at Airwallex, no Metal or Claude call, and no money moves");
+    expect(r).toContain("read-only, nothing is converted, no money moves");
     expect(r).toContain("no money moves");
     for (const x of [MAIN, WORLD_SETUP, SECOND_APPROVER, "Ridgeline"]) expect({ x, has: r.includes(x) }).toEqual({ x, has: false });
   });
