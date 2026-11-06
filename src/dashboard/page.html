@@ -96,6 +96,8 @@ button { font: inherit; }
 .head .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
 .recbanner { display: flex; gap: 10px; align-items: center; background: var(--accent-soft); color: var(--text); border-radius: 12px; padding: 12px 16px; font-size: 14px; margin-bottom: 24px; }
 .recbanner svg { color: var(--accent); }
+.cfolinks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: -6px 0 16px; font-size: 15px; font-weight: 600; }
+.cfolinks a { color: var(--accent); text-decoration: none; }
 .cfoexpo { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); max-width: 60em; display: grid; gap: 6px; font-size: 15px; line-height: 1.45; }
 .cfoexpo[hidden] { display: none; }
 .cfoexpo p, .cfoexpo ul { margin: 0; } .cfoexpo ul { padding-left: 18px; } .cfoexpo .hl { font-weight: 700; font-size: 16px; } .cfoexpo .small { font-size: 13.5px; color: var(--muted); }
@@ -638,6 +640,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 <!-- The CFO's dashboard: live (local, or on the relay with the viewer key) or the recorded run. -->
 <main class="wrap" id="dash" hidden>
   <p class="cfoline" id="cfo-line" hidden>__CFO_VIEW_LINE__</p>
+  <p class="cfolinks" id="cfo-links" hidden><a href="trace">__TRACE_LINK__</a><a href="assets/__PACK_NAME__" download>__PACK_LINK__</a></p>
   <div class="cfoexpo" id="cfo-expo" hidden>__CFO_EXPOSURE__</div>
   <div class="recbanner" id="recbanner" hidden><span data-icon="database"></span><span id="rec-text">Recorded run.</span></div>
   <div id="agents-view" hidden>
@@ -1754,6 +1757,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     showDash(); render(asnap);
     // The CFO's view (Max's last round, item 4): one line on top, and the view opens at the top, where it is.
     document.getElementById("cfo-line").hidden = false;
+    document.getElementById("cfo-links").hidden = false;
     document.getElementById("cfo-expo").hidden = false;
   } else if (wantRecorded && RECORDED) {
     markNav("dashboard");
