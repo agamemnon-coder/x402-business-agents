@@ -92,14 +92,17 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   changed, the new hash next to the signed one, and the server refusing the same signature. The blocked proposal shows
   which of three locks stopped it (Purser's policy; simulated in the test world) and links each lock's real example:
   Metal's on-chain refusal in the main run, Airwallex's LIMIT_EXCEEDED of EUR 45.00 in the separate TAP run of 2
-  November, a purchase Purser's code refused in the main run. The terms now carry the payee's IBAN (a test one, check
+  November, and Purser's floors holding at P-0005 in the main run (only the shortfall converted: EUR 110.00 for USD
+  124.29). After review: one "What's real?" only, opaque sticky header and steps, one sentence per explanation with
+  "more" for the rest, a green check after signing, and one closing line after a refused tamper ("One cent changed. The
+  signature is worthless."). The terms now carry the payee's IBAN (a test one, check
   digits 00; schema kit11.try-terms/v2); the film and the social preview keep the v1 terms they were made with. Live
-  after the Worker is redeployed. 2479 tests in 254 files, all passing.
+  after the Worker is redeployed. 2482 tests in 254 files, all passing.
 - 6 November, /try/sign's receipt: after signing, the page offers receipt.json (the exact terms, their hash, the
   passkey's assertion, its public key, the algorithm; no world token), and `npm run verify-receipt -- receipt.json`
   checks it offline with Node's own crypto: the terms' hash, the challenge, the origin and RP id, user presence and
   verification, the ES256 signature. One changed field or one cent fails. The Worker's answer to a good signature now
-  carries the public key it verified against. 2492 tests in 255 files, all passing.
+  carries the public key it verified against. 2495 tests in 255 files, all passing.
 
 ## Real, and ours
 

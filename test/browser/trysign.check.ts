@@ -40,7 +40,7 @@ function parseArgs(argv: string[]): { live: boolean; base: string | null; shots:
 }
 
 const args = parseArgs(process.argv.slice(2));
-const { TRY_SIGN_LABEL, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
 const { canonical } = await import("../../worker/src/trySign.js");
@@ -160,7 +160,7 @@ for (const [width, scheme] of RUNS) {
   check(!(await page.locator("details.wr").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: "What's real?" is closed until asked`);
   await page.locator("details.wr > summary").click();
   const wr = await page.locator("details.wr").innerText();
-  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits].every((l) => wr.includes(l)) && /no Airwallex or Metal call/.test(wr) && /no Claude call/.test(wr),
+  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No Airwallex, Metal or Claude call, and no money moves/.test(wr),
     `${tag}: "What's real?" opens to the honest lines (test world, stand-in executor, no Airwallex, Metal or Claude call; the signature and its check real)`);
   await page.locator("details.wr > summary").click();
   // The three steps, and the start button above the fold.
@@ -169,6 +169,17 @@ for (const [width, scheme] of RUNS) {
   const go = await page.locator("#go-world").boundingBox();
   check(!!go && go.y + go.height <= height, `${tag}: the start button is above the fold (its bottom at ${go ? Math.round(go.y + go.height) : "?"} of ${height} px)`);
   check(!(await page.locator("#w-facts").isVisible()), `${tag}: the world's facts stay hidden until there is a world`);
+  // Directly under the button, one line of what is at stake, also above the fold.
+  const hook = await page.locator("#hook").boundingBox();
+  check((await page.locator("#go-world + #hook").innerText()).trim() === TRY_SIGN_HOOK && !!hook && hook.y + hook.height <= height, `${tag}: under the start button: "${TRY_SIGN_HOOK}"`);
+  check(await page.locator("summary", { hasText: "What's real?" }).count() === 1 && await page.locator("footer details").count() === 0, `${tag}: one "What's real?" on the page, under the disclaimer`);
+  // The sticky area is opaque (Max, 6 Nov: text showed through it while scrolling): the header and the steps, edge to edge.
+  const opaque = await page.evaluate(`(() => {
+    const alpha = (c) => { const m = /rgba?\\(([^)]+)\\)/.exec(c); const p = m ? m[1].split(",").map((x) => x.trim()) : []; return p.length === 4 ? Number(p[3]) : p.length === 3 ? 1 : 0; };
+    const h = getComputedStyle(document.querySelector("header.top")), o = getComputedStyle(document.querySelector("ol.progress"));
+    return { header: alpha(h.backgroundColor), blur: h.backdropFilter, steps: alpha(o.backgroundColor) === 1 || alpha(o.boxShadow.split(") ")[0] + ")") === 1, shadow: o.boxShadow };
+  })()`) as { header: number; blur: string; steps: boolean; shadow: string };
+  check(opaque.header === 1 && (opaque.blur === "none" || opaque.blur === "") && /100vmax|\d{3,}px/.test(opaque.shadow), `${tag}: the sticky header and steps are opaque (header alpha ${opaque.header}, steps shadow ${opaque.shadow.slice(0, 40)}…)`);
   await page.screenshot({ path: join(shots, `${tag}-1-start.png`) });
 
   // Six requests a visit (world, passkey, signature, three tampers) and six visits: the relay's 30 a minute per address
@@ -215,8 +226,16 @@ for (const [width, scheme] of RUNS) {
   const locks = await blocked.locator(".lock").evaluateAll((ls: Element[]) => ls.map((l) => ({ id: (l as HTMLElement).dataset.lock, hit: l.classList.contains("hit"), text: l.textContent ?? "", href: l.querySelector("a")?.getAttribute("href") ?? "" }))) as { id: string; hit: boolean; text: string; href: string }[];
   check(locks.map((l) => l.id).join() === "purser,airwallex,metal" && locks.filter((l) => l.hit).map((l) => l.id).join() === "purser" && /Stopped this one \(simulated\)/.test(locks[0]!.text),
     `${tag}: (a) three locks, Purser's policy marked as the one that stopped it (simulated)`);
-  check(locks.every((l, i) => l.text.includes(LOCKS[i]!.example) && l.text.includes(`Real example · ${LOCKS[i]!.run}`)), `${tag}: (a) each lock names its real example and the run it is from`);
-  check(locks[0]!.href === "/proof#stops", `${tag}: (a) Purser's policy links the main run's stops on Proof`);
+  check(locks.every((l, i) => l.text.includes(`Real example, ${LOCKS[i]!.run}: ${LOCKS[i]!.example}`)), `${tag}: (a) each lock names its real example and the run it is from`);
+  // One sentence each; the example is behind a closed "more" (a native <details>), the link always visible.
+  const mores = await blocked.locator(".lock details.more").evaluateAll((ds: Element[]) => ds.map((d) => `${(d as HTMLDetailsElement).open}:${d.querySelector("summary")?.textContent}`)) as string[];
+  check(mores.join() === "false:more,false:more,false:more" && await blocked.locator(".lock a").evaluateAll((as: Element[]) => as.every((a) => (a as HTMLElement).offsetHeight > 0)) as boolean,
+    `${tag}: (a) each lock: one sentence, its example behind "more", its link visible`);
+  await blocked.locator(".lock.purser details.more > summary").click();
+  check((await blocked.locator(".lock.purser details.more").innerText()).includes("only the shortfall"), `${tag}: (a) "more" opens to the example (P-0005, only the shortfall)`);
+  await blocked.locator(".lock.purser details.more > summary").click();
+  check(locks[0]!.href === "/proof#airwallex" && /P-0005: the invoice needed EUR 260\.00 and EUR 150\.00 was free, so Purser's plan converted only the shortfall: EUR 110\.00 for USD 124\.29/.test(locks[0]!.text),
+    `${tag}: (a) Purser's policy: the floors that held at P-0005 (FX only for the shortfall), linked to the FX row on Proof`);
   check(locks[1]!.href.endsWith("/blob/main/docs/runs/visa-tap-live-2026-11-02.json") && /EUR 45\.00/.test(locks[1]!.text) && /LIMIT_EXCEEDED/.test(locks[1]!.text) && /Separate TAP run, 2 Nov/.test(locks[1]!.text),
     `${tag}: (a) Airwallex's card limit links the separate TAP run of 2 November (EUR 45.00, LIMIT_EXCEEDED)`);
   check(/^0x[0-9a-f]{64}$/.test(METAL_TX) && locks[2]!.href === `https://testnet.metalntwx.com/tx/${METAL_TX}`, `${tag}: (a) Metal's mandate links the on-chain refusal on Metal's explorer (${METAL_TX.slice(0, 10)}…${METAL_TX.slice(-4)})`);
@@ -237,6 +256,12 @@ for (const [width, scheme] of RUNS) {
   const copied = await page.evaluate("navigator.clipboard.readText()") as string;
   check(copied === hash && (await page.locator("#r-hash button.copy").innerText()).includes("Copied"), `${tag}: Copy puts the whole signed hash on the clipboard (${copied.length} characters)`);
   check((await page.locator("#result").innerText()).includes("Verified by the server"), `${tag}: "Verified by the server"`);
+  const ok = await page.locator("#result .bigok svg").boundingBox();
+  const okColor = await page.locator("#result .bigok svg").evaluate((e: Element) => getComputedStyle(e).color);
+  const okWant = await page.evaluate(`getComputedStyle(document.documentElement).getPropertyValue("--ok").trim()`) as string;
+  check((await page.locator("#r-head").innerText()).trim() === TRY_SIGN_SIGNED && !!ok && ok.width >= 48 && okColor.length > 0 && okWant.length > 0,
+    `${tag}: a big green check (${ok ? Math.round(ok.width) : "?"} px, ${okColor}): "${TRY_SIGN_SIGNED}"`);
+  check(await page.locator("#r-checks details.more").count() === 1 && await page.locator("#r-exec details.more").count() === 1, `${tag}: the result's explanations are one sentence each, the rest behind "more"`);
   check(/Test transfer test-[0-9a-f]{12}: EUR 1,850\.00/.test(await page.locator("#r-exec").innerText()), `${tag}: "Executed in your test world" by the stand-in`);
   // The receipt: downloaded as the visitor would, then checked offline as npm run verify-receipt does.
   const [download] = await Promise.all([page.waitForEvent("download"), page.click("#r-receipt")]);
@@ -250,18 +275,20 @@ for (const [width, scheme] of RUNS) {
     `${tag}: the receipt with one cent more, or another IBAN, fails`);
   check(!/"token"/.test(readFileSync(saved, "utf8")) && Object.keys(receipt).sort().join() === "algorithm,assertion,credential_id,note,origin,public_key,receipt,rp_id,terms,terms_sha256,verified_by_server_at,verify",
     `${tag}: the receipt carries what it needs and no world token`);
+  check(await page.locator("#result .receipt details.more").count() === 1 && /^Check it offline with one command, no server: npm run verify-receipt -- receipt\.json\.$/.test((await page.locator("#result .receipt > p").innerText()).trim()),
+    `${tag}: the receipt's explanation is one sentence, the rest behind "more"`);
   await shotAt(page, "#result", join(shots, `${tag}-4-signed-verified.png`));
   await layout(page, tag, "after signing", width);
 
   // Tamper, field by field: the visitor's own edit, sent with the same signature, refused by the server.
   check(await page.locator("#t-send").isDisabled(), `${tag}: nothing to send until a field is changed`);
   const beforeTamper = errors.length;
-  const tampers: [string, string, () => Promise<void>, string][] = [
-    ["amount", "1850.01", async () => { await page.click("#go-tamper"); }, "EUR 1,850.01"],
-    ["payee_iban", "DE00000000000000000666", async () => { await page.fill("#t-amount", terms.amount!); await page.fill("#t-iban", "de00 0000 0000 0000 0006 66"); await page.click("#t-send"); }, "DE00 0000 0000 0000 0006 66"],
-    ["currency", "USD", async () => { await page.fill("#t-iban", iban(terms.payee_iban!)); await page.selectOption("#t-currency", "USD"); await page.click("#t-send"); }, "USD"],
+  const tampers: [string, string, () => Promise<void>, string, string][] = [
+    ["amount", "1850.01", async () => { await page.click("#go-tamper"); }, "EUR 1,850.01", TAMPER_VERDICT.cent],
+    ["payee_iban", "DE00000000000000000666", async () => { await page.fill("#t-amount", terms.amount!); await page.fill("#t-iban", "de00 0000 0000 0000 0006 66"); await page.click("#t-send"); }, "DE00 0000 0000 0000 0006 66", TAMPER_VERDICT.field],
+    ["currency", "USD", async () => { await page.fill("#t-iban", iban(terms.payee_iban!)); await page.selectOption("#t-currency", "USD"); await page.click("#t-send"); }, "USD", TAMPER_VERDICT.field],
   ];
-  for (const [field, value, act, shown] of tampers) {
+  for (const [field, value, act, shown, last] of tampers) {
     await page.evaluate(`document.getElementById("tamper").hidden = true`);
     await act();
     await page.waitForSelector("#tamper:not([hidden])");
@@ -273,7 +300,10 @@ for (const [width, scheme] of RUNS) {
       `${tag}: tamper ${field}: the new hash (${short(newH ?? "")}) next to the signed one (${short(hash)})`);
     const head = await page.locator("#t-head").innerText();
     const why = await page.locator("#t-why").innerText();
-    check(head.startsWith("Refused") && /challenge|signature was made for hash/.test(why), `${tag}: tamper ${field}: the server refuses the same signature (${why.slice(0, 70)}…)`);
+    // One clean sentence (Max, 6 Nov: no "The server: refused: the server's verifier…").
+    check(head.startsWith("Refused") && why.trim() === `The server refused it: the signature was made for hash ${hash.slice(0, 12)}…, and your terms hash to ${(newH ?? "").slice(0, 12)}….`,
+      `${tag}: tamper ${field}: the server refuses the same signature, said once (${why.slice(0, 60)}…)`);
+    check((await page.locator("#t-verdict").innerText()).trim() === last && await page.locator("#t-verdict").isVisible(), `${tag}: tamper ${field}: it ends with "${last}"`);
   }
   // On a phone the tamper and its refusal fill the screen; on a laptop the whole result card fits.
   await shotAt(page, mobile ? "#tamper" : "#tamper-box", join(shots, `${tag}-5-tamper-refused.png`));

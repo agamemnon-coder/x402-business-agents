@@ -21,7 +21,7 @@ import { join, resolve } from "node:path";
 const shots = resolve(process.argv[2] ?? "out/try-sign-webkit");
 mkdirSync(shots, { recursive: true });
 process.env.TRY_SIGN_ENABLED = "on";
-const { TRY_SIGN_LABEL, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { startLocalRelay } = await import("../../src/relay/local.js");
 const local = await startLocalRelay({ port: 0, token: "browser-check-webkit" });
 const require = createRequire(import.meta.url);
@@ -50,11 +50,15 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     && await page.locator("#pg-1").getAttribute("aria-current") === "step", `${tag}: three steps (${TRY_SIGN_STEPS.join(" → ")}), step 1 under way`);
   const go = await page.locator("#go-world").boundingBox();
   check(!!go && go.y + go.height <= height, `${tag}: the start button is above the fold (its bottom at ${go ? Math.round(go.y + go.height) : "?"} of ${height} px)`);
+  check((await page.locator("#go-world + #hook").innerText()).trim() === TRY_SIGN_HOOK, `${tag}: under the start button: "${TRY_SIGN_HOOK}"`);
+  check(await page.locator("summary", { hasText: "What's real?" }).count() === 1 && await page.locator("footer details").count() === 0, `${tag}: one "What's real?" on the page`);
+  const header = await page.evaluate(`getComputedStyle(document.querySelector("header.top")).backgroundColor`) as string;
+  check(/^rgb\(/.test(header), `${tag}: the sticky header is opaque (${header})`);
   const band = await page.locator(".testband").boundingBox();
   check(!!band && band.y === 0 && band.height <= 44, `${tag}: the disclaimer is one line at the top (${band?.height} px high)`);
   await page.locator("details.wr > summary").click();
   const wr = await page.locator("details.wr").innerText();
-  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits].every((l) => wr.includes(l)), `${tag}: "What's real?" opens to its honest lines`);
+  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)), `${tag}: "What's real?" opens to its honest lines`);
   // Playwright's screenshot in WebKit adds a stylesheet of its own, which this page's CSP refuses: that console error is
   // the screenshot's, not the page's, so only it is set aside (the page's own errors are counted below).
   const beforeShot = errors.length;
@@ -74,7 +78,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     check((await blocked.innerText()).includes("Check: fail") && (await blocked.innerText()).includes("Reserve floor"), `${tag}: (a) shows "Check: fail" and the rule that blocks it`);
     check(await blocked.locator("button").count() === 0, `${tag}: (a) has no signing button`);
     const locks = await blocked.locator(".lock").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.lock}${l.classList.contains("hit") ? "!" : ""} ${l.querySelector("a")?.getAttribute("href") ?? ""}`)) as string[];
-    check(locks.length === 3 && /^purser! \/proof#stops$/.test(locks[0]!) && /^airwallex https:\/\/github\.com\/.+visa-tap-live-2026-11-02\.json$/.test(locks[1]!) && /^metal https:\/\/testnet\.metalntwx\.com\/tx\/0x2e92f9cb[0-9a-f]{52}1871$/.test(locks[2]!),
+    check(locks.length === 3 && /^purser! \/proof#airwallex$/.test(locks[0]!) && /^airwallex https:\/\/github\.com\/.+visa-tap-live-2026-11-02\.json$/.test(locks[1]!) && /^metal https:\/\/testnet\.metalntwx\.com\/tx\/0x2e92f9cb[0-9a-f]{52}1871$/.test(locks[2]!),
       `${tag}: (a) the three locks, Purser's policy marked, each with its real example's link`);
     const waiting = page.locator("article.prop.sheet");
     const shown = (await waiting.locator(".hash").getAttribute("data-hash")) ?? "";

@@ -109,7 +109,11 @@ describe("2. What's real?, on each page its own", () => {
   const MAIN = "Real Claude decisions, real Metal testnet and Airwallex sandbox calls";
 
   it("/try/sign says what it is: a test world, no Airwallex, Metal or Claude call, no money; none of the main run's lines", () => {
-    const r = real(trySignPage());
+    // Its one "What's real?" is the expander under the disclaimer (6 Nov: the footer's copy is gone), found by position.
+    const html = trySignPage(), a = html.indexOf('<details class="wr">');
+    const r = words(html.slice(a, html.indexOf("</details>", a)));
+    expect(a).toBeGreaterThan(0);
+    expect(html).not.toContain('<details class="real"');
     expect(r).toContain("No Airwallex, Metal or Claude call");
     expect(r).toContain("no money moves");
     for (const x of [MAIN, WORLD_SETUP, SECOND_APPROVER, "Ridgeline"]) expect({ x, has: r.includes(x) }).toEqual({ x, has: false });
