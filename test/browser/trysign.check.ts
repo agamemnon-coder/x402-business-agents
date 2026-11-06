@@ -42,6 +42,8 @@ function parseArgs(argv: string[]): { live: boolean; base: string | null; shots:
 const args = parseArgs(process.argv.slice(2));
 const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
+const { StandInLine } = await import("../support/lineStandIn.js");
+const lineStandIn = new StandInLine();
 const { TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
@@ -66,7 +68,8 @@ if (args.base) {
   process.env.TRY_SIGN_ENABLED = "on";
   const { startLocalRelay } = await import("../../src/relay/local.js");
   // The FX quote from a labelled stand-in (no network in CI): it says "stand-in" wherever the page shows it.
-  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn });
+  // The agent's sentence from a labelled stand-in too (no model call in CI): the page says "Stand-in sentence".
+  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn, trySignLine: lineStandIn.source });
 }
 const require = createRequire(import.meta.url);
 // Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed).
@@ -167,7 +170,7 @@ for (const [width, scheme] of RUNS) {
   check(!(await page.locator("details.wr").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: "What's real?" is closed until asked`);
   await page.locator("details.wr > summary").click();
   const wr = await page.locator("details.wr").innerText();
-  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No payment or conversion at Airwallex, no Metal or Claude call, and no money moves/.test(wr),
+  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No payment or conversion at Airwallex, no Metal call, and no money moves/.test(wr),
     `${tag}: "What's real?" opens to the honest lines (test world, stand-in executor, no payment or conversion, the FX quote read-only; the signature and its check real)`);
   await page.locator("details.wr > summary").click();
   // The three steps, and the start button above the fold.
@@ -193,6 +196,8 @@ for (const [width, scheme] of RUNS) {
   // (TRY_SIGN_PER_MINUTE) can answer 429 to the last ones; then the check waits out the minute, as a visitor would.
   // A short quote at 390 px: light, expiring before the passkey; dark, expiring once the passkey is made.
   if (!args.live && (tag === "390-light" || tag === "390-dark")) fxStandIn.validityMs = 12_000;
+  // At 360 px dark the model is down: the fixed sentence, labelled "fixed text (model unavailable)".
+  lineStandIn.fail = !args.live && tag === "360-dark";
   for (let attempt = 0; ; attempt++) {
     await page.click("#go-world");
     await page.waitForFunction(() => !document.getElementById("s-props")?.hidden || document.getElementById("w-status")?.classList.contains("bad"));
@@ -245,6 +250,23 @@ for (const [width, scheme] of RUNS) {
 
   // (b): the approval sheet, as the CFO's.
   const waiting = page.locator("article.prop.sheet");
+  // The agent's sentence: who wrote it, said on the pill; the request id behind "more".
+  if (!args.live) {
+    const pill = waiting.locator(".who .pill");
+    const says = (await waiting.locator(".says").innerText()).trim();
+    if (tag === "360-dark") {
+      check((await pill.innerText()).trim() === "fixed text (model unavailable)" && await pill.getAttribute("data-voice") === "fixed-unavailable" && says === "Alpine Packaging's invoice is due Friday. It is more than I may pay alone, so I ask you.",
+        `${tag}: the model down: the fixed sentence, labelled "fixed text (model unavailable)"`);
+    } else {
+      check((await pill.innerText()).trim() === "Stand-in sentence (local check, not Claude)" && await pill.getAttribute("data-voice") === "model" && says === lineStandIn.text,
+        `${tag}: the agent's sentence from the (labelled) stand-in for Claude Haiku: "${says.slice(0, 40)}…"`);
+      await waiting.locator(".says + details.more > summary").click();
+      check(/^Request id req_stand-in-\d{4} \(stand-in\)\. The model was given only this test world's invoice, balance, reserve floor and limit, never your words\./.test((await waiting.locator(".says + details.more > p").innerText()).trim()),
+        `${tag}: "more" names the request id and what the model was given`);
+      await waiting.locator(".says + details.more > summary").click();
+    }
+    check((await page.locator("article.prop.blocked .who .pill").innerText()).trim() === "fixed text, no model call", `${tag}: the blocked proposal's sentence is fixed text, labelled`);
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const terms = JSON.parse((await waiting.locator("details.terms pre").textContent()) ?? "{}") as Record<string, any>;
   const sheetText = await waiting.innerText();
@@ -374,6 +396,33 @@ for (const [width, scheme] of RUNS) {
   // The errors expected: the browser logs each refused tamper (HTTP 400) as a failed request.
   const unexpected = errors.filter((e, i) => !(i >= beforeTamper && /status of 400/.test(e)));
   check(unexpected.length === 0 && errors.length - beforeTamper === tampers.length, `${tag}: no console or CSP errors besides the ${tampers.length} refused tampers${unexpected.length ? `: ${unexpected.join(" | ")}` : ""}`);
+  await context.close();
+}
+
+// The agent's sentence is text on the page, never markup (A2 review). The server never passes markup on from the model
+// (test/try-agent-line.test.ts), so here the world's answer is rewritten in the browser to carry some, on both
+// proposals, and the page must show it as plain text: no element made, no script run.
+if (!args.live) {
+  const MARKUP = "Pay <b>x</b> now <img src=x onerror=alert(1)>.";
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, extraHTTPHeaders: { "cf-connecting-ip": "198.51.120.7" } });
+  const page = await context.newPage();
+  const dialogs: string[] = [];
+  page.on("dialog", (d: { message(): string; dismiss(): Promise<void> }) => { dialogs.push(d.message()); void d.dismiss(); });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.route("**/api/try-sign/world", async (route: any) => {
+    const res = await route.fetch();
+    const j = (await res.json()) as { proposals: { says: string }[] };
+    for (const p of j.proposals) p.says = MARKUP;
+    await route.fulfill({ response: res, body: JSON.stringify(j) });
+  });
+  await page.goto(`${local.url}/try/sign`);
+  await page.click("#go-world");
+  await page.waitForSelector("article.prop.sheet .says");
+  const says = (await page.locator(".says").evaluateAll((ns: Element[]) => ns.map((n) => ({ text: n.textContent, kids: n.children.length, html: n.innerHTML })))) as { text: string | null; kids: number; html: string }[];
+  check(says.length === 2 && says.every((x) => x.text === MARKUP && x.kids === 0 && x.html === MARKUP.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")),
+    `markup in the agent's sentence shows as text, escaped (${says.length} sentences; ${says.map((x) => x.kids).join(", ")} elements inside)`);
+  await page.waitForTimeout(500);
+  check(dialogs.length === 0 && await page.locator(".says img, .says b").count() === 0, `markup in the agent's sentence: no <b> or <img> made, no script run (${dialogs.length} dialogs)`);
   await context.close();
 }
 

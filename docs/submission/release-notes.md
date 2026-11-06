@@ -142,6 +142,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
   guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2569 tests
   in 261 files, all passing (with main's).
+- 6 November, /try/sign's Treasury agent speaks through Claude Haiku: the waiting payment's sentence is one real Haiku
+  call, given only the test world's invoice, balance, floor and limit (never a visitor's words), labelled "Claude
+  Haiku · live" with its request id behind "more"; USD 1 a day, 10 a minute for everyone, 6 an hour per address, 8 s;
+  otherwise the fixed sentence, labelled with why. The model only proposes: limits and approval stay in code and the
+  passkey. 2534 tests in 257 files, all passing.
+- 6 November, the Haiku sentence after review: the amounts go in written the page's way ("EUR 1,850.00"), and code
+  checks every amount that comes back against the four it was given, exactly as given; else the fixed sentence,
+  labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup.
+  2589 tests in 262 files, all passing (with main's).
 
 ## Real, and ours
 
