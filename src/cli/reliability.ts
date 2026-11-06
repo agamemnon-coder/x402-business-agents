@@ -258,7 +258,7 @@ const stopServe = async () => {
 try {
   // ---- Vooraf ----
   await timed("V1 Health", async () => { cli("health.ts"); });
-  await timed("V2 Bootstrap (fresh keys, faucet)", async () => { cli("bootstrap.ts"); });
+  await timed(`V2 Bootstrap (fresh keys, test money: ${funding === "recycle" ? "recycled from finished dry-N worlds, no faucet" : "the faucet"})`, async () => { cli("bootstrap.ts"); });
   await timed("V3 Cards: each agent its company card at Airwallex", async () => { cli("cards.ts", "setup"); });
   await timed("V4 Visa TAP key of the Sourcing agent, pinned for Packwise", async () => { cli("visa.ts", "setup"); });
   await timed("V5 World options: upstream cache off, free EUR 150.00, TAP rail on", async () => {
