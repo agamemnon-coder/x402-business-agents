@@ -240,6 +240,13 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   docs/demo/main-run-trace.json, derived from the main run's ledger (3 Nov) with the same scrub as the record's ledger
   rows; per audit row it publishes only seq, prev_hash and row_hash, so the chain's linkage and head are checkable and
   each row's content is not. The main run's record is unchanged. Linked from the CFO's view and from /proof. 2754 tests in 272 files, all passing.
+- 6 November, the month-end pack (Max's last round, 1.3): "Download the month-end pack" on the CFO's view and /proof,
+  one zip for the main run, built with the pages from the record and its companion, byte for byte the same on every
+  build (`npm run month-end-pack` writes it too). Inside: the GL export with each line's rail id and approval hash, the
+  postings, the payments (88 = 86 on Metal + 1 card charge + 1 SWIFT transfer, the 88 flows reconcile checked), the
+  approvals, the audit chain's published links with their check, and a README on how to check it. "From the main run
+  of 3 November, test money."; T:0: "Posting to T:0 is built; nothing posted (keys refused: 403 CAPI71 on 3 Nov, 401
+  CAPI11 on 5 Nov)." A stored zip, written with Node's own CRC-32: no new dependency. 2773 tests in 273 files, all passing.
 
 ## Real, and ours
 
