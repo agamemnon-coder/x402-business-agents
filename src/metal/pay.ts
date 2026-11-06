@@ -14,7 +14,7 @@ export type PayOutcome =
   | { kind: "in_doubt"; reason: string; status?: number; body?: string; nonce: string };
 
 /** Settlement reasons that mean nothing moved (metal-agent 0.3.3, NOTHING_SETTLED). */
-const NOTHING_SETTLED = new Set([
+export const NOTHING_SETTLED = new Set([
   "unsupported_x402_version", "unsupported_network", "unsupported_scheme", "unsupported_asset", "settlement_unavailable",
   "invalid_payload", "bad_signature", "rpc_unreachable", "authorization_window", "rate_limited", "daily_limit_reached",
   "recipient_refuses", "payment_failed", "payment_reverted",

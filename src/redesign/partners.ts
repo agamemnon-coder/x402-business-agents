@@ -11,6 +11,7 @@ import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../con
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
+import { metalStory, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { esc, icon, page } from "./ui.js";
 
@@ -50,6 +51,16 @@ ul.pl .call { margin-top: 4px; }
 abbr[title] { text-decoration: underline dotted; text-underline-offset: 3px; }
 a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 15px; }
 .open { font-size: 16px; font-weight: 650; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.flow.story { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.st { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; align-content: start; padding: 14px; border-radius: 16px; background: var(--sunken); min-width: 0; }
+.st .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface); color: var(--metal); grid-row: span 3; }
+.st.bad .ic { color: var(--bad); } .st.ok .ic { color: var(--ok); }
+.st b { font-size: 19px; line-height: 1.25; letter-spacing: -.01em; } .st span { font-size: 15px; color: var(--muted); line-height: 1.4; }
+.st .tx { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; } .st .tx a.pf { font-size: 14.5px; }
+.st code { font: 600 13.5px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .flow.story { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 8px; }
+  .st { grid-template-columns: minmax(0, 1fr); padding: 9px 12px; border-left: 4px solid var(--metal); } .st .ic { display: none; } .st.bad { border-left-color: var(--bad); } .st.ok { border-left-color: var(--ok); }
+  .st b { font-size: 16.5px; } .st span { font-size: 14px; line-height: 1.35; } .st .tx { margin-top: 2px; } .st .tx a.pf { font-size: 14px; } .st code { font-size: 12.5px; } }
 .nf { padding: 64px 0; } .nf .wrap { display: grid; gap: 16px; justify-items: start; } .nf h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}`;
@@ -61,10 +72,10 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { label?: string; title: string; description: string; logo: string; h1: string; picture: string; nums: string; line: string; extra?: string; folds: string; proofHash: string }): string {
+function shell(run: AgentRun, o: { label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string }): string {
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
-  <div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>
+  ${o.flowClass ? `<div class="flow card ${o.flowClass}">${o.picture}</div>` : `<div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>`}
   ${o.nums}
   <p class="line">${esc(o.line)}</p>
   ${o.extra ?? ""}
@@ -76,28 +87,45 @@ function shell(run: AgentRun, o: { label?: string; title: string; description: s
 
 const moneyOf = (run: AgentRun) => run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
 
+const ext = (p: { label: string; href: string | null }, label = p.label) => p.href ? `<a class="pf" href="${esc(p.href)}" target="_blank" rel="noopener">${esc(label)} ↗</a>` : "";
+const AGENT_NAME = (a: string) => `${a[0]!.toUpperCase()}${a.slice(1)}`;
+
+/**
+ * The top of /metal (C2): the main run's Metal story in four blocks, each claim with its link to Metal's testnet
+ * explorer, every figure from the record (src/redesign/metalStory.ts). Nothing here is typed in.
+ */
+export function metalStoryHtml(st: MetalStory): string {
+  const block = (ic: string, tone: string, head: string, sub: string, links: string[]) =>
+    `<div class="st ${tone}"><span class="ic">${icon(ic, 20)}</span><b>${esc(head)}</b><span>${sub}</span><span class="tx">${links.filter(Boolean).join("")}</span></div>`;
+  const p = st.payments, r = st.refusal, x = st.replace;
+  return [
+    block("shield-check", "", `${st.mandates.length} mandates on chain, one per agent`, esc("cap per payment, on the company's account"),
+      st.mandates.map((m) => ext(m.proof, `${AGENT_NAME(m.agent)} ${m.cap}${m.how === "bound" ? "" : ", a payment under it"}`))),
+    block("receipt", "", `${p.total} Metal payments, each its own transaction`, esc(`${p.sales} sales · ${p.purchases} supplier purchases · ${p.refunds} refunds · ${p.sweeps} sweep`), [ext(p.account), ext(p.checked)]),
+    ...(r ? [block("ban", "bad", `#${r.seq} refused on chain`, `${esc(`${r.amount} over the ${r.cap} cap`)}: <code>${esc(r.code)}</code>; nothing moved`, [ext(r.proof)])] : []),
+    ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: the CFO's Face ID + a labelled test passkey${x.revoked ? `; #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
+      x.steps.map((s) => ext(s.proof, `${AGENT_NAME(s.agent)} ${s.cap}`)))] : []),
+  ].join("");
+}
+
 export function metalPage(run: AgentRun = agentRun()): string {
-  const p = partnerProof(run), st = stops(run.record), money = moneyOf(run), pay = payments(run.record);
-  const s1 = run.scenes.find((s) => s.n === 1)?.mini;
-  const price = s1?.kind === "price" ? s1 : null;
-  const onChain = money.filter((e) => e.rail === "metal" && !e.refused).reduce((n, e) => n + e.count, 0);
-  const mandates = run.events.filter((e): e is Extract<Ev, { k: "mandate" }> => e.k === "mandate");
-  const sweep = money.find((e) => e.rail === "metal" && /sweep/i.test(e.what) && !e.refused);
-  const refusal = money.find((e) => e.refused?.by === "recorded" && e.proof.href);
+  const p = partnerProof(run), st = metalStory(run.record), pay = payments(run.record);
   const metal = JSON.parse(readFileSync(new URL("../../docs/demo/metal.json", import.meta.url), "utf8")) as { features: { title: string; docs: { label: string; href: string }[] }[] };
   const used = metal.features.filter((f) => /mandate per agent|Replace and revoke|x402|facilitator|Refunds as mandate|Sweep after finality|Four eyes/i.test(f.title));
-  const sourcing = run.agents.find((a) => a.id === "sourcing")!;
+  const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
+  const beyond = separateRuns().map((x) => `<li><b>${esc(`${day(x.date)}, a separate run · ${x.title}`)}</b>: ${esc(x.what.replace(/^\d{1,2} \w+: /, ""))}. ${x.proofs.map((q) => ext(q)).join(" · ")}${x.proofs.length ? " · " : ""}${ext(x.record)}</li>`);
   return shell(run, {
     title: "Metal", description: "How Purser uses Metal: each agent's limit is a mandate on chain; payments per query over x402; a payment over the cap is refused on chain.",
     logo: LOGO.metal, h1: "A limit the agent cannot talk past", proofHash: "metal",
-    picture: [node("package", `${sourcing.short} agent`, `Claude ${sourcing.family} sets the buy policy`), arrow,
-      node("shield-check", price ? `Mandate cap ${price.cap}` : "Mandate", "per payment, on chain", "metal"), arrow,
-      node("ban", price ? `${price.price} refused` : "Over the cap: refused", refusal ? `recorded on chain · ${refusal.proof.label}` : "nothing settles", "bad"), arrow,
-      node("scan-face", price?.newCap ? `New cap ${price.newCap}` : "New mandate", "after Face ID 1 of 2 → 2 of 2", "ok")].join(""),
-    nums: nums([[String(onChain), "payments on chain"], [String(st.metal), "refused by Metal at the cap"], [String(mandates.length), "mandates replaced"], [sweep ? sweep.amount : "0", "test USD swept after finality"]]),
-    line: `Each agent pays from the company's Metal account under its own mandate; a payment over the cap does not settle.${pay.sums && pay.onChain === onChain ? ` ${pay.line}.` : ""}`,
-    folds: fold("The live proof, with every tx", p.metal) + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
-      + fold("What is simulated", [plainLi("Test money on Metal testnet only."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions.")])
+    picture: metalStoryHtml(st), flowClass: "story",
+    nums: "",
+    line: "Figures from the main run's record; links to Metal's testnet explorer.",
+    // The one canonical set (jury review, 6 Nov, #5), first in the proof: the top counts the Metal ones.
+    folds: fold("The live proof, with every tx", [...(pay.sums && pay.onChain === st.payments.total ? [plainLi(`${pay.line}.`)] : []), ...p.metal])
+      + fold("Beyond the kit: separate runs, each dated (not the main run)", [...beyond,
+        plainLi("In the main run, Face ID approves the change in Purser and the account's owner key, held by Purser's runner, signs the replace on chain; passkeys signing on chain themselves ran separately (1 November, above).")])
+      + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
+      + fold("What is simulated", [plainLi("Test money on Metal testnet only."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions."), plainLi("The second approver on the mandate change is a labelled test passkey; in production it is a second person.")])
       + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]),
   });
 }
