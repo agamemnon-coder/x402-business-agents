@@ -219,6 +219,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   one line: "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." Before the
   link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
   HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2657 tests in 269 files, all passing (with main's).
+- 7 November, "Judge it in 3 minutes" (Max's last round, item 5.1): /judge, five steps for a juror with little time,
+  each with a checkbox, a time (60 + 30 + 30 + 30 + 30 s) and one line of what they will see, each a link to a page
+  that already exists: sign one and tamper one cent (/try/sign); set a looser policy and see the worst case change
+  (step 0 of /try/sign); trace any payment from policy to bank (/trace); see Airwallex and Metal enforce it
+  themselves (/airwallex, /metal, the refusal on Metal's testnet explorer); check the receipt with no server
+  (/try/verify). Then "Want the code? How it works in 5 files" and the film. The ticks stay in the browser
+  (localStorage, in try/catch); the page has no fetch and its CSP allows no connection. Linked once at the top of Home,
+  the README and the form's instructions. test/judge-tour.test.ts fails while a step links to a route the site does
+  not serve. 2671 tests in 270 files, all passing (with main's).
 
 ## Real, and ours
 

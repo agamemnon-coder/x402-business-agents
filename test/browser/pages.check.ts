@@ -15,6 +15,19 @@ const shots = args[0] && !args[0].startsWith("--") ? args[0] : "test-results/pag
 mkdirSync(shots, { recursive: true });
 const judge = liveAt >= 0 ? null : await startJudge(0);
 const base = liveAt >= 0 ? args[liveAt + 1]!.replace(/\/$/, "") : judge!.url;
+// /judge ("Judge it in 3 minutes", item 5.1) is in the bundle only with /try/sign, where three of its steps go: locally a
+// relay of our own built with TRY_SIGN_ENABLED on serves it (and the Home that links to it); live, the hosted relay,
+// once it is deployed there.
+const relay = liveAt >= 0 ? null : await (async () => {
+  const was = process.env.TRY_SIGN_ENABLED;
+  process.env.TRY_SIGN_ENABLED = "on";
+  const { startLocalRelay } = await import("../../src/relay/local.js");
+  try { return await startLocalRelay({ port: 0, token: "pages-check" }); } finally { if (was === undefined) delete process.env.TRY_SIGN_ENABLED; else process.env.TRY_SIGN_ENABLED = was; }
+})();
+const judgeBase = relay ? relay.url : (await fetch(`${base}/judge`, { redirect: "manual" })).status === 200 ? base : null;
+if (!judgeBase) console.log(`SKIP  ${base}/judge is not served there yet: /judge not checked`);
+/** The tour's ticks in localStorage (src/redesign/judge.ts). */
+const JUDGE_KEY = "purser.judge.v1";
 
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
@@ -386,6 +399,56 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator("main a.btn").count()) !== 4) fail(`404 ${tag}: not the four tabs`);
     }
 
+    // /judge, "Judge it in 3 minutes" (item 5.1): five steps, each with a checkbox and a time, three minutes in all; the
+    // ticks survive a reload; the page asks nothing of any server (no request but the page, its font and its icon);
+    // and Home links to it at the top, above the fold.
+    if (judgeBase) {
+      const asked: string[] = [];
+      const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
+      await page.goto(`${judgeBase}/`, { waitUntil: "load" });
+      const top = page.locator("main > p.judgebar a");
+      const box = await top.boundingBox();
+      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judge it in 3 minutes →" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judge it in 3 minutes →" link at the top, in the first screen, inside the page's gutter`);
+      await look(page, `/ (Home, with /try/sign) ${tag}`, w);
+      await page.screenshot({ path: join(shots, `home-judge-link-${tag}.png`) });
+      await top.click();
+      await page.waitForURL(/\/judge$/);
+      await page.evaluate((key) => { try { localStorage.removeItem(key); } catch { /* blocked */ } }, JUDGE_KEY);
+      page.on("request", onRequest);
+      await page.reload({ waitUntil: "load" });
+      await look(page, `/judge ${tag}`, w);
+      const steps = await page.locator("ol.steps > li").evaluateAll((lis) => lis.map((li) => ({
+        box: !!li.querySelector('input[type="checkbox"]'), secs: Number((li.querySelector(".secs")?.textContent ?? "").replace(/\D/g, "")), links: li.querySelectorAll(".go a").length,
+      })));
+      if (steps.length !== 5 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not five steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
+      if (steps.reduce((t, s) => t + s.secs, 0) !== 180) fail(`/judge ${tag}: the times do not add up to 3 minutes`);
+      if (!(await page.isVisible("text=Want the code?")) || !(await page.isVisible("section.more >> text=How it works in 5 files"))) fail(`/judge ${tag}: no "Want the code? How it works in 5 files" at the bottom`);
+      // Tick steps 1 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
+      await page.locator("#step-sign").check();
+      await page.locator('label[for="step-trace"]').click();
+      if ((await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the count does not follow the ticks`);
+      await page.reload({ waitUntil: "load" });
+      const kept = await page.locator('input[type="checkbox"]').evaluateAll((bs) => bs.filter((b) => (b as HTMLInputElement).checked).map((b) => b.id));
+      if (kept.join() !== "step-sign,step-trace" || (await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
+      await look(page, `/judge ticked ${tag}`, w);
+      await page.screenshot({ path: join(shots, `judge-${tag}.png`), fullPage: true });
+      page.off("request", onRequest);
+      if (asked.length) fail(`/judge ${tag}: asked a server for ${asked.join(", ")}`);
+      await page.evaluate((key) => { try { localStorage.removeItem(key); } catch { /* blocked */ } }, JUDGE_KEY);
+      // With localStorage throwing (blocked site data): no error, and the boxes still tick for as long as the page is open.
+      const blocked = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
+      await blocked.addInitScript(() => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("The operation is insecure.", "SecurityError"); } }); });
+      const bp = await blocked.newPage();
+      bp.on("console", (m) => { if (m.type() === "error") fail(`${tag} /judge (storage blocked): console error: ${m.text()}`); });
+      bp.on("pageerror", (e) => fail(`${tag} /judge (storage blocked): page error: ${e.message}`));
+      await bp.goto(`${judgeBase}/judge`, { waitUntil: "load" });
+      if (await bp.evaluate(() => { try { return typeof window.localStorage; } catch { return "throws"; } }) !== "throws") fail(`/judge (storage blocked) ${tag}: localStorage did not throw`);
+      await bp.locator("#step-verify").check();
+      if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-verify").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
+      await look(bp, `/judge (storage blocked) ${tag}`, w);
+      await blocked.close();
+    }
+
     // The film: a moment from each scene draws without an error and without spilling over (it scales to fit).
     for (const t of [3, 18, 30, 50, 70, 95, 120, 140, 155, 168]) {
       await page.goto(`${base}/film?t=${t}`, { waitUntil: "load" });
@@ -404,8 +467,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 }
 await browser.close();
 judge?.server.close();
+relay?.server.close();
 if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /judge (ticks kept across a reload, and with storage blocked) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

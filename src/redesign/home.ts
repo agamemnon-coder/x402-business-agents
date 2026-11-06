@@ -6,8 +6,15 @@
 import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, FILM_LINK, FILM_URL, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, PROOF_HEADING, PROOF_SENTENCES, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE, CFO_VIEW_LINK, CFO_VIEW_URL } from "../config/brand.js";
 import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
+import { JUDGE_LINK } from "./judge.js";
 
-const CSS = `.hero { padding: 24px 0 44px; }
+const CSS = `/* "Judge it in 3 minutes →" (item 5.1): one link at the top, only in a bundle that serves /judge. */
+.judgebar { padding-top: 14px; margin-top: 0; margin-bottom: 0; font-size: 16px; font-weight: 700; }
+.judgebar a { color: var(--accent); text-decoration: none; }
+.judgebar a:hover { text-decoration: underline; }
+.judgebar + .hero { padding-top: 12px; }
+@media (min-width: 980px) { .judgebar + .hero { padding-top: 32px; } }
+.hero { padding: 24px 0 44px; }
 .hero .wrap { display: grid; gap: 20px; grid-template-areas: "copy" "stage" "act"; }
 .hero .copy { grid-area: copy; } .hero .show { grid-area: stage; min-width: 0; } .hero .act { grid-area: act; }
 .hero .h-hero { text-wrap: balance; }
@@ -261,7 +268,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
   const moments = heroMoments(run);
   const s1 = run.scenes.find((s) => s.n === 1);
   const body = `<main>
-<section class="hero"><div class="wrap">
+${opts.trySign ? `<p class="judgebar wrap"><a href="judge">${esc(JUDGE_LINK)}</a></p>\n` : ""}<section class="hero"><div class="wrap">
   <div class="copy">
     <h1 class="h-hero">${esc(HERO)}</h1>
     <p class="what">${esc(WHAT_IT_IS)}</p>
