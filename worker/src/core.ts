@@ -38,6 +38,8 @@ export interface Pages {
   home?: string;
   watch?: string;
   proof?: string;
+  /** /trace: any payment of the main run, step by step (no script); absent in a bundle built before it. */
+  trace?: string;
   /** The clean 404 page (no script); absent in a bundle built before it. */
   notFound?: string;
   /** /try/sign: a visitor signs with their own passkey in a test world (worker/src/trySign.ts). Present only in a bundle
@@ -58,7 +60,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; trace?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -133,6 +135,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/home" && pages.home && pages.csp.home) return page(pages.home, pages.csp.home);
   if (path === "/watch" && pages.watch && pages.csp.watch) return page(pages.watch, pages.csp.watch);
   if (path === "/proof" && pages.proof && pages.csp.proof) return page(pages.proof, pages.csp.proof);
+  if (path === "/trace" && pages.trace && pages.csp.trace) return page(pages.trace, pages.csp.trace);
   const moved = pages.redirects && Object.hasOwn(pages.redirects, path) ? pages.redirects[path] : undefined;
   if (moved) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: moved } });
   if (path === "/month") return page(pages.month, pages.csp.month);
