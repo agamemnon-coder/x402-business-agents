@@ -248,7 +248,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} ${tag}`, w);
       const pt = await page.evaluate(() => document.body.innerText);
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
-      if (words > 175) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget 150 plus the frame`);
+      // /airwallex carries Airwallex read back (section B, 6 Nov): budget 440 there (test/site-v4.test.ts), plus the frame.
+      const budget = path === "/airwallex" ? 440 : 150;
+      if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
@@ -258,9 +260,19 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const open = await page.evaluate(() => document.body.innerText);
       if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\), so Purser is entered for the Metal Award only\./.test(open) || /entered for[^.]{0,40}Visa Award/i.test(open) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
+      // Section B: the hash the CFO signed beside the one Airwallex returns, matched in code; each card's controls beside the policy.
+      if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
+      if (path === "/airwallex" && ((await page.locator("#controls .awcard").count()) !== 3 || (await page.locator("#controls .awrow .k.ok").count()) !== 15)) fail(`/airwallex ${tag}: not three cards with five controls each, all matching the CFO policy`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+    }
+    // Proof carries the read-back briefly (section B): the hash pair and the cards' match, with each card in a fold.
+    await page.goto(`${base}/proof`, { waitUntil: "load" });
+    await look(page, `/proof ${tag}`, w);
+    {
+      const rb = await page.locator("#airwallex-readback + .awrb").innerText().catch(() => "");
+      if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
     await page.goto(`${base}/metal/report`, { waitUntil: "load" });
     await look(page, `/metal/report ${tag}`, w);

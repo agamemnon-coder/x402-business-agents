@@ -103,6 +103,14 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   checks it offline with Node's own crypto: the terms' hash, the challenge, the origin and RP id, user presence and
   verification, the ES256 signature. One changed field or one cent fails. The Worker's answer to a good signature now
   carries the public key it verified against. 2495 tests in 255 files, all passing.
+- 6 November, Airwallex read back (section B): /proof and /airwallex show what the Airwallex sandbox itself returns for
+  the main run, read with GET only (nothing created, updated or cancelled) into two dated, sanitized records. "The hash
+  the CFO signed travels with the payment": the terms hash Max signed with Face ID for P-0005 next to the
+  `metadata.approval_sha256` Airwallex returns for transfer `03360bfa…3985`, matched in code
+  (`docs/runs/airwallex-transfer-approval-2026-11-06.json`). Each agent's card: the CFO policy rule next to the control
+  Airwallex enforces (limit per purchase and per month, merchant category, currency, end date), 3 of 3 cards matching
+  (`docs/runs/airwallex-cards-2026-11-06.json`; no card number beyond its last four digits). Live after the Worker is
+  redeployed. 2503 tests in 256 files, all passing.
 
 ## Real, and ours
 
