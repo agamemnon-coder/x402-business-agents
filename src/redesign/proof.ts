@@ -5,9 +5,10 @@
 
 import { readFileSync } from "node:fs";
 import { CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
-import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, separateRowHtml, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapLimitLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
+import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { esc, icon, page } from "./ui.js";
+import { LEAD_CSS, leadHtml, proofLeads } from "./proofLead.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
 
@@ -56,7 +57,8 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .more h3 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
 .more h3 .n { font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; flex: none; }
 .more p { margin: 0; color: var(--muted); font-size: 15.5px; }
-${READBACK_CSS}`;
+${READBACK_CSS}
+${LEAD_CSS}`;
 
 const JS = `(function () { var h = location.hash.slice(1); if (!h) return; var t = document.getElementById(h); if (!t) return; t.querySelectorAll("details").forEach(function (d) { d.open = true; }); })();`;
 
@@ -103,13 +105,16 @@ export const LOGO = {
   visa: '<span class="logo txt">Visa TAP</span>',
 };
 
-/** The live proof of each partner, as list items: shared by Proof's cards and the partner pages. */
-export function partnerProof(run: AgentRun): Record<"metal" | "airwallex" | "visa" | "claude", string[]> {
+/**
+ * The live proof of each partner, as list items: shared by Proof's cards and the partner pages. Without `tap`, the
+ * separate TAP run's decline is left out of Airwallex's (Max's last round, item 2: on /proof TAP is the footer link only).
+ */
+export function partnerProof(run: AgentRun, o: { tap?: boolean } = {}): Record<"metal" | "airwallex" | "visa" | "claude", string[]> {
   const s = run.record.snapshot;
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
   const tap = tapRun(), own = ownTap(run.record);
   const mandates = run.events.filter((e): e is Extract<Ev, { k: "mandate" }> => e.k === "mandate");
-  const tapDecline = tap?.steps.find((x) => !x.approved);
+  const tapDecline = o.tap === false ? undefined : tap?.steps.find((x) => !x.approved);
   return {
     metal: [
       ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`Refused · recorded on chain: ${e.amount} test USD to ${e.what}, ${e.refused!.code ?? ""}. Purser refused it before signing; Metal recorded the same refusal on chain`, "no", e.proof)),
@@ -133,18 +138,21 @@ export function partnerProof(run: AgentRun): Record<"metal" | "airwallex" | "vis
   };
 }
 
-/** The four partner cards: logo, one line, two or three numbers, the live proof folded, a link to the partner's page. */
+/**
+ * The partner cards: logo, the strongest proof first (proofLeads: each claim a link, its numbers from its record), one
+ * line, two or three numbers, the live proof folded, a link to the partner's page.
+ */
 function partnerCards(run: AgentRun): string {
-  const s = run.record.snapshot, p = partnerProof(run), st = stops(run.record), sp = split(run.record), pay = payments(run.record);
+  const s = run.record.snapshot, p = partnerProof(run, { tap: false }), st = stops(run.record), sp = split(run.record), pay = payments(run.record), lead = proofLeads(run.record);
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
   const onChain = money.filter((e) => e.rail === "metal" && !e.refused).reduce((n, e) => n + e.count, 0);
   const mandates = run.events.filter((e) => e.k === "mandate").length;
   const awx = money.filter((e) => e.rail === "airwallex" && !e.refused).length;
-  const card = (id: string, logo: string, name: string, what: string, facts: string, items: string[], extra = "") =>
-    `<article class="pcard card" id="${id}"><div class="ph">${logo}<h3>${esc(name)}</h3><a class="open" href="${id}">More ${icon("arrow-right", 14)}</a></div><p class="what">${esc(what)}</p><div class="facts">${facts}</div>${extra}${fold("Show the live proof", items)}</article>`;
+  const card = (id: "metal" | "airwallex" | "claude", logo: string, name: string, what: string, facts: string, items: string[], extra = "") =>
+    `<article class="pcard card" id="${id}"><div class="ph">${logo}<h3>${esc(name)}</h3><a class="open" href="${id}">More ${icon("arrow-right", 14)}</a></div>${leadHtml(lead[id])}<p class="what">${esc(what)}</p><div class="facts">${facts}</div>${extra}${fold("Show the live proof", items)}</article>`;
   return `<div class="partners">
 ${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the cap") + (st.revoked ? fact(String(st.revoked), "refused by Metal: mandate just replaced") : "") + fact(String(mandates), "mandates replaced"), p.metal, pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : "")}
-${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + fact(String(st.tapDeclines), "card decline at the limit (TAP run)"), p.airwallex)}
+${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex"), p.airwallex)}
 ${card("claude", LOGO.claude, "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls, each with a request id"), p.claude)}
 </div>`;
 }
@@ -186,7 +194,7 @@ function moreCards(run: AgentRun): string {
     `<li><a class="pf" href="film">The earlier animation (30 October)</a></li>`, `<li><a class="pf" href="month">A month in 90 seconds (simulated)</a></li>`, `<li><a class="pf" href="lab">The Scenario Lab</a></li>`,
   ];
   return `<div class="more">
-${box("stops", "ban", stopSub(story), stopFigure(story), `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : ""}`, separateRowHtml(tapLimitLine()) /* the separate TAP run's decline: its own labelled row, not counted */ + fold("Show each one", stopItems))}
+${box("stops", "ban", stopSub(story), stopFigure(story), `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : ""}`, fold("Show each one", stopItems))}
 ${box("faceid", "scan-face", faceIdLine(faceIdDecisions(r), faces.length).label, String(faceIdDecisions(r)), `Proposals the CFO decided on his phone${faces.some((f) => f.status === "COSIGNED") ? "; the mandate change needed a second signature too" : ""}. ${SECOND_APPROVER}`, fold(`Show the ${faces.length} signatures: ${faceIdDecisions(r)} decisions + ${faces.length - faceIdDecisions(r)} co-signature${faces.length - faceIdDecisions(r) === 1 ? "" : "s"}`, faceItems))}
 ${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), "The sandbox could not price the fee: nothing paid, not a limit.", fold("Show what followed", earlier.map((e) => li(earlierLine(e), "no", { label: e.proof.label, href: null })))) : ""}
 ${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=2"])}
@@ -217,13 +225,14 @@ export function proofPage(run: AgentRun = agentRun()): string {
     // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge", never 82 or 87 beside it.
     { cls: "code", value: String(pay.onChain), label: pay.canonical.replace(/^\d+ /, ""), explain: "", href: "#metal", ...(pay.sums ? { note: `${pay.metalParts} on Metal, all inside the limits.` } : {}) },
     { cls: "face", value: String(faceIdDecisions(r)), label: faceIdLine(faceIdDecisions(r), run.events.filter((e) => e.k === "face").length).label, explain: "", href: "#faceid" },
-    { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops", ...(tapLimitLine() ? { separate: tapLimitLine() } : {}) },
+    // No TAP remark under the figures (Max's last round, item 2): TAP is on /visa, linked from the footer.
+    { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops" },
     { cls: "", value: `$${run.derived.perDecision}`, label: "Claude cost per decision", explain: "", href: "#claude" },
   ];
   const body = `<main class="proofp"><div class="wrap">
   <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a></div>
   <p class="split">${esc(SPLIT_LINE)}</p>
-  <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>${nums.map((n) => separateRowHtml(n.separate)).join("")}
+  <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
   ${readBack(run)}

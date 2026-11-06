@@ -274,6 +274,42 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const rb = await page.locator("#airwallex-readback + .awrb").innerText().catch(() => "");
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
+    // The strongest proof first (Max's last round, item 2): each partner card opens with its claims, each a link, right
+    // under the card's header; no TAP remark under the figures (TAP is the footer link to /visa).
+    {
+      const leads = (await page.evaluate(`[...document.querySelectorAll("article.pcard")].map((c) => {
+        const first = c.querySelector(".ph").nextElementSibling;
+        return { id: c.id, lead: !!first && first.matches("ul.lead"), claims: first && first.matches("ul.lead") ? [...first.querySelectorAll("a.c")].map((a) => a.textContent.trim()) : [] };
+      })`)) as { id: string; lead: boolean; claims: string[] }[];
+      const want: Record<string, RegExp[]> = {
+        airwallex: [/^The hash the CFO signed is in Airwallex's own record of the SWIFT payment$/, /^3 of 3 cards carry the CFO's policy$/],
+        metal: [/^#24 refused on chain\s↗$/, /^86 payments, each its own tx\s↗$/],
+        claude: [/^24\/24, 0 fallbacks$/, /^a reliability run found a hand-off fault; fixed: 6\/10 → 10\/10\s↗$/],
+      };
+      for (const [id, res] of Object.entries(want)) {
+        const c = leads.find((x) => x.id === id);
+        if (!c?.lead || c.claims.length !== res.length || res.some((re, i) => !re.test(c.claims[i] ?? ""))) fail(`/proof ${tag}: the ${id} card does not open with its claims (${JSON.stringify(c?.claims)})`);
+      }
+      if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
+      if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
+      await page.locator(".partners").screenshot({ path: join(shots, `proof-partners-${tag}.png`) });
+    }
+    // Each Airwallex claim lands on its anchor on /airwallex, in view (the cards' fold opened). At 390 and 1440 px.
+    if (w === 390 || w === 1440) {
+      for (const [claim, id, open] of [["The hash the CFO signed is in", "awx-hash", false], ["3 of 3 cards carry", "controls", true], ["Treasury ····", "card-treasury", true]] as const) {
+        await page.goto(`${base}/proof`, { waitUntil: "load" });
+        await page.locator("#airwallex ul.lead a", { hasText: claim }).first().click();
+        await page.waitForURL(new RegExp(`/airwallex#${id}$`));
+        await page.waitForTimeout(300);
+        const r = (await page.evaluate(`(() => {
+          const t = document.getElementById(${JSON.stringify(id)}), d = document.getElementById("controls");
+          const head = document.querySelector("header.top").getBoundingClientRect().bottom, b = t.getBoundingClientRect();
+          return { inView: b.top >= head - 2 && b.top < innerHeight / 2, open: d.open };
+        })()`)) as { inView: boolean; open: boolean };
+        if (!r.inView || (open && !r.open)) fail(`/proof ${tag}: "${claim}" does not land on /airwallex#${id} in view (in view ${r.inView}, fold open ${r.open})`);
+      }
+      await page.goto(`${base}/proof`, { waitUntil: "load" });
+    }
     // Proof's "Policy and card side by side" lands on /airwallex#controls with the cards' fold open, scrolled to it
     // (src/redesign/ui.ts OPEN_TARGET_JS); a card's own anchor (#card-sourcing) opens the same fold. At 390 and 1440 px.
     if (w === 390 || w === 1440) {
