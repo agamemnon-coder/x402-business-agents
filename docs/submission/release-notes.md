@@ -131,6 +131,17 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
   its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
   metal-pay already had what we asked for. 2557 tests in 260 files, all passing (after Airwallex read back).
+- 6 November, the Demo Day pack (docs only): a 3-minute Demo Day pitch in [pitch.md](pitch.md), live `/try/sign`
+  first (sign, then tamper one cent), then the three proofs (the hash the CFO signed in Airwallex's own record of the
+  EUR 240.00 SWIFT payment, #24 refused on Metal, Claude 24 of 24), then the business and the ask; each part's words
+  checked against about 2.3 words a second. [demo-day.md](demo-day.md) gets a script with a fallback per step (network
+  down, Face ID failing, the FX quote expiring); [qa.md](qa.md) the 15 hardest questions, each answered in three
+  sentences or fewer with its evidence; [cheat-sheet.pdf](cheat-sheet.pdf) one A4 page. The earlier pitch versions and
+  the replay runbook stay. 2568 tests in 261 files, all passing.
+- 6 November, /try/sign's expired quote: the sheet's rows read "Proposal expires" and "Quote expires"; while the quote
+  is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
+  guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2569 tests
+  in 261 files, all passing (with main's).
 
 ## Real, and ours
 
