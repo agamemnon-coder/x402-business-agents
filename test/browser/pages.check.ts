@@ -81,6 +81,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.waitForTimeout(1500);
     if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
     await look(page, `/ (Home) ${tag}`, w);
+    // "See the CFO's view" (Max's last round, item 4): a visible link on Home to the main run's dashboard replay.
+    {
+      const cfo = page.locator(".ctas a", { hasText: "See the CFO's view" });
+      if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/ ${tag}: no visible "See the CFO's view" to ./?autonomy`);
+    }
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
@@ -171,9 +176,30 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // D19: the agents deciding, from an autonomous dry run: labelled as a dry run, never as live; the chat and the
     // per-agent table are there, and "Powered by Claude" appears only on Claude's lines.
+    // The CFO's view, linked from Home and Proof (Max's last round, item 4): public, read-only, no key. Every request it
+    // makes stays on this site and reads only the page itself and its assets (no api/, nothing with a key).
+    const asked: string[] = [];
+    const onRequest = (r: { url(): string; method(): string }) => { asked.push(`${r.method()} ${r.url()}`); };
+    page.on("request", onRequest);
     await page.goto(`${base}/?autonomy`, { waitUntil: "load" });
     await page.waitForTimeout(800);
     await look(page, `/?autonomy ${tag}`, w);
+    page.off("request", onRequest);
+    for (const r of asked) {
+      const [method, url] = r.split(" ") as [string, string];
+      const u = new URL(url);
+      if (method !== "GET" || u.origin !== new URL(base).origin || !(u.pathname === "/" && u.search === "?autonomy" || /^\/(assets\/[a-z0-9.-]+|favicon\.ico)$/.test(u.pathname)) || u.hash) fail(`/?autonomy ${tag}: a request beyond the page and its assets: ${r}`);
+    }
+    // One line on top, Max's words, in view as the page opens (the view no longer scrolls past its top).
+    {
+      const top = (await page.evaluate(`(() => {
+        const l = document.getElementById("cfo-line"), b = document.getElementById("recbanner");
+        const r = l.getBoundingClientRect(), head = document.querySelector("header.top").getBoundingClientRect().bottom;
+        return { text: l.innerText, shown: !l.hidden && r.height > 0, inView: r.top >= head - 2 && r.bottom <= innerHeight, first: !!(l.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), y: scrollY };
+      })()`)) as { text: string; shown: boolean; inView: boolean; first: boolean; y: number };
+      if (top.text !== "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." || !top.shown || !top.inView || !top.first) fail(`/?autonomy ${tag}: the CFO's line is not on top and in view (${JSON.stringify(top)})`);
+      await page.screenshot({ path: join(shots, `autonomy-top-${tag}.png`) });
+    }
     const au = await page.evaluate(() => document.body.innerText);
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(au)) fail(`/?autonomy ${tag}: not labelled as the main run`);
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
@@ -293,6 +319,20 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
       if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
       await page.locator(".partners").screenshot({ path: join(shots, `proof-partners-${tag}.png`) });
+    }
+    // "See the CFO's view" in Proof's head (Max's last round, item 4), to the main run's dashboard replay, which opens
+    // on its one line. Followed at 390 and 1440 px.
+    {
+      const cfo = page.locator(".phead a", { hasText: "See the CFO's view" });
+      if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/proof ${tag}: no visible "See the CFO's view" to ./?autonomy in its head`);
+      await page.locator(".phead").screenshot({ path: join(shots, `proof-head-${tag}.png`) });
+      if (w === 390 || w === 1440) {
+        await cfo.click();
+        await page.waitForURL(/\/\?autonomy$/);
+        await page.waitForTimeout(800);
+        if (!(await page.locator("#cfo-line").isVisible())) fail(`/proof ${tag}: "See the CFO's view" does not open the CFO's view with its line`);
+        await page.goto(`${base}/proof`, { waitUntil: "load" });
+      }
     }
     // Each Airwallex claim lands on its anchor on /airwallex, in view (the cards' fold opened). At 390 and 1440 px.
     if (w === 390 || w === 1440) {

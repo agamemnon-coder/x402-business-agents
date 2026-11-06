@@ -21,7 +21,7 @@ import { runAll, runScenario, SCENARIOS, type ScenarioResult } from "../lab/scen
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
-import { AGENT_DISPLAY, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { AGENT_DISPLAY, CFO_VIEW_LINE, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { loadRecord, replayRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
 import { trySignPage } from "../try/sign.js";
@@ -108,7 +108,9 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
     .replace("__AGENTS_JSON__", AGENTS_JSON)
     .replace("__REDTEAM_JSON__", () => REDTEAM_JSON)
     // The Overview's line: the core sentence, word for word (who holds which limit; never "every limit").
-    .replace("__CORE_SENTENCE__", () => CORE_SENTENCE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+    .replace("__CORE_SENTENCE__", () => CORE_SENTENCE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+    // The CFO's view (/?autonomy) opens with this line (Max's last round, item 4); the page shows it on that view only.
+    .replace("__CFO_VIEW_LINE__", () => CFO_VIEW_LINE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
 }
 /**
  * Words the public pages no longer use (Max, v4): older records and Lab results still carry them in their text, so the
