@@ -40,6 +40,8 @@ function parseArgs(argv: string[]): { live: boolean; base: string | null; shots:
 }
 
 const args = parseArgs(process.argv.slice(2));
+const { StandInQuotes } = await import("../support/fxStandIn.js");
+const fxStandIn = new StandInQuotes();
 const { TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
@@ -63,7 +65,8 @@ if (args.base) {
 } else {
   process.env.TRY_SIGN_ENABLED = "on";
   const { startLocalRelay } = await import("../../src/relay/local.js");
-  local = await startLocalRelay({ port: 0, token: "browser-check" });
+  // The FX quote from a labelled stand-in (no network in CI): it says "stand-in" wherever the page shows it.
+  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn });
 }
 const require = createRequire(import.meta.url);
 // Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed).
@@ -128,11 +131,15 @@ async function shotAt(page: any, selector: string, path: string): Promise<void> 
 
 const RUNS: [number, "light" | "dark"][] = args.live ? [[390, "light"], [1440, "dark"]]
   : [[360, "light"], [360, "dark"], [390, "light"], [390, "dark"], [1440, "light"], [1440, "dark"]];
+let run = 0;
 for (const [width, scheme] of RUNS) {
+  // Locally, each visit comes from an address of its own (the local relay reads cf-connecting-ip as the Worker does),
+  // so six visits stay inside the per-address limits; on the hosted site Cloudflare sets that header itself.
+  const address = `198.51.${100 + run++}.7`;
   const tag = `${args.live ? "live-" : ""}${width}-${scheme}`;
   const mobile = width < 600;
   const height = mobile ? 844 : 900;
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: scheme });
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: scheme, ...(args.live ? {} : { extraHTTPHeaders: { "cf-connecting-ip": address } }) });
   // The Copy button writes the whole hash to the clipboard; the check reads it back.
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: local.url });
   const page = await context.newPage();
@@ -160,8 +167,8 @@ for (const [width, scheme] of RUNS) {
   check(!(await page.locator("details.wr").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: "What's real?" is closed until asked`);
   await page.locator("details.wr > summary").click();
   const wr = await page.locator("details.wr").innerText();
-  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No Airwallex, Metal or Claude call, and no money moves/.test(wr),
-    `${tag}: "What's real?" opens to the honest lines (test world, stand-in executor, no Airwallex, Metal or Claude call; the signature and its check real)`);
+  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No payment or conversion at Airwallex, no Metal or Claude call, and no money moves/.test(wr),
+    `${tag}: "What's real?" opens to the honest lines (test world, stand-in executor, no payment or conversion, the FX quote read-only; the signature and its check real)`);
   await page.locator("details.wr > summary").click();
   // The three steps, and the start button above the fold.
   check(JSON.stringify((await page.locator("ol.progress li .t").allInnerTexts()).map((t: string) => t.trim())) === JSON.stringify(TRY_SIGN_STEPS), `${tag}: three steps: ${TRY_SIGN_STEPS.join(" → ")}`);
@@ -184,6 +191,7 @@ for (const [width, scheme] of RUNS) {
 
   // Six requests a visit (world, passkey, signature, three tampers) and six visits: the relay's 30 a minute per address
   // (TRY_SIGN_PER_MINUTE) can answer 429 to the last ones; then the check waits out the minute, as a visitor would.
+  if (!args.live && tag === "390-light") fxStandIn.validityMs = 12_000;
   for (let attempt = 0; ; attempt++) {
     await page.click("#go-world");
     await page.waitForFunction(() => !document.getElementById("s-props")?.hidden || document.getElementById("w-status")?.classList.contains("bad"));
@@ -197,9 +205,28 @@ for (const [width, scheme] of RUNS) {
   errors.splice(0, errors.length, ...errors.filter((e) => !/status of 429/.test(e)));
   check(JSON.stringify(await steps()) === '["done","on","-"]', `${tag}: after the proposal, step 1 is done and step 2 under way`);
 
+  // The quote's end (once, at 390 px light): a quote that expires shows "expired", the sign button goes off, and "Get a
+  // new quote" brings new terms with a new quote id and a new hash, to sign again.
+  if (!args.live && tag === "390-light") {
+    const before = await page.locator("article.prop.sheet .hash").getAttribute("data-hash");
+    const firstId = (JSON.parse((await page.locator("article.prop.sheet details.terms pre").textContent()) ?? "{}") as { fx: { quote_id: string } }).fx.quote_id;
+    // This world's quote was made with the stand-in's short validity; the next ones get the usual 15 minutes.
+    fxStandIn.validityMs = 15 * 60_000;
+    await page.waitForSelector("#go-quote:not([hidden])", { timeout: 30_000 });
+    check((await page.locator("#q-left").innerText()).trim() === "expired" && (await page.locator("#q-status").innerText()).trim() === "Quote expired. Get a fresh one and sign again." && await page.locator("article.prop.sheet button[data-sign]").isDisabled(),
+      `${tag}: the quote expires: "expired", "Quote expired. Get a fresh one and sign again.", nothing to sign`);
+    await shotAt(page, "article.prop.sheet #s-key", join(shots, `${tag}-2b-quote-expired.png`));
+    await page.click("#go-quote");
+    await page.waitForFunction(() => document.getElementById("q-status")?.classList.contains("ok"));
+    const after = await page.locator("article.prop.sheet .hash").getAttribute("data-hash");
+    const nextId = (JSON.parse((await page.locator("article.prop.sheet details.terms pre").textContent()) ?? "{}") as { fx: { quote_id: string } }).fx.quote_id;
+    check(after !== before && nextId !== firstId && /^in \d+ min/.test(await page.locator("#q-left").innerText()), `${tag}: "Get a new quote": new quote ${nextId.slice(0, 13)}…, new terms, a new hash to sign`);
+  }
+
   // (b): the approval sheet, as the CFO's.
   const waiting = page.locator("article.prop.sheet");
-  const terms = JSON.parse((await waiting.locator("details.terms pre").textContent()) ?? "{}") as Record<string, string>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const terms = JSON.parse((await waiting.locator("details.terms pre").textContent()) ?? "{}") as Record<string, any>;
   const sheetText = await waiting.innerText();
   const facts = Object.fromEntries((await waiting.locator("dl.facts").evaluate((d: Element) => [...d.querySelectorAll("dt")].map((t) => [t.textContent, t.nextElementSibling?.textContent])))) as Record<string, string>;
   const iban = (s: string) => s.replace(/(.{4})/g, "$1 ").trim();
@@ -207,6 +234,12 @@ for (const [width, scheme] of RUNS) {
   check(facts.Amount === "EUR 1,850.00" && facts.Beneficiary === terms.payee && facts.IBAN === iban(terms.payee_iban ?? "") && facts.Reference === terms.reference && facts.Proposal === "T-0002" && /^in \d+ min/.test(facts.Expires ?? ""),
     `${tag}: (b) the sheet's exact terms: amount, beneficiary, IBAN ${facts.IBAN}, reference, proposal, expiry`);
   const hash = (await waiting.locator(".hash").getAttribute("data-hash")) ?? "";
+  if (!args.live) {
+    // The quote is in the terms and in the sheet's table, with its own countdown.
+    const q = terms.fx as { quote_id: string; buy_amount: string; sell_amount: string; client_rate: string; source: string };
+    check(!!q && q.source === "stand-in" && (facts["FX quote"] ?? "").startsWith("EUR 1,850.00 for USD ") && (facts["FX quote"] ?? "").includes(`quote ${q.quote_id.slice(0, 8)}…`) && /^in \d+ min/.test(facts["Quote expires"] ?? ""),
+      `${tag}: (b) the FX quote is in the terms and the sheet (${facts["FX quote"]}), with its countdown`);
+  }
   check(/^[0-9a-f]{64}$/.test(hash) && hash === sha256(canonical(terms)), `${tag}: (b) shows its terms' hash, checked on the device and here`);
   const short = (h: string) => `${h.slice(0, 12)}…${h.slice(-8)}`;
   check((await waiting.locator(".hash code").innerText()).trim() === short(hash) && await waiting.locator(".hash code").getAttribute("title") === hash,
@@ -228,7 +261,7 @@ for (const [width, scheme] of RUNS) {
     `${tag}: (a) three locks, Purser's policy marked as the one that stopped it (simulated)`);
   check(locks.every((l, i) => l.text.includes(`Real example, ${LOCKS[i]!.run}: ${LOCKS[i]!.example}`)), `${tag}: (a) each lock names its real example and the run it is from`);
   // One sentence each; the example is behind a closed "more" (a native <details>), the link always visible.
-  const mores = await blocked.locator(".lock details.more").evaluateAll((ds: Element[]) => ds.map((d) => `${(d as HTMLDetailsElement).open}:${d.querySelector("summary")?.textContent}`)) as string[];
+  const mores = await blocked.locator(".lock > details.more").evaluateAll((ds: Element[]) => ds.map((d) => `${(d as HTMLDetailsElement).open}:${d.querySelector("summary")?.textContent}`)) as string[];
   check(mores.join() === "false:more,false:more,false:more" && await blocked.locator(".lock a").evaluateAll((as: Element[]) => as.every((a) => (a as HTMLElement).offsetHeight > 0)) as boolean,
     `${tag}: (a) each lock: one sentence, its example behind "more", its link visible`);
   await blocked.locator(".lock.purser details.more > summary").click();
@@ -239,6 +272,12 @@ for (const [width, scheme] of RUNS) {
   check(locks[1]!.href.endsWith("/blob/main/docs/runs/visa-tap-live-2026-11-02.json") && /EUR 45\.00/.test(locks[1]!.text) && /LIMIT_EXCEEDED/.test(locks[1]!.text) && /Separate TAP run, 2 Nov/.test(locks[1]!.text),
     `${tag}: (a) Airwallex's card limit links the separate TAP run of 2 November (EUR 45.00, LIMIT_EXCEEDED)`);
   check(/^0x[0-9a-f]{64}$/.test(METAL_TX) && locks[2]!.href === `https://testnet.metalntwx.com/tx/${METAL_TX}`, `${tag}: (a) Metal's mandate links the on-chain refusal on Metal's explorer (${METAL_TX.slice(0, 10)}…${METAL_TX.slice(-4)})`);
+  if (!args.live) {
+    const q = terms.fx as { quote_id: string };
+    const fxq = blocked.locator(".lock.airwallex .fxq.live");
+    check(await fxq.count() === 1 && (await fxq.innerText()).includes("Used in this signature") && (await fxq.innerText()).includes("Stand-in quote (local check, not Airwallex)") && (await fxq.innerText()).includes(`Quote ${q.quote_id.slice(0, 8)}…${q.quote_id.slice(-4)}`),
+      `${tag}: (a) at Airwallex's lock, the quote marked "Used in this signature" (here a labelled stand-in)`);
+  }
   check(/simulation in your test world; the examples are real/.test(await blocked.innerText()), `${tag}: (a) says the blocked payment is simulated and the examples real`);
   await shotAt(page, "article.prop.blocked .locks", join(shots, `${tag}-3-locks.png`));
 
@@ -287,12 +326,13 @@ for (const [width, scheme] of RUNS) {
     ["amount", "1850.01", async () => { await page.click("#go-tamper"); }, "EUR 1,850.01", TAMPER_VERDICT.cent],
     ["payee_iban", "DE00000000000000000666", async () => { await page.fill("#t-amount", terms.amount!); await page.fill("#t-iban", "de00 0000 0000 0000 0006 66"); await page.click("#t-send"); }, "DE00 0000 0000 0000 0006 66", TAMPER_VERDICT.field],
     ["currency", "USD", async () => { await page.fill("#t-iban", iban(terms.payee_iban!)); await page.selectOption("#t-currency", "USD"); await page.click("#t-send"); }, "USD", TAMPER_VERDICT.field],
+    ...(args.live ? [] : [["fx.client_rate", "1.129678", async () => { await page.selectOption("#t-currency", "EUR"); await page.fill("#t-rate", "1.129678"); await page.click("#t-send"); }, "1.129678", TAMPER_VERDICT.field] as [string, string, () => Promise<void>, string, string]]),
   ];
   for (const [field, value, act, shown, last] of tampers) {
     await page.evaluate(`document.getElementById("tamper").hidden = true`);
     await act();
     await page.waitForSelector("#tamper:not([hidden])");
-    const expect = canonical({ ...terms, [field]: value });
+    const expect = canonical(field === "fx.client_rate" ? { ...terms, fx: { ...terms.fx, client_rate: value } } : { ...terms, [field]: value });
     const changedRows = await page.locator("#t-what tr.chg").evaluateAll((rs: Element[]) => rs.map((r) => (r as HTMLElement).dataset.row));
     check(JSON.stringify(changedRows) === JSON.stringify([field]) && (await page.locator("#t-what tr.chg").innerText()).includes(shown), `${tag}: tamper ${field}: shows that ${field} changed, and only it (now ${shown})`);
     const oldH = await page.locator("#t-what .hash.old").getAttribute("data-hash"), newH = await page.locator("#t-what .hash.new").getAttribute("data-hash");
@@ -301,7 +341,7 @@ for (const [width, scheme] of RUNS) {
     const head = await page.locator("#t-head").innerText();
     const why = await page.locator("#t-why").innerText();
     // One clean sentence (Max, 6 Nov: no "The server: refused: the server's verifier…").
-    check(head.startsWith("Refused") && why.trim() === `The server refused it: the signature was made for hash ${hash.slice(0, 12)}…, and your terms hash to ${(newH ?? "").slice(0, 12)}….`,
+    check(head.startsWith("Refused") && why.trim() === `The server refused it: the signature was made for hash ${hash.slice(0, 12)}…, not for your terms (${(newH ?? "").slice(0, 12)}…).` && !/…\.|\.\.\.\./.test(why),
       `${tag}: tamper ${field}: the server refuses the same signature, said once (${why.slice(0, 60)}…)`);
     check((await page.locator("#t-verdict").innerText()).trim() === last && await page.locator("#t-verdict").isVisible(), `${tag}: tamper ${field}: it ends with "${last}"`);
   }

@@ -97,6 +97,14 @@ export function verifyReceipt(input: unknown): ReceiptResult {
     add("user verified", (flags & 0x04) !== 0, (flags & 0x04) ? "the authenticator reports user verification (Face ID, a fingerprint or a PIN; which one is not in the signature)" : "no user verification");
   }
 
+  // The FX quote, when the terms carry one: reported, not checked with Airwallex (no network). A good signature over
+  // these terms covers this quote id; whether Airwallex issued it is not something a receipt can show offline.
+  const fx = isObj(R.terms.fx) ? R.terms.fx : null;
+  if (fx) {
+    const shaped = typeof fx.quote_id === "string" && typeof fx.valid_to_at === "string" && typeof fx.client_rate === "string";
+    add("fx quote", shaped, shaped ? `quote ${String(fx.quote_id)}, ${String(fx.buy_currency)} ${String(fx.buy_amount)} for ${String(fx.sell_currency)} ${String(fx.sell_amount)} at ${String(fx.client_rate)}, valid to ${String(fx.valid_to_at)}: in the signed terms (that Airwallex issued it is not checked offline)` : "the terms' fx block is not a quote");
+  }
+
   // 4. The signature: ES256 over the authenticator data followed by the SHA-256 of the client data.
   try {
     const key = createPublicKey({ key: { kty: "EC", crv: "P-256", x: R.public_key.x, y: R.public_key.y }, format: "jwk" });
@@ -114,3 +122,5 @@ export const RECEIPT_MEANS = [
   "Proves: the holder of this public key signed exactly these terms, with the authenticator reporting user verification, on this site.",
   "Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.",
 ];
+/** The extra line when the terms carry an FX quote. */
+export const RECEIPT_FX_MEANS = "The FX quote: the signature covers this quote id and its expiry; the receipt cannot show offline that Airwallex issued it.";

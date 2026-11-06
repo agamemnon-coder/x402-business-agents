@@ -393,7 +393,7 @@ describe("4. the signature is bound to the hash of the exact terms, field by fie
 
   const TRY_FIELDS = Object.keys(proposalTerms(FIXED_PROPOSALS[1]!, "0123456789abcdef", "2026-11-04T11:00:00Z"));
   it("/try/sign's terms: the fields are the ones each per-field test below changes", () => {
-    expect(TRY_FIELDS.sort()).toEqual(["amount", "currency", "expires_at", "kind", "nothing_real_moves", "payee", "payee_iban", "proposal_id", "proposed_by", "reference", "schema", "test_world"]);
+    expect(TRY_FIELDS.sort()).toEqual(["amount", "currency", "expires_at", "fx", "kind", "nothing_real_moves", "payee", "payee_iban", "proposal_id", "proposed_by", "reference", "schema", "test_world"]);
   });
 
   it.each(TRY_FIELDS)("/try/sign: changing %s changes the hash, and the same signature is refused for it", async (field) => {

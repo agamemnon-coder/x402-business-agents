@@ -1,8 +1,11 @@
 // /try/sign (TRY_SIGN_ENABLED): a visitor signs with their own passkey in a test world of their own. The world lives
 // one hour in its own Durable Object instance ("try-sign"), in its own tables (ts_*), with its own passkeys: nothing
-// here reads or writes the relay's state, its enrolled passkeys, its sessions or its queue, and no key of any kind is
-// handed to this desk (no Airwallex, Metal, Claude or relay token). The agent's two proposals are fixed text, the
-// checks are code, and "executed" is a stand-in that only records in the world's own table, as the Scenario Lab does.
+// here reads or writes the relay's state, its enrolled passkeys, its sessions or its queue. No Metal, Claude or relay
+// token is handed to this desk. The one outside call is a read-only FX quote from the Airwallex sandbox (worker/src/
+// fxQuote.ts, when the Worker has the sandbox key): its quote goes into the terms, so the signature binds to the quote
+// id, and an expired quote is refused even with a good signature; nothing is converted or paid. The agent's two
+// proposals are fixed text, the checks are code, and "executed" is a stand-in that only records in the world's own
+// table, as the Scenario Lab does.
 //
 // The signature itself is the real thing: the passkey is made with WebAuthn (user verification required, a random user
 // id, no name or e-mail), the challenge is the SHA-256 of the exact terms (canonical JSON, as the real approvals), and
@@ -11,6 +14,7 @@
 
 import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
+import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 
 /** A test world lives one hour, then everything in it is deleted. */
 export const TRY_SIGN_TTL_MS = 60 * 60 * 1000;
@@ -35,7 +39,19 @@ export const TRY_SIGN_FAILS_PER_HOUR = 30;
 const MAX_BODY = 16_384;
 const MAX_TERMS = 4096;
 // v2 (6 Nov): the payee's IBAN is in the terms, so the visitor can tamper with it as with the amount or the currency.
-export const TRY_TERMS_SCHEMA = "kit11.try-terms/v2";
+// v3 (6 Nov, P2): an `fx` block, the live Airwallex sandbox quote for the waiting payment (null when there is none).
+export const TRY_TERMS_SCHEMA = "kit11.try-terms/v3";
+/** Live FX quotes per address an hour (a world's first quote and every "Get a new quote"). */
+export const TRY_SIGN_FX_PER_HOUR = 12;
+/** Live FX quotes a minute, and an hour, from everyone together: the sandbox is asked at most this often. */
+export const TRY_SIGN_FX_ALL_PER_MINUTE = 20;
+export const TRY_SIGN_FX_ALL_PER_HOUR = 300;
+/** A quote shared after a limit or a failure only while it has at least this long left. */
+const FX_REUSE_MIN_MS = 2 * 60_000;
+/** The story's pair: the Treasury agent holds USD and the invoice is in EUR, so it would buy EUR and sell USD. */
+export const FX_PAIR = { buy: "EUR", sell: "USD" } as const;
+/** What the page is told about the quote in the terms. */
+export type FxStatus = { status: "live" | "reused"; quote: FxQuote } | { status: "unavailable"; reason: string };
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const B64URL = /^[A-Za-z0-9_-]+$/;
 
@@ -192,11 +208,11 @@ export function checkPayment(amount: string, balance: string): Check {
 }
 
 /** A proposal's terms: bound to this world (its public id) and its expiry, so a signature is good here only. */
-export function proposalTerms(p: FixedProposal, worldId: string, expiresAt: string): { [k: string]: TermsValue } {
+export function proposalTerms(p: FixedProposal, worldId: string, expiresAt: string, fx: FxQuote | null = null): { [k: string]: TermsValue } {
   return {
     schema: TRY_TERMS_SCHEMA, test_world: worldId, kind: "payment", proposal_id: p.id, proposed_by: `${p.agent} (fixed text)`,
     payee: p.payee, payee_iban: p.iban, amount: p.amount, currency: TEST_WORLD.currency, reference: p.reference, expires_at: expiresAt,
-    nothing_real_moves: true,
+    fx: fx ? { ...fx } : null, nothing_real_moves: true,
   };
 }
 
@@ -253,6 +269,7 @@ const RESPONSE = {
 const BODY: Record<string, Record<string, (v: unknown) => boolean>> = {
   "/world": {},
   "/passkey": { token: optional((v) => typeof v === "string"), credential: () => true },
+  "/quote": { token: optional((v) => typeof v === "string") },
   "/sign": { token: optional((v) => typeof v === "string"), proposal_id: (v) => typeof v === "string" && PROPOSAL_ID.test(v), canonical: (v) => typeof v === "string" && v.length <= MAX_TERMS, credential: () => true },
 };
 const fits = (o: Record<string, unknown>, shape: Record<string, (v: unknown) => boolean>) =>
@@ -261,7 +278,7 @@ const fits = (o: Record<string, unknown>, shape: Record<string, (v: unknown) => 
 export function wellFormed(sub: string, body: Record<string, unknown>): boolean {
   const shape = BODY[sub];
   if (!shape || !fits(body, shape)) return false;
-  if (sub === "/world") return true;
+  if (sub === "/world" || sub === "/quote") return true;
   const c = body.credential;
   return isObj(c) && fits(c, CREDENTIAL) && fits(c.response as Record<string, unknown>, sub === "/passkey" ? RESPONSE.passkey : RESPONSE.sign);
 }
@@ -269,9 +286,14 @@ export function wellFormed(sub: string, body: Record<string, unknown>): boolean 
 export class TrySignDesk {
   private readonly now: () => Date;
 
-  /** It takes a SQL handle and a clock, nothing else: no key, no fetch, no reach outside its own tables. */
-  constructor(private readonly sql: Sql, opts: { now?: () => Date } = {}) {
+  private readonly fx: FxSource | null;
+  /** The last live quote, shared only after a limit or a failure while it has time left (FX_REUSE_MIN_MS). */
+  private lastQuote: FxQuote | null = null;
+
+  /** It takes a SQL handle, a clock and, when the Worker has the sandbox key, the FX quote source; nothing else. */
+  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null } = {}) {
     this.now = opts.now ?? (() => new Date());
+    this.fx = opts.fx ?? null;
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_worlds (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, ip TEXT NOT NULL, created INTEGER NOT NULL, expires INTEGER NOT NULL, reg_challenge TEXT, balance TEXT NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_creds (world TEXT NOT NULL, id TEXT NOT NULL, x TEXT NOT NULL, y TEXT NOT NULL, counter INTEGER NOT NULL, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_proposals (world TEXT NOT NULL, id TEXT NOT NULL, canonical TEXT NOT NULL, sha TEXT NOT NULL, check_json TEXT NOT NULL, status TEXT NOT NULL, execution TEXT, PRIMARY KEY (world, id))");
@@ -299,7 +321,7 @@ export class TrySignDesk {
     const path = url.pathname;
     if (!isTrySignPath(path)) return trySignNotFound();
     const sub = path.slice("/api/try-sign".length);
-    if (!["/world", "/passkey", "/sign"].includes(sub)) return trySignNotFound();
+    if (!["/world", "/passkey", "/sign", "/quote"].includes(sub)) return trySignNotFound();
     if (req.method !== "POST") return answer(405, { error: "use POST" });
     // Only this site's own page may ask: a browser on another site sends its own origin, or none on a form post.
     if (req.headers.get("origin") !== url.origin || req.headers.get("sec-fetch-site") === "cross-site") return answer(403, { error: "ask from the /try/sign page on this site" });
@@ -324,12 +346,13 @@ export class TrySignDesk {
     const gone = () => answer(410, { error: "no such test world: it expired (a world lasts one hour, ten minutes without a passkey) or never existed; start a new one", expired: true });
     // No token at all is no world (as before); anything else must have the endpoint's shape before it is looked at.
     if (sub !== "/world" && body.token === undefined) return gone();
-    if (!wellFormed(sub, body)) return answer(400, { error: sub === "/sign" ? "malformed signature" : sub === "/passkey" ? "malformed passkey" : "send an empty JSON object" });
+    if (!wellFormed(sub, body)) return answer(400, { error: sub === "/sign" ? "malformed signature" : sub === "/passkey" ? "malformed passkey" : sub === "/quote" ? "send the world's token only" : "send an empty JSON object" });
 
     if (sub === "/world") return this.newWorld(url, req.headers.get("cf-connecting-ip") ?? "unknown", nowMs);
     const world = await this.worldOf(body.token);
     if (!world || world.expires <= this.now().getTime()) return gone();
     if (sub === "/passkey") return this.registerPasskey(url, ip, world, body);
+    if (sub === "/quote") return this.newQuote(ip, world);
     return this.sign(url, ip, world, body);
   }
 
@@ -368,6 +391,53 @@ export class TrySignDesk {
       .map((p) => ({ ...p, terms: JSON.parse(p.canonical) as unknown, checked: JSON.parse(p.check_json) as Check }));
   }
 
+  /**
+   * A live quote for the waiting payment, within the limits (per address, and for everyone a minute and an hour). Over
+   * a limit, or when the sandbox gives none, the last live quote is shared if it still has time; else there is none,
+   * and the page shows the main run's recorded quote, labelled as such. Never a made-up quote.
+   */
+  private async quoteFor(ip: string, buyAmount: string): Promise<FxStatus> {
+    const nowMs = this.now().getTime();
+    const shared = (): FxStatus | null => this.lastQuote && this.lastQuote.buy_amount === buyAmount && Date.parse(this.lastQuote.valid_to_at) - nowMs >= FX_REUSE_MIN_MS
+      ? { status: "reused", quote: this.lastQuote } : null;
+    if (!this.fx) return { status: "unavailable", reason: "this server has no Airwallex sandbox key" };
+    if (this.hits(ip, "fx", nowMs - 3_600_000) >= TRY_SIGN_FX_PER_HOUR || this.hits("*", "fx-all", nowMs - 60_000) >= TRY_SIGN_FX_ALL_PER_MINUTE
+      || this.hits("*", "fx-all", nowMs - 3_600_000) >= TRY_SIGN_FX_ALL_PER_HOUR) {
+      return shared() ?? { status: "unavailable", reason: "many live quotes were asked for just now; try again in a minute" };
+    }
+    this.hit(ip, "fx", nowMs);
+    this.hit("*", "fx-all", nowMs);
+    try {
+      const quote = await this.fx.quote({ buyCurrency: FX_PAIR.buy, sellCurrency: FX_PAIR.sell, buyAmount });
+      if (Date.parse(quote.valid_to_at) <= this.now().getTime()) throw new QuoteUnavailable("the quote had already expired");
+      this.lastQuote = quote;
+      return { status: "live", quote };
+    } catch (e) {
+      // A fixed reason only: never Airwallex's words, a key or a token (fxQuote.ts makes its reasons so).
+      const reason = e instanceof QuoteUnavailable ? e.reason : "the Airwallex sandbox gave no quote";
+      console.error("try-sign: no live FX quote:", reason);
+      return shared() ?? { status: "unavailable", reason };
+    }
+  }
+
+  /** "Get a new quote": new terms for the waiting payment with a new quote, so it must be signed again. */
+  private async newQuote(ip: string, world: WorldRow): Promise<Response> {
+    const p = this.proposals(world.id).find((x) => x.checked.check === "pass");
+    if (!p) return answer(404, { error: "no payment waits for a person in this test world" });
+    if (p.status !== "waiting") return answer(409, { error: `${p.id} is already signed and ran; there is nothing to quote again` });
+    const f = FIXED_PROPOSALS.find((x) => x.id === p.id)!;
+    const fx = await this.quoteFor(ip, f.amount);
+    if (fx.status === "unavailable") return answer(503, { error: `no new live quote: ${fx.reason}`, fx });
+    const expiresAt = new Date(world.expires).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const c = canonical(proposalTerms(f, world.id, expiresAt, fx.quote));
+    const sha = await sha256Hex(c);
+    // Written only while it still waits (no await between the read and the write): a signature that ran meanwhile wins.
+    const still = (this.sql.exec("SELECT status FROM ts_proposals WHERE world = ? AND id = ?", world.id, p.id).toArray() as { status: string }[])[0];
+    if (still?.status !== "waiting") return answer(409, { error: `${p.id} is already signed and ran; there is nothing to quote again` });
+    this.sql.exec("UPDATE ts_proposals SET canonical = ?, sha = ? WHERE world = ? AND id = ?", c, sha, world.id, p.id);
+    return answer(200, { proposal: { proposal_id: p.id, agent: f.agent, says: f.says, canonical: c, terms_sha256: sha, status: "waiting", ...p.checked }, fx });
+  }
+
   private async newWorld(url: URL, address: string, nowMs: number): Promise<Response> {
     const ip = rateKey(address);
     const net = networkKey(address);
@@ -377,10 +447,16 @@ export class TrySignDesk {
     const challenge = toB64u(random(32));
     const expires = nowMs + TRY_SIGN_TTL_MS;
     const expiresAt = new Date(expires).toISOString().replace(/\.\d{3}Z$/, "Z");
+    // Over a world limit, no quote is asked for (the limits are checked again, for good, below).
+    if (this.hits(ip, "world", nowMs - 3_600_000) >= TRY_SIGN_WORLDS_PER_HOUR) return answer(429, { error: `${TRY_SIGN_WORLDS_PER_HOUR} test worlds an hour from one address; use the one you have, or wait` });
+    // The waiting payment carries the live quote (its fx block); the one a rule blocks has none.
+    const waiting = FIXED_PROPOSALS.find((p) => checkPayment(p.amount, TEST_WORLD.balance).check === "pass");
+    const fx: FxStatus = waiting ? await this.quoteFor(ip, waiting.amount) : { status: "unavailable", reason: "no payment waits" };
     const rows: [string, string, string, Check][] = [];
     for (const p of FIXED_PROPOSALS) {
-      const c = canonical(proposalTerms(p, id, expiresAt));
-      rows.push([p.id, c, await sha256Hex(c), checkPayment(p.amount, TEST_WORLD.balance)]);
+      const check = checkPayment(p.amount, TEST_WORLD.balance);
+      const c = canonical(proposalTerms(p, id, expiresAt, check.check === "pass" && fx.status !== "unavailable" ? fx.quote : null));
+      rows.push([p.id, c, await sha256Hex(c), check]);
     }
     // No await from here on: the limits are checked and the world written together, so tries at once cannot pass both.
     if (this.hits(ip, "world", nowMs - 3_600_000) >= TRY_SIGN_WORLDS_PER_HOUR) return answer(429, { error: `${TRY_SIGN_WORLDS_PER_HOUR} test worlds an hour from one address; use the one you have, or wait` });
@@ -400,6 +476,7 @@ export class TrySignDesk {
     }
     return answer(201, {
       world: { id, token, expires_at: expiresAt, ...TEST_WORLD },
+      fx,
       proposals: this.proposals(id).map((p) => {
         const f = FIXED_PROPOSALS.find((x) => x.id === p.id)!;
         return { proposal_id: p.id, agent: f.agent, says: f.says, canonical: p.canonical, terms_sha256: p.sha, status: p.status, ...p.checked };
@@ -471,6 +548,11 @@ export class TrySignDesk {
     const w = (this.sql.exec("SELECT balance, expires FROM ts_worlds WHERE id = ?", world.id).toArray() as { balance: string; expires: number }[])[0];
     if (!fresh || !w || w.expires <= now) return answer(410, { error: "this test world expired while signing; start a new one", expired: true, verified: false });
     if (fresh.status !== "waiting") return answer(409, { error: `refused: ${p.id} already ran once; a replayed signature runs nothing`, verified: true, why: "replay", terms_sha256: sha });
+    // The quote is part of what was signed, and it has an end: after it, even a good signature runs nothing.
+    const quote = (p.terms as { fx?: { valid_to_at?: string } | null }).fx;
+    if (quote && !(Date.parse(String(quote.valid_to_at)) > now)) {
+      return answer(409, { error: "Quote expired. Get a fresh one and sign again.", expired_at: String(quote.valid_to_at), verified: true, why: "quote_expired", quote_expired: true, terms_sha256: sha });
+    }
     const latest = (this.sql.exec("SELECT counter FROM ts_creds WHERE world = ? AND id = ?", world.id, cred.id).toArray() as { counter: number }[])[0]?.counter ?? 0;
     if ((v.counter !== 0 || latest !== 0) && v.counter <= latest) return answer(400, { error: "refused: the signature counter did not move forward (a replay)", verified: false, why: "counter" });
     const amount = (p.terms as { amount: string }).amount;
@@ -478,7 +560,7 @@ export class TrySignDesk {
     if (again.check === "fail") return answer(409, { error: `blocked by a rule: ${again.rule}`, blocked: true, verified: true });
     const execution = {
       id: `test-${hex(random(6))}`, at: new Date(now).toISOString(), amount, currency: TEST_WORLD.currency, payee: (p.terms as { payee: string }).payee,
-      balance_after: money(cents(w.balance) - cents(amount)), by: "stand-in executor: recorded in this test world only, no Airwallex or Metal call",
+      balance_after: money(cents(w.balance) - cents(amount)), fx_quote_id: (quote as { quote_id?: string } | null | undefined)?.quote_id ?? null, by: "stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Metal call",
     };
     this.sql.exec("UPDATE ts_creds SET counter = ? WHERE world = ? AND id = ?", v.counter, world.id, cred.id);
     this.sql.exec("UPDATE ts_proposals SET status = 'executed', execution = ? WHERE world = ? AND id = ?", JSON.stringify(execution), world.id, p.id);

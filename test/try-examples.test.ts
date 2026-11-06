@@ -93,8 +93,9 @@ describe("the approval sheet follows the CFO's real one", () => {
     expect(data.cfo).toBe(`Modelled on the CFO's real approval sheet (main run): P-0005, pay Stockline Data GmbH EUR 240.00 by SWIFT, signed with Face ID at ${ok.ts.slice(11, 19)} UTC.`);
   });
 
-  it("the visitor's terms carry the beneficiary's IBAN, and the three fields to tamper with are terms fields", () => {
-    const t = proposalTerms(FIXED_PROPOSALS[1]!, "0123456789abcdef", "2026-11-06T11:00:00Z");
+  it("the visitor's terms carry the beneficiary's IBAN, and the fields to tamper with are terms fields (the FX rate with a quote)", () => {
+    const quote = { quote_id: "q-0000-0000", sell_currency: "USD", buy_currency: "EUR", buy_amount: "1850.00", sell_amount: "2089.90", client_rate: "1.129677", valid_to_at: "2026-11-06T11:00:00Z", source: "stand-in" as const };
+    const t = proposalTerms(FIXED_PROPOSALS[1]!, "0123456789abcdef", "2026-11-06T11:00:00Z", quote);
     for (const f of TAMPER_FIELDS) expect(t).toHaveProperty(f);
     expect(data.fields).toEqual([...TAMPER_FIELDS]);
   });
@@ -117,7 +118,7 @@ describe("the page's frame: three steps, one line of disclaimer, \"What's real?\
     expect(page).toContain(TRY_SIGN_LABEL);
     const wr = block(main, '<details class="wr">', "details").whole;
     for (const l of [...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources]) expect(wr).toContain(l);
-    for (const w of ["test world", "No Airwallex, Metal or Claude call, and no money moves", "fixed text", "stand-in", "passkey signature", "server's check", "docs/demo/main-run.json"]) expect(wr).toContain(w);
+    for (const w of ["test world", "No payment or conversion at Airwallex, no Metal or Claude call, and no money moves", "fixed text", "stand-in", "passkey signature", "server's check", "docs/demo/main-run.json"]) expect(wr).toContain(w);
     // The old paragraph under the steps is gone: what it said is inside the expander.
     expect(main).not.toContain('class="note"');
     // One "What's real?" on the page: the footer's copy is gone.

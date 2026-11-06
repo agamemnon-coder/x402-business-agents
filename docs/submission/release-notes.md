@@ -103,6 +103,14 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   checks it offline with Node's own crypto: the terms' hash, the challenge, the origin and RP id, user presence and
   verification, the ES256 signature. One changed field or one cent fails. The Worker's answer to a good signature now
   carries the public key it verified against. 2495 tests in 255 files, all passing.
+- 6 November, /try/sign's live FX quote: the waiting payment's terms carry a quote from the Airwallex sandbox (EUR
+  bought, USD sold; schema kit11.try-terms/v3), so the signature binds to the quote id; once the quote expires the
+  server refuses even a good signature ("Quote expired. Get a fresh one and sign again.") and the page offers a new
+  quote, which means new terms, signed again. The Worker may call only login and quote creation on the sandbox host
+  (a fixed table, tested: no conversion, no transfer); the key stays in the Worker, never in an answer or a log; quotes
+  are limited per address and for everyone. Without Max's scoped key in the Worker's secrets the page shows the main
+  run's recorded quote, labelled. The receipt carries the quote and verify-receipt reports it. Tested on Max's iPhone
+  (Safari, Face ID) on 6 November: signed, tamper refused, receipt downloaded. 2521 tests in 256 files, all passing.
 - 6 November, the Metal story: /metal opens with the main run on one screen, each claim linked to Metal's testnet
   explorer and every figure read from the record (`src/redesign/metalStory.ts`): 3 mandates on chain, one per agent;
   86 Metal payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep; each matched on
@@ -113,7 +121,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   credential, so it is never paid twice; a clearing wallet is kept for one Clearing deployment; a lost clearing answer
   is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
   its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
-  metal-pay already had what we asked for. 2521 tests in 258 files, all passing.
+  metal-pay already had what we asked for. 2547 tests in 259 files, all passing.
 
 ## Real, and ours
 
