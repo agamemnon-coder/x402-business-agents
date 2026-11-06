@@ -1,0 +1,140 @@
+// The README's "How it works in 5 files" (Max's last round, item 3): each of the five places that enforce the limits and
+// the approval is linked to the exact line that defines it. This test reads every such link and checks that the file
+// exists and that the linked line still defines the symbol the link names, so a later edit that moves a function
+// breaks this test instead of the README's anchors. It also checks the diagram (hand-written SVG: no script, no
+// external font or link, readable in light and dark) and the commands the section asks a judge to run.
+
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const ROOT = new URL("..", import.meta.url).pathname;
+const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
+const README = read("README.md");
+
+const HEADING = "## How it works in 5 files";
+const start = README.indexOf(HEADING);
+const end = README.indexOf("\n## ", start + HEADING.length);
+const SECTION = start < 0 ? "" : README.slice(start, end < 0 ? undefined : end);
+
+/** Each [`symbol`](path#Lnn) link in a piece of markdown. */
+function lineLinks(md: string): { symbol: string; path: string; line: number }[] {
+  return [...md.matchAll(/\[`([A-Za-z_$][\w$]*)`\]\(([^)#\s]+)#L(\d+)\)/g)].map((m) => ({ symbol: m[1]!, path: m[2]!, line: Number(m[3]) }));
+}
+
+/** Whether a source line defines `symbol` (a function, const, class or type of that exact name). */
+function defines(sourceLine: string, symbol: string): boolean {
+  const forms = [`function ${symbol}(`, `function ${symbol}<`, `const ${symbol} =`, `const ${symbol}:`, `class ${symbol} `, `type ${symbol} =`, `interface ${symbol} `];
+  return forms.some((f) => sourceLine.indexOf(f) >= 0);
+}
+
+/** Why a link does not hold, or null when the file exists and its line defines the symbol. */
+function brokenAnchor(l: { symbol: string; path: string; line: number }, exists: (p: string) => boolean, lines: (p: string) => string[]): string | null {
+  if (!exists(l.path)) return `${l.path} does not exist`;
+  const src = lines(l.path)[l.line - 1];
+  if (src === undefined) return `${l.path} has no line ${l.line}`;
+  if (!defines(src, l.symbol)) return `${l.path}#L${l.line} does not define ${l.symbol}: ${src.trim().slice(0, 80)}`;
+  return null;
+}
+
+const exists = (p: string) => existsSync(join(ROOT, p));
+const sourceLines = (p: string) => read(p).split("\n");
+
+describe("README: How it works in 5 files", () => {
+  it("sits after the proof sentences and before the deep docs links", () => {
+    expect(start).toBeGreaterThan(README.indexOf("## The proof, one sentence per partner"));
+    expect(README.indexOf("## The proof, one sentence per partner")).toBeGreaterThan(0);
+    expect(start).toBeLessThan(README.indexOf("## Links"));
+  });
+
+  it("names five numbered places, linked to the symbols that enforce the limits and the approval", () => {
+    expect(SECTION.match(/^\d\. \*\*/gm)?.length).toBe(5);
+    expect(lineLinks(SECTION).map((l) => `${l.path} ${l.symbol}`)).toEqual([
+      "src/policy/holds.ts reserveSpend",
+      "src/lib/terms.ts termsHash",
+      "src/passkey/webauthn.ts verifyApprovalSignature",
+      "src/policy/approvals.ts beginExecution",
+      "src/metal/pay.ts payUnderMandate",
+      "src/audit/log.ts audit",
+    ]);
+  });
+
+  it("every line link points at a file that exists and a line that still defines the named symbol", () => {
+    const links = lineLinks(SECTION);
+    expect(links.length).toBeGreaterThanOrEqual(5);
+    expect(links.map((l) => brokenAnchor(l, exists, sourceLines)).filter(Boolean)).toEqual([]);
+  });
+
+  it("the check itself catches a moved line, a renamed symbol and a missing file", () => {
+    const files: Record<string, string[]> = { "a.ts": ["// x", "export function reserveSpend(db) {", "export const audit = 1;"] };
+    const has = (p: string) => p in files;
+    const get = (p: string) => files[p]!;
+    expect(brokenAnchor({ symbol: "reserveSpend", path: "a.ts", line: 2 }, has, get)).toBeNull();
+    expect(brokenAnchor({ symbol: "audit", path: "a.ts", line: 3 }, has, get)).toBeNull();
+    expect(brokenAnchor({ symbol: "reserveSpend", path: "a.ts", line: 1 }, has, get)).toMatch(/does not define reserveSpend/);
+    expect(brokenAnchor({ symbol: "reserve", path: "a.ts", line: 2 }, has, get)).toMatch(/does not define reserve:/);
+    expect(brokenAnchor({ symbol: "reserveSpend", path: "a.ts", line: 9 }, has, get)).toMatch(/has no line 9/);
+    expect(brokenAnchor({ symbol: "x", path: "b.ts", line: 1 }, has, get)).toMatch(/does not exist/);
+    expect(lineLinks("[`a`](x.ts#L3) [`b c`](y.ts#L1) [a](z.ts#L2)")).toEqual([{ symbol: "a", path: "x.ts", line: 3 }]);
+  });
+
+  it("every other relative link in the section exists", () => {
+    const targets = [...SECTION.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]!).filter((t) => !/^[a-z]+:/i.test(t)).map((t) => t.split("#")[0]!);
+    expect(targets.length).toBeGreaterThanOrEqual(8);
+    expect(targets.filter((t) => !exists(t))).toEqual([]);
+  });
+});
+
+describe("the architecture diagram", () => {
+  const SVG_PATH = "docs/how-it-works.svg";
+  const svg = read(SVG_PATH);
+
+  it("is shown in the section", () => {
+    expect(SECTION).toContain(`](${SVG_PATH})`);
+  });
+
+  it("is hand-written SVG with no script, no external font, image or link", () => {
+    expect(svg.startsWith("<svg ")).toBe(true);
+    for (const banned of ["<script", "<image", "<foreignObject", "@import", "@font-face", "href=", "url(http", "javascript:"]) {
+      expect({ banned, found: svg.indexOf(banned) >= 0 }).toEqual({ banned, found: false });
+    }
+  });
+
+  it("carries its own background and a dark scheme, so it reads in GitHub's light and dark themes", () => {
+    expect(svg).toContain('<rect class="bg"');
+    expect(svg).toContain("@media (prefers-color-scheme: dark)");
+  });
+
+  it("draws the chain as the code runs it: policy, the passkey over the terms hash, the executor's re-hash, the rails, the audit chain", () => {
+    for (const label of ["Agent", "Policy", "reserveSpend", "Approval", "SHA-256 of the", "Executor", "beginExecution", "Airwallex / Metal", "within the limits", "Audit log, hash-chained"]) {
+      expect({ label, found: svg.indexOf(label) >= 0 }).toEqual({ label, found: true });
+    }
+  });
+});
+
+describe("Verify it yourself in 3 commands", () => {
+  const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
+
+  it("lists npm ci, npm test and npm run judge -- --check in that order, then verify-receipt", () => {
+    const block = SECTION.slice(SECTION.indexOf("```sh"), SECTION.indexOf("```", SECTION.indexOf("```sh") + 5));
+    expect(block.split("\n").slice(1).filter(Boolean)).toEqual(["npm ci", "npm test", "npm run judge -- --check"]);
+    expect(SECTION).toContain("`npm run verify-receipt -- receipt.json`");
+  });
+
+  it("runs scripts that exist, and judge knows --check", () => {
+    expect(pkg.scripts.test).toBe("vitest run");
+    expect(pkg.scripts.judge).toBeDefined();
+    expect(pkg.scripts["verify-receipt"]).toBeDefined();
+    expect(read("src/cli/judge.ts")).toContain('"--check"');
+  });
+
+  it("says honestly what needs the network", () => {
+    expect(SECTION).toContain("`npm ci` downloads packages from npm; after that, no network and no keys.");
+    expect(SECTION).toContain("Getting the receipt needs the live site and your own passkey.");
+  });
+
+  it("the tests badge links to this section", () => {
+    expect(README).toContain("](#verify-it-yourself-in-3-commands)");
+    expect(SECTION).toContain("### Verify it yourself in 3 commands");
+  });
+});
