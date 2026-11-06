@@ -10,7 +10,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { POLICY_MAX_CENTS, type Field, type PolicySet, type WorldPolicy } from "../src/try/policy.js";
-import { TRY_SIGN_PER_MINUTE } from "../worker/src/trySign.js";
+import { PAID_ALONE, TRY_SIGN_PER_MINUTE } from "../worker/src/trySign.js";
+import { StandInQuotes } from "./support/fxStandIn.js";
 import { BASE, call, challengeOf, desk, RP, signBody, t0, withPasskey, type Proposal } from "./support/trySign.js";
 
 afterEach(() => { vi.restoreAllMocks(); });
@@ -18,14 +19,14 @@ afterEach(() => { vi.restoreAllMocks(); });
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 type Agent = "sourcing" | "support" | "treasury";
 interface PolicyAnswer {
-  applied: boolean; needs_signature?: boolean; looser?: Field[]; reason?: string; why?: string; verified?: boolean; error?: string;
+  applied: boolean; needs_signature?: boolean; looser?: Field[]; reason?: string; paid_alone?: string[]; why?: string; verified?: boolean; error?: string;
   canonical?: string; terms_sha256?: string; policy: WorldPolicy; policy_version: string; proposals: Proposal[];
   proposed?: Record<string, unknown>; locks: Record<Agent, unknown>; world: { balance: string; reserve_floor: string; alone_limit: string };
 }
 
 /** A visitor's world with a passkey, and a way to send a change to one field (or several) of an agent's policy. */
-async function visitor() {
-  const { d, db } = desk();
+async function visitor(fx: StandInQuotes | null = null) {
+  const { d, db, at } = desk(undefined, fx);
   const { w, auth, a, b } = await withPasskey(d);
   const start = (w as unknown as { policy: WorldPolicy }).policy;
   let policy = start;
@@ -47,7 +48,7 @@ async function visitor() {
     return second;
   };
   const stored = () => (db.prepare("SELECT version, json FROM ts_policy WHERE world = ?").get(w.world.id) as { version: number; json: string });
-  return { d, db, w, auth, a, b, start, send, signed, signedChange, stored, policy: () => policy };
+  return { d, db, at, w, auth, a, b, start, send, signed, signedChange, stored, policy: () => policy };
 }
 
 describe("the test world's policy: what the visitor sees", () => {
@@ -251,12 +252,6 @@ describe("(d) the world follows the policy", () => {
     expect(v.db.prepare("SELECT status FROM ts_proposals WHERE world = ? AND id = 'T-0002'").get(v.w.world.id)).toEqual({ status: "blocked" });
   });
 
-  it("a higher limit an agent may pay alone: the payment no longer waits for a person (said in its check)", async () => {
-    const v = await visitor();
-    const s = await v.signedChange("treasury", { alone: "2000.00" });
-    expect(s.out.proposals.find((p) => p.proposal_id === "T-0002")).toMatchObject({ check: "pass", waits: "" });
-    expect(s.out.world.alone_limit).toBe("2000.00");
-  });
 
   it("another agent's policy leaves the Treasury agent's payments as they were", async () => {
     const v = await visitor();
@@ -272,6 +267,128 @@ describe("(d) the world follows the policy", () => {
     const s = await v.signedChange("treasury", { reserve_floor: "20000.00" });
     expect(s.out.proposals.map((p) => `${p.proposal_id}:${p.status}`)).toEqual(["T-0001:waiting", "T-0002:executed"]);
     expect(s.out.world.balance).toBe("28150.00");
+  });
+});
+
+// Max, 6 Nov: "may pay alone up to" really works. Raised and signed, a payment at or below it runs without a signature,
+// by the same stand-in executor, labelled "paid alone under your new policy"; above it, or once it is lowered again, a
+// payment that has not run waits for a signature; the other checks (reserve floor, the quote's end, the world's end,
+// once only) still hold, and the run is bound to its terms' hash and to the signed change that allowed it.
+type Executed = { alone?: boolean; label?: string; amount: string; balance_after: string; terms_sha256?: string; policy_change_sha256?: string | null; policy_version?: string; by: string };
+const t2Of = (out: PolicyAnswer) => out.proposals.find((p) => p.proposal_id === "T-0002")! as Proposal & { status: string; execution?: Executed };
+const t1Of = (out: PolicyAnswer) => out.proposals.find((p) => p.proposal_id === "T-0001")! as Proposal & { status: string; execution?: Executed };
+
+describe("\"may pay alone up to\": raised and signed, a payment within it runs without a signature", () => {
+  it("raised and signed: T-0002 (EUR 1,850.00) runs alone, by the stand-in, labelled \"paid alone under your new policy\"", async () => {
+    const v = await visitor();
+    const first = await v.send("treasury", { alone: "2000.00" });
+    // What the visitor signs shows the new amount.
+    const terms = JSON.parse(first.out.canonical!) as { changes: { field: string; from: string; to: string }[]; policy: { alone: string } };
+    expect(terms.changes).toEqual([{ field: "alone", key: "approval.treasury.alone_eur", from: "500.00", to: "2000.00", looser: true }]);
+    expect(terms.policy.alone).toBe("2000.00");
+    expect((first.out as unknown as { alone_effect: string }).alone_effect).toMatch(/pay alone up to EUR 2,000\.00: a payment in this test world at or below it then runs without your signature/);
+    const s = await v.send("treasury", { alone: "2000.00" }, { canonical: first.out.canonical, credential: v.signed(first.out.canonical!) });
+    expect(s.out).toMatchObject({ applied: true, verified: true, paid_alone: ["T-0002"] });
+    const t2 = t2Of(s.out);
+    expect(PAID_ALONE).toBe("paid alone under your new policy");
+    expect(t2.status).toBe("executed");
+    expect(t2.execution).toMatchObject({ alone: true, label: PAID_ALONE, amount: "1850.00", balance_after: "28150.00", terms_sha256: v.b.terms_sha256, policy_change_sha256: sha(first.out.canonical!), policy_version: "2" });
+    expect(t2.execution!.by).toMatch(/^stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Metal call$/);
+    expect(t2.execution!.terms_sha256).toBe(sha(v.b.canonical));
+    expect(s.out.world.balance).toBe("28150.00");
+    expect((s.out.locks.treasury as { purser: { payments: { proposal_id: string; check: string; alone?: boolean }[] } }).purser.payments.find((p) => p.proposal_id === "T-0002")).toMatchObject({ check: "executed", alone: true });
+    // Once only: its signature runs nothing more, and the next policy change does not run it again.
+    const res = await call(v.d, "sign", signBody(v.w.world.token, v.b, v.signed(v.b.canonical)));
+    expect(res.status).toBe(409);
+    const again = await v.send("treasury", { per_tx: "20.00" });
+    expect(again.out.paid_alone).toEqual([]);
+    expect(again.out.world.balance).toBe("28150.00");
+  });
+
+  it("raised but unsigned: refused, and nothing runs or changes", async () => {
+    const v = await visitor();
+    const before = v.stored();
+    const r = await v.send("treasury", { alone: "2000.00" });
+    expect(r.out).toMatchObject({ applied: false, needs_signature: true, looser: ["alone"] });
+    expect((r.out as unknown as { paid_alone?: string[] }).paid_alone).toBeUndefined();
+    expect(v.stored()).toEqual(before);
+    expect(t2Of(r.out)).toMatchObject({ status: "waiting", check: "pass" });
+    expect(t2Of(r.out).waits).toMatch(/Above the EUR 500\.00 an agent may pay alone/);
+    expect(r.out.world.balance).toBe("30000.00");
+    // Signed over other terms (the same change asked for EUR 1,000.00): refused too, nothing runs.
+    const other = await v.send("treasury", { alone: "1000.00" });
+    const bad = await v.send("treasury", { alone: "2000.00" }, { canonical: r.out.canonical, credential: v.signed(other.out.canonical!) });
+    expect(bad.out).toMatchObject({ applied: false, verified: false });
+    expect(v.db.prepare("SELECT status FROM ts_proposals WHERE world = ? AND id = 'T-0002'").get(v.w.world.id)).toEqual({ status: "waiting" });
+  });
+
+  it("above the new amount: still needs a signature (EUR 1,850.00 over a limit of EUR 1,000.00)", async () => {
+    const v = await visitor();
+    const s = await v.signedChange("treasury", { alone: "1000.00" });
+    expect(s.out.paid_alone).toEqual([]);
+    expect(t2Of(s.out)).toMatchObject({ status: "waiting", check: "pass" });
+    expect(t2Of(s.out).waits).toMatch(/Above the EUR 1,000\.00 an agent may pay alone, so it waits for a person's signature/);
+    // And the signature runs it, as before.
+    const res = await call(v.d, "sign", signBody(v.w.world.token, v.b, v.signed(v.b.canonical)));
+    expect(await res.json()).toMatchObject({ verified: true, executed: { amount: "1850.00" } });
+  });
+
+  it("lowered again: a payment that has not run needs a signature again; one that ran alone stays as it ran", async () => {
+    const v = await visitor();
+    // EUR 7,000.00: T-0002 runs alone; T-0001 (6,500.00) is within it but the reserve floor still blocks it.
+    const up = await v.signedChange("treasury", { alone: "7000.00" });
+    expect(up.out.paid_alone).toEqual(["T-0002"]);
+    expect(t1Of(up.out)).toMatchObject({ status: "blocked", check: "fail" });
+    expect(t1Of(up.out).rule).toMatch(/Reserve floor/);
+    // Lower (stricter, at once): EUR 1,000.00. Then the floor down (signed): T-0001 passes the floor, and waits.
+    const down = await v.send("treasury", { alone: "1000.00" });
+    expect(down.out).toMatchObject({ applied: true, paid_alone: [] });
+    const floor = await v.signedChange("treasury", { reserve_floor: "20000.00" });
+    expect(floor.out.paid_alone).toEqual([]);
+    expect(t1Of(floor.out)).toMatchObject({ status: "waiting", check: "pass" });
+    expect(t1Of(floor.out).waits).toMatch(/Above the EUR 1,000\.00 an agent may pay alone/);
+    expect(t2Of(floor.out)).toMatchObject({ status: "executed", execution: { alone: true, label: PAID_ALONE } });
+    expect(floor.out.world.balance).toBe("28150.00");
+  });
+
+  it("raised high enough for both, with the floor lowered: both run alone, one after the other, the floor checked on each", async () => {
+    const v = await visitor();
+    await v.signedChange("treasury", { reserve_floor: "20000.00" });
+    const s = await v.signedChange("treasury", { alone: "7000.00" });
+    expect(s.out.paid_alone).toEqual(["T-0001", "T-0002"]);
+    expect(s.out.world.balance).toBe("21650.00");
+    // With a floor that holds for one only, the first in line runs and the other is blocked by the floor.
+    const w = await visitor();
+    await w.signedChange("treasury", { reserve_floor: "22000.00" });
+    const t = await w.signedChange("treasury", { alone: "7000.00" });
+    expect(t.out.paid_alone).toEqual(["T-0001"]);
+    expect(t2Of(t.out)).toMatchObject({ status: "blocked", check: "fail" });
+    expect(t.out.world.balance).toBe("23500.00");
+  });
+
+  it("its quote expired: it does not run alone; with a new quote, it runs alone then", async () => {
+    const fx = new StandInQuotes(() => t0.getTime());
+    const v = await visitor(fx);
+    expect((v.b as unknown as { canonical: string }).canonical).toMatch(/"fx":\{/);
+    v.at(new Date(t0.getTime() + 16 * 60_000));
+    fx.now = () => t0.getTime() + 16 * 60_000;
+    const s = await v.signedChange("treasury", { alone: "2000.00" });
+    expect(s.out.paid_alone).toEqual([]);
+    expect(t2Of(s.out)).toMatchObject({ status: "waiting", check: "pass", waits: "" });
+    const q = await call(v.d, "quote", { token: v.w.world.token });
+    const out = (await q.json()) as { paid_alone: string[]; proposal: Proposal & { status: string; execution: Executed } };
+    expect(out.paid_alone).toEqual(["T-0002"]);
+    expect(out.proposal).toMatchObject({ status: "executed", execution: { alone: true, label: PAID_ALONE, terms_sha256: out.proposal.terms_sha256 } });
+    expect(out.proposal.terms_sha256).toBe(sha(out.proposal.canonical));
+  });
+
+  it("another agent's \"alone\" limit runs none of the Treasury agent's payments", async () => {
+    const v = await visitor();
+    const first = await v.send("sourcing", { alone: "7000.00" });
+    expect((first.out as unknown as { alone_effect: string }).alone_effect).toMatch(/none of them runs alone because of it/);
+    const s = await v.signedChange("sourcing", { alone: "7000.00" });
+    expect(s.out.paid_alone).toEqual([]);
+    expect(t2Of(s.out).status).toBe("waiting");
   });
 });
 

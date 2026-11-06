@@ -18,6 +18,8 @@ import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 import { AGENTS, type Agent } from "../../src/config/policy.js";
+import { PAID_ALONE } from "../../src/try/policy.js";
+export { PAID_ALONE };
 import { defaultPolicy, FIELD_WORDS, policyBounds, policyChanges, readSet, threeLocks, withSet, type Locks, type PolicyChange, type WorldPolicy } from "../../src/try/policy.js";
 import { AGENT_LINE_ALL_PER_MINUTE, AGENT_LINE_DAILY_USD, AGENT_LINE_PER_HOUR, AGENT_LINE_RESERVE_USD, AGENT_LINE_SYSTEM, agentLineFacts, agentLineGiven, checkLine, moneyForPeople, type SentenceSource, type Voice } from "./agentLine.js";
 
@@ -336,7 +338,8 @@ export class TrySignDesk {
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_proposals (world TEXT NOT NULL, id TEXT NOT NULL, canonical TEXT NOT NULL, sha TEXT NOT NULL, check_json TEXT NOT NULL, status TEXT NOT NULL, execution TEXT, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_hits (ip TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL)");
     // Step 0: the policy the visitor set in their world, numbered (a signature names the version it changes).
-    this.sql.exec("CREATE TABLE IF NOT EXISTS ts_policy (world TEXT PRIMARY KEY, version INTEGER NOT NULL, json TEXT NOT NULL)");
+    // signed_sha: the SHA-256 of the last policy change the visitor signed (a payment run alone names it).
+    this.sql.exec("CREATE TABLE IF NOT EXISTS ts_policy (world TEXT PRIMARY KEY, version INTEGER NOT NULL, json TEXT NOT NULL, signed_sha TEXT)");
     // Every query on a request goes through an index: the counts per address and kind, the purges by time.
     this.sql.exec("CREATE INDEX IF NOT EXISTS ts_hits_ip ON ts_hits (ip, kind, at)");
     this.sql.exec("CREATE INDEX IF NOT EXISTS ts_hits_kind ON ts_hits (kind, at)");
@@ -509,7 +512,8 @@ export class TrySignDesk {
   private view(worldId: string, p: ProposalRow & { checked: Check }) {
     const f = FIXED_PROPOSALS.find((x) => x.id === p.id)!;
     const line = (this.sql.exec("SELECT says, voice FROM ts_lines WHERE world = ? AND id = ?", worldId, p.id).toArray() as { says: string; voice: string }[])[0];
-    return { proposal_id: p.id, agent: f.agent, says: line?.says ?? f.says, voice: line ? (JSON.parse(line.voice) as Voice) : null, canonical: p.canonical, terms_sha256: p.sha, status: p.status, ...p.checked };
+    return { proposal_id: p.id, agent: f.agent, says: line?.says ?? f.says, voice: line ? (JSON.parse(line.voice) as Voice) : null, canonical: p.canonical, terms_sha256: p.sha, status: p.status, ...p.checked,
+      ...(p.execution ? { execution: JSON.parse(p.execution) as unknown } : {}) };
   }
 
   /** "Get a new quote": new terms for the waiting payment with a new quote, so it must be signed again. */
@@ -528,6 +532,9 @@ export class TrySignDesk {
     const still = (this.sql.exec("SELECT status FROM ts_proposals WHERE world = ? AND id = ?", world.id, p.id).toArray() as { status: string }[])[0];
     if (still?.status !== "waiting") return answer(409, { error: `${p.id} is already signed and ran; there is nothing to quote again` });
     this.sql.exec("UPDATE ts_proposals SET canonical = ?, sha = ? WHERE world = ? AND id = ?", c, sha, world.id, p.id);
+    // Within what the agent may pay alone (a limit the visitor signed), the payment runs alone now that its quote is new.
+    const alone = this.runAlone(world.id);
+    if (alone.length) return answer(200, { proposal: this.view(world.id, this.proposals(world.id).find((x) => x.id === p.id)!), fx, paid_alone: alone, ...this.policyAnswer(world.id, this.now()) });
     return answer(200, { proposal: this.view(world.id, { ...p, canonical: c, sha }), fx });
   }
 
@@ -627,7 +634,7 @@ export class TrySignDesk {
       const l = threeLocks(policy, a, now, worldId);
       if (a !== "treasury") return [a, l];
       const payments = FIXED_PROPOSALS.map((f) => rows.find((x) => x.id === f.id)?.status === "executed"
-        ? { proposal_id: f.id, amount: f.amount, check: "executed" }
+        ? { proposal_id: f.id, amount: f.amount, check: "executed", alone: (JSON.parse(rows.find((x) => x.id === f.id)!.execution ?? "{}") as { alone?: boolean }).alone === true }
         : { proposal_id: f.id, amount: f.amount, ...checkPayment(f.amount, balance, rulesOf(policy)) });
       return [a, { ...l, purser: { ...l.purser, payments } }];
     }));
@@ -653,12 +660,54 @@ export class TrySignDesk {
     }
   }
   /** Writes the new policy only if no other change came first (no await from the caller's last read to here). */
-  private applyPolicy(worldId: string, version: number, next: WorldPolicy, extra: Record<string, unknown>): Response {
+  private applyPolicy(worldId: string, version: number, next: WorldPolicy, extra: Record<string, unknown>, signedSha: string | null): Response {
     const now = this.policyOf(worldId).version;
     if (now !== version) return answer(200, { applied: false, why: "stale", reason: "Refused: the policy changed meanwhile, so these are not its terms any more. Nothing changed; try again.", ...this.policyAnswer(worldId, this.now()) });
-    this.sql.exec("UPDATE ts_policy SET version = ?, json = ? WHERE world = ? AND version = ?", version + 1, JSON.stringify(next), worldId, version);
+    this.sql.exec("UPDATE ts_policy SET version = ?, json = ?, signed_sha = COALESCE(?, signed_sha) WHERE world = ? AND version = ?", version + 1, JSON.stringify(next), signedSha, worldId, version);
     this.recheck(worldId);
-    return answer(200, { ...extra, ...this.policyAnswer(worldId, this.now()) });
+    const alone = this.runAlone(worldId);
+    return answer(200, { ...extra, paid_alone: alone, ...this.policyAnswer(worldId, this.now()) });
+  }
+
+  /**
+   * Payments within what the agent may pay alone run without a signature (Max, 6 Nov), by the same stand-in executor and
+   * after the same checks a signed payment gets at the moment it runs: the world has not expired; it has not run; the
+   * reserve floor holds on the balance now; its amount is at or below the "may pay alone" limit in force (which only a
+   * policy the visitor signed can raise above the world's EUR 500.00, and no payment here is that small); its quote,
+   * if it has one, is still valid (else it waits for a new quote, and runs alone then). It is bound to its terms by their
+   * SHA-256 (stored with them) and to the signed policy change that allowed it. One at a time, the balance read again
+   * after each; synchronous, with no await between the reads and the writes. Returns the ids it ran.
+   */
+  private runAlone(worldId: string): string[] {
+    const ran: string[] = [];
+    for (;;) {
+      const nowMs = this.now().getTime();
+      const w = (this.sql.exec("SELECT balance, expires FROM ts_worlds WHERE id = ?", worldId).toArray() as { balance: string; expires: number }[])[0];
+      if (!w || w.expires <= nowMs) return ran;
+      const pol = (this.sql.exec("SELECT version, json, signed_sha FROM ts_policy WHERE world = ?", worldId).toArray() as { version: number; json: string; signed_sha: string | null }[])[0];
+      if (!pol) return ran;
+      const rules = rulesOf(JSON.parse(pol.json) as WorldPolicy);
+      const next = this.proposals(worldId).find((p) => {
+        if (p.status !== "waiting") return false;
+        const c = checkPayment((p.terms as { amount: string }).amount, w.balance, rules);
+        if (c.check !== "pass" || c.waits !== "") return false;
+        const quote = (p.terms as { fx?: { valid_to_at?: string } | null }).fx;
+        return !quote || Date.parse(String(quote.valid_to_at)) > nowMs;
+      });
+      if (!next) return ran;
+      const t = next.terms as { amount: string; payee: string; fx?: { quote_id?: string } | null };
+      const execution = {
+        id: `test-${hex(random(6))}`, at: new Date(nowMs).toISOString(), amount: t.amount, currency: TEST_WORLD.currency, payee: t.payee,
+        balance_after: money(cents(w.balance) - cents(t.amount)), fx_quote_id: t.fx?.quote_id ?? null,
+        by: "stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Metal call",
+        alone: true, label: PAID_ALONE, rule: `at or below the ${eur(rules.alone_limit)} the agent may pay alone`,
+        terms_sha256: next.sha, policy_version: String(pol.version), policy_change_sha256: pol.signed_sha,
+      };
+      this.sql.exec("UPDATE ts_proposals SET status = 'executed', execution = ? WHERE world = ? AND id = ? AND status = 'waiting'", JSON.stringify(execution), worldId, next.id);
+      this.sql.exec("UPDATE ts_worlds SET balance = ? WHERE id = ?", execution.balance_after, worldId);
+      this.recheck(worldId);
+      ran.push(next.id);
+    }
   }
 
   /**
@@ -680,12 +729,15 @@ export class TrySignDesk {
     const expiresAt = new Date(world.expires).toISOString().replace(/\.\d{3}Z$/, "Z");
     const terms = canonical(policyTerms(world.id, agent, cur.version, changes, next, expiresAt));
     const sha = await sha256Hex(terms);
-    if (looser.length === 0) return this.applyPolicy(world.id, cur.version, next, { applied: true, signed: false, changes, reason: "Stricter: applied at once. A stricter policy needs no signature." });
+    if (looser.length === 0) return this.applyPolicy(world.id, cur.version, next, { applied: true, signed: false, changes, reason: "Stricter: applied at once. A stricter policy needs no signature." }, null);
     if (body.credential === undefined) {
       const which = looser.map((f) => FIELD_WORDS[f].toLowerCase()).join(", ");
       return answer(200, {
         applied: false, needs_signature: true, looser, changes, canonical: terms, terms_sha256: sha, proposed: this.locksOf(world.id, next, now),
         reason: `Refused: this change makes the policy looser (${which}), and a looser policy needs your passkey's signature over its exact terms, as the CFO's does in Purser. Nothing changed.`,
+        ...(looser.includes("alone") ? { alone_effect: agent === "treasury"
+          ? `Signing lets the Treasury agent pay alone up to ${eur(next.agents.treasury.alone)}: a payment in this test world at or below it then runs without your signature.`
+          : `Signing lets this agent pay alone up to ${eur(next.agents[agent].alone)}. This test world's payments are the Treasury agent's, so none of them runs alone because of it.` } : {}),
         ...this.policyAnswer(world.id, now),
       });
     }
@@ -713,7 +765,7 @@ export class TrySignDesk {
     if (!w || w.expires <= this.now().getTime()) return answer(410, { error: "this test world expired while signing; start a new one", expired: true, applied: false });
     if (this.policyOf(world.id).version !== cur.version) return refuse("stale", "Refused: the policy changed meanwhile, so these are not its terms any more. Nothing changed.");
     this.sql.exec("UPDATE ts_creds SET counter = ? WHERE world = ? AND id = ?", v.counter, world.id, cred.id);
-    return this.applyPolicy(world.id, cur.version, next, { applied: true, signed: true, verified: true, changes, terms_sha256: sha, reason: "Signed and verified: the looser policy holds in your test world." });
+    return this.applyPolicy(world.id, cur.version, next, { applied: true, signed: true, verified: true, changes, terms_sha256: sha, reason: "Signed and verified: the looser policy holds in your test world." }, sha);
   }
 
   private async sign(url: URL, ip: string, world: WorldRow, body: Record<string, unknown>): Promise<Response> {

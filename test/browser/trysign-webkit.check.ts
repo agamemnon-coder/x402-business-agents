@@ -53,8 +53,9 @@ async function policyStep(page: any, tag: string, errors: string[]): Promise<voi
     await page.waitForTimeout(1200); // the page's own smooth scroll settles
     return page.evaluate((elId: string) => ({ top: document.getElementById(elId)!.getBoundingClientRect().top, bar: document.querySelector("ol.progress")!.getBoundingClientRect().bottom }), id) as Promise<{ top: number; bar: number }>;
   };
-  check(await page.locator("#policy").isVisible() && !(await page.locator("details#pol").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: step 0 "${TRY_POLICY.title}" is shown once the world is open, closed until asked`);
-  await page.locator("details#pol > summary").click();
+  check(await page.locator("#policy").isVisible() && await page.locator("#p-body").isHidden() && (await page.locator("#p-open").innerText()).trim() === TRY_POLICY.open,
+    `${tag}: step 0 is behind the button "${TRY_POLICY.open}", closed until asked`);
+  await page.click("#p-open");
   const awxBefore = (await page.locator("#pl-awx").textContent()) ?? "";
   await page.fill("#pf-monthly", "40.00");
   await page.click("#p-apply");

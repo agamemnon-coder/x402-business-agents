@@ -14,7 +14,7 @@ import { cfoApproval, recordedQuote, tryLocks } from "./examples.js";
 import { RECEIPT_FORMAT } from "./receipt.js";
 import { AGENTS, MCC_WORDS } from "../config/policy.js";
 import { agentName } from "../config/brand.js";
-import { FIELD_WORDS, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS } from "./policy.js";
+import { FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS } from "./policy.js";
 
 /** The feature flag, read where the bundle is built: on, the page, its API and the links to it are in the bundle. */
 export const trySignOn = (env: NodeJS.ProcessEnv = process.env) => ["on", "1", "true"].includes(env.TRY_SIGN_ENABLED ?? "");
@@ -53,6 +53,8 @@ export const VOICE_LABELS = {
 /** Step 0, "Set the policy" (Max, item 1): its words, word for word (tests read them). */
 export const TRY_POLICY = {
   title: "Set the policy",
+  /** The button step 0 is behind (Max, 6 Nov: closed by default, optional). */
+  open: "Optional: set the policy first",
   lead: "One policy → three locks. Change one value and apply it: a stricter policy holds at once, a looser one only with your signature.",
   panels: { purser: "Purser's rule", airwallex: "Airwallex card controls", metal: "Metal mandate" },
   notSent: { airwallex: "What Purser would send; not sent", metal: "Not sent" },
@@ -60,7 +62,8 @@ export const TRY_POLICY = {
   refused: "Refused: a looser policy needs your signature",
   sign: "Sign the looser policy with Face ID",
   source: "Computed on the server by Purser's own code (src/try/policy.ts): the card body as IssuingRest sends it (src/airwallex/cardBody.ts), the mandate's terms as the owner signer passes them to metal-agent (src/metal/credentialArgs.ts). Nothing is sent to Airwallex or Metal.",
-  metalNote: "Cap = the limit per purchase, budget = the limit per month, expiry = the end date. Metal counts test USD (*USDZ); this test world writes the policy's numbers as they are, unconverted.",
+  metalUnit: "Amounts in *USDZ (test USD): the policy's numbers as they are, not converted from euros.",
+  metalNote: "Cap = the limit per purchase, budget = the limit per month, expiry = the end date.",
 } as const;
 
 /** The fields a visitor may change to tamper, as the terms name them. */
@@ -72,7 +75,7 @@ export const WHATS_REAL = {
     "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor. Its balance, its payees and their IBANs are test data (the IBANs' check digits are 00, which no real account has).",
     "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor is a stand-in that only records in your test world.",
     "The blocked payment and the lock that stops it are a simulation in your test world. The three examples it links to are real, each from the run it names.",
-    "Step 0, the policy: your test world's CFO policy and the three locks made of it (Purser's rule, the Airwallex card controls, the Metal mandate's terms), computed by Purser's own code and sent nowhere: nothing reaches Airwallex or Metal. As in Purser, a looser policy needs your passkey's signature and a stricter one applies at once.",
+    "Step 0, the policy: your test world's CFO policy and the three locks made of it (Purser's rule, the Airwallex card controls, the Metal mandate's terms), computed by Purser's own code and sent nowhere: nothing reaches Airwallex or Metal. As in Purser, a looser policy needs your passkey's signature and a stricter one applies at once. If you raise what the Treasury agent may pay alone and sign it, a payment at or below it runs without your signature, by the same stand-in, labelled “" + PAID_ALONE + "”.",
   ],
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
@@ -221,11 +224,12 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 /* Step 0: the policy, and the three locks made of it. */
 .policy { max-width: 760px; margin: 0 0 16px; padding: 0; }
 .policy > * { min-width: 0; }
-details.pol > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 12px; padding: 16px 18px; min-height: 56px; }
-details.pol > summary::-webkit-details-marker { display: none; }
-details.pol > summary::after { content: "▾"; margin-left: auto; color: var(--accent); font-size: 14px; } details.pol[open] > summary::after { content: "▴"; }
-details.pol > summary .n { width: 30px; height: 30px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font: 700 15px/1 Inter, system-ui, sans-serif; flex: none; }
-details.pol > summary .pt { display: grid; gap: 2px; min-width: 0; } details.pol > summary b { font-size: 18px; } details.pol > summary small { color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+.pol > .popen { margin: 14px 18px; max-width: calc(100% - 36px); }
+#p-body[hidden] { display: none; }
+.phead { display: flex; align-items: center; gap: 12px; }
+.phead .n { width: 30px; height: 30px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font: 700 15px/1 Inter, system-ui, sans-serif; flex: none; }
+.phead .pt { display: grid; gap: 2px; min-width: 0; } .phead b { font-size: 18px; } .phead small { color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+.pill.alone { white-space: normal; background: var(--ok-soft, var(--accent-soft)); color: var(--ok); justify-self: start; }
 .pbody { display: grid; gap: 12px; padding: 0 18px 18px; }
 .pbody > *, .pform > *, .lk > *, .locks3 > *, .prefused > * { min-width: 0; }
 .ptop { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
@@ -249,6 +253,7 @@ details.pol > summary .pt { display: grid; gap: 2px; min-width: 0; } details.pol
 .lkh .n { width: 24px; height: 24px; border-radius: 50%; background: var(--sunken); display: grid; place-items: center; font: 700 13px/1 Inter, system-ui, sans-serif; flex: none; }
 .lk .state { white-space: normal; } .lk .state.proposed { background: var(--bad-soft); color: var(--bad); }
 .lk .ns { margin: 0; font-size: 13.5px; font-weight: 700; color: var(--muted); }
+.lk .unit { margin: 0; font-size: 14px; font-weight: 650; color: var(--text); background: var(--sunken); border-radius: 8px; padding: 6px 10px; }
 .lk ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14.5px; line-height: 1.45; }
 .lk li.bad { color: var(--bad); } .lk li.ok { color: var(--ok); }
 .lk pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--sunken); border-radius: 10px; padding: 8px 10px; }
@@ -496,7 +501,9 @@ const JS = `
       if (!S.primary && open.length) S.primary = open[0].p.proposal_id;
       if (!S.firstCheck) { S.firstCheck = {}; rows.forEach(function (x) { S.firstCheck[x.p.proposal_id] = x.p.check; }); }
       open.sort(function (a, b) { return (a.p.proposal_id === S.primary ? 0 : 1) - (b.p.proposal_id === S.primary ? 0 : 1); });
-      open.forEach(function (x, i) { box.appendChild(sheet(x, i === 0)); });
+      // The passkey button and the quote's controls go on the first that has not run (one may have run alone).
+      var lead = open.filter(function (x) { return x.p.status !== "executed"; })[0];
+      open.forEach(function (x) { box.appendChild(sheet(x, x === lead)); });
       // The result shows right below the sheets it answers, before the blocked proposals.
       box.appendChild(res);
       rows.filter(function (x) { return x.p.check === "fail" && x.p.status !== "executed"; }).forEach(function (x, i) { box.appendChild(blocked(x, i === 0)); });
@@ -545,20 +552,22 @@ const JS = `
   }
   // The first sheet carries the passkey button and the quote's controls (their ids); others only their own signature.
   function sheet(x, first) {
-    var p = x.p, t = x.terms, done = p.status === "executed";
+    var p = x.p, t = x.terms, done = p.status === "executed", alone = done && !!(p.execution && p.execution.alone);
     var st = el("p", "status", []);
     st.id = "st-" + p.proposal_id;
     var facts = factsOf(p, t);
     var left = el("dd", "", []); left.dataset.left = "in";
     facts.append(el("dt", "", ["Proposal expires"]), left);
-    if (t.fx) { var ql = el("dd", "", []); ql.dataset.until = t.fx.valid_to_at; if (first) ql.id = "q-left"; facts.append(el("dt", "", ["Quote expires"]), ql); }
+    if (t.fx) { var ql = el("dd", "", []); ql.dataset.until = t.fx.valid_to_at; if (first && !done) ql.id = "q-left"; facts.append(el("dt", "", ["Quote expires"]), ql); }
     var kids = [
-      el("p", "eyebrow", [(done ? "You approved · " : "You are approving · ") + p.proposal_id]), done ? null : policyNote(p, "fail"),
+      el("p", "eyebrow", [(alone ? "Paid alone · " : done ? "You approved · " : "You are approving · ") + p.proposal_id]), done ? null : policyNote(p, "fail"),
+      alone ? el("p", "pill alone", [D.policy.paidAlone]) : null,
       el("h3", "title", ["Pay " + t.payee + " " + amt(t.currency, t.amount)]),
       agentLine(p), el("p", "says", [p.says]), voiceMore(p), facts,
-      done ? el("div", "chk pass", [el("b", "", [ic("check"), "Check: pass · signed by you, run in your test world"])])
+      alone ? el("div", "chk pass", [el("b", "", [ic("check"), "Check: pass · " + p.execution.rule]), el("span", "", ["No signature: the stand-in executor ran it in your test world (transfer " + p.execution.id + ", balance after " + eur(p.execution.balance_after) + "), bound to these terms' hash and to the policy change you signed."])])
+        : done ? el("div", "chk pass", [el("b", "", [ic("check"), "Check: pass · signed by you, run in your test world"])])
         : p.waits ? el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · waiting for a person"]), el("span", "", [p.waits])])
-        : el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · within what the agent may pay alone"]), el("span", "", ["In Purser the agent would pay this alone. In this test world nothing runs without your signature, so you still sign it."])]),
+        : el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · within what the agent may pay alone"]), el("span", "", ["Under the policy you signed it would run alone, but its quote expired: get a new quote and it runs alone. Or sign it yourself."])]),
       el("div", "", [el("p", "small muted", ["The hash of the exact terms, which your passkey signs" + (x.same ? " (checked on this device):" : ":")]), hashBox(x.mine)]),
       el("details", "terms", [el("summary", "", ["All terms (exactly what is hashed)"]), el("pre", "", [p.canonical])])
     ];
@@ -572,7 +581,7 @@ const JS = `
     if (S.credId) { ks.textContent = "Your test passkey is kept (" + S.credId.slice(0, 10) + "…)." + (done ? "" : " Sign these terms."); ks.className = "status ok"; }
     if (done) {
       b.hidden = true; key.hidden = true;
-      st.textContent = "Signed, verified and executed in your test world."; st.className = "status ok";
+      st.textContent = alone ? "" : "Signed, verified and executed in your test world."; st.className = "status ok";
     } else if (!x.same) {
       kids.push(el("p", "status bad", ["The terms do not hash to the hash the server sent. Do not sign."]));
     } else {
@@ -591,7 +600,8 @@ const JS = `
     kids.push(el("p", "basis", [D.cfo]));
     var a = el("article", "card prop sheet", kids);
     a.dataset.proposal = p.proposal_id;
-    if (t.fx) a.dataset.fx = "1";
+    if (alone) a.dataset.alone = "1";
+    if (t.fx && !done) a.dataset.fx = "1";
     return a;
   }
 
@@ -604,6 +614,11 @@ const JS = `
       S.fx = r.data.fx;
       var p = r.data.proposal, terms = JSON.parse(p.canonical);
       S.quoteGone = false;
+      // Within what the agent may pay alone (the limit you signed): with its new quote it ran alone.
+      if (r.data.paid_alone && r.data.paid_alone.length) {
+        policyState(r.data); worldFacts(r.data.world); S.base = renderLocks(S.locks[S.agent], false, S.base);
+        return showProposals(r.data.proposals);
+      }
       return sha256(canon(terms)).then(function (h) {
         var old = document.querySelector('.prop.sheet[data-proposal="' + p.proposal_id + '"]');
         var fresh = sheet({ p: p, terms: terms, mine: h, same: canon(terms) === p.canonical && h === p.terms_sha256 }, true);
@@ -778,7 +793,7 @@ const JS = `
     $("pl-rules").replaceChildren.apply($("pl-rules"), l.purser.rules.map(function (r) { return el("li", "", [r]); }));
     var pay = l.purser.payments || [];
     $("pl-pay").replaceChildren.apply($("pl-pay"), pay.map(function (p) {
-      var li = el("li", p.check === "fail" ? "bad" : p.check === "executed" ? "" : "ok", [p.proposal_id + " · " + eur(p.amount) + ": " + (p.check === "fail" ? "blocked. " + p.rule : p.check === "executed" ? "ran (stand-in, test world)." : "passes. " + (p.waits || "Within what the agent may pay alone."))]);
+      var li = el("li", p.check === "fail" ? "bad" : p.check === "executed" ? "" : "ok", [p.proposal_id + " · " + eur(p.amount) + ": " + (p.check === "fail" ? "blocked. " + p.rule : p.check === "executed" ? (p.alone ? D.policy.paidAlone + " (stand-in, test world)." : "ran (stand-in, test world).") : "passes. " + (p.waits || "Within what the agent may pay alone."))]);
       li.dataset.proposal = p.proposal_id; li.dataset.check = p.check;
       return li;
     }));
@@ -787,7 +802,7 @@ const JS = `
     var dd = function (v, i, shown) { var d = el("dd", old && old[i] !== v ? "chg" : "", [shown || v]); d.dataset.value = v; return d; };
     var at = m.payee.indexOf(","), addr = m.payee.slice(0, at);
     $("pl-metal").replaceChildren(
-      el("dt", "", ["Cap (most per payment)"]), dd(m.cap, 0), el("dt", "", ["Budget (most in all)"]), dd(m.budget, 1),
+      el("dt", "", ["Cap (most per payment)"]), dd(m.cap, 0, m.cap + " *USDZ"), el("dt", "", ["Budget (most in all)"]), dd(m.budget, 1, m.budget + " *USDZ"),
       el("dt", "", ["Payee"]), dd(m.payee, 2, m.payee.slice(at + 1) + " · " + addr.slice(0, 6) + "…" + addr.slice(-4)),
       el("dt", "", ["Expiry"]), dd(m.expires_at.slice(0, 16), 3, m.expires_at.slice(0, 16).replace("T", " ") + " UTC (in " + Math.round(Number(m.expires_in_seconds) / 86400) + " days)")
     );
@@ -816,7 +831,8 @@ const JS = `
     S.base = renderLocks(S.locks[S.agent], false, before);
     fillForm();
     var ch = (d.changes || []).map(function (c) { return P.words[c.field].toLowerCase() + " " + show(c.from) + " → " + show(c.to); }).join("; ");
-    status("p-status", (signed ? "Signed and verified: the looser policy holds in your test world. " : "Stricter: it holds at once, no signature needed. ") + "Changed: " + ch + ".", "ok");
+    var ran = (d.paid_alone || []).map(function (id) { return " " + id + ": " + D.policy.paidAlone + "."; }).join("");
+    status("p-status", (signed ? "Signed and verified: the looser policy holds in your test world. " : "Stricter: it holds at once, no signature needed. ") + "Changed: " + ch + "." + ran, "ok");
     // The result line, then the panels under it, just below the sticky step bar (--stick), not under it.
     measureSticky();
     $("p-status").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -829,6 +845,7 @@ const JS = `
       var ok = canon(terms) === d.canonical && h === d.terms_sha256;
       policyState(d);
       $("p-why").textContent = d.reason;
+      $("p-effect").textContent = d.alone_effect || ""; $("p-effect").hidden = !d.alone_effect;
       $("p-hash").replaceChildren(el("p", "small muted", ["The hash of the exact terms of this change, which your passkey signs" + (ok ? " (checked on this device):" : ":")]), hashBox(h));
       $("p-terms").textContent = d.canonical;
       $("p-sign").hidden = !ok; $("p-sign").disabled = !ok;
@@ -846,6 +863,10 @@ const JS = `
     [].forEach.call(ns, function (n) {
       ["input", "change"].forEach(function (ev) { n.addEventListener(ev, function () { if (S.pending) inForceView(); pedited(); }); });
     });
+  });
+  $("p-open").addEventListener("click", function () {
+    var body = $("p-body"), open = body.hidden;
+    body.hidden = !open; $("p-open").setAttribute("aria-expanded", open ? "true" : "false");
   });
   $("p-agent").addEventListener("change", function () { S.agent = $("p-agent").value; fillForm(); inForceView(); });
   $("p-reset").addEventListener("click", function () { fillForm(); inForceView(); });
@@ -1065,8 +1086,9 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
 <section id="s-props" hidden>
   <dl class="world" id="w-facts" hidden><div><dt>Test world</dt><dd id="w-id"></dd></div><div><dt>Balance</dt><dd id="w-balance"></dd></div><div><dt>Reserve floor</dt><dd id="w-floor"></dd></div><div><dt>An agent pays alone up to</dt><dd id="w-alone"></dd></div><div><dt>Deleted</dt><dd id="w-left" data-left="in"></dd></div></dl>
 <section class="card policy" id="policy" hidden>
-  <details class="pol" id="pol"><summary><span class="n">0</span><span class="pt"><b id="p-head">${esc(TRY_POLICY.title)}</b><small>${esc(TRY_POLICY.lead)}</small></span></summary>
-  <div class="pbody">
+  <div class="pol" id="pol"><button class="btn popen" type="button" id="p-open" aria-expanded="false" aria-controls="p-body">${esc(TRY_POLICY.open)}</button>
+  <div class="pbody" id="p-body" hidden>
+    <div class="phead"><span class="n">0</span><span class="pt"><b id="p-head">${esc(TRY_POLICY.title)}</b><small>${esc(TRY_POLICY.lead)}</small></span></div>
     <div class="ptop"><label>Agent<select id="p-agent" data-world="1">${AGENTS.map((a) => `<option value="${esc(a)}">${esc(agentName(a))}</option>`).join("")}</select></label><span class="pill" id="p-ver"></span></div>
     <div class="pform" id="p-form">
       ${(["per_tx", "monthly", "alone", "reserve_floor"] as const).map((f) => `<label data-pfield="${f}">${esc(FIELD_WORDS[f])} (EUR${f === "reserve_floor" ? ", the company's" : ""})<input id="pf-${f}" inputmode="decimal" autocomplete="off" spellcheck="false" data-world="1"></label>`).join("\n      ")}
@@ -1078,6 +1100,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
     <p class="status" id="p-status" aria-live="polite"></p>
     <div class="prefused" id="p-refused" hidden>
       <div class="line bad">${icon("octagon-x", 22)}<span><b id="p-rhead">${esc(TRY_POLICY.refused)}</b><span id="p-why" class="small"></span></span></div>
+      <p class="small" id="p-effect" hidden></p>
       <div id="p-hash"></div>
       <details class="terms"><summary>All terms of this change (exactly what is hashed)</summary><pre id="p-terms"></pre></details>
       <div class="actions"><button class="btn primary big" type="button" id="p-sign" data-world="1">${icon("scan-face", 18)}${esc(TRY_POLICY.sign)}</button></div>
@@ -1086,10 +1109,10 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
     <div class="locks3" id="p-locks">
       <article class="lk lk-purser" data-panel="purser"><div class="lkh"><span class="n">1</span><b>${esc(TRY_POLICY.panels.purser)}</b><span class="pill state"></span></div><p class="ns">Rules in code, checked before anything is signed</p><ul id="pl-rules"></ul><pre id="pl-purser"></pre><ul id="pl-pay" hidden></ul></article>
       <article class="lk lk-awx" data-panel="airwallex"><div class="lkh"><span class="n">2</span><b>${esc(TRY_POLICY.panels.airwallex)}</b><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.airwallex)}</p><pre id="pl-awx"></pre></article>
-      <article class="lk lk-metal" data-panel="metal"><div class="lkh"><span class="n">3</span><b>${esc(TRY_POLICY.panels.metal)}</b><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.metal)}</p><dl id="pl-metal"></dl><pre id="pl-margs"></pre><p class="small muted">${esc(TRY_POLICY.metalNote)}</p></article>
+      <article class="lk lk-metal" data-panel="metal"><div class="lkh"><span class="n">3</span><b>${esc(TRY_POLICY.panels.metal)}</b><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.metal)}</p><p class="unit" id="pl-unit">${esc(TRY_POLICY.metalUnit)}</p><dl id="pl-metal"></dl><pre id="pl-margs"></pre><p class="small muted">${esc(TRY_POLICY.metalNote)}</p></article>
     </div>
     <p class="basis">${esc(TRY_POLICY.source)}</p>
-  </div></details>
+  </div></div>
 </section>
   <div class="props" id="props"></div>
 </section>
@@ -1122,7 +1145,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
     title: "Sign with your own Face ID", description: "Try it yourself: an agent proposes, you sign the exact terms with Face ID, Purser verifies. A test world of your own; nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false,
     data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, voiceLabels: VOICE_LABELS,
-      policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state } },
+      policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE } },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [

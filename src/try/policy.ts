@@ -18,6 +18,8 @@ import { loosens } from "../policy/loosens.js";
 import { credentialCreateArgs, type MandateTermsSpec } from "../metal/credentialArgs.js";
 
 export type { Agent };
+/** A payment's card, word for word, when it ran without a signature under the policy the visitor signed (Max, 6 Nov). */
+export const PAID_ALONE = "paid alone under your new policy";
 export type Field = "per_tx" | "monthly" | "mccs" | "currencies" | "end_date" | "alone" | "reserve_floor";
 /** The fields, in the order the page shows them. */
 export const POLICY_FIELDS: readonly Field[] = ["per_tx", "monthly", "mccs", "currencies", "end_date", "alone", "reserve_floor"];

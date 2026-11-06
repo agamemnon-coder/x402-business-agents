@@ -215,7 +215,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   them to metal-agent ("not sent"). A stricter policy holds at once; a looser one (decided field by field) is refused
   until the visitor signs its exact terms with the world's passkey, verified as a payment's signature. The new policy
   holds for the rest of the visit: a lower floor, signed, lets the blocked T-0001 be signed and run; a higher one
-  blocks T-0002. No call to Airwallex, Metal or Claude. 2701 tests in 269 files, all passing (with main's).
+  blocks T-0002. Max's three choices: step 0 is behind a button, "Optional: set the policy first"; the Metal panel says
+  its amounts are *USDZ (test USD), the policy's numbers unconverted; and "may pay alone up to" works: raised and
+  signed, a payment at or below it runs without a signature by the same stand-in, its card saying "paid alone under
+  your new policy" (above it, or once it is lowered again, a payment not yet run waits for a signature). No call to
+  Airwallex, Metal or Claude. 2707 tests in 269 files, all passing (with main's).
 
 ## Real, and ours
 

@@ -45,7 +45,7 @@ const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
 const { TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_START_NOTE, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
-const { threeLocks } = await import("../../src/try/policy.js");
+const { PAID_ALONE, threeLocks } = await import("../../src/try/policy.js");
 const { TRY_IT } = await import("../../src/config/brand.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
@@ -547,9 +547,9 @@ for (const [width, scheme] of RUNS) {
     const worldId = (await page.locator("#w-id").innerText()).trim();
     const pstatus = async () => (await page.locator("#p-status").innerText()).trim();
     await page.locator("#policy").scrollIntoViewIfNeeded();
-    // (The check above opened every <details> on the page; a fresh world's step 0 is closed, see "step 0 first" below.)
-    check(await page.locator("#policy").isVisible(), `${tag}: step 0 "${TRY_POLICY.title}" is on the page`);
-    if (!(await page.locator("details#pol").evaluate((d: HTMLDetailsElement) => d.open))) await page.locator("details#pol > summary").click();
+    check(await page.locator("#policy").isVisible() && (await page.locator("#p-open").innerText()).trim() === TRY_POLICY.open && await page.locator("#p-body").isHidden(),
+      `${tag}: step 0 is behind the button "${TRY_POLICY.open}", closed`);
+    await page.click("#p-open");
     const start = await formPolicy(page);
     const t = start.agents.treasury;
     check(t.per_tx === "25.00" && t.monthly === "50.00" && t.mccs.join() === "5734" && t.currencies.join() === "EUR" && t.alone === "500.00" && start.reserve_floor === "25000.00" && /^\d{4}-\d{2}-\d{2}$/.test(t.end_date),
@@ -558,6 +558,9 @@ for (const [width, scheme] of RUNS) {
     check(pn.state === "in-force" && pn.pills.every((x) => x === TRY_POLICY.state.inForce) && panelsMatch(pn, expectedLocks(start, worldId)),
       `${tag}: step 0: the three panels, in force, are what Purser's own code makes of this policy (card body, mandate terms, settings)`);
     check(JSON.stringify(pn.labels.slice(1)) === JSON.stringify([TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: step 0: Airwallex "${TRY_POLICY.notSent.airwallex}", Metal "${TRY_POLICY.notSent.metal}"`);
+    const unit = await page.locator("#pl-unit");
+    check(await unit.isVisible() && (await unit.innerText()).trim() === TRY_POLICY.metalUnit && JSON.stringify(await page.locator("#pl-metal dd").evaluateAll((ds: Element[]) => ds.slice(0, 2).map((d) => d.textContent))) === JSON.stringify(["25.00 *USDZ", "50.00 *USDZ"]),
+      `${tag}: step 0: the Metal panel says its unit plainly ("${TRY_POLICY.metalUnit}"), and cap and budget read 25.00 *USDZ and 50.00 *USDZ`);
     await shotAt(page, "#policy", join(shots, `${tag}-8-policy.png`));
 
     // Stricter: the limit per purchase down. It holds at once, and the three panels follow it.
@@ -635,9 +638,10 @@ if (!args.live) {
   await page.goto(`${local.url}/try/sign`);
   await page.click("#go-world");
   await page.waitForSelector("#s-props:not([hidden])");
-  check(await page.locator("#policy").isVisible() && !(await page.locator("details#pol").evaluate((d: HTMLDetailsElement) => d.open)) && (await page.locator("details#pol > summary").innerText()).includes(TRY_POLICY.title),
-    `step 0 first: "${TRY_POLICY.title}" is shown once the world is open, closed until asked`);
-  await page.locator("details#pol > summary").click();
+  check(await page.locator("#policy").isVisible() && await page.locator("#p-body").isHidden() && (await page.locator("#p-open").innerText()).trim() === TRY_POLICY.open,
+    `step 0 first: the button "${TRY_POLICY.open}" is shown once the world is open, step 0 closed until asked`);
+  await page.click("#p-open");
+  check(await page.locator("#p-body").isVisible() && await page.locator("#p-open").getAttribute("aria-expanded") === "true", "step 0 first: the button opens step 0");
   await page.fill("#pf-reserve_floor", "20000.00");
   await page.click("#p-apply");
   await page.waitForSelector("#p-refused:not([hidden])");
@@ -658,6 +662,56 @@ if (!args.live) {
   await page.screenshot({ path: join(shots, "step-0-first-390-blocked-by-stricter.png") });
   check(errors.length === 0, `step 0 first: 0 console errors (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
   await context.close();
+}
+
+// "May pay alone up to" really works (Max, 6 Nov), at 390 and 1440 px: raised to EUR 2,000.00 and signed, T-0002
+// (EUR 1,850.00) runs without a signature, by the same stand-in, its card saying "paid alone under your new policy";
+// T-0001 stays blocked by the reserve floor. The only signature in this visit is the one over the policy change.
+if (!args.live) {
+  for (const width of [390, 1440] as const) {
+    const tag = `alone-${width}`;
+    const mobile = width < 600;
+    const context = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, extraHTTPHeaders: { "cf-connecting-ip": `198.51.12${mobile ? 2 : 3}.7` } });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } }) as { authenticatorId: string };
+    const errors: string[] = [];
+    page.on("pageerror", (e: Error) => errors.push(e.message));
+    page.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
+    await page.goto(`${local.url}/try/sign`);
+    await page.click("#go-world");
+    await page.waitForSelector("#s-props:not([hidden])");
+    await page.locator("#p-open").scrollIntoViewIfNeeded();
+    check((await page.locator("#p-open").innerText()).trim() === TRY_POLICY.open && await page.locator("#p-body").isHidden(), `${tag}: the button "${TRY_POLICY.open}", step 0 closed`);
+    await shotAt(page, "#policy", join(shots, `${tag}-0-button.png`));
+    await page.click("#p-open");
+    await page.fill("#pf-alone", "2000.00");
+    await page.click("#p-apply");
+    await page.waitForSelector("#p-refused:not([hidden])");
+    const terms = JSON.parse((await page.locator("#p-terms").textContent()) ?? "{}") as { changes: { field: string; to: string }[]; policy: { alone: string } };
+    check(terms.changes.length === 1 && terms.changes[0]!.field === "alone" && terms.changes[0]!.to === "2000.00" && terms.policy.alone === "2000.00"
+      && /pay alone up to EUR 2,000\.00/.test(await page.locator("#p-effect").innerText()) && await page.locator("#p-effect").isVisible(),
+      `${tag}: raising "may pay alone" to 2,000.00 is refused until signed; what is signed shows the new amount, and the page says what it does`);
+    check(await page.locator('article.prop.sheet[data-proposal="T-0002"]:not([data-alone])').count() === 1 && await page.locator("#w-balance").innerText() === "EUR 30,000.00", `${tag}: refused, so nothing ran: T-0002 still waits, the balance EUR 30,000.00`);
+    await page.click("#p-sign");
+    await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? "") || /bad/.test(document.getElementById("p-sstatus")?.className ?? ""));
+    const card = page.locator('article.prop.sheet[data-proposal="T-0002"][data-alone="1"]');
+    check(/T-0002: paid alone under your new policy\.$/.test((await page.locator("#p-status").innerText()).trim()) && await card.count() === 1
+      && (await card.locator(".pill.alone").innerText()).trim() === PAID_ALONE && await card.locator("button[data-sign]:visible").count() === 0,
+      `${tag}: signed: T-0002 ran without a signature, its card saying "${PAID_ALONE}"`);
+    const creds = await cdp.send("WebAuthn.getCredentials", { authenticatorId }) as { credentials: { signCount: number }[] };
+    // The counter moves once when the passkey is made and once per signature: 2 is "made, then signed the policy only".
+    check(creds.credentials.length === 1 && creds.credentials[0]!.signCount === 2 && await page.locator("#result").isHidden(),
+      `${tag}: the passkey was made and signed the policy change only (sign count ${creds.credentials[0]?.signCount}); no payment signature, no signature result shown`);
+    check((await page.locator("#w-balance").innerText()) === "EUR 28,150.00" && /Test transfer|transfer test-[0-9a-f]{12}/.test(await card.innerText()) && await page.locator('article.prop.blocked[data-proposal="T-0001"]').count() === 1
+      && (await page.locator('#pl-pay li[data-proposal="T-0002"]').innerText()).includes(PAID_ALONE),
+      `${tag}: the stand-in ran it (balance EUR 28,150.00); Purser's rule says so; T-0001 is still blocked by the reserve floor`);
+    await shotAt(page, 'article.prop.sheet[data-proposal="T-0002"]', join(shots, `${tag}-1-paid-alone.png`));
+    await layout(page, tag, "after a payment ran alone", width);
+    check(errors.length === 0, `${tag}: 0 console errors (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
+    await context.close();
+  }
 }
 
 // The agent's sentence is text on the page, never markup (A2 review). The server never passes markup on from the model
