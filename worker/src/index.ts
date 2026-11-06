@@ -20,6 +20,9 @@ export interface Env {
   /** Claude for Try Purser, and for /try/sign's Treasury agent sentence (Haiku): a Worker secret Max sets himself; no
    *  script in this repo sets it (test/try-fx.test.ts). Without it the pages read by code alone and show fixed text. */
   ANTHROPIC_API_KEY?: string;
+  /** /try/sign's emergency switch for the Haiku sentence: "off" (any case, trimmed) stops the call; any other value,
+   *  or none, leaves it on. Max sets it himself when needed (dashboard or wrangler); no script or config here does. */
+  TRY_SIGN_HAIKU?: string;
   /**
    * /try/sign's live FX quote (read-only, sandbox only): a Worker secret Max sets himself, from a scoped sandbox key
    * (Conversion: Write only); no script in this repo sets it (test/try-fx.test.ts). The client id.

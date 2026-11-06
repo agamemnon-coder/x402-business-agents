@@ -24,7 +24,7 @@ export function sqlOver(db: Database.Database): Sql {
 }
 
 export async function startLocalRelay(opts: { port: number; token: string; /** /try/sign's FX quote source (the browser checks pass a stand-in; none: the recorded quote). */ trySignFx?: FxSource;
-  /** /try/sign's Treasury agent sentence (the browser checks pass a labelled stand-in; none: the fixed text). */ trySignLine?: SentenceSource }): Promise<{ server: Server; url: string; relay: Relay }> {
+  /** /try/sign's Treasury agent sentence (the browser checks pass a labelled stand-in; "off": the emergency switch; none: the fixed text). */ trySignLine?: SentenceSource | "off" }): Promise<{ server: Server; url: string; relay: Relay }> {
   const relay = new Relay(sqlOver(new Database(":memory:")), { relayToken: opts.token, mfa: mfaOn() });
   const pages = buildPages();
   // /try/sign's test worlds, as on the Worker: their own store (another in-memory database), only when the bundle has the page.

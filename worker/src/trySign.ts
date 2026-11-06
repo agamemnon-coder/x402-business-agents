@@ -291,12 +291,13 @@ export class TrySignDesk {
   private readonly now: () => Date;
 
   private readonly fx: FxSource | null;
-  private readonly line: SentenceSource | null;
+  /** The sentence's source: Haiku (or a stand-in), "off" (the emergency switch, TRY_SIGN_HAIKU=off), or none (no key). */
+  private readonly line: SentenceSource | "off" | null;
   /** The last live quote, shared only after a limit or a failure while it has time left (FX_REUSE_MIN_MS). */
   private lastQuote: FxQuote | null = null;
 
   /** It takes a SQL handle, a clock and, when the Worker has the sandbox key, the FX quote source; nothing else. */
-  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | null } = {}) {
+  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | "off" | null } = {}) {
     this.now = opts.now ?? (() => new Date());
     this.fx = opts.fx ?? null;
     this.line = opts.agentLine ?? null;
@@ -435,7 +436,9 @@ export class TrySignDesk {
    * writes them; nothing the visitor sent), within the day's budget and the limits; else the fixed sentence, labelled.
    */
   private async lineFor(ip: string, p: FixedProposal): Promise<{ says: string; voice: Voice }> {
-    const fixed = (reason: "budget" | "unavailable" | "mismatch", why: string) => ({ says: p.says, voice: { source: "fixed", reason, why } as Voice });
+    const fixed = (reason: "budget" | "unavailable" | "mismatch" | "off", why: string) => ({ says: p.says, voice: { source: "fixed", reason, why } as Voice });
+    // The emergency switch first: no request, no rate-limit hit, no budget kept aside.
+    if (this.line === "off") return fixed("off", "the live model is switched off on this server");
     if (!this.line) return fixed("unavailable", "this server has no model key");
     const line = this.line;
     const nowMs = this.now().getTime();
