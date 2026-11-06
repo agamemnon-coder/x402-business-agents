@@ -120,6 +120,10 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   Haiku · live" with its request id behind "more"; USD 1 a day, 10 a minute for everyone, 6 an hour per address, 8 s;
   otherwise the fixed sentence, labelled with why. The model only proposes: limits and approval stay in code and the
   passkey. 2534 tests in 257 files, all passing.
+- 6 November, /try/verify: "Don't trust our server: check it yourself." receipt.json is checked in the browser with
+  WebCrypto, with verify-receipt's own checks (tested equal), and no server call (the page's CSP allows no
+  connection). "Signature valid for these terms", or "Invalid" with the failing check named; a "Change one field"
+  toggle and file upload. After signing, "Verify this receipt here" opens it. 2537 tests in 258 files, all passing.
 
 ## Real, and ours
 

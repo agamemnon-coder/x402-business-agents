@@ -358,6 +358,48 @@ for (const [width, scheme] of RUNS) {
     `${tag}: the receipt carries what it needs and no world token`);
   check(await page.locator("#result .receipt details.more").count() === 1 && /^Check it offline with one command, no server: npm run verify-receipt -- receipt\.json\.$/.test((await page.locator("#result .receipt > p").innerText()).trim()),
     `${tag}: the receipt's explanation is one sentence, the rest behind "more"`);
+  // /try/verify (A3): "Verify this receipt here" opens the receipt in a page that checks it with WebCrypto, with no
+  // server call (its CSP allows no connection); one field changed, in the page or in the file, and it is invalid.
+  if (!args.live) {
+    const [vp] = await Promise.all([context.waitForEvent("page"), page.click("#r-verify")]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const v: any = vp;
+    v.on("pageerror", (e: Error) => errors.push(`verify: ${e.message}`));
+    v.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(`verify: ${m.text()}`); });
+    await v.waitForSelector("#v-verdict:not([hidden])");
+    await v.waitForLoadState("networkidle");
+    const calls: string[] = [];
+    v.on("request", (q: { url(): string }) => calls.push(q.url()));
+    const verdict = async () => ({ ok: await v.locator("#v-verdict").getAttribute("data-ok"), failed: await v.locator("#v-verdict").getAttribute("data-failed"), text: (await v.locator("#v-verdict").innerText()).trim() });
+    check((await v.locator("#v-lead").innerText()).trim() === "Don't trust our server: check it yourself." && new URL(v.url()).hash === "", `${tag}: /try/verify: "Don't trust our server: check it yourself."; the receipt came in the link's fragment, then cleared`);
+    const good = await verdict();
+    check(good.ok === "true" && good.text === "Signature valid for these terms", `${tag}: /try/verify: "${good.text}"`);
+    await v.screenshot({ path: join(shots, `${tag}-6-verify-valid.png`) });
+    await layout(v, tag, "/try/verify, valid", width);
+    await v.click("#v-flip");
+    await v.waitForFunction(() => document.getElementById("v-verdict")?.dataset.ok === "false");
+    const flipped = await verdict();
+    check(flipped.failed === "terms hash" && flipped.text === "Invalid: the terms hash check fails" && (await v.locator("#v-why").innerText()).includes("the terms were changed") && await v.locator("#v-terms dd.chg").count() === 1,
+      `${tag}: /try/verify: "Change one field" (amount + 0.01): "${flipped.text}"`);
+    await v.screenshot({ path: join(shots, `${tag}-7-verify-one-field-changed.png`) });
+    await layout(v, tag, "/try/verify, invalid", width);
+    await v.selectOption("#v-field", "payee_iban");
+    await v.waitForFunction(() => document.querySelector("#v-terms dd.chg")?.getAttribute("data-field") === "payee_iban");
+    check((await verdict()).failed === "terms hash", `${tag}: /try/verify: the IBAN changed instead: invalid, the terms hash check named`);
+    await v.click("#v-flip");
+    await v.waitForFunction(() => document.getElementById("v-verdict")?.dataset.ok === "true");
+    check((await verdict()).ok === "true", `${tag}: /try/verify: the toggle off: valid again`);
+    // The file itself, one field changed in it: invalid; the file as downloaded: valid.
+    const file = JSON.parse(readFileSync(saved, "utf8")) as { terms: Record<string, string> };
+    await v.setInputFiles("#v-file", { name: "receipt.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({ ...file, terms: { ...file.terms, currency: "USD" } })) });
+    await v.waitForFunction(() => document.getElementById("v-verdict")?.dataset.ok === "false");
+    check((await verdict()).failed === "terms hash" && (await v.locator("#v-status").innerText()).includes("receipt.json"), `${tag}: /try/verify: an uploaded receipt.json with the currency changed: invalid, the terms hash check named`);
+    await v.setInputFiles("#v-file", saved);
+    await v.waitForFunction(() => document.getElementById("v-verdict")?.dataset.ok === "true");
+    check((await verdict()).ok === "true", `${tag}: /try/verify: the downloaded receipt.json, uploaded: valid`);
+    check(calls.length === 0, `${tag}: /try/verify made no request while checking (${calls.length}${calls.length ? `: ${calls.slice(0, 3).join(", ")}` : ""})`);
+    await v.close();
+  }
   await shotAt(page, "#result", join(shots, `${tag}-4-signed-verified.png`));
   await layout(page, tag, "after signing", width);
 

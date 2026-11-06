@@ -161,6 +161,7 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .result { padding: 20px; display: grid; gap: 14px; max-width: min(760px, 100%); }
 .result h2 { margin: 0; }
 .receipt { display: grid; gap: 6px; }
+.ractions { display: flex; flex-wrap: wrap; gap: 8px; }
 .receipt code { font: 600 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--sunken); border-radius: 6px; padding: 1px 5px; overflow-wrap: anywhere; }
 
 .result[hidden], .props[hidden], #tamper[hidden], dl.world[hidden], #s-props[hidden] { display: none; }
@@ -565,6 +566,8 @@ const JS = `
     document.querySelector('label[data-field="fx.client_rate"]').hidden = !t.fx;
     if (t.fx) $("t-rate").value = t.fx.client_rate;
     edited();
+    // The receipt to /try/verify in the link's #fragment, which a browser never sends to a server.
+    $("r-verify").href = "/try/verify#receipt=" + toB64u(new TextEncoder().encode(JSON.stringify(receipt())));
     $("result").hidden = false;
     $("result").scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -720,7 +723,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   <div class="line ok">${icon("shield-check", 22)}<span><b>Verified by the server</b><span id="r-checks"></span></span></div>
   <div class="line ok">${icon("circle-check", 22)}<span><b>Executed in your test world</b><span id="r-exec"></span></span></div>
   <div><p class="small muted">The hash you signed (SHA-256 of the exact terms):</p><div id="r-hash"></div></div>
-  <div class="receipt"><button class="btn" type="button" id="r-receipt">${icon("receipt", 18)}Download receipt.json</button>
+  <div class="receipt"><div class="ractions"><button class="btn" type="button" id="r-receipt">${icon("receipt", 18)}Download receipt.json</button><a class="btn" id="r-verify" href="/try/verify" target="_blank" rel="noopener">${icon("shield-check", 18)}Verify this receipt here</a></div>
     <p class="small muted">Check it offline with one command, no server: <code>npm run verify-receipt -- receipt.json</code>.</p>
     <details class="more"><summary>more</summary><p>It holds the exact terms, their hash, your signature, its public key and the algorithm, and no secret. The command is in the repository, ${esc(REPO_URL.replace(/^https:\/\//, ""))}. Change one field or one cent and it fails. It proves that the holder of that key signed these terms, not who holds it.</p></details></div>
   <div class="tbox" id="tamper-box">
