@@ -6,12 +6,9 @@ import { randomUUID } from "node:crypto";
 import { Airwallex, AirwallexAmbiguous, fromEnv } from "./client.js";
 import { cents } from "./adapter.js";
 import { fromCents } from "../lib/money.js";
+import { controlsUpdateBody, createControlsBody, limitsUpdateBody, type CardControls, type CardLimits } from "./cardBody.js";
 
-export interface CardLimits {
-  currency: "EUR";
-  perTxCents: number;
-  monthlyCents: number;
-}
+export type { CardControls, CardLimits } from "./cardBody.js";
 
 export interface Card {
   cardId: string;
@@ -23,18 +20,6 @@ export interface Card {
   limits: CardLimits | null;
   /** What the card may pay at all (Airwallex declines the rest): merchant categories, currencies, an end date. */
   controls?: CardControls | null;
-}
-
-/** A card's authorization controls besides its limits (governance: what, in which currency, until when). */
-export interface CardControls {
-  /** Merchant category codes (ISO 18245) the card may pay; Airwallex declines others (MERCHANT_CATEGORY_NOT_ALLOWED). */
-  mccs: string[];
-  /** Transaction currencies the card may pay in (CURRENCY_NOT_ALLOWED otherwise). */
-  currencies: string[];
-  /** After this moment Airwallex declines every authorisation; null for no end. */
-  activeTo: string | null;
-  /** A single-use card (Ask Purser's task cards): Airwallex allows one successful debit. Absent for multi-use. */
-  singleUse?: boolean;
 }
 
 export interface CardTransaction {
@@ -159,13 +144,6 @@ export function toCardTransaction(t: AwxTx): CardTransaction {
   };
 }
 
-function limitsBody(l: CardLimits) {
-  return {
-    currency: l.currency,
-    limits: [{ amount: Number(fromCents(l.perTxCents)), interval: "PER_TRANSACTION" }, { amount: Number(fromCents(l.monthlyCents)), interval: "MONTHLY" }],
-  };
-}
-
 export class IssuingRest implements IssuingRail, IssuingSim {
   constructor(private readonly api: Airwallex) {}
 
@@ -207,10 +185,7 @@ export class IssuingRest implements IssuingRail, IssuingSim {
       const c = await this.api.call<AwxCard>("POST", "/issuing/cards/create", {
         request_id: randomUUID(), cardholder_id: a.cardholderId, created_by: a.createdBy, form_factor: "VIRTUAL", is_personalized: false,
         program: { purpose: "COMMERCIAL" }, nick_name: a.nickname,
-        authorization_controls: {
-          allowed_transaction_count: a.controls?.singleUse ? "SINGLE" : "MULTIPLE", transaction_limits: limitsBody(a.limits),
-          ...(a.controls ? { allowed_merchant_categories: a.controls.mccs, allowed_currencies: a.controls.currencies, ...(a.controls.activeTo ? { active_to: a.controls.activeTo } : {}) } : {}),
-        },
+        authorization_controls: createControlsBody(a.limits, a.controls),
       });
       return toCard(c);
     } catch (e) {
@@ -230,9 +205,7 @@ export class IssuingRest implements IssuingRail, IssuingSim {
   async setCardLimits(cardId: string, limits: CardLimits): Promise<Card> {
     // Setting the same limits twice is harmless, so an ambiguous answer is settled by reading the card back.
     try {
-      await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, {
-        authorization_controls: { transaction_limits: { ...limitsBody(limits), cash_withdrawal_limits: [] } },
-      });
+      await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, limitsUpdateBody(limits));
     } catch (e) {
       if (!(e instanceof AirwallexAmbiguous)) throw e;
     }
@@ -242,9 +215,7 @@ export class IssuingRest implements IssuingRail, IssuingSim {
   async setCardControls(cardId: string, controls: Pick<CardControls, "mccs" | "currencies">): Promise<Card> {
     // Setting the same controls twice is harmless, so an ambiguous answer is settled by reading the card back.
     try {
-      await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, {
-        authorization_controls: { allowed_merchant_categories: controls.mccs, allowed_currencies: controls.currencies },
-      });
+      await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, controlsUpdateBody(controls));
     } catch (e) {
       if (!(e instanceof AirwallexAmbiguous)) throw e;
     }

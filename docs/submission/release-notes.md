@@ -198,6 +198,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   suite's size from the README, 412 audit rows, the red team and the Scenario Lab on stand-ins, CI), what is real, the
   business, the roadmap. `npm run submission -- --deck-only` renders the deck alone and each slide as a PNG in
   docs/evidence/deck/. 2619 tests in 266 files, all passing (with main's).
+- 6 November, /try/sign step 0, "Set the policy" (Max's item 1): "One policy → three locks", interactive. In the
+  visitor's test world, each agent's CFO policy (limit per purchase and per month, merchant categories, currencies,
+  end date, "may pay alone up to", and the company's reserve floor) and, beside it, three panels computed on the server
+  by Purser's own code: Purser's rule (its settings and the world's payment check), the Airwallex card controls as
+  IssuingRest sends them ("what Purser would send; not sent"), and the Metal mandate's terms as the owner signer passes
+  them to metal-agent ("not sent"). A stricter policy holds at once; a looser one (decided field by field) is refused
+  until the visitor signs its exact terms with the world's passkey, verified as a payment's signature. The new policy
+  holds for the rest of the visit: a lower floor, signed, lets the blocked T-0001 be signed and run; a higher one
+  blocks T-0002. No call to Airwallex, Metal or Claude. 2688 tests in 268 files, all passing.
 
 ## Real, and ours
 

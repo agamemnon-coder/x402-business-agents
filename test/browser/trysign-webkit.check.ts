@@ -21,7 +21,7 @@ import { join, resolve } from "node:path";
 const shots = resolve(process.argv[2] ?? "out/try-sign-webkit");
 mkdirSync(shots, { recursive: true });
 process.env.TRY_SIGN_ENABLED = "on";
-const { TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TRY_POLICY, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { startLocalRelay } = await import("../../src/relay/local.js");
 const local = await startLocalRelay({ port: 0, token: "browser-check-webkit" });
 const require = createRequire(import.meta.url);
@@ -70,6 +70,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   if (!webauthn) {
     // The honest fallback: it says so, and there is nothing to start.
     check(/has no passkeys/.test(await page.locator("#w-status").innerText()) && await page.locator("#go-world").isDisabled(), `${tag}: without WebAuthn the page says so and its start button is off`);
+    // Step 0 lives in a test world, so without one it stays hidden (and offers nothing to change).
+    check(await page.locator("#policy").count() === 1 && await page.locator("#policy").isHidden(), `${tag}: step 0 "${TRY_POLICY.title}" waits for a test world (hidden)`);
   } else {
     await page.click("#go-world");
     await page.waitForSelector("#s-props:not([hidden])");
@@ -90,6 +92,24 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     const terms = JSON.parse(canonical) as Record<string, string>;
     check((await waiting.innerText()).includes(String(terms.payee_iban).replace(/(.{4})/g, "$1 ").trim()) && /you are approving/i.test(await waiting.innerText()), `${tag}: (b) the approval sheet shows the beneficiary's IBAN`);
     check(await page.locator("#go-key").isVisible() && !(await page.locator("#go-key").isDisabled()), `${tag}: the passkey step is ready (not taken: WebKit has no virtual authenticator)`);
+    // Step 0 (Max, item 1), up to the signature: a stricter change holds at once and the three panels follow it; a
+    // looser one is refused with its terms to sign, their hash computed in WebKit, and nothing changes.
+    await page.locator("details#pol > summary").click();
+    const awxBefore = (await page.locator("#pl-awx").textContent()) ?? "";
+    await page.fill("#pf-monthly", "40.00");
+    await page.click("#p-apply");
+    await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
+    const awxAfter = (await page.locator("#pl-awx").textContent()) ?? "";
+    check(/"amount": 50,/.test(awxBefore) && /"amount": 40,/.test(awxAfter) && (await page.locator('#pl-metal dd[data-value="40.00"]').count()) === 1 && (await page.locator("#pl-purser").textContent() ?? "").includes('"card.treasury.monthly": "40.00"'),
+      `${tag}: step 0: a stricter month (50.00 → 40.00) holds at once; Purser's rule, the Airwallex body and the Metal budget follow it`);
+    check(JSON.stringify(await page.locator("#p-locks .ns").allInnerTexts()) === JSON.stringify(["Rules in code, checked before anything is signed", TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: step 0: the Airwallex and Metal panels say they are not sent`);
+    await page.click(`input[name="pf-mccs"][value="7372"]`);
+    await page.click("#p-apply");
+    await page.waitForSelector("#p-refused:not([hidden])");
+    const pterms = (await page.locator("#p-terms").textContent()) ?? "";
+    check((await page.locator("#p-rhead").innerText()).trim() === TRY_POLICY.refused && /merchant categories/.test(await page.locator("#p-why").innerText()) && (await page.locator("#p-hash .hash").getAttribute("data-hash")) === sha256(pterms)
+      && (await page.locator("#p-locks").getAttribute("data-state")) === "proposed" && await page.locator('article.prop.blocked[data-proposal="T-0001"]').count() === 1,
+      `${tag}: step 0: one more merchant category is looser: refused until signed, the terms' hash computed in WebKit; nothing changed`);
   }
   const wide = await page.evaluate("Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)") as number;
   check(wide <= width, `${tag}: the page is no wider than the screen (${wide} ≤ ${width})`);

@@ -11,6 +11,7 @@ import { CUSTOMER_MANDATE, INITIAL_MANDATES, MANDATE_EXPIRES_IN_SECONDS, TOTAL_B
 import { openDb } from "../db/open.js";
 import { baseUnitsToCents, centsToBaseUnits, fromCents } from "../lib/money.js";
 import { field, keyPath, metalAgent, type CliResult } from "../metal/agentCli.js";
+import { credentialCreateArgs } from "../metal/credentialArgs.js";
 import { readKeyFile, transferUsdz, usdzBalance } from "../metal/chain.js";
 import { EXPLORER_TX } from "../metal/network.js";
 import { autonomyOn } from "../config/agents.js";
@@ -78,13 +79,11 @@ function mandate(spec: MandateSpec): void {
   const cred = keyPath(`${spec.agent}.credential.json`);
   if (!existsSync(cred)) {
     metalAgent([
-      "mandate", "credential", "create",
-      "--principal", spec.principal,
-      "--cap", fromCents(spec.capCents), "--budget", fromCents(spec.budgetCents),
-      "--payee", `${spec.payee},${spec.payeeName}`,
-      ...(spec.extra ?? []).flatMap((p) => ["--payee", `${p.address},${p.name}`]),
-      "--expires-in", String(MANDATE_EXPIRES_IN_SECONDS),
-      "--description", `kit11 P-0000 initial ${spec.agent}`,
+      ...credentialCreateArgs({
+        principal: spec.principal, capCents: spec.capCents, budgetCents: spec.budgetCents,
+        payees: [{ address: spec.payee, name: spec.payeeName }, ...(spec.extra ?? [])],
+        expiresInSeconds: MANDATE_EXPIRES_IN_SECONDS, description: `kit11 P-0000 initial ${spec.agent}`,
+      }),
       "--key", keyPath(spec.ownerFile), "--out", cred,
     ]);
   }

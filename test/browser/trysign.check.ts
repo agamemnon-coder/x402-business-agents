@@ -44,7 +44,8 @@ const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
-const { TAMPER_VERDICT, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_START_NOTE, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_START_NOTE, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { threeLocks } = await import("../../src/try/policy.js");
 const { TRY_IT } = await import("../../src/config/brand.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
@@ -132,6 +133,33 @@ async function shotAt(page: any, selector: string, path: string): Promise<void> 
   await page.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); window.scrollTo({ top: e.getBoundingClientRect().top + window.scrollY - 150, behavior: "instant" }); })()`);
   await page.screenshot({ path });
 }
+
+// Step 0, "Set the policy" (Max, item 1): the Treasury agent's policy as the form shows it, the three panels as the page
+// shows them, and what Purser's own code makes of that policy (src/try/policy.ts threeLocks: the card body IssuingRest
+// sends, the mandate's terms the owner signer passes to metal-agent, Purser's settings), to compare field for field.
+type FormPolicy = { reserve_floor: string; agents: { treasury: { per_tx: string; monthly: string; mccs: string[]; currencies: string[]; end_date: string; alone: string } } };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const formPolicy = (page: any) => page.evaluate(`(() => {
+  const v = (f) => document.getElementById("pf-" + f).value, ck = (f) => [...document.querySelectorAll('input[name="pf-' + f + '"]:checked')].map((n) => n.value).sort();
+  return { reserve_floor: v("reserve_floor"), agents: { treasury: { per_tx: v("per_tx"), monthly: v("monthly"), mccs: ck("mccs"), currencies: ck("currencies"), end_date: v("end_date"), alone: v("alone") } } };
+})()`) as Promise<FormPolicy>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const panels = (page: any) => page.evaluate(`(() => ({
+  awx: document.getElementById("pl-awx").textContent, purser: document.getElementById("pl-purser").textContent, args: document.getElementById("pl-margs").textContent,
+  metal: [...document.querySelectorAll("#pl-metal dd")].map((d) => d.dataset.value), state: document.getElementById("p-locks").dataset.state,
+  pills: [...document.querySelectorAll("#p-locks .state")].map((n) => n.textContent), changed: document.querySelectorAll("#p-locks .ln.chg, #p-locks dd.chg").length,
+  labels: [...document.querySelectorAll("#p-locks .ns")].map((n) => n.textContent),
+}))()`) as Promise<{ awx: string; purser: string; args: string; metal: string[]; state: string; pills: string[]; changed: number; labels: string[] }>;
+function expectedLocks(policy: FormPolicy, worldId: string) {
+  const l = threeLocks(policy as unknown as Parameters<typeof threeLocks>[0], "treasury", new Date(), worldId);
+  return {
+    awx: JSON.stringify({ authorization_controls: l.airwallex.authorization_controls }, null, 2), purser: JSON.stringify(l.purser.settings, null, 2),
+    cap: l.metal.params.cap, budget: l.metal.params.budget, payee: l.metal.params.payee,
+    args: `metal-agent ${l.metal.args.slice(0, l.metal.args.indexOf("--expires-in")).map((a) => (/^[A-Za-z0-9_.,:/-]+$/.test(a) ? a : JSON.stringify(a))).join(" ")}`,
+  };
+}
+const panelsMatch = (pn: Awaited<ReturnType<typeof panels>>, ex: ReturnType<typeof expectedLocks>) =>
+  pn.awx.trimEnd() === ex.awx && pn.purser.trimEnd() === ex.purser && pn.metal[0] === ex.cap && pn.metal[1] === ex.budget && pn.metal[2] === ex.payee && pn.args.startsWith(ex.args);
 
 const RUNS: [number, "light" | "dark"][] = args.live ? [[390, "light"], [1440, "dark"]]
   : [[360, "light"], [360, "dark"], [390, "light"], [390, "dark"], [1440, "light"], [1440, "dark"]];
@@ -507,9 +535,117 @@ for (const [width, scheme] of RUNS) {
   check(await page.locator("#t-send").isDisabled() && /^Now change the /.test(await page.locator("#t-status").innerText()) && await page.evaluate("document.activeElement && document.activeElement.closest('.tf') !== null"),
     `${tag}: A8: "Try another field": the signed values back, the next field focused (${await page.locator("#t-status").innerText()})`);
   await shotAt(page, "#tamper", join(shots, `${tag}-5b-end.png`));
+
+  // Step 0, "Set the policy" (Max, item 1), after the visit above: the policy holds in this world for the rest of it.
+  if (!args.live) {
+    const worldId = (await page.locator("#w-id").innerText()).trim();
+    const pstatus = async () => (await page.locator("#p-status").innerText()).trim();
+    await page.locator("#policy").scrollIntoViewIfNeeded();
+    // (The check above opened every <details> on the page; a fresh world's step 0 is closed, see "step 0 first" below.)
+    check(await page.locator("#policy").isVisible(), `${tag}: step 0 "${TRY_POLICY.title}" is on the page`);
+    if (!(await page.locator("details#pol").evaluate((d: HTMLDetailsElement) => d.open))) await page.locator("details#pol > summary").click();
+    const start = await formPolicy(page);
+    const t = start.agents.treasury;
+    check(t.per_tx === "25.00" && t.monthly === "50.00" && t.mccs.join() === "5734" && t.currencies.join() === "EUR" && t.alone === "500.00" && start.reserve_floor === "25000.00" && /^\d{4}-\d{2}-\d{2}$/.test(t.end_date),
+      `${tag}: step 0 shows the Treasury agent's policy (25.00 a purchase, 50.00 a month, MCC 5734, EUR, until ${t.end_date}, alone up to 500.00; floor 25000.00)`);
+    let pn = await panels(page);
+    check(pn.state === "in-force" && pn.pills.every((x) => x === TRY_POLICY.state.inForce) && panelsMatch(pn, expectedLocks(start, worldId)),
+      `${tag}: step 0: the three panels, in force, are what Purser's own code makes of this policy (card body, mandate terms, settings)`);
+    check(JSON.stringify(pn.labels.slice(1)) === JSON.stringify([TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: step 0: Airwallex "${TRY_POLICY.notSent.airwallex}", Metal "${TRY_POLICY.notSent.metal}"`);
+    await shotAt(page, "#policy", join(shots, `${tag}-8-policy.png`));
+
+    // Stricter: the limit per purchase down. It holds at once, and the three panels follow it.
+    await page.fill("#pf-per_tx", "20.00");
+    check(await page.locator('[data-pfield="per_tx"]').evaluate((n: Element) => n.classList.contains("chg")) && await page.locator("#p-apply").isEnabled(), `${tag}: step 0: the changed field is marked and "Apply" is on`);
+    await page.click("#p-apply");
+    await page.waitForFunction(() => /ok|bad/.test(document.getElementById("p-status")?.className ?? "") || !document.getElementById("p-refused")?.hidden);
+    const stricter = await formPolicy(page);
+    pn = await panels(page);
+    check(/^Stricter: it holds at once/.test(await pstatus()) && stricter.agents.treasury.per_tx === "20.00" && pn.state === "in-force" && panelsMatch(pn, expectedLocks(stricter, worldId))
+      && /"amount": 20,/.test(pn.awx) && pn.metal[0] === "20.00" && pn.purser.includes('"card.treasury.per_tx": "20.00"') && pn.changed >= 3,
+      `${tag}: step 0: stricter (25.00 → 20.00 a purchase) holds at once; the three panels follow it, the changed lines marked (${pn.changed}): ${await pstatus()}`);
+    await shotAt(page, "#p-locks", join(shots, `${tag}-9-panels-after-change.png`));
+    // On a phone the three panels stack: one picture of all three.
+    if (mobile) await page.locator("#p-locks").screenshot({ path: join(shots, `${tag}-9b-panels-after-change-all-three.png`) });
+
+    // Looser: the reserve floor down. Refused without a signature; nothing changes in the world.
+    const floorBefore = (await page.locator("#w-floor").innerText()).trim();
+    await page.fill("#pf-reserve_floor", "20000.00");
+    await page.click("#p-apply");
+    await page.waitForSelector("#p-refused:not([hidden])");
+    pn = await panels(page);
+    const why = (await page.locator("#p-why").innerText()).trim();
+    const terms = (await page.locator("#p-terms").textContent()) ?? "";
+    const phash = (await page.locator("#p-hash .hash").getAttribute("data-hash")) ?? "";
+    check((await page.locator("#p-rhead").innerText()).trim() === TRY_POLICY.refused && /looser \(reserve floor\)/.test(why) && /Nothing changed\.$/.test(why),
+      `${tag}: step 0: a looser floor is refused without a signature, said plainly: "${why.slice(0, 70)}…"`);
+    check(pn.state === "proposed" && pn.pills.every((x) => x === TRY_POLICY.state.proposed) && phash === sha256(terms) && (JSON.parse(terms) as { changes: { field: string }[] }).changes.map((c) => c.field).join() === "reserve_floor",
+      `${tag}: step 0: the panels show it as proposed, not in force; the terms to sign hash to ${phash.slice(0, 12)}…`);
+    check(await page.locator('article.prop.blocked[data-proposal="T-0001"]').count() === 1 && (await page.locator("#w-floor").innerText()).trim() === floorBefore && await page.locator('#pl-pay li[data-proposal="T-0001"]').getAttribute("data-check") === "pass",
+      `${tag}: step 0: refused, so nothing changed: T-0001 still blocked, the floor still ${floorBefore} (the proposed policy would let it pass)`);
+    await shotAt(page, "#p-refused", join(shots, `${tag}-10-loosening-refused.png`));
+
+    // Signed with the passkey (the virtual authenticator): it holds, and the payment the floor blocked can be signed and run.
+    await page.click("#p-sign");
+    await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? "") || /bad/.test(document.getElementById("p-sstatus")?.className ?? ""));
+    const t1 = page.locator('article.prop.sheet[data-proposal="T-0001"]');
+    check(/^Signed and verified: the looser policy holds/.test(await pstatus()) && (await page.locator("#w-floor").innerText()).trim() === "EUR 20,000.00" && (await panels(page)).state === "in-force",
+      `${tag}: step 0: signed with the passkey and verified by the server, the looser floor holds (${await pstatus()})`);
+    check(await t1.count() === 1 && (await t1.innerText()).includes("Check: pass") && await t1.locator("button[data-sign]").isEnabled() && await page.locator("article.prop.blocked").count() === 0
+      && await t1.locator('.polnote[data-note="now-allowed"]').count() === 1,
+      `${tag}: step 0: the payment that was blocked (T-0001) passes Purser's check now and waits for your signature`);
+    await shotAt(page, "#p-status", join(shots, `${tag}-11-loosening-signed.png`));
+    await shotAt(page, 'article.prop.sheet[data-proposal="T-0001"]', join(shots, `${tag}-12-formerly-blocked-now-allowed.png`));
+    await t1.locator("button[data-sign]").click();
+    await page.waitForFunction(() => /ok|bad/.test(document.getElementById("st-T-0001")?.className ?? ""));
+    check(/Signed, verified and executed/.test(await page.locator("#st-T-0001").innerText()) && /Test transfer test-[0-9a-f]{12}: EUR 6,500\.00/.test(await page.locator("#r-exec").innerText()),
+      `${tag}: step 0: T-0001 signed, verified and run by the stand-in (EUR 6,500.00), under the policy the visitor signed`);
+    await shotAt(page, "#result", join(shots, `${tag}-13-formerly-blocked-paid.png`));
+    await layout(page, tag, "after the policy step", width);
+  }
   // A6: a refused signature is an answer (HTTP 200, verified false), so the whole visit logs no console error at all.
   check(errors.length === 0, `${tag}: A6: 0 console errors across the whole visit (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
   void beforeTamper;
+  await context.close();
+}
+
+// Step 0 first (Max, item 1): a visitor who sets the policy before anything else. The looser floor is refused, then
+// signed, the test passkey made on the way (the world's one passkey, as from the sheet); then a stricter floor blocks
+// both payments, the one that was allowed too, and no sheet is left to sign. No console error.
+if (!args.live) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, extraHTTPHeaders: { "cf-connecting-ip": "198.51.121.7" } });
+  const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  const errors: string[] = [];
+  page.on("pageerror", (e: Error) => errors.push(e.message));
+  page.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
+  await page.goto(`${local.url}/try/sign`);
+  await page.click("#go-world");
+  await page.waitForSelector("#s-props:not([hidden])");
+  check(await page.locator("#policy").isVisible() && !(await page.locator("details#pol").evaluate((d: HTMLDetailsElement) => d.open)) && (await page.locator("details#pol > summary").innerText()).includes(TRY_POLICY.title),
+    `step 0 first: "${TRY_POLICY.title}" is shown once the world is open, closed until asked`);
+  await page.locator("details#pol > summary").click();
+  await page.fill("#pf-reserve_floor", "20000.00");
+  await page.click("#p-apply");
+  await page.waitForSelector("#p-refused:not([hidden])");
+  check(/makes your test passkey/.test(await page.locator("#p-sstatus").innerText()), "step 0 first: before any passkey, signing the policy says it makes the test passkey first");
+  await page.click("#p-sign");
+  await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? "") || /bad/.test(document.getElementById("p-sstatus")?.className ?? ""));
+  check(/^Signed and verified/.test(await page.locator("#p-status").innerText()) && /registered in this world only|is kept/.test(await page.locator("#k-status").innerText()) && await page.locator("#go-key").isHidden(),
+    "step 0 first: the passkey is made and the looser floor signed with it; the sheet knows the passkey is there");
+  check(await page.locator("article.prop.sheet").count() === 2 && await page.locator("article.prop.sheet button[data-sign]:not([disabled])").count() === 2,
+    "step 0 first: both payments now wait for a person, each with its own signature to give");
+  await page.fill("#pf-reserve_floor", "29500.00");
+  await page.click("#p-apply");
+  await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
+  check(await page.locator("article.prop.sheet").count() === 0 && await page.locator("article.prop.blocked").count() === 2 && /EUR 29,500\.00/.test(await page.locator('article.prop.blocked[data-proposal="T-0002"]').innerText())
+    && await page.locator('article.prop.blocked[data-proposal="T-0002"] .polnote[data-note="now-blocked"]').count() === 1,
+    "step 0 first: a stricter floor (29,500.00) applies at once and blocks both, the payment that was allowed (T-0002) too");
+  await layout(page, "step-0-first-390", "after a stricter floor", 390);
+  await page.screenshot({ path: join(shots, "step-0-first-390-blocked-by-stricter.png") });
+  check(errors.length === 0, `step 0 first: 0 console errors (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
   await context.close();
 }
 
