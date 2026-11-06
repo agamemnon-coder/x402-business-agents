@@ -80,6 +80,24 @@ describe("the key: Max's scoped sandbox key, set by Max, never by the repo", () 
     expect(readFileSync(join(root, "worker/wrangler.jsonc"), "utf8")).not.toMatch(names);
   });
 
+  // /try/sign's live Haiku sentence is off until Max turns it on himself (TRY_SIGN_HAIKU exactly "on", a Worker var):
+  // no script, config, workflow or package file here sets it, and the code only ever compares it with "on".
+  it("no code in the repo sets TRY_SIGN_HAIKU (on or otherwise); the Worker only reads it", () => {
+    const seen: string[] = [];
+    for (const f of all) {
+      const lines = readFileSync(f, "utf8").split("\n").filter((l) => !/^\s*(\/\/|\/?\*)/.test(l)).filter((l) => /TRY_SIGN_HAIKU/.test(l));
+      for (const l of lines) {
+        seen.push(f.slice(root.length));
+        // Only its type in the Worker's Env, or a read compared with exactly "on".
+        const ok = /^\s*TRY_SIGN_HAIKU\?: string;\s*$/.test(l) || /env\.TRY_SIGN_HAIKU !== "on"/.test(l) || /TRY_SIGN_HAIKU\?: string \}/.test(l);
+        expect({ f: f.slice(root.length), l: ok ? "" : l }).toEqual({ f: f.slice(root.length), l: "" });
+      }
+    }
+    expect([...new Set(seen)].sort()).toEqual(["worker/src/agentLine.ts", "worker/src/index.ts"]);
+    expect(readFileSync(join(root, "worker/wrangler.jsonc"), "utf8")).not.toMatch(/TRY_SIGN_HAIKU/);
+    expect(readFileSync(join(root, "src/cli/relay-deploy.ts"), "utf8")).not.toMatch(/TRY_SIGN_HAIKU|--var/);
+  });
+
   it("the Worker reads the key from its secrets only, and only into the quote client", () => {
     const index = readFileSync(join(root, "worker/src/index.ts"), "utf8");
     expect(index.match(/AIRWALLEX_(CLIENT_ID|API_KEY)/g)?.length).toBeGreaterThanOrEqual(2);

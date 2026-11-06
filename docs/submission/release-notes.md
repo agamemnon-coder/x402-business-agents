@@ -124,6 +124,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   WebCrypto, with verify-receipt's own checks (tested equal), and no server call (the page's CSP allows no
   connection). "Signature valid for these terms", or "Invalid" with the failing check named; a "Change one field"
   toggle and file upload. After signing, "Verify this receipt here" opens it. 2537 tests in 258 files, all passing.
+- 6 November, the Haiku sentence after review: the amounts go in written the page's way ("EUR 1,850.00"), and code
+  checks every amount that comes back against the four it was given, exactly as given; else the fixed sentence,
+  labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup. The
+  live call stays off until the Worker variable TRY_SIGN_HAIKU is exactly "on", which only Max sets ("fixed text (live
+  model off)"); the deploy guard checks that no script sets it. 2547 tests in 258 files, all passing.
 
 ## Real, and ours
 
