@@ -6,26 +6,27 @@
 <!-- Max's cheat sheet for Demo Day (19 Nov). One A4; npm run submission prints it to spiekkaart-demo.pdf.
      Figures: the main run, 3 Nov (docs/demo/main-run.json); test/pitch.test.ts checks them. -->
 <style>
-@page { size: A4; margin: 8mm 11mm; }
+@page { size: A4; margin: 6mm 10mm; }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size: 9.4pt; line-height: 1.26; color: #0b1220; }
+body { margin: 0; font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size: 9.1pt; line-height: 1.24; color: #0b1220; }
 h1 { font-size: 17pt; margin: 0 0 1mm; }
-h2 { font-size: 9.8pt; margin: 2.2mm 0 0.8mm; text-transform: uppercase; letter-spacing: .04em; color: #3b3fb8; }
+h2 { font-size: 9.6pt; margin: 1.6mm 0 0.6mm; text-transform: uppercase; letter-spacing: .04em; color: #3b3fb8; }
 p { margin: 0 0 1.2mm; }
 .sub { color: #4b5563; font-size: 9pt; }
-.say { font-size: 10.6pt; font-weight: 600; border-left: 3mm solid #3b3fb8; padding: 0.8mm 0 0.8mm 3mm; margin: 0.8mm 0 1mm; }
+.say { font-size: 10pt; font-weight: 600; border-left: 3mm solid #3b3fb8; padding: 0.8mm 0 0.8mm 3mm; margin: 0.8mm 0 1mm; }
 .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
 .nums div { border: 0.3mm solid #c7cbe0; border-radius: 2mm; padding: 1.4mm 3mm; }
-.nums b { display: block; font-size: 17pt; line-height: 1; }
+.nums b { display: block; font-size: 15pt; line-height: 1; }
 .nums span { font-size: 9pt; color: #374151; }
 .top { display: grid; grid-template-columns: 1fr 34mm; gap: 4mm; align-items: start; }
 .top img { width: 34mm; height: 34mm; }
-table { width: 100%; border-collapse: collapse; font-size: 8.7pt; }
+table { width: 100%; border-collapse: collapse; font-size: 8.4pt; }
 td { border-top: 0.2mm solid #d1d5db; padding: 0.6mm 1.5mm 0.6mm 0; vertical-align: top; }
 td:first-child { width: 27mm; font-weight: 600; white-space: nowrap; }
-ol { margin: 0; padding-left: 5mm; font-size: 8.8pt; } li { margin: 0 0 0.6mm; }
+ol { margin: 0; padding-left: 5mm; font-size: 8.5pt; } li { margin: 0 0 0.6mm; }
 code { font-size: 8.8pt; }
 .never { font-size: 8.4pt; color: #374151; }
+.three { font-size: 8.3pt; font-weight: 600; line-height: 1.2; margin: 0.4mm 0 0.6mm; }
 </style>
 </head>
 <body>
@@ -37,6 +38,8 @@ code { font-size: 8.8pt; }
 <p class="say">AI agents can now spend money. So who signs off? I'm Max Geurtsen, and this is Purser.</p>
 </div><img src="../media/try-sign-qr.png" alt="QR to /try/sign"></div>
 
+<h2>Wat alleen Purser heeft (letterlijk, jury review 6 nov)</h2>
+<p class="three">An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 30 seconds. · One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control. · Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude. · The Kit 11 scenario, run live on 3 November.</p>
 <h2>Rond 0:25 (letterlijk)</h2>
 <p class="say">Inside its limits an agent pays alone; beyond them, the CFO signs. In this demo, I play the CFO.</p>
 <h2>Slot (letterlijk)</h2>
@@ -44,11 +47,11 @@ code { font-size: 8.8pt; }
 
 <h2>Drie getallen (alleen deze)</h2>
 <div class="nums">
-  <div><b>16 stops</b><span>16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. (Metal: #24, #37; CFO: P-0004)</span></div>
+  <div><b>16 stops</b><span>16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. (Metal: #24, #37; CFO: P-0004)</span></div>
   <div><b>6 s</b><span>6 seconds from Face ID to PAID; de settlement is gesimuleerd in de sandbox</span></div>
-  <div><b>5</b><span>5 Face ID decisions door jou (P-0001, P-0002, P-0004, P-0005, P-0006)</span></div>
+  <div><b>5</b><span>5 Face ID decisions door jou (+1 co-signature; P-0001, P-0002, P-0004, P-0005, P-0006)</span></div>
 </div>
-<p class="sub">Verder: 24 of 24 decisions by Claude, 0 fallbacks · "Metal refused it; the refusal is recorded on chain." · Optie A: cap 0.04, prijs blijft 0.05 · optie B: zelfde cap, prijs 0.07 (binnen dezelfde 20.00) · EUR 110.00 via FX, alleen het tekort · 412 audit rows.</p>
+<p class="sub">Verder: 24 of 24 decisions by Claude, 0 fallbacks · #24: "We switched off our own check once to prove the chain holds the line." "Metal refused it; the refusal is recorded on chain." · De 12: Claude zette de regel, code paste hem toe · Optie A: cap 0.04, prijs blijft 0.05 · optie B: zelfde cap, prijs 0.07 (binnen dezelfde 20.00) · EUR 110.00 via FX, alleen het tekort · 412 audit rows.</p>
 
 <h2>URL's</h2>
 <table>

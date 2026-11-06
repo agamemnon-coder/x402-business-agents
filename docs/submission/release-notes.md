@@ -53,6 +53,14 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 5 November, Visa's answer: TAP is not available as Visa tooling for this hackathon (VIC or ICC only), so the entry
   is the Metal Award only. The Kit line, Home's badge and the links on Home and Proof no longer name the Visa Award;
   /visa keeps the TAP work as a labelled extra, with one status line. 2365 tests in 248 files, all passing.
+- 6 November, the jury review: every surface opens with what only Purser has, three sentences word for word
+  (`DIFFERENTIATORS`: the signature over the exact terms, one CFO policy as three locks, real agents with no key reaching
+  Claude), then "The Kit 11 scenario, run live on 3 November.". The 12 overpriced checks are said as they happened: "a
+  buy rule Claude set stopped 12 overpriced checks" (code applied the rule; the film keeps its older line). One set of
+  numbers: "86 Metal payments + 1 card charge", "5 decisions signed with Face ID (+1 co-signature)". The let-through is
+  framed as a test of the chain, both layers shown. The form's caveats are one line with a link; Visa TAP is a footer
+  link on Home and Proof, and the form's screenshot 6 is /try/sign, signed and tampered. 2377 tests in 249 files, all
+  passing.
 
 ## Real, and ours
 

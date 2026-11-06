@@ -128,8 +128,10 @@ for (const [width, scheme] of RUNS) {
 
   // The landing carries the button in this bundle, and it leads here.
   await page.goto(`${local.url}/home`);
-  const button = page.locator('a[href="try/sign"]');
+  // The button; the first of the three sentences under the heading links here too ("Try it in 30 seconds.", 6 Nov).
+  const button = page.locator('a.btn[href="try/sign"]');
   check(await button.count() === 1, `${tag}: the landing has the "Sign with your own Face ID" button`);
+  check(await page.locator('.why a[href="try/sign"]').count() === 1, `${tag}: "Try it in 30 seconds." under the heading links here`);
   await button.click();
   await page.waitForURL(`${local.url}/try/sign`);
   check((await page.locator(".testband").innerText()).trim() === TRY_SIGN_LABEL, `${tag}: the label at the top reads "${TRY_SIGN_LABEL}"`);
