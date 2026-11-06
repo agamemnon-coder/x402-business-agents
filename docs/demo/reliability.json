@@ -20,7 +20,7 @@
       "sourcing": "claude-haiku-5-5",
       "support": "claude-sonnet-5-5",
       "treasury": "claude-opus-5-5",
-      "key": "KIT11_ANTHROPIC_API_KEY from the environment"
+      "claude_env_var": "KIT11_ANTHROPIC_API_KEY from the environment"
     },
     "signers": {
       "cfo": "virtual test passkey (CFO role), test identity \"test-cfo\"",
@@ -488,7 +488,7 @@
       "sourcing": "claude-haiku-5-5",
       "support": "claude-sonnet-5-5",
       "treasury": "claude-opus-5-5",
-      "key": "KIT11_ANTHROPIC_API_KEY from the environment"
+      "claude_env_var": "KIT11_ANTHROPIC_API_KEY from the environment"
     },
     "signers": {
       "cfo": "virtual test passkey (CFO role), test identity \"test-cfo\"",

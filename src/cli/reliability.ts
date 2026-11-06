@@ -495,7 +495,7 @@ const record = {
   ended_at: new Date().toISOString(),
   duration_minutes: Math.round((Date.now() - started) / 6_000) / 10,
   rails: { metal: "testnet", airwallex: "sandbox", money: "test money only", customer_supplier_merchants: "simulated (ours)" },
-  agents: { sourcing: "claude-haiku-5-5", support: "claude-sonnet-5-5", treasury: "claude-opus-5-5", key: "KIT11_ANTHROPIC_API_KEY from the environment" },
+  agents: { sourcing: "claude-haiku-5-5", support: "claude-sonnet-5-5", treasury: "claude-opus-5-5", claude_env_var: "KIT11_ANTHROPIC_API_KEY from the environment" },
   signers: { cfo: "virtual test passkey (CFO role), test identity \"test-cfo\"", second_approver: "virtual test passkey (second approver role), test identity \"test-controller\"", fingerprints: fpByRole, note: "No person signed in this run. Claude typed the world commands and approved nothing itself; the virtual test passkeys signed on the steps of the runbook." },
   funding: { mode: funding, faucet_calls: funding === "faucet" ? "about 4 (business owner, customer owner, customer account, refusal recorder gas)" : 0, recycled_transfers: recycled, from: funding === "recycle" ? "finished dry-N worlds (docs/runs/testgeld-recycling.md)" : "the Metal testnet faucet" },
   steps: timings.map((t) => ({ step: t.step, seconds: t.seconds, ok: t.ok, ...(t.note ? { note: t.note } : {}) })),
