@@ -120,7 +120,7 @@ them).
 | Mid | 300 | 1,500 | €49.00 | €21.06 | €4.48 | **€25.53** | **48%** | €9.80 · €5.11 |
 | High | 1,000 | 5,000 | €154.00 | €70.18 | €4.48 | **€74.66** | **52%** | €30.80 · €14.93 |
 
-If every agent ran on Opus, Claude costs would be about 2.1× higher; Purser routes each task to the smallest model that does it.
+If every agent ran on Opus, Claude costs would be about 2.1× higher; Purser gives each agent the smallest model that passed its evals.
 
 **Gross margin per company (hypothesis): 48% to 77%** across low, mid and high usage. It is lowest at exactly 1,500
 decisions a company, the most the base price includes; above that, each 100 extra decisions earn €3.00 and cost €1.40

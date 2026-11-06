@@ -185,7 +185,7 @@ export type UnitEconomics = ReturnType<typeof unitEconomics>;
 
 /** Max's line under the table (6 Nov), with the factor the record gives, to one decimal. */
 export const opusLine = (u: UnitEconomics = unitEconomics()) =>
-  `If every agent ran on Opus, Claude costs would be about ${u.opus.factor.toFixed(1)}× higher; Purser routes each task to the smallest model that does it.`;
+  `If every agent ran on Opus, Claude costs would be about ${u.opus.factor.toFixed(1)}× higher; Purser gives each agent the smallest model that passed its evals.`;
 /** Max's sentence 3 (6 Nov), in the wording the record supports: the decisions are not one per payment. */
 export const paymentsLine = (u: UnitEconomics = unitEconomics()) =>
   `In the main run, Claude made ${u.measured.decisions} decisions; of the ${u.measured.payments} payments, ${u.measured.routinePayments} were routine sales and purchases that code handled inside the limits.`;

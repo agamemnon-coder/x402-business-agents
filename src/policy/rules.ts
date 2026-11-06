@@ -8,6 +8,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { stopped } from "./velocity.js";
 import { agentsOn } from "../config/agents.js";
+import { cardLimitsFrom } from "./cardRules.js";
 
 export type PolicyKey = "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`;
 
@@ -152,7 +153,7 @@ export function capRefusal(db: DB, agent: Agent, cents: number): string | null {
 
 /** The limits the agent's card should have at Airwallex, from the policy. */
 export function cardLimits(db: DB, agent: string): { currency: "EUR"; perTxCents: number; monthlyCents: number } {
-  return { currency: "EUR", perTxCents: toCents(policyValue(db, `card.${agent}.per_tx`)), monthlyCents: toCents(policyValue(db, `card.${agent}.monthly`)) };
+  return cardLimitsFrom((key) => policyValue(db, key), agent);
 }
 
 export function refundThresholds(db: DB): { eachCents: number; perDisputeCents: number } {
@@ -163,21 +164,5 @@ export function counterpartyAllowed(db: DB, name: string): boolean {
   return policyValue(db, `counterparty:${name}`) !== "blocked";
 }
 
-/**
- * Whether a change makes the policy less strict: a higher or removed agent limit, a higher approval threshold, a
- * lower reserve floor, or a payee unblocked. The phone may only tighten (review N2); loosening is proposed on the
- * runner (npm run policy -- set) and then approved with Face ID like any proposal.
- */
-export function loosens(c: { key: string; from: string; to: string }): boolean {
-  const cents = (v: string) => (/^\d+\.\d{2}$/.test(v) ? Number(v.replace(".", "")) : null);
-  const [from, to] = [cents(c.from), cents(c.to)];
-  if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
-  if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
-  // Four eyes: turning it off or raising the threshold loosens; turning it on or lowering it tightens.
-  if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
-  if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
-  if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
-  if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
-  if (c.key === "freeze" || c.key.startsWith("stop.") || c.key.startsWith("pause.")) return c.from === "on" && c.to !== "on";
-  return true;
-}
+/** Whether a change loosens the policy (src/policy/loosens.ts, shared with /try/sign's policy step). */
+export { loosens } from "./loosens.js";

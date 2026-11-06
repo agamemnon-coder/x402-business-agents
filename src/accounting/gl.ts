@@ -141,8 +141,14 @@ function cell(key: keyof JournalLine, v: string): string {
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
-export function journalCsv(lines: JournalLine[]): string {
-  return [COLUMNS.join(","), ...lines.map((l) => COLUMNS.map((k) => cell(k, l[k])).join(","))].join("\r\n") + "\r\n";
+/**
+ * The journal as CSV. `extra` adds columns after the standard ones, each a text value per line (the month-end pack adds
+ * the approval hash behind a line's proposal); the standard columns and their order never change.
+ */
+export function journalCsv(lines: JournalLine[], extra: { name: string; value: (l: JournalLine) => string }[] = []): string {
+  const head = [...COLUMNS, ...extra.map((e) => e.name)].join(",");
+  const row = (l: JournalLine) => [...COLUMNS.map((k) => cell(k, l[k])), ...extra.map((e) => cell("ref", e.value(l)))].join(",");
+  return [head, ...lines.map(row)].join("\r\n") + "\r\n";
 }
 
 export function journalJson(lines: JournalLine[]): string {

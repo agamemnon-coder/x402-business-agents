@@ -92,11 +92,14 @@ describe("measured, from the main run's record", () => {
     const factor = (agents + others) / RECORD.snapshot.claude.cost_usd_micros;
     expect(ue.opus.factor).toBe(factor);
     expect(factor.toFixed(2)).toBe("2.07");
-    expect(opusLine()).toBe(`If every agent ran on Opus, Claude costs would be about ${factor.toFixed(1)}× higher; Purser routes each task to the smallest model that does it.`);
+    expect(opusLine()).toBe(`If every agent ran on Opus, Claude costs would be about ${factor.toFixed(1)}× higher; Purser gives each agent the smallest model that passed its evals.`);
     expect(SECTION).toContain(opusLine());
     expect(DECK_TEXT).toContain(opusLine());
     // Not the benchmark's factor (Purser's split there runs only the reviews on Opus), and not 2.7.
     expect(SECTION + DECK_TEXT).not.toMatch(/2\.7×|2\.92/);
+    // Max's wording (6 Nov): the model per agent is the smallest that passed its evals; never the older "routes each task".
+    expect(opusLine().endsWith("Purser gives each agent the smallest model that passed its evals.")).toBe(true);
+    expect(SECTION + DECK_TEXT).not.toContain("routes each task");
   });
 });
 
