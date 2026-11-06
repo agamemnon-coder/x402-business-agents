@@ -28,10 +28,13 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home about 60 words plus the Visa TAP link; partner pages at most 150)", () => {
+  it("keeps every page within its text budget (Home about 60 words plus the Visa TAP link; partner pages at most 150, /airwallex 190 with its read-back)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
-    const budget: Record<string, number> = { home: 600, watch: 100, try: 180, proof: 480, metal: 150, airwallex: 150, visa: 150, claude: 150, notFound: 40 };
+    // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
+    // Airwallex returns with the payment, and one line for the cards against the CFO policy (each card's side by side
+    // folded on /airwallex, Max's decision on #53).
+    const budget: Record<string, number> = { home: 600, watch: 100, try: 180, proof: 520, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

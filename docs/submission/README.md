@@ -100,3 +100,15 @@ Running it live (sandbox keys, a Metal RPC) is in [docs/run-it.md](../run-it.md)
 - `purser-deck.pdf`: ten slides, one message each, made by `npm run submission` from the same figures.
 - The zip: `npm run submission` writes `out/submission/purser-source.zip` (`git archive` of the current commit: the
   code, no keys, no ledger). Not committed.
+
+## Proof sentences (Airwallex)
+
+Note for section D: two sentences for the form, not yet placed in it. Each is shown on /proof and /airwallex, computed
+from the GET-only records `docs/runs/airwallex-transfer-approval-2026-11-06.json` and
+`docs/runs/airwallex-cards-2026-11-06.json` (sources in [docs/claims.md](../claims.md)).
+
+1. Airwallex's own record of the EUR 240.00 SWIFT payment carries, in its metadata, the exact SHA-256 hash of the terms
+   the CFO signed with Face ID, so the payment at the bank is provably the one that was approved, to the cent.
+2. Each agent's Airwallex card carries the CFO's policy as Airwallex's own controls (limit per purchase and per month,
+   merchant category, euros only, end date), read back from Airwallex and matching on all 3 cards, so Airwallex itself
+   declines anything outside the policy, whatever the agent does.

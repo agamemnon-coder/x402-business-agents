@@ -119,7 +119,9 @@ export async function verifyOrders(sales: SaleRow[], customer: Address): Promise
       seq: s.seq,
       tx: s.tx_hash,
       payer_is_customer: s.payer.toLowerCase() === customer.toLowerCase() && v?.mandate?.principal.toLowerCase() === customer.toLowerCase(),
-      signed_order: step(4)?.outcome === "pass" && /checkout mandate is this payment's signed order/.test(step(4)?.detail ?? ""),
+      // verifyMandatePayment fails step 4 for a checkout mandate of another payment, so a pass with the order given is
+      // the signed order checked; read from the outcome, not from the step's wording (Metal review, 6 November).
+      signed_order: !!s.signed_offer && step(4)?.outcome === "pass",
       within_mandate: v?.ok === true,
       mandate_principal: v?.mandate?.principal ?? "",
       mandate_bound_tx: v?.mandate?.txHash ?? "",
