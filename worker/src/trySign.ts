@@ -1,7 +1,9 @@
 // /try/sign (TRY_SIGN_ENABLED): a visitor signs with their own passkey in a test world of their own. The world lives
 // one hour in its own Durable Object instance ("try-sign"), in its own tables (ts_*), with its own passkeys: nothing
-// here reads or writes the relay's state, its enrolled passkeys, its sessions or its queue. No Metal, Claude or relay
-// token is handed to this desk. The one outside call is a read-only FX quote from the Airwallex sandbox (worker/src/
+// here reads or writes the relay's state, its enrolled passkeys, its sessions or its queue. No Metal or relay token is
+// handed to this desk. The Treasury agent's sentence on the waiting payment comes from one Claude Haiku call (worker/
+// src/agentLine.ts, when the Worker has the Anthropic key), given the test world's facts only and never a visitor's
+// words; it proposes, nothing more. The one outside call is a read-only FX quote from the Airwallex sandbox (worker/src/
 // fxQuote.ts, when the Worker has the sandbox key): its quote goes into the terms, so the signature binds to the quote
 // id, and an expired quote is refused even with a good signature; nothing is converted or paid. The agent's two
 // proposals are fixed text, the checks are code, and "executed" is a stand-in that only records in the world's own
@@ -15,6 +17,7 @@
 import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
+import { AGENT_LINE_ALL_PER_MINUTE, AGENT_LINE_DAILY_USD, AGENT_LINE_PER_HOUR, AGENT_LINE_RESERVE_USD, AGENT_LINE_SYSTEM, agentLineFacts, cleanLine, type SentenceSource, type Voice } from "./agentLine.js";
 
 /** A test world lives one hour, then everything in it is deleted. */
 export const TRY_SIGN_TTL_MS = 60 * 60 * 1000;
@@ -190,7 +193,8 @@ interface FixedProposal { id: string; agent: string; says: string; payee: string
  * anywhere has these numbers: they are shaped like a German IBAN and can pay nothing.
  */
 export const TEST_IBAN = { stockline: "DE00000000000000004471", alpine: "DE00000000000000000118" } as const;
-/** What the agent proposes: fixed text, the same for every visitor; no model is asked on this page. */
+/** What the agent proposes: the amounts and payees are fixed; the waiting payment's sentence may come from Claude Haiku
+ * (worker/src/agentLine.ts), and this fixed sentence is shown, labelled, whenever it does not. */
 export const FIXED_PROPOSALS: FixedProposal[] = [
   { id: "T-0001", agent: "Treasury agent", says: "Stockline's spring order is ready; I would pay it now to keep the price.", payee: "Stockline GmbH (test payee)", iban: TEST_IBAN.stockline, amount: "6500.00", reference: "Stock order SO-4471" },
   { id: "T-0002", agent: "Treasury agent", says: "Alpine Packaging's invoice is due Friday. It is more than I may pay alone, so I ask you.", payee: "Alpine Packaging (test payee)", iban: TEST_IBAN.alpine, amount: "1850.00", reference: "Invoice INV-2026-118" },
@@ -208,9 +212,9 @@ export function checkPayment(amount: string, balance: string): Check {
 }
 
 /** A proposal's terms: bound to this world (its public id) and its expiry, so a signature is good here only. */
-export function proposalTerms(p: FixedProposal, worldId: string, expiresAt: string, fx: FxQuote | null = null): { [k: string]: TermsValue } {
+export function proposalTerms(p: FixedProposal, worldId: string, expiresAt: string, fx: FxQuote | null = null, proposedBy = `${p.agent} (fixed text)`): { [k: string]: TermsValue } {
   return {
-    schema: TRY_TERMS_SCHEMA, test_world: worldId, kind: "payment", proposal_id: p.id, proposed_by: `${p.agent} (fixed text)`,
+    schema: TRY_TERMS_SCHEMA, test_world: worldId, kind: "payment", proposal_id: p.id, proposed_by: proposedBy,
     payee: p.payee, payee_iban: p.iban, amount: p.amount, currency: TEST_WORLD.currency, reference: p.reference, expires_at: expiresAt,
     fx: fx ? { ...fx } : null, nothing_real_moves: true,
   };
@@ -287,13 +291,18 @@ export class TrySignDesk {
   private readonly now: () => Date;
 
   private readonly fx: FxSource | null;
+  private readonly line: SentenceSource | null;
   /** The last live quote, shared only after a limit or a failure while it has time left (FX_REUSE_MIN_MS). */
   private lastQuote: FxQuote | null = null;
 
   /** It takes a SQL handle, a clock and, when the Worker has the sandbox key, the FX quote source; nothing else. */
-  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null } = {}) {
+  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | null } = {}) {
     this.now = opts.now ?? (() => new Date());
     this.fx = opts.fx ?? null;
+    this.line = opts.agentLine ?? null;
+    // The waiting payment's sentence and where it came from; the model's spend per UTC day.
+    this.sql.exec("CREATE TABLE IF NOT EXISTS ts_lines (world TEXT NOT NULL, id TEXT NOT NULL, says TEXT NOT NULL, voice TEXT NOT NULL, PRIMARY KEY (world, id))");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS ts_spend (day TEXT PRIMARY KEY, usd REAL NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_worlds (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, ip TEXT NOT NULL, created INTEGER NOT NULL, expires INTEGER NOT NULL, reg_challenge TEXT, balance TEXT NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_creds (world TEXT NOT NULL, id TEXT NOT NULL, x TEXT NOT NULL, y TEXT NOT NULL, counter INTEGER NOT NULL, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_proposals (world TEXT NOT NULL, id TEXT NOT NULL, canonical TEXT NOT NULL, sha TEXT NOT NULL, check_json TEXT NOT NULL, status TEXT NOT NULL, execution TEXT, PRIMARY KEY (world, id))");
@@ -367,6 +376,7 @@ export class TrySignDesk {
   private dropWorld(id: string): void {
     this.sql.exec("DELETE FROM ts_creds WHERE world = ?", id);
     this.sql.exec("DELETE FROM ts_proposals WHERE world = ?", id);
+    this.sql.exec("DELETE FROM ts_lines WHERE world = ?", id);
     this.sql.exec("DELETE FROM ts_worlds WHERE id = ?", id);
   }
 
@@ -420,6 +430,47 @@ export class TrySignDesk {
     }
   }
 
+  /**
+   * The Treasury agent's sentence for the payment it proposes: Claude Haiku, given the test world's facts only (code
+   * writes them; nothing the visitor sent), within the day's budget and the limits; else the fixed sentence, labelled.
+   */
+  private async lineFor(ip: string, p: FixedProposal): Promise<{ says: string; voice: Voice }> {
+    const fixed = (reason: "budget" | "unavailable", why: string) => ({ says: p.says, voice: { source: "fixed", reason, why } as Voice });
+    if (!this.line) return fixed("unavailable", "this server has no model key");
+    const nowMs = this.now().getTime();
+    const day = this.now().toISOString().slice(0, 10);
+    const spent = () => (this.sql.exec("SELECT usd FROM ts_spend WHERE day = ?", day).toArray() as { usd: number }[])[0]?.usd ?? 0;
+    const add = (usd: number) => this.sql.exec("INSERT INTO ts_spend (day, usd) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET usd = usd + excluded.usd", day, usd);
+    if (spent() + AGENT_LINE_RESERVE_USD > AGENT_LINE_DAILY_USD) return fixed("budget", `today's USD ${AGENT_LINE_DAILY_USD.toFixed(2)} for model calls on this page is spent`);
+    if (this.hits("*", "line-all", nowMs - 60_000) >= AGENT_LINE_ALL_PER_MINUTE || this.hits(ip, "line", nowMs - 3_600_000) >= AGENT_LINE_PER_HOUR) {
+      return fixed("budget", "the model's limit for this minute (or for your address this hour) is reached");
+    }
+    this.hit("*", "line-all", nowMs);
+    this.hit(ip, "line", nowMs);
+    add(AGENT_LINE_RESERVE_USD);
+    try {
+      const r = await this.line({ system: AGENT_LINE_SYSTEM, facts: agentLineFacts({ ...p, currency: TEST_WORLD.currency }, TEST_WORLD) });
+      add(r.costUsd - AGENT_LINE_RESERVE_USD);
+      const says = cleanLine(r.text);
+      if (!says) return fixed("unavailable", "the model's sentence was not one plain sentence");
+      return { says, voice: { source: "model", model: r.model, request_id: r.requestId && /^[A-Za-z0-9_-]{1,128}$/.test(r.requestId) ? r.requestId : null } };
+    } catch {
+      // A fixed reason only: never the API's words or the key.
+      console.error("try-sign: no model sentence");
+      return fixed("unavailable", "the model did not answer in time, or not in the expected shape");
+    }
+  }
+  /** Who proposed it, in the terms: the agent, and whether its sentence was the model's or fixed text. */
+  private static by(p: FixedProposal, voice: Voice | null): string {
+    return `${p.agent} (${voice?.source === "model" ? "sentence by Claude Haiku; amounts and checks by code" : "fixed text"})`;
+  }
+  /** A proposal as the page gets it, with its sentence and where that came from (the blocked one: fixed text). */
+  private view(worldId: string, p: ProposalRow & { checked: Check }) {
+    const f = FIXED_PROPOSALS.find((x) => x.id === p.id)!;
+    const line = (this.sql.exec("SELECT says, voice FROM ts_lines WHERE world = ? AND id = ?", worldId, p.id).toArray() as { says: string; voice: string }[])[0];
+    return { proposal_id: p.id, agent: f.agent, says: line?.says ?? f.says, voice: line ? (JSON.parse(line.voice) as Voice) : null, canonical: p.canonical, terms_sha256: p.sha, status: p.status, ...p.checked };
+  }
+
   /** "Get a new quote": new terms for the waiting payment with a new quote, so it must be signed again. */
   private async newQuote(ip: string, world: WorldRow): Promise<Response> {
     const p = this.proposals(world.id).find((x) => x.checked.check === "pass");
@@ -429,13 +480,14 @@ export class TrySignDesk {
     const fx = await this.quoteFor(ip, f.amount);
     if (fx.status === "unavailable") return answer(503, { error: `no new live quote: ${fx.reason}`, fx });
     const expiresAt = new Date(world.expires).toISOString().replace(/\.\d{3}Z$/, "Z");
-    const c = canonical(proposalTerms(f, world.id, expiresAt, fx.quote));
+    const by = (p.terms as { proposed_by?: unknown }).proposed_by;
+    const c = canonical(proposalTerms(f, world.id, expiresAt, fx.quote, typeof by === "string" ? by : undefined));
     const sha = await sha256Hex(c);
     // Written only while it still waits (no await between the read and the write): a signature that ran meanwhile wins.
     const still = (this.sql.exec("SELECT status FROM ts_proposals WHERE world = ? AND id = ?", world.id, p.id).toArray() as { status: string }[])[0];
     if (still?.status !== "waiting") return answer(409, { error: `${p.id} is already signed and ran; there is nothing to quote again` });
     this.sql.exec("UPDATE ts_proposals SET canonical = ?, sha = ? WHERE world = ? AND id = ?", c, sha, world.id, p.id);
-    return answer(200, { proposal: { proposal_id: p.id, agent: f.agent, says: f.says, canonical: c, terms_sha256: sha, status: "waiting", ...p.checked }, fx });
+    return answer(200, { proposal: this.view(world.id, { ...p, canonical: c, sha }), fx });
   }
 
   private async newWorld(url: URL, address: string, nowMs: number): Promise<Response> {
@@ -451,11 +503,16 @@ export class TrySignDesk {
     if (this.hits(ip, "world", nowMs - 3_600_000) >= TRY_SIGN_WORLDS_PER_HOUR) return answer(429, { error: `${TRY_SIGN_WORLDS_PER_HOUR} test worlds an hour from one address; use the one you have, or wait` });
     // The waiting payment carries the live quote (its fx block); the one a rule blocks has none.
     const waiting = FIXED_PROPOSALS.find((p) => checkPayment(p.amount, TEST_WORLD.balance).check === "pass");
-    const fx: FxStatus = waiting ? await this.quoteFor(ip, waiting.amount) : { status: "unavailable", reason: "no payment waits" };
+    // The quote and the agent's sentence are asked for at once (each with its own limits and timeout).
+    const [fx, line] = await Promise.all([
+      waiting ? this.quoteFor(ip, waiting.amount) : Promise.resolve<FxStatus>({ status: "unavailable", reason: "no payment waits" }),
+      waiting ? this.lineFor(ip, waiting) : Promise.resolve(null),
+    ]);
     const rows: [string, string, string, Check][] = [];
     for (const p of FIXED_PROPOSALS) {
       const check = checkPayment(p.amount, TEST_WORLD.balance);
-      const c = canonical(proposalTerms(p, id, expiresAt, check.check === "pass" && fx.status !== "unavailable" ? fx.quote : null));
+      const mine = check.check === "pass" && p === waiting;
+      const c = canonical(proposalTerms(p, id, expiresAt, mine && fx.status !== "unavailable" ? fx.quote : null, TrySignDesk.by(p, mine && line ? line.voice : null)));
       rows.push([p.id, c, await sha256Hex(c), check]);
     }
     // No await from here on: the limits are checked and the world written together, so tries at once cannot pass both.
@@ -474,13 +531,11 @@ export class TrySignDesk {
     for (const [pid, c, sha, check] of rows) {
       this.sql.exec("INSERT INTO ts_proposals (world, id, canonical, sha, check_json, status, execution) VALUES (?, ?, ?, ?, ?, ?, NULL)", id, pid, c, sha, JSON.stringify(check), check.check === "fail" ? "blocked" : "waiting");
     }
+    if (waiting && line) this.sql.exec("INSERT INTO ts_lines (world, id, says, voice) VALUES (?, ?, ?, ?)", id, waiting.id, line.says, JSON.stringify(line.voice));
     return answer(201, {
       world: { id, token, expires_at: expiresAt, ...TEST_WORLD },
       fx,
-      proposals: this.proposals(id).map((p) => {
-        const f = FIXED_PROPOSALS.find((x) => x.id === p.id)!;
-        return { proposal_id: p.id, agent: f.agent, says: f.says, canonical: p.canonical, terms_sha256: p.sha, status: p.status, ...p.checked };
-      }),
+      proposals: this.proposals(id).map((p) => this.view(id, p)),
       // WebAuthn options for the visitor's own passkey: a random user id, no name or e-mail of theirs; user verification
       // required; any authenticator (phone, laptop, security key, a phone over QR), so no authenticatorAttachment.
       passkey_options: {

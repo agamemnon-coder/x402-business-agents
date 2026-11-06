@@ -35,12 +35,13 @@ export const TAMPER_FIELDS = ["amount", "payee_iban", "currency", "fx.client_rat
 export const WHATS_REAL = {
   simulated: [
     "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor. Its balance, its payees and their IBANs are test data (the IBANs' check digits are 00, which no real account has).",
-    "No payment or conversion at Airwallex, no Metal or Claude call, and no money moves: the agent's words are fixed text, and the executor is a stand-in that only records in your test world.",
+    "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor is a stand-in that only records in your test world.",
     "The blocked payment and the lock that stops it are a simulation in your test world. The three examples it links to are real, each from the run it names.",
   ],
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
     "The tamper: the server checks your changed terms against the same signature, for real, and refuses them.",
+    "The Treasury agent's sentence on the waiting payment is a live Claude Haiku call, labelled “Claude Haiku · live”: only the test world's invoice, balance, reserve floor and limit go in, never anything you type. The model only proposes; the limits, the checks and the approval are code and your passkey. Without it (no key on the server, the day's USD 1 budget or the rate limit reached, or no answer in 8 s) the fixed sentence is shown, labelled “fixed text”.",
     "The FX quote is live from the Airwallex sandbox (a test environment): read-only, nothing is converted, no money moves. It is in the terms, so the signature covers its quote id, and an expired quote is refused. Without a live quote (no sandbox key on the server, or the limit reached) the page shows the main run's recorded quote instead, labelled, and it is not in the signature.",
     "The receipt: receipt.json holds the exact terms, their hash, your passkey's signature, its public key and the algorithm. Anyone can check it offline, with no server: npm run verify-receipt -- receipt.json in the repository. Change one field or one cent and it fails. It proves that the holder of that key signed those terms, not who holds it.",
   ],
@@ -380,7 +381,23 @@ const JS = `
     });
   }
 
-  function agentLine(p) { return el("div", "who", [el("span", "av", [ic("landmark")]), p.agent, el("span", "pill", ["fixed text, no model call"])]); }
+  // Who wrote the agent's sentence: Claude Haiku live, a labelled stand-in (local checks only), or the fixed text and why.
+  function voiceLabel(v) {
+    if (v && v.source === "model") return /^claude-haiku/.test(v.model) ? "Claude Haiku · live" : "Stand-in sentence (local check, not Claude)";
+    if (v) return v.reason === "budget" ? "fixed text (budget reached)" : "fixed text (model unavailable)";
+    return "fixed text, no model call";
+  }
+  function agentLine(p) {
+    var pill = el("span", "pill", [voiceLabel(p.voice)]);
+    pill.dataset.voice = p.voice ? (p.voice.source === "model" ? "model" : "fixed-" + p.voice.reason) : "fixed";
+    return el("div", "who", [el("span", "av", [ic("landmark")]), p.agent, pill]);
+  }
+  function voiceMore(p) {
+    var v = p.voice;
+    if (!v) return null;
+    if (v.source === "model") return more("Request id " + (v.request_id || "none") + " (" + v.model + "). The model was given only this test world's invoice, balance, reserve floor and limit, never your words. It only proposes: the limits, the checks and the approval are code and your passkey.");
+    return more("The fixed sentence: " + v.why + ".");
+  }
   function factsOf(p, t) {
     return el("dl", "facts", [
       el("dt", "", ["Amount"]), el("dd", "amount", [amt(t.currency, t.amount)]),
@@ -407,7 +424,7 @@ const JS = `
     var kids = [
       el("p", "eyebrow", ["You are approving · " + p.proposal_id]),
       el("h3", "title", ["Pay " + t.payee + " " + amt(t.currency, t.amount)]),
-      agentLine(p), el("p", "says", [p.says]), facts,
+      agentLine(p), el("p", "says", [p.says]), voiceMore(p), facts,
       el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · waiting for a person"]), el("span", "", [p.waits])]),
       el("div", "", [el("p", "small muted", ["The hash of the exact terms, which your passkey signs" + (x.same ? " (checked on this device):" : ":")]), hashBox(x.mine)]),
       el("details", "terms", [el("summary", "", ["All terms (exactly what is hashed)"]), el("pre", "", [p.canonical])])
@@ -728,8 +745,8 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [
-      "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor; its balance, payees, IBANs and the agent's two proposals (fixed text, no model) are test data.",
-      "No payment or conversion at Airwallex, no Metal or Claude call, and no money moves: the executor only records, in your test world.",
+      "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor; its balance, payees, IBANs and the agent's two proposals are test data.",
+      "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor only records, in your test world. The Treasury agent's sentence may come from Claude Haiku, given the test world's facts only; it only proposes.",
       "Real: your device's passkey signature over the hash of the exact terms, and the server's check of it against the public key your device registered.",
     ],
   }).replace("<body>\n", () => `<body>\n<div class="testband" role="note">${icon("lock", 16)}${esc(TRY_SIGN_LABEL)}</div>\n`);

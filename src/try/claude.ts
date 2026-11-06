@@ -8,7 +8,8 @@ import { callCostMicros } from "../claude/pricing.js";
 import type { Intent, Reading, TryModels } from "./engine.js";
 import type { AgentAsk, AgentReply } from "./world.js";
 
-const HAIKU = "claude-haiku-5-5";
+/** The Haiku model id this repo uses (Try Purser sorts with it; /try/sign's Treasury agent writes its sentence with it). */
+export const HAIKU = "claude-haiku-5-5";
 const SONNET = "claude-sonnet-5-5";
 const INTENTS: Intent[] = ["flight", "hotel", "train", "software", "supplier_payment", "api_data", "purchase", "unclear"];
 
@@ -111,6 +112,47 @@ export function claudeAgentAsk(apiKey: string, fetcher: typeof fetch = fetch, ti
       const model = j.model ?? req.model;
       const micros = callCostMicros(model, { input: j.usage.input_tokens, output: j.usage.output_tokens, cache_read: j.usage.cache_read_input_tokens ?? 0, cache_write: j.usage.cache_creation_input_tokens ?? 0 }) ?? 0;
       return { content, raw: j.content, requestId: res.headers.get("request-id"), stop_reason: j.stop_reason ?? "end_turn", model, ms: Date.now() - started, costUsd: micros / 1e6 };
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+}
+
+/** What one model sentence came back as: the text, the API's request id, its cost, the model that answered. */
+export interface Sentence { text: string; requestId: string | null; costUsd: number; model: string }
+/** Asks for one sentence, given only the instructions and the facts code wrote: no visitor's words ever go in. */
+export type SentenceSource = (input: { system: string; facts: string }) => Promise<Sentence>;
+
+/**
+ * /try/sign (A2): one Messages API call to Haiku with structured output ({"sentence": "…"}), effort low, a few
+ * tokens, and a timeout (8 s by default): the Treasury agent's sentence for the payment it proposes. The model only
+ * proposes words; the limits, the checks and the approval stay in code and the visitor's passkey. The key stays on
+ * the server; errors carry no text from the API.
+ */
+export function claudeSentence(apiKey: string, fetcher: typeof fetch = fetch, timeoutMs = 8_000): SentenceSource {
+  return async ({ system, facts }) => {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const res = await fetcher("https://api.anthropic.com/v1/messages", {
+        method: "POST", signal: ctl.signal,
+        headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({
+          model: HAIKU, max_tokens: 200, system,
+          output_config: { effort: "low", format: { type: "json_schema", schema: { type: "object", additionalProperties: false, required: ["sentence"], properties: { sentence: { type: "string", description: "One short, plain sentence." } } } } },
+          messages: [{ role: "user", content: facts }],
+        }),
+      });
+      if (!res.ok) throw new Error(`the model answered HTTP ${res.status}`);
+      const j = (await res.json()) as ApiResult & { model?: string };
+      if (j.stop_reason === "refusal") throw new Error("the model declined");
+      let v: unknown;
+      try { v = JSON.parse(j.content.find((b) => b.type === "text")?.text ?? ""); } catch { throw new Error("the model gave no answer in the expected shape"); }
+      const text = (v as { sentence?: unknown } | null)?.sentence;
+      if (typeof text !== "string") throw new Error("the model gave no answer in the expected shape");
+      const model = j.model ?? HAIKU;
+      const micros = callCostMicros(model, { input: j.usage.input_tokens, output: j.usage.output_tokens, cache_read: j.usage.cache_read_input_tokens ?? 0, cache_write: j.usage.cache_creation_input_tokens ?? 0 }) ?? 0;
+      return { text, requestId: res.headers.get("request-id"), costUsd: micros / 1e6, model };
     } finally {
       clearTimeout(timer);
     }

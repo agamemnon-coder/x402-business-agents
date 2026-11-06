@@ -118,7 +118,7 @@ describe("the page's frame: three steps, one line of disclaimer, \"What's real?\
     expect(page).toContain(TRY_SIGN_LABEL);
     const wr = block(main, '<details class="wr">', "details").whole;
     for (const l of [...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources]) expect(wr).toContain(l);
-    for (const w of ["test world", "No payment or conversion at Airwallex, no Metal or Claude call, and no money moves", "fixed text", "stand-in", "passkey signature", "server's check", "docs/demo/main-run.json"]) expect(wr).toContain(w);
+    for (const w of ["test world", "No payment or conversion at Airwallex, no Metal call, and no money moves", "fixed text", "stand-in", "passkey signature", "server's check", "docs/demo/main-run.json"]) expect(wr).toContain(w);
     // The old paragraph under the steps is gone: what it said is inside the expander.
     expect(main).not.toContain('class="note"');
     // One "What's real?" on the page: the footer's copy is gone.
