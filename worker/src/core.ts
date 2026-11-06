@@ -85,13 +85,33 @@ const MAX_POLICY_TEXT = 2000;
 /** A chat message to Purser (Ask Purser): the runner reads it and proposes a task card for Face ID. */
 const MAX_ASK_TEXT = 500;
 
+/**
+ * The CSP of every answer that is not a page (JSON, a redirect, the script, the stylesheet, the font, the logos): it
+ * may load nothing, run nothing and be framed by nothing. A page replaces it with its own (src/relay/assets.ts).
+ */
+export const NON_PAGE_CSP = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
 export const COMMON_HEADERS: Record<string, string> = {
   "cache-control": "no-store",
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "x-robots-tag": "noindex, nofollow",
-  // On every answer, JSON included (HF2); workers.dev is HTTPS-only, so this is defence in depth.
-  "strict-transport-security": "max-age=31536000",
+  // On every answer, JSON included (HF2). The whole .dev zone is on the browsers' HSTS preload list, so on workers.dev
+  // this is defence in depth. includeSubDomains covers only names under this Worker's own host (on workers.dev there
+  // are none); behind a custom domain it would also bind that domain's subdomains to HTTPS, so serve the Worker on a
+  // name of its own, never on an apex with plain-HTTP subdomains. No "preload": that is for a registrable domain.
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  // frame-ancestors 'none' is in every CSP; X-Frame-Options says the same to browsers that predate it.
+  "x-frame-options": "DENY",
+  "content-security-policy": NON_PAGE_CSP,
+};
+
+/** What a browser may do on our pages: passkeys for this site only; no camera, microphone, location, payment sheet or USB. */
+export const PERMISSIONS_POLICY = "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()";
+
+/** Every HTML document (each page and the 404): the common headers, the permissions policy and its own window. Its CSP is the page's own. */
+const PAGE_HEADERS: Record<string, string> = {
+  ...COMMON_HEADERS, "content-type": "text/html; charset=utf-8", "permissions-policy": PERMISSIONS_POLICY, "cross-origin-opener-policy": "same-origin",
 };
 
 function json(status: number, body: unknown): Response {
@@ -103,13 +123,7 @@ const error = (status: number, message: string, extra: Record<string, unknown> =
 export function pageResponse(req: Request, pages: Pages): Response | null {
   if (req.method !== "GET" && req.method !== "HEAD") return null;
   const path = new URL(req.url).pathname;
-  const page = (body: string, csp: string) => new Response(body, {
-    headers: {
-      ...COMMON_HEADERS, "content-type": "text/html; charset=utf-8", "content-security-policy": csp,
-      "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
-      "cross-origin-opener-policy": "same-origin",
-    },
-  });
+  const page = (body: string, csp: string) => new Response(body, { headers: { ...PAGE_HEADERS, "content-security-policy": csp } });
   // "/" is Home itself, so a reader without script (a link preview, a fetch) sees it too. With a query (?recorded,
   // ?autonomy, ?signin, ?dashboard…) it is the CFO dashboard's page. The CFO's viewer link keeps its key after the "#",
   // which never reaches a server: Home's script hands a device with a key to ?dashboard (src/redesign/home.ts).
@@ -140,8 +154,10 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
       headers: { ...COMMON_HEADERS, "content-type": "font/woff2", "cache-control": "public, max-age=86400" },
     });
   }
-  if (path.startsWith("/assets/") && Object.hasOwn(pages.images, path.slice("/assets/".length))) {
-    const img = pages.images[path.slice("/assets/".length)]!;
+  // /favicon.ico is Purser's mark (an SVG; browsers go by its type), so a page with no icon link asks for nothing missing.
+  const imageName = path === "/favicon.ico" ? "favicon.svg" : path.startsWith("/assets/") ? path.slice("/assets/".length) : "";
+  if (imageName && Object.hasOwn(pages.images, imageName)) {
+    const img = pages.images[imageName]!;
     return new Response(Uint8Array.from(atob(img.data), (c) => c.charCodeAt(0)), {
       headers: { ...COMMON_HEADERS, "content-type": img.type, "cache-control": "public, max-age=86400" },
     });
@@ -152,7 +168,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
 
 /** Any other address: the clean 404 page when the bundle has one, else plain text. */
 export function notFoundResponse(pages: Pages): Response {
-  if (pages.notFound && pages.csp.notFound) return new Response(pages.notFound, { status: 404, headers: { ...COMMON_HEADERS, "content-type": "text/html; charset=utf-8", "content-security-policy": pages.csp.notFound } });
+  if (pages.notFound && pages.csp.notFound) return new Response(pages.notFound, { status: 404, headers: { ...PAGE_HEADERS, "content-security-policy": pages.csp.notFound } });
   return new Response("not found", { status: 404, headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
 }
 

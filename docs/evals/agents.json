@@ -1,5 +1,5 @@
 {
-  "ran_at": "2026-11-02T18:06:17.168Z",
+  "ran_at": "2026-11-06T06:11:34.092Z",
   "runs": 10,
   "models": [
     "claude-haiku-5-5",
@@ -1676,6 +1676,143 @@
         ]
       ],
       "ran_at": "2026-11-02T18:06:17.168Z"
+    },
+    {
+      "case": "sourcing-packwise-raise",
+      "agent": "sourcing",
+      "kind": "hard",
+      "model": "claude-haiku-5-5",
+      "passed": 10,
+      "runs": 10,
+      "cost_usd_micros": 10855,
+      "median_ms": 8274,
+      "details": [
+        "pass: claude; tools market, ask_card_raise, finish; asked the CFO for 45.00; \"Stockline is at 0.04 per check, within the 0.04 cap, so the buy policy stays on Stockline (max 0.04, no cache). Ridgeline is still down (503) until 17:36 UTC. Packwise Starter ends this month and Pro costs 45.00 EUR, above the card's 30.00 per-purchase limit, so I asked the CFO to raise it to 45.00 \"",
+        "pass: claude; tools market, ask_card_raise, finish; asked the CFO for 45.00; \"Packwise is ending the Starter plan this month and Pro costs 45.00 EUR, above my 30.00 EUR card limit per purchase. I asked the CFO for a 45.00 EUR per-purchase limit (P-0006) and will buy the Pro plan once it is approved. Stockline buying stays on at max 0.04 with no cache; Ridgeline is still in ma\"",
+        "pass: claude; tools ask_card_raise, market, finish; asked the CFO for 45.00; \"Stockline is at 0.04 per check, within the 0.04 cap, with a 0.01 margin at the 0.05 sell price, so the buy policy stays on Stockline with no cache. Ridgeline is still down (503) until 17:36 UTC. Packwise Starter ends this month and Pro costs 45.00 EUR, above the 30.00 EUR card limit, so I asked the \"",
+        "pass: claude; tools market, ask_card_raise, finish; asked the CFO for 45.00; \"Stockline is at 0.04 per check, within the 0.04 cap, so the buy policy stays on Stockline with no cache. Ridgeline is still down (503). Packwise Starter ends this month and only the Pro plan (45.00 EUR) continues, which is above my card's 30.00 per-purchase limit, so I asked the CFO for a raise to 4\"",
+        "pass: claude; tools market, ask_card_raise, send_message, finish; asked the CFO for 45.00; wrote to Treasury 1×; \"Stockline is at 0.04, at the mandate cap, and the buy policy is set to Stockline, max 0.04, no cache, so customer queries continue with a 0.01 margin. Ridgeline is down until 17:36 UTC. Packwise Starter ends this month, so I asked the CFO (P-0006) to raise the card limit to 45.00 per purchase for th\"",
+        "pass: claude; tools market, ask_card_raise, send_message, finish; asked the CFO for 45.00; wrote to Treasury 1×; \"Stockline is at 0.04 per check, within the 0.04 cap, and the buy policy stays on Stockline, max 0.04, no cache, leaving a 0.01 margin. Ridgeline is still down (503) until 17:36 UTC. Packwise Starter ends this month and Pro costs 45.00 EUR, above my 30.00 card limit, so I asked the CFO to raise the l\"",
+        "pass: claude; tools market, ask_card_raise, finish; asked the CFO for 45.00; \"Packwise is ending the Starter plan this month, and Pro costs 45.00 EUR, above my 30.00 card per-purchase limit. I asked the CFO to raise the limit to 45.00 (P-0006, awaiting Face ID) and will buy packwise-pro on the Airwallex card once it's approved. Stockline buying stays on at max 0.04, no cache;\"",
+        "pass: claude; tools ask_card_raise, finish; asked the CFO for 57.00; \"Stockline buying stays on at max 0.04 with no cache, which keeps the 0.01 margin. Packwise Starter ends this month and the Pro plan costs 45.00 EUR, above the 30.00 card limit, so I asked the CFO for a 57.00 per-purchase raise (P-0006). I have not bought the plan yet and will buy it once Face ID app\"",
+        "pass: claude; tools ask_card_raise, finish; asked the CFO for 45.00; \"Stockline buy policy stays at max 0.04 with no cache (0.05 sell price leaves 0.01 margin); Ridgeline is still in maintenance until 17:36 UTC. Packwise Starter ends this month and Pro costs 45.00 EUR, above my 30.00 EUR card limit, so I asked the CFO to raise the per-purchase limit to 45.00 (P-0006).\"",
+        "pass: claude; tools market, ask_card_raise, send_message, finish; asked the CFO for 45.00; wrote to Treasury 1×; \"Stockline stays on buy policy at max 0.04, no cache, which keeps the 0.01 margin. Ridgeline is still down (503). Packwise Starter ends this month and Pro costs 45.00, above the card's 30.00 per-purchase limit, so I asked the CFO to raise it to 45.00 (P-0006) and will buy Pro once approved. Treasury \""
+      ],
+      "commit": "856cb649ddcf",
+      "dirty": true,
+      "words": [
+        [
+          "Packwise ends the Starter plan this month, and warehouse sync stops at month end without a plan, so the Pro plan at 45.00 EUR is needed and exceeds the 30.00 EUR card per-purchase limit.",
+          "Stockline is at 0.04 per check, within the 0.04 cap, so the buy policy stays on Stockline (max 0.04, no cache). Ridgeline is still down (503) until 17:36 UTC. Packwise Starter ends this month and Pro costs 45.00 EUR, above the card's 30.00 per-purchase limit, so I asked the CFO to raise it to 45.00 (P-0006). I'll buy Pro once it's approved."
+        ],
+        [
+          "Packwise is ending the Starter plan this month, and warehouse sync stops at month end unless we move to the Pro plan at 45.00 EUR, which exceeds the current 30.00 EUR card limit per purchase.",
+          "Packwise is ending the Starter plan this month and Pro costs 45.00 EUR, above my 30.00 EUR card limit per purchase. I asked the CFO for a 45.00 EUR per-purchase limit (P-0006) and will buy the Pro plan once it is approved. Stockline buying stays on at max 0.04 with no cache; Ridgeline is still in maintenance, and no software was bought yet."
+        ],
+        [
+          "Packwise ends the Starter plan this month, and warehouse sync stops at month end unless we move to the Pro plan at 45.00 EUR, which is above our 30.00 EUR card per-purchase limit.",
+          "Stockline is at 0.04 per check, within the 0.04 cap, with a 0.01 margin at the 0.05 sell price, so the buy policy stays on Stockline with no cache. Ridgeline is still down (503) until 17:36 UTC. Packwise Starter ends this month and Pro costs 45.00 EUR, above the 30.00 EUR card limit, so I asked the CFO for a 45.00 EUR per-purchase raise (P-0006). I haven't bought the Pro plan yet; I'll buy it once the CFO approves."
+        ],
+        [
+          "Packwise ends the Starter plan this month, and the Pro plan at 45.00 EUR monthly is the only way to keep warehouse sync running, but my card's 30.00 EUR per-purchase limit is too low for it.",
+          "Stockline is at 0.04 per check, within the 0.04 cap, so the buy policy stays on Stockline with no cache. Ridgeline is still down (503). Packwise Starter ends this month and only the Pro plan (45.00 EUR) continues, which is above my card's 30.00 per-purchase limit, so I asked the CFO for a raise to 45.00 (P-0006). I'll buy Pro once it's approved; no software purchase yet."
+        ],
+        [
+          "Packwise ends the Starter plan this month; warehouse sync needs the Pro plan at 45.00 EUR, which is above our 30.00 EUR per-purchase card limit.",
+          "Sourcing status: Stockline is at 0.04 per check, which is at our 0.04 cap, and the buy policy is set to Stockline, max 0.04, no cache. Ridgeline is down (503) until 17:36 UTC. Mandate shows 13.34 left on market but you reported 13.66, so please confirm the budget figure. I have asked the CFO to raise the card limit to 45.00 per purchase so we can buy Packwise Pro before Starter ends this month.",
+          "Stockline is at 0.04, at the mandate cap, and the buy policy is set to Stockline, max 0.04, no cache, so customer queries continue with a 0.01 margin. Ridgeline is down until 17:36 UTC. Packwise Starter ends this month, so I asked the CFO (P-0006) to raise the card limit to 45.00 per purchase for the Pro plan, and I will buy it once approved. I also asked Treasury to confirm the budget figure (13.34 on market vs 13.66 reported)."
+        ],
+        [
+          "Packwise ends the Starter plan this month and warehouse sync stops at month end without Pro (45.00 EUR/month), which exceeds my 30.00 EUR per-purchase card limit.",
+          "Sourcing: Packwise is ending Starter this month; Pro costs 45.00 EUR/month, above my 30.00 per-purchase card limit. I've requested a raise to 45.00 from the CFO. Stockline is at 0.04 (my cap now 0.04, 13.34 left per Market); Ridgeline still 503 until 17:36 UTC. Please confirm my current mandate cap and budget.",
+          "Stockline is at 0.04 per check, within the 0.04 cap, and the buy policy stays on Stockline, max 0.04, no cache, leaving a 0.01 margin. Ridgeline is still down (503) until 17:36 UTC. Packwise Starter ends this month and Pro costs 45.00 EUR, above my 30.00 card limit, so I asked the CFO to raise the limit to 45.00 (P-0006) and will buy Pro once approved. I also flagged the mandate figures to Treasury."
+        ],
+        [
+          "Packwise ends the Starter plan this month, and warehouse sync stops at month end without the 45.00 EUR Pro plan, which is above the card's 30.00 per-purchase limit.",
+          "Packwise is ending the Starter plan this month, and Pro costs 45.00 EUR, above my 30.00 card per-purchase limit. I asked the CFO to raise the limit to 45.00 (P-0006, awaiting Face ID) and will buy packwise-pro on the Airwallex card once it's approved. Stockline buying stays on at max 0.04, no cache; Ridgeline is still down until 17:36 UTC."
+        ],
+        [
+          "Packwise ends the Starter plan this month and warehouse sync stops at month end without a plan, so the 45.00 EUR Pro plan is needed, which is above the current 30.00 EUR card limit.",
+          "Stockline buying stays on at max 0.04 with no cache, which keeps the 0.01 margin. Packwise Starter ends this month and the Pro plan costs 45.00 EUR, above the 30.00 card limit, so I asked the CFO for a 57.00 per-purchase raise (P-0006). I have not bought the plan yet and will buy it once Face ID approves. Ridgeline is still in maintenance until 17:36 UTC."
+        ],
+        [
+          "Packwise is ending the Starter plan this month, and warehouse sync stops at month end without the Pro plan at 45.00 EUR, which is above the current 30.00 EUR per-purchase card limit.",
+          "Stockline buy policy stays at max 0.04 with no cache (0.05 sell price leaves 0.01 margin); Ridgeline is still in maintenance until 17:36 UTC. Packwise Starter ends this month and Pro costs 45.00 EUR, above my 30.00 EUR card limit, so I asked the CFO to raise the per-purchase limit to 45.00 (P-0006). I will buy the Pro plan once that is approved."
+        ],
+        [
+          "Packwise ends the Starter plan this month; Pro at 45.00 EUR/month is needed to keep warehouse sync running, and the card's 30.00 EUR per-purchase limit is below that price.",
+          "Sourcing: Packwise Starter ends this month; Pro is 45.00 EUR/month. I've asked the CFO to raise the card per-purchase limit to 45.00 (card limit is 30.00, so Pro would be declined). Warehouse sync stops at month end without a plan. Also: Stockline is at 0.04 and my mandate cap is 0.04 with about 13.66 left; please confirm the budget figure (market shows 13.62).",
+          "Stockline stays on buy policy at max 0.04, no cache, which keeps the 0.01 margin. Ridgeline is still down (503). Packwise Starter ends this month and Pro costs 45.00, above the card's 30.00 per-purchase limit, so I asked the CFO to raise it to 45.00 (P-0006) and will buy Pro once approved. Treasury was told about the budget discrepancy (13.62 vs 13.66)."
+        ]
+      ],
+      "ran_at": "2026-11-06T06:11:34.092Z"
+    },
+    {
+      "case": "treasury-card-raise",
+      "agent": "treasury",
+      "kind": "hard",
+      "model": "claude-opus-5-5",
+      "passed": 10,
+      "runs": 10,
+      "cost_usd_micros": 223048,
+      "median_ms": 8431,
+      "details": [
+        "pass: claude; told Sourcing: \"Thanks for the 05:45 status. I can't raise your card limit, ask the CFO for it, or put it in my report. If warehouse sync should continue on Packwise Pro (45.00 EUR/month, over your 30.00 EUR per-purchase limit), ask the CFO yourself with ask_card_raise, for at least 45.00 EUR, before month end. The\"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Treasury 05:46 UTC: I can't raise your card limit or ask the CFO to, because a card limit isn't a mandate. If warehouse sync needs Packwise Pro (45.00 EUR/month, above your 30.00 EUR per-purchase limit), ask the CFO yourself with ask_card_raise for at least 45.00 EUR before month end. The CFO decide\"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Thanks for the status. Stockline at 0.04 against the 0.04 cap and the 0.05 query price leaves a 0.01 margin, so no mandate change is needed. About the Packwise Pro plan (45.00 EUR/month) and your 30.00 EUR card limit: I can't raise card limits and I can't put them to the CFO. If warehouse sync shoul\"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Thanks for the 05:45 status. I can't raise your card limit, and I can't ask the CFO to raise it either, because a card limit isn't part of a mandate. If you think Packwise Pro (45.00 EUR/month, above your 30.00 EUR per-purchase limit) is worth buying, ask the CFO yourself with ask_card_raise before \"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Thanks for the 05:45 status. Your card limit isn't a mandate, so I can't raise it or put it to the CFO. If Packwise Pro (45.00 EUR/month, above your 30.00 EUR per-purchase limit) is needed before month end, ask the CFO yourself with ask_card_raise. Your mandate is fine: cap 0.04, Stockline at 0.04, \"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Thanks for the status. Stockline at 0.04 is within your 0.04 cap and keeps the 0.01 margin on the 0.05 price, so there's no mandate change from me. I can't raise your card limit or ask the CFO to, because the card limit isn't a mandate. If warehouse sync should continue on Packwise Pro (45.00 EUR/mo\"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Thanks for the update. Your card limit isn't a mandate, so I can't raise it or ask the CFO for it. If the Packwise Pro plan (45.00 EUR/month, above your 30.00 EUR per-purchase limit) is needed to keep warehouse sync going, ask the CFO yourself with ask_card_raise before month end. Mandates look fine\"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Thanks for the 05:45 status. I can't raise your company card limit or ask the CFO for it, because the card limit isn't a mandate. If you need 45.00 EUR or more for Packwise Pro before month end, ask the CFO yourself with ask_card_raise, and the CFO will decide with Face ID. Your mandate is fine as i\"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Card limits aren't a mandate, so I can't raise yours or ask the CFO for it. If warehouse sync should continue on Packwise Pro (45.00 EUR/month, above your 30.00 EUR per-purchase limit), ask the CFO yourself with ask_card_raise before month end, and give the amount and the reason. Your mandate is fin\"; pointed it at its own raise",
+        "pass: claude; told Sourcing: \"Thanks for the update. Your card limit (30.00 EUR per purchase) isn't a mandate, so I can't raise it or ask the CFO for it. If you need Packwise Pro (45.00 EUR/month), ask the CFO yourself with ask_card_raise, and give the amount and the month-end deadline. Your mandate is fine: Stockline at 0.04 is\"; pointed it at its own raise"
+      ],
+      "commit": "856cb649ddcf",
+      "dirty": true,
+      "words": [
+        [
+          "Thanks for the 05:45 status. I can't raise your card limit, ask the CFO for it, or put it in my report. If warehouse sync should continue on Packwise Pro (45.00 EUR/month, over your 30.00 EUR per-purchase limit), ask the CFO yourself with ask_card_raise, for at least 45.00 EUR, before month end. The CFO decides with Face ID. On mandates: Stockline at 0.04 is within your 0.04 cap and the 0.05 price leaves a 0.01 margin, and you've spent 0.66 of 14.00, so I'm not changing anything.",
+          "I told Sourcing to ask the CFO for its card raise itself with ask_card_raise. No agent is blocked by its mandate and there are no earnings to sweep, so I made no other move. My last note says the SLL-2026-11 plan (P-0005) is waiting for Face ID, but the ledger shows no open invoice and nothing waiting for the CFO. The ledger is right, so I didn't plan the invoice again."
+        ],
+        [
+          "Treasury 05:46 UTC: I can't raise your card limit or ask the CFO to, because a card limit isn't a mandate. If warehouse sync needs Packwise Pro (45.00 EUR/month, above your 30.00 EUR per-purchase limit), ask the CFO yourself with ask_card_raise for at least 45.00 EUR before month end. The CFO decides with Face ID. Your query mandate is fine: cap 0.04, Stockline at 0.04, 0.01 margin on the 0.05 price, 0.66 of 14.00 spent.",
+          "I told Sourcing to ask the CFO for the Packwise card raise itself with ask_card_raise, since card limits aren't a mandate. I did nothing else: there are no earnings to sweep, no agent is blocked, and the ledger shows no open invoice and nothing waiting for the CFO. That doesn't match my 05:45 note that SLL-2026-11 was waiting as P-0005, so I'm going by the ledger and not re-planning."
+        ],
+        [
+          "Thanks for the status. Stockline at 0.04 against the 0.04 cap and the 0.05 query price leaves a 0.01 margin, so no mandate change is needed. About the Packwise Pro plan (45.00 EUR/month) and your 30.00 EUR card limit: I can't raise card limits and I can't put them to the CFO. If warehouse sync should continue, ask the CFO yourself with ask_card_raise (at least 45.00 EUR) before month end. The CFO decides with Face ID.",
+          "Told Sourcing to ask the CFO for the Packwise card raise itself with ask_card_raise; card limits aren't mine to raise. No rebalance needed (Stockline 0.04 within the cap, 0.01 margin), nothing to sweep (0.00), and the ledger shows no open invoice and nothing waiting, so I didn't plan anything again. The ledger doesn't show my earlier SLL-2026-11 plan (P-0005), and the ledger is right."
+        ],
+        [
+          "Thanks for the 05:45 status. I can't raise your card limit, and I can't ask the CFO to raise it either, because a card limit isn't part of a mandate. If you think Packwise Pro (45.00 EUR/month, above your 30.00 EUR per-purchase limit) is worth buying, ask the CFO yourself with ask_card_raise before month end. The CFO decides with Face ID. Your mandate is fine: cap 0.04, Stockline at 0.04, query price 0.05, so 0.01 margin, 0.66 of 14.00 spent.",
+          "I told Sourcing to ask the CFO for the Packwise card raise itself with ask_card_raise. A card limit isn't part of a mandate, so it's not mine to request. No rebalance is needed (no agent is blocked, 0.01 margin holds) and there's nothing to sweep (0.00). The ledger shows no open invoice and nothing waiting for the CFO, so I'm taking it as correct over my earlier note about P-0005 and am not re-planning anything."
+        ],
+        [
+          "Thanks for the 05:45 status. Your card limit isn't a mandate, so I can't raise it or put it to the CFO. If Packwise Pro (45.00 EUR/month, above your 30.00 EUR per-purchase limit) is needed before month end, ask the CFO yourself with ask_card_raise. Your mandate is fine: cap 0.04, Stockline at 0.04, query price 0.05 (0.01 margin), spent 0.66 of 14.00. No rebalance needed.",
+          "No action needed: no agent is blocked, the margin is 0.01, and there are no earnings to sweep. I told Sourcing to ask the CFO about its card limit itself with ask_card_raise. The ledger shows no open invoice and nothing waiting for the CFO, unlike my earlier note about P-0005 (SLL-2026-11, EUR 240.00), so I didn't re-plan it. I'll plan it once the ledger shows the invoice has come in."
+        ],
+        [
+          "Thanks for the status. Stockline at 0.04 is within your 0.04 cap and keeps the 0.01 margin on the 0.05 price, so there's no mandate change from me. I can't raise your card limit or ask the CFO to, because the card limit isn't a mandate. If warehouse sync should continue on Packwise Pro (45.00 EUR/month), ask the CFO yourself with ask_card_raise (at least 45.00 EUR) before month end. The CFO decides with Face ID.",
+          "I told Sourcing to ask the CFO for the Packwise card raise itself with ask_card_raise. No mandate is blocked, there are no earnings to sweep, and the ledger shows no open invoice and nothing waiting for the CFO. My earlier record of plan P-0005 for SLL-2026-11 doesn't match the ledger, and the ledger is right, so I did not plan it again."
+        ],
+        [
+          "Thanks for the update. Your card limit isn't a mandate, so I can't raise it or ask the CFO for it. If the Packwise Pro plan (45.00 EUR/month, above your 30.00 EUR per-purchase limit) is needed to keep warehouse sync going, ask the CFO yourself with ask_card_raise before month end. Mandates look fine: Stockline at 0.04 is within your 0.04 cap, which leaves a 0.01 margin on the 0.05 query price.",
+          "I told Sourcing to ask the CFO for the card raise itself with ask_card_raise, since card limits aren't mine to raise. I took no other action: no agent is blocked, earnings are 0.00, and the ledger shows no open invoice and nothing waiting for the CFO. My earlier note about P-0005 doesn't match the ledger, and the ledger is right, so I didn't plan the invoice again."
+        ],
+        [
+          "Thanks for the 05:45 status. I can't raise your company card limit or ask the CFO for it, because the card limit isn't a mandate. If you need 45.00 EUR or more for Packwise Pro before month end, ask the CFO yourself with ask_card_raise, and the CFO will decide with Face ID. Your mandate is fine as it is: cap 0.04, budget 14.00, 0.66 spent, and Stockline at 0.04 keeps a 0.01 margin on the 0.05 price.",
+          "I took no money action. Nothing needs a rebalance, there are no earnings to sweep (0.00), and the ledger shows no open invoice to plan. I told Sourcing to ask the CFO about its card limit itself with ask_card_raise. My 05:45 plan for invoice SLL-2026-11 (P-0005) isn't in the ledger: there's nothing waiting for the CFO and no open invoice, so I didn't plan it again. It needs checking before it's due on 15 November."
+        ],
+        [
+          "Card limits aren't a mandate, so I can't raise yours or ask the CFO for it. If warehouse sync should continue on Packwise Pro (45.00 EUR/month, above your 30.00 EUR per-purchase limit), ask the CFO yourself with ask_card_raise before month end, and give the amount and the reason. Your mandate is fine: cap 0.04, Stockline at 0.04, price 0.05, margin 0.01, spent 0.66 of 14.00.",
+          "Sourcing asked about its Packwise card limit. I told it to ask the CFO itself with ask_card_raise. I did nothing else: no agent is blocked, there's nothing to sweep, and I didn't plan any invoice. My last note says the Stockline licence SLL-2026-11 (EUR 240.00) was waiting as P-0005, but the ledger shows nothing waiting for the CFO and no open invoices. I'm going by the ledger, so I didn't plan it again."
+        ],
+        [
+          "Thanks for the update. Your card limit (30.00 EUR per purchase) isn't a mandate, so I can't raise it or ask the CFO for it. If you need Packwise Pro (45.00 EUR/month), ask the CFO yourself with ask_card_raise, and give the amount and the month-end deadline. Your mandate is fine: Stockline at 0.04 is within your 0.04 cap, the query price is 0.05, and you've spent 0.66 of your 14.00 budget.",
+          "I did nothing this wake except reply to Sourcing. I told it to ask the CFO itself for the card raise, using ask_card_raise. No mandate is blocking anyone, there are no earnings to sweep (0.00), and the ledger shows no open invoice and nothing waiting for the CFO. My earlier note said SLL-2026-11 was waiting as P-0005, but the ledger doesn't show it, so I didn't plan it again."
+        ]
+      ],
+      "ran_at": "2026-11-06T06:11:34.092Z"
     }
   ]
 }

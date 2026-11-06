@@ -1,7 +1,15 @@
 # Security artefacts
 
-- `sbom.cdx.json`: the software bill of materials for the runtime dependencies (CycloneDX 1.5, `npm run sbom`; 167
-  components on 2 November). CI regenerates it on every push (job `security`).
+- `sbom.cdx.json`: the software bill of materials for the runtime dependencies (CycloneDX 1.5, `npm run sbom`;
+  regenerated on 6 November 2026 from a clean `npm ci` of this lockfile: 167 components, the same names and versions as
+  on 2 November). CI regenerates it on every push (job `security`).
+- Supply chain (checked 6 November 2026): every GitHub Action in `.github/workflows/` is pinned to a full commit SHA
+  with its tag in a comment (checked against the tags: checkout v4.2.2, setup-node v4.4.0, gitleaks-action v2.3.9);
+  the gitleaks image is pinned by digest too. Every job installs with `npm ci` (the lockfile, with its integrity
+  hashes), the Worker with its own. Dependabot (`.github/dependabot.yml`) opens weekly update pull requests for npm
+  (root and `worker/`) and the Actions. `npm audit --audit-level=high`: 0 vulnerabilities in the root and in
+  `worker/` (0 of any level; CI fails on any, `--audit-level=low`). Not pinned by hash: Semgrep (`pip install
+  semgrep==1.180.0`, a version pin) and the TAP interop job's reference proxy (`npm install --before`, it ships no lockfile).
 - Static analysis: Semgrep 1.180.0 with its public TypeScript, Node.js, secrets and OWASP Top Ten rule sets, in CI (job `security`),
   blocking since 2 November (first run: 110 rules, 279 files, 0 findings). Results stay on the runner (metrics off).
   With the OWASP set: 598 rules loaded, 118 of them apply to our TypeScript, 279 files, 0 findings (CI, f88389c).

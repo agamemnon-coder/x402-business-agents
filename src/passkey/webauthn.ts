@@ -33,12 +33,27 @@ const bytes = (b64url: string) => new Uint8Array(Buffer.from(b64url, "base64url"
 export type Verified<T> = ({ ok: true } & T) | { ok: false; reason: string };
 
 /**
+ * Whether the browser ran the ceremony inside a frame on another site. Our pages are never framed (CSP
+ * frame-ancestors 'none'), the relay Worker refuses one, and so does the runner, which trusts nothing the relay
+ * passes on: @simplewebauthn accepts crossOrigin without a topOrigin (Safari sends none), so it is checked here (A1).
+ */
+function framed(clientDataJSON: string): boolean {
+  try {
+    return (JSON.parse(Buffer.from(clientDataJSON, "base64url").toString("utf8")) as { crossOrigin?: unknown }).crossOrigin === true;
+  } catch {
+    return false; // not JSON: the verifier refuses it anyway
+  }
+}
+const FRAMED = "the passkey was used inside a frame on another site (cross-origin)";
+
+/**
  * Verifies a passkey's signature over a proposal's terms hash. `counter` is the last counter seen; offline
  * re-verification passes 0, which accepts any counter a stored signature carries.
  */
 export async function verifyApprovalSignature(
   response: AuthenticationResponseJSON, termsSha256: string, pk: PasskeyRow, counter = pk.counter,
 ): Promise<Verified<{ newCounter: number }>> {
+  if (framed(response.response.clientDataJSON)) return { ok: false, reason: FRAMED };
   try {
     const r = await verifyAuthenticationResponse({
       response,
@@ -62,6 +77,7 @@ export async function verifyApprovalSignature(
 export async function verifyEnrolmentResponse(
   response: RegistrationResponseJSON, w: EnrolmentWindow,
 ): Promise<Verified<{ credentialId: string; publicKey: string; counter: number; aaguid: string; transports: string[] | null }>> {
+  if (framed(response.response.clientDataJSON)) return { ok: false, reason: FRAMED };
   try {
     const r = await verifyRegistrationResponse({
       response, expectedChallenge: w.challenge, expectedOrigin: w.origin, expectedRPID: w.rp_id,
