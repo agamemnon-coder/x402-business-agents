@@ -118,7 +118,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   passkeys as owners, clearing, clearing load, receive policy, compliance) are folded below it, each dated with its
   run record. A review of Purser's use of `metal-agent` and `metal-pay` against their own docs
   ([metal-review.md](../metal-review.md)) fixed four things: a pull retried after a mandate replace first asks the old
-  credential, so it is never paid twice; a clearing wallet is kept for one Clearing deployment; a lost clearing answer
+  credential, so it is never paid twice (this did not occur in the main run: its 4 pulls, 1 sweep and 3 refunds, were each paid once with their own transaction, and none was retried across a mandate replace; a regression test, `test/metal-pull-after-replace.test.ts`, fails without the fix); a clearing wallet is kept for one Clearing deployment; a lost clearing answer
   is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
   its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
   metal-pay already had what we asked for. 2549 tests in 259 files, all passing.
