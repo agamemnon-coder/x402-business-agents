@@ -205,6 +205,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   hand-off fault; fixed: 6/10 → 10/10", with a note that 6/10 → 10/10 is the eval rebuilt from rel-1's moment, before
   and after the fix, and that rel-1b then passed every step. Every number is read from its record. The TAP remark under
   the figures is gone: TAP is on /visa and in the footer link. 2634 tests in 267 files, all passing.
+- 6 November, the CFO's view, visible (Max's last round, item 4): "See the CFO's view" on Home and in Proof's head, to
+  the CFO dashboard's replay of the main run (/?autonomy: public, read-only, no viewer key). It opens at its top with
+  one line: "This is what the CFO opens: what the agents did, what waits for a signature, and every limit." Before the
+  link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
+  HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2644 tests in 268 files, all passing.
 
 ## Real, and ours
 
