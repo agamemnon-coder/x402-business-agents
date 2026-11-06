@@ -1,13 +1,14 @@
-# Purser: the pitch in three lengths
+# Purser: the pitch
 
-For Max, in English, to say out loud. One sentence per row, at most 14 words, one message each; the only longer one
-is the core line, word for word. Every figure is the main run's (3 November 2026, world `main-1`, frozen commit
-`35e1cac`), and every row names where it comes from. `test/pitch.test.ts` checks the figures against the record, the
-length of each sentence and the core line.
+For Max, in English, to say out loud. First the **Demo Day pitch** (3 minutes, the live demo of `/try/sign` first);
+below it the earlier three lengths, kept for when there is no live demo (the 3-minute version there plays the main
+run's replay instead). One sentence per row, at most 14 words, one message each; the only longer one is the core line,
+word for word. Every figure is the main run's (3 November 2026, world `main-1`, frozen commit `35e1cac`) or a dated
+record's, and every row names where it comes from. `test/pitch.test.ts` checks the figures against the record and the
+length of each sentence; `test/demo-day-pack.test.ts` checks the Demo Day pitch's words against its timing.
 
-The run order is the film's (`docs/video/premiere-script.md`): the hook, the run, the jury's own signature, why to
-trust it, the close. Demo Day timing, clicks and plan B per step: [demo-day.md](demo-day.md). Questions:
-[qa.md](qa.md).
+Demo Day timing, clicks and a fallback per step: [demo-day.md](demo-day.md). Questions: [qa.md](qa.md). One page
+beside the laptop: [cheat-sheet.pdf](cheat-sheet.pdf).
 
 **Sources, short:**
 
@@ -16,8 +17,94 @@ trust it, the close. Demo Day timing, clicks and plan B per step: [demo-day.md](
   named in the row: `stopStory`, `timings`, `faceIdDecisions`, `split`, `disputeStory`, `fxOf`, `letThroughOf`).
 - **README:** [README.md](../../README.md), "The main run" and "What is real, what is mock".
 - **Try:** `/try/sign`, its code in `worker/src/trySign.ts` (`FIXED_PROPOSALS`, `checkPayment`) and `src/try/sign.ts`.
+- **Airwallex read back (6 November, GET only):** [the transfer](../runs/airwallex-transfer-approval-2026-11-06.json)
+  and [the cards](../runs/airwallex-cards-2026-11-06.json), matched to the record in `src/redesign/airwallexProof.ts`.
+- **Business case (a hypothesis, not validated):** [docs/business/](../business/README.md).
 
 Max says the figures as words ("twenty-four"); they are written as digits here so the test can read them.
+
+## Demo Day: the 3-minute pitch (19 November)
+
+Four parts, with the live demo early. Max speaks at about **2.3 words a second**; each part's budget is its seconds
+times 2.3, and the words written stay under it, so the taps, the Face ID prompts and the tab switches fit in the rest.
+The words are counted the way `test/demo-day-pack.test.ts` counts them (the "Max says" column only).
+
+- **The problem, and why now:** 0:00–0:20 (20 s); budget 46 words; written 38 words; about 17 s of speech, 3 s
+  for a pause.
+- **Live: sign, then tamper:** 0:20–1:30 (70 s); budget 161 words; written 116 words; about 50 s of speech, 20 s for
+  two Face ID prompts and the server's answers.
+- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 102 words; about 44 s of speech, 6 s for two tab
+  switches.
+- **The business and the ask:** 2:20–3:00 (40 s); budget 92 words; written 84 words; about 37 s of speech, 3 s for a
+  pause.
+- **Total:** 3:00; budget 414 words; written 340 words; about 2:28 of speech, 32 s for taps and pauses.
+
+Before you start: the shared screen shows the deck, slide 1. Your iPhone is mirrored to the screen (the path tested on
+6 November: Safari, Face ID), with `/try/sign` open and **not started**: a world started now gets a fresh FX quote,
+which lasts up to 15 minutes. Tabs on the laptop: [/proof](https://kit11.max-31b.workers.dev/proof),
+[/metal](https://kit11.max-31b.workers.dev/metal). If the room cannot show a phone, run `/try/sign` in the laptop's
+browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day.md), "The Demo Day script".
+
+### 0:00–0:20 · The problem, and why now
+
+| Do | Max says | Source |
+|---|---|---|
+| Deck slide 1. Look at the jury, not the screen. | AI agents can now spend company money. | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
+| | But a prompt is not a financial control; Airwallex says so itself. | [docs/business/problem.md](../business/problem.md) [S1]: "A prompt is not a financial control." (Airwallex, 5 October 2026) |
+| | Why now? Since 2025, the payment networks have launched rails for agents. | [docs/business/problem.md](../business/problem.md), "Why now (sourced)": the agent-payment programmes of April 2025 onwards |
+| Pause one beat. | So who signs off? | The film's hook (`01-hook`) |
+| Pick up the phone. | This is Purser. | README, title |
+
+### 0:20–1:30 · Live: sign, then tamper (`/try/sign`)
+
+| Do | Max says | Source |
+|---|---|---|
+| Hold the phone up; the mirror shows `/try/sign`. | Live, on my phone. | Try: `/try/sign`, tested on Max's iPhone on 6 November ([release-notes.md](release-notes.md)) |
+| Tap **Start: show me the proposal**. | This is a test world, made for me just now; nothing real moves. | `TRY_SIGN_LABEL` (`src/try/sign.ts`); `TRY_SIGN_TTL_MS`, one hour (`worker/src/trySign.ts`) |
+| Point at the first card, blocked. | A Treasury agent proposes two payments. | `FIXED_PROPOSALS` (`worker/src/trySign.ts`): T-0001 and T-0002 |
+| | The first would take us below the reserve floor. | `checkPayment`: the reserve floor blocks T-0001 |
+| | A rule in code blocks it; no signature can approve it. | `worker/src/trySign.ts`: "blocked by a rule: … No signature can approve it." |
+| Scroll to the second card, the approval sheet. | The second is over the agent's own limit, so it waits for me. | `checkPayment`: above what an agent may pay alone, T-0002 waits for a signature |
+| Point at payee, IBAN, amount and the FX quote. | The sheet shows payee, IBAN, amount and an FX quote. | The sheet in `src/try/sign.ts`; the quote from `worker/src/fxQuote.ts` (live from the Airwallex sandbox, or the main run's, labelled) |
+| Point at the hash under them. | My Face ID signs the hash of exactly these terms. | `src/try/sign.ts`: "The hash of the exact terms, which your passkey signs" |
+| Tap **Create your test passkey** (Face ID), then **Sign with Face ID** (Face ID). Wait for the green check. | | `src/try/sign.ts`: the two buttons |
+| | Signed and verified: this signature only fits these exact terms. | `TRY_SIGN_SIGNED` |
+| | Now I change the amount by one cent. | Try: the button "Try to tamper: change the amount by 0.01" |
+| Tap **Try to tamper: change the amount by 0.01**. | Same signature. | `worker/src/trySign.ts`: the same verifier checks the changed terms |
+| Point at the red line. | Refused. | Try: "Refused: the same signature does not verify for the changed terms" |
+| | One cent changed. The signature is worthless. | `TAMPER_VERDICT.cent` (`src/try/sign.ts`) |
+| Put the phone down. | A button says yes to anything; this signature fits one payment only. | `DIFFERENTIATORS` (`src/config/brand.ts`); [docs/phone-approval.md](../phone-approval.md) |
+
+### 1:30–2:20 · The proof
+
+| Do | Max says | Source |
+|---|---|---|
+| Laptop: tab [/proof](https://kit11.max-31b.workers.dev/proof), at "The hash the CFO signed travels with the payment." | On 3 November, three Claude agents ran it live, on test money. | Log: [the main run](../runs/2026-11-03-main-run.md), Airwallex sandbox and Metal testnet |
+| | Proof one: Airwallex's own record of our 240 euro SWIFT payment. | [airwallex-transfer-approval-2026-11-06.json](../runs/airwallex-transfer-approval-2026-11-06.json): transfer `03360bfa…3985`, EUR 240, SWIFT, PAID (read with GET only) |
+| Point at the two hashes, side by side. | It carries the hash I signed with Face ID. | Same record, `metadata.approval_sha256` `797d4483…abcd` = P-0005's `terms_sha256`, approved by Max with his passkey (record seq 360); matched in code (`hashTravel`, `src/redesign/airwallexProof.ts`) |
+| | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: 3 of 3 cards match the CFO policy |
+| Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Metal. | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
+| | We switched off our own check once; Metal refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
+| | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Metal testnet"; Record: `payments` (onChain 86) |
+| Back to [/proof](https://kit11.max-31b.workers.dev/proof), the Claude figure. | Proof three: Claude made 24 of 24 decisions, with 0 fallbacks. | Record: `split` (24 of 24, 0 fallbacks) |
+| | Said plainly: the second approver was a test passkey, and settlement is simulated. | `SECOND_APPROVER`; `SANDBOX_SETTLED` (`src/config/brand.ts`); README, "What is real, what is mock" |
+
+### 2:20–3:00 · The business and the ask
+
+| Do | Max says | Source |
+|---|---|---|
+| Deck slide 10: the QR to `/try/sign`. | Purser is for finance teams on Airwallex whose AI agents spend money. | [docs/business/model.md](../business/model.md), "Who buys and who uses it (hypothesis)" |
+| | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE` (`src/submission/deck.ts`) |
+| | We'd charge a monthly fee per company, with agents included. | [docs/business/model.md](../business/model.md), "Intended pricing (hypothesis)" |
+| | That is a hypothesis: no customer has seen a price yet. | [docs/business/model.md](../business/model.md): "no customer has seen a price" |
+| | The more agent features Airwallex ships, the more there is to govern. | [docs/business/model.md](../business/model.md), "Risks": "the more there is for Purser to govern" |
+| Look at the jury. | Our ask: we're looking for design partners on Airwallex. | The ask; [docs/business/roadmap.md](../business/roadmap.md): "Test the demand hypothesis" comes first |
+| | Finance teams whose agents already spend, or soon will. | [docs/business/model.md](../business/model.md), "Buyer" (hypothesis) |
+| Point at the QR; leave it up for the questions. | Scan the code, and sign one yourself. | Deck slide 10; `docs/media/try-sign-qr.png` |
+| | Thank you. | Max |
+
+If a part runs over in rehearsal, cut in this order: "Put the phone down" line ("A button says yes…"), then "Finance
+teams whose agents already spend, or soon will.", then "The more agent features Airwallex ships…".
 
 ## 1. The elevator pitch (30 seconds)
 
