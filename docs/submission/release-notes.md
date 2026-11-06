@@ -121,7 +121,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   credential, so it is never paid twice; a clearing wallet is kept for one Clearing deployment; a lost clearing answer
   is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
   its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
-  metal-pay already had what we asked for. 2547 tests in 259 files, all passing.
+  metal-pay already had what we asked for. 2549 tests in 259 files, all passing.
 
 ## Real, and ours
 

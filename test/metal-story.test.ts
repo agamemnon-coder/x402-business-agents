@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { metalStoryHtml } from "../src/redesign/partners.js";
-import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, SEPARATE_RUNS, metalStory, separateRuns } from "../src/redesign/metalStory.js";
+import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, SEPARATE_RUNS, explorerLink, metalStory, separateRuns } from "../src/redesign/metalStory.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { esc } from "../src/redesign/ui.js";
 import { METAL_PAGE } from "../src/servers/dashboard.js";
@@ -98,12 +98,29 @@ describe("the top of /metal tells the main run's Metal story from its record", (
     expect(hrefs.length).toBeGreaterThanOrEqual(8);
     for (const h of hrefs) {
       if (h === story.payments.checked.href) continue;
-      expect(h).toMatch(new RegExp(`^${EXPLORER}/(tx/0x[0-9a-f]{64}|address/0x[0-9a-fA-F]{40})$`));
-      expect(raw).toContain(h.split("/").at(-1)!);
+      const link = explorerLink(h);
+      expect(link, h).not.toBeNull();
+      expect(raw).toContain(link!.id);
     }
     expect(hrefs).toContain(`${EXPLORER}/address/${rec.snapshot.world.business}`);
     // At least one tx for each of the four claims.
     expect(hrefs.filter((h) => h.includes("/tx/")).length).toBeGreaterThanOrEqual(story.mandates.length + 1 + story.replace!.steps.length);
+  });
+});
+
+describe("an explorer link", () => {
+  const TX = `0x${"ab".repeat(32)}`;
+  it("is a tx or an address on Metal's testnet explorer, its host compared exactly", () => {
+    expect(explorerLink(`${EXPLORER}/tx/${TX}`)).toEqual({ kind: "tx", id: TX });
+    expect(explorerLink(`${EXPLORER}/address/0x6e621D0f1ff6a03cAF1dbFE9747eCEc4513Efefc`)).toEqual({ kind: "address", id: "0x6e621D0f1ff6a03cAF1dbFE9747eCEc4513Efefc" });
+  });
+  it("refuses look-alike hosts and anything else", () => {
+    for (const bad of [
+      `https://testnetXmetalntwx.com/tx/${TX}`, `https://testnet.metalntwx.com.evil.test/tx/${TX}`, `https://metalntwx.com.evil.test/tx/${TX}`,
+      `https://evil.test/testnet.metalntwx.com/tx/${TX}`, `https://xtestnet.metalntwx.com/tx/${TX}`, `http://testnet.metalntwx.com/tx/${TX}`,
+      `https://user@testnet.metalntwx.com/tx/${TX}`, `https://testnet.metalntwx.com:8443/tx/${TX}`, `https://testnet.metalntwx.com/tx/${TX}?x=1`,
+      `https://testnet.metalntwx.com/tx/0x12`, `https://testnet.metalntwx.com/block/1`, "not a url", "", null,
+    ]) expect(explorerLink(bad), String(bad)).toBeNull();
   });
 });
 

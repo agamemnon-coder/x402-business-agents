@@ -7,7 +7,22 @@
 import { readFileSync } from "node:fs";
 import { payments, type AgentId, type Proof, type RunRecord } from "./run.js";
 
-export const EXPLORER = "https://testnet.metalntwx.com";
+export const EXPLORER_HOST = "testnet.metalntwx.com";
+export const EXPLORER = `https://${EXPLORER_HOST}`;
+
+/**
+ * A link to one transaction or one address on Metal's testnet explorer, and nothing else: parsed as a URL and its
+ * host compared exactly (never matched as a pattern, so a look-alike host such as metalntwx.com.evil.test fails).
+ */
+export function explorerLink(href: string | null | undefined): { kind: "tx" | "address"; id: string } | null {
+  let u: URL;
+  try { u = new URL(href ?? ""); } catch { return null; }
+  if (u.protocol !== "https:" || u.hostname !== EXPLORER_HOST || u.port || u.username || u.password || u.search || u.hash) return null;
+  const tx = /^\/tx\/(0x[0-9a-fA-F]{64})$/.exec(u.pathname);
+  if (tx) return { kind: "tx", id: tx[1]! };
+  const address = /^\/address\/(0x[0-9a-fA-F]{40})$/.exec(u.pathname);
+  return address ? { kind: "address", id: address[1]! } : null;
+}
 export const REPO_BLOB = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/";
 /** The main run's payment-by-payment check against the chain (`npm run data-qa`, 3 November). */
 export const MAIN_RUN_CHECK = "docs/runs/2026-11-03-main-run-data-qa.md";
@@ -106,6 +121,6 @@ export function separateRuns(): SeparateRun[] {
     }
     const f = feature(run.id);
     if (!f) return [];
-    return [{ id: run.id, date: run.date, title: f.title, what: `${day}: ${f.figure}`, proofs: f.proofs.filter((p) => p.href?.startsWith(`${EXPLORER}/tx/`)), record }];
+    return [{ id: run.id, date: run.date, title: f.title, what: `${day}: ${f.figure}`, proofs: f.proofs.filter((p) => explorerLink(p.href)?.kind === "tx"), record }];
   });
 }
