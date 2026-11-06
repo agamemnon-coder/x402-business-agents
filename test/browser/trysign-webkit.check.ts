@@ -7,7 +7,8 @@
 // computed on the device (canonical JSON and SHA-256 in WebKit) and equal to the hash the server sent and to one
 // computed here in Node, its signing button off until there is a passkey, the passkey button ready; no console or CSP
 // error; the page no wider than the screen. If this WebKit build has no WebAuthn at all, the page must say so and offer
-// nothing to click, and the check says which of the two it saw. CI runs it (.github/workflows/ci.yml, job judge).
+// nothing to click, and the check says which of the two it saw. CI runs it (.github/workflows/ci.yml, job judge); there
+// (Playwright's WebKit on Ubuntu, 6 Nov) the build has no PublicKeyCredential, so CI sees the fallback and the layout.
 
 import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";

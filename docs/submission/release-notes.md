@@ -59,7 +59,8 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   signature counter, once used, must grow; and, one test per field of the terms, that a changed field is refused. Two
   fixes: the runner now refuses a passkey used inside a frame on another site (cross-origin), as the relay already did;
   /try/sign's API refuses unknown or mistyped fields and answers any internal error with a fixed message. /try/sign is
-  also checked in WebKit up to the passkey step. 2432 tests in 249 files, all passing.
+  also opened in WebKit in CI: Playwright's Linux WebKit has no WebAuthn, so it checks the page's honest "no passkeys"
+  answer and its layout, not the visit. 2432 tests in 249 files, all passing.
 
 ## Real, and ours
 
