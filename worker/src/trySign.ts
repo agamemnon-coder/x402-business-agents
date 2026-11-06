@@ -483,6 +483,11 @@ export class TrySignDesk {
     this.sql.exec("UPDATE ts_creds SET counter = ? WHERE world = ? AND id = ?", v.counter, world.id, cred.id);
     this.sql.exec("UPDATE ts_proposals SET status = 'executed', execution = ? WHERE world = ? AND id = ?", JSON.stringify(execution), world.id, p.id);
     this.sql.exec("UPDATE ts_worlds SET balance = ? WHERE id = ?", execution.balance_after, world.id);
-    return answer(200, { verified: true, checks: ["signature (ES256)", "challenge = the terms' SHA-256", "origin", "RP id", "user present", "user verified", "counter"], terms_sha256: sha, executed: execution });
+    // The public key it verified against (public by nature: it can check signatures, never make one), so the page can
+    // hand the visitor a receipt anyone can verify offline (npm run verify-receipt).
+    return answer(200, {
+      verified: true, checks: ["signature (ES256)", "challenge = the terms' SHA-256", "origin", "RP id", "user present", "user verified", "counter"], terms_sha256: sha, executed: execution,
+      public_key: { kty: "EC", crv: "P-256", x: cred.x, y: cred.y }, algorithm: "ES256",
+    });
   }
 }

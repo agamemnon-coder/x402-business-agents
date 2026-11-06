@@ -139,6 +139,11 @@ describe("the page's frame: three steps, one line of disclaimer, \"What's real?\
     expect(main).toContain('<p class="outcome" id="t-verdict" hidden></p>');
   });
 
+  it("its one inline script parses (it lives in a template string, where a stray escape breaks it)", () => {
+    const js = block(page, "<script>", "script").inner;
+    expect(() => new Function(js)).not.toThrow();
+  });
+
   it("never says certified", () => {
     expect(page).not.toMatch(/certif/i);
   });
