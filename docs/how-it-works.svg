@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 24 920 372" width="920" height="372" role="img" aria-labelledby="t d">
+  <title id="t">How Purser checks an agent's payment</title>
+  <desc id="d">An agent's payment first meets Purser's policy check. Within the limits the agent pays itself, under its own Metal mandate or Airwallex card limit. Beyond them it becomes a proposal: the CFO's passkey signs the SHA-256 of the exact terms, an executor re-hashes the terms and runs only if they match, then calls Airwallex or Metal. Every step appends a row to a hash-chained audit log.</desc>
+  <style>
+    .bg { fill: #ffffff; }
+    .box { fill: #f6f8fa; stroke: #d1d9e0; stroke-width: 1.5; }
+    .key { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.5; }
+    .h { fill: #1f2328; font: 600 15px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .s { fill: #59636e; font: 12px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .c { fill: #1f2328; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .l { fill: #59636e; font: italic 12px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .a { fill: none; stroke: #59636e; stroke-width: 1.6; }
+    .k { fill: none; stroke: #0969da; stroke-width: 1.8; }
+    .d { fill: none; stroke: #8c959f; stroke-width: 1.2; stroke-dasharray: 4 4; }
+    .tip { fill: #59636e; }
+    .tipk { fill: #0969da; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d1117; }
+      .box { fill: #161b22; stroke: #3d444d; }
+      .key { fill: #0c2d6b; stroke: #4493f8; }
+      .h, .c { fill: #e6edf3; }
+      .s, .l { fill: #9198a1; }
+      .a { stroke: #9198a1; }
+      .k { stroke: #4493f8; }
+      .d { stroke: #656c76; }
+      .tip { fill: #9198a1; }
+      .tipk { fill: #4493f8; }
+    }
+  </style>
+  <defs>
+    <marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="tip" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="mk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="tipk" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+  <rect class="bg" x="0" y="24" width="920" height="372" rx="8"/>
+
+  <!-- Within the limits: no approval, the agent pays itself; Metal and Airwallex hold their own limit too. -->
+  <path class="a" d="M278,120 V64 H824 V116" marker-end="url(#m)"/>
+  <text class="l" x="551" y="56" text-anchor="middle">within the limits: no approval; the agent pays under its own mandate or card limit</text>
+
+  <!-- The main line: agent, policy, approval, executor, the rails. -->
+  <rect class="box" x="30" y="120" width="132" height="110" rx="8"/>
+  <text class="h" x="96" y="146" text-anchor="middle">Agent</text>
+  <text class="s" x="96" y="170" text-anchor="middle">Claude decides</text>
+  <text class="s" x="96" y="188" text-anchor="middle">and proposes;</text>
+  <text class="s" x="96" y="206" text-anchor="middle">holds no owner key</text>
+
+  <rect class="box" x="212" y="120" width="132" height="110" rx="8"/>
+  <text class="h" x="278" y="146" text-anchor="middle">Policy</text>
+  <text class="c" x="278" y="170" text-anchor="middle">reserveSpend</text>
+  <text class="s" x="278" y="190" text-anchor="middle">caps, budgets,</text>
+  <text class="s" x="278" y="208" text-anchor="middle">stops, velocity</text>
+
+  <rect class="key" x="394" y="120" width="132" height="110" rx="8"/>
+  <text class="h" x="460" y="146" text-anchor="middle">Approval</text>
+  <text class="s" x="460" y="168" text-anchor="middle">passkey signs</text>
+  <text class="s" x="460" y="186" text-anchor="middle">SHA-256 of the</text>
+  <text class="s" x="460" y="204" text-anchor="middle">exact terms</text>
+  <text class="s" x="460" y="222" text-anchor="middle">(Face ID)</text>
+
+  <rect class="key" x="576" y="120" width="132" height="110" rx="8"/>
+  <text class="h" x="642" y="146" text-anchor="middle">Executor</text>
+  <text class="c" x="642" y="170" text-anchor="middle">beginExecution</text>
+  <text class="s" x="642" y="190" text-anchor="middle">re-hashes the terms</text>
+  <text class="s" x="642" y="208" text-anchor="middle">no match: no run</text>
+
+  <rect class="box" x="758" y="120" width="132" height="110" rx="8"/>
+  <text class="h" x="824" y="146" text-anchor="middle" style="font-size:14px">Airwallex / Metal</text>
+  <text class="s" x="824" y="170" text-anchor="middle">card limits, FX,</text>
+  <text class="s" x="824" y="188" text-anchor="middle">SWIFT; mandate</text>
+  <text class="s" x="824" y="206" text-anchor="middle">on chain refuses</text>
+  <text class="s" x="824" y="224" text-anchor="middle">over its cap</text>
+
+  <path class="a" d="M162,175 H208" marker-end="url(#m)"/>
+  <path class="k" d="M344,175 H390" marker-end="url(#mk)"/>
+  <path class="k" d="M526,175 H572" marker-end="url(#mk)"/>
+  <path class="k" d="M708,175 H754" marker-end="url(#mk)"/>
+  <text class="l" x="551" y="104" text-anchor="middle">beyond the limits only: a proposal, single use, with an expiry</text>
+
+  <!-- Every step appends to the audit log. -->
+  <path class="d" d="M96,230 V314"/>
+  <path class="d" d="M278,230 V314"/>
+  <path class="d" d="M460,230 V314"/>
+  <path class="d" d="M642,230 V314"/>
+  <path class="d" d="M824,230 V314"/>
+  <text class="l" x="551" y="290" text-anchor="middle">every step appends a row</text>
+  <rect class="box" x="30" y="314" width="860" height="62" rx="8"/>
+  <text class="h" x="460" y="340" text-anchor="middle">Audit log, hash-chained</text>
+  <text class="c" x="460" y="362" text-anchor="middle">row_hash = SHA-256(prev_hash ‖ JCS(row)); UPDATE and DELETE refused</text>
+</svg>

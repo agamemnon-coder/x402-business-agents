@@ -202,6 +202,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   2×, light, in the form's order: Home's first screen; /try/sign's approval sheet with the live Claude Haiku sentence,
   signed and verified, the tamper refused (all three from one test world: one FX quote, one Haiku call); /airwallex,
   the signed hash and the cards; /metal; /claude; Home's "Why this is a company". In `docs/submission/screens/form/`.
+- 6 November, the README's "How it works in 5 files" for a developer judge: one hand-written diagram
+  (docs/how-it-works.svg, light and dark) of the path as the code runs it, the five places that enforce the limits
+  and the approval, each linked to the line that defines it (a test fails if a link stops pointing at its symbol), and
+  "Verify it yourself in 3 commands" (`npm ci`, `npm test`, `npm run judge -- --check`, plus
+  `npm run verify-receipt -- receipt.json`), each with what it proves. 2632 tests in 267 files, all passing (with main's).
 
 ## Real, and ours
 
