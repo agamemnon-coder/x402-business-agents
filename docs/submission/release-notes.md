@@ -17,7 +17,7 @@ anything beyond them, with Face ID on the exact terms.
 - **The euro bill:** EUR 240.00 by FX and SWIFT, PAID 6 s after Face ID (transfer
   `03360bfa-afce-457b-89d1-e1097fbe3985`; settlement simulated in the sandbox).
 - 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks.
-  16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+  16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
 
 Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md).
 
@@ -131,6 +131,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
   its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
   metal-pay already had what we asked for. 2557 tests in 260 files, all passing (after Airwallex read back).
+- 6 November, the first screen (section D): the README, Home and the form's synopsis open the same way, from one
+  source (`FIRST_SCREEN` in `src/config/brand.ts`): what Purser is in one sentence, the three sentences, then "Try it
+  in 30 seconds." on its own line to /try/sign; only then the badges and the details. "Why this is a company": five
+  lines from docs/business/ (the problem, who buys, the intended pricing as a hypothesis, why now with Airwallex's own
+  post as the source, why Purser) on the README and Home, under one note that it is not validated with customers yet.
+  2565 tests in 261 files, all passing.
 
 ## Real, and ours
 

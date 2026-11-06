@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { packFacts } from "../src/submission/facts.js";
 import { T0_STATUS, stopsLine } from "../src/submission/deck.js";
-import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, FIRST_SCREEN_TEXT, KIT11_RUN_LINE } from "../src/config/brand.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const raw = read("docs/submission/README.md");
@@ -80,9 +80,10 @@ describe("the submission pack", () => {
     expect(description).not.toMatch(/30 October|31 October|Other live tests|red team|Scenario Lab/i);
   });
 
-  it("opens the synopsis with the three sentences, then the Kit 11 line (jury review, 6 Nov), and says the Visa paragraph once, with TAP's status as one note (Metal Award only)", () => {
+  it("opens the synopsis with the first screen (section D, 6 Nov): what Purser is, the three sentences, Try it; and says the Visa paragraph once, with TAP's status as one note (Metal Award only)", () => {
     const synopsis = raw.split("<!-- synopsis -->")[1]!.split("<!-- /synopsis -->")[0]!.trim();
-    expect(synopsis).toBe(`${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE}`);
+    expect(synopsis).toBe(FIRST_SCREEN_TEXT);
+    expect(synopsis.startsWith(DIFFERENTIATORS[0])).toBe(false);
     for (const t of [pack, long]) {
       expect(t.match(/Trusted Agent Protocol/g)).toHaveLength(1);
       // Visa, 5 Nov: TAP is not eligible Visa tooling for this hackathon; Max's wording, once, and the entry is Metal only.

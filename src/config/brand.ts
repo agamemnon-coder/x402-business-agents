@@ -68,12 +68,45 @@ export const FOUR_EYES_LINE = "Four eyes on chain: two signatures required (seco
  * (docs/claims.md, test/adversarial.test.ts).
  */
 export const DIFFERENTIATORS = [
-  "An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 30 seconds.",
+  "An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.",
   "One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.",
   "Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.",
 ] as const;
-/** The words in the first sentence that link to /try/sign wherever a surface can link. */
+/** The one line after the three sentences, linked to /try/sign wherever a surface can link (section D, 6 Nov). */
 export const TRY_IT = "Try it in 30 seconds.";
+/** Where TRY_IT goes: a test world of the visitor's own, signed with their own passkey; nothing real moves. */
+export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
+/**
+ * What Purser is, in one sentence (section D, 6 Nov): the problem, then Purser's answer. First under the title on the
+ * README, under Home's heading and at the start of the form's synopsis. "Only within limits the CFO signs": the CFO's
+ * policy is signed with Face ID (docs/cfo-policy.md), and anything beyond it is a proposal the CFO signs with Face ID.
+ */
+export const WHAT_IT_IS = "AI agents can now spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.";
+/**
+ * The first screen, in this order, on the README, on Home (under the heading) and in the form's synopsis: what Purser
+ * is, the three sentences, then "Try it in 30 seconds." Only then the badges and the details.
+ * test/first-screen.test.ts checks that the three places say exactly this.
+ */
+export const FIRST_SCREEN = [WHAT_IT_IS, ...DIFFERENTIATORS, TRY_IT] as const;
+/** The first screen as one paragraph (the form's synopsis). */
+export const FIRST_SCREEN_TEXT = FIRST_SCREEN.join(" ");
+
+/** Where the business case lives (docs/business/), linked from each "Why this is a company" line. */
+export const BUSINESS_DOCS = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/business/";
+/**
+ * "Why this is a company" (section D, 6 Nov): five lines, on the README and on Home, each linked to docs/business/.
+ * Every line is what docs/business/ says; the pricing is the hypothesis in model.md, and the one outside source is
+ * Airwallex's own post [S1] in problem.md. "Not validated" is said once, in the note under the heading. No other
+ * company's name. test/first-screen.test.ts checks each line against its page.
+ */
+export const WHY_COMPANY_NOTE = "Not validated with customers yet: no interviews, no pilots, no revenue. Every line below is a hypothesis except the cited source.";
+export const WHY_COMPANY: readonly { label: string; text: string; page: string }[] = [
+  { label: "The problem", text: "when an AI agent pays today, its limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left.", page: "problem.md#what-goes-wrong" },
+  { label: "Who buys", text: "the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides.", page: "model.md#who-buys-and-who-uses-it-hypothesis" },
+  { label: "Intended pricing", text: "€49 per company a month including 5 agents; €10 per extra agent (hypothesis).", page: "model.md#intended-pricing-hypothesis" },
+  { label: "Why now", text: "Airwallex wrote on 5 October 2026 that agents moving money need limits enforced \"through underlying infrastructure rather than prompts\" (\"Agentic banking starts with governance\", source S1).", page: "problem.md#why-now-sourced" },
+  { label: "Why Purser", text: "it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log.", page: "model.md#risks-and-what-we-do-not-know" },
+];
 /** The film of the main run (2:42, YouTube v3), linked from Home and Proof (jury QA, 6 Nov, Q3). /film is the earlier animation. */
 export const FILM_URL = "https://youtu.be/jaqO2M2V6NY";
 export const FILM_LINK = "Watch the film (2:42)";
