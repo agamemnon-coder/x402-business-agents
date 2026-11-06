@@ -53,6 +53,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 5 November, Visa's answer: TAP is not available as Visa tooling for this hackathon (VIC or ICC only), so the entry
   is the Metal Award only. The Kit line, Home's badge and the links on Home and Proof no longer name the Visa Award;
   /visa keeps the TAP work as a labelled extra, with one status line. 2365 tests in 248 files, all passing.
+- 6 November, security headers and supply chain (A3, A4): every relay answer also carries `x-frame-options: DENY`
+  and HSTS with `includeSubDomains`; JSON, redirects and assets a CSP that loads nothing; the 404 the permissions and
+  opener policies the pages have; `/favicon.ico` serves Purser's mark, and the phone pages and the evidence report name
+  it (no more CSP error in Firefox). Dependabot (weekly: npm, the Worker, the Actions); the gitleaks image pinned by
+  digest; the SBOM regenerated. Live after the relay is redeployed. 2370 tests in 248 files, all passing.
 - 6 November, passkey checks: test/webauthn-soundness.test.ts shows, for the runner, the relay's verifier and /try/sign,
   that challenges are random (32 bytes), used once and short-lived (an approval's is the hash of its terms, which carry
   the proposal id and expiry); that origin and RP id must match exactly and user verification is required; that a
@@ -60,7 +65,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   fixes: the runner now refuses a passkey used inside a frame on another site (cross-origin), as the relay already did;
   /try/sign's API refuses unknown or mistyped fields and answers any internal error with a fixed message. /try/sign is
   also opened in WebKit in CI: Playwright's Linux WebKit has no WebAuthn, so it checks the page's honest "no passkeys"
-  answer and its layout, not the visit. 2432 tests in 249 files, all passing.
+  answer and its layout, not the visit. 2437 tests in 249 files, all passing.
 
 ## Real, and ours
 

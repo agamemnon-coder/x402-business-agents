@@ -10,9 +10,12 @@ import { trySignOn } from "../try/sign.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
-/** The phone pages load their script and stylesheet from the Worker itself; nothing inline, nothing else. */
+/**
+ * The phone pages load their script and stylesheet from the Worker itself; nothing inline, nothing else. Images from
+ * here only, for the favicon: with img-src 'none' Firefox logged a CSP error for the icon it fetches by itself (QA).
+ */
 const PHONE_CSP = [
-  "default-src 'none'", "script-src 'self'", "style-src 'self'", "connect-src 'self'", "font-src 'self'", "img-src 'none'",
+  "default-src 'none'", "script-src 'self'", "style-src 'self'", "connect-src 'self'", "font-src 'self'", "img-src 'self'",
   "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
 
