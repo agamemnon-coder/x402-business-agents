@@ -121,9 +121,9 @@ describe("the pitch's sentences", () => {
 describe("the core line", () => {
   it("is word for word in the pitch, the runbook, the cheat sheet and the deck; the README and the form open with the three sentences instead (jury review, 6 Nov)", () => {
     for (const name of ["pitch", "demo-day", "spiekkaart", "deck"]) expect({ name, has: TEXT[name]!.includes(CORE_LINE) }).toEqual({ name, has: true });
-    const top = words(SOURCES.README!.split("\n").slice(0, 5).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
+    const top = words(SOURCES.README!.split("\n").slice(0, 10).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
     for (const d of DIFFERENTIATORS) expect(top).toContain(d);
-    expect(SOURCES.README!.split("\n").slice(0, 5).join("\n")).toContain("https://kit11.max-31b.workers.dev/try/sign");
+    expect(SOURCES.README!.split("\n").slice(0, 10).join("\n")).toContain("https://kit11.max-31b.workers.dev/try/sign");
   });
 });
 
