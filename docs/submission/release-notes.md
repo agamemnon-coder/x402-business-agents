@@ -97,7 +97,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   "more" for the rest, a green check after signing, and one closing line after a refused tamper ("One cent changed. The
   signature is worthless."). The terms now carry the payee's IBAN (a test one, check
   digits 00; schema kit11.try-terms/v2); the film and the social preview keep the v1 terms they were made with. Live
-  after the Worker is redeployed. 2479 tests in 254 files, all passing.
+  after the Worker is redeployed. 2482 tests in 254 files, all passing.
 
 ## Real, and ours
 
