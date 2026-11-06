@@ -60,9 +60,9 @@ jobs:
         if: steps.pw-cache.outputs.cache-hit != 'true'
         timeout-minutes: 5
         run: npx playwright install chromium webkit
-      - name: System libraries for Chromium (apt; own time limit, one retry)
-        timeout-minutes: 7
-        run: timeout 200 npx playwright install-deps chromium || { sudo pkill -x apt-get || true; sleep 3; sudo dpkg --configure -a; timeout 200 npx playwright install-deps chromium; }
+      # No apt step for Chromium: the ubuntu-24.04 runner already has every library Chromium needs; install-deps only
+      # added nine font packages (CJK, unifont; 21 MB) that no check uses, from a mirror that was slow several times on
+      # 6 November. WebKit still gets its libraries below, and every browser check still runs.
       - name: Guest pages in Chromium (/, /demo, /month at 390 and 1440 px)
         run: npx tsx test/browser/pages.check.ts test-results/pages
       - name: Agent trace in Chromium (390 and 1440 px, light and dark)
