@@ -70,12 +70,11 @@ jobs:
   # playwright 1.63.0, pinned by digest, read 6 November 2026): no apt step, so no slow mirror. Playwright's Linux WebKit
   # has no WebAuthn at all (no PublicKeyCredential, no virtual authenticator), so nothing is faked: the check sees the
   # page's "no passkeys" answer and its layout. The passkey and the signature are the Chromium step in judge.
+  # npm ci runs on the runner (better-sqlite3 builds there; the image has no compiler); only the check runs in the image,
+  # with the same checkout and node_modules mounted (both Ubuntu 24.04 and Node 22).
   webkit:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
-      options: --ipc=host
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -84,7 +83,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn)
-        run: npx tsx test/browser/trysign-webkit.check.ts test-results/trysign-webkit
+        run: >
+          docker run --rm --ipc=host -v "$PWD:/repo" -w /repo
+          mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+          npx tsx test/browser/trysign-webkit.check.ts test-results/trysign-webkit
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
