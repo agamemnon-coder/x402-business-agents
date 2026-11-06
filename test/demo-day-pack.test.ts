@@ -7,8 +7,20 @@ import { describe, expect, it } from "vitest";
 import { DIFFERENTIATORS } from "../src/config/brand.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+/** HTML comments cut out by position, not by a regex (an unclosed "<!--" drops the rest, so none is left behind). */
+const dropComments = (s: string) => {
+  let out = "", i = 0;
+  for (;;) {
+    const a = s.indexOf("<!--", i);
+    if (a < 0) return out + s.slice(i);
+    const b = s.indexOf("-->", a + 4);
+    out += s.slice(i, a);
+    if (b < 0) return out;
+    i = b + 3;
+  }
+};
 /** Prose as read: comments gone, links to their text, code spans to one word, emphasis marks gone, white space single. */
-const prose = (s: string) => s.replace(/<!--[\s\S]*?-->/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/`[^`]*`/g, "code")
+const prose = (s: string) => dropComments(s).replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/`[^`]*`/g, "code")
   .replace(/[*_]/g, "").replace(/\s+/g, " ").trim();
 /** Sentences end at . ! or ? before a space or the end (decimals, paths and ids have no space after the dot). */
 const sentences = (s: string) => (prose(s).match(/[.!?](?=\s|$)/g) ?? []).length;
