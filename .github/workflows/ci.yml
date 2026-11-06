@@ -45,7 +45,23 @@ jobs:
       - run: npm ci
       - name: npm run judge (no keys, no ledger)
         run: npm run judge -- --check
-      - run: npx playwright install --with-deps chromium
+      # The browsers come from a cache keyed on the lockfile (Playwright's version is pinned there); the system libraries
+      # they need come from apt, whose mirror was once slow enough (a few kB/s) to run the job into its 15-minute limit.
+      # So each install step has its own time limit and one retry, and fails the job if it still cannot install: the
+      # browser checks below are never skipped.
+      - name: Playwright browsers (cache)
+        id: pw-cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium-webkit
+      - name: Playwright browsers (download on a cache miss)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+        run: npx playwright install chromium webkit
+      - name: System libraries for Chromium (apt; own time limit, one retry)
+        timeout-minutes: 7
+        run: timeout 200 npx playwright install-deps chromium || timeout 200 npx playwright install-deps chromium
       - name: Guest pages in Chromium (/, /demo, /month at 390 and 1440 px)
         run: npx tsx test/browser/pages.check.ts test-results/pages
       - name: Agent trace in Chromium (390 and 1440 px, light and dark)
@@ -55,7 +71,9 @@ jobs:
       # Safari's engine. Playwright's Linux WebKit has no WebAuthn at all (no PublicKeyCredential, no virtual
       # authenticator), so nothing is faked: the check sees the page's "no passkeys" answer and its layout; on a WebKit
       # with WebAuthn it would go up to the passkey step. The passkey and the signature are the Chromium step above.
-      - run: npx playwright install --with-deps webkit
+      - name: System libraries for WebKit (apt; own time limit, one retry)
+        timeout-minutes: 7
+        run: timeout 200 npx playwright install-deps webkit || timeout 200 npx playwright install-deps webkit
       - name: /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn)
         run: npx tsx test/browser/trysign-webkit.check.ts test-results/trysign-webkit
   secrets:
