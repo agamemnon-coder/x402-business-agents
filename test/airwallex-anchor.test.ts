@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { AWX_CONTROLS_ID, awxCardId } from "../src/redesign/airwallexProof.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { scriptBlocks } from "./support/scriptBlocks.js";
 
 const pages = buildPages();
 const awx = pages.airwallex!, proof = pages.proof!;
@@ -37,7 +38,7 @@ describe("/proof → /airwallex#controls: the link and the ids match", () => {
   });
 
   it("the page's one script opens the fold around the target and scrolls to it, hashed into a CSP that connects nowhere", () => {
-    const scripts = awx.match(/<script[^>]*>([\s\S]*?)<\/script>/g) ?? [];
+    const scripts = scriptBlocks(awx);
     expect(scripts).toEqual([`<script>\n${OPEN_TARGET_JS}</script>`]);
     expect(OPEN_TARGET_JS).toContain('t.closest("details")');
     expect(OPEN_TARGET_JS).toContain('window.addEventListener("hashchange", openTarget)');
@@ -67,5 +68,13 @@ describe("/proof → /airwallex#controls: the link and the ids match", () => {
     expect(run("#elsewhere")).toMatchObject({ open: false, scrolled: 0 });
     expect(run("")).toMatchObject({ open: false, scrolled: 0 });
     expect(run("#%E0%A4%A")).toMatchObject({ open: false, scrolled: 0 });
+  });
+});
+
+describe("scriptBlocks (test support): finds script blocks by position, in any case", () => {
+  it("finds lower- and upper-case blocks, with attributes or a spaced end tag, and nothing else", () => {
+    expect(scriptBlocks('<p>x</p><script>a()</script><SCRIPT type="module">b()</SCRIPT ><script>c()</script\n>')).toEqual(["<script>a()</script>", '<SCRIPT type="module">b()</SCRIPT >', "<script>c()</script\n>"]);
+    expect(scriptBlocks("<p>no script here</p>")).toEqual([]);
+    expect(scriptBlocks("<script>never closed")).toEqual(["<script>never closed"]);
   });
 });

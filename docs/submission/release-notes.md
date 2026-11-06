@@ -171,7 +171,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 6 November, an emergency switch for /try/sign's Haiku sentence: the Worker var `TRY_SIGN_HAIKU` set to `off` (any
   case, trimmed) stops the call, with no request to Anthropic and no budget spent; the page shows the fixed sentence,
   labelled "fixed text (live model switched off)", and "What's real?" says the switch exists. Missing or any other
-  value, the call runs as before. Max sets it by hand; no script or config sets it. 2603 tests in 264 files, all
+  value, the call runs as before. Max sets it by hand; no script or config sets it. 2604 tests in 264 files, all
   passing.
 
 ## Real, and ours
