@@ -154,3 +154,21 @@ export const RECORDING_NAMES_NOTE = "Recorded on 30 October, before the agents t
 export function agentName(id: string): string {
   return (AGENT_DISPLAY as Record<string, { name: string }>)[id]?.name ?? id;
 }
+
+/**
+ * The proof, one sentence per partner (section D, 6 Nov), word for word wherever it appears: the README, Home, the
+ * form's Description and the deck. Every number is read from its record by test/proof-sentences.test.ts:
+ * - Airwallex: the GET-only read-backs docs/runs/airwallex-transfer-approval-2026-11-06.json (the terms hash the CFO
+ *   signed for P-0005, in the SWIFT transfer's metadata) and docs/runs/airwallex-cards-2026-11-06.json (3 of 3 cards
+ *   matching the CFO policy), computed in src/redesign/airwallexProof.ts;
+ * - Metal: the main run's record (docs/demo/main-run.json), through src/redesign/metalStory.ts;
+ * - Claude: the main run's agent_stats (24 of 24, 0 fallbacks) and the reliability run rel-1 (docs/demo/reliability.json,
+ *   docs/runs/reliability-2026-11.md: the treasury-card-raise eval 6/10 before the fix, 10/10 after, docs/evals/agents.json).
+ */
+export const PROOF_SENTENCES: readonly { partner: "Airwallex" | "Metal" | "Claude"; anchor: string; text: string }[] = [
+  { partner: "Airwallex", anchor: "airwallex", text: "Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex." },
+  { partner: "Metal", anchor: "metal", text: "Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey)." },
+  { partner: "Claude", anchor: "claude", text: "Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step." },
+];
+/** The heading over PROOF_SENTENCES wherever they are listed. */
+export const PROOF_HEADING = "The proof, one sentence per partner";

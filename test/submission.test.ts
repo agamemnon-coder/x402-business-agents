@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { packFacts } from "../src/submission/facts.js";
 import { T0_STATUS, stopsLine } from "../src/submission/deck.js";
-import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, FIRST_SCREEN_TEXT, KIT11_RUN_LINE } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, FIRST_SCREEN_TEXT, KIT11_RUN_LINE, PROOF_SENTENCES, TRY_IT, WHY_COMPANY } from "../src/config/brand.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const raw = read("docs/submission/README.md");
@@ -98,8 +98,10 @@ describe("the submission pack", () => {
     const m = f.main;
     expect([m.by_claude, m.decisions, m.fallbacks, m.claude_calls, m.claude_usd]).toEqual([24, 24, 0, 50, "0.3170"]);
     // The short Description.
-    expect(pack).toContain(`${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks; ${m.face_id} decisions signed with Face ID (+1 co-signature)`);
-    expect(pack).toContain(`two options ${m.to_options_s} s after the refusal`);
+    // Since section D (6 Nov) the 24 of 24 is in Claude's proof sentence (PROOF_SENTENCES), checked against the record in
+    // test/proof-sentences.test.ts; Treasury's 40 s stays in the long text.
+    expect(pack).toContain(`Claude: ${m.by_claude} of ${m.decisions} decisions in the main run, ${m.fallbacks} fallbacks`);
+    expect(pack).toContain(`The CFO signed ${m.face_id} decisions with Face ID (+1 co-signature)`);
     // The caveats in one line in the form, the second approver in full in the long text (jury review, 6 Nov, #7).
     expect(pack).toContain(CAVEAT_LINE);
     expect(long).toContain("in production the second approver is a second person");
@@ -153,32 +155,38 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(Number(stated?.[1]?.replace(/,/g, ""))).toBe(description.length);
   });
 
-  it("goes the three sentences, the Kit 11 line, story, one caveat line, proof, real, links, with Max's lines word for word (jury review, 6 Nov)", () => {
+  it("goes problem, solution (the three sentences), proof, Airwallex and Metal, business, what's real, links, with Max's lines word for word (section D, 6 Nov)", () => {
     const at = (s: string) => { const i = flat.indexOf(s); expect({ s, found: i >= 0 }).toEqual({ s, found: true }); return i; };
-    // The three sentences first, word for word.
-    expect(flat.startsWith(DIFFERENTIATORS[0])).toBe(true);
-    const order = [...DIFFERENTIATORS.map(at), at(KIT11_RUN_LINE), at("A supplier doubles its price."), at(`${CAVEAT_LINE} Details →`), at("Proof: the main run (3 November, world `main-1`)."), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
-      at(f.main.stop_line), at("Who does what."), at("What is real."), at("Links.")];
+    expect(flat.startsWith("The problem. AI agents can now spend company money.")).toBe(true);
+    const order = [at("The problem."), at("The solution."), at(DIFFERENTIATORS[0]), at(`${DIFFERENTIATORS[0]} ${TRY_IT} https://kit11.max-31b.workers.dev/try/sign`), at(DIFFERENTIATORS[1]), at(DIFFERENTIATORS[2]), at("The proof."), at(KIT11_RUN_LINE), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
+      at(f.main.stop_line), at("Airwallex, Metal and Claude."), ...PROOF_SENTENCES.map((p) => at(p.text)), at("The business (not validated with customers yet)."), at(WHY_COMPANY[2]!.text),
+      at("What's real."), at(`${CAVEAT_LINE} Details →`), at("Links.")];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    for (const line of ["Max's passkey (Face ID on his phone)", "Max plays the CFO", "Metal tx: on chain, checkable.", "Airwallex ids: published on /proof."]) at(line);
+    expect(flat.match(/not validated/gi)).toHaveLength(1);
+    for (const line of ["Max's passkey (Face ID on his phone)", "Max plays the CFO"]) at(line);
     // The caveats are one line plus a link: no T:0 error codes, no Visa TAP, no TAP run in the form's Description (they
     // stay in the long text and the claims).
     expect(flat).not.toMatch(/CAPI\d+|T:0|Visa|TAP/);
     expect(flat).toContain("Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated");
     expect(long).toContain(T0_STATUS);
     expect(longRaw).toMatch(/^### What is real and what is simulated$/m);
-    // Who does what (Max, 5 Nov): what Max built, and what each partner provides, in words, no logos.
-    expect(flat).toContain("Who does what. Max Geurtsen built Purser (limits, approvals, agent tools, site, audit log, books, tests). Airwallex: cards and limits, FX, SWIFT. Metal: mandates, payments. Claude: the agents' decisions.");
+    // Who does what stays on the README and in the long text (section D: the form tells problem to proof).
+    expect(read("README.md")).toContain("## Who does what");
   });
 
-  it("links the site, /try/sign, /watch, /proof, the repo, the offline judge and the long text", () => {
-    for (const l of ["https://kit11.max-31b.workers.dev/", "https://kit11.max-31b.workers.dev/try/sign", "https://kit11.max-31b.workers.dev/watch", "https://kit11.max-31b.workers.dev/proof",
-      "https://github.com/agamemnon-coder/x402-business-agents", "`npm ci && npm run judge`", "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md"]) expect(flat).toContain(l);
+  it("links /try/sign, /proof, the film, the repo and the long text; the Instructions go /try/sign, then /proof and the film, then the repo", () => {
+    for (const l of ["https://kit11.max-31b.workers.dev/try/sign", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/jaqO2M2V6NY",
+      "https://github.com/agamemnon-coder/x402-business-agents", "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md"]) expect(flat).toContain(l);
+    const ins = raw.split("<!-- instructions -->")[1]!.split("<!-- /instructions -->")[0]!;
+    const order = ["https://kit11.max-31b.workers.dev/try/sign", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/jaqO2M2V6NY", "`npm ci`", "`npm test`", "`npm run judge -- --check`"].map((l) => ins.indexOf(l));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(read("src/cli/judge.ts")).toContain('args.includes("--check")');
   });
 
   it("names only ids the main run's record holds", () => {
     const ids = [...flat.matchAll(/P-\d{4}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|0x[0-9a-f]{8}(?=…)/g)].map((m) => m[0]);
-    expect(ids.length).toBeGreaterThanOrEqual(6);
+    expect(ids.length).toBeGreaterThanOrEqual(3);
     for (const id of ids) expect({ id, inRecord: RECORD.includes(id) }).toEqual({ id, inRecord: true });
     // The refunded orders, as the record has them.
     expect(flat).toContain(`Refunds #${f.main.refunded.slice(0, -1).join(", #")} and #${f.main.refunded.at(-1)}, each on chain`);

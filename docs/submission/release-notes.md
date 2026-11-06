@@ -144,6 +144,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   lines from docs/business/ (the problem, who buys, the intended pricing as a hypothesis, why now with Airwallex's own
   post as the source, why Purser) on the README and Home, under one note that it is not validated with customers yet.
   2576 tests in 262 files, all passing.
+- 6 November, the proof and the form (section D): one sentence per partner (`PROOF_SENTENCES` in
+  `src/config/brand.ts`), word for word on the README, Home and the form, every number read from its record by
+  `test/proof-sentences.test.ts`. Airwallex: the hash the CFO signed is in Airwallex's own record of the EUR 240.00
+  SWIFT payment; 3 of 3 cards carry the CFO's policy as Airwallex's own controls. Metal: a mandate on chain per agent;
+  86 payments, each its own transaction; #24 refused on chain; the mandates replaced after the CFO's Face ID (four
+  eyes; second approver a labelled test passkey). Claude: 24 of 24 decisions, 0 fallbacks; rel-1 found a fault in how
+  the agents hand off a card raise; after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and rel-1b
+  passed every step. The form's Description now goes problem, solution, proof, Airwallex and Metal, business, what's
+  real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2581 tests in
+  263 files, all passing.
 
 ## Real, and ours
 

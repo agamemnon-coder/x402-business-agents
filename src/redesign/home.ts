@@ -3,7 +3,7 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, FILM_LINK, FILM_URL, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
+import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, FILM_LINK, FILM_URL, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, PROOF_HEADING, PROOF_SENTENCES, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
 import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -101,11 +101,13 @@ section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 @media (min-width: 640px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1000px) { .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; } }
 .tile .v { font-size: clamp(32px, 2.8vw, 42px) !important; }
-.partners { display: grid; gap: 12px; margin-top: 18px; }
-@media (min-width: 640px) { .partners { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .partners { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* The proof, one sentence per partner (section D, 6 Nov): PROOF_SENTENCES, word for word. */
+.h-proof { font-size: 20px; margin: 26px 0 0; }
+.partners { display: grid; gap: 12px; margin-top: 14px; }
+@media (min-width: 1100px) { .partners { grid-template-columns: repeat(3, minmax(0, 1fr)); } .partner { flex-direction: column; align-items: flex-start; } }
 .award-note { margin: 12px 0 0; font-size: 15px; color: var(--muted); } .award-note a { color: var(--accent); font-weight: 600; text-decoration: none; }
-.partner { display: flex; align-items: center; gap: 14px; padding: 16px 18px; text-decoration: none; font-size: 16px; color: var(--muted); }
+.partner { display: flex; align-items: center; gap: 14px; padding: 16px 18px; text-decoration: none; font-size: 16px; line-height: 1.45; color: var(--text); }
+.partner .logo { flex: none; }
 @media (max-width: 899px) {
   .scenes { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 8px; scrollbar-width: none; }
   .scenes::-webkit-scrollbar { display: none; }
@@ -166,6 +168,13 @@ ${m.newCap ? `<span class="tag t3">${icon("circle-check", 14)} Paid at ${esc(m.p
   }
   return `<div class="mini m-flow" aria-hidden="true">${m.rows.map((r, i) => `<div class="${r.tone}" data-vars="--d:${i * 1100}">${icon(r.icon, 16)}<span>${esc(r.text)}</span></div>`).join("")}</div>`;
 }
+
+/** The partners' logos, as Home has always shown them. */
+const LOGOS: Record<"Airwallex" | "Metal" | "Claude", string> = {
+  Airwallex: '<span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>',
+  Metal: '<span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>',
+  Claude: '<span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>',
+};
 
 const sceneCard = (s: Scene) => `<a class="scene card" href="watch?scene=${s.n}"><div class="n"><b>${s.n}</b>${esc(s.title)}</div>${mini(s.mini)}<p>${esc(s.sentence)}</p><span class="go">Watch it happen ${icon("arrow-right", 15)}</span></a>`;
 
@@ -276,11 +285,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
 <section class="band" aria-labelledby="h-proof"><div class="wrap">
   <div class="sechead"><h2 class="h-sec" id="h-proof">Proof, from ${esc(run.name)}</h2><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
   <div class="tiles">${run.tiles.map(tileHtml).join("")}</div>${run.tiles.map((t) => separateRowHtml(t.separate)).join("")}
-  <div class="partners">
-    <a class="partner card" href="proof#metal"><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>Mandates and refusals on chain</a>
-    <a class="partner card" href="proof#airwallex"><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>Cards, FX and SWIFT</a>
-    <a class="partner card" href="proof#claude"><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${esc(run.agents.map((a) => a.family).join(" · "))} decide</a>
-  </div>
+  <h3 class="h-proof" id="h-partners">${esc(PROOF_HEADING)}</h3>
+  <div class="partners">${PROOF_SENTENCES.map((p) => `<a class="partner card" href="proof#${p.anchor}">${LOGOS[p.partner]}<span>${esc(p.text)}</span></a>`).join("")}</div>
+</div>
 </div></section>
 ${whyCompanyHtml()}
 </main>`;
