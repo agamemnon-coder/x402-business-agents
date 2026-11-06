@@ -61,6 +61,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   framed as a test of the chain, both layers shown. The form's caveats are one line with a link; Visa TAP is a footer
   link on Home and Proof, and the form's screenshot 6 is /try/sign, signed and tampered. 2377 tests in 249 files, all
   passing.
+- 6 November, the jury's technical QA: /try fits a 320–375 px phone (the tabs take their own line) and the replay's
+  tables stack below 900 px, both checked at 360 and 768 px now; /film is labelled as the earlier animation of
+  30 October, and Home and Proof link the film (2:42); every public page carries the same link-preview tags with an
+  absolute image, and the favicon where its CSP allows one; one tagline everywhere, "AI agents spend. You sign off.";
+  the deck's slide count is right (ten); the claims' site section is the main run's. 2386 tests in 250 files, all
+  passing.
 
 ## Real, and ours
 

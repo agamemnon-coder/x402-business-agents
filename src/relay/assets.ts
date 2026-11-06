@@ -28,6 +28,8 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     reportDiagnostics: false,
   }).outputText;
   return {
+    // Every public page carries the same link-preview tags and favicon (jury QA, 6 Nov, Q5): the pages built in
+    // src/servers/dashboard.ts carry them already (src/ui/meta.ts withMeta), the redesign's write their own.
     dashboard: DASHBOARD_PAGE,
     month: monthPage(),
     demo: demoPage(),
@@ -46,6 +48,8 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     notFound: NOT_FOUND_PAGE,
     ...(trySign ? { trySign: TRY_SIGN_PAGE } : {}),
     redirects: REDIRECTS,
+    // The CFO's own pages are private and reference nothing outside the relay (test/relay-assets.test.ts): no
+    // link-preview tags with an absolute image there.
     approve: read("../approve/page.html"),
     enrol: read("../approve/enrol.html"),
     policy: read("../approve/policy.html"),

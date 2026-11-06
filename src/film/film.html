@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Purser: the film</title>
+<title>Purser: the earlier animation (30 October)</title>
 <style>
 @font-face { font-family: Inter; src: url("assets/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
 :root { --bg: #07080d; --panel: #11141d; --panel2: #171b27; --line: #252a3a; --text: #f3f4f8; --muted: #9aa2b6; --accent: #7c6cff; --accent2: #a99fff; --ok: #34d17e; --bad: #ff5d52; --wait: #f5a524; --metal: #38bdf8; --awx: #ff5b2e; }
@@ -79,7 +79,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 </head>
 <body>
 <script type="application/json" id="film-data">__FILM_JSON__</script>
-<h1 class="sr">Purser: the film</h1>
+<h1 class="sr">Purser: the earlier animation (30 October). The film of the main run (2:42): https://youtu.be/jaqO2M2V6NY</h1>
 <div id="stage"><div class="foot"><span id="foot-l"></span><span id="foot-r"></span></div></div>
 <script>
 (function () {
@@ -87,7 +87,8 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
   var D = JSON.parse(document.getElementById("film-data").textContent);
   var stage = document.getElementById("stage");
   var q = new URLSearchParams(location.search);
-  document.getElementById("foot-l").textContent = "Recorded runs · test money · Airwallex sandbox and Metal testnet";
+  // Labelled as what it is (jury QA, 6 Nov, Q3): the earlier animation, not the film of the main run (2:42, YouTube).
+  document.getElementById("foot-l").textContent = "The earlier animation of 30 October, not the 2:42 film (youtu.be/jaqO2M2V6NY) · recorded runs · test money";
   document.getElementById("foot-r").textContent = D.data.company + " · " + D.data.run + "; Ask Purser, the receive policy, the red team and the Lab from their own runs";
 
   // Fit the 1920x1080 stage to the window.
@@ -294,7 +295,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     },
     end: function (L) {
       var p = put(L, E("div", "h1", "Purser"), 140, 220); p.style.fontSize = "150px";
-      var s = put(L, E("div", "h2 muted", "Agents move at machine speed. The CFO signs off."), 140, 420); s.style.width = "1500px";
+      var s = put(L, E("div", "h2 muted", "AI agents spend. You sign off."), 140, 420); s.style.width = "1500px";
       // "Powered by Claude" only for a recording in which the agents decided; the 30 October one predates them.
       var decided = d.claude === "decided";
       var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep")].concat(decided ? [E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])] : [E("span", "cl", null, [(function () { var i = logo("logo-claude.png", 34); i.alt = "Claude"; return i; })()]), E("span", "w", "read the documents")])), 140, 640);

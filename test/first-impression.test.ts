@@ -35,7 +35,7 @@ describe("/ for a guest", () => {
   it("says the film's line as its heading (Max, 5 Nov): \"AI agents spend. You sign off.\", the three sentences under it (jury review, 6 Nov)", () => {
     expect(HERO).toBe("AI agents spend. You sign off.");
     expect(readFileSync(new URL("../docs/media/social-preview.html", import.meta.url), "utf8")).toContain("<h1>AI agents spend.<br><em>You sign off.</em></h1>");
-    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    ${whyHtml("try/sign")}\n    <p class="kitrun">${KIT11_RUN_LINE}</p>`);
+    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    ${whyHtml("try/sign")}\n    <p class="kitrun">${KIT11_RUN_LINE} <a href="https://youtu.be/jaqO2M2V6NY"`);
     // The core sentence stays the page's description.
     expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE.replace(/'/g, "'")}">`);
   });

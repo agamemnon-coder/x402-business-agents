@@ -5,6 +5,7 @@
 
 import { ICONS, type Icon } from "../ui/icons.js";
 import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { OG_IMAGE, TAGLINE_LINE, ogTitle } from "../ui/meta.js";
 
 const EXTRA: Record<string, Icon> = {
   "trending-up": [["polyline", { points: "22 7 13.5 15.5 8.5 10.5 2 17" }], ["polyline", { points: "16 7 22 7 22 13" }]],
@@ -182,8 +183,8 @@ details.real .pop { margin-top: 10px; max-width: 640px; padding: 16px 18px; font
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
 
-/** Home's headline (Max's concept, 2 Nov): four words. */
-export const HEADLINE = "Agents spend. Limits hold.";
+/** The one tagline (jury QA, 6 Nov, Q8: was "Agents spend. Limits hold." in og:title): Home's heading, the film's line. */
+export const HEADLINE = TAGLINE_LINE;
 
 export function header(current: Tab | null): string {
   return `<header class="top"><div class="wrap"><a class="brand" href="home" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>
@@ -413,9 +414,9 @@ ${o.js}</script>`;
 <meta name="theme-color" content="#0b1220">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Purser">
-<meta property="og:title" content="${esc(o.title === "Purser" ? `Purser · ${HEADLINE}` : `${o.title} · Purser`)}">
+<meta property="og:title" content="${esc(ogTitle(o.title))}">
 <meta property="og:description" content="${esc(o.description)}">
-<meta property="og:image" content="assets/og.png">
+<meta property="og:image" content="${OG_IMAGE}">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <title>${esc(o.title)}</title>

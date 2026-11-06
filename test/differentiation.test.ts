@@ -46,7 +46,8 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
   it("open the README: nothing but the title before them, the Kit 11 line next, the badges after", () => {
     const readme = read("README.md");
     const lines = readme.split("\n");
-    expect(lines[0]).toBe("# Purser");
+    // The one tagline in the title (jury QA, 6 Nov, Q8).
+    expect(lines[0]).toBe("# Purser · AI agents spend. You sign off.");
     const top = words(lines.slice(1, 8).join("\n"));
     expect(top.startsWith(DIFFERENTIATORS.join(" "))).toBe(true);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
@@ -59,7 +60,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
     expect(t.indexOf("AI agents spend. You sign off.")).toBeLessThan(t.indexOf(DIFFERENTIATORS[0]));
-    expect(t).toContain(`AI agents spend. You sign off. ${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE} ${CAVEAT_LINE} Details →`);
+    expect(t).toContain(`AI agents spend. You sign off. ${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE} Watch the film (2:42) ↗ ${CAVEAT_LINE} Details →`);
     expect(hero).toContain(`<a href="try/sign">${TRY_IT}</a>`);
     // The caveat's link opens the footer's "What's real?", which lists what the line names.
     expect(hero).toContain('<a href="#real" data-real>Details →</a>');
@@ -82,7 +83,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
   it("open the deck's title slide, then the Kit 11 line", () => {
     const deck = deckHtml(packFacts(), shots, "<svg></svg>");
     const first = words(/<section[\s\S]*?<\/section>/.exec(deck)![0]);
-    expect(first).toContain(`Purser ${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE}`);
+    expect(first).toContain(`AI agents spend. You sign off. ${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE}`);
   });
 
   it("open the long text too", () => {

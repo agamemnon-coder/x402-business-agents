@@ -11,7 +11,7 @@ The video link is in. Max's steps: [checklist-max.md](checklist-max.md).
 
 ## Title
 
-Purser: company cards and on-chain mandates for AI agents, with the CFO in control
+Purser · AI agents spend. You sign off.
 
 ## Synopsis
 
@@ -97,6 +97,6 @@ Running it live (sandbox keys, a Metal RPC) is in [docs/run-it.md](../run-it.md)
 
 ## Deck and zip
 
-- `purser-deck.pdf`: twelve slides, one message each, made by `npm run submission` from the same figures.
+- `purser-deck.pdf`: ten slides, one message each, made by `npm run submission` from the same figures.
 - The zip: `npm run submission` writes `out/submission/purser-source.zip` (`git archive` of the current commit: the
   code, no keys, no ledger). Not committed.

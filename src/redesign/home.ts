@@ -3,7 +3,7 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, VISA_EXTRA_LINK } from "../config/brand.js";
+import { CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, FILM_LINK, FILM_URL, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, VISA_EXTRA_LINK } from "../config/brand.js";
 import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -23,6 +23,7 @@ const CSS = `.hero { padding: 24px 0 44px; }
 .why li { font-size: 17.5px; line-height: 1.45; border-left: 3px solid var(--accent); padding-left: 12px; }
 .why a, .caveat a { color: var(--accent); font-weight: 650; }
 .kitrun { margin: 14px 0 0; font-size: 16px; font-weight: 650; color: var(--muted); }
+.kitrun a { color: var(--accent); text-decoration: none; white-space: nowrap; }
 .caveat { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }
 .ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
 .ctas .btn { height: 52px; }
@@ -234,7 +235,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
     <div class="badges">${KIT_LINE.split(/ · (?=entered for)/).map((x, i) => `<span class="pill kit${i ? " award" : ""}">${esc(x)}</span>`).join("")}</div>
     <h1 class="h-hero">${esc(HERO)}</h1>
     ${whyHtml(opts.trySign ? "try/sign" : null)}
-    <p class="kitrun">${esc(KIT11_RUN_LINE)}</p>
+    <p class="kitrun">${esc(KIT11_RUN_LINE)} <a href="${FILM_URL}" target="_blank" rel="noopener">${esc(FILM_LINK)} ↗</a></p>
     <p class="caveat">${esc(CAVEAT_LINE)} <a href="#real" data-real>${esc(CAVEAT_LINK)}</a></p>
   </div>
   <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div></div>
