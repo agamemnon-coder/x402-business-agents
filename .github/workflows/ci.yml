@@ -1,6 +1,6 @@
 # Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
 # test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), a juror's first run
-# (npm run judge on a fresh clone, then the guest pages in Chromium), the SBOM and Semgrep (blocking), and gitleaks on the pushed commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
+# (npm run judge on a fresh clone, then the guest pages in Chromium, and /try/sign in WebKit), the SBOM and Semgrep (blocking), and gitleaks on the pushed commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
 # No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
 name: ci
 on:
@@ -52,6 +52,12 @@ jobs:
         run: npx tsx test/browser/trace.check.ts test-results/trace
       - name: /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper)
         run: npx tsx test/browser/trysign.check.ts test-results/trysign
+      # Safari's engine. Playwright's Linux WebKit has no WebAuthn at all (no PublicKeyCredential, no virtual
+      # authenticator), so nothing is faked: the check sees the page's "no passkeys" answer and its layout; on a WebKit
+      # with WebAuthn it would go up to the passkey step. The passkey and the signature are the Chromium step above.
+      - run: npx playwright install --with-deps webkit
+      - name: /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn)
+        run: npx tsx test/browser/trysign-webkit.check.ts test-results/trysign-webkit
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -66,10 +72,11 @@ jobs:
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # The action scans the pushed commits; this scans the whole history on every run.
+      # The action scans the pushed commits; this scans the whole history on every run. The image is pinned by digest
+      # (the v8.24.3 index on ghcr.io, read 6 November 2026), as the actions are by commit SHA.
       - name: gitleaks, whole history
         run: >
-          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055
           git /repo --redact --verbose --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
   # Static analysis (Semgrep, pinned) and the SBOM (Max, 2 November). Semgrep blocks on any finding or if no rules loaded
   # (it started non-blocking; its first run found 0 in 110 rules). The rules are Semgrep's public (TypeScript, Node.js, secrets, OWASP Top Ten)

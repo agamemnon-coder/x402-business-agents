@@ -226,10 +226,12 @@ export const METAL_REPORT = (() => {
   const c = metalData().dispute;
   // On the public page the report says who the customer is: simulated, its claim filed by us (the report a customer
   // receives is built by disputeReportHtml alone).
-  return c ? disputeReportHtml(c).replace(/(<\/h1>)/, `$1\n<p><strong>${SIMULATED_CUSTOMER}</strong></p>`) : null;
+  // It also names Purser's icon, which its CSP allows (img-src 'self'): with none, Firefox fetched /favicon.ico by
+  // itself and logged a CSP error (QA).
+  return c ? disputeReportHtml(c).replace(/(<\/h1>)/, `$1\n<p><strong>${SIMULATED_CUSTOMER}</strong></p>`).replace("</head>", '<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">\n</head>') : null;
 })();
 export const METAL_REPORT_CSP = METAL_REPORT ? [
-  "default-src 'none'", `style-src ${inlineHash(METAL_REPORT, "style")}`, "img-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+  "default-src 'none'", `style-src ${inlineHash(METAL_REPORT, "style")}`, "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ") : "";
 
 /** The public demo page (K5 replay) plays a recorded run; no request, no key, nothing live. */
