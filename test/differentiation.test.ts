@@ -14,8 +14,21 @@ import { packFacts } from "../src/submission/facts.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const { record } = loadRecord();
+/** Drops every <tag …>…</tag> block (any case), by position, not by a regular expression over HTML. */
+const dropBlocks = (s: string, tag: string) => {
+  let out = "", i = 0;
+  const low = s.toLowerCase();
+  for (;;) {
+    const a = low.indexOf(`<${tag}`, i);
+    if (a < 0) return out + s.slice(i);
+    const b = low.indexOf(`</${tag}`, a);
+    const end = b < 0 ? s.length : low.indexOf(">", b) + 1 || s.length;
+    out += s.slice(i, a) + " ";
+    i = end;
+  }
+};
 /** Text as read: tags, Markdown emphasis, code marks and link targets gone, entities decoded, white space single. */
-const words = (s: string) => s.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]+>/g, " ")
+const words = (s: string) => dropBlocks(dropBlocks(s, "style"), "script").replace(/<[^>]+>/g, " ")
   .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/[*`]/g, "").replace(/^\s*- /gm, "").replace(/\s+/g, " ").trim();
 const shots = new Proxy({}, { get: () => "" }) as DeckShots;
 const PAGES = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
