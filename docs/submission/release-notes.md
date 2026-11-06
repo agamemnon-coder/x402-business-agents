@@ -232,6 +232,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   signed, a payment at or below it runs without a signature by the same stand-in, its card saying "paid alone under
   your new policy" (above it, or once it is lowered again, a payment not yet run waits for a signature). No call to
   Airwallex, Metal or Claude. 2732 tests in 271 files, all passing (with main's).
+- 6 November, the worst case, set by policy (1.1): per agent and in all, per day and per month, computed from the
+  policy by Purser's own code: each card's monthly limit (EUR), each Metal mandate's budget (test USD) and the
+  Treasury agent's task cards without Face ID. EUR and test USD apart, an EUR total only at the main run's recorded
+  rate (3 Nov). At the top of the CFO's view, in step 0 of /try/sign (changing with the visitor's card limits) and in
+  the README; `worstCaseLine()` holds the form's sentence for its rewrite. No call to Airwallex, Metal or Claude.
+  2753 tests in 272 files, all passing.
 
 ## Real, and ours
 

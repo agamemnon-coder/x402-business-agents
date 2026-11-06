@@ -8,7 +8,7 @@ AI agents can now spend company money; Purser lets them, through Airwallex and M
 
 **[Try it in 30 seconds.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2732 passing](https://img.shields.io/badge/tests-2732%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2753 passing](https://img.shields.io/badge/tests-2753%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 The Kit 11 scenario, run live on 3 November: [Film, 2:42](https://youtu.be/jaqO2M2V6NY) · [the run, replayed](https://kit11.max-31b.workers.dev/watch) · [every id](https://kit11.max-31b.workers.dev/proof).
 Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
@@ -46,6 +46,12 @@ the example company, is an outdoor wholesaler that sells live stock data to reta
 
 Within the limits an agent pays on its own; beyond them, nothing runs without the CFO's passkey.
 
+<!-- worst-case -->
+**Worst case, set by policy: EUR 28,200.00 on cards + USD 20.00 on chain (test USD) a month; ≈ EUR 28,217.70 at the main run's rate of 3 Nov 2026 (1.129917 USD per EUR, docs/demo/main-run.json).**
+
+On cards: EUR 300.00 on the agents' own cards and EUR 27,900.00 on task cards the Treasury agent may issue without Face ID (up to EUR 300.00 each, 3 a day). On chain: USD 20.00 in the agents' Metal mandates. A month: each card's card.<agent>.monthly; each Metal mandate's budget (it lasts 40 days and can all go at once); task cards up to approval.task_card_eur, 3 a day, 31 days. A day: the same card and mandate amounts (neither has a daily limit) and 3 task cards: EUR 1,200.00 + USD 20.00. Test USD (*USDZ) is never added to EUR; only the ≈ total converts it, at the recorded rate. With a shared card or an API key, the limit is the card's or the account's. Computed from the policy by [`exposureOf`](src/policy/exposure.ts); `test/exposure.test.ts` checks this paragraph against it.
+<!-- /worst-case -->
+
 1. **The policy.** [`reserveSpend`](src/policy/holds.ts#L63) runs before an agent's payment is signed or charged: its identity, the CFO's stops and caps, the mandate's cap and budget, the shared 20.00 total and velocity. A refusal means nothing is signed.
 2. **The terms hash and the passkey.** [`termsHash`](src/lib/terms.ts#L41) is the SHA-256 of a proposal's exact terms as canonical JSON; [`verifyApprovalSignature`](src/passkey/webauthn.ts#L53) accepts a passkey's signature only if it signed that hash, with user verification (Face ID) on.
 3. **The executors' hash check.** Every executor in [src/executors/](src/executors/) starts with [`beginExecution`](src/policy/approvals.ts#L214), which re-hashes the stored terms and runs nothing unless they match the approved hash, before the expiry.
@@ -63,7 +69,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (3 to 4 min): **2732 tests in 271 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
+- `npm test` (3 to 4 min): **2753 tests in 272 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
 - `npm run judge -- --check` (about 3 s): builds the site's 17 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 

@@ -16,6 +16,7 @@ import { createControlsBody, type CardControls, type CardLimits } from "../airwa
 import { agentCardControls, cardLimitsFrom } from "../policy/cardRules.js";
 import { loosens } from "../policy/loosens.js";
 import { credentialCreateArgs, type MandateTermsSpec } from "../metal/credentialArgs.js";
+import { startPolicy, type ExposurePolicy } from "../policy/exposure.js";
 
 export type { Agent };
 /** A payment's card, word for word, when it ran without a signature under the policy the visitor signed (Max, 6 Nov). */
@@ -59,6 +60,19 @@ export function policyKey(field: Field, agent: string): string {
 }
 /** The keys only the test world has (Purser's card holds these at Airwallex, its invoices wait for the CFO). */
 export const testWorldKeys = (agent: string): string[] => (["mccs", "currencies", "end_date", "alone"] as const).map((f) => policyKey(f, agent));
+
+/**
+ * Decision B (with Max): the worst case step 0 shows takes its chain part from Purser's own mandates, which step 0
+ * does not change ("purser", B1, the default), or from this test world's mandate as panel 3 shows it ("test_world",
+ * B2: its budget is the card's monthly limit, unconverted). The cards are the visitor's, as set; the task-card rule
+ * Purser's own (step 0 does not change it).
+ */
+export const STEP0_CHAIN: "purser" | "test_world" = "purser";
+export function exposurePolicyOfWorld(p: WorldPolicy, chain: "purser" | "test_world" = STEP0_CHAIN): ExposurePolicy {
+  const start = startPolicy();
+  const monthly = Object.fromEntries(AGENTS.map((a) => [a, toCents(p.agents[a].monthly)])) as Record<Agent, number>;
+  return { ...start, cardMonthlyCents: monthly, mandateBudgetCents: chain === "purser" ? start.mandateBudgetCents : { ...monthly } };
+}
 
 /** The card's end, as Airwallex takes it: the end of the end date, UTC. */
 export const activeToOf = (endDate: string) => `${endDate}T23:59:59.000Z`;

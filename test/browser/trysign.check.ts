@@ -46,6 +46,11 @@ const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
 const { TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_START_NOTE, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { PAID_ALONE, threeLocks } = await import("../../src/try/policy.js");
+// 1.1: the worst case, read from the policy code (src/policy/exposure.ts) with the main run's recorded rate.
+const { exposureOf, exposureWords, startPolicy } = await import("../../src/policy/exposure.js");
+const { recordedRate, worstCaseWords } = await import("../../src/policy/exposureSources.js");
+const WORST = worstCaseWords();
+const WORST_RATE = recordedRate((await import("../../src/redesign/run.js")).loadRecord().record as unknown as Parameters<typeof recordedRate>[0]);
 const { TRY_IT } = await import("../../src/config/brand.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
@@ -686,10 +691,25 @@ if (!args.live) {
     check((await page.locator("#p-open").innerText()).trim() === TRY_POLICY.open && await page.locator("#p-body").isHidden(), `${tag}: the button "${TRY_POLICY.open}", step 0 closed`);
     await shotAt(page, "#policy", join(shots, `${tag}-0-button.png`));
     await page.click("#p-open");
+    // 1.1: the worst case, "Worst case" word for word, as the README and the CFO's view say it; then a stricter month
+    // on the Treasury card (50.00 to 40.00) lowers it at once, to exactly what Purser's code computes.
+    const expo = page.locator("#p-expo");
+    check(await expo.isVisible() && (await expo.locator(".pexh").innerText()).trim().toLowerCase().startsWith("worst case") && (await page.locator("#p-expo-head").innerText()).trim() === WORST.headline,
+      `${tag}: step 0 shows "${TRY_POLICY.worstCase}", the README's figure: ${WORST.headline.slice(0, 70)}…`);
+    await shotAt(page, "#p-expo", join(shots, `${tag}-0b-worst-case.png`));
+    await page.fill("#pf-monthly", "40.00");
+    await page.click("#p-apply");
+    await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
+    const lower = (() => { const p = startPolicy(); const q = { ...p, cardMonthlyCents: { ...p.cardMonthlyCents, treasury: 4000 } }; return exposureWords(exposureOf(q), q, WORST_RATE); })();
+    check((await page.locator("#p-expo-head").innerText()).trim() === lower.headline && lower.headline !== WORST.headline,
+      `${tag}: a stricter month lowers it at once: ${lower.headline.slice(0, 60)}…`);
+    await shotAt(page, "#p-expo", join(shots, `${tag}-0c-worst-case-stricter.png`));
     await page.fill("#pf-alone", "2000.00");
     await page.click("#p-apply");
     await page.waitForSelector("#p-refused:not([hidden])");
     const terms = JSON.parse((await page.locator("#p-terms").textContent()) ?? "{}") as { changes: { field: string; to: string }[]; policy: { alone: string } };
+    check(await page.locator("#p-expo-next").isVisible() && (await page.locator("#p-expo-next").innerText()).trim() === `${TRY_POLICY.ifSigned} ${lower.headline}` && (await page.locator("#p-expo-head").innerText()).trim() === lower.headline,
+      `${tag}: refused: the figure in force stays, and the one it would set if signed is shown`);
     check(terms.changes.length === 1 && terms.changes[0]!.field === "alone" && terms.changes[0]!.to === "2000.00" && terms.policy.alone === "2000.00"
       && /pay alone up to EUR 2,000\.00/.test(await page.locator("#p-effect").innerText()) && await page.locator("#p-effect").isVisible(),
       `${tag}: raising "may pay alone" to 2,000.00 is refused until signed; what is signed shows the new amount, and the page says what it does`);

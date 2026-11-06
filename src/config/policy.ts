@@ -151,6 +151,8 @@ export const REPORT_OFFER = { supplier: "Ridgeline Data", item: "a one-off regio
 /** A task card without a date in the message ends after this many days; a date may be at most TASK_MAX_DAYS ahead. */
 export const TASK_DEFAULT_DAYS = 7;
 export const TASK_MAX_DAYS = 30;
+/** approval.task_card_eur's starting value (src/policy/rules.ts): task cards up to this are issued without Face ID. */
+export const TASK_CARD_EUR_FALLBACK = "300.00";
 /** Within the CFO policy (no Face ID), at most this many task cards in 24 hours; the next one asks for Face ID. */
 export const TASK_WITHIN_PER_DAY = 3;
 /** At most this many task card requests from the dashboard link wait for the CFO at once. */

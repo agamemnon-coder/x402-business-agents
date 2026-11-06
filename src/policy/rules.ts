@@ -2,7 +2,7 @@
 // anything is signed. The mandates stay the hard outer wall; the policy can only be stricter. Values live in the
 // settings table and change only through an approved policy_change proposal (src/executors/policyChange.ts).
 
-import { AGENTS, CARDS, REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, type Agent } from "../config/policy.js";
+import { AGENTS, CARDS, REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, TASK_CARD_EUR_FALLBACK, type Agent } from "../config/policy.js";
 import { agentName } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -45,7 +45,7 @@ const STATIC: Rule[] = [
   { key: "approval.refund_per_dispute", label: "Refunds per dispute above this need a person", unit: "USDZ", kind: "money", min: 0, max: 2000, fallback: fromCents(REFUND_AUTO_PER_DISPUTE_CENTS), agent: "support" },
   // E1, four eyes: above this a payment needs the Face ID of two different people (src/policy/fourEyes.ts). Off when empty.
   // Ask Purser (G): a task card the CFO asks for up to this amount is issued at once; above it, with Face ID.
-  { key: "approval.task_card_eur", label: "Task cards up to this are issued without Face ID", unit: "EUR", kind: "money", min: 0, max: 150_000, fallback: "300.00", agent: "treasury" },
+  { key: "approval.task_card_eur", label: "Task cards up to this are issued without Face ID", unit: "EUR", kind: "money", min: 0, max: 150_000, fallback: TASK_CARD_EUR_FALLBACK, agent: "treasury" },
   { key: "approval.four_eyes_eur", label: "Payments above this need two people (four eyes)", unit: "EUR", kind: "optional_money", min: 0, max: MAX_FLOOR, fallback: "" },
   { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "", agent: "treasury" },
   { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "", agent: "treasury" },

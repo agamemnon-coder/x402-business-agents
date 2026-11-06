@@ -18,7 +18,8 @@ import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 import { AGENTS, type Agent } from "../../src/config/policy.js";
-import { PAID_ALONE } from "../../src/try/policy.js";
+import { PAID_ALONE, exposurePolicyOfWorld } from "../../src/try/policy.js";
+import { exposureOf, exposureWords, type RecordedRate } from "../../src/policy/exposure.js";
 export { PAID_ALONE };
 import { defaultPolicy, FIELD_WORDS, policyBounds, policyChanges, readSet, threeLocks, withSet, type Locks, type PolicyChange, type WorldPolicy } from "../../src/try/policy.js";
 import { AGENT_LINE_ALL_PER_MINUTE, AGENT_LINE_DAILY_USD, AGENT_LINE_PER_HOUR, AGENT_LINE_RESERVE_USD, AGENT_LINE_SYSTEM, agentLineFacts, agentLineGiven, checkLine, moneyForPeople, type SentenceSource, type Voice } from "./agentLine.js";
@@ -322,12 +323,15 @@ export class TrySignDesk {
   private readonly fx: FxSource | null;
   /** The sentence's source: Haiku (or a stand-in), "off" (the emergency switch, TRY_SIGN_HAIKU=off), or none (no key). */
   private readonly line: SentenceSource | "off" | null;
+  /** 1.1: the main run's recorded EUR/USD rate, for step 0's worst case; null: no EUR total is shown. */
+  private readonly rate: RecordedRate | null;
   /** The last live quote, shared only after a limit or a failure while it has time left (FX_REUSE_MIN_MS). */
   private lastQuote: FxQuote | null = null;
 
   /** It takes a SQL handle, a clock and, when the Worker has the sandbox key, the FX quote source; nothing else. */
-  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | "off" | null } = {}) {
+  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | "off" | null; rate?: RecordedRate | null } = {}) {
     this.now = opts.now ?? (() => new Date());
+    this.rate = opts.rate ?? null;
     this.fx = opts.fx ?? null;
     this.line = opts.agentLine ?? null;
     // The waiting payment's sentence and where it came from; the model's spend per UTC day.
@@ -618,6 +622,11 @@ export class TrySignDesk {
 
   // ── Step 0: the world's policy (Max, item 1) ──
 
+  /** 1.1: the worst case a policy allows, by Purser's own code (src/policy/exposure.ts), with the main run's rate. */
+  private exposure(p: WorldPolicy) {
+    const ep = exposurePolicyOfWorld(p);
+    return exposureWords(exposureOf(ep), ep, this.rate);
+  }
   /** The policy in force in this world, and its version (1 when the world opened). */
   private policyOf(worldId: string): { version: number; policy: WorldPolicy } {
     const row = (this.sql.exec("SELECT version, json FROM ts_policy WHERE world = ?", worldId).toArray() as { version: number; json: string }[])[0];
@@ -642,7 +651,7 @@ export class TrySignDesk {
   /** What the page is told about the policy: the policy in force, its locks, and the world's payments under it. */
   private policyState(worldId: string, now: Date) {
     const { version, policy } = this.policyOf(worldId);
-    return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now) };
+    return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now), exposure: this.exposure(policy) };
   }
   private policyAnswer(worldId: string, now: Date) {
     const state = this.policyState(worldId, now);
@@ -733,7 +742,7 @@ export class TrySignDesk {
     if (body.credential === undefined) {
       const which = looser.map((f) => FIELD_WORDS[f].toLowerCase()).join(", ");
       return answer(200, {
-        applied: false, needs_signature: true, looser, changes, canonical: terms, terms_sha256: sha, proposed: this.locksOf(world.id, next, now),
+        applied: false, needs_signature: true, looser, changes, canonical: terms, terms_sha256: sha, proposed: this.locksOf(world.id, next, now), proposed_exposure: this.exposure(next),
         reason: `Refused: this change makes the policy looser (${which}), and a looser policy needs your passkey's signature over its exact terms, as the CFO's does in Purser. Nothing changed.`,
         ...(looser.includes("alone") ? { alone_effect: agent === "treasury"
           ? `Signing lets the Treasury agent pay alone up to ${eur(next.agents.treasury.alone)}: a payment in this test world at or below it then runs without your signature.`
