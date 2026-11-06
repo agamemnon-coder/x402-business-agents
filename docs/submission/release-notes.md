@@ -53,19 +53,36 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 5 November, Visa's answer: TAP is not available as Visa tooling for this hackathon (VIC or ICC only), so the entry
   is the Metal Award only. The Kit line, Home's badge and the links on Home and Proof no longer name the Visa Award;
   /visa keeps the TAP work as a labelled extra, with one status line. 2365 tests in 248 files, all passing.
+- 6 November, security headers and supply chain (A3, A4): every relay answer also carries `x-frame-options: DENY`
+  and HSTS with `includeSubDomains`; JSON, redirects and assets a CSP that loads nothing; the 404 the permissions and
+  opener policies the pages have; `/favicon.ico` serves Purser's mark, and the phone pages and the evidence report name
+  it (no more CSP error in Firefox). Dependabot (weekly: npm, the Worker, the Actions); the gitleaks image pinned by
+  digest; the SBOM regenerated. Live after the relay is redeployed. 2370 tests in 248 files, all passing.
+- 6 November, passkey checks: test/webauthn-soundness.test.ts shows, for the runner, the relay's verifier and /try/sign,
+  that challenges are random (32 bytes), used once and short-lived (an approval's is the hash of its terms, which carry
+  the proposal id and expiry); that origin and RP id must match exactly and user verification is required; that a
+  signature counter, once used, must grow; and, one test per field of the terms, that a changed field is refused. Two
+  fixes: the runner now refuses a passkey used inside a frame on another site (cross-origin), as the relay already did;
+  /try/sign's API refuses unknown or mistyped fields and answers any internal error with a fixed message. /try/sign is
+  also opened in WebKit in CI: Playwright's Linux WebKit has no WebAuthn, so it checks the page's honest "no passkeys"
+  answer and its layout, not the visit. 2437 tests in 249 files, all passing.
+- 6 November, reliability runs: `npm run reliability` runs the full Kit 11 flow in a fresh world (sandbox, testnet,
+  test money, labelled virtual test passkeys). rel-1 stopped at one step (the card purchase: Treasury told Sourcing to
+  wait instead of asking the CFO itself); one rule added to Treasury's instructions, with evals; rel-1b passed every
+  step. Both runs are in docs/runs/reliability-2026-11.md, failure included. 2447 tests in 251 files, all passing.
 - 6 November, the jury review: every surface opens with what only Purser has, three sentences word for word
   (`DIFFERENTIATORS`: the signature over the exact terms, one CFO policy as three locks, real agents with no key reaching
   Claude), then "The Kit 11 scenario, run live on 3 November.". The 12 overpriced checks are said as they happened: "a
   buy rule Claude set stopped 12 overpriced checks" (code applied the rule; the film keeps its older line). One set of
   numbers: "86 Metal payments + 1 card charge", "5 decisions signed with Face ID (+1 co-signature)". The let-through is
   framed as a test of the chain, both layers shown. The form's caveats are one line with a link; Visa TAP is a footer
-  link on Home and Proof, and the form's screenshot 6 is /try/sign, signed and tampered. 2377 tests in 249 files, all
+  link on Home and Proof, and the form's screenshot 6 is /try/sign, signed and tampered. 2459 tests in 252 files, all
   passing.
 - 6 November, the jury's technical QA: /try fits a 320–375 px phone (the tabs take their own line) and the replay's
   tables stack below 900 px, both checked at 360 and 768 px now; /film is labelled as the earlier animation of
   30 October, and Home and Proof link the film (2:42); every public page carries the same link-preview tags with an
   absolute image, and the favicon where its CSP allows one; one tagline everywhere, "AI agents spend. You sign off.";
-  the deck's slide count is right (ten); the claims' site section is the main run's. 2386 tests in 250 files, all
+  the deck's slide count is right (ten); the claims' site section is the main run's. 2468 tests in 253 files, all
   passing.
 
 ## Real, and ours

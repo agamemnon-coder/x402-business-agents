@@ -22,7 +22,7 @@ export const ogTitle = (title: string) => (title === "Purser" ? `Purser · ${TAG
 
 /**
  * Puts the shared tags into a page's <head>, each only where the page has none of its own. `icon: false` for a page
- * whose CSP allows no image at all (img-src 'none': the CFO's private pages and the dispute report), where a favicon
+ * whose CSP allows no image at all (img-src 'none': the CFO's private pages and the system health page), where a favicon
  * link would only be refused.
  */
 export function withMeta(html: string, o: { description?: string; icon?: boolean } = {}): string {
