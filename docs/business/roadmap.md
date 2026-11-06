@@ -8,7 +8,7 @@ Back to the [business case index](README.md).
 
 | When | What | Where it stands today |
 |---|---|---|
-| Next | **Test the demand hypothesis** with finance teams before building more | Not started: no interviews or discovery during the hackathon (Max's decision) |
+| Next | **Test the demand hypothesis** with finance teams before building more | Not started |
 | Next | **Production Airwallex:** a production account, a scoped key with an IP allowlist, the API version pinned | Sandbox only; scoped key not recorded, no IP allowlist, API version not pinned ([controls.md](../controls.md#not-in-place-summary)) |
 | Next | **A real second human approver** for four eyes, with their own passkey | Four eyes is built; in the demo the second approver is a labelled test passkey, and four eyes is off on the business account ([cfo-policy.md](../cfo-policy.md#four-eyes-two-people-above-a-threshold)) |
 | Next | **ERP and accounting integration:** post each approved payment, with its approval hash, to the customer's books | A GL export exists ([airwallex.md](../airwallex.md)); posting to T:0 is built but failed on its keys, so nothing is posted ([run log](../runs/2026-11-05-t0-live.md)) |

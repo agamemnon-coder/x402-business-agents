@@ -32,11 +32,14 @@ not a finding about where demand is.
   on Airwallex's own rails is easiest to explain to Airwallex's customers. It also makes us dependent on Airwallex
   (see the risks below).
 
-## Intended pricing (our assumption) — Max to choose
+## Intended pricing (hypothesis)
 
-We have no price list and no customer has seen a price. Below are two options for Max to choose between. Numbers are
-placeholders ("€X") unless a cited comparable supports a range; the comparables are what spend-management tools charge
-for a **person** with a card, not for an agent, so they are a reference point only.
+**€49 per company a month, including 5 agents; €10 a month for each extra agent.** This is our assumption; no
+customer has seen a price.
+
+Why this shape (our reasoning): a CFO already pays per card user for spend software, so a base fee with a number of
+agents included reads the same way. The comparables below are what spend-management tools charge for a **person**
+with a card, not for an agent, so they are a reference point only.
 
 **Comparables (public pricing pages, read 6 November 2026):**
 
@@ -45,31 +48,12 @@ for a **person** with a card, not for an agent, so they are a reference point on
 | Airwallex (EU plans) | Explore €0 or €19 a month; Grow €49 a month. Spend users: 5 free, then €6 per additional employee card user a month (Explore) or €12 per additional active spend user a month (Grow). Prices in EUR, VAT exclusive | [P1] |
 | Pleo (UK plans, small businesses) | Start £8, Build £14, Optimise £18 per user a month (Build and Optimise billed yearly, 3 users minimum) | [P2] |
 
-We found no public spend-management price that is a percentage (basis points) of governed spend, so option (b) has no
-cited comparable and stays a placeholder.
+Our €49 with 5 agents included and €10 per extra agent sits inside the band these tools charge for one human card
+user. That anchor is our assumption, not a finding.
 
-### Option (a): per agent, per month
-
-- **Price:** €X per active agent a month (an agent with a card or a mandate under the CFO policy). If we anchor on
-  the comparables above, X would sit somewhere in the band they charge for one human card user (€6 to €12 at Airwallex,
-  £8 to £18 at Pleo). That anchor is our assumption, not a finding.
-- **For:** simple and predictable for a CFO; it looks like what they already pay per card user; easy to bill.
-- **Against:** agents are cheap to create, so a per-agent fee nudges customers to put several jobs behind one agent
-  and one card. That undoes the control we sell (one agent, one card, one set of limits). The price also does not
-  grow with the money at risk.
-
-### Option (b): base fee plus basis points on governed spend
-
-- **Price:** €X a month per company, plus Y basis points of the spend that passes through Purser's policy (card
-  spend, Metal mandate payments and approved payouts). X and Y are placeholders.
-- **For:** the price grows with the money Purser governs, which is what the CFO is buying protection for; it does not
-  punish splitting work across many narrow agents.
-- **Against:** a CFO may see it as a tax on spend; it needs metering we have not built; on x402 micropayments of a few
-  cents the basis points are negligible, so the base fee carries the revenue for on-chain-heavy customers; it sits on
-  top of fees the customer already pays on the same spend.
-
-**What would decide it (our reasoning):** whether buyers think of Purser as a seat tool (like their spend software) or
-as a control on money moved (like a payment fee). We do not know, because we have not asked.
+What could make us change it: a per-agent fee nudges customers to put several jobs behind one agent and one card,
+which undoes the control we sell (one agent, one card, one set of limits); and the price does not grow with the money
+at risk. A fee on governed spend would answer both, but we found no public spend-management price of that kind.
 
 **Compared with after-the-fact control (qualitative only).** Expense review after the fact finds a bad payment once
 the money has gone; Purser's limits and approvals act before it leaves. We have no sourced figure for what after-the-fact
@@ -84,14 +68,16 @@ not put a number on it without one.
 
 ## Risks and what we do not know
 
-- **Demand is not validated.** We have not validated demand with customers yet. We do not know whether finance teams
-  let agents pay today, how much, or whether they would pay for this. Max decided against customer interviews and
-  discovery during the hackathon.
-- **Airwallex could build it.** Airwallex already ships agent features of its own: AgentOS, where "AgentOS components
-  don't initiate transfers, FX conversions, or payouts on your behalf" by default, Spend Management agents in cards and
-  accounts payable, and an agentic wallet in development that would let people authorise an agent "within spending
-  limits and merchant rules set ahead of time" [P5]. Purser's per-agent limits with hash-bound approvals may become a
-  feature of the platform it depends on.
+- **Demand.** We do not know whether finance teams let agents pay today, how much, or whether they would pay for
+  this.
+- **Airwallex could build it, and that is why we build on Airwallex.** Airwallex already ships agent features of its
+  own: AgentOS, where "AgentOS components don't initiate transfers, FX conversions, or payouts on your behalf" by
+  default, Spend Management agents in cards and accounts payable, and an agentic wallet in development that would let
+  people authorise an agent "within spending limits and merchant rules set ahead of time" [P5]. Purser does not compete
+  with that: it uses Airwallex's own card controls as one of its three locks and adds what sits on top (one CFO policy
+  for card and chain, approvals signed over the exact terms, a hash-chained audit log). The more agent features
+  Airwallex ships, the more there is for Purser to govern, as an app or partner on the platform. The risk that remains:
+  Airwallex could choose to build the approval layer itself.
 - **Dependency on Airwallex and Metal.** Purser's card controls are Airwallex's; its on-chain controls are Metal's.
   Purser has run only in the Airwallex sandbox and on Metal testnet. A change in either API, in their terms, or in
   their willingness to have a partner on top, changes the product.
