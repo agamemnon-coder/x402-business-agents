@@ -191,7 +191,8 @@ for (const [width, scheme] of RUNS) {
 
   // Six requests a visit (world, passkey, signature, three tampers) and six visits: the relay's 30 a minute per address
   // (TRY_SIGN_PER_MINUTE) can answer 429 to the last ones; then the check waits out the minute, as a visitor would.
-  if (!args.live && tag === "390-light") fxStandIn.validityMs = 12_000;
+  // A short quote at 390 px: light, expiring before the passkey; dark, expiring once the passkey is made.
+  if (!args.live && (tag === "390-light" || tag === "390-dark")) fxStandIn.validityMs = 12_000;
   for (let attempt = 0; ; attempt++) {
     await page.click("#go-world");
     await page.waitForFunction(() => !document.getElementById("s-props")?.hidden || document.getElementById("w-status")?.classList.contains("bad"));
@@ -215,12 +216,31 @@ for (const [width, scheme] of RUNS) {
     await page.waitForSelector("#go-quote:not([hidden])", { timeout: 30_000 });
     check((await page.locator("#q-left").innerText()).trim() === "expired" && (await page.locator("#q-status").innerText()).trim() === "Quote expired. Get a fresh one and sign again." && await page.locator("article.prop.sheet button[data-sign]").isDisabled(),
       `${tag}: the quote expires: "expired", "Quote expired. Get a fresh one and sign again.", nothing to sign`);
+    const rows = await page.locator("article.prop.sheet dl.facts dt").allInnerTexts() as string[];
+    check(rows.includes("Proposal expires") && rows.includes("Quote expires") && !rows.includes("Expires"), `${tag}: the two expiry rows read "Proposal expires" and "Quote expires" (${rows.filter((r) => /xpires/.test(r)).join(", ")})`);
+    check(await page.locator("#go-key").isDisabled(), `${tag}: while the quote is expired, "Create your test passkey" is off`);
     await shotAt(page, "article.prop.sheet #s-key", join(shots, `${tag}-2b-quote-expired.png`));
     await page.click("#go-quote");
     await page.waitForFunction(() => document.getElementById("q-status")?.classList.contains("ok"));
     const after = await page.locator("article.prop.sheet .hash").getAttribute("data-hash");
     const nextId = (JSON.parse((await page.locator("article.prop.sheet details.terms pre").textContent()) ?? "{}") as { fx: { quote_id: string } }).fx.quote_id;
     check(after !== before && nextId !== firstId && /^in \d+ min/.test(await page.locator("#q-left").innerText()), `${tag}: "Get a new quote": new quote ${nextId.slice(0, 13)}…, new terms, a new hash to sign`);
+    check(await page.locator("#go-key").isEnabled(), `${tag}: with the new quote, "Create your test passkey" is on again`);
+  }
+  // With the passkey made first: the quote expires, "Sign with Face ID" goes off until a new quote is here.
+  if (!args.live && tag === "390-dark") {
+    await page.click("#go-key");
+    await page.waitForFunction(() => document.getElementById("k-status")?.classList.contains("ok"));
+    fxStandIn.validityMs = 15 * 60_000;
+    const signBtn = page.locator("article.prop.sheet button[data-sign]");
+    check(await signBtn.isEnabled(), `${tag}: with the passkey made, "Sign with Face ID" is on`);
+    await page.waitForSelector("#go-quote:not([hidden])", { timeout: 30_000 });
+    check(await signBtn.isDisabled() && (await page.locator("#q-left").innerText()).trim() === "expired", `${tag}: the quote expires: "Sign with Face ID" is off`);
+    await page.waitForTimeout(1500);
+    check(await signBtn.isDisabled(), `${tag}: and stays off while the quote is expired`);
+    await page.click("#go-quote");
+    await page.waitForFunction(() => document.getElementById("q-status")?.classList.contains("ok"));
+    check(await page.locator("article.prop.sheet button[data-sign]").isEnabled() && await page.locator("#go-key").isHidden(), `${tag}: with the new quote, "Sign with Face ID" is on again (the passkey kept)`);
   }
 
   // (b): the approval sheet, as the CFO's.
@@ -231,7 +251,7 @@ for (const [width, scheme] of RUNS) {
   const facts = Object.fromEntries((await waiting.locator("dl.facts").evaluate((d: Element) => [...d.querySelectorAll("dt")].map((t) => [t.textContent, t.nextElementSibling?.textContent])))) as Record<string, string>;
   const iban = (s: string) => s.replace(/(.{4})/g, "$1 ").trim();
   check(/You are approving · T-0002/i.test(sheetText) && (await waiting.locator(".title").innerText()).includes(`Pay ${terms.payee} EUR 1,850.00`), `${tag}: (b) is the approval sheet: "You are approving", "Pay ${terms.payee} EUR 1,850.00"`);
-  check(facts.Amount === "EUR 1,850.00" && facts.Beneficiary === terms.payee && facts.IBAN === iban(terms.payee_iban ?? "") && facts.Reference === terms.reference && facts.Proposal === "T-0002" && /^in \d+ min/.test(facts.Expires ?? ""),
+  check(facts.Amount === "EUR 1,850.00" && facts.Beneficiary === terms.payee && facts.IBAN === iban(terms.payee_iban ?? "") && facts.Reference === terms.reference && facts.Proposal === "T-0002" && /^in \d+ min/.test(facts["Proposal expires"] ?? ""),
     `${tag}: (b) the sheet's exact terms: amount, beneficiary, IBAN ${facts.IBAN}, reference, proposal, expiry`);
   const hash = (await waiting.locator(".hash").getAttribute("data-hash")) ?? "";
   if (!args.live) {
@@ -248,7 +268,7 @@ for (const [width, scheme] of RUNS) {
   check((await waiting.locator(".hash code").innerText()).trim() === hash && await waiting.locator(".hash button.exp").getAttribute("aria-expanded") === "true", `${tag}: (b) a tap on the hash shows all 64 characters`);
   await waiting.locator(".hash button.exp").click();
   check((await waiting.locator(".basis").innerText()).trim() === cfoApproval().line, `${tag}: (b) names the CFO's real sheet it follows, from the record: ${cfoApproval().line.slice(0, 60)}…`);
-  check(await waiting.locator("button[data-sign]").isDisabled(), `${tag}: (b) cannot be signed before there is a passkey`);
+  if (tag !== "390-dark") check(await waiting.locator("button[data-sign]").isDisabled(), `${tag}: (b) cannot be signed before there is a passkey`);
   await shotAt(page, "article.prop.sheet", join(shots, `${tag}-2-sheet.png`));
 
   // (a): blocked, nothing to sign, and the three locks.
@@ -281,7 +301,7 @@ for (const [width, scheme] of RUNS) {
   check(/simulation in your test world; the examples are real/.test(await blocked.innerText()), `${tag}: (a) says the blocked payment is simulated and the examples real`);
   await shotAt(page, "article.prop.blocked .locks", join(shots, `${tag}-3-locks.png`));
 
-  await page.click("#go-key");
+  if (await page.locator("#go-key").isVisible()) await page.click("#go-key");
   await page.waitForFunction(() => document.getElementById("k-status")?.classList.contains("ok") || document.getElementById("k-status")?.classList.contains("bad"));
   check((await page.locator("#k-status").getAttribute("class"))!.includes("ok"), `${tag}: the test passkey is made and registered (${(await page.locator("#k-status").innerText()).slice(0, 60)}…)`);
   await layout(page, tag, "with the passkey made", width);

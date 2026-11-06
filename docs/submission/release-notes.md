@@ -138,6 +138,10 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   down, Face ID failing, the FX quote expiring); [qa.md](qa.md) the 15 hardest questions, each answered in three
   sentences or fewer with its evidence; [cheat-sheet.pdf](cheat-sheet.pdf) one A4 page. The earlier pitch versions and
   the replay runbook stay. 2568 tests in 261 files, all passing.
+- 6 November, /try/sign's expired quote: the sheet's rows read "Proposal expires" and "Quote expires"; while the quote
+  is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
+  guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2569 tests
+  in 261 files, all passing (with main's).
 
 ## Real, and ours
 
