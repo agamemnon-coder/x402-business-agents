@@ -52,14 +52,34 @@ Set for the run:
 export KIT11_DB=data/awx-1.sqlite KIT11_KEYS_DIR=../x402-business-agents-keys/awx-1
 export KIT11_AGENTS=on KIT11_CARD_POLL_MS=off          # agents meet declines and advise; webhooks bring transactions
 unset KIT11_AUTONOMY METAL_RPC_URL METAL_ENDPOINT_SECRET T0_API_KEY T0_ENABLED HUB_PUSH_ENABLED HUB_DECISIONS_ENABLED
-export AIRWALLEX_CALL_BUDGET=<the number Max approved> AIRWALLEX_CALL_LOG=$KIT11_KEYS_DIR/airwallex-calls.jsonl
+export AIRWALLEX_CALL_BUDGET=96 AIRWALLEX_CALL_LOG=$KIT11_KEYS_DIR/airwallex-calls.jsonl
 ```
 
 Nothing to set in the Airwallex web app if the preflight passes: the key in this environment made every kind of call
 in the table live by 3 November (Issuing, FX, Transfers, Balances, Deposits, Beneficiaries, Webhooks, Simulation). If
 Max has since swapped it for a narrower scoped key, the first 401 names the missing permission (an abort criterion). If the preflight finds no
-webhook subscription for the relay, or the first webhook is refused as "bad signature", a new subscription is needed
-(contingency below; it also changes the relay Worker's secret, so it needs Max's go).
+webhook subscription for the relay, or the first webhook is refused as "bad signature", the run stops and Claude Code
+reports to the coordinator: a new subscription changes the relay Worker's secret, and Max decides that himself.
+
+## Max's message (sent ten minutes before his slot, Saturday 7 November)
+
+Claude Code fills in the three placeholders from the runner's own output after step 0b (`npm run relay -- --enrol`
+prints the viewer link and the code) and sends the text as it stands. The viewer link carries the view key: it goes to
+Max only, in one private tab, never into a run log or a commit.
+
+> **awx-1 begint over 10 minuten (alleen Airwallex sandbox, testgeld).** Duur ongeveer 45 minuten; houd je telefoon bij de hand.
+>
+> 1. **Inschrijven (nu).** Open op je telefoon, in één privé-tabblad: `<VIEWER_LINK>`. Ga naar `/enrol`, typ code
+>    `<CODE>` (10 minuten geldig) en bevestig met Face ID. Stuur mij daarna in de chat: "Bevestig passkey `<FINGERPRINT>`"
+>    — alleen als die vingerafdruk ook op je telefoon staat.
+> 2. **Kaartlimiet (stap c, na ongeveer 5 minuten).** De Sourcing-agent vraagt een hogere limiet per aankoop, nadat
+>    Airwallex 45,00 EUR weigerde (`LIMIT_EXCEEDED`). Keur goed of af met Face ID; je hebt een uur.
+> 3. **Licentie Stockline, EUR 240,00 (stap f1).** Betaald uit EUR, zonder FX. Face ID binnen 20 minuten.
+> 4. **Bergtex, EUR 1.850,00 (stap f2), direct daarna.** Met FX voor alleen het tekort, op een verse quote: Face ID
+>    binnen 14,5 minuten, anders vervalt de quote.
+>
+> Ik keur zelf niets goed en start geen tweede poging zonder jouw go. Lukt het tijdslot niet, dan tekent een gelabelde
+> testpasskey, alleen als jij daar in de chat "go" op zegt.
 
 ## Steps
 
@@ -78,7 +98,9 @@ To resume after a failure (only on Max's go, within the approved calls): `AWX1_G
 ## Abort criteria (stop, record, tell Max)
 
 - The call log reaches the approved number (the guard refuses the next call by itself), or any contingency is needed.
-- The preflight fails: EUR under the floor plus 1,500.00, no webhook subscription, or a refusal of the environment.
+- The preflight fails: EUR under the floor plus 1,500.00, or a refusal of the environment.
+- **The preflight finds no webhook subscription for the relay: stop and report to the coordinator. Max decides that
+  himself** (a new subscription changes the relay Worker's secret).
 - A webhook is refused as "bad signature", or no webhook comes within 2 minutes for a card transaction (the conductor
   polls once and records `awx1.webhook_missing`; e then fails honestly).
 - Airwallex approves the over-limit charge (c) or the wrong-category charge (d): the control did not hold.
@@ -196,5 +218,17 @@ Not in the budget; each only on Max's go (the guard refuses it otherwise):
 
 **Metal: 0 calls** (METAL_RPC_URL unset; no bootstrap, no mandate, no sweep).
 
-**Asked of Max:** approve `AIRWALLEX_CALL_BUDGET=96` for awx-1 (85 expected), about 0.11 USD of Claude (14 calls, in the
-evals block), 0 Metal calls; and, separately, whether a second attempt (awx-1b) may use up to the same again.
+## Approved (Max, 6 November)
+
+| | Approved |
+|---|---|
+| Airwallex | 85 calls expected; hard maximum 96 (`AIRWALLEX_CALL_BUDGET=96`). With one second attempt (awx-1b): at most 117 in all |
+| Claude | 14 calls, about 0.11 USD; at most 0.16 USD (with the Bergtex re-plan) |
+| Metal | 0 calls |
+
+Any contingency above stays outside this approval: each needs Max's go first.
+
+**Before the run, an accident booked:** while preparing this run, a stand-in test reached real Claude (`planInvoice` built
+its `Tools` from `KIT11_ANTHROPIC_API_KEY` in the environment). It is booked in `docs/runs/api-budget.jsonl` as an
+upper bound, not a measured count: at most 24 calls, at most 0.18 USD. Fixed: the stand-in passes a null Claude client,
+`planInvoice` takes the client as an argument, and the tests drop the keys and make `fetch` throw.

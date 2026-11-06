@@ -223,7 +223,9 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   (docs/runs/awx-1-plan.md): every Airwallex call by step and endpoint (85 expected, 96 at most), the Claude estimate from
   the main run's own costs, the abort criteria. `npm run awx-1` runs the scenario on the stand-ins with 0 network and
   checks a–g, verify and reconcile; live it waits for Max's Face ID and a call guard keeps to the approved count.
-  2681 tests in 272 files, all passing.
+  Max approved 96 Airwallex calls at most (117 with one second attempt), 14 Claude calls, 0 Metal. A stand-in test's
+  accidental Claude calls while preparing it are booked as an upper bound (at most 24 calls, 0.18 USD).
+  2682 tests in 272 files, all passing.
 
 ## Real, and ours
 

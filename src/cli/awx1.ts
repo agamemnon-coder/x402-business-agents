@@ -70,7 +70,7 @@ if (cmd === "plan") {
     console.log(freeIfCalibrated >= LICENCE_FEE_EUR_CENTS + SWIFT_FEE_MAX_EUR_CENTS ? "f1               the licence (260.00 with its fee ceiling) can go from EUR without FX" : "f1               NOT ENOUGH EUR: the licence would need FX; stop (contingency: a simulated EUR deposit, on Max's go)");
     const url = `${(await relayConfig()).url}/hooks/airwallex`;
     const hook = (await listWebhooks(api)).find((w) => w.url === url);
-    console.log(hook ? `WEBHOOKS         ${hook.id} sends ${hook.events.length} events to the relay` : "WEBHOOKS         NO subscription for the relay: stop (contingency: cards -- webhook --replace, on Max's go)");
+    console.log(hook ? `WEBHOOKS         ${hook.id} sends ${hook.events.length} events to the relay` : "WEBHOOKS         NO subscription for the relay: STOP and report to the coordinator; Max decides himself (a new one changes the relay Worker's secret)");
     process.exit(hook && freeIfCalibrated >= LICENCE_FEE_EUR_CENTS + SWIFT_FEE_MAX_EUR_CENTS ? 0 : 1);
   }
   const { runAwx1, STEPS } = await import("../awx/scenario.js");

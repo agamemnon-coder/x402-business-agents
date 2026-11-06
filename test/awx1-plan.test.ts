@@ -53,6 +53,20 @@ describe("the awx-1 call budget", () => {
   });
 });
 
+describe("the accident while preparing awx-1, booked", () => {
+  it("is an upper bound in the evals block: 8 invoices at the main run's own average per call, at most 24 calls", () => {
+    const lines = readFileSync(resolve(repo, "docs/runs/api-budget.jsonl"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as { block: string; usd_micros: number; what: string });
+    const hit = lines.filter((l) => /^ACCIDENT, UPPER BOUND/.test(l.what) && /awx-1/.test(l.what));
+    expect(hit).toHaveLength(1);
+    const avg = averageCostPerCall(mainRun);
+    const perInvoice = avg["claude-haiku-5-5"] + avg["claude-sonnet-5-5"] + avg["claude-opus-5-5"];
+    expect(hit[0]).toMatchObject({ block: "evals", usd_micros: 8 * perInvoice });
+    expect(hit[0]!.what).toContain(`${avg["claude-haiku-5-5"]} + ${avg["claude-sonnet-5-5"]} + ${avg["claude-opus-5-5"]}`);
+    expect(hit[0]!.what).toMatch(/at most 24 Claude calls/);
+    expect(hit[0]!.what).toMatch(/not a measured count/);
+  });
+});
+
 describe("the live run refuses to start", () => {
   const good = {
     AIRWALLEX_CLIENT_ID: "x", AIRWALLEX_API_KEY: "y", AIRWALLEX_CALL_BUDGET: "96", AIRWALLEX_CALL_LOG: "/k/awx-1/calls.jsonl",
