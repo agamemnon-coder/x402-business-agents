@@ -350,4 +350,52 @@ function treasuryShortfall(): AgentCase {
   };
 }
 
-export const FACT_CASES: AgentCase[] = [sourcingBusy(), treasuryRidgelineDown(), treasuryPaid(), treasuryShortfall()];
+/**
+ * Case 5 (reliability run rel-1, 6 November, 05:45:52 UTC): Packwise ends Starter; Pro costs 45.00 EUR over the
+ * Sourcing card's 30.00 a purchase. Haiku bought nothing, asked no raise, and wrote to the Treasury agent instead, which
+ * cannot raise a card limit; Treasury told it to wait for the CFO, who had nothing to approve, so the plan was never
+ * bought. Passes when the wake ends with the raise before the CFO (ask_card_raise, before buying or after the decline),
+ * or with the plan bought; a message to Treasury alone does not pass.
+ */
+function sourcingPackwiseRaise(): AgentCase {
+  return {
+    id: "sourcing-packwise-raise", agent: "sourcing", kind: "hard", model: "haiku",
+    what: "rel-1, 05:45: Packwise Pro (45.00 EUR) over the card's 30.00 a purchase: the agent itself asks the CFO for the raise (ask_card_raise), not the Treasury agent",
+    run: async (model: string, client: Anthropic) => {
+      const db = openDb(":memory:");
+      const sup = await standInSuppliers("0.04");
+      try {
+        const at = new Date("2026-11-06T05:45:52.329Z");
+        remember(db, "sourcing", [[new Date("2026-11-06T05:43:30Z"), "Stockline is at 0.04 per check, within the new 0.04 cap, so I'm serving customers at a 0.01 margin. Ridgeline is still down (HTTP 503) until 17:36 UTC. I kept the buy policy on Stockline at max 0.04, no cache."]]);
+        advance(db, "sourcing", { eventId: 0, messageId: 0 }, new Date("2026-11-06T05:43:30Z"));
+        publish(db, "supplier.notice", { supplier: "Packwise", text: "Packwise ends its Starter plan this month. Your warehouse software continues only on the Pro plan, 45.00 EUR a month (Pro plan, monthly (more warehouses, live sync)). Without a plan, warehouse sync stops at the end of the month." }, "sourcing", "system", at);
+        const asked: string[] = [], bought: string[] = [];
+        const perTx = 3000;
+        const world = {
+          suppliers: () => Promise.all([supplierView(db, "stockline", sup.base.stockline), supplierView(db, "ridgeline", sup.base.ridgeline)]),
+          mandate: async () => ({ capCents: 4, budgetLeftCents: 1334 }),
+          sellCents: () => 5,
+          card: async () => ({ perTxCents: perTx, monthlyCents: 10000 }),
+          askCardRaise: async (per: string) => { asked.push(per); return { proposal_id: "P-0006" }; },
+          buyPlan: async (plan: string) => {
+            const cents = plan === "packwise-pro" ? 4500 : 1999;
+            if (cents > perTx) return { approved: false, text: "declined by Airwallex (LIMIT_EXCEEDED); your card's limit decides, and only the CFO can raise it: ask with ask_card_raise if you need this plan", ref: "awx-eval-declined" };
+            bought.push(plan);
+            return { approved: true, text: "approved by Airwallex", ref: "awx-eval" };
+          },
+        };
+        const w = await wake(db, { ...sourcingProfile(world), model }, { client, now: new Date(at.getTime() + 1000) });
+        const calls = w?.run?.calls ?? [];
+        const toTreasury = calls.filter((c) => c.tool === "send_message").length;
+        return {
+          pass: w?.source === "claude" && (asked.length === 1 || bought.includes("packwise-pro")),
+          words: said(w?.run ?? null),
+          run: { ...(w?.run ?? emptyRun()), costMicros: costIn(db) },
+          detail: `${w?.source ?? "no wake"}; tools ${calls.map((c) => c.tool).join(", ") || "none"}; ${asked.length ? `asked the CFO for ${asked[0]}` : "asked the CFO for nothing"}${toTreasury ? `; wrote to Treasury ${toTreasury}×` : ""}; "${(w?.summary ?? "").slice(0, 300)}"`,
+        };
+      } finally { await sup.close().catch(() => {}); }
+    },
+  };
+}
+
+export const FACT_CASES: AgentCase[] = [sourcingBusy(), treasuryRidgelineDown(), treasuryPaid(), treasuryShortfall(), sourcingPackwiseRaise()];
