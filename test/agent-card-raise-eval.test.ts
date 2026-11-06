@@ -2,6 +2,7 @@
 // It passes an answer that sends the Sourcing agent to the CFO itself, and fails one that keeps it waiting.
 import { describe, expect, it } from "vitest";
 import { POINTS_AT_OWN_RAISE } from "../src/evals/agentFacts.js";
+import { treasuryProfile } from "../src/autonomy/teamProfiles.js";
 
 describe("treasury-card-raise checker", () => {
   it("passes an answer that sends the Sourcing agent to ask the CFO itself", () => {
@@ -22,5 +23,14 @@ describe("treasury-card-raise checker", () => {
       "Please don't buy it. I'm flagging it to the CFO in my report.",
       "The 45.00 EUR/month Packwise Pro is a decision for the CFO directly. Please don't buy it until the CFO approves.",
     ]) expect(POINTS_AT_OWN_RAISE.test(t), t).toBe(false);
+  });
+});
+
+describe("the Treasury agent's rules (rel-1's fix)", () => {
+  it("say it cannot raise or ask for a card limit, and that the card's own agent asks the CFO with ask_card_raise", () => {
+    const rules = treasuryProfile(30 * 60_000, { runFlow: () => ({ ok: false, text: "no flow" }) }).rules;
+    expect(rules).toMatch(/card limit is not a mandate: you cannot raise it or ask the CFO for it/);
+    expect(rules).toMatch(/your report does not put it before the CFO/);
+    expect(rules).toMatch(/the Sourcing agent: ask_card_raise/);
   });
 });
