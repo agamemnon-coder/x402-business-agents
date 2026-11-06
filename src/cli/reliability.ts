@@ -285,6 +285,7 @@ try {
     cli("world.ts", "ridgeline-maintenance");
     const ev = lastEvent("supplier.notice");
     check(ev > before, "Ridgeline Data's maintenance notice reached the Sourcing agent");
+    // nosemgrep: react-insecure-request -- the stand-in supplier on loopback (127.0.0.1) is plain HTTP by design
     const res = await fetch("http://127.0.0.1:4103/v1/stock-check?seq=1").catch(() => null);
     check(res?.status === 503 && !res.headers.get("payment-required"), `Ridgeline answers ${res?.status ?? "nothing"} with no offer`);
     noticeEvent = ev; noticeFrom = from;
