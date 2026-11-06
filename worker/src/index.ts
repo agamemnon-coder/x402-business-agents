@@ -20,9 +20,6 @@ export interface Env {
   /** Claude for Try Purser, and for /try/sign's Treasury agent sentence (Haiku): a Worker secret Max sets himself; no
    *  script in this repo sets it (test/try-fx.test.ts). Without it the pages read by code alone and show fixed text. */
   ANTHROPIC_API_KEY?: string;
-  /** /try/sign's live Haiku sentence: only exactly "on" turns it on, and only Max sets it, once the key is his to spend.
-   *  Unset (the default; no script or config in this repo sets it) or any other value: no model call, the fixed text. */
-  TRY_SIGN_HAIKU?: string;
   /**
    * /try/sign's live FX quote (read-only, sandbox only): a Worker secret Max sets himself, from a scoped sandbox key
    * (Conversion: Write only); no script in this repo sets it (test/try-fx.test.ts). The client id.
@@ -48,7 +45,7 @@ export class RelayObject extends DurableObject<Env> {
       const { AIRWALLEX_CLIENT_ID: id, AIRWALLEX_API_KEY: key } = this.env;
       return (this.trySign ??= new TrySignDesk(this.ctx.storage.sql, {
         fx: id && key ? new SandboxQuotes({ clientId: id, apiKey: key }) : null,
-        // Only a function that asks Haiku for one sentence, and only with TRY_SIGN_HAIKU "on": the desk never holds the key.
+        // Only a function that asks Haiku for one sentence: the desk never holds the key itself.
         agentLine: agentLineSource(this.env, fetch),
       })).fetch(req);
     }

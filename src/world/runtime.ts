@@ -64,8 +64,11 @@ function listen(app: ReturnType<typeof supplierApp>, port: number): Promise<Serv
 /** Our clearing key when the seller has a clearing wallet and Metal offers clearing on testnet; otherwise null. */
 async function sellerClearingKey(): Promise<`0x${string}` | null> {
   if (!existsSync(keyPath(WALLET_DIRS.seller))) return null;
-  if (!(await clearingDeployment().catch(() => null))) return null;
-  const w = await openWallet("seller");
+  const d = await clearingDeployment().catch(() => null);
+  if (!d) return null;
+  // A wallet kept for another Clearing deployment is not offered (metal-pay: one wallet per deployment).
+  const w = await Promise.resolve().then(() => openWallet("seller", d)).catch((e: Error) => { console.error(`clearing not offered: ${e.message}`); return null; });
+  if (!w) return null;
   try {
     return w.signer.publicKey;
   } finally {

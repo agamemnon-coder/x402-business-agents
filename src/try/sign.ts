@@ -30,7 +30,6 @@ export const TAMPER_VERDICT = { cent: "One cent changed. The signature is worthl
 
 /** Why the Treasury agent's sentence is the fixed one, as its pill says it, by the reason the server gives (worker/src/agentLine.ts). */
 export const VOICE_LABELS = {
-  off: "fixed text (live model off)",
   budget: "fixed text (budget reached)",
   mismatch: "fixed text (sentence did not match the terms)",
   unavailable: "fixed text (model unavailable)",
@@ -49,7 +48,7 @@ export const WHATS_REAL = {
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
     "The tamper: the server checks your changed terms against the same signature, for real, and refuses them.",
-    "The Treasury agent's sentence on the waiting payment can be a live Claude Haiku call, labelled “Claude Haiku · live”, when the server has it on: only the test world's invoice, balance, reserve floor and limit go in, never anything you type. The model only proposes; the limits, the checks and the approval are code and your passkey. Code checks every amount in its sentence against the amounts it was given, written exactly as given. Without it (the live model off on the server, no key, the day's USD 1 budget or the rate limit reached, no answer in 8 s, or a sentence that does not match the terms) the fixed sentence is shown, labelled “fixed text”.",
+    "The Treasury agent's sentence on the waiting payment is a live Claude Haiku call, labelled “Claude Haiku · live”: only the test world's invoice, balance, reserve floor and limit go in, never anything you type. The model only proposes; the limits, the checks and the approval are code and your passkey. Code checks every amount in its sentence against the amounts it was given, written exactly as given. Without it (no key on the server, the day's USD 1 budget or the rate limit reached, no answer in 8 s, or a sentence that does not match the terms) the fixed sentence is shown, labelled “fixed text”.",
     "The FX quote is live from the Airwallex sandbox (a test environment): read-only, nothing is converted, no money moves. It is in the terms, so the signature covers its quote id, and an expired quote is refused. Without a live quote (no sandbox key on the server, or the limit reached) the page shows the main run's recorded quote instead, labelled, and it is not in the signature.",
     "The receipt: receipt.json holds the exact terms, their hash, your passkey's signature, its public key and the algorithm. Anyone can check it offline, with no server: npm run verify-receipt -- receipt.json in the repository. Change one field or one cent and it fails. It proves that the holder of that key signed those terms, not who holds it.",
   ],

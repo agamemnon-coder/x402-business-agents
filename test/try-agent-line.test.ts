@@ -263,31 +263,22 @@ describe("the amounts in the sentence: each one of the four it was given, writte
   });
 });
 
-describe("the feature flag: the live call only with TRY_SIGN_HAIKU exactly \"on\"", () => {
-  it("off (unset or anything but \"on\"): no model call, even with the key present", async () => {
-    for (const flag of [undefined, "", "off", "ON", "On", "true", "1", "yes", " on", "on "]) {
-      const { f, seen } = fakeApi();
-      const src = agentLineSource({ ANTHROPIC_API_KEY: "sk-test-not-a-key", TRY_SIGN_HAIKU: flag }, f);
-      expect({ flag, src }).toEqual({ flag, src: "off" });
-      const desk = new TrySignDesk(sqlOver(new Database(":memory:")), { now: () => t0, agentLine: src });
-      const b = waiting(await world(desk));
-      expect(b.says).toBe(FIXED_PROPOSALS[1]!.says);
-      expect(b.voice).toMatchObject({ source: "fixed", reason: "off" });
-      expect(JSON.parse(b.canonical).proposed_by).toBe("Treasury agent (fixed text)");
-      expect(seen).toHaveLength(0);
-    }
-    expect(VOICE_LABELS.off).toBe("fixed text (live model off)");
-  });
-
-  it("on: the call goes to the (fake) API; on without a key: \"model unavailable\", no call", async () => {
+describe("the Worker's key: the call is made when the Worker has ANTHROPIC_API_KEY, else the fixed text", () => {
+  it("with the key: the call goes to the (fake) API; without it: no source, \"model unavailable\", no call", async () => {
     const { f, seen } = fakeApi({ sentence: "Alpine Packaging's EUR 1,850.00 invoice is above the EUR 500.00 I may pay alone, so I need your signature." });
-    const src = agentLineSource({ ANTHROPIC_API_KEY: "sk-test-not-a-key", TRY_SIGN_HAIKU: "on" }, f);
+    const src = agentLineSource({ ANTHROPIC_API_KEY: "sk-test-not-a-key" }, f);
     expect(typeof src).toBe("function");
     const b = waiting(await world(new TrySignDesk(sqlOver(new Database(":memory:")), { now: () => t0, agentLine: src })));
     expect(seen).toHaveLength(1);
     expect(b.voice).toMatchObject({ source: "model", model: HAIKU, request_id: "req_011abc" });
-    expect(agentLineSource({ TRY_SIGN_HAIKU: "on" }, f)).toBeNull();
+    for (const env of [{}, { ANTHROPIC_API_KEY: "" }]) {
+      const none = agentLineSource(env, f);
+      expect(none).toBeNull();
+      const c = waiting(await world(new TrySignDesk(sqlOver(new Database(":memory:")), { now: () => t0, agentLine: none })));
+      expect(c.voice).toMatchObject({ source: "fixed", reason: "unavailable" });
+    }
     expect(seen).toHaveLength(1);
+    expect(Object.keys(VOICE_LABELS).sort()).toEqual(["budget", "mismatch", "unavailable"]);
   });
 });
 

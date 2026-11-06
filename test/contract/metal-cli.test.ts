@@ -5,7 +5,7 @@
 //
 // Sources:
 //   [CLI]  https://docs.metalntwx.com/agents/metal-agent (mandate pull; what a mandate enforces)
-//   [M9]   docs/feedback-for-metal-and-airwallex.md M9 (exit 1 both for a refusal and for a setup error; the incident)
+//   [M9]   docs/feedback-for-metal-and-airwallex.md M4 (until 6 Nov: M9; exit 1 both for a refusal and for a setup error; the incident)
 //   [RUN-S1] docs/runs/2026-10-29-s1.md (mandate_cap_exceeded; mandate_revoked for the replaced credential)
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,7 +19,9 @@ vi.mock("node:child_process", async (importOriginal) => ({
   spawnSync: (_bin: string, args: string[]) => { h.args.push(args); return { ...h.next }; },
 }));
 vi.mock("../../src/metal/mandate.js", () => ({
-  activeMandate: async (agent: string) => ({ agent, credentialPath: `/keys/${agent}.credential.json`, keyFile: `/keys/${agent}.key.json` }),
+  activeMandate: async (agent: string) => ({ agent, credentialPath: `/keys/${agent}.credential.json`, keyFile: `/keys/${agent}.key.json`, reference: `0x${"0a".repeat(32)}` }),
+  credentialFiles: () => [],
+  loadCredentialFile: () => { throw new Error("no credential files in this test"); },
 }));
 
 process.env.KIT11_KEYS_DIR = mkdtempSync(join(tmpdir(), "kit11-contract-keys-"));
