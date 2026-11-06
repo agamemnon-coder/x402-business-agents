@@ -66,6 +66,10 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   /try/sign's API refuses unknown or mistyped fields and answers any internal error with a fixed message. /try/sign is
   also opened in WebKit in CI: Playwright's Linux WebKit has no WebAuthn, so it checks the page's honest "no passkeys"
   answer and its layout, not the visit. 2437 tests in 249 files, all passing.
+- 6 November, reliability runs: `npm run reliability` runs the full Kit 11 flow in a fresh world (sandbox, testnet,
+  test money, labelled virtual test passkeys). rel-1 stopped at one step (the card purchase: Treasury told Sourcing to
+  wait instead of asking the CFO itself); one rule added to Treasury's instructions, with evals; rel-1b passed every
+  step. Both runs are in docs/runs/reliability-2026-11.md, failure included. 2447 tests in 251 files, all passing.
 
 ## Real, and ours
 
