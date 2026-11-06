@@ -68,6 +68,18 @@ describe("the key: Max's scoped sandbox key, set by Max, never by the repo", () 
     expect(readFileSync(join(root, "src/cli/relay-deploy.ts"), "utf8").match(/\["secret", "put", "([A-Z_]+)"\]/g)).toEqual(['["secret", "put", "RELAY_TOKEN"]']);
   });
 
+  // The same guard for two more names: the Anthropic key is a Worker secret Max sets himself, and Metal's keyed RPC URL
+  // is never one (the Worker reads no Metal RPC); no script, config or workflow here puts either.
+  it("no code in the repo writes METAL_RPC_URL or ANTHROPIC_API_KEY into the Worker's secrets or vars", () => {
+    const names = /METAL_RPC_URL|ANTHROPIC_API_KEY/;
+    for (const f of all) {
+      // Code, not comments: a comment may say how Max sets it himself.
+      const puts = readFileSync(f, "utf8").split("\n").filter((l) => !/^\s*(\/\/|\/?\*)/.test(l)).filter((l) => /secret\s*(put|bulk)|"secret",\s*"put"|^\s*"?(METAL_RPC_URL|ANTHROPIC_API_KEY)"?\s*[=:]/.test(l));
+      expect({ f: f.slice(root.length), bad: puts.filter((l) => names.test(l)) }).toEqual({ f: f.slice(root.length), bad: [] });
+    }
+    expect(readFileSync(join(root, "worker/wrangler.jsonc"), "utf8")).not.toMatch(names);
+  });
+
   it("the Worker reads the key from its secrets only, and only into the quote client", () => {
     const index = readFileSync(join(root, "worker/src/index.ts"), "utf8");
     expect(index.match(/AIRWALLEX_(CLIENT_ID|API_KEY)/g)?.length).toBeGreaterThanOrEqual(2);

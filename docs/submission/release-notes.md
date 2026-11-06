@@ -138,12 +138,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   down, Face ID failing, the FX quote expiring); [qa.md](qa.md) the 15 hardest questions, each answered in three
   sentences or fewer with its evidence; [cheat-sheet.pdf](cheat-sheet.pdf) one A4 page. The earlier pitch versions and
   the replay runbook stay. 2568 tests in 261 files, all passing.
+- 6 November, /try/sign's expired quote: the sheet's rows read "Proposal expires" and "Quote expires"; while the quote
+  is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
+  guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2569 tests
+  in 261 files, all passing (with main's).
 - 6 November, the first screen (section D): the README, Home and the form's synopsis open the same way, from one
   source (`FIRST_SCREEN` in `src/config/brand.ts`): what Purser is in one sentence, the three sentences, then "Try it
   in 30 seconds." on its own line to /try/sign; only then the badges and the details. "Why this is a company": five
   lines from docs/business/ (the problem, who buys, the intended pricing as a hypothesis, why now with Airwallex's own
   post as the source, why Purser) on the README and Home, under one note that it is not validated with customers yet.
-  2576 tests in 262 files, all passing.
+  2577 tests in 262 files, all passing.
 - 6 November, the proof and the form (section D): one sentence per partner (`PROOF_SENTENCES` in
   `src/config/brand.ts`), word for word on the README, Home and the form, every number read from its record by
   `test/proof-sentences.test.ts`. Airwallex: the hash the CFO signed is in Airwallex's own record of the EUR 240.00

@@ -1,5 +1,5 @@
 // /try/sign in WebKit (Safari's engine), up to the passkey step (not part of npm test; needs Playwright's WebKit):
-//   npx playwright install --with-deps webkit && npx tsx test/browser/trysign-webkit.check.ts [screenshot dir]
+//   npx tsx test/browser/trysign-webkit.check.ts [screenshot dir]
 // Playwright's WebKit has no virtual authenticator, so nothing here makes or uses a passkey, and nothing stands in for
 // one: the passkey and the signature are checked in Chromium (test/browser/trysign.check.ts, with a virtual
 // authenticator) and by the server's tests. What WebKit checks is everything before them, as an iPhone visitor sees it:
@@ -10,7 +10,7 @@
 // nothing to click, and the check says which of the two it saw. Either way (6 Nov) it checks the demo's frame as Safari
 // draws it: the three steps with step 1 under way, the start button above the fold at 390 px, the one-line disclaimer
 // and "What's real?" opening to its honest lines; with WebAuthn, the approval sheet's terms (IBAN included) and the
-// three locks with their links. CI runs it (.github/workflows/ci.yml, job judge); there
+// three locks with their links. CI runs it (.github/workflows/ci.yml, job webkit, in Playwright's image); there
 // (Playwright's WebKit on Ubuntu, 6 Nov) the build has no PublicKeyCredential, so CI sees the fallback and the layout.
 
 import { createHash } from "node:crypto";
