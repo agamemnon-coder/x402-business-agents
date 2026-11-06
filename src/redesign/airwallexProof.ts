@@ -143,6 +143,7 @@ ul.awc { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 ul.awc li { font-size: 15px; line-height: 1.45; border-left: 3px solid var(--ok); padding-left: 11px; overflow-wrap: anywhere; }
 ul.awc li.no { border-left-color: var(--bad); }
 .awcards { display: grid; gap: 10px; }
+.awrb details.fold > div, .awrb details.fold > p { margin-bottom: 10px; }
 .awcard { display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--sunken); min-width: 0; }
 .awcard h4 { margin: 0; font-size: 16.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .awcard h4 .awm { font-size: 14px; padding: 2px 10px; }
@@ -168,6 +169,12 @@ ${badge(h.match, "Match: the same hash", "No match")}
 <p class="src">${esc(`GET /transfers/{id}, read ${day(h.readAt)}, sandbox, test money · ${h.file}`)}</p></div>`;
 }
 
+/** One line for all the cards: how many match the CFO policy on every control, counted from the rows. */
+export function cardsMatchBadge(rows: CardControlRow[]): string {
+  const matched = rows.filter((r) => r.match).length;
+  return badge(matched === rows.length, `${matched} of ${rows.length} cards match the CFO policy`, `${rows.length - matched} of ${rows.length} cards differ from the CFO policy`);
+}
+
 /** Proof's short version of the card controls: one line per card, all five controls, matched or not. */
 export function controlsShortHtml(rows: CardControlRow[], readAt: string, file: string): string {
   if (!rows.length) return "";
@@ -176,24 +183,25 @@ export function controlsShortHtml(rows: CardControlRow[], readAt: string, file: 
     const line = `${r.name} ····${r.last4}: ${v("Most per purchase").policy} per purchase, ${v("Most per month").policy} a month, ${v("Merchant categories").policy}, ${v("Currency").policy}, until ${v("End date").airwallex}`;
     return `<li class="${r.match ? "" : "no"}">${esc(line)}<br>${badge(r.match, "Airwallex matches the CFO policy", "Airwallex differs from the CFO policy")}</li>`;
   });
-  const matched = rows.filter((r) => r.match).length;
   return `<div class="card" id="awx-cards"><h3>${icon("credit-card", 18)}${esc("Card controls Airwallex enforces, written from the CFO policy")}</h3>
 <p>${esc("Limit per purchase and per month, merchant categories, currency and end date, as Airwallex returns each agent's card.")}</p>
-${badge(matched === rows.length, `${matched} of ${rows.length} cards match the CFO policy`, `${rows.length - matched} of ${rows.length} cards differ from the CFO policy`)}
+${cardsMatchBadge(rows)}
 <details class="fold"><summary>${esc("Show each card")}</summary><ul class="awc">${items.join("")}</ul></details>
 <p class="src">${esc(`GET /issuing/cards, read ${day(readAt)}, sandbox · ${file}`)}</p>
 <a class="open" href="airwallex#controls">${esc("Policy and card side by side")} ${icon("arrow-right", 14)}</a></div>`;
 }
 
-/** /airwallex's full version: per card, each CFO policy rule beside the control Airwallex returns. */
+/** /airwallex's version: one line for all the cards, then (folded) per card each CFO policy rule beside the control Airwallex returns. */
 export function controlsSideBySideHtml(rows: CardControlRow[], readAt: string, file: string): string {
   if (!rows.length) return "";
   const cardHtml = (r: CardControlRow) => `<div class="awcard"><h4>${icon("credit-card", 18)}${esc(`${r.name} ····${r.last4}`)}${badge(r.match, "matches", "differs")}</h4>
 <div class="awhead"><span>${esc("Rule")}</span><span>${esc("CFO policy")}</span><span>${esc("Airwallex card control")}</span></div>
 ${r.checks.map((c) => `<div class="awrow"><span class="k ${c.ok ? "ok" : "no"}">${icon(c.ok ? "check" : "octagon-x", 14)}${esc(c.rule)}</span><span><b class="lbl">${esc("CFO policy")}</b>${esc(c.policy)}${c.note ? `<small>${esc(c.note)}</small>` : ""}</span><span><b class="lbl">${esc("Airwallex")}</b>${esc(c.airwallex)}</span></div>`).join("")}
 <small>${esc(`Card id …${r.idTail} · ${r.status} · created by "${r.createdBy}"`)}</small></div>`;
-  return `<div class="card" id="controls"><h3>${icon("shield-check", 18)}${esc("Each agent's card: the CFO policy, as Airwallex enforces it")}</h3>
+  // Max, 6 Nov: one line on the page; each card's side by side in a collapsed fold, as Proof folds its lists.
+  return `<div class="card" id="controls">${cardsMatchBadge(rows)}
+<details class="fold"><summary>${esc("Show each card: the CFO policy beside the Airwallex card control")}</summary>
 <p>${esc("Purser writes each card's controls from the CFO policy; Airwallex declines anything outside them, whatever the agent does.")}</p>
 <div class="awcards">${rows.map(cardHtml).join("")}</div>
-<p class="src">${esc(`GET /issuing/cards, then each card, read ${day(readAt)}, sandbox · ${file} · no card number beyond its last four digits`)}</p></div>`;
+<p class="src">${esc(`GET /issuing/cards, then each card, read ${day(readAt)}, sandbox · ${file} · no card number beyond its last four digits`)}</p></details></div>`;
 }

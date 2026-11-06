@@ -248,8 +248,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} ${tag}`, w);
       const pt = await page.evaluate(() => document.body.innerText);
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
-      // /airwallex carries Airwallex read back (section B, 6 Nov): budget 440 there (test/site-v4.test.ts), plus the frame.
-      const budget = path === "/airwallex" ? 440 : 150;
+      // /airwallex carries Airwallex read back (section B, 6 Nov; cards folded): budget 190 there (test/site-v4.test.ts), plus the frame.
+      const budget = path === "/airwallex" ? 190 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);

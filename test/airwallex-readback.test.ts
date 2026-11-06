@@ -139,7 +139,13 @@ describe("the pages", () => {
       expect(t).toContain(cards.file);
       expect(t).toMatch(/writ(ten|es) [^.]*from the CFO policy/);
     }
-    expect(text(pages.proof!)).toContain("3 of 3 cards match the CFO policy");
+    for (const html of [pages.proof!, pages.airwallex!]) expect(text(html)).toContain("3 of 3 cards match the CFO policy");
+    // /airwallex (Max, 6 Nov): the hash block and one line at the top; every card's side by side in a collapsed fold.
+    const controls = /<div class="card" id="controls">([\s\S]*?)<\/details><\/div>/.exec(pages.airwallex!)?.[1] ?? "";
+    const fold = /<details class="fold">[\s\S]*$/.exec(controls)?.[0] ?? "";
+    expect(text(controls.slice(0, controls.length - fold.length)).trim()).toBe("3 of 3 cards match the CFO policy");
+    expect((fold.match(/class="awcard"/g) ?? []).length).toBe(3);
+    expect(fold).not.toMatch(/<details[^>]*\sopen/);
     const side = text(pages.airwallex!);
     expect(side).toContain("CFO policy Airwallex card control");
     for (const r of cardControlRows(record, cards)) for (const c of r.checks) {
