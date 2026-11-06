@@ -198,6 +198,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   suite's size from the README, 412 audit rows, the red team and the Scenario Lab on stand-ins, CI), what is real, the
   business, the roadmap. `npm run submission -- --deck-only` renders the deck alone and each slide as a PNG in
   docs/evidence/deck/. 2619 tests in 266 files, all passing (with main's).
+- 6 November, the form's 8 screenshots (section D, D6): from the live site (main 60569ef, Worker 3e8cd078), 1280 px at
+  2×, light, in the form's order: Home's first screen; /try/sign's approval sheet with the live Claude Haiku sentence,
+  signed and verified, the tamper refused (all three from one test world: one FX quote, one Haiku call); /airwallex,
+  the signed hash and the cards; /metal; /claude; Home's "Why this is a company". In `docs/submission/screens/form/`.
+- 6 November, the README's "How it works in 5 files" for a developer judge: one hand-written diagram
+  (docs/how-it-works.svg, light and dark) of the path as the code runs it, the five places that enforce the limits
+  and the approval, each linked to the line that defines it (a test fails if a link stops pointing at its symbol), and
+  "Verify it yourself in 3 commands" (`npm ci`, `npm test`, `npm run judge -- --check`, plus
+  `npm run verify-receipt -- receipt.json`), each with what it proves. 2632 tests in 267 files, all passing (with main's).
 - 6 November, /try/sign step 0, "Set the policy" (Max's item 1): "One policy → three locks", interactive. In the
   visitor's test world, each agent's CFO policy (limit per purchase and per month, merchant categories, currencies,
   end date, "may pay alone up to", and the company's reserve floor) and, beside it, three panels computed on the server
@@ -206,7 +215,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   them to metal-agent ("not sent"). A stricter policy holds at once; a looser one (decided field by field) is refused
   until the visitor signs its exact terms with the world's passkey, verified as a payment's signature. The new policy
   holds for the rest of the visit: a lower floor, signed, lets the blocked T-0001 be signed and run; a higher one
-  blocks T-0002. No call to Airwallex, Metal or Claude. 2688 tests in 268 files, all passing.
+  blocks T-0002. No call to Airwallex, Metal or Claude. 2701 tests in 269 files, all passing (with main's).
 
 ## Real, and ours
 
