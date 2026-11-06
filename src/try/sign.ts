@@ -518,7 +518,7 @@ export function trySignPage(): string {
 <section class="intro">
   <p class="eyebrow">Try it yourself</p>
   <h1 class="h-sec">Sign with your own Face ID</h1>
-  <p class="lead">An agent proposes a payment it may not make alone. You sign its exact terms with Face ID; Purser verifies the signature. About a minute.</p>
+  <p class="lead">An agent proposes a payment it may not make alone. You sign its exact terms with Face ID; Purser verifies the signature.</p>
   <details class="wr"><summary>${icon("info", 16)}What's real?</summary><div class="card wr-body">
     <h3>Simulated</h3><ul>${li(WHATS_REAL.simulated)}</ul>
     <h3>Real</h3><ul>${li(WHATS_REAL.real)}</ul>

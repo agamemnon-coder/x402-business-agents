@@ -13,7 +13,21 @@ interface Row { seq: number; ts: string; event: string; subject: string | null; 
 const run = read<{ ledger: { events: Row[]; proposals: { proposal_id: string; terms: Record<string, unknown> }[] }; snapshot: { refusals: { seq: number; reason: string }[] } }>("docs/demo/main-run.json");
 const tap = read<{ ran_at: string; steps: { airwallex: { transaction_id: string; approved: boolean; failure_reason: string | null; confirmed_by_get: { amount: string; currency: string } } }[] }>("docs/runs/visa-tap-live-2026-11-02.json");
 const page = trySignPage();
-const data = JSON.parse(/<script type="application\/json" id="run-data">([\s\S]*?)<\/script>/.exec(page)![1]!) as { locks: { id: string; href: string; example: string; run: string }[]; cfo: string; fields: string[] };
+/**
+ * The first block that starts with `open` and ends at the next `</tag>` after it, both found by position in the
+ * lowercased page, not by a regular expression over HTML. `inner` is what lies between the opening tag and its end.
+ */
+function block(s: string, open: string, tag: string): { whole: string; inner: string } {
+  const low = s.toLowerCase();
+  const a = low.indexOf(open.toLowerCase());
+  if (a < 0) throw new Error(`no ${open} in the page`);
+  const start = low.indexOf(">", a) + 1;
+  const b = low.indexOf(`</${tag}`, start);
+  if (start === 0 || b < 0) throw new Error(`${open} is not closed`);
+  const end = low.indexOf(">", b) + 1;
+  return { whole: s.slice(a, end), inner: s.slice(start, b) };
+}
+const data = JSON.parse(block(page, '<script type="application/json" id="run-data"', "script").inner) as { locks: { id: string; href: string; example: string; run: string }[]; cfo: string; fields: string[] };
 
 describe("the three locks: each with its real example, from its record", () => {
   const [purser, airwallex, metal] = tryLocks();
@@ -72,12 +86,12 @@ describe("the approval sheet follows the CFO's real one", () => {
 });
 
 describe("the page's frame: three steps, one line of disclaimer, \"What's real?\"", () => {
-  const main = /<main>[\s\S]*<\/main>/.exec(page)![0];
+  const main = block(page, "<main>", "main").whole;
 
   it("three steps with a progress indicator, the first under way, and the start button right after them", () => {
     expect(TRY_SIGN_STEPS).toEqual(["The agent proposes", "You sign with Face ID", "Purser verifies"]);
-    const ol = /<ol class="progress"[\s\S]*?<\/ol>/.exec(main)![0];
-    expect([...ol.matchAll(/<span class="t">([^<]*)<\/span>/g)].map((m) => m[1])).toEqual([...TRY_SIGN_STEPS]);
+    const ol = block(main, '<ol class="progress"', "ol").whole;
+    expect(ol.split('<span class="t">').slice(1).map((x) => x.slice(0, x.indexOf("</span>")))).toEqual([...TRY_SIGN_STEPS]);
     expect(ol).toContain('<li id="pg-1" class="on" aria-current="step">');
     expect(main.indexOf('id="go-world"')).toBeGreaterThan(main.indexOf("</ol>"));
     expect(main.indexOf('id="go-world"')).toBeLessThan(main.indexOf('id="s-props"'));
@@ -86,7 +100,7 @@ describe("the page's frame: three steps, one line of disclaimer, \"What's real?\
   it("one line of disclaimer at the top, the honest detail inside \"What's real?\"", () => {
     expect(page).toContain(`<div class="testband" role="note">`);
     expect(page).toContain(TRY_SIGN_LABEL);
-    const wr = /<details class="wr">[\s\S]*?<\/details>/.exec(main)![0];
+    const wr = block(main, '<details class="wr">', "details").whole;
     for (const l of [...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits]) expect(wr).toContain(l);
     for (const w of ["test world", "no Claude call", "no Airwallex or Metal call, no money moves", "stand-in", "passkey signature", "server's check"]) expect(wr).toContain(w);
     // The old paragraph under the steps is gone: what it said is inside the expander.
