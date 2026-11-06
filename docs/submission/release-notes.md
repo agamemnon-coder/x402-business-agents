@@ -103,6 +103,17 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   checks it offline with Node's own crypto: the terms' hash, the challenge, the origin and RP id, user presence and
   verification, the ES256 signature. One changed field or one cent fails. The Worker's answer to a good signature now
   carries the public key it verified against. 2495 tests in 255 files, all passing.
+- 6 November, the Metal story: /metal opens with the main run on one screen, each claim linked to Metal's testnet
+  explorer and every figure read from the record (`src/redesign/metalStory.ts`): 3 mandates on chain, one per agent;
+  86 Metal payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep; each matched on
+  chain by the run's data-qa); #24 refused on chain; the mandates replaced after Face ID. The separate runs (four eyes,
+  passkeys as owners, clearing, clearing load, receive policy, compliance) are folded below it, each dated with its
+  run record. A review of Purser's use of `metal-agent` and `metal-pay` against their own docs
+  ([metal-review.md](../metal-review.md)) fixed four things: a pull retried after a mandate replace first asks the old
+  credential, so it is never paid twice; a clearing wallet is kept for one Clearing deployment; a lost clearing answer
+  is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
+  its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
+  metal-pay already had what we asked for. 2521 tests in 258 files, all passing.
 
 ## Real, and ours
 
