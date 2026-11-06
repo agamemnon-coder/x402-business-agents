@@ -198,18 +198,27 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   suite's size from the README, 412 audit rows, the red team and the Scenario Lab on stand-ins, CI), what is real, the
   business, the roadmap. `npm run submission -- --deck-only` renders the deck alone and each slide as a PNG in
   docs/evidence/deck/. 2619 tests in 266 files, all passing (with main's).
+- 6 November, the form's 8 screenshots (section D, D6): from the live site (main 60569ef, Worker 3e8cd078), 1280 px at
+  2×, light, in the form's order: Home's first screen; /try/sign's approval sheet with the live Claude Haiku sentence,
+  signed and verified, the tamper refused (all three from one test world: one FX quote, one Haiku call); /airwallex,
+  the signed hash and the cards; /metal; /claude; Home's "Why this is a company". In `docs/submission/screens/form/`.
+- 6 November, the README's "How it works in 5 files" for a developer judge: one hand-written diagram
+  (docs/how-it-works.svg, light and dark) of the path as the code runs it, the five places that enforce the limits
+  and the approval, each linked to the line that defines it (a test fails if a link stops pointing at its symbol), and
+  "Verify it yourself in 3 commands" (`npm ci`, `npm test`, `npm run judge -- --check`, plus
+  `npm run verify-receipt -- receipt.json`), each with what it proves. 2632 tests in 267 files, all passing (with main's).
 - 6 November, /proof puts the strongest proof first (Max's last round, item 2): each partner card opens with its
   claims, each one a link. Airwallex: "The hash the CFO signed is in Airwallex's own record of the SWIFT payment" and
   "3 of 3 cards carry the CFO's policy", to their anchors on /airwallex; Metal: "#24 refused on chain" and "86
   payments, each its own tx", to Metal's testnet explorer; Claude: "24/24, 0 fallbacks" and "a reliability run found a
   hand-off fault; fixed: 6/10 → 10/10", with a note that 6/10 → 10/10 is the eval rebuilt from rel-1's moment, before
   and after the fix, and that rel-1b then passed every step. Every number is read from its record. The TAP remark under
-  the figures is gone: TAP is on /visa and in the footer link. 2634 tests in 267 files, all passing.
+  the figures is gone: TAP is on /visa and in the footer link. 2647 tests in 268 files, all passing (with main's).
 - 6 November, the CFO's view, visible (Max's last round, item 4): "See the CFO's view" on Home and in Proof's head, to
   the CFO dashboard's replay of the main run (/?autonomy: public, read-only, no viewer key). It opens at its top with
   one line: "This is what the CFO opens: what the agents did, what waits for a signature, and every limit." Before the
   link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
-  HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2644 tests in 268 files, all passing.
+  HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2657 tests in 269 files, all passing (with main's).
 
 ## Real, and ours
 
