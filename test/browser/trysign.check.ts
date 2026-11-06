@@ -694,8 +694,10 @@ if (!args.live) {
     // 1.1: the worst case, "Worst case" word for word, as the README and the CFO's view say it; then a stricter month
     // on the Treasury card (50.00 to 40.00) lowers it at once, to exactly what Purser's code computes.
     const expo = page.locator("#p-expo");
-    check(await expo.isVisible() && (await expo.locator(".pexh").innerText()).trim().toLowerCase().startsWith("worst case") && (await page.locator("#p-expo-head").innerText()).trim() === WORST.headline,
-      `${tag}: step 0 shows "${TRY_POLICY.worstCase}", the README's figure: ${WORST.headline.slice(0, 70)}…`);
+    const seen = (await expo.innerText()).trim().split(/\s+/).length;
+    check(await expo.isVisible() && (await page.locator("#p-expo-head").innerText()).trim() === WORST.headline && WORST.headline.startsWith(TRY_POLICY.worstCase)
+      && !(await expo.locator("details.how").evaluate((d: HTMLDetailsElement) => d.open)) && seen <= 40,
+      `${tag}: step 0 shows the README's figure, at a glance (${seen} words in sight, the fold closed): ${WORST.headline}`);
     await shotAt(page, "#p-expo", join(shots, `${tag}-0b-worst-case.png`));
     await page.fill("#pf-monthly", "40.00");
     await page.click("#p-apply");
@@ -708,7 +710,7 @@ if (!args.live) {
     await page.click("#p-apply");
     await page.waitForSelector("#p-refused:not([hidden])");
     const terms = JSON.parse((await page.locator("#p-terms").textContent()) ?? "{}") as { changes: { field: string; to: string }[]; policy: { alone: string } };
-    check(await page.locator("#p-expo-next").isVisible() && (await page.locator("#p-expo-next").innerText()).trim() === `${TRY_POLICY.ifSigned} ${lower.headline}` && (await page.locator("#p-expo-head").innerText()).trim() === lower.headline,
+    check(await page.locator("#p-expo-next").isVisible() && (await page.locator("#p-expo-next").innerText()).trim() === `${TRY_POLICY.ifSigned} ${lower.figure}.` && (await page.locator("#p-expo-head").innerText()).trim() === lower.headline,
       `${tag}: refused: the figure in force stays, and the one it would set if signed is shown`);
     check(terms.changes.length === 1 && terms.changes[0]!.field === "alone" && terms.changes[0]!.to === "2000.00" && terms.policy.alone === "2000.00"
       && /pay alone up to EUR 2,000\.00/.test(await page.locator("#p-effect").innerText()) && await page.locator("#p-effect").isVisible(),

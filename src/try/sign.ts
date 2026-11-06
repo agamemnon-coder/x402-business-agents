@@ -16,6 +16,7 @@ import { AGENTS, MCC_WORDS } from "../config/policy.js";
 import { agentName } from "../config/brand.js";
 import { FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS, STEP0_CHAIN } from "./policy.js";
 import { worstCaseWords } from "../policy/exposureSources.js";
+import { EXPOSURE_HOW } from "../policy/exposure.js";
 
 /** The feature flag, read where the bundle is built: on, the page, its API and the links to it are in the bundle. */
 export const trySignOn = (env: NodeJS.ProcessEnv = process.env) => ["on", "1", "true"].includes(env.TRY_SIGN_ENABLED ?? "");
@@ -61,7 +62,7 @@ export const TRY_POLICY = {
   /** 1.1: the worst case block's heading, "Worst case" word for word (the /judge tour looks for it). */
   worstCase: "Worst case, set by policy",
   /** 1.1, decision B1: what the block counts on chain, since step 0 does not change Purser's mandates. */
-  worstCaseChain: STEP0_CHAIN === "purser" ? "On chain it counts Purser's own mandates, which step 0 does not change; on cards, the limits you set here." : "On chain it counts your test world's mandate as panel 3 shows it; on cards, the limits you set here.",
+  worstCaseChain: STEP0_CHAIN === "purser" ? "Here: the card limits you set; on chain, Purser's own mandates, which step 0 does not change." : "Here: the card limits you set; on chain, your test world's mandate as panel 3 shows it.",
   ifSigned: "If you sign it:",
   lead: "One policy → three locks. Change one value and apply it: a stricter policy holds at once, a looser one only with your signature.",
   panels: { purser: "Purser's rule", airwallex: "Airwallex card controls", metal: "Metal mandate" },
@@ -248,7 +249,8 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .ptop label, .pform label, .pform fieldset { display: grid; gap: 4px; font-size: 14px; font-weight: 650; color: var(--muted); }
 .pform { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
 .pexpo { display: grid; gap: 4px; border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
-.pexpo > * { margin: 0; min-width: 0; overflow-wrap: anywhere; } .pexpo .pexh { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); } .pexpo .hl { font-weight: 700; font-size: 16px; line-height: 1.4; }
+.pexpo > * { margin: 0; min-width: 0; overflow-wrap: anywhere; } .pexpo .hl { font-weight: 750; font-size: 20px; line-height: 1.3; letter-spacing: -.01em; }
+.pexpo details.how { font-size: 14px; color: var(--muted); } .pexpo details.how summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; } .pexpo details.how ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }
 .pexpo #p-expo-next { color: var(--bad); font-weight: 650; } #p-expo-next[hidden] { display: none; }
 .polnote { white-space: normal; background: var(--accent-soft); color: var(--accent); justify-self: start; }
 .pform fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; margin: 0; }
@@ -830,8 +832,9 @@ const JS = `
   // 1.1: the worst case, as the server computed it (Purser's own code) for the policy in force.
   function worstCase(x) {
     if (!x) return;
-    $("p-expo-head").textContent = x.headline; $("p-expo-parts").textContent = x.parts;
-    $("p-expo-def").textContent = x.definition + " " + D.policy.worstCaseChain;
+    $("p-expo-head").textContent = x.headline; $("p-expo-tasks").textContent = x.tasks;
+    var ul = $("p-expo-how");
+    ul.replaceChildren.apply(ul, x.how.concat([D.policy.worstCaseChain]).map(function (l) { return el("li", "", [l]); }));
   }
   function policyState(d) {
     S.policy = d.policy; S.locks = d.locks; if (d.bounds) S.bounds = d.bounds;
@@ -878,7 +881,7 @@ const JS = `
       $("p-refused").hidden = false;
       status("p-status", "", "");
       renderLocks(d.proposed[agent], true, S.base);
-      if (d.proposed_exposure) { $("p-expo-next").textContent = D.policy.ifSigned + " " + d.proposed_exposure.headline; $("p-expo-next").hidden = false; }
+      if (d.proposed_exposure) { $("p-expo-next").textContent = D.policy.ifSigned + " " + d.proposed_exposure.figure + "."; $("p-expo-next").hidden = false; }
       measureSticky();
       $("p-refused").scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -1114,7 +1117,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   <div class="pol" id="pol"><button class="btn popen" type="button" id="p-open" aria-expanded="false" aria-controls="p-body">${esc(TRY_POLICY.open)}</button>
   <div class="pbody" id="p-body" hidden>
     <div class="phead"><span class="n">0</span><span class="pt"><b id="p-head">${esc(TRY_POLICY.title)}</b><small>${esc(TRY_POLICY.lead)}</small></span></div>
-    <div class="pexpo" id="p-expo" aria-live="polite"><b class="pexh">${esc(TRY_POLICY.worstCase)}</b><p class="hl" id="p-expo-head">${esc(STEP0_WORST.headline)}</p><p class="small" id="p-expo-parts">${esc(STEP0_WORST.parts)}</p><p class="small" id="p-expo-next" hidden></p><p class="small muted" id="p-expo-def">${esc(STEP0_WORST.definition)} ${esc(TRY_POLICY.worstCaseChain)}</p><p class="small muted">${esc(STEP0_WORST.comparison)}</p></div>
+    <div class="pexpo" id="p-expo" aria-live="polite"><p class="hl" id="p-expo-head">${esc(STEP0_WORST.headline)}</p><p class="small" id="p-expo-tasks">${esc(STEP0_WORST.tasks)}</p><p class="small">${esc(STEP0_WORST.above)}</p><p class="small" id="p-expo-next" hidden></p><details class="how"><summary>${esc(EXPOSURE_HOW)}</summary><ul id="p-expo-how">${[...STEP0_WORST.how, TRY_POLICY.worstCaseChain].map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details></div>
     <div class="ptop"><label>Agent<select id="p-agent" data-world="1">${AGENTS.map((a) => `<option value="${esc(a)}">${esc(agentName(a))}</option>`).join("")}</select></label><span class="pill" id="p-ver"></span></div>
     <div class="pform" id="p-form">
       ${(["per_tx", "monthly", "alone", "reserve_floor"] as const).map((f) => `<label data-pfield="${f}">${esc(FIELD_WORDS[f])} (EUR${f === "reserve_floor" ? ", the company's" : ""})<input id="pf-${f}" inputmode="decimal" autocomplete="off" spellcheck="false" data-world="1"></label>`).join("\n      ")}

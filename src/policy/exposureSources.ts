@@ -7,7 +7,7 @@ import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
 import { spendLimits } from "./holds.js";
 import { policyValue } from "./rules.js";
-import { exposureOf, exposureWords, startPolicy, type ExposurePolicy, type RecordedRate } from "./exposure.js";
+import { EXPOSURE_HOW, exposureOf, exposureWords, startPolicy, type ExposurePolicy, type RecordedRate } from "./exposure.js";
 import { loadRecord } from "../redesign/run.js";
 
 export { startPolicy };
@@ -65,3 +65,13 @@ export function worstCaseWords(record: Pick<RecordForExposure, "ledger"> = loadR
   return exposureWords(exposureOf(p), p, recordedRate(record));
 }
 export const worstCaseLine = (): string => worstCaseWords().form;
+
+/** The README's block (between its worst-case markers), from the same words: the figure, two lines, the fold. */
+export function readmeWorstCase(w: ReturnType<typeof worstCaseWords> = worstCaseWords()): string {
+  return [
+    `**${w.headline}**`, "", `${w.tasks} ${w.above}`, "", `<details><summary>${EXPOSURE_HOW}</summary>`, "",
+    ...w.how.map((l) => `- ${l}`),
+    "- Computed from the policy by [`exposureOf`](src/policy/exposure.ts); `test/exposure.test.ts` checks this block against it.",
+    "", "</details>",
+  ].join("\n");
+}

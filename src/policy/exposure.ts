@@ -86,51 +86,65 @@ export function moneyWords(currency: "EUR" | "USD", cents: number): string {
   const whole = Math.floor(cents / 100), rest = String(cents % 100).padStart(2, "0");
   return `${currency} ${String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${rest}`;
 }
+/** The same, in whole units where the cents are .00 (Max, 1.1: "EUR 300", "EUR 28,217.70"). */
+export function moneyShort(currency: "EUR" | "USD", cents: number): string {
+  const w = moneyWords(currency, cents);
+  return cents % 100 === 0 ? w.slice(0, -3) : w;
+}
 
 /** A recorded rate: USD per EUR, the date of its quote (YYYY-MM-DD), and the record it is from. */
 export interface RecordedRate { usdPerEur: string; date: string; source: string }
 
 /** The comparison, with no amount of its own (Max, 1.1). */
 export const EXPOSURE_COMPARISON = "With a shared card or an API key, the limit is the card's or the account's.";
+/** The line under the figure, word for word. */
+export const EXPOSURE_ABOVE = "Everything above waits for the CFO.";
+/** The fold's summary, word for word; closed by default wherever the block is. */
+export const EXPOSURE_HOW = "How this is computed";
 
 /**
- * Decision A (with Max): the Treasury agent's task cards (issued without Face ID within the policy) counted in the
- * worst case, on their own line ("counted", the default), or named on a line of their own but left out of it ("apart").
+ * Decision A (Max, 6 Nov: "apart"): the Treasury agent's task cards (issued without Face ID within the policy) named on
+ * a line of their own and left out of the figure ("apart"), or counted in it ("counted").
  */
-export const EXPOSURE_TASK_CARDS: "counted" | "apart" = "counted";
+export const EXPOSURE_TASK_CARDS: "counted" | "apart" = "apart";
 
 const dayWords = (date: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+const agentWords = (a: Agent) => `${a[0]!.toUpperCase()}${a.slice(1)} agent`;
 
 /**
  * The words every place shows (step 0 of /try/sign, the CFO's view, the README; the form's rewrite quotes `form`), from
- * one Exposure, so the numbers are the same wherever they appear. EUR and USD apart; an EUR total only at the
- * recorded rate, said with its source and date.
+ * one Exposure, so the numbers are the same wherever they appear. In sight: the figure, the task cards' line and
+ * EXPOSURE_ABOVE; everything else (`how`) behind one fold, EXPOSURE_HOW, closed by default. EUR and test USD apart;
+ * an EUR total only at the recorded rate, said with its source and date, inside the fold.
  */
 export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate | null, taskCards: "counted" | "apart" = EXPOSURE_TASK_CARDS) {
   const tasks = x.agents.find((e) => e.agent === "treasury")!.alone;
   const counted = taskCards === "counted";
   const less = (a: Amounts, t: number): Amounts => (counted ? a : { eurCents: a.eurCents - t, usdCents: a.usdCents });
   const month = less(x.total.month, tasks.monthEurCents), day = less(x.total.day, tasks.dayEurCents);
-  const cards = x.agents.reduce((s, e) => s + e.card.monthEurCents, 0);
-  const approx = rate ? `; ≈ ${moneyWords("EUR", approxEurCents(month.eurCents, month.usdCents, rate.usdPerEur))} at the main run's rate of ${dayWords(rate.date)} (${rate.usdPerEur} USD per EUR, ${rate.source})` : "";
-  const taskWords = `task cards the Treasury agent may issue without Face ID (up to ${moneyWords("EUR", p.taskCardEurCents)} each, ${p.taskCardsPerDay} a day)`;
+  /** The figure itself, as "If you sign it:" repeats it in step 0. */
+  const figure = `${moneyShort("EUR", month.eurCents)} on cards + ${moneyShort("USD", month.usdCents)} on chain a month`;
+  const approx = rate ? `≈ ${moneyShort("EUR", approxEurCents(month.eurCents, month.usdCents, rate.usdPerEur))} in all at the main run's rate of ${dayWords(rate.date)} (${rate.usdPerEur} USD per EUR, ${rate.source}); test USD is never added to EUR otherwise.` : "No EUR total: the record has no usable rate, and test USD is never added to EUR without one.";
   return {
-    /** The line every place leads with; "Worst case" word for word. */
-    headline: `Worst case, set by policy: ${moneyWords("EUR", month.eurCents)} on cards + ${moneyWords("USD", month.usdCents)} on chain (test USD) a month${approx}.`,
-    /** What makes up the figure. */
-    parts: counted
-      ? `On cards: ${moneyWords("EUR", cards)} on the agents' own cards and ${moneyWords("EUR", tasks.monthEurCents)} on ${taskWords}. On chain: ${moneyWords("USD", month.usdCents)} in the agents' Metal mandates.`
-      : `On cards: ${moneyWords("EUR", cards)} on the agents' own cards. On chain: ${moneyWords("USD", month.usdCents)} in the agents' Metal mandates. Not counted above: ${taskWords}, up to ${moneyWords("EUR", tasks.monthEurCents)} a month.`,
-    /** The one line that says what counts: per day, per month, the policy keys, the two currencies. */
-    definition: `A month: each card's card.<agent>.monthly; each Metal mandate's budget (it lasts 40 days and can all go at once)${counted ? `; task cards up to approval.task_card_eur, ${p.taskCardsPerDay} a day, ${MONTH_DAYS} days` : ""}. A day: the same card and mandate amounts (neither has a daily limit)${counted ? ` and ${p.taskCardsPerDay} task cards` : ""}: ${moneyWords("EUR", day.eurCents)} + ${moneyWords("USD", day.usdCents)}. Test USD (*USDZ) is never added to EUR; only the ≈ total converts it, at the recorded rate.`,
-    comparison: EXPOSURE_COMPARISON,
+    /** In sight, large: "Worst case, set by policy" word for word. */
+    headline: `Worst case, set by policy: ${figure}.`,
+    figure,
+    /** In sight, one short line. */
+    tasks: `${counted ? "Including task" : "Task"} cards the Treasury agent may issue alone: up to ${moneyShort("EUR", tasks.dayEurCents)} a day.`,
+    above: EXPOSURE_ABOVE,
+    /** Behind the fold, one item each. */
+    how: [
+      ...x.agents.map((e) => {
+        const t = e.agent === "treasury" && counted ? tasks.monthEurCents : 0;
+        return `${agentWords(e.agent)}: ${moneyShort("EUR", e.card.monthEurCents + t)} on its card${t ? " and task cards" : ""} + ${moneyShort("USD", e.mandate.monthUsdCents)} on chain (test USD) a month.`;
+      }),
+      `A day: ${moneyShort("EUR", day.eurCents)} + ${moneyShort("USD", day.usdCents)}, the same as a month: neither a card nor a mandate has a daily limit.`,
+      `Counted: each card's monthly limit (card.*.monthly, EUR) and each Metal mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards: up to ${moneyShort("EUR", p.taskCardEurCents)} each (approval.task_card_eur), ${p.taskCardsPerDay} a day, ${counted ? `${MONTH_DAYS} days a month, counted above` : "not counted above"}.`,
+      approx,
+      EXPOSURE_COMPARISON,
+    ],
     /** The form's sentence, for the form's rewrite to quote word for word: "the agents together", a total over all agents. */
-    form: `Worst case, set by policy: the agents together can spend at most ${moneyWords("EUR", month.eurCents)} and ${moneyWords("USD", month.usdCents)} (test USD) a month; everything above waits for the CFO.`,
-    perAgent: x.agents.map((e) => {
-      const t = e.agent === "treasury" ? tasks : { dayEurCents: 0, monthEurCents: 0 };
-      const em = less(e.month, t.monthEurCents), ed = less(e.day, t.dayEurCents);
-      return { agent: e.agent, month: `${moneyWords("EUR", em.eurCents)} + ${moneyWords("USD", em.usdCents)}`, day: `${moneyWords("EUR", ed.eurCents)} + ${moneyWords("USD", ed.usdCents)}` };
-    }),
+    form: `Worst case, set by policy: the agents together can spend at most ${moneyShort("EUR", month.eurCents)} and ${moneyShort("USD", month.usdCents)} (test USD) a month; everything above waits for the CFO.`,
   };
 }
 export type ExposureWords = ReturnType<typeof exposureWords>;

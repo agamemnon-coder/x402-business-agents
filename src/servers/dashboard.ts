@@ -21,8 +21,8 @@ import { runAll, runScenario, SCENARIOS, type ScenarioResult } from "../lab/scen
 import type { Story } from "../demo/story.js";
 import type { Recorded } from "../demo/recorded.js";
 import { ICONS } from "../ui/icons.js";
-import { AGENT_DISPLAY, CFO_VIEW_LINE, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP, agentName } from "../config/brand.js";
-import { exposureOf, exposureWords } from "../policy/exposure.js";
+import { AGENT_DISPLAY, CFO_VIEW_LINE, CORE_SENTENCE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { EXPOSURE_HOW, exposureOf, exposureWords } from "../policy/exposure.js";
 import { exposurePolicyFromRecord, recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
 import { loadRecord, replayRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
@@ -138,7 +138,7 @@ const CFO_EXPOSURE = (() => {
     const r = record as unknown as RecordForExposure;
     const p = exposurePolicyFromRecord(r);
     const w = exposureWords(exposureOf(p), p, recordedRate(r));
-    return `<p class="hl">${esc(w.headline)}</p><p>${esc(w.parts)}</p><ul>${w.perAgent.map((a) => `<li>${esc(agentName(a.agent))}: ${esc(a.month)} a month</li>`).join("")}</ul><p class="small">${esc(w.definition)}</p><p class="small">${esc(w.comparison)}</p>`;
+    return `<p class="hl">${esc(w.headline)}</p><p>${esc(w.tasks)}</p><p>${esc(w.above)}</p><details class="how"><summary>${esc(EXPOSURE_HOW)}</summary><ul>${w.how.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details>`;
   } catch { return ""; }
 })();
 /**

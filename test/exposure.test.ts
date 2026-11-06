@@ -10,8 +10,8 @@ import { openDb } from "../src/db/open.js";
 import { toCents } from "../src/lib/money.js";
 import { policyValue } from "../src/policy/rules.js";
 import { createHash } from "node:crypto";
-import { EXPOSURE_TASK_CARDS, MONTH_DAYS, approxEurCents, exposureOf, exposureWords, moneyWords, type ExposurePolicy } from "../src/policy/exposure.js";
-import { exposurePolicyFromDb, exposurePolicyFromRecord, recordedRate, startPolicy, worstCaseLine, worstCaseWords } from "../src/policy/exposureSources.js";
+import { EXPOSURE_HOW, EXPOSURE_TASK_CARDS, MONTH_DAYS, approxEurCents, exposureOf, exposureWords, moneyShort, type ExposurePolicy } from "../src/policy/exposure.js";
+import { exposurePolicyFromDb, exposurePolicyFromRecord, readmeWorstCase, recordedRate, startPolicy, worstCaseLine, worstCaseWords } from "../src/policy/exposureSources.js";
 import { STEP0_CHAIN, exposurePolicyOfWorld } from "../src/try/policy.js";
 import { BASE, RP, call, challengeOf, desk, withPasskey } from "./support/trySign.js";
 
@@ -117,7 +117,8 @@ describe("the shown numbers are identical in all places", () => {
     const w = fromRecord();
     const block = /<div class="cfoexpo" id="cfo-expo" hidden>([\s\S]*?)<\/div>/.exec(html);
     expect(block).not.toBeNull();
-    for (const s of [w.headline, w.definition, w.comparison]) expect(block![1]).toContain(esc(s));
+    // In sight: the figure, the task cards' line, "Everything above waits for the CFO."; the rest behind one closed fold.
+    expect(block![1]).toBe(`<p class="hl">${esc(w.headline)}</p><p>${esc(w.tasks)}</p><p>${esc(w.above)}</p><details class="how"><summary>${EXPOSURE_HOW}</summary><ul>${w.how.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details>`);
     // Right under the CFO's line, and shown together with it (on /?autonomy only).
     expect(html.indexOf('id="cfo-expo"') - html.indexOf('id="cfo-line"')).toBeGreaterThan(0);
     expect(html.indexOf('id="cfo-expo"')).toBeLessThan(html.indexOf('id="recbanner"'));
@@ -131,31 +132,45 @@ describe("the shown numbers are identical in all places", () => {
 
 describe("the CFO's view, the README and step 0 show identical numbers", () => {
   const start = worstCaseWords(record);
-  const keys = ["headline", "parts", "definition", "comparison"] as const;
   it("the README's block is the starting policy's words, exactly", () => {
     const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
     const block = /<!-- worst-case -->\n([\s\S]*?)\n<!-- \/worst-case -->/.exec(readme)![1]!;
-    expect(block).toBe(`**${start.headline}**\n\n${start.parts} ${start.definition} ${start.comparison} Computed from the policy by [\`exposureOf\`](src/policy/exposure.ts); \`test/exposure.test.ts\` checks this paragraph against it.`);
+    expect(block).toBe(readmeWorstCase(start));
+    expect(block.startsWith(`**${start.headline}**\n\n${start.tasks} ${start.above}\n\n<details><summary>${EXPOSURE_HOW}</summary>`)).toBe(true);
   });
-  it("step 0's page carries the same words before a world opens, under the heading \"Worst case\"", async () => {
+  it("step 0's page carries the same words before a world opens: \"Worst case\" in sight, the rest in the fold", async () => {
     const { trySignPage, TRY_POLICY } = await import("../src/try/sign.js");
     const html = trySignPage();
     const { esc } = await import("../src/redesign/ui.js");
     const block = /<div class="pexpo" id="p-expo"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1]!;
-    expect(TRY_POLICY.worstCase).toBe("Worst case, set by policy");
-    for (const k of keys) expect(block).toContain(esc(start[k]));
-    expect(block).toContain(esc(TRY_POLICY.worstCase));
+    expect(start.headline.startsWith(TRY_POLICY.worstCase)).toBe(true);
+    for (const t of [start.headline, start.tasks, start.above, ...start.how, TRY_POLICY.worstCaseChain]) expect(block).toContain(esc(t));
+    expect(block).toMatch(new RegExp(`<details class="how"><summary>${EXPOSURE_HOW}</summary>`));
+    expect(block).not.toMatch(/<details[^>]* open/);
     expect(html).toContain(esc(TRY_POLICY.open));
   });
   it("a test world opens with the same words, computed by the Worker from its starting policy (B1)", async () => {
     const { d } = desk(undefined, null, recordedRate(record));
     const res = await call(d, "world", {});
-    const w = (await res.json()) as { exposure: Record<(typeof keys)[number], string> };
-    for (const k of keys) expect(w.exposure[k]).toBe(start[k]);
+    const w = (await res.json()) as { exposure: ReturnType<typeof worstCaseWords> };
+    expect(w.exposure).toEqual(start);
   });
-  it("the CFO's view: the same headline as the README and step 0", () => {
+  it("the CFO's view: the same figure as the README and step 0", () => {
     const p = exposurePolicyFromRecord(record);
-    expect(exposureWords(exposureOf(p), p, recordedRate(record)).headline).toBe(start.headline);
+    const r = exposureWords(exposureOf(p), p, recordedRate(record));
+    expect([r.headline, r.tasks, r.above]).toEqual([start.headline, start.tasks, start.above]);
+  });
+  it("in sight, at most 40 words: the figure, the task cards' line, \"Everything above waits for the CFO.\" and the fold's summary", () => {
+    const words = [start.headline, start.tasks, start.above, EXPOSURE_HOW].join(" ").split(/\s+/).length;
+    expect(words).toBeLessThanOrEqual(40);
+    expect(start.headline).toBe(`Worst case, set by policy: ${moneyShort("EUR", exposureOf(startPolicy()).agents.reduce((n, e) => n + e.card.monthEurCents, 0))} on cards + ${moneyShort("USD", exposureOf(startPolicy()).total.month.usdCents)} on chain a month.`);
+    expect(start.tasks).toBe(`Task cards the Treasury agent may issue alone: up to ${moneyShort("EUR", startPolicy().taskCardEurCents * startPolicy().taskCardsPerDay)} a day.`);
+    expect(start.above).toBe("Everything above waits for the CFO.");
+  });
+  it("whole euros where the cents are .00, cents otherwise", () => {
+    expect(moneyShort("EUR", 30000)).toBe("EUR 300");
+    expect(moneyShort("EUR", 2821770)).toBe("EUR 28,217.70");
+    expect(moneyShort("USD", 2000)).toBe("USD 20");
   });
   it("one switch for decision B: B2 takes the chain part from the test world's mandate (budget = the card's month)", () => {
     const p = startPolicy();
@@ -164,16 +179,17 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     expect(exposurePolicyOfWorld(world, "test_world").mandateBudgetCents).toEqual(p.cardMonthlyCents);
     expect(STEP0_CHAIN).toBe("purser");
   });
-  it("one switch for decision A: task cards counted on their own line (default), or named apart and left out", () => {
+  it("one switch for decision A: task cards apart (Max's choice, the default), or counted in the figure", () => {
     const p = startPolicy(), x = exposureOf(p);
-    expect(EXPOSURE_TASK_CARDS).toBe("counted");
+    expect(EXPOSURE_TASK_CARDS).toBe("apart");
     const apart = exposureWords(x, p, null, "apart"), counted = exposureWords(x, p, null, "counted");
     const tasks = x.agents.find((e) => e.agent === "treasury")!.alone.monthEurCents;
-    expect(counted.headline).toContain(moneyWords("EUR", x.total.month.eurCents));
-    expect(apart.headline).toContain(moneyWords("EUR", x.total.month.eurCents - tasks));
-    expect(apart.parts).toContain(`Not counted above: task cards`);
-    expect(counted.form).toBe(worstCaseWords(record).form);
-    expect(worstCaseLine()).toBe(counted.form);
+    expect(counted.headline).toContain(`${moneyShort("EUR", x.total.month.eurCents)} on cards`);
+    expect(apart.headline).toContain(`${moneyShort("EUR", x.total.month.eurCents - tasks)} on cards`);
+    expect(apart.tasks.startsWith("Task cards")).toBe(true);
+    expect(counted.tasks.startsWith("Including task cards")).toBe(true);
+    expect(apart.form).toBe(worstCaseWords(record).form);
+    expect(worstCaseLine()).toBe(apart.form);
   });
 });
 
@@ -186,7 +202,7 @@ describe("in step 0: a stricter policy lowers it at once, a looser one raises it
     const setOf = (monthly: string) => ({ ...start.agents.support, monthly, reserve_floor: start.reserve_floor });
     return { d, w, auth, setOf };
   }
-  const eurMonth = (h: string) => Number(/EUR ([\d,]+\.\d{2}) on cards/.exec(h)![1]!.replace(/,/g, ""));
+  const eurMonth = (h: string) => Number(/EUR ([\d,]+(?:\.\d{2})?) on cards/.exec(h)![1]!.replace(/,/g, ""));
   it("stricter: the support card's month from 150.00 to 100.00 lowers the figure by EUR 50.00 at once", async () => {
     const v = await visitor();
     const before = eurMonth(worstCaseWords(record).headline);
@@ -201,7 +217,7 @@ describe("in step 0: a stricter policy lowers it at once, a looser one raises it
     const v = await visitor();
     const before = worstCaseWords(record).headline;
     const r = await call(v.d, "policy", { token: v.w.world.token, agent: "support", set: v.setOf("400.00") });
-    const out = (await r.json()) as { applied: boolean; canonical: string; exposure: { headline: string }; proposed_exposure: { headline: string } };
+    const out = (await r.json()) as { applied: boolean; canonical: string; exposure: { headline: string }; proposed_exposure: { headline: string; figure: string } };
     expect(out.applied).toBe(false);
     expect(out.exposure.headline).toBe(before);
     expect(eurMonth(out.proposed_exposure.headline)).toBe(eurMonth(before) + 250);

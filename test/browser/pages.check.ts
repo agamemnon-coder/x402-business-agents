@@ -205,8 +205,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 1.1: right under it, one block with the worst case the main run's policy allows, as the README says it.
       const expo = await page.locator("#cfo-expo");
       const head = (await expo.locator(".hl").innerText()).trim();
-      if (!(await expo.isVisible()) || head !== WORST.headline || !(await expo.innerText()).includes(WORST.comparison)
+      if (!(await expo.isVisible()) || head !== WORST.headline || !((await expo.textContent()) ?? "").includes(WORST.how.at(-1)!)
         || !(await page.evaluate(() => !!(document.getElementById("cfo-line")!.compareDocumentPosition(document.getElementById("cfo-expo")!) & Node.DOCUMENT_POSITION_FOLLOWING)))) fail(`/?autonomy ${tag}: the worst case block is not under the CFO's line, or not the README's words ("${head}")`);
+      // Clear at a glance (Max): the fold "How this is computed" closed, and at most 40 words in sight.
+      const seen = (await expo.innerText()).trim().split(/\s+/).length;
+      if (await expo.locator("details.how").evaluate((d) => (d as HTMLDetailsElement).open) || seen > 40) fail(`/?autonomy ${tag}: the worst case block shows ${seen} words, or its fold is open`);
       await page.screenshot({ path: join(shots, `autonomy-top-${tag}.png`) });
     }
     const au = await page.evaluate(() => document.body.innerText);

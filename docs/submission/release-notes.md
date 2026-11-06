@@ -249,10 +249,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   CAPI11 on 5 Nov)." A stored zip, written with Node's own CRC-32: no new dependency. 2773 tests in 273 files, all passing.
 - 6 November, the worst case, set by policy (1.1): per agent and in all, per day and per month, computed from the
   policy by Purser's own code: each card's monthly limit (EUR), each Metal mandate's budget (test USD) and the
-  Treasury agent's task cards without Face ID. EUR and test USD apart, an EUR total only at the main run's recorded
-  rate (3 Nov). At the top of the CFO's view, in step 0 of /try/sign (changing with the visitor's card limits) and in
+  Treasury agent's task cards without Face ID, on a line of their own (Max: "apart"). EUR and test USD apart, an EUR
+  total only at the main run's recorded rate (3 Nov). Clear at a glance (Max): the figure, two lines, and the rest behind
+  one closed fold, "How this is computed". At the top of the CFO's view, in step 0 of /try/sign (changing with the visitor's card limits) and in
   the README; `worstCaseLine()` holds the form's sentence for its rewrite. No call to Airwallex, Metal or Claude.
-  2794 tests in 274 files, all passing (with main's).
+  2796 tests in 274 files, all passing (with main's).
 
 ## Real, and ours
 
