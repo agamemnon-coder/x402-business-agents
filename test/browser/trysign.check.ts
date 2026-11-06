@@ -158,6 +158,12 @@ function expectedLocks(policy: FormPolicy, worldId: string) {
     args: `metal-agent ${l.metal.args.slice(0, l.metal.args.indexOf("--expires-in")).map((a) => (/^[A-Za-z0-9_.,:/-]+$/.test(a) ? a : JSON.stringify(a))).join(" ")}`,
   };
 }
+// Where the page itself leaves a step-0 element after its own smooth scroll: its top, and the sticky step bar's bottom.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const belowBar = async (page: any, id: string) => {
+  await page.waitForTimeout(1200); // the page's own smooth scroll settles
+  return page.evaluate(`(() => ({ top: document.getElementById(${JSON.stringify(id)}).getBoundingClientRect().top, bar: document.querySelector("ol.progress").getBoundingClientRect().bottom }))()`) as Promise<{ top: number; bar: number }>;
+};
 const panelsMatch = (pn: Awaited<ReturnType<typeof panels>>, ex: ReturnType<typeof expectedLocks>) =>
   pn.awx.trimEnd() === ex.awx && pn.purser.trimEnd() === ex.purser && pn.metal[0] === ex.cap && pn.metal[1] === ex.budget && pn.metal[2] === ex.payee && pn.args.startsWith(ex.args);
 
@@ -564,7 +570,10 @@ for (const [width, scheme] of RUNS) {
     check(/^Stricter: it holds at once/.test(await pstatus()) && stricter.agents.treasury.per_tx === "20.00" && pn.state === "in-force" && panelsMatch(pn, expectedLocks(stricter, worldId))
       && /"amount": 20,/.test(pn.awx) && pn.metal[0] === "20.00" && pn.purser.includes('"card.treasury.per_tx": "20.00"') && pn.changed >= 3,
       `${tag}: step 0: stricter (25.00 → 20.00 a purchase) holds at once; the three panels follow it, the changed lines marked (${pn.changed}): ${await pstatus()}`);
-    await shotAt(page, "#p-locks", join(shots, `${tag}-9-panels-after-change.png`));
+    // The result line lands below the sticky step bar, not under it (#65's --stick); the picture is where the page left it.
+    const res = await belowBar(page, "p-status");
+    check(res.top >= res.bar, `${tag}: step 0: after the change the result line is below the sticky step bar (its top ${Math.round(res.top)} px, bar bottom ${Math.round(res.bar)} px)`);
+    await page.screenshot({ path: join(shots, `${tag}-9-panels-after-change.png`) });
     // On a phone the three panels stack: one picture of all three.
     if (mobile) await page.locator("#p-locks").screenshot({ path: join(shots, `${tag}-9b-panels-after-change-all-three.png`) });
 
@@ -583,7 +592,9 @@ for (const [width, scheme] of RUNS) {
       `${tag}: step 0: the panels show it as proposed, not in force; the terms to sign hash to ${phash.slice(0, 12)}…`);
     check(await page.locator('article.prop.blocked[data-proposal="T-0001"]').count() === 1 && (await page.locator("#w-floor").innerText()).trim() === floorBefore && await page.locator('#pl-pay li[data-proposal="T-0001"]').getAttribute("data-check") === "pass",
       `${tag}: step 0: refused, so nothing changed: T-0001 still blocked, the floor still ${floorBefore} (the proposed policy would let it pass)`);
-    await shotAt(page, "#p-refused", join(shots, `${tag}-10-loosening-refused.png`));
+    const ref = await belowBar(page, "p-refused");
+    check(ref.top >= ref.bar, `${tag}: step 0: the refusal is below the sticky step bar (its top ${Math.round(ref.top)} px, bar bottom ${Math.round(ref.bar)} px)`);
+    await page.screenshot({ path: join(shots, `${tag}-10-loosening-refused.png`) });
 
     // Signed with the passkey (the virtual authenticator): it holds, and the payment the floor blocked can be signed and run.
     await page.click("#p-sign");

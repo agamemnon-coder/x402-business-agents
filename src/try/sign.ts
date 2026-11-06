@@ -109,7 +109,7 @@ details.wr > summary::after { content: "▾"; font-size: 13px; } details.wr[open
 /* The site's header is translucent; here, where cards scroll under it and the steps, it is opaque (Max, 6 Nov). */
 header.top { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
 ol.progress { list-style: none; margin: 0 0 14px; padding: 8px 0; box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 760px; position: sticky; top: 64px; z-index: 30; background: var(--bg); }
-#s-props, .prop, #result, #tamper { scroll-margin-top: var(--stick, 150px); }
+#s-props, .prop, #result, #tamper, #p-status, #p-refused, #p-locks { scroll-margin-top: var(--stick, 150px); }
 ol.progress li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 14px; background: var(--sunken); color: var(--muted); font: 650 14.5px/1.25 Inter, system-ui, sans-serif; min-width: 0; }
 ol.progress li .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; }
 ol.progress li.on { background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 2px var(--accent); }
@@ -817,6 +817,9 @@ const JS = `
     fillForm();
     var ch = (d.changes || []).map(function (c) { return P.words[c.field].toLowerCase() + " " + show(c.from) + " → " + show(c.to); }).join("; ");
     status("p-status", (signed ? "Signed and verified: the looser policy holds in your test world. " : "Stricter: it holds at once, no signature needed. ") + "Changed: " + ch + ".", "ok");
+    // The result line, then the panels under it, just below the sticky step bar (--stick), not under it.
+    measureSticky();
+    $("p-status").scrollIntoView({ behavior: "smooth", block: "start" });
     worldFacts(d.world);
     return showProposals(d.proposals);
   }
@@ -834,7 +837,8 @@ const JS = `
       $("p-refused").hidden = false;
       status("p-status", "", "");
       renderLocks(d.proposed[agent], true, S.base);
-      $("p-refused").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      measureSticky();
+      $("p-refused").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
   P.fields.forEach(function (f) {

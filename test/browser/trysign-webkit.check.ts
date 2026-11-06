@@ -12,6 +12,11 @@
 // and "What's real?" opening to its honest lines; with WebAuthn, the approval sheet's terms (IBAN included) and the
 // three locks with their links. CI runs it (.github/workflows/ci.yml, job webkit, in Playwright's image); there
 // (Playwright's WebKit on Ubuntu, 6 Nov) the build has no PublicKeyCredential, so CI sees the fallback and the layout.
+// Step 0, "Set the policy" (Max, item 1), runs in WebKit either way: a stricter change and a refused loosening need no
+// passkey. Where the build has no WebAuthn, a second page defines bare PublicKeyCredential and navigator.credentials
+// (empty, nothing behind them) before the page loads, only so its presence check lets "Start" open a world; nothing
+// makes, uses or simulates a passkey (no button that would call them is pressed). The one step left out in WebKit is the signed loosening (it needs a passkey): it is
+// skipped by name below and checked in Chromium with a virtual authenticator.
 
 import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -32,6 +37,55 @@ const browser = await webkit.launch();
 let failures = 0;
 const check = (ok: boolean, what: string) => { console.log(`${ok ? "ok  " : "FAIL"}  ${what}`); if (!ok) failures++; };
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
+
+// Step 0 (Max, item 1) in WebKit, up to the signature: a stricter change holds at once and the three panels follow it;
+// the result line lands below the sticky step bar; a looser one is refused with its terms to sign, their hash computed
+// in WebKit, the refusal below the bar, and nothing changes. The signed loosening is the one step skipped here.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function policyStep(page: any, tag: string, errors: string[]): Promise<void> {
+  // As above: only the console error Playwright's own screenshot stylesheet causes, during the screenshot, is set aside.
+  const shot = async (path: string) => {
+    const before = errors.length;
+    await page.screenshot({ path });
+    errors.splice(before, errors.length - before, ...errors.slice(before).filter((e) => !/^Refused to apply a stylesheet/.test(e)));
+  };
+  const belowBar = async (id: string) => {
+    await page.waitForTimeout(1200); // the page's own smooth scroll settles
+    return page.evaluate(`(() => ({ top: document.getElementById(${JSON.stringify(id)}).getBoundingClientRect().top, bar: document.querySelector("ol.progress").getBoundingClientRect().bottom }))()`) as Promise<{ top: number; bar: number }>;
+  };
+  check(await page.locator("#policy").isVisible() && !(await page.locator("details#pol").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: step 0 "${TRY_POLICY.title}" is shown once the world is open, closed until asked`);
+  await page.locator("details#pol > summary").click();
+  const awxBefore = (await page.locator("#pl-awx").textContent()) ?? "";
+  await page.fill("#pf-monthly", "40.00");
+  await page.click("#p-apply");
+  await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
+  const awxAfter = (await page.locator("#pl-awx").textContent()) ?? "";
+  check(/"amount": 50,/.test(awxBefore) && /"amount": 40,/.test(awxAfter) && (await page.locator('#pl-metal dd[data-value="40.00"]').count()) === 1 && (await page.locator("#pl-purser").textContent() ?? "").includes('"card.treasury.monthly": "40.00"')
+    && (await page.locator("#p-locks").getAttribute("data-state")) === "in-force",
+    `${tag}: step 0: a stricter month (50.00 → 40.00) holds at once; Purser's rule, the Airwallex body and the Metal budget follow it`);
+  const res = await belowBar("p-status");
+  check(res.top >= res.bar, `${tag}: step 0: after the change the result line is below the sticky step bar (its top ${Math.round(res.top)} px, bar bottom ${Math.round(res.bar)} px)`);
+  await shot(join(shots, `${tag}-policy-stricter.png`));
+  check(JSON.stringify(await page.locator("#p-locks .ns").allInnerTexts()) === JSON.stringify(["Rules in code, checked before anything is signed", TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: step 0: the Airwallex and Metal panels say they are not sent`);
+  const purserBefore = (await page.locator("#pl-purser").textContent()) ?? "";
+  const floorBefore = (await page.locator("#w-floor").innerText()).trim();
+  await page.click(`input[name="pf-mccs"][value="7372"]`);
+  await page.click("#p-apply");
+  await page.waitForSelector("#p-refused:not([hidden])");
+  const pterms = (await page.locator("#p-terms").textContent()) ?? "";
+  check((await page.locator("#p-rhead").innerText()).trim() === TRY_POLICY.refused && /merchant categories/.test(await page.locator("#p-why").innerText()) && /Nothing changed\.$/.test((await page.locator("#p-why").innerText()).trim())
+    && (await page.locator("#p-hash .hash").getAttribute("data-hash")) === sha256(pterms) && (await page.locator("#p-locks").getAttribute("data-state")) === "proposed",
+    `${tag}: step 0: one more merchant category is looser: refused until signed, the terms' hash computed in WebKit`);
+  const ref = await belowBar("p-refused");
+  check(ref.top >= ref.bar, `${tag}: step 0: the refusal is below the sticky step bar (its top ${Math.round(ref.top)} px, bar bottom ${Math.round(ref.bar)} px)`);
+  await shot(join(shots, `${tag}-policy-refused.png`));
+  // Refused, so the policy in force is the one before: "Undo my edits" shows it again, unchanged; the world too.
+  await page.click("#p-reset");
+  check((await page.locator("#p-locks").getAttribute("data-state")) === "in-force" && ((await page.locator("#pl-purser").textContent()) ?? "") === purserBefore && (await page.locator("#p-ver").innerText()).trim() === "Policy v2"
+    && (await page.locator("#w-floor").innerText()).trim() === floorBefore && await page.locator('article.prop.blocked[data-proposal="T-0001"]').count() === 1,
+    `${tag}: step 0: after the refusal the policy in force is unchanged (v2, MCC 5734 only), T-0001 still blocked`);
+  console.log(`skip  ${tag}: step 0: signing the looser policy (needs a passkey; WebKit here has no virtual authenticator; checked in Chromium)`);
+}
 
 for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const tag = `webkit-${width}-${scheme}`;
@@ -72,6 +126,24 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     check(/has no passkeys/.test(await page.locator("#w-status").innerText()) && await page.locator("#go-world").isDisabled(), `${tag}: without WebAuthn the page says so and its start button is off`);
     // Step 0 lives in a test world, so without one it stays hidden (and offers nothing to change).
     check(await page.locator("#policy").count() === 1 && await page.locator("#policy").isHidden(), `${tag}: step 0 "${TRY_POLICY.title}" waits for a test world (hidden)`);
+    // Step 0 needs no passkey, so it is checked here too: a second page where WebAuthn's two names exist and nothing
+    // more (no passkey is made, used or simulated), so "Start" opens a world.
+    const p0 = await context.newPage();
+    p0.on("pageerror", (e: Error) => errors.push(e.message));
+    p0.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
+    // Bare names, nothing behind them: any call to make or use a passkey would throw (and none is made on this path).
+    await p0.addInitScript(`
+      if (!window.PublicKeyCredential) window.PublicKeyCredential = function PublicKeyCredential() {};
+      if (!navigator.credentials) Object.defineProperty(navigator, "credentials", { value: Object.freeze({}), configurable: true });
+    `);
+    await p0.goto(`${local.url}/try/sign`);
+    await p0.click("#go-world");
+    await p0.waitForSelector("#s-props:not([hidden])");
+    check(/^[0-9a-f]{16}$/.test((await p0.locator("#w-id").innerText()).trim()), `${tag}: step 0: a test world of its own is open`);
+    await policyStep(p0, tag, errors);
+    const wide0 = await p0.evaluate("Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)") as number;
+    check(wide0 <= width, `${tag}: step 0: the page is no wider than the screen (${wide0} ≤ ${width})`);
+    await p0.close();
   } else {
     await page.click("#go-world");
     await page.waitForSelector("#s-props:not([hidden])");
@@ -92,24 +164,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     const terms = JSON.parse(canonical) as Record<string, string>;
     check((await waiting.innerText()).includes(String(terms.payee_iban).replace(/(.{4})/g, "$1 ").trim()) && /you are approving/i.test(await waiting.innerText()), `${tag}: (b) the approval sheet shows the beneficiary's IBAN`);
     check(await page.locator("#go-key").isVisible() && !(await page.locator("#go-key").isDisabled()), `${tag}: the passkey step is ready (not taken: WebKit has no virtual authenticator)`);
-    // Step 0 (Max, item 1), up to the signature: a stricter change holds at once and the three panels follow it; a
-    // looser one is refused with its terms to sign, their hash computed in WebKit, and nothing changes.
-    await page.locator("details#pol > summary").click();
-    const awxBefore = (await page.locator("#pl-awx").textContent()) ?? "";
-    await page.fill("#pf-monthly", "40.00");
-    await page.click("#p-apply");
-    await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
-    const awxAfter = (await page.locator("#pl-awx").textContent()) ?? "";
-    check(/"amount": 50,/.test(awxBefore) && /"amount": 40,/.test(awxAfter) && (await page.locator('#pl-metal dd[data-value="40.00"]').count()) === 1 && (await page.locator("#pl-purser").textContent() ?? "").includes('"card.treasury.monthly": "40.00"'),
-      `${tag}: step 0: a stricter month (50.00 → 40.00) holds at once; Purser's rule, the Airwallex body and the Metal budget follow it`);
-    check(JSON.stringify(await page.locator("#p-locks .ns").allInnerTexts()) === JSON.stringify(["Rules in code, checked before anything is signed", TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: step 0: the Airwallex and Metal panels say they are not sent`);
-    await page.click(`input[name="pf-mccs"][value="7372"]`);
-    await page.click("#p-apply");
-    await page.waitForSelector("#p-refused:not([hidden])");
-    const pterms = (await page.locator("#p-terms").textContent()) ?? "";
-    check((await page.locator("#p-rhead").innerText()).trim() === TRY_POLICY.refused && /merchant categories/.test(await page.locator("#p-why").innerText()) && (await page.locator("#p-hash .hash").getAttribute("data-hash")) === sha256(pterms)
-      && (await page.locator("#p-locks").getAttribute("data-state")) === "proposed" && await page.locator('article.prop.blocked[data-proposal="T-0001"]').count() === 1,
-      `${tag}: step 0: one more merchant category is looser: refused until signed, the terms' hash computed in WebKit; nothing changed`);
+    await policyStep(page, tag, errors);
   }
   const wide = await page.evaluate("Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)") as number;
   check(wide <= width, `${tag}: the page is no wider than the screen (${wide} ≤ ${width})`);
