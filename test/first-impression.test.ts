@@ -7,8 +7,9 @@ import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
-import { CORE_SENTENCE, HERO, KIT11_RUN_LINE } from "../src/config/brand.js";
-import { CFO_FORWARD_JS, whyHtml } from "../src/redesign/home.js";
+import { CORE_SENTENCE, HERO, KIT11_RUN_LINE, WHAT_IT_IS } from "../src/config/brand.js";
+import { CFO_FORWARD_JS, tryLineHtml, whyHtml } from "../src/redesign/home.js";
+import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 
@@ -35,7 +36,9 @@ describe("/ for a guest", () => {
   it("says the film's line as its heading (Max, 5 Nov): \"AI agents spend. You sign off.\", the three sentences under it (jury review, 6 Nov)", () => {
     expect(HERO).toBe("AI agents spend. You sign off.");
     expect(readFileSync(new URL("../docs/media/social-preview.html", import.meta.url), "utf8")).toContain("<h1>AI agents spend.<br><em>You sign off.</em></h1>");
-    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    ${whyHtml("try/sign")}\n    <p class="kitrun">${KIT11_RUN_LINE} <a href="https://youtu.be/jaqO2M2V6NY"`);
+    // Section D (6 Nov): what Purser is, the three sentences, Try it in 30 seconds, then the badges and the Kit 11 line.
+    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    ${whyHtml()}\n    ${tryLineHtml("try/sign")}\n    <div class="badges">`);
+    expect(pages.home).toContain(`<p class="kitrun">${KIT11_RUN_LINE} <a href="https://youtu.be/jaqO2M2V6NY"`);
     // The core sentence stays the page's description.
     expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);
   });

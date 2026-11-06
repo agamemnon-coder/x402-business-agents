@@ -4,7 +4,7 @@
 // surface drops a sentence, changes a word, puts something before it, or when the record no longer holds the 24.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, TRY_IT, VISA_EXTRA_LINK } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_EXTRA_LINK, WHAT_IT_IS } from "../src/config/brand.js";
 import { homePage } from "../src/redesign/home.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { agentRun, loadRecord, split, stopStory, stopsLine } from "../src/redesign/run.js";
@@ -38,14 +38,15 @@ const between = (t: string, a: string, b: string) => t.split(a)[1]!.split(b)[0]!
 describe("the three sentences (jury review, 6 Nov, #1)", () => {
   it("are Max's words, with the main run's 24 decisions, all by Claude", () => {
     expect(DIFFERENTIATORS).toEqual([
-      "An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 30 seconds.",
+      "An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.",
       "One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.",
       "Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.",
     ]);
     const sp = split(record);
     expect([sp.byClaude, sp.decisions, sp.fallbacks]).toEqual([24, 24, 0]);
     expect(DIFFERENTIATORS[2]).toContain(`Claude made all ${sp.decisions} decisions`);
-    expect(DIFFERENTIATORS[0].endsWith(TRY_IT)).toBe(true);
+    // Since section D (6 Nov) "Try it in 30 seconds." is its own line after the three (test/first-screen.test.ts).
+    expect(DIFFERENTIATORS.join(" ")).not.toContain(TRY_IT);
     // "No key reaches Claude", as documented and tested (test/adversarial.test.ts); never "holds no keys".
     expect(DIFFERENTIATORS.join(" ")).not.toMatch(/holds? no keys?/i);
     expect(read("test/adversarial.test.ts")).toContain("no key, token or credential ever reaches a model");
@@ -56,25 +57,26 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(JSON.stringify(record.snapshot)).toContain("2026-11-03T11:");
   });
 
-  it("open the README: nothing but the title before them, the Kit 11 line next, the badges after", () => {
+  it("open the README after what Purser is, then Try it, the badges and the Kit 11 line", () => {
     const readme = read("README.md");
     const lines = readme.split("\n");
     // The one tagline in the title (jury QA, 6 Nov, Q8).
     expect(lines[0]).toBe("# Purser · AI agents spend. You sign off.");
-    const top = words(lines.slice(1, 8).join("\n"));
-    expect(top.startsWith(DIFFERENTIATORS.join(" "))).toBe(true);
+    const top = words(lines.slice(1, 16).join("\n"));
+    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${TRY_IT}`)).toBe(true);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
-    expect(lines.slice(0, 6).join("\n")).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
+    expect(lines.slice(0, 10).join("\n")).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[2]));
+    expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
 
-  it("open Home under the heading, with Try it in 30 seconds linked to /try/sign, then the Kit 11 line and one caveat line", () => {
+  it("open Home under the heading and what Purser is, with Try it in 30 seconds linked to /try/sign, then the badges, the Kit 11 line and one caveat line", () => {
     const html = PAGES.home!;
     const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
     expect(t.indexOf("AI agents spend. You sign off.")).toBeLessThan(t.indexOf(DIFFERENTIATORS[0]));
-    expect(t).toContain(`AI agents spend. You sign off. ${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE} Watch the film (2:42) ↗ ${CAVEAT_LINE} Details →`);
-    expect(hero).toContain(`<a href="try/sign">${TRY_IT}</a>`);
+    expect(t).toContain(`AI agents spend. You sign off. ${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${TRY_IT} ${KIT_LINE.replace(" · entered", " entered")} ${KIT11_RUN_LINE} Watch the film (2:42) ↗ ${CAVEAT_LINE} Details →`);
+    expect(hero).toMatch(/<a href="try\/sign"><svg[\s\S]*?<\/svg>Try it in 30 seconds\.<\/a>/);
     // The caveat's link opens the footer's "What's real?", which lists what the line names.
     expect(hero).toContain('<a href="#real" data-real>Details →</a>');
     expect(html).toContain('<details class="real" id="real">');
@@ -82,11 +84,11 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     for (const x of ["customer", "supplier", "settlement", "second approver", "Test money"]) expect({ x, has: real.includes(x) }).toEqual({ x, has: true });
     // Without /try/sign in the bundle the sentence stays text, never a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
-    expect(words(homePage())).toContain(DIFFERENTIATORS[0]);
+    expect(words(homePage())).toContain(`${DIFFERENTIATORS[0]}`);
   });
 
-  it("open the form's synopsis and Description, word for word", () => {
-    expect(between(form, "<!-- synopsis -->", "<!-- /synopsis -->")).toBe(`${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE}`);
+  it("open the form's synopsis (after what Purser is) and Description, word for word", () => {
+    expect(between(form, "<!-- synopsis -->", "<!-- /synopsis -->")).toBe(`${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${TRY_IT}`);
     const desc = words(between(form, "<!-- description -->", "<!-- /description -->"));
     expect(desc.startsWith(DIFFERENTIATORS[0])).toBe(true);
     let at = 0;

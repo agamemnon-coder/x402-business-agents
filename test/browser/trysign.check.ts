@@ -45,6 +45,7 @@ const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
 const { TAMPER_VERDICT, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_START_NOTE, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TRY_IT } = await import("../../src/config/brand.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
 const { canonical } = await import("../../worker/src/trySign.js");
@@ -156,10 +157,12 @@ for (const [width, scheme] of RUNS) {
 
   // The landing carries the button in this bundle, and it leads here.
   await page.goto(`${local.url}/home`);
-  // The button; the first of the three sentences under the heading links here too ("Try it in 30 seconds.", 6 Nov).
+  // The button; and "Try it in 30 seconds.", its own line after the three sentences under the heading (section D,
+  // 6 Nov), links here too.
   const button = page.locator('a.btn[href="try/sign"]');
   check(await button.count() === 1, `${tag}: the landing has the "Sign with your own Face ID" button`);
-  check(await page.locator('.why a[href="try/sign"]').count() === 1, `${tag}: "Try it in 30 seconds." under the heading links here`);
+  const tryLine = page.locator('.why + .tryline a[href="try/sign"]');
+  check(await tryLine.count() === 1 && (await tryLine.innerText()).trim() === TRY_IT, `${tag}: "${TRY_IT}" under the three sentences links here`);
   await button.click();
   await page.waitForURL(`${local.url}/try/sign`);
   check((await page.locator(".testband").innerText()).trim() === TRY_SIGN_LABEL, `${tag}: the label at the top reads "${TRY_SIGN_LABEL}"`);

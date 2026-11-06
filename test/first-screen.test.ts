@@ -1,0 +1,101 @@
+// Section D (6 Nov): the first screen is the same in three places, the README, Home and the form's synopsis: what
+// Purser is in one sentence, the three sentences, "Try it in 30 seconds." to /try/sign, and only then the badges and
+// the details. And "Why this is a company", five lines from docs/business/, on the README and on Home. One source of
+// truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { homePage } from "../src/redesign/home.js";
+import { buildPages } from "../src/relay/assets.js";
+
+const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+/** Text as read: tags, Markdown emphasis and link targets gone, entities decoded, white space single. */
+const words = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&")
+  .replace(/[*`]/g, "").replace(/^\s*- /gm, "").replace(/\s+/g, " ").trim();
+const README = read("README.md");
+const HOME = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!;
+const FORM = read("docs/submission/README.md");
+const hero = (html: string) => /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
+/** Every Markdown heading's GitHub anchor in a file. */
+const anchors = (md: string) => [...md.matchAll(/^#+ (.+)$/gm)].map((m) => m[1]!.toLowerCase().replace(/[^\w\- ]/g, "").replace(/ /g, "-"));
+/** Names of other spend and payment companies that must never appear in these lines (the partners are not competitors). */
+const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wise|Stripe|Mastercard|Coinbase|Google|Visa)\b/;
+
+describe("the first screen (section D, 6 Nov)", () => {
+  it("is what Purser is, the three sentences, then Try it in 30 seconds", () => {
+    expect(FIRST_SCREEN).toEqual([WHAT_IT_IS, ...DIFFERENTIATORS, TRY_IT]);
+    expect(WHAT_IT_IS).toBe("AI agents can now spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.");
+    expect(TRY_IT).toBe("Try it in 30 seconds.");
+    expect(TRY_SIGN_URL).toBe("https://kit11.max-31b.workers.dev/try/sign");
+    // No absolute claim in what Purser is (the stale lines of the jury review).
+    expect(WHAT_IT_IS).not.toMatch(/cannot break|can't break|every limit|holds? no keys?/i);
+  });
+
+  it("opens the README under its title, with Try it linked to /try/sign, and the badges only after it", () => {
+    const lines = README.split("\n");
+    expect(lines[0]).toBe(`# Purser · ${HERO}`);
+    const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
+    expect(words(lines.slice(1, badges).join("\n"))).toBe(FIRST_SCREEN_TEXT);
+    expect(lines.slice(1, badges).join("\n")).toContain(`[${TRY_IT}](${TRY_SIGN_URL})`);
+  });
+
+  it("opens Home under its heading, with Try it linked to /try/sign, and the badges only after it", () => {
+    const t = words(hero(HOME));
+    expect(t.startsWith(`${HERO} ${FIRST_SCREEN_TEXT} Kit 11`)).toBe(true);
+    // By position, not by a pattern: the line opens with the link to /try/sign and closes with TRY_IT.
+    const line = hero(HOME).slice(hero(HOME).indexOf('<p class="tryline">'));
+    expect(line.startsWith('<p class="tryline"><a href="try/sign">')).toBe(true);
+    expect(line.slice(0, line.indexOf("</p>") + 4).endsWith(`${TRY_IT}</a></p>`)).toBe(true);
+    expect(hero(HOME).indexOf('class="badges"')).toBeGreaterThan(hero(HOME).indexOf('class="tryline"'));
+    // Without /try/sign in the bundle the line stays text, never a dead link.
+    expect(words(hero(homePage()))).toContain(FIRST_SCREEN_TEXT);
+    expect(homePage()).not.toContain('href="try/sign"');
+  });
+
+  it("is the form's synopsis, word for word, within 500 characters", () => {
+    const synopsis = FORM.split("<!-- synopsis -->")[1]!.split("<!-- /synopsis -->")[0]!.trim();
+    expect(synopsis).toBe(FIRST_SCREEN_TEXT);
+    expect(synopsis.length).toBeLessThanOrEqual(500);
+  });
+});
+
+describe("why this is a company (section D, 6 Nov)", () => {
+  const section = README.slice(README.indexOf("## Why this is a company"), README.indexOf("\n## ", README.indexOf("## Why this is a company") + 5));
+  const band = /<section class="band" aria-labelledby="h-company">[\s\S]*?<\/section>/.exec(HOME)?.[0] ?? "";
+
+  it("has five lines: the problem, who buys, the intended pricing, why now, why Purser", () => {
+    expect(WHY_COMPANY.map((l) => l.label)).toEqual(["The problem", "Who buys", "Intended pricing", "Why now", "Why Purser"]);
+    expect(WHY_COMPANY[2]!.text).toBe("€49 per company a month including 5 agents; €10 per extra agent (hypothesis).");
+  });
+
+  it("is on the README and on Home, word for word, each line linked to its page in docs/business/", () => {
+    expect(section).not.toBe("");
+    expect(band).not.toBe("");
+    for (const l of WHY_COMPANY) {
+      const [file, anchor] = l.page.split("#") as [string, string];
+      expect(section).toContain(`- **${l.label}:** ${l.text} ([${file}](docs/business/${l.page}))`);
+      expect(words(band)).toContain(`${l.label}: ${l.text}`);
+      expect(band).toContain(`href="${BUSINESS_DOCS}${l.page}"`);
+      expect({ page: l.page, found: anchors(read(`docs/business/${file}`)).includes(anchor) }).toEqual({ page: l.page, found: true });
+    }
+  });
+
+  it("says each line as docs/business/ does: the price from model.md, the cited source from problem.md", () => {
+    const model = read("docs/business/model.md").replace(/\s+/g, " "), problem = read("docs/business/problem.md").replace(/\s+/g, " ");
+    expect(model).toContain("€49 per company a month, including 5 agents; €10 a month for each extra agent");
+    // Why now: Airwallex's own post, quoted as problem.md quotes it, with its title, date and source number.
+    expect(problem).toContain("through underlying infrastructure rather than prompts");
+    expect(problem).toContain('[S1] Airwallex, Dan Kim, "Agentic banking starts with governance", published 5 October 2026');
+    expect(WHY_COMPANY[3]!.text).toContain('"through underlying infrastructure rather than prompts" ("Agentic banking starts with governance", source S1)');
+    expect(problem).toContain("a place the agent can talk its way past (a prompt) or in a place nobody looks until after the money has gone");
+    expect(model).toContain("one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log");
+  });
+
+  it("says \"not validated\" once on each surface, and names no other company", () => {
+    expect(WHY_COMPANY_NOTE.startsWith("Not validated with customers yet")).toBe(true);
+    for (const [name, t] of [["README", words(section)], ["home", words(band)]] as const) {
+      expect({ name, n: t.match(/not validated/gi)?.length ?? 0 }).toEqual({ name, n: 1 });
+      expect({ name, other: OTHERS.exec(t)?.[0] ?? null }).toEqual({ name, other: null });
+    }
+  });
+});

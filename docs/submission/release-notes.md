@@ -17,7 +17,7 @@ anything beyond them, with Face ID on the exact terms.
 - **The euro bill:** EUR 240.00 by FX and SWIFT, PAID 6 s after Face ID (transfer
   `03360bfa-afce-457b-89d1-e1097fbe3985`; settlement simulated in the sandbox).
 - 24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks.
-  16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+  16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
 
 Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md).
 
@@ -164,6 +164,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   line each with a short gloss ("A payment above its limit, with its exact terms." / "A test passkey signs the hash of
   those terms." / "The server checks it; one cent changed and it fails."), beside "One policy → three locks". 2594
   tests in 263 files, all passing (with main's).
+- 6 November, the first screen (section D): the README, Home and the form's synopsis open the same way, from one
+  source (`FIRST_SCREEN` in `src/config/brand.ts`): what Purser is in one sentence, the three sentences, then "Try it
+  in 30 seconds." on its own line to /try/sign; only then the badges and the details. "Why this is a company": five
+  lines from docs/business/ (the problem, who buys, the intended pricing as a hypothesis, why now with Airwallex's own
+  post as the source, why Purser) on the README and Home, under one note that it is not validated with customers yet.
+  2602 tests in 264 files, all passing (with main's).
 - 6 November, /proof's "Policy and card side by side" lands on /airwallex with the cards' fold open: the fold is
   `#controls` and each card has its own anchor (`#card-sourcing`, …); a few lines of script, hashed into the page's
   CSP, open the fold around whatever the link points at and scroll to it (Chromium and WebKit checked at 390 and
@@ -171,8 +177,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 6 November, an emergency switch for /try/sign's Haiku sentence: the Worker var `TRY_SIGN_HAIKU` set to `off` (any
   case, trimmed) stops the call, with no request to Anthropic and no budget spent; the page shows the fixed sentence,
   labelled "fixed text (live model switched off)", and "What's real?" says the switch exists. Missing or any other
-  value, the call runs as before. Max sets it by hand; no script or config sets it. 2604 tests in 264 files, all
-  passing.
+  value, the call runs as before. Max sets it by hand; no script or config sets it.
+- 6 November, /try/sign's layout after Max's review: on a laptop the steps are said once (the step bar); the left
+  column is the start button, the hook and one line, level with "One policy → three locks". On a phone the terms'
+  labels stay on one line ("Proposal expires" and "Quote expires" kept apart), the last row of the terms clears the
+  sticky buttons, and "You are approving" lands below the sticky step bar. 2613 tests in 265 files, all passing.
 
 ## Real, and ours
 

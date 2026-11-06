@@ -3,7 +3,7 @@
 // replaced); 2. the three moments as cards with a short loop each; 3. five numbers from the run, each explained, and the
 // partners. Everything from the recorded run (src/redesign/run.ts).
 
-import { CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, FILM_LINK, FILM_URL, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, VISA_EXTRA_LINK } from "../config/brand.js";
+import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, FILM_LINK, FILM_URL, HERO, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
 import { agentRun, separateRowHtml, type AgentRun, type Mini, type Scene, type Tile } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -12,7 +12,15 @@ const CSS = `.hero { padding: 24px 0 44px; }
 .hero .copy { grid-area: copy; } .hero .show { grid-area: stage; min-width: 0; } .hero .act { grid-area: act; }
 .hero .h-hero { text-wrap: balance; }
 @media (min-width: 980px) { .hero { padding: 60px 0 76px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 600px); grid-template-areas: "copy stage" "act stage"; gap: 0 52px; align-items: center; } .hero .copy { align-self: end; } .hero .act { align-self: start; } }
-.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+/* The first screen (section D, 6 Nov): what Purser is, the three sentences, "Try it in 30 seconds.", then the badges. */
+.hero .what { margin: 14px 0 0; font-size: 19px; line-height: 1.45; font-weight: 600; max-width: 34em; }
+.tryline { margin: 16px 0 0; font-size: 18px; font-weight: 700; }
+.tryline a { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; border: 2px solid var(--accent); border-radius: 999px; padding: 8px 16px; }
+.cnote { margin: -10px 0 16px; font-size: 15px; color: var(--muted); max-width: 52em; }
+.company { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-width: 60em; }
+.company li { font-size: 17px; line-height: 1.45; border-left: 3px solid var(--accent); padding-left: 12px; }
+.company a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
 .badges .pill.kit { background: var(--text); color: var(--bg); white-space: nowrap; }
 .badges .pill.kit.award { background: var(--accent-soft); color: var(--accent); }
 .swipe { display: none; font-size: 15px; color: var(--muted); margin: -12px 0 14px; align-items: center; gap: 6px; }
@@ -21,7 +29,7 @@ const CSS = `.hero { padding: 24px 0 44px; }
 /* What only Purser has (jury review, 6 Nov, #1): three sentences under the heading, then the Kit 11 line. */
 .why { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; max-width: 36em; }
 .why li { font-size: 17.5px; line-height: 1.45; border-left: 3px solid var(--accent); padding-left: 12px; }
-.why a, .caveat a { color: var(--accent); font-weight: 650; }
+.caveat a { color: var(--accent); font-weight: 650; }
 .kitrun { margin: 14px 0 0; font-size: 16px; font-weight: 650; color: var(--muted); }
 .kitrun a { color: var(--accent); text-decoration: none; white-space: nowrap; }
 .caveat { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }
@@ -214,15 +222,29 @@ const JS = `${CFO_FORWARD_JS}
   setTimeout(next, 2600);
 })();`;
 
+/** The three sentences (DIFFERENTIATORS), word for word. */
+export function whyHtml(): string {
+  return `<ul class="why">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>`;
+}
+
 /**
- * The three sentences (DIFFERENTIATORS), word for word; "Try it in 30 seconds." links to /try/sign when the bundle
- * carries it (opts.trySign), and stays text otherwise. Shared with /try/sign's neighbours that repeat them.
+ * "Try it in 30 seconds.", its own line after the three sentences (section D, 6 Nov): a link to /try/sign when the
+ * bundle carries it (opts.trySign), and text otherwise, never a dead link.
  */
-export function whyHtml(tryHref: string | null): string {
-  return `<ul class="why">${DIFFERENTIATORS.map((d) => {
-    const i = d.lastIndexOf(TRY_IT);
-    return `<li>${i >= 0 && tryHref ? `${esc(d.slice(0, i))}<a href="${esc(tryHref)}">${esc(TRY_IT)}</a>` : esc(d)}</li>`;
-  }).join("")}</ul>`;
+export function tryLineHtml(tryHref: string | null): string {
+  return `<p class="tryline">${tryHref ? `<a href="${esc(tryHref)}">${icon("scan-face", 18)}${esc(TRY_IT)}</a>` : esc(TRY_IT)}</p>`;
+}
+
+/**
+ * "Why this is a company" (section D, 6 Nov): five lines from docs/business/, each linked to its page, under one note
+ * that says it is not validated (WHY_COMPANY, WHY_COMPANY_NOTE).
+ */
+export function whyCompanyHtml(): string {
+  return `<section class="band" aria-labelledby="h-company"><div class="wrap">
+  <div class="sechead"><h2 class="h-sec" id="h-company">Why this is a company</h2></div>
+  <p class="cnote">${esc(WHY_COMPANY_NOTE)}</p>
+  <ul class="company">${WHY_COMPANY.map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)} <a href="${esc(BUSINESS_DOCS + l.page)}" target="_blank" rel="noopener">Read it ↗</a></li>`).join("")}</ul>
+</div></section>`;
 }
 
 /** opts.trySign: the bundle also carries /try/sign (TRY_SIGN_ENABLED), so the landing links to it; never otherwise. */
@@ -232,9 +254,11 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="copy">
-    <div class="badges">${KIT_LINE.split(/ · (?=entered for)/).map((x, i) => `<span class="pill kit${i ? " award" : ""}">${esc(x)}</span>`).join("")}</div>
     <h1 class="h-hero">${esc(HERO)}</h1>
-    ${whyHtml(opts.trySign ? "try/sign" : null)}
+    <p class="what">${esc(WHAT_IT_IS)}</p>
+    ${whyHtml()}
+    ${tryLineHtml(opts.trySign ? "try/sign" : null)}
+    <div class="badges">${KIT_LINE.split(/ · (?=entered for)/).map((x, i) => `<span class="pill kit${i ? " award" : ""}">${esc(x)}</span>`).join("")}</div>
     <p class="kitrun">${esc(KIT11_RUN_LINE)} <a href="${FILM_URL}" target="_blank" rel="noopener">${esc(FILM_LINK)} ↗</a></p>
     <p class="caveat">${esc(CAVEAT_LINE)} <a href="#real" data-real>${esc(CAVEAT_LINK)}</a></p>
   </div>
@@ -258,6 +282,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
     <a class="partner card" href="proof#claude"><span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>${esc(run.agents.map((a) => a.family).join(" · "))} decide</a>
   </div>
 </div></section>
+${whyCompanyHtml()}
 </main>`;
   return page({
     title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS, body, js: JS,

@@ -36,7 +36,9 @@ describe("the site after v4", () => {
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
     // Airwallex returns with the payment, and one line for the cards against the CFO policy (each card's side by side
     // folded on /airwallex, Max's decision on #53).
-    const budget: Record<string, number> = { home: 600, watch: 100, try: 180, proof: 520, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
+    // Home: 760 since section D (6 Nov), for what Purser is in one sentence, "Try it in 30 seconds." on its own line and
+    // "Why this is a company" (five lines from docs/business/, under one note that says it is not validated).
+    const budget: Record<string, number> = { home: 760, watch: 100, try: 180, proof: 520, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
