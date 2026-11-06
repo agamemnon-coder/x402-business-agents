@@ -55,6 +55,8 @@ export const TRY_POLICY = {
   title: "Set the policy",
   /** The button step 0 is behind (Max, 6 Nov: closed by default, optional). */
   open: "Optional: set the policy first",
+  /** Beside the agent's sentence on a payment that ran alone after a policy change: it was said before that change. */
+  saidBefore: "said before your policy change",
   lead: "One policy → three locks. Change one value and apply it: a stricter policy holds at once, a looser one only with your signature.",
   panels: { purser: "Purser's rule", airwallex: "Airwallex card controls", metal: "Metal mandate" },
   notSent: { airwallex: "What Purser would send; not sent", metal: "Not sent" },
@@ -229,6 +231,7 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .phead { display: flex; align-items: center; gap: 12px; }
 .phead .n { width: 30px; height: 30px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font: 700 15px/1 Inter, system-ui, sans-serif; flex: none; }
 .phead .pt { display: grid; gap: 2px; min-width: 0; } .phead b { font-size: 18px; } .phead small { color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+.pill.said-before { white-space: normal; justify-self: start; margin-top: -4px; }
 .pill.alone { white-space: normal; background: var(--ok-soft, var(--accent-soft)); color: var(--ok); justify-self: start; }
 .pbody { display: grid; gap: 12px; padding: 0 18px 18px; }
 .pbody > *, .pform > *, .lk > *, .locks3 > *, .prefused > * { min-width: 0; }
@@ -500,6 +503,8 @@ const JS = `
       var open = rows.filter(function (x) { return x.p.check !== "fail" || x.p.status === "executed"; });
       if (!S.primary && open.length) S.primary = open[0].p.proposal_id;
       if (!S.firstCheck) { S.firstCheck = {}; rows.forEach(function (x) { S.firstCheck[x.p.proposal_id] = x.p.check; }); }
+      // A payment that ran alone is a finished flow, as a signed one is: every step done.
+      if (rows.some(function (x) { return x.p.status === "executed" && x.p.execution && x.p.execution.alone; })) progress(3, true);
       open.sort(function (a, b) { return (a.p.proposal_id === S.primary ? 0 : 1) - (b.p.proposal_id === S.primary ? 0 : 1); });
       // The passkey button and the quote's controls go on the first that has not run (one may have run alone).
       var lead = open.filter(function (x) { return x.p.status !== "executed"; })[0];
@@ -563,7 +568,7 @@ const JS = `
       el("p", "eyebrow", [(alone ? "Paid alone · " : done ? "You approved · " : "You are approving · ") + p.proposal_id]), done ? null : policyNote(p, "fail"),
       alone ? el("p", "pill alone", [D.policy.paidAlone]) : null,
       el("h3", "title", ["Pay " + t.payee + " " + amt(t.currency, t.amount)]),
-      agentLine(p), el("p", "says", [p.says]), voiceMore(p), facts,
+      agentLine(p), el("p", "says", [p.says]), alone ? el("p", "pill said-before", [D.policy.saidBefore]) : null, voiceMore(p), facts,
       alone ? el("div", "chk pass", [el("b", "", [ic("check"), "Check: pass · " + p.execution.rule]), el("span", "", ["No signature: the stand-in executor ran it in your test world (transfer " + p.execution.id + ", balance after " + eur(p.execution.balance_after) + "), bound to these terms' hash and to the policy change you signed."])])
         : done ? el("div", "chk pass", [el("b", "", [ic("check"), "Check: pass · signed by you, run in your test world"])])
         : p.waits ? el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · waiting for a person"]), el("span", "", [p.waits])])
@@ -1145,7 +1150,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
     title: "Sign with your own Face ID", description: "Try it yourself: an agent proposes, you sign the exact terms with Face ID, Purser verifies. A test world of your own; nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false,
     data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, voiceLabels: VOICE_LABELS,
-      policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE } },
+      policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE, saidBefore: TRY_POLICY.saidBefore } },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [

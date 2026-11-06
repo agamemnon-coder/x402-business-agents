@@ -700,6 +700,13 @@ if (!args.live) {
     check(/T-0002: paid alone under your new policy\.$/.test((await page.locator("#p-status").innerText()).trim()) && await card.count() === 1
       && (await card.locator(".pill.alone").innerText()).trim() === PAID_ALONE && await card.locator("button[data-sign]:visible").count() === 0,
       `${tag}: signed: T-0002 ran without a signature, its card saying "${PAID_ALONE}"`);
+    // The agent's sentence stays as it was said, labelled; only this card carries the label. The step bar is done.
+    check(/I may pay alone, so I need your signature/.test(await card.locator(".says").innerText()) && (await card.locator(".says + .pill.said-before").innerText()).trim() === TRY_POLICY.saidBefore
+      && await page.locator(".pill.said-before").count() === 1,
+      `${tag}: the agent's sentence stays, labelled "${TRY_POLICY.saidBefore}", on the paid-alone card only`);
+    const done = await page.locator("ol.progress li").evaluateAll((ls: Element[]) => ls.map((l) => (l.classList.contains("done") ? "done" : l.classList.contains("on") ? "on" : "-"))) as string[];
+    check(JSON.stringify(done) === '["done","done","done"]' && await page.locator('ol.progress li[aria-current="step"]').count() === 0,
+      `${tag}: the step bar shows the flow done (${done.join(", ")}), as after a signed payment`);
     const creds = await cdp.send("WebAuthn.getCredentials", { authenticatorId }) as { credentials: { signCount: number }[] };
     // The counter moves once when the passkey is made and once per signature: 2 is "made, then signed the policy only".
     check(creds.credentials.length === 1 && creds.credentials[0]!.signCount === 2 && await page.locator("#result").isHidden(),
