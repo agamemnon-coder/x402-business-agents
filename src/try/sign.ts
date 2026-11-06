@@ -9,6 +9,7 @@
 
 import { esc, icon, iconSet, page } from "../redesign/ui.js";
 import { REPO_URL } from "../submission/deck.js";
+import { FILM_URL } from "../config/brand.js";
 import { cfoApproval, recordedQuote, tryLocks } from "./examples.js";
 import { RECEIPT_FORMAT } from "./receipt.js";
 
@@ -27,6 +28,13 @@ export const TRY_SIGN_HOOK = "A Treasury agent wants to pay an invoice above its
 export const TRY_SIGN_SIGNED = "Signed and verified. This signature only fits these exact terms.";
 /** The last line after a refused tamper: one cent off the amount, or any other single change (Max, 6 Nov). */
 export const TAMPER_VERDICT = { cent: "One cent changed. The signature is worthless.", field: "One field changed. The signature is worthless." } as const;
+
+/** After the tamper (A7): where to go next, word for word. P-0005 is the main run's invoice the CFO signed with Face ID. */
+export const TRY_SIGN_END = [
+  { label: "See the real run: the CFO signed P-0005", href: "/proof#faceid", icon: "shield-check" },
+  { label: "Watch the film", href: FILM_URL, icon: "play" },
+  { label: "Read the code", href: REPO_URL, icon: "external-link" },
+] as const;
 
 /** The fields a visitor may change to tamper, as the terms name them. */
 export const TAMPER_FIELDS = ["amount", "payee_iban", "currency", "fx.client_rate"] as const;
@@ -81,6 +89,21 @@ ol.progress li.on .n { background: var(--accent); border-color: var(--accent); c
 ol.progress li.done { color: var(--text); } ol.progress li.done .n { background: var(--ok); border-color: var(--ok); color: var(--surface); }
 ol.progress li .t { min-width: 0; overflow-wrap: anywhere; }
 .start { display: grid; gap: 8px; max-width: 760px; }
+.go { display: grid; gap: 8px; align-content: start; }
+/* A laptop (A4): the start screen's right column shows how one policy becomes three locks; below 1024 px it is hidden. */
+.diagram { display: none; }
+@media (min-width: 1024px) {
+  .start { max-width: 1200px; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 28px; align-items: start; }
+  .diagram { display: grid; gap: 12px; padding: 20px; }
+  .diagram .eyebrow { margin: 0; }
+  .dpolicy, .dlocks li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); }
+  .dpolicy { background: var(--accent-soft); border-color: var(--accent); }
+  .dpolicy b, .dlocks b { display: block; font-size: 16px; } .dpolicy small, .dlocks small { display: block; color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+  .dlocks { list-style: none; margin: 0 0 0 22px; padding: 0 0 0 18px; border-left: 2px solid var(--accent); display: grid; gap: 10px; }
+  .dlocks li { position: relative; background: var(--surface); }
+  .dlocks li::before { content: ""; position: absolute; left: -20px; top: 22px; width: 18px; border-top: 2px solid var(--accent); }
+  .dnote { margin: 0; font-size: 15px; font-weight: 650; }
+}
 .start[hidden] { display: none; }
 .hook { margin: 0; font-size: 17px; font-weight: 600; color: var(--text); }
 /* One sentence shows; the rest is behind "more". */
@@ -179,6 +202,12 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .tf input, .tf select { font: 600 16px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; min-height: 46px; padding: 8px 10px; width: 100%; }
 .tf .chg input, .tf .chg select { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad-soft); }
 .tactions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* The quick tamper's label on one line, on a phone too (A8). */
+#go-tamper { white-space: nowrap; } #go-tamper .t-short { display: none; }
+@media (max-width: 640px) { #go-tamper .t-long { display: none; } #go-tamper .t-short { display: inline; } }
+.end { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
+.end[hidden], #t-another[hidden] { display: none; }
+#t-another { justify-self: start; }
 #tamper { display: grid; gap: 10px; }
 table.diff { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
 table.diff th, table.diff td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; vertical-align: top; }
@@ -546,7 +575,7 @@ const JS = `
       status(st.id, "Purser is checking your signature…");
       return post("sign", { token: S.token, proposal_id: x.p.proposal_id, canonical: x.p.canonical, credential: a }).then(function (r) {
         if (r.status !== 200 && r.data.why === "quote_expired") { progress(2); status(st.id, r.data.error, "bad"); quoteExpired(); return; }
-        if (r.status !== 200) { progress(2); status(st.id, "Not accepted: " + (r.data.error || ("error " + r.status)) + ".", "bad"); b.disabled = false; return; }
+        if (r.status !== 200 || r.data.verified !== true) { progress(2); status(st.id, "Not accepted: " + (r.data.reason || r.data.error || ("error " + r.status)) + ".", "bad"); b.disabled = false; return; }
         S.signed = { x: x, a: a, d: r.data };
         b.hidden = true;
         progress(3, true);
@@ -644,7 +673,8 @@ const JS = `
         el("div", "", [el("p", "small muted", ["Your changed terms hash to:"]), hashBox(h, "new")])
       ]));
       return post("sign", { token: S.token, proposal_id: s.x.p.proposal_id, canonical: changed, credential: s.a }).then(function (q) {
-        var refused = q.status !== 200;
+        // A refused signature is an answer (200, verified false); an error status is a refusal too, never "accepted".
+        var refused = q.status !== 200 || !q.data || q.data.verified !== true;
         $("t-line").className = "line " + (refused ? "bad" : "ok");
         $("t-icon").replaceChildren(ic(refused ? "octagon-x" : "triangle-alert"));
         $("t-head").textContent = refused ? "Refused: the same signature does not verify for the changed terms" : "Accepted?! This should not happen.";
@@ -655,7 +685,10 @@ const JS = `
         $("tamper").hidden = false;
         bs.forEach(function (b) { b.disabled = false; });
         edited();
-        status("t-status", refused ? "Refused by the server. Change another field and send again, if you like." : "", refused ? "" : "bad");
+        status("t-status", refused ? "" : "", refused ? "" : "bad");
+        $("t-another").hidden = !refused;
+        $("t-end").hidden = !refused;
+        S.lastField = r.changed[r.changed.length - 1];
         $("tamper").scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
     });
@@ -663,6 +696,7 @@ const JS = `
   // The server's refusal in one sentence: why it refused, with the two hashes when it was the challenge.
   function refusal(q) {
     var d = q.data || {};
+    if (d.reason && !d.error) d.error = d.reason;
     var hex = function (h) { return /^[0-9a-f]{64}$/.test(h || "") ? h.slice(0, 12) + "…" : null; };
     if (d.why === "challenge" && hex(d.signed_sha256) && hex(d.terms_sha256)) return "The server refused it: the signature was made for hash " + hex(d.signed_sha256) + ", not for your terms (" + hex(d.terms_sha256) + ").";
     var why = String(d.error || ("error " + q.status)).replace(/^refused:\\s*/i, "");
@@ -676,6 +710,25 @@ const JS = `
     return ["", "", "Two", "Three"][changed.length] + " fields changed. The signature is worthless.";
   }
   $("t-send").addEventListener("click", tamper);
+  // The end buttons' links (A7), from the data block like the locks' (the page's markup carries no outside link).
+  document.querySelectorAll("#t-end a[data-end]").forEach(function (a) {
+    var e = D.end[Number(a.dataset.end)];
+    a.href = e.href;
+    if (/^https?:/.test(e.href)) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
+  });
+  // "Try another field" (A8): the signed values back, and the next field to change, ready.
+  $("t-another").addEventListener("click", function () {
+    var t = S.signed && S.signed.x.terms;
+    if (!t) return;
+    var fs = fieldsOf(t), next = fs[(fs.indexOf(S.lastField) + 1) % fs.length];
+    $("t-amount").value = t.amount; $("t-iban").value = iban(t.payee_iban); $("t-currency").value = t.currency;
+    if (t.fx) $("t-rate").value = t.fx.client_rate;
+    edited();
+    var input = { amount: "t-amount", payee_iban: "t-iban", currency: "t-currency", "fx.client_rate": "t-rate" }[next];
+    document.querySelector(".tf").scrollIntoView({ behavior: "smooth", block: "center" });
+    $(input).focus();
+    status("t-status", "Now change the " + LABEL[next] + ", then send it with the same signature.");
+  });
   // The quick way, as before: the amount plus one cent, the rest as signed.
   $("go-tamper").addEventListener("click", function () {
     var t = S.signed && S.signed.x.terms;
@@ -710,9 +763,17 @@ export function trySignPage(): string {
 ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" aria-current="step"' : ""}><span class="n">${i + 1}</span><span class="t">${esc(s)}</span></li>`).join("\n")}
 </ol>
 <div class="start" id="s-world">
+  <div class="go">
   <button class="btn primary big" type="button" id="go-world">${icon("play", 18)}Start: show me the proposal</button>
   <p class="hook" id="hook">${esc(TRY_SIGN_HOOK)}</p>
   <p class="status" id="w-status" aria-live="polite"></p>
+  </div>
+  <aside class="card diagram" id="diagram" aria-label="One policy, three locks">
+    <p class="eyebrow">One policy → three locks</p>
+    <div class="dpolicy">${icon("shield-check", 20)}<span><b>The CFO's policy</b><small>One set of limits, written once.</small></span></div>
+    <ol class="dlocks">${tryLocks().map((l) => `<li class="d-${esc(l.id)}">${icon("lock", 18)}<span><b>${esc(l.name)}</b><small>${esc(l.what)}</small></span></li>`).join("")}</ol>
+    <p class="dnote">Any one lock stops a payment. Above the limit, a person signs: here, you.</p>
+  </aside>
 </div>
 <section id="s-props" hidden>
   <dl class="world" id="w-facts" hidden><div><dt>Test world</dt><dd id="w-id"></dd></div><div><dt>Balance</dt><dd id="w-balance"></dd></div><div><dt>Reserve floor</dt><dd id="w-floor"></dd></div><div><dt>An agent pays alone up to</dt><dd id="w-alone"></dd></div><div><dt>Deleted</dt><dd id="w-left" data-left="in"></dd></div></dl>
@@ -735,16 +796,18 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
       <label data-field="currency">Currency<select id="t-currency" data-world="1"><option>EUR</option><option>USD</option><option>GBP</option><option>CHF</option></select></label>
       <label data-field="fx.client_rate" hidden>FX rate<input id="t-rate" inputmode="decimal" autocomplete="off" spellcheck="false" data-world="1"></label>
     </div>
-    <div class="tactions"><button class="btn primary" type="button" id="t-send" data-world="1" disabled>Send with the same signature</button><button class="btn" type="button" id="go-tamper" data-world="1">Try to tamper: change the amount by 0.01</button></div>
+    <div class="tactions"><button class="btn primary" type="button" id="t-send" data-world="1" disabled>Send with the same signature</button><button class="btn" type="button" id="go-tamper" data-world="1"><span class="t-long">Try to tamper: change the amount by 0.01</span><span class="t-short">Tamper: amount + 0.01</span></button></div>
     <p class="status" id="t-status" aria-live="polite"></p>
-    <div id="tamper" hidden><div id="t-what"></div><div class="line" id="t-line"><span id="t-icon"></span><div><b id="t-head"></b><div id="t-why" class="small"></div></div></div><p class="outcome" id="t-verdict" hidden></p></div>
+    <div id="tamper" hidden><div id="t-what"></div><div class="line" id="t-line"><span id="t-icon"></span><div><b id="t-head"></b><div id="t-why" class="small"></div></div></div><p class="outcome" id="t-verdict" hidden></p>
+      <button class="btn" type="button" id="t-another" hidden>${icon("rotate-ccw", 18)}Try another field</button>
+      <nav class="end" id="t-end" aria-label="What next" hidden>${TRY_SIGN_END.map((e, i) => `<a class="btn${e.href.startsWith("/") ? " primary" : ""}" data-end="${i}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</nav></div>
   </div>
 </section>
 </div></main>`;
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: an agent proposes, you sign the exact terms with Face ID, Purser verifies. A test world of your own; nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false,
-    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote() },
+    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "rotate-ccw"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [

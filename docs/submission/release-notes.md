@@ -124,6 +124,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   WebCrypto, with verify-receipt's own checks (tested equal), and no server call (the page's CSP allows no
   connection). "Signature valid for these terms", or "Invalid" with the failing check named; a "Change one field"
   toggle and file upload. After signing, "Verify this receipt here" opens it. 2537 tests in 258 files, all passing.
+- 6 November, /try/sign shorter and wider: from 1024 px the start screen shows "One policy → three locks" on the
+  right; after signing at most about 150 words (118 on a phone); a refused signature answers HTTP 200 {verified:
+  false, reason}, so the visit logs 0 console errors; the quick tamper on one line, "Try another field" after the
+  first refusal, then three buttons: the real run's P-0005 on /proof, the film, the code. 2538 tests in 258 files, all
+  passing.
 
 ## Real, and ours
 
