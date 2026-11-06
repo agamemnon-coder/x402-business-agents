@@ -31,7 +31,7 @@ describe("/try/sign: the visitor's test world", () => {
       // The same canonical JSON (RFC 8785) the real terms use, and the hash is its SHA-256.
       expect(p.canonical).toBe(jcs(terms));
       expect(p.terms_sha256).toBe(sha(p.canonical));
-      expect(terms).toMatchObject({ schema: "kit11.try-terms/v2", test_world: w.world.id, nothing_real_moves: true, expires_at: w.world.expires_at });
+      expect(terms).toMatchObject({ schema: "kit11.try-terms/v3", test_world: w.world.id, nothing_real_moves: true, expires_at: w.world.expires_at });
     }
     // The payee's IBAN is in the terms (v2), and it is a test one: check digits 00, which ISO 13616's mod 97 never gives.
     for (const p of w.proposals) {
@@ -67,7 +67,7 @@ describe("/try/sign: the visitor's test world", () => {
     const out = (await res.json()) as { verified: boolean; terms_sha256: string; executed: { id: string; amount: string; balance_after: string; by: string } };
     expect(out).toMatchObject({ verified: true, terms_sha256: b.terms_sha256, executed: { amount: "1850.00", balance_after: "28150.00" } });
     expect(out.executed.id).toMatch(/^test-[0-9a-f]{12}$/);
-    expect(out.executed.by).toMatch(/stand-in.*no Airwallex or Metal call/);
+    expect(out.executed.by).toMatch(/stand-in.*nothing paid or converted at Airwallex, no Metal call/);
     expect(db.prepare("SELECT status FROM ts_proposals WHERE id = 'T-0002'").get()).toEqual({ status: "executed" });
   });
 
