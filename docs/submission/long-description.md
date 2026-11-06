@@ -5,6 +5,12 @@ now uses the short Description in [README.md](README.md#description), which link
 main run of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-main-run.md`) and the reports in this repo
 (`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them, as it checks the short one.
 
+- An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 30 seconds.
+- One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
+- Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
+
+The Kit 11 scenario, run live on 3 November.
+
 **Starter Kit 11 (x402 Business Agents), entered for the Metal Award (Visa TAP is an extra: see the note under Visa).**
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
@@ -29,7 +35,8 @@ machine, pressed by our build tool, Claude Code, on Max's go; in production the 
 three runtime agents hold no owner key and no passkey. Log: `docs/runs/2026-11-03-main-run.md`.
 
 - **The price rise.** Stockline, the supplier, went from 0.02 to 0.04 a stock check, over the Sourcing mandate's 0.03
-  cap. Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved.
+  cap. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway.
+  The run's own label: "Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved."
   The refusal is recorded on chain (`mandate_cap_exceeded`, tx `0x2e92f9cb…1871`). Treasury's options 40 s after the
   refusal, within the same 20.00: option A raises Sourcing's cap to 0.04 and keeps our price at 0.05; option B takes the
   same cap and raises our price to 0.07. The CFO signed A with Face ID (1 of 2), then the second approver, the labelled test passkey (2 of 2), and both mandates
@@ -116,22 +123,23 @@ beyond the agents' limits without the CFO's Face ID.
 The CFO on his own phone with Face ID; the agents decided with Claude; test money only (Metal testnet, Airwallex
 sandbox). Second approver: a labelled test passkey in this demo. In production this is a second person.
 - 55 queries, 55 upstream purchases (the cache was off): 41 paid. 14 queries got an error and were not charged (1
-  refused by Metal at the cap, #24; 12 the Sourcing agent chose not to buy at the higher price, #25–#36, until the new
-  mandate was in place; 1 refused `mandate_revoked` while the mandate was being replaced, #37);
-- 87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy, with no approval at the
-  time; 86 of them on Metal (all but the card buy);
+  refused by Metal at the cap, #24; 12 stopped at the higher price by the buy rule the Sourcing agent (Claude) set,
+  applied by code, #25–#36, until the new mandate was in place; 1 refused `mandate_revoked` while the mandate was being replaced, #37);
+- 86 Metal payments + 1 card charge, all inside the limits with no approval at the time: 41 sales + 41 supplier
+  purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwallex;
 - on Metal testnet, checked against the chain on 5 November: the 4 mandates bound at setup and the 2 replacements,
   86 payments each with its own transaction, and 1 refusal on chain (#24,
   [tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871)); no emulator
   and no clearing in this run. The EUR licence and the card buy ran on the Airwallex sandbox; the other 13 refused
-  purchases (12 skipped by the agent's buy policy; #37, refused by Metal against its just-revoked mandate, with no
+  purchases (12 stopped by the buy rule the agent set, applied by code; #37, refused by Metal against its just-revoked mandate, with no
   transaction of its own) are in the ledger, not as transactions on chain;
 - 24 of 24 decisions by Claude, 0 fallbacks; 5 decisions signed with Face ID by the CFO (P-0001, P-0002, P-0004,
-  P-0005, P-0006);
+  P-0005, P-0006), +1 co-signature (the second approver's, on P-0002);
 - the books match the chain and Airwallex: `verify` passes; `reconcile` checked 88 (the 86 Metal payments, the SWIFT
   transfer and the card buy), 0 differences; `data-qa` 217 of 217 checks; 110 money movements, 0 without an origin;
-- 16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
-  Claude's 12: stock checks #25–#36, which the Sourcing agent chose not to buy over its cap; Metal's 2: 1 over the
+- 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+  the buy rule's 12: stock checks #25–#36 (the Sourcing agent, Claude, set its buy rule; code applied it to each check
+  over the cap); Metal's 2: 1 over the
   mandate's cap (#24), 1 on a mandate that had just been replaced (#37, `mandate_revoked`); the CFO's 1: P-0004, with
   Face ID; the planted instruction: a line aimed at the AI in the dispute document, treated as data;
 - Separate run, not counted: Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November.
@@ -142,7 +150,8 @@ All money is test money: the Airwallex sandbox and Metal testnet. The cards, lim
 are real API and chain results. Built, not yet live: T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. Simulated by the sandbox: the merchants' charges, the deposit that stands in for Metal
 earnings and the transfer's last steps (SENT, PAID), which Purser triggers through the sandbox's simulation API. Run
 by us: the customer Summit Outfitters and its agent, and Stockline, the
-warehouse API.
+warehouse API. The second approver (four eyes on P-0002) was a labelled virtual test passkey on the runner machine,
+pressed by our build tool, Claude Code, on Max's go; in production the second approver is a second person.
 
 ### Other live tests (separate worlds, dated)
 

@@ -181,7 +181,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov; Max, 5 Nov): Metal's 2 (not 3:
     // #24 once, and #37), the stops in one sentence, "16 stops" in the pill, all Claude calls said as such, #24 refused
     // by Metal itself.
-    const STOPS = /16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
+    const STOPS = /16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
     for (const want of [/Metal's mandate check\s+2\b/, new RegExp(`In this run: ${STOPS.source}`), /Refused and blocked\s+16 stops/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
       if (!want.test(au)) fail(`/?autonomy ${tag}: missing ${want}`);
     }

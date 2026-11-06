@@ -59,6 +59,36 @@ export const WORLD_SETUP = "World set-up: the alternative supplier (Ridgeline) i
 /** Four eyes, in one line, wherever a page names it. */
 export const FOUR_EYES_LINE = "Four eyes on chain: two signatures required (second approver = a labelled test passkey in this demo)";
 
+/**
+ * What only Purser has (jury review, 6 Nov, #1): three sentences, word for word and first on every surface (the README's
+ * first lines, Home under the heading, the form's synopsis and description, the deck's title slide), then the Kit 11
+ * moments in one line (KIT11_RUN_LINE). The 24 is the main run's decisions, all by Claude (test/differentiation.test.ts
+ * checks it against docs/demo/main-run.json). "No key reaches Claude", not "holds no keys": each agent's own code pays
+ * with its own mandate key; what is documented and tested is that no key reaches the agents' Claude models
+ * (docs/claims.md, test/adversarial.test.ts).
+ */
+export const DIFFERENTIATORS = [
+  "An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 30 seconds.",
+  "One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.",
+  "Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.",
+] as const;
+/** The words in the first sentence that link to /try/sign wherever a surface can link. */
+export const TRY_IT = "Try it in 30 seconds.";
+/** The Kit 11 moments, in one line, after the three sentences. */
+export const KIT11_RUN_LINE = "The Kit 11 scenario, run live on 3 November.";
+/**
+ * The caveats in one line, with a link to the full list (jury review, 6 Nov, #7): on Home and in the form. The full
+ * list is Home's "What's real?" (the footer) and the long description's "What is real and what is simulated".
+ */
+export const CAVEAT_LINE = "Test money. Simulated: customer, supplier, settlement, second approver.";
+export const CAVEAT_LINK = "Details →";
+/**
+ * The purchase let through to Metal, framed as what it was (jury review, 6 Nov, #8): a test of the layer under Purser.
+ * Both layers, in order: Purser refuses first; with that check off once, Metal refused anyway. Said wherever that
+ * refusal is told; the run's own ledger label (DEFENSE_IN_DEPTH) stays word for word beside it.
+ */
+export const CHAIN_TEST = "We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway.";
+
 /** The example company that runs Purser in the demo. */
 export const COMPANY = "Northwind Outdoor";
 /** How Northwind is described everywhere a juror reads it: Kit 11's data business, in one sentence. */

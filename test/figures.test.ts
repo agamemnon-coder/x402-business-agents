@@ -84,6 +84,9 @@ function expected(): Record<string, string | string[]> {
     // Home's tiles (the Home before the v4 animation).
     "decisions made by Claude": `${byClaude}/${decisions}`,
     "payments inside the limits": String((R.snapshot as unknown as { counts: { alone: number } }).counts.alone),
+    // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge"; "5 decisions signed with Face ID (+1 co-signature)".
+    [`Metal payments + ${s.flows.filter((f) => f.rail === "airwallex_card" && !f.refused).length} card charge`]: String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
+    [`decisions signed with Face ID (+${signatures - faceIds} co-signature)`]: String(faceIds),
     "signatures": String(signatures),
     "decisions +": String(faceIds),
     "co-signature": String(signatures - faceIds),
@@ -128,8 +131,9 @@ describe("every labelled figure on Home, Proof and Watch", () => {
   it("would have caught the Face ID mismatch of 2 Nov (5 on one card, 6 on another)", () => {
     const old = pages.proof!.replace("</main>", `<div class="card" id="faceid2"><h3>Face ID decisions</h3><p>6 decisions signed on the CFO's phone.</p></div></main>`);
     expect(mismatches(old).join("\n")).toMatch(/6 "decisions signed on the CFO's phone"/);
-    const five = pages.proof!.replace(/<span class="v">\d+<\/span><span class="l">Face ID decisions<\/span>/, '<span class="v">6</span><span class="l">Face ID decisions</span>');
-    expect(mismatches(five).join("\n")).toMatch(/6 "Face ID decisions", the record says 5/);
+    const five = pages.proof!.replace(/<span class="v">\d+<\/span><span class="l">decisions signed with Face ID \(\+1 co-signature\)<\/span>/, '<span class="v">6</span><span class="l">decisions signed with Face ID (+1 co-signature)</span>');
+    expect(five).not.toBe(pages.proof);
+    expect(mismatches(five).join("\n")).toMatch(/6 "decisions signed with Face ID \(\+1 co-signature\)", the record says 5/);
   });
 
   it("holds the one Face ID number the record's own count gives", () => {

@@ -1,22 +1,26 @@
 # Purser
 
-**Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.**
-**[Sign one yourself](https://kit11.max-31b.workers.dev/try/sign)** · [Film, 2:42](https://youtu.be/jaqO2M2V6NY) · [The run, replayed](https://kit11.max-31b.workers.dev/watch)
+- An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. **[Try it in 30 seconds.](https://kit11.max-31b.workers.dev/try/sign)**
+- One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
+- Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2447 passing](https://img.shields.io/badge/tests-2447%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+The Kit 11 scenario, run live on 3 November: [Film, 2:42](https://youtu.be/jaqO2M2V6NY) · [the run, replayed](https://kit11.max-31b.workers.dev/watch) · [every id](https://kit11.max-31b.workers.dev/proof).
+Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
+each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything
+beyond them, with Face ID on the exact terms.
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2459 passing](https://img.shields.io/badge/tests-2459%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
 small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
 every id below.
 
+**Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.**
+
 **Try it yourself: [sign with your own Face ID](https://kit11.max-31b.workers.dev/try/sign).** In a test world of your
 own, an agent proposes two payments: a rule blocks one, and you sign the other's exact terms with a passkey your phone
 or laptop makes (Face ID, Touch ID or a PIN). The server checks the signature; change one cent and the same signature is
 refused. Nothing real moves. Live since 4 November 2026.
-
-Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
-each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything
-beyond them, with Face ID on the exact terms.
 
 **Also:** [the site](https://kit11.max-31b.workers.dev/) replays the main run; [`/try`](https://kit11.max-31b.workers.dev/try)
 gives an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves.
@@ -46,8 +50,9 @@ Claude models. Log: [docs/runs/2026-11-03-main-run.md](docs/runs/2026-11-03-main
 [docs/demo/main-run.json](docs/demo/main-run.json); replayed on [/watch](https://kit11.max-31b.workers.dev/watch).
 
 **1. The price rise** ([watch](https://kit11.max-31b.workers.dev/watch?scene=1)). Stockline went from 0.02 to 0.04 a
-stock check, over the Sourcing mandate's 0.03 cap. Purchase #24 was let through on purpose (Purser normally refuses first). Metal
-refused it; the refusal is recorded on chain: `mandate_cap_exceeded` at 11:23:27, tx
+stock check, over the Sourcing mandate's 0.03 cap. We switched off our own check once to prove the chain holds the line:
+Purser refuses an over-cap purchase before signing; with that check off for purchase #24, Metal refused it anyway; the
+refusal is recorded on chain: `mandate_cap_exceeded` at 11:23:27, tx
 `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871` (11:23:33). Treasury's options came at 11:24:07,
 40 s after Metal's refusal and 34 s after that tx, within the same 20.00: option A (P-0002) raises Sourcing's cap to
 0.04 and keeps our price at 0.05; option B (P-0003) takes the same cap and raises our price to 0.07. The CFO signed A;
@@ -72,16 +77,16 @@ in the sandbox: Purser itself moves the transfer to SENT and PAID through Airwal
 asked for a card raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the
 TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 
-**16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.**
-Claude's 12: stock checks #25–#36, which the Sourcing agent (Claude Haiku) chose not to buy while Stockline asked
-0.04, over its 0.03 cap; nothing signed, no customer charged. Metal's 2: 1 over the mandate's cap (#24, its refusal
+**16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.**
+The buy rule's 12: stock checks #25–#36. The Sourcing agent (Claude Haiku) set its buy rule; code applied it to each
+check while Stockline asked 0.04, over its 0.03 cap; nothing signed, no customer charged. Metal's 2: 1 over the mandate's cap (#24, its refusal
 recorded in the tx above), 1 on a mandate that had just been replaced (#37, `mandate_revoked`, no tx of its own). The
 CFO's 1: P-0004, with Face ID. The planted instruction: a line aimed at the AI inside the dispute document, treated as
 data.\
 *Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
 
-**Payments:** 87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy, with no
-approval at the time; 86 of them on Metal. 14 of the 55 queries got an error and were not charged. `verify` passes,
+**Payments:** 86 Metal payments + 1 card charge, all inside the limits with no approval at the time: 41 sales + 41
+supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwallex. 14 of the 55 queries got an error and were not charged. `verify` passes,
 `reconcile` checked 88 with 0 differences, and every one of the 110 money movements has an origin.
 
 | Kit 11 agent | Its job in the brief | Budget (test USD) when bound → after the CFO's Face ID |
@@ -106,7 +111,7 @@ merchant is ours.
   2 replacements; 86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep);
   1 refusal recorded on chain (#24, [tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871)).
   No emulator and no clearing in this run. Not on Metal: the EUR licence (FX, SWIFT) and the card buy, on the Airwallex
-  sandbox; the other 13 refused purchases (12 skipped by the Sourcing agent's buy policy; #37, refused by Metal against
+  sandbox; the other 13 refused purchases (12 stopped by the buy rule the Sourcing agent set, applied by code; #37, refused by Metal against
   its just-revoked mandate, with no transaction of its own) are in the ledger, not as transactions on chain.
 - **Run by us:** Summit Outfitters (the customer) and its agent, Stockline (the supplier), the TAP merchant.
 - **Replayed:** Home, Watch and Proof on the hosted site, and `npm run judge` offline, play the main run's record.
@@ -130,7 +135,7 @@ npm test          # the full suite, on stand-ins
 npm run judge     # the main run's replay, the CFO dashboard and the Scenario Lab, offline
 ```
 
-**2447 tests in 251 files, all passing** (`npx vitest run`, 6 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
+**2459 tests in 252 files, all passing** (`npx vitest run`, 6 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
 every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/run-it.md).
 
 ## Words

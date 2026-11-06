@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { publish } from "../src/autonomy/bus.js";
 import { CHECK_PATHS, judgeMenu, startJudge } from "../src/cli/judge.js";
-import { SANDBOX_SETTLED, SECOND_APPROVER, VISA_EXTRA_LINK, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
+import { CHAIN_TEST, SANDBOX_SETTLED, SECOND_APPROVER, VISA_EXTRA_LINK, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 import { agentChat } from "../src/dashboard/agentStats.js";
 import { railsView } from "../src/dashboard/rails.js";
 import { describe as feedLine } from "../src/dashboard/snapshot.js";
@@ -54,7 +54,7 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
     expect(metal.last!.words).toMatch(/let through on purpose/);
     expect(replay.snapshot.tower.enforced.find((e) => e.who === "airwallex")!.count).toBe(st.airwallex);
     const detail = " Metal's 2: 1 over the mandate's cap, 1 on a mandate that had just been replaced.";
-    expect(line).toBe("16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    expect(line).toBe("16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     expect(f.keptOut).toBe(`${line}${detail} The amount is what stayed out for good.`);
     expect(f.refusedPill).toBe("16 stops");
     expect(f.refusedNote).toBe(`As on Home and Proof: ${line}${detail}`);
@@ -105,7 +105,7 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
 });
 
 describe("2. What's real?, on each page its own", () => {
-  const real = (html: string) => words(/<details class="real">[\s\S]*?<\/details>/.exec(html)?.[0] ?? "");
+  const real = (html: string) => words(/<details class="real"[^>]*>[\s\S]*?<\/details>/.exec(html)?.[0] ?? "");
   const MAIN = "Real Claude decisions, real Metal testnet and Airwallex sandbox calls";
 
   it("/try/sign says what it is: a test world, no Airwallex, Metal or Claude call, no money; none of the main run's lines", () => {
@@ -242,10 +242,12 @@ describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, o
 });
 
 describe("7. copy slips", () => {
-  it("Home's first scene says the purchase Metal refused was let through on purpose", () => {
-    expect(agentRun().scenes[0]!.sentence).toBe("Stockline raises its price to 0.04 → one purchase is let through on purpose, and Metal refuses it on chain → Treasury replans → two signatures → the mandate is replaced.");
+  it("Home's first scene says the purchase Metal refused was a test of the chain: our own check switched off once (jury review, 6 Nov, #8)", () => {
+    expect(agentRun().scenes[0]!.sentence).toBe("Stockline raises its price to 0.04 → we switched off our own check once to prove the chain holds the line: Metal refused the purchase on chain → Treasury replans → two signatures → the mandate is replaced.");
     const card = /<a class="scene card" href="watch\?scene=1">[\s\S]*?<\/a>/.exec(homePage())![0];
-    expect(words(card)).toContain("let through on purpose");
+    expect(words(card)).toContain("we switched off our own check once to prove the chain holds the line");
+    // Both layers where the refusal is told in full: Purser refuses first; with that check off once, Metal refused anyway.
+    for (const html of [proofPage(), buildPages().metal]) expect(words(html)).toContain(CHAIN_TEST);
   });
 
   it("/visa's 'no approval' line is true: none in the TAP run; in the main run the card buy came after the CFO's Face ID on P-0006", () => {
@@ -256,11 +258,11 @@ describe("7. copy slips", () => {
     expect(t).toContain("In the separate TAP run (2 November) no approval was asked for or given. In the main run the card buy came after the CFO approved P-0006 with Face ID, which raised the card's limit per purchase from EUR 30.00 to EUR 46.00.");
   });
 
-  it("Proof's note under the routine payments reads as a sentence", () => {
+  it("Proof's note under the payments reads as a sentence", () => {
     const pay = payments(record);
     const t = words(proofPage());
     expect(t).not.toMatch(/purchases of:/);
-    expect(t).toContain(`${pay.sales} sales + ${pay.purchases} supplier purchases. In all, ${pay.line}.`);
+    expect(t).toContain(`${pay.metalParts} on Metal, all inside the limits.`);
   });
 
   it("says 'separate TAP run, 2 November' once on Home and Proof; the deck leaves that other run out (Max, 5 Nov)", () => {
