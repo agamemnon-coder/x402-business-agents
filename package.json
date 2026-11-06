@@ -90,6 +90,7 @@
     "origins": "tsx src/cli/origins.ts",
     "test-funds": "tsx src/cli/testFunds.ts",
     "awx-readback": "tsx src/cli/awxReadback.ts",
+    "awx-1": "tsx src/cli/awx1.ts",
     "demo-tower": "tsx src/cli/demoTower.ts",
     "autonomy-record": "tsx src/cli/autonomyRecord.ts",
     "trace-record": "tsx src/cli/traceRecord.ts",

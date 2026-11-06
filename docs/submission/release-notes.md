@@ -247,6 +247,19 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   approvals, the audit chain's published links with their check, and a README on how to check it. "From the main run
   of 3 November, test money."; T:0: "Posting to T:0 is built; nothing posted (keys refused: 403 CAPI71 on 3 Nov, 401
   CAPI11 on 5 Nov)." A stored zip, written with Node's own CRC-32: no new dependency. 2773 tests in 273 files, all passing.
+- 6 November, the test suite makes 0 external calls: building the seller or a supplier no longer asks Metal's
+  facilitator for its /supported list (test/support/facilitatorStandIn.ts, in test/clearing.test.ts and
+  test/world-thursday.test.ts), and a vitest setup file removes every live key from the tests' environment and refuses
+  any request to a host that is not this machine, also in the child processes a test starts
+  (test/support/noNetwork.ts, test/support/no-network.cjs). Checked with a logging preload over the full suite: 0
+  attempts. 2736 tests in 272 files, all passing.
+- 6 November, awx-1 prepared, not run (Max's last round, item 2.1): the Airwallex-only run's plan and runbook
+  (docs/runs/awx-1-plan.md): every Airwallex call by step and endpoint (85 expected, 96 at most), the Claude estimate from
+  the main run's own costs, the abort criteria. `npm run awx-1` runs the scenario on the stand-ins with 0 network and
+  checks a–g, verify and reconcile; live it waits for Max's Face ID and a call guard keeps to the approved count.
+  Max approved 96 Airwallex calls at most (117 with one second attempt), 14 Claude calls, 0 Metal. A stand-in test's
+  accidental Claude calls while preparing it are booked as an upper bound (at most 24 calls, 0.18 USD).
+  2802 tests in 277 files, all passing (with main's and the network guard).
 - 6 November, the worst case, set by policy (1.1): per agent and in all, per day and per month, computed from the
   policy by Purser's own code: each card's monthly limit (EUR), each Metal mandate's budget (test USD) and the
   Treasury agent's task cards without Face ID, on a line of their own (Max: "apart"). EUR and test USD apart, an EUR

@@ -12,6 +12,9 @@ import { openDb } from "../src/db/open.js";
 import { betweenEpochs } from "../src/metal/clearing.js";
 import { PREPAID_ROUTE, sellerApp } from "../src/servers/seller.js";
 
+// Metal's facilitator stood in: building the seller or a supplier asks its /supported (test/support/facilitatorStandIn.ts).
+vi.mock("@x402/core/server", async (orig) => (await import("./support/facilitatorStandIn.js")).standInServer(await orig<typeof import("@x402/core/server")>()));
+
 const SUPPLIER = "0x00000000000000000000000000000000000000f1";
 const offer = (cents: number) => encodePaymentRequiredHeader({
   x402Version: 2, resource: { url: "http://supplier/v1/stock-check" },
