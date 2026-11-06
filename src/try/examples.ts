@@ -1,8 +1,10 @@
 // The three locks on /try/sign (Max, 6 Nov): a payment can be stopped by Purser's policy (rules in code, before anything
 // is signed), by Airwallex's card limit, or by Metal's mandate on chain. The visitor's blocked payment is a simulation
 // in their test world; each lock links to a real example, taken here from the records, never typed in:
-//   Purser's policy  the main run (docs/demo/main-run.json): the first purchase Purser's code refused under a policy,
-//                    before anything was signed (its ledger row, upstream.refused with refused_by buy_policy);
+//   Purser's policy  the main run (docs/demo/main-run.json): the floors that held at P-0005 (Max, 6 Nov). Purser's
+//                    invoice plan (code, the plan_invoice row) found EUR needed and EUR free, and the FX converted
+//                    only the shortfall (the ledger's fx.converted row), so the floors held; the USD balance after
+//                    it stayed above the USD floor (the treasury snapshot after P-0005 ran);
 //   Airwallex        the separate TAP run of 2 November (docs/runs/visa-tap-live-*.json): the card payment Airwallex's
 //                    sandbox declined over the card's limit (LIMIT_EXCEEDED);
 //   Metal            the main run: the purchase let through to Metal on purpose, refused on chain over the mandate's
@@ -39,19 +41,41 @@ const need = <T>(v: T | null | undefined, what: string): T => {
 };
 
 interface LedgerRow { seq: number; ts: string; event: string; subject: string | null; payload: Record<string, unknown> }
+const cents = (s: string) => Math.round(Number(s) * 100);
+
+/**
+ * Purser's own floors holding in the main run: the invoice plan in code (its row) needed EUR (invoice + fee ceiling)
+ * beyond the EUR free above the floors, and the FX that followed (its ledger row) bought only that shortfall; the
+ * USD left after it stayed above the USD floor. Every figure is the record's; they must add up, or this throws.
+ */
+export interface FloorsHeld { proposal: string; at: string; planSeq: number; fxSeq: number; needed: string; free: string; buy: string; sell: string; usdAfter: string; usdFloor: string }
+export function floorsHeld(r: RunRecord): FloorsHeld {
+  const events = (r.ledger?.events ?? []) as unknown as LedgerRow[];
+  const fx = need(events.find((e) => e.event === "fx.converted"), "FX conversion (fx.converted)");
+  const proposal = need((fx.payload.origin as { proposal_id?: string } | undefined)?.proposal_id, "proposal behind the FX");
+  const steps = (r.snapshot.traces ?? []).flatMap((t) => t.steps);
+  const plan = need(steps.find((s) => s.tool === "plan_invoice" && /EUR needed \d+\.\d{2}/.test(s.text ?? "")), "invoice plan (plan_invoice)");
+  const text = plan.text ?? "";
+  const needed = need(/EUR needed (\d+\.\d{2})/.exec(text)?.[1], "EUR needed in the plan");
+  const free = need(/free EUR (\d+\.\d{2})/.exec(text)?.[1], "EUR free in the plan");
+  const buy = String(fx.payload.buy ?? ""), sell = String(fx.payload.sell ?? "");
+  if (!/^EUR \d+\.\d{2}$/.test(buy) || !/^USD \d+\.\d{2}$/.test(sell)) throw new Error("/try/sign's locks: the FX row has no EUR bought or USD sold");
+  if (cents(needed) - cents(free) !== cents(buy.slice(4)) || !new RegExp(`convert only the shortfall: buy ${buy}`).test(text)) {
+    throw new Error(`/try/sign's locks: the plan (${needed} needed, ${free} free) and the FX (${buy}) do not agree`);
+  }
+  const awx = (r.snapshot as unknown as { treasury?: { airwallex?: { label?: string; usd?: { available?: string; floor?: string } } } }).treasury?.airwallex;
+  if (awx?.label !== `post-exec:${proposal}`) throw new Error(`/try/sign's locks: no treasury snapshot after ${proposal}`);
+  const usdAfter = need(awx.usd?.available, "USD after"), usdFloor = need(awx.usd?.floor, "USD floor");
+  if (cents(usdAfter) < cents(usdFloor)) throw new Error("/try/sign's locks: the USD floor did not hold");
+  return { proposal, at: fx.ts, planSeq: need(plan.seq, "the plan's row number"), fxSeq: fx.seq, needed, free, buy, sell, usdAfter, usdFloor };
+}
 
 /** The three locks with their real examples, from the main run's record and the TAP run's. Throws when one is missing. */
 export function tryLocks(r: RunRecord = loadRecord().record): Lock[] {
   const run = `${runName(r).replace(/^the /, "").replace(/^./, (c) => c.toUpperCase())}`;
-  const events = (r.ledger?.events ?? []) as unknown as LedgerRow[];
 
-  // Purser's policy: the first purchase its code refused under a policy, before anything was signed.
-  const refused = need(events.find((e) => e.event === "upstream.refused" && e.payload.refused_by === "buy_policy"
-    && (e.payload.origin as { actor?: string } | undefined)?.actor === "code"), "purchase refused by Purser's code under a policy");
-  const row = need(r.snapshot.refusals.find((x) => x.seq === refused.seq), `refusal row for ledger row ${refused.seq}`);
-  const check = need(/#(\d+)/.exec(row.reason)?.[1], "stock check number in the refusal");
-  const setBy = (refused.payload.origin as { set_by?: { model?: string } } | undefined)?.set_by?.model;
-  const family = /claude-(haiku|sonnet|opus)/i.exec(setBy ?? "")?.[1]?.replace(/^./, (c) => c.toUpperCase());
+  // Purser's policy: its floors holding at P-0005 (FX only for the shortfall).
+  const f = floorsHeld(r);
 
   // Airwallex's card limit: the TAP run's declined card payment.
   const tap = need(tapRun(), "TAP run (docs/runs/visa-tap-live-*.json)");
@@ -64,10 +88,10 @@ export function tryLocks(r: RunRecord = loadRecord().record): Lock[] {
 
   return [
     {
-      id: "purser", name: "Purser's policy", what: "Rules in code, checked before anything is signed: limits, reserve floor, what an agent may pay alone.",
-      run: `${run}, ${dayMonth(refused.ts)}`,
-      example: `${hhmm(refused.ts)} UTC: Purser's code refused stock check #${check} under the Sourcing agent's buy policy${family ? ` (set by Claude ${family})` : ""}; nothing was signed, nothing paid (ledger row ${refused.seq}).`,
-      href: "proof#stops", link: "See it on Proof",
+      id: "purser", name: "Purser's policy", what: "Rules in code, checked before anything is signed: reserve floors, limits, what an agent may pay alone.",
+      run: `${run}, ${dayMonth(f.at)}`,
+      example: `${f.proposal}: the invoice needed EUR ${f.needed} and EUR ${f.free} was free, so Purser's plan converted only the shortfall: ${f.buy} for ${f.sell} at ${hhmm(f.at)} UTC (plan row ${f.planSeq}, ledger row ${f.fxSeq}). The floors held: USD ${f.usdAfter} after it, above the USD floor of ${f.usdFloor}.`,
+      href: "proof#airwallex", link: "See the FX row on Proof",
     },
     {
       id: "airwallex", name: "Airwallex's card limit", what: "Each agent's card has its own limit at Airwallex; over it, Airwallex declines the payment.",

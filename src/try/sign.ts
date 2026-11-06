@@ -19,6 +19,13 @@ export const TRY_SIGN_LABEL = "Test world · test passkey · nothing real moves"
 /** The three steps, word for word (the progress indicator). */
 export const TRY_SIGN_STEPS = ["The agent proposes", "You sign with Face ID", "Purser verifies"] as const;
 
+/** The line under the start button, word for word (Max, 6 Nov). */
+export const TRY_SIGN_HOOK = "A Treasury agent wants to pay an invoice above its limit. You decide.";
+/** The big green check after signing, word for word. */
+export const TRY_SIGN_SIGNED = "Signed and verified. This signature only fits these exact terms.";
+/** The last line after a refused tamper: one cent off the amount, or any other single change (Max, 6 Nov). */
+export const TAMPER_VERDICT = { cent: "One cent changed. The signature is worthless.", field: "One field changed. The signature is worthless." } as const;
+
 /** The fields a visitor may change to tamper, as the terms name them. */
 export const TAMPER_FIELDS = ["amount", "payee_iban", "currency"] as const;
 
@@ -26,7 +33,7 @@ export const TAMPER_FIELDS = ["amount", "payee_iban", "currency"] as const;
 export const WHATS_REAL = {
   simulated: [
     "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor. Its balance, its payees and their IBANs are test data (the IBANs' check digits are 00, which no real account has).",
-    "The agent's words are fixed text: no Claude call. The executor is a stand-in that only records in your test world: no Airwallex or Metal call, no money moves.",
+    "No Airwallex, Metal or Claude call, and no money moves: the agent's words are fixed text, and the executor is a stand-in that only records in your test world.",
     "The blocked payment and the lock that stops it are a simulation in your test world. The three examples it links to are real, each from the run it names.",
   ],
   real: [
@@ -36,6 +43,9 @@ export const WHATS_REAL = {
   limits: [
     "The server checks no attestation, so it cannot tell which authenticator made the key, and a key made in software would verify too: Face ID is what your device asks for, not something the server proves.",
     "This world, its passkey and its proposals live in their own store, apart from Northwind's: a test passkey is enrolled nowhere else, so it can never approve a real proposal or sign in to the CFO's pages.",
+  ],
+  sources: [
+    "The test world: worker/src/trySign.ts; nothing in it is recorded anywhere else. The locks' real examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
   ],
 } as const;
 
@@ -55,7 +65,9 @@ details.wr > summary::after { content: "▾"; font-size: 13px; } details.wr[open
 .wr-body h3 { font-size: 15px; margin: 0; } .wr-body ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 /* The three steps. */
 /* Sticky under the site's header, so the visitor always sees where they are. */
-ol.progress { list-style: none; margin: 0 0 14px; padding: 8px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 760px; position: sticky; top: 64px; z-index: 30; background: var(--bg); }
+/* The site's header is translucent; here, where cards scroll under it and the steps, it is opaque (Max, 6 Nov). */
+header.top { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+ol.progress { list-style: none; margin: 0 0 14px; padding: 8px 0; box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 760px; position: sticky; top: 64px; z-index: 30; background: var(--bg); }
 #s-props, .prop, #result, #tamper { scroll-margin-top: 150px; }
 ol.progress li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 14px; background: var(--sunken); color: var(--muted); font: 650 14.5px/1.25 Inter, system-ui, sans-serif; min-width: 0; }
 ol.progress li .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; }
@@ -65,6 +77,16 @@ ol.progress li.done { color: var(--text); } ol.progress li.done .n { background:
 ol.progress li .t { min-width: 0; overflow-wrap: anywhere; }
 .start { display: grid; gap: 8px; max-width: 760px; }
 .start[hidden] { display: none; }
+.hook { margin: 0; font-size: 17px; font-weight: 600; color: var(--text); }
+/* One sentence shows; the rest is behind "more". */
+details.more { font-size: 14.5px; color: var(--muted); }
+details.more > summary { cursor: pointer; display: inline-flex; align-items: center; min-height: 32px; font-weight: 650; color: var(--accent); }
+details.more > p { margin: 4px 0 0; }
+.bigok { display: flex; align-items: center; gap: 14px; }
+.bigok .i { width: 56px; height: 56px; flex: none; color: var(--ok); }
+.bigok h2 { font-size: clamp(22px, 2.6vw, 30px); line-height: 1.2; margin: 0; letter-spacing: -.015em; }
+.outcome { margin: 4px 0 0; font-size: clamp(19px, 2vw, 22px); font-weight: 750; color: var(--bad); }
+.outcome[hidden] { display: none; }
 .muted { color: var(--muted); }
 .small { font-size: 15px; }
 .btn[disabled] { opacity: .45; cursor: not-allowed; }
@@ -119,10 +141,8 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .lock .lh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700; }
 .lock .tag { font-size: 13px; padding: 2px 9px; }
 .lock.hit { border-color: var(--bad); background: var(--bad-soft); } .lock.hit .tag { background: var(--bad); color: var(--on-bad); }
-.lock .ex { color: var(--muted); }
 .lock a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
 .lock a .i { flex: none; }
-.lock .run { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
 /* Grid and flex children may shrink below their content (a long word), and a card never grows past its column. */
 .props > *, .prop > *, .result > *, .chk > *, .line > *, .who > *, .facts > *, .lock > *, .locks > *, #tamper > *, .tf > *, .hashes > * { min-width: 0; }
 .prop { max-width: 100%; }
@@ -175,6 +195,8 @@ const JS = `
     (kids || []).forEach(function (k) { if (k !== null && k !== undefined) n.appendChild(typeof k === "string" ? document.createTextNode(k) : k); });
     return n;
   }
+  // One sentence, and the rest behind a native "more" toggle.
+  function more(text) { var d = el("details", "more", [el("summary", "", ["more"]), el("p", "", [text])]); return d; }
   function ic(name) { var s = document.createElement("span"); s.innerHTML = D.icons[name]; return s.firstChild; }
   function status(id, text, tone) { var n = $(id); n.textContent = text; n.className = "status" + (tone ? " " + tone : ""); }
   // The three steps: n is the one under way; those before it are done (all three once verified).
@@ -349,7 +371,7 @@ const JS = `
       el("h3", "title", ["Pay " + t.payee + " " + amt(t.currency, t.amount)]),
       agentLine(p), el("p", "says", [p.says]), facts,
       el("div", "chk pass", [el("b", "", [ic("clock"), "Check: pass · waiting for a person"]), el("span", "", [p.waits])]),
-      el("div", "", [el("p", "small muted", ["Terms hash. The hash of the exact terms, which your passkey signs" + (x.same ? " (checked on this device):" : ":")]), hashBox(x.mine)]),
+      el("div", "", [el("p", "small muted", ["The hash of the exact terms, which your passkey signs" + (x.same ? " (checked on this device):" : ":")]), hashBox(x.mine)]),
       el("details", "terms", [el("summary", "", ["All terms (exactly what is hashed)"]), el("pre", "", [p.canonical])])
     ];
     var key = el("button", "btn primary big", [ic("scan-face"), "Create your test passkey"]);
@@ -366,7 +388,7 @@ const JS = `
     }
     var acts = el("div", "actions", [key, b]);
     acts.id = "s-key";
-    kids.push(el("div", "", [el("p", "small muted", ["First a test passkey for this world only (a random id, no name or e-mail), then your signature. Face ID, Touch ID, Windows Hello, a security key, or your phone by QR code."])]), acts, ks, st);
+    kids.push(el("div", "", [el("p", "small muted", ["First a test passkey for this world, then your signature."]), more("A random id, no name or e-mail, kept on your device for this site only; it opens this test world and nothing else. Face ID, Touch ID, Windows Hello, a security key, or your phone by QR code.")]), acts, ks, st);
     kids.push(el("p", "basis", [D.cfo]));
     var a = el("article", "card prop sheet", kids);
     a.dataset.proposal = p.proposal_id;
@@ -385,8 +407,8 @@ const JS = `
       var row = el("div", "lock " + l.id + (hit ? " hit" : ""), [
         el("div", "lh", [ic(hit ? "octagon-x" : "lock"), l.name, el("span", "tag", [hit ? "Stopped this one (simulated)" : "Not this one"])]),
         el("span", "", [hit ? p.rule : l.what]),
-        el("span", "run", ["Real example · " + l.run]),
-        el("span", "ex", [l.example]), a
+        a,
+        more("Real example, " + l.run + ": " + l.example)
       ]);
       row.dataset.lock = l.id;
       locks.appendChild(row);
@@ -429,9 +451,9 @@ const JS = `
 
   function showResult(x, d) {
     $("r-hash").replaceChildren(hashBox(d.terms_sha256));
-    $("r-checks").textContent = "Checked with the relay's passkey verifier: " + d.checks.join(", ") + ".";
+    $("r-checks").replaceChildren(el("span", "small muted", ["Checked by the server with the relay's passkey verifier."]), more("Checked: " + d.checks.join(", ") + "."));
     var e = d.executed;
-    $("r-exec").textContent = "Test transfer " + e.id + ": " + eur(e.amount) + " to " + e.payee + ". Test balance now " + eur(e.balance_after) + ". By the " + e.by + ".";
+    $("r-exec").replaceChildren(el("span", "small muted", ["Test transfer " + e.id + ": " + eur(e.amount) + " to " + e.payee + "."]), more("Test balance now " + eur(e.balance_after) + ". By the " + e.by + "."));
     var t = x.terms;
     $("t-amount").value = t.amount; $("t-iban").value = iban(t.payee_iban); $("t-currency").value = t.currency;
     edited();
@@ -487,7 +509,10 @@ const JS = `
         $("t-line").className = "line " + (refused ? "bad" : "ok");
         $("t-icon").replaceChildren(ic(refused ? "octagon-x" : "triangle-alert"));
         $("t-head").textContent = refused ? "Refused: the same signature does not verify for the changed terms" : "Accepted?! This should not happen.";
-        $("t-why").replaceChildren(el("span", "", [refused ? "The server: " + (q.data.error || ("error " + q.status)) : ""]));
+        $("t-why").replaceChildren(el("span", "", [refused ? refusal(q) : ""]));
+        var v = $("t-verdict");
+        v.textContent = refused ? verdict(r.changed, s.x.terms, r.terms) : "";
+        v.hidden = !refused;
         $("tamper").hidden = false;
         bs.forEach(function (b) { b.disabled = false; });
         edited();
@@ -495,6 +520,21 @@ const JS = `
         $("tamper").scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
     });
+  }
+  // The server's refusal in one sentence: why it refused, with the two hashes when it was the challenge.
+  function refusal(q) {
+    var d = q.data || {};
+    var hex = function (h) { return /^[0-9a-f]{64}$/.test(h || "") ? h.slice(0, 12) + "…" : null; };
+    if (d.why === "challenge" && hex(d.signed_sha256) && hex(d.terms_sha256)) return "The server refused it: the signature was made for hash " + hex(d.signed_sha256) + ", and your terms hash to " + hex(d.terms_sha256) + ".";
+    var why = String(d.error || ("error " + q.status)).replace(/^refused:\\s*/i, "");
+    return "The server refused it: " + why + (/[.!?]$/.test(why) ? "" : ".");
+  }
+  // The last line: one cent, one field, or how many.
+  function verdict(changed, was, now) {
+    var cents = function (a) { return Math.round(Number(a) * 100); };
+    if (changed.length === 1 && changed[0] === "amount" && Math.abs(cents(now.amount) - cents(was.amount)) === 1) return D.verdict.cent;
+    if (changed.length === 1) return D.verdict.field;
+    return ["", "", "Two", "Three"][changed.length] + " fields changed. The signature is worthless.";
   }
   $("t-send").addEventListener("click", tamper);
   // The quick way, as before: the amount plus one cent, the rest as signed.
@@ -518,11 +558,12 @@ export function trySignPage(): string {
 <section class="intro">
   <p class="eyebrow">Try it yourself</p>
   <h1 class="h-sec">Sign with your own Face ID</h1>
-  <p class="lead">An agent proposes a payment it may not make alone. You sign its exact terms with Face ID; Purser verifies the signature.</p>
+  <p class="lead">An agent proposes a payment it may not make alone; you sign its exact terms with Face ID, and Purser verifies the signature.</p>
   <details class="wr"><summary>${icon("info", 16)}What's real?</summary><div class="card wr-body">
     <h3>Simulated</h3><ul>${li(WHATS_REAL.simulated)}</ul>
     <h3>Real</h3><ul>${li(WHATS_REAL.real)}</ul>
     <h3>What the server does not prove</h3><ul>${li(WHATS_REAL.limits)}</ul>
+    <h3>Sources</h3><ul>${li(WHATS_REAL.sources)}</ul>
   </div></details>
 </section>
 <ol class="progress" aria-label="Three steps">
@@ -530,6 +571,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
 </ol>
 <div class="start" id="s-world">
   <button class="btn primary big" type="button" id="go-world">${icon("play", 18)}Start: show me the proposal</button>
+  <p class="hook" id="hook">${esc(TRY_SIGN_HOOK)}</p>
   <p class="status" id="w-status" aria-live="polite"></p>
 </div>
 <section id="s-props" hidden>
@@ -537,13 +579,13 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   <div class="props" id="props"></div>
 </section>
 <section class="card result" id="result" hidden aria-live="polite">
-  <h2 class="h-sec">Signed</h2>
-  <div class="line ok">${icon("shield-check", 22)}<span><b>Verified by the server</b><span id="r-checks" class="small muted"></span></span></div>
-  <div class="line ok">${icon("circle-check", 22)}<span><b>Executed in your test world</b><span id="r-exec" class="small muted"></span></span></div>
+  <div class="bigok">${icon("circle-check", 56)}<h2 id="r-head">${esc(TRY_SIGN_SIGNED)}</h2></div>
+  <div class="line ok">${icon("shield-check", 22)}<span><b>Verified by the server</b><span id="r-checks"></span></span></div>
+  <div class="line ok">${icon("circle-check", 22)}<span><b>Executed in your test world</b><span id="r-exec"></span></span></div>
   <div><p class="small muted">The hash you signed (SHA-256 of the exact terms):</p><div id="r-hash"></div></div>
   <div class="tbox" id="tamper-box">
     <h3>${icon("triangle-alert", 18)} Now try to tamper</h3>
-    <p class="small muted">Change a field of the terms you signed, then send them with the same signature. The server checks it, for real.</p>
+    <p class="small muted">Change a field, then send it with the same signature: the server checks it for real.</p>
     <div class="tf">
       <label data-field="amount">Amount<input id="t-amount" inputmode="decimal" autocomplete="off" spellcheck="false" data-world="1"></label>
       <label data-field="payee_iban">IBAN<input id="t-iban" autocomplete="off" autocapitalize="characters" spellcheck="false" data-world="1"></label>
@@ -551,14 +593,14 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
     </div>
     <div class="tactions"><button class="btn primary" type="button" id="t-send" data-world="1" disabled>Send with the same signature</button><button class="btn" type="button" id="go-tamper" data-world="1">Try to tamper: change the amount by 0.01</button></div>
     <p class="status" id="t-status" aria-live="polite"></p>
-    <div id="tamper" hidden><div id="t-what"></div><div class="line" id="t-line"><span id="t-icon"></span><div><b id="t-head"></b><div id="t-why" class="small"></div></div></div></div>
+    <div id="tamper" hidden><div id="t-what"></div><div class="line" id="t-line"><span id="t-icon"></span><div><b id="t-head"></b><div id="t-why" class="small"></div></div></div><p class="outcome" id="t-verdict" hidden></p></div>
   </div>
 </section>
 </div></main>`;
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: an agent proposes, you sign the exact terms with Face ID, Purser verifies. A test world of your own; nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false,
-    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS },
+    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [
@@ -567,6 +609,11 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
       "Real: your device's passkey signature over the hash of the exact terms, and the server's check of it against the public key your device registered.",
     ],
   }).replace("<body>\n", () => `<body>\n<div class="testband" role="note">${icon("lock", 16)}${esc(TRY_SIGN_LABEL)}</div>\n`);
+  // One "What's real?" on this page (Max, 6 Nov): the one under the disclaimer. The footer's copy is cut out, by position.
+  const foot = html.indexOf('<footer class="foot">');
+  const a = html.indexOf('<details class="real"', foot), b = html.indexOf("</details>", a);
+  if (foot < 0 || a < 0 || b < 0) throw new Error("/try/sign: the footer's What's real? was not found");
+  const one = html.slice(0, a) + html.slice(b + "</details>".length);
   // Relative links and assets made absolute: the page answers one level down, at /try/sign.
-  return html.replace(/(href|src)="(?!https?:|#|\/|data:|mailto:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
+  return one.replace(/(href|src)="(?!https?:|#|\/|data:|mailto:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 }
