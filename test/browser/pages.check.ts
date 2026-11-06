@@ -227,6 +227,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.screenshot({ path: join(shots, `autonomy-${tag}.png`), fullPage: true });
     // "Trace any payment" (Max's last round, 1.2): linked under the CFO's line, to /trace.
     if (!(await page.isVisible('#cfo-links a[href="trace"]'))) fail(`/?autonomy ${tag}: no "Trace any payment" link`);
+    // "Download the month-end pack" (1.3): beside it, a download of the zip the pages serve.
+    {
+      const link = page.locator('#cfo-links a[download]');
+      if (!(await link.isVisible()) || (await link.innerText()) !== "Download the month-end pack") fail(`/?autonomy ${tag}: no "Download the month-end pack" button`);
+      const href = await link.getAttribute("href");
+      const res = await fetch(new URL(href ?? "", `${base}/`));
+      const bytes = Buffer.from(await res.arrayBuffer());
+      if (res.status !== 200 || res.headers.get("content-type") !== "application/zip" || bytes.readUInt32LE(0) !== 0x04034b50) fail(`/?autonomy ${tag}: the pack ${href} is not a zip (${res.status} ${res.headers.get("content-type")})`);
+    }
 
     // /trace: the header with its computed count, the SWIFT transfer's chain when none is picked, and a picked payment's
     // chain (the CSS :target swap, no script) with its explorer link, eight steps each.
@@ -346,6 +355,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // on its one line. Followed at 390 and 1440 px.
     {
       const cfo = page.locator(".phead a", { hasText: "See the CFO's view" });
+      // And beside it, "Trace any payment" and "Download the month-end pack" (Max's last round, 1.2 and 1.3).
+      if (!(await page.locator('.phead a[href="trace"]', { hasText: "Trace any payment" }).isVisible())) fail(`/proof ${tag}: no visible "Trace any payment"`);
+      if (!(await page.locator(".phead a[download]", { hasText: "Download the month-end pack" }).isVisible())) fail(`/proof ${tag}: no visible "Download the month-end pack"`);
       if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/proof ${tag}: no visible "See the CFO's view" to ./?autonomy in its head`);
       await page.locator(".phead").screenshot({ path: join(shots, `proof-head-${tag}.png`) });
       if (w === 390 || w === 1440) {

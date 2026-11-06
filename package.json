@@ -93,6 +93,7 @@
     "demo-tower": "tsx src/cli/demoTower.ts",
     "autonomy-record": "tsx src/cli/autonomyRecord.ts",
     "trace-record": "tsx src/cli/traceRecord.ts",
+    "month-end-pack": "tsx src/cli/monthPack.ts",
     "variation": "tsx src/cli/variation.ts",
     "variation-live": "tsx src/cli/variationLive.ts",
     "redteam-night": "tsx src/cli/redteamNight.ts",

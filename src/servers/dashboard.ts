@@ -28,7 +28,8 @@ import { trySignPage } from "../try/sign.js";
 import { tryVerifyPage } from "../try/verify.js";
 import { watchPage } from "../redesign/watch.js";
 import { proofPage } from "../redesign/proof.js";
-import { TRACE_LINK, tracePage } from "../redesign/trace.js";
+import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
+import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { restyle } from "../redesign/ui.js";
 import { withNav } from "../ui/nav.js";
 import { buildLiveTimeline } from "../live/timeline.js";
@@ -64,6 +65,14 @@ const AUTONOMY_JSON = (() => {
 })();
 /** Inter (OFL, src/ui/inter-LICENSE.txt), served as /assets/inter.woff2 by every host of the pages. */
 export const FONT = readFileSync(new URL("../ui/inter.woff2", import.meta.url));
+/**
+ * Files to download, served as /assets/<name> beside the images: the main run's month-end pack (Max's last round, 1.3),
+ * built here from the record and its companion (src/accounting/monthPack.ts), the same bytes on every build.
+ */
+export const DOWNLOADS: Record<string, { type: string; body: Buffer }> = (() => {
+  const pack = monthEndPack(loadRecord().record, loadTrace());
+  return { [pack.name]: { type: "application/zip", body: pack.zip } };
+})();
 /** The sponsors' official logos (src/ui/logos/README.md), served as /assets/<name> for the landing's "Built on". */
 export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex.png", import.meta.url)) },
@@ -113,7 +122,9 @@ export function dashboardPage(recorded: Recorded = JSON.parse(readFileSync(RECOR
     // The CFO's view (/?autonomy) opens with this line (Max's last round, item 4); the page shows it on that view only.
     .replace("__CFO_VIEW_LINE__", () => CFO_VIEW_LINE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"))
     // Under it, on that view only: "Trace any payment" (Max's last round, 1.2), to /trace.
-    .replace("__TRACE_LINK__", () => TRACE_LINK);
+    .replace("__TRACE_LINK__", () => TRACE_LINK)
+    // And the month-end pack (1.3): one download, built from the record (DOWNLOADS).
+    .replace("__PACK_NAME__", () => PACK_NAME).replace("__PACK_LINK__", () => PACK_LINK);
 }
 /**
  * Words the public pages no longer use (Max, v4): older records and Lab results still carry them in their text, so the
@@ -302,7 +313,7 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.type("font/woff2").send(FONT);
   });
   app.get("/assets/:name", (req, res, next) => {
-    const logo = LOGOS[String(req.params.name)];
+    const logo = LOGOS[String(req.params.name)] ?? DOWNLOADS[String(req.params.name)];
     if (!logo) return next();
     res.type(logo.type).send(logo.body);
   });
