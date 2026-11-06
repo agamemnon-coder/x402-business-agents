@@ -6,14 +6,20 @@
 // light and 1440 px dark only (two test worlds, to stay well inside the relay's limits), screenshots in
 // out/try-sign-live unless a directory is given. Chromium's virtual authenticator (WebAuthn over CDP,
 // user verification on) plays the visitor's Face ID. At 360, 390 and 1440 px, light and dark (six test worlds, the
-// relay's limit per address an hour), it goes through the whole visit: start a test world, create a test passkey, see
-// (a) blocked by a rule with no button, sign (b), see the server verify it and the stand-in execute it, then tamper
-// (amount + 0.01) and see the same signature refused. After the passkey, after signing and after the tamper, the layout
+// relay's limit per address an hour), it goes through the whole visit in its three steps (6 Nov: the progress indicator
+// moves 1 → 2 → 3, the start button is above the fold): start a test world, see the waiting proposal as the CFO's
+// approval sheet (amount, beneficiary, IBAN, reference, the terms hash short with Copy and tap-to-expand, all terms),
+// see (a) blocked by a rule with no button and the three locks, the one that stopped it marked, each linking its real
+// example from the records; create a test passkey, sign (b), see the server verify it and the stand-in execute it, then
+// tamper field by field (the amount + 0.01, the IBAN, the currency), each time seeing which field changed, the new hash
+// next to the signed one, and the server refusing the same signature. "What's real?" opens to the honest lines. After
+// the passkey, after signing and after the tamper, the layout
 // is checked (Max, 5 Nov: on an iPhone at 390 px the hashes and the tamper line ran off the screen): the page is no
 // wider than the screen, and nothing inside a card (no element, no line of text) runs outside that card's box, with
 // 1 px tolerance. CI runs it (.github/workflows/ci.yml, job judge). A test world only: nothing here reaches the runner,
 // Airwallex or Metal.
 
+import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
@@ -32,7 +38,14 @@ function parseArgs(argv: string[]): { live: boolean; base: string | null; shots:
 }
 
 const args = parseArgs(process.argv.slice(2));
-const { TRY_SIGN_LABEL } = await import("../../src/try/sign.js");
+const { TRY_SIGN_LABEL, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
+const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
+const { canonical } = await import("../../worker/src/trySign.js");
+const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
+// The examples the page must link, from the records themselves (not from the page's code).
+const LOCKS = tryLocks();
+const METAL_TX = letThroughOf(loadRecord().record)?.tx ?? "";
 const shots = resolve(args.shots);
 mkdirSync(shots, { recursive: true });
 // Local: a relay of our own with the flag on. Live: the deployed relay, as a visitor reaches it.
@@ -101,12 +114,12 @@ async function layout(page: any, tag: string, stage: string, width: number): Pro
   check(r.cards > 0 && r.out.length === 0, `${tag} ${stage}: nothing runs outside its card (${r.cards} cards${r.out.length ? `; ${r.out.length} outside: ${r.out.slice(0, 4).join("; ")}${r.out.length > 4 ? "; …" : ""}` : ""})`);
 }
 
-/** A screenshot of the screen as the visitor sees it, scrolled so this element is near the top. */
+/** A screenshot of the screen as the visitor sees it, scrolled so this element is near the top (below the header and the steps). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function shotAt(page: any, selector: string, path: string): Promise<void> {
-  await page.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); window.scrollTo({ top: e.getBoundingClientRect().top + window.scrollY - 84, behavior: "instant" }); })()`);
+  await page.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); window.scrollTo({ top: e.getBoundingClientRect().top + window.scrollY - 150, behavior: "instant" }); })()`);
   await page.waitForTimeout(800); // the page's own smooth scroll to the result, and the copy button's state, settle
-  await page.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); window.scrollTo({ top: e.getBoundingClientRect().top + window.scrollY - 84, behavior: "instant" }); })()`);
+  await page.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); window.scrollTo({ top: e.getBoundingClientRect().top + window.scrollY - 150, behavior: "instant" }); })()`);
   await page.screenshot({ path });
 }
 
@@ -115,7 +128,8 @@ const RUNS: [number, "light" | "dark"][] = args.live ? [[390, "light"], [1440, "
 for (const [width, scheme] of RUNS) {
   const tag = `${args.live ? "live-" : ""}${width}-${scheme}`;
   const mobile = width < 600;
-  const context = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: scheme });
+  const height = mobile ? 844 : 900;
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: scheme });
   // The Copy button writes the whole hash to the clipboard; the check reads it back.
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: local.url });
   const page = await context.newPage();
@@ -125,6 +139,7 @@ for (const [width, scheme] of RUNS) {
   const errors: string[] = [];
   page.on("pageerror", (e: Error) => errors.push(e.message));
   page.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
+  const steps = async () => (await page.locator("ol.progress li").evaluateAll((ls: Element[]) => ls.map((l) => (l.classList.contains("done") ? "done" : l.classList.contains("on") ? "on" : "-")))) as string[];
 
   // The landing carries the button in this bundle, and it leads here.
   await page.goto(`${local.url}/home`);
@@ -135,31 +150,82 @@ for (const [width, scheme] of RUNS) {
   check((await page.locator(".testband").innerText()).trim() === TRY_SIGN_LABEL, `${tag}: the label at the top reads "${TRY_SIGN_LABEL}"`);
   const band = await page.locator(".testband").boundingBox();
   check(!!band && band.y === 0, `${tag}: the label is the first thing on the page`);
+  // One line of disclaimer (from 390 px; at 360 px it may wrap), then "What's real?", closed until asked.
+  if (width >= 390) check(!!band && band.height <= 44, `${tag}: the disclaimer is one line (${band?.height} px high)`);
+  check(!(await page.locator("details.wr").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: "What's real?" is closed until asked`);
+  await page.locator("details.wr > summary").click();
+  const wr = await page.locator("details.wr").innerText();
+  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits].every((l) => wr.includes(l)) && /no Airwallex or Metal call/.test(wr) && /no Claude call/.test(wr),
+    `${tag}: "What's real?" opens to the honest lines (test world, stand-in executor, no Airwallex, Metal or Claude call; the signature and its check real)`);
+  await page.locator("details.wr > summary").click();
+  // The three steps, and the start button above the fold.
+  check(JSON.stringify((await page.locator("ol.progress li .t").allInnerTexts()).map((t: string) => t.trim())) === JSON.stringify(TRY_SIGN_STEPS), `${tag}: three steps: ${TRY_SIGN_STEPS.join(" → ")}`);
+  check(JSON.stringify(await steps()) === '["on","-","-"]' && await page.locator("#pg-1").getAttribute("aria-current") === "step", `${tag}: step 1 is under way`);
+  const go = await page.locator("#go-world").boundingBox();
+  check(!!go && go.y + go.height <= height, `${tag}: the start button is above the fold (its bottom at ${go ? Math.round(go.y + go.height) : "?"} of ${height} px)`);
   check(!(await page.locator("#w-facts").isVisible()), `${tag}: the world's facts stay hidden until there is a world`);
   await page.screenshot({ path: join(shots, `${tag}-1-start.png`) });
 
-  await page.click("#go-world");
-  await page.waitForSelector("#s-props:not([hidden])");
-  const blocked = page.locator("article.prop", { hasText: "T-0001" });
-  check((await blocked.innerText()).includes("Check: fail"), `${tag}: (a) shows "Check: fail" and its rule`);
-  check((await blocked.innerText()).includes("Reserve floor"), `${tag}: (a) names the blocking rule`);
-  check(await blocked.locator("button").count() === 0, `${tag}: (a) has no signing button`);
-  const waiting = page.locator("article.prop", { hasText: "T-0002" });
+  // Six requests a visit (world, passkey, signature, three tampers) and six visits: the relay's 30 a minute per address
+  // (TRY_SIGN_PER_MINUTE) can answer 429 to the last ones; then the check waits out the minute, as a visitor would.
+  for (let attempt = 0; ; attempt++) {
+    await page.click("#go-world");
+    await page.waitForFunction(() => !document.getElementById("s-props")?.hidden || document.getElementById("w-status")?.classList.contains("bad"));
+    if (!(await page.locator("#s-props").isHidden())) break;
+    const said = await page.locator("#w-status").innerText();
+    if (attempt > 0 || !/a minute/.test(said)) throw new Error(`${tag}: no test world: ${said}`);
+    console.log(`info  ${tag}: the relay asks to wait a minute (${said}); waiting`);
+    await page.waitForTimeout(61_000);
+  }
+  // The refused attempt's 429 is the browser's console error, not the page's.
+  errors.splice(0, errors.length, ...errors.filter((e) => !/status of 429/.test(e)));
+  check(JSON.stringify(await steps()) === '["done","on","-"]', `${tag}: after the proposal, step 1 is done and step 2 under way`);
+
+  // (b): the approval sheet, as the CFO's.
+  const waiting = page.locator("article.prop.sheet");
+  const terms = JSON.parse((await waiting.locator("details.terms pre").textContent()) ?? "{}") as Record<string, string>;
+  const sheetText = await waiting.innerText();
+  const facts = Object.fromEntries((await waiting.locator("dl.facts").evaluate((d: Element) => [...d.querySelectorAll("dt")].map((t) => [t.textContent, t.nextElementSibling?.textContent])))) as Record<string, string>;
+  const iban = (s: string) => s.replace(/(.{4})/g, "$1 ").trim();
+  check(/You are approving · T-0002/i.test(sheetText) && (await waiting.locator(".title").innerText()).includes(`Pay ${terms.payee} EUR 1,850.00`), `${tag}: (b) is the approval sheet: "You are approving", "Pay ${terms.payee} EUR 1,850.00"`);
+  check(facts.Amount === "EUR 1,850.00" && facts.Beneficiary === terms.payee && facts.IBAN === iban(terms.payee_iban ?? "") && facts.Reference === terms.reference && facts.Proposal === "T-0002" && /^in \d+ min/.test(facts.Expires ?? ""),
+    `${tag}: (b) the sheet's exact terms: amount, beneficiary, IBAN ${facts.IBAN}, reference, proposal, expiry`);
   const hash = (await waiting.locator(".hash").getAttribute("data-hash")) ?? "";
-  check(/^[0-9a-f]{64}$/.test(hash), `${tag}: (b) shows its terms' hash, checked on the device`);
+  check(/^[0-9a-f]{64}$/.test(hash) && hash === sha256(canonical(terms)), `${tag}: (b) shows its terms' hash, checked on the device and here`);
   const short = (h: string) => `${h.slice(0, 12)}…${h.slice(-8)}`;
   check((await waiting.locator(".hash code").innerText()).trim() === short(hash) && await waiting.locator(".hash code").getAttribute("title") === hash,
     `${tag}: (b) the hash is shown shortened, first 12 and last 8 (${short(hash)}), the whole of it on hover`);
+  await waiting.locator(".hash button.exp").click();
+  check((await waiting.locator(".hash code").innerText()).trim() === hash && await waiting.locator(".hash button.exp").getAttribute("aria-expanded") === "true", `${tag}: (b) a tap on the hash shows all 64 characters`);
+  await waiting.locator(".hash button.exp").click();
+  check((await waiting.locator(".basis").innerText()).trim() === cfoApproval().line, `${tag}: (b) names the CFO's real sheet it follows, from the record: ${cfoApproval().line.slice(0, 60)}…`);
   check(await waiting.locator("button[data-sign]").isDisabled(), `${tag}: (b) cannot be signed before there is a passkey`);
+  await shotAt(page, "article.prop.sheet", join(shots, `${tag}-2-sheet.png`));
+
+  // (a): blocked, nothing to sign, and the three locks.
+  const blocked = page.locator("article.prop.blocked");
+  check((await blocked.innerText()).includes("T-0001") && (await blocked.innerText()).includes("Check: fail"), `${tag}: (a) shows "Check: fail" and its rule`);
+  check((await blocked.innerText()).includes("Reserve floor"), `${tag}: (a) names the blocking rule`);
+  check(await blocked.locator("button").count() === 0, `${tag}: (a) has no signing button`);
+  const locks = await blocked.locator(".lock").evaluateAll((ls: Element[]) => ls.map((l) => ({ id: (l as HTMLElement).dataset.lock, hit: l.classList.contains("hit"), text: l.textContent ?? "", href: l.querySelector("a")?.getAttribute("href") ?? "" }))) as { id: string; hit: boolean; text: string; href: string }[];
+  check(locks.map((l) => l.id).join() === "purser,airwallex,metal" && locks.filter((l) => l.hit).map((l) => l.id).join() === "purser" && /Stopped this one \(simulated\)/.test(locks[0]!.text),
+    `${tag}: (a) three locks, Purser's policy marked as the one that stopped it (simulated)`);
+  check(locks.every((l, i) => l.text.includes(LOCKS[i]!.example) && l.text.includes(`Real example · ${LOCKS[i]!.run}`)), `${tag}: (a) each lock names its real example and the run it is from`);
+  check(locks[0]!.href === "/proof#stops", `${tag}: (a) Purser's policy links the main run's stops on Proof`);
+  check(locks[1]!.href.endsWith("/blob/main/docs/runs/visa-tap-live-2026-11-02.json") && /EUR 45\.00/.test(locks[1]!.text) && /LIMIT_EXCEEDED/.test(locks[1]!.text) && /Separate TAP run, 2 Nov/.test(locks[1]!.text),
+    `${tag}: (a) Airwallex's card limit links the separate TAP run of 2 November (EUR 45.00, LIMIT_EXCEEDED)`);
+  check(/^0x[0-9a-f]{64}$/.test(METAL_TX) && locks[2]!.href === `https://testnet.metalntwx.com/tx/${METAL_TX}`, `${tag}: (a) Metal's mandate links the on-chain refusal on Metal's explorer (${METAL_TX.slice(0, 10)}…${METAL_TX.slice(-4)})`);
+  check(/simulation in your test world; the examples are real/.test(await blocked.innerText()), `${tag}: (a) says the blocked payment is simulated and the examples real`);
+  await shotAt(page, "article.prop.blocked .locks", join(shots, `${tag}-3-locks.png`));
 
   await page.click("#go-key");
   await page.waitForFunction(() => document.getElementById("k-status")?.classList.contains("ok") || document.getElementById("k-status")?.classList.contains("bad"));
   check((await page.locator("#k-status").getAttribute("class"))!.includes("ok"), `${tag}: the test passkey is made and registered (${(await page.locator("#k-status").innerText()).slice(0, 60)}…)`);
-  await shotAt(page, "#s-key", join(shots, `${tag}-2-passkey-made.png`));
   await layout(page, tag, "with the passkey made", width);
 
   await waiting.locator("button[data-sign]").click();
   await page.waitForSelector("#result:not([hidden])");
+  check(JSON.stringify(await steps()) === '["done","done","done"]', `${tag}: verified: all three steps done`);
   check(await page.locator("#r-hash .hash").getAttribute("data-hash") === hash && (await page.locator("#r-hash code").innerText()).trim() === short(hash), `${tag}: the result shows the signed hash, shortened`);
   await page.locator("#r-hash button.copy").click();
   await page.waitForFunction(() => /Copied|Select/.test(document.querySelector("#r-hash button.copy")?.textContent ?? ""));
@@ -167,30 +233,40 @@ for (const [width, scheme] of RUNS) {
   check(copied === hash && (await page.locator("#r-hash button.copy").innerText()).includes("Copied"), `${tag}: Copy puts the whole signed hash on the clipboard (${copied.length} characters)`);
   check((await page.locator("#result").innerText()).includes("Verified by the server"), `${tag}: "Verified by the server"`);
   check(/Test transfer test-[0-9a-f]{12}: EUR 1,850\.00/.test(await page.locator("#r-exec").innerText()), `${tag}: "Executed in your test world" by the stand-in`);
-  await shotAt(page, "#result", join(shots, `${tag}-3-signed-verified.png`));
+  await shotAt(page, "#result", join(shots, `${tag}-4-signed-verified.png`));
   await layout(page, tag, "after signing", width);
 
+  // Tamper, field by field: the visitor's own edit, sent with the same signature, refused by the server.
+  check(await page.locator("#t-send").isDisabled(), `${tag}: nothing to send until a field is changed`);
   const beforeTamper = errors.length;
-  await page.click("#go-tamper");
-  await page.waitForSelector("#tamper:not([hidden])");
-  const head = await page.locator("#t-head").innerText();
-  const why = await page.locator("#t-why").innerText();
-  check(head.startsWith("Refused") && /challenge|signature was made for hash/.test(why), `${tag}: the same signature on the amount + 0.01 is refused (${why.slice(0, 70)}…)`);
-  check((await page.locator("#t-what").innerText()).includes("EUR 1,850.01"), `${tag}: the tampered amount is shown`);
-  const changed = (await page.locator("#t-what .hash").getAttribute("data-hash")) ?? "";
-  check(/^[0-9a-f]{64}$/.test(changed) && changed !== hash && (await page.locator("#t-what code").innerText()).trim() === short(changed),
-    `${tag}: the changed terms' hash is shown shortened, with Copy (${short(changed)})`);
-  check(await page.locator("#t-why .hash").getAttribute("data-hash") === hash && (await page.locator("#t-why code").innerText()).trim() === short(hash),
-    `${tag}: the refusal shows the hash the signature was made for, shortened, with Copy (${short(hash)})`);
+  const tampers: [string, string, () => Promise<void>, string][] = [
+    ["amount", "1850.01", async () => { await page.click("#go-tamper"); }, "EUR 1,850.01"],
+    ["payee_iban", "DE00000000000000000666", async () => { await page.fill("#t-amount", terms.amount!); await page.fill("#t-iban", "de00 0000 0000 0000 0006 66"); await page.click("#t-send"); }, "DE00 0000 0000 0000 0006 66"],
+    ["currency", "USD", async () => { await page.fill("#t-iban", iban(terms.payee_iban!)); await page.selectOption("#t-currency", "USD"); await page.click("#t-send"); }, "USD"],
+  ];
+  for (const [field, value, act, shown] of tampers) {
+    await page.evaluate(`document.getElementById("tamper").hidden = true`);
+    await act();
+    await page.waitForSelector("#tamper:not([hidden])");
+    const expect = canonical({ ...terms, [field]: value });
+    const changedRows = await page.locator("#t-what tr.chg").evaluateAll((rs: Element[]) => rs.map((r) => (r as HTMLElement).dataset.row));
+    check(JSON.stringify(changedRows) === JSON.stringify([field]) && (await page.locator("#t-what tr.chg").innerText()).includes(shown), `${tag}: tamper ${field}: shows that ${field} changed, and only it (now ${shown})`);
+    const oldH = await page.locator("#t-what .hash.old").getAttribute("data-hash"), newH = await page.locator("#t-what .hash.new").getAttribute("data-hash");
+    check(oldH === hash && newH === sha256(expect) && newH !== hash && (await page.locator("#t-what .hash.new code").innerText()).trim() === short(newH ?? ""),
+      `${tag}: tamper ${field}: the new hash (${short(newH ?? "")}) next to the signed one (${short(hash)})`);
+    const head = await page.locator("#t-head").innerText();
+    const why = await page.locator("#t-why").innerText();
+    check(head.startsWith("Refused") && /challenge|signature was made for hash/.test(why), `${tag}: tamper ${field}: the server refuses the same signature (${why.slice(0, 70)}…)`);
+  }
   // On a phone the tamper and its refusal fill the screen; on a laptop the whole result card fits.
-  await shotAt(page, mobile ? "#go-tamper" : "#result", join(shots, `${tag}-4-tamper-refused.png`));
+  await shotAt(page, mobile ? "#tamper" : "#tamper-box", join(shots, `${tag}-5-tamper-refused.png`));
   await layout(page, tag, "after the tamper", width);
   // The terms, opened: the canonical JSON is one long line of text.
   await page.evaluate(`document.querySelectorAll("details").forEach((d) => { d.open = true; })`);
   await layout(page, tag, "with all terms open", width);
-  // The one error expected: the browser logs the tamper's refusal (HTTP 400) as a failed request.
+  // The errors expected: the browser logs each refused tamper (HTTP 400) as a failed request.
   const unexpected = errors.filter((e, i) => !(i >= beforeTamper && /status of 400/.test(e)));
-  check(unexpected.length === 0 && errors.length - beforeTamper === 1, `${tag}: no console or CSP errors besides the refused tamper${unexpected.length ? `: ${unexpected.join(" | ")}` : ""}`);
+  check(unexpected.length === 0 && errors.length - beforeTamper === tampers.length, `${tag}: no console or CSP errors besides the ${tampers.length} refused tampers${unexpected.length ? `: ${unexpected.join(" | ")}` : ""}`);
   await context.close();
 }
 

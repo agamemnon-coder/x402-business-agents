@@ -66,6 +66,17 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   /try/sign's API refuses unknown or mistyped fields and answers any internal error with a fixed message. /try/sign is
   also opened in WebKit in CI: Playwright's Linux WebKit has no WebAuthn, so it checks the page's honest "no passkeys"
   answer and its layout, not the visit. 2437 tests in 249 files, all passing.
+- 6 November, /try/sign as the demo: three steps with a progress indicator ("The agent proposes" → "You sign with Face
+  ID" → "Purser verifies"), the start button above the fold on a phone; the waiting proposal shown as the CFO's approval
+  sheet (amount, beneficiary, IBAN, reference, expiry, the terms hash short with Copy and a tap for all of it), naming
+  the real sheet it follows (P-0005, from the main run's record); the disclaimer one line plus "What's real?". The
+  visitor tampers with a field of their own choosing (the amount, the IBAN or the currency) and sees which field
+  changed, the new hash next to the signed one, and the server refusing the same signature. The blocked proposal shows
+  which of three locks stopped it (Purser's policy; simulated in the test world) and links each lock's real example:
+  Metal's on-chain refusal in the main run, Airwallex's LIMIT_EXCEEDED of EUR 45.00 in the separate TAP run of 2
+  November, a purchase Purser's code refused in the main run. The terms now carry the payee's IBAN (a test one, check
+  digits 00; schema kit11.try-terms/v2); the film and the social preview keep the v1 terms they were made with. Live
+  after the Worker is redeployed. 2448 tests in 250 files, all passing.
 
 ## Real, and ours
 

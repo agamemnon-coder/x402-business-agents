@@ -31,7 +31,14 @@ describe("/try/sign: the visitor's test world", () => {
       // The same canonical JSON (RFC 8785) the real terms use, and the hash is its SHA-256.
       expect(p.canonical).toBe(jcs(terms));
       expect(p.terms_sha256).toBe(sha(p.canonical));
-      expect(terms).toMatchObject({ schema: "kit11.try-terms/v1", test_world: w.world.id, nothing_real_moves: true, expires_at: w.world.expires_at });
+      expect(terms).toMatchObject({ schema: "kit11.try-terms/v2", test_world: w.world.id, nothing_real_moves: true, expires_at: w.world.expires_at });
+    }
+    // The payee's IBAN is in the terms (v2), and it is a test one: check digits 00, which ISO 13616's mod 97 never gives.
+    for (const p of w.proposals) {
+      const iban = (JSON.parse(p.canonical) as { payee_iban: string }).payee_iban;
+      expect(iban).toMatch(/^DE00\d{18}$/);
+      const digits = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+      expect(BigInt(digits) % 97n).not.toBe(1n);
     }
     // The agent's words are fixed text, the same for everyone.
     expect(FIXED_PROPOSALS.map((p) => p.says).every((s) => s.length > 20)).toBe(true);
