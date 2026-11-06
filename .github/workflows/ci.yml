@@ -66,10 +66,11 @@ jobs:
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # The action scans the pushed commits; this scans the whole history on every run.
+      # The action scans the pushed commits; this scans the whole history on every run. The image is pinned by digest
+      # (the v8.24.3 index on ghcr.io, read 6 November 2026), as the actions are by commit SHA.
       - name: gitleaks, whole history
         run: >
-          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055
           git /repo --redact --verbose --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
   # Static analysis (Semgrep, pinned) and the SBOM (Max, 2 November). Semgrep blocks on any finding or if no rules loaded
   # (it started non-blocking; its first run found 0 in 110 rules). The rules are Semgrep's public (TypeScript, Node.js, secrets, OWASP Top Ten)

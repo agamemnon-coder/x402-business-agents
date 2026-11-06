@@ -17,8 +17,10 @@ import { approvalsApp } from "../src/servers/approvals.js";
 import { CSP, DEMO_CSP, FILM_CSP, LAB_CSP, LIVE_CSP, METAL_CSP, METAL_REPORT_CSP, MONTH_CSP, TRY_CSP, VISA_CSP, dashboardApp } from "../src/servers/dashboard.js";
 import { SYSTEM_HEALTH_CSP } from "../src/dashboard/health.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
-import { pageResponse, Relay, viewKeyForWeek, type Sql } from "../worker/src/core.js";
+import { notFoundResponse, pageResponse, Relay, viewKeyForWeek, type Sql } from "../worker/src/core.js";
 import { TRY_MODEL_PER_MINUTE, TRY_PER_DAY, TRY_PER_MINUTE, TryDesk } from "../worker/src/try.js";
+import { trySignNotFound } from "../worker/src/trySign.js";
+import { HEADER_PATHS, headerFaults, type AnswerKind } from "./security-headers.rules.js";
 
 const RP = "kit11.example.workers.dev";
 const BASE = `https://${RP}`;
@@ -29,7 +31,8 @@ const sqlOver = (db: Database.Database): Sql => ({ exec(q, ...b) { const st = db
 
 /** What every answer of the relay carries (worker/src/core.ts COMMON_HEADERS; HF2: HSTS on every answer). */
 function expectCommon(res: Response, what: string) {
-  expect(res.headers.get("strict-transport-security"), what).toBe("max-age=31536000");
+  expect(res.headers.get("strict-transport-security"), what).toBe("max-age=31536000; includeSubDomains");
+  expect(res.headers.get("x-frame-options"), what).toBe("DENY");
   expect(res.headers.get("x-content-type-options"), what).toBe("nosniff");
   expect(res.headers.get("cache-control"), what).toMatch(/no-store|max-age=86400/);
   expect(res.headers.get("referrer-policy"), what).toBe("no-referrer");
@@ -113,6 +116,60 @@ describe("relay Worker: security headers on every answer", () => {
     const res = await d.fetch(new Request(`${BASE}/api/try`, { method: "POST", body: JSON.stringify({ text: "a flight to Berlin, max €250" }), headers: { "content-type": "application/json", origin: BASE, "cf-connecting-ip": "203.0.113.9" } }));
     expectCommon(res, "/api/try");
     expectCommon(await d.fetch(new Request(`${BASE}/api/try`, { method: "POST", body: "{}", headers: { origin: "https://evil.example" } })), "/api/try refused");
+  });
+});
+
+describe("relay Worker: the headers per kind of answer (A3; test/security-headers.rules.ts, also run live by test/browser/headers.check.ts)", () => {
+  const pages = buildPages({ TRY_SIGN_ENABLED: "on" });
+  const answer = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages) ?? notFoundResponse(pages);
+  const page200 = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages)!;
+
+  it("each page, /try/sign included, the 404, a redirect, each asset and /favicon.ico", () => {
+    const answers: [string, AnswerKind, number][] = [
+      ...HEADER_PATHS.filter((a) => a.kind !== "json").map((a) => [a.path, a.kind, a.status] as [string, AnswerKind, number]),
+      ["/try/sign", "page", 200], ["/assets/logo-airwallex.png", "asset", 200], ["/assets/og.png", "asset", 200],
+    ];
+    for (const [path, kind, status] of answers) {
+      const res = answer(path);
+      expect({ path, status: res.status, faults: headerFaults(kind, res.headers) }).toEqual({ path, status, faults: [] });
+    }
+  });
+
+  it("the 404 is a page like the others: the permissions policy and its own window too (QA: it had neither)", () => {
+    const res = notFoundResponse(pages);
+    expect(res.status).toBe(404);
+    expect(res.headers.get("permissions-policy")).toBe(page200("/").headers.get("permissions-policy"));
+    expect(res.headers.get("cross-origin-opener-policy")).toBe("same-origin");
+    expect(res.headers.get("content-security-policy")).toBe(pages.csp.notFound);
+  });
+
+  it("a page's CSP is its own, not the common one; JSON and assets get the common one, which loads and runs nothing", () => {
+    expect(page200("/").headers.get("content-security-policy")).toBe(pages.csp.home);
+    expect(page200("/policy").headers.get("content-security-policy")).toBe(pages.csp.policy);
+    expect(page200("/assets/approve.js").headers.get("content-security-policy")).toBe("default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+  });
+
+  it("JSON answers: the relay, Try Purser and /try/sign's refusals", async () => {
+    const r = new Relay(sqlOver(new Database(":memory:")), { relayToken: TOKEN, now: () => t0 });
+    const d = new TryDesk(sqlOver(new Database(":memory:")), {});
+    for (const [what, res] of [
+      ["/health", await r.fetch(new Request(`${BASE}/health`))],
+      ["/api/snapshot without a key", await r.fetch(new Request(`${BASE}/api/snapshot`))],
+      ["/api/try refused", await d.fetch(new Request(`${BASE}/api/try`, { method: "POST", body: "{}", headers: { origin: "https://evil.example" } }))],
+      ["/api/try-sign 404", trySignNotFound()],
+    ] as const) expect({ what, faults: headerFaults("json", res.headers) }).toEqual({ what, faults: [] });
+  });
+
+  it("/favicon.ico is Purser's mark; the pages that allowed no image (phone pages, the evidence report) name it and allow it", async () => {
+    const ico = answer("/favicon.ico");
+    expect(ico.status).toBe(200);
+    expect(ico.headers.get("content-type")).toBe("image/svg+xml");
+    expect(Buffer.from(await ico.arrayBuffer()).toString("utf8")).toBe(Buffer.from(pages.images["favicon.svg"]!.data, "base64").toString("utf8"));
+    for (const path of ["/approve/P-0001", "/enrol", "/policy", "/metal/report"]) {
+      const res = page200(path);
+      expect(await res.text(), path).toMatch(/<link rel="icon" href="\/assets\/favicon\.svg" type="image\/svg\+xml">/);
+      expect(res.headers.get("content-security-policy"), path).toMatch(/img-src 'self'/);
+    }
   });
 });
 
