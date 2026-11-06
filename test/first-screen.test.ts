@@ -42,7 +42,10 @@ describe("the first screen (section D, 6 Nov)", () => {
   it("opens Home under its heading, with Try it linked to /try/sign, and the badges only after it", () => {
     const t = words(hero(HOME));
     expect(t.startsWith(`${HERO} ${FIRST_SCREEN_TEXT} Kit 11`)).toBe(true);
-    expect(hero(HOME)).toMatch(new RegExp(`<p class="tryline"><a href="try/sign">[\\s\\S]*?${TRY_IT.replace(/\./g, "\\.")}</a></p>`));
+    // By position, not by a pattern: the line opens with the link to /try/sign and closes with TRY_IT.
+    const line = hero(HOME).slice(hero(HOME).indexOf('<p class="tryline">'));
+    expect(line.startsWith('<p class="tryline"><a href="try/sign">')).toBe(true);
+    expect(line.slice(0, line.indexOf("</p>") + 4).endsWith(`${TRY_IT}</a></p>`)).toBe(true);
     expect(hero(HOME).indexOf('class="badges"')).toBeGreaterThan(hero(HOME).indexOf('class="tryline"'));
     // Without /try/sign in the bundle the line stays text, never a dead link.
     expect(words(hero(homePage()))).toContain(FIRST_SCREEN_TEXT);
