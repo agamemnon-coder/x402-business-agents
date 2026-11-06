@@ -304,10 +304,14 @@ const JS = `
     });
     if (gone) quoteExpired();
   }
+  // While the quote is expired, nothing on the sheet can be used but "Get a new quote": neither the passkey nor the
+  // signature, until new terms with a new quote are here (the sheet is then built again, its buttons on).
   function quoteExpired() {
-    if (S.signed || !$("go-quote") || !$("go-quote").hidden) return;
+    if (S.signed || !$("go-quote")) return;
+    S.quoteGone = true;
+    [$("go-key")].concat([].slice.call(document.querySelectorAll("button[data-sign]"))).forEach(function (b) { if (b) b.disabled = true; });
+    if (!$("go-quote").hidden) return;
     $("go-quote").hidden = false;
-    document.querySelectorAll("button[data-sign]").forEach(function (b) { b.disabled = true; });
     status("q-status", "Quote expired. Get a fresh one and sign again.", "bad");
   }
 
@@ -348,16 +352,16 @@ const JS = `
       challenge: fromB64u(o.challenge), rp: o.rp, user: { id: fromB64u(o.user.id), name: o.user.name, displayName: o.user.displayName },
       pubKeyCredParams: o.pubKeyCredParams, timeout: o.timeout, attestation: o.attestation, authenticatorSelection: o.authenticatorSelection
     } }).then(function (c) {
-      if (!c) { status("k-status", "Cancelled. No passkey was made.", "bad"); b.disabled = false; return; }
+      if (!c) { status("k-status", "Cancelled. No passkey was made.", "bad"); b.disabled = !!S.quoteGone; return; }
       var body = { token: S.token, credential: { id: c.id, rawId: toB64u(c.rawId), type: c.type, response: { clientDataJSON: toB64u(c.response.clientDataJSON), attestationObject: toB64u(c.response.attestationObject) } } };
       return post("passkey", body).then(function (r) {
         if (r.status !== 201) { status("k-status", "Not accepted: " + (r.data.error || ("error " + r.status)) + ".", "bad"); return; }
         S.credId = c.id;
         b.hidden = true;
         status("k-status", "Your test passkey is made and registered in this world only (" + c.id.slice(0, 10) + "…). Now sign.", "ok");
-        document.querySelectorAll("button[data-sign]").forEach(function (x) { if (x.dataset.ready === "1") { x.disabled = false; x.classList.add("primary"); } });
+        document.querySelectorAll("button[data-sign]").forEach(function (x) { if (x.dataset.ready === "1") { x.disabled = !!S.quoteGone; x.classList.add("primary"); } });
       });
-    }, function (e) { status("k-status", passkeyError(e), "bad"); b.disabled = false; });
+    }, function (e) { status("k-status", passkeyError(e), "bad"); b.disabled = !!S.quoteGone; });
   }
 
   function showProposals(list) {
@@ -398,7 +402,7 @@ const JS = `
     st.id = "st-" + p.proposal_id;
     var facts = factsOf(p, t);
     var left = el("dd", "", []); left.dataset.left = "in";
-    facts.append(el("dt", "", ["Expires"]), left);
+    facts.append(el("dt", "", ["Proposal expires"]), left);
     if (t.fx) { var ql = el("dd", "", []); ql.dataset.until = t.fx.valid_to_at; ql.id = "q-left"; facts.append(el("dt", "", ["Quote expires"]), ql); }
     var kids = [
       el("p", "eyebrow", ["You are approving · " + p.proposal_id]),
@@ -414,6 +418,8 @@ const JS = `
     var b = el("button", "btn big", [ic("scan-face"), "Sign with Face ID"]);
     b.type = "button"; b.dataset.sign = p.proposal_id; b.dataset.world = "1"; b.disabled = true;
     var ks = el("p", "status", []); ks.id = "k-status"; ks.setAttribute("aria-live", "polite");
+    // New terms after a new quote: the passkey made before is kept, and the sheet says so.
+    if (S.credId) { ks.textContent = "Your test passkey is kept (" + S.credId.slice(0, 10) + "…). Sign the new terms."; ks.className = "status ok"; }
     if (!x.same) {
       kids.push(el("p", "status bad", ["The terms do not hash to the hash the server sent. Do not sign."]));
     } else {
@@ -443,6 +449,7 @@ const JS = `
       if (r.status !== 200) { status("q-status", "No new quote: " + (r.data.error || ("error " + r.status)).replace(/^no new live quote: /, "") + ".", "bad"); btn.disabled = false; return; }
       S.fx = r.data.fx;
       var p = r.data.proposal, terms = JSON.parse(p.canonical);
+      S.quoteGone = false;
       return sha256(canon(terms)).then(function (h) {
         var old = document.querySelector(".prop.sheet");
         var fresh = sheet({ p: p, terms: terms, mine: h, same: canon(terms) === p.canonical && h === p.terms_sha256 });
@@ -462,7 +469,7 @@ const JS = `
       left.dataset.until = q.valid_to_at;
       box = el("div", "fxq live", [
         el("div", "lh", [el("span", "tag", ["Used in this signature"]), q.source === "stand-in" ? "Stand-in quote (local check, not Airwallex)" : "Live quote, Airwallex sandbox"]),
-        el("span", "", [amt(q.buy_currency, q.buy_amount) + " for " + amt(q.sell_currency, q.sell_amount) + " at " + q.client_rate + ". Quote " + q.quote_id.slice(0, 8) + "…" + q.quote_id.slice(-4) + ", expires ", left, "."]),
+        el("span", "", [amt(q.buy_currency, q.buy_amount) + " for " + amt(q.sell_currency, q.sell_amount) + " at " + q.client_rate + ". Quote " + q.quote_id.slice(0, 8) + "…" + q.quote_id.slice(-4) + ". Quote expires: ", left, "."]),
         more((q.source === "stand-in" ? "A stand-in gave this quote: a local check, not Airwallex." : "Read-only: Airwallex's sandbox (a test environment) was asked for a quote, and nothing was converted or paid.") + (f.status === "reused" ? " Shared: asked for a moment ago for another visitor, as many asked at once." : ""))
       ]);
     } else {
@@ -520,7 +527,7 @@ const JS = `
       progress(3);
       status(st.id, "Purser is checking your signature…");
       return post("sign", { token: S.token, proposal_id: x.p.proposal_id, canonical: x.p.canonical, credential: a }).then(function (r) {
-        if (r.status !== 200 && r.data.why === "quote_expired") { progress(2); status(st.id, r.data.error, "bad"); $("go-quote").hidden = false; return; }
+        if (r.status !== 200 && r.data.why === "quote_expired") { progress(2); status(st.id, r.data.error, "bad"); quoteExpired(); return; }
         if (r.status !== 200) { progress(2); status(st.id, "Not accepted: " + (r.data.error || ("error " + r.status)) + ".", "bad"); b.disabled = false; return; }
         S.signed = { x: x, a: a, d: r.data };
         b.hidden = true;
