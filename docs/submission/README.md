@@ -81,7 +81,7 @@ not known yet. `test/submission.test.ts` checks this count and keeps the text un
 ## Screenshots
 
 From the live site (https://kit11.max-31b.workers.dev, main 60569ef, Worker 3e8cd078) on 6 November, 1280 px wide at
-2× (2560 × 1600), light mode, in the form's order: the problem, try it, the proof per partner, the business. Screens
+2× (2560 px; 1600 px high, screens 2–4 as tall as their card), light mode, in the form's order: the problem, try it, the proof per partner, the business. Screens
 2–4 come from one test world on /try/sign (one live Airwallex FX quote, read-only, and one live Claude Haiku
 sentence; a test passkey; nothing real moves). The other pages replay the main run (3 November) and make no outside
 call.
