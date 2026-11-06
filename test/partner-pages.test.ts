@@ -6,6 +6,8 @@ import { AGENT_MODELS, airwallexData, claudeData } from "../src/partners/data.js
 import { AIRWALLEX_PAGE, CLAUDE_PAGE } from "../src/servers/dashboard.js";
 import { NAV_MAIN } from "../src/ui/nav.js";
 import { loadRecord } from "../src/redesign/run.js";
+import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { scriptBlocks } from "./support/scriptBlocks.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -52,8 +54,10 @@ describe("the partner pages", () => {
       expect(page.split(docs).length - 1).toBeGreaterThanOrEqual(4);
       expect(page).not.toMatch(/<img[^>]*visa/i);
       expect(page).not.toMatch(/\b(null|undefined|NaN)\b/);
-      expect(page).not.toMatch(/<script/);
+      // No script on /claude; /airwallex has one, the shared OPEN_TARGET_JS (a link into its cards' fold opens it).
+      expect(scriptBlocks(page)).toEqual(page === AIRWALLEX_PAGE ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);
     }
+    expect(scriptBlocks(CLAUDE_PAGE)).toEqual([]);
     for (const f of airwallexData().features) for (const d of f.docs) expect(d.href.startsWith("https://www.airwallex.com/docs/")).toBe(true);
   });
 
@@ -62,6 +66,8 @@ describe("the partner pages", () => {
     const pages = buildPages();
     expect(pages.airwallex).toBe(AIRWALLEX_PAGE);
     expect(pages.claude).toBe(CLAUDE_PAGE);
-    expect(pages.csp.airwallex).toMatch(/^default-src 'none'; style-src 'sha256-/);
+    expect(pages.csp.claude).toMatch(/^default-src 'none'; style-src 'sha256-/);
+    // /airwallex: its one script, hashed like its style; it connects nowhere.
+    expect(pages.csp.airwallex).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
   });
 });

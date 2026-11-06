@@ -180,6 +180,18 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   passed every step. The form's Description now goes problem, solution, proof, Airwallex and Metal, business, what's
   real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2607 tests in
   265 files, all passing (with main's).
+- 6 November, /proof's "Policy and card side by side" lands on /airwallex with the cards' fold open: the fold is
+  `#controls` and each card has its own anchor (`#card-sourcing`, …); a few lines of script, hashed into the page's
+  CSP, open the fold around whatever the link points at and scroll to it (Chromium and WebKit checked at 390 and
+  1440 px).
+- 6 November, an emergency switch for /try/sign's Haiku sentence: the Worker var `TRY_SIGN_HAIKU` set to `off` (any
+  case, trimmed) stops the call, with no request to Anthropic and no budget spent; the page shows the fixed sentence,
+  labelled "fixed text (live model switched off)", and "What's real?" says the switch exists. Missing or any other
+  value, the call runs as before. Max sets it by hand; no script or config sets it.
+- 6 November, /try/sign's layout after Max's review: on a laptop the steps are said once (the step bar); the left
+  column is the start button, the hook and one line, level with "One policy → three locks". On a phone the terms'
+  labels stay on one line ("Proposal expires" and "Quote expires" kept apart), the last row of the terms clears the
+  sticky buttons, and "You are approving" lands below the sticky step bar. 2618 tests in 266 files, all passing (with main's).
 
 ## Real, and ours
 

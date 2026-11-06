@@ -21,12 +21,9 @@ export const TRY_SIGN_LABEL = "Test world · test passkey · nothing real moves"
 
 /** The three steps, word for word (the progress indicator). */
 export const TRY_SIGN_STEPS = ["The agent proposes", "You sign with Face ID", "Purser verifies"] as const;
-/** From 1024 px, under the start button: each step once more, with a short gloss, word for word (Max, 6 Nov). */
-export const TRY_SIGN_STEP_GLOSS = [
-  "A payment above its limit, with its exact terms.",
-  "A test passkey signs the hash of those terms.",
-  "The server checks it; one cent changed and it fails.",
-] as const;
+/** From 1024 px, under the start button: one short line (Max, 6 Nov: the steps once more there read twice; the step bar
+ * at the top says them). The left column sits level with the diagram's middle, so it does not look empty. */
+export const TRY_SIGN_START_NOTE = "About 30 seconds, with your own passkey: Face ID, Touch ID or Windows Hello.";
 
 /** The line under the start button, word for word (Max, 6 Nov). */
 export const TRY_SIGN_HOOK = "A Treasury agent wants to pay an invoice above its limit. You decide.";
@@ -44,6 +41,7 @@ export const TRY_SIGN_END = [
 
 /** Why the Treasury agent's sentence is the fixed one, as its pill says it, by the reason the server gives (worker/src/agentLine.ts). */
 export const VOICE_LABELS = {
+  off: "fixed text (live model switched off)",
   budget: "fixed text (budget reached)",
   mismatch: "fixed text (sentence did not match the terms)",
   unavailable: "fixed text (model unavailable)",
@@ -62,7 +60,7 @@ export const WHATS_REAL = {
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
     "The tamper: the server checks your changed terms against the same signature, for real, and refuses them.",
-    "The Treasury agent's sentence on the waiting payment is a live Claude Haiku call, labelled “Claude Haiku · live”: only the test world's invoice, balance, reserve floor and limit go in, never anything you type. The model only proposes; the limits, the checks and the approval are code and your passkey. Code checks every amount in its sentence against the amounts it was given, written exactly as given. Without it (no key on the server, the day's USD 1 budget or the rate limit reached, no answer in 8 s, or a sentence that does not match the terms) the fixed sentence is shown, labelled “fixed text”.",
+    "The Treasury agent's sentence on the waiting payment is a live Claude Haiku call, labelled “Claude Haiku · live”: only the test world's invoice, balance, reserve floor and limit go in, never anything you type. The model only proposes; the limits, the checks and the approval are code and your passkey. Code checks every amount in its sentence against the amounts it was given, written exactly as given. Without it (no key on the server, the day's USD 1 budget or the rate limit reached, no answer in 8 s, or a sentence that does not match the terms) the fixed sentence is shown, labelled “fixed text”. An emergency switch on the server (TRY_SIGN_HAIKU=off) stops the call; the fixed sentence is then shown, labelled “fixed text (live model switched off)”.",
     "The FX quote is live from the Airwallex sandbox (a test environment): read-only, nothing is converted, no money moves. It is in the terms, so the signature covers its quote id, and an expired quote is refused. Without a live quote (no sandbox key on the server, or the limit reached) the page shows the main run's recorded quote instead, labelled, and it is not in the signature.",
     "The receipt: receipt.json holds the exact terms, their hash, your passkey's signature, its public key and the algorithm. Anyone can check it offline, with no server: npm run verify-receipt -- receipt.json in the repository. Change one field or one cent and it fails. It proves that the holder of that key signed those terms, not who holds it.",
   ],
@@ -94,7 +92,7 @@ details.wr > summary::after { content: "▾"; font-size: 13px; } details.wr[open
 /* The site's header is translucent; here, where cards scroll under it and the steps, it is opaque (Max, 6 Nov). */
 header.top { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
 ol.progress { list-style: none; margin: 0 0 14px; padding: 8px 0; box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 760px; position: sticky; top: 64px; z-index: 30; background: var(--bg); }
-#s-props, .prop, #result, #tamper { scroll-margin-top: 150px; }
+#s-props, .prop, #result, #tamper { scroll-margin-top: var(--stick, 150px); }
 ol.progress li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 14px; background: var(--sunken); color: var(--muted); font: 650 14.5px/1.25 Inter, system-ui, sans-serif; min-width: 0; }
 ol.progress li .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; }
 ol.progress li.on { background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 2px var(--accent); }
@@ -104,14 +102,11 @@ ol.progress li .t { min-width: 0; overflow-wrap: anywhere; }
 .start { display: grid; gap: 8px; max-width: 760px; }
 .go { display: grid; gap: 8px; align-content: start; }
 /* A laptop (A4): the start screen's right column shows how one policy becomes three locks; below 1024 px it is hidden. */
-.diagram, .gosteps { display: none; }
+.diagram, .gonote { display: none; }
 @media (min-width: 1024px) {
-  /* The left column, under the start button: the three steps, one line each with its gloss. */
-  .gosteps { display: grid; gap: 10px; list-style: none; margin: 14px 0 0; padding: 0; }
-  .gosteps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
-  .gosteps .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 2px var(--accent); font: 700 14px/1 Inter, system-ui, sans-serif; }
-  .gosteps b { display: block; font-size: 16px; } .gosteps small { display: block; color: var(--muted); font-size: 14.5px; line-height: 1.4; }
-  .start { max-width: 1200px; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 28px; align-items: start; }
+  /* The left column: the start button, the hook and one short line, level with the middle of the diagram. */
+  .gonote { display: block; margin: 0; color: var(--muted); font-size: 15.5px; }
+  .start { max-width: 1200px; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 28px; align-items: center; }
   .diagram { display: grid; gap: 12px; padding: 20px; }
   .diagram .eyebrow { margin: 0; }
   .dpolicy, .dlocks li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); }
@@ -241,7 +236,7 @@ table.diff tr.chg td:first-child::after { content: " · changed"; color: var(--b
 @media (min-width: 720px) { .tf { grid-template-columns: minmax(0, .9fr) minmax(0, 2.1fr) minmax(0, .7fr) minmax(0, .9fr); } .hashes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .actions { grid-template-columns: max-content max-content; } }
 @media (max-width: 640px) { .prop, .result { padding: 16px; }
   /* On a phone the passkey and Face ID buttons stay at the bottom of the screen while the sheet is read, as on the CFO's. */
-  .sheet .actions { position: sticky; bottom: 0; z-index: 5; background: var(--surface); margin: 0 -15px; padding: 10px 15px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 18px -14px rgba(0, 0, 0, .35); } ol.progress li { padding: 6px 6px; font-size: 13px; gap: 6px; } ol.progress li .n { width: 22px; height: 22px; font-size: 12px; } dl.facts { grid-template-columns: 92px minmax(0, 1fr); padding: 12px; } .btn { width: 100%; justify-content: center; white-space: normal; height: auto; min-height: 48px; padding: 10px 18px; } .btn.big { min-height: 56px; } .stephead { font-size: 18px; } .intro h1 { font-size: 30px; } .intro .lead { font-size: 17px; } }`;
+  .sheet .actions { position: sticky; bottom: 0; z-index: 5; background: var(--surface); margin: 0 -15px; padding: 10px 15px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 18px -14px rgba(0, 0, 0, .35); } ol.progress li { padding: 6px 6px; font-size: 13px; gap: 6px; } ol.progress li .n { width: 22px; height: 22px; font-size: 12px; } dl.facts { grid-template-columns: max-content minmax(0, 1fr); gap: 9px 10px; padding: 12px 12px 16px; } dl.facts dt { white-space: nowrap; } dl.facts > * { scroll-margin-bottom: calc(var(--acts, 140px) + 16px); } .btn { width: 100%; justify-content: center; white-space: normal; height: auto; min-height: 48px; padding: 10px 18px; } .btn.big { min-height: 56px; } .stephead { font-size: 18px; } .intro h1 { font-size: 30px; } .intro .lead { font-size: 17px; } }`;
 
 // The page script: no backticks and no "${" in here (it lives in a template string). Text from the server goes in with
 // textContent; the only markup set is the icons, built on the server from the fixed icon set.
@@ -263,6 +258,17 @@ const JS = `
   function ic(name) { var s = document.createElement("span"); s.innerHTML = D.icons[name]; return s.firstChild; }
   function status(id, text, tone) { var n = $(id); n.textContent = text; n.className = "status" + (tone ? " " + tone : ""); }
   // The three steps: n is the one under way; those before it are done (all three once verified).
+  // What the sticky parts cover (Max, 6 Nov: at 360 px the sheet's eyebrow slid under the step bar, and the last row of
+  // the terms under the sticky buttons): the header and the step bar at the top, the sheet's buttons at the bottom, as
+  // CSS variables for scroll-margin; measured, since the step bar's height depends on the width and the words.
+  function measureSticky() {
+    var h = document.querySelector("header.top"), bar = document.querySelector("ol.progress");
+    var top = (h ? h.offsetHeight : 64) + (bar ? bar.offsetHeight : 0) + 14;
+    document.documentElement.style.setProperty("--stick", top + "px");
+    var acts = $("s-key");
+    if (acts) document.documentElement.style.setProperty("--acts", acts.offsetHeight + "px");
+  }
+  window.addEventListener("resize", measureSticky);
   function progress(n, allDone) {
     for (var i = 1; i <= 3; i++) {
       var li = $("pg-" + i), done = allDone || i < n, on = !allDone && i === n;
@@ -270,6 +276,7 @@ const JS = `
       if (on) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
       li.querySelector(".n").textContent = done ? "✓" : String(i);
     }
+    measureSticky();
   }
   // A hash as the page shows it: the first 12 and last 8 characters (the first 8 stressed, as on the CFO's sheet), the
   // whole hash on hover or a tap, with Copy. Copy that fails (no clipboard) shows the whole hash to select instead.
@@ -785,9 +792,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   <button class="btn primary big" type="button" id="go-world">${icon("play", 18)}Start: show me the proposal</button>
   <p class="hook" id="hook">${esc(TRY_SIGN_HOOK)}</p>
   <p class="status" id="w-status" aria-live="polite"></p>
-  <ol class="gosteps" aria-label="What happens">
-${TRY_SIGN_STEPS.map((s, i) => `    <li><span class="n">${i + 1}</span><span><b>${esc(s)}</b><small>${esc(TRY_SIGN_STEP_GLOSS[i]!)}</small></span></li>`).join("\n")}
-  </ol>
+  <p class="gonote" id="go-note">${esc(TRY_SIGN_START_NOTE)}</p>
   </div>
   <aside class="card diagram" id="diagram" aria-label="One policy, three locks">
     <p class="eyebrow">One policy → three locks</p>
