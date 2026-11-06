@@ -261,26 +261,31 @@ describe("the Q&A, in Max's words (5 Nov)", () => {
 });
 
 describe("the deck", () => {
-  it("has at most ten slides, dark, with the QR slide's short URL under the code, and no Visa logo", () => {
+  it("has twelve slides (section D, 6 Nov: 10 to 12), dark, with the QR slide's short URL under the code, and no Visa logo", () => {
     const n = (DECK.match(/<section/g) ?? []).length;
-    expect(n).toBeLessThanOrEqual(10);
+    expect(n).toBe(12);
     expect(DECK).toMatch(/html, body \{ background: #0b1020; \}/);
     expect(DECK).toMatch(/<div class="qr"><svg><\/svg><\/div><div><p class="url">kit11\.max-31b\.workers\.dev\/try\/sign<\/p>/);
     expect(DECK).not.toMatch(/<img[^>]*(visa|Visa)/);
-    for (const title of ["Purser", "AI agents can now spend money. So who signs off?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not", "From test rails to production"]) expect(DECK).toContain(`<h1>${title}</h1>`);
+    for (const title of ["AI agents spend. You sign off.", "The hash the CFO signed is in Airwallex's record", "Checked in code, on every push", "Why this is a company", "AI agents can now spend money. So who signs off?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not", "From test rails to production"]) expect(DECK).toContain(`<h1>${title}</h1>`);
   });
 
-  it("follows Max's review (5 Nov): no logos, not opening with the awards, the rule on slide 2, the QR again on slide 10, no TAP run", () => {
+  it("follows Max's review (5 Nov) and section D's order (6 Nov): no logos, not opening with the awards, the rule on slide 2, the QR again on the last slide, no TAP run", () => {
     const slides = DECK.split("<section").slice(1);
     expect(DECK).not.toMatch(/<img[^>]*logos|data:image\/svg\+xml/);
     expect(TEXT.deck).toContain("Built on Airwallex and Metal, with Claude.");
     expect(slides[0]).not.toMatch(/Metal Award|Visa Award/);
     expect(words(slides[1]!)).toContain(RULE_LINE);
-    expect(slides[3]).toContain("Only the 3 bad ones refunded");
-    expect(slides[9]).toMatch(/<div class="qr small-qr"><svg><\/svg><\/div>/);
-    expect(slides[9]).toMatch(/<p class="oneline">Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\), so Purser is entered for the Metal Award only\.<\/p>/);
+    expect(slides[4]).toContain("Only the 3 bad ones refunded");
+    expect(slides[11]).toMatch(/<div class="qr small-qr"><svg><\/svg><\/div>/);
+    expect(slides[11]).toMatch(/<p class="oneline">Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\), so Purser is entered for the Metal Award only\.<\/p>/);
     expect(DECK).not.toMatch(/entered for[^.<]{0,40}Visa Award|\+ Visa Award|still being confirmed with Visa/i);
     expect(DECK).not.toMatch(/TAP run|LIMIT_EXCEEDED/);
+    // Section D's order: problem, the three sentences, the demo, the run, Airwallex, Metal, the agents, security and
+    // tests, what is real, the business, the roadmap.
+    const kickers = slides.map((x) => /<p class="kicker">([^<]*)<\/p>/.exec(x)?.[1] ?? "");
+    expect(kickers.slice(1)).toEqual(["The problem", "What only Purser has", "The demo · try it yourself", "The main run, 3 November 2026 · replay on /watch", "Airwallex proof · sandbox, read back with GET only",
+      "Metal proof · testnet", "The agents · Claude, measured", "Security and tests", "Said plainly", "The business · a hypothesis", "Roadmap · a plan, not a promise"]);
     expect(slides[7]).toMatch(/86 Metal payments \+ 1 card charge; \$0\.0132 = Claude's cost per decision/);
   });
 

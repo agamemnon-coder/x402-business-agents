@@ -1,4 +1,4 @@
-// The submission deck (awards item 6; pitch round, 5 Nov; Max's review round, 5 Nov): ten 16:9 slides as one HTML
+// The submission deck (awards item 6; pitch round, 5 Nov; Max's review round, 5 Nov; section D, 6 Nov): twelve 16:9 slides as one HTML
 // page, printed to PDF by npm run submission. Dark, calm, one message per slide, in the pitch's order
 // (docs/submission/pitch.md): the line, the problem, how it works, the run in three beats, the jury's own signature
 // (QR to /try/sign), the proof, what is real and what is not, Claude, the road to production, the links. Every figure
@@ -8,7 +8,8 @@
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
-import { DIFFERENTIATORS, HERO, KIT11_RUN_LINE, NORTHWIND_LINE, VISA_TAP_STATUS } from "../config/brand.js";
+import { DIFFERENTIATORS, HERO, KIT11_RUN_LINE, NORTHWIND_LINE, PROOF_SENTENCES, TRY_IT, VISA_TAP_STATUS, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
+import { cardControlRows, hashTravel } from "../redesign/airwallexProof.js";
 import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
@@ -51,6 +52,12 @@ const shot = (src: string, caption: string) => `<figure class="shot">${src ? `<i
 const stat = (value: string, label: string) => `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`;
 const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-4)}`;
 const shortId = (h: string) => `${h.slice(0, 8)}…${h.slice(-4)}`;
+const shortHash = (h: string) => `${h.slice(0, 12)}…${h.slice(-8)}`;
+/** The suite's size as the README states it (test/readme-badges.test.ts keeps it the real `npx vitest run` count). */
+export function testCount(): { n: number; files: number } {
+  const m = /\*\*(\d+) tests in (\d+) files, all passing\*\*/.exec(readFileSync(new URL("../../README.md", import.meta.url), "utf8"));
+  return { n: Number(m?.[1] ?? 0), files: Number(m?.[2] ?? 0) };
+}
 
 export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const rt = f.redteam, m = f.main;
@@ -66,14 +73,17 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const option = (o: string) => record.ledger?.proposals.find((p) => p.kind === "mandate_replace" && p.terms?.option === o)?.terms as { query_price?: string; total_budget?: string; steps?: { agent: string; cap: string }[] } | undefined;
   const optA = option("A"), optB = option("B");
   const capOf = (o: typeof optA) => o?.steps?.find((x) => x.agent === "sourcing")?.cap ?? "";
+  const sentence = (partner: string) => PROOF_SENTENCES.find((x) => x.partner === partner)!.text;
+  const hash = hashTravel(record);
+  const cards = cardControlRows(record);
+  const tests = testCount();
   const slides: Slide[] = [
     {
       kicker: "Purser · Starter Kit 11 · x402 Business Agents",
-      // The one tagline (jury QA, 6 Nov, Q8): Home's heading and the film's line.
+      // The one tagline (jury QA, 6 Nov, Q8): Home's heading and the film's line; then what Purser is (section D).
       title: HERO,
       wide: true,
-      // What only Purser has, first (jury review, 6 Nov, #1): the three sentences word for word, then the Kit 11 line.
-      extra: `<ul class="why">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+      extra: `<p class="lead what">${esc(WHAT_IT_IS)}</p>
         <p class="kitrun">${esc(KIT11_RUN_LINE)}</p>
         <div class="stats four">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude, ${m.fallbacks} fallbacks`)}${stat(m.stop_figure, m.stop_sub)}${stat(String(m.face_id), "decisions signed with Face ID (+1 co-signature)")}${stat(`${m.face_to_paid_s} s`, "from Face ID to PAID; the settlement is simulated in the sandbox")}</div>
         <p class="src">One live run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only.</p>
@@ -90,17 +100,29 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       ],
     },
     {
-      kicker: "How it works",
+      kicker: "What only Purser has",
       title: "Each agent its own card and its own mandate",
       wide: true,
-      extra: `<div class="flow">
+      // What only Purser has (jury review, 6 Nov, #1): the three sentences word for word, then "Try it in 30 seconds."
+      extra: `<ul class="why">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+        <p class="tryline">${esc(TRY_IT)} <span>${esc(QR_URL.replace(/^https:\/\//, ""))}</span></p>
+        <div class="flow">
           <div class="box"><b>Agent</b><small>a Claude agent explains and proposes</small></div><span class="arrow">→</span>
-          <div class="box"><b>Rules</b><small>code holds every limit</small></div><span class="arrow">→</span>
+          <div class="box"><b>Rules</b><small>Purser's code checks each proposal</small></div><span class="arrow">→</span>
           <div class="box accent"><b>Person</b><small>Face ID on the exact terms, beyond the limits</small></div><span class="arrow">→</span>
-          <div class="box"><b>Airwallex · Metal</b><small>cards, FX, SWIFT · mandates, x402</small></div><span class="arrow">→</span>
-          <div class="box"><b>Books</b><small>double-entry, hash-chained audit log; <!-- T0-STATUS -->T:0: built, nothing posted<!-- /T0-STATUS --></small></div>
+          <div class="box"><b>Airwallex · Metal</b><small>card controls · mandates on chain</small></div><span class="arrow">→</span>
+          <div class="box"><b>Books</b><small>hash-chained audit log; <!-- T0-STATUS -->T:0: built, nothing posted<!-- /T0-STATUS --></small></div>
         </div>
         <p class="kit">Northwind Outdoor, ${esc(NORTHWIND_LINE)}. Three agents (${m.kit11.map((k) => esc(k.agent.replace(/ agent$/, ""))).join(", ")}), 20.00 test USD between them.</p>`,
+    },
+    {
+      kicker: "The demo · try it yourself",
+      title: "Sign one yourself",
+      wide: true,
+      extra: `<div class="qrslide"><div class="qr">${qrSvg}</div><div><p class="url">${esc(QR_URL.replace(/^https:\/\//, ""))}</p>
+        <p class="big">A test world of your own. A rule blocks one payment; you sign the other with your passkey.</p>
+        <p class="big">Change one cent, and the same signature is refused.</p>
+        <p class="small">Test world · test passkey · nothing real moves.</p></div></div>`,
     },
     {
       kicker: "The main run, 3 November 2026 · replay on /watch",
@@ -114,25 +136,54 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       <p class="options"><b>Treasury's options, within the same ${esc(optA?.total_budget ?? "")}:</b> A: Sourcing's cap ${esc(capOf(optA))}, our price stays ${esc(optA?.query_price ?? "")} · B: the same cap, our price ${esc(optB?.query_price ?? "")}. The CFO signed A.</p>`,
     },
     {
-      kicker: "Try it yourself",
-      title: "Sign one yourself",
+      kicker: "Airwallex proof · sandbox, read back with GET only",
+      title: "The hash the CFO signed is in Airwallex's record",
       wide: true,
-      extra: `<div class="qrslide"><div class="qr">${qrSvg}</div><div><p class="url">${esc(QR_URL.replace(/^https:\/\//, ""))}</p>
-        <p class="big">A test world of your own. A rule blocks one payment; you sign the other with your passkey.</p>
-        <p class="big">Change one cent, and the same signature is refused.</p>
-        <p class="small">Test world · test passkey · nothing real moves.</p></div></div>`,
+      extra: `<p class="sentence">${esc(sentence("Airwallex"))}</p>
+        <div class="cols">
+          <div><h2>The SWIFT payment (${esc(hash?.proposalId ?? "")})</h2><dl class="pairs">
+            <dt>Signed with Face ID</dt><dd><code>${esc(shortHash(hash?.signed ?? ""))}</code></dd>
+            <dt>In Airwallex's record</dt><dd><code>${esc(shortHash(hash?.carried ?? ""))}</code> ${hash?.match ? "<b class='ok'>match</b>" : "<b class='bad'>no match</b>"}</dd>
+            <dt>Transfer</dt><dd><code>${esc(shortId(hash?.transferId ?? ""))}</code>, ${esc(hash?.transferMethod ?? "")}, ${esc(hash?.currency ?? "")} ${esc(hash?.amount ?? "")}, ${esc(hash?.transferStatus ?? "")}</dd>
+          </dl></div>
+          <div><h2>Each agent's card: the CFO policy as Airwallex's own controls</h2><ul class="cards">${cards.map((r) => `<li><b>${esc(r.name)}</b> ····${esc(r.last4)}: ${r.checks.filter((c) => c.ok).length} of ${r.checks.length} controls match${r.match ? "" : " (not all)"}</li>`).join("")}</ul>
+          <p class="small">Limit per purchase and per month, merchant category, currency, end date.</p></div>
+        </div>
+        <p class="src">Read on ${esc(hash?.readAt.slice(0, 10) ?? "")} from the sandbox: <code>${esc(hash?.file ?? "")}</code> and the cards' record beside it. Also on /proof and /airwallex.</p>`,
     },
     {
-      kicker: "Proof",
+      kicker: "Metal proof · testnet",
       title: "Every id is published",
       points: [
-        `<b>${esc(m.stop_line)}</b>${m.metal_detail ? ` Metal's ${m.stops.metal}: ${esc(m.metal_detail)}.` : ""}`,
+        `<b>${esc(sentence("Metal"))}</b>`,
+        `${esc(m.stop_line)}${m.metal_detail ? ` Metal's ${m.stops.metal}: ${esc(m.metal_detail)}.` : ""}`,
         `On chain, checkable: Metal's refusal <code>${esc(short(m.let_through_tx))}</code>; the mandate replacements ${replaced.map((t) => `<code>${esc(short(t))}</code>`).join(", ")}; the sweep <code>${esc(short(sweepTx))}</code>`,
-        `Published: FX <code>${esc(shortId(conversion))}</code>, SWIFT <code>${esc(shortId(m.licence_transfer))}</code>, deposit <code>${esc(shortId(deposit))}</code>`,
-        `Card raise ${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}, then Airwallex authorization <code>${esc(shortId(m.card_raise.auth))}</code>`,
-        `${m.audit_rows} audit rows, hash-chained: <code>npm run verify</code>`,
+        `Published: FX <code>${esc(shortId(conversion))}</code>, SWIFT <code>${esc(shortId(m.licence_transfer))}</code>, deposit <code>${esc(shortId(deposit))}</code>; card raise ${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}, then Airwallex authorization <code>${esc(shortId(m.card_raise.auth))}</code>`,
       ],
       pic: shot(s.dispute, `The main run, 3 November (/watch): #${m.refunded.join(", #")} refunded, each on chain; "refund the other ${rest}" rejected by Max with Face ID`),
+    },
+    {
+      kicker: "The agents · Claude, measured",
+      title: "Claude explains and proposes",
+      points: [
+        `<b>${esc(sentence("Claude"))}</b>`,
+        `${m.claude_calls} calls, USD ${m.claude_usd} at list prices. Sourcing on Haiku, Support on Sonnet, Treasury on Opus.`,
+        "Our benchmark: Haiku alone is as good on everyday cases, and misread one harder dispute.",
+        "No key reaches Claude, and Claude approves nothing; code checks each proposal first.",
+      ],
+      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 86 Metal payments + 1 card charge; $0.0132 = Claude's cost per decision"),
+    },
+    {
+      kicker: "Security and tests",
+      title: "Checked in code, on every push",
+      wide: true,
+      extra: `<div class="stats four">${stat(tests.n.toLocaleString("en-GB"), `tests in ${tests.files} files, all passing (npx vitest run)`)}${stat(String(m.audit_rows), "audit rows in the main run, hash-chained: npm run verify")}${stat(`${rt.before}/${rt.attempts}`, "red-team attacks stopped, on stand-ins")}${stat(`${f.lab.passed}/${f.lab.total}`, "Scenario Lab stories as expected, on stand-ins")}</div>
+        <ul class="sec">
+          <li>Red team on stand-ins: ${rt.before} of ${rt.attempts} attacks stopped, ${rt.after} more detected afterwards, not prevented.</li>
+          <li>No key reaches Claude: tested, no key, token or credential ever reaches a model.</li>
+          <li>A signature fits one set of terms: the server refuses it once one cent, the IBAN or the currency changes.</li>
+          <li>CI on every push: typecheck, lint, the suite, the browser checks in Chromium and WebKit, CodeQL, Semgrep, and gitleaks over the whole history.</li>
+        </ul>`,
     },
     {
       kicker: "Said plainly",
@@ -149,44 +200,34 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <li>SWIFT SENT and PAID are moved by Purser through the sandbox's simulation API.</li>
           <li>The second approver was a labelled test passkey, pressed by Claude Code on Max's go.</li>
           <li>Built, not yet live: the Cardputer hub. <!-- T0-STATUS -->${esc(T0_SHORT)}<!-- /T0-STATUS --></li>
-          <li>Red team on stand-ins: ${rt.before} of ${rt.attempts} attacks stopped, ${rt.after} more detected afterwards, not prevented.</li></ul></div>
+          <li>The reliability runs were signed by labelled virtual test passkeys, no person.</li></ul></div>
       </div>`,
     },
     {
-      kicker: "Claude, measured",
-      title: "Claude explains and proposes",
-      points: [
-        `${m.by_claude} of ${m.decisions} decisions by Claude, ${m.fallbacks} fallbacks, ${m.claude_calls} calls, USD ${m.claude_usd} at list prices.`,
-        "Sourcing on Haiku, Support on Sonnet, Treasury on Opus.",
-        "Our benchmark: Haiku alone is as good on everyday cases, and misread one harder dispute.",
-        "No key reaches Claude, and Claude approves nothing; code checks each proposal first.",
-      ],
-      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 86 Metal payments + 1 card charge; $0.0132 = Claude's cost per decision"),
+      kicker: "The business · a hypothesis",
+      title: "Why this is a company",
+      wide: true,
+      extra: `<p class="small note">${esc(WHY_COMPANY_NOTE)}</p>
+        <ul class="biz">${WHY_COMPANY.map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)}</li>`).join("")}</ul>
+        <p class="src">Sources and reasoning: docs/business/ in the repository.</p>`,
     },
     {
-      kicker: "The road to production",
+      kicker: "Roadmap · a plan, not a promise",
       title: "From test rails to production",
       wide: true,
       extra: `<div class="timeline row3">
         <div><b>Now</b><span>Airwallex sandbox · Metal testnet · test money · one company per ledger</span></div>
-        <div><b>Next</b><span>keys in a KMS · Postgres · a pager on /health · many companies</span></div>
-        <div><b>Then</b><span>Metal mainnet · four eyes by default · more Airwallex rails</span></div>
-      </div>`,
-    },
-    {
-      kicker: "Purser · Starter Kit 11",
-      title: "Purser",
-      wide: true,
-      extra: `<p class="lead">${esc(CORE_LINE)}</p>
-        <div class="end"><div class="qr small-qr">${qrSvg}</div><dl class="links">
-          <dt>Try it in the Q&amp;A</dt><dd>${esc(QR_URL.replace(/^https:\/\//, ""))}</dd>
-          <dt>Watch the run</dt><dd>kit11.max-31b.workers.dev/watch</dd>
+        <div><b>Next</b><span>test the demand with finance teams · production Airwallex · a real second approver · keys in a KMS, Postgres, a pager on /health</span></div>
+        <div><b>Then</b><span>Metal mainnet · four eyes by default · an outside SOC 2 audit</span></div>
+      </div>
+      <p class="lead small-lead">${esc(CORE_LINE)}</p>
+      <div class="end"><div class="qr small-qr">${qrSvg}</div><dl class="links">
+          <dt>Try it</dt><dd>${esc(QR_URL.replace(/^https:\/\//, ""))}</dd>
           <dt>Every id</dt><dd>kit11.max-31b.workers.dev/proof</dd>
           <dt>Code</dt><dd>${esc(REPO_URL.replace(/^https:\/\//, ""))}</dd>
           <dt>Offline, no keys</dt><dd><code>npm ci &amp;&amp; npm run judge</code></dd>
         </dl></div>
-        <p class="src">Max Geurtsen · built with Claude Code · built on Airwallex and Metal, with Claude.</p>
-        <p class="oneline">${esc(VISA_TAP_STATUS)}</p>`,
+      <p class="oneline">${esc(VISA_TAP_STATUS)}</p>`,
     },
   ];
   const font = asset("inter.woff2").toString("base64");
@@ -254,6 +295,16 @@ ul.why li { font-size: 25px; line-height: 1.32; font-weight: 600; color: #ffffff
 .timeline.row3 { grid-template-columns: repeat(3, 1fr); } .timeline.row3 > div { border-radius: 0 12px 12px 0; padding: 26px 26px; } .timeline.row3 span { font-size: 22px; line-height: 1.4; }
 .links { display: grid; grid-template-columns: 240px 1fr; gap: 10px 20px; font-size: 24px; margin: 10px 0 0; }
 .links dt { color: #9aa4bf; } .links dd { margin: 0; font-weight: 600; color: #ffffff; }
+.what { font-size: 30px; margin: 0 0 18px; }
+.tryline { font-size: 24px; font-weight: 700; color: #a5abff; margin: 4px 0 18px; } .tryline span { color: #ffffff; margin-left: 10px; }
+.sentence { font-size: 22px; line-height: 1.4; color: #ffffff; font-weight: 600; margin: 0 0 22px; max-width: 1120px; }
+.pairs { display: grid; grid-template-columns: 200px 1fr; gap: 10px 14px; font-size: 18px; margin: 0; } .pairs dt { color: #9aa4bf; } .pairs dd { margin: 0; }
+.ok { color: #3ccf82; } .bad { color: #ff6b6b; }
+ul.cards li, ul.sec li, ul.biz li { font-size: 19px; line-height: 1.4; margin-bottom: 10px; }
+ul.biz { margin-top: 8px; } .note { margin: 0 0 10px; }
+.timeline.row3 span { font-size: 18px !important; }
+.small-lead { font-size: 24px; margin: 22px 0 14px; }
+.flow { margin: 14px 0 18px; } .flow .box { padding: 14px 12px; } .flow .box b { font-size: 21px; } .flow .box small { font-size: 14.5px; }
 </style></head><body>
 ${slides.map((x) => `<section${x.wide ? ' class="wide"' : ""}><div class="text"><p class="kicker">${esc(x.kicker)}</p><h1>${esc(x.title)}</h1>${list(x.points ?? [])}${x.extra ?? ""}</div>${x.wide ? "" : `<div class="pic">${x.pic ?? ""}</div>`}</section>`).join("\n")}
 </body></html>`;

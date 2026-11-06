@@ -180,6 +180,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   passed every step. The form's Description now goes problem, solution, proof, Airwallex and Metal, business, what's
   real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2607 tests in
   265 files, all passing (with main's).
+- 6 November, the deck (section D): twelve slides in the story's order, the problem, the three sentences with "Try it
+  in 30 seconds.", the demo (/try/sign), the main run, the Airwallex proof (the hash the CFO signed beside the one in
+  Airwallex's record of the SWIFT payment; each card's controls), the Metal proof, the agents, security and tests (the
+  suite's size from the README, 412 audit rows, the red team and the Scenario Lab on stand-ins, CI), what is real, the
+  business, the roadmap. `npm run submission -- --deck-only` renders the deck alone and each slide as a PNG in
+  docs/evidence/deck/. 2608 tests in 265 files, all passing.
 
 ## Real, and ours
 

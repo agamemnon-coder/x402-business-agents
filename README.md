@@ -8,7 +8,7 @@ AI agents can now spend company money; Purser lets them, through Airwallex and M
 
 **[Try it in 30 seconds.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2607 passing](https://img.shields.io/badge/tests-2607%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2608 passing](https://img.shields.io/badge/tests-2608%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 The Kit 11 scenario, run live on 3 November: [Film, 2:42](https://youtu.be/jaqO2M2V6NY) · [the run, replayed](https://kit11.max-31b.workers.dev/watch) · [every id](https://kit11.max-31b.workers.dev/proof).
 Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
@@ -157,7 +157,7 @@ npm test          # the full suite, on stand-ins
 npm run judge     # the main run's replay, the CFO dashboard and the Scenario Lab, offline
 ```
 
-**2607 tests in 265 files, all passing** (`npx vitest run`, 6 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
+**2608 tests in 265 files, all passing** (`npx vitest run`, 6 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
 every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/run-it.md).
 
 ## Words

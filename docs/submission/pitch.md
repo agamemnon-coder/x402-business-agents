@@ -93,14 +93,14 @@ browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day
 
 | Do | Max says | Source |
 |---|---|---|
-| Deck slide 10: the QR to `/try/sign`. | Purser is for finance teams on Airwallex whose AI agents spend money. | [docs/business/model.md](../business/model.md), "Who buys and who uses it (hypothesis)" |
+| Deck slide 12: the QR to `/try/sign`. | Purser is for finance teams on Airwallex whose AI agents spend money. | [docs/business/model.md](../business/model.md), "Who buys and who uses it (hypothesis)" |
 | | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE` (`src/submission/deck.ts`) |
 | | We'd charge a monthly fee per company, with agents included. | [docs/business/model.md](../business/model.md), "Intended pricing (hypothesis)" |
 | | That is a hypothesis: no customer has seen a price yet. | [docs/business/model.md](../business/model.md): "no customer has seen a price" |
 | | The more agent features Airwallex ships, the more there is to govern. | [docs/business/model.md](../business/model.md), "Risks": "the more there is for Purser to govern" |
 | Look at the jury. | Our ask: we're looking for design partners on Airwallex. | The ask; [docs/business/roadmap.md](../business/roadmap.md): "Test the demand hypothesis" comes first |
 | | Finance teams whose agents already spend, or soon will. | [docs/business/model.md](../business/model.md), "Buyer" (hypothesis) |
-| Point at the QR; leave it up for the questions. | Scan the code, and sign one yourself. | Deck slide 10; `docs/media/try-sign-qr.png` |
+| Point at the QR; leave it up for the questions. | Scan the code, and sign one yourself. | Deck slide 12; `docs/media/try-sign-qr.png` |
 | | Thank you. | Max |
 
 If a part runs over in rehearsal, cut in this order: "Put the phone down" line ("A button says yes…"), then "Finance
@@ -126,7 +126,7 @@ About 90 words: 35 seconds at a steady pace (the stops take one sentence of 27 w
 
 The order (Max, 5 Nov): the hook, who and what, the run in three beats without disclaimers, the disclaimers and the
 proof in one go, then the jury's own signature, ending on "One cent. Worthless." The core line comes just before the
-tamper, as the rule the tamper proves; slide 10 (the line, the QR again, the links) stays up for the Q&A. What is on
+tamper, as the rule the tamper proves; slide 12 (the road, the line, the QR again, the links) stays up for the Q&A. What is on
 screen at each step: [demo-day.md](demo-day.md), "The runbook".
 
 | When | Max says | Source |
@@ -155,7 +155,7 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | | PAID, 6 seconds after my Face ID. | Record: `timings` (faceToPaid 6) |
 | **1:50 Said plainly** | Said plainly: the second approver was a test passkey, and the sandbox simulates settlement. | `SECOND_APPROVER`; Log, "Approvals"; `SANDBOX_SETTLED`; README (Purser moves SENT and PAID through the sandbox's simulation API) |
 | | Every id is published on /proof; check it with npm run verify. | `/proof`; Record: `snapshot.audit` (412 rows, intact); README |
-| **2:05 The jury signs** | Now you sign off: scan this, now or during the questions. | Deck, slides 5 and 10; `docs/media/try-sign-qr.png` |
+| **2:05 The jury signs** | Now you sign off: scan this, now or during the questions. | Deck, slides 4 and 12; `docs/media/try-sign-qr.png` |
 | | Your own test world; nothing real moves. | Try: `TRY_SIGN_LABEL` |
 | | A rule blocks one payment; you sign the other with your passkey. | Try: `checkPayment` (reserve floor blocks T-0001; T-0002 waits for a signature) |
 | | Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. | The core line (Max, 5 Nov); `CORE_LINE`, `src/submission/deck.ts` |
@@ -195,7 +195,7 @@ own signature and "One cent. Worthless." stay last.
 | Opus is the least proven; a person reads its advice before signing. | `docs/claude.md`: "the most expensive part and the least proven" |
 | All 24 decisions together cost USD 0.3170 in Claude calls. | Record: `agent_stats[].cost_usd_micros` (316,966 µUSD); Log, "Cost" |
 
-### 3c. On chain, counted (after "Said plainly"; 15 s; deck slide 7)
+### 3c. On chain, counted (after "Said plainly"; 15 s; deck slide 10)
 
 | Max says | Source |
 |---|---|
@@ -204,19 +204,19 @@ own signature and "One cent. Worthless." stay last.
 | No emulator and no clearing in this run. | README, same line |
 | The euro licence and the card buy ran on Airwallex's sandbox. | README: "Not on Metal: the EUR licence (FX, SWIFT) and the card buy" |
 
-### 3d. The road to production (after the chain count; 25 s; deck slide 9)
+### 3d. The road to production (after the chain count; 25 s; deck slide 12)
 
 | Max says | Source |
 |---|---|
-| Today this runs on the Airwallex sandbox and Metal testnet. | README; deck slide 9 |
-| One company per ledger, with test money only. | Deck slide 9, "Now" |
-| Next: keys in a KMS, Postgres, and a pager on the health check. | `docs/roadmap.md`; deck slide 9, "Next" |
-| Then Metal mainnet, with four eyes as the default. | Deck slide 9, "Then" |
+| Today this runs on the Airwallex sandbox and Metal testnet. | README; deck slide 12 |
+| One company per ledger, with test money only. | Deck slide 12, "Now" |
+| Next: keys in a KMS, Postgres, and a pager on the health check. | `docs/roadmap.md`; deck slide 12, "Next" |
+| Then Metal mainnet, with four eyes as the default. | Deck slide 12, "Then" |
 | Airwallex already offers what comes next: global accounts, local payouts, refunds. | `docs/roadmap.md`, "Airwallex products that fit next" |
 | Airwallex's own AgentOS says to require manual approval for agents. | `docs/roadmap.md` (`developer-tools/ai/agentos`) |
 | Purser is that approval, on the exact terms, with limits in the rails. | `docs/roadmap.md`, same paragraph |
 
-### 3e. The business case (after the road; 20 s; no slide)
+### 3e. The business case (after the road; 20 s; deck slide 11)
 
 | Max says | Source |
 |---|---|

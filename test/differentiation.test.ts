@@ -96,10 +96,11 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     for (const s of [...DIFFERENTIATORS, KIT11_RUN_LINE, CAVEAT_LINE]) { const i = desc.indexOf(s, at); expect({ s, found: i >= at }).toEqual({ s, found: true }); at = i; }
   });
 
-  it("open the deck's title slide, then the Kit 11 line", () => {
+  it("open the deck: the title slide says what Purser is and the Kit 11 line; after the problem, the three sentences and Try it (section D)", () => {
     const deck = deckHtml(packFacts(), shots, "<svg></svg>");
-    const first = words(/<section[\s\S]*?<\/section>/.exec(deck)![0]);
-    expect(first).toContain(`AI agents spend. You sign off. ${DIFFERENTIATORS.join(" ")} ${KIT11_RUN_LINE}`);
+    const slides = deck.split("<section").slice(1).map(words);
+    expect(slides[0]).toContain(`AI agents spend. You sign off. ${WHAT_IT_IS} ${KIT11_RUN_LINE}`);
+    expect(slides[2]).toContain(`${DIFFERENTIATORS.join(" ")} ${TRY_IT} kit11.max-31b.workers.dev/try/sign`);
   });
 
   it("open the long text too", () => {

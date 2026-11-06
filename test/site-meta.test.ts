@@ -85,7 +85,7 @@ describe("the submission pack (Q6, Q7)", () => {
     const pdf = readFileSync(new URL("../docs/submission/purser-deck.pdf", import.meta.url)).toString("latin1");
     const n = (pdf.match(/\/Type\s*\/Page(?!s)/g) ?? []).length;
     const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
-    expect(n).toBe(10);
+    expect(n).toBe(12);
     expect(read("docs/submission/README.md")).toContain(`\`purser-deck.pdf\`: ${words[n]} slides`);
   });
 

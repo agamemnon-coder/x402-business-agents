@@ -94,7 +94,10 @@ not known yet. `test/submission.test.ts` checks this count and keeps the text un
 
 ## Deck and zip
 
-- `purser-deck.pdf`: ten slides, one message each, made by `npm run submission` from the same figures.
+- `purser-deck.pdf`: twelve slides, one message each, in the story's order (the problem, the three sentences, the demo,
+  the run, the Airwallex proof, the Metal proof, the agents, security and tests, what is real, the business, the roadmap),
+  made by `npm run submission` from the same figures (`npm run submission -- --deck-only` for the deck alone). Each slide
+  as a PNG: [docs/evidence/deck/](../evidence/deck/).
 - The zip: `npm run submission` writes `out/submission/purser-source.zip` (`git archive` of the current commit: the
   code, no keys, no ledger). Not committed.
 

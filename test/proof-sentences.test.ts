@@ -8,6 +8,8 @@ import { cardControlRows, hashTravel } from "../src/redesign/airwallexProof.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { loadRecord, split } from "../src/redesign/run.js";
 import { buildPages } from "../src/relay/assets.js";
+import { deckHtml, type DeckShots } from "../src/submission/deck.js";
+import { packFacts } from "../src/submission/facts.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const { record } = loadRecord();
@@ -71,6 +73,13 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     expect(log).toContain("The fix** is commit 856cb64");
     expect(log).toContain("**Code:** c231196, which includes the fix.");
     expect(log).toContain("**Every step, every check and every acceptance row passed.**");
+  });
+
+  it("is word for word in the deck: Airwallex and Metal on their own slides, Claude on the agents' slide", () => {
+    const slides = deckHtml(packFacts(), new Proxy({}, { get: () => "" }) as DeckShots, "").split("<section").slice(1).map(decode);
+    expect(slides[5]).toContain(text("Airwallex"));
+    expect(slides[6]).toContain(text("Metal"));
+    expect(slides[7]).toContain(text("Claude"));
   });
 
   it("is word for word on the README, Home and the form's Description", () => {
