@@ -8,7 +8,6 @@ import { describe, expect, it } from "vitest";
 import { doubleEntry, trialBalance } from "../src/accounting/books.js";
 import { checkChainLinks, GENESIS } from "../src/audit/log.js";
 import { CFO_VIEW_URL } from "../src/config/brand.js";
-import { secretsIn } from "../src/demo/runLedger.js";
 import { RECORD_UNCHANGED, TRACE_FILE, traceLabel, type PaymentKind } from "../src/demo/runTrace.js";
 import { fromCents, toCents } from "../src/lib/money.js";
 import { EXPLORER_TX } from "../src/metal/network.js";
@@ -18,6 +17,7 @@ import { chainLines, chains, countOf, HEADER_SECOND, headerLine, loadTrace, STEP
 import { buildPages } from "../src/relay/assets.js";
 import { PAGE, TRACE_CSP } from "../src/servers/dashboard.js";
 import { pageResponse } from "../worker/src/core.js";
+import { knownHex, privateFindings } from "./support/privacyScan.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 
 const { record } = loadRecord();
@@ -224,40 +224,17 @@ describe("the companion record: labelled, and nothing private in it or on /trace
   });
 
   const TEXTS: [string, string][] = [["the companion", raw], ["/trace", html]];
-  // Every 64-hex value must be a hash or a transaction the files name as one; every 40-hex value an address in the record.
-  const known64 = new Set<string>(), known40 = new Set<string>();
-  const leaves = (v: unknown, key = ""): [string, string][] => Array.isArray(v) ? v.flatMap((x) => leaves(x, key)) : v && typeof v === "object" ? Object.entries(v).flatMap(([k, x]) => leaves(x, k)) : [[key, String(v)]];
-  for (const [key, value] of leaves(JSON.parse(raw))) if (/^(tx|rail_id|row_hash|prev_hash|head|mandate_hash|approval_sha256|proof)$/.test(key)) for (const m of value.matchAll(/[0-9a-f]{64}/gi)) known64.add(m[0].toLowerCase());
+  const known = knownHex();
   const rec = readFileSync("docs/demo/main-run.json", "utf8");
-  for (const m of rec.matchAll(/0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/g)) known40.add(m[0].toLowerCase());
-
   for (const [name, text] of TEXTS) {
-    it(`${name}: no IBAN, email, long base64 run, credential, token, key or unknown hex`, () => {
-      const PATTERNS: [string, RegExp][] = [
-        ["an IBAN", /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}\b/],
-        ["an email address", /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9.-]+/],
-        ["a JWT", /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/],
-        ["a PEM block", /-----BEGIN [A-Z ]*-----/],
-        ["an API key", /\bsk-(ant-)?[A-Za-z0-9_-]{16,}|\bkey_[A-Za-z0-9]{12,}|\b(pk|rk|sk)_(live|test)_[A-Za-z0-9]{8,}/],
-        ["a bearer token", /\bBearer\s+[A-Za-z0-9._-]{12,}/i],
-        ["a credential or assertion field", /"(credential_id|credentialId|assertion|assertion_sha256|attestation|attestationObject|clientDataJSON|authenticatorData|signature|public_key|beneficiary_id|iban|passkey|email|email_sha256|token|secret|private_key|view_key|nonce)"\s*:/i],
-        ["a passkey label", /\(passkey [A-Za-z0-9_-]+\)/],
-      ];
-      for (const [what, re] of PATTERNS) expect({ name, what, found: re.exec(text)?.[0] ?? null }).toEqual({ name, what, found: null });
-      // The record's own check (no relay host, viewer key, token or key); a page names the project's own site in its preview tags.
-      if (name === "the companion") expect(secretsIn(text)).toEqual([]);
-      const hosts = new Set([...text.matchAll(/https?:\/\/([A-Za-z0-9.-]+)/g)].map((m) => m[1]!));
-      expect({ name, hosts: [...hosts].filter((h) => !["testnet.metalntwx.com", "kit11.max-31b.workers.dev", "www.w3.org"].includes(h)) }).toEqual({ name, hosts: [] });
-      // A long base64 or base64url run (40+): only hex hashes, transactions and addresses are that long here.
-      const explorer = new RegExp(`${EXPLORER_TX.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&")}0x[0-9a-f]{64}`, "g");
-      const runs = [...text.replace(explorer, " ").matchAll(/[A-Za-z0-9+/_=-]{40,}/g)].map((m) => m[0]).filter((s) => !/^(0x)?[0-9a-fA-F]+$/.test(s.replace(/^[^0-9a-fA-Fx]+/, "")));
-      expect({ name, runs }).toEqual({ name, runs: [] });
-      const unknown64 = [...new Set([...text.matchAll(/(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])/g)].map((m) => m[0].toLowerCase()))].filter((h) => !known64.has(h));
-      expect({ name, unknown64 }).toEqual({ name, unknown64: [] });
-      const unknown40 = [...new Set([...text.matchAll(/0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/g)].map((m) => m[0].toLowerCase()))].filter((h) => !known40.has(h));
-      expect({ name, unknown40 }).toEqual({ name, unknown40: [] });
+    it(`${name}: no IBAN, email, long base64 run, credential, token, key, foreign host or unknown hex`, () => {
+      expect({ name, found: privateFindings(text, { ...known, record: name === "the companion" }) }).toEqual({ name, found: [] });
     });
   }
+  it("the scan finds each kind it looks for", () => {
+    for (const bad of ["DE89 3704 0044 0532 0130 00", "cfo@example.com", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0", "-----BEGIN PRIVATE KEY-----", "sk-ant-abcdefghijklmnop1234", '"credential_id": "x"', "# label\nseq,iban,amount", "(passkey Y7bi-1ZE)", "https://relay.example.dev/", "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xt", "a".repeat(63) + "b", "0x" + "1".repeat(40)])
+      expect({ bad, found: privateFindings(bad, { ...known, record: true }).length > 0 }).toEqual({ bad, found: true });
+  });
 
   it("the companion's 64-hex values are the record's own where the record names them", () => {
     const recHex = new Set([...rec.matchAll(/0x[0-9a-f]{64}/g)].map((m) => m[0]));
@@ -292,7 +269,7 @@ describe("/trace: the page and its links", () => {
     expect(decode(proofPage())).toContain(`href="trace">`);
     expect(decode(proofPage()).split(TRACE_LINK).length - 1).toBe(1);
     // On the CFO view (the dashboard page at /?autonomy): under its line, shown on that view only.
-    expect(PAGE).toContain(`<p class="cfolinks" id="cfo-links" hidden><a href="trace">${TRACE_LINK}</a></p>`);
+    expect(PAGE).toContain(`<p class="cfolinks" id="cfo-links" hidden><a href="trace">${TRACE_LINK}</a>`);
     const js = scriptBlocks(PAGE).find((b) => b.startsWith("<script>"))!;
     const autonomy = js.indexOf("} else if (wantAutonomy && AUTONOMY) {"), next = js.indexOf("} else if (wantRecorded && RECORDED) {");
     expect(js.slice(autonomy, next)).toContain('document.getElementById("cfo-links").hidden = false;');
