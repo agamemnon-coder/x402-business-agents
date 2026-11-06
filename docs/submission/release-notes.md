@@ -232,6 +232,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   signed, a payment at or below it runs without a signature by the same stand-in, its card saying "paid alone under
   your new policy" (above it, or once it is lowered again, a payment not yet run waits for a signature). No call to
   Airwallex, Metal or Claude. 2732 tests in 271 files, all passing (with main's).
+- 6 November, the test suite makes 0 external calls: building the seller or a supplier no longer asks Metal's
+  facilitator for its /supported list (test/support/facilitatorStandIn.ts, in test/clearing.test.ts and
+  test/world-thursday.test.ts), and a vitest setup file removes every live key from the tests' environment and refuses
+  any request to a host that is not this machine, also in the child processes a test starts
+  (test/support/noNetwork.ts, test/support/no-network.cjs). Checked with a logging preload over the full suite: 0
+  attempts. 2736 tests in 272 files, all passing.
 
 ## Real, and ours
 

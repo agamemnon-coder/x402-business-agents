@@ -6,6 +6,8 @@ export default defineConfig({
   test: {
     // Agent worktrees live under .claude/worktrees inside the checkout; their copies of the tests are not this tree's.
     exclude: [...configDefaults.exclude, ".claude/**"],
+    // 0 external calls and no live key, whatever this machine holds (test/support/noNetwork.ts).
+    setupFiles: ["test/support/noNetwork.ts"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
