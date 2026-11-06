@@ -3,7 +3,8 @@
 // agent does. Every authorisation Airwallex makes on a card is recorded once, from whichever source sees it first.
 
 import { currentOrigin, parseOrigin, type Origin } from "../provenance/origin.js";
-import { AGENTS, CARDS, type Agent, CARD_ACTIVE_DAYS, OUTSIDE_AGENT_MCCS, PLANS } from "../config/policy.js";
+import { AGENTS, CARDS, type Agent } from "../config/policy.js";
+import { agentCardControls } from "./cardRules.js";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
@@ -68,8 +69,7 @@ export function cardControls(agent: string, now: Date, db?: DB): CardControls {
     if (!t) throw new Error(`no task card ${agent}`);
     return { mccs: t.mccs.split(",").sort(), currencies: ["EUR"], activeTo: t.valid_until, singleUse: true };
   }
-  const mccs = agent.startsWith("ext:") ? OUTSIDE_AGENT_MCCS : Object.values(PLANS).filter((p) => p.agent === agent && !/on the .* card$/.test(p.label)).map((p) => p.mcc);
-  return { mccs: [...new Set(mccs)].sort(), currencies: ["EUR"], activeTo: new Date(now.getTime() + CARD_ACTIVE_DAYS * 86_400_000).toISOString() };
+  return agentCardControls(agent, now);
 }
 
 const controlWords = (c: Pick<CardControls, "mccs" | "currencies"> | null | undefined) =>

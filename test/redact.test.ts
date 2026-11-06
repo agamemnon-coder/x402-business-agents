@@ -15,7 +15,9 @@ const saved = { ...process.env };
 afterEach(() => { process.env = { ...saved }; });
 
 async function viemError(): Promise<string> {
-  const client = createPublicClient({ transport: http(URL_, { retryCount: 0, timeout: 2000 }) });
+  // The RPC never answers: viem's own error, with the URL in it, and no request sent anywhere (the fake host is never asked).
+  const fetchFn = (async () => { throw new TypeError("fetch failed"); }) as typeof fetch;
+  const client = createPublicClient({ transport: http(URL_, { retryCount: 0, timeout: 2000, fetchFn }) });
   try {
     await client.getBlockNumber();
     return "no error";

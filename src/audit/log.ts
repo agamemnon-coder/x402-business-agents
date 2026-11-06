@@ -86,6 +86,25 @@ export function verifyAuditRows(rows: Row[]): ChainCheck {
 }
 
 /**
+ * The linkage alone, over a published list of {seq, prev_hash, row_hash} with no row content (the main run's companion
+ * record, docs/demo/main-run-trace.json): the seqs run 1..n, the first prev_hash is the genesis and each prev_hash is the
+ * previous row's row_hash. It proves the list is one unbroken chain ending at its head; it cannot recompute a row_hash,
+ * so it does not prove what any row says (verifyAuditRows does, given the rows).
+ */
+export function checkChainLinks(links: { seq: number; prev_hash: string; row_hash: string }[]): ChainCheck {
+  let prev = GENESIS;
+  let expectSeq = 1;
+  for (const l of links) {
+    if (l.seq !== expectSeq) return { ok: false, seq: l.seq, reason: `gap: expected seq ${expectSeq}` };
+    if (l.prev_hash !== prev) return { ok: false, seq: l.seq, reason: "prev_hash does not match the previous row" };
+    if (!/^[0-9a-f]{64}$/.test(l.row_hash)) return { ok: false, seq: l.seq, reason: "row_hash is not a SHA-256 hex digest" };
+    prev = l.row_hash;
+    expectSeq++;
+  }
+  return { ok: true, rows: links.length, head: prev };
+}
+
+/**
  * A chain that verifies on its own can still have lost its last rows, or been rehashed from an edit onwards by
  * someone with write access. An anchor (a row's seq and hash, printed earlier in an audit report or a run log)
  * catches both: that row must still be there, with that hash.
