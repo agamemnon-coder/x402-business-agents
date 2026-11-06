@@ -16,7 +16,10 @@ vi.mock("../src/metal/agentCli.js", () => ({
   },
 }));
 vi.mock("../src/metal/mandate.js", () => ({
-  activeMandate: async (agent: string) => ({ agent, credentialPath: `/keys/${agent}.credential.json`, keyFile: `/keys/${agent}.key.json` }),
+  activeMandate: async (agent: string) => ({ agent, credentialPath: `/keys/${agent}.credential.json`, keyFile: `/keys/${agent}.key.json`, reference: `0x${"0a".repeat(32)}` }),
+  // One credential per agent here: no replace, so no earlier pull to look up (test/metal-pull-after-replace.test.ts).
+  credentialFiles: () => [],
+  loadCredentialFile: () => { throw new Error("no credential files in this test"); },
 }));
 
 const { refundSale } = await import("../src/executors/refunds.js");
