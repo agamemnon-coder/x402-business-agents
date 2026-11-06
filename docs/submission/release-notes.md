@@ -170,6 +170,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   lines from docs/business/ (the problem, who buys, the intended pricing as a hypothesis, why now with Airwallex's own
   post as the source, why Purser) on the README and Home, under one note that it is not validated with customers yet.
   2602 tests in 264 files, all passing (with main's).
+- 6 November, the proof and the form (section D): one sentence per partner (`PROOF_SENTENCES` in
+  `src/config/brand.ts`), word for word on the README, Home and the form, every number read from its record by
+  `test/proof-sentences.test.ts`. Airwallex: the hash the CFO signed is in Airwallex's own record of the EUR 240.00
+  SWIFT payment; 3 of 3 cards carry the CFO's policy as Airwallex's own controls. Metal: a mandate on chain per agent;
+  86 payments, each its own transaction; #24 refused on chain; the mandates replaced after the CFO's Face ID (four
+  eyes; second approver a labelled test passkey). Claude: 24 of 24 decisions, 0 fallbacks; rel-1 found a fault in how
+  the agents hand off a card raise; after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and rel-1b
+  passed every step. The form's Description now goes problem, solution, proof, Airwallex and Metal, business, what's
+  real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2607 tests in
+  265 files, all passing (with main's).
 - 6 November, /proof's "Policy and card side by side" lands on /airwallex with the cards' fold open: the fold is
   `#controls` and each card has its own anchor (`#card-sourcing`, …); a few lines of script, hashed into the page's
   CSP, open the fold around whatever the link points at and scroll to it (Chromium and WebKit checked at 390 and
@@ -181,7 +191,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 6 November, /try/sign's layout after Max's review: on a laptop the steps are said once (the step bar); the left
   column is the start button, the hook and one line, level with "One policy → three locks". On a phone the terms'
   labels stay on one line ("Proposal expires" and "Quote expires" kept apart), the last row of the terms clears the
-  sticky buttons, and "You are approving" lands below the sticky step bar. 2613 tests in 265 files, all passing.
+  sticky buttons, and "You are approving" lands below the sticky step bar. 2618 tests in 266 files, all passing (with main's).
 
 ## Real, and ours
 
