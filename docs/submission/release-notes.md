@@ -131,12 +131,19 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
   its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
   metal-pay already had what we asked for. 2557 tests in 260 files, all passing (after Airwallex read back).
+- 6 November, the Demo Day pack (docs only): a 3-minute Demo Day pitch in [pitch.md](pitch.md), live `/try/sign`
+  first (sign, then tamper one cent), then the three proofs (the hash the CFO signed in Airwallex's own record of the
+  EUR 240.00 SWIFT payment, #24 refused on Metal, Claude 24 of 24), then the business and the ask; each part's words
+  checked against about 2.3 words a second. [demo-day.md](demo-day.md) gets a script with a fallback per step (network
+  down, Face ID failing, the FX quote expiring); [qa.md](qa.md) the 15 hardest questions, each answered in three
+  sentences or fewer with its evidence; [cheat-sheet.pdf](cheat-sheet.pdf) one A4 page. The earlier pitch versions and
+  the replay runbook stay. 2568 tests in 261 files, all passing.
 - 6 November, the first screen (section D): the README, Home and the form's synopsis open the same way, from one
   source (`FIRST_SCREEN` in `src/config/brand.ts`): what Purser is in one sentence, the three sentences, then "Try it
   in 30 seconds." on its own line to /try/sign; only then the badges and the details. "Why this is a company": five
   lines from docs/business/ (the problem, who buys, the intended pricing as a hypothesis, why now with Airwallex's own
   post as the source, why Purser) on the README and Home, under one note that it is not validated with customers yet.
-  2565 tests in 261 files, all passing.
+  2576 tests in 262 files, all passing.
 
 ## Real, and ours
 
