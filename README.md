@@ -9,7 +9,7 @@ Purser gives each AI agent of a small company its own Airwallex card and its own
 each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything
 beyond them, with Face ID on the exact terms.
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2468 passing](https://img.shields.io/badge/tests-2468%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2482 passing](https://img.shields.io/badge/tests-2482%20passing-brightgreen)](#run-it-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
 small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
@@ -18,9 +18,11 @@ every id below.
 **Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.**
 
 **Try it yourself: [sign with your own Face ID](https://kit11.max-31b.workers.dev/try/sign).** In a test world of your
-own, an agent proposes two payments: a rule blocks one, and you sign the other's exact terms with a passkey your phone
-or laptop makes (Face ID, Touch ID or a PIN). The server checks the signature; change one cent and the same signature is
-refused. Nothing real moves. Live since 4 November 2026.
+own, an agent proposes two payments: a rule blocks one (the page shows which of three locks stopped it: Purser's policy,
+Airwallex's card limit or Metal's mandate, each with a real example), and you sign the other's exact terms, shown as
+the CFO's approval sheet, with a passkey your phone or laptop makes (Face ID, Touch ID or a PIN). The server checks the
+signature; change one cent, the IBAN or the currency and the same signature is refused. Nothing real moves. Live since
+4 November 2026.
 
 **Also:** [the site](https://kit11.max-31b.workers.dev/) replays the main run; [`/try`](https://kit11.max-31b.workers.dev/try)
 gives an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves.
@@ -135,7 +137,7 @@ npm test          # the full suite, on stand-ins
 npm run judge     # the main run's replay, the CFO dashboard and the Scenario Lab, offline
 ```
 
-**2468 tests in 253 files, all passing** (`npx vitest run`, 6 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
+**2482 tests in 254 files, all passing** (`npx vitest run`, 6 November; 2291 in 245 at the tag `v1.0-submission`); CI runs the same suite on
 every push. Running it live (sandbox keys, a Metal RPC): [docs/run-it.md](docs/run-it.md).
 
 ## Words

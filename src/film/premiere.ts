@@ -133,8 +133,12 @@ export function trySignExample() {
   const check = checkPayment(p.amount, TEST_WORLD.balance);
   // The terms of an example world (the live page binds them to the visitor's own world id and expiry): a real hash of
   // real example terms, so the mock shows what the page shows, not a made-up string.
+  // They are the terms as the page had them when the film and docs/media/social-preview.png were made (schema
+  // kit11.try-terms/v1, 4 Nov): v2 (6 Nov) added the payee's IBAN for the visitor's own tamper, and the rendered film
+  // and image keep showing the v1 hashes, so these are v1's: today's terms without the IBAN, under v1's schema name.
   const world = createHash("sha256").update("premiere example world").digest("hex").slice(0, 16);
-  const terms = proposalTerms(p, world, "2026-11-04T12:00:00.000Z");
+  const { payee_iban: _iban, ...v2 } = proposalTerms(p, world, "2026-11-04T12:00:00.000Z");
+  const terms: ReturnType<typeof proposalTerms> = { ...v2, schema: "kit11.try-terms/v1" };
   const tampered = { ...terms, amount: fromCents(cents(p.amount) + 1) };
   const sha = (t: typeof terms) => createHash("sha256").update(canonical(t)).digest("hex");
   return { p, terms, tampered, waits: check.check === "pass" ? check.waits : "", hash: sha(terms), tamperedAmount: String(tampered.amount), tamperedHash: sha(tampered) };

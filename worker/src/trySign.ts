@@ -34,7 +34,8 @@ export const TRY_SIGN_ALL_PER_MINUTE = 600;
 export const TRY_SIGN_FAILS_PER_HOUR = 30;
 const MAX_BODY = 16_384;
 const MAX_TERMS = 4096;
-export const TRY_TERMS_SCHEMA = "kit11.try-terms/v1";
+// v2 (6 Nov): the payee's IBAN is in the terms, so the visitor can tamper with it as with the amount or the currency.
+export const TRY_TERMS_SCHEMA = "kit11.try-terms/v2";
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const B64URL = /^[A-Za-z0-9_-]+$/;
 
@@ -167,11 +168,16 @@ const money = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(
 /** For people: EUR 25,000.00. */
 const eur = (s: string) => `EUR ${s.replace(/\B(?=(\d{3})+\.)/g, ",")}`;
 
-interface FixedProposal { id: string; agent: string; says: string; payee: string; amount: string; reference: string }
+interface FixedProposal { id: string; agent: string; says: string; payee: string; iban: string; amount: string; reference: string }
+/**
+ * The test payees' IBANs. Check digits 00 are never valid (ISO 13616: they run from 02 to 98), so no bank account
+ * anywhere has these numbers: they are shaped like a German IBAN and can pay nothing.
+ */
+export const TEST_IBAN = { stockline: "DE00000000000000004471", alpine: "DE00000000000000000118" } as const;
 /** What the agent proposes: fixed text, the same for every visitor; no model is asked on this page. */
 export const FIXED_PROPOSALS: FixedProposal[] = [
-  { id: "T-0001", agent: "Treasury agent", says: "Stockline's spring order is ready; I would pay it now to keep the price.", payee: "Stockline GmbH (test payee)", amount: "6500.00", reference: "Stock order SO-4471" },
-  { id: "T-0002", agent: "Treasury agent", says: "Alpine Packaging's invoice is due Friday. It is more than I may pay alone, so I ask you.", payee: "Alpine Packaging (test payee)", amount: "1850.00", reference: "Invoice INV-2026-118" },
+  { id: "T-0001", agent: "Treasury agent", says: "Stockline's spring order is ready; I would pay it now to keep the price.", payee: "Stockline GmbH (test payee)", iban: TEST_IBAN.stockline, amount: "6500.00", reference: "Stock order SO-4471" },
+  { id: "T-0002", agent: "Treasury agent", says: "Alpine Packaging's invoice is due Friday. It is more than I may pay alone, so I ask you.", payee: "Alpine Packaging (test payee)", iban: TEST_IBAN.alpine, amount: "1850.00", reference: "Invoice INV-2026-118" },
 ];
 
 export type Check = { check: "fail"; rule: string } | { check: "pass"; waits: string };
@@ -189,7 +195,7 @@ export function checkPayment(amount: string, balance: string): Check {
 export function proposalTerms(p: FixedProposal, worldId: string, expiresAt: string): { [k: string]: TermsValue } {
   return {
     schema: TRY_TERMS_SCHEMA, test_world: worldId, kind: "payment", proposal_id: p.id, proposed_by: `${p.agent} (fixed text)`,
-    payee: p.payee, amount: p.amount, currency: TEST_WORLD.currency, reference: p.reference, expires_at: expiresAt,
+    payee: p.payee, payee_iban: p.iban, amount: p.amount, currency: TEST_WORLD.currency, reference: p.reference, expires_at: expiresAt,
     nothing_real_moves: true,
   };
 }
