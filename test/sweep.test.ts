@@ -22,6 +22,9 @@ const h = vi.hoisted(() => ({
 vi.mock("../src/metal/mandate.js", () => ({
   activeMandate: async (agent: string) => ({ agent, credentialPath: `/keys/${agent}.credential.json`, keyFile: `/keys/${agent}.key.json`, credential: { agent } }),
   mandateSpent: async (m: { agent: string }) => h.mandates[m.agent]!.spent,
+  // One credential per agent here: no replace, so no earlier pull to look up (test/metal-pull-after-replace.test.ts).
+  credentialFiles: () => [],
+  loadCredentialFile: () => { throw new Error("no credential files in this test"); },
 }));
 vi.mock("@metalntwx/metal-pay/mandates", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@metalntwx/metal-pay/mandates")>()),

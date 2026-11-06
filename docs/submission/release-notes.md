@@ -111,10 +111,37 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   are limited per address and for everyone. Without Max's scoped key in the Worker's secrets the page shows the main
   run's recorded quote, labelled. The receipt carries the quote and verify-receipt reports it. Tested on Max's iPhone
   (Safari, Face ID) on 6 November: signed, tamper refused, receipt downloaded. 2521 tests in 256 files, all passing.
+- 6 November, Airwallex read back (section B): /proof and /airwallex show what the Airwallex sandbox itself returns for
+  the main run, read with GET only (nothing created, updated or cancelled) into two dated, sanitized records. "The hash
+  the CFO signed travels with the payment": the terms hash Max signed with Face ID for P-0005 next to the
+  `metadata.approval_sha256` Airwallex returns for transfer `03360bfa…3985`, matched in code
+  (`docs/runs/airwallex-transfer-approval-2026-11-06.json`). Each agent's card: the CFO policy rule next to the control
+  Airwallex enforces (limit per purchase and per month, merchant category, currency, end date), 3 of 3 cards matching;
+  on /airwallex one line at the top, each card side by side in a fold
+  (`docs/runs/airwallex-cards-2026-11-06.json`; no card number beyond its last four digits). Live after the Worker is
+  redeployed. 2529 tests in 257 files, all passing.
+- 6 November, the Metal story: /metal opens with the main run on one screen, each claim linked to Metal's testnet
+  explorer and every figure read from the record (`src/redesign/metalStory.ts`): 3 mandates on chain, one per agent;
+  86 Metal payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep; each matched on
+  chain by the run's data-qa); #24 refused on chain; the mandates replaced after Face ID. The separate runs (four eyes,
+  passkeys as owners, clearing, clearing load, receive policy, compliance) are folded below it, each dated with its
+  run record. A review of Purser's use of `metal-agent` and `metal-pay` against their own docs
+  ([metal-review.md](../metal-review.md)) fixed four things: a pull retried after a mandate replace first asks the old
+  credential, so it is never paid twice (this did not occur in the main run: its 4 pulls, 1 sweep and 3 refunds, were each paid once with their own transaction, and none was retried across a mandate replace; a regression test, `test/metal-pull-after-replace.test.ts`, fails without the fix); a clearing wallet is kept for one Clearing deployment; a lost clearing answer
+  is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
+  its wording. The feedback for Metal and Airwallex is cut to what worked and what was hard, and corrected where
+  metal-pay already had what we asked for. 2557 tests in 260 files, all passing (after Airwallex read back).
+- 6 November, the Demo Day pack (docs only): a 3-minute Demo Day pitch in [pitch.md](pitch.md), live `/try/sign`
+  first (sign, then tamper one cent), then the three proofs (the hash the CFO signed in Airwallex's own record of the
+  EUR 240.00 SWIFT payment, #24 refused on Metal, Claude 24 of 24), then the business and the ask; each part's words
+  checked against about 2.3 words a second. [demo-day.md](demo-day.md) gets a script with a fallback per step (network
+  down, Face ID failing, the FX quote expiring); [qa.md](qa.md) the 15 hardest questions, each answered in three
+  sentences or fewer with its evidence; [cheat-sheet.pdf](cheat-sheet.pdf) one A4 page. The earlier pitch versions and
+  the replay runbook stay. 2568 tests in 261 files, all passing.
 - 6 November, /try/sign's expired quote: the sheet's rows read "Proposal expires" and "Quote expires"; while the quote
   is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
-  guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2522 tests
-  in 256 files, all passing.
+  guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2569 tests
+  in 261 files, all passing (with main's).
 - 6 November, /try/sign's Treasury agent speaks through Claude Haiku: the waiting payment's sentence is one real Haiku
   call, given only the test world's invoice, balance, floor and limit (never a visitor's words), labelled "Claude
   Haiku · live" with its request id behind "more"; USD 1 a day, 10 a minute for everyone, 6 an hour per address, 8 s;
@@ -131,13 +158,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   passing.
 - 6 November, the Haiku sentence after review: the amounts go in written the page's way ("EUR 1,850.00"), and code
   checks every amount that comes back against the four it was given, exactly as given; else the fixed sentence,
-  labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup. The
-  live call stays off until the Worker variable TRY_SIGN_HAIKU is exactly "on", which only Max sets ("fixed text (live
-  model off)"); the deploy guard checks that no script sets it. 2548 tests in 258 files, all passing.
+  labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup.
+  2589 tests in 262 files, all passing (with main's); 2592 in 263 with /try/verify.
 - 6 November, /try/sign from 1024 px: the left column under the start button shows the three steps once more, one
   line each with a short gloss ("A payment above its limit, with its exact terms." / "A test passkey signs the hash of
-  those terms." / "The server checks it; one cent changed and it fails."), beside "One policy → three locks". 2549
-  tests in 258 files, all passing.
+  those terms." / "The server checks it; one cent changed and it fails."), beside "One policy → three locks". 2594
+  tests in 263 files, all passing (with main's).
 
 ## Real, and ours
 

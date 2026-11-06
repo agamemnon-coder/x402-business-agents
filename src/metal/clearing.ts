@@ -9,7 +9,7 @@
 //   - a seller's earnings leave only once their epoch is final, about 20 minutes later.
 // Keys: the payer's gas-and-deposit key (an ordinary EOA) and both clearing wallets live in the keys dir.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import type { Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -53,9 +53,28 @@ async function need(): Promise<ClearingDeployment> {
   return d;
 }
 
-/** Opens a party's clearing wallet (a P-256 key and its receipt journal). One process at a time owns it. */
-export function openWallet(party: ClearingParty) {
-  return openClearingWallet(keyPath(WALLET_DIRS[party]));
+/**
+ * metal-pay 0.3.4: "A wallet's record is for one Clearing deployment: open a new wallet for a replacement." The
+ * deployment a wallet was first opened for is written beside it (`<wallet>.deployment.json`); a wallet is never opened
+ * for another one, so a redeployed Clearing contract is refused here instead of being paid from a stale record (Metal
+ * review, 6 November: docs/metal-review.md). A wallet from before this check takes the deployment it is opened for now.
+ */
+export function walletDirFor(party: ClearingParty, d: Pick<ClearingDeployment, "settlement">, dir = keyPath(WALLET_DIRS[party])): string {
+  const marker = `${dir}.deployment.json`;
+  if (existsSync(marker)) {
+    const was = (JSON.parse(readFileSync(marker, "utf8")) as { settlement?: string }).settlement ?? "";
+    if (was.toLowerCase() !== d.settlement.toLowerCase()) {
+      throw new Error(`the ${party} clearing wallet belongs to the Clearing deployment ${was}, and Metal's facilitator now names ${d.settlement}: withdraw from the old deployment and open a new wallet for this one`);
+    }
+  } else {
+    writeFileSync(marker, `${JSON.stringify({ settlement: d.settlement })}\n`, { mode: 0o600 });
+  }
+  return dir;
+}
+
+/** Opens a party's clearing wallet (a P-256 key and its receipt journal) for this deployment. One process at a time owns it. */
+export function openWallet(party: ClearingParty, d: Pick<ClearingDeployment, "settlement">) {
+  return openClearingWallet(walletDirFor(party, d));
 }
 
 const payerAccount = () => privateKeyToAccount((JSON.parse(readFileSync(keyPath(CUSTOMER_CLEARING_KEY), "utf8")) as { privateKey: Hex }).privateKey);
@@ -63,7 +82,7 @@ const payerAccount = () => privateKeyToAccount((JSON.parse(readFileSync(keyPath(
 /** Summit puts `units` of *USDZ into clearing under its clearing key. */
 export async function depositCustomer(units: bigint): Promise<{ approveTx: Hex | null; depositTx: Hex; account: Hex }> {
   const d = await need();
-  const w = await openWallet("customer");
+  const w = await openWallet("customer", d);
   try {
     const r = await depositToClearing({ rpcUrl: rpcUrl(), chainId: CHAIN_ID, from: payerAccount(), settlement: d.settlement, asset: d.asset, account: w.signer.publicKey, amount: units });
     return { ...r, account: w.signer.publicKey };
@@ -75,7 +94,7 @@ export async function depositCustomer(units: bigint): Promise<{ approveTx: Hex |
 /** What a party may spend now, in base units: the service's own estimate (it can read low around an epoch close). */
 export async function spendable(party: ClearingParty): Promise<{ account: Hex; units: bigint }> {
   const d = await need();
-  const w = await openWallet(party);
+  const w = await openWallet(party, d);
   try {
     return { account: w.signer.publicKey, units: await clearingSpendable({ rpcUrl: rpcUrl(), settlement: d.settlement, serviceUrl: d.serviceUrl, account: w.signer.publicKey }) };
   } finally {
@@ -86,7 +105,7 @@ export async function spendable(party: ClearingParty): Promise<{ account: Hex; u
 /** Takes the seller's finalized earnings out of clearing to `destination`; `gasKeyFile` pays the transactions. */
 export async function withdrawSeller(destination: Hex, gasKeyFile: string): Promise<ClearingWithdrawal> {
   const d = await need();
-  const w = await openWallet("seller");
+  const w = await openWallet("seller", d);
   try {
     const from = privateKeyToAccount((JSON.parse(readFileSync(gasKeyFile, "utf8")) as { privateKey: Hex }).privateKey);
     return await withdrawFromClearing({ rpcUrl: rpcUrl(), chainId: CHAIN_ID, from, settlement: d.settlement, serviceUrl: d.serviceUrl, signer: w.signer, destination });
@@ -98,7 +117,7 @@ export async function withdrawSeller(destination: Hex, gasKeyFile: string): Prom
 /** A clearing payer for Summit, paying at most `maxUnits` a request. The caller closes the wallet. */
 export async function customerClearingClient(maxUnits: bigint) {
   const d = await need();
-  const w = await openWallet("customer");
+  const w = await openWallet("customer", d);
   const client = createClearingClient({ serviceUrl: d.serviceUrl, rpcUrl: rpcUrl(), network: NETWORK, settlement: d.settlement, asset: d.asset, signer: w.signer, store: w.store, maxAmount: maxUnits });
   return { client, wallet: w };
 }
@@ -117,6 +136,10 @@ export function betweenEpochs(e: unknown): boolean {
  */
 export function outcomeUnknown(e: unknown): boolean {
   for (let x: unknown = e; x && typeof x === "object"; x = (x as { cause?: unknown }).cause) {
+    // metal-pay's ClearingRefusal names it: answer_lost, or payment_held (send the held request again). The message is
+    // the fallback for an error that carries no reason.
+    const reason = (x as { reason?: string }).reason;
+    if (reason === "answer_lost" || reason === "payment_held") return true;
     if (/outcome is unknown|no receipt/i.test((x as Error).message ?? "")) return true;
   }
   return false;
