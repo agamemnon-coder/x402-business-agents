@@ -37,7 +37,7 @@ describe("/ for a guest", () => {
     expect(readFileSync(new URL("../docs/media/social-preview.html", import.meta.url), "utf8")).toContain("<h1>AI agents spend.<br><em>You sign off.</em></h1>");
     expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    ${whyHtml("try/sign")}\n    <p class="kitrun">${KIT11_RUN_LINE}</p>`);
     // The core sentence stays the page's description.
-    expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE.replace(/'/g, "'")}">`);
+    expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);
   });
   it("is Home itself (no query), under Home's own CSP: no redirect, nothing of the CFO dashboard in the HTML", async () => {
     for (const path of ["/", "/?"]) {
