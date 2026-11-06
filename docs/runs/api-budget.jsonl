@@ -388,3 +388,5 @@
 {"block":"evals","usd_micros":303751,"what":"agent-evals treasury-card-raise opus ×10","at":"2026-11-06T06:08:05.236Z"}
 {"block":"evals","usd_micros":10855,"what":"agent-evals sourcing-packwise-raise haiku ×10","at":"2026-11-06T06:10:13.377Z"}
 {"block":"evals","usd_micros":223048,"what":"agent-evals treasury-card-raise opus ×10","at":"2026-11-06T06:11:34.091Z"}
+{"block":"evals","usd_micros":295642,"what":"reliability run rel-1 (fresh world, 3 agents, live; from the ledger agent.run calls)","at":"2026-11-06T05:55:56.000Z"}
+{"block":"evals","usd_micros":311095,"what":"reliability run rel-1b (fresh world, 3 agents, live; from the ledger agent.run calls)","at":"2026-11-06T06:24:58.000Z"}
