@@ -111,6 +111,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   are limited per address and for everyone. Without Max's scoped key in the Worker's secrets the page shows the main
   run's recorded quote, labelled. The receipt carries the quote and verify-receipt reports it. Tested on Max's iPhone
   (Safari, Face ID) on 6 November: signed, tamper refused, receipt downloaded. 2521 tests in 256 files, all passing.
+- 6 November, Airwallex read back (section B): /proof and /airwallex show what the Airwallex sandbox itself returns for
+  the main run, read with GET only (nothing created, updated or cancelled) into two dated, sanitized records. "The hash
+  the CFO signed travels with the payment": the terms hash Max signed with Face ID for P-0005 next to the
+  `metadata.approval_sha256` Airwallex returns for transfer `03360bfa…3985`, matched in code
+  (`docs/runs/airwallex-transfer-approval-2026-11-06.json`). Each agent's card: the CFO policy rule next to the control
+  Airwallex enforces (limit per purchase and per month, merchant category, currency, end date), 3 of 3 cards matching;
+  on /airwallex one line at the top, each card side by side in a fold
+  (`docs/runs/airwallex-cards-2026-11-06.json`; no card number beyond its last four digits). Live after the Worker is
+  redeployed. 2529 tests in 257 files, all passing.
 
 ## Real, and ours
 

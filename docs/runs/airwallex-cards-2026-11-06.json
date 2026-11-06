@@ -1,0 +1,131 @@
+{
+  "read_at": "2026-11-06T09:30:51.734Z",
+  "method": "GET only, Airwallex sandbox: GET /api/v1/issuing/cards (list), then GET /api/v1/issuing/cards/{id} for each card. Nothing was created, updated or cancelled.",
+  "why": "The three agents' cards of the main run (docs/demo/main-run.json, snapshot.cards) with the controls Airwallex itself enforces: limits, merchant categories, currency, end date.",
+  "run": "docs/demo/main-run.json",
+  "test_money": true,
+  "selection": "Cards whose masked number ends in a last4 of the main run's snapshot.cards and whose nickname ends in (3efefc), the main run's principal. 1 older card(s) with the same last4 from an earlier test world (nickname suffix other than (3efefc)) left out.",
+  "sanitized": "No card number beyond its last four digits, no CVV, no cardholder id or name, no delivery details; card ids masked to their last four characters. The controls are kept as Airwallex returns them.",
+  "cards": [
+    {
+      "last4": "1423",
+      "card_id_last4": "251f",
+      "nick_name": "sourcing agent: warehouse and data software (3efefc)",
+      "card_status": "ACTIVE",
+      "brand": "VISA",
+      "form_factor": "VIRTUAL",
+      "program": {
+        "purpose": "COMMERCIAL",
+        "type": "DEBIT"
+      },
+      "created_by": "Northwind CFO policy",
+      "created_at": "2026-11-03T06:06:27.783+0000",
+      "updated_at": "2026-11-03T11:32:59.400+0000",
+      "controls": {
+        "transaction_limits": {
+          "currency": "EUR",
+          "limits": [
+            {
+              "amount": 46,
+              "interval": "PER_TRANSACTION"
+            },
+            {
+              "amount": 100,
+              "interval": "MONTHLY"
+            }
+          ]
+        },
+        "allowed_merchant_categories": [
+          "5734"
+        ],
+        "allowed_currencies": [
+          "EUR"
+        ],
+        "active_to": "2027-02-01T06:06:25.971+00:00",
+        "allowed_transaction_count": "MULTIPLE",
+        "allowed_merchant_countries": [],
+        "blocked_transaction_usages": []
+      }
+    },
+    {
+      "last4": "6203",
+      "card_id_last4": "21cf",
+      "nick_name": "support agent: helpdesk software (3efefc)",
+      "card_status": "ACTIVE",
+      "brand": "VISA",
+      "form_factor": "VIRTUAL",
+      "program": {
+        "purpose": "COMMERCIAL",
+        "type": "DEBIT"
+      },
+      "created_by": "Northwind CFO policy",
+      "created_at": "2026-11-03T06:06:29.394+0000",
+      "updated_at": "2026-11-03T06:06:29.394+0000",
+      "controls": {
+        "transaction_limits": {
+          "currency": "EUR",
+          "limits": [
+            {
+              "amount": 60,
+              "interval": "PER_TRANSACTION"
+            },
+            {
+              "amount": 150,
+              "interval": "MONTHLY"
+            }
+          ]
+        },
+        "allowed_merchant_categories": [
+          "7372"
+        ],
+        "allowed_currencies": [
+          "EUR"
+        ],
+        "active_to": "2027-02-01T06:06:25.971+00:00",
+        "allowed_transaction_count": "MULTIPLE",
+        "allowed_merchant_countries": [],
+        "blocked_transaction_usages": []
+      }
+    },
+    {
+      "last4": "6279",
+      "card_id_last4": "2daa",
+      "nick_name": "treasury agent: bookkeeping (3efefc)",
+      "card_status": "ACTIVE",
+      "brand": "VISA",
+      "form_factor": "VIRTUAL",
+      "program": {
+        "purpose": "COMMERCIAL",
+        "type": "DEBIT"
+      },
+      "created_by": "Northwind CFO policy",
+      "created_at": "2026-11-03T06:06:30.816+0000",
+      "updated_at": "2026-11-03T06:06:30.816+0000",
+      "controls": {
+        "transaction_limits": {
+          "currency": "EUR",
+          "limits": [
+            {
+              "amount": 25,
+              "interval": "PER_TRANSACTION"
+            },
+            {
+              "amount": 50,
+              "interval": "MONTHLY"
+            }
+          ]
+        },
+        "allowed_merchant_categories": [
+          "5734"
+        ],
+        "allowed_currencies": [
+          "EUR"
+        ],
+        "active_to": "2027-02-01T06:06:25.971+00:00",
+        "allowed_transaction_count": "MULTIPLE",
+        "allowed_merchant_countries": [],
+        "blocked_transaction_usages": []
+      }
+    }
+  ]
+}

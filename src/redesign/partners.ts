@@ -1,7 +1,9 @@
 // The partner pages in the redesign's style (mega-prompt v4, C1): /metal, /airwallex, /visa, /claude. Each is short
 // (about 150 visible words at most): a picture of the flow first, three or four numbers, one sentence, and everything
 // else folded (<details>): the live proof from the main run (the same list as Proof's card), the docs we built on, what
-// is simulated. Every figure from the record (src/redesign/run.ts) or the TAP run's record; logos only as "built on",
+// is simulated. /airwallex also carries Airwallex read back (section B, 6 Nov; src/redesign/airwallexProof.ts): the hash
+// the CFO signed beside the one Airwallex returns with the payment, and each card's controls beside the CFO policy.
+// Every figure from the record (src/redesign/run.ts), the TAP run's record or the read-back records; logos only as "built on",
 // never a Visa logo. No script. Also the clean 404 page.
 
 import { readFileSync } from "node:fs";
@@ -9,6 +11,7 @@ import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../con
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
+import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { esc, icon, page } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
@@ -48,7 +51,8 @@ abbr[title] { text-decoration: underline dotted; text-underline-offset: 3px; }
 a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 15px; }
 .open { font-size: 16px; font-weight: 650; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 .nf { padding: 64px 0; } .nf .wrap { display: grid; gap: 16px; justify-items: start; } .nf h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
-.nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }`;
+.nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
+${READBACK_CSS}`;
 
 const SOURCE = (run: AgentRun) => `Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
@@ -106,6 +110,9 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   const fx = fxOf(run.record), t = timings(run.record);
   const used = airwallexData().features.filter((f) => /^(cards|controls|transactions|swift|deposit)$/.test(f.id));
   const eur = licence ? `€${licence.amount.replace(/\.00$/, "")}` : "";
+  // Airwallex, read back (section B): the CFO's hash with the payment, and each card's controls beside the CFO policy.
+  const hash = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
+  const readBack = hash || rows.length ? `<div class="awrb">${hashBlockHtml(hash)}${cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""}</div>` : "";
   return shell(run, {
     title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
@@ -114,6 +121,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
       node("circle-check", licence ? `${eur} PAID by SWIFT` : "Paid by SWIFT", licence ? `${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID, ${SANDBOX_SETTLED} · ` : ""}Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
     nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines), "card decline at the limit (TAP run)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
     line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
+    extra: readBack,
     folds: fold("The live proof, with every Airwallex id", p.airwallex) + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
       + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."),
         ...(licence ? [plainLi(`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`)] : []),
