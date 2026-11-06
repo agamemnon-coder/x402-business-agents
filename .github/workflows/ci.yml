@@ -1,6 +1,6 @@
 # Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
 # test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), a juror's first run
-# (npm run judge on a fresh clone, then the guest pages in Chromium), the SBOM and Semgrep (blocking), and gitleaks on the pushed commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
+# (npm run judge on a fresh clone, then the guest pages in Chromium, and /try/sign in WebKit up to the passkey step), the SBOM and Semgrep (blocking), and gitleaks on the pushed commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
 # No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
 name: ci
 on:
@@ -52,6 +52,11 @@ jobs:
         run: npx tsx test/browser/trace.check.ts test-results/trace
       - name: /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper)
         run: npx tsx test/browser/trysign.check.ts test-results/trysign
+      # Safari's engine, up to the passkey step: Playwright's WebKit has no virtual authenticator, so no passkey is made
+      # or faked there (the passkey and the signature are the Chromium step above and the server's tests).
+      - run: npx playwright install --with-deps webkit
+      - name: /try/sign in WebKit up to the passkey step (390 px light, 1440 px dark)
+        run: npx tsx test/browser/trysign-webkit.check.ts test-results/trysign-webkit
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
