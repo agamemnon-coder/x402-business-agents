@@ -113,8 +113,8 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   (Safari, Face ID) on 6 November: signed, tamper refused, receipt downloaded. 2521 tests in 256 files, all passing.
 - 6 November, /try/sign's expired quote: the sheet's rows read "Proposal expires" and "Quote expires"; while the quote
   is expired, "Create your test passkey" and "Sign with Face ID" are off until a new quote is fetched. The deploy
-  guard also covers METAL_RPC_URL and ANTHROPIC_API_KEY: no script or config in the repo puts them. 2522 tests in 256
-  files, all passing.
+  guard also covers ANTHROPIC_API_KEY, and checks that METAL_RPC_URL never becomes a Worker secret or var. 2522 tests
+  in 256 files, all passing.
 
 ## Real, and ours
 
