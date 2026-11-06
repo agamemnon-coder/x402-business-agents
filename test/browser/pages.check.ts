@@ -274,6 +274,32 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const rb = await page.locator("#airwallex-readback + .awrb").innerText().catch(() => "");
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
+    // Proof's "Policy and card side by side" lands on /airwallex#controls with the cards' fold open, scrolled to it
+    // (src/redesign/ui.ts OPEN_TARGET_JS); a card's own anchor (#card-sourcing) opens the same fold. At 390 and 1440 px.
+    if (w === 390 || w === 1440) {
+      const fold = async (want: string) => (await page.evaluate(`(() => {
+        const d = document.getElementById("controls"), t = document.getElementById(${JSON.stringify(want)});
+        const head = document.querySelector("header.top").getBoundingClientRect().bottom, r = t.getBoundingClientRect();
+        return { open: d.open, cards: [...d.querySelectorAll(".awcard")].filter((c) => c.getClientRects().length > 0 && c.getBoundingClientRect().height > 0).length, top: Math.round(r.top), head: Math.round(head), inView: r.top >= head - 2 && r.top < innerHeight / 2 };
+      })()`)) as { open: boolean; cards: number; top: number; head: number; inView: boolean };
+      const link = page.locator("a.open", { hasText: "Policy and card side by side" });
+      if ((await link.getAttribute("href")) !== "airwallex#controls") fail(`/proof ${tag}: "Policy and card side by side" does not point at airwallex#controls`);
+      await link.click();
+      await page.waitForURL(/\/airwallex#controls$/);
+      await page.waitForTimeout(300);
+      const c = await fold("controls");
+      if (!c.open || c.cards !== 3 || !c.inView) fail(`/airwallex#controls ${tag}: the cards' fold is not open and in view (open ${c.open}, ${c.cards} cards shown, top ${c.top} px under a header to ${c.head} px)`);
+      await look(page, `/airwallex#controls ${tag}`, w);
+      await page.screenshot({ path: join(shots, `airwallex-anchor-controls-${tag}.png`) });
+      await page.goto(`${base}/proof`, { waitUntil: "load" });
+      await page.goto(`${base}/airwallex#card-sourcing`, { waitUntil: "load" });
+      await page.waitForTimeout(300);
+      const k = await fold("card-sourcing");
+      if (!k.open || k.cards !== 3 || !k.inView) fail(`/airwallex#card-sourcing ${tag}: the fold around the card is not open, or the card not in view (open ${k.open}, top ${k.top} px)`);
+      // Without a hash the fold stays closed, as designed.
+      await page.goto(`${base}/airwallex`, { waitUntil: "load" });
+      if (await page.evaluate(`document.getElementById("controls").open`)) fail(`/airwallex ${tag}: the cards' fold is open without a link into it`);
+    }
     await page.goto(`${base}/metal/report`, { waitUntil: "load" });
     await look(page, `/metal/report ${tag}`, w);
     // Any other address: the clean 404 page, with the four tabs.

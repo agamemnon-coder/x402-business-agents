@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
+import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { scriptBlocks } from "./support/scriptBlocks.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 
 const pages = buildPages();
@@ -158,7 +160,8 @@ describe("the site after v4", () => {
       expect(main.indexOf('class="flow card"')).toBeLessThan(main.indexOf("<details"));
       expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
-      expect(html).not.toMatch(/<script/);
+      // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it).
+      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);
       // Each page is labelled with the run it shows: the main run, which on /visa has its own TAP-signed card buy
       // (the separate TAP run of 2 Nov is named inside, under its own label).
       expect(html).toContain(run.label);

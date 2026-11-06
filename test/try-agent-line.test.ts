@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { HAIKU, claudeSentence } from "../src/try/claude.js";
 import { AGENT_LINE_ALL_PER_MINUTE, AGENT_LINE_DAILY_USD, AGENT_LINE_PER_HOUR, AGENT_LINE_SYSTEM, AGENT_LINE_TIMEOUT_MS, agentLineFacts, agentLineGiven, agentLineSource, amountsFit, checkLine, cleanLine, moneyForPeople } from "../worker/src/agentLine.js";
-import { VOICE_LABELS, trySignPage } from "../src/try/sign.js";
+import { VOICE_LABELS, WHATS_REAL, trySignPage } from "../src/try/sign.js";
 import { FIXED_PROPOSALS, TEST_WORLD, TrySignDesk } from "../worker/src/trySign.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import Database from "better-sqlite3";
@@ -278,7 +278,57 @@ describe("the Worker's key: the call is made when the Worker has ANTHROPIC_API_K
       expect(c.voice).toMatchObject({ source: "fixed", reason: "unavailable" });
     }
     expect(seen).toHaveLength(1);
-    expect(Object.keys(VOICE_LABELS).sort()).toEqual(["budget", "mismatch", "unavailable"]);
+    expect(Object.keys(VOICE_LABELS).sort()).toEqual(["budget", "mismatch", "off", "unavailable"]);
+  });
+});
+
+/** The switch's sentence in "What's real?", word for word. */
+const SWITCH_LINE = "An emergency switch on the server (TRY_SIGN_HAIKU=off) stops the call; the fixed sentence is then shown, labelled “fixed text (live model switched off)”.";
+
+describe("the emergency switch: the Worker var TRY_SIGN_HAIKU=off stops the Haiku call; default on", () => {
+  const KEY = { ANTHROPIC_API_KEY: "sk-test-not-a-key" };
+  const ok = "Alpine Packaging's EUR 1,850.00 invoice is above the EUR 500.00 I may pay alone, so I need your signature.";
+
+  it("off (any case, trimmed): no request to Anthropic, no budget spent, the fixed sentence labelled \"live model switched off\"", async () => {
+    for (const flag of ["off", "OFF", "Off", " off ", "\toFF\n"]) {
+      const { f, seen } = fakeApi({ sentence: ok });
+      const src = agentLineSource({ ...KEY, TRY_SIGN_HAIKU: flag }, f);
+      expect({ flag, src }).toEqual({ flag, src: "off" });
+      const db = new Database(":memory:");
+      const b = waiting(await world(new TrySignDesk(sqlOver(db), { now: () => t0, agentLine: src })));
+      expect(seen).toHaveLength(0);
+      expect(b.says).toBe(FIXED_PROPOSALS[1]!.says);
+      expect(b.voice).toMatchObject({ source: "fixed", reason: "off" });
+      expect(JSON.parse(b.canonical).proposed_by).toBe("Treasury agent (fixed text)");
+      expect(db.prepare("SELECT COUNT(*) AS n FROM ts_spend").get()).toEqual({ n: 0 });
+    }
+    expect(VOICE_LABELS.off).toBe("fixed text (live model switched off)");
+  });
+
+  it("absent: the call runs, as before", async () => {
+    const { f, seen } = fakeApi({ sentence: ok });
+    const src = agentLineSource(KEY, f);
+    expect(typeof src).toBe("function");
+    const b = waiting(await world(new TrySignDesk(sqlOver(new Database(":memory:")), { now: () => t0, agentLine: src })));
+    expect(seen).toHaveLength(1);
+    expect(b).toMatchObject({ says: ok, voice: { source: "model", model: HAIKU } });
+  });
+
+  it("any other value (ON, on, empty, false, 0, disabled, \"of\", \"off now\"): the call runs", async () => {
+    for (const flag of ["ON", "on", "", " ", "false", "0", "disabled", "of", "off now", "no"]) {
+      const { f, seen } = fakeApi({ sentence: ok });
+      const src = agentLineSource({ ...KEY, TRY_SIGN_HAIKU: flag }, f);
+      expect({ flag, kind: typeof src }).toEqual({ flag, kind: "function" });
+      const b = waiting(await world(new TrySignDesk(sqlOver(new Database(":memory:")), { now: () => t0, agentLine: src })));
+      expect({ flag, calls: seen.length, voice: b.voice?.source }).toEqual({ flag, calls: 1, voice: "model" });
+    }
+    // Without the key the switch changes nothing: no call either way.
+    expect(agentLineSource({ TRY_SIGN_HAIKU: "on" })).toBeNull();
+  });
+
+  it("\"What's real?\" says the switch exists, in one sentence", () => {
+    expect(WHATS_REAL.real.filter((l) => l.includes(SWITCH_LINE))).toHaveLength(1);
+    expect(trySignPage()).toContain(SWITCH_LINE);
   });
 });
 

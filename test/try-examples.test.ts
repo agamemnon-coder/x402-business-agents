@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { cfoApproval, floorsHeld, tryLocks } from "../src/try/examples.js";
-import { TAMPER_FIELDS, TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEP_GLOSS, TRY_SIGN_STEPS, WHATS_REAL, trySignPage } from "../src/try/sign.js";
+import { TAMPER_FIELDS, TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_START_NOTE, TRY_SIGN_STEPS, WHATS_REAL, trySignPage } from "../src/try/sign.js";
 import { proposalTerms, FIXED_PROPOSALS } from "../worker/src/trySign.js";
 
 const read = <T>(p: string) => JSON.parse(readFileSync(new URL(`../${p}`, import.meta.url), "utf8")) as T;
@@ -113,15 +113,24 @@ describe("the page's frame: three steps, one line of disclaimer, \"What's real?\
     expect(main.indexOf('id="go-world"')).toBeLessThan(main.indexOf('id="s-props"'));
   });
 
-  it("from 1024 px, under the start button: the three steps once more, one line each with a short gloss", () => {
+  it("from 1024 px, under the start button: one short line, not the steps a second time", () => {
     const go = block(main, '<div class="go">', "div").whole;
-    const ol = block(go, '<ol class="gosteps"', "ol").whole;
-    expect(go.indexOf('id="go-world"')).toBeLessThan(go.indexOf('<ol class="gosteps"'));
-    const items = ol.split("<li>").slice(1).map((x) => [/<b>([^<]*)<\/b>/.exec(x)?.[1], /<small>([^<]*)<\/small>/.exec(x)?.[1]]);
-    expect(items).toEqual(TRY_SIGN_STEPS.map((s, i) => [s, TRY_SIGN_STEP_GLOSS[i]]));
-    for (const g of TRY_SIGN_STEP_GLOSS) expect(g.split(" ").length).toBeLessThanOrEqual(10);
-    // Hidden below 1024 px (the progress bar says the steps on a phone).
-    expect(page).toMatch(/\.diagram, \.gosteps \{ display: none; \}/);
+    expect(go).toContain(`<p class="gonote" id="go-note">${TRY_SIGN_START_NOTE}</p>`);
+    expect(go.indexOf('id="go-world"')).toBeLessThan(go.indexOf('id="go-note"'));
+    expect(TRY_SIGN_START_NOTE.split(" ").length).toBeLessThanOrEqual(14);
+    // The steps are said once, in the step bar at the top.
+    for (const s of TRY_SIGN_STEPS) expect(main.split(`>${s}<`).length - 1).toBe(1);
+    expect(go).not.toMatch(/<ol|<li/);
+    // Hidden below 1024 px.
+    expect(page).toMatch(/\.diagram, \.gonote \{ display: none; \}/);
+  });
+
+  it("on a phone: the terms' labels stay on one line, and the sheet scrolls clear of the sticky parts", () => {
+    expect(page).toContain("dl.facts { grid-template-columns: max-content minmax(0, 1fr);");
+    expect(page).toContain("dl.facts dt { white-space: nowrap; }");
+    expect(page).toContain("scroll-margin-top: var(--stick, 150px)");
+    expect(page).toContain('el("dt", "", ["Proposal expires"])');
+    expect(page).toContain('el("dt", "", ["Quote expires"])');
   });
 
   it("one line of disclaimer at the top, the honest detail inside \"What's real?\"", () => {

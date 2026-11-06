@@ -5,7 +5,9 @@
 // the visitor's passkey, and its sentence is not in the signed terms. Limits: a budget of USD 1 a UTC day, a few calls a
 // minute for everyone and a few an hour per address, an 8 s timeout; past any of them, or on any error, the fixed
 // sentence is shown, labelled. The call is made whenever the Worker has its ANTHROPIC_API_KEY secret (Max sets it
-// himself; no script or config in this repo does).
+// himself; no script or config in this repo does), unless the emergency switch is thrown: the Worker var
+// TRY_SIGN_HAIKU set to "off" (any case, trimmed) stops it, with no request to Anthropic and no budget spent; the
+// fixed sentence is shown, labelled "fixed text (live model switched off)". Any other value, or none, leaves it on.
 //
 // The amounts go in already written the page's way ("EUR 1,850.00"), and code checks the sentence that comes back:
 // every amount in it must be one of the amounts it was given, written exactly as given (see amountsFit), else the
@@ -27,13 +29,18 @@ export const AGENT_LINE_RESERVE_USD = 0.002;
 /** Where a proposal's sentence came from, as the page labels it. */
 export type Voice =
   | { source: "model"; model: string; request_id: string | null }
-  | { source: "fixed"; reason: "budget" | "unavailable" | "mismatch"; why: string };
+  | { source: "fixed"; reason: "budget" | "unavailable" | "mismatch" | "off"; why: string };
+
+/** The emergency switch: only "off" (any case, surrounding spaces ignored) stops the call; anything else leaves it on. */
+export const agentLineSwitchedOff = (value: string | undefined) => (value ?? "").trim().toLowerCase() === "off";
 
 /**
  * Where the desk's sentence comes from, from the Worker's env: a function that asks Haiku for one sentence when the
- * Worker has its Anthropic key, else null (the fixed sentence). The desk is handed that function, never the key itself.
+ * Worker has its Anthropic key, else null (the fixed sentence); "off" when TRY_SIGN_HAIKU is "off" (the emergency
+ * switch: no call at all). The desk is handed that function, never the key itself.
  */
-export function agentLineSource(env: { ANTHROPIC_API_KEY?: string }, fetcher: typeof fetch = fetch): SentenceSource | null {
+export function agentLineSource(env: { ANTHROPIC_API_KEY?: string; TRY_SIGN_HAIKU?: string }, fetcher: typeof fetch = fetch): SentenceSource | "off" | null {
+  if (agentLineSwitchedOff(env.TRY_SIGN_HAIKU)) return "off";
   const model = env.ANTHROPIC_API_KEY;
   return model ? claudeSentence(model, fetcher, AGENT_LINE_TIMEOUT_MS) : null;
 }

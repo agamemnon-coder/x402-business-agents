@@ -44,7 +44,7 @@ const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
-const { TAMPER_VERDICT, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_STEP_GLOSS, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TAMPER_VERDICT, TRY_SIGN_END, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_START_NOTE, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { TRY_IT } = await import("../../src/config/brand.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
@@ -206,17 +206,19 @@ for (const [width, scheme] of RUNS) {
     check(!!startFill.diagram && startFill.diagram.left > width * 0.45 && startFill.diagram.bottom <= height && startFill.diagram.locks === 3,
       `${tag}: A4: the right column shows "one policy → three locks" (from x ${Math.round(startFill.diagram?.left ?? 0)}, three locks, above the fold)`);
     check(startFill.fill >= 0.4, `${tag}: A4: the start screen is not mostly empty (content covers ${Math.round(startFill.fill * 100)}% of the screen below the header)`);
-    // The left column under the start button: the three steps, each with its gloss, filling the column beside the diagram.
+    // The left column (Max, 6 Nov: no second copy of the steps; the bar at the top says them): the start button, the
+    // hook and one short line, level with the middle of the diagram so the column does not look empty.
     const left = await page.evaluate(`(() => {
-      const ls = [...document.querySelectorAll("#s-world .gosteps li")].filter((l) => l.getClientRects().length > 0);
       const go = document.querySelector("#s-world .go").getBoundingClientRect(), d = document.querySelector("#diagram").getBoundingClientRect();
-      return { lines: ls.map((l) => [l.querySelector("b").textContent, l.querySelector("small").textContent]), goBottom: go.bottom, goRight: go.right, dTop: d.top, dBottom: d.bottom, dLeft: d.left };
-    })()`) as { lines: [string, string][]; goBottom: number; goRight: number; dTop: number; dBottom: number; dLeft: number };
-    check(JSON.stringify(left.lines) === JSON.stringify(TRY_SIGN_STEPS.map((s, i) => [s, TRY_SIGN_STEP_GLOSS[i]])) && left.goRight <= left.dLeft && left.goBottom - left.dTop >= 0.7 * (left.dBottom - left.dTop),
-      `${tag}: A4: the left column shows the three steps with their glosses under the start button (to ${Math.round(left.goBottom)} px, the diagram to ${Math.round(left.dBottom)} px)`);
+      const note = document.querySelector("#go-note");
+      return { note: note && note.getClientRects().length ? note.textContent : null, steps: document.querySelectorAll("#s-world .go ol, #s-world .gosteps").length, goTop: go.top, goBottom: go.bottom, goRight: go.right, dTop: d.top, dBottom: d.bottom, dLeft: d.left };
+    })()`) as { note: string | null; steps: number; goTop: number; goBottom: number; goRight: number; dTop: number; dBottom: number; dLeft: number };
+    const off = Math.abs((left.goTop + left.goBottom) / 2 - (left.dTop + left.dBottom) / 2);
+    check(left.note === TRY_SIGN_START_NOTE && left.steps === 0 && left.goRight <= left.dLeft && off <= 0.15 * (left.dBottom - left.dTop),
+      `${tag}: A4: the left column is the button, the hook and one line, level with the diagram's middle (${Math.round(off)} px off), no second copy of the steps`);
   } else {
     check(startFill.diagram === null, `${tag}: below 1024 px the diagram is not shown`);
-    check(await page.locator("#s-world .gosteps").isHidden(), `${tag}: below 1024 px the steps under the button are not shown (the progress bar says them)`);
+    check(await page.locator("#go-note").isHidden(), `${tag}: below 1024 px the line under the button is not shown`);
   }
   await page.screenshot({ path: join(shots, `${tag}-1-start.png`) });
 
@@ -237,6 +239,28 @@ for (const [width, scheme] of RUNS) {
   }
 
   check(JSON.stringify(await steps()) === '["done","on","-"]', `${tag}: after the proposal, step 1 is done and step 2 under way`);
+  // On a phone (Max, 6 Nov): after the step change the sheet's eyebrow is below the sticky step bar, not under it; every
+  // label of the terms is on one line ("Proposal expires" and "Quote expires" kept apart); and the last row of the terms
+  // can be read above the sticky buttons, scrolled to it or to the end of the sheet.
+  if (mobile) {
+    await page.waitForTimeout(1200); // the page's own smooth scroll to the sheet settles
+    const eb = await page.evaluate(`(() => ({ eyebrow: document.querySelector("article.prop.sheet .eyebrow").getBoundingClientRect().top, bar: document.querySelector("ol.progress").getBoundingClientRect().bottom }))()`) as { eyebrow: number; bar: number };
+    check(eb.eyebrow >= eb.bar, `${tag}: "You are approving" is below the sticky step bar after the step change (eyebrow top ${Math.round(eb.eyebrow)} px, bar bottom ${Math.round(eb.bar)} px)`);
+    await page.screenshot({ path: join(shots, `${tag}-2a-sheet-top.png`) });
+    const labels = await page.evaluate(`(() => [...document.querySelectorAll("article.prop.sheet dl.facts dt")].map((dt) => { const r = document.createRange(); r.selectNodeContents(dt); const tops = new Set([...r.getClientRects()].map((b) => Math.round(b.top))); return [dt.textContent, tops.size]; }))()`) as [string, number][];
+    check(labels.length >= 6 && labels.every(([, n]) => n === 1) && labels.some(([t]) => t === "Proposal expires"),
+      `${tag}: every label of the terms is on one line (${labels.filter(([, n]) => n !== 1).map(([t]) => t).join(", ") || labels.map(([t]) => t).join(" · ")})`);
+    for (const how of ["the last row", "the end of the sheet"] as const) {
+      const r = await page.evaluate(`(() => {
+        const dl = document.querySelector("article.prop.sheet dl.facts"), rows = [...dl.children], last = rows.slice(-2);
+        (${how === "the last row" ? "last[1]" : 'document.querySelector("article.prop.sheet")'}).scrollIntoView({ block: "end", behavior: "instant" });
+        const acts = document.getElementById("s-key").getBoundingClientRect();
+        return { bottom: Math.max(...last.map((e) => e.getBoundingClientRect().bottom)), acts: acts.top, label: last[0].textContent };
+      })()`) as { bottom: number; acts: number; label: string };
+      check(r.bottom <= r.acts + 0.5, `${tag}: scrolled to ${how}, "${r.label}" is fully above the sticky buttons (row bottom ${Math.round(r.bottom)} px, buttons from ${Math.round(r.acts)} px)`);
+      if (how === "the last row") await page.screenshot({ path: join(shots, `${tag}-2b-sheet-terms-end.png`) });
+    }
+  }
 
   // The quote's end (once, at 390 px light): a quote that expires shows "expired", the sign button goes off, and "Get a
   // new quote" brings new terms with a new quote id and a new hash, to sign again.
