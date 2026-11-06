@@ -219,6 +219,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   one line: "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set." Before the
   link, the page was audited for anything private (keys, tokens, viewer keys, RPC URLs, emails, personal data), in its
   HTML, its inline data and its requests; test/cfo-view.test.ts keeps that audit. 2657 tests in 269 files, all passing (with main's).
+- 6 November, awx-1 prepared, not run (Max's last round, item 2.1): the Airwallex-only run's plan and runbook
+  (docs/runs/awx-1-plan.md): every Airwallex call by step and endpoint (85 expected, 96 at most), the Claude estimate from
+  the main run's own costs, the abort criteria. `npm run awx-1` runs the scenario on the stand-ins with 0 network and
+  checks a–g, verify and reconcile; live it waits for Max's Face ID and a call guard keeps to the approved count.
+  2681 tests in 272 files, all passing.
 
 ## Real, and ours
 

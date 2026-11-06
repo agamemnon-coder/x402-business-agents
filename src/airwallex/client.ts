@@ -3,6 +3,7 @@
 // carry a caller-chosen request_id, so a retry after a timeout cannot create a second payment.
 
 import { redactSecrets } from "../lib/redact.js";
+import { AirwallexBudgetSpent, budgetFromEnv } from "./callBudget.js";
 
 export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
 
@@ -84,7 +85,10 @@ const TRANSIENT = new Set([502, 503, 504]);
 export function fromEnv(env = process.env): AirwallexConfig | null {
   const clientId = env.AIRWALLEX_CLIENT_ID;
   const apiKey = env.AIRWALLEX_API_KEY;
-  return clientId && apiKey ? { clientId, apiKey } : null;
+  if (!clientId || !apiKey) return null;
+  // A live run with an approved call budget (src/airwallex/callBudget.ts): every request is counted, none goes over it.
+  const budgeted = budgetFromEnv(env, (...a) => fetch(...a));
+  return { clientId, apiKey, ...(budgeted ? { fetchImpl: budgeted } : {}) };
 }
 
 export class Airwallex {
@@ -156,6 +160,8 @@ export class Airwallex {
             signal: AbortSignal.timeout(this.timeoutMs),
           });
         } catch (err) {
+          // Refused by the call budget before it was sent: nothing reached Airwallex, so it is not ambiguous.
+          if (err instanceof AirwallexBudgetSpent) throw err;
           if (method === "POST") throw new AirwallexAmbiguous(path, err);
           if (attempt < MAX_429_RETRIES) { await this.sleep(500 * 2 ** attempt); continue; }
           throw err;

@@ -32,7 +32,7 @@ import { recoverTaskCards, relayAsk } from "../agents/askPurser.js";
 import { pollQuarantine } from "../policy/quarantine.js";
 import { LiveReceivePolicy } from "../metal/receivePolicy.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
-import { cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
+import { cardPollMs, cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
 import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -142,7 +142,11 @@ process.on("SIGTERM", stop);
 // The agents' cards (K2): every few seconds, a limit the CFO changed goes to Airwallex, and new authorisations come
 // in (the webhook, once set up, brings them sooner). A failure here is logged and tried again; it never stops the relay.
 const issuing = issuingFromEnv();
+// awx-1: KIT11_CARD_POLL_MS=off leaves the transactions to the webhooks (each poll is a counted call); limits still sync.
+const pollEvery = cardPollMs();
+if (issuing) console.log(`cards    ${pollEvery === null ? "poll off: card transactions come from the webhooks" : `polled every ${pollEvery / 1000} s`}`);
 let cardsAt = 0;
+let polledAt = 0;
 let cardsError = "";
 async function cardsTick(): Promise<void> {
   if (!issuing || cardRows(db).length === 0 || Date.now() - cardsAt < 5000) return;
@@ -150,7 +154,7 @@ async function cardsTick(): Promise<void> {
   try {
     const synced = await syncCardsIfChanged(db, issuing.rail);
     if (synced.length) console.log(`${stamp()} cards    limits updated at Airwallex: ${synced.join(", ")}`);
-    const fresh = await pollCardTransactions(db, issuing.rail);
+    const fresh = pollEvery !== null && Date.now() - polledAt >= pollEvery ? (polledAt = Date.now(), await pollCardTransactions(db, issuing.rail)) : 0;
     if (fresh) console.log(`${stamp()} cards    ${fresh} new card transaction(s) from Airwallex`);
     if (fresh) meetDeclines();
     const orphans = await recoverTaskCards(db, issuing.rail);
