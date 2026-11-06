@@ -120,6 +120,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   Haiku · live" with its request id behind "more"; USD 1 a day, 10 a minute for everyone, 6 an hour per address, 8 s;
   otherwise the fixed sentence, labelled with why. The model only proposes: limits and approval stay in code and the
   passkey. 2534 tests in 257 files, all passing.
+- 6 November, the Haiku sentence after review: the amounts go in written the page's way ("EUR 1,850.00"), and code
+  checks every amount that comes back against the four it was given, exactly as given; else the fixed sentence,
+  labelled "fixed text (sentence did not match the terms)". The sentence goes on the page as text, never markup. The
+  live call stays off until the Worker variable TRY_SIGN_HAIKU is exactly "on", which only Max sets ("fixed text (live
+  model off)"); the deploy guard checks that no script sets it. 2544 tests in 257 files, all passing.
 
 ## Real, and ours
 
