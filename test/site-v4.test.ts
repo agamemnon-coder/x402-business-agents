@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
-import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, split, tapRun } from "../src/redesign/run.js";
+import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 
 const pages = buildPages();
@@ -30,7 +30,8 @@ const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g
 describe("the site after v4", () => {
   it("keeps every page within its text budget (Home about 60 words plus the Visa TAP link; partner pages at most 150)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
-    const budget: Record<string, number> = { home: 520, watch: 100, try: 180, proof: 480, metal: 150, airwallex: 150, visa: 150, claude: 150, notFound: 40 };
+    // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
+    const budget: Record<string, number> = { home: 600, watch: 100, try: 180, proof: 480, metal: 150, airwallex: 150, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -117,7 +118,10 @@ describe("the site after v4", () => {
     const proof = pages.proof!;
     expect(proof).toContain(SPLIT_LINE);
     expect(proof).toContain(`<span class="v">${sp.byClaude}</span><span class="l">decisions by Claude (${sp.fallbacks} fallbacks)</span>`);
-    expect(proof).toContain(`<span class="v">${sp.routine}</span><span class="l">routine payments by code</span>`);
+    // One canonical set (jury review, 6 Nov, #5): the Metal payments and the card charge, not "82 routine by code".
+    const pay = payments(record);
+    expect(proof).toContain(`<span class="v">${pay.onChain}</span><span class="l">Metal payments + 1 card charge</span>`);
+    expect(proof).not.toContain("routine payments by code");
     // Every "N Face ID" on the public pages is the same N.
     for (const [name, html] of Object.entries(PUBLIC)) for (const m of allText(html).matchAll(/(\d+)\s+Face ID decisions/g)) expect({ name, n: Number(m[1]) }).toEqual({ name, n });
     // Routine payments by code, counted again: per-query buying and selling, not refused.
@@ -125,10 +129,11 @@ describe("the site after v4", () => {
     expect(sp.routine).toBe(routine);
   });
 
-  it("gives Proof four partner cards (Visa TAP as text) and says the fixed lines word for word", () => {
+  it("gives Proof three partner cards (Visa TAP a footer link) and says the fixed lines word for word", () => {
     const proof = pages.proof!;
-    expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(4);
-    expect(proof).toMatch(/<span class="logo txt">Visa TAP<\/span>/);
+    // Three partner cards since 6 Nov (jury review, #7): Visa TAP is a footer link to /visa, not a card.
+    expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(3);
+    expect(proof).not.toMatch(/<span class="logo txt">Visa TAP<\/span>/);
     // The Visa paragraph is said once, on /visa (jury review, 4 Nov); TAP's status too (Visa, 5 Nov: not eligible Visa
     // tooling): Proof links to /visa for it, as an extra, not an award entry.
     expect(proof).not.toContain(VISA_CLAIM);
@@ -164,7 +169,8 @@ describe("the site after v4", () => {
   it("carries a favicon and an Open Graph image on the redesign's pages, both served", () => {
     for (const name of ["home", "watch", "proof", "metal", "airwallex", "visa", "claude"]) {
       expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg"/);
-      expect(PUBLIC[name]).toMatch(/<meta property="og:image" content="assets\/og\.png">/);
+      // Absolute since 6 Nov (jury QA, Q5): a relative image was a 404 from /try/sign and not read by every link preview.
+      expect(PUBLIC[name]).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png">/);
     }
     for (const a of ["favicon.svg", "og.png"]) expect(pageResponse(new Request(`https://x.test/assets/${a}`), pages as Pages)?.status).toBe(200);
   });

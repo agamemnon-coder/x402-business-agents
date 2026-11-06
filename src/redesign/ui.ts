@@ -5,6 +5,7 @@
 
 import { ICONS, type Icon } from "../ui/icons.js";
 import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { OG_IMAGE, TAGLINE_LINE, ogTitle } from "../ui/meta.js";
 
 const EXTRA: Record<string, Icon> = {
   "trending-up": [["polyline", { points: "22 7 13.5 15.5 8.5 10.5 2 17" }], ["polyline", { points: "16 7 22 7 22 13" }]],
@@ -177,12 +178,13 @@ footer.foot .wrap { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items:
 details.real { position: relative; }
 details.real > summary { list-style: none; cursor: pointer; } details.real > summary::-webkit-details-marker { display: none; }
 details.real { flex-basis: 100%; }
+footer.foot a.flink { color: var(--muted); }
 details.real .pop { margin-top: 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
 
-/** Home's headline (Max's concept, 2 Nov): four words. */
-export const HEADLINE = "Agents spend. Limits hold.";
+/** The one tagline (jury QA, 6 Nov, Q8: was "Agents spend. Limits hold." in og:title): Home's heading, the film's line. */
+export const HEADLINE = TAGLINE_LINE;
 
 export function header(current: Tab | null): string {
   return `<header class="top"><div class="wrap"><a class="brand" href="home" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>
@@ -192,7 +194,9 @@ export function header(current: Tab | null): string {
 /** What is real in the main run, the run the public pages play: test money, sandbox, what is simulated, the world set-up, the second approver. */
 export const MAIN_RUN_REAL = [
   `Northwind Outdoor is ${NORTHWIND_LINE}: the example company.`,
-  "Real Claude decisions, real Metal testnet and Airwallex sandbox calls. Test money only; customers and merchants are simulated.",
+  "Real Claude decisions, real Metal testnet and Airwallex sandbox calls. Test money only.",
+  // The full list behind Home's one caveat line (jury review, 6 Nov, #7: CAVEAT_LINE).
+  "Simulated: the customer and its agent, the supplier, the merchants' charges, the settlement (Purser moves the SWIFT transfer to SENT, then PAID, through the sandbox's simulation API) and the second approver.",
   WORLD_SETUP,
   SECOND_APPROVER,
 ];
@@ -200,10 +204,10 @@ export const MAIN_RUN_REAL = [
  * "What's real?", opened from the footer: the main run's lines on the pages that play it, or a page's own (final review,
  * 4 Nov: /try/sign, which calls no Airwallex, Metal or Claude, carried the main run's), then the page's source.
  */
-export function footer(source: string, real: string[] = MAIN_RUN_REAL): string {
-  return `<footer class="foot"><div class="wrap"><details class="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
+export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [string, string][] = []): string {
+  return `<footer class="foot"><div class="wrap"><details class="real" id="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
 ${real.map((line) => `<li>${esc(line)}</li>`).join("\n")}
-<li>${esc(source)}</li></ul></div></details><span>Built for the Airwallex Agentic Banking Hackathon</span></div></footer>`;
+<li>${esc(source)}</li></ul></div></details><span>Built for the Airwallex Agentic Banking Hackathon</span>${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
 }
 
 /** Each agent's avatar: an icon for its job (Sourcing buys, Support answers, Treasury holds the money). */
@@ -398,7 +402,7 @@ button.run { background: var(--text) !important; color: var(--bg) !important; }
 }
 
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
-export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[] }): string {
+export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][] }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
 ${o.js}</script>`;
   return `<!doctype html>
@@ -410,9 +414,9 @@ ${o.js}</script>`;
 <meta name="theme-color" content="#0b1220">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Purser">
-<meta property="og:title" content="${esc(o.title === "Purser" ? `Purser · ${HEADLINE}` : `${o.title} · Purser`)}">
+<meta property="og:title" content="${esc(ogTitle(o.title))}">
 <meta property="og:description" content="${esc(o.description)}">
-<meta property="og:image" content="assets/og.png">
+<meta property="og:image" content="${OG_IMAGE}">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <title>${esc(o.title)}</title>
@@ -422,7 +426,7 @@ ${o.css}</style>
 <body>
 ${header(o.tab)}
 ${o.body}
-${footer(o.source, o.real)}
+${footer(o.source, o.real, o.links)}
 ${script}
 </body>
 </html>`;

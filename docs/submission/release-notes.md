@@ -66,6 +66,24 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   /try/sign's API refuses unknown or mistyped fields and answers any internal error with a fixed message. /try/sign is
   also opened in WebKit in CI: Playwright's Linux WebKit has no WebAuthn, so it checks the page's honest "no passkeys"
   answer and its layout, not the visit. 2437 tests in 249 files, all passing.
+- 6 November, reliability runs: `npm run reliability` runs the full Kit 11 flow in a fresh world (sandbox, testnet,
+  test money, labelled virtual test passkeys). rel-1 stopped at one step (the card purchase: Treasury told Sourcing to
+  wait instead of asking the CFO itself); one rule added to Treasury's instructions, with evals; rel-1b passed every
+  step. Both runs are in docs/runs/reliability-2026-11.md, failure included. 2447 tests in 251 files, all passing.
+- 6 November, the jury review: every surface opens with what only Purser has, three sentences word for word
+  (`DIFFERENTIATORS`: the signature over the exact terms, one CFO policy as three locks, real agents with no key reaching
+  Claude), then "The Kit 11 scenario, run live on 3 November.". The 12 overpriced checks are said as they happened: "a
+  buy rule Claude set stopped 12 overpriced checks" (code applied the rule; the film keeps its older line). One set of
+  numbers: "86 Metal payments + 1 card charge", "5 decisions signed with Face ID (+1 co-signature)". The let-through is
+  framed as a test of the chain, both layers shown. The form's caveats are one line with a link; Visa TAP is a footer
+  link on Home and Proof, and the form's screenshot 6 is /try/sign, signed and tampered. 2459 tests in 252 files, all
+  passing.
+- 6 November, the jury's technical QA: /try fits a 320–375 px phone (the tabs take their own line) and the replay's
+  tables stack below 900 px, both checked at 360 and 768 px now; /film is labelled as the earlier animation of
+  30 October, and Home and Proof link the film (2:42); every public page carries the same link-preview tags with an
+  absolute image, and the favicon where its CSP allows one; one tagline everywhere, "AI agents spend. You sign off.";
+  the deck's slide count is right (ten); the claims' site section is the main run's. 2468 tests in 253 files, all
+  passing.
 - 6 November, /try/sign as the demo: three steps with a progress indicator ("The agent proposes" → "You sign with Face
   ID" → "Purser verifies"), the start button above the fold on a phone; the waiting proposal shown as the CFO's approval
   sheet (amount, beneficiary, IBAN, reference, expiry, the terms hash short with Copy and a tap for all of it), naming
@@ -76,7 +94,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   Metal's on-chain refusal in the main run, Airwallex's LIMIT_EXCEEDED of EUR 45.00 in the separate TAP run of 2
   November, a purchase Purser's code refused in the main run. The terms now carry the payee's IBAN (a test one, check
   digits 00; schema kit11.try-terms/v2); the film and the social preview keep the v1 terms they were made with. Live
-  after the Worker is redeployed. 2448 tests in 250 files, all passing.
+  after the Worker is redeployed. 2479 tests in 254 files, all passing.
 
 ## Real, and ours
 

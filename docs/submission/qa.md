@@ -15,7 +15,8 @@ the phone asks for, not something we prove.
 **2. What happens if an agent lies, or gets a prompt injection?**
 Inside its limits a lying agent can spend at most its cap and budget; beyond them, nothing moves without a signature.
 In the main run an instruction planted in the dispute (an address 0x…dEaD) was flagged and ignored, and Metal refused
-the one purchase we let through over the cap; the refusal is recorded on chain.
+the one purchase we let through over the cap, our own check switched off once to prove the chain holds the line; the
+refusal is recorded on chain.
 *Source: log, acceptance rows "dispute" and "5"; `docs/fraud-and-injection.md`; `docs/controls.md`.*
 
 **3. What actually ran live, and what was simulated?**
@@ -104,9 +105,11 @@ other refusals are in our ledger only.<!-- /METAL-ONCHAIN -->
 *Source: README, "On Metal testnet, checked against the chain on 5 November".*
 
 **Isn't letting one purchase through staged?**
-Yes, on purpose and labelled: we tested the second layer, because Purser would have refused it itself
-(`mandate_cap_exceeded`, 0.04 over the 0.03 cap). Metal refused it; the refusal is recorded on chain. Nothing moved.
-*Source: log, acceptance row 5 ("Purser would have refused (`mandate_cap_exceeded`, 0.04 over 0.03)"); `DEFENSE_IN_DEPTH`.*
+Yes, and we say so: we switched off our own check once to prove the chain holds the line. Both layers, in order:
+Purser refuses an over-cap purchase before signing (it would have refused this one: `mandate_cap_exceeded`, 0.04 over
+the 0.03 cap); with that check off for one purchase, Metal refused it anyway. Metal refused it; the refusal is recorded
+on chain. Nothing moved.
+*Source: log, acceptance row 5 ("Purser would have refused (`mandate_cap_exceeded`, 0.04 over 0.03)"); `CHAIN_TEST`, `DEFENSE_IN_DEPTH`.*
 
 **Worst-case loss per day inside the limits, and how fast does the CFO know?**
 At most 20.00 test USD on Metal (the three mandates' budgets, 10.00 + 4.00 + 6.00, held to that total in code) plus

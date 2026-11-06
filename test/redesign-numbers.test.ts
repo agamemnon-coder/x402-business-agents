@@ -195,8 +195,11 @@ describe("the redesigned public pages", () => {
     // Two pills, each on one line: the kit, and the award entered (never read as already won).
     expect(homePage()).toContain(">Kit 11 · x402 Business Agents<");
     expect(homePage()).toContain(">entered for the Metal Award<");
-    // The TAP work stays visible on Home as a labelled extra (text, no logo), linking to /visa.
-    expect(homePage()).toContain('<a class="partner card" href="visa"><span class="logo txt">Visa TAP</span>Extra: card checkouts signed with TAP</a>');
+    // The TAP work stays reachable from Home as a labelled extra, a footer link to /visa (jury review, 6 Nov, #7: no
+    // partner card, nothing in the three moments).
+    expect(homePage()).toContain(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`);
+    expect(homePage()).not.toContain('<a class="partner card" href="visa">');
+    expect(JSON.stringify(agentRun().scenes)).not.toMatch(/Visa|TAP/);
     for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
     expect(PAGES.visa).not.toMatch(/Dev test|reference code is not used/);
@@ -207,7 +210,7 @@ describe("the redesigned public pages", () => {
     // No refusal on chain is claimed unless the record has one with its tx.
     const chain = record.snapshot.flows.some((f) => f.refused?.by === "metal" && f.proof.href);
     expect(JSON.stringify(run.scenes).includes("Metal refused it · on chain")).toBe(chain);
-    expect(homePage().includes("Metal refuses it on chain")).toBe(chain);
+    expect(homePage().includes("Metal refused the purchase on chain")).toBe(chain);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
     expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
@@ -266,9 +269,9 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     expect(packFacts().main.stop_line).toBe(stopsLine(stopStory(record)));
   });
 
-  const LINE = "16 stops, nothing paid over a limit: Claude skipped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
+  const LINE = "16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
   /** Every "N stops, …: Claude skipped A …, Metal refused B …, the CFO rejected C …, and D planted …" in a text, as [N, A, B, C, D]. */
-  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: Claude skipped (\d+) overpriced checks?, Metal refused (\d+) purchases?, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
+  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: a buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases?, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
 
   it("is one sentence on the site, the claims, the forms, the deck and the video script, with the record's counts (5 Nov)", () => {
     const st = stopStory(record);
@@ -283,7 +286,8 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
       expect({ name, old: t.replace(/\b[Ww]as:? "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\."|"1 \+ 1" told too little/g, "").match(/over its cap; the CFO rejected|\b1 \+ 1\b/g)?.length ?? 0 }).toEqual({ name, old: 0 });
       // The TAP run's decline is there, on its own labelled line, after the sentence (the deck leaves that other run
       // out: it overrides the 4 Nov rule for the deck).
-      if (name === "deck") expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
+      // The form's Description leaves it out too since 6 Nov (jury review, #7: no TAP there; the long text keeps it).
+      if (name === "deck" || name === "docs/submission/README.md") expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
       else expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(LINE) }).toEqual({ name, after: true });
     }
     // On the site's tiles, a big "16 stops" with "nothing paid over a limit" under it, then the sentence.
@@ -344,10 +348,13 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
   const PAGES = buildPages() as unknown as Record<string, string>;
   const words = (html: string) => html.replace(/<\/?code>/g, "").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
-  it("adds up: 87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy", () => {
+  it("adds up: 86 Metal payments + 1 card charge, all inside the limits (one canonical set, jury review, 6 Nov)", () => {
     expect(pay.sums).toBe(true);
     expect(pay.sales + pay.purchases + pay.refunds + pay.sweeps + pay.cards).toBe(record.snapshot.counts.alone);
-    expect(pay.line).toBe("87 inside the limits = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy");
+    expect(pay.canonical).toBe("86 Metal payments + 1 card charge");
+    expect(pay.metalParts).toBe("41 sales + 41 supplier purchases + 3 refunds + 1 sweep");
+    expect(pay.line).toBe("86 Metal payments + 1 card charge, all inside the limits: 41 sales + 41 supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwallex");
+    expect(pay.onChainLine).toBe("86 on Metal = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep");
     // On Metal: all but the card buy; routine by code: the sales and the supplier purchases; reconcile: Metal + SWIFT + card.
     expect([pay.onChain, pay.routine, pay.transfers, pay.reconciled]).toEqual([86, 82, 1, 88]);
     expect(pay.routine).toBe(pay.sales + pay.purchases);
@@ -356,11 +363,16 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
     expect(record.snapshot.refusals.filter((x) => x.what === "Supplier purchase refused")).toHaveLength(14);
   });
 
-  it("shows that one line on Home, Proof and /metal", () => {
-    expect(words(homePage())).toContain("41 sales + 41 supplier purchases + 3 refunds + 1 sweep + 1 card buy");
-    expect(words(proofPage())).toContain(pay.line);
+  it("shows that one set on Home, Proof and /metal, and no 87 or 82 beside it (jury review, 6 Nov, #5)", () => {
+    expect(words(homePage())).toContain(`${pay.onChain} Metal payments + 1 card charge`);
+    expect(words(homePage())).toContain(`${pay.metalParts} on Metal`);
+    expect(words(proofPage())).toContain(`${pay.onChain} Metal payments + 1 card charge`);
     expect(words(proofPage())).toContain(pay.onChainLine);
     expect(words(PAGES.metal!)).toContain(pay.line);
+    for (const [name, html] of [["home", homePage()], ["proof", proofPage()], ["metal", PAGES.metal!]] as const) {
+      const main = words(/<main[\s\S]*<\/main>/.exec(html)![0]);
+      expect({ name, other: main.match(/(?<![\d.#])\b(87|82)\b(?![.\d])/g) ?? [] }).toEqual({ name, other: [] });
+    }
   });
 
   it("says the let-through refusal in one clean line, the Defense-in-depth label on its own line", () => {

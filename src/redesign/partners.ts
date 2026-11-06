@@ -91,7 +91,7 @@ export function metalPage(run: AgentRun = agentRun()): string {
       node("ban", price ? `${price.price} refused` : "Over the cap: refused", refusal ? `recorded on chain · ${refusal.proof.label}` : "nothing settles", "bad"), arrow,
       node("scan-face", price?.newCap ? `New cap ${price.newCap}` : "New mandate", "after Face ID 1 of 2 → 2 of 2", "ok")].join(""),
     nums: nums([[String(onChain), "payments on chain"], [String(st.metal), "refused by Metal at the cap"], [String(mandates.length), "mandates replaced"], [sweep ? sweep.amount : "0", "test USD swept after finality"]]),
-    line: `Each agent pays from the company's Metal account under its own mandate; a payment over the cap does not settle.${pay.sums && pay.onChain === onChain ? ` ${pay.onChainLine}; ${pay.line}.` : ""}`,
+    line: `Each agent pays from the company's Metal account under its own mandate; a payment over the cap does not settle.${pay.sums && pay.onChain === onChain ? ` ${pay.line}.` : ""}`,
     folds: fold("The live proof, with every tx", p.metal) + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
       + fold("What is simulated", [plainLi("Test money on Metal testnet only."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions.")])
       + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]),

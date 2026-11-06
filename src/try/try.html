@@ -113,6 +113,9 @@ button.run:disabled { opacity: .5; cursor: wait; }
 }
 /* The menu on one line on a phone: the brand's mark only, the "what's real?" button short (Max, v4 C4). */
 @media (max-width: 520px) { header.top { flex-wrap: nowrap !important; gap: 8px !important; padding: 10px 12px !important; } .brand .nm, button.real .long { display: none; } button.real { white-space: nowrap; padding: 5px 9px; } header.top nav.pnav > a { padding: 8px 9px !important; font-size: 14.5px !important; } }
+/* Below 400 px the brand, "what's real?" and the four tabs do not fit on one line (jury review, 6 Nov, Q1: 386 px at 360,
+   "Proof" cut off): the tabs take a line of their own under the brand and the button, nothing scrolls sideways. */
+@media (max-width: 400px) { header.top { flex-wrap: wrap !important; row-gap: 8px !important; } header.top nav.pnav { margin-left: 0 !important; } }
 @media (prefers-reduced-motion: reduce) { .step, .outcome, .node, .railtile, .live { transition: none; } .thinking div { animation: none; } }
 </style>
 </head>
