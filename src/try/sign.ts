@@ -4,11 +4,13 @@
 // with the lock that stopped it); 2. the visitor signs with Face ID (a test passkey made now, then a signature whose
 // challenge is the SHA-256 of the exact terms); 3. Purser verifies (the server checks the signature, the stand-in
 // executor runs it in the test world). Then the visitor tampers with a field (amount, IBAN, currency) and sees the same
-// signature refused by the server. The page's API is worker/src/trySign.ts. One inline script and one inline style,
+// signature refused by the server, and downloads a receipt anyone can verify offline (npm run verify-receipt). The page's API is worker/src/trySign.ts. One inline script and one inline style,
 // hashed into the CSP like the other public pages; everything it shows from the server goes in as text, never as markup.
 
 import { esc, icon, iconSet, page } from "../redesign/ui.js";
+import { REPO_URL } from "../submission/deck.js";
 import { cfoApproval, tryLocks } from "./examples.js";
+import { RECEIPT_FORMAT } from "./receipt.js";
 
 /** The feature flag, read where the bundle is built: on, the page, its API and the links to it are in the bundle. */
 export const trySignOn = (env: NodeJS.ProcessEnv = process.env) => ["on", "1", "true"].includes(env.TRY_SIGN_ENABLED ?? "");
@@ -32,6 +34,7 @@ export const WHATS_REAL = {
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
     "The tamper: the server checks your changed terms against the same signature, for real, and refuses them.",
+    "The receipt: receipt.json holds the exact terms, their hash, your passkey's signature, its public key and the algorithm. Anyone can check it offline, with no server: npm run verify-receipt -- receipt.json in the repository. Change one field or one cent and it fails. It proves that the holder of that key signed those terms, not who holds it.",
   ],
   limits: [
     "The server checks no attestation, so it cannot tell which authenticator made the key, and a key made in software would verify too: Face ID is what your device asks for, not something the server proves.",
@@ -129,6 +132,9 @@ details.terms pre { margin: 8px 0 0; white-space: pre-wrap; font: 13.5px/1.5 ui-
 .line > span, .chk span { overflow-wrap: anywhere; }
 .result { padding: 20px; display: grid; gap: 14px; max-width: min(760px, 100%); }
 .result h2 { margin: 0; }
+.receipt { display: grid; gap: 6px; }
+.receipt code { font: 600 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--sunken); border-radius: 6px; padding: 1px 5px; overflow-wrap: anywhere; }
+
 .result[hidden], .props[hidden], #tamper[hidden], dl.world[hidden], #s-props[hidden] { display: none; }
 .line { display: flex; align-items: flex-start; gap: 10px; font-size: 16px; line-height: 1.45; }
 .line .i { margin-top: 2px; }
@@ -381,7 +387,7 @@ const JS = `
       var hit = l.id === "purser";
       var a = el("a", "", [l.link, ic(/^https?:/.test(l.href) ? "external-link" : "arrow-right")]);
       a.href = l.href;
-      if (/^https?:/.test(l.href)) { a.target = "_blank"; a.rel = "noopener"; }
+      if (/^https?:/.test(l.href)) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
       var row = el("div", "lock " + l.id + (hit ? " hit" : ""), [
         el("div", "lh", [ic(hit ? "octagon-x" : "lock"), l.name, el("span", "tag", [hit ? "Stopped this one (simulated)" : "Not this one"])]),
         el("span", "", [hit ? p.rule : l.what]),
@@ -438,6 +444,26 @@ const JS = `
     $("result").hidden = false;
     $("result").scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  // ── The receipt: everything needed to check the signature offline, and nothing secret (no world token). ──
+  function receipt() {
+    var s = S.signed, a = s.a, k = s.d.public_key;
+    return {
+      receipt: D.receipt, note: "A signature made on /try/sign in a test world: nothing real moved. Check it offline: npm run verify-receipt -- receipt.json",
+      terms: JSON.parse(s.x.p.canonical), terms_sha256: s.d.terms_sha256, algorithm: s.d.algorithm,
+      public_key: { kty: k.kty, crv: k.crv, x: k.x, y: k.y }, credential_id: a.id, rp_id: location.hostname, origin: location.origin,
+      assertion: { authenticatorData: a.response.authenticatorData, clientDataJSON: a.response.clientDataJSON, signature: a.response.signature },
+      verified_by_server_at: s.d.executed.at, verify: "npm run verify-receipt -- receipt.json"
+    };
+  }
+  $("r-receipt").addEventListener("click", function () {
+    if (!S.signed) return;
+    var url = URL.createObjectURL(new Blob([JSON.stringify(receipt(), null, 2) + "\\n"], { type: "application/json" }));
+    var link = el("a", "", []);
+    link.href = url; link.download = "receipt.json";
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  });
 
   // ── Tamper: the visitor changes a field of the signed terms and sends them with the same signature. ──
   var LABEL = { amount: "Amount", payee_iban: "IBAN", currency: "Currency" };
@@ -541,6 +567,8 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   <div class="line ok">${icon("shield-check", 22)}<span><b>Verified by the server</b><span id="r-checks" class="small muted"></span></span></div>
   <div class="line ok">${icon("circle-check", 22)}<span><b>Executed in your test world</b><span id="r-exec" class="small muted"></span></span></div>
   <div><p class="small muted">The hash you signed (SHA-256 of the exact terms):</p><div id="r-hash"></div></div>
+  <div class="receipt"><button class="btn" type="button" id="r-receipt">${icon("receipt", 18)}Download receipt.json</button>
+    <p class="small muted">The exact terms, their hash, your signature and its public key. Check it offline, with no server: <code>npm run verify-receipt -- receipt.json</code> in the repository, ${esc(REPO_URL.replace(/^https:\/\//, ""))}.</p></div>
   <div class="tbox" id="tamper-box">
     <h3>${icon("triangle-alert", 18)} Now try to tamper</h3>
     <p class="small muted">Change a field of the terms you signed, then send them with the same signature. The server checks it, for real.</p>
@@ -558,7 +586,7 @@ ${TRY_SIGN_STEPS.map((s, i) => `  <li id="pg-${i + 1}"${i === 0 ? ' class="on" a
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself: an agent proposes, you sign the exact terms with Face ID, Purser verifies. A test world of your own; nothing real moves.",
     tab: "try", css: CSS, body, js: JS, stage: false,
-    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS },
+    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, receipt: RECEIPT_FORMAT },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     // Its own "What's real?" (final review, 4 Nov): this page is not the main run, and calls none of the partners.
     real: [

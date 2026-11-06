@@ -12,7 +12,9 @@
 // see (a) blocked by a rule with no button and the three locks, the one that stopped it marked, each linking its real
 // example from the records; create a test passkey, sign (b), see the server verify it and the stand-in execute it, then
 // tamper field by field (the amount + 0.01, the IBAN, the currency), each time seeing which field changed, the new hash
-// next to the signed one, and the server refusing the same signature. "What's real?" opens to the honest lines. After
+// next to the signed one, and the server refusing the same signature. The receipt downloads as receipt.json and
+// verifies offline (src/try/receipt.ts, as npm run verify-receipt); with one cent more it fails. "What's real?" opens
+// to the honest lines. After
 // the passkey, after signing and after the tamper, the layout
 // is checked (Max, 5 Nov: on an iPhone at 390 px the hashes and the tamper line ran off the screen): the page is no
 // wider than the screen, and nothing inside a card (no element, no line of text) runs outside that card's box, with
@@ -20,7 +22,7 @@
 // Airwallex or Metal.
 
 import { createHash } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 
@@ -42,6 +44,7 @@ const { TRY_SIGN_LABEL, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/t
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
 const { canonical } = await import("../../worker/src/trySign.js");
+const { verifyReceipt } = await import("../../src/try/receipt.js");
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
 // The examples the page must link, from the records themselves (not from the page's code).
 const LOCKS = tryLocks();
@@ -233,6 +236,18 @@ for (const [width, scheme] of RUNS) {
   check(copied === hash && (await page.locator("#r-hash button.copy").innerText()).includes("Copied"), `${tag}: Copy puts the whole signed hash on the clipboard (${copied.length} characters)`);
   check((await page.locator("#result").innerText()).includes("Verified by the server"), `${tag}: "Verified by the server"`);
   check(/Test transfer test-[0-9a-f]{12}: EUR 1,850\.00/.test(await page.locator("#r-exec").innerText()), `${tag}: "Executed in your test world" by the stand-in`);
+  // The receipt: downloaded as the visitor would, then checked offline as npm run verify-receipt does.
+  const [download] = await Promise.all([page.waitForEvent("download"), page.click("#r-receipt")]);
+  const saved = join(shots, `${tag}-receipt.json`);
+  await download.saveAs(saved);
+  const receipt = JSON.parse(readFileSync(saved, "utf8")) as { terms: Record<string, string>; terms_sha256: string; public_key: { x: string } };
+  const verdict = verifyReceipt(receipt);
+  check(download.suggestedFilename() === "receipt.json" && verdict.ok && receipt.terms_sha256 === hash && JSON.stringify(receipt.terms) === JSON.stringify(terms),
+    `${tag}: receipt.json downloads and verifies offline (${verdict.checks.filter((c) => c.ok).length} of ${verdict.checks.length} checks)`);
+  check(!verifyReceipt({ ...receipt, terms: { ...receipt.terms, amount: "1850.01" } }).ok && !verifyReceipt({ ...receipt, terms: { ...receipt.terms, payee_iban: "DE00000000000000000666" } }).ok,
+    `${tag}: the receipt with one cent more, or another IBAN, fails`);
+  check(!/"token"/.test(readFileSync(saved, "utf8")) && Object.keys(receipt).sort().join() === "algorithm,assertion,credential_id,note,origin,public_key,receipt,rp_id,terms,terms_sha256,verified_by_server_at,verify",
+    `${tag}: the receipt carries what it needs and no world token`);
   await shotAt(page, "#result", join(shots, `${tag}-4-signed-verified.png`));
   await layout(page, tag, "after signing", width);
 
