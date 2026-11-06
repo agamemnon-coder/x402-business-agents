@@ -74,6 +74,9 @@ export const DIFFERENTIATORS = [
 ] as const;
 /** The words in the first sentence that link to /try/sign wherever a surface can link. */
 export const TRY_IT = "Try it in 30 seconds.";
+/** The film of the main run (2:42, YouTube v3), linked from Home and Proof (jury QA, 6 Nov, Q3). /film is the earlier animation. */
+export const FILM_URL = "https://youtu.be/jaqO2M2V6NY";
+export const FILM_LINK = "Watch the film (2:42)";
 /** The Kit 11 moments, in one line, after the three sentences. */
 export const KIT11_RUN_LINE = "The Kit 11 scenario, run live on 3 November.";
 /**

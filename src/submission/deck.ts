@@ -8,7 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
-import { DIFFERENTIATORS, KIT11_RUN_LINE, NORTHWIND_LINE, VISA_TAP_STATUS } from "../config/brand.js";
+import { DIFFERENTIATORS, HERO, KIT11_RUN_LINE, NORTHWIND_LINE, VISA_TAP_STATUS } from "../config/brand.js";
 import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
@@ -69,7 +69,8 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const slides: Slide[] = [
     {
       kicker: "Purser · Starter Kit 11 · x402 Business Agents",
-      title: "Purser",
+      // The one tagline (jury QA, 6 Nov, Q8): Home's heading and the film's line.
+      title: HERO,
       wide: true,
       // What only Purser has, first (jury review, 6 Nov, #1): the three sentences word for word, then the Kit 11 line.
       extra: `<ul class="why">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>

@@ -1,6 +1,6 @@
 // Browser check of "/" (not part of npm test; needs Playwright with Chromium from the environment):
 //   npx tsx test/browser/root.check.ts [screenshot dir]
-// A local relay (the Worker's own routing, src/relay/local.ts) with a runner state pushed to it, at 390 and 1440 px,
+// A local relay (the Worker's own routing, src/relay/local.ts) with a runner state pushed to it, at 360, 390, 768 and 1440 px,
 // light and dark. Three cases: a guest at "/" gets Home itself (no redirect, no request to the CFO's API); /?recorded
 // and /?autonomy are still the recorded dashboards the README and the deck link; the CFO's viewer link
 // (/#view=<key>, the key never sent to a server) goes on from Home to the live dashboard, which then answers with the
@@ -44,7 +44,7 @@ const check = (ok: boolean, what: string) => { console.log(`${ok ? "ok  " : "FAI
 }
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-for (const [w, h] of [[390, 844], [1440, 900]] as const) {
+for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const) {
   for (const scheme of ["light", "dark"] as const) {
     const tag = `${w}-${scheme}`;
     const context = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
@@ -70,6 +70,12 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/?autonomy`, { waitUntil: "load" });
     await page.waitForTimeout(800);
     check(/\?autonomy$/.test(page.url()) && /Replay of the main run, 3 Nov/.test(await page.locator("#rec-text").innerText()), `${tag} /?autonomy: the main run's dashboard`);
+    // No sideways scroll on the replay (jury QA, 6 Nov, Q2: at 768-820 px the model table was 864 px wide).
+    for (const view of ["", "&agents", "&books", "&disputes"]) {
+      if (view) { await page.goto(`${base}/?autonomy${view}`, { waitUntil: "load" }); await page.waitForTimeout(600); }
+      const sw = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth));
+      check(sw <= w, `${tag} /?autonomy${view}: no wider than the screen (${sw} of ${w})`);
+    }
     // The CFO's address without a key: the dashboard's own guard sends a guest to Home.
     await page.goto(`${base}/?dashboard`, { waitUntil: "load" });
     await page.waitForURL(/\/home$/, { timeout: 5000 }).catch(() => undefined);
@@ -104,5 +110,5 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 }
 await browser.close();
 local.server.close();
-console.log(failures ? `\n${failures} check(s) failed` : `\nroot check passes: / for a guest (Home itself), /?recorded and /?autonomy, the CFO's link and device, at 390 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(failures ? `\n${failures} check(s) failed` : `\nroot check passes: / for a guest (Home itself), /?recorded and /?autonomy, the CFO's link and device, at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
 process.exit(failures ? 1 : 0);

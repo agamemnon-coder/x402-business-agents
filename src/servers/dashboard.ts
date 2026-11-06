@@ -2,6 +2,7 @@
 // so it holds no key and cannot approve or move money. "Review: approve or reject" hands over to the approval page.
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
+import { withMeta } from "../ui/meta.js";
 import { airwallexPage, claudePage, metalPage, notFoundPage, visaPage } from "../redesign/partners.js";
 import { WORLD_CHANGES } from "../try/world.js";
 import { localTryAnswer } from "../try/local.js";
@@ -117,7 +118,9 @@ const PUBLIC_WORDS: [RegExp, string][] = [
   [/\ba stand-in passkey\b/g, "a test passkey"], [/\bstand-ins\b/g, "simulations"], [/\bstand-in\b/g, "simulated"],
 ];
 export const publicWords = (text: string) => PUBLIC_WORDS.reduce((t, [re, to]) => t.replace(re, to), text);
-export const PAGE = publicWords(dashboardPage());
+// Every page carries the same link-preview tags and favicon (jury QA, 6 Nov, Q5; src/ui/meta.ts): tags only, so no CSP
+// hash below changes. The local server, npm run judge and the relay serve the same pages.
+export const PAGE = withMeta(publicWords(dashboardPage()), { description: "The CFO's dashboard: each agent's card and mandate, what it paid and what was stopped, the books and the audit log." });
 // Only the page's own script and style may run; data arrives over fetch from this origin only.
 export const CSP = cspFor(PAGE);
 /** The month replay carries its data inside the page, so it needs no request at all once loaded. */
@@ -128,14 +131,14 @@ export const LAB_CSP = cspFor(LAB_TEMPLATE);
 export interface LabData { mode: "live" | "recorded"; at: string; results: ScenarioResult[] }
 /** The Lab page: results run now (on the runner) or the ones recorded by npm run lab (docs/lab/results.json). */
 export function labPage(data: LabData = { mode: "recorded", ...(JSON.parse(readFileSync(LAB_FILE, "utf8")) as Omit<LabData, "mode">) }): string {
-  return LAB_TEMPLATE.replace("__LAB_JSON__", () => publicWords(JSON.stringify(data)).replace(/</g, "\\u003c"));
+  return withMeta(LAB_TEMPLATE.replace("__LAB_JSON__", () => publicWords(JSON.stringify(data)).replace(/</g, "\\u003c")), { description: "The Scenario Lab: stories run against Purser's rules on stand-ins, each with its expected outcome." });
 }
 
 /** "Purser live": the animated day, its timeline inside the page (src/live/timeline.ts), built from the recordings. */
 const LIVE_TEMPLATE = withNav(readFileSync(new URL("../live/live.html", import.meta.url), "utf8"), "live");
 export const LIVE_CSP = cspFor(LIVE_TEMPLATE);
 export function livePage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story, recorded: Recorded = JSON.parse(readFileSync(RECORDED_FILE, "utf8")) as Recorded): string {
-  return LIVE_TEMPLATE.replace("__LIVE_JSON__", () => JSON.stringify(buildLiveTimeline(story, recorded)).replace(/</g, "\\u003c"));
+  return withMeta(LIVE_TEMPLATE.replace("__LIVE_JSON__", () => JSON.stringify(buildLiveTimeline(story, recorded)).replace(/</g, "\\u003c")));
 }
 
 const FILM_TEMPLATE = readFileSync(new URL("../film/film.html", import.meta.url), "utf8");
@@ -145,7 +148,7 @@ export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
   const redteam = JSON.parse(readFileSync(REDTEAM_FILE, "utf8")) as { attempts: number; blocked: number };
   const lab = JSON.parse(readFileSync(LAB_FILE, "utf8")) as { results: { passed: boolean }[] };
   const data = buildFilm(story, recorded, { redteam, lab: { total: lab.results.length, passed: lab.results.filter((r) => r.passed).length } });
-  return FILM_TEMPLATE.replace("__FILM_JSON__", () => JSON.stringify({ data, scenes: filmTimeline() }).replace(/</g, "\\u003c"));
+  return withMeta(FILM_TEMPLATE.replace("__FILM_JSON__", () => JSON.stringify({ data, scenes: filmTimeline() }).replace(/</g, "\\u003c")), { description: "The earlier animation of 30 October. The film of the main run (2:42) is on YouTube: https://youtu.be/jaqO2M2V6NY" });
 }
 
 /**
@@ -177,7 +180,7 @@ function tryPage(mode: "hosted" | "offline"): string {
   const text = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   let html = restyle(withNav(readFileSync(new URL("../try/try.html", import.meta.url), "utf8"), "try"));
   for (const [key, words] of Object.entries(TRY_WORDS)) html = html.replace(key, () => text(words[mode]));
-  return html.replace("__TRY_PROOF_RUN__", () => text(`the run recorded on ${dayLong(rec.recorded_at)}`)).replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c"));
+  return withMeta(html.replace("__TRY_PROOF_RUN__", () => text(`the run recorded on ${dayLong(rec.recorded_at)}`)).replace("__TRY_JSON__", () => JSON.stringify(data).replace(/</g, "\\u003c")), { description: "Give an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves." });
 }
 /** The hosted page (the relay): Claude reads each request. */
 export const TRY_PAGE = tryPage("hosted");
@@ -226,9 +229,9 @@ export const METAL_REPORT = (() => {
   const c = metalData().dispute;
   // On the public page the report says who the customer is: simulated, its claim filed by us (the report a customer
   // receives is built by disputeReportHtml alone).
-  // It also names Purser's icon, which its CSP allows (img-src 'self'): with none, Firefox fetched /favicon.ico by
-  // itself and logged a CSP error (QA).
-  return c ? disputeReportHtml(c).replace(/(<\/h1>)/, `$1\n<p><strong>${SIMULATED_CUSTOMER}</strong></p>`).replace("</head>", '<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">\n</head>') : null;
+  // Its CSP allows Purser's own icon (img-src 'self'): with none, Firefox fetched /favicon.ico by itself and logged a
+  // CSP error (QA). withMeta adds the tags and the favicon link.
+  return c ? withMeta(disputeReportHtml(c).replace(/(<\/h1>)/, `$1\n<p><strong>${SIMULATED_CUSTOMER}</strong></p>`)) : null;
 })();
 export const METAL_REPORT_CSP = METAL_REPORT ? [
   "default-src 'none'", `style-src ${inlineHash(METAL_REPORT, "style")}`, "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
@@ -239,12 +242,12 @@ export const DEMO_CSP = cspFor(DEMO_TEMPLATE);
 
 /** The demo page with the recorded story in it (docs/demo/story.json unless one is given), "<" escaped. */
 export function demoPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf8")) as Story): string {
-  return DEMO_TEMPLATE.replace("__STORY_JSON__", () => JSON.stringify(story).replace(/</g, "\\u003c"));
+  return withMeta(DEMO_TEMPLATE.replace("__STORY_JSON__", () => JSON.stringify(story).replace(/</g, "\\u003c")));
 }
 
 /** The month replay page with the simulated month in it (JSON, with "<" escaped so it cannot close the block). */
 export function monthPage(report: MonthReport = simulateMonth()): string {
-  return MONTH_TEMPLATE.replace("__MONTH_JSON__", () => JSON.stringify(report).replace(/</g, "\\u003c")).replace("__AGENTS_JSON__", AGENTS_JSON);
+  return withMeta(MONTH_TEMPLATE.replace("__MONTH_JSON__", () => JSON.stringify(report).replace(/</g, "\\u003c")).replace("__AGENTS_JSON__", AGENTS_JSON), { description: "A month of Northwind Outdoor's agents in 90 seconds, simulated: what they paid inside their limits and what the CFO signed." });
 }
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);

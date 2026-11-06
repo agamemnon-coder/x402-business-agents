@@ -4,7 +4,7 @@
 // licence attempt that paid nothing, the checks, and a folded, labelled Archive. Nothing typed in by hand.
 
 import { readFileSync } from "node:fs";
-import { CHAIN_TEST, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
+import { CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, separateRowHtml, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapLimitLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { esc, icon, page } from "./ui.js";
 
@@ -181,7 +181,7 @@ function moreCards(run: AgentRun): string {
   const archive = [
     `<li><a class="pf" href="./?recorded">The CFO dashboard of the earlier recorded run (30 October)</a></li>`,
     `<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`,
-    `<li><a class="pf" href="film">The film</a></li>`, `<li><a class="pf" href="month">A month in 90 seconds (simulated)</a></li>`, `<li><a class="pf" href="lab">The Scenario Lab</a></li>`,
+    `<li><a class="pf" href="film">The earlier animation (30 October)</a></li>`, `<li><a class="pf" href="month">A month in 90 seconds (simulated)</a></li>`, `<li><a class="pf" href="lab">The Scenario Lab</a></li>`,
   ];
   return `<div class="more">
 ${box("stops", "ban", stopSub(story), stopFigure(story), `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : ""}`, separateRowHtml(tapLimitLine()) /* the separate TAP run's decline: its own labelled row, not counted */ + fold("Show each one", stopItems))}
@@ -208,7 +208,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
     { cls: "", value: `$${run.derived.perDecision}`, label: "Claude cost per decision", explain: "", href: "#claude" },
   ];
   const body = `<main class="proofp"><div class="wrap">
-  <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
+  <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a></div>
   <p class="split">${esc(SPLIT_LINE)}</p>
   <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>${nums.map((n) => separateRowHtml(n.separate)).join("")}
   <h2 class="sec">The partners</h2>
