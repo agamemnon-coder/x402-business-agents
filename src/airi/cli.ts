@@ -70,7 +70,10 @@ const Session = z.object({ authenticated: z.boolean(), session_expires: z.string
 /** `payment-methods list`: an array of { asDefault, card, createdAt, nickName, paymentMethodId, type }. `card` is
  *  sensitive: only a brand and last four are ever read from it, and only when they are plain. */
 const PaymentMethods = z.array(z.object({ paymentMethodId: z.string().min(1).max(200), type: z.string().max(40), card: z.unknown().optional() }));
+// airi-cli 0.1.0-beta.4 answers in camelCase, as seen live on 7 Nov (vic-1): { expiresAt, mandateId, passkeyUrl, status }.
+// The docs show snake_case; both are read, and only the id and the https link are kept.
 const MandateCreated = z.union([
+  z.object({ mandateId: z.string().min(1).max(200), passkeyUrl: z.string().url() }),
   z.object({ mandate_id: z.string().min(1).max(200), passkey_url: z.string().url() }),
   z.object({ mandateId: z.string().min(1).max(200), passkey_url: z.string().url() }),
 ]);
@@ -184,8 +187,9 @@ export class AiriCliClient implements AiriClient {
 
   async createMandate(req: AiriMandateRequest): Promise<AiriMandate> {
     const m = this.parse("mandate create", MandateCreated, await this.run("mandate create", mandateCreateArgs(req)));
-    if (new URL(m.passkey_url).protocol !== "https:") throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", "airi-cli mandate create: the approval link is not https");
-    return { mandateId: "mandate_id" in m ? m.mandate_id : m.mandateId, passkeyUrl: m.passkey_url };
+    const link = "passkeyUrl" in m ? m.passkeyUrl : m.passkey_url;
+    if (new URL(link).protocol !== "https:") throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", "airi-cli mandate create: the approval link is not https");
+    return { mandateId: "mandate_id" in m ? m.mandate_id : m.mandateId, passkeyUrl: link };
   }
 
   async findMandate(description: string, createdFrom: string): Promise<{ mandateId: string; status: string } | null> {
